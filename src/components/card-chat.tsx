@@ -64,11 +64,15 @@ function save(username: string, messages: Msg[]) {
 }
 
 export function CardChat({
-  username, name, theme,
+  username, name, theme, page,
 }: {
   username: string;
   name: string;
   theme: string;
+  /** The page the visitor is reading. On a `kb: "both"` card the Shubhora page has its own assistant
+   *  (it answers as a Shubhora seller) and every other page has the owner's own — so the two are never
+   *  mixed in one answer. The server decides; this just says where the visitor is. */
+  page?: string;
 }) {
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Msg[]>([]);
@@ -89,13 +93,13 @@ export function CardChat({
   useEffect(() => {
     if (!open || meta) return;
     let gone = false;
-    fetch(`/api/chat/${username}`).then((r) => r.json()).catch(() => ({ v2: false })).then((m: Meta) => {
+    fetch(`/api/chat/${username}${page ? `?page=${encodeURIComponent(page)}` : ""}`).then((r) => r.json()).catch(() => ({ v2: false })).then((m: Meta) => {
       if (gone) return;
       setMeta(m?.v2 ? m : { v2: false });
       if (m?.v2) setMessages((cur) => (cur.length ? cur : loadSaved(username)));
     });
     return () => { gone = true; };
-  }, [open, meta, username]);
+  }, [open, meta, username, page]);
 
   useEffect(() => { if (v2) save(username, messages); }, [v2, messages, username]);
 
@@ -110,7 +114,7 @@ export function CardChat({
       const r = await fetch(`/api/chat/${username}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, page }),
       });
       const data = await r.json();
       setMessages((m) => [...m, { role: "assistant", content: data.reply ?? (v2 ? "माफ़ कीजिए, फिर से भेजिए।" : "Sorry, please try again."), at: stampNow() }]);

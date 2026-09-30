@@ -16,6 +16,7 @@ import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { DomainConnect } from "@/components/domain-connect";
 import { isThinCard } from "@/lib/card-personalize";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage, withoutShubhoraPage } from "@/lib/shubhora-page";
 import { CardChecklist } from "@/components/poster/card-checklist";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { initials } from "@/lib/initials";
@@ -36,6 +37,8 @@ export default function CardTab() {
   const [qr, setQr] = useState("");
   const [refreshing, setRefreshing] = useState(false);
   const [note, setNote] = useState("");
+  const [shBusy, setShBusy] = useState("");
+  const [shCopied, setShCopied] = useState(false);
   // Connections → "Own domain" opens this page at #domain: the domain box opens by itself and scrolls into view.
   const [domainOpen, setDomainOpen] = useState(false);
   useEffect(() => {
@@ -89,6 +92,25 @@ export default function CardTab() {
 
   async function copy() { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
   function shareWa() { window.open(`https://wa.me/?text=${encodeURIComponent(t.shareText(card?.company || card?.name || "", url))}`, "_blank"); }
+
+  // The Shubhora side of a card whose owner also runs their own business: a second link off the same card.
+  const shUrl = card ? `${url}/${SHUBHORA_PAGE_SLUG}` : "";
+  async function copySh() { try { await navigator.clipboard.writeText(shUrl); setShCopied(true); setTimeout(() => setShCopied(false), 2000); } catch { /* ignore */ } }
+
+  /** Add or take away the Shubhora page. The owner's own pages, identity, link, domain and posters are never
+   *  touched either way — only this one page is added to or removed from the card. */
+  async function setShubhoraPage(on: boolean) {
+    if (!card || shBusy) return;
+    setShBusy(on ? "add" : "remove"); setNote("");
+    const next = (on ? withShubhoraPage(card) : withoutShubhoraPage(card)) as Card;
+    const p = await publishCard(next);
+    setShBusy("");
+    if (!p.ok) { setNote(p.error || "Could not save."); return; }
+    setCard(next);
+    setNote(on
+      ? (lang === "hi" ? "Shubhora page जुड़ गया — नीचे उसका अलग link है। आपके अपने card पर ये नहीं दिखेगा।" : "Shubhora page added — its own link is below. It will not show on your own card.")
+      : (lang === "hi" ? "Shubhora page हटा दिया।" : "Shubhora page removed."));
+  }
 
   if (failed) return (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -151,12 +173,49 @@ export default function CardTab() {
               {note && <p className="text-xs text-muted px-1">{note}</p>}
               {/* again=1: this asks for a NEW card, so any saved preview from an earlier visit is dropped first. */}
               <Link href="/poster/card/build?again=1" className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-brand" /> {lang === "hi" ? "AI से पूरा card फिर से बनाएँ" : "Make my V-Card again with AI"}</Link>
-              {/* Selling Shubhora itself: the ready-made seller card replaces this card's pages on the SAME link. */}
-              <Link href={`/poster/d/editor?id=${card.id}&template=vcard-reseller`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#2f5bf5]/40 bg-[#2f5bf5]/10 px-3 py-2.5 text-sm font-semibold text-[#12144a]">📇 {lang === "hi" ? "Shubhora seller card में बदलें" : "Turn this into the Shubhora seller card"}</Link>
+              {/* Doing BOTH — their own business and Shubhora: the Shubhora page is ADDED on its own separate
+                  link and nothing of theirs is touched. Shown only while the page is not already there. */}
+              {!hasShubhoraPage(card) && (
+                <button type="button" onClick={() => setShubhoraPage(true)} disabled={!!shBusy}
+                  className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-[#2f5bf5]/40 bg-[#2f5bf5]/10 px-3 py-2.5 text-sm font-semibold text-[#12144a] disabled:opacity-60">
+                  {shBusy === "add" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span>📇</span>} {lang === "hi" ? "Shubhora page जोड़ें (अलग link, आपका card वैसा ही रहेगा)" : "Add a Shubhora page (its own link; your card stays as it is)"}
+                </button>
+              )}
+              {/* Selling ONLY Shubhora: the ready-made seller card replaces this card's pages on the SAME link. */}
+              <Link href={`/poster/d/editor?id=${card.id}&template=vcard-reseller`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted">{lang === "hi" ? "सिर्फ़ Shubhora बेचना है? पूरा card seller card बना दें (आपका business हट जाएगा)" : "Only selling Shubhora? Replace the whole card with the seller card (your own business comes off)"}</Link>
             </div>
           </details>
         </div>
       </div>
+      {/* Two audiences, two links, never mixed: this page is not on the owner's own card, and their business
+          is not on this page. */}
+      {hasShubhoraPage(card) && (
+        <div className="rounded-2xl border border-[#2f5bf5]/40 bg-[#2f5bf5]/5 p-4 space-y-2.5">
+          <p className="flex items-center gap-2 text-sm font-bold text-[#12144a]">
+            <Img src="/art/brand/shubhora-logo.png" alt="" className="h-5 w-5 rounded bg-white object-contain p-0.5" />
+            {lang === "hi" ? "आपका Shubhora page" : "Your Shubhora page"}
+          </p>
+          <p className="text-xs text-muted">
+            {lang === "hi"
+              ? "ये दूसरा link सिर्फ़ उन्हें भेजें जिनसे आप Shubhora की बात कर रहे हैं। आपके card पर ये page नहीं दिखता, और इस link पर आपका business नहीं दिखता — दोनों अलग रहते हैं।"
+              : "Share this second link only with people you are talking to about Shubhora. The page is not on your own card, and your business is not on this page — the two stay apart."}
+          </p>
+          <div className="flex items-center gap-2 rounded-lg bg-surface px-3 py-2">
+            <code className="text-xs flex-1 truncate">{shUrl.replace("https://", "")}</code>
+            <button type="button" onClick={copySh} className="text-muted" aria-label="Copy Shubhora link">{shCopied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />}</button>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shUrl)}`, "_blank")}
+              className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {lang === "hi" ? "Share करें" : "Share"}</button>
+            <CardLink href={shUrl} title={lang === "hi" ? "Shubhora page" : "Shubhora page"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium"><ExternalLink className="h-4 w-4" /> {lang === "hi" ? "देखें" : "See it"}</CardLink>
+          </div>
+          <button type="button" onClick={() => setShubhoraPage(false)} disabled={!!shBusy}
+            className="text-xs font-semibold text-muted underline disabled:opacity-60">
+            {shBusy === "remove" ? (lang === "hi" ? "हट रहा है…" : "Removing…") : (lang === "hi" ? "Shubhora page हटाएँ" : "Remove the Shubhora page")}
+          </button>
+        </div>
+      )}
+      {note && <p className="px-1 text-xs text-muted">{note}</p>}
       <CardChecklist card={card} hi={lang === "hi"} />
       {qr && (
         <div className="rounded-2xl border border-border p-4 text-center">

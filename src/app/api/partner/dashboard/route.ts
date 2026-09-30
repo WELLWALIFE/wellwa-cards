@@ -19,9 +19,10 @@ export async function GET(request: Request) {
   ]);
   const main = cards.find((c) => c.active !== false) ?? cards[0];
   const cardSlug = main?.username ?? null;
-  // Sells Shubhora (the Shubhora seller card) — the app then shows the team join links up front; for everyone else
-  // they sit one tap lower, under the card link (a referral does not make someone a networker).
-  const shubhoraCard = cards.some((c) => c.kb === "shubhora" || /shubhora/i.test(c.company ?? ""));
+  // Sells Shubhora — the whole card ("shubhora") or alongside their own business ("both") — and the app then
+  // shows the team join links up front; for everyone else they sit one tap lower, under the card link (a
+  // referral does not make someone a networker).
+  const shubhoraCard = cards.some((c) => c.kb === "shubhora" || c.kb === "both" || /shubhora/i.test(c.company ?? ""));
   const username = p?.username ?? null;
   // Two different links: the referral link (Business) and the card link (the person's own site). Never mixed up.
   const link = username ? `${SITE_URL}/join/${username}` : null;

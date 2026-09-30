@@ -181,13 +181,24 @@ Q: कुछ और पूछना है / प्रॉब्लम है
 A: बताइए, मैं मदद करता हूँ। अकाउंट या पेमेंट की दिक्कत हो तो Shubhora सपोर्ट: WhatsApp/कॉल ${SHUBHORA_SUPPORT.phone} (सोम–शनि, 10–6), ${SHUBHORA_SUPPORT.email}।
 `.trim();
 
-/** Is this card a Shubhora partner's card (sells Shubhora itself)? Marked by the "Promote Shubhora" template
- *  (`kb: "shubhora"`); older cards are recognised by the company / title the template gave them. */
+/** Is the WHOLE card a Shubhora partner's card (it sells Shubhora and nothing else)? Marked by the
+ *  "Promote Shubhora" template (`kb: "shubhora"`); older cards are recognised by the company / title the
+ *  template gave them. `kb: "both"` is deliberately NOT one of these: that card is the owner's own
+ *  business, and only its separate Shubhora page answers as a Shubhora seller — so this stays false and
+ *  the owner's WhatsApp and card chat keep talking about their own business. */
 export function isShubhoraCard(data) {
   if (!data || typeof data !== "object") return false;
   if (data.kb === "shubhora") return true;
-  if (data.kb) return false;                             // explicitly something else
+  if (data.kb) return false;                             // "both", or explicitly something else
   return /shubhora/i.test(String(data.company || "")) || /shubhora partner/i.test(String(data.jobTitle || ""));
+}
+
+/** Does this card promote Shubhora at all — as the whole card ("shubhora") or alongside the owner's own
+ *  business ("both")? This is the partner-side question: show the partner income panel, the joining links,
+ *  the partner products. For "should this answer AS a Shubhora seller" use isShubhoraCard instead. */
+export function promotesShubhora(data) {
+  if (!data || typeof data !== "object") return false;
+  return data.kb === "both" || isShubhoraCard(data);
 }
 
 // The first "Promote Shubhora" cards got a frozen copy of these facts in their own notes. That copy is dropped at

@@ -282,6 +282,10 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   const page = card.pages.find((p) => p.slug === active) ?? card.pages[0];
+  // A hidden page (the Shubhora page on a `kb: "both"` card) is a standalone address: it is kept out of the
+  // tab row, and while a visitor is ON it the owner's own pages are kept out of sight as well. So the two
+  // sides of a "both" card never show each other — each link opens only what it is for.
+  const navPages = page?.hidden ? [] : card.pages.filter((p) => !p.hidden);
   const theme = card.themeColor;
   // view + ?src= source. The owner's own preview ("__preview") is never counted as a visit.
   useEffect(() => { if (!(card.username ?? "").startsWith("__")) trackView(card.username); }, [card.username]);
@@ -459,7 +463,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
         </div>
 
         {/* ---- Page navigation ---- */}
-        <PageTabs pages={card.pages} active={active} onSelect={setActive} theme={theme} hrefFor={hrefFor} />
+        <PageTabs pages={navPages} active={active} onSelect={setActive} theme={theme} hrefFor={hrefFor} />
 
         {/* ---- Blocks ---- */}
         <div ref={blocksRef} className="px-6 py-6 space-y-6 min-h-40">
@@ -467,7 +471,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
             .map((b) => onEdit
               ? <div key={b.id} className="relative"><EditChip label={editLabel} onClick={() => onEdit({ kind: "block", blockId: b.id })} className="absolute -top-3 right-0" /><Block block={b} card={card} theme={theme} /></div>
               : <Block key={b.id} block={b} card={card} theme={theme} />)}
-          <ExploreTiles pages={card.pages} active={active} theme={theme} hrefFor={hrefFor} onSelect={setActive} lang={card.language} />
+          <ExploreTiles pages={navPages} active={active} theme={theme} hrefFor={hrefFor} onSelect={setActive} lang={card.language} />
         </div>
 
         {/* ---- QR footer ---- */}
@@ -526,7 +530,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
       </a>
 
       {/* Floating AI chat assistant */}
-      {!expired && <CardChat username={card.username} name={card.name} theme={theme} />}
+      {!expired && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={lang} page={active} />}
     </div>
     </TranslateCtx.Provider>
@@ -1084,6 +1088,9 @@ function PageTabs({ pages, active, onSelect, theme, hrefFor }: {
     return () => clearTimeout(id);
   }, [pages.length]);
   const countOf = (p: CardPage) => { const m = pageMeta(p).hint.match(/^(\d+)\s/); return m ? m[1] : ""; };
+  // Nothing to navigate to (a hidden page's standalone address): no empty bar. After the hooks, so the
+  // hook order never changes between renders.
+  if (!pages.length) return null;
   // Owner's call (23 Sep 2026): one row (scrolls, with the "more →" arrow); the OPEN page is a light tint of the
   // theme with a steady outline; the OTHER pages blink softly — they are the ones asking to be tapped.
   return (

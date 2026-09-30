@@ -5,7 +5,7 @@ import { geminiComplete } from "@/lib/gemini";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { buildTrainingBlock, guessTrade, languageLock, type AiLayers } from "@/lib/ai-training";
 import { getPlatformKnowledge, type PlatformKnowledge } from "@/lib/platform";
-import type { Card } from "@/lib/types";
+import type { Card, CardPage } from "@/lib/types";
 // Shubhora's own facts for Shubhora partners' assistants — one file shared with the WhatsApp bridge.
 import { isShubhoraCard, ownNotes, shubhoraTraining } from "../../bridge/shubhora-kb.mjs";
 
@@ -32,30 +32,50 @@ export function cardSiteUrl(card: Card, brand?: BrandTraining): string {
   return brand?.brand_domain ? `https://${card.username}.${brand.brand_domain}` : `${SITE}/c/${card.username}`;
 }
 
-export function buildSystem(card: Card, wa?: string, platform?: PlatformKnowledge, brand?: BrandTraining, channel: "card" | "whatsapp" = "card"): string {
+export function buildSystem(
+  card: Card,
+  wa?: string,
+  platform?: PlatformKnowledge,
+  brand?: BrandTraining,
+  channel: "card" | "whatsapp" = "card",
+  /** `asShubhoraSeller`: answer as a Shubhora seller even though the card itself is not one — the Shubhora
+   *  page of a `kb: "both"` card, whose owner also runs their own business. `onlyPage`: the visitor is on
+   *  that one page and nothing else on the card may be used. Both keep the owner's two sides apart. */
+  opts: { asShubhoraSeller?: boolean; onlyPage?: CardPage } = {},
+): string {
   // A Shubhora partner sells Shubhora: Shubhora's current facts fill the brand layer (unless a white-label brand
   // already does), and the old frozen copy of those facts in the card's own notes is dropped.
-  const shubhora = isShubhoraCard(card);
+  const shubhora = !!opts.asShubhoraSeller || isShubhoraCard(card);
   if (shubhora && !brand?.brand_knowledge?.trim()) brand = { ...(brand ?? {}), ...shubhoraTraining(platform?.shubhora ?? {}) };
+  // The Shubhora page of a card that is ALSO someone's own business: the owner's own persona and notes are
+  // about that business (their prices, their timings) and must not leak into a Shubhora answer. The page
+  // answers from Shubhora's own official knowledge instead.
+  const sideBySide = !!opts.asShubhoraSeller && !isShubhoraCard(card);
   const layers: AiLayers = {
     platformPersona: platform?.persona,
     platformRules: null,
     brandName: brand?.brand_name, brandPersona: brand?.brand_persona, brandKnowledge: brand?.brand_knowledge, brandFaq: brand?.brand_faq,
-    cardPersona: card.botPersona, cardKnowledge: shubhora ? ownNotes(card.botKnowledge) : card.botKnowledge,
+    cardPersona: sideBySide ? "" : card.botPersona,
+    cardKnowledge: sideBySide ? "" : shubhora ? ownNotes(card.botKnowledge) : card.botKnowledge,
   };
   const trade = guessTrade([card.company, card.tagline, card.jobTitle, card.about].filter(Boolean).join(" "));
   const adminK = platform?.knowledge?.trim() ? `\n\nPLATFORM-WIDE INFO (applies to every card):\n${platform.knowledge.trim().slice(0, 3000)}` : "";
-  const where = channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.` : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
+  const where = sideBySide
+    ? `You are the assistant on ${card.name}'s SHUBHORA page. ${card.name} is a Shubhora partner. On this page you talk about Shubhora only — what it is, its plans and prices, and the partner business. ${card.name} also runs their own separate business (${card.company}); that is a different page with its own assistant, so never describe, price or promote it here. If the visitor asks about it, say ${card.name.split(" ")[0]} will tell them directly${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.`
+    : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.` : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
+  // What the visitor is actually reading. Normally the whole card, so a question about products can be
+  // answered from the home page; on a page that must stand alone (Shubhora), only that page.
+  const content = opts.onlyPage ? [opts.onlyPage] : card.pages;
   return `${where}
 
 ${buildTrainingBlock(layers, trade)}${adminK}
 
 THIS CARD (facts about this specific seller — always true):
-- Name: ${card.name}, ${card.jobTitle} at ${card.company}
-- Tagline: ${card.tagline}
+- Name: ${card.name}${sideBySide ? ", Shubhora partner" : `, ${card.jobTitle} at ${card.company}`}
+${sideBySide ? "" : `- Tagline: ${card.tagline}
 - About: ${card.about}
-- Contact: ${card.links.map((l) => `${l.type}:${l.value}`).join(", ")}
-- Pages & content: ${JSON.stringify(card.pages).slice(0, 3000)}
+`}- Contact: ${card.links.map((l) => `${l.type}:${l.value}`).join(", ")}
+- Pages & content: ${JSON.stringify(content).slice(0, 3000)}
 
 THIS SELLER'S WEBSITE (the card page — always call it the "website" when talking to the customer): ${cardSiteUrl(card, brand)}
 

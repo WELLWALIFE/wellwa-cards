@@ -17,11 +17,24 @@ import { getPlatformKnowledge } from "@/lib/platform";
 import { agentCardLookup, agentComplete, agentContext, webState, type AgentMsg } from "@/lib/shubhora-agent-web";
 import type { Card } from "@/lib/types";
 import { isShubhoraCard } from "../../../../../bridge/shubhora-kb.mjs";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { agentTurn, firstName, v2Mode, WEB_CHIPS } from "../../../../../bridge/shubhora-agent.mjs";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
 type Msg = AgentMsg;
+
+/** Should this conversation answer as a Shubhora seller?
+ *  - `kb: "shubhora"` — the whole card is a Shubhora partner's: always yes.
+ *  - `kb: "both"` — the owner also runs their own business: only on the card's own Shubhora page
+ *    (/c/<user>/shubhora). On every other page the visitor is a customer of that business and gets the
+ *    owner's own assistant, so the two are never mixed into one answer.
+ *  The page is what the visitor is reading; it is a hint from the browser, so it can only ever turn the
+ *  Shubhora side ON for a card that actually carries the Shubhora page. */
+function sellsShubhora(card: Card, page: string | null): boolean {
+  if (isShubhoraCard(card)) return true;
+  return card.kb === "both" && page === SHUBHORA_PAGE_SLUG && hasShubhoraPage(card);
+}
 
 /** What the chat box shows before the first message. Plain cards: nothing special (the box keeps its own English
  *  greeting). A Shubhora partner's card with the new AI: Hindi greeting, the menu as buttons, Hindi placeholder. */
@@ -33,7 +46,8 @@ export async function GET(
   const card = (await fetchCloudCard(username)) ?? getCardByUsername(username);
   if (!card) return Response.json({ v2: false });
   const platform = await getPlatformKnowledge();
-  if (v2Mode(platform.aiV2, isShubhoraCard(card), card.username) !== "shubhora") return Response.json({ v2: false });
+  const page = new URL(_request.url).searchParams.get("page");
+  if (v2Mode(platform.aiV2, sellsShubhora(card, page), card.username) !== "shubhora") return Response.json({ v2: false });
   const seller = firstName(card.name);
   return Response.json({
     v2: true,
@@ -61,7 +75,7 @@ export async function POST(
     return Response.json({ error: "request too large" }, { status: 413 });
   }
   const { username } = await params;
-  const { messages } = (await request.json()) as { messages: Msg[] };
+  const { messages, page } = (await request.json()) as { messages: Msg[]; page?: string };
 
   const card = (await fetchCloudCard(username)) ?? getCardByUsername(username);
   if (!card) return Response.json({ reply: "Sorry, this card was not found." }, { status: 404 });
@@ -79,8 +93,10 @@ export async function POST(
   const key = process.env.GEMINI_API_KEY;
   const platform = await getPlatformKnowledge();
 
-  // Shubhora partner card + new AI → the partner playbook.
-  if (v2Mode(platform.aiV2, isShubhoraCard(card), card.username) === "shubhora") {
+  const shubhoraSide = sellsShubhora(card, page ?? null);
+
+  // Shubhora partner card (or the Shubhora page of a "both" card) + new AI → the partner playbook.
+  if (v2Mode(platform.aiV2, shubhoraSide, card.username) === "shubhora") {
     const last = safeMessages[safeMessages.length - 1];
     if (!last || last.role !== "user" || !last.content.trim()) return Response.json({ reply: "जी, बताइए — क्या जानना चाहते हैं? 🙂" });
     const history = safeMessages.slice(0, -1);
@@ -98,7 +114,13 @@ export async function POST(
       const { text, blocked } = await geminiComplete({
         apiKey: key,
         maxOutputTokens: 500,
-        system: buildSystem(card, wa, platform, brand)
+        system: buildSystem(card, wa, platform, brand, "card", {
+          asShubhoraSeller: shubhoraSide,
+          // A "both" card's Shubhora page stands alone: the owner's own pages are not part of this answer.
+          ...(shubhoraSide && !isShubhoraCard(card)
+            ? { onlyPage: card.pages.find((pg) => pg.slug === SHUBHORA_PAGE_SLUG) }
+            : {}),
+        })
           + languageLock(safeMessages[safeMessages.length - 1]?.content ?? ""),
         contents: safeMessages.map((m) => ({
           role: m.role === "assistant" ? "model" as const : "user" as const,

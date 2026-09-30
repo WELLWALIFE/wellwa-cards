@@ -1,6 +1,7 @@
 "use client";
 import { authHeaders } from "@/lib/auth-headers";
 import { isShubhoraCard } from "../../../bridge/shubhora-kb.mjs";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { SITE_HOST } from "@/lib/site-url";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -881,6 +882,16 @@ export function CardEditor({ id }: { id: string }) {
                 </Field>
                 <Toggle checked={!!card.locked} onChange={(v) => patch({ locked: v })} label="Card lock" hint="Require a password to view this card." />
                 <Toggle checked={card.active} onChange={(v) => patch({ active: v })} label="Card active" hint="Turn off to take the card offline." />
+                {/* A "both" card: the owner's own business and Shubhora, kept apart. The Shubhora page normally
+                    stays off the tab row, so their own customers never land on it — it has its own link. */}
+                {hasShubhoraPage(card) && (
+                  <Toggle
+                    checked={!card.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden}
+                    onChange={(v) => patch({ pages: card.pages.map((p) => (p.slug === SHUBHORA_PAGE_SLUG ? { ...p, hidden: !v } : p)) })}
+                    label={L("Show the Shubhora tab on this card", "Shubhora tab इस card पर दिखाएँ")}
+                    hint={L("Off (recommended): the Shubhora page stays on its own link only, so your own customers never see it.", "बंद रखना ही ठीक है: Shubhora page सिर्फ़ अपने अलग link पर रहेगा, आपके customer को नहीं दिखेगा।")}
+                  />
+                )}
               </Panel>
 
               {/* QR and share kit last (owner's call, 28 Sep 2026) — it is the thing you print, not a setting. */}

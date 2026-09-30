@@ -6,7 +6,7 @@
 // Saved once, used everywhere: the poster profile (posters, card, website) and the account (the AI reads "about").
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, ChevronDown, LoaderCircle, MapPin, Sparkles, Store } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronDown, Layers, LoaderCircle, MapPin, Sparkles, Store } from "lucide-react";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
@@ -286,6 +286,28 @@ function Onboard() {
     } finally { setBusy(""); }
   }
 
+  /** The third choice (owner's call): the person does BOTH — their own shop, clinic or service, AND selling
+   *  Shubhora. Before this the two choices replaced each other, so anyone doing both had to give one up.
+   *
+   *  Here their own business is set up exactly as it always was (this walks straight on to the business form
+   *  and the AI builds their card from it). What changes is that the choice is remembered on the account, and
+   *  when that card is published the Shubhora page rides along on its own hidden link — /c/<user>/shubhora.
+   *  The two never mix: their customers see only their business, that one link shows only Shubhora, and the
+   *  daily posters stay their own. */
+  async function bothFlow() {
+    setBusy("both"); setErr("");
+    try {
+      const sb = getBrowserSupabase();
+      // Remembered on the account, not in this screen's state: the card is built on a later screen, and the
+      // person may well close the app in between.
+      const up = await sb?.auth.updateUser({ data: { also_shubhora: true } });
+      if (up?.error) { setErr("Could not save. Please try again."); return; }
+      setStep("business");
+    } catch {
+      setErr("No internet — please try again.");
+    } finally { setBusy(""); }
+  }
+
   /** 📍 Uses the phone's GPS where the owner is standing — an exact map pin, no typing. */
   function pinShop() {
     setErr("");
@@ -491,8 +513,24 @@ function Onboard() {
             </div>
           </button>
 
+          {/* The third choice (owner's call): plenty of partners run their own shop AND sell Shubhora. It used to
+              be one or the other, because turning the Shubhora card on overwrote their own pages. Now both fit in
+              one account — two links that never show each other. */}
+          <button type="button" onClick={bothFlow} disabled={!!busy}
+            className="w-full rounded-2xl border-2 border-border bg-surface p-4 text-left disabled:opacity-60">
+            <div className="flex items-start gap-3">
+              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface2 text-brand shadow-card"><Layers className="h-6 w-6" /></span>
+              <div className="flex-1">
+                <p className="text-base font-bold">{T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora")}</p>
+                <p className="mt-0.5 text-sm text-muted">{T("You get two separate links from one login: your own card, and a Shubhora page of its own. Your customers never see Shubhora, and the Shubhora link never shows your business.", "एक ही login से दो अलग link मिलेंगे — अपना card, और Shubhora का अलग page। आपके customer को Shubhora नहीं दिखेगा, और Shubhora वाले link पर आपका business नहीं।")}</p>
+                <p className="mt-1.5 text-xs text-muted">{T("Your daily posters stay your own business's.", "रोज़ के poster आपके अपने business के ही बनेंगे।")}</p>
+                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white">{busy === "both" ? <><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : <>{T("Set up both", "दोनों सेट करें")} →</>}</p>
+              </div>
+            </div>
+          </button>
+
           <div className="rounded-xl bg-surface2 px-3 py-2.5 text-xs text-muted">
-            <b className="text-ink">{T("Not sure?", "पक्का नहीं पता?")}</b> {T("Choose “My own business”. Doing both? Still choose your business — the Shubhora card is one tap later from My V-Card.", "“मेरा अपना business” चुनें। दोनों काम करते हैं? तब भी अपना business चुनें — Shubhora card बाद में My V-Card से एक tap में बन जाता है।")}
+            <b className="text-ink">{T("Not sure?", "पक्का नहीं पता?")}</b> {T("Choose “My own business” — you can add the Shubhora page later from My V-Card, and take it off again any time.", "“मेरा अपना business” चुनें — Shubhora page बाद में My V-Card से जोड़ सकते हैं, और जब चाहें हटा भी सकते हैं।")}
           </div>
           {err && <p className="text-sm text-danger">{err}</p>}
         </section>

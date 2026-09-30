@@ -18,6 +18,7 @@ import { Camera, Check, CheckCircle2, ChevronLeft, CircleDashed, Globe, LoaderCi
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
+import { hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
@@ -134,6 +135,9 @@ export default function BuildCard() {
 
   const [state, setState] = useState<"loading" | "error" | "form" | "building" | "preview">("loading");
   const [uid, setUid] = useState("");
+  /** The person chose "Both — my business and Shubhora" at set-up: their own card is built exactly as usual,
+   *  and the Shubhora page is added to it (its own hidden link) when it is published. */
+  const [alsoShubhora, setAlsoShubhora] = useState(false);
   const [setup, setSetup] = useState<SetupInfo | null>(null);
   const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
   const [rows, setRows] = useState<Row[]>([]);
@@ -193,6 +197,7 @@ export default function BuildCard() {
       const who = await getBrowserSupabase()?.auth.getUser();
       const me = who?.data.user?.id ?? "";
       setUid(me);
+      setAlsoShubhora(!!who?.data.user?.user_metadata?.also_shubhora);
       // "Make my V-Card again with AI" asks for a NEW card, so any saved preview is thrown away first.
       let again = false;
       try {
@@ -496,8 +501,20 @@ export default function BuildCard() {
         } catch { setErr(OFFLINE); return; }
         out = applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
       }
+      // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
+      // made at set-up is not lost on the way to the finished card. It is appended last and marked hidden, so
+      // the card still opens on the owner's own home page and their customers never see it.
+      const addShubhora = alsoShubhora && !hasShubhoraPage(out);
+      if (addShubhora) out = withShubhoraPage(out);
       const r = await publishCard(out);
       if (!r.ok) { setErr(r.error); return; }
+      // The choice has been carried out, so it is not carried again: someone who later takes the page off and
+      // rebuilds their card with AI should not have it come back on its own. Adding it again is one tap on
+      // My V-Card.
+      if (addShubhora) {
+        setAlsoShubhora(false);
+        await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: null } }).catch(() => undefined);
+      }
       if (uid) { dropKey(draftKey(uid)); dropKey(formKey(uid)); }
       try {
         const cards = await fetchMyCardsStrict();
