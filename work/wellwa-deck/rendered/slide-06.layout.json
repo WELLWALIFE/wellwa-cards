@@ -1,0 +1,1134 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/qx11fl",
+    "id": "qx11fl",
+    "slide": 6,
+    "layoutId": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hkbe10j2",
+      "id": "1",
+      "name": "kicker",
+      "bbox": [
+        72,
+        42,
+        430,
+        24
+      ],
+      "geometry": "rect",
+      "text": "CUSTOMER EXPERIENCE",
+      "textPreview": "CUSTOMER EXPERIENCE",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "CUSTOMER EXPERIENCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "CUSTOMER EXPERIENCE",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#08766D",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "CUSTOMER EXPERIENCE",
+              "fontSize": 14,
+              "color": "#08766D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uhkv65kb",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        72,
+        75,
+        1136,
+        58
+      ],
+      "geometry": "rect",
+      "text": "A clear ownership journey builds trust",
+      "textPreview": "A clear ownership journey builds trust",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "fontSize": 38,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "A clear ownership journey builds trust"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "A clear ownership journey builds trust",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "A clear ownership journey builds trust",
+              "fontSize": 38,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fitwza1w",
+      "id": "3",
+      "name": "journey-line",
+      "bbox": [
+        168,
+        318,
+        940,
+        0
+      ],
+      "geometry": "line",
+      "lineColor": "#D9E3E7",
+      "lineWidth": 4
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sf2d4v25",
+      "id": "4",
+      "name": "step-dot-0",
+      "bbox": [
+        148,
+        272,
+        92,
+        92
+      ],
+      "geometry": "ellipse",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 22,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#102A43",
+      "lineColor": "#FFFFFF",
+      "lineWidth": 6
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tgbux0jq",
+      "id": "5",
+      "name": "step-head-0",
+      "bbox": [
+        72,
+        398,
+        244,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Water review",
+      "textPreview": "Water review",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Water review"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Water review",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Water review",
+              "fontSize": 22,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6d0v2lkf",
+      "id": "6",
+      "name": "step-body-0",
+      "bbox": [
+        80,
+        444,
+        228,
+        66
+      ],
+      "geometry": "rect",
+      "text": "Source, usage and compatibility",
+      "textPreview": "Source, usage and compatibility",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Source, usage and"
+          },
+          {
+            "index": 2,
+            "text": "compatibility"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Source, usage and compatibility",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Source, usage and compatibility",
+              "fontSize": 16,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7etcvq1k",
+      "id": "7",
+      "name": "step-dot-1",
+      "bbox": [
+        440,
+        272,
+        92,
+        92
+      ],
+      "geometry": "ellipse",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 22,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#102A43",
+      "lineColor": "#FFFFFF",
+      "lineWidth": 6
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kbid0v29",
+      "id": "8",
+      "name": "step-head-1",
+      "bbox": [
+        364,
+        398,
+        244,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Model consultation",
+      "textPreview": "Model consultation",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Model consultation"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Model consultation",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Model consultation",
+              "fontSize": 22,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5crutgju",
+      "id": "9",
+      "name": "step-body-1",
+      "bbox": [
+        372,
+        444,
+        228,
+        66
+      ],
+      "geometry": "rect",
+      "text": "Compare the Aura range",
+      "textPreview": "Compare the Aura range",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Compare the Aura range"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Compare the Aura range",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Compare the Aura range",
+              "fontSize": 16,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4jy9wve",
+      "id": "10",
+      "name": "step-dot-2",
+      "bbox": [
+        732,
+        272,
+        92,
+        92
+      ],
+      "geometry": "ellipse",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 22,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#102A43",
+      "lineColor": "#FFFFFF",
+      "lineWidth": 6
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g3qxgrut",
+      "id": "11",
+      "name": "step-head-2",
+      "bbox": [
+        656,
+        398,
+        244,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Installation",
+      "textPreview": "Installation",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Installation"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Installation",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Installation",
+              "fontSize": 22,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/fihg7md8",
+      "id": "12",
+      "name": "step-body-2",
+      "bbox": [
+        664,
+        444,
+        228,
+        66
+      ],
+      "geometry": "rect",
+      "text": "Plumbing, setup and handover",
+      "textPreview": "Plumbing, setup and handover",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Plumbing, setup and"
+          },
+          {
+            "index": 2,
+            "text": "handover"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Plumbing, setup and handover",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Plumbing, setup and handover",
+              "fontSize": 16,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uh8fehc3",
+      "id": "13",
+      "name": "step-dot-3",
+      "bbox": [
+        1024,
+        272,
+        92,
+        92
+      ],
+      "geometry": "ellipse",
+      "text": "04",
+      "textPreview": "04",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "anchor": 2,
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "center",
+        "verticalAlignment": "middle",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "04"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "04",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#FFFFFF",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04",
+              "fontSize": 22,
+              "color": "#FFFFFF",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "fillColor": "#0E9E90",
+      "lineColor": "#FFFFFF",
+      "lineWidth": 6
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tgze5cvi",
+      "id": "14",
+      "name": "step-head-3",
+      "bbox": [
+        948,
+        398,
+        244,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Connected care",
+      "textPreview": "Connected care",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Connected care"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Connected care",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Connected care",
+              "fontSize": 22,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/sfqxc7ux",
+      "id": "15",
+      "name": "step-body-3",
+      "bbox": [
+        956,
+        444,
+        228,
+        66
+      ],
+      "geometry": "rect",
+      "text": "App pairing, alerts and support",
+      "textPreview": "App pairing, alerts and support",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "App pairing, alerts and"
+          },
+          {
+            "index": 2,
+            "text": "support"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "App pairing, alerts and support",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "App pairing, alerts and support",
+              "fontSize": 16,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7ehw32dc",
+      "id": "16",
+      "name": "journey-callout",
+      "bbox": [
+        205,
+        546,
+        870,
+        76
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#DFF4F1",
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6d8faxcr",
+      "id": "17",
+      "name": "journey-callout-text",
+      "bbox": [
+        250,
+        566,
+        780,
+        38
+      ],
+      "geometry": "rect",
+      "text": "The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.",
+      "textPreview": "The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The distributor owns the education and follow-up; trained service teams own technical"
+          },
+          {
+            "index": 2,
+            "text": "installation and diagnostics."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.",
+              "fontSize": 18,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5cze1cv6",
+      "id": "18",
+      "name": "footer-6",
+      "bbox": [
+        72,
+        678,
+        1136,
+        18
+      ],
+      "geometry": "rect",
+      "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06",
+      "textPreview": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06",
+      "resolvedFontSize": 10,
+      "resolvedTextStyle": {
+        "fontSize": 10,
+        "typeface": "+mn-lt",
+        "color": "#7A8A96",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06",
+          "resolvedTextStyle": {
+            "fontSize": 10,
+            "color": "#7A8A96"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06",
+              "fontSize": 10,
+              "color": "#7A8A96"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

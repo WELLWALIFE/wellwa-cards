@@ -1,0 +1,1517 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/mzcbt3",
+    "id": "mzcbt3",
+    "slide": 3,
+    "layoutId": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#FFFFFF",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7qhovm90",
+      "id": "1",
+      "name": "kicker",
+      "bbox": [
+        72,
+        42,
+        430,
+        24
+      ],
+      "geometry": "rect",
+      "text": "PRODUCT RANGE",
+      "textPreview": "PRODUCT RANGE",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "PRODUCT RANGE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "PRODUCT RANGE",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#08766D",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "PRODUCT RANGE",
+              "fontSize": 14,
+              "color": "#08766D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8rq5orql",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        72,
+        75,
+        1136,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Four entry points serve different household needs",
+      "textPreview": "Four entry points serve different household needs",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "fontSize": 38,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Four entry points serve different household needs"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Four entry points serve different household needs",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Four entry points serve different household needs",
+              "fontSize": 38,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tsj6xcr6",
+      "id": "3",
+      "name": "product-bg-0",
+      "bbox": [
+        72,
+        160,
+        268,
+        448
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F8F6F1",
+      "lineColor": "#D9E3E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/3i5wbmt4",
+      "id": "4",
+      "bbox": [
+        96,
+        186,
+        220,
+        220
+      ],
+      "geometry": "roundRect",
+      "alt": "Starter Pack",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 10000"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "9c668caa-7e36-464e-9cdc-5eeafbb2d904",
+        "contentType": "image/png",
+        "byteLength": 728924
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jmhor294",
+      "id": "5",
+      "name": "product-badge-0",
+      "bbox": [
+        96,
+        426,
+        220,
+        20
+      ],
+      "geometry": "rect",
+      "text": "START HERE",
+      "textPreview": "START HERE",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#B87333",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "START HERE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "START HERE",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#B87333",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "START HERE",
+              "fontSize": 11,
+              "color": "#B87333",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/knq5k7qp",
+      "id": "6",
+      "name": "product-name-0",
+      "bbox": [
+        92,
+        458,
+        228,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Starter Pack",
+      "textPreview": "Starter Pack",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Starter Pack"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Starter Pack",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Starter Pack",
+              "fontSize": 24,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/loz6tcru",
+      "id": "7",
+      "name": "product-meta-0",
+      "bbox": [
+        90,
+        501,
+        232,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Wellness starter",
+      "textPreview": "Wellness starter",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Wellness starter"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Wellness starter",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Wellness starter",
+              "fontSize": 14,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ihs7u18n",
+      "id": "8",
+      "name": "product-price-0",
+      "bbox": [
+        92,
+        550,
+        228,
+        30
+      ],
+      "geometry": "rect",
+      "text": "₹11,800",
+      "textPreview": "₹11,800",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "₹11,800"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "₹11,800",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "₹11,800",
+              "fontSize": 22,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3i1o3698",
+      "id": "9",
+      "name": "product-bg-1",
+      "bbox": [
+        364,
+        160,
+        268,
+        448
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F8F6F1",
+      "lineColor": "#D9E3E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 10,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/8zm1w7ih",
+      "id": "10",
+      "bbox": [
+        388,
+        186,
+        220,
+        220
+      ],
+      "geometry": "roundRect",
+      "alt": "Aura",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 10000"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "96815909-28da-4b42-97ff-4a20dca86097",
+        "contentType": "image/png",
+        "byteLength": 577735
+      }
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/yxcbi50n",
+      "id": "11",
+      "name": "product-badge-1",
+      "bbox": [
+        388,
+        426,
+        220,
+        20
+      ],
+      "geometry": "rect",
+      "text": "ESSENTIAL",
+      "textPreview": "ESSENTIAL",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#B87333",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "ESSENTIAL"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "ESSENTIAL",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#B87333",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "ESSENTIAL",
+              "fontSize": 11,
+              "color": "#B87333",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/l03adkje",
+      "id": "12",
+      "name": "product-name-1",
+      "bbox": [
+        384,
+        458,
+        228,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Aura",
+      "textPreview": "Aura",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Aura"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Aura",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Aura",
+              "fontSize": 24,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0zutkfit",
+      "id": "13",
+      "name": "product-meta-1",
+      "bbox": [
+        382,
+        501,
+        232,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Smart 5-plate ionizer",
+      "textPreview": "Smart 5-plate ionizer",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Smart 5-plate ionizer"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Smart 5-plate ionizer",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Smart 5-plate ionizer",
+              "fontSize": 14,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n2lsfu1k",
+      "id": "14",
+      "name": "product-price-1",
+      "bbox": [
+        384,
+        550,
+        228,
+        30
+      ],
+      "geometry": "rect",
+      "text": "₹90,000",
+      "textPreview": "₹90,000",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "₹90,000"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "₹90,000",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "₹90,000",
+              "fontSize": 22,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m1cbmp0z",
+      "id": "15",
+      "name": "product-bg-2",
+      "bbox": [
+        656,
+        160,
+        268,
+        448
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#DFF4F1",
+      "lineColor": "#0E9E90",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/al4jyh07",
+      "id": "16",
+      "bbox": [
+        680,
+        186,
+        220,
+        220
+      ],
+      "geometry": "roundRect",
+      "alt": "Aura Plus",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 10000"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "286c28e5-d970-48b2-8ef4-c8aabcfaa1bc",
+        "contentType": "image/png",
+        "byteLength": 786174
+      }
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/83utozip",
+      "id": "17",
+      "name": "product-badge-2",
+      "bbox": [
+        680,
+        426,
+        220,
+        20
+      ],
+      "geometry": "rect",
+      "text": "MOST POPULAR",
+      "textPreview": "MOST POPULAR",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "MOST POPULAR"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "MOST POPULAR",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "MOST POPULAR",
+              "fontSize": 11,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vq5cju1g",
+      "id": "18",
+      "name": "product-name-2",
+      "bbox": [
+        676,
+        458,
+        228,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Aura Plus",
+      "textPreview": "Aura Plus",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Aura Plus"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Aura Plus",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Aura Plus",
+              "fontSize": 24,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a5wbqp0v",
+      "id": "19",
+      "name": "product-meta-2",
+      "bbox": [
+        674,
+        501,
+        232,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Smart 7-plate ionizer",
+      "textPreview": "Smart 7-plate ionizer",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Smart 7-plate ionizer"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Smart 7-plate ionizer",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Smart 7-plate ionizer",
+              "fontSize": 14,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/6lgvitk3",
+      "id": "20",
+      "name": "product-price-2",
+      "bbox": [
+        676,
+        550,
+        228,
+        30
+      ],
+      "geometry": "rect",
+      "text": "₹1,25,000",
+      "textPreview": "₹1,25,000",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "₹1,25,000"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "₹1,25,000",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "₹1,25,000",
+              "fontSize": 22,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 21,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7mpwbylo",
+      "id": "21",
+      "name": "product-bg-3",
+      "bbox": [
+        948,
+        160,
+        268,
+        448
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#F8F6F1",
+      "lineColor": "#D9E3E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 22,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/r6t0fmt8",
+      "id": "22",
+      "bbox": [
+        972,
+        186,
+        220,
+        220
+      ],
+      "geometry": "roundRect",
+      "alt": "Aura Maxx",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 10000"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "f9ff4268-4ced-43bd-9d33-8f353a1c17d1",
+        "contentType": "image/png",
+        "byteLength": 508703
+      }
+    },
+    {
+      "order": 23,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/tored83u",
+      "id": "23",
+      "name": "product-badge-3",
+      "bbox": [
+        972,
+        426,
+        220,
+        20
+      ],
+      "geometry": "rect",
+      "text": "MAX PERFORMANCE",
+      "textPreview": "MAX PERFORMANCE",
+      "resolvedFontSize": 11,
+      "resolvedTextStyle": {
+        "fontSize": 11,
+        "typeface": "+mn-lt",
+        "color": "#B87333",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "MAX PERFORMANCE"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "MAX PERFORMANCE",
+          "resolvedTextStyle": {
+            "fontSize": 11,
+            "color": "#B87333",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "MAX PERFORMANCE",
+              "fontSize": 11,
+              "color": "#B87333",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 24,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ixgvetk7",
+      "id": "24",
+      "name": "product-name-3",
+      "bbox": [
+        968,
+        458,
+        228,
+        36
+      ],
+      "geometry": "rect",
+      "text": "Aura Maxx",
+      "textPreview": "Aura Maxx",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Aura Maxx"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Aura Maxx",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#102A43",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Aura Maxx",
+              "fontSize": 24,
+              "color": "#102A43",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 25,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jypw7yls",
+      "id": "25",
+      "name": "product-meta-3",
+      "bbox": [
+        966,
+        501,
+        232,
+        26
+      ],
+      "geometry": "rect",
+      "text": "Smart 8-plate ionizer",
+      "textPreview": "Smart 8-plate ionizer",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Smart 8-plate ionizer"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Smart 8-plate ionizer",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Smart 8-plate ionizer",
+              "fontSize": 14,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 26,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kzydg32d",
+      "id": "26",
+      "name": "product-price-3",
+      "bbox": [
+        968,
+        550,
+        228,
+        30
+      ],
+      "geometry": "rect",
+      "text": "₹1,50,000",
+      "textPreview": "₹1,50,000",
+      "resolvedFontSize": 22,
+      "resolvedTextStyle": {
+        "fontSize": 22,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "₹1,50,000"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "₹1,50,000",
+          "resolvedTextStyle": {
+            "fontSize": 22,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "₹1,50,000",
+              "fontSize": 22,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 27,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/5k7e9o3i",
+      "id": "27",
+      "name": "price-note",
+      "bbox": [
+        72,
+        624,
+        1136,
+        28
+      ],
+      "geometry": "rect",
+      "text": "Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.",
+      "textPreview": "Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.",
+      "resolvedFontSize": 13,
+      "resolvedTextStyle": {
+        "fontSize": 13,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.",
+          "resolvedTextStyle": {
+            "fontSize": 13,
+            "color": "#536471",
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.",
+              "fontSize": 13,
+              "color": "#536471",
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 28,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/2t0fqdkb",
+      "id": "28",
+      "name": "footer-3",
+      "bbox": [
+        72,
+        678,
+        1136,
+        18
+      ],
+      "geometry": "rect",
+      "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03",
+      "textPreview": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03",
+      "resolvedFontSize": 10,
+      "resolvedTextStyle": {
+        "fontSize": 10,
+        "typeface": "+mn-lt",
+        "color": "#7A8A96",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03",
+          "resolvedTextStyle": {
+            "fontSize": 10,
+            "color": "#7A8A96"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03",
+              "fontSize": 10,
+              "color": "#7A8A96"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

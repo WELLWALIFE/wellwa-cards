@@ -1,0 +1,33 @@
+{
+ "label": "the water ionizer",
+ "name": "Wellwa Elite Maxx",
+ "archetype": "appliance_with_output",
+ "size_class": "countertop",
+ "appearance": "A white rectangular countertop unit with a black front panel. The panel features a small rectangular screen, the words 'Elite Maxx' in blue, and a stylized logo. A flexible white metal hose extends from the top of the unit, curving downwards",
+ "stage_positive": "on a clean kitchen countertop against a plain, light-colored wall",
+ "idle_positive": "stands on the countertop with its screen lit, the hose in its normal curved position",
+ "use_positive": null,
+ "output": {
+  "part": "the tip of the flexible white hose",
+  "part_short": "the flexible hose",
+  "medium": "water",
+  "receptacle": "a clear glass held directly beneath the end of the hose",
+  "action_positive": "water flows smoothly from the tip of the flexible white hose into a clear glass held directly beneath it"
+ },
+ "fixed_parts": [
+  "the flexible white hose",
+  "the black front panel",
+  "the rectangular screen"
+ ],
+ "must_show": [
+  "the flexible hose positioned over a glass",
+  "the digital screen illuminated"
+ ],
+ "must_not_show": [
+  "liquid leaving any tap, faucet or spout that is not part of the product",
+  "a second appliance",
+  "a bottle, jug or pitcher pouring"
+ ],
+ "hands": "edge",
+ "people_default": "an Indian homeowner"
+}

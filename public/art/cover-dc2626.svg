@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1800 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+<defs>
+<filter id="grain" x="0" y="0" width="100%" height="100%">
+<feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="4" stitchTiles="stitch"/>
+<feColorMatrix type="saturate" values="0"/>
+</filter>
+<filter id="b60"><feGaussianBlur stdDeviation="60"/></filter>
+<filter id="b28"><feGaussianBlur stdDeviation="28"/></filter>
+<filter id="b10"><feGaussianBlur stdDeviation="10"/></filter>
+<filter id="b3"><feGaussianBlur stdDeviation="3"/></filter></defs>
+<defs>
+<linearGradient id="base635" x1="0" y1="0" x2="0.7" y2="1">
+<stop offset="0%" stop-color="#ef9d9d" stop-opacity="0.9"/>
+<stop offset="45%" stop-color="#dc2626"/>
+<stop offset="100%" stop-color="#461819"/>
+</linearGradient>
+<radialGradient id="vig635" cx="0.5" cy="0.44" r="0.8">
+<stop offset="52%" stop-color="#000000" stop-opacity="0"/>
+<stop offset="100%" stop-color="#000000" stop-opacity="0.5"/>
+</radialGradient>
+</defs>
+<rect width="1800" height="600" fill="url(#base635)"/>
+<g filter="url(#b60)"><ellipse cx="868" cy="525" rx="697" ry="346" fill="#dc2626" opacity="0.53"/><ellipse cx="753" cy="31" rx="567" ry="545" fill="#ef9d9d" opacity="0.31"/><ellipse cx="1643" cy="356" rx="887" ry="408" fill="#461819" opacity="0.70"/><ellipse cx="873" cy="576" rx="914" ry="784" fill="#ffe0b8" opacity="0.60"/><ellipse cx="657" cy="563" rx="935" ry="675" fill="#dc2626" opacity="0.52"/><ellipse cx="1468" cy="334" rx="755" ry="635" fill="#ef9d9d" opacity="0.33"/><ellipse cx="849" cy="315" rx="369" ry="487" fill="#461819" opacity="0.42"/><ellipse cx="1028" cy="320" rx="412" ry="517" fill="#ffe0b8" opacity="0.53"/></g>
+<g filter="url(#b28)"><circle cx="426" cy="347" r="258" fill="none" stroke="#ffffff" stroke-width="56.7" opacity="0.14"/><circle cx="654" cy="157" r="169" fill="none" stroke="#ef9d9d" stroke-width="37.2" opacity="0.29"/><circle cx="1246" cy="181" r="167" fill="#dc2626" opacity="0.11"/><circle cx="1116" cy="522" r="92" fill="#ef9d9d" opacity="0.22"/><circle cx="759" cy="229" r="223" fill="none" stroke="#ef9d9d" stroke-width="49.0" opacity="0.14"/><circle cx="1405" cy="497" r="99" fill="#ffe0b8" opacity="0.18"/><circle cx="1239" cy="479" r="258" fill="none" stroke="#ffffff" stroke-width="56.7" opacity="0.16"/><circle cx="528" cy="57" r="185" fill="none" stroke="#ffe0b8" stroke-width="40.8" opacity="0.18"/><circle cx="1556" cy="477" r="186" fill="#dc2626" opacity="0.25"/><circle cx="1180" cy="262" r="247" fill="#ffe0b8" opacity="0.23"/></g>
+<g filter="url(#b10)"><circle cx="399" cy="107" r="72" fill="none" stroke="#ffe0b8" stroke-width="15.8" opacity="0.39"/><circle cx="291" cy="577" r="115" fill="#ef9d9d" opacity="0.39"/><circle cx="777" cy="236" r="113" fill="none" stroke="#dc2626" stroke-width="24.9" opacity="0.38"/><circle cx="1548" cy="487" r="112" fill="none" stroke="#dc2626" stroke-width="24.6" opacity="0.30"/><circle cx="596" cy="271" r="113" fill="#ef9d9d" opacity="0.36"/><circle cx="1590" cy="136" r="103" fill="#ef9d9d" opacity="0.28"/><circle cx="1325" cy="45" r="36" fill="#ffffff" opacity="0.29"/><circle cx="1032" cy="303" r="91" fill="#ffe0b8" opacity="0.32"/><circle cx="652" cy="419" r="119" fill="#ef9d9d" opacity="0.39"/><circle cx="151" cy="324" r="72" fill="#ffe0b8" opacity="0.29"/><circle cx="260" cy="78" r="52" fill="none" stroke="#dc2626" stroke-width="11.4" opacity="0.14"/><circle cx="656" cy="589" r="42" fill="none" stroke="#dc2626" stroke-width="9.1" opacity="0.25"/><circle cx="904" cy="30" r="96" fill="#dc2626" opacity="0.31"/></g>
+<g filter="url(#b3)"><circle cx="1293" cy="116" r="28" fill="none" stroke="#dc2626" stroke-width="6.1" opacity="0.38"/><circle cx="624" cy="381" r="24" fill="none" stroke="#ffffff" stroke-width="5.2" opacity="0.54"/><circle cx="609" cy="320" r="16" fill="#ef9d9d" opacity="0.31"/><circle cx="1587" cy="589" r="15" fill="#dc2626" opacity="0.34"/><circle cx="903" cy="407" r="36" fill="#ffffff" opacity="0.38"/><circle cx="875" cy="88" r="26" fill="#dc2626" opacity="0.61"/><circle cx="624" cy="588" r="17" fill="#ef9d9d" opacity="0.33"/><circle cx="424" cy="554" r="37" fill="none" stroke="#dc2626" stroke-width="8.2" opacity="0.57"/><circle cx="713" cy="40" r="14" fill="#ef9d9d" opacity="0.52"/><circle cx="1533" cy="436" r="23" fill="none" stroke="#ffffff" stroke-width="5.0" opacity="0.51"/></g>
+<path d="M-180 540 L648 -60 L1116 -60 L288 660 Z" fill="#ffe0b8" opacity="0.15" filter="url(#b28)"/>
+<g><ellipse cx="520" cy="216" rx="756" ry="612" fill="#ffe0b8" opacity="0.26" filter="url(#b60)"/><circle cx="520" cy="216" r="90" fill="#ffffff" opacity="0.5" filter="url(#b10)"/><circle cx="693" cy="254" r="58" fill="none" stroke="#ef9d9d" stroke-width="10.8" opacity="0.15" filter="url(#b3)"/><circle cx="865" cy="292" r="79" fill="none" stroke="#ef9d9d" stroke-width="10.8" opacity="0.12" filter="url(#b3)"/><circle cx="1038" cy="331" r="101" fill="none" stroke="#ef9d9d" stroke-width="10.8" opacity="0.09" filter="url(#b3)"/><circle cx="1211" cy="369" r="122" fill="none" stroke="#ef9d9d" stroke-width="10.8" opacity="0.06" filter="url(#b3)"/></g>
+<rect width="1800" height="600" fill="url(#vig635)"/>
+<rect width="1800" height="600" filter="url(#grain)" opacity="0.06" style="mix-blend-mode:overlay"/>
+</svg>

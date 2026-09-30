@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 820" font-family="Inter, Helvetica, Arial, sans-serif">
+  <defs>
+    <linearGradient id="alk" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#1493a8"/><stop offset="1" stop-color="#0e9e90"/></linearGradient>
+    <linearGradient id="acd" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f7b858"/><stop offset="1" stop-color="#f2a33c"/></linearGradient>
+    <marker id="arr" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0b2b33"/></marker>
+    <marker id="arrA" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#0e9e90"/></marker>
+    <marker id="arrB" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#e0902a"/></marker>
+  </defs>
+  <rect width="1200" height="820" fill="#ffffff"/>
+
+  <!-- inlet -->
+  <text x="600" y="52" text-anchor="middle" font-size="34" font-weight="700" fill="#0b2b33">Source water (after pre-filter)</text>
+  <line x1="600" y1="66" x2="600" y2="128" stroke="#0b2b33" stroke-width="10" marker-end="url(#arr)"/>
+
+  <!-- chamber -->
+  <rect x="200" y="140" width="800" height="420" rx="26" fill="#f2f8f8" stroke="#0b2b33" stroke-width="6"/>
+  <text x="222" y="182" font-size="26" font-weight="700" fill="#5b7075" letter-spacing="3">ELECTROLYSIS CHAMBER</text>
+
+  <!-- membranes (dashed) -->
+  <g stroke="#0b2b33" stroke-width="4" stroke-dasharray="14 12" opacity="0.7">
+    <line x1="358" y1="205" x2="358" y2="520"/><line x1="458" y1="205" x2="458" y2="520"/><line x1="558" y1="205" x2="558" y2="520"/>
+    <line x1="658" y1="205" x2="658" y2="520"/><line x1="758" y1="205" x2="758" y2="520"/><line x1="858" y1="205" x2="858" y2="520"/>
+  </g>
+
+  <!-- plates: 7, alternating cathode (−, alkaline side) / anode (+, acid side) -->
+  <g>
+    <rect x="292" y="210" width="32" height="310" rx="6" fill="url(#alk)"/>
+    <rect x="392" y="210" width="32" height="310" rx="6" fill="url(#acd)"/>
+    <rect x="492" y="210" width="32" height="310" rx="6" fill="url(#alk)"/>
+    <rect x="592" y="210" width="32" height="310" rx="6" fill="url(#acd)"/>
+    <rect x="692" y="210" width="32" height="310" rx="6" fill="url(#alk)"/>
+    <rect x="792" y="210" width="32" height="310" rx="6" fill="url(#acd)"/>
+    <rect x="892" y="210" width="32" height="310" rx="6" fill="url(#alk)"/>
+  </g>
+  <g font-size="40" font-weight="800" text-anchor="middle">
+    <text x="308" y="200" fill="#0e9e90">−</text><text x="408" y="200" fill="#e0902a">+</text><text x="508" y="200" fill="#0e9e90">−</text>
+    <text x="608" y="200" fill="#e0902a">+</text><text x="708" y="200" fill="#0e9e90">−</text><text x="808" y="200" fill="#e0902a">+</text><text x="908" y="200" fill="#0e9e90">−</text>
+  </g>
+
+  <!-- ions drifting toward plates -->
+  <g font-size="26" font-weight="700" stroke="#ffffff" stroke-width="7" paint-order="stroke" stroke-linejoin="round">
+    <text x="340" y="300" fill="#0e9e90">Ca²⁺</text><text x="340" y="360" fill="#0e9e90">Mg²⁺</text><text x="340" y="420" fill="#0e9e90">OH⁻</text><text x="345" y="480" fill="#0e9e90">H₂</text>
+    <text x="440" y="330" fill="#e0902a">H⁺</text><text x="440" y="400" fill="#e0902a">O₂</text><text x="438" y="470" fill="#e0902a">Cl⁻</text>
+    <text x="740" y="300" fill="#0e9e90">K⁺</text><text x="740" y="360" fill="#0e9e90">OH⁻</text><text x="745" y="420" fill="#0e9e90">H₂</text>
+    <text x="840" y="330" fill="#e0902a">H⁺</text><text x="840" y="400" fill="#e0902a">O₂</text>
+  </g>
+
+  <!-- membrane label -->
+  <line x1="1010" y1="470" x2="866" y2="470" stroke="#0b2b33" stroke-width="4" marker-end="url(#arr)"/>
+  <text x="1018" y="480" font-size="28" font-weight="700" fill="#0b2b33">Membrane</text>
+
+  <!-- plate label -->
+  <line x1="1010" y1="250" x2="932" y2="250" stroke="#0b2b33" stroke-width="4" marker-end="url(#arr)"/>
+  <text x="1018" y="242" font-size="28" font-weight="700" fill="#0b2b33">Solid hybrid</text>
+  <text x="1018" y="276" font-size="28" font-weight="700" fill="#0b2b33">titanium plate</text>
+  <text x="1018" y="308" font-size="24" fill="#5b7075">65 × 156 mm</text>
+
+  <!-- outlets -->
+  <path d="M330 560 C330 620, 300 640, 300 700" fill="none" stroke="#0e9e90" stroke-width="12" stroke-linecap="round" marker-end="url(#arrA)"/>
+  <path d="M870 560 C870 620, 900 640, 900 700" fill="none" stroke="#f2a33c" stroke-width="12" stroke-linecap="round" marker-end="url(#arrB)"/>
+
+  <!-- alkaline glass -->
+  <rect x="30" y="612" width="410" height="170" rx="20" fill="#e6f5f4" stroke="#0e9e90" stroke-width="4"/>
+  <text x="235" y="660" text-anchor="middle" font-size="36" font-weight="800" fill="#0e9e90">ALKALINE</text>
+  <text x="235" y="700" text-anchor="middle" font-size="28" font-weight="700" fill="#0b2b33">pH 8.5 – 11.0</text>
+  <text x="235" y="736" text-anchor="middle" font-size="22" fill="#5b7075">drinking · cooking · minerals · H₂</text>
+  <text x="235" y="768" text-anchor="middle" font-size="22" fill="#5b7075">ORP down to −850 mV</text>
+
+  <!-- acidic glass -->
+  <rect x="760" y="612" width="410" height="170" rx="20" fill="#fff4e3" stroke="#f2a33c" stroke-width="4"/>
+  <text x="965" y="660" text-anchor="middle" font-size="36" font-weight="800" fill="#e0902a">ACIDIC</text>
+  <text x="965" y="700" text-anchor="middle" font-size="28" font-weight="700" fill="#0b2b33">pH 3.0 – 6.0</text>
+  <text x="965" y="736" text-anchor="middle" font-size="22" fill="#5b7075">produce cleaning · beauty water</text>
+  <text x="965" y="768" text-anchor="middle" font-size="22" fill="#5b7075">separate outlet</text>
+
+  <!-- centre note -->
+  <text x="600" y="690" text-anchor="middle" font-size="26" font-weight="700" fill="#0b2b33">Electricity + plates + membranes</text>
+  <text x="600" y="724" text-anchor="middle" font-size="26" font-weight="700" fill="#0e9e90">No chemicals added</text>
+</svg>

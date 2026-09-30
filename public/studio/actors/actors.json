@@ -1,0 +1,98 @@
+[
+  {
+    "key": "priya",
+    "name": "Priya",
+    "gender": "female",
+    "voice": "warmf",
+    "url": "/studio/actors/priya.jpg",
+    "thumb": "/studio/actors/priya-thumb.jpg"
+  },
+  {
+    "key": "ananya",
+    "name": "Ananya",
+    "gender": "female",
+    "voice": "youthful",
+    "url": "/studio/actors/ananya.jpg",
+    "thumb": "/studio/actors/ananya-thumb.jpg"
+  },
+  {
+    "key": "meera",
+    "name": "Meera",
+    "gender": "female",
+    "voice": "mature",
+    "url": "/studio/actors/meera.jpg",
+    "thumb": "/studio/actors/meera-thumb.jpg"
+  },
+  {
+    "key": "dr-kavita",
+    "name": "Dr. Kavita",
+    "gender": "female",
+    "voice": "calm",
+    "url": "/studio/actors/dr-kavita.jpg",
+    "thumb": "/studio/actors/dr-kavita-thumb.jpg"
+  },
+  {
+    "key": "simran",
+    "name": "Simran",
+    "gender": "female",
+    "voice": "soft",
+    "url": "/studio/actors/simran.jpg",
+    "thumb": "/studio/actors/simran-thumb.jpg"
+  },
+  {
+    "key": "lakshmi",
+    "name": "Lakshmi",
+    "gender": "female",
+    "voice": "gentle",
+    "url": "/studio/actors/lakshmi.jpg",
+    "thumb": "/studio/actors/lakshmi-thumb.jpg"
+  },
+  {
+    "key": "rahul",
+    "name": "Rahul",
+    "gender": "male",
+    "voice": "friendly",
+    "url": "/studio/actors/rahul.jpg",
+    "thumb": "/studio/actors/rahul-thumb.jpg"
+  },
+  {
+    "key": "arjun",
+    "name": "Arjun",
+    "gender": "male",
+    "voice": "clear",
+    "url": "/studio/actors/arjun.jpg",
+    "thumb": "/studio/actors/arjun-thumb.jpg"
+  },
+  {
+    "key": "vikram",
+    "name": "Vikram",
+    "gender": "male",
+    "voice": "smooth",
+    "url": "/studio/actors/vikram.jpg",
+    "thumb": "/studio/actors/vikram-thumb.jpg"
+  },
+  {
+    "key": "rajesh",
+    "name": "Rajesh",
+    "gender": "male",
+    "voice": "warm",
+    "url": "/studio/actors/rajesh.jpg",
+    "thumb": "/studio/actors/rajesh-thumb.jpg"
+  },
+  {
+    "key": "dr-suresh",
+    "name": "Dr. Suresh",
+    "gender": "male",
+    "voice": "expert",
+    "url": "/studio/actors/dr-suresh.jpg",
+    "thumb": "/studio/actors/dr-suresh-thumb.jpg"
+  },
+  {
+    "key": "farhan",
+    "name": "Farhan",
+    "gender": "male",
+    "voice": "deep",
+    "url": "/studio/actors/farhan.jpg",
+    "thumb": "/studio/actors/farhan-thumb.jpg"
+  }
+]

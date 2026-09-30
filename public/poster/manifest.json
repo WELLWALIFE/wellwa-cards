@@ -1,0 +1,15 @@
+{
+  "name": "Shubhora",
+  "short_name": "Shubhora",
+  "description": "Your digital card, daily posters, WhatsApp AI, leads and team — in one app.",
+  "start_url": "/poster",
+  "scope": "/poster",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#2f5bf5",
+  "icons": [
+    { "src": "/icons/app-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/app-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

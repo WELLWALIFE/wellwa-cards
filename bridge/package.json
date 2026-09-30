@@ -1,0 +1,16 @@
+{
+  "name": "wellwa-whatsapp-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node index.mjs"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.115.0",
+    "@whiskeysockets/baileys": "^7.0.0-rc14",
+    "link-preview-js": "^3.2.0",
+    "pino": "^10.3.1",
+    "qrcode": "^1.5.4"
+  }
+}

@@ -1,0 +1,429 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/mo0gnp",
+    "id": "mo0gnp",
+    "slide": 1,
+    "layoutId": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#102A43",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/6tgbqh0f",
+      "id": "1",
+      "bbox": [
+        580,
+        0,
+        700,
+        720
+      ],
+      "geometry": "roundRect",
+      "alt": "Wellwa Aura Plus in a modern kitchen",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 3143"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "6512d8a2-b6d4-41e8-a686-eb30725adb3e",
+        "contentType": "image/png",
+        "byteLength": 1653057
+      }
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/47eh0jat",
+      "id": "2",
+      "name": "cover-overlay",
+      "bbox": [
+        520,
+        0,
+        760,
+        720
+      ],
+      "geometry": "rect",
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/p8ny9ory",
+      "id": "3",
+      "name": "brand-chip",
+      "bbox": [
+        72,
+        64,
+        210,
+        44
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineWidth": 0
+    },
+    {
+      "order": 4,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/jq5cf21o",
+      "id": "4",
+      "bbox": [
+        94,
+        72,
+        166,
+        28
+      ],
+      "geometry": "roundRect",
+      "alt": "Wellwa Life logo",
+      "contentType": "image/png",
+      "imageFit": "contain",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 50000"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "ac41f999-1eb4-422f-af10-73a177e7993e",
+        "contentType": "image/png",
+        "byteLength": 3594
+      }
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/f2lg3e9w",
+      "id": "5",
+      "name": "cover-title",
+      "bbox": [
+        72,
+        184,
+        500,
+        170
+      ],
+      "geometry": "rect",
+      "text": "Smart water.\nConnected care.",
+      "textPreview": "Smart water. | Connected care.",
+      "resolvedFontSize": 58,
+      "resolvedTextStyle": {
+        "fontSize": 58,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Smart water."
+          },
+          {
+            "index": 2,
+            "text": "Connected care."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Smart water.",
+          "resolvedTextStyle": {
+            "fontSize": 58,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Smart water.",
+              "fontSize": 58,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        },
+        {
+          "index": 2,
+          "text": "Connected care.",
+          "resolvedTextStyle": {
+            "fontSize": 58,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Connected care.",
+              "fontSize": 58,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/g3ehwzah",
+      "id": "6",
+      "name": "cover-subtitle",
+      "bbox": [
+        74,
+        380,
+        440,
+        76
+      ],
+      "geometry": "rect",
+      "text": "Wellwa distributor business opportunity overview",
+      "textPreview": "Wellwa distributor business opportunity overview",
+      "resolvedFontSize": 25,
+      "resolvedTextStyle": {
+        "fontSize": 25,
+        "typeface": "+mn-lt",
+        "color": "#D8ECEA",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Wellwa distributor business"
+          },
+          {
+            "index": 2,
+            "text": "opportunity overview"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Wellwa distributor business opportunity overview",
+          "resolvedTextStyle": {
+            "fontSize": 25,
+            "color": "#D8ECEA"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Wellwa distributor business opportunity overview",
+              "fontSize": 25,
+              "color": "#D8ECEA"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/h4ny54r2",
+      "id": "7",
+      "name": "cover-note",
+      "bbox": [
+        74,
+        548,
+        430,
+        30
+      ],
+      "geometry": "rect",
+      "text": "Product-led • Demo-led • Service-supported",
+      "textPreview": "Product-led • Demo-led • Service-supported",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#8DDDD3",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Product-led • Demo-led • Service-supported"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Product-led • Demo-led • Service-supported",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#8DDDD3",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Product-led • Demo-led • Service-supported",
+              "fontSize": 16,
+              "color": "#8DDDD3",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/exgz6tsv",
+      "id": "8",
+      "name": "cover-date",
+      "bbox": [
+        74,
+        626,
+        390,
+        22
+      ],
+      "geometry": "rect",
+      "text": "Verified product information • August 2026",
+      "textPreview": "Verified product information • August 2026",
+      "resolvedFontSize": 12,
+      "resolvedTextStyle": {
+        "fontSize": 12,
+        "typeface": "+mn-lt",
+        "color": "#B6C7D1",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Verified product information • August 2026"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Verified product information • August 2026",
+          "resolvedTextStyle": {
+            "fontSize": 12,
+            "color": "#B6C7D1"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Verified product information • August 2026",
+              "fontSize": 12,
+              "color": "#B6C7D1"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

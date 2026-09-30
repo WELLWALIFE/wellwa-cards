@@ -1,26 +1,199 @@
 @import "tailwindcss";
 
+/* ===================== Design tokens (light) ===================== */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+  --bg: #f6f7fc;
+  --surface: #ffffff;
+  --surface-2: #eff1f9;
+  --border: #e3e6f2;
+  --border-strong: #cfd4e8;
+  --ink: #10124f;
+  --muted: #555a80;
+  --faint: #8a8fae;
+  --placeholder: #b4b8cf;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --brand: #2f5bf5;        /* Shubhora blue (logo) */
+  --brand-2: #19c8f0;      /* logo cyan */
+  --brand-ink: #2241c8;
+  --brand-soft: #e8edff;
+
+  --ai: #b42fd6;           /* logo magenta — AI accent */
+  --ai-soft: #f6e6fb;
+  --amber: #ff8a1f;        /* logo orange */
+  --amber-soft: #fff0e2;
+
+  --good: #17a35b;
+  --danger: #d24b4b;
+
+  --grad-brand: linear-gradient(120deg, #1aa6ef 0%, #2f5bf5 48%, #6a3cf0 100%);
+  --grad-ai: linear-gradient(120deg, #6a3cf0, #d52fd6 60%, #ff8a1f);
+
+  --shadow-sm: 0 1px 2px rgba(16, 18, 79, 0.06), 0 1px 3px rgba(16, 18, 79, 0.04);
+  --shadow-md: 0 4px 14px -3px rgba(16, 18, 79, 0.10), 0 2px 6px -2px rgba(16, 18, 79, 0.06);
+  --shadow-lg: 0 22px 48px -14px rgba(16, 18, 79, 0.24), 0 8px 20px -10px rgba(16, 18, 79, 0.14);
+  --shadow-glow: 0 20px 60px -18px rgba(47, 91, 245, 0.5);
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --bg: #070920;
+    --surface: #0e112e;
+    --surface-2: #0a0d27;
+    --border: #1e2350;
+    --border-strong: #2d3366;
+    --ink: #eceefe;
+    --muted: #9ea3cc;
+    --faint: #666c9a;
+    --placeholder: #4f5480;
+
+    --brand: #5b82ff;
+    --brand-2: #3fd4f5;
+    --brand-ink: #a9bdff;
+    --brand-soft: #16204f;
+
+    --ai: #e07af2;
+    --ai-soft: #2c1638;
+    --amber: #ffa24d;
+    --amber-soft: #36220f;
+
+    --good: #34d17e;
+    --danger: #e06b6b;
+
+    --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+    --shadow-md: 0 6px 16px -4px rgba(0, 0, 0, 0.5);
+    --shadow-lg: 0 20px 44px -12px rgba(0, 0, 0, 0.6);
+    --shadow-glow: 0 20px 60px -18px rgba(91, 130, 255, 0.4);
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* explicit theme overrides (toggle wins over OS) */
+:root[data-theme="light"] {
+  --bg: #f6f7fc; --surface: #ffffff; --surface-2: #eff1f9; --border: #e3e6f2;
+  --border-strong: #cfd4e8; --ink: #10124f; --muted: #555a80; --faint: #8a8fae; --placeholder: #b4b8cf;
+  --brand: #2f5bf5; --brand-2: #19c8f0; --brand-ink: #2241c8; --brand-soft: #e8edff;
+  --ai: #b42fd6; --ai-soft: #f6e6fb; --amber: #ff8a1f; --amber-soft: #fff0e2;
+  --good: #17a35b; --danger: #d24b4b;
+  --shadow-sm: 0 1px 2px rgba(16,18,79,.06),0 1px 3px rgba(16,18,79,.04);
+  --shadow-md: 0 4px 14px -3px rgba(16,18,79,.10),0 2px 6px -2px rgba(16,18,79,.06);
+  --shadow-lg: 0 22px 48px -14px rgba(16,18,79,.24),0 8px 20px -10px rgba(16,18,79,.14);
+  --shadow-glow: 0 20px 60px -18px rgba(47,91,245,.5);
 }
+:root[data-theme="dark"] {
+  --bg: #070920; --surface: #0e112e; --surface-2: #0a0d27; --border: #1e2350;
+  --border-strong: #2d3366; --ink: #eceefe; --muted: #9ea3cc; --faint: #666c9a; --placeholder: #4f5480;
+  --brand: #5b82ff; --brand-2: #3fd4f5; --brand-ink: #a9bdff; --brand-soft: #16204f;
+  --ai: #e07af2; --ai-soft: #2c1638; --amber: #ffa24d; --amber-soft: #36220f;
+  --good: #34d17e; --danger: #e06b6b;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,.4);
+  --shadow-md: 0 6px 16px -4px rgba(0,0,0,.5);
+  --shadow-lg: 0 20px 44px -12px rgba(0,0,0,.6);
+  --shadow-glow: 0 20px 60px -18px rgba(91,130,255,.4);
+}
+
+/* ===================== Tailwind color mapping ===================== */
+@theme inline {
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-brand: var(--brand);
+  --color-brand2: var(--brand-2);
+  --color-brand-ink: var(--brand-ink);
+  --color-brand-soft: var(--brand-soft);
+  --color-ai: var(--ai);
+  --color-ai-soft: var(--ai-soft);
+  --color-amber: var(--amber);
+  --color-amber-soft: var(--amber-soft);
+  --color-good: var(--good);
+  --color-danger: var(--danger);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+* { border-color: var(--border); }
+
+body {
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ===================== Helpers ===================== */
+.mono { font-family: var(--font-geist-mono), ui-monospace, monospace; }
+.grad-brand { background: var(--grad-brand); }
+.grad-text {
+  background: linear-gradient(100deg, #19c8f0 0%, #2f5bf5 35%, #b42fd6 70%, #ff8a1f 100%);
+  -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.grad-logo { background: linear-gradient(100deg, #19c8f0 0%, #2f5bf5 35%, #d52fd6 70%, #ff8a1f 100%); }
+/* deep navy ground for dark marketing bands (same in both themes) */
+.hero-navy { background: #080a2c; color: #fff; }
+/* Light hero: soft brand mesh on the page ground; follows light/dark theme through tokens. */
+.hero-light { background:
+  radial-gradient(45% 60% at 85% 15%, color-mix(in srgb, var(--brand) 16%, transparent), transparent 70%),
+  radial-gradient(35% 50% at 5% 90%, color-mix(in srgb, #d52fd6 10%, transparent), transparent 70%),
+  radial-gradient(30% 40% at 55% 105%, color-mix(in srgb, #ff8a1f 10%, transparent), transparent 70%),
+  var(--bg); color: var(--ink); }
+.hero-navy-glow { background: radial-gradient(50% 70% at 82% 10%, rgba(47,91,245,.42), transparent 65%), radial-gradient(40% 55% at 0% 100%, rgba(213,47,214,.22), transparent 70%), radial-gradient(30% 40% at 60% 110%, rgba(255,138,31,.16), transparent 70%); }
+.shadow-card { box-shadow: var(--shadow-md); }
+.shadow-float { box-shadow: var(--shadow-lg); }
+.shadow-glow { box-shadow: var(--shadow-glow); }
+.glass {
+  background: color-mix(in srgb, var(--surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* Editor controls */
+.ed-input {
+  width: 100%; background: var(--surface); border: 1px solid var(--border);
+  border-radius: 0.55rem; padding: 0.55rem 0.7rem; font-size: 0.85rem;
+  outline: none; color: var(--ink);
+}
+.ed-input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 16%, transparent); }
+.ed-icon {
+  display: grid; place-items: center; height: 1.75rem; width: 1.75rem;
+  border-radius: 0.4rem; color: var(--muted); transition: background 0.12s, color 0.12s;
+}
+.ed-icon:hover:not(:disabled) { background: var(--surface-2); color: var(--ink); }
+.ed-icon:disabled { opacity: 0.35; cursor: not-allowed; }
+.ed-add {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  font-size: 0.8rem; font-weight: 500; color: var(--brand-ink);
+  padding: 0.4rem 0.6rem; border-radius: 0.45rem; border: 1px dashed var(--border-strong);
+  width: 100%; justify-content: center;
+}
+.ed-add:hover { background: var(--brand-soft); }
+
+@keyframes floaty { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.animate-rise { animation: rise 0.6s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.animate-floaty { animation: floaty 6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise, .animate-floaty { animation: none; }
+}
+
+/* Dashboard components embedded in the Shubhora phone shell */
+.poster-embed h1 { font-size: 1.125rem; }
+.poster-embed .max-w-2xl { max-width: 100%; }
+/* The phone shell is phone-width even on a big computer screen, so screen-width columns (md: / lg: / xl:) would squeeze
+   the embedded pages into slivers — inside the shell they always stack in one column. */
+.poster-embed [class*=" md:grid-cols-"], .poster-embed [class^="md:grid-cols-"],
+.poster-embed [class*=" lg:grid-cols-"], .poster-embed [class^="lg:grid-cols-"],
+.poster-embed [class*=" xl:grid-cols-"], .poster-embed [class^="xl:grid-cols-"] { grid-template-columns: minmax(0, 1fr); }
+.poster-embed [class*=" md:col-span-"], .poster-embed [class*=" lg:col-span-"], .poster-embed [class*=" xl:col-span-"] { grid-column: auto; }
+
+/* Example text in every form field: light and quiet, so it never reads as something already filled in. */
+input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 1; font-weight: 400; }
+
+/* Every tap answers: a button that is not disabled presses in while the finger is on it. Without this, a Save
+   or Share that takes a second to start looked like it had not been tapped at all. */
+button:not(:disabled):active, a[role="button"]:active { transform: scale(0.97); filter: brightness(0.94); }
+button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }

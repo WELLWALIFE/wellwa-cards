@@ -1,0 +1,873 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/06yzcg",
+    "id": "06yzcg",
+    "slide": 7,
+    "layoutId": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#F8F6F1",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/nuls7q90",
+      "id": "1",
+      "name": "kicker",
+      "bbox": [
+        72,
+        42,
+        430,
+        24
+      ],
+      "geometry": "rect",
+      "text": "BUSINESS MODEL",
+      "textPreview": "BUSINESS MODEL",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "BUSINESS MODEL"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "BUSINESS MODEL",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#08766D",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "BUSINESS MODEL",
+              "fontSize": 14,
+              "color": "#08766D",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ovu90vql",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        72,
+        75,
+        1136,
+        58
+      ],
+      "geometry": "rect",
+      "text": "The distributor role is local, practical and relationship-led",
+      "textPreview": "The distributor role is local, practical and relationship-led",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "fontSize": 38,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "The distributor role is local, practical and relationship-led"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "The distributor role is local, practical and relationship-led",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "The distributor role is local, practical and relationship-led",
+              "fontSize": 38,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "image",
+      "scope": "slide",
+      "aid": "im/gf6tczah",
+      "id": "3",
+      "bbox": [
+        72,
+        158,
+        600,
+        446
+      ],
+      "geometry": "roundRect",
+      "alt": "Illustrative distributor training session",
+      "contentType": "image/png",
+      "imageFit": "cover",
+      "imageMask": {
+        "geometry": "roundRect",
+        "adjustmentList": [
+          {
+            "name": "adj",
+            "formula": "val 4933"
+          }
+        ]
+      },
+      "asset": {
+        "assetId": "f2a1ada5-4933-43ce-8bca-e45cce4c3722",
+        "contentType": "image/png",
+        "byteLength": 1594436
+      }
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/e5srul8j",
+      "id": "4",
+      "name": "role-head-0",
+      "bbox": [
+        732,
+        164,
+        170,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Educate",
+      "textPreview": "Educate",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Educate"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Educate",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Educate",
+              "fontSize": 23,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/z61s3694",
+      "id": "5",
+      "name": "role-body-0",
+      "bbox": [
+        902,
+        164,
+        290,
+        68
+      ],
+      "geometry": "rect",
+      "text": "Explain the product, water compatibility and connected features accurately.",
+      "textPreview": "Explain the product, water compatibility and connected features accurately.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Explain the product, water"
+          },
+          {
+            "index": 2,
+            "text": "compatibility and connected features"
+          },
+          {
+            "index": 3,
+            "text": "accurately."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Explain the product, water compatibility and connected features accurately.",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Explain the product, water compatibility and connected features accurately.",
+              "fontSize": 16,
+              "color": "#536471"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/0ra9wbqp",
+      "id": "6",
+      "name": "role-head-1",
+      "bbox": [
+        732,
+        272,
+        170,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Demonstrate",
+      "textPreview": "Demonstrate",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Demonstrate"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Demonstrate",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Demonstrate",
+              "fontSize": 23,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/1sja5gra",
+      "id": "7",
+      "name": "role-body-1",
+      "bbox": [
+        902,
+        272,
+        290,
+        68
+      ],
+      "geometry": "rect",
+      "text": "Arrange consultations and product demonstrations where available.",
+      "textPreview": "Arrange consultations and product demonstrations where available.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Arrange consultations and product"
+          },
+          {
+            "index": 2,
+            "text": "demonstrations where available."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Arrange consultations and product demonstrations where available.",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Arrange consultations and product demonstrations where available.",
+              "fontSize": 16,
+              "color": "#536471"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/q18rq18n",
+      "id": "8",
+      "name": "role-head-2",
+      "bbox": [
+        732,
+        380,
+        170,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Convert",
+      "textPreview": "Convert",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Convert"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Convert",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Convert",
+              "fontSize": 23,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/r2h8z69s",
+      "id": "9",
+      "name": "role-body-2",
+      "bbox": [
+        902,
+        380,
+        290,
+        68
+      ],
+      "geometry": "rect",
+      "text": "Help the household select a model and complete the official buying process.",
+      "textPreview": "Help the household select a model and complete the official buying process.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 3,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Help the household select a model"
+          },
+          {
+            "index": 2,
+            "text": "and complete the official buying"
+          },
+          {
+            "index": 3,
+            "text": "process."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Help the household select a model and complete the official buying process.",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Help the household select a model and complete the official buying process.",
+              "fontSize": 16,
+              "color": "#536471"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/n2lw7epc",
+      "id": "10",
+      "name": "role-head-3",
+      "bbox": [
+        732,
+        488,
+        170,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Follow up",
+      "textPreview": "Follow up",
+      "resolvedFontSize": 23,
+      "resolvedTextStyle": {
+        "fontSize": 23,
+        "typeface": "+mn-lt",
+        "color": "#102A43",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Follow up"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Follow up",
+          "resolvedTextStyle": {
+            "fontSize": 23,
+            "color": "#102A43",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Follow up",
+              "fontSize": 23,
+              "color": "#102A43",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/m1sfyt8r",
+      "id": "11",
+      "name": "role-body-3",
+      "bbox": [
+        902,
+        488,
+        290,
+        68
+      ],
+      "geometry": "rect",
+      "text": "Support app adoption, care reminders and service escalation.",
+      "textPreview": "Support app adoption, care reminders and service escalation.",
+      "resolvedFontSize": 16,
+      "resolvedTextStyle": {
+        "fontSize": 16,
+        "typeface": "+mn-lt",
+        "color": "#536471",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Support app adoption, care"
+          },
+          {
+            "index": 2,
+            "text": "reminders and service escalation."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Support app adoption, care reminders and service escalation.",
+          "resolvedTextStyle": {
+            "fontSize": 16,
+            "color": "#536471"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Support app adoption, care reminders and service escalation.",
+              "fontSize": 16,
+              "color": "#536471"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/943e9o72",
+      "id": "12",
+      "name": "compliance",
+      "bbox": [
+        732,
+        596,
+        460,
+        56
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#FFFFFF",
+      "lineColor": "#D9E3E7",
+      "lineWidth": 1
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o3ux0jqx",
+      "id": "13",
+      "name": "compliance-text",
+      "bbox": [
+        752,
+        613,
+        420,
+        24
+      ],
+      "geometry": "rect",
+      "text": "No medical claims • No guaranteed income • Written terms only",
+      "textPreview": "No medical claims • No guaranteed income • Written terms only",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#08766D",
+        "bold": true,
+        "alignment": "center",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "No medical claims • No guaranteed income • Written terms"
+          },
+          {
+            "index": 2,
+            "text": "only"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "No medical claims • No guaranteed income • Written terms only",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#08766D",
+            "bold": true,
+            "alignment": "center"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "No medical claims • No guaranteed income • Written terms only",
+              "fontSize": 14,
+              "color": "#08766D",
+              "bold": true,
+              "alignment": "center"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/b6lgbyp8",
+      "id": "14",
+      "name": "footer-7",
+      "bbox": [
+        72,
+        678,
+        1136,
+        18
+      ],
+      "geometry": "rect",
+      "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07",
+      "textPreview": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07",
+      "resolvedFontSize": 10,
+      "resolvedTextStyle": {
+        "fontSize": 10,
+        "typeface": "+mn-lt",
+        "color": "#7A8A96",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07",
+          "resolvedTextStyle": {
+            "fontSize": 10,
+            "color": "#7A8A96"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07",
+              "fontSize": 10,
+              "color": "#7A8A96"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

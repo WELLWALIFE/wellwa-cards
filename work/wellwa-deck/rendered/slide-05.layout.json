@@ -1,0 +1,1119 @@
+{
+  "schema": "openai.presentation.layout/v4",
+  "unit": "px",
+  "slide": {
+    "aid": "sl/jbfk14",
+    "id": "jbfk14",
+    "slide": 5,
+    "layoutId": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+    "layoutName": "Title Slide",
+    "layoutType": "title",
+    "masterLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+    "masterLayoutName": "Master",
+    "backgroundColor": "#102A43",
+    "frame": {
+      "left": 0,
+      "top": 0,
+      "width": 1280,
+      "height": 720
+    }
+  },
+  "theme": {
+    "colorSchemeName": "ChatGPT",
+    "colors": {
+      "accent1": "#156082",
+      "accent2": "#E97132",
+      "accent3": "#196B24",
+      "accent4": "#0F9ED5",
+      "accent5": "#A02B93",
+      "accent6": "#4EA72E",
+      "bg1": "#FFFFFF",
+      "bg2": "#000000",
+      "tx1": "#1F1F1F",
+      "tx2": "#FFFFFF",
+      "dk1": "#000000",
+      "lt1": "#FFFFFF",
+      "dk2": "#0E2841",
+      "lt2": "#E8E8E8",
+      "hlink": "#467886",
+      "folHlink": "#96607D"
+    },
+    "typefaces": [
+      "+mn-lt"
+    ]
+  },
+  "inheritedLayers": [
+    {
+      "scope": "layout",
+      "id": "7f2d854c-5427-46fc-bc61-2227d630abd1",
+      "name": "Title Slide",
+      "type": "title",
+      "parentLayoutId": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "elements": []
+    },
+    {
+      "scope": "master",
+      "id": "0d5bd916-15f1-4ac0-b8f0-96177dd586d8",
+      "name": "Master",
+      "type": "master",
+      "elements": []
+    }
+  ],
+  "elements": [
+    {
+      "order": 1,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/kful8fah",
+      "id": "1",
+      "name": "kicker",
+      "bbox": [
+        72,
+        42,
+        430,
+        24
+      ],
+      "geometry": "rect",
+      "text": "TECHNOLOGY",
+      "textPreview": "TECHNOLOGY",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#8DDDD3",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "TECHNOLOGY"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "TECHNOLOGY",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#8DDDD3",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "TECHNOLOGY",
+              "fontSize": 14,
+              "color": "#8DDDD3",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 2,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/jelkfatw",
+      "id": "2",
+      "name": "slide-title",
+      "bbox": [
+        72,
+        75,
+        1136,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Connected care extends the relationship after installation",
+      "textPreview": "Connected care extends the relationship after installation",
+      "resolvedFontSize": 38,
+      "resolvedTextStyle": {
+        "fontSize": 38,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Connected care extends the relationship after installation"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Connected care extends the relationship after installation",
+          "resolvedTextStyle": {
+            "fontSize": 38,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Connected care extends the relationship after installation",
+              "fontSize": 38,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 3,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ydc36psb",
+      "id": "3",
+      "name": "feature-0",
+      "bbox": [
+        72,
+        175,
+        530,
+        170
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#0E9E90",
+      "lineColor": "#0E9E90",
+      "lineWidth": 1
+    },
+    {
+      "order": 4,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/xc32dkbq",
+      "id": "4",
+      "name": "feature-num-0",
+      "bbox": [
+        100,
+        199,
+        48,
+        32
+      ],
+      "geometry": "rect",
+      "text": "01",
+      "textPreview": "01",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "01"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "01",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "01",
+              "fontSize": 18,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 5,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/wbu14fa5",
+      "id": "5",
+      "name": "feature-head-0",
+      "bbox": [
+        164,
+        201,
+        380,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Remote controls",
+      "textPreview": "Remote controls",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Remote controls"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Remote controls",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Remote controls",
+              "fontSize": 24,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 6,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/balkbatk",
+      "id": "6",
+      "name": "feature-body-0",
+      "bbox": [
+        164,
+        250,
+        380,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Start, stop and choose supported water modes.",
+      "textPreview": "Start, stop and choose supported water modes.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#E4FFFB",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Start, stop and choose supported water"
+          },
+          {
+            "index": 2,
+            "text": "modes."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Start, stop and choose supported water modes.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#E4FFFB"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Start, stop and choose supported water modes.",
+              "fontSize": 17,
+              "color": "#E4FFFB"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 7,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/a9sj25sz",
+      "id": "7",
+      "name": "feature-1",
+      "bbox": [
+        642,
+        175,
+        530,
+        170
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#173B58",
+      "lineColor": "#2F5068",
+      "lineWidth": 1
+    },
+    {
+      "order": 8,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/98j290bu",
+      "id": "8",
+      "name": "feature-num-1",
+      "bbox": [
+        670,
+        199,
+        48,
+        32
+      ],
+      "geometry": "rect",
+      "text": "02",
+      "textPreview": "02",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#82D9D0",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "02"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "02",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#82D9D0",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "02",
+              "fontSize": 18,
+              "color": "#82D9D0",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 9,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/o7a10va9",
+      "id": "9",
+      "name": "feature-head-1",
+      "bbox": [
+        734,
+        201,
+        380,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Live machine health",
+      "textPreview": "Live machine health",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Live machine health"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Live machine health",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Live machine health",
+              "fontSize": 24,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 10,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/uxwz6p83",
+      "id": "10",
+      "name": "feature-body-1",
+      "bbox": [
+        734,
+        250,
+        380,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Connection, operating state and care alerts.",
+      "textPreview": "Connection, operating state and care alerts.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#CBD9E2",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Connection, operating state and care alerts."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Connection, operating state and care alerts.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#CBD9E2"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Connection, operating state and care alerts.",
+              "fontSize": 17,
+              "color": "#CBD9E2"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 11,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/vy5gzupo",
+      "id": "11",
+      "name": "feature-2",
+      "bbox": [
+        72,
+        380,
+        530,
+        170
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#173B58",
+      "lineColor": "#2F5068",
+      "lineWidth": 1
+    },
+    {
+      "order": 12,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/gzeh8zq9",
+      "id": "12",
+      "name": "feature-num-2",
+      "bbox": [
+        100,
+        404,
+        48,
+        32
+      ],
+      "geometry": "rect",
+      "text": "03",
+      "textPreview": "03",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#82D9D0",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "03"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "03",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#82D9D0",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "03",
+              "fontSize": 18,
+              "color": "#82D9D0",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 13,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/hkny1k7e",
+      "id": "13",
+      "name": "feature-head-2",
+      "bbox": [
+        164,
+        406,
+        380,
+        34
+      ],
+      "geometry": "rect",
+      "text": "Remote diagnostics",
+      "textPreview": "Remote diagnostics",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Remote diagnostics"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Remote diagnostics",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Remote diagnostics",
+              "fontSize": 24,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 14,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/mtwz258r",
+      "id": "14",
+      "name": "feature-body-2",
+      "bbox": [
+        164,
+        455,
+        380,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Service teams can review supported telemetry.",
+      "textPreview": "Service teams can review supported telemetry.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#CBD9E2",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Service teams can review supported telemetry."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Service teams can review supported telemetry.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#CBD9E2"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Service teams can review supported telemetry.",
+              "fontSize": 17,
+              "color": "#CBD9E2"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 15,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/7u5gvapc",
+      "id": "15",
+      "name": "feature-3",
+      "bbox": [
+        642,
+        380,
+        530,
+        170
+      ],
+      "geometry": "roundRect",
+      "fillColor": "#173B58",
+      "lineColor": "#2F5068",
+      "lineWidth": 1
+    },
+    {
+      "order": 16,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/8veh4fqx",
+      "id": "16",
+      "name": "feature-num-3",
+      "bbox": [
+        670,
+        404,
+        48,
+        32
+      ],
+      "geometry": "rect",
+      "text": "04",
+      "textPreview": "04",
+      "resolvedFontSize": 18,
+      "resolvedTextStyle": {
+        "fontSize": 18,
+        "typeface": "+mn-lt",
+        "color": "#82D9D0",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "04"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "04",
+          "resolvedTextStyle": {
+            "fontSize": 18,
+            "color": "#82D9D0",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "04",
+              "fontSize": 18,
+              "color": "#82D9D0",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 17,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/9wnyxk7i",
+      "id": "17",
+      "name": "feature-head-3",
+      "bbox": [
+        734,
+        406,
+        380,
+        34
+      ],
+      "geometry": "rect",
+      "text": "OTA-ready updates",
+      "textPreview": "OTA-ready updates",
+      "resolvedFontSize": 24,
+      "resolvedTextStyle": {
+        "fontSize": 24,
+        "typeface": "+mn-lt",
+        "color": "#FFFFFF",
+        "bold": true,
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "OTA-ready updates"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "OTA-ready updates",
+          "resolvedTextStyle": {
+            "fontSize": 24,
+            "color": "#FFFFFF",
+            "bold": true
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "OTA-ready updates",
+              "fontSize": 24,
+              "color": "#FFFFFF",
+              "bold": true
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 18,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/ypcfy58v",
+      "id": "18",
+      "name": "feature-body-3",
+      "bbox": [
+        734,
+        455,
+        380,
+        58
+      ],
+      "geometry": "rect",
+      "text": "Supported firmware can be maintained remotely.",
+      "textPreview": "Supported firmware can be maintained remotely.",
+      "resolvedFontSize": 17,
+      "resolvedTextStyle": {
+        "fontSize": 17,
+        "typeface": "+mn-lt",
+        "color": "#CBD9E2",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 2,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Supported firmware can be maintained"
+          },
+          {
+            "index": 2,
+            "text": "remotely."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Supported firmware can be maintained remotely.",
+          "resolvedTextStyle": {
+            "fontSize": 17,
+            "color": "#CBD9E2"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Supported firmware can be maintained remotely.",
+              "fontSize": 17,
+              "color": "#CBD9E2"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 19,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/zqlgrapg",
+      "id": "19",
+      "name": "wifi-note",
+      "bbox": [
+        72,
+        610,
+        1080,
+        44
+      ],
+      "geometry": "rect",
+      "text": "Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separately.",
+      "textPreview": "Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separat...",
+      "resolvedFontSize": 14,
+      "resolvedTextStyle": {
+        "fontSize": 14,
+        "typeface": "+mn-lt",
+        "color": "#AFC4CE",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separately."
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separately.",
+          "resolvedTextStyle": {
+            "fontSize": 14,
+            "color": "#AFC4CE"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separately.",
+              "fontSize": 14,
+              "color": "#AFC4CE"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    },
+    {
+      "order": 20,
+      "kind": "shape",
+      "scope": "slide",
+      "aid": "sh/3yh4j21w",
+      "id": "20",
+      "name": "footer-5",
+      "bbox": [
+        72,
+        678,
+        1136,
+        18
+      ],
+      "geometry": "rect",
+      "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05",
+      "textPreview": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05",
+      "resolvedFontSize": 10,
+      "resolvedTextStyle": {
+        "fontSize": 10,
+        "typeface": "+mn-lt",
+        "color": "#7A8A96",
+        "alignment": "left",
+        "insets": {
+          "top": 4.8,
+          "right": 9.6,
+          "bottom": 4.8,
+          "left": 9.6
+        }
+      },
+      "textLayout": {
+        "lineCount": 1,
+        "lines": [
+          {
+            "index": 1,
+            "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05"
+          }
+        ]
+      },
+      "paragraphs": [
+        {
+          "index": 1,
+          "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05",
+          "resolvedTextStyle": {
+            "fontSize": 10,
+            "color": "#7A8A96"
+          },
+          "runs": [
+            {
+              "index": 1,
+              "text": "WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05",
+              "fontSize": 10,
+              "color": "#7A8A96"
+            }
+          ],
+          "marginLeft": 0
+        }
+      ],
+      "lineWidth": 0
+    }
+  ],
+  "composeRuns": []
+}

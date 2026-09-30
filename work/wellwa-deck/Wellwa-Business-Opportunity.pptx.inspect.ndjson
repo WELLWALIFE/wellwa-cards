@@ -1,0 +1,186 @@
+{"kind":"deck","id":"pr/30ihmu","name":"Deck"}
+{"kind":"layout","layoutId":"1c0efd0c-c0fa-40fe-bceb-226653d2ee45","name":"Master","type":"master"}
+{"kind":"layout","layoutId":"160fbd7e-b76f-4107-bd9c-36d296d9b7df","name":"Title Slide","type":"title"}
+{"kind":"slide","id":"sl/md8j01","slide":1,"title":"Smart water.","textShapes":4}
+{"kind":"shape","id":"sh/dknud8ry","slide":1,"name":"cover-overlay","bbox":[520,0,760,720]}
+{"kind":"shape","id":"sh/cjetk3at","slide":1,"name":"brand-chip","bbox":[72,64,210,44]}
+{"kind":"textbox","id":"sh/elwbmdsj","slide":1,"name":"cover-title","text":"Smart water.\nConnected care.","textPreview":"Smart water. | Connected care.","textChars":28,"textLines":2,"bbox":[72,184,500,170]}
+{"kind":"textbox","id":"sh/1o7uh8ra","slide":1,"name":"cover-subtitle","text":"Wellwa distributor business opportunity overview","textPreview":"Wellwa distributor business opportunity overview","textChars":48,"textLines":1,"bbox":[74,380,440,76]}
+{"kind":"textbox","id":"sh/0nytonap","slide":1,"name":"cover-note","text":"Product-led • Demo-led • Service-supported","textPreview":"Product-led • Demo-led • Service-supported","textChars":42,"textLines":1,"bbox":[74,548,430,30]}
+{"kind":"textbox","id":"sh/fqlsje90","slide":1,"name":"cover-date","text":"Verified product information • August 2026","textPreview":"Verified product information • August 2026","textChars":42,"textLines":1,"bbox":[74,626,390,22]}
+{"kind":"image","id":"im/vq5cvqxo","slide":1,"name":"","geometry":"roundRect","alt":"Wellwa Aura Plus in a modern kitchen","bbox":[580,0,700,720]}
+{"kind":"image","id":"im/m1cvi1g7","slide":1,"name":"","geometry":"roundRect","alt":"Wellwa Life logo","bbox":[94,72,166,28]}
+{"kind":"notes","id":"nt/md8j01","slide":1,"text":"[Sources]\n- https://wellwalife.com/\n- Official Wellwa asset: /images/wellwa-aura-plus-kitchen-hero.webp"}
+{"kind":"slide","id":"sl/7hx9d9","slide":2,"title":"CUSTOMER FIRST","textShapes":13}
+{"kind":"textbox","id":"sh/7a10r69g","slide":2,"name":"kicker","text":"CUSTOMER FIRST","textPreview":"CUSTOMER FIRST","textChars":14,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/8ba1kba1","slide":2,"name":"slide-title","text":"The proposition begins with a better consultation","textPreview":"The proposition begins with a better consultation","textChars":49,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"textbox","id":"sh/yl8jehsz","slide":2,"name":"lead","text":"A responsible distributor helps a household make an informed choice—not a medical promise.","textPreview":"A responsible distributor helps a household make an informed choice—not a medical promise.","textChars":90,"textLines":1,"bbox":[736,178,455,104]}
+{"kind":"textbox","id":"sh/j6h0nm94","slide":2,"name":"num-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[736,314,44,28]}
+{"kind":"textbox","id":"sh/k7q1grap","slide":2,"name":"head-0","text":"Review the source water","textPreview":"Review the source water","textChars":23,"textLines":1,"bbox":[792,311,390,30]}
+{"kind":"textbox","id":"sh/l8jipwra","slide":2,"name":"body-0","text":"City, source, TDS, hardness and pre-filtration affect compatibility.","textPreview":"City, source, TDS, hardness and pre-filtration affect compatibility.","textChars":68,"textLines":1,"bbox":[792,344,390,50]}
+{"kind":"textbox","id":"sh/ah8jahsn","slide":2,"name":"num-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[736,412,44,28]}
+{"kind":"textbox","id":"sh/bih0jm98","slide":2,"name":"head-1","text":"Compare the right model","textPreview":"Compare the right model","textChars":23,"textLines":1,"bbox":[792,409,390,30]}
+{"kind":"textbox","id":"sh/vahsjqh4","slide":2,"name":"body-1","text":"Use household size, daily usage and desired connected features.","textPreview":"Use household size, daily usage and desired connected features.","textChars":63,"textLines":1,"bbox":[792,442,390,50]}
+{"kind":"textbox","id":"sh/a98rqlgj","slide":2,"name":"num-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[736,510,44,28]}
+{"kind":"textbox","id":"sh/xczal0za","slide":2,"name":"head-2","text":"Set expectations clearly","textPreview":"Set expectations clearly","textChars":24,"textLines":1,"bbox":[792,507,390,30]}
+{"kind":"textbox","id":"sh/wbq9svyp","slide":2,"name":"body-2","text":"Published output varies with water quality, temperature, flow and calibration.","textPreview":"Published output varies with water quality, temperature, flow and calibration.","textChars":78,"textLines":1,"bbox":[792,540,390,50]}
+{"kind":"textbox","id":"sh/jehsnqhg","slide":2,"name":"footer-2","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   02","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   02","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"image","id":"im/4bmlo32l","slide":2,"name":"","geometry":"roundRect","alt":"Illustrative home water consultation","bbox":[72,158,620,440]}
+{"kind":"notes","id":"nt/7hx9d9","slide":2,"text":"The image is illustrative and does not depict a named customer or an actual Wellwa demo.\n\n[Sources]\n- https://wellwalife.com/\n- OpenAI-generated illustrative asset: home-demo-consultation.png"}
+{"kind":"slide","id":"sl/7yjw8w","slide":3,"title":"PRODUCT RANGE","textShapes":20}
+{"kind":"textbox","id":"sh/ojypgjed","slide":3,"name":"kicker","text":"PRODUCT RANGE","textPreview":"PRODUCT RANGE","textChars":13,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/nip8neds","slide":3,"name":"slide-title","text":"Four entry points serve different household needs","textPreview":"Four entry points serve different household needs","textChars":49,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"shape","id":"sh/2hg7e9w7","slide":3,"name":"product-bg-0","bbox":[72,160,268,448]}
+{"kind":"textbox","id":"sh/cnipkjep","slide":3,"name":"product-badge-0","text":"START HERE","textPreview":"START HERE","textChars":10,"textLines":1,"bbox":[96,426,220,20]}
+{"kind":"textbox","id":"sh/bm98red4","slide":3,"name":"product-name-0","text":"Starter Pack","textPreview":"Starter Pack","textChars":12,"textLines":1,"bbox":[92,458,228,36]}
+{"kind":"textbox","id":"sh/al07i9wj","slide":3,"name":"product-meta-0","text":"Wellness starter","textPreview":"Wellness starter","textChars":16,"textLines":1,"bbox":[90,501,232,26]}
+{"kind":"textbox","id":"sh/dsn6h4vq","slide":3,"name":"product-price-0","text":"₹11,800","textPreview":"₹11,800","textChars":7,"textLines":1,"bbox":[92,550,228,30]}
+{"kind":"shape","id":"sh/srep8ze5","slide":3,"name":"product-bg-1","bbox":[364,160,268,448]}
+{"kind":"textbox","id":"sh/zud4vm1w","slide":3,"name":"product-badge-1","text":"ESSENTIAL","textPreview":"ESSENTIAL","textChars":9,"textLines":1,"bbox":[388,426,220,20]}
+{"kind":"textbox","id":"sh/kvm54r2h","slide":3,"name":"product-name-1","text":"Aura","textPreview":"Aura","textChars":4,"textLines":1,"bbox":[384,458,228,36]}
+{"kind":"textbox","id":"sh/lwvmxwj2","slide":3,"name":"product-meta-1","text":"Smart 5-plate ionizer","textPreview":"Smart 5-plate ionizer","textChars":21,"textLines":1,"bbox":[382,501,232,26]}
+{"kind":"textbox","id":"sh/mx4n61kn","slide":3,"name":"product-price-1","text":"₹90,000","textPreview":"₹90,000","textChars":7,"textLines":1,"bbox":[384,550,228,30]}
+{"kind":"shape","id":"sh/7yd4zm18","slide":3,"name":"product-bg-2","bbox":[656,160,268,448]}
+{"kind":"textbox","id":"sh/90f61wje","slide":3,"name":"product-badge-2","text":"MOST POPULAR","textPreview":"MOST POPULAR","textChars":12,"textLines":1,"bbox":[680,426,220,20]}
+{"kind":"textbox","id":"sh/u1ona1kj","slide":3,"name":"product-name-2","text":"Aura Plus","textPreview":"Aura Plus","textChars":9,"textLines":1,"bbox":[676,458,228,36]}
+{"kind":"textbox","id":"sh/vmxo3614","slide":3,"name":"product-meta-2","text":"Smart 7-plate ionizer","textPreview":"Smart 7-plate ionizer","textChars":21,"textLines":1,"bbox":[674,501,232,26]}
+{"kind":"textbox","id":"sh/rqx4r6hc","slide":3,"name":"product-price-2","text":"₹1,25,000","textPreview":"₹1,25,000","textChars":9,"textLines":1,"bbox":[676,550,228,30]}
+{"kind":"shape","id":"sh/6po3y1gr","slide":3,"name":"product-bg-3","bbox":[948,160,268,448]}
+{"kind":"textbox","id":"sh/srqlkbyx","slide":3,"name":"product-badge-3","text":"MAX PERFORMANCE","textPreview":"MAX PERFORMANCE","textChars":15,"textLines":1,"bbox":[972,426,220,20]}
+{"kind":"textbox","id":"sh/j2x4n6hg","slide":3,"name":"product-name-3","text":"Aura Maxx","textPreview":"Aura Maxx","textChars":9,"textLines":1,"bbox":[968,458,228,36]}
+{"kind":"textbox","id":"sh/i1o3u1gv","slide":3,"name":"product-meta-3","text":"Smart 8-plate ionizer","textPreview":"Smart 8-plate ionizer","textChars":21,"textLines":1,"bbox":[966,501,232,26]}
+{"kind":"textbox","id":"sh/5ofmpwz6","slide":3,"name":"product-price-3","text":"₹1,50,000","textPreview":"₹1,50,000","textChars":9,"textLines":1,"bbox":[968,550,228,30]}
+{"kind":"textbox","id":"sh/436lwby1","slide":3,"name":"price-note","text":"Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.","textPreview":"Published retail prices shown. Confirm current stock, tax, installation and commercial terms before sale.","textChars":105,"textLines":1,"bbox":[72,624,1136,28]}
+{"kind":"textbox","id":"sh/vyd4jmh4","slide":3,"name":"footer-3","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   03","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"image","id":"im/k36p8ja5","slide":3,"name":"","geometry":"roundRect","alt":"Starter Pack","bbox":[96,186,220,220]}
+{"kind":"image","id":"im/t47mdwn2","slide":3,"name":"","geometry":"roundRect","alt":"Aura","bbox":[388,186,220,220]}
+{"kind":"image","id":"im/je547m5k","slide":3,"name":"","geometry":"roundRect","alt":"Aura Plus","bbox":[680,186,220,220]}
+{"kind":"image","id":"im/mtgnqxwz","slide":3,"name":"","geometry":"roundRect","alt":"Aura Maxx","bbox":[972,186,220,220]}
+{"kind":"notes","id":"nt/7yjw8w","slide":3,"text":"[Sources]\n- https://wellwalife.com/\n- https://wellwalife.com/products\n- Official Wellwa product image assets under https://wellwalife.com/products/"}
+{"kind":"slide","id":"sl/uomgqo","slide":4,"title":"AURA COMPARISON","textShapes":34}
+{"kind":"textbox","id":"sh/u1gv2lsb","slide":4,"name":"kicker","text":"AURA COMPARISON","textPreview":"AURA COMPARISON","textChars":15,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/h4rudgr2","slide":4,"name":"slide-title","text":"Model choice is a fit decision—not a ranking","textPreview":"Model choice is a fit decision—not a ranking","textChars":44,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"shape","id":"sh/g3yd4vah","slide":4,"name":"model-0","bbox":[72,158,320,440]}
+{"kind":"textbox","id":"sh/7ypc76t0","slide":4,"name":"model-name-0","text":"AURA","textPreview":"AURA","textChars":4,"textLines":1,"bbox":[100,190,264,32]}
+{"kind":"textbox","id":"sh/mxgvy1sf","slide":4,"name":"model-fit-0","text":"Compact everyday use","textPreview":"Compact everyday use","textChars":20,"textLines":1,"bbox":[100,232,264,48]}
+{"kind":"textbox","id":"sh/907u9gbq","slide":4,"name":"label-0-0","text":"Electrolysis","textPreview":"Electrolysis","textChars":12,"textLines":1,"bbox":[100,314,122,24]}
+{"kind":"textbox","id":"sh/8zyd0ba5","slide":4,"name":"value-0-0","text":"5 plates","textPreview":"5 plates","textChars":8,"textLines":1,"bbox":[222,312,142,26]}
+{"kind":"textbox","id":"sh/za5c36to","slide":4,"name":"label-0-1","text":"Published pH","textPreview":"Published pH","textChars":12,"textLines":1,"bbox":[100,376,122,24]}
+{"kind":"textbox","id":"sh/y9wvu1s3","slide":4,"name":"value-0-1","text":"4.0–10.0+","textPreview":"4.0–10.0+","textChars":9,"textLines":1,"bbox":[222,374,142,26]}
+{"kind":"textbox","id":"sh/4vad8fix","slide":4,"name":"label-0-2","text":"ORP estimate","textPreview":"ORP estimate","textChars":12,"textLines":1,"bbox":[100,438,122,24]}
+{"kind":"textbox","id":"sh/pwje10zi","slide":4,"name":"value-0-2","text":"Up to −750 mV","textPreview":"Up to −750 mV","textChars":13,"textLines":1,"bbox":[222,436,142,26]}
+{"kind":"textbox","id":"sh/2t8v6507","slide":4,"name":"label-0-3","text":"Hydrogen H₂","textPreview":"Hydrogen H₂","textChars":11,"textLines":1,"bbox":[100,500,122,24]}
+{"kind":"textbox","id":"sh/3uhwzahc","slide":4,"name":"value-0-3","text":"Up to 1,500 ppb","textPreview":"Up to 1,500 ppb","textChars":15,"textLines":1,"bbox":[222,498,142,26]}
+{"kind":"shape","id":"sh/g7qd4vi1","slide":4,"name":"model-1","bbox":[430,158,320,440]}
+{"kind":"textbox","id":"sh/h8zex0zm","slide":4,"name":"model-name-1","text":"AURA PLUS","textPreview":"AURA PLUS","textChars":9,"textLines":1,"bbox":[458,190,264,32]}
+{"kind":"textbox","id":"sh/u58v2l0v","slide":4,"name":"model-fit-1","text":"Balanced family flagship","textPreview":"Balanced family flagship","textChars":24,"textLines":1,"bbox":[458,232,264,48]}
+{"kind":"textbox","id":"sh/f6hwvqhg","slide":4,"name":"label-1-0","text":"Electrolysis","textPreview":"Electrolysis","textChars":12,"textLines":1,"bbox":[458,314,122,24]}
+{"kind":"textbox","id":"sh/03uxgzi5","slide":4,"name":"value-1-0","text":"7 plates","textPreview":"7 plates","textChars":8,"textLines":1,"bbox":[580,312,142,26]}
+{"kind":"textbox","id":"sh/1o3e9kzq","slide":4,"name":"label-1-1","text":"Published pH","textPreview":"Published pH","textChars":12,"textLines":1,"bbox":[458,376,122,24]}
+{"kind":"textbox","id":"sh/98fmd0ni","slide":4,"name":"value-1-1","text":"3.5–10.5+","textPreview":"3.5–10.5+","textChars":9,"textLines":1,"bbox":[580,374,142,26]}
+{"kind":"textbox","id":"sh/o7654v6d","slide":4,"name":"label-1-2","text":"ORP estimate","textPreview":"ORP estimate","textChars":12,"textLines":1,"bbox":[458,438,122,24]}
+{"kind":"textbox","id":"sh/n6x4bq5s","slide":4,"name":"value-1-2","text":"Up to −800 mV","textPreview":"Up to −800 mV","textChars":13,"textLines":1,"bbox":[580,436,142,26]}
+{"kind":"textbox","id":"sh/m5on2lo7","slide":4,"name":"label-1-3","text":"Hydrogen H₂","textPreview":"Hydrogen H₂","textChars":11,"textLines":1,"bbox":[458,500,122,24]}
+{"kind":"textbox","id":"sh/14vm9gnm","slide":4,"name":"value-1-3","text":"Up to 1,600 ppb","textPreview":"Up to 1,600 ppb","textChars":15,"textLines":1,"bbox":[580,498,142,26]}
+{"kind":"shape","id":"sh/03m50b61","slide":4,"name":"model-2","bbox":[788,158,320,440]}
+{"kind":"textbox","id":"sh/z2d4765g","slide":4,"name":"model-name-2","text":"AURA MAXX","textPreview":"AURA MAXX","textChars":9,"textLines":1,"bbox":[816,190,264,32]}
+{"kind":"textbox","id":"sh/eh4nylov","slide":4,"name":"model-fit-2","text":"Larger families / high usage","textPreview":"Larger families / high usage","textChars":28,"textLines":1,"bbox":[816,232,264,48]}
+{"kind":"textbox","id":"sh/dgvm5gnq","slide":4,"name":"label-2-0","text":"Electrolysis","textPreview":"Electrolysis","textChars":12,"textLines":1,"bbox":[816,314,122,24]}
+{"kind":"textbox","id":"sh/cfmlwb65","slide":4,"name":"value-2-0","text":"8 plates","textPreview":"8 plates","textChars":8,"textLines":1,"bbox":[938,312,142,26]}
+{"kind":"textbox","id":"sh/2lkj6h4n","slide":4,"name":"label-2-1","text":"Published pH","textPreview":"Published pH","textChars":12,"textLines":1,"bbox":[816,376,122,24]}
+{"kind":"textbox","id":"sh/3mtkfml8","slide":4,"name":"value-2-1","text":"3.0–11.0+","textPreview":"3.0–11.0+","textChars":9,"textLines":1,"bbox":[938,374,142,26]}
+{"kind":"textbox","id":"sh/4n2187mt","slide":4,"name":"label-2-2","text":"ORP estimate","textPreview":"ORP estimate","textChars":12,"textLines":1,"bbox":[816,438,122,24]}
+{"kind":"textbox","id":"sh/p8b2hc3e","slide":4,"name":"value-2-2","text":"Up to −850 mV","textPreview":"Up to −850 mV","textChars":13,"textLines":1,"bbox":[938,436,142,26]}
+{"kind":"textbox","id":"sh/uh0j2x4r","slide":4,"name":"label-2-3","text":"Hydrogen H₂","textPreview":"Hydrogen H₂","textChars":11,"textLines":1,"bbox":[816,500,122,24]}
+{"kind":"textbox","id":"sh/fi9kb2lc","slide":4,"name":"value-2-3","text":"Up to 1,800 ppb","textPreview":"Up to 1,800 ppb","textChars":15,"textLines":1,"bbox":[938,498,142,26]}
+{"kind":"textbox","id":"sh/gji147mx","slide":4,"name":"variation-note","text":"Actual pH, ORP and dissolved hydrogen vary with source water, mineral content, temperature, flow rate and calibration.","textPreview":"Actual pH, ORP and dissolved hydrogen vary with source water, mineral content, temperature, flow rate and calibration.","textChars":118,"textLines":1,"bbox":[72,622,1036,38]}
+{"kind":"textbox","id":"sh/hkr2dc3i","slide":4,"name":"footer-4","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   04","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   04","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"notes","id":"nt/uomgqo","slide":4,"text":"[Sources]\n- https://wellwalife.com/\n- https://wellwalife.com/compare"}
+{"kind":"slide","id":"sl/0noao3","slide":5,"title":"TECHNOLOGY","textShapes":16}
+{"kind":"textbox","id":"sh/e9sb6lsz","slide":5,"name":"kicker","text":"TECHNOLOGY","textPreview":"TECHNOLOGY","textChars":10,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/1c3ah0ba","slide":5,"name":"slide-title","text":"Connected care extends the relationship after installation","textPreview":"Connected care extends the relationship after installation","textChars":58,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"shape","id":"sh/0bat8va5","slide":5,"name":"feature-0","bbox":[72,175,530,170]}
+{"kind":"textbox","id":"sh/r61sb6t8","slide":5,"name":"feature-num-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[100,199,48,32]}
+{"kind":"textbox","id":"sh/q5sr21sn","slide":5,"name":"feature-head-0","text":"Remote controls","textPreview":"Remote controls","textChars":15,"textLines":1,"bbox":[164,201,380,34]}
+{"kind":"textbox","id":"sh/d8jadgbe","slide":5,"name":"feature-body-0","text":"Start, stop and choose supported water modes.","textPreview":"Start, stop and choose supported water modes.","textChars":45,"textLines":1,"bbox":[164,250,380,58]}
+{"kind":"shape","id":"sh/s7at4bat","slide":5,"name":"feature-1","bbox":[642,175,530,170]}
+{"kind":"textbox","id":"sh/j2hs76tc","slide":5,"name":"feature-num-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[670,199,48,32]}
+{"kind":"textbox","id":"sh/i18ry1sr","slide":5,"name":"feature-head-1","text":"Live machine health","textPreview":"Live machine health","textChars":19,"textLines":1,"bbox":[734,201,380,34]}
+{"kind":"textbox","id":"sh/4zqh4vq5","slide":5,"name":"feature-body-1","text":"Connection, operating state and care alerts.","textPreview":"Connection, operating state and care alerts.","textChars":44,"textLines":1,"bbox":[734,250,380,58]}
+{"kind":"shape","id":"sh/50zix07q","slide":5,"name":"feature-2","bbox":[72,380,530,170]}
+{"kind":"textbox","id":"sh/ix8z2l8f","slide":5,"name":"feature-num-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[100,404,48,32]}
+{"kind":"textbox","id":"sh/3yh0vqp0","slide":5,"name":"feature-head-2","text":"Remote diagnostics","textPreview":"Remote diagnostics","textChars":18,"textLines":1,"bbox":[164,406,380,34]}
+{"kind":"textbox","id":"sh/gv6h0vq9","slide":5,"name":"feature-body-2","text":"Service teams can review supported telemetry.","textPreview":"Service teams can review supported telemetry.","textChars":45,"textLines":1,"bbox":[164,455,380,58]}
+{"kind":"shape","id":"sh/hwfyt07u","slide":5,"name":"feature-3","bbox":[642,380,530,170]}
+{"kind":"textbox","id":"sh/utozyl83","slide":5,"name":"feature-num-3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[670,404,48,32]}
+{"kind":"textbox","id":"sh/vuxgrqpo","slide":5,"name":"feature-head-3","text":"OTA-ready updates","textPreview":"OTA-ready updates","textChars":17,"textLines":1,"bbox":[734,406,380,34]}
+{"kind":"textbox","id":"sh/0rahcfqd","slide":5,"name":"feature-body-3","text":"Supported firmware can be maintained remotely.","textPreview":"Supported firmware can be maintained remotely.","textChars":46,"textLines":1,"bbox":[734,455,380,58]}
+{"kind":"textbox","id":"sh/1sji5k7y","slide":5,"name":"wifi-note","text":"Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separately.","textPreview":"Guided setup uses a compatible 2.4 GHz Wi‑Fi network. The machine’s water function and supported app features should be explained separat...","textChars":141,"textLines":1,"bbox":[72,610,1080,44]}
+{"kind":"textbox","id":"sh/pwvq9gv6","slide":5,"name":"footer-5","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   05","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"notes","id":"nt/0noao3","slide":5,"text":"[Sources]\n- https://wellwalife.com/\n- https://wellwalife.com/technology"}
+{"kind":"slide","id":"sl/d4c8cc","slide":6,"title":"CUSTOMER EXPERIENCE","textShapes":16}
+{"kind":"textbox","id":"sh/psrelg7u","slide":6,"name":"kicker","text":"CUSTOMER EXPERIENCE","textPreview":"CUSTOMER EXPERIENCE","textChars":19,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/2p0fa1oj","slide":6,"name":"slide-title","text":"A clear ownership journey builds trust","textPreview":"A clear ownership journey builds trust","textChars":38,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"shape","id":"sh/3q9wj6p4","slide":6,"name":"journey-line","bbox":[168,318,940,0]}
+{"kind":"textbox","id":"sh/gnyx8r6d","slide":6,"name":"step-dot-0","text":"01","textPreview":"01","textChars":2,"textLines":1,"bbox":[148,272,92,92]}
+{"kind":"textbox","id":"sh/1orehw7y","slide":6,"name":"step-head-0","text":"Water review","textPreview":"Water review","textChars":12,"textLines":1,"bbox":[72,398,244,34]}
+{"kind":"textbox","id":"sh/u1gv6ho7","slide":6,"name":"step-body-0","text":"Source, usage and compatibility","textPreview":"Source, usage and compatibility","textChars":31,"textLines":1,"bbox":[80,444,228,66]}
+{"kind":"textbox","id":"sh/fmpwfmps","slide":6,"name":"step-dot-1","text":"02","textPreview":"02","textChars":2,"textLines":1,"bbox":[440,272,92,92]}
+{"kind":"textbox","id":"sh/0j2xkv6h","slide":6,"name":"step-head-1","text":"Model consultation","textPreview":"Model consultation","textChars":18,"textLines":1,"bbox":[364,398,244,34]}
+{"kind":"textbox","id":"sh/lkbet072","slide":6,"name":"step-body-1","text":"Compare the Aura range","textPreview":"Compare the Aura range","textChars":22,"textLines":1,"bbox":[372,444,228,66]}
+{"kind":"textbox","id":"sh/x432pknq","slide":6,"name":"step-dot-2","text":"03","textPreview":"03","textChars":2,"textLines":1,"bbox":[732,272,92,92]}
+{"kind":"textbox","id":"sh/c3u1gf65","slide":6,"name":"step-head-2","text":"Installation","textPreview":"Installation","textChars":12,"textLines":1,"bbox":[656,398,244,34]}
+{"kind":"textbox","id":"sh/b2lkna5k","slide":6,"name":"step-body-2","text":"Plumbing, setup and handover","textPreview":"Plumbing, setup and handover","textChars":28,"textLines":1,"bbox":[664,444,228,66]}
+{"kind":"textbox","id":"sh/a1sje5oz","slide":6,"name":"step-dot-3","text":"04","textPreview":"04","textChars":2,"textLines":1,"bbox":[1024,272,92,92]}
+{"kind":"textbox","id":"sh/p0j2l0ne","slide":6,"name":"step-head-3","text":"Connected care","textPreview":"Connected care","textChars":14,"textLines":1,"bbox":[948,398,244,34]}
+{"kind":"textbox","id":"sh/oza1cv6t","slide":6,"name":"step-body-3","text":"App pairing, alerts and support","textPreview":"App pairing, alerts and support","textChars":31,"textLines":1,"bbox":[956,444,228,66]}
+{"kind":"shape","id":"sh/ny10jq5o","slide":6,"name":"journey-callout","bbox":[205,546,870,76]}
+{"kind":"textbox","id":"sh/2xsja5o3","slide":6,"name":"journey-callout-text","text":"The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.","textPreview":"The distributor owns the education and follow-up; trained service teams own technical installation and diagnostics.","textChars":115,"textLines":1,"bbox":[250,566,780,38]}
+{"kind":"textbox","id":"sh/9wn2h4ny","slide":6,"name":"footer-6","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   06","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"notes","id":"nt/d4c8cc","slide":6,"text":"[Sources]\n- https://wellwalife.com/"}
+{"kind":"slide","id":"sl/01wvin","slide":7,"title":"BUSINESS MODEL","textShapes":12}
+{"kind":"textbox","id":"sh/1s3apgz2","slide":7,"name":"kicker","text":"BUSINESS MODEL","textPreview":"BUSINESS MODEL","textChars":14,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/e5sbe1gr","slide":7,"name":"slide-title","text":"The distributor role is local, practical and relationship-led","textPreview":"The distributor role is local, practical and relationship-led","textChars":61,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"textbox","id":"sh/s3atcbyl","slide":7,"name":"role-head-0","text":"Educate","textPreview":"Educate","textChars":7,"textLines":1,"bbox":[732,164,170,34]}
+{"kind":"textbox","id":"sh/d4jalgz6","slide":7,"name":"role-body-0","text":"Explain the product, water compatibility and connected features accurately.","textPreview":"Explain the product, water compatibility and connected features accurately.","textChars":75,"textLines":1,"bbox":[902,164,290,68]}
+{"kind":"textbox","id":"sh/q1sba1gf","slide":7,"name":"role-head-1","text":"Demonstrate","textPreview":"Demonstrate","textChars":11,"textLines":1,"bbox":[732,272,170,34]}
+{"kind":"textbox","id":"sh/r21sj6h0","slide":7,"name":"role-body-1","text":"Arrange consultations and product demonstrations where available.","textPreview":"Arrange consultations and product demonstrations where available.","textChars":65,"textLines":1,"bbox":[902,272,290,68]}
+{"kind":"textbox","id":"sh/4zat8ryp","slide":7,"name":"role-head-2","text":"Convert","textPreview":"Convert","textChars":7,"textLines":1,"bbox":[732,380,170,34]}
+{"kind":"textbox","id":"sh/50jahwzu","slide":7,"name":"role-body-2","text":"Help the household select a model and complete the official buying process.","textPreview":"Help the household select a model and complete the official buying process.","textChars":75,"textLines":1,"bbox":[902,380,290,68]}
+{"kind":"textbox","id":"sh/pcnixgjq","slide":7,"name":"role-head-3","text":"Follow up","textPreview":"Follow up","textChars":9,"textLines":1,"bbox":[732,488,170,34]}
+{"kind":"textbox","id":"sh/obeh4b25","slide":7,"name":"role-body-3","text":"Support app adoption, care reminders and service escalation.","textPreview":"Support app adoption, care reminders and service escalation.","textChars":60,"textLines":1,"bbox":[902,488,290,68]}
+{"kind":"shape","id":"sh/na50v61k","slide":7,"name":"compliance","bbox":[732,596,460,56]}
+{"kind":"textbox","id":"sh/29wz21kz","slide":7,"name":"compliance-text","text":"No medical claims • No guaranteed income • Written terms only","textPreview":"No medical claims • No guaranteed income • Written terms only","textChars":61,"textLines":1,"bbox":[752,613,420,24]}
+{"kind":"textbox","id":"sh/18nitwje","slide":7,"name":"footer-7","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   07","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"image","id":"im/udwfidcf","slide":7,"name":"","geometry":"roundRect","alt":"Illustrative distributor training session","bbox":[72,158,600,446]}
+{"kind":"notes","id":"nt/01wvin","slide":7,"text":"The image is illustrative and does not depict a named distributor or an actual Wellwa event.\n\n[Sources]\n- https://wellwalife.com/distributor/apply\n- OpenAI-generated illustrative asset: distributor-training.png"}
+{"kind":"slide","id":"sl/q5763s","slide":8,"title":"90-DAY LAUNCH PATH","textShapes":16}
+{"kind":"textbox","id":"sh/tkb6lk7y","slide":8,"name":"kicker","text":"90-DAY LAUNCH PATH","textPreview":"90-DAY LAUNCH PATH","textChars":18,"textLines":1,"bbox":[72,42,430,24]}
+{"kind":"textbox","id":"sh/6hk7apo7","slide":8,"name":"slide-title","text":"Start with capability before scale","textPreview":"Start with capability before scale","textChars":34,"textLines":1,"bbox":[72,75,1136,58]}
+{"kind":"shape","id":"sh/7itojaps","slide":8,"name":"phase-0","bbox":[72,176,268,374]}
+{"kind":"textbox","id":"sh/kvip8f6h","slide":8,"name":"phase-time-0","text":"DAYS 1–15","textPreview":"DAYS 1–15","textChars":9,"textLines":1,"bbox":[98,204,216,22]}
+{"kind":"textbox","id":"sh/5wb6hk7m","slide":8,"name":"phase-name-0","text":"Learn","textPreview":"Learn","textChars":5,"textLines":1,"bbox":[98,252,216,46]}
+{"kind":"textbox","id":"sh/it0765ob","slide":8,"name":"phase-body-0","text":"Product range\nWater-source basics\nClaims & compliance","textPreview":"Product range | Water-source basics | Claims & compliance","textChars":53,"textLines":3,"bbox":[98,332,216,132]}
+{"kind":"shape","id":"sh/ju9ofapw","slide":8,"name":"phase-1","bbox":[364,176,268,374]}
+{"kind":"textbox","id":"sh/wri54v65","slide":8,"name":"phase-time-1","text":"DAYS 16–30","textPreview":"DAYS 16–30","textChars":10,"textLines":1,"bbox":[390,204,216,22]}
+{"kind":"textbox","id":"sh/xsr6d07q","slide":8,"name":"phase-name-1","text":"Practice","textPreview":"Practice","textChars":8,"textLines":1,"bbox":[390,252,216,46]}
+{"kind":"textbox","id":"sh/lkra5cz6","slide":8,"name":"phase-body-1","text":"Demo script\nObjection handling\nCRM follow-up","textPreview":"Demo script | Objection handling | CRM follow-up","textChars":44,"textLines":3,"bbox":[390,332,216,132]}
+{"kind":"shape","id":"sh/0ji9c7il","slide":8,"name":"phase-2","bbox":[656,176,268,374]}
+{"kind":"textbox","id":"sh/zips3210","slide":8,"name":"phase-time-2","text":"DAYS 31–60","textPreview":"DAYS 31–60","textChars":10,"textLines":1,"bbox":[682,204,216,22]}
+{"kind":"textbox","id":"sh/yhgrax0f","slide":8,"name":"phase-name-2","text":"Activate","textPreview":"Activate","textChars":8,"textLines":1,"bbox":[682,252,216,46]}
+{"kind":"textbox","id":"sh/dw7a1sju","slide":8,"name":"phase-body-2","text":"Local consultations\nReferral partners\nWeekly content","textPreview":"Local consultations | Referral partners | Weekly content","textChars":52,"textLines":3,"bbox":[682,332,216,132]}
+{"kind":"shape","id":"sh/cvy98ni9","slide":8,"name":"phase-3","bbox":[948,176,268,374]}
+{"kind":"textbox","id":"sh/bupszi1o","slide":8,"name":"phase-time-3","text":"DAYS 61–90","textPreview":"DAYS 61–90","textChars":10,"textLines":1,"bbox":[974,204,216,22]}
+{"kind":"textbox","id":"sh/qtgr6d0j","slide":8,"name":"phase-name-3","text":"Improve","textPreview":"Improve","textChars":7,"textLines":1,"bbox":[974,252,216,46]}
+{"kind":"textbox","id":"sh/ps7qxsjy","slide":8,"name":"phase-body-3","text":"Review funnel\nStrengthen follow-up\nEscalate service well","textPreview":"Review funnel | Strengthen follow-up | Escalate service well","textChars":56,"textLines":3,"bbox":[974,332,216,132]}
+{"kind":"textbox","id":"sh/ory94nid","slide":8,"name":"terms-note","text":"Before investing, request the current official agreement, fees, margin/commission schedule, returns policy, territory rules and support commitments in writing.","textPreview":"Before investing, request the current official agreement, fees, margin/commission schedule, returns policy, territory rules and support c...","textChars":159,"textLines":1,"bbox":[130,590,1020,54]}
+{"kind":"textbox","id":"sh/gn2107u5","slide":8,"name":"footer-8","text":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   08","textPreview":"WELLWA LIFE  •  BUSINESS OPPORTUNITY OVERVIEW                                   08","textChars":82,"textLines":1,"bbox":[72,678,1136,18]}
+{"kind":"notes","id":"nt/q5763s","slide":8,"text":"This launch path is a practical operating recommendation, not an official compensation plan or earnings projection.\n\n[Sources]\n- https://wellwalife.com/distributor/apply"}
+{"kind":"slide","id":"sl/orxwqs","slide":9,"title":"NEXT STEP","textShapes":4}
+{"kind":"textbox","id":"sh/uhojul4b","slide":9,"name":"close-kicker","text":"NEXT STEP","textPreview":"NEXT STEP","textChars":9,"textLines":1,"bbox":[72,78,250,24]}
+{"kind":"textbox","id":"sh/h4z2p032","slide":9,"name":"close-title","text":"Experience the product.\nThen evaluate the business.","textPreview":"Experience the product. | Then evaluate the business.","textChars":51,"textLines":2,"bbox":[72,142,650,160]}
+{"kind":"textbox","id":"sh/w361wvmh","slide":9,"name":"close-body","text":"Book a product consultation, review the Aura range, and request the current official distributor terms before making a decision.","textPreview":"Book a product consultation, review the Aura range, and request the current official distributor terms before making a decision.","textChars":128,"textLines":1,"bbox":[72,340,590,90]}
+{"kind":"shape","id":"sh/j6hkrals","slide":9,"name":"contact-box","bbox":[72,498,570,118]}
+{"kind":"textbox","id":"sh/i58jy54n","slide":9,"name":"contact","text":"wellwalife.com/distributor/apply\n+91 74109 95599  •  info@wellwalife.com","textPreview":"wellwalife.com/distributor/apply | +91 74109 95599  •  info@wellwalife.com","textChars":72,"textLines":2,"bbox":[102,526,510,64]}
+{"kind":"image","id":"im/cnuh47yp","slide":9,"name":"","geometry":"roundRect","alt":"Wellwa Aura Plus","bbox":[800,100,370,520]}
+{"kind":"notes","id":"nt/orxwqs","slide":9,"text":"[Sources]\n- https://wellwalife.com/\n- https://wellwalife.com/distributor/apply"}

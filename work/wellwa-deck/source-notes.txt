@@ -1,0 +1,16 @@
+Communication job: By the end, a prospective Wellwa distributor should understand the verified Aura product range, the customer journey, the responsible distributor role, and the next step to request official commercial terms.
+
+Primary official sources
+- https://wellwalife.com/ — product names, retail prices, product positioning, connected-care features, water presets, guided ownership journey, consultation disclaimer and contact details.
+- https://wellwalife.com/products — product range and comparison context.
+- https://wellwalife.com/technology — connected controls, machine status, remote diagnostics, care alerts and OTA-ready updates.
+- https://wellwalife.com/distributor/apply — official distributor application route.
+
+Asset provenance
+- aura-plus-kitchen-hero.png, aura-5.png, aura-plus-7.png, aura-maxx.png, nmd-drops.png and wellwa-logo.png are local copies of official Wellwa website assets.
+- home-demo-consultation.png and distributor-training.png were generated with the built-in OpenAI image generation tool for this project. They depict generic illustrative scenes and do not represent named customers, distributors or actual events.
+
+Compliance choices
+- No income, commission, customer-count or medical-outcome claim is included.
+- Product output values are described as maximum published specifications and noted as source-water dependent.
+- Commercial terms and earnings, if any, must come from the current official Wellwa plan and written agreement.

@@ -1,0 +1,43 @@
+"use client";
+
+// Where "Continue with Google" comes back to. A new account gets its welcome (free credits + welcome email) and
+// opens the setup; an existing one goes to its usual home (phones the phone app, computers the dashboard).
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
+
+export default function StartPage() {
+  const router = useRouter();
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const sb = getBrowserSupabase();
+      if (!sb) { router.replace("/login"); return; }
+      let { data: { session } } = await sb.auth.getSession();
+      const code = new URLSearchParams(window.location.search).get("code");
+      if (!session && code) session = (await sb.auth.exchangeCodeForSession(code)).data.session;
+      if (!session) { setError("Google sign-in did not finish. Please try again."); return; }
+      const auth = { Authorization: `Bearer ${session.access_token}` };
+      await fetch("/api/join", { method: "POST", headers: auth }).catch(() => {});
+      // Username + partner ID straight away, under the introducer whose link they came from (kept in this browser).
+      let by = "", leg = "";
+      try { by = localStorage.getItem(INTRODUCER_KEY) || ""; leg = localStorage.getItem(INTRODUCER_LEG_KEY) || ""; } catch { /* private mode */ }
+      const a = await fetch("/api/account", { method: "POST", headers: { ...auth, "content-type": "application/json" },
+        body: JSON.stringify({ action: "auto", by: by || undefined, leg: leg === "L" || leg === "R" ? leg : undefined, agree: true }) }).catch(() => null);
+      if (a?.ok) { try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ } }
+      const w = await fetch("/api/welcome", { method: "POST", headers: auth }).then((r) => r.json()).catch(() => ({}));
+      if (w?.fresh) { router.replace("/poster/onboard"); return; }
+      router.replace(window.matchMedia?.("(max-width: 767px)").matches ? "/poster" : "/dashboard");
+    })();
+  }, [router]);
+
+  return (
+    <div className="min-h-screen grid place-items-center p-6 text-center">
+      {error
+        ? <p className="text-sm font-medium text-danger">{error} <a href="/login" className="underline">Back to log in</a></p>
+        : <p className="text-sm text-muted">Signing you in…</p>}
+    </div>
+  );
+}

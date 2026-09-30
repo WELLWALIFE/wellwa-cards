@@ -1,0 +1,43 @@
+{
+ "ionizer-faucet.jpg": {
+  "usage_correct": false,
+  "in_use": true,
+  "faces": 3,
+  "ignore": [
+   "no_text"
+  ]
+ },
+ "ionizer-ok-idle.jpg": {
+  "usage_correct": true,
+  "in_use": false,
+  "faces": 1,
+  "ignore": [
+   "no_text"
+  ]
+ },
+ "new-idle-ok.jpg": {
+  "usage_correct": true,
+  "in_use": false,
+  "faces": 1
+ },
+ "new-in-use-onehose-ok.jpg": {
+  "usage_correct": true,
+  "in_use": true,
+  "faces": 0,
+  "expect_critical_ok": true
+ },
+ "bad-two-hoses-1.jpg": {
+  "usage_correct": true,
+  "in_use": true,
+  "faces": 0,
+  "expect_critical_ok": false,
+  "why": "two hose segments (owner feedback 2026-09-17)"
+ },
+ "bad-two-hoses-2.jpg": {
+  "usage_correct": true,
+  "in_use": true,
+  "faces": 0,
+  "expect_critical_ok": false,
+  "why": "two hose segments (owner feedback 2026-09-17)"
+ }
+}
