@@ -95,7 +95,15 @@ export async function POST(request: Request) {
   // and products are somebody else's, so nothing is imported from it and it is never the owner's "Website" link.
   const role = facts.website ? facts.websiteRole : "own";
   const website = role === "reference" ? setup.website : facts.website || setup.website;
-  const referenceP = role === "reference" && facts.website ? within(readReference(facts.website, { look: true }).catch(() => null), 45_000) : Promise.resolve(null);
+  const refT0 = Date.now();
+  const referenceP = role === "reference" && facts.website
+    ? within(readReference(facts.website, { look: true }).catch(() => null), 90_000).then((r) => {
+        // Reading a reference site means up to two browser visits; the old 45s window was cutting heavier
+        // sites off and the card quietly got our default look. Logged, so a miss can be seen rather than guessed.
+        console.log("[card] reference", JSON.stringify({ url: facts.website, read: !!r, look: !!r?.look, accent: r?.look?.accent ?? null, ms: Date.now() - refT0 }));
+        return r;
+      })
+    : Promise.resolve(null);
   const siteP = website ? within(readOwnSite(website).catch(() => null), 120_000) : Promise.resolve(null);
   const importRole = role === "reference" ? "own" : role;
   const importP: Promise<{ imp: SiteImport; stored: StoredSite } | null> = website
