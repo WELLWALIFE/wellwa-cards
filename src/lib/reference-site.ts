@@ -5,6 +5,7 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 import type { ReferenceStyle } from "@/lib/site-style";
+import { htmlOf } from "@/lib/render-page";
 
 function privateIp(ip: string): boolean {
   if (net.isIPv4(ip)) {
@@ -134,6 +135,9 @@ export async function readReference(raw: string): Promise<Reference | null> {
     break;
   }
   if (!html || !u) return null;
+  // The same for a reference or an own site read here: if the HTML is a shell, take what the page becomes
+  // once its JavaScript has run — otherwise its look and its words are both invisible to us.
+  html = (await htmlOf(u.toString(), html)) ?? html;
   const style = readStyle(html);
   html = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>/gi, " ");
   const pick = (re: RegExp, n: number, len: number) => [...html.matchAll(re)].map((m) => clean(m[1])).filter((t) => t.length > 1).map((t) => t.slice(0, len)).filter((t, i, a) => a.indexOf(t) === i).slice(0, n);

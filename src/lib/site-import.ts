@@ -12,6 +12,7 @@ import "server-only";
 // bucket (storeSiteMedia) — never hot-linked — so it passes the "own media" rule and keeps working if the site changes.
 import sharp from "sharp";
 import { fetchPublic } from "@/lib/reference-site";
+import { htmlOf } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
 export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string };
@@ -50,7 +51,11 @@ const JUNK_IMG = /(sprite|icon|favicon|pixel|spacer|loader|loading|placeholder|a
 
 async function page(url: string) {
   const r = await fetchPublic(url, "html", 1_500_000, 10_000);
-  return r ? { url: r.url, html: r.body.toString("utf8") } : null;
+  if (!r) return null;
+  // A React / Vue / Wix page arrives as an empty shell; htmlOf opens it in a real browser and returns what
+  // the page actually becomes. An ordinary page is handed straight back, so nothing is spent on it.
+  const html = (await htmlOf(r.url, r.body.toString("utf8"))) ?? r.body.toString("utf8");
+  return { url: r.url, html };
 }
 
 /** All JSON-LD objects on the page, @graph and arrays flattened. */
