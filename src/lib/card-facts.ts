@@ -24,6 +24,9 @@ export type CardFacts = {
    *  a website the owner LIKES: only its look (colours, fonts, layout) and tone are followed, no fact, picture or
    *  product is taken from it and it is never shown as the owner's own website. */
   websiteRole: "own" | "dealer" | "reference";
+  /** When the owner ticked "I am this brand's authorised dealer / distributor" for the dealer site above (ISO
+   *  time), kept with the URL so the claim is on record. "" when never ticked (accounts from before the box). */
+  dealerAssertedAt: string;
   work: string;
   customers: string[];
   special: string[];
@@ -64,6 +67,7 @@ export const EMPTY_FACTS: CardFacts = deepFreeze<CardFacts>({
   v: 1,
   website: "",
   websiteRole: "own",
+  dealerAssertedAt: "",
   work: "",
   customers: [],
   special: [],
@@ -160,11 +164,15 @@ function normalizeObj(r: Obj): CardFacts {
     if (photos.length >= 5) break;
   }
   const primaryCardId = text(r.primaryCardId, 36);
+  const assertedAt = text(r.dealerAssertedAt, 30);
 
   return {
     v: 1,
     website,
-    websiteRole: r.websiteRole === "dealer" ? "dealer" : r.websiteRole === "reference" ? "reference" : "own",
+    // A competitor's site is a reference site (look only) — the word reaches here from older clients and must
+    // never fall through to "own", which would import the competitor's name and products.
+    websiteRole: r.websiteRole === "dealer" ? "dealer" : r.websiteRole === "reference" || r.websiteRole === "competitor" ? "reference" : "own",
+    dealerAssertedAt: /^\d{4}-\d{2}-\d{2}T[\d:.]+Z$/.test(assertedAt) ? assertedAt : "",
     work: text(r.work, 800, true),
     customers: list(r.customers, 8, 60),
     special: list(r.special, 8, 60),
@@ -383,6 +391,14 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
   };
 }
 
+/* ================= this phone's copies of the V-Card form ================= */
+
+/** localStorage keys of the "Make your V-Card" screen: a finished preview, and the form's unsaved answers.
+ *  Shared so the set-up can drop them when it changes the website or its role — otherwise the build screen
+ *  would show the OLD preview again, or let a stale backup overwrite the new website. */
+export const vcardDraftKey = (uid: string) => `vcard-draft:${uid}`;
+export const vcardFormKey = (uid: string) => `vcard-form:${uid}`;
+
 /* ================= API contract (/api/card/facts, /api/card/build) ================= */
 
 /** What the owner filled in during setup (auth metadata + poster profile). */
@@ -407,6 +423,10 @@ export type SetupInfo = {
   photo: string;
   phone: string;
   email: string;
+  /** Set-up with an OWN website (1 Oct 2026): true when the business name on the form is the one the website
+   *  gave, false when the owner corrected it after seeing the site's name — then the build keeps the owner's
+   *  name instead of the site's. Undefined when the website was never peeked at. */
+  nameFromSite?: boolean;
 };
 
 /** A product row saved on the Products page (poster_products). */

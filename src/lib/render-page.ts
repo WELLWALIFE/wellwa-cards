@@ -153,10 +153,23 @@ export async function readLayout(url: string): Promise<PageLayout | null> {
   });
 }
 
+/** Rendered pages, kept a short while. The set-up's website peek renders the home page while the person is
+ *  still on the form; the build that follows a minute later reads the same page again (readOwnSite, importSite)
+ *  and would launch a second render of it. Short-lived and small: a site changes, and a render is ~1 MB. */
+const RENDERED = new Map<string, { html: string; at: number }>();
+const RENDER_TTL_MS = 15 * 60_000;
+const RENDER_MAX = 50;
+
 /** Plain HTML when the page has it, the rendered page when it does not. */
 export async function htmlOf(url: string, raw: string | null): Promise<string | null> {
   if (raw && !looksEmpty(raw)) return raw;
+  const hit = RENDERED.get(url);
+  if (hit && Date.now() - hit.at < RENDER_TTL_MS) return hit.html;
   const made = await renderedHtml(url);
+  if (made && !looksEmpty(made)) {
+    if (RENDERED.size >= RENDER_MAX) RENDERED.delete(RENDERED.keys().next().value as string);
+    RENDERED.set(url, { html: made, at: Date.now() });
+  }
   return made ?? raw;
 }
 

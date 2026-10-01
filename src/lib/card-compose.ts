@@ -246,9 +246,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const digits = (setup.phone ?? "").replace(/\D/g, "").slice(-10);
   if (digits.length === 10) { add("whatsapp", "WhatsApp", `+91${digits}`); add("phone", "Call", `+91${digits}`); }
   add("email", "Email", (setup.email ?? "").trim());
-  // A reference website is somebody else's site: never the owner's "Website" link.
-  const ownSite = facts.websiteRole === "reference" ? setup.website : facts.website || setup.website;
-  add("website", "Website", webUrl(ownSite) || (facts.websiteRole === "reference" ? "" : input.siteUrl ?? ""));
+  // A reference website is somebody else's site, and a dealer's brand site is the brand's: neither is ever the
+  // owner's "Website" link. Only a site the owner called their OWN (or the set-up's business.website) is.
+  const ownSite = facts.websiteRole === "own" ? facts.website || setup.website : setup.website;
+  add("website", "Website", webUrl(ownSite) || (facts.websiteRole === "own" ? input.siteUrl ?? "" : ""));
   const mapUrl = mapLink(facts.social.google) || mapLink(setup.map);
   add("location", "Google Maps", mapUrl);
   add("upi", "UPI", facts.upi);

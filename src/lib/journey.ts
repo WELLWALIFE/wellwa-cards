@@ -12,7 +12,7 @@ import { isThinCard } from "@/lib/card-facts";
 export type StepKey = "you" | "business" | "products" | "card" | "website" | "poster" | "social" | "whatsapp";
 export type Step = { key: StepKey; title: string; sub: string; href: string; done: boolean; premium: boolean };
 
-export type Business = { name?: string; /** How the card leads: shop/company name, or the person (professional, agent, personal). */ role?: "business" | "professional" | "agent" | "personal"; /** How far the service goes: own city and nearby, all of India, or anywhere online. */ reach?: "local" | "india" | "online"; category?: string; gstin?: string; address?: string; city?: string; about?: string; website?: string; /** Exact Google Maps link from the "pin it" button, e.g. https://maps.google.com/?q=26.912434,75.787271 */ map?: string };
+export type Business = { name?: string; /** How the card leads: shop/company name, or the person (professional, agent, personal). */ role?: "business" | "professional" | "agent" | "personal"; /** How far the service goes: own city and nearby, all of India, or anywhere online. */ reach?: "local" | "india" | "online"; category?: string; gstin?: string; address?: string; city?: string; about?: string; website?: string; /** True when the name on record is the one the owner's website gave (see SetupInfo.nameFromSite). */ nameFromSite?: boolean; /** Exact Google Maps link from the "pin it" button, e.g. https://maps.google.com/?q=26.912434,75.787271 */ map?: string };
 
 /** `refreshKey` (e.g. the current path) re-reads the steps when it changes, so progress stays current. */
 export function useJourney(refreshKey?: string) {
@@ -35,7 +35,7 @@ export function useJourney(refreshKey?: string) {
       const s: Step[] = [
         // Once done, "About you" is where name / mobile / photo are changed: Save there updates every place and comes back here.
         { key: "you", title: "About you", sub: "Your name, mobile and photo", href: (meta.display_name || meta.full_name) && profile?.phone ? "/poster/onboard?step=you&back=/poster/setup" : "/poster/onboard?step=you", premium: false, done: !!((meta.display_name || meta.full_name) && profile?.phone) },
-        { key: "business", title: "Your business", sub: "Name, logo, address and GST (if you have it)", href: "/poster/onboard?step=business", premium: false, done: !!(meta.business?.category || meta.business?.name) },
+        { key: "business", title: "Your business", sub: "Have a website? Its link fills name, logo and products; else just trade, name and city", href: "/poster/onboard?step=site", premium: false, done: !!(meta.business?.category || meta.business?.name) },
         { key: "products", title: "Products or services", sub: "Photos and prices — shown on your V-Card, website and posters", href: "/poster/products", premium: false, done: (products?.data.products?.length ?? 0) > 0 },
         // Done only when a real card exists — not an untouched "Your Name" draft or an empty one-tap card.
         { key: "card", title: "Your V-Card", sub: "Your digital visiting card — the AI makes it from your details", href: "/poster/card", premium: false, done: cards.some((c) => !isThinCard(c)) },

@@ -12,7 +12,7 @@ import "server-only";
 // bucket (storeSiteMedia) — never hot-linked — so it passes the "own media" rule and keeps working if the site changes.
 import sharp from "sharp";
 import { fetchPublic } from "@/lib/reference-site";
-import { htmlOf } from "@/lib/render-page";
+import { htmlOf, looksEmpty } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
 export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string };
@@ -30,7 +30,7 @@ type Obj = Record<string, unknown>;
 const obj = (x: unknown): Obj => (x && typeof x === "object" && !Array.isArray(x) ? (x as Obj) : {});
 const arr = (x: unknown): unknown[] => (Array.isArray(x) ? x : x == null ? [] : [x]);
 const txt = (v: unknown, n: number) => (typeof v === "string" || typeof v === "number" ? String(v) : "")
-  .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#0?39;|&rsquo;|&#8217;/g, "'").replace(/&quot;/g, '"')
+  .replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#0?39;|&#x27;|&rsquo;|&#8217;/gi, "'").replace(/&quot;|&#34;/g, '"')
   .replace(/&#8211;|&ndash;/g, "–").replace(/&#8377;/g, "₹").replace(/\s+/g, " ").trim().slice(0, n);
 const MAX_PRODUCTS = 12;
 
@@ -54,8 +54,9 @@ async function page(url: string) {
   if (!r) return null;
   // A React / Vue / Wix page arrives as an empty shell; htmlOf opens it in a real browser and returns what
   // the page actually becomes. An ordinary page is handed straight back, so nothing is spent on it.
-  const html = (await htmlOf(r.url, r.body.toString("utf8"))) ?? r.body.toString("utf8");
-  return { url: r.url, html };
+  const raw = r.body.toString("utf8");
+  const html = (await htmlOf(r.url, raw)) ?? raw;
+  return { url: r.url, html, empty: looksEmpty(html) };
 }
 
 /** All JSON-LD objects on the page, @graph and arrays flattened. */
@@ -211,20 +212,85 @@ async function productPage(url: string): Promise<SiteProduct | null> {
   };
 }
 
+/** The business itself: an Organization / LocalBusiness of any kind (Bakery, Dentist, Store …) — anything with a name
+ *  and an address, phone or logo that is not a product or a page. */
+function orgOf(ld: Obj[]): Obj {
+  return ld.find((o) => isType(o, /(Organization|LocalBusiness|Store|Shop)$/i))
+    ?? ld.find((o) => !isType(o, /^(Product|WebSite|WebPage|BreadcrumbList|ItemList|Offer|ImageObject|SearchAction|Person|Review|FAQPage|Question|Answer)$/i) && txt(o.name, 80) && (o.address || o.telephone || o.logo))
+    ?? {};
+}
+function addressOf(org: Obj) {
+  const a = obj(org.address);
+  const street = txt(a.streetAddress, 120), city = txt(a.addressLocality, 60), region = txt(a.addressRegion, 60), pin = txt(a.postalCode, 12);
+  return { street, city, region, pin, full: [street, city, region, pin].filter(Boolean).join(", ") };
+}
+/** The site's own name: structured data first, then og:site_name, then the brand part of the <title> — the short
+ *  segment of "Buy Sofas Online | Urban Ladder" (usually the last), never a marketing sentence. */
+function siteName(html: string, org: Obj): string {
+  const known = txt(org.name, 80) || meta(html, "og:site_name") || meta(html, "application-name") || meta(html, "apple-mobile-web-app-title");
+  if (known) return known;
+  // The logo's alt text is very often the brand's name: <img alt="Urban Ladder" class="logo">.
+  for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
+    const tag = m[0];
+    if (!/logo/i.test(`${attr(tag, "class")} ${attr(tag, "id")} ${attr(tag, "src")}`)) continue;
+    const alt = txt(attr(tag, "alt"), 60).replace(/\b(logo|brand|home|header)\b/gi, "").replace(/[-–|]+$/, "").trim();
+    if (alt.length >= 2 && alt.split(/\s+/).length <= 4) return alt;
+  }
+  const parts = txt(html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1], 160).split(/\s+[|–—-]\s+|\s*::\s*|\s+[•·]\s+/).map((x) => x.trim()).filter(Boolean);
+  const brandish = (x: string) => x.length >= 2 && x.length <= 40 && x.split(/\s+/).length <= 4 && !/%|\bbuy\b|\bonline\b|\bshop\b|\bbest\b|\bfree\b|\boffer|\bsale\b|\bhome\b|\bwelcome\b|\bofficial\b|[:?!]/i.test(x);
+  return [...parts].reverse().find(brandish) ?? "";
+}
+
+/** What the set-up's website step learns from the HOME page alone, while the person is still on the form
+ *  (owner's call, 1 Oct 2026: "user ko kam se kam data dalna pade"): the name, logo, description, address and
+ *  phone the site states about itself, and how many products it seems to carry. One page read (plus the cheap
+ *  shop-catalog JSON), bounded; the full import still happens in the build. Null when the page cannot be opened;
+ *  `empty` when it opened and was still a bare app shell after rendering. Nothing of the site's pictures or
+ *  products is returned — only the logo's address, which the caller copies for an OWN site. */
+export type SitePeek = {
+  url: string; name: string; logo: string | null; about: string; phone: string; email: string;
+  address: { street: string; city: string; region: string; pin: string; full: string };
+  hours: string[]; products: number; title: string; empty: boolean;
+};
+export async function peekSite(raw: string): Promise<SitePeek | null> {
+  const home = await page(raw);
+  if (!home) return null;
+  const origin = new URL(home.url).origin;
+  const ld = jsonLd(home.html);
+  const org = orgOf(ld);
+  let products = 0;
+  for (const o of ld) {
+    if (isType(o, /^Product$/i)) products++;
+    if (isType(o, /^ItemList$/i)) for (const it of arr(o.itemListElement)) { const item = obj(obj(it).item ?? it); if (isType(item, /^Product$/i)) products++; }
+  }
+  // The catalogs are one JSON call each and say at once whether this is a shop with products to import.
+  const [sh, wc] = await Promise.all([shopify(origin).catch(() => []), woo(origin).catch(() => [])]);
+  products = Math.max(products, sh.length, wc.length);
+  if (!products) products = Math.min(MAX_PRODUCTS, productLinks(home.html, home.url).length);
+  return {
+    url: home.url,
+    name: siteName(home.html, org),
+    logo: logoOf(home.html, home.url, ld),
+    about: txt(org.description, 400) || meta(home.html, "og:description") || meta(home.html, "description"),
+    phone: txt(org.telephone, 30),
+    email: txt(org.email, 80),
+    address: addressOf(org),
+    hours: arr(org.openingHours).map((h) => txt(h, 60)).filter(Boolean),
+    products,
+    title: txt(home.html.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1], 120),
+    empty: home.empty,
+  };
+}
+
 /** Everything useful on the owner's website. Null when the home page cannot be read. Bounded: ~15 page reads. */
 export async function importSite(raw: string): Promise<SiteImport | null> {
   const home = await page(raw);
   if (!home) return null;
   const origin = new URL(home.url).origin;
   const ld = jsonLd(home.html);
-  // The business itself: an Organization / LocalBusiness of any kind (Bakery, Dentist, Store …) — anything with a name
-  // and an address, phone or logo that is not a product or a page.
-  const org = ld.find((o) => isType(o, /(Organization|LocalBusiness|Store|Shop)$/i))
-    ?? ld.find((o) => !isType(o, /^(Product|WebSite|WebPage|BreadcrumbList|ItemList|Offer|ImageObject|SearchAction|Person|Review|FAQPage|Question|Answer)$/i) && txt(o.name, 80) && (o.address || o.telephone || o.logo))
-    ?? {};
+  const org = orgOf(ld);
   const facts: string[] = [];
-  const addr = obj(org.address);
-  const address = [addr.streetAddress, addr.addressLocality, addr.addressRegion, addr.postalCode].map((x) => txt(x, 80)).filter(Boolean).join(", ");
+  const address = addressOf(org).full;
   if (txt(org.telephone, 30)) facts.push(`Phone on the website: ${txt(org.telephone, 30)}`);
   if (txt(org.email, 80)) facts.push(`Email on the website: ${txt(org.email, 80)}`);
   if (address) facts.push(`Address on the website: ${address}`);
@@ -260,7 +326,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
 
   return {
     url: home.url,
-    name: txt(org.name, 80) || meta(home.html, "og:site_name"),
+    name: siteName(home.html, org),
     logo: logoOf(home.html, home.url, ld),
     covers, gallery,
     products: [...byName.values()],
@@ -272,7 +338,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
 
 type Kind = "logo" | "wide" | "product";
 /** One picture from the site → our bucket (resized, re-encoded). Null when it is not a usable image. */
-async function copyImage(userId: string, src: string, kind: Kind, n: number, minWidth: number): Promise<{ url: string; w: number; h: number } | null> {
+export async function copyImage(userId: string, src: string, kind: Kind, n: number, minWidth: number): Promise<{ url: string; w: number; h: number } | null> {
   const r = await fetchPublic(src, "image", 8_000_000, 12_000);
   if (!r) return null;
   try {

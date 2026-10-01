@@ -24,6 +24,7 @@ import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, saveFacts } from "@/lib/card-inputs";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
+import { isShubhoraHost } from "@/lib/site-role";
 
 // A site that has to be rendered page by page takes longer to read than one that hands over its HTML —
 // wellwalife.com measured 74s before the browser was shared, and Apache on this box allows 300s.
@@ -94,7 +95,10 @@ export async function POST(request: Request) {
   // or a REFERENCE site they like (owner's call, 30 Sep 2026): read for its look and tone only — its facts, pictures
   // and products are somebody else's, so nothing is imported from it and it is never the owner's "Website" link.
   const role = facts.website ? facts.websiteRole : "own";
-  const website = role === "reference" ? setup.website : facts.website || setup.website;
+  // The seller template leaves https://shubhora.com in the account's business.website; a business set up after
+  // it must never have OUR site own-imported and come out named "Shubhora".
+  const ownUrl = isShubhoraHost(setup.website) ? "" : setup.website;
+  const website = role === "reference" ? ownUrl : facts.website || ownUrl;
   const refT0 = Date.now();
   const referenceP = role === "reference" && facts.website
     ? within(readReference(facts.website, { look: true }).catch(() => null), 90_000).then((r) => {
@@ -106,6 +110,9 @@ export async function POST(request: Request) {
     : Promise.resolve(null);
   const siteP = website ? within(readOwnSite(website).catch(() => null), 120_000) : Promise.resolve(null);
   const importRole = role === "reference" ? "own" : role;
+  // The set-up asks the dealer to confirm they are the brand's authorised dealer before importing its products;
+  // accounts that chose the dealer chip before that box existed are let through, and noted.
+  if (importRole === "dealer" && website && !facts.dealerAssertedAt) console.log("[card] dealer import without assertion", me.id, website);
   const importP: Promise<{ imp: SiteImport; stored: StoredSite } | null> = website
     ? within(importSite(website).then(async (imp) => (imp ? { imp, stored: await storeSiteMedia(me.id, imp, importRole) } : null)).catch(() => null), 150_000)
     : Promise.resolve(null);
@@ -247,7 +254,8 @@ export async function POST(request: Request) {
   // two disagree, the website is right: its name becomes the card's, and the AI is told in so many words to
   // take what the business does from the site.
   const ownSite = importRole === "own" && got?.imp.name ? got.imp : null;
-  if (ownSite) setup = { ...setup, business: ownSite.name.slice(0, 80) };
+  // …unless the owner saw the site's name on the set-up form and changed it (nameFromSite === false).
+  if (ownSite && setup.nameFromSite !== false) setup = { ...setup, business: ownSite.name.slice(0, 80) };
 
   /* ---- the words (one AI call) ---- */
   const details = (ownSite

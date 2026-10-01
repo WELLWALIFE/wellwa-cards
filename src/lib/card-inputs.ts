@@ -10,7 +10,7 @@ import { normalizeFacts, type CardFacts, type SavedProduct, type SetupInfo } fro
 
 type Meta = {
   display_name?: string; full_name?: string; phone?: string; contact_email?: string;
-  business?: { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string };
+  business?: { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string; nameFromSite?: boolean };
 };
 type ProfileRow = { id: string; name: string | null; phone: string | null; photo_url: string | null; logo_url: string | null; city: string | null; category: string | null; persona: string | null; card_facts?: unknown };
 type Photo = { url?: unknown; view?: unknown; role?: unknown };
@@ -180,6 +180,7 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     photo: S(profile?.photo_url, 500),
     phone: (S(profile?.phone, 20) || S(meta.phone, 20)).replace(/\D/g, "").slice(-10),
     email: S(email, 120),
+    ...(typeof biz.nameFromSite === "boolean" ? { nameFromSite: biz.nameFromSite } : {}),
   };
 
   const reviews: Review[] = (reviewRows.data ?? [])

@@ -21,6 +21,8 @@ import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { CardChecklist } from "@/components/poster/card-checklist";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { initials } from "@/lib/initials";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { isShubhoraHost } from "@/lib/site-role";
 const SITE = SITE_URL;
 
 // eslint-disable-next-line @next/next/no-img-element
@@ -109,7 +111,14 @@ export default function CardTab() {
       const next = toBothFromShubhora(card, { photo: own?.photo });
       const p = await publishCard(next);
       if (!p.ok) { setShBusy(""); setNote(p.error || "Could not save. Please try again."); return; }
-      router.push("/poster/onboard?step=business&next=/poster/card/build");
+      // The seller set-up wrote https://shubhora.com as this account's website; their own business must not
+      // start with our site as its own. Then the set-up's website step, so their real site (if any) is asked.
+      try {
+        const sb = getBrowserSupabase();
+        const md = ((await sb?.auth.getUser())?.data.user?.user_metadata ?? {}) as { business?: Record<string, unknown> };
+        if (isShubhoraHost(String(md.business?.website ?? ""))) await sb?.auth.updateUser({ data: { business: { ...md.business, website: "" } } });
+      } catch { /* the build route ignores a shubhora.com website anyway */ }
+      router.push("/poster/onboard?step=site&next=/poster/card/build");
     } catch {
       setShBusy(""); setNote(lang === "hi" ? "Internet की दिक्कत — फिर से कोशिश करें।" : "Network issue — please try again.");
     }

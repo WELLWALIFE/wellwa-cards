@@ -5,38 +5,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_GROUPS, categoryOf } from "@/lib/poster-categories";
-
-/** Everyday words (Hinglish and common English) people type for a trade, so "mithai" finds Sweets and "parlour" finds Salon. */
-const ALIASES: Record<string, string[]> = {
-  sweets: ["mithai", "halwai", "sweet", "bakery", "cake", "namkeen"],
-  kirana: ["dukaan", "dukan", "grocery", "general store"],
-  garments: ["kapde", "kapda", "cloth", "readymade"],
-  salon: ["parlour", "parlor", "beauty", "makeup"],
-  doctor: ["clinic", "dr", "physician", "daktar"],
-  medical: ["dawai", "dawa", "chemist", "pharmacy"],
-  restaurant: ["dhaba", "khana", "food", "hotel"],
-  coaching: ["tuition", "classes"],
-  electrician: ["plumber", "ac repair", "bijli", "mistri"],
-  mobile: ["phone", "electronics", "repair"],
-  jewellery: ["sunar", "gold", "jewelry", "zevar"],
-  tailor: ["darzi", "silai", "stitching", "boutique"],
-  realestate: ["property", "plot", "flat", "dealer"],
-  auto: ["garage", "mechanic", "car", "bike"],
-  dentist: ["dant", "teeth"],
-  astro: ["jyotish", "pandit", "kundli", "vastu"],
-  travel: ["tour", "ticket", "taxi"],
-  printing: ["flex", "press", "banner"],
-  furniture: ["sofa", "decor"],
-  hardware: ["paint", "sanitary", "tiles"],
-  gym: ["yoga", "fitness"],
-  catering: ["halwai", "caterer"],
-  dairy: ["doodh", "milk"],
-  agri: ["khad", "beej", "seeds", "fertilizer"],
-  transport: ["truck"],
-  photography: ["photo studio", "wedding"],
-  event: ["tent", "dj", "decoration"],
-  tiffin: ["dabba", "home food"],
-};
+// The everyday words live with the trade guesser (the website peek uses the same list at set-up).
+import { ALIASES } from "@/lib/category-match";
 
 /**
  * True when the typed words match an everyday name of this trade: "mithai" → sweets, "parl" → salon (parlour),

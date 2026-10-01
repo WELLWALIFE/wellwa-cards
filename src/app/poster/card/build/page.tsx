@@ -29,10 +29,11 @@ import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import {
-  UPI_RE, isThinCard, mergeBuiltCard, normalizeFacts,
+  UPI_RE, isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
   type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse,
   type Missing, type MissingKey, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
+import { SITE_CARDS } from "@/lib/site-role";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -49,8 +50,9 @@ type FormBackup = { facts: CardFacts; rows: Row[]; dirty: boolean; savedAt: numb
 type FactsPatch = Partial<Omit<CardFacts, "social">> & { social?: Partial<CardFacts["social"]> };
 const emptyRow = (): Row => ({ name: "", brand: "", price: "", photo: "" });
 
-const draftKey = (uid: string) => `vcard-draft:${uid}`;
-const formKey = (uid: string) => `vcard-form:${uid}`;
+// Shared with the set-up, which drops both when the website or its role changes there.
+const draftKey = vcardDraftKey;
+const formKey = vcardFormKey;
 const PREVIEW_KEY = "vcard-preview";
 
 /* Storage is never trusted: private mode, a full disk or a WebView with cookies off all throw. */
@@ -229,6 +231,11 @@ export default function BuildCard() {
       const saved = me ? readJson<FormBackup>(formKey(me)) : null;
       const backup = saved && Date.now() - (saved.savedAt ?? 0) < 7 * DAY ? saved : null;
       let next = asFacts(backup?.dirty ? backup.facts : server.facts);
+      // The website and whose it is are answered at set-up now. A dirty backup from an earlier visit on this
+      // phone must not put the old website (or none) back over what the set-up just saved on the server.
+      if (backup?.dirty && server.facts?.website && backup.facts?.website !== server.facts.website) {
+        next = { ...next, website: server.facts.website, websiteRole: server.facts.websiteRole, dealerAssertedAt: server.facts.dealerAssertedAt ?? "" };
+      }
       if (!next.social.google && server.setup?.map) next = { ...next, social: { ...next.social, google: server.setup.map } };
       setFacts(next);
 
@@ -485,14 +492,23 @@ export default function BuildCard() {
   async function goLive(full: Card, me: string) {
     setBusy("publish");
     try {
-      const r = await publishCard(full);
+      // "Both — my business and Shubhora": the first card goes live from here without ever reaching publish(),
+      // so the hidden Shubhora page is added here too — otherwise the choice made at set-up was simply lost.
+      let out = full;
+      const addShubhora = alsoShubhora && !hasShubhoraPage(out);
+      if (addShubhora) out = withShubhoraPage(out, { visible: false });
+      const r = await publishCard(out);
       if (!r.ok) return;
+      if (addShubhora) {
+        setAlsoShubhora(false);
+        await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: null } }).catch(() => undefined);
+      }
       if (me) { dropKey(draftKey(me)); dropKey(formKey(me)); }
-      setCard((c) => (c ? { ...c, username: r.username || c.username } : c));
-      setLiveUser(r.username || full.username);
+      setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
+      setLiveUser(r.username || out.username);
       try {
         const cards = await fetchMyCardsStrict();
-        const row = cards.find((c) => c.username === (r.username || full.username));
+        const row = cards.find((c) => c.username === (r.username || out.username));
         if (row) {
           setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
@@ -597,12 +613,16 @@ export default function BuildCard() {
 
   if (state === "building") {
     const looking = rows.some((r) => r.name.trim() && r.brand.trim()) || !!(facts.website || setup?.website);
-    const stage = elapsed < 6 ? "Reading your details…" : looking && elapsed < 18 ? "Finding product details…" : "Writing your V-Card…";
+    // A website of their own (or their brand's) is read page by page — a JavaScript-built one in a real
+    // browser — and that is the slow part: say so, rather than promising a minute and taking two.
+    const readingSite = !!(facts.website && facts.websiteRole !== "reference") || (!facts.website && !!setup?.website);
+    const stage = elapsed < 6 ? "Reading your details…" : readingSite && elapsed < 90 ? "Reading your website — logo, photos, products…" : looking && elapsed < 18 ? "Finding product details…" : "Writing your V-Card…";
     return (
       <div className="py-24 grid place-items-center gap-3 text-center">
         <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
         <p className="font-semibold">{stage}</p>
-        <p className="text-sm text-muted">Usually 20-60 seconds</p>
+        <p className="text-sm text-muted">{readingSite ? "Reading your website too — up to 2 minutes. Please keep this screen open." : "Usually 20-60 seconds"}</p>
+        {readingSite && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
         <button type="button" onClick={() => { const j = jobRef.current; if (j) { j.cancelled = true; j.ctrl.abort(); } }} className="mt-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Take me back</button>
       </div>
     );
@@ -899,19 +919,23 @@ export default function BuildCard() {
           and a site they merely like gives theirs that look. */}
       <Sec id="q-site" title="Your website — or a website you like (optional)">
         <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || "e.g. sharmasweets.com"} className={field} />
-        <p className="mt-1 text-xs text-muted">No website of your own? Put in one you like the look of — we build yours in that style. Leave it empty if you would rather not.</p>
+        <p className="mt-1 text-xs text-muted">No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.</p>
         <div className="mt-3">
           <p className="text-sm font-semibold">This website is…</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
-            {([["own", "🏪 My own website"], ["dealer", "🤝 The brand's website — I am its dealer / distributor"], ["reference", "🎨 A website I like — make mine look like it"]] as const).map(([k, l]) => (
-              <button key={k} type="button" onClick={() => setF({ websiteRole: k })} className={chip(facts.websiteRole === k)}>{l}</button>
+            {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
+              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {c.t}</button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-muted">{facts.websiteRole === "dealer"
-            ? "We take only the products — names, photos and specifications. Your card keeps your own name, number and address."
-            : facts.websiteRole === "reference"
-            ? "We copy only the look — colours, fonts, layout and tone. Nothing else is taken from it: your details, prices and photos stay yours, and it is never shown as your website."
-            : "We take everything useful: your logo, shop photos, details and products."}</p>
+          <p className="mt-1 text-xs text-muted">{SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
+          {facts.websiteRole === "dealer" && !!facts.website && (
+            facts.dealerAssertedAt
+              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> Confirmed: you are this brand’s authorised dealer / distributor.</p>
+              : <label className="mt-2 flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
+                  <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
+                  <span>I am this brand’s authorised dealer / distributor and may show its product photos on my card. <span className="block text-xs text-muted">मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।</span></span>
+                </label>
+          )}
         </div>
       </Sec>
 

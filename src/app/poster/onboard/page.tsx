@@ -1,12 +1,16 @@
 "use client";
 
-// The first two steps of the setup journey, one simple screen each:
-//   1. About you      — name, mobile, photo (saved the moment "Next" is tapped)
-//   2. Your business  — kind, name, category, logo, city, address, map pin, GST (optional), a few lines about it
-// Saved once, used everywhere: the poster profile (posters, card, website) and the account (the AI reads "about").
+// The setup journey, one simple screen each (owner's call, 1 Oct 2026: the person should type as little as possible):
+//   0. About you      — name, mobile, photo; skipped when sign-up already gave them
+//   1. Card for what  — own business / sell Shubhora / both (one tap)
+//   2. Website?       — own / a brand's (dealer) / one they like / none — asked FIRST, because a site they have
+//                       fills the next screen for them (name, logo, about, city, trade), read while they look on
+//   3. Your business  — confirm what the site gave, or type the three things a card cannot do without
+// Saved once, used everywhere: the poster profile (posters, card, website), the account (the AI reads "about")
+// and the card facts (the website and whose it is).
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, ChevronDown, Layers, LoaderCircle, MapPin, Sparkles, Store } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronDown, Globe, Layers, LoaderCircle, MapPin, Sparkles, Store, TriangleAlert } from "lucide-react";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
@@ -21,6 +25,8 @@ import type { Business } from "@/lib/journey";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { useT } from "@/lib/poster-i18n";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
+import { vcardDraftKey, vcardFormKey, type FactsResponse } from "@/lib/card-facts";
+import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
 const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
 const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
@@ -29,6 +35,15 @@ const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 /** Mobile sign-ups get a made-up address like 919812345678@phone.shubhora.com — they have no real email. */
 const IS_PHONE_EMAIL = /@phone\./i;
 const LOCATION_OFF = "Location is off. Turn it on, or paste your Google Maps link later.";
+/** The website step's answer. kind "" = nothing chosen yet; the step insists on one, so a link never exists
+ *  without a role (a pasted link silently treated as "own" would import a stranger's name and products). */
+type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
+/** What /api/site/peek learned from the home page. */
+type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; products: number; category?: string; empty?: boolean };
+type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer"; data: PeekData | null };
+const NO_PEEK: PeekState = { state: "idle", url: "", role: "own", data: null };
+/** The one social / maps link that was pasted as a "website" and kept as what it is. */
+type Detour = { key: "instagram" | "facebook" | "youtube" | "map"; url: string; label: string };
 
 function Photo({ url, label, hint, round, busy, onPick }: { url?: string | null; label: string; hint: string; round?: boolean; busy: boolean; onPick: (f: File) => void }) {
   return (
@@ -49,7 +64,8 @@ function Photo({ url, label, hint, round, busy, onPick }: { url?: string | null;
 function Onboard() {
   const router = useRouter();
   const params = useSearchParams();
-  const [step, setStep] = useState<"you" | "promote" | "business">(params.get("step") === "business" ? "business" : "you");
+  type StepKey = "you" | "promote" | "site" | "business";
+  const [step, setStep] = useState<StepKey>(params.get("step") === "business" ? "business" : params.get("step") === "site" ? "site" : "you");
   const wanted = params.get("step");
   // ?next=/poster/card/build — the card (or another tool) needs these details first: no skip, and "Save" returns there.
   const next = (params.get("next") ?? "").startsWith("/") ? params.get("next")! : "";
@@ -59,7 +75,7 @@ function Onboard() {
   // button, and straight back there afterwards (owner's call, 26 Sep 2026).
   const back = (params.get("back") ?? "").startsWith("/") ? params.get("back")! : "";
   const editing = !!back;
-  useEffect(() => { if (wanted === "you" || wanted === "business" || wanted === "promote") setStep(wanted); }, [wanted]);
+  useEffect(() => { if (wanted === "you" || wanted === "business" || wanted === "promote" || wanted === "site") setStep(wanted); }, [wanted]);
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -95,6 +111,26 @@ function Onboard() {
   const [biz, setBiz] = useState<Business & { logo?: string | null; kind: "business" | "person"; role: Role; roleTouched?: boolean; reachTouched?: boolean; linkBy?: "name" | "business" }>({ kind: "business", role: "business", reach: "local" });
   /** The card link the owner picked — or, untouched, the business name for a shop and the person's name otherwise. */
   const linkBy = (): "name" | "business" => biz.linkBy ?? (biz.role === "business" && (biz.name ?? "").trim() ? "business" : "name");
+  const [uid, setUid] = useState("");
+  // ---- the website step ----
+  const [site, setSite] = useState<SiteState>({ kind: "", url: "", assertedAt: "" });
+  const [siteErr, setSiteErr] = useState("");
+  const [peek, setPeek] = useState<PeekState>(NO_PEEK);
+  /** A peek that comes back after a newer one started, or after Save, is thrown away. */
+  const peekSeq = useRef(0);
+  /** The read in flight (or last finished), so a blur followed by Next does not start the same read twice. */
+  const peekFor = useRef({ url: "", role: "", state: "" });
+  /** Fields the person typed into: a late peek result never writes over them. */
+  const touched = useRef(new Set<string>());
+  /** A social / maps link pasted as the website, waiting for "keep it as that?" */
+  const [pendingSocial, setPendingSocial] = useState<Detour | null>(null);
+  const [detours, setDetours] = useState<Detour[]>([]);
+  /** The website and role as stored when the screen opened — a change means the card must be built again. */
+  const siteAtLoad = useRef({ url: "", role: "own" });
+  const hadLiveCard = useRef(false);
+  const [youSkipped, setYouSkipped] = useState(false);
+  /** "About your business" is written by the AI once, on its own, when the name is known and it is still empty. */
+  const autoAbout = useRef(false);
   const [needEmail, setNeedEmail] = useState(false);
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState("");
@@ -138,8 +174,22 @@ function Onboard() {
       if (!(await isLoggedIn())) { router.push("/login?next=/poster/onboard"); return; }
       const sb = getBrowserSupabase();
       if (!sb) throw new Error("no session");
-      const [{ data }, prof] = await Promise.all([sb.auth.getUser(), api<{ profiles?: Profile[] }>("/api/poster/profiles")]);
+      const [{ data }, prof, fr, cards] = await Promise.all([
+        sb.auth.getUser(),
+        api<{ profiles?: Profile[] }>("/api/poster/profiles"),
+        api<FactsResponse>("/api/card/facts").catch(() => null),
+        fetchMyCardsStrict().catch(() => []),
+      ]);
       const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business };
+      setUid(data.user?.id ?? "");
+      // The website already on record: the card facts first (they know whose site it is), else the account's own
+      // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
+      const f = fr?.ok ? fr.data.facts : null;
+      const storedUrl = cleanSiteUrl(f?.website || "") || (isShubhoraHost(meta.business?.website ?? "") ? "" : cleanSiteUrl(meta.business?.website ?? ""));
+      const storedRole = f?.website ? f.websiteRole : "own";
+      siteAtLoad.current = { url: storedUrl, role: storedRole };
+      hadLiveCard.current = cards.some((c) => c.active !== false);
+      if (storedUrl) setSite({ kind: storedRole, url: storedUrl, assertedAt: f?.dealerAssertedAt ?? "" });
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
       setYou({
@@ -170,7 +220,7 @@ function Onboard() {
     try {
       const url = await uploadImage(dataUrlToFile(dataUrl, kind === "logo" ? "logo.png" : "photo.jpg"), kind);
       if (!url) { setErr("Could not upload the photo. Please try again."); return; }
-      if (kind === "photo") setYou((y) => ({ ...y, photo: url })); else setBiz((b) => ({ ...b, logo: url }));
+      if (kind === "photo") setYou((y) => ({ ...y, photo: url })); else { touch("logo"); setBiz((b) => ({ ...b, logo: url })); }
     } catch {
       setErr("Could not upload the photo. Please try again.");
     } finally {
@@ -179,9 +229,10 @@ function Onboard() {
   }
 
   /** The AI writes "About your business" from the name, the type and any notes already typed. */
-  async function writeAbout() {
+  async function writeAbout(auto = false) {
     setErr("");
-    if (!biz.name?.trim() && !biz.category) { setErr("Add the business name and what you do first — the AI writes from those."); return; }
+    if (!biz.name?.trim() && !biz.category) { if (!auto) setErr("Add the business name and what you do first — the AI writes from those."); return; }
+    if (auto && (biz.about ?? "").trim()) return;
     setBusy("about");
     try {
       const r = await fetch("/api/ai/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
@@ -189,10 +240,11 @@ function Onboard() {
         company: biz.name ?? you.name, role: categoryOf(biz.category ?? "")?.en ?? "",
       }) }).then((x) => x.json()).catch(() => ({ error: "The AI is busy. Please try again." }));
       // Never overwrite what the owner typed with canned text: no text means an honest error.
-      if (!r.text) { setErr(r.error ?? "The AI could not write it. Please type a few lines yourself."); return; }
-      setBiz((b) => ({ ...b, about: String(r.text).trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") }));
+      if (!r.text) { if (!auto) setErr(r.error ?? "The AI could not write it. Please type a few lines yourself."); return; }
+      // Written on its own: only into an about that is still empty — never over what was typed meanwhile.
+      setBiz((b) => (auto && (b.about ?? "").trim() ? b : { ...b, about: String(r.text).trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") }));
     } catch {
-      setErr("The AI could not write it. Please type a few lines yourself.");
+      if (!auto) setErr("The AI could not write it. Please type a few lines yourself.");
     } finally {
       setBusy("");
     }
@@ -302,10 +354,105 @@ function Onboard() {
       // person may well close the app in between.
       const up = await sb?.auth.updateUser({ data: { also_shubhora: true } });
       if (up?.error) { setErr("Could not save. Please try again."); return; }
-      setStep("business");
+      setStep("site");
     } catch {
       setErr("No internet — please try again.");
     } finally { setBusy(""); }
+  }
+
+  /* ================= the website step ================= */
+
+  /** "What do you do?" also decides how the card leads and how far the service goes — unless those were set by hand. */
+  const withCategory = (b: typeof biz, k: string) => {
+    const role = b.roleTouched ? b.role : roleOf(k);
+    return { ...b, category: k, role, kind: role === "business" ? "business" as const : "person" as const, reach: b.reachTouched ? b.reach : reachOf(role, k) };
+  };
+  const touch = (k: string) => { touched.current.add(k); };
+
+  /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
+  function prefill(d: PeekData) {
+    setBiz((b) => {
+      const t = touched.current;
+      let n = { ...b };
+      if (!t.has("name") && !(b.name ?? "").trim() && d.name) n.name = d.name.slice(0, 80);
+      if (!t.has("city") && !(b.city ?? "").trim() && d.city) n.city = d.city.slice(0, 60);
+      if (!t.has("address") && !(b.address ?? "").trim() && d.address) n.address = d.address.slice(0, 200);
+      if (!t.has("about") && !(b.about ?? "").trim() && d.about) n.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ");
+      if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
+      if (!t.has("category") && !b.category && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
+      return n;
+    });
+  }
+
+  /** Reads the home page while the person is still on the form: ≤45 s, one page, never blocks anything. */
+  async function startPeek(next?: SiteState) {
+    const st = next ?? site;
+    const url = cleanSiteUrl(st.url);
+    if ((st.kind !== "own" && st.kind !== "dealer") || !url || !looksLikeSite(url) || socialDetour(url) || isShubhoraHost(url)) return;
+    const same = peekFor.current.url === url && peekFor.current.role === st.kind;
+    if (same && peekFor.current.state !== "unreadable") return;
+    const seq = ++peekSeq.current;
+    const role = st.kind;
+    peekFor.current = { url, role, state: "reading" };
+    setPeek({ state: "reading", url, role, data: null });
+    const ctrl = new AbortController();
+    const guard = setTimeout(() => ctrl.abort(), 45_000);
+    try {
+      const r = await api<PeekData & { ok: boolean; reason?: string }>("/api/site/peek", { method: "POST", json: { url, role }, signal: ctrl.signal });
+      if (seq !== peekSeq.current) return;
+      if (!r.ok || !r.data.ok) {
+        const state = r.data.reason === "empty" ? "empty" : "unreadable";
+        peekFor.current = { url, role, state };
+        setPeek({ state, url, role, data: null });
+        return;
+      }
+      peekFor.current = { url, role, state: "found" };
+      setPeek({ state: "found", url, role, data: r.data });
+      if (role === "own") prefill(r.data);
+    } catch {
+      if (seq === peekSeq.current) { peekFor.current = { url, role, state: "unreadable" }; setPeek({ state: "unreadable", url, role, data: null }); }
+    } finally { clearTimeout(guard); }
+  }
+
+  function pickSite(k: SiteKind) {
+    setSiteErr(""); setPendingSocial(null);
+    const next: SiteState = { kind: k, url: k === "none" ? "" : site.url, assertedAt: k === "dealer" ? site.assertedAt : "" };
+    setSite(next);
+    if (k === "none" || k === "reference") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
+    else if (next.url) void startPeek(next);
+  }
+
+  function onUrlChange(v: string) {
+    setSiteErr("");
+    setSite((st) => ({ ...st, url: v }));
+    const d = v.trim() ? socialDetour(v) : null;
+    setPendingSocial(d ? { ...d, url: cleanSiteUrl(v) } : null);
+  }
+
+  /** "Yes, keep it as my Instagram": the link is stored where it belongs, and the website answer goes back to "none". */
+  function keepSocial() {
+    if (!pendingSocial) return;
+    const d = pendingSocial;
+    if (d.key === "map") setBiz((b) => ({ ...b, map: d.url }));
+    else setDetours((list) => [...list.filter((x) => x.key !== d.key), d]);
+    setPendingSocial(null);
+    setSite({ kind: "none", url: "", assertedAt: "" });
+    peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
+  }
+
+  function nextFromWebsite() {
+    setSiteErr("");
+    if (!site.kind) { setSiteErr(T("Pick one — do you have a website?", "पहले एक चुनें — website है या नहीं")); return; }
+    if (site.kind === "none") { setStep("business"); return; }
+    const url = cleanSiteUrl(site.url);
+    if (!site.url.trim()) { setSiteErr(T("Write the website link, e.g. sharmasweets.com — or tap ❌ No website", "website का link लिखें, जैसे sharmasweets.com — नहीं है तो ❌ नहीं है दबाएँ")); return; }
+    if (pendingSocial) { setSiteErr(T(`That is a ${pendingSocial.label} page, not a website — keep it as a ${pendingSocial.label} link, or change the link.`, `ये ${pendingSocial.label} page है, website नहीं — social link की तरह रखें, या link बदलें`)); return; }
+    if (!url || !looksLikeSite(url)) { setSiteErr(T("That does not look like a website link. For example: sharmasweets.com", "ये website का link नहीं लगता। जैसे sharmasweets.com")); return; }
+    if (isShubhoraHost(url)) { setSiteErr(T("That is Shubhora's own site — put in your business's website, or tap ❌ No website", "ये Shubhora की site है — अपने business की website डालें, या ❌ नहीं है दबाएँ")); return; }
+    if (site.kind === "dealer" && !site.assertedAt) { setSiteErr(T("Please confirm first that you are this brand's authorised dealer / distributor.", "पहले confirm करें कि आप इस brand के authorised dealer / distributor हैं।")); return; }
+    setSite((st) => ({ ...st, url }));
+    void startPeek({ ...site, url });
+    setStep("business");
   }
 
   /** 📍 Uses the phone's GPS where the owner is standing — an exact map pin, no typing. */
@@ -339,7 +486,7 @@ function Onboard() {
         ...(you.name.trim().length >= 2 ? { full_name: you.name.trim(), display_name: you.name.trim() } : {}),
         ...(digits.length === 10 ? { phone: `+91${digits}` } : {}),
         ...(you.photo ? { photo_url: you.photo } : {}),
-        ...(biz.category || bizName || city ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: (biz.website ?? "").trim(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
+        ...(biz.category || bizName || city || site.kind ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
         setup_skipped_at: new Date().toISOString(),
       } }).catch(() => undefined);
       if (!profile) {
@@ -350,10 +497,42 @@ function Onboard() {
         } });
         if (r.ok && r.data.profile) setCurrentProfileId(r.data.profile.id);
       }
+      // The website answer survives the skip (the facts route needs the profile that now exists).
+      await saveSiteFacts().catch(() => undefined);
       router.push("/poster");
     } catch {
       router.push("/poster");
     } finally { setBusy(""); }
+  }
+
+  /** The account's own website: only a site the person called their OWN. A brand's site (dealer) and a site
+   *  they merely like live in the card facts only, so the card never prints someone else's site as theirs.
+   *  When the website step was not shown this visit (?step=business), whatever was on record stays. */
+  function ownSiteUrl(): string {
+    if (!site.kind) return isShubhoraHost(biz.website ?? "") ? "" : cleanSiteUrl(biz.website ?? "");
+    return site.kind === "own" ? cleanSiteUrl(site.url) : "";
+  }
+
+  /** The website, whose it is, the dealer's confirmation and any social link kept on the way → card facts.
+   *  Nothing is written when the step was not shown. Returns true when the website or its role changed. */
+  async function saveSiteFacts(): Promise<boolean> {
+    if (!site.kind) return false;
+    const url = site.kind === "none" ? "" : cleanSiteUrl(site.url);
+    const role = toFactsRole(site.kind);
+    const facts: Record<string, unknown> = {
+      website: url, websiteRole: role,
+      dealerAssertedAt: site.kind === "dealer" && url ? site.assertedAt : "",
+    };
+    const social = Object.fromEntries(detours.filter((d) => d.key !== "map").map((d) => [d.key, d.url]));
+    if (Object.keys(social).length) facts.social = social;
+    await api("/api/card/facts", { method: "PATCH", json: { facts } });
+    const changed = url !== siteAtLoad.current.url || (url ? role : "own") !== (siteAtLoad.current.url ? siteAtLoad.current.role : "own");
+    if (changed && uid) {
+      // This phone's copy of the V-Card form would otherwise show the OLD preview again, or let a stale backup
+      // put the old website back over this one.
+      try { localStorage.removeItem(vcardDraftKey(uid)); localStorage.removeItem(vcardFormKey(uid)); } catch { /* ignore */ }
+    }
+    return changed;
   }
 
   // "About you" asks again what the sign-up form just asked (owner's call, 25 Sep 2026: too many steps). When the
@@ -363,7 +542,7 @@ function Onboard() {
   useEffect(() => {
     if (skippedYou.current || loading || wanted || autoSkip || username === undefined) return;
     skippedYou.current = true;
-    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10) setStep("promote");
+    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10) { setYouSkipped(true); setStep("promote"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, username]);
 
@@ -377,6 +556,10 @@ function Onboard() {
 
   /** Straight to the next unfinished step: products already added → make the V-Card. */
   async function nextStep(): Promise<string> {
+    // Products the website will supply are not asked for: a dealer's come from the brand's site in the build,
+    // and an own site that lists products on its home page brings them in the same way. A site that showed
+    // none (a JavaScript shell, a plain brochure site) still gets the products screen.
+    if (site.kind === "dealer" || (site.kind === "own" && peek.state === "found" && (peek.data?.products ?? 0) > 0)) return hadLiveCard.current ? "/poster/card" : "/poster/card/build";
     try {
       const r = await api<{ products?: unknown[] }>("/api/poster/products");
       return r.ok && (r.data.products?.length ?? 0) > 0 ? "/poster/card" : "/poster/products?setup=1";
@@ -400,6 +583,8 @@ function Onboard() {
     if (biz.role !== "personal" && !city) { setErr("Write your city — it is needed even for Pan India / online (where you are based)."); return; }
     const gst = (biz.gstin ?? "").trim().toUpperCase();
     if (gst && !GSTIN.test(gst)) { setErr("The GST number does not look right (15 characters, e.g. 07ABCDE1234F1Z5). Leave it empty if you don't have one."); return; }
+    const peekName = peek.state === "found" && peek.role === "own" ? (peek.data?.name ?? "").trim() : "";
+    const nameFromSite: boolean | undefined = !peekName ? undefined : bizName.toLowerCase() === peekName.toLowerCase() ? true : touched.current.has("name") ? false : undefined;
     setBusy("save");
     try {
       const before = profile;
@@ -423,16 +608,28 @@ function Onboard() {
         ...(needEmail ? { contact_email: email.trim().slice(0, 120) } : {}),
         business: {
           name: bizName, role: biz.role, reach: biz.role === "personal" ? "local" : (biz.reach ?? "local"), category: biz.category || "", gstin: gst, address: (biz.address ?? "").trim(),
-          city, about: (biz.about ?? "").trim(), website: (biz.website ?? "").trim(), map: (biz.map ?? "").trim(),
+          city, about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(),
           linkBy: bizName ? linkBy() : "name",
+          // The site's name was shown and kept → the build may keep taking the name from the site; shown and
+          // corrected → the build keeps this one. Not peeked this visit → whatever was on record.
+          ...(nameFromSite !== undefined ? { nameFromSite } : biz.nameFromSite !== undefined ? { nameFromSite: biz.nameFromSite } : {}),
         },
       } });
       if (!sb || up?.error) { setErr("Could not save your business details. Please try again."); return; }
+      // A result still on its way from the website must not land in the form after this point.
+      peekSeq.current++;
+      // Written after the profile exists (the facts route refuses before). Best effort: the build reads the
+      // website from here, but the card is made either way.
+      let siteChanged = false;
+      try { siteChanged = await saveSiteFacts(); } catch { /* the V-Card form asks again */ }
       // Keep the published V-Card in step with the setup (name, business, photo, logo, number).
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
       }).catch(() => undefined);
+      // A different website (or a different role for it) on an account that already has a live card: that card
+      // is built again from the new site — ?again=1 throws the old preview away; publishing still asks first.
+      if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1"); return; }
       router.push(next || await nextStep());
     } catch {
       setErr("Could not save your business details. Please try again.");
@@ -470,9 +667,10 @@ function Onboard() {
           </button>
         )}
       </div>
-      <div className="flex items-center gap-2 text-xs font-semibold">
-        {(["you", "promote", "business"] as const).map((k, i) => (
-          <button key={k} type="button" onClick={() => setStep(k)} className={`flex-1 rounded-full py-1.5 ${step === k ? "bg-brand text-white" : "bg-surface2 text-muted"}`}>{i + 1}. {k === "you" ? T("About you", "आपके बारे में") : k === "promote" ? T("Your card", "Card किसलिए") : T("Business", "Business")}</button>
+      <div className="flex items-center gap-1.5 text-xs font-semibold">
+        {/* The auto-skipped "About you" pill is hidden: four pills fit a 360 px phone, five do not. */}
+        {(["you", "promote", "site", "business"] as const).filter((k) => k !== "you" || !youSkipped).map((k, i) => (
+          <button key={k} type="button" onClick={() => setStep(k)} className={`min-w-0 flex-1 truncate rounded-full px-1 py-1.5 ${step === k ? "bg-brand text-white" : "bg-surface2 text-muted"}`}>{i + 1}. {k === "you" ? T("You", "आप") : k === "promote" ? T("Card for", "किसलिए") : k === "site" ? "Website" : "Business"}</button>
         ))}
       </div>
       </>}
@@ -487,7 +685,7 @@ function Onboard() {
             <p className="text-sm text-muted">{T("Pick one — you can change it later.", "एक चुनें — बाद में कभी भी बदल सकते हैं।")}</p>
           </div>
 
-          <button type="button" onClick={() => setStep("business")} disabled={!!busy}
+          <button type="button" onClick={() => setStep("site")} disabled={!!busy}
             className="w-full rounded-2xl border-2 border-brand bg-brand-soft/60 p-4 text-left disabled:opacity-60">
             <div className="flex items-start gap-3">
               <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-card"><Store className="h-6 w-6" /></span>
@@ -534,6 +732,83 @@ function Onboard() {
           </div>
           {err && <p className="text-sm text-danger">{err}</p>}
         </section>
+      ) : step === "site" ? (
+        <section className="space-y-4">
+          <div>
+            <h1 className="text-2xl font-bold">{T("Does your business have a website?", "क्या आपके business की website है?")}</h1>
+            <p className="text-sm text-muted">{T("If so, paste the link — the name, logo and products all come from it. If not, no problem.", "है तो link डालें — नाम, logo, products सब उसी से आ जाएँगे। नहीं है तो कोई बात नहीं।")}</p>
+          </div>
+
+          {SITE_CARDS.map((c) => {
+            const on = site.kind === c.k;
+            const bad = siteErr && !site.kind;
+            return (
+              <div key={c.k}>
+                <button type="button" onClick={() => pickSite(c.k)} disabled={!!busy}
+                  className={`w-full rounded-2xl border-2 p-3.5 text-left disabled:opacity-60 ${on ? "border-brand bg-brand-soft/60" : bad ? "border-danger/60 bg-surface" : "border-border bg-surface"}`}>
+                  <div className="flex items-start gap-3">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-xl shadow-card">{c.e}</span>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[15px] font-bold leading-snug">{hi ? c.th : c.t}</p>
+                      <p className="mt-0.5 text-xs text-muted">{hi ? c.sh : c.s}</p>
+                    </div>
+                    <span className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong"}`}>{on && <Check className="h-3.5 w-3.5" />}</span>
+                  </div>
+                </button>
+                {on && c.k !== "none" && (
+                  <div className="-mt-1 space-y-2.5 rounded-b-2xl border-2 border-t-0 border-brand/40 bg-surface px-3.5 pb-3.5 pt-4">
+                    <label className="block text-sm font-semibold">
+                      {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Company / brand की website का link") : T("That website's link", "उस website का link")}
+                      <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onBlur={() => startPeek()} inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                        placeholder={c.k === "dealer" ? "e.g. havells.com" : "e.g. sharmasweets.com"} className={`${field} ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                    </label>
+                    {pendingSocial ? (
+                      <div className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
+                        <p className="font-semibold"><TriangleAlert className="mr-1 inline h-4 w-4 text-amber" />{T(`That is a ${pendingSocial.label} page, not a website.`, `ये ${pendingSocial.label} page है, website नहीं।`)} {pendingSocial.key === "map" ? T("Keep it as your map pin?", "इसे map pin की तरह रखें?") : T(`Keep it as your ${pendingSocial.label} link?`, `इसे ${pendingSocial.label} link की तरह रखें?`)}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <button type="button" onClick={keepSocial} className="rounded-full grad-brand px-3.5 py-1.5 text-xs font-semibold text-white">{T("Yes, keep it", "हाँ, रखें")}</button>
+                          <button type="button" onClick={() => { setPendingSocial(null); setSite((st) => ({ ...st, url: "" })); }} className="rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold">{T("Change the link", "link बदलें")}</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <p className="text-[11px] text-muted">{T("An Instagram, Facebook, YouTube or Google-Maps link is not a website.", "Instagram / Facebook / YouTube / Google-Maps link website नहीं है।")}</p>
+                    )}
+                    {c.k === "dealer" && (
+                      <label className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm ${siteErr && site.kind === "dealer" && !site.assertedAt ? "border-danger" : "border-border bg-surface2"}`}>
+                        <input type="checkbox" checked={!!site.assertedAt} onChange={(e) => { setSiteErr(""); setSite((st) => ({ ...st, assertedAt: e.target.checked ? new Date().toISOString() : "" })); }} className="mt-0.5 h-4 w-4" />
+                        <span>{T("I am this brand's authorised dealer / distributor and may show its product photos on my card.", "मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।")}</span>
+                      </label>
+                    )}
+                    <p className="text-xs text-muted">{hi ? c.takesHi : c.takes}</p>
+                    {(c.k === "own" || c.k === "dealer") && peek.state !== "idle" && peek.role === c.k && (
+                      <p className={`flex items-start gap-1.5 text-xs font-semibold ${peek.state === "found" ? "text-good" : peek.state === "reading" ? "text-muted" : "text-amber"}`}>
+                        {peek.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : peek.state === "found" ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                        <span>
+                          {peek.state === "reading" ? T(`Reading ${hostOf(peek.url)}…`, `${hostOf(peek.url)} पढ़ रहे हैं…`)
+                            : peek.state === "found" ? `${T("Found", "मिला")}: ${[peek.data?.name || hostOf(peek.url), c.k === "own" && peek.data?.logo ? "logo" : "", peek.data?.products ? `${peek.data.products} products` : ""].filter(Boolean).join(" · ")}`
+                            : peek.state === "empty" ? T("The site opened but was empty — write the name yourself; we read it fully when the card is built.", "website खुली पर खाली है — नाम आप लिख दें, card बनाते समय पूरी पढ़ेंगे")
+                            : T("This website does not let us read it — you can go on, but nothing will come from it.", "ये website हमें पढ़ने नहीं देती — आगे बढ़ सकते हैं, पर इससे कुछ नहीं मिलेगा")}
+                        </span>
+                      </p>
+                    )}
+                    {siteAtLoad.current.url && (
+                      <button type="button" onClick={() => { setSite({ kind: "none", url: "", assertedAt: "" }); peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); setSiteErr(""); }} className="text-xs font-semibold text-muted underline">{T("Remove this website", "ये website हटाएँ")}</button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {detours.length > 0 && (
+            <p className="text-xs text-muted">{T("Kept as links", "link की तरह रखा")}: {detours.map((d) => d.label).join(", ")}</p>
+          )}
+          {siteErr && <p className="text-sm font-semibold text-danger">{siteErr}</p>}
+          {err && <p className="text-sm text-danger">{err}</p>}
+          <button type="button" onClick={nextFromWebsite} disabled={!!busy}
+            className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-70">
+            {T("Next →", "आगे बढ़ें →")}
+          </button>
+        </section>
       ) : step === "you" ? (
         <section className="space-y-4">
           {editing
@@ -551,19 +826,51 @@ function Onboard() {
         </section>
       ) : (
         <section className="space-y-4">
-          <div><h1 className="text-2xl font-bold">{T("Your business", "आपका business")}</h1><p className="text-sm text-muted">{T("Four things, about a minute. Your card, website and posters are made from them.", "बस चार बातें, लगभग एक मिनट। इन्हीं से आपका card, website और posters बनेंगे।")}</p></div>
+          {(() => {
+            const ownPeek = site.kind === "own" && peek.role === "own" ? peek : null;
+            const filled = ownPeek?.state === "found";
+            return (
+              <div>
+                <h1 className="text-2xl font-bold">{T("Your business", "आपका business")}</h1>
+                <p className="text-sm text-muted">{filled
+                  ? T("This came from your website — correct? Fix anything that is off and Save.", "Website से ये मिला — सही है? ठीक करें और Save दबाएँ।")
+                  : T("Just three things — what you do, the name, the city. Your card, website and posters are made from them.", "बस तीन बातें — काम, नाम, शहर। इन्हीं से आपका card, website और posters बनेंगे।")}</p>
+                {ownPeek && ownPeek.state !== "idle" && (
+                  <p className={`mt-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold ${filled ? "bg-good/10 text-good" : ownPeek.state === "reading" ? "bg-surface2 text-muted" : "bg-amber/10 text-amber"}`}>
+                    {ownPeek.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : filled ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                    <span>{ownPeek.state === "reading" ? T(`Reading ${hostOf(ownPeek.url)}… the fields fill in by themselves`, `${hostOf(ownPeek.url)} पढ़ रहे हैं… fields अपने आप भरेंगे`)
+                      : filled ? T("Filled from your website — have a look, fix what is wrong.", "आपकी website से भरा — देख लें, गलत हो तो ठीक करें।")
+                      : T("Could not read it — fill these in; the website is read again when the card is built.", "पढ़ नहीं पाए — ये भर दें; website card बनाते समय फिर पढ़ी जाएगी।")}</span>
+                  </p>
+                )}
+                {site.kind === "dealer" && peek.state === "found" && peek.data?.name && (
+                  <p className="mt-2 rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{T("Brand", "Brand")}: <b className="text-ink">{peek.data.name}</b>{peek.data.products ? ` · ${peek.data.products} products ${T("will come across as MRP", "MRP के साथ आएँगे")}` : ""} — {T("below, your OWN shop's name and city.", "नीचे अपनी दुकान का नाम और शहर।")}</p>
+                )}
+              </div>
+            );
+          })()}
 
           {/* 1 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}
-            <CategoryPicker value={biz.category ?? ""} onChange={(k) => setBiz((b) => { const role = b.roleTouched ? b.role : roleOf(k); return { ...b, category: k, role, kind: role === "business" ? "business" : "person", reach: b.reachTouched ? b.reach : reachOf(role, k) }; })} placeholder={T("Choose your type of business", "अपना काम चुनें")} />
+            <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => withCategory(b, k)); }} placeholder={T("Choose your type of business", "अपना काम चुनें")} />
+            {site.kind === "own" && peek.state === "found" && !!peek.data?.category && biz.category === peek.data.category && !touched.current.has("category") && (
+              <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
+            )}
           </div>
 
           {/* 2 — the name; "leads with" is worked out from 1 and changed only when wanted */}
           <label className="block text-sm font-semibold">
             {biz.role === "business" ? T("Business name", "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : T("Company / brand you promote", "Company / brand")}
             {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
-            <input value={biz.name ?? ""} onChange={(e) => setBiz({ ...biz, name: e.target.value })}
-              placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} /></label>
+            <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz({ ...biz, name: e.target.value }); }}
+              onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
+              placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} />
+            {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
+              <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
+                <span>{T("On your website", "आपकी website पर")}: <b className="text-ink">{peek.data.name}</b></span>
+                <button type="button" onClick={() => { touched.current.delete("name"); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
+              </span>
+            )}</label>
           {(() => { const r = ROLES.find((x) => x.k === biz.role) ?? ROLES[0]; return (
             <div className="-mt-2 rounded-xl bg-surface2 px-3 py-2 text-xs">
               <div className="flex items-center justify-between gap-2">
@@ -611,17 +918,17 @@ function Onboard() {
           })()}
 
           {/* 3 — city */}
-          <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")} <span className="font-normal text-muted">({T("where you are based", "जहाँ आप हैं")})</span><input value={biz.city ?? ""} onChange={(e) => setBiz({ ...biz, city: e.target.value })} placeholder="e.g. Delhi" className={field} /></label>
+          <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")} <span className="font-normal text-muted">({T("where you are based", "जहाँ आप हैं")})</span><input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
 
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
             <div className="flex items-center justify-between gap-2">
               <label htmlFor="about">{T("About your business", "आपके business के बारे में")}</label>
-              <button type="button" onClick={writeAbout} disabled={busy === "about"} className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink disabled:opacity-60">
+              <button type="button" onClick={() => writeAbout()} disabled={busy === "about"} className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink disabled:opacity-60">
                 {busy === "about" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {biz.about?.trim() ? T("Improve with AI", "AI से बेहतर करें") : T("Write with AI", "AI से लिखवाएँ")}
               </button>
             </div>
-            <textarea id="about" value={biz.about ?? ""} onChange={(e) => { const v = e.target.value; setBiz({ ...biz, about: words(v) > ABOUT_MAX_WORDS ? v.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") : v }); }} rows={4}
+            <textarea id="about" value={biz.about ?? ""} onChange={(e) => { touch("about"); const v = e.target.value; setBiz({ ...biz, about: words(v) > ABOUT_MAX_WORDS ? v.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") : v }); }} rows={4}
               placeholder={T("A few words is enough — e.g. “sweets and namkeen, home delivery” — then tap Write with AI.", "थोड़े शब्द काफ़ी हैं — जैसे “मिठाई और नमकीन, home delivery” — फिर AI से लिखवाएँ दबाएँ।")} className={field} />
             <span className="mt-1 flex justify-between gap-2 text-xs font-normal text-muted">
               <span>{T("The AI uses this for your card, website and customer replies.", "AI इसी से आपका card, website और customers के जवाब लिखता है।")}</span>
@@ -634,7 +941,7 @@ function Onboard() {
           {/* Everything else is optional — one tap away, never in the way. */}
           <details className="group rounded-2xl border border-border">
             <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-              <span>{T("More details", "और जानकारी")} <span className="font-normal text-muted">({T("optional — address, map, website, GST", "optional — पता, map, website, GST")})</span></span>
+              <span>{T("More details", "और जानकारी")} <span className="font-normal text-muted">({T("optional — address, map, GST", "optional — पता, map, GST")})</span></span>
               <ChevronDown className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
             </summary>
             <div className="space-y-4 border-t border-border p-4">
@@ -653,7 +960,7 @@ function Onboard() {
                   </div>
                 </div>
               )}
-              <label className="block text-sm font-semibold">{T("Full address", "पूरा पता")}<input value={biz.address ?? ""} onChange={(e) => setBiz({ ...biz, address: e.target.value })} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
+              <label className="block text-sm font-semibold">{T("Full address", "पूरा पता")}<input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
               {biz.map ? (
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm font-semibold text-good">
                   <CheckCircle2 className="h-4 w-4" /> <span>{T("Pinned on the map", "Map पर pin हो गया")}</span>
@@ -665,10 +972,17 @@ function Onboard() {
                   {busy === "pin" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4 text-brand" />} {T("I am at my shop — pin it on the map", "मैं अपनी दुकान पर हूँ — map पर pin करें")}
                 </button>
               )}
-              <label className="block text-sm font-semibold">{T("Website", "Website")} <span className="font-normal text-muted">({T("only if you have one", "अगर है तो")})</span>
-                <input value={biz.website ?? ""} onChange={(e) => setBiz({ ...biz, website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="e.g. sharmasweets.com" className={field} />
-                <span className="mt-1 block text-xs font-normal text-muted">{T("The AI reads it and fills your card for you.", "AI इसे पढ़कर आपका card भर देता है।")}</span>
-              </label>
+              {/* The website is asked on its own step; here it is only shown, with one way back to change it. */}
+              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
+                <Globe className="h-4 w-4 shrink-0 text-muted" />
+                <span className="font-semibold">Website:</span>
+                {site.kind && site.kind !== "none" && site.url
+                  ? <span className="min-w-0 truncate text-muted">{hostOf(site.url)} · {site.kind === "own" ? T("my own", "मेरी अपनी") : site.kind === "dealer" ? T("the brand's (dealer)", "brand की (dealer)") : T("for its look", "look के लिए")}</span>
+                  : ownSiteUrl()
+                  ? <span className="min-w-0 truncate text-muted">{hostOf(ownSiteUrl())} · {T("my own", "मेरी अपनी")}</span>
+                  : <span className="text-muted">{T("none", "नहीं है")}</span>}
+                <button type="button" onClick={() => { setSiteErr(""); setStep("site"); }} className="font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>
+              </div>
               {needEmail && (
                 <label className="block text-sm font-semibold">Email
                   <input value={email} onChange={(e) => setEmail(e.target.value.trim())} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="e.g. sharma@gmail.com" className={field} />
