@@ -33,15 +33,15 @@ async function safeUrl(raw: string): Promise<URL | null> {
 
 /** One public URL (same safety rules as the pages: no private or local addresses, redirects re-checked), at most
  *  maxBytes. `want` checks the content type: html pages, json catalogs or images. Null on any failure. */
-export async function fetchPublic(raw: string, want: "html" | "json" | "image", maxBytes = 1_500_000, timeoutMs = 10_000): Promise<{ url: string; type: string; body: Buffer } | null> {
+export async function fetchPublic(raw: string, want: "html" | "json" | "image" | "xml", maxBytes = 1_500_000, timeoutMs = 10_000): Promise<{ url: string; type: string; body: Buffer } | null> {
   let u: URL | null = await safeUrl(raw);
-  const accept = want === "html" ? "text/html" : want === "json" ? "application/json" : "image/*";
+  const accept = want === "html" ? "text/html" : want === "json" ? "application/json" : want === "xml" ? "application/xml, text/xml" : "image/*";
   for (let hop = 0; hop < 4 && u; hop++) {
     const r: Response | null = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(timeoutMs), headers: { "user-agent": "Mozilla/5.0 (compatible; ShubhoraBot/1.0; +https://shubhora.com)", accept } }).catch(() => null);
     if (!r) return null;
     if (r.status >= 300 && r.status < 400) { const loc: string | null = r.headers.get("location"); u = loc ? await safeUrl(new URL(loc, u).toString()) : null; continue; }
     const type = (r.headers.get("content-type") ?? "").toLowerCase();
-    const ok = want === "html" ? type.includes("html") : want === "json" ? type.includes("json") : type.startsWith("image/");
+    const ok = want === "html" ? type.includes("html") : want === "json" ? type.includes("json") : want === "xml" ? /xml/.test(type) : type.startsWith("image/");
     if (!r.ok || !ok) { r.body?.cancel().catch(() => undefined); return null; }
     const len = Number(r.headers.get("content-length") ?? 0);
     if (len && len > maxBytes && want !== "html") { r.body?.cancel().catch(() => undefined); return null; }

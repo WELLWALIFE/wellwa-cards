@@ -203,18 +203,97 @@ export function categoryLinks(html: string, base: string): { label: string; url:
   return out;
 }
 
+/** A page address that is one product: /product/kaju-katli, /product/premium-sweets/kaju-katli (haldirams.com —
+ *  the old one-segment rule missed every product there), /collections/x/products/y (Shopify), /product-page/y
+ *  (Wix), /shop/sweets/kaju-katli, /item/… — never a cart, account, category or listing page. */
+const NOT_PRODUCT = /\/(cart|checkout|account|login|register|wishlist|compare|search|blog|news|tag|tags|page|category|categories|product-category|collections?)\/?$|\/(cart|checkout|account|login|wishlist|search|blog|tag|tags)\//i;
+function isProductPath(p: string): boolean {
+  if (NOT_PRODUCT.test(p)) return false;
+  if (/\/(products?|product-page|item|items|p|pd|dp)\/[^/?#]+(\/[^/?#]+){0,2}\/?$/i.test(p)) return true;
+  if (/\/collections\/[^/]+\/products\/[^/?#]+\/?$/i.test(p)) return true;
+  if (/\/shop\/[^/]+\/[^/?#]+\/?$/i.test(p)) return true;            // /shop/<range>/<item>; /shop/<range> alone is a listing
+  return false;
+}
+
 /** Product page links on this site (Shopify / WooCommerce / most shop themes). */
-function productLinks(html: string, base: string): string[] {
-  const origin = new URL(base).origin;
+function productLinks(html: string, base: string, max = MAX_PRODUCTS): string[] {
+  let origin: string;
+  try { origin = new URL(base).origin; } catch { return []; }
   const out = new Set<string>();
   for (const m of html.matchAll(/<a\b[^>]+href=["']([^"'#]+)["']/gi)) {
     const u = absolute(m[1], base);
-    if (!u || new URL(u).origin !== origin) continue;
-    const p = new URL(u).pathname;
-    if (/\/(products?|shop|item|items|p)\/[^/]+\/?$/i.test(p) && !/\/(cart|checkout|account|category|categories|collections?|tag)\//i.test(p)) out.add(u.split("?")[0]);
-    if (out.size >= MAX_PRODUCTS) break;
+    if (!u) continue;
+    let p: URL;
+    try { p = new URL(u); } catch { continue; }
+    if (p.origin !== origin || !isProductPath(p.pathname)) continue;
+    out.add(`${p.origin}${p.pathname}`);
+    if (out.size >= max) break;
   }
   return [...out];
+}
+
+const PRICE_RE = /(?:₹|&#8377;|rs\.?|inr|mrp)\s*:?\s*([\d,]{2,9}(?:\.\d{1,2})?)/i;
+
+/** Products as a listing page shows them: a card with a picture, a name and a price, linked to the item. Most
+ *  Indian shop sites (and every Shopify / Woo theme) render their ranges this way, and many have nothing else —
+ *  no JSON-LD, no catalog JSON — so this is where the products actually are. */
+export function cardsFromHtml(html: string, base: string): SiteProduct[] {
+  let origin: string;
+  try { origin = new URL(base).origin; } catch { return []; }
+  const out = new Map<string, SiteProduct>();
+  // Anchors with content: an <a …>…</a> that wraps a picture and a price (cards are usually one big link), or a
+  // short block right around such an anchor.
+  for (const m of html.matchAll(/<a\b([^>]*?)>([\s\S]{40,2500}?)<\/a>/gi)) {
+    const href = attr(` ${m[1]}`, "href");
+    const url = absolute(href, base);
+    if (!url) continue;
+    let p: URL;
+    try { p = new URL(url); } catch { continue; }
+    if (p.origin !== origin || NOT_PRODUCT.test(p.pathname)) continue;
+    const inner = m[2];
+    const img = inner.match(/<img\b[^>]*>/i)?.[0] ?? "";
+    if (!img) continue;
+    // The price may sit just after the link (Woo themes close the <a> before the price): look a little past it.
+    const after = html.slice((m.index ?? 0) + m[0].length, (m.index ?? 0) + m[0].length + 400);
+    const priceM = txt(inner, 3000).match(PRICE_RE) ?? txt(after, 400).match(PRICE_RE);
+    if (!priceM) continue;
+    const price = money(priceM[1]);
+    if (!price) continue;
+    const src = biggestFromSrcset(attr(img, "srcset") || attr(img, "data-srcset")) || attr(img, "data-src") || attr(img, "data-lazy-src") || attr(img, "src");
+    const image = absolute(src, base);
+    if (!image || JUNK_IMG.test(image)) continue;
+    const alt = txt(attr(img, "alt"), 80);
+    const heading = txt(inner.match(/<(?:h[1-6]|p|span|div)\b[^>]*(?:class=["'][^"']*(?:title|name|product)[^"']*["'])[^>]*>([\s\S]*?)<\/(?:h[1-6]|p|span|div)>/i)?.[1], 80)
+      || txt(inner.match(/<h[1-6]\b[^>]*>([\s\S]*?)<\/h[1-6]>/i)?.[1], 80);
+    const text = txt(inner, 400).replace(PRICE_RE, "").replace(/\b(add to cart|buy now|quick view|sale|new|out of stock|select options)\b/gi, "").replace(/\s+/g, " ").trim();
+    const name = (heading || (alt && !/logo|icon|banner/i.test(alt) ? alt : "") || text).slice(0, 80).trim();
+    if (name.length < 2 || /^(₹|rs)/i.test(name)) continue;
+    const mrpM = txt(inner, 3000).match(/(?:mrp|m\.r\.p|<del|<s\b|line-through)[^₹\d]{0,40}(?:₹|rs\.?)\s*([\d,]+(?:\.\d{1,2})?)/i);
+    const mrp = mrpM ? money(mrpM[1]) : "";
+    const key = `${p.origin}${p.pathname}`;
+    if (!out.has(key)) out.set(key, { name, price, mrp: mrp && mrp !== price ? mrp : "", description: "", specs: [], images: [image], url: key });
+    if (out.size >= MAX_PRODUCTS * 2) break;
+  }
+  return [...out.values()];
+}
+
+/** Product addresses from the site's sitemap, for sites whose menus are built in JavaScript or hide the shop
+ *  behind a search. A sitemap index is followed into its product sitemap(s). Cheap: XML only. */
+async function sitemapProducts(origin: string): Promise<string[]> {
+  const readXml = async (u: string) => {
+    const r = await fetchPublic(u, "xml", 2_000_000, 8_000).catch(() => null);
+    return r ? r.body.toString("utf8") : "";
+  };
+  const locs = (xml: string) => [...xml.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map((m) => m[1].replace(/&amp;/g, "&"));
+  const root = await readXml(`${origin}/sitemap.xml`);
+  if (!root) return [];
+  let urls = locs(root);
+  if (/<sitemapindex/i.test(root)) {
+    const subs = urls.filter((u) => /product/i.test(u)).slice(0, 2);
+    const more = await Promise.all(subs.map(readXml));
+    urls = more.flatMap(locs);
+  }
+  return urls.filter((u) => { try { const p = new URL(u); return p.origin === origin && isProductPath(p.pathname); } catch { return false; } }).slice(0, MAX_PRODUCTS);
 }
 
 async function shopify(origin: string): Promise<SiteProduct[]> {
@@ -253,17 +332,45 @@ async function woo(origin: string): Promise<SiteProduct[]> {
   } catch { return []; }
 }
 
-async function productPage(url: string): Promise<SiteProduct | null> {
+/** A product's price when the page has no price meta: microdata, the storefront's own JSON (Shopify's MoneyV2
+ *  "amount" / a "price": field — headless Shopify stores such as haldirams.com carry every price only there),
+ *  then the first rupee amount in the page text. */
+function priceFromHtml(html: string): string {
+  const micro = html.match(/itemprop=["']price["'][^>]*content=["']([\d.,]+)["']/i)?.[1] ?? html.match(/content=["']([\d.,]+)["'][^>]*itemprop=["']price["']/i)?.[1];
+  if (micro && money(micro)) return money(micro);
+  const money2 = html.match(/\\?"amount\\?":\\?"([\d.]+)\\?",\\?"currencyCode\\?":\\?"INR/i)?.[1];
+  if (money2 && money(money2)) return money(money2);
+  const json = html.match(/\\?"price\\?":\s*\\?"?([\d.]+)/i)?.[1];
+  if (json && money(json)) return money(json);
+  const text = txt(html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>/gi, " "), 20000);
+  for (const m of text.matchAll(/₹\s*([\d,]{2,9}(?:\.\d{1,2})?)/g)) { const v = money(m[1]); if (v) return v; }
+  return "";
+}
+
+/** "Kaju Katli – Premium Cashew Fudge Sweet | Haldiram's" → "Kaju Katli": the brand suffix a title carries and the
+ *  search-engine tail after a dash are not the product's name. */
+function cleanProductName(name: string, siteName: string): string {
+  let n = txt(name, 120);
+  const brand = siteName.trim().toLowerCase();
+  const parts = n.split(/\s+[|•·]\s+/);
+  if (parts.length > 1 && brand && parts[parts.length - 1].trim().toLowerCase().replace(/[’']/g, "") === brand.replace(/[’']/g, "")) parts.pop();
+  n = parts[0].trim();
+  const dash = n.split(/\s+[–—]\s+|\s+-\s+/);
+  if (dash.length > 1 && dash[0].trim().length >= 3) n = dash[0].trim();
+  return n.slice(0, 80);
+}
+
+async function productPage(url: string, siteName = ""): Promise<SiteProduct | null> {
   const pg = await page(url);
   if (!pg) return null;
   const ld = jsonLd(pg.html).filter((o) => isType(o, /^Product$/i)).map((o) => productFromLd(o, pg.url)).find(Boolean) ?? null;
   const specs = specsFromHtml(pg.html);
-  if (ld) return { ...ld, specs: [...new Set([...ld.specs, ...specs])].slice(0, 10), images: ld.images.length ? ld.images : [absolute(meta(pg.html, "og:image"), pg.url)].filter((x): x is string => !!x) };
+  if (ld) return { ...ld, name: cleanProductName(ld.name, siteName), price: ld.price || priceFromHtml(pg.html), specs: [...new Set([...ld.specs, ...specs])].slice(0, 10), images: ld.images.length ? ld.images : [absolute(meta(pg.html, "og:image"), pg.url)].filter((x): x is string => !!x) };
   const name = meta(pg.html, "og:title") || txt(pg.html.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i)?.[1], 80);
   const img = absolute(meta(pg.html, "og:image"), pg.url);
   if (!name || !img) return null;
   return {
-    name: txt(name, 80), price: money(meta(pg.html, "product:price:amount") || meta(pg.html, "og:price:amount")), mrp: "",
+    name: cleanProductName(name, siteName), price: money(meta(pg.html, "product:price:amount") || meta(pg.html, "og:price:amount")) || priceFromHtml(pg.html), mrp: "",
     description: meta(pg.html, "og:description") || meta(pg.html, "description"), specs, images: [img], url: pg.url,
   };
 }
@@ -356,6 +463,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
   if (desc) facts.push(`Website description: ${desc}`);
   const cats = categoryLinks(home.html, home.url);
   if (cats.length) facts.push(`Ranges / categories on the website: ${cats.map((c) => c.label).join(", ")}`);
+  const siteNameOfHome = siteName(home.html, org);
 
   // Products: structured data on the home page → shop catalogs → product pages.
   const byName = new Map<string, SiteProduct>();
@@ -367,11 +475,26 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
   const [sh, wc] = await Promise.all([shopify(origin), woo(origin)]);
   [...sh, ...wc].forEach(add);
   if (byName.size < MAX_PRODUCTS) {
-    // The products / shop page often lists more than the home page does.
-    const listing = await Promise.all(["/products", "/shop", "/our-products", "/product"].map((p) => page(`${origin}${p}`)));
-    const links = [...new Set([home, ...listing].flatMap((pg) => (pg ? productLinks(pg.html, pg.url) : [])))].slice(0, MAX_PRODUCTS);
-    const pages = await Promise.all(links.slice(0, MAX_PRODUCTS - byName.size).map((u) => productPage(u).catch(() => null)));
-    pages.forEach(add);
+    // The products / shop page often lists more than the home page does — and so do the site's own range /
+    // category pages (Sweets, Namkeen, Gift Hampers…), which haldirams.com-style sites link from the header.
+    const cats = categoryLinks(home.html, home.url).slice(0, 5);
+    const listing = await Promise.all([...["/products", "/shop", "/our-products", "/product", "/collections/all"].map((p) => `${origin}${p}`), ...cats.map((c) => c.url)]
+      .map((u) => page(u).catch(() => null)));
+    const read = [home, ...listing].filter((pg): pg is NonNullable<typeof pg> => !!pg);
+    // 1. the listing cards themselves (name + price + picture): on most Indian shop sites this is all there is
+    const cards = read.flatMap((pg) => cardsFromHtml(pg.html, pg.url));
+    // 2. the product pages those cards (and any other product links) point at — richer: description, specs, MRP
+    let links = [...new Set([...cards.map((c) => c.url), ...read.flatMap((pg) => productLinks(pg.html, pg.url))])];
+    if (!links.length && !cards.length) links = await sitemapProducts(origin).catch(() => []);
+    const pages = await pool(links.slice(0, MAX_PRODUCTS - byName.size), 4, (u) => productPage(u, siteNameOfHome).catch(() => null));
+    const byUrl = new Map(pages.filter((x): x is SiteProduct => !!x).map((x) => [x.url.split("?")[0], x]));
+    for (const u of links) { const pg = byUrl.get(u.split("?")[0]); if (pg) add(pg); }
+    // A card whose page gave nothing (no og / JSON-LD) still counts: its name, price and picture are real.
+    for (const c of cards) {
+      const have = byName.get(c.name.toLowerCase());
+      if (have) { if (!have.price && c.price) have.price = c.price; if (!have.images.length) have.images = c.images; continue; }
+      add(c);
+    }
   }
 
   // Pictures: og:image and hero banners first, then the big photos of home, about and gallery pages.
@@ -384,7 +507,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
 
   return {
     url: home.url,
-    name: siteName(home.html, org),
+    name: siteNameOfHome,
     logo: logoOf(home.html, home.url, ld),
     covers, gallery,
     products: [...byName.values()],
