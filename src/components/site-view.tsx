@@ -21,6 +21,7 @@ import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
 import { siteDesign } from "@/lib/site-style";
+import { cardProducts } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, trustFacts, type HomeSection } from "@/lib/site-home";
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
@@ -126,7 +127,9 @@ function useReveal(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]
 export type SiteUpdate = { date: string; url: string; title: string; caption?: string | null };
 const UPDATES = "updates";
 
-export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, updates = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; updates?: SiteUpdate[] }) {
+export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; updates?: SiteUpdate[];
+  /** Pages that are reachable at their own address but are not in the menu — a product's own page. */
+  unlisted?: string[] }) {
   // The website wears its own design: palette (or the card's colour), fonts (or the card look's), corners.
   const look = lookOf(card.template);
   const design = siteDesign(card, look);
@@ -156,7 +159,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const heroImg = hero?.imageUrl === undefined ? firstProductPhoto(card) : hero.imageUrl || undefined;
   const isHome = page?.slug === "home";
   const MAX_NAV = 6;
-  const navMain = pages.slice(0, MAX_NAV), navMore = pages.slice(MAX_NAV);
+  // A product's own page is reached from a product card or from search, never from the menu.
+  const unlistedSet = new Set(unlisted);
+  const navPages = pages.filter((p) => !unlistedSet.has(p.slug));
+  const navMain = navPages.slice(0, MAX_NAV), navMore = navPages.slice(MAX_NAV);
   const avatarCls = card.avatarShape === "square" ? "rounded-xl object-contain bg-white p-0.5" : "rounded-full object-cover bg-white";
   const logo = card.site?.logoUrl;                  // website logo (desktop settings); falls back to the card avatar
   const L = useCardLang(card.username);
@@ -246,7 +252,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // reviews or FAQ preview carries its own "see all"; a services block on the home links to its page).
   const previewed = new Set(sections.filter((s) => s.kind !== "block").map((s) => (s as { page: string }).page));
   const homeKinds = new Set((pages.find((p) => p.slug === "home")?.blocks ?? []).map((b) => b.kind));
-  const explorePages = pages.filter((p) => p.slug !== first && p.slug !== "contact" && !previewed.has(p.slug) && !(p.slug === "services" && homeKinds.has("services")));
+  const explorePages = navPages.filter((p) => p.slug !== first && p.slug !== "contact" && !previewed.has(p.slug) && !(p.slug === "services" && homeKinds.has("services")));
   // The footer prints each way of reaching the business once: the same number as WhatsApp AND Call was two
   // identical lines, which read as a mistake.
   const digitsOf = (v: string) => (v ?? "").replace(/\D/g, "").slice(-10);
@@ -525,7 +531,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           <div>
             <p className="text-[12px] font-semibold tracking-[0.16em] uppercase opacity-70">{t("Pages")}</p>
             <ul className="mt-4 space-y-2.5">
-              {pages.map((p) => <li key={p.id}><a href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`opacity-85 hover:opacity-100 rounded ${FOCUS}`}>{t(p.label)}</a></li>)}
+              {navPages.map((p) => <li key={p.id}><a href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`opacity-85 hover:opacity-100 rounded ${FOCUS}`}>{t(p.label)}</a></li>)}
             </ul>
           </div>
           <div>
@@ -957,8 +963,12 @@ function OfferCode({ code }: { code: string }) {
 type Zoom = { images: string[]; i: number; alt: string } | null;
 const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.imageUrl] : [])].filter((u, j, a) => u && a.indexOf(u) === j).slice(0, 3);
 
-function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3 }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4 }) {
+function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void }) {
   const t = useT();
+  // Each product has an address of its own (/p-kaju-katli): a link the owner can send by itself, and a page
+  // search can index. On the product's own page there is nothing to link to.
+  const addressOf = new Map(cardProducts(card).map((x) => [x.item, x.slug]));
+  const single = items.length === 1;
   // No photo anywhere in the block: compact cards without an empty picture area.
   const compact = !items.some((p) => galleryOf(p).length > 0);
   return (
@@ -1000,7 +1010,13 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3 
                   {discount && <span className="rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white">{discount}% OFF</span>}
                 </div>
               )}
-              <h3 className="text-[17px] font-semibold">{t(p.name)}</h3>
+              {(() => {
+                const slug = addressOf.get(p);
+                const title = <h3 className="text-[17px] font-semibold">{t(p.name)}</h3>;
+                return slug && hrefFor && go && !single
+                  ? <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); go(slug); }} className={`rounded ${FOCUS}`}>{title}</a>
+                  : title;
+              })()}
               {p.desc && <p className="mt-1.5 text-muted text-[15px] leading-relaxed">{t(p.desc)}</p>}
               {features.length > 0 && <ul className="mt-4 space-y-1.5 text-[15px]">{features.slice(0, 5).map((f, j) => <li key={j} className="flex items-start gap-2"><Check className="h-4 w-4 mt-1 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
               {specs.length > 0 && (
@@ -1017,7 +1033,15 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3 
                     {saved && <span className="block text-xs font-medium" style={{ color: "var(--tc)" }}>You save ₹{saved.toLocaleString("en-IN")}</span>}
                   </p>
                 )}
-                {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`w-full ${BTN} px-5 py-3 text-sm ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
+                <div className="flex gap-2">
+                  {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`flex-1 ${BTN} px-5 py-3 text-sm ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
+                  {(() => {
+                    const slug = addressOf.get(p);
+                    return slug && hrefFor && go && !single
+                      ? <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); go(slug); }} aria-label={t("Open this product")} className={`grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border border-border ${FOCUS}`}><ArrowRight className="h-4 w-4" /></a>
+                      : null;
+                  })()}
+                </div>
               </div>
             </div>
           </div>
@@ -1039,7 +1063,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "प्रोडक्ट" : t("Products")} title={t(s.title)}
           aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} प्रोडक्ट` : t(`All ${s.total} products`)}</SeeAll> : undefined}>
-          <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} />
+          <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} />
           {lightbox}
         </Section>
       );
@@ -1127,7 +1151,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
   }
 }
 
-function SiteBlock({ block, index, card, theme, ink, waHref, go, links }: RunProps & { block: CardBlock }) {
+function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor }: RunProps & { block: CardBlock }) {
   const t = useT();
   const hi = card.language === "hi";
   const [zoom, setZoom] = useState<Zoom>(null);
@@ -1149,7 +1173,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links }: RunPro
     case "product":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} />
+          <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} />
           {lightbox}
         </Section>
       );

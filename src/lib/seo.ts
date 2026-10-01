@@ -4,6 +4,7 @@
 // crawlable page URLs, and a Google Business Profile. This file does the first four; the owner links the fifth.
 import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { schemaTypeFor } from "@/lib/site-recipes";
+import type { ProductItem } from "@/lib/types";
 
 export type SeoFacts = {
   business: string; person: string; category: string; city: string; areas: string[];
@@ -167,7 +168,7 @@ export function cardPin(card: Card): { lat: number; lng: number } | null {
 }
 
 /** Structured data Google reads for local results: the business, its catalogue, FAQ and the page path. */
-export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page?: CardPage | null }) {
+export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page?: CardPage | null; product?: ProductItem | null }) {
   const f = seoFacts(card);
   const sameAs = card.links.filter((l) => ["instagram", "facebook", "linkedin", "youtube", "website"].includes(l.type)).map((l) => l.value).filter((v) => /^https?:\/\//.test(v));
   // A shop or firm (has a company name or a business type) is a LocalBusiness; a lone professional is a Person.
@@ -223,6 +224,23 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
   const faqPage = opts.page ?? card.pages[0];
   const faqs = (faqPage?.blocks ?? []).filter((b): b is Extract<CardBlock, { kind: "faq" }> => b.kind === "faq").flatMap((b) => b.items).filter((i) => i.q && i.a);
   if (faqs.length) graph.push({ "@type": "FAQPage", mainEntity: faqs.slice(0, 20).map((i) => ({ "@type": "Question", name: i.q, acceptedAnswer: { "@type": "Answer", text: i.a } })) });
+  // One product at its own address is a Product, not just a page of the business: name, picture, price and
+  // who sells it, so it can win a result of its own.
+  const prod = opts.product;
+  if (prod) {
+    const pic = [prod.imageUrl, ...(prod.images ?? [])].filter((u): u is string => !!u && /^https?:\/\//.test(u)).slice(0, 4);
+    const amount = price(prod.price);
+    graph.push({
+      "@type": "Product",
+      "@id": `${opts.url}#product`,
+      name: cut(clean(prod.name), 120),
+      ...(prod.desc ? { description: cut(clean(prod.desc), 300) } : {}),
+      ...(pic.length ? { image: pic } : {}),
+      ...(prod.features?.length ? { additionalProperty: prod.features.slice(0, 8).map((v) => ({ "@type": "PropertyValue", name: "Feature", value: cut(clean(v), 120) })) } : {}),
+      brand: { "@type": "Brand", name: f.business },
+      ...(amount ? { offers: { "@type": "Offer", price: amount, priceCurrency: "INR", availability: "https://schema.org/InStock", url: opts.url, seller: { "@id": `${opts.homeUrl}#business` } } } : {}),
+    });
+  }
   if (opts.page && opts.page !== card.pages[0] && opts.page.slug !== "home") {
     graph.push({ "@type": "BreadcrumbList", itemListElement: [
       { "@type": "ListItem", position: 1, name: f.business, item: opts.homeUrl },

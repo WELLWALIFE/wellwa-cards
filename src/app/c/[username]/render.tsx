@@ -18,6 +18,7 @@ import { seoDescription, seoJsonLd, seoKeywords, seoTitle } from "@/lib/seo";
 import type { Card, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
+import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 
 // With a real database connected, the cloud is the only source of truth — a
 // card that was deleted must 404, not silently fall back to built-in demo data.
@@ -49,13 +50,23 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
   if (await fetchCardPaused(card.username)) {
     return { title: { absolute: `${card.lead === "business" && card.company ? card.company : card.name} — card paused` }, robots: { index: false, follow: false } };
   }
-  const page = pageOf(card, slug);
+  // One product at its own address: its own title, its own description, its own picture in a share preview.
+  const product = findProduct(card, slug);
+  const page = product ? productPageOf(product) : pageOf(card, slug);
   const { brand, home } = await addresses(card);
   const updates = slug === "updates" && !page;
-  const title = updates ? `Updates — ${seoTitle(card).split(" – ")[0]}` : seoTitle(card, page);
-  const description = seoDescription(card, page);
-  const url = urlFor(home, card, page);
-  const ogImage = `${home.replace(/\/c\/[^/]+$/, "")}/c/${card.username}/opengraph-image`;
+  const business = seoTitle(card).split(" – ")[0];
+  const title = product
+    ? `${product.item.name}${product.item.price ? ` — ${product.item.price}` : ""} | ${business}`.slice(0, 70)
+    : updates ? `Updates — ${business}` : seoTitle(card, page);
+  const description = product
+    ? [product.item.desc, product.item.price && `Price ${product.item.price}.`, `Order from ${business}${card.seo?.city ? `, ${card.seo.city}` : ""} on WhatsApp.`].filter(Boolean).join(" ").slice(0, 155)
+    : seoDescription(card, page);
+  const url = product ? `${home}/${product.slug}` : urlFor(home, card, page);
+  const productPic = product?.item.images?.[0] || product?.item.imageUrl;
+  const ogImage = productPic && /^https?:\/\//.test(productPic)
+    ? productPic
+    : `${home.replace(/\/c\/[^/]+$/, "")}/c/${card.username}/opengraph-image`;
   return {
     title: { absolute: title },
     description,
@@ -92,7 +103,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
       />
     );
   }
-  const page = pageOf(card, slug);
+  const product = findProduct(card, slug);
+  const page = product ? productPageOf(product) : pageOf(card, slug);
 
   await countCardView(username);
 
@@ -116,10 +128,16 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const shareUrl = home;
   const qr = await qrDataUrl(shareUrl, card.themeColor);
   // The AI assistant's instructions stay on the server (the chat route reads them itself).
-  const pub = { ...card, botPersona: undefined, botKnowledge: undefined };
-  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd(card, { url: urlFor(home, card, page), homeUrl: home, page })).replace(/</g, "\\u003c") }} />;
+  // A product's page is added to the card for this request only, and kept out of the menu — the visitor came
+  // to it from a product card or from search, and the rest of the site stays where it was.
+  const pub = product
+    ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, page!] }
+    : { ...card, botPersona: undefined, botKnowledge: undefined };
+  const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd(card, { url: product ? `${home}/${product.slug}` : urlFor(home, card, page), homeUrl: home, page, product: product?.item })).replace(/</g, "\\u003c") }} />;
   // "updates" is the website's own page (recent posters), not one of the card's pages.
   const initialPage = page?.slug ?? (slug === "updates" ? "updates" : undefined);
+  // A product page only exists on the website; a phone visitor is shown the products page of the card.
+  if (product && view !== "site") return <CardPageView username={username} slug={product.page} viewParam={viewParam} />;
 
   if (view === "site") {
     return (
@@ -133,7 +151,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
             <a href={`${SITE_URL}/poster/plan`} className="rounded-full bg-white px-3 py-1 font-semibold text-[#12144a]">Go live</a>
           </div>
         )}
-        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} />
+        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
         <PixelNotice active={tracked} />
       </>
     );
