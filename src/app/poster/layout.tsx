@@ -4,6 +4,7 @@ import { NativeBridge } from "@/components/poster/native-bridge";
 import { TopMenu } from "@/components/poster/top-menu";
 import { BackBar } from "@/components/poster/back-bar";
 import { SetupResume } from "@/components/setup-resume";
+import { HelpDock } from "@/components/poster/help-dock";
 import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
 import { BrandProvider } from "@/components/brand-context";
@@ -29,6 +30,8 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           <TopMenu />
           <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem)" }}><BackBar />{children}<SetupResume variant="float" /></main>
           <PosterNav />
+          {/* One Help button on every screen, and the live-help session behind it. */}
+          <HelpDock />
           <NativeBridge />
         </div>
       </UiLangProvider>

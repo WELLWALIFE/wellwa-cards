@@ -8,7 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, IndianRupee, Globe, ArrowLeft, Bot, LayoutTemplate, Building2, Wallet,
-  Image as ImageIcon, Bell, UserCog, Sparkles, Menu, X, Settings, type LucideIcon,
+  Image as ImageIcon, Bell, UserCog, Sparkles, Menu, X, Settings, Headset, type LucideIcon,
 } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { AdminGate } from "@/components/admin-gate";
@@ -21,6 +21,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { href: "/admin/users", label: "Users", icon: Users },
     { href: "/admin/staff", label: "Staff (sub admins)", icon: UserCog },
     { href: "/admin/cards", label: "Cards", icon: CreditCard },
+    { href: "/admin/support", label: "Live help", icon: Headset },
   ] },
   { title: "Money", items: [
     { href: "/admin/wallets", label: "Funds", icon: Wallet },
