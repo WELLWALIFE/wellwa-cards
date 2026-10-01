@@ -32,7 +32,7 @@ const SCREENS: Record<string, HelpScreen> = {
     title: { hi: "आपका app", en: "Your app" },
     what: { hi: "यहाँ से सब कुछ खुलता है — आज का poster, आपका card, website, leads और plan।", en: "Everything opens from here — today's poster, your card, website, leads and plan." },
     steps: [
-      { hi: "सबसे पहले अपना card बनाएँ — नीचे “My V-Card” दबाएँ।", en: "Make your card first — tap “My V-Card” below." },
+      { hi: "सबसे पहले अपनी website बनाएँ — उसी से आपका card भी बन जाता है।", en: "Build your website first — your card comes from it." },
       { hi: "फिर आज का poster बनाकर WhatsApp पर share करें।", en: "Then make today's poster and share it on WhatsApp." },
       { hi: "जो भी आपका link खोलेगा, उसकी lead “Leads” में आ जाएगी।", en: "Anyone who opens your link shows up under “Leads”." },
     ],
@@ -49,14 +49,14 @@ const SCREENS: Record<string, HelpScreen> = {
     video: CARD_VIDEO,
   },
   "/poster/card/build": {
-    title: { hi: "AI से card बनाना", en: "Building the card with AI" },
-    what: { hi: "आपकी जानकारी से AI पूरा card लिख देता है — about, services, FAQ सब। आपको सिर्फ़ देखना और ठीक करना है।", en: "The AI writes the whole card from your details — about, services, FAQ. You only look it over and fix what's off." },
+    title: { hi: "AI से website बनाना", en: "Building the website with AI" },
+    what: { hi: "आपकी जानकारी से AI पूरी website लिख देता है — about, services, products, FAQ सब। उसी link से phone पर आपका card बन जाता है। आपको सिर्फ़ देखना और ठीक करना है।", en: "The AI writes your whole website from your details — about, services, products, FAQ. The same link is your card on a phone. You only look it over and fix what's off." },
     steps: [
       { hi: "सवालों के जवाब भरें — जितना सही भरेंगे, card उतना अच्छा बनेगा।", en: "Answer the questions — the better they are, the better the card." },
       { hi: "“बनाएँ” दबाकर 30 second रुकें, फिर preview देखें।", en: "Tap build, wait about 30 seconds, then look at the preview." },
-      { hi: "ठीक लगे तो Publish — आपका link live हो जाएगा।", en: "Happy with it? Publish — your link goes live." },
+      { hi: "ठीक लगे तो Publish — website live, और card भी उसी के साथ।", en: "Happy with it? Publish — the website goes live, and the card with it." },
     ],
-    mistake: { hi: "preview देखकर Publish दबाना भूल जाना — बिना Publish किए card live नहीं होता।", en: "Looking at the preview and forgetting to Publish — the card is not live until you do." },
+    mistake: { hi: "preview देखकर Publish दबाना भूल जाना — बिना Publish किए कुछ live नहीं होता।", en: "Looking at the preview and forgetting to Publish — nothing is live until you do." },
     video: CARD_VIDEO,
   },
   "/poster/card/looks": {
@@ -89,12 +89,13 @@ const SCREENS: Record<string, HelpScreen> = {
   },
   "/poster/website": {
     title: { hi: "आपकी website", en: "Your website" },
-    what: { hi: "वही link computer पर पूरी website की तरह खुलता है। अलग से कुछ बनाना नहीं पड़ता।", en: "The same link opens as a full website on a computer. Nothing separate to build." },
+    what: { hi: "ये आपकी website है। computer पर यही link पूरी website खोलता है, phone पर यही आपका card बन जाता है।", en: "This is your website. On a computer this link opens the full site; on a phone the same link is your card." },
     steps: [
-      { hi: "preview देखें कि computer पर कैसी दिखेगी।", en: "Look at the preview to see how it opens on a computer." },
-      { hi: "बदलना हो तो “Edit” से heading और photo बदलें।", en: "Use Edit to change the headline and photos." },
+      { hi: "“Website देखें” से देखें कि computer पर कैसी दिखती है।", en: "“See the website” shows how it opens on a computer." },
+      { hi: "“Website edit करें” — रंग, fonts, hero, sections का क्रम, pages।", en: "“Edit the website” — colours, fonts, hero, section order, pages." },
+      { hi: "Text, products, photos बदलने हों तो “Card edit करें” — वो दोनों जगह बदलते हैं।", en: "To change text, products or photos use “Edit card” — they change in both." },
     ],
-    mistake: { hi: "ये समझना कि website अलग बनानी है। वो आपके card से अपने आप बनती है।", en: "Thinking the website is a separate build. It is made from your card by itself." },
+    mistake: { hi: "ये समझना कि card और website अलग-अलग हैं। एक ही link, एक ही data — बस phone पर card, computer पर website।", en: "Thinking the card and the website are two things. One link, one set of data — a card on a phone, a website on a computer." },
   },
   "/poster/leads": {
     title: { hi: "Leads", en: "Leads" },

@@ -548,7 +548,7 @@ export default function BuildCard() {
         const row = cards.find((c) => c.username === r.username);
         if (row) await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
       } catch { /* the card is live; the primary mark can wait */ }
-      router.push("/poster/card?published=1");
+      router.push("/poster/website?published=1");
     } catch {
       setErr(OFFLINE);
     } finally {
@@ -612,7 +612,7 @@ export default function BuildCard() {
     <div className="space-y-4 py-2">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setState("form")} className="text-muted" aria-label="Back to the questions"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold">{liveUser ? "Your V-Card is live" : busy === "publish" ? "Making your V-Card live…" : existing ? "Your new V-Card is ready" : "Your V-Card is ready"}</h1>
+        <h1 className="text-lg font-bold">{liveUser ? "Your website is live" : busy === "publish" ? "Making your website live…" : existing ? "Your new website is ready" : "Your website is ready"}</h1>
       </div>
       {/* One clear line: live or not. */}
       {liveUser ? (
@@ -710,7 +710,7 @@ export default function BuildCard() {
           <div className="grid grid-cols-2 gap-2">
             <a href={`https://wa.me/?text=${encodeURIComponent(`Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">Share on WhatsApp</a>
-            <button type="button" onClick={() => router.push("/poster/card?published=1")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> Done</button>
+            <button type="button" onClick={() => router.push("/poster/website?published=1")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> Done</button>
           </div>
         ) : (
           <button type="button" onClick={publish} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
@@ -739,7 +739,7 @@ export default function BuildCard() {
 
   const makeBtn = (
     <button type="button" onClick={() => build()} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-      <Sparkles className="h-5 w-5" /> Make my V-Card
+      <Sparkles className="h-5 w-5" /> Build my website
     </button>
   );
 
@@ -749,7 +749,7 @@ export default function BuildCard() {
 
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => router.push("/poster/setup")} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="min-w-0 flex-1 text-xl font-bold">Make your V-Card</h1>
+        <h1 className="min-w-0 flex-1 text-xl font-bold">Build your website</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
           without paying for another build. */}

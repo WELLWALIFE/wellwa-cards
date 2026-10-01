@@ -23,6 +23,9 @@ export default function WebsitePage() {
   const [cardId, setCardId] = useState<string>("");
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  // Arrived straight from the builder (?published=1): the greeting at the top.
+  const [published, setPublished] = useState(false);
+  useEffect(() => { try { setPublished(new URLSearchParams(window.location.search).get("published") === "1"); } catch { /* ignore */ } }, []);
   const { plan, loading: planLoading } = usePlan();
   const paid = planLoading || plan !== "free";
 
@@ -68,11 +71,28 @@ export default function WebsitePage() {
 
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
-          <p className="text-sm text-muted">{"Create your card first — the website is built from it."}</p>
-          <Link href="/poster/card" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{"Create card →"}</Link>
+          <p className="text-sm text-muted">{hi ? "Pehle apni website banayein — card usi se ban jaata hai." : "Build your website first — your card comes from it."}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "Website banayein →" : "Build my website →"}</Link>
         </section>
       ) : (
         <>
+          {/* Owner's call, 1 Oct 2026: the website is what people build first now; the card is what the same
+              link becomes on a phone. So a fresh build lands here, sees it, edits it, and is told the card is
+              ready too — instead of landing on the card and finding the website later. */}
+          {published && (
+            <section className="rounded-2xl border-2 border-good/40 bg-good/10 p-4 space-y-3">
+              <p className="flex items-center gap-2 text-lg font-bold"><Check className="h-6 w-6 text-good" /> {hi ? "Aapki website live hai" : "Your website is live"}</p>
+              <p className="text-sm text-muted">{hi ? "Computer par yeh link poori website kholta hai; phone par yahi aapka card ban jaata hai — ek link, ek data." : "On a computer this link opens as your website; on a phone the same link is your card — one link, one set of data."}</p>
+              <div className="grid grid-cols-2 gap-2">
+                <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold"><Globe className="h-4 w-4" /> {hi ? "Website dekhein" : "See the website"}</a>
+                <Link href="/poster/website/edit" className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white"><Pencil className="h-4 w-4" /> {hi ? "Website edit karein" : "Edit the website"}</Link>
+              </div>
+              <Link href="/poster/card?published=1" className="flex items-center justify-between rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold">
+                <span className="inline-flex items-center gap-2"><Smartphone className="h-4 w-4 text-brand" /> {hi ? "Aapka card bhi tayyar hai" : "Your card is ready too"}</span>
+                <span className="text-muted">→</span>
+              </Link>
+            </section>
+          )}
           {s.cards.length > 1 && (
             <select value={cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
               {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}

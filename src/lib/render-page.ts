@@ -31,6 +31,32 @@ function oneAtATime<T>(job: () => Promise<T>): Promise<T> {
   return run;
 }
 
+/** The browser is kept open for a short while after a page, so an import that reads ten pages of one
+ *  site launches it once, not ten times. Launching was most of the cost: wellwalife.com took 74 seconds
+ *  with a fresh browser per page. It is closed after IDLE_MS of nothing, so it never sits on memory. */
+const IDLE_MS = 20_000;
+let shared: Browser | null = null;
+let idle: ReturnType<typeof setTimeout> | undefined;
+async function browserFor(args: string[]): Promise<Browser> {
+  if (idle) { clearTimeout(idle); idle = undefined; }
+  if (shared && shared.connected) return shared;
+  const puppeteer = (await import("puppeteer-core")).default;
+  shared = await puppeteer.launch({ executablePath: CHROME, headless: true, args, timeout: NAV_MS });
+  shared.once("disconnected", () => { shared = null; });
+  return shared;
+}
+function releaseBrowser() {
+  if (idle) clearTimeout(idle);
+  idle = setTimeout(() => { const b = shared; shared = null; b?.close().catch(() => undefined); }, IDLE_MS);
+}
+const LIGHT_ARGS = [
+  "--no-sandbox", "--disable-setuid-sandbox",
+  // /dev/shm is small on this box; without this Chromium crashes on heavier pages.
+  "--disable-dev-shm-usage",
+  "--disable-gpu", "--no-zygote", "--mute-audio",
+  "--window-size=1280,2000",
+];
+
 /** Does this HTML look like a shell waiting for JavaScript?
  *  An app shell is small, has almost no text and no pictures, yet loads scripts. A real page — even a plain
  *  one — has text and images in the HTML itself. */
@@ -47,23 +73,10 @@ export function looksEmpty(html: string): boolean {
 export async function renderedHtml(url: string): Promise<string | null> {
   if (!process.env.CHROME_PATH && process.env.NODE_ENV !== "production") return null;
   return oneAtATime(async () => {
-    let browser: Browser | null = null;
+    let page: Awaited<ReturnType<Browser["newPage"]>> | null = null;
     try {
-      const puppeteer = (await import("puppeteer-core")).default;
-      browser = await puppeteer.launch({
-        executablePath: CHROME,
-        headless: true,
-        args: [
-          "--no-sandbox", "--disable-setuid-sandbox",
-          // /dev/shm is small on this box; without this Chromium crashes on heavier pages.
-          "--disable-dev-shm-usage",
-          "--disable-gpu", "--no-zygote", "--mute-audio",
-          "--blink-settings=imagesEnabled=false",
-          "--window-size=1280,2000",
-        ],
-        timeout: NAV_MS,
-      });
-      const page = await browser.newPage();
+      const browser = await browserFor(LIGHT_ARGS);
+      page = await browser.newPage();
       await page.setUserAgent("Mozilla/5.0 (compatible; ShubhoraBot/1.0; +https://shubhora.com)");
       await page.setViewport({ width: 1280, height: 2000 });
       // Everything that costs memory and tells us nothing. The <img src> stays in the DOM either way.
@@ -80,7 +93,8 @@ export async function renderedHtml(url: string): Promise<string | null> {
     } catch {
       return null;
     } finally {
-      await browser?.close().catch(() => undefined);
+      await page?.close().catch(() => undefined);
+      releaseBrowser();
     }
   });
 }
@@ -117,14 +131,10 @@ export type PageLayout = {
 export async function readLayout(url: string): Promise<PageLayout | null> {
   if (!process.env.CHROME_PATH && process.env.NODE_ENV !== "production") return null;
   return oneAtATime(async () => {
-    let browser: Browser | null = null;
+    let page: Awaited<ReturnType<Browser["newPage"]>> | null = null;
     try {
-      const puppeteer = (await import("puppeteer-core")).default;
-      browser = await puppeteer.launch({
-        executablePath: CHROME, headless: true, timeout: NAV_MS,
-        args: ["--no-sandbox", "--disable-setuid-sandbox", "--disable-dev-shm-usage", "--disable-gpu", "--no-zygote", "--mute-audio", "--window-size=1280,2000"],
-      });
-      const page = await browser.newPage();
+      const browser = await browserFor(LIGHT_ARGS);
+      page = await browser.newPage();
       await page.setUserAgent("Mozilla/5.0 (compatible; ShubhoraBot/1.0; +https://shubhora.com)");
       await page.setViewport({ width: 1280, height: 2000 });
       // Stylesheets and images are needed here — the whole point is what the page looks like — but video
@@ -137,7 +147,8 @@ export async function readLayout(url: string): Promise<PageLayout | null> {
     } catch {
       return null;
     } finally {
-      await browser?.close().catch(() => undefined);
+      await page?.close().catch(() => undefined);
+      releaseBrowser();
     }
   });
 }

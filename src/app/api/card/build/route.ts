@@ -24,7 +24,9 @@ import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, saveFacts } fr
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 
-export const maxDuration = 150;
+// A site that has to be rendered page by page takes longer to read than one that hands over its HTML —
+// wellwalife.com measured 74s before the browser was shared, and Apache on this box allows 300s.
+export const maxDuration = 240;
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim().slice(0, n);
 type Obj = Record<string, unknown>;
@@ -93,10 +95,10 @@ export async function POST(request: Request) {
   const role = facts.website ? facts.websiteRole : "own";
   const website = role === "reference" ? setup.website : facts.website || setup.website;
   const referenceP = role === "reference" && facts.website ? within(readReference(facts.website, { look: true }).catch(() => null), 45_000) : Promise.resolve(null);
-  const siteP = website ? within(readOwnSite(website).catch(() => null), 30_000) : Promise.resolve(null);
+  const siteP = website ? within(readOwnSite(website).catch(() => null), 120_000) : Promise.resolve(null);
   const importRole = role === "reference" ? "own" : role;
   const importP: Promise<{ imp: SiteImport; stored: StoredSite } | null> = website
-    ? within(importSite(website).then(async (imp) => (imp ? { imp, stored: await storeSiteMedia(me.id, imp, importRole) } : null)).catch(() => null), 55_000)
+    ? within(importSite(website).then(async (imp) => (imp ? { imp, stored: await storeSiteMedia(me.id, imp, importRole) } : null)).catch(() => null), 150_000)
     : Promise.resolve(null);
 
   /* ---- save the typed products (service role; NEVER delete) ---- */
