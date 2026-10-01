@@ -450,7 +450,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
               <Download className="h-4 w-4" /> Save contact
             </a>
             {primary && (
-              <a href={linkHref(primary.type, primary.value)} target="_blank"
+              <a href={linkHref(primary.type, primary.value, primary.type === "whatsapp" ? (card.language === "hi" ? `नमस्ते ${card.company || card.name}, आपका card देखा — ` : `Hi ${card.company || card.name}, I saw your card — `) : undefined)} target="_blank"
                 onClick={() => trackClick(card.username, `primary-${primary.type}`)}
                 // Outline in the card's own colour (owner's call, 26 Sep 2026): the pale grey edge disappeared on white.
                 className="look-btn look-btn-2 inline-flex items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-semibold border-[1.5px] hover:bg-surface2 transition-colors"

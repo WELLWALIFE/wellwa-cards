@@ -34,14 +34,15 @@ export function LinkIcon({ type, className }: { type: LinkType; className?: stri
 }
 
 /** Build the href for a card link based on its type. */
-export function linkHref(type: LinkType, value: string): string {
+export function linkHref(type: LinkType, value: string, text?: string): string {
   switch (type) {
     case "phone":
       return `tel:${value}`;
     case "email":
       return `mailto:${value}`;
     case "whatsapp":
-      return `https://wa.me/${value.replace(/[^0-9]/g, "")}`;
+      // An opening line, so the owner knows the message came from the card and the visitor need not think of one.
+      return `https://wa.me/${value.replace(/[^0-9]/g, "")}${text ? `?text=${encodeURIComponent(text)}` : ""}`;
     case "upi":
       // Encoded so a stray "&" or space cannot break the link; "@" is legal in a
       // query and stays literal, because a few UPI apps do not decode "%40".

@@ -165,6 +165,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const layout = (() => {
     const l = card.site?.style?.hero;
     if (l) return l === "photo" && !card.coverUrl ? "split" : l;
+    // The hero picture is the banner itself (a stock photograph of the trade, put in both slots by the
+    // builder): a photograph goes across the top, never into a white product frame.
+    if (heroImg && card.coverUrl && heroImg === card.coverUrl) return "photo";
     if (heroImg) return "split";
     return card.coverUrl ? "photo" : "split";
   })();
@@ -210,7 +213,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     window.scrollTo({ top: 0, behavior: reduce ? "auto" : "smooth" });
   }
-  const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}${text ? `?text=${encodeURIComponent(text)}` : ""}` : "#";
+  // Every WhatsApp button opens with a line that names the business and says the visitor came from the
+  // website — the owner knows the lead's source, and the visitor need not think of an opening.
+  const waOpen = card.language === "hi" ? `नमस्ते ${card.company || card.name}, मैंने आपकी website देखी — ` : `Hi ${card.company || card.name}, I saw your website — `;
+  const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
   const lastKind = pageBlocks.at(-1)?.kind;
   const hasAppointment = page?.blocks.some((b) => b.kind === "appointment");
@@ -224,6 +230,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     if (Array.isArray(last) && last[0].kind === s.block.kind && GROUPED.has(s.block.kind)) last.push(s.block); else groups.push([s.block]);
   }
   const runProps = { card, theme, ink, waHref, go, links, hrefFor };
+  // "More on this website" lists only the pages the home page has NOT already previewed (a products, gallery,
+  // reviews or FAQ preview carries its own "see all"; a services block on the home links to its page).
+  const previewed = new Set(sections.filter((s) => s.kind !== "block").map((s) => (s as { page: string }).page));
+  const homeKinds = new Set((pages.find((p) => p.slug === "home")?.blocks ?? []).map((b) => b.kind));
+  const explorePages = pages.filter((p) => p.slug !== first && p.slug !== "contact" && !previewed.has(p.slug) && !(p.slug === "services" && homeKinds.has("services")));
   const fontHref = design.fonts.href;
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
 
@@ -409,12 +420,12 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         )}
 
         {/* Explore — the other pages as big tiles at the end of the home page; visitors rarely open the menu on their own. */}
-        {page?.slug === first && pages.length > 1 && (
+        {page?.slug === first && explorePages.length > 0 && (
           <section className="mx-auto max-w-6xl px-6 py-14" data-reveal>
             <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hiLang ? "और देखें" : t("Explore")}</p>
             <h2 className="mt-2 text-2xl tracking-tight mb-6">{hiLang ? "पूरी वेबसाइट" : t("More on this website")}</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {pages.filter((p) => p.slug !== first).map((p) => { const { Icon, hint } = pageMeta(p, card.language); return (
+              {explorePages.map((p) => { const { Icon, hint } = pageMeta(p, card.language); return (
                 <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`group flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 ${CARD_HOVER} ${FOCUS}`}>
                   <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: "var(--grad)", color: ink }}><Icon className="h-6 w-6" /></span>
                   <span className="min-w-0 flex-1"><span className="block text-[17px] font-semibold">{t(p.label)}</span>{hint && <span className="block text-sm text-muted">{hint}</span>}</span>
@@ -687,6 +698,21 @@ function HighlightsGrid({ items, theme }: { items: string[]; theme: string }) {
   const list = items.map((s) => s.trim()).filter(Boolean);
   // Same split as the phone card; the item is translated whole, then its emoji comes off.
   const short = list.length > 0 && list.every((s) => splitGlyph(s).text.length <= 24);
+  // "Why choose us" (every point ticked): a grid of cards with a check, on its own — a row of small pills read
+  // as an afterthought and left the section looking empty.
+  const ticked = list.length >= 3 && list.every((s) => s.startsWith("✅"));
+  if (ticked) {
+    return (
+      <div className={`grid sm:grid-cols-2 ${list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
+        {list.map((it, i) => { const { text } = glyphText(it, t); return (
+          <div key={i} className={`flex items-start gap-3 rounded-2xl border border-border bg-surface px-5 py-4 ${CARD_HOVER}`}>
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: tint(theme), color: "var(--tc)" }}><Check className="h-4 w-4" /></span>
+            <span className="text-[15px] font-medium leading-snug">{text}</span>
+          </div>
+        ); })}
+      </div>
+    );
+  }
   if (short) {
     return (
       <ol className="flex flex-wrap gap-3">

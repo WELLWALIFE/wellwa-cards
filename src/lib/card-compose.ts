@@ -10,7 +10,7 @@ import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
-import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, type HomeKind } from "@/lib/site-recipes";
+import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
 import type { TradeData } from "@/lib/trade-data/types";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
@@ -418,6 +418,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   if (stats.count >= 3 && stats.avg > 0) trust.push(`⭐ ${stats.avg.toFixed(1)} · ${stats.count} ${lang === "hi" ? "समीक्षाएँ" : "reviews"}`);
   for (const s of facts.special) if (s.trim()) trust.push(s.trim());
   if (facts.specialText && facts.specialText.length <= 40 && !facts.specialText.includes("\n")) trust.push(`✨ ${facts.specialText}`);
+  // The AI's facts-backed highlights ("Since 1937", "Pure ghee") used to be written and thrown away.
+  for (const h of copy.highlights ?? []) if (h && !trust.some((x) => sameText(x, h))) trust.push(h);
   const trustItems = [...new Set(trust)].slice(0, 6);
 
   /* ---- pages ---- */
@@ -562,7 +564,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
               : {}),
             reference: { url: input.reference.url, at: new Date().toISOString() },
           }
-        : {}),
+        : { style: tradeStyle(setup.category, lang) }),
     },
   };
 

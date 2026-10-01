@@ -405,6 +405,8 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
       // belongs to that build: a rebuild without a reference starts clean. A style the owner picked by hand
       // (no `reference` on record) stays, and so do the sections they hid and the trust facts they typed.
       ...(existing.site?.reference && !built.site?.reference ? { style: built.site?.style, reference: undefined } : {}),
+      // The trade's default look (no reference) never overrides a look the owner picked by hand.
+      ...(!built.site?.reference && existing.site?.style && !existing.site?.reference ? { style: existing.site.style } : {}),
       home: mergeHome(existing.site?.home, built.site?.home, !!existing.site?.reference && !built.site?.reference),
     },
     id: opts.id,

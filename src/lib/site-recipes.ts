@@ -109,6 +109,29 @@ export function ctaLabel(cta: Cta, lang: "en" | "hi" | "hinglish"): string {
   }
 }
 
+/** The website look a trade wears when nothing else was chosen (owner's call, 1 Oct 2026: a jeweller, an
+ *  ayurveda clinic, a gym and a CA must not all look the same). Fonts and corners from the category's own style
+ *  key and group; a reference site or the owner's hand-picked style always wins over this. */
+export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"): { font: string; radius: "sharp" | "soft" | "round" } {
+  const c = categoryOf(categoryKey);
+  const key = c?.key ?? "";
+  const style = c?.style ?? "classic";
+  let font =
+    /^(jewellery|hotel|spa|wedding)$/.test(key) ? "luxury"
+    : /^(salon|interior|photography|mehndi|furniture|cafe|optical|garments|textile|event)$/.test(key) ? "elegant"
+    : /^(ayurveda|astro|temple|lawyer|teacher|college|school|samaj|ngo)$/.test(key) ? "editorial"
+    : /^(it|mobile|computer|water|security)$/.test(key) ? "tech"
+    : /^(gym|builder|realestate|auto|hardware|transport|manufacturer|wholesale|mla|political|union|army)$/.test(key) ? "bold"
+    : style === "festive" || style === "traditional" ? "friendly"
+    : style === "minimal" ? "elegant"
+    : style === "bold" ? "bold"
+    : "modern";
+  // A Hindi website reads best in a Devanagari pair.
+  if (lang === "hi") font = "hindi";
+  const radius: "sharp" | "soft" | "round" = font === "luxury" || font === "elegant" || font === "editorial" ? "sharp" : font === "friendly" || font === "hindi" ? "round" : "soft";
+  return { font, radius };
+}
+
 /** A phrase too generic to stand in a section (the trade's own list plus the ones every trade shares). */
 const GENERIC_ALWAYS = ["connect with us", "explore options", "finalise your choice", "explore our options", "get in touch with us", "contact us today", "quality products", "best quality", "customer satisfaction", "we are committed", "one-stop", "wide range", "top-notch", "world-class", "state-of-the-art", "look no further"];
 export function isGeneric(text: string, data: TradeData | null): boolean {
