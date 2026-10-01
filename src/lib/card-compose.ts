@@ -312,6 +312,14 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const trade = tradeDataFor(setup.category);
   const t = titlesFor(lang, copy.titles, booking);
   if (!copy.titles?.products && recipe.catalog !== "products") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; }
+  // A school's list is "Courses", a clinic's "Treatments", a gym's "Plans" — not "Our services". When the trade
+  // has no products, that list IS the catalogue and wears the catalogue's name.
+  const catalogIsServices = recipe.catalog !== "products" && recipe.catalog !== "menu";
+  if (catalogIsServices && recipe.catalog !== "services" && !copy.titles?.services) {
+    t.services = catalogLabel(recipe.catalog, lang);
+    t.servicesPage = t.services;
+    t.seeAllServices = lang === "hi" ? `सभी ${t.services}` : `See all ${t.services.toLowerCase()}`;
+  }
   if (!copy.titles?.promise) t.promise = lang === "hi" ? "हमें क्यों चुनें" : lang === "hinglish" ? "Humein kyun chunein" : "Why choose us";
   const ctaText = copy.cta || (booking ? t.cta : ctaLabel(recipe.cta, lang));
   const seedLang = lang === "hi" ? "hi" : "en";
@@ -599,7 +607,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
 
   /* ---- "Make it better" ---- */
   const want: MissingKey[] = [];
-  if (!input.products.length) want.push("products");
+  // The product chips belong to a trade that sells things. A doctor, a CA, an electrician and a school have
+  // nothing to add there, and their services already stand on the card (seen in testing, 2 Oct 2026).
+  const sellsThings = recipe.catalog === "products" || recipe.catalog === "menu";
+  if (!input.products.length) { if (sellsThings) want.push("products"); }
   else if (!input.brandProducts) {
     // (A brand member's products, prices and photos come from the brand, so they are not asked for.)
     if (!input.products.some((p) => p.price.trim())) want.push("prices");
