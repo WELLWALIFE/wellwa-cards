@@ -19,6 +19,7 @@ import { writeCard, type CardBrief, type CardCopy } from "@/lib/card-ai";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
 import { referenceImages } from "@/lib/media/ai-image";
+import { lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, saveFacts } from "@/lib/card-inputs";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
@@ -218,11 +219,14 @@ export async function POST(request: Request) {
   const brandProducts = after.brandProducts && !rows.length;
 
   /* ---- the owner's website text (+ what the import found) and the makers' public details ---- */
-  const [siteText, info, reference] = await Promise.all([
+  const [siteText, info, referenceRaw] = await Promise.all([
     siteP,
     lookupProducts(list.filter((p) => p.brand).slice(0, 6).map((p) => ({ name: p.name, brand: p.brand }))),
     referenceP,
   ]);
+  // A reference site that blocked the browser (or an empty page) measures as a blank: treat it as not read,
+  // so the owner is told — rather than getting our default look with no word about why.
+  const reference = referenceRaw && referenceRaw.look && lookIsBlank(referenceRaw.look) ? null : referenceRaw;
   const extra = got ? siteImportText(got.imp, importRole) : "";
   const joined = siteText ? (extra ? { ...siteText, text: `${siteText.text}\n${extra}`.slice(0, 11000) } : siteText) : got ? { url: got.imp.url, text: extra } : null;
   const site = joined ? { ...joined, dealer: importRole === "dealer" } : null;

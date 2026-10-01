@@ -288,6 +288,14 @@ function contrast(a: string, b: string): number {
  *    • headings that are the same size as the body (no hierarchy at all) are not copied; ours keep theirs;
  *    • rounding is snapped to the three we draw, so a 40px pill becomes "round" and 2px becomes "sharp".
  */
+/** A page that gave us nothing to copy: no accent, no sections, a browser-default font. That is what a site
+ *  that blocks headless browsers hands back (pepperfry.com serves exactly this), and what an empty page
+ *  looks like. Copying it would mean copying a blank. */
+export function lookIsBlank(m: MeasuredLook): boolean {
+  const generic = /^(times new roman|times|serif|arial|helvetica)$/i.test(m.headFont ?? "") || !m.headFont;
+  return !m.accent && !m.sections.length && !m.heroImage && generic;
+}
+
 export function styleFromLook(m: MeasuredLook): SiteStyle {
   const style: SiteStyle = {};
 
