@@ -89,6 +89,22 @@ export function HelpDock() {
     return () => { stop = true; clearInterval(id); };
   }, [signedIn, session?.status, beat]);
 
+  // A browser slows the timers of a tab that is not in front — Chrome down to about once a minute — and a
+  // sleeping phone stops them altogether. So the heartbeat alone leaves staff looking at an old screen for
+  // up to a minute whenever the person glances at WhatsApp. Report the moment the app is in front again
+  // (and read back anything staff asked for while it was away).
+  useEffect(() => {
+    if (!signedIn) return;
+    const wake = () => {
+      if (document.visibilityState !== "visible") return;
+      if (session?.status === "live") beat();
+      else api<{ session: Session | null }>("/api/support/session").then((r) => { if (r.ok) setSession(r.data.session); }).catch(() => undefined);
+    };
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", wake);
+    return () => { document.removeEventListener("visibilitychange", wake); window.removeEventListener("focus", wake); };
+  }, [signedIn, session?.status, beat]);
+
   // Report straight away on a change of screen, so staff are never looking at the screen before.
   useEffect(() => { if (live) beat(); }, [path, live, beat]);
 

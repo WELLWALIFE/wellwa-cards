@@ -9,8 +9,10 @@
 import { adminAllowedFor, adminIdentity, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 import { screenName } from "@/lib/help-screens";
 
-/** A session with no report for this long is shown as gone quiet, not as live. */
-const STALE_MS = 90_000;
+/** The app reports every 5 seconds while live. Miss a handful of those and whatever is on screen here is no
+ *  longer what the person is looking at — usually because their phone went to sleep or they switched to
+ *  another app, which stops the browser's timers. Say so rather than letting staff trust an old screen. */
+const STALE_MS = 25_000;
 
 type Row = {
   id: string; user_id: string; status: "requested" | "invited" | "live" | "ended"; opened_by: "user" | "staff";

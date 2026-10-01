@@ -213,13 +213,20 @@ export default function LiveHelpPage() {
               </p>
             ) : (
               <>
-                <div className={`rounded-xl border px-3 py-2.5 ${open.quiet ? "border-amber/40 bg-amber/10" : "border-good/40 bg-good/10"}`}>
+                {/* The one thing this page is for, so it stays in view while you scroll the rest. */}
+                <div className={`sticky top-16 z-10 rounded-xl border px-3 py-2.5 shadow-sm ${open.quiet ? "border-amber/40 bg-amber/10" : "border-good/40 bg-good/10"}`}>
                   <p className="text-xs font-semibold text-muted">They are on</p>
                   <p className="text-lg font-bold">{open.screen ?? "—"}</p>
                   <p className="mt-0.5 font-mono text-xs text-muted">{open.path}</p>
-                  <p className="mt-1 text-xs text-muted">
-                    {open.quiet ? "No report for a while — their phone may be asleep." : `updated ${ago(open.lastSeen)} ago`}
-                  </p>
+                  {open.quiet ? (
+                    <p className="mt-1 text-xs font-semibold text-amber">
+                      Last reported {ago(open.lastSeen)} ago — this may not be where they are now. Their phone is
+                      probably asleep, or the app is behind another app or tab. It catches up the moment they
+                      look at it again.
+                    </p>
+                  ) : (
+                    <p className="mt-1 text-xs text-muted">updated {ago(open.lastSeen)} ago · refreshes every 5s</p>
+                  )}
                 </div>
 
                 {screen && (
@@ -251,7 +258,7 @@ export default function LiveHelpPage() {
             {/* Their card as it stands — the thing you are usually helping them build. */}
             <div>
               <div className="mb-1.5 flex items-center justify-between">
-                <p className="text-sm font-semibold">Their card right now</p>
+                <p className="text-sm font-semibold">Their published card</p>
                 {open.cardUsername && (
                   <div className="flex items-center gap-2">
                     <button type="button" onClick={() => { if (liveRef.current) liveRef.current.src = `/c/${open.cardUsername}?t=${Date.now()}`; }}
@@ -262,8 +269,14 @@ export default function LiveHelpPage() {
                 )}
               </div>
               {open.cardUsername ? (
-                <iframe ref={liveRef} src={`/c/${open.cardUsername}`} title="Their card"
-                  className="h-[32rem] w-full max-w-sm rounded-xl border border-border bg-bg" />
+                <>
+                  <p className="mb-1.5 text-xs text-muted">
+                    What a customer sees at /c/{open.cardUsername} — not their phone screen. It changes when they
+                    publish; press Reload to fetch it again.
+                  </p>
+                  <iframe ref={liveRef} src={`/c/${open.cardUsername}`} title="Their published card"
+                    className="h-[32rem] w-full max-w-sm rounded-xl border border-border bg-bg" />
+                </>
               ) : (
                 <p className="rounded-xl bg-surface2 px-3 py-2.5 text-sm text-muted">They have not made a card yet — that is probably what they need help with.</p>
               )}
