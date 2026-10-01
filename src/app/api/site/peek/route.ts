@@ -12,7 +12,7 @@
 import { NextResponse } from "next/server";
 import { rateLimited } from "@/lib/api-security";
 import { userFromRequest } from "@/lib/poster-server";
-import { copyImage, peekSite } from "@/lib/site-import";
+import { copyLogo, peekSite } from "@/lib/site-import";
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf, CATEGORIES } from "@/lib/poster-categories";
 import { geminiComplete } from "@/lib/gemini";
@@ -65,7 +65,7 @@ export async function POST(request: Request) {
   }
 
   const [logo, category] = await Promise.all([
-    peek.logo ? within(copyImage(me.id, peek.logo, "logo", 0, 64).catch(() => null), 12_000) : Promise.resolve(null),
+    peek.logos.length ? within(copyLogo(me.id, peek.logos).catch(() => null), 20_000) : Promise.resolve(null),
     guessCategory(`${peek.name} ${peek.title} ${peek.about}`),
   ]);
   return NextResponse.json({

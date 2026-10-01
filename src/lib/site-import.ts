@@ -24,6 +24,8 @@ export type SiteImport = {
   covers: string[];          // big pictures, best first (og:image, hero / banner / slider)
   gallery: string[];         // other large pictures
   products: SiteProduct[];
+  /** All the pictures that could be the logo, best first (see logoCandidates). */
+  logos: string[];
   facts: string[];           // phone, email, address, opening hours, description — as the site states them
   // The same things, structured, so the build can make them the card's real address / email / timings / links
   // instead of a sentence the AI may or may not repeat (1 Oct 2026: a site's address went to the AI as prose
@@ -146,17 +148,36 @@ function pictures(html: string, base: string): { hero: string[]; other: string[]
   return { hero: uniq(hero).slice(0, 8), other: uniq(other).slice(0, 20) };
 }
 
-function logoOf(html: string, base: string, ld: Obj[]): string | null {
-  for (const o of ld) { const l = imageList(o.logo, base)[0]; if (l) return l; }
+/** Every picture that could be the site's logo, best first: the structured data's, the header's <img … logo …>
+ *  tags, the apple-touch-icon. A list, not one address — haldirams.com's JSON-LD logo points at an admin URL
+ *  that answers 403, and the real one is the second candidate; the caller copies the first that works. */
+function logoCandidates(html: string, base: string, ld: Obj[]): string[] {
+  const out: string[] = [];
+  const push = (u: string | null) => { if (u && !out.includes(u)) out.push(u); };
+  for (const o of ld) push(imageList(o.logo, base)[0] ?? null);
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
     const tag = m[0];
     if (/logo/i.test(`${attr(tag, "class")} ${attr(tag, "alt")} ${attr(tag, "id")} ${attr(tag, "src")}`)) {
-      const u = absolute(attr(tag, "src") || attr(tag, "data-src"), base); if (u && !/\.svg(\?|$)/i.test(u)) return u;
+      const src = biggestFromSrcset(attr(tag, "srcset") || attr(tag, "data-srcset")) || attr(tag, "src") || attr(tag, "data-src") || attr(tag, "data-lazy-src");
+      const u = absolute(src, base); if (u && !/\.svg(\?|$)/i.test(u)) push(u);
     }
+    if (out.length >= 5) break;
   }
   const touch = html.match(/<link[^>]+rel=["']apple-touch-icon[^"']*["'][^>]*>/i)?.[0];
-  const t = touch ? absolute(attr(touch, "href"), base) : null;
-  return t;
+  push(touch ? absolute(attr(touch, "href"), base) : null);
+  return out;
+}
+function logoOf(html: string, base: string, ld: Obj[]): string | null {
+  return logoCandidates(html, base, ld)[0] ?? null;
+}
+
+/** The first logo candidate that is a real, usable picture, copied into the owner's bucket. */
+export async function copyLogo(userId: string, candidates: string[], n = 0): Promise<{ url: string; w: number; h: number } | null> {
+  for (const src of candidates.slice(0, 5)) {
+    const got = await copyImage(userId, src, "logo", n, 64).catch(() => null);
+    if (got) return got;
+  }
+  return null;
 }
 
 /** The site's own Instagram / Facebook / YouTube pages (never share / login / intent links). */
@@ -411,7 +432,7 @@ function siteName(html: string, org: Obj): string {
  *  `empty` when it opened and was still a bare app shell after rendering. Nothing of the site's pictures or
  *  products is returned — only the logo's address, which the caller copies for an OWN site. */
 export type SitePeek = {
-  url: string; name: string; logo: string | null; about: string; phone: string; email: string;
+  url: string; name: string; logo: string | null; logos: string[]; about: string; phone: string; email: string;
   address: { street: string; city: string; region: string; pin: string; full: string };
   hours: string[]; products: number; title: string; empty: boolean;
 };
@@ -434,6 +455,7 @@ export async function peekSite(raw: string): Promise<SitePeek | null> {
     url: home.url,
     name: siteName(home.html, org),
     logo: logoOf(home.html, home.url, ld),
+    logos: logoCandidates(home.html, home.url, ld),
     about: txt(org.description, 400) || meta(home.html, "og:description") || meta(home.html, "description"),
     phone: txt(org.telephone, 30),
     email: txt(org.email, 80),
@@ -509,6 +531,7 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
     url: home.url,
     name: siteNameOfHome,
     logo: logoOf(home.html, home.url, ld),
+    logos: logoCandidates(home.html, home.url, ld),
     covers, gallery,
     products: [...byName.values()],
     facts,
@@ -569,7 +592,7 @@ export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" 
   let n = 0;
   const own = role === "own";
   const [logo, coverCands, galleryCands, productPics] = await Promise.all([
-    own && s.logo ? copyImage(userId, s.logo, "logo", n++, 64) : Promise.resolve(null),
+    own && (s.logos?.length || s.logo) ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
     pool(own ? s.covers.slice(0, 4) : [], 3, (u) => copyImage(userId, u, "wide", n++, 700)),
     pool(own ? s.gallery.slice(0, 8) : [], 3, (u) => copyImage(userId, u, "wide", n++, 500)),
     pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
