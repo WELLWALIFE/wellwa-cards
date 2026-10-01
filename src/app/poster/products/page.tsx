@@ -111,6 +111,21 @@ export default function ProductsPage() {
       offer: "", benefits: ["Complete digital card on your own link", "Your own domain on the card", "Leads from the card in the CRM", "Share on WhatsApp, QR code, save-contact"].join("\n") },
   ];
   const hasShubhora = (list ?? []).some((p) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? ""));
+  const offCount = (list ?? []).filter((p) => p.active === false).length;
+  const isShubhoraPlan = (p: Product) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? "") || /shubhora/i.test(p.category ?? "");
+  const mixedWithShubhora = (list ?? []).some((p) => p.active !== false && isShubhoraPlan(p)) && (list ?? []).some((p) => p.active !== false && !isShubhoraPlan(p));
+  async function hideShubhora() {
+    for (const p of (list ?? []).filter((x) => x.active !== false && isShubhoraPlan(x))) {
+      await api("/api/poster/products", { method: "POST", json: { id: p.id, active: false } });
+    }
+    load();
+  }
+  /** Keep the row, keep it off the card: the build only takes active products. */
+  async function toggle(p: Product) {
+    setList((cur) => (cur ?? []).map((x) => (x.id === p.id ? { ...x, active: p.active === false } : x)));
+    const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: p.active === false } });
+    if (!r.ok) { setErr(r.data.error || t.saveFail); load(); }
+  }
   async function promoteShubhora() {
     setBusy(true); setErr("");
     try {
@@ -231,9 +246,22 @@ export default function ProductsPage() {
           </div>
         </div>
       )}
+      {/* A seller who later adds their own range ends up with both on one card. One tap keeps the plans off it. */}
+      {mixedWithShubhora && (
+        <div className="rounded-xl border border-amber/50 bg-amber/10 p-3">
+          <p className="text-sm font-semibold">{en ? "Shubhora's plans are on your card next to your own products." : "आपके अपने products के साथ Shubhora के plan भी card पर हैं।"}</p>
+          <p className="mt-0.5 text-xs text-muted">{en ? "Selling Shubhora too? Leave them. Otherwise hide them — they stay here for later." : "Shubhora भी बेचते हैं? रहने दें। वरना छिपा दें — यहीं रखे रहेंगे।"}</p>
+          <button type="button" onClick={hideShubhora} className="mt-2 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{en ? "Hide the Shubhora plans" : "Shubhora के plan छिपाएँ"}</button>
+        </div>
+      )}
+      {offCount > 0 && (
+        <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{en
+          ? `${offCount} product${offCount > 1 ? "s" : ""} hidden — they stay here but do not go on your card, website or posters.`
+          : `${offCount} product छिपे हैं — यहाँ रहेंगे, पर card, website और poster पर नहीं जाएँगे।`}</p>
+      )}
       <div className="space-y-2">
         {list.map((p) => (
-          <div key={p.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+          <div key={p.id} className={`flex items-center gap-3 rounded-xl border p-3 ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border"}`}>
             <div className="h-14 w-14 rounded-lg bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{p.name}</p>
@@ -242,6 +270,12 @@ export default function ProductsPage() {
             </div>
             {!setupMode && <button type="button" onClick={() => setChecking(p)} className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${p.facts_confirmed_at ? "border-good/40 bg-good/10 text-good" : "border-lead/50 bg-lead/10 text-lead"}`}>{p.facts_confirmed_at ? "✓ Product check" : "Product check"}</button>}
             <button type="button" onClick={() => { setForBrand(!!brandAdmin && p.brand_id === brandAdmin); setDraft({ id: p.id, name: p.name, photo_url: p.photo_url, benefits: (p.benefits ?? []).join("\n"), offer: p.offer ?? "", category: p.category ?? "", price: p.price ?? "", mrp: p.mrp ?? "", brand: p.brand ?? "", photos: p.photos?.length ? p.photos : p.photo_url ? [{ url: p.photo_url, view: "front", role: "identity" }] : [] }); }} className="p-2 text-muted text-xs">Edit</button>
+            {/* One tap decides whether this product is on the card at all — the Shubhora plans and an old
+                range do not have to be deleted to be kept off it. */}
+            <button type="button" onClick={() => toggle(p)} title={p.active === false ? (en ? "Show on my card" : "Card पर दिखाओ") : (en ? "Hide from my card" : "Card से हटाओ")}
+              className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-semibold ${p.active === false ? "border-border text-muted" : "border-good/40 bg-good/10 text-good"}`}>
+              {p.active === false ? (en ? "Hidden" : "छिपा है") : (en ? "On card" : "Card पर")}
+            </button>
             <button type="button" onClick={() => remove(p)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
           </div>
         ))}
