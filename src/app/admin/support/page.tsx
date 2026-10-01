@@ -120,6 +120,8 @@ export default function LiveHelpPage() {
           : j.error || `Could not open their account (${r.status}).`);
         return;
       }
+      // "← Back to admin" should come back HERE, not to the user list.
+      if (j.link) j.link = `${j.link}${j.link.includes("?") ? "&" : "?"}from=%2Fadmin%2Fsupport`;
       setAsThem(j);
       // Opened for convenience, and shown below as well: this browser's app login becomes theirs, so an
       // owner who unlocked this console with their own account (not the admin password) needs the private

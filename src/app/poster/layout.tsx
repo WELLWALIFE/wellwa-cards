@@ -28,7 +28,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
       <UiLangProvider>
         <div className="w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
           <TopMenu />
-          <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem)" }}><BackBar />{children}<SetupResume variant="float" /></main>
+          <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><BackBar />{children}<SetupResume variant="float" /></main>
           <PosterNav />
           {/* One Help button on every screen, and the live-help session behind it. */}
           <HelpDock />

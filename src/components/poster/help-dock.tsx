@@ -41,6 +41,7 @@ export function HelpDock() {
   const [signedIn, setSignedIn] = useState(false);
   const [question, setQuestion] = useState("");
   const [answer, setAnswer] = useState("");
+  const bannerRef = useRef<HTMLDivElement>(null);
   // The guide push already acted on, so the app does not keep jumping to the same screen.
   const followed = useRef("");
   const pathRef = useRef(path);
@@ -153,6 +154,20 @@ export function HelpDock() {
     return () => { gone = true; if (timer) clearInterval(timer); stop?.(); };
   }, [live]);
 
+  // The banner sits over the page, so the page has to start lower while it is there — otherwise it covers
+  // whatever is at the top of the screen (it was landing on the poster's style buttons). Measured rather
+  // than guessed, because it wraps to two lines on a narrow phone.
+  const showBanner = live || session?.status === "requested";
+  useEffect(() => {
+    const root = document.documentElement;
+    if (!showBanner) { root.style.removeProperty("--help-banner"); return; }
+    const set = () => root.style.setProperty("--help-banner", `${(bannerRef.current?.offsetHeight ?? 44) + 8}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    if (bannerRef.current) ro.observe(bannerRef.current);
+    return () => { ro.disconnect(); root.style.removeProperty("--help-banner"); };
+  }, [showBanner]);
+
   // Staff sent them somewhere: go, once per push.
   useEffect(() => {
     if (!live || !session?.guidePath || !session.guideAt) return;
@@ -203,8 +218,8 @@ export function HelpDock() {
       )}
 
       {/* While someone is watching, they can see that someone is watching. */}
-      {(live || session?.status === "requested") && (
-        <div className="fixed left-1/2 z-50 w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 3.2rem)" }}>
+      {showBanner && (
+        <div ref={bannerRef} className="fixed left-1/2 z-50 w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 3.2rem)" }}>
           <div className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold shadow-card ${live ? "bg-good/15 text-ink border border-good/40" : "bg-surface2 text-muted border border-border"}`}>
             <Headset className={`h-4 w-4 shrink-0 ${live ? "text-good" : "text-muted"}`} />
             <span className="flex-1 leading-snug">

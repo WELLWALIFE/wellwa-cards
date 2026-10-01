@@ -19,16 +19,21 @@ function LoginAs() {
       const token = params.get("t");
       const sb = getBrowserSupabase();
       if (!token || !sb) { setError("This login link is not valid."); return; }
-      // Keep the owner's session so they can come back without logging in again. (No signOut: that would end the
-      // owner's session everywhere.)
+      // The way back is ALWAYS remembered, so the bar is always there. When the browser happens to be logged
+      // into the app as the owner, their session is kept too and one tap puts it straight back (no signOut:
+      // that would end the owner's session everywhere). When it is not — Super Admin unlocked with the admin
+      // password, which is the usual way — there is no session to keep, and the bar simply walks back to the
+      // admin page. Before, nothing was saved in that case and the bar never appeared at all.
+      const from = params.get("from") || "";
+      const back = /^\/admin(\/[\w\-/]*)?$/.test(from) ? from : "/admin/users";
       try {
         const { data } = await sb.auth.getSession();
         const cur = data.session;
-        if (cur && isOwnerEmail(cur.user.email)) {
-          localStorage.setItem(ADMIN_RETURN_KEY, JSON.stringify({
-            access_token: cur.access_token, refresh_token: cur.refresh_token, email: cur.user.email, as: params.get("n") || "",
-          }));
-        }
+        const owner = cur && isOwnerEmail(cur.user.email) ? cur : null;
+        localStorage.setItem(ADMIN_RETURN_KEY, JSON.stringify({
+          ...(owner ? { access_token: owner.access_token, refresh_token: owner.refresh_token, email: owner.user.email } : {}),
+          as: params.get("n") || "", back,
+        }));
       } catch { /* the bar just won't appear */ }
       const { error: e } = await sb.auth.verifyOtp({ token_hash: token, type: "magiclink" });
       if (e) { setError("This login link has expired or was already used. Press “Login as” again."); return; }

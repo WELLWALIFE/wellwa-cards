@@ -6,7 +6,10 @@ import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 export const ADMIN_RETURN_KEY = "shubhora.admin.return";
-type Saved = { access_token: string; refresh_token: string; email: string; as?: string };
+/** `access_token`/`refresh_token`/`email` are there only when the browser was logged into the app as the
+ *  owner at the time. Without them the bar still shows and still walks back to the admin page — it just
+ *  cannot put an owner session back, because there was none. */
+type Saved = { access_token?: string; refresh_token?: string; email?: string; as?: string; back?: string };
 
 export function AdminReturnBar() {
   const [saved, setSaved] = useState<Saved | null>(null);
@@ -17,11 +20,11 @@ export function AdminReturnBar() {
     (async () => {
       let s: Saved | null = null;
       try { s = JSON.parse(localStorage.getItem(ADMIN_RETURN_KEY) || "null"); } catch { s = null; }
-      if (!s?.refresh_token) return;
+      if (!s) return;
       const sb = getBrowserSupabase();
       const email = sb ? (await sb.auth.getUser()).data.user?.email ?? "" : "";
-      // Already back in the owner's own account (or logged out): nothing to show.
-      if (!email || email.toLowerCase() === s.email.toLowerCase()) { try { localStorage.removeItem(ADMIN_RETURN_KEY); } catch { /* ignore */ } return; }
+      // Logged out, or already back in the owner's own account: nothing to show.
+      if (!email || (s.email && email.toLowerCase() === s.email.toLowerCase())) { try { localStorage.removeItem(ADMIN_RETURN_KEY); } catch { /* ignore */ } return; }
       setWho(s.as || email);
       setSaved(s);
     })();
@@ -30,10 +33,20 @@ export function AdminReturnBar() {
   async function back() {
     if (!saved) return;
     setBusy(true);
-    const sb = getBrowserSupabase();
-    const r = sb ? await sb.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token }) : null;
+    const to = saved.back || "/admin/users";
+    // An owner session was kept: put it back, so the app is the owner's again as well.
+    if (saved.access_token && saved.refresh_token) {
+      const sb = getBrowserSupabase();
+      const r = sb ? await sb.auth.setSession({ access_token: saved.access_token, refresh_token: saved.refresh_token }) : null;
+      try { localStorage.removeItem(ADMIN_RETURN_KEY); } catch { /* ignore */ }
+      window.location.href = r && !r.error ? to : `/login?next=${encodeURIComponent(to)}`;
+      return;
+    }
+    // Nothing was kept (Super Admin was unlocked with the password): go back to the console, which runs on
+    // that password and not on this browser's app login. The app stays signed in as the customer until the
+    // owner logs in again — there was never an owner session here to restore.
     try { localStorage.removeItem(ADMIN_RETURN_KEY); } catch { /* ignore */ }
-    window.location.href = r && !r.error ? "/admin/users" : "/login?next=/admin/users";
+    window.location.href = to;
   }
 
   if (!saved) return null;
