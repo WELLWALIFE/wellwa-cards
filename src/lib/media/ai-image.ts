@@ -28,3 +28,37 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
   }).catch(() => null);
   return r?.ok ? `${SUPA_URL}/storage/v1/object/public/media/${path}` : null;
 }
+
+/** Pictures for a card built from a REFERENCE website.
+ *
+ *  A reference site is somebody else's: its photographs are theirs and are never copied onto a customer's
+ *  card — that would hand our customer someone else's copyright problem. What we take from it is the look,
+ *  and these pictures are made fresh in that look, of the owner's OWN trade. The owner replaces them with
+ *  their own photos whenever they like; until then the card is not empty.
+ *
+ *  Best effort: a null or a short list simply means the card falls back to the trade's stock photos.
+ */
+export async function referenceImages(
+  userId: string,
+  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number },
+): Promise<string[]> {
+  const trade = (opts.trade || "small business").slice(0, 60);
+  const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
+  const mood = opts.dark
+    ? "Moody, low-key lighting against a dark background; rich shadows, one warm light source."
+    : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
+  const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
+  const briefs = [
+    `Photorealistic wide banner photograph of a ${trade}${where}. ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
+    `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use. ${mood}${accent} Shallow depth of field.`,
+    `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside. ${mood}${accent} Welcoming and tidy, no clutter.`,
+  ];
+  const want = Math.max(1, Math.min(3, opts.count ?? 2));
+  const made = await Promise.all(
+    briefs.slice(0, want).map(async (prompt, i) => {
+      const png = await aiImage(prompt, i === 0 ? "16:9" : "4:3");
+      return png ? storeImage(userId, `ref-${i + 1}`, png) : null;
+    }),
+  );
+  return made.filter((u): u is string => !!u);
+}

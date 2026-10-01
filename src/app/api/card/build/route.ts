@@ -18,6 +18,7 @@ import { restAsService, userFromRequest, stockEngineMod, posterQuota } from "@/l
 import { writeCard, type CardBrief, type CardCopy } from "@/lib/card-ai";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
+import { referenceImages } from "@/lib/media/ai-image";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, saveFacts } from "@/lib/card-inputs";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
@@ -148,6 +149,34 @@ export async function POST(request: Request) {
     if (!setup.logo && stored.logo) setup = { ...setup, logo: stored.logo };
   }
 
+  /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
+  // Never the reference site's own photographs — those are its owner's. Only used where the owner has
+  // nothing of their own, so their photos always win and we never spend on someone who is already covered.
+  let aiPhotos = 0;
+  if (role === "reference" && facts.website && !facts.bannerUrl && facts.photos.length < 2) {
+    const ref = await referenceP;
+    if (ref?.style) {
+      const made = await within(
+        referenceImages(me.id, {
+          trade: setup.categoryLabel || setup.category || "",
+          city: setup.city || "",
+          dark: ref.style.dark,
+          color: ref.style.colors[0],
+          count: 2,
+        }).catch(() => [] as string[]),
+        60_000,
+      ) ?? [];
+      if (made.length) {
+        aiPhotos = made.length;
+        facts = {
+          ...facts,
+          bannerUrl: facts.bannerUrl || made[0],
+          photos: [...facts.photos, ...made.slice(facts.bannerUrl ? 0 : 1)].slice(0, 5),
+        };
+      }
+    }
+  }
+
   /* ---- save the facts ---- */
   if (facts.hidden.some((h) => typedNames.has(h))) facts = { ...facts, hidden: facts.hidden.filter((h) => !typedNames.has(h)) };
   if (inputs.profileId) await saveFacts(me.id, inputs.profileId, facts); // best effort: the card is built either way
@@ -238,6 +267,7 @@ export async function POST(request: Request) {
     ...(website && importRole !== "dealer"
       ? { siteFound: { products: got?.stored.products.length ?? 0, photos: (got?.stored.gallery.length ?? 0) + (got?.stored.cover ? 1 : 0) } }
       : {}),
+    ...(aiPhotos ? { aiPhotos } : {}),
   };
   return NextResponse.json(out);
 }

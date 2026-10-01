@@ -436,4 +436,7 @@ export type BuildResponse = {
    *  is empty until a browser runs its scripts — and saying "we could not open it" would be wrong. This
    *  lets the builder tell the owner what really happened. */
   siteFound?: { products: number; photos: number };
+  /** Pictures made by AI for a card built from a reference website, so the owner can be told they are
+   *  stand-ins and replace them with their own. */
+  aiPhotos?: number;
 };
