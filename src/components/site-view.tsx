@@ -594,19 +594,30 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 }
 
 /* ---------- section shell: one header contract, alternating surfaces ---------- */
-function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, index = 0, children, className = "" }: {
-  title?: string; eyebrow?: string; lead?: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; index?: number; children: React.ReactNode; theme?: string; className?: string;
+function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, index = 0, tone = "auto", tight = false, children, className = "" }: {
+  title?: string; eyebrow?: string; lead?: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; index?: number;
+  /** "band": the palette's deep colour with light text — one dark stretch breaks a long white page.
+   *  "auto": the alternating tint. */
+  tone?: "auto" | "band";
+  /** A section of short lines (why-us ticks, steps) does not need a full-height stretch around it. */
+  tight?: boolean;
+  children: React.ReactNode; theme?: string; className?: string;
 }) {
+  const band = tone === "band";
   return (
-    <section className={className} style={index % 2 ? { background: "var(--p-soft)" } : undefined} data-reveal>
-      <div className={`mx-auto px-6 py-14 md:py-[76px] ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
+    <section className={`${band ? "relative overflow-hidden" : ""} ${className}`} data-reveal
+      style={band
+        ? { background: `radial-gradient(70% 90% at 90% 10%, color-mix(in srgb, var(--p-glow) 45%, transparent), transparent 62%), linear-gradient(120deg, var(--p-deep), color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)))`, color: "var(--p-ink)" }
+        : index % 2 ? { background: "var(--p-soft)" } : undefined}>
+      {band && <div aria-hidden="true" className="dots absolute inset-0 opacity-40" />}
+      <div className={`relative mx-auto px-6 ${tight ? "py-12 md:py-14" : "py-14 md:py-[76px]"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
         {(title || eyebrow || lead) && (
-          <div className="mb-10 flex flex-wrap items-end justify-between gap-6">
+          <div className={`${tight ? "mb-8" : "mb-10"} flex flex-wrap items-end justify-between gap-6`}>
             <div className="max-w-2xl">
-              {eyebrow && <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{eyebrow}</p>}
+              {eyebrow && <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: band ? "var(--p-accent)" : "var(--p-mark)" }}>{eyebrow}</p>}
               {title && <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{title}</h2>}
-              {title && <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />}
-              {lead && <p className="mt-4 text-[17px] text-muted leading-relaxed">{lead}</p>}
+              {title && <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: band ? "var(--p-accent)" : "var(--grad)" }} />}
+              {lead && <p className={`mt-4 text-[17px] leading-relaxed ${band ? "opacity-85" : "text-muted"}`}>{lead}</p>}
             </div>
             {aside}
           </div>
@@ -809,7 +820,7 @@ function SiteRun(p: RunProps) {
     case "highlights": {
       const list = run as Extract<CardBlock, { kind: "highlights" }>[];
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrowFor("highlights", list[0].title, hi)} title={t(list[0].title)}>
+        <Section wide index={index} theme={theme} tight eyebrow={eyebrowFor("highlights", list[0].title, hi)} title={t(list[0].title)}>
           {list.map((b, bi) => (
             <div key={b.id} className={bi ? "mt-12" : ""}>
               {bi > 0 && <h3 className="text-xl font-semibold tracking-tight mb-6">{t(b.title)}</h3>}
@@ -869,7 +880,7 @@ function StepsRow({ items }: { items: { name: string; desc: string }[] }) {
   );
 }
 
-function HighlightsGrid({ items, theme }: { items: string[]; theme: string }) {
+function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme: string; band?: boolean }) {
   const t = useT();
   const list = items.map((s) => s.trim()).filter(Boolean);
   // Same split as the phone card; the item is translated whole, then its emoji comes off.
@@ -881,8 +892,9 @@ function HighlightsGrid({ items, theme }: { items: string[]; theme: string }) {
     return (
       <div className={`grid sm:grid-cols-2 ${list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
         {list.map((it, i) => { const { text } = glyphText(it, t); return (
-          <div key={i} className={`flex items-start gap-3 rounded-2xl border border-border bg-surface px-5 py-4 ${CARD_HOVER}`}>
-            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: tint(theme), color: "var(--tc)" }}><Check className="h-4 w-4" /></span>
+          <div key={i} className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${band ? "" : `border-border bg-surface ${CARD_HOVER}`}`}
+            style={band ? { borderColor: "color-mix(in srgb, currentColor 22%, transparent)", background: "color-mix(in srgb, currentColor 8%, transparent)" } : undefined}>
+            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={band ? { background: "color-mix(in srgb, currentColor 16%, transparent)", color: "var(--p-accent)" } : { background: tint(theme), color: "var(--tc)" }}><Check className="h-4 w-4" /></span>
             <span className="text-[15px] font-medium leading-snug">{text}</span>
           </div>
         ); })}
@@ -1227,12 +1239,16 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
   switch (block.kind) {
     case "about":
       return <Section wide index={index} theme={theme}><AboutBody block={block} hi={hi} /></Section>;
-    case "highlights":
-      return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><HighlightsGrid items={block.items} theme={theme} /></Section>;
+    case "highlights": {
+      // "Why choose us" — every point ticked — is the one stretch of the page that is not white: a long page of
+      // pale sections was the main reason a finished card still read as empty.
+      const band = block.items.length >= 3 && block.items.every((x) => (x ?? "").startsWith("✅"));
+      return <Section wide index={index} theme={theme} tone={band ? "band" : "auto"} tight eyebrow={eyebrow} title={t(block.title)}><HighlightsGrid items={block.items} theme={theme} band={band} /></Section>;
+    }
     case "services": {
       // "How it works" (numbered names) reads as a path, not a grid of cards.
       const isSteps = /^\d+[.)]\s/.test(block.items[0]?.name ?? "");
-      return <Section wide index={index} theme={theme} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
+      return <Section wide index={index} theme={theme} tight={isSteps} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
     }
     case "product":
       // A product page carries one product: it gets the detail layout, and no heading that repeats its name.
@@ -1399,13 +1415,17 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
         const link = block.referralCode ? `${block.joinUrl}${sep}ref=${encodeURIComponent(block.referralCode)}` : block.joinUrl;
         const internal = link.startsWith("#");
         const btn = `${BTN} px-6 py-3 text-[15px] shrink-0 ${FOCUS}`;
+        const action = link && (internal
+          ? <button type="button" onClick={() => { trackClick(card.username, "cta-join"); go(link.slice(1)); }} className={btn}>{t(block.joinLabel || "Learn more")}</button>
+          : <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(card.username, "cta-join")} className={btn}>{t(block.joinLabel || "Join Now")}</a>);
+        // With nothing to say beside it ("See all products"), the button belongs under the section it follows —
+        // a tinted box around one lonely pill made the page look padded out.
+        if (!block.body) return <section className="mx-auto max-w-6xl px-6 pb-14 -mt-6 flex justify-center" data-reveal>{action}</section>;
         return (
           <section className="mx-auto max-w-6xl px-6 py-6" data-reveal>
             <div className="rounded-2xl px-8 py-6 flex flex-wrap items-center justify-between gap-6" style={{ background: "var(--p-soft)" }}>
-              {block.body && <p className="text-[18px] font-semibold tracking-tight">{t(block.body)}</p>}
-              {link && (internal
-                ? <button type="button" onClick={() => { trackClick(card.username, "cta-join"); go(link.slice(1)); }} className={btn}>{t(block.joinLabel || "Learn more")}</button>
-                : <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(card.username, "cta-join")} className={btn}>{t(block.joinLabel || "Join Now")}</a>)}
+              <p className="text-[18px] font-semibold tracking-tight">{t(block.body)}</p>
+              {action}
             </div>
           </section>
         );

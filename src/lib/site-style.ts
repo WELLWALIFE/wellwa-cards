@@ -200,7 +200,9 @@ export function siteDesign(card: Pick<Card, "themeColor" | "site" | "template">,
   const vars = [
     `--p-deep:${palette.deep}`, `--p-mid:${palette.mid}`, `--p-glow:${palette.glow}`, `--p-accent:${palette.accent}`,
     `--p-ink:${palette.ink}`, `--p-on:${on}`, `--p-mark:${mark}`, `--p-foot:${foot}`, `--p-foot-ink:${inkOn(foot)}`,
-    `--p-soft:color-mix(in srgb, ${palette.mid} 7%, var(--surface))`,
+    // 7% was invisible: every section read as one long white page. 12% is a tint a visitor notices without
+    // the page turning into stripes.
+    `--p-soft:color-mix(in srgb, ${palette.mid} 12%, var(--surface))`,
     `--grad:linear-gradient(120deg, ${palette.mid}, ${palette.glow})`,
     `--r:${radius}`,
     `--look-head:'${fonts.head}', Inter, system-ui, sans-serif`, `--look-body:'${fonts.body}', Inter, system-ui, sans-serif`,
