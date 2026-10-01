@@ -514,4 +514,7 @@ export type BuildResponse = {
   /** Pictures made by AI for a card built from a reference website, so the owner can be told they are
    *  stand-ins and replace them with their own. */
   aiPhotos?: number;
+  /** What the build had to stand in for (card-audit.ts): stock photos of the trade, the trade's typical services /
+   *  steps / questions instead of this business's own — so the owner is told what to replace. */
+  standIns?: ("stock-photos" | "typical-services" | "typical-steps" | "typical-faq" | "typical-why-us")[];
 };

@@ -3,13 +3,15 @@
 // code, so nothing the owner did not give can appear.
 //
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
-import type { CardBlock, CardImage, CardLink, CardPage, ProductItem, TestimonialItem } from "@/lib/types";
+import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { styleFromReference, styleFromLook, homeOrderFromLook, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
+import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, type HomeKind } from "@/lib/site-recipes";
+import type { TradeData } from "@/lib/trade-data/types";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
   type CardFacts, type Lang, type Missing, type MissingKey, type SavedProduct, type SetupInfo, type WebCheck,
@@ -196,6 +198,51 @@ function titleFitsTrade(text: string, tradeLabel: string, business: string): boo
   return (!!trade && t.includes(trade)) || (!!biz && t.includes(biz));
 }
 
+/* ================= filling thin sections from the trade's seeds ================= */
+
+const norm = (s: string) => (s ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
+/** The same thing said twice: equal, the same opening words, or most of the real words shared ("Fresh daily" /
+ *  "Made fresh, every day"). */
+const sameText = (a: string, b: string) => {
+  const na = norm(a), nb = norm(b);
+  if (!na || !nb) return false;
+  if (na === nb || na.split(" ").slice(0, 3).join(" ") === nb.split(" ").slice(0, 3).join(" ")) return true;
+  const wa = new Set(na.split(" ").filter((w) => w.length >= 4)), wb = new Set(nb.split(" ").filter((w) => w.length >= 4));
+  if (!wa.size || !wb.size) return false;
+  let shared = 0; for (const w of wa) if (wb.has(w)) shared++;
+  return shared / Math.min(wa.size, wb.size) >= 0.6;
+};
+
+/** The AI's services, topped up from the trade's seeds (never a duplicate) to `want`. */
+function fillServices(own: ServiceItem[], trade: TradeData | null, line: (x: TradeData["services"][number]) => { name: string; desc: string }, want: number): ServiceItem[] {
+  const out = [...own.slice(0, 7)];
+  for (const s of trade?.services ?? []) {
+    if (out.length >= want) break;
+    const l = line(s);
+    if (!out.some((o) => sameText(o.name, l.name))) out.push({ name: l.name, desc: l.desc });
+  }
+  return out;
+}
+function fillPoints(own: string[], seeds: string[], want: number): string[] {
+  const out = [...own.slice(0, 7)];
+  for (const s of seeds) { if (out.length >= want) break; if (!out.some((o) => sameText(o, s))) out.push(s); }
+  return out;
+}
+/** Steps need to be a sequence: the AI's own list stands when it has three; otherwise the trade's. */
+function fillSteps(own: ServiceItem[], trade: TradeData | null, line: (x: TradeData["steps"][number]) => { name: string; desc: string }): ServiceItem[] {
+  if (own.length >= 3) return own.slice(0, 5);
+  return (trade?.steps ?? []).map((s) => { const l = line(s); return { name: l.name, desc: l.desc }; }).slice(0, 5);
+}
+function fillFaq(own: FaqItem[], trade: TradeData | null, lang: "en" | "hi", want: number): FaqItem[] {
+  const out = [...own.slice(0, 8)];
+  for (const f of trade?.faq ?? []) {
+    if (out.length >= want) break;
+    const q = lang === "hi" ? f.qHi : f.q, a = lang === "hi" ? f.aHi : f.a;
+    if (!out.some((o) => sameText(o.q, q))) out.push({ q, a });
+  }
+  return out;
+}
+
 /* ================= the composer ================= */
 
 export type ComposeReview = { name: string; city: string; text: string; rating: number };
@@ -245,8 +292,16 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const lang = pickLang(facts.lang);
   const cat = categoryOf(setup.category);
   const booking = BOOKING_CATEGORIES.has(setup.category);
+  // The trade's recipe: what the catalogue is called, what the button says, which sections in what order, and
+  // the seeds that fill a section the AI left thin or generic.
+  const recipe = recipeFor(setup.category);
+  const trade = tradeDataFor(setup.category);
   const t = titlesFor(lang, copy.titles, booking);
-  const ctaLabel = copy.cta || t.cta;
+  if (!copy.titles?.products && recipe.catalog !== "products") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; }
+  if (!copy.titles?.promise) t.promise = lang === "hi" ? "हमें क्यों चुनें" : lang === "hinglish" ? "Humein kyun chunein" : "Why choose us";
+  const ctaText = copy.cta || (booking ? t.cta : ctaLabel(recipe.cta, lang));
+  const seedLang = lang === "hi" ? "hi" : "en";
+  const seedLine = (x: { en: string; hi: string; desc: string; descHi: string }) => seedLang === "hi" ? { name: x.hi, desc: x.descHi } : { name: x.en, desc: x.desc };
 
   /* ---- header ---- */
   const accent = cat?.accent ?? "#0e9e90";
@@ -320,7 +375,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       ...(desc ? { desc } : {}),
       features,
       specs,
-      ctaLabel,
+      ctaLabel: ctaText,
     };
   });
 
@@ -330,9 +385,12 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // Services page when there are no products: the owner's own list, or the usual services of the trade (the AI
   // writes them in general words and the owner deletes any that do not apply). A card with nothing to browse
   // reads as unfinished, which is what owners complained about.
-  const services = !items.length && !personal
-    ? (copy.services ?? []).filter((s) => s.name && !productNames.has(s.name.toLowerCase())).slice(0, 6)
-    : [];
+  // Services (every trade, shops too — bulk orders, delivery, repairs are services): the AI's, minus the vague
+  // ones, filled up from the trade's own seeds so the list is never thin. A shop with products keeps its
+  // services as a second section; a personal card has none.
+  const services: ServiceItem[] = personal ? [] : fillServices(
+    (copy.services ?? []).filter((s) => s.name && !productNames.has(s.name.toLowerCase()) && !isGeneric(s.name, trade)),
+    trade, seedLine, 6);
 
   /* ---- trust strip (code only, never AI) ---- */
   const trust: string[] = [];
@@ -366,40 +424,62 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const workPhotos = facts.photos.filter(Boolean).slice(0, 5);
   const productPage: CardPage | null = items.length
     ? { id: uid(), slug: "products", label: t.productsPage, blocks: [{ id: uid(), kind: "product", title: t.products, items }] }
-    : services.length
-      ? { id: uid(), slug: "services", label: t.servicesPage, blocks: [{ id: uid(), kind: "services", title: t.services, items: services }] }
-      : null;
+    : null;
+  // Services get their own page whenever there are enough of them — next to the products page for a shop, as the
+  // main page for a service trade.
+  const servicesPage: CardPage | null = services.length >= 3
+    ? { id: uid(), slug: "services", label: t.servicesPage, blocks: [{ id: uid(), kind: "services", title: t.services, items: services }] }
+    : null;
 
   const home: CardBlock[] = [];
-  if (trustItems.length >= 2) home.push({ id: uid(), kind: "highlights", title: t.highlights, items: trustItems });
   const shots: CardImage[] = items.filter((i) => i.imageUrl).slice(0, 6).map((i) => ({ url: i.imageUrl!, caption: i.name + (i.price ? ` — ${i.price}` : "") }));
-  if (shots.length >= 2) home.push({ id: uid(), kind: "carousel", title: t.products, images: shots });
-  else if (shots.length === 1) home.push({ id: uid(), kind: "image", title: t.products, images: shots });
-  if (productPage) {
-    const isProducts = productPage.slug === "products";
-    home.push({ id: uid(), kind: "cta", title: "", body: "", joinUrl: isProducts ? "#products" : "#services", joinLabel: isProducts ? t.seeAll : t.seeAllServices, referralCode: "" });
-  }
   const facePhoto = lead === "business" ? setup.photo || undefined : undefined;
   const aboutImage = workPhotos.length >= 3 ? facePhoto : workPhotos[0] ?? facePhoto;
-  home.push({ id: uid(), kind: "about", title: t.about, body: copy.about, ...(aboutImage ? { imageUrl: aboutImage } : {}) });
-  // "Our promise" (soft, no numbers) and "How it works": the parts that make a thin card feel finished. The trust
-  // strip above stays the place for facts; these two never carry any.
-  const promise = (copy.promise ?? []).filter((x) => x && !trustItems.includes(x)).slice(0, 6);
-  if (promise.length >= 3 && !personal) home.push({ id: uid(), kind: "highlights", title: t.promise, items: promise.map((x) => (/^\p{Extended_Pictographic}/u.test(x) ? x : `✅ ${x}`)) });
-  if ((copy.steps ?? []).length >= 3 && !personal) home.push({ id: uid(), kind: "services", title: t.steps, items: copy.steps.slice(0, 5).map((st, i) => ({ name: `${i + 1}. ${st.name}`, desc: st.desc })) });
-  if (workPhotos.length === 2) home.push({ id: uid(), kind: "image", title: t.photos, images: [{ url: workPhotos[1] }] });
-  if (reviewList.length) {
-    const reviews: TestimonialItem[] = reviewList.slice(0, 6).map((r) => ({
-      name: [r.name?.trim(), r.city?.trim()].filter(Boolean).join(", ") || (lang === "hi" ? "ग्राहक" : "Customer"),
-      text: r.text.trim(),
-      rating: Math.min(5, Math.max(1, Math.round(Number(r.rating) || 5))),
-    }));
-    home.push({ id: uid(), kind: "testimonials", title: t.reviews, items: reviews });
-  }
+  // "Why choose us" and "How it works": the AI's points minus the vague ones, filled from the trade's seeds so
+  // neither is ever thin. The trust strip above stays the place for facts; these two never carry numbers.
+  const promise = personal ? [] : fillPoints(
+    (copy.promise ?? []).filter((x) => x && !trustItems.includes(x) && !isGeneric(x, trade)),
+    (trade?.whyUs ?? []).map((w) => (seedLang === "hi" ? w.hi : w.en)), 6);
+  const steps = personal ? [] : fillSteps((copy.steps ?? []).filter((st) => st.name && !isGeneric(st.name, trade)), trade, seedLine);
+  const reviews: TestimonialItem[] = reviewList.slice(0, 6).map((r) => ({
+    name: [r.name?.trim(), r.city?.trim()].filter(Boolean).join(", ") || (lang === "hi" ? "ग्राहक" : "Customer"),
+    text: r.text.trim(),
+    rating: Math.min(5, Math.max(1, Math.round(Number(r.rating) || 5))),
+  }));
   const productOffer = input.products.find((p) => p.offer?.trim());
   const offerText = facts.offer || (productOffer ? `${productName(productOffer)}: ${productOffer.offer.trim()}` : "");
-  if (offerText && !personal) home.push({ id: uid(), kind: "offer", title: t.offer, text: offerText, code: "", expires: "" });
-  if (booking && !personal) home.push({ id: uid(), kind: "appointment", title: t.booking, url: "", note: facts.hours });
+
+  // The home page in the trade's order (site-recipes.ts): a shop leads with what it sells, a service trade with
+  // its services, a professional with who they are. A section that has nothing in it is simply not there.
+  const blockFor = (kind: HomeKind): CardBlock[] => {
+    switch (kind) {
+      case "trust": return trustItems.length >= 2 ? [{ id: uid(), kind: "highlights", title: t.highlights, items: trustItems }] : [];
+      case "catalog": {
+        const out: CardBlock[] = [];
+        if (shots.length >= 2) out.push({ id: uid(), kind: "carousel", title: t.products, images: shots });
+        else if (shots.length === 1) out.push({ id: uid(), kind: "image", title: t.products, images: shots });
+        if (productPage?.slug === "products") out.push({ id: uid(), kind: "cta", title: "", body: "", joinUrl: "#products", joinLabel: t.seeAll, referralCode: "" });
+        return out;
+      }
+      case "services":
+        // On the phone the services page holds the full list; the home shows the first few with a way to it.
+        return servicesPage
+          ? [{ id: uid(), kind: "services", title: t.services, items: services.slice(0, 4) }, ...(services.length > 4 ? [{ id: uid(), kind: "cta" as const, title: "", body: "", joinUrl: "#services", joinLabel: t.seeAllServices, referralCode: "" }] : [])]
+          : [];
+      case "whyUs": return promise.length >= 3 ? [{ id: uid(), kind: "highlights", title: t.promise, items: promise.map((x) => (/^\p{Extended_Pictographic}/u.test(x) ? x : `✅ ${x}`)) }] : [];
+      case "steps": return steps.length >= 3 ? [{ id: uid(), kind: "services", title: t.steps, items: steps.map((st, i) => ({ name: `${i + 1}. ${st.name}`, desc: st.desc })) }] : [];
+      case "about": return [{ id: uid(), kind: "about", title: t.about, body: copy.about, ...(aboutImage ? { imageUrl: aboutImage } : {}) }];
+      case "offer": return offerText ? [{ id: uid(), kind: "offer", title: t.offer, text: offerText, code: "", expires: "" }] : [];
+      case "booking": return booking ? [{ id: uid(), kind: "appointment", title: t.booking, url: "", note: facts.hours }] : [];
+      case "photos": return workPhotos.length === 2 ? [{ id: uid(), kind: "image", title: t.photos, images: [{ url: workPhotos[1] }] }] : [];
+      case "reviews": return reviews.length ? [{ id: uid(), kind: "testimonials", title: t.reviews, items: reviews }] : [];
+    }
+  };
+  const order: HomeKind[] = [...recipe.home, ...(["trust", "catalog", "services", "whyUs", "steps", "about", "offer", "booking", "photos", "reviews"] as HomeKind[]).filter((k) => !recipe.home.includes(k))];
+  // A personal card keeps its old, short shape.
+  for (const k of personal ? (["about", "trust", "photos", "reviews"] as HomeKind[]) : order) home.push(...blockFor(k));
+  // The appointment block always exists for a booking trade, even when the recipe did not place it.
+  if (booking && !personal && !home.some((b) => b.kind === "appointment")) home.push(...blockFor("booking"));
 
   const contact: CardBlock[] = [];
   if (facts.hours) {
@@ -410,12 +490,14 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   if (where || mapUrl) contact.push({ id: uid(), kind: "location", title: t.location, address: where, ...(mapUrl ? { mapUrl } : {}) });
   if (copy.more) contact.push({ id: uid(), kind: "about", title: t.more, body: copy.more });
   contact.push({ id: uid(), kind: "contact", title: t.contact, note: copy.contactNote });
-  const faqPage: CardPage | null = copy.faq.length >= 3
-    ? { id: uid(), slug: "faq", label: lang === "hi" ? "सवाल-जवाब" : "FAQ", blocks: [{ id: uid(), kind: "faq", title: t.faq, items: copy.faq.slice(0, 8) }] }
+  const faqItems = personal ? copy.faq.slice(0, 8) : fillFaq(copy.faq, trade, seedLang, 7);
+  const faqPage: CardPage | null = faqItems.length >= 3
+    ? { id: uid(), slug: "faq", label: lang === "hi" ? "सवाल-जवाब" : "FAQ", blocks: [{ id: uid(), kind: "faq", title: t.faq, items: faqItems }] }
     : null;
 
   const pages: CardPage[] = [{ id: uid(), slug: "home", label: t.home, blocks: home }];
   if (productPage) pages.push(productPage);
+  if (servicesPage) pages.push(servicesPage);
   if (workPhotos.length >= 3) {
     pages.push({ id: uid(), slug: "gallery", label: t.photos, blocks: [{ id: uid(), kind: "gallery", title: t.photos, images: workPhotos.map((url) => ({ url, color: theme, label: "" })) }] });
   }
@@ -467,7 +549,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
         headline,
         sub: copy.hero?.sub || copy.tagline,
         ...(firstImage || setup.logo ? { imageUrl: firstImage || setup.logo } : {}),
-        ctaLabel,
+        ctaLabel: ctaText,
       },
       // "Make it like this website": its colours, fonts, rounding, hero and the order it puts things in —
       // never its words, pictures or facts. What the browser measured wins over what the HTML hinted at;
@@ -508,7 +590,6 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
 /* ================= refresh: fill an existing card's empty parts ================= */
 
 const wordCount = (s: string) => (s ?? "").trim().split(/\s+/).filter(Boolean).length;
-const norm = (s: string) => (s ?? "").toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 
 /** The owner's card with the fresh build's NEW parts added — never a word of theirs replaced.
  *  Adds: the longer about (only when theirs is under 60 words), the promise / how-it-works / "what we do" / FAQ

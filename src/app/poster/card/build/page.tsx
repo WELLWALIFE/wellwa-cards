@@ -483,6 +483,15 @@ export default function BuildCard() {
         setNotice("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.");
       } else if (found && !found.products && !found.photos && facts.websiteRole !== "reference") {
         setNotice("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.");
+      } else if (r.data.standIns?.length) {
+        // What the build had to stand in for (card-audit.ts): said plainly, so the owner knows what to replace.
+        const si = r.data.standIns;
+        const parts: string[] = [];
+        if (si.includes("stock-photos")) parts.push("the photos are stock pictures of your trade — swap in your own from Edit card");
+        const typical = (["typical-services", "typical-steps", "typical-why-us", "typical-faq"] as const).filter((k) => si.includes(k))
+          .map((k) => ({ "typical-services": "services", "typical-steps": "the steps", "typical-why-us": "the why-us points", "typical-faq": "the questions" })[k]);
+        if (typical.length) parts.push(`${typical.join(", ")} are the usual ones for your trade — edit any that do not fit`);
+        setNotice(`Your card is ready. ${parts.join("; ")}.`);
       }
       setState("preview");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }

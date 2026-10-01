@@ -24,6 +24,8 @@ import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
+import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
+import { auditCard } from "@/lib/card-audit";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -309,6 +311,16 @@ export async function POST(request: Request) {
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
   const knowledge = factsText({ setup, facts, products: list, info: new Map(), site });
   const business = setup.business || setup.person;
+  const recipe = recipeFor(setup.category);
+  const tdata = tradeDataFor(setup.category);
+  const guide = tdata ? {
+    catalog: recipe.catalog,
+    explain: tdata.explain,
+    services: tdata.services.map((x) => `${x.en} — ${x.desc}`),
+    whyUs: tdata.whyUs.map((x) => x.en),
+    steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
+    faq: tdata.faq.map((x) => x.q),
+  } : undefined;
   const brief: CardBrief = {
     business,
     person: setup.person && setup.person !== business ? setup.person : undefined,
@@ -325,6 +337,9 @@ export async function POST(request: Request) {
     booking: BOOKING_CATEGORIES.has(setup.category),
     products: list.map(productName),
     ...(ownSite ? { ownSite: ownSite.url } : {}),
+    // The trade's guide (site-recipes.ts): what to explain, the usual services, why-us, steps and questions —
+    // so the AI writes a complete site for THIS trade, not the same four sections for every business.
+    ...(guide ? { guide } : {}),
   };
   // The trade's stock photos are fetched while the AI writes (both take a while; neither needs the other).
   const mediaP = (async () => {
@@ -347,8 +362,10 @@ export async function POST(request: Request) {
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;
   let built = current ? mergeRefresh(current, card) : card;
   // Real photos + a short clip of the trade where the owner has none (cached per trade; ~20 s the first time).
+  let stockUrls: string[] = [];
   try {
     const media = await mediaP;
+    stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
     if (media) built = addStockMedia(built, paidPlan ? media : { ...media, clip: null }, facts.lang);
@@ -364,8 +381,14 @@ export async function POST(request: Request) {
       if (isLogo && built.site?.hero) built = { ...built, site: { ...built.site, hero: { ...built.site.hero, imageUrl: photo } } };
     }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
+  // The last look (card-audit.ts): the same stock photo in three places, a city-only map, a thin section, a
+  // generic line — fixed in code; and what had to stand in for the owner's own material is reported.
+  const audited = auditCard(built, { stockPhotos: stockUrls, city: setup.city, trade: tdata, lang: facts.lang });
+  built = audited.card;
+  if (audited.fixed.length) console.log("[card] audit", JSON.stringify(audited.fixed));
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
+    ...(audited.standIns.length ? { standIns: audited.standIns } : {}),
     ...(website ? { siteRead: !!site } : role === "reference" && facts.website ? { siteRead: !!reference } : {}),
     // What the site actually yielded, so the builder can say so instead of leaving the owner wondering why
     // their products did not come across.

@@ -26,6 +26,18 @@ export type CardBrief = {
   products?: string[];   // the exact product names on the card
   /** The business's OWN website was read: the trade above was confirmed from it, and its words lead. */
   ownSite?: string;
+  /** The trade's guide (site-recipes.ts): what the about must explain, the usual services, why-us points, steps
+   *  and customer questions of this trade — in English; the AI adapts them to the facts and the card language. */
+  guide?: TradeGuide;
+};
+
+export type TradeGuide = {
+  catalog: string;          // what the things are called: "products", "menu", "treatments", "courses"…
+  explain: string[];
+  services: string[];       // "name — what the customer gets"
+  whyUs: string[];
+  steps: string[];          // "name — desc"
+  faq: string[];            // questions
 };
 
 /** The words the AI writes for a card. Every field is checked and capped before it is returned. */
@@ -139,6 +151,14 @@ ${brief.details.slice(0, 8000)}
 ${ref ? `
 REFERENCE WEBSITE the owner likes (${ref.url}) — only for tone and the kind of sections. Never copy its sentences, names, prices or claims.
 ${ref.summary}
+` : ""}${brief.guide ? `
+TRADE GUIDE — what a complete website of a ${brief.category} covers (adapt to THIS business's facts; keep what applies; the owner's own items always come first; write in the card language):
+- The ${brief.guide.catalog} are what this business offers; call them that.
+- The about must explain: ${brief.guide.explain.join("; ")}.
+- Usual services of the trade: ${brief.guide.services.join(" | ")}
+- Why customers choose a good ${brief.category}: ${brief.guide.whyUs.join(" | ")}
+- How a new customer works with such a business: ${brief.guide.steps.join(" | ")}
+- Questions new customers ask: ${brief.guide.faq.join(" | ")}
 ` : ""}
 JSON shape:
 {"jobTitle":"","tagline":"","about":"","hero":{"sub":""},"color":"<one of ${COLORS.join(", ")} that suits the business>",
@@ -157,14 +177,14 @@ RULES
 5. tagline: at most 10 words, no claims.
 6. about: 110-170 words in 2-3 short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${brief.category} (care, quality, honest advice, timely service), with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
 7. hero.sub: at most 25 words — what they offer and where, worded differently from "about".
-8. services: 4-6 items. Use the services the owner named; when the owner named none, list the 4-6 services such a ${brief.category} usually offers, in general words (the owner can delete any). Never repeat a product name, never a price. desc at most 20 words, explaining what the customer gets.
+8. services: 5-7 items. Use the services the owner named (and the ones the website shows); then the usual services of this trade from the TRADE GUIDE that fit, worded for THIS business (the owner can delete any). Never repeat a product name, never a price. desc at most 20 words, explaining what the customer gets. Never a vague item like "Connect with us" or "Explore options" — every item is a real service.
 9. highlights: 0-4 short points, only from the facts.
-9b. promise: 4-6 points of at most 6 words each — how we treat customers, true of any careful business in this trade and containing NO numbers, awards or guarantees (e.g. "Clear prices, no surprises", "Reply on WhatsApp", "Genuine products", "On-time service").
-9c. steps: 3-5 steps of how a new customer works with us in this trade, in order ("Message us on WhatsApp" → … → the result), name at most 5 words, desc at most 18 words, no numbers.
+9b. promise: 5-7 points of at most 6 words each — why customers choose this business: first the ones the facts support (ghee, hallmark, degree, areas, timings, delivery, warranty — without numbers), then the trade's usual reasons from the guide. NO numbers, awards or guarantees.
+9c. steps: 3-4 steps of how a new customer works with us in this trade, in order ("Message us on WhatsApp" → … → the result), name at most 5 words, desc at most 18 words, no numbers; specific to the trade (a sweet shop: pick, order, packed, delivered; a clinic: book, visit, treatment, follow-up), never "Connect with us / Explore options / Finalise".
 9d. more: 60-110 words for the website's About section — what customers in this city or trade look for and how we help, worded differently from "about", no numbers or claims.
 10. offer: only when the owner gave an offer, else {"title":"","text":""}.
 11. hours: only when timings were given, else [].
-12. faq: 6-8 questions a new customer of a ${brief.category} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then general ones for this trade (how to book or order, what to bring or share, how long it takes, what to expect, after-sales help) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers 15-40 words.
+12. faq: 6-8 questions a new customer of a ${brief.category} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then the trade's usual questions (TRADE GUIDE) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers 15-40 words.
 13. contactNote: 1 short sentence inviting a WhatsApp message or a call.
 14. cta: a 2-4 word button text in the card language: "Book" wording for a booking business, "Order" wording for shops that sell products, otherwise "Enquire" wording (e.g. "Order on WhatsApp").
 15. titles: fill every key with a short heading in the card language. Meaning in English: ${titleMeaning}.
@@ -237,7 +257,28 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
   };
 }
 
-/** The card's words from the facts. One call; one more if the reply is broken or incomplete; then it throws. */
+/** The text fields a card cannot do without, and whether this copy has them. The lists (services, promise,
+ *  steps, FAQ) are not here: the composer fills those from the trade's own seeds, which costs nothing. */
+const TEXT_GAPS = ["tagline", "about", "more", "hero"] as const;
+function textGaps(c: CardCopy): string[] {
+  return TEXT_GAPS.filter((k) => (k === "hero" ? !c.hero.sub : !c[k]) || (k === "about" && c.about.split(/\s+/).length < 60));
+}
+
+/** One short, text-only second ask for the fields the first reply left empty or too short (owner's call,
+ *  1 Oct 2026: a thin reply used to go through unnoticed). Same facts, the light model, a few hundred tokens. */
+function gapPrompt(brief: CardBrief, lang: keyof typeof LANG, gaps: string[]): string {
+  const want = gaps.map((g) => g === "hero" ? `"hero":{"sub":""} — at most 25 words: what they offer and where` : g === "about" ? `"about":"" — 110-170 words in 2-3 short paragraphs, first person plural, from the facts only${brief.guide ? `, and it must explain: ${brief.guide.explain.join("; ")}` : ""}` : g === "more" ? `"more":"" — 60-110 words for the website's About section, worded differently from the about` : `"tagline":"" — 4-8 memorable words, no claims`).join("\n");
+  return `You write the words for a small Indian business's website. Write in ${LANG[lang]}. Use ONLY these facts; never invent numbers, years, prices, awards or claims. Return ONLY a JSON object with exactly these keys:
+${want}
+
+Business: ${brief.business}${brief.person ? ` (owner ${brief.person})` : ""}
+Trade: ${brief.category}
+City: ${brief.city || "(not given)"}
+Facts:
+${brief.details.slice(0, 5000)}`;
+}
+
+/** The card's words from the facts. One call; a short second one only for the text it left thin; then it throws. */
 export async function writeCard(brief: CardBrief, ref?: Reference | null): Promise<CardCopy> {
   const key = process.env.GEMINI_API_KEY; if (!key) throw new Error("AI not configured");
   const lang = brief.lang && LANG[brief.lang] ? brief.lang : "en";
@@ -249,8 +290,24 @@ export async function writeCard(brief: CardBrief, ref?: Reference | null): Promi
   for (const [i, timeout] of [55_000, 45_000].entries()) {
     try {
       const raw = await ask(key, text, timeout, MODELS[Math.min(i, MODELS.length - 1)]);
-      const out = toCopy(raw, brief);
-      if (out.tagline && out.about) return out;
+      let out = toCopy(raw, brief);
+      if (out.tagline && out.about) {
+        // Thin text (a short about, no hero line, no second paragraph): one bounded ask for just those fields.
+        const gaps = textGaps(out);
+        if (gaps.length) {
+          try {
+            const more = toCopy({ ...raw, ...(await ask(key, gapPrompt(brief, lang, gaps), 30_000, MODELS[MODELS.length - 1])) }, brief);
+            out = {
+              ...out,
+              tagline: out.tagline || more.tagline,
+              about: more.about.split(/\s+/).length > out.about.split(/\s+/).length ? more.about : out.about,
+              more: out.more || more.more,
+              hero: { sub: out.hero.sub || more.hero.sub },
+            };
+          } catch { /* the first reply stands */ }
+        }
+        return out;
+      }
       // The AI DID write a tagline and an about text, but the invented-number filter emptied one of them.
       // An empty reply (a refusal, a safety block) is still a failure and is retried, then thrown.
       if (S(raw.tagline, 90) && S(raw.about, 1400) && (!partial || score(out) > score(partial))) partial = out;
