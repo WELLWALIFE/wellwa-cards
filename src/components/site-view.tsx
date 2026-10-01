@@ -247,6 +247,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const previewed = new Set(sections.filter((s) => s.kind !== "block").map((s) => (s as { page: string }).page));
   const homeKinds = new Set((pages.find((p) => p.slug === "home")?.blocks ?? []).map((b) => b.kind));
   const explorePages = pages.filter((p) => p.slug !== first && p.slug !== "contact" && !previewed.has(p.slug) && !(p.slug === "services" && homeKinds.has("services")));
+  // The footer prints each way of reaching the business once: the same number as WhatsApp AND Call was two
+  // identical lines, which read as a mistake.
+  const digitsOf = (v: string) => (v ?? "").replace(/\D/g, "").slice(-10);
+  const sameNumber = !!wa && !!phone && digitsOf(wa.value) === digitsOf(phone.value);
+  const footLinks = sameNumber ? links.filter((l) => l.type !== "phone") : links;
   const fontHref = design.fonts.href;
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
 
@@ -518,8 +523,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           <div>
             <p className="text-[12px] font-semibold tracking-[0.16em] uppercase opacity-70">{t("Contact")}</p>
             <ul className="mt-4 space-y-2.5">
-              {links.map((l) => (
-                <li key={l.id}><a href={linkHref(l.type, l.value)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}><LinkIcon type={l.type} className="h-4 w-4 shrink-0" /><span className="truncate max-w-[260px]">{l.value || l.label}</span></a></li>
+              {footLinks.map((l) => (
+                l.type === "upi"
+                  // upi:// does nothing in a desktop browser: the ID is shown to copy, and the link stays for phones.
+                  ? <li key={l.id}><UpiLine value={l.value} username={card.username} /></li>
+                  : <li key={l.id}><a href={linkHref(l.type, l.value, l.type === "whatsapp" ? waOpen : undefined)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}><LinkIcon type={l.type} className="h-4 w-4 shrink-0" /><span className="truncate max-w-[260px]">{l.value || l.label}</span>{sameNumber && l.type === "whatsapp" && <span className="shrink-0 text-xs opacity-60">· {t("WhatsApp & call")}</span>}</a></li>
               ))}
             </ul>
             {localLine(card) && <p className="mt-5 text-xs opacity-60 leading-relaxed">{localLine(card)}</p>}
@@ -635,6 +643,25 @@ function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean): string
   if (!e) return undefined;
   const a = title.trim().toLowerCase(), b = e.toLowerCase();
   return a === b || a.startsWith(b) || (a.length < 22 && b.includes(a)) ? undefined : e;
+}
+
+/** A UPI ID that can actually be used from a computer: tap on a phone, copy on a desktop. */
+function UpiLine({ value, username }: { value: string; username: string }) {
+  const t = useT();
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard?.writeText(value).then(() => { setCopied(true); trackClick(username, "upi-copy"); setTimeout(() => setCopied(false), 1600); }).catch(() => undefined);
+  };
+  return (
+    <span className="inline-flex items-center gap-2 max-w-full">
+      <a href={linkHref("upi", value)} onClick={() => trackClick(username, "upi")} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}>
+        <LinkIcon type="upi" className="h-4 w-4 shrink-0" /><span className="truncate max-w-[200px] mono">{value}</span>
+      </a>
+      <button type="button" onClick={copy} className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition hover:bg-white/10 ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 30%, transparent)" }}>
+        {copied ? t("Copied") : t("Copy")}
+      </button>
+    </span>
+  );
 }
 
 function Stars({ n }: { n: number }) {

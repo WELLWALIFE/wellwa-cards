@@ -3,6 +3,7 @@
 // the same name/address/phone everywhere, LocalBusiness structured data (address, hours, areas served, catalogue),
 // crawlable page URLs, and a Google Business Profile. This file does the first four; the owner links the fifth.
 import type { Card, CardBlock, CardPage } from "@/lib/types";
+import { schemaTypeFor } from "@/lib/site-recipes";
 
 export type SeoFacts = {
   business: string; person: string; category: string; city: string; areas: string[];
@@ -188,8 +189,15 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
   const areas = [f.city, ...f.areas].filter(Boolean);
   const gstin = clean(card.gstin);
   const pin = cardPin(card);
+  // What the business accepts and roughly what it costs: two fields Google shows in a local result.
+  const chips = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])).join(" ");
+  const pays = [...new Set((chips.match(/\b(UPI|cash|cards?|GPay|PhonePe|Paytm|cheque|EMI|NEFT)\b/gi) ?? []).map((x) => (/^(gpay|phonepe|paytm)$/i.test(x) ? "UPI" : /^cards?$/i.test(x) ? "Card" : x[0].toUpperCase() + x.slice(1).toLowerCase())))];
+  const paymentAccepted = [...new Set([...pays, ...(card.links.some((l) => l.type === "upi") ? ["UPI"] : [])])];
+  const amounts = find(card, "product").flatMap((b) => b.items).map((p) => Number(price(p.price))).filter((n) => Number.isFinite(n) && n > 0);
+  const priceRange = amounts.length ? (Math.min(...amounts) === Math.max(...amounts) ? `₹${Math.min(...amounts)}` : `₹${Math.min(...amounts)}–₹${Math.max(...amounts)}`) : "";
   const business: Record<string, unknown> = {
-    "@type": isBusiness ? "LocalBusiness" : "Person",
+    // The trade's own schema.org type (Bakery, Dentist, FurnitureStore…): a bare LocalBusiness wins no rich result.
+    "@type": isBusiness ? schemaTypeFor(card.seo?.categoryKey ?? "") : "Person",
     "@id": `${opts.homeUrl}#business`,
     name: f.business,
     url: opts.homeUrl,
@@ -203,6 +211,8 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
     ...(isBusiness && areas.length ? { areaServed: areas.map((name) => ({ "@type": "Place", name })) } : {}),
     ...(isBusiness && hours.length ? { openingHoursSpecification: hours } : {}),
     ...(isBusiness && gstin ? { taxID: gstin } : {}),
+    ...(isBusiness && paymentAccepted.length ? { paymentAccepted: paymentAccepted.join(", ") } : {}),
+    ...(isBusiness && priceRange ? { priceRange } : {}),
     ...(isBusiness && pin ? { geo: { "@type": "GeoCoordinates", latitude: pin.lat, longitude: pin.lng } } : {}),
     ...(sameAs.length ? { sameAs } : {}),
     ...(isBusiness && catalogue.length ? { hasOfferCatalog: { "@type": "OfferCatalog", name: `${f.business} — products and services`, itemListElement: catalogue } } : {}),

@@ -145,6 +145,38 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"):
   return { font, radius, ...(palette ? { palette } : {}) };
 }
 
+/** The schema.org type Google reads for this trade, so a sweet shop is indexed as a Bakery and a dentist as a
+ *  Dentist — not every Indian business as a bare "LocalBusiness" (the generic type wins no rich result). Keys
+ *  that have no exact schema.org type stay on LocalBusiness, which is always valid. */
+const SCHEMA_TYPE: Record<string, string> = {
+  // retail
+  kirana: "GroceryStore", "grocery-online": "GroceryStore", garments: "ClothingStore", jewellery: "JewelryStore",
+  mobile: "MobilePhoneStore", furniture: "FurnitureStore", hardware: "HardwareStore", medical: "Pharmacy",
+  sweets: "Bakery", gift: "Store", optical: "Optician", footwear: "ShoeStore",
+  // food
+  restaurant: "Restaurant", cafe: "CafeOrCoffeeShop", tiffin: "FoodEstablishment", catering: "FoodEstablishment", hotel: "Hotel",
+  // health
+  doctor: "Physician", hospital: "Hospital", dentist: "Dentist", ayurveda: "MedicalClinic", pharma: "Pharmacy",
+  gym: "HealthClub", salon: "BeautySalon", spa: "DaySpa", water: "Store", wellness: "HealthAndBeautyBusiness",
+  // services
+  ca: "AccountingService", lawyer: "LegalService", insurance: "InsuranceAgency", finance: "FinancialService",
+  realestate: "RealEstateAgent", builder: "GeneralContractor", interior: "HomeAndConstructionBusiness",
+  travel: "TravelAgency", transport: "MovingCompany", auto: "AutoRepair", electrician: "Electrician",
+  photography: "ProfessionalService", event: "ProfessionalService", printing: "ProfessionalService",
+  it: "ProfessionalService", security: "ProfessionalService", cleaning: "ProfessionalService",
+  tailor: "ClothingStore", mehndi: "HealthAndBeautyBusiness", astro: "ProfessionalService", courier: "ProfessionalService",
+  // education
+  school: "School", coaching: "EducationalOrganization", college: "CollegeOrUniversity",
+  computer: "EducationalOrganization", teacher: "EducationalOrganization", dance: "EducationalOrganization",
+  // industry
+  agri: "Store", dairy: "Store", manufacturer: "Organization", wholesale: "Store", textile: "Store",
+  // community
+  ngo: "NGO", temple: "PlaceOfWorship", samaj: "Organization", club: "Organization", union: "Organization", housing: "Organization",
+};
+export function schemaTypeFor(categoryKey: string): string {
+  return SCHEMA_TYPE[categoryKey] ?? "LocalBusiness";
+}
+
 /** A phrase too generic to stand in a section (the trade's own list plus the ones every trade shares). */
 const GENERIC_ALWAYS = ["connect with us", "explore options", "finalise your choice", "explore our options", "get in touch with us", "contact us today", "quality products", "best quality", "customer satisfaction", "we are committed", "one-stop", "wide range", "top-notch", "world-class", "state-of-the-art", "look no further"];
 export function isGeneric(text: string, data: TradeData | null): boolean {

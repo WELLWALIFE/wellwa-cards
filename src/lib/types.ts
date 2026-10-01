@@ -179,7 +179,7 @@ export interface Card {
   seoTitle?: string;
   seoDescription?: string;
   /** Local search: where and what, so the card shows up for "<type> in <city>" and "<type> near me". */
-  seo?: { city?: string; areas?: string[]; category?: string; keywords?: string[]; googleVerify?: string };
+  seo?: { city?: string; areas?: string[]; category?: string; /** The trade's key (poster-categories.ts), so search data can name the right schema.org type. */ categoryKey?: string; keywords?: string[]; googleVerify?: string };
   language?: string;
   locked?: boolean;
   /** Header order: 'business' puts the business name first (shops); absent or

@@ -84,9 +84,14 @@ export default async function Image({ params }: { params: Promise<{ username: st
   const initials = name.split(" ").filter(Boolean).map((w) => w[0]).slice(0, 2).join("").toUpperCase();
 
   // One clear line about what the visitor gets — never a repeat of the role.
-  const roleLine = business
-    ? [job, person && person.trim().toLowerCase() !== company.trim().toLowerCase() ? person : ""].filter(Boolean).join(" · ")
-    : [job, company].filter(Boolean).join(" · ");
+  // …and the city, because a share preview of a local business is read as "who, what, where".
+  const city = (card?.seo?.city ?? "").trim();
+  const roleLine = [
+    business
+      ? [job, person && person.trim().toLowerCase() !== company.trim().toLowerCase() ? person : ""].filter(Boolean).join(" · ")
+      : [job, company].filter(Boolean).join(" · "),
+    city,
+  ].filter(Boolean).join(" · ");
   // First sentence only, cut on a word boundary, so it never ends mid-word.
   const full = shareBlurb(brand, card ?? null);
   const sentence = full.split(/(?<=\.)\s+/)[0] || full;

@@ -516,7 +516,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     : undefined;
   const headline = lead === "business" ? setup.business : name;
   const seo: NonNullable<TemplateCard["seo"]> = {};
-  if (cat?.en) seo.category = cat.en;
+  if (cat?.en) { seo.category = cat.en; seo.categoryKey = cat.key; }
   if (setup.city) seo.city = setup.city;
   if (areas.length) seo.areas = areas.slice(0, 12);
   else if (setup.reach === "india") seo.areas = ["All India"];
