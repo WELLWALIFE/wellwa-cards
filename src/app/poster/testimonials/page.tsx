@@ -22,6 +22,8 @@ const S = {
     phone: "ग्राहक का मोबाइल नंबर", askBtn: "WhatsApp पर review माँगें", googleLabel: "Google review link (optional)", googlePh: "https://g.page/r/…",
     googleBtn: "Google review link भेजें", googleHint: "Google Maps → अपना business → 'Get more reviews' से link copy करें। यह link इस phone पर save रहती है।",
     badPhone: "10 अंकों का सही नंबर डालें।",
+    waiting: "आपकी मंज़ूरी का इंतज़ार", waitingHint: "ये reviews आपकी website से आई हैं। जो आप मंज़ूर करेंगे वही card और website पर दिखेगी।",
+    approve: "Card पर दिखाएँ", approved: "Card पर दिख रही है",
   },
   en: {
     title: "Customer reviews", hint: "Add a customer's review — on 💬 Testimonial days in the calendar it becomes a beautiful poster.",
@@ -31,6 +33,8 @@ const S = {
     phone: "Customer mobile number", askBtn: "Ask for review on WhatsApp", googleLabel: "Google review link (optional)", googlePh: "https://g.page/r/…",
     googleBtn: "Send Google review link", googleHint: "Google Maps → your business → 'Get more reviews' to copy the link. Saved on this phone.",
     badPhone: "Enter a valid 10-digit number.",
+    waiting: "Waiting for your approval", waitingHint: "These came from your website. Only the ones you approve go on your card and website.",
+    approve: "Show on my card", approved: "Showing on your card",
   },
 };
 
@@ -65,6 +69,11 @@ export default function TestimonialsPage() {
     setDraft(null); load();
   }
   async function pick(file: File | null) { if (!file || !draft) return; setBusy(true); const small = await compressToFile(file, "testimonial.jpg"); const u = await uploadImage(small, "photo"); setBusy(false); if (u) setDraft({ ...draft, photo_url: u }); }
+  /** A review a visitor left on the website goes on the card only once the owner says so. */
+  async function approve(t: Testimonial) {
+    await api("/api/poster/testimonials", { method: "POST", json: { id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url, approved: true } });
+    load();
+  }
   async function remove(t: Testimonial) { if (!confirm(s.remove(t.customer_name))) return; await api(`/api/poster/testimonials?id=${t.id}`, { method: "DELETE" }); load(); }
   function saveGoogle(v: string) { setGoogle(v); try { if (v) localStorage.setItem(GOOGLE_KEY, v); else localStorage.removeItem(GOOGLE_KEY); } catch { /* ignore */ } }
   function cleanPhone(): string | null {
@@ -87,6 +96,9 @@ export default function TestimonialsPage() {
 
   if (list === null) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
+  // Reviews a visitor left on the website arrive unapproved and are shown first, with one tap to publish them.
+  const waiting = list.filter((t) => t.approved === false);
+  const shown = list.filter((t) => t.approved !== false);
   const stars = (n: number, onPick?: (v: number) => void) => (
     <span className="inline-flex gap-0.5">{[1, 2, 3, 4, 5].map((i) => <button key={i} type="button" disabled={!onPick} onClick={() => onPick?.(i)} className="p-0"><Star className={`h-5 w-5 ${i <= n ? "fill-amber-400 text-amber-400" : "text-muted"}`} /></button>)}</span>
   );
@@ -129,8 +141,25 @@ export default function TestimonialsPage() {
           </div>
         </div>
       )}
+      {waiting.length > 0 && (
+        <div className="rounded-xl border-2 border-amber bg-amber/10 p-3 space-y-2">
+          <h2 className="text-base font-bold">⏳ {s.waiting} ({waiting.length})</h2>
+          <p className="text-xs text-muted">{s.waitingHint}</p>
+          {waiting.map((t) => (
+            <div key={t.id} className="rounded-xl border border-border bg-surface p-3 space-y-2">
+              <p className="text-sm font-semibold">{t.customer_name}{t.city ? <span className="text-muted font-normal"> · {t.city}</span> : null}</p>
+              {stars(t.rating)}
+              <p className="text-sm">{t.text}</p>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => approve(t)} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">✓ {s.approve}</button>
+                <button type="button" onClick={() => remove(t)} className="rounded-xl border border-border px-4 py-2.5 text-sm"><Trash2 className="h-4 w-4" /></button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
       <div className="space-y-2">
-        {list.map((t) => (
+        {shown.map((t) => (
           <div key={t.id} className="flex items-start gap-3 rounded-xl border border-border p-3">
             <div className="h-12 w-12 rounded-full bg-surface2 overflow-hidden grid place-items-center shrink-0">{t.photo_url ? <img src={t.photo_url} alt="" className="h-full w-full object-cover" /> : "🙂"}</div>
             <div className="min-w-0 flex-1">
@@ -143,7 +172,7 @@ export default function TestimonialsPage() {
             <button type="button" onClick={() => remove(t)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
           </div>
         ))}
-        {list.length === 0 && !draft && <p className="text-sm text-muted">{s.none}</p>}
+        {shown.length === 0 && !draft && <p className="text-sm text-muted">{s.none}</p>}
       </div>
 
       <div className="rounded-xl border border-border p-3 space-y-3">

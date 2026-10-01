@@ -26,6 +26,7 @@ import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
+import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -313,6 +314,9 @@ export async function POST(request: Request) {
   const business = setup.business || setup.person;
   const recipe = recipeFor(setup.category);
   const tdata = tradeDataFor(setup.category);
+  // The owner's standing on Google, if they have connected the profile (best effort — never fails a build).
+  const gRow = await googleRow(me.id).catch(() => null);
+  const gRating = gRow?.rating && gRow.review_count ? { avg: Number(gRow.rating), count: Number(gRow.review_count) } : null;
   const guide = tdata ? {
     catalog: recipe.catalog,
     explain: tdata.explain,
@@ -356,6 +360,7 @@ export async function POST(request: Request) {
     setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
+    googleRating: gRating,
     ...(ownSite ? { builtFrom: "own-site" as const, tradeSwitched } : {}),
   });
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).

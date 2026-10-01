@@ -268,6 +268,9 @@ export type ComposeInput = {
   details?: string;
   /** A website the owner likes: its look becomes the website's design (site.style); nothing else of it is used. */
   reference?: { url: string; style?: ReferenceStyle; look?: MeasuredLook } | null;
+  /** The business's rating on Google, when the owner has connected their Google Business profile: real
+   *  standing a brand-new card has no reviews of its own to show. */
+  googleRating?: { avg: number; count: number } | null;
   /** The card was written from the business's OWN website (route.ts): marks the card so a merge into an older
    *  card sheds that card's stale title, links and brand art. */
   builtFrom?: "own-site";
@@ -416,6 +419,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     avg: input.reviews.length ? input.reviews.reduce((s, r) => s + (Number(r.rating) || 0), 0) / input.reviews.length : 0,
   };
   if (stats.count >= 3 && stats.avg > 0) trust.push(`⭐ ${stats.avg.toFixed(1)} · ${stats.count} ${lang === "hi" ? "समीक्षाएँ" : "reviews"}`);
+  // Google's own rating, when the owner has connected their Business profile — a card with no reviews of its
+  // own still shows where it stands.
+  const g = input.googleRating;
+  if (g && g.avg > 0 && g.count >= 1 && !(stats.count >= 3)) trust.push(`⭐ ${g.avg.toFixed(1)} · ${g.count} ${lang === "hi" ? "Google रिव्यू" : g.count === 1 ? "Google review" : "Google reviews"}`);
   for (const s of facts.special) if (s.trim()) trust.push(s.trim());
   if (facts.specialText && facts.specialText.length <= 40 && !facts.specialText.includes("\n")) trust.push(`✨ ${facts.specialText}`);
   // The AI's facts-backed highlights ("Since 1937", "Pure ghee") used to be written and thrown away.

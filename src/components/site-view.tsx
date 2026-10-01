@@ -11,7 +11,7 @@
 // look as the fallback, so a website that never chose a style still wears its brand colour.
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INTRODUCER_KEY } from "@/lib/username";
-import { Menu, X, MessageCircle, Phone, Download, Check, Star, MapPin, ChevronDown, FileText, Copy, Clock, Play, UserPlus, CalendarClock, ArrowRight, Navigation, Quote, Megaphone, Newspaper } from "lucide-react";
+import { Menu, X, MessageCircle, Phone, Download, Check, Star, MapPin, ChevronDown, FileText, Copy, Clock, Play, UserPlus, CalendarClock, ArrowRight, Navigation, Quote, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardPage, ProductItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, isCuratedArt, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
@@ -252,6 +252,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const digitsOf = (v: string) => (v ?? "").replace(/\D/g, "").slice(-10);
   const sameNumber = !!wa && !!phone && digitsOf(wa.value) === digitsOf(phone.value);
   const footLinks = sameNumber ? links.filter((l) => l.type !== "phone") : links;
+  const reviewCount = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
   const fontHref = design.fonts.href;
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
 
@@ -473,6 +474,13 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </section>
         )}
 
+        {/* A new business has no reviews to show, and no way to collect the first ones: its visitors are asked. */}
+        {page?.slug === first && reviewCount < 3 && (
+          <section className="mx-auto max-w-6xl px-6 pb-4 pt-10" data-reveal>
+            <ReviewInvite username={card.username} business={card.company || card.name} hi={hiLang} />
+          </section>
+        )}
+
         {/* closing band — skipped when the page already ends on a contact/appointment block */}
         {page?.slug !== "contact" && wa && lastKind !== "contact" && lastKind !== "appointment" && (
           <section className="mx-auto max-w-6xl px-6 pb-20 pt-6" data-reveal>
@@ -643,6 +651,85 @@ function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean): string
   if (!e) return undefined;
   const a = title.trim().toLowerCase(), b = e.toLowerCase();
   return a === b || a.startsWith(b) || (a.length < 22 && b.includes(a)) ? undefined : e;
+}
+
+/** "Been here? Tell others" — the first reviews of a new business. What a visitor writes is saved for the
+ *  owner to approve; nothing appears on the card until they do. */
+function ReviewInvite({ username, business, hi }: { username: string; business: string; hi: boolean }) {
+  const t = useT();
+  const [open, setOpen] = useState(false);
+  const [sent, setSent] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [rating, setRating] = useState(5);
+  const [name, setName] = useState("");
+  const [city, setCity] = useState("");
+  const [text, setText] = useState("");
+  const [trap, setTrap] = useState("");
+  const L = (en: string, h: string) => (hi ? h : t(en));
+
+  async function send() {
+    setBusy(true); setErr("");
+    try {
+      const r = await fetch("/api/card/review", { method: "POST", headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, name, city, text, rating, website: trap }) });
+      const j = await r.json().catch(() => ({ ok: false }));
+      if (!j.ok) { setErr(j.error || L("Could not send just now.", "अभी भेज नहीं पाए।")); return; }
+      setSent(true);
+    } catch { setErr(L("Could not send just now.", "अभी भेज नहीं पाए।")); }
+    finally { setBusy(false); }
+  }
+
+  const field = "w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] outline-none focus:border-[var(--tc)]";
+  return (
+    <div className="rounded-3xl border border-border bg-surface p-7 md:p-9">
+      {sent ? (
+        <div className="flex items-start gap-3">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Check className="h-5 w-5" /></span>
+          <div>
+            <h2 className="text-xl tracking-tight">{L("Thank you!", "धन्यवाद!")}</h2>
+            <p className="mt-1 text-[15px] text-muted">{L(`${business} will see your words and put them on this page.`, `${business} आपकी बात देखकर इसी page पर लगाएँगे।`)}</p>
+          </div>
+        </div>
+      ) : !open ? (
+        <div className="flex flex-wrap items-center justify-between gap-5">
+          <div>
+            <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{L("Your words", "आपकी राय")}</p>
+            <h2 className="mt-2 text-[24px] md:text-[28px] tracking-tight">{L("Been here? Tell others.", "यहाँ आ चुके हैं? दूसरों को बताइए।")}</h2>
+            <p className="mt-2 text-[15px] text-muted max-w-xl">{L("A line from you helps the next customer decide. It goes up once the owner has seen it.", "आपकी दो लाइनें अगले ग्राहक का फ़ैसला आसान कर देंगी। मालिक के देखने के बाद यहाँ लग जाएँगी।")}</p>
+          </div>
+          <button type="button" onClick={() => setOpen(true)} className={`inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-semibold shadow-float ${FOCUS}`} style={{ background: "var(--grad)", color: "var(--p-on)" }}>
+            <Star className="h-4 w-4" /> {L("Write a review", "Review लिखें")}
+          </button>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:max-w-2xl">
+          <h2 className="text-[24px] tracking-tight">{L(`How was ${business}?`, `${business} कैसा लगा?`)}</h2>
+          <span className="inline-flex gap-1">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <button key={i} type="button" onClick={() => setRating(i)} aria-label={`${i}`} className={`rounded ${FOCUS}`}>
+                <Star className="h-8 w-8" style={{ color: i <= rating ? "#f59e0b" : "var(--border)", fill: i <= rating ? "#f59e0b" : "transparent" }} />
+              </button>
+            ))}
+          </span>
+          <textarea value={text} onChange={(e) => setText(e.target.value)} rows={3} maxLength={300} placeholder={L("What was good? (2-3 lines)", "क्या अच्छा लगा? (2–3 लाइन)")} className={field} />
+          <div className="grid gap-4 sm:grid-cols-2">
+            <input value={name} onChange={(e) => setName(e.target.value)} maxLength={60} placeholder={L("Your name", "आपका नाम")} className={field} />
+            <input value={city} onChange={(e) => setCity(e.target.value)} maxLength={40} placeholder={L("Your city (optional)", "आपका शहर (optional)")} className={field} />
+          </div>
+          <input value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
+          {err && <p className="text-sm text-danger">{err}</p>}
+          <div className="flex flex-wrap gap-3">
+            <button type="button" onClick={send} disabled={busy || !name.trim() || text.trim().length < 10} className={`inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-semibold shadow-float disabled:opacity-60 ${FOCUS}`} style={{ background: "var(--grad)", color: "var(--p-on)" }}>
+              {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{L("Send", "भेजें")}
+            </button>
+            <button type="button" onClick={() => setOpen(false)} className={`rounded-full border border-border px-5 py-3.5 text-[15px] font-semibold ${FOCUS}`}>{L("Cancel", "रहने दें")}</button>
+          </div>
+          <p className="text-xs text-muted">{L("Your review is sent to the owner and appears here once they approve it.", "आपकी review मालिक के पास जाएगी और उनके मंज़ूर करने पर यहाँ दिखेगी।")}</p>
+        </div>
+      )}
+    </div>
+  );
 }
 
 /** A UPI ID that can actually be used from a computer: tap on a phone, copy on a desktop. */
