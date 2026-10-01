@@ -281,6 +281,10 @@ export function isThinCard(c: Pick<Card, "name" | "pages"> & { about?: string })
 }
 
 const isOurArt = (url: string) => /^(?:https?:\/\/[^/]+)?\/(?:art|wellwa)\//i.test(url);
+/** Shubhora's OWN logo and banner — put on a card by the seller template. A customer's business must never
+ *  carry them as its identity: seen live on a mobile shop whose website hero was the Shubhora logo over the
+ *  Shubhora banner. On a rebuild they count as "no picture", so the built or stock one takes over. */
+const isShubhoraBrandArt = (url: string | undefined) => /\/art\/brand\/shubhora-/i.test(url ?? "");
 
 /** Owner-approved chat answers ("Q: …\nA: …", appended by /api/poster/learn) found in `old`
  *  but not in `next`, so a rebuild never throws away what the owner taught the bot. */
@@ -315,7 +319,11 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
   }
 
   const ownLook = !!existing.site?.templateKey;
-  const ownCover = !!existing.coverUrl && !isOurArt(existing.coverUrl) && !(built.coverUrl ?? "").startsWith("http");
+  // A card that is Shubhora's own seller card keeps its brand art; any other business sheds it here.
+  const sheds = existing.kb !== "shubhora";
+  const keptAvatar = sheds && isShubhoraBrandArt(existing.avatarUrl) ? undefined : existing.avatarUrl;
+  const keptCover = sheds && isShubhoraBrandArt(existing.coverUrl) ? undefined : existing.coverUrl;
+  const ownCover = !!keptCover && !isOurArt(keptCover) && !(built.coverUrl ?? "").startsWith("http");
   const builtTypes = new Set(built.links.map((l) => l.type));
   const taught = taughtAnswers(existing.botKnowledge, built.botKnowledge);
   const knowledge = built.botKnowledge ?? existing.botKnowledge;
@@ -332,9 +340,9 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
     gstin: built.gstin,
     language: built.language,
     botKnowledge: taught.length ? [knowledge, ...taught].filter(Boolean).join("\n\n") : knowledge,
-    avatarUrl: built.avatarUrl ?? existing.avatarUrl,
-    avatarShape: built.avatarUrl ? built.avatarShape : existing.avatarShape,
-    coverUrl: ownCover ? existing.coverUrl : (built.coverUrl ?? existing.coverUrl),
+    avatarUrl: built.avatarUrl ?? keptAvatar,
+    avatarShape: built.avatarUrl ? built.avatarShape : keptAvatar ? existing.avatarShape : undefined,
+    coverUrl: ownCover ? keptCover : (built.coverUrl ?? keptCover),
     themeColor: ownLook ? existing.themeColor : built.themeColor,
     avatarColor: ownLook ? existing.avatarColor : built.avatarColor,
     template: ownLook ? existing.template : built.template,

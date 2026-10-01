@@ -266,8 +266,17 @@ export async function POST(request: Request) {
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
     if (media) built = addStockMedia(built, paidPlan ? media : { ...media, clip: null }, facts.lang);
-    // A free card with no banner of its own gets one from those same stock photos, so it never opens bare.
-    if (media?.photos.length && !built.coverUrl) built = { ...built, coverUrl: media.photos[0].url };
+    if (media?.photos.length) {
+      const photo = media.photos[0].url;
+      // A card with no banner of its own gets one from those same stock photos, so it never opens bare.
+      if (!built.coverUrl) built = { ...built, coverUrl: photo };
+      // The website hero chose its picture at compose time, before these photos existed, so it fell back to
+      // the logo — a mobile shop's website opened on a logo in a box with real phone photos further down.
+      // A hero with no photograph takes the first one now.
+      const heroImg = built.site?.hero?.imageUrl ?? "";
+      const isLogo = !heroImg || heroImg === setup.logo || /\/art\/brand\//i.test(heroImg) || /logo/i.test(heroImg);
+      if (isLogo && built.site?.hero) built = { ...built, site: { ...built.site, hero: { ...built.site.hero, imageUrl: photo } } };
+    }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
