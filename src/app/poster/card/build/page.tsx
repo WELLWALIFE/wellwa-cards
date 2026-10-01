@@ -34,6 +34,7 @@ import {
   type Missing, type MissingKey, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
 import { SITE_CARDS } from "@/lib/site-role";
+import { useT } from "@/lib/poster-i18n";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -134,6 +135,9 @@ const Img = (p: { src: string; alt?: string; className?: string }) => <img src={
 export default function BuildCard() {
   const router = useRouter();
   const access = useAiAccess();
+  const { lang } = useT();
+  const hi = lang !== "en";
+  const T = useCallback((en: string, hiText: string) => (hi ? hiText : en), [hi]);
 
   const [state, setState] = useState<"loading" | "error" | "form" | "building" | "preview">("loading");
   const [uid, setUid] = useState("");
@@ -324,13 +328,13 @@ export default function BuildCard() {
   useEffect(() => {
     if (!editLink) return;
     const v = cleanUsername(linkVal);
-    if (v.length < 3) { setLinkCheck({ state: "bad", reason: "At least 3 characters." }); return; }
+    if (v.length < 3) { setLinkCheck({ state: "bad", reason: T("At least 3 characters.", "कम से कम 3 अक्षर।") }); return; }
     setLinkCheck({ state: "checking" });
     const t = setTimeout(async () => {
       try { setLinkCheck(await checkUsername(v, existing?.id)); } catch { setLinkCheck({ state: "idle" }); }
     }, 400);
     return () => clearTimeout(t);
-  }, [linkVal, editLink, existing?.id]);
+  }, [linkVal, editLink, existing?.id, T]);
 
   const shown = useMemo(() => (card ? applyChecks(card, checks, off) : null), [card, checks, off]);
   /** A link that is taken or too short: it can neither be saved nor published (offline = "idle", where
@@ -360,10 +364,10 @@ export default function BuildCard() {
     patchRow(i, { busy: true, note: "" });
     try {
       const url = await uploadImage(await compressToFile(f, "product.jpg", 1600, 0.88), "product");
-      if (!url) { patchRow(i, { busy: false, note: "Could not upload the photo. Please try again." }); return; }
+      if (!url) { patchRow(i, { busy: false, note: T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।") }); return; }
       patchRow(i, { photo: url, original: url, studio: false, busy: false });
     } catch {
-      patchRow(i, { busy: false, note: OFFLINE });
+      patchRow(i, { busy: false, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
     }
   }
 
@@ -371,16 +375,16 @@ export default function BuildCard() {
     const row = rows[i];
     if (!row?.photo) return;
     if (!access.active || access.balance < 5) { setUnlock(true); return; }
-    patchRow(i, { busy: true, note: "Making it look professional… (about 20 seconds)" });
+    patchRow(i, { busy: true, note: T("Making it look professional… (about 20 seconds)", "Photo professional बनाई जा रही है… (करीब 20 second)") });
     try {
       const r = await api<{ url?: string; error?: string }>("/api/card/product-photo", {
         method: "POST",
         json: { photo_url: row.photo, product: row.name, brand: row.brand, allowPaid: true, product_id: row.id },
       });
-      if (r.ok && r.data.url) patchRow(i, { original: row.photo, photo: r.data.url, studio: true, busy: false, note: "✨ Studio photo ready" });
-      else { patchRow(i, { busy: false, note: r.data.error ?? "Your photo is kept as it is." }); if (r.status === 402) setUnlock(true); }
+      if (r.ok && r.data.url) patchRow(i, { original: row.photo, photo: r.data.url, studio: true, busy: false, note: T("✨ Studio photo ready", "✨ Studio photo तैयार") });
+      else { patchRow(i, { busy: false, note: r.data.error ?? T("Your photo is kept as it is.", "आपकी photo वैसी ही रहेगी।") }); if (r.status === 402) setUnlock(true); }
     } catch {
-      patchRow(i, { busy: false, note: OFFLINE });
+      patchRow(i, { busy: false, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
     } finally {
       access.refresh();
     }
@@ -391,8 +395,8 @@ export default function BuildCard() {
     setBusy("banner");
     try {
       const url = await uploadImage(dataUrlToFile(dataUrl, "banner.jpg"), "wide");
-      if (url) setF({ bannerUrl: url }); else setErr("Could not upload the photo. Please try again.");
-    } catch { setErr(OFFLINE); } finally { setBusy(""); }
+      if (url) setF({ bannerUrl: url }); else setErr(T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।"));
+    } catch { setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); } finally { setBusy(""); }
   }
 
   async function addPhoto(f: File) {
@@ -400,14 +404,14 @@ export default function BuildCard() {
     setBusy("photo"); setErr("");
     try {
       const url = await uploadImage(await compressToFile(f, "photo.jpg", 1600, 0.85), "wide");
-      if (url) setF({ photos: [...facts.photos, url].slice(0, 5) }); else setErr("Could not upload the photo. Please try again.");
-    } catch { setErr(OFFLINE); } finally { setBusy(""); }
+      if (url) setF({ photos: [...facts.photos, url].slice(0, 5) }); else setErr(T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।"));
+    } catch { setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); } finally { setBusy(""); }
   }
 
   function pickFile(f: File) {
     const r = new FileReader();
     r.onload = () => setCrop(String(r.result || ""));
-    r.onerror = () => setErr("Could not open that photo.");
+    r.onerror = () => setErr(T("Could not open that photo.", "वो photo खुल नहीं पाई।"));
     r.readAsDataURL(f);
   }
 
@@ -438,7 +442,7 @@ export default function BuildCard() {
       siteNew.current = false;
       const r = await api<Partial<BuildResponse> & { error?: string }>("/api/card/build", { method: "POST", json: body, signal: job.ctrl.signal });
       const built = r.data?.card;
-      if (!r.ok || !built) { setErr(r.data?.error || "Could not make your V-Card. Please try again."); setState(back); return; }
+      if (!r.ok || !built) { setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
 
       let name = live?.username ?? "";
       if (!name) {
@@ -475,30 +479,36 @@ export default function BuildCard() {
       const found = r.data.siteFound;
       if (r.data.siteRead === false) {
         setNotice(facts.websiteRole === "reference" && facts.website
-          ? "We could not open that website, so your card got our own look — you can change it any time under My website → Edit website."
-          : "We could not open your website, so your V-Card was made from your other details.");
+          ? T("We could not open that website, so your card got our own look — you can change it any time under My website → Edit website.", "वो website खुल नहीं पाई, इसलिए आपके card को हमारा look मिला — My website → Edit website से जब चाहें बदल सकते हैं।")
+          : T("We could not open your website, so your V-Card was made from your other details.", "आपकी website खुल नहीं पाई, इसलिए V-Card आपकी बाकी जानकारी से बना है।"));
       } else if (r.data.aiPhotos) {
-        setNotice(`Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Edit card → the photo you want to change.`);
+        setNotice(hi
+          ? `आपका card उस website के look में बना है, और उसे भरने के लिए आपके काम की ${r.data.aiPhotos === 1 ? "1 picture" : `${r.data.aiPhotos} pictures`} बनाई गई — किसी और site की photo हम कभी copy नहीं करते। अपनी photo जब चाहें लगा लें: Edit card → जो photo बदलनी है।`
+          : `Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Edit card → the photo you want to change.`);
       } else if (facts.websiteRole === "reference" && facts.website) {
-        setNotice("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.");
+        setNotice(T("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.", "आपका card उस website के look में बना है, photos आपके काम की हैं — किसी और site की photo हम कभी copy नहीं करते। अपनी photos जब चाहें डाल लें: Edit card → जो photo बदलनी है।"));
       } else if (found && !found.products && !found.photos && facts.websiteRole !== "reference") {
-        setNotice("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.");
+        setNotice(T("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.", "आपकी website खुली, पर पढ़ने के लिए कुछ नहीं मिला — उसके page JavaScript से बनते हैं, इसलिए browser चलाए बिना खाली रहते हैं। आपका card बाकी जानकारी से बना है। नीचे (या Products screen पर) अपने products डाल दें — photo और price के साथ दिख जाएँगे।"));
       } else if (r.data.standIns?.length) {
         // What the build had to stand in for (card-audit.ts): said plainly, so the owner knows what to replace.
         const si = r.data.standIns;
         const parts: string[] = [];
-        if (si.includes("stock-photos")) parts.push("the photos are stock pictures of your trade — swap in your own from Edit card");
+        if (si.includes("stock-photos")) parts.push(T("the photos are stock pictures of your trade — swap in your own from Edit card", "photos आपके काम की stock pictures हैं — Edit card से अपनी photos लगा लें"));
         const typical = (["typical-services", "typical-steps", "typical-why-us", "typical-faq"] as const).filter((k) => si.includes(k))
-          .map((k) => ({ "typical-services": "services", "typical-steps": "the steps", "typical-why-us": "the why-us points", "typical-faq": "the questions" })[k]);
-        if (typical.length) parts.push(`${typical.join(", ")} are the usual ones for your trade — edit any that do not fit`);
-        setNotice(`Your card is ready. ${parts.join("; ")}.`);
+          .map((k) => (hi
+            ? { "typical-services": "services", "typical-steps": "steps", "typical-why-us": "why-us points", "typical-faq": "सवाल-जवाब" }
+            : { "typical-services": "services", "typical-steps": "the steps", "typical-why-us": "the why-us points", "typical-faq": "the questions" })[k]);
+        if (typical.length) parts.push(hi
+          ? `${typical.join(", ")} आपके काम में आम तौर पर जो होते हैं, वही हैं — जो ठीक न लगे बदल लें`
+          : `${typical.join(", ")} are the usual ones for your trade — edit any that do not fit`);
+        setNotice(hi ? `आपका card तैयार है। ${parts.join("; ")}।` : `Your card is ready. ${parts.join("; ")}.`);
       }
       setState("preview");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
       // The very first card, with nothing to double-check: live straight away. Anything else waits for the button.
       if (!live && nextChecks.length === 0) void goLive(full, me);
     } catch {
-      setErr(job.cancelled ? "" : OFFLINE); setState(back);
+      setErr(job.cancelled ? "" : T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
     } finally {
       clearTimeout(guard);
       if (jobRef.current === job) jobRef.current = null;
@@ -538,7 +548,7 @@ export default function BuildCard() {
 
   async function publish() {
     if (!shown || !card) return;
-    if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm("Update your live V-Card? Your link, QR code, verified badge and settings stay the same.")) return;
+    if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live V-Card? Your link, QR code, verified badge and settings stay the same.", "अपना live V-Card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
     setBusy("publish"); setErr("");
     try {
       // The live card is read again and the new words are merged into THAT, not into the copy this preview was
@@ -555,7 +565,7 @@ export default function BuildCard() {
         try {
           const cards = await fetchMyCardsStrict();
           live = cards.find((c) => c.id === existing?.id) ?? cards.find((c) => c.username === card.username) ?? null;
-        } catch { setErr(OFFLINE); return; }
+        } catch { setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); return; }
         if (live && hasShubhoraPage(live)) {
           keepShubhora = true;
           shubhoraVisible = !live.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
@@ -585,7 +595,7 @@ export default function BuildCard() {
       } catch { /* the card is live; the primary mark can wait */ }
       router.push("/poster/website?published=1");
     } catch {
-      setErr(OFFLINE);
+      setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
       setBusy("");
     }
@@ -623,9 +633,9 @@ export default function BuildCard() {
 
   if (state === "error") return (
     <div className="py-20 grid place-items-center gap-3 text-center">
-      <p className="font-semibold">No internet — tap to try again</p>
+      <p className="font-semibold">{T("No internet — tap to try again", "internet नहीं है — दोबारा try करें")}</p>
       <button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white">
-        <RefreshCw className="h-5 w-5" /> Try again
+        <RefreshCw className="h-5 w-5" /> {T("Try again", "दोबारा try करें")}
       </button>
     </div>
   );
@@ -635,14 +645,17 @@ export default function BuildCard() {
     // A website of their own (or their brand's) is read page by page — a JavaScript-built one in a real
     // browser — and that is the slow part: say so, rather than promising a minute and taking two.
     const readingSite = !!(facts.website && facts.websiteRole !== "reference") || (!facts.website && !!setup?.website);
-    const stage = elapsed < 6 ? "Reading your details…" : readingSite && elapsed < 90 ? "Reading your website — logo, photos, products…" : looking && elapsed < 18 ? "Finding product details…" : "Writing your V-Card…";
+    const stage = elapsed < 6 ? T("Reading your details…", "आपकी जानकारी पढ़ी जा रही है…")
+      : readingSite && elapsed < 90 ? T("Reading your website — logo, photos, products…", "आपकी website पढ़ी जा रही है — logo, photos, products…")
+      : looking && elapsed < 18 ? T("Finding product details…", "Product की जानकारी ढूँढी जा रही है…")
+      : T("Writing your V-Card…", "आपका V-Card लिखा जा रहा है…");
     return (
       <div className="py-24 grid place-items-center gap-3 text-center">
         <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
         <p className="font-semibold">{stage}</p>
-        <p className="text-sm text-muted">{readingSite ? "Reading your website too — up to 2 minutes. Please keep this screen open." : "Usually 20-60 seconds"}</p>
-        {readingSite && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
-        <button type="button" onClick={() => { const j = jobRef.current; if (j) { j.cancelled = true; j.ctrl.abort(); } }} className="mt-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Take me back</button>
+        <p className="text-sm text-muted">{readingSite ? T("Reading your website too — up to 2 minutes. Please keep this screen open.", "आपकी website भी पढ़ी जा रही है — 2 मिनट तक लग सकते हैं। ये screen खुली रखें।") : T("Usually 20-60 seconds", "आम तौर पर 20-60 second")}</p>
+        {readingSite && !hi && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
+        <button type="button" onClick={() => { const j = jobRef.current; if (j) { j.cancelled = true; j.ctrl.abort(); } }} className="mt-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Take me back", "वापस ले चलें")}</button>
       </div>
     );
   }
@@ -650,26 +663,26 @@ export default function BuildCard() {
   if (state === "preview" && shown) return (
     <div className="space-y-4 py-2">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setState("form")} className="text-muted" aria-label="Back to the questions"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold">{liveUser ? "Your website is live" : busy === "publish" ? "Making your website live…" : existing ? "Your new website is ready" : "Your website is ready"}</h1>
+        <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
+        <h1 className="text-lg font-bold">{liveUser ? T("Your website is live", "आपकी website live है") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
       </div>
       {/* One clear line: live or not. */}
       {liveUser ? (
-        <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">Your card is live</b><span className="block text-xs text-muted">Send it on WhatsApp. Want to change something? Tap Edit.</span></p></div>
+        <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Your card is live", "आपका card live है")}</b><span className="block text-xs text-muted">{T("Send it on WhatsApp. Want to change something? Tap Edit.", "WhatsApp पर भेज दें। कुछ बदलना है? Edit दबाएँ।")}</span></p></div>
       ) : busy !== "publish" && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm"><CircleDashed className="h-6 w-6 shrink-0 text-amber" /><p><b>Not published yet</b><span className="block text-xs text-muted">{existing ? "Your current card stays as it is until you tap Save." : "Tap Save to make your card live."}</span></p></div>
+        <div className="flex items-center gap-3 rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm"><CircleDashed className="h-6 w-6 shrink-0 text-amber" /><p><b>{T("Not published yet", "अभी publish नहीं हुआ")}</b><span className="block text-xs text-muted">{existing ? T("Your current card stays as it is until you tap Save.", "Save दबाने तक आपका पुराना card वैसा ही रहेगा।") : T("Tap Save to make your card live.", "Save दबाएँ, card live हो जाएगा।")}</span></p></div>
       )}
       {notice && <p className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-sm">{notice}</p>}
 
       <div className="rounded-2xl border border-border bg-surface p-3 space-y-2">
         <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm"><span className="text-muted">Your link: </span><b className="break-all">{SITE_HOST}/c/{username}</b></p>
-          {!editLink && <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); }} className="shrink-0 text-sm font-semibold text-brand-ink underline">Change</button>}
+          <p className="min-w-0 flex-1 text-sm"><span className="text-muted">{T("Your link: ", "आपका link: ")}</span><b className="break-all">{SITE_HOST}/c/{username}</b></p>
+          {!editLink && <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); }} className="shrink-0 text-sm font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>}
         </div>
         {/* One tap: the link from the business name or from your name (owner's call, 25 Sep 2026). */}
         {!editLink && linkOpts.name && linkOpts.business && (
           <div className="grid grid-cols-2 gap-2">
-            {([["business", linkOpts.business!, "Business name"], ["name", linkOpts.name!, "Your name"]] as const).map(([k, slug, label]) => {
+            {([["business", linkOpts.business!, T("Business name", "Business का नाम")], ["name", linkOpts.name!, T("Your name", "आपका नाम")]] as const).map(([k, slug, label]) => {
               const on = username === slug;
               return (
                 <button key={k} type="button" onClick={() => { setCard((c) => (c ? { ...c, username: slug } : c)); void setLinkPref(k); }}
@@ -684,12 +697,12 @@ export default function BuildCard() {
         {editLink && (
           <div className="space-y-2">
             <input value={linkVal} onChange={(e) => setLinkVal(e.target.value)} autoCapitalize="none" spellCheck={false} placeholder="your-name" className={`${box} w-full`} />
-            {linkCheck.state === "checking" && <p className="text-xs text-muted">Checking…</p>}
-            {linkCheck.state === "ok" && <p className="text-xs font-semibold text-good">✓ {SITE_HOST}/c/{cleanUsername(linkVal)} is free</p>}
+            {linkCheck.state === "checking" && <p className="text-xs text-muted">{T("Checking…", "देख रहे हैं…")}</p>}
+            {linkCheck.state === "ok" && <p className="text-xs font-semibold text-good">✓ {SITE_HOST}/c/{cleanUsername(linkVal)} {T("is free", "खाली है")}</p>}
             {linkCheck.state === "bad" && <p className="text-xs font-semibold text-danger">{linkCheck.reason}</p>}
             <div className="flex gap-2">
-              <button type="button" disabled={linkBad} onClick={() => { setCard((c) => (c ? { ...c, username: cleanUsername(linkVal) } : c)); setEditLink(false); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">Save link</button>
-              <button type="button" onClick={() => setEditLink(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">Cancel</button>
+              <button type="button" disabled={linkBad} onClick={() => { setCard((c) => (c ? { ...c, username: cleanUsername(linkVal) } : c)); setEditLink(false); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{T("Save link", "link save करें")}</button>
+              <button type="button" onClick={() => setEditLink(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Cancel", "रहने दें")}</button>
             </div>
           </div>
         )}
@@ -697,8 +710,8 @@ export default function BuildCard() {
 
       {checks.length > 0 && (
         <div className="space-y-2 rounded-2xl border-2 border-amber/40 bg-amber/10 p-4">
-          <p className="text-[15px] font-semibold">Please check</p>
-          <p className="text-xs text-muted">These details came from the maker&apos;s website. Keep only what is right.</p>
+          <p className="text-[15px] font-semibold">{T("Please check", "एक बार देख लें")}</p>
+          <p className="text-xs text-muted">{T("These details came from the maker’s website. Keep only what is right.", "ये जानकारी बनाने वाली company की website से आई है। जो सही है, वही रखें।")}</p>
           {checks.map((c) => (
             <label key={c.name} className="flex items-start gap-2.5 rounded-xl bg-surface p-2.5 text-sm">
               <input type="checkbox" checked={!off.includes(c.name)} onChange={() => setOff((o) => (o.includes(c.name) ? o.filter((x) => x !== c.name) : [...o, c.name]))} className="mt-0.5 h-5 w-5 shrink-0" />
@@ -715,7 +728,7 @@ export default function BuildCard() {
 
       {missing.length > 0 && (
         <div className="space-y-2">
-          <p className="text-[15px] font-semibold">Make it better</p>
+          <p className="text-[15px] font-semibold">{T("Make it better", "और अच्छा बनाएँ")}</p>
           <div className="flex flex-wrap gap-2">
             {missing.map((m) => <button key={m.key} type="button" onClick={() => goto(m.key)} className="rounded-full border-2 border-border bg-surface px-3.5 py-2 text-sm font-medium">{m.label}</button>)}
           </div>
@@ -739,7 +752,7 @@ export default function BuildCard() {
           <div ref={frameRef} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
             <iframe title="Website preview" src="/preview/site" style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
           </div>
-          <p className="mt-1.5 text-center text-xs text-muted">This is how your link opens on a computer.</p>
+          <p className="mt-1.5 text-center text-xs text-muted">{T("This is how your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।")}</p>
         </div>
       )}
 
@@ -747,23 +760,23 @@ export default function BuildCard() {
       <div className="sticky bottom-20 z-20 space-y-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
         {liveUser && username === liveUser ? (
           <div className="grid grid-cols-2 gap-2">
-            <a href={`https://wa.me/?text=${encodeURIComponent(`Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">Share on WhatsApp</a>
-            <button type="button" onClick={() => router.push("/poster/website?published=1")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> Done</button>
+            <a href={`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital visiting card है — contact, products और बाकी सब एक tap में: ${SITE_URL}/c/${username}` : `Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">{T("Share on WhatsApp", "WhatsApp पर share करें")}</a>
+            <button type="button" onClick={() => router.push("/poster/website?published=1")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done", "हो गया")}</button>
           </div>
         ) : (
           <button type="button" onClick={publish} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? "Save the new link" : "Save"}
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save", "Save करें")}
           </button>
         )}
         {/* Second-row actions as quiet links: the bar used to cover a quarter of the card preview. */}
         <div className="flex items-center justify-center gap-5 pt-0.5 text-sm font-semibold">
-          <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? "Edit card" : "Edit first"}</button>
+          <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? T("Edit card", "Card edit करें") : T("Edit first", "पहले edit करें")}</button>
           <span className="h-4 w-px bg-border" />
-          <button type="button" onClick={() => build()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> Write again</button>
+          <button type="button" onClick={() => build()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}</button>
         </div>
       </div>
-      {unlock && <UnlockDialog reason="A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile." onClose={() => { setUnlock(false); access.refresh(); }} />}
+      {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
 
@@ -778,7 +791,7 @@ export default function BuildCard() {
 
   const makeBtn = (
     <button type="button" onClick={() => build()} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-      <Sparkles className="h-5 w-5" /> Build my website
+      <Sparkles className="h-5 w-5" /> {T("Build my website", "मेरी website बनाएँ")}
     </button>
   );
 
@@ -787,30 +800,30 @@ export default function BuildCard() {
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
 
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => router.push("/poster/setup")} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="min-w-0 flex-1 text-xl font-bold">Build your website</h1>
+        <button type="button" onClick={() => router.push("/poster/setup")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Build your website", "अपनी website बनाएँ")}</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
           without paying for another build. */}
       {card && (
         <button type="button" onClick={() => setState("preview")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
-          <ChevronLeft className="h-4 w-4" /> Back to my V-Card
+          <ChevronLeft className="h-4 w-4" /> {T("Back to my V-Card", "मेरे V-Card पर वापस")}
         </button>
       )}
 
       <div className="space-y-2.5 rounded-2xl border-2 border-amber/40 bg-amber/10 p-3.5">
-        <p className="text-sm"><b>Everything below is optional.</b> <span className="text-muted">Tap now, or add details for a richer V-Card.</span></p>
+        <p className="text-sm"><b>{T("Everything below is optional.", "नीचे सब कुछ optional है।")}</b> <span className="text-muted">{T("Tap now, or add details for a richer V-Card.", "अभी बना लें, या जानकारी भरें तो V-Card और अच्छा बनेगा।")}</span></p>
         {makeBtn}
       </div>
 
-      <Sec id="q-products" title="Your products or services" hint="Add a photo, the price and the brand. Brand and price are optional.">
+      <Sec id="q-products" title={T("Your products or services", "आपके products या services")} hint={T("Add a photo, the price and the brand. Brand and price are optional.", "photo, price और brand डालें। Brand और price optional हैं।")}>
         {rows.map((r, i) => (
           <div key={r.id ?? `new-${i}`} className="space-y-1.5 rounded-xl bg-surface2/60 p-2">
             <div className="flex items-start gap-2">
               {r.photo && <Img src={r.photo} className="h-14 w-14 shrink-0 rounded-lg border border-border bg-white object-contain" />}
               <div className="flex min-w-0 flex-1 flex-wrap gap-1.5">
                 <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-sm font-semibold">
-                  {r.busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {r.photo ? "Change photo" : "📷 Add photo"}
+                  {r.busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {r.photo ? T("Change photo", "Photo बदलें") : T("📷 Add photo", "📷 Photo डालें")}
                   <input type="file" accept="image/*" className="hidden" disabled={r.busy} onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) productPhoto(i, f); }} />
                 </label>
                 {r.photo && !r.studio && !r.busy && (
@@ -818,51 +831,51 @@ export default function BuildCard() {
                 )}
               </div>
               <button type="button" onClick={() => {
-                if (r.id) { if (r.name.trim()) setF({ hidden: [...facts.hidden, r.name.trim().toLowerCase()] }); setRemoved("Removed from your V-Card (still on your Products page)"); }
+                if (r.id) { if (r.name.trim()) setF({ hidden: [...facts.hidden, r.name.trim().toLowerCase()] }); setRemoved(T("Removed from your V-Card (still on your Products page)", "V-Card से हटा दिया (आपके Products page पर रहेगा)")); }
                 setRows(rows.filter((_, k) => k !== i)); setEdits((n) => n + 1);
-              }} className="shrink-0 rounded-lg border border-border p-2 text-muted" aria-label="Remove this product"><X className="h-4 w-4" /></button>
+              }} className="shrink-0 rounded-lg border border-border p-2 text-muted" aria-label={T("Remove this product", "ये product हटाएँ")}><X className="h-4 w-4" /></button>
             </div>
             {r.note && (
               <p className="text-xs text-muted">
                 {r.note}
                 {r.studio && r.original && r.original !== r.photo && (
-                  <button type="button" onClick={() => patchRow(i, { photo: r.original ?? "", studio: false, note: "" })} className="ml-1.5 font-semibold text-brand-ink underline">Use original</button>
+                  <button type="button" onClick={() => patchRow(i, { photo: r.original ?? "", studio: false, note: "" })} className="ml-1.5 font-semibold text-brand-ink underline">{T("Use original", "पुरानी photo रखें")}</button>
                 )}
               </p>
             )}
-            <input value={r.name} onChange={(e) => patchRow(i, { name: e.target.value })} placeholder={["e.g. Kaju katli / Water purifier / Hair cut", "Product or service 2", "Product or service 3"][i] ?? "Product or service"} className={`${box} w-full`} />
+            <input value={r.name} onChange={(e) => patchRow(i, { name: e.target.value })} placeholder={(hi ? ["जैसे काजू कतली / Water purifier / Hair cut", "Product या service 2", "Product या service 3"] : ["e.g. Kaju katli / Water purifier / Hair cut", "Product or service 2", "Product or service 3"])[i] ?? T("Product or service", "Product या service")} className={`${box} w-full`} />
             <div className="flex gap-1.5">
               <input value={r.price} onChange={(e) => patchRow(i, { price: e.target.value.replace(/[^\d.,/ a-zA-Z₹-]/g, "") })} placeholder="₹ price" className={`${box} w-28 shrink-0 py-2.5 text-sm`} />
-              <input value={r.brand} onChange={(e) => patchRow(i, { brand: e.target.value })} placeholder="Brand (optional)" className={`${box} min-w-0 flex-1 py-2.5 text-sm`} />
+              <input value={r.brand} onChange={(e) => patchRow(i, { brand: e.target.value })} placeholder={T("Brand (optional)", "Brand (ज़रूरी नहीं)")} className={`${box} min-w-0 flex-1 py-2.5 text-sm`} />
             </div>
           </div>
         ))}
         {removed && <p className="text-xs text-muted">{removed}</p>}
-        {brandProducts && <p className="text-xs text-muted">✓ Your company&apos;s products are shown on your V-Card.</p>}
+        {brandProducts && <p className="text-xs text-muted">{T("✓ Your company’s products are shown on your V-Card.", "✓ आपकी company के products आपके V-Card पर दिख रहे हैं।")}</p>}
         {rows.length < MAX_ROWS && (
-          <button type="button" onClick={() => { setRows([...rows, emptyRow()]); setEdits((n) => n + 1); }} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink"><Plus className="h-4 w-4" /> Add one more</button>
+          <button type="button" onClick={() => { setRows([...rows, emptyRow()]); setEdits((n) => n + 1); }} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink"><Plus className="h-4 w-4" /> {T("Add one more", "एक और जोड़ें")}</button>
         )}
       </Sec>
 
-      <Sec id="q-photos" title="Photos of your shop or work">
-        <p className="text-sm font-semibold">Shop front / banner photo</p>
+      <Sec id="q-photos" title={T("Photos of your shop or work", "दुकान या काम की photos")}>
+        <p className="text-sm font-semibold">{T("Shop front / banner photo", "दुकान के सामने की / banner photo")}</p>
         {facts.bannerUrl ? (
           <div className="relative overflow-hidden rounded-xl border border-border" style={{ aspectRatio: "3 / 1" }}>
             <Img src={facts.bannerUrl} className="h-full w-full object-cover" />
-            <button type="button" onClick={() => setF({ bannerUrl: "" })} className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white" aria-label="Remove the banner photo"><X className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={() => setF({ bannerUrl: "" })} className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white" aria-label={T("Remove the banner photo", "Banner photo हटाएँ")}><X className="h-3.5 w-3.5" /></button>
           </div>
         ) : (
           <label className="grid cursor-pointer place-items-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface2 py-6 text-sm text-muted">
-            {busy === "banner" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />} Add your shop photo
+            {busy === "banner" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />} {T("Add your shop photo", "दुकान की photo डालें")}
             <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickFile(f); }} />
           </label>
         )}
-        <p className="pt-1 text-sm font-semibold">More photos (up to 5)</p>
+        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 5)", "और photos (5 तक)")}</p>
         <div className="flex flex-wrap gap-2">
           {facts.photos.map((u, i) => (
             <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border">
               <Img src={u} className="h-full w-full object-cover" />
-              <button type="button" onClick={() => setF({ photos: facts.photos.filter((_, k) => k !== i) })} className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white" aria-label="Remove photo"><X className="h-3 w-3" /></button>
+              <button type="button" onClick={() => setF({ photos: facts.photos.filter((_, k) => k !== i) })} className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white" aria-label={T("Remove photo", "Photo हटाएँ")}><X className="h-3 w-3" /></button>
             </div>
           ))}
           {facts.photos.length < 5 && (
@@ -874,61 +887,61 @@ export default function BuildCard() {
         </div>
       </Sec>
 
-      <Sec id="q-hours" title="Your timings">
+      <Sec id="q-hours" title={T("Your timings", "आपका समय")}>
         <div className="flex flex-wrap gap-2">
           {["Mon–Sat 10 AM – 8 PM", "All days 9 AM – 9 PM", "Mon–Fri 10 AM – 6 PM"].map((c) => <button key={c} type="button" onClick={() => setF({ hours: c })} className={chip(facts.hours === c)}>{c}</button>)}
         </div>
-        <input value={facts.hours} onChange={(e) => setF({ hours: e.target.value })} placeholder="Or type your own, e.g. Sunday closed" className={field} />
+        <input value={facts.hours} onChange={(e) => setF({ hours: e.target.value })} placeholder={T("Or type your own, e.g. Sunday closed", "या खुद लिखें, जैसे रविवार बंद")} className={field} />
       </Sec>
 
-      <Sec id="q-delivery" title="Do you deliver or visit homes?">
+      <Sec id="q-delivery" title={T("Do you deliver or visit homes?", "आप delivery या घर पर service देते हैं?")}>
         <div className="grid grid-cols-2 gap-2">
-          {([["yes", "✅ Yes"], ["no", "❌ No"]] as const).map(([k, l]) => (
+          {([["yes", T("✅ Yes", "✅ हाँ")], ["no", T("❌ No", "❌ नहीं")]] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setF({ homeService: k })} className={`rounded-xl border-2 py-3 font-semibold ${facts.homeService === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>{l}</button>
           ))}
         </div>
       </Sec>
 
-      <Sec id="q-pay" title="How can customers pay?">
+      <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")}>
         <div className="flex flex-wrap gap-2">
           {["💵 Cash", "📱 UPI", "💳 Card", "🧾 EMI"].map((c) => <button key={c} type="button" onClick={() => toggle("payments", c)} className={chip(facts.payments.includes(c))}>{c}</button>)}
         </div>
         {upiOn && (
-          <label className="block text-sm font-semibold">Your UPI ID
-            <input value={facts.upi} onChange={(e) => setF({ upi: e.target.value.trim() })} autoCapitalize="none" spellCheck={false} placeholder="e.g. sharmasweets@okhdfc" className={field} />
-            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">This does not look like a UPI ID. It looks like name@bank.</span>}
+          <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")}
+            <input value={facts.upi} onChange={(e) => setF({ upi: e.target.value.trim() })} autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
+            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">{T("This does not look like a UPI ID. It looks like name@bank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank")}</span>}
           </label>
         )}
       </Sec>
 
-      <Sec id="q-since" title="Since which year?">
-        <input value={facts.since} onChange={(e) => setF({ since: e.target.value.replace(/\D/g, "").slice(0, 4) })} inputMode="numeric" placeholder="e.g. 2015" className={field} />
+      <Sec id="q-since" title={T("Since which year?", "किस साल से काम कर रहे हैं?")}>
+        <input value={facts.since} onChange={(e) => setF({ since: e.target.value.replace(/\D/g, "").slice(0, 4) })} inputMode="numeric" placeholder={T("e.g. 2015", "जैसे 2015")} className={field} />
       </Sec>
 
-      <Sec id="q-offer" title="Any offer right now?">
-        <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder="e.g. Free delivery above ₹500" className={field} />
+      <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")}>
+        <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T("e.g. Free delivery above ₹500", "जैसे ₹500 से ऊपर free delivery")} className={field} />
       </Sec>
 
-      <Sec id="q-areas" title="Which areas do you serve?">
-        <input value={facts.areas} onChange={(e) => setF({ areas: e.target.value })} placeholder="e.g. Karol Bagh, Rajouri Garden, Janakpuri" className={field} />
+      <Sec id="q-areas" title={T("Which areas do you serve?", "आप किन इलाकों में काम करते हैं?")}>
+        <input value={facts.areas} onChange={(e) => setF({ areas: e.target.value })} placeholder={T("e.g. Karol Bagh, Rajouri Garden, Janakpuri", "जैसे Karol Bagh, Rajouri Garden, Janakpuri")} className={field} />
       </Sec>
 
-      <Sec id="q-special" title="What makes you special?" hint="Tap all that are true.">
+      <Sec id="q-special" title={T("What makes you special?", "आपकी खास बात क्या है?")} hint={T("Tap all that are true.", "जो सही हैं, सब दबा दें।")}>
         <div className="flex flex-wrap gap-2">
           {["💰 Fair prices", "⭐ Best quality", "🚚 Fast delivery", "🧑‍🔧 Expert team", "✂️ Custom orders", "🤝 Trusted by many customers"].map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chip(facts.special.includes(c))}>{c}</button>)}
         </div>
-        <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder="Anything else? e.g. pure desi ghee only" className={field} />
+        <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T("Anything else? e.g. pure desi ghee only", "कुछ और? जैसे सिर्फ़ शुद्ध देसी घी")} className={field} />
       </Sec>
 
       {!setup?.about && (
-        <Sec id="q-work" title="What do you sell, or what work do you do?" hint="In your own words — 2 or 3 lines is enough.">
-          <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder="e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties." className={field} />
+        <Sec id="q-work" title={T("What do you sell, or what work do you do?", "आप क्या बेचते हैं, या क्या काम करते हैं?")} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
+          <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T("e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties.", "जैसे हम रोज़ ताज़ी मिठाई और नमकीन बनाते हैं, और शादी-party के order भी लेते हैं।")} className={field} />
         </Sec>
       )}
 
       {setup?.persona === "professional" && (
-        <Sec id="q-qual" title="Your degree / registration (optional)">
-          <input value={facts.qualification} onChange={(e) => setF({ qualification: e.target.value })} placeholder="e.g. MBBS, MD · Reg. no. 12345" className={field} />
+        <Sec id="q-qual" title={T("Your degree / registration (optional)", "आपकी degree / registration (ज़रूरी नहीं)")}>
+          <input value={facts.qualification} onChange={(e) => setF({ qualification: e.target.value })} placeholder={T("e.g. MBBS, MD · Reg. no. 12345", "जैसे MBBS, MD · Reg. no. 12345")} className={field} />
         </Sec>
       )}
 
@@ -936,20 +949,20 @@ export default function BuildCard() {
           choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
           option. It is one of the most useful answers on the form: a site we can read fills the whole card,
           and a site they merely like gives theirs that look. */}
-      <Sec id="q-site" title="Your website — or a website you like (optional)">
-        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || "e.g. sharmasweets.com"} className={field} />
-        <p className="mt-1 text-xs text-muted">No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.</p>
+      <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
+        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com", "जैसे sharmasweets.com")} className={field} />
+        <p className="mt-1 text-xs text-muted">{T("No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
         <div className="mt-3">
-          <p className="text-sm font-semibold">This website is…</p>
+          <p className="text-sm font-semibold">{T("This website is…", "ये website है…")}</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
             {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
-              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {c.t}</button>
+              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {hi ? c.th : c.t}</button>
             ))}
           </div>
-          <p className="mt-1 text-xs text-muted">{SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
+          <p className="mt-1 text-xs text-muted">{hi ? SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takesHi : SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
           {facts.websiteRole === "dealer" && !!facts.website && (
             facts.dealerAssertedAt
-              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> Confirmed: you are this brand’s authorised dealer / distributor.</p>
+              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> {T("Confirmed: you are this brand’s authorised dealer / distributor.", "Confirm हो गया: आप इस brand के authorised dealer / distributor हैं।")}</p>
               : <label className="mt-2 flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
                   <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
                   <span>I am this brand’s authorised dealer / distributor and may show its product photos on my card. <span className="block text-xs text-muted">मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।</span></span>
@@ -959,24 +972,24 @@ export default function BuildCard() {
       </Sec>
 
       <details id="q-more" ref={moreRef} className="rounded-2xl border border-border bg-surface p-4">
-        <summary className="cursor-pointer text-[15px] font-semibold">More details <span className="font-normal text-muted">(optional)</span></summary>
+        <summary className="cursor-pointer text-[15px] font-semibold">{T("More details", "और जानकारी")} <span className="font-normal text-muted">{T("(optional)", "(ज़रूरी नहीं)")}</span></summary>
         <div className="mt-3 space-y-3">
           {([["instagram", "Instagram", "instagram.com/yourshop"], ["facebook", "Facebook", "facebook.com/yourshop"], ["youtube", "YouTube", "youtube.com/@yourshop"]] as const).map(([k, l, ph]) => (
             <label key={k} className="block text-sm font-semibold">{l}
               <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" className={field} />
             </label>
           ))}
-          <label id="q-map" className="block scroll-mt-4 text-sm font-semibold">Google Maps link
+          <label id="q-map" className="block scroll-mt-4 text-sm font-semibold">{T("Google Maps link", "Google Maps का link")}
             <input value={facts.social.google} onChange={(e) => setF({ social: { google: e.target.value.trim() } })} placeholder="maps.app.goo.gl/…" inputMode="url" autoCapitalize="none" className={field} />
-            <span className="mt-1 block text-xs font-normal text-muted">Google Maps → your shop → Share → Copy link</span>
+            <span className="mt-1 block text-xs font-normal text-muted">{T("Google Maps → your shop → Share → Copy link", "Google Maps → अपनी दुकान → Share → Copy link")}</span>
           </label>
           <div>
-            <p className="text-sm font-semibold">Who buys from you?</p>
+            <p className="text-sm font-semibold">{T("Who buys from you?", "आपसे कौन खरीदता है?")}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {["👪 Families", "🏪 Shops", "🏢 Offices", "🎓 Students", "👵 Senior citizens", "🙋 Everyone"].map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chip(facts.customers.includes(c))}>{c}</button>)}
             </div>
           </div>
-          <label className="block text-sm font-semibold">Language of your V-Card
+          <label className="block text-sm font-semibold">{T("Language of your V-Card", "आपके V-Card की भाषा")}
             <select value={facts.lang} onChange={(e) => setF({ lang: e.target.value as CardFacts["lang"] })} className={field}>
               <option value="en">English</option><option value="hinglish">Hinglish</option><option value="hi">हिन्दी</option>
             </select>
@@ -986,8 +999,8 @@ export default function BuildCard() {
 
       {err && <p className="text-sm text-danger">{err}</p>}
       {makeBtn}
-      <p className="text-center text-xs text-muted">Free. The AI writes only from your details — no made-up prices or claims.</p>
-      {unlock && <UnlockDialog reason="A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile." onClose={() => { setUnlock(false); access.refresh(); }} />}
+      <p className="text-center text-xs text-muted">{T("Free. The AI writes only from your details — no made-up prices or claims.", "Free. AI सिर्फ़ आपकी जानकारी से लिखता है — price या दावे अपने से नहीं बनाता।")}</p>
+      {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
 }

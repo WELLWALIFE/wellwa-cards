@@ -26,13 +26,13 @@ export function cardProducts(card: Card): { item: ProductItem; slug: string; pag
   for (const pg of card.pages) {
     for (const b of pg.blocks) {
       if (b.kind !== "product") continue;
-      b.items.forEach((item, i) => {
-        let slug = productSlug(item.name, out.length + i);
+      for (const item of b.items) {
+        let slug = productSlug(item.name, out.length);
         // Two products with the same name still need two addresses.
         if (seen.has(slug)) slug = `${slug}-${out.length + 1}`;
         seen.add(slug);
         out.push({ item, slug, page: pg.slug });
-      });
+      }
     }
   }
   return out;
