@@ -319,6 +319,8 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
   }
 
   const ownLook = !!existing.site?.templateKey;
+  const norm = (v: string | undefined) => (v ?? "").trim().toLowerCase();
+  const sameBusiness = !norm(built.company) || !norm(existing.company) || norm(built.company) === norm(existing.company);
   // A card that is Shubhora's own seller card keeps its brand art; any other business sheds it here.
   const sheds = existing.kb !== "shubhora";
   const keptAvatar = sheds && isShubhoraBrandArt(existing.avatarUrl) ? undefined : existing.avatarUrl;
@@ -348,8 +350,12 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
     template: ownLook ? existing.template : built.template,
     links: [...built.links, ...(existing.links ?? []).filter((l) => (l.value ?? "").trim() && !builtTypes.has(l.type))],
     seo: { ...existing.seo, ...definedOnly(built.seo) },
-    seoTitle: existing.seoTitle || built.seoTitle,
-    seoDescription: existing.seoDescription || built.seoDescription,
+    // The owner's own search title and description survive a rebuild — unless the business itself changed
+    // (a different company name), when the old ones describe something that is no longer on the card.
+    // Seen live: a card rebuilt from wellwalife.com still titled "Shubh Mobile Point | Mobile Shop" in
+    // the browser tab and in Google.
+    seoTitle: (sameBusiness ? existing.seoTitle : "") || built.seoTitle,
+    seoDescription: (sameBusiness ? existing.seoDescription : "") || built.seoDescription,
     site: {
       ...existing.site,
       ...definedOnly(built.site),
