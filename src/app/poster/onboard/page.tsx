@@ -813,7 +813,9 @@ function Onboard() {
                       </label>
                     )}
                     <p className="text-xs text-muted">{hi ? c.takesHi : c.takes}</p>
-                    {(c.k === "own" || c.k === "dealer") && peek.state !== "idle" && peek.role === c.k && (
+                    {/* …and only while it still describes the link in the box: typing a new one must not leave
+                        "Found: Haldiram's" standing under a box that now says bikano.com. */}
+                    {(c.k === "own" || c.k === "dealer") && peek.state !== "idle" && peek.role === c.k && peek.url === cleanSiteUrl(site.url) && (
                       <p className={`flex items-start gap-1.5 text-xs font-semibold ${peek.state === "found" ? "text-good" : peek.state === "reading" ? "text-muted" : "text-amber"}`}>
                         {peek.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : peek.state === "found" ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
                         <span>
@@ -860,7 +862,7 @@ function Onboard() {
       ) : (
         <section className="space-y-4">
           {(() => {
-            const ownPeek = site.kind === "own" && peek.role === "own" ? peek : null;
+            const ownPeek = site.kind === "own" && peek.role === "own" && peek.url === cleanSiteUrl(site.url) ? peek : null;
             const filled = ownPeek?.state === "found";
             return (
               <div>
@@ -876,7 +878,7 @@ function Onboard() {
                       : T("Could not read it — fill these in; the website is read again when the card is built.", "पढ़ नहीं पाए — ये भर दें; website card बनाते समय फिर पढ़ी जाएगी।")}</span>
                   </p>
                 )}
-                {site.kind === "dealer" && peek.state === "found" && peek.data?.name && (
+                {site.kind === "dealer" && peek.state === "found" && peek.url === cleanSiteUrl(site.url) && peek.data?.name && (
                   <p className="mt-2 rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{T("Brand", "Brand")}: <b className="text-ink">{peek.data.name}</b>{peek.data.products ? ` · ${peek.data.products} products ${T("will come across as MRP", "MRP के साथ आएँगे")}` : ""} — {T("below, your OWN shop's name and city.", "नीचे अपनी दुकान का नाम और शहर।")}</p>
                 )}
               </div>
