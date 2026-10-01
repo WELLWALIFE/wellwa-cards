@@ -108,6 +108,51 @@ export function HelpDock() {
   // Report straight away on a change of screen, so staff are never looking at the screen before.
   useEffect(() => { if (live) beat(); }, [path, live, beat]);
 
+  // While a session is live the app records its own page and posts it every couple of seconds, so staff see
+  // the screen itself — the half-filled form, the button they cannot find — instead of only its name.
+  // Recording starts when the session goes live and stops the moment it ends; nothing is recorded before
+  // the person has agreed. What they type is included (owner's call, 1 Oct 2026) EXCEPT password fields,
+  // which are never sent. rrweb is loaded only now, so nobody pays for it just by opening the app.
+  useEffect(() => {
+    if (!live) return;
+    let gone = false;
+    let stop: (() => void) | undefined;
+    let timer: ReturnType<typeof setInterval> | undefined;
+    let buffer: unknown[] = [];
+    let hasSnapshot = false;
+    let seq = 0;
+
+    (async () => {
+      const { record } = await import("rrweb");
+      if (gone) return;
+      stop = record({
+        emit(event: { type?: number }) {
+          if (event.type === 2) hasSnapshot = true;       // a complete picture of the page
+          buffer.push(event);
+        },
+        maskAllInputs: false,
+        maskInputOptions: { password: true },
+        // A fresh complete picture now and then, so a staff member joining mid-session has something to
+        // start the replay from instead of needing every event since the beginning.
+        checkoutEveryNms: 20_000,
+        // Enough to follow along without sending a message per pixel of mouse movement.
+        sampling: { mousemove: 150, scroll: 200, input: "last" },
+      }) as (() => void) | undefined;
+
+      const flush = async () => {
+        if (gone || !buffer.length) return;
+        const events = buffer;
+        const snapshot = hasSnapshot;
+        buffer = [];
+        hasSnapshot = false;
+        await api("/api/support/events", { method: "POST", json: { seq: seq++, snapshot, events } }).catch(() => undefined);
+      };
+      timer = setInterval(flush, 2_000);
+    })();
+
+    return () => { gone = true; if (timer) clearInterval(timer); stop?.(); };
+  }, [live]);
+
   // Staff sent them somewhere: go, once per push.
   useEffect(() => {
     if (!live || !session?.guidePath || !session.guideAt) return;
@@ -137,11 +182,13 @@ export function HelpDock() {
             <p className="flex items-center gap-2 text-base font-bold"><Headset className="h-5 w-5 text-brand" /> {hi ? "मदद चाहिए?" : "Need a hand?"}</p>
             <p className="text-sm text-muted">
               {hi
-                ? `${session.staffName || "Shubhora support"} आपकी मदद करना चाहते हैं। हाँ करने पर वो देख पाएँगे कि आप app की किस screen पर हैं और आपका card कैसा बन रहा है — ताकि फ़ोन पर बता सकें कि आगे क्या करना है।`
-                : `${session.staffName || "Shubhora support"} would like to help you. If you say yes they can see which screen of the app you are on and how your card is coming along, so they can talk you through the next step.`}
+                ? `${session.staffName || "Shubhora support"} आपकी मदद करना चाहते हैं। हाँ करने पर वो आपकी app की screen देख पाएँगे — जो आप देख रहे हैं वही, चलते-चलते — ताकि फ़ोन पर बता सकें कि आगे क्या करना है।`
+                : `${session.staffName || "Shubhora support"} would like to help you. If you say yes they can see your app screen as you use it, so they can talk you through the next step.`}
             </p>
             <p className="rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
-              {hi ? "आप जो type करेंगे वो उन्हें नहीं दिखेगा। आप जब चाहें बंद कर सकते हैं।" : "They cannot see what you type. You can end it whenever you like."}
+              {hi
+                ? "वो सिर्फ़ Shubhora app देखेंगे — आपका कोई दूसरा app या tab नहीं। Form में आप जो भरेंगे वो उन्हें दिखेगा; password कभी नहीं जाता। आप जब चाहें बंद कर सकते हैं।"
+                : "They see only the Shubhora app — none of your other apps or tabs. What you fill into a form is visible to them; a password never is. You can end it whenever you like."}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => act("decline")} disabled={!!busy}
@@ -162,7 +209,7 @@ export function HelpDock() {
             <Headset className={`h-4 w-4 shrink-0 ${live ? "text-good" : "text-muted"}`} />
             <span className="flex-1 leading-snug">
               {live
-                ? (hi ? `${session?.staffName || "Shubhora support"} आपकी मदद कर रहे हैं — उन्हें दिख रहा है कि आप किस screen पर हैं।` : `${session?.staffName || "Shubhora support"} is helping you — they can see which screen you are on.`)
+                ? (hi ? `${session?.staffName || "Shubhora support"} आपकी मदद कर रहे हैं — उन्हें आपकी screen दिख रही है।` : `${session?.staffName || "Shubhora support"} is helping you — they can see your screen.`)
                 : (hi ? "मदद माँगी गई है — कोई अभी जुड़ेगा।" : "Help requested — someone will join shortly.")}
             </span>
             <button type="button" onClick={() => act("end")} disabled={!!busy} className="shrink-0 underline disabled:opacity-60">{hi ? "बंद करें" : "End"}</button>
@@ -250,7 +297,7 @@ export function HelpDock() {
                     {hi ? "Live help बुलाएँ" : "Call for live help"}
                   </button>
                   <p className="mt-2 text-[11px] leading-snug text-muted">
-                    {hi ? "Shubhora का कोई साथी आपकी screen देखकर बताएगा कि आगे क्या करना है। आप जो type करेंगे वो नहीं दिखेगा, और आप जब चाहें बंद कर सकते हैं।" : "Someone from Shubhora will look at your screen and talk you through it. They cannot see what you type, and you can end it whenever you like."}
+                    {hi ? "Shubhora का कोई साथी आपकी app की screen देखकर बताएगा कि आगे क्या करना है। सिर्फ़ ये app दिखेगा, आपका कोई दूसरा app नहीं; password कभी नहीं जाता। जब चाहें बंद कर सकते हैं।" : "Someone from Shubhora will watch your app screen and talk you through it. Only this app, none of your others; a password is never sent. You can end it whenever you like."}
                   </p>
                 </>
               )}

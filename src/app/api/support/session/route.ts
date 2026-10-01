@@ -35,6 +35,13 @@ async function openSession(userId: string): Promise<Row | null> {
   return r.data?.[0] ?? null;
 }
 
+/** A session's screen recording is working data, not a record to keep: it goes the moment the session does. */
+async function dropEvents(id: string) {
+  await restAsService(`support_events?session_id=eq.${id}`, {
+    method: "DELETE", headers: { Prefer: "return=minimal" },
+  }).catch(() => undefined);
+}
+
 async function patch(id: string, body: Record<string, unknown>) {
   await restAsService(`support_sessions?id=eq.${id}`, {
     method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(body),
@@ -62,6 +69,7 @@ async function expire(s: Row | null): Promise<Row | null> {
   const over = (s.status === "invited" && age > INVITE_MS) || (s.status === "live" && quiet > STALE_MS * 4);
   if (!over) return s;
   await patch(s.id, { status: "ended", ended_at: new Date().toISOString() });
+  await dropEvents(s.id);
   return null;
 }
 
@@ -107,6 +115,7 @@ export async function POST(request: Request) {
 
   if (action === "decline" || action === "end") {
     await patch(current.id, { status: "ended", ended_at: now });
+    await dropEvents(current.id);
     return NextResponse.json({ session: null });
   }
 

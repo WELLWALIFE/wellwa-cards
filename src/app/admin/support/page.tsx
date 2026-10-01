@@ -12,6 +12,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Headset, LoaderCircle, RefreshCw, Send, Smartphone, SquareArrowOutUpRight, TriangleAlert, UserPlus, X } from "lucide-react";
 import { adminHeaders } from "@/lib/admin-client";
 import { GUIDE_TARGETS, helpFor } from "@/lib/help-screens";
+import { LiveScreen } from "@/components/admin/live-screen";
 
 type Session = {
   id: string;
@@ -227,6 +228,12 @@ export default function LiveHelpPage() {
                   ) : (
                     <p className="mt-1 text-xs text-muted">updated {ago(open.lastSeen)} ago · refreshes every 5s</p>
                   )}
+                </div>
+
+                {/* The screen itself, replayed as they use it. This is the point of the page. */}
+                <div>
+                  <p className="mb-1.5 text-sm font-semibold">Their screen</p>
+                  <LiveScreen sessionId={open.id} live={open.status === "live"} />
                 </div>
 
                 {screen && (

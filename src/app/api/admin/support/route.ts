@@ -150,6 +150,8 @@ export async function POST(request: Request) {
       method: "PATCH", headers: { Prefer: "return=minimal" },
       body: JSON.stringify({ status: "ended", ended_at: now }),
     });
+    // The screen recording goes with the session — it is working data, not something to keep.
+    await rest(`support_events?session_id=eq.${id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
     return Response.json({ ok: true });
   }
 
