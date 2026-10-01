@@ -5,7 +5,7 @@
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
 import type { CardBlock, CardImage, CardLink, CardPage, ProductItem, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
-import { styleFromReference, type ReferenceStyle } from "@/lib/site-style";
+import { styleFromReference, styleFromLook, homeOrderFromLook, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
@@ -201,7 +201,7 @@ export type ComposeInput = {
    *  maker's web text (factsText with an empty `info`), so the bot only ever answers in the owner's words. */
   details?: string;
   /** A website the owner likes: its look becomes the website's design (site.style); nothing else of it is used. */
-  reference?: { url: string; style?: ReferenceStyle } | null;
+  reference?: { url: string; style?: ReferenceStyle; look?: MeasuredLook } | null;
 };
 
 const MISSING_LABEL: Record<MissingKey, string> = {
@@ -439,8 +439,18 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
         ...(firstImage || setup.logo ? { imageUrl: firstImage || setup.logo } : {}),
         ctaLabel,
       },
-      // "Make it like this website": its colours, fonts and hero layout — never its words, pictures or facts.
-      ...(input.reference?.style ? { style: styleFromReference(input.reference.style), reference: { url: input.reference.url, at: new Date().toISOString() } } : {}),
+      // "Make it like this website": its colours, fonts, rounding, hero and the order it puts things in —
+      // never its words, pictures or facts. What the browser measured wins over what the HTML hinted at;
+      // the old guess is the fallback for a page no browser could open.
+      ...(input.reference?.look || input.reference?.style
+        ? {
+            style: input.reference.look ? styleFromLook(input.reference.look) : styleFromReference(input.reference.style!),
+            ...(input.reference.look && homeOrderFromLook(input.reference.look)
+              ? { home: { order: homeOrderFromLook(input.reference.look)! } }
+              : {}),
+            reference: { url: input.reference.url, at: new Date().toISOString() },
+          }
+        : {}),
     },
   };
 

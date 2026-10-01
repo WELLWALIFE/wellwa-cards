@@ -252,3 +252,87 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (typeof o.radius === "string" && RADII.some((r) => r.key === o.radius)) out.radius = o.radius as NonNullable<SiteStyle["radius"]>;
   return out;
 }
+
+/* ========== a measured reference website → our design choices ========== */
+
+/** What the browser measured on the reference page (src/lib/render-page.ts). Kept structural so this file
+ *  stays free of server-only imports. */
+export type MeasuredLook = {
+  bg: string; ink: string; accent?: string;
+  headFont?: string; bodyFont?: string;
+  headScale: number; radius: number; spacing: number; columns: number;
+  heroImage: boolean; sections: string[];
+};
+
+/** Contrast ratio between two colours, the WCAG way. Below 4.5 is hard to read at normal sizes. */
+function contrast(a: string, b: string): number {
+  const L = (h: string) => {
+    const n = parseInt(h.slice(1), 16);
+    const c = [(n >> 16) & 255, (n >> 8) & 255, n & 255].map((v) => {
+      const s = v / 255;
+      return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    });
+    return 0.2126 * c[0] + 0.7152 * c[1] + 0.0722 * c[2];
+  };
+  const x = L(a), y = L(b);
+  return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05);
+}
+
+/** Design choices taken from a measured reference website.
+ *
+ *  A copy, not a tracing — and never a copy of a mistake. The owner's instruction (1 Oct 2026) was that a
+ *  reference site with a poor design should be improved on, not reproduced, so each measurement is taken
+ *  only where it is sound:
+ *    • an accent too pale to put white text on is dropped rather than carried over;
+ *    • a page whose own text barely separates from its background is not imitated — ours stays readable;
+ *    • headings that are the same size as the body (no hierarchy at all) are not copied; ours keep theirs;
+ *    • rounding is snapped to the three we draw, so a 40px pill becomes "round" and 2px becomes "sharp".
+ */
+export function styleFromLook(m: MeasuredLook): SiteStyle {
+  const style: SiteStyle = {};
+
+  // Colour. Only an accent that text can actually sit on, and only from a page that is itself readable.
+  const readablePage = contrast(m.bg, m.ink) >= 4.5;
+  const accent = m.accent && hex6(m.accent);
+  const usable = accent && contrast(accent, "#ffffff") >= 3 && luminance(accent) < 0.72;
+  if (usable && accent) { style.palette = "brand"; style.color = accent; }
+  else if (luminance(m.bg) < 0.25 && readablePage) style.palette = "noir";
+
+  // Fonts: the family it actually renders, when we have that pair; otherwise the nearest family in feel.
+  const named = [m.headFont, m.bodyFont].filter(Boolean)
+    .map((f) => FONT_PAIRS.find((p) => p.head && p.head.toLowerCase() === String(f).toLowerCase()))
+    .find(Boolean);
+  const all = `${m.headFont ?? ""} ${m.bodyFont ?? ""}`;
+  style.font = named?.key
+    ?? (SERIF.test(all) ? "elegant"
+      : ROUNDED.test(all) ? "friendly"
+      : TECH.test(all) ? "tech"
+      : HEAVY.test(all) ? "bold"
+      : "modern");
+
+  // A big picture at the top, or a split hero. A page with no hierarchy in its headings is not a model to
+  // follow, so a flat one gets our own quiet hero rather than its flatness.
+  style.hero = m.heroImage ? "photo" : m.headScale < 1.2 ? "minimal" : "split";
+
+  // Rounding, snapped to what we draw.
+  style.radius = m.radius >= 16 ? "round" : m.radius >= 6 ? "soft" : "sharp";
+
+  return style;
+}
+
+/** The pulled-in home sections, in the order the reference site puts them. Only those five can be ordered
+ *  by name; anything else on the page keeps its usual place. Returns null when the page gave us nothing
+ *  worth reordering for. */
+export function homeOrderFromLook(m: MeasuredLook): string[] | null {
+  const MAP: Record<string, string> = {
+    products: "featured", services: "featured",
+    gallery: "gallery", reviews: "reviews", faq: "faq", contact: "visit",
+  };
+  const out: string[] = [];
+  for (const s of m.sections) {
+    const key = MAP[s];
+    if (key && !out.includes(key)) out.push(key);
+  }
+  // One section is not an order; it would just pin that one to the top for no reason.
+  return out.length >= 2 ? out : null;
+}

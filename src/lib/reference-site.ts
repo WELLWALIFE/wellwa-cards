@@ -5,7 +5,8 @@ import "server-only";
 import { lookup } from "node:dns/promises";
 import net from "node:net";
 import type { ReferenceStyle } from "@/lib/site-style";
-import { htmlOf } from "@/lib/render-page";
+import { htmlOf, readLayout } from "@/lib/render-page";
+import type { MeasuredLook } from "@/lib/site-style";
 
 function privateIp(ip: string): boolean {
   if (net.isIPv4(ip)) {
@@ -57,7 +58,12 @@ export async function fetchPublic(raw: string, want: "html" | "json" | "image", 
 
 const clean = (s: string) => s.replace(/<[^>]+>/g, " ").replace(/&nbsp;/g, " ").replace(/&amp;/g, "&").replace(/&#39;|&rsquo;/g, "'").replace(/&quot;/g, '"').replace(/\s+/g, " ").trim();
 
-export type Reference = { url: string; summary: string; themeColor?: string; style?: ReferenceStyle };
+export type Reference = {
+  url: string; summary: string; themeColor?: string; style?: ReferenceStyle;
+  /** What the browser measured on the page — the real colours, fonts, rounding, spacing and section order.
+   *  Only filled in when the caller asks for it, because it costs a browser visit. */
+  look?: MeasuredLook;
+};
 
 const GENERIC_FONT = /^(?:inherit|initial|unset|sans-serif|serif|monospace|system-ui|ui-sans-serif|ui-serif|cursive|fantasy|emoji|math|arial|helvetica(?: neue)?|verdana|tahoma|segoe ui|roboto|-apple-system|blinkmacsystemfont|times new roman|courier new|noto sans|noto serif|sans serif)$/i;
 const hex6 = (c: string): string | null => {
@@ -118,7 +124,7 @@ export function readStyle(html: string): ReferenceStyle {
 }
 
 /** Returns a short text outline of the page (title, menu, headings, key lines), or null when it cannot be read. */
-export async function readReference(raw: string): Promise<Reference | null> {
+export async function readReference(raw: string, opts: { look?: boolean } = {}): Promise<Reference | null> {
   let u: URL | null = await safeUrl(raw);
   if (!u) return null;
   let html = "";
@@ -150,7 +156,11 @@ export async function readReference(raw: string): Promise<Reference | null> {
   const summary = [`Title: ${title}`, desc && `Description: ${desc}`, nav && `Menu: ${nav}`, heads.length && `Headings in order:\n- ${heads.join("\n- ")}`, paras.length && `Sample lines:\n- ${paras.join("\n- ")}`]
     .filter(Boolean).join("\n").slice(0, 4000);
   if (themeColor && !style.colors.includes(themeColor.toLowerCase())) style.colors.unshift(themeColor.toLowerCase());
-  return summary.length > 40 ? { url: u.toString(), summary, themeColor, style } : null;
+  if (summary.length <= 40) return null;
+  // Only for a site we are copying the look of: one more browser visit, to measure what it really looks
+  // like rather than what its HTML hints at.
+  const look = opts.look ? (await readLayout(u.toString()).catch(() => null)) ?? undefined : undefined;
+  return { url: u.toString(), summary, themeColor, style, ...(look ? { look } : {}) };
 }
 
 /** The owner's OWN website, read for facts (not just style): the home page plus the usual About / Products /

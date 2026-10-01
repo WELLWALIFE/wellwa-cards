@@ -92,7 +92,7 @@ export async function POST(request: Request) {
   // and products are somebody else's, so nothing is imported from it and it is never the owner's "Website" link.
   const role = facts.website ? facts.websiteRole : "own";
   const website = role === "reference" ? setup.website : facts.website || setup.website;
-  const referenceP = role === "reference" && facts.website ? within(readReference(facts.website).catch(() => null), 20_000) : Promise.resolve(null);
+  const referenceP = role === "reference" && facts.website ? within(readReference(facts.website, { look: true }).catch(() => null), 45_000) : Promise.resolve(null);
   const siteP = website ? within(readOwnSite(website).catch(() => null), 30_000) : Promise.resolve(null);
   const importRole = role === "reference" ? "own" : role;
   const importP: Promise<{ imp: SiteImport; stored: StoredSite } | null> = website
@@ -253,7 +253,7 @@ export async function POST(request: Request) {
   const { card, checks, missing } = composeCard({
     setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
-    reference: reference ? { url: reference.url, style: reference.style } : null,
+    reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
   });
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;
