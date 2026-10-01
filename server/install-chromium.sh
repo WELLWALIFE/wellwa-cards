@@ -27,11 +27,14 @@ else
   echo "   CHROME_PATH=$BIN added to .env.local"
 fi
 
-# Chromium needs more shared memory than the default 64 MB or it dies on heavier pages. The app also passes
-# --disable-dev-shm-usage, so this is a belt-and-braces measure.
-if ! grep -q '^tmpfs /dev/shm' /etc/fstab 2>/dev/null; then
-  mount -o remount,size=512M /dev/shm 2>/dev/null || true
-  echo "   /dev/shm raised to 512M for this boot"
+# Chromium dies on heavier pages when /dev/shm is the old 64 MB default. The app also passes
+# --disable-dev-shm-usage, so this is belt and braces — and it only ever RAISES it. An earlier version of
+# this line remounted unconditionally, which would have shrunk a box that already had plenty.
+SHM_MB=$(df -m --output=size /dev/shm 2>/dev/null | tail -1 | tr -d ' ')
+if [ -n "$SHM_MB" ] && [ "$SHM_MB" -lt 512 ]; then
+  mount -o remount,size=512M /dev/shm 2>/dev/null && echo "   /dev/shm raised from ${SHM_MB}M to 512M for this boot"
+else
+  echo "   /dev/shm is ${SHM_MB:-?}M — left alone"
 fi
 
 echo "✓ done — restart the app so it picks up CHROME_PATH:  pm2 restart neuraledge-app"
