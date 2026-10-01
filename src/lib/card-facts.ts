@@ -428,4 +428,12 @@ export type MissingKey = "products" | "prices" | "productPhotos" | "banner" | "h
 /** A "Make it better" chip: something that would improve the card. */
 export type Missing = { key: MissingKey; label: string };
 
-export type BuildResponse = { ok: true; card: TemplateCard; checks: WebCheck[]; missing: Missing[]; siteRead?: boolean };
+export type BuildResponse = {
+  ok: true; card: TemplateCard; checks: WebCheck[]; missing: Missing[];
+  /** The website was opened and had something to read. */
+  siteRead?: boolean;
+  /** What the website actually gave us. A site built in JavaScript opens fine and yields nothing — the page
+   *  is empty until a browser runs its scripts — and saying "we could not open it" would be wrong. This
+   *  lets the builder tell the owner what really happened. */
+  siteFound?: { products: number; photos: number };
+};

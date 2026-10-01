@@ -230,6 +230,14 @@ export async function POST(request: Request) {
     const paid = (await posterQuota(me.token, me.id)).plan !== "free";
     if (media) built = addStockMedia(built, paid ? media : { ...media, clip: null }, facts.lang);
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
-  const out: BuildResponse = { ok: true, card: built, checks, missing, ...(website ? { siteRead: !!site } : role === "reference" && facts.website ? { siteRead: !!reference } : {}) };
+  const out: BuildResponse = {
+    ok: true, card: built, checks, missing,
+    ...(website ? { siteRead: !!site } : role === "reference" && facts.website ? { siteRead: !!reference } : {}),
+    // What the site actually yielded, so the builder can say so instead of leaving the owner wondering why
+    // their products did not come across.
+    ...(website && importRole !== "dealer"
+      ? { siteFound: { products: got?.stored.products.length ?? 0, photos: (got?.stored.gallery.length ?? 0) + (got?.stored.cover ? 1 : 0) } }
+      : {}),
+  };
   return NextResponse.json(out);
 }

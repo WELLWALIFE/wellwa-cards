@@ -449,7 +449,20 @@ export default function BuildCard() {
       const sig = cardSig(live);
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone");
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
-      if (r.data.siteRead === false) setNotice(facts.websiteRole === "reference" && facts.website ? "We could not open the reference website, so your website got our own look — you can change it any time under My website → Edit website." : "We could not open your website, so your V-Card was made from your other details.");
+      // Three different things, which used to be one vague line:
+      //   • the site could not be opened at all;
+      //   • it opened and gave us nothing, because it is built in JavaScript — the page is empty until a
+      //     browser runs its scripts, so there is nothing for us (or anything else that does not run them)
+      //     to read. Saying "could not open it" there was simply wrong;
+      //   • it opened and gave us products and pictures, which is the normal case and needs no notice.
+      const found = r.data.siteFound;
+      if (r.data.siteRead === false) {
+        setNotice(facts.websiteRole === "reference" && facts.website
+          ? "We could not open that website, so your card got our own look — you can change it any time under My website → Edit website."
+          : "We could not open your website, so your V-Card was made from your other details.");
+      } else if (found && !found.products && !found.photos && facts.websiteRole !== "reference") {
+        setNotice("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.");
+      }
       setState("preview");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
       // The very first card, with nothing to double-check: live straight away. Anything else waits for the button.
