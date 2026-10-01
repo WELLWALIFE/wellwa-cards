@@ -9,7 +9,7 @@
 // supabase/migrations/0061_live_help.sql).
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Headset, LoaderCircle, RefreshCw, Send, Smartphone, SquareArrowOutUpRight, TriangleAlert, UserPlus, X } from "lucide-react";
+import { Headset, LoaderCircle, PencilLine, RefreshCw, Send, Smartphone, SquareArrowOutUpRight, TriangleAlert, UserPlus, X } from "lucide-react";
 import { adminHeaders } from "@/lib/admin-client";
 import { GUIDE_TARGETS, helpFor } from "@/lib/help-screens";
 import { LiveScreen } from "@/components/admin/live-screen";
@@ -57,6 +57,8 @@ export default function LiveHelpPage() {
   // A Staff Admin member handed over from the partner panel: their name came with the signed handoff and
   // the server uses that, not anything typed here. The owner, who unlocked with the password, types theirs.
   const [fixedName, setFixedName] = useState("");
+  // "Fill it in for them": the one-time address that opens their app as them.
+  const [asThem, setAsThem] = useState<{ link?: string; email?: string; password?: string; login?: string } | null>(null);
   const liveRef = useRef<HTMLIFrameElement>(null);
 
   // Whoever is at this console — shown to the person in their banner, so help never comes from "someone".
@@ -102,6 +104,30 @@ export default function LiveHelpPage() {
       setErr("No internet — please try again.");
     } finally { setBusy(""); }
   }
+
+  /** Open their app already logged in as them, so a staff member can do the typing while the person
+   *  watches their own screen. The same flow as Users → "Login as", with its "← Back to admin" bar. */
+  async function fillForThem(userId: string) {
+    setBusy("as"); setErr(""); setAsThem(null);
+    try {
+      const r = await fetch("/api/admin/users", {
+        method: "POST", headers: await adminHeaders(), body: JSON.stringify({ action: "login_as", id: userId }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { link?: string; email?: string; password?: string; login?: string; error?: string };
+      if (!r.ok) {
+        setErr(r.status === 401
+          ? "Only the platform owner can open a customer's account. Ask them to do this part."
+          : j.error || `Could not open their account (${r.status}).`);
+        return;
+      }
+      setAsThem(j);
+      if (j.link) window.open(j.link, "_blank", "noopener");
+    } catch {
+      setErr("No internet — please try again.");
+    } finally { setBusy(""); }
+  }
+
+  useEffect(() => { setAsThem(null); }, [selected]);
 
   const open = sessions.find((s) => s.id === selected) ?? null;
   const screen = open?.path ? helpFor(open.path) : null;
@@ -245,6 +271,34 @@ export default function LiveHelpPage() {
                     {screen.mistake && <p className="mt-2 text-xs text-amber"><b>Usual mistake:</b> {screen.mistake.en}</p>}
                   </div>
                 )}
+
+                {/* When talking them through it is not enough: do the typing yourself, in their account. */}
+                <div className="rounded-xl border border-border p-3">
+                  <p className="flex items-center gap-1.5 text-sm font-semibold"><PencilLine className="h-4 w-4 text-brand" /> Fill it in for them</p>
+                  <p className="mt-1 text-xs text-muted">
+                    You cannot press anything on their phone from here — this is a view of their screen, not a
+                    remote control. When someone cannot manage it themselves, ask them, then open their app as
+                    them and type it in. They watch it happen on their own screen, and a “← Back to admin” bar
+                    brings you back to your own account.
+                  </p>
+                  {fixedName ? (
+                    <p className="mt-2 rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">
+                      Opening a customer&apos;s account is the platform owner&apos;s to do — ask them for this part.
+                    </p>
+                  ) : (
+                    <button type="button" onClick={() => fillForThem(open.userId)} disabled={!!busy}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-brand/40 bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink disabled:opacity-60">
+                      {busy === "as" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SquareArrowOutUpRight className="h-4 w-4" />} Open their app as them
+                    </button>
+                  )}
+                  {asThem?.password && (
+                    <p className="mt-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
+                      This account has no email, so a temporary password was set. Log in with{" "}
+                      <b>{asThem.login ?? asThem.email}</b> and <b className="font-mono">{asThem.password}</b>.
+                      Tell them it changed — their old password no longer works.
+                    </p>
+                  )}
+                </div>
 
                 <div>
                   <p className="mb-1.5 text-sm font-semibold">Send them to a screen</p>
