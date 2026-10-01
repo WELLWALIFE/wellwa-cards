@@ -279,7 +279,10 @@ async function copyImage(userId: string, src: string, kind: Kind, n: number, min
     const img = sharp(r.body, { failOn: "none" }).rotate();
     const m = await img.metadata();
     const w = m.width ?? 0, h = m.height ?? 0;
-    if (w < minWidth || h < Math.min(minWidth, 120)) return null;
+    // A logo is often a wide wordmark — wellwalife.com's is 91×39 — so for a logo only the width has to be
+    // real; the old rule wanted 64px of height too and threw that one away, leaving the account's old logo
+    // on a card rebuilt from the site.
+    if (w < minWidth || h < (kind === "logo" ? 20 : Math.min(minWidth, 120))) return null;
     const out = kind === "logo"
       ? await img.resize({ width: 600, height: 300, fit: "inside", withoutEnlargement: true }).png().toBuffer()
       : kind === "product"
