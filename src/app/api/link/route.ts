@@ -10,6 +10,7 @@
 //   joined   → a new partner ID: welcome email to the partner and a new-registration alert to the company
 //   password → keep the Suite password the same as the associate panel password
 //   login    → one-time sign-in address that opens the Suite without a password
+//   support-link → one-time address that opens Live help (and only Live help) for a named staff member
 
 import { notify } from "@/lib/notify";
 import { ALERT_TO, partnerWelcomeMail, realEmail, sendMail, signupAlertMail } from "@/lib/mailer";
@@ -17,6 +18,7 @@ import crypto from "node:crypto";
 import { NextResponse } from "next/server";
 import { SAAS_PLANS } from "@/lib/billing";
 import { SUPA_URL, serviceConfigured, serviceHeaders } from "@/lib/admin-guard";
+import { signAdminToken } from "@/lib/admin-token";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/\/$/, "");
 
@@ -170,6 +172,22 @@ export async function POST(request: Request) {
       const token = (j.hashed_token ?? j.properties?.hashed_token) as string | undefined;
       if (!token) return NextResponse.json({ error: "no token" }, { status: 400 });
       return NextResponse.json({ url: `${SITE}/auth/link?t=${encodeURIComponent(token)}` });
+    }
+
+    // The Staff Admin's "Help this customer" button: hand a named staff member into Live help.
+    //
+    // Returns a one-time address (60 seconds) that opens ONLY /admin/support. It is not the owner handoff:
+    // the session key it becomes carries scope "support", which /lib/admin-guard lets through to
+    // /api/admin/support and nothing else, and the Super Admin menu shows only that one page.
+    //
+    // `staff` is the name the card holder sees in their banner while being helped, so help never arrives
+    // from "somebody". The panel decides which of its own roles may ask for this (its PERMS) — this side
+    // only checks that the call is signed with LINK_SECRET.
+    if (b.action === "support-link") {
+      const staff = String(b.staff ?? "").trim().slice(0, 60);
+      if (staff.length < 2) return NextResponse.json({ error: "staff name needed" }, { status: 400 });
+      const t = signAdminToken(staff, "handoff", 60, "support");
+      return NextResponse.json({ url: `${SITE}/admin-link?t=${encodeURIComponent(t)}&to=support` });
     }
 
     return NextResponse.json({ error: "unknown action" }, { status: 400 });

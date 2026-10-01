@@ -5,7 +5,7 @@
 // button that opens the same list as a drawer — before, a phone had no menu at all.
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard, Users, CreditCard, IndianRupee, Globe, ArrowLeft, Bot, LayoutTemplate, Building2, Wallet,
   Image as ImageIcon, Bell, UserCog, Sparkles, Menu, X, Settings, Headset, type LucideIcon,
@@ -42,6 +42,13 @@ const GROUPS: { title: string; items: Item[] }[] = [
     { href: "/admin/site", label: "Site settings", icon: Settings },
   ] },
 ];
+/** A Staff Admin member sent over for Live help sees only that. Everything else in here is the owner's,
+ *  and the /api/admin routes refuse their session anyway (src/lib/admin-guard.ts) — this keeps the menu
+ *  honest rather than offering pages that would only say "unauthorized". */
+const SUPPORT_GROUPS: typeof GROUPS = [
+  { title: "", items: [{ href: "/admin/support", label: "Live help", icon: Headset }] },
+];
+
 const ALL = GROUPS.flatMap((g) => g.items);
 const isActive = (href: string, path: string) => (href === "/admin" ? path === "/admin" : path === href || path.startsWith(`${href}/`));
 
@@ -58,10 +65,10 @@ function Brand() {
   );
 }
 
-function NavList({ path, onPick }: { path: string; onPick?: () => void }) {
+function NavList({ path, onPick, groups = GROUPS }: { path: string; onPick?: () => void; groups?: typeof GROUPS }) {
   return (
     <nav className="flex-1 overflow-y-auto px-3 py-4">
-      {GROUPS.map((g) => (
+      {groups.map((g) => (
         <div key={g.title || "top"} className={g.title ? "mt-5" : ""}>
           {g.title && <p className="px-3 pb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-faint">{g.title}</p>}
           <div className="space-y-0.5">
@@ -97,7 +104,24 @@ function Footer() {
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const path = usePathname() ?? "/admin";
+  const router = useRouter();
   const [open, setOpen] = useState(false);
+  // "support" when a Staff Admin member was handed over for Live help (/admin-link stores it). Read in an
+  // effect, not during render, so the server and the first client render agree.
+  const [scope, setScope] = useState<"all" | "support">("all");
+  const [who, setWho] = useState("");
+  useEffect(() => {
+    try {
+      setScope(sessionStorage.getItem("ne-admin-scope") === "support" ? "support" : "all");
+      setWho(sessionStorage.getItem("ne-admin-who") ?? "");
+    } catch { /* private mode */ }
+  }, []);
+  // A support session has exactly one page. The APIs refuse the rest anyway; this stops them landing on a
+  // page full of errors.
+  useEffect(() => {
+    if (scope === "support" && !path.startsWith("/admin/support")) router.replace("/admin/support");
+  }, [scope, path, router]);
+  const groups = scope === "support" ? SUPPORT_GROUPS : GROUPS;
   const here = ALL.find((i) => isActive(i.href, path)) ?? ALL[0];
   const group = GROUPS.find((g) => g.items.includes(here))?.title;
   useEffect(() => { setOpen(false); }, [path]);
@@ -114,7 +138,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         {/* Desktop sidebar */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-border bg-surface md:flex">
           <div className="flex h-16 items-center border-b border-border px-5"><Brand /></div>
-          <NavList path={path} />
+          <NavList path={path} groups={groups} />
           <Footer />
         </aside>
 
@@ -127,7 +151,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 <Brand />
                 <button type="button" onClick={() => setOpen(false)} aria-label="Close menu" className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface2"><X className="h-5 w-5" /></button>
               </div>
-              <NavList path={path} onPick={() => setOpen(false)} />
+              <NavList path={path} groups={groups} onPick={() => setOpen(false)} />
               <Footer />
             </aside>
           </div>
@@ -141,8 +165,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
               <p className="truncate text-[15px] font-semibold tracking-tight text-ink">{here.label}</p>
             </div>
             <span className="hidden items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-muted sm:inline-flex">
-              <span className="h-2 w-2 rounded-full bg-good" /> wellwalife@gmail.com
-              <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-ink">Owner</span>
+              <span className="h-2 w-2 rounded-full bg-good" /> {scope === "support" ? (who || "Staff") : "wellwalife@gmail.com"}
+              <span className="rounded bg-brand-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-brand-ink">{scope === "support" ? "Support" : "Owner"}</span>
             </span>
             <ThemeToggle />
           </header>

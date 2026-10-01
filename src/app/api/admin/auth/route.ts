@@ -17,16 +17,17 @@ export async function POST(request: Request) {
   } catch {
     return Response.json({ ok: false }, { status: 400 });
   }
-  // Coming from the associate admin: swap the one-time handoff for an 8-hour session key.
+  // Coming from the associate admin: swap the one-time handoff for an 8-hour session key. The scope rides
+  // across — an owner handoff opens all of Super Admin, a staff "support" handoff opens only Live help.
   if (typeof body.handoff === "string") {
-    const who = verifyAdminToken(body.handoff, "handoff");
-    if (!who) return Response.json({ ok: false }, { status: 401 });
-    return Response.json({ ok: true, key: signAdminToken(who, "session", 8 * 3600) });
+    const t = verifyAdminToken(body.handoff, "handoff");
+    if (!t) return Response.json({ ok: false }, { status: 401 });
+    return Response.json({ ok: true, key: signAdminToken(t.sub, "session", 8 * 3600, t.scope), scope: t.scope, who: t.sub });
   }
   const expected = process.env.SUPER_ADMIN_PASSWORD ?? "";
   const supplied = typeof body.password === "string" ? body.password : "";
   const ok = expected.length >= 12 && supplied.length === expected.length &&
     crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
   if (!ok) return Response.json({ ok: false }, { status: 401 });
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, scope: "all" });
 }

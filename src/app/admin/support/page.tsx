@@ -53,15 +53,22 @@ export default function LiveHelpPage() {
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
   const [loaded, setLoaded] = useState(false);
+  // A Staff Admin member handed over from the partner panel: their name came with the signed handoff and
+  // the server uses that, not anything typed here. The owner, who unlocked with the password, types theirs.
+  const [fixedName, setFixedName] = useState("");
   const liveRef = useRef<HTMLIFrameElement>(null);
 
   // Whoever is at this console — shown to the person in their banner, so help never comes from "someone".
   useEffect(() => {
-    try { setStaffName(localStorage.getItem("ne-staff-name") ?? ""); } catch { /* private mode */ }
+    try {
+      if (sessionStorage.getItem("ne-admin-scope") === "support") { setFixedName(sessionStorage.getItem("ne-admin-who") ?? "Shubhora support"); return; }
+      setStaffName(localStorage.getItem("ne-staff-name") ?? "");
+    } catch { /* private mode */ }
   }, []);
   useEffect(() => {
+    if (fixedName) return;
     try { localStorage.setItem("ne-staff-name", staffName); } catch { /* private mode */ }
-  }, [staffName]);
+  }, [staffName, fixedName]);
 
   const load = useCallback(async () => {
     try {
@@ -113,13 +120,20 @@ export default function LiveHelpPage() {
         </button>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
-        <label className="block text-sm font-semibold">
-          Your name (the person sees this)
-          <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="e.g. Priya from Shubhora"
-            className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm" />
-        </label>
-      </div>
+      {fixedName ? (
+        <p className="rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
+          You are helping as <b>{fixedName}</b> — that is the name the card holder sees. It comes from your
+          Staff Admin login and cannot be changed here.
+        </p>
+      ) : (
+        <div className="grid gap-3 sm:grid-cols-[1fr_auto] sm:items-end">
+          <label className="block text-sm font-semibold">
+            Your name (the person sees this)
+            <input value={staffName} onChange={(e) => setStaffName(e.target.value)} placeholder="e.g. Priya from Shubhora"
+              className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm" />
+          </label>
+        </div>
+      )}
 
       <div className="rounded-2xl border border-border bg-surface p-4">
         <p className="mb-2 text-sm font-semibold">Offer to help someone</p>

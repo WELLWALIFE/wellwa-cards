@@ -6,7 +6,7 @@
 // Nobody is watched without agreeing to it: "invite" only puts the question on their phone. The session
 // starts reporting their screen when they answer yes (/api/support/session).
 
-import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
+import { adminAllowedFor, adminIdentity, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 import { screenName } from "@/lib/help-screens";
 
 /** A session with no report for this long is shown as gone quiet, not as live. */
@@ -36,7 +36,7 @@ async function rest<T>(pathAndQuery: string, init?: RequestInit): Promise<T | nu
 }
 
 export async function GET(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  if (!(await adminAllowedFor(request, "support"))) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return Response.json({ sessions: [], configured: false });
 
   const rows = (await rest<Row[]>("support_sessions?status=neq.ended&order=created_at.desc&limit=50")) ?? [];
@@ -88,12 +88,16 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const me = await adminIdentity(request);
+  if (!me || (me.scope !== "all" && me.scope !== "support")) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return Response.json({ error: "not configured" }, { status: 503 });
 
   const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const action = str(body.action, 20);
-  const staffName = str(body.staffName, 60) || "Shubhora support";
+  // A Staff Admin member helps under the name their panel sent them over with — taken from the signed
+  // handoff, not from the browser, so nobody can appear to the card holder as somebody else. The owner,
+  // who came in with the password, types their own name at the console.
+  const staffName = (me.scope === "support" ? str(me.sub, 60) : str(body.staffName, 60)) || "Shubhora support";
   const now = new Date().toISOString();
 
   if (action === "invite") {
