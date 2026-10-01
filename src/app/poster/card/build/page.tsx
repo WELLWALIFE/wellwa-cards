@@ -876,28 +876,31 @@ export default function BuildCard() {
         </Sec>
       )}
 
+      {/* Out in the open (owner's call, 1 Oct 2026): this was buried inside "More details", and the three
+          choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
+          option. It is one of the most useful answers on the form: a site we can read fills the whole card,
+          and a site they merely like gives theirs that look. */}
+      <Sec id="q-site" title="Your website — or a website you like (optional)">
+        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || "e.g. sharmasweets.com"} className={field} />
+        <p className="mt-1 text-xs text-muted">No website of your own? Put in one you like the look of — we build yours in that style. Leave it empty if you would rather not.</p>
+        <div className="mt-3">
+          <p className="text-sm font-semibold">This website is…</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {([["own", "🏪 My own website"], ["dealer", "🤝 The brand's website — I am its dealer / distributor"], ["reference", "🎨 A website I like — make mine look like it"]] as const).map(([k, l]) => (
+              <button key={k} type="button" onClick={() => setF({ websiteRole: k })} className={chip(facts.websiteRole === k)}>{l}</button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted">{facts.websiteRole === "dealer"
+            ? "We take only the products — names, photos and specifications. Your card keeps your own name, number and address."
+            : facts.websiteRole === "reference"
+            ? "We copy only the look — colours, fonts, layout and tone. Nothing else is taken from it: your details, prices and photos stay yours, and it is never shown as your website."
+            : "We take everything useful: your logo, shop photos, details and products."}</p>
+        </div>
+      </Sec>
+
       <details id="q-more" ref={moreRef} className="rounded-2xl border border-border bg-surface p-4">
         <summary className="cursor-pointer text-[15px] font-semibold">More details <span className="font-normal text-muted">(optional)</span></summary>
         <div className="mt-3 space-y-3">
-          <label className="block text-sm font-semibold">Your website — or a website you like
-            <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || "e.g. sharmasweets.com"} className={field} />
-            <span className="mt-1 block text-xs font-normal text-muted">Your own website: we read it and fill your card — details, photos and products. No website yet? Give one you like as a reference and we build yours in that look.</span>
-          </label>
-          {(facts.website || setup?.website) && (
-            <div>
-              <p className="text-sm font-semibold">This website is…</p>
-              <div className="mt-1.5 flex flex-wrap gap-2">
-                {([["own", "🏪 My own website"], ["dealer", "🤝 The brand's website — I am its dealer / distributor"], ["reference", "🎨 A website I like — make mine look like it"]] as const).map(([k, l]) => (
-                  <button key={k} type="button" onClick={() => setF({ websiteRole: k })} className={chip(facts.websiteRole === k)}>{l}</button>
-                ))}
-              </div>
-              <p className="mt-1 text-xs text-muted">{facts.websiteRole === "dealer"
-                ? "We take only the products — names, photos and specifications. Your card keeps your own name, number and address."
-                : facts.websiteRole === "reference"
-                ? "We copy only the look — colours, fonts, layout and tone. Nothing else is taken from it: your details, prices and photos stay yours, and it is never shown as your website."
-                : "We take everything useful: your logo, shop photos, details and products."}</p>
-            </div>
-          )}
           {([["instagram", "Instagram", "instagram.com/yourshop"], ["facebook", "Facebook", "facebook.com/yourshop"], ["youtube", "YouTube", "youtube.com/@yourshop"]] as const).map(([k, l, ph]) => (
             <label key={k} className="block text-sm font-semibold">{l}
               <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" className={field} />
