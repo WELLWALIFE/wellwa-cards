@@ -222,8 +222,20 @@ export async function POST(request: Request) {
   const joined = siteText ? (extra ? { ...siteText, text: `${siteText.text}\n${extra}`.slice(0, 11000) } : siteText) : got ? { url: got.imp.url, text: extra } : null;
   const site = joined ? { ...joined, dealer: importRole === "dealer" } : null;
 
+  /* ---- the owner's OWN website is the truth about the business ---- */
+  // Seen in testing: the account's form said "Shubh Mobile Point, mobile / electronics", the website given was
+  // wellwalife.com, and the card came out as a mobile shop selling water ionizers — because the brief took
+  // the name and the trade from the form and only slipped the website's words in underneath. A business's
+  // own website is its considered, public description of itself; a set-up form is a quick sketch. Where the
+  // two disagree, the website is right: its name becomes the card's, and the AI is told in so many words to
+  // take what the business does from the site.
+  const ownSite = importRole === "own" && got?.imp.name ? got.imp : null;
+  if (ownSite) setup = { ...setup, business: ownSite.name.slice(0, 80) };
+
   /* ---- the words (one AI call) ---- */
-  const details = factsText({ setup, facts, products: list, info, site });
+  const details = (ownSite
+    ? `THIS BUSINESS'S OWN WEBSITE: ${ownSite.url}\nIts name, what it sells or does, and how it describes itself are to be taken from the website's own words below. Where the form details disagree with the website — including the trade named under "Trade" — the website is right: write the job title, the about and the services for the business the website actually describes.\n\n`
+    : "") + factsText({ setup, facts, products: list, info, site });
   // The card's chat bot answers only in the owner's own words: the maker's web text may steer the wording
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
   const knowledge = factsText({ setup, facts, products: list, info: new Map(), site });
@@ -231,6 +243,9 @@ export async function POST(request: Request) {
   const brief: CardBrief = {
     business,
     person: setup.person && setup.person !== business ? setup.person : undefined,
+    // `category` is written straight into the card (job title, bot knowledge), so it stays a plain trade
+    // name. With the owner's own website in hand the AI is told, in `details`, to take the trade from the
+    // site; the form's pick remains only as the fallback label.
     category: setup.categoryLabel || "Business",
     city: setup.city || undefined,
     phone: setup.phone || undefined,
