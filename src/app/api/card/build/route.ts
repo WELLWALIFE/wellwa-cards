@@ -149,11 +149,18 @@ export async function POST(request: Request) {
     if (!setup.logo && stored.logo) setup = { ...setup, logo: stored.logo };
   }
 
+  // Free or paid, read once: it decides where the card's pictures come from, and nothing that costs money
+  // may run before this is known.
+  const paidPlan = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
+
   /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
   // Never the reference site's own photographs — those are its owner's. Only used where the owner has
   // nothing of their own, so their photos always win and we never spend on someone who is already covered.
   let aiPhotos = 0;
-  if (role === "reference" && facts.website && !facts.bannerUrl && facts.photos.length < 2) {
+  // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card
+  // never triggers it: it gets the trade's stock photos instead — Pexels, free for commercial use, and
+  // cached per trade, so one search serves everyone in that line of work and the card costs us nothing.
+  if (paidPlan && role === "reference" && facts.website && !facts.bannerUrl && facts.photos.length < 2) {
     const ref = await referenceP;
     if (ref?.style) {
       const made = await within(
@@ -256,8 +263,9 @@ export async function POST(request: Request) {
     const media = await mediaP;
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
-    const paid = (await posterQuota(me.token, me.id)).plan !== "free";
-    if (media) built = addStockMedia(built, paid ? media : { ...media, clip: null }, facts.lang);
+    if (media) built = addStockMedia(built, paidPlan ? media : { ...media, clip: null }, facts.lang);
+    // A free card with no banner of its own gets one from those same stock photos, so it never opens bare.
+    if (media?.photos.length && !built.coverUrl) built = { ...built, coverUrl: media.photos[0].url };
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,

@@ -462,6 +462,8 @@ export default function BuildCard() {
           : "We could not open your website, so your V-Card was made from your other details.");
       } else if (r.data.aiPhotos) {
         setNotice(`Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Edit card → the photo you want to change.`);
+      } else if (facts.websiteRole === "reference" && facts.website) {
+        setNotice("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.");
       } else if (found && !found.products && !found.photos && facts.websiteRole !== "reference") {
         setNotice("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.");
       }
