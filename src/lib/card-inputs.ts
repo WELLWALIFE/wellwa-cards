@@ -2,7 +2,7 @@ import "server-only";
 // Everything the owner already told us, in one place, for "Make your V-Card": the setup (auth metadata + poster
 // profile), the saved card facts, their products (or their brand's, when they have none), and approved reviews.
 // Used by GET/PATCH /api/card/facts and POST /api/card/build.
-import { SUPA_URL } from "@/lib/admin-guard";
+import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 import { restAsService } from "@/lib/poster-server";
 import { categoryOf } from "@/lib/poster-categories";
 import { noClaims } from "@/lib/product-lookup";
@@ -10,7 +10,7 @@ import { normalizeFacts, type CardFacts, type SavedProduct, type SetupInfo } fro
 
 type Meta = {
   display_name?: string; full_name?: string; phone?: string; contact_email?: string;
-  business?: { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string; nameFromSite?: boolean };
+  business?: { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string; nameFromSite?: boolean; categoryFromSite?: boolean; aboutFromSite?: boolean };
 };
 type ProfileRow = { id: string; name: string | null; phone: string | null; photo_url: string | null; logo_url: string | null; city: string | null; category: string | null; persona: string | null; card_facts?: unknown };
 type Photo = { url?: unknown; view?: unknown; role?: unknown };
@@ -130,6 +130,21 @@ export async function loadProducts(userId: string): Promise<{ products: SavedPro
   return brand.length ? { products: brand.map((r) => toSavedProduct(r, true)), brandProducts: true, rows: [] } : { products: [], brandProducts: false, rows: [] };
 }
 
+/** Writes a few business fields on the account (auth user_metadata.business) from the server — the build does
+ *  this when the owner's own website settles the trade or the about text, so the posters, the footer line and
+ *  the next set-up visit agree with the card. Merged key by key; best effort (false when it could not). */
+export async function patchBusinessMeta(userId: string, patch: Record<string, unknown>): Promise<boolean> {
+  try {
+    const h = { ...serviceHeaders(), "Content-Type": "application/json" };
+    const cur = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { headers: h, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)) as { user_metadata?: Meta } | null;
+    if (!cur) return false;
+    const md = cur.user_metadata ?? {};
+    const business = { ...(md.business ?? {}), ...patch };
+    const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { method: "PUT", headers: h, body: JSON.stringify({ user_metadata: { ...md, business } }) });
+    return r.ok;
+  } catch { return false; }
+}
+
 /** Just the saved facts and the profile they live on (the light read behind every autosave). */
 export async function loadSavedFacts(userId: string): Promise<{ profileId: string | null; facts: CardFacts }> {
   const rows = await selectNew<{ id: string; card_facts?: unknown }>(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1`, "id", ",card_facts");
@@ -181,6 +196,8 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     phone: (S(profile?.phone, 20) || S(meta.phone, 20)).replace(/\D/g, "").slice(-10),
     email: S(email, 120),
     ...(typeof biz.nameFromSite === "boolean" ? { nameFromSite: biz.nameFromSite } : {}),
+    ...(typeof biz.categoryFromSite === "boolean" ? { categoryFromSite: biz.categoryFromSite } : {}),
+    ...(typeof biz.aboutFromSite === "boolean" ? { aboutFromSite: biz.aboutFromSite } : {}),
   };
 
   const reviews: Review[] = (reviewRows.data ?? [])

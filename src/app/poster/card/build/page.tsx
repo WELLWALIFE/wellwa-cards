@@ -151,6 +151,9 @@ export default function BuildCard() {
   /** The card the server wrote, kept so Publish can merge it into the live card as it is at that moment. */
   const [built, setBuilt] = useState<TemplateCard | null>(null);
   const [liveSig, setLiveSig] = useState("none");
+  /** The website the server had when this screen opened, and whether the set-up just changed it. */
+  const serverSite = useRef("");
+  const siteNew = useRef(false);
   const [checks, setChecks] = useState<WebCheck[]>([]);
   const [missing, setMissing] = useState<Missing[]>([]);
   const [off, setOff] = useState<string[]>([]);
@@ -205,12 +208,15 @@ export default function BuildCard() {
       try {
         const u = new URL(window.location.href);
         again = u.searchParams.get("again") === "1";
-        if (again) { u.searchParams.delete("again"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
+        // ?site=new — the set-up just saved a different website (or role): the site's words lead this build.
+        if (u.searchParams.get("site") === "new") siteNew.current = true;
+        if (again || u.searchParams.has("site")) { u.searchParams.delete("again"); u.searchParams.delete("site"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
       } catch { /* ignore */ }
 
       const [cards, fr] = await Promise.all([fetchMyCardsStrict(), api<FactsResponse>("/api/card/facts")]);
       if (!fr.ok) throw new Error("facts");
       const server = fr.data;
+      serverSite.current = server.facts?.website ?? "";
       const live = cards.find((c) => c.id === server.facts?.primaryCardId) ?? cards[0] ?? null;
       setExisting(live);
       setSetup(server.setup);
@@ -425,7 +431,11 @@ export default function BuildCard() {
       const products: BuildRow[] = rs
         .filter((r) => r.name.trim())
         .map((r) => ({ ...(r.id ? { id: r.id } : {}), name: r.name.trim(), brand: r.brand.trim(), price: r.price.trim(), photo: r.photo, studio: !!r.studio }));
-      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products };
+      // The site is "new" when the set-up said so, or when the website typed on this form differs from the one
+      // the server had when the form opened.
+      const siteChanged = siteNew.current || (!!f.website && f.website !== serverSite.current);
+      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}) };
+      siteNew.current = false;
       const r = await api<Partial<BuildResponse> & { error?: string }>("/api/card/build", { method: "POST", json: body, signal: job.ctrl.signal });
       const built = r.data?.card;
       if (!r.ok || !built) { setErr(r.data?.error || "Could not make your V-Card. Please try again."); setState(back); return; }

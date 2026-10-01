@@ -24,6 +24,8 @@ export type CardBrief = {
   persona?: string;      // the category's persona, e.g. "business", "professional"
   booking?: boolean;     // a trade that takes appointments (doctor, salon, CA …)
   products?: string[];   // the exact product names on the card
+  /** The business's OWN website was read: the trade above was confirmed from it, and its words lead. */
+  ownSite?: string;
 };
 
 /** The words the AI writes for a card. Every field is checked and capped before it is returned. */
@@ -128,7 +130,7 @@ QUALITY (what makes it premium)
 FACTS (the only source of truth)
 Business name: ${brief.business}
 Owner: ${brief.person || "(not given)"}
-Trade: ${brief.category}
+Trade: ${brief.category}${brief.ownSite ? " (confirmed from the business's own website — the site's words describe what it sells or does; older form notes that disagree are wrong)" : ""}
 City: ${brief.city || "(not given)"}
 Booking business: ${brief.booking ? "yes" : "no"}
 Products on the card (exact names): ${products.length ? products.join(" | ") : "(none)"}

@@ -8,6 +8,7 @@
 import type { Card, SpecRow } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { luminance } from "@/lib/color";
+import { isShubhoraHost } from "@/lib/site-role";
 
 /* ================= facts ================= */
 
@@ -304,6 +305,16 @@ function taughtAnswers(old: string | undefined, next: string | undefined): strin
     .filter((p) => /^Q: [^\n]+\nA: /.test(p) && !(next ?? "").includes(p));
 }
 
+/** The website's home settings after a rebuild: the new build's section order (else the owner's, unless it came
+ *  from a reference look that is gone), always the sections the owner hid and the trust facts they typed. */
+type HomeSettings = NonNullable<NonNullable<Card["site"]>["home"]>;
+function mergeHome(cur: HomeSettings | undefined, built: HomeSettings | undefined, dropOrder: boolean): HomeSettings | undefined {
+  const order = built?.order ?? (dropOrder ? undefined : cur?.order);
+  const out = { ...(cur ?? {}), ...(built ?? {}), ...(order ? { order } : {}), ...(cur?.hidden ? { hidden: cur.hidden } : {}), ...(cur?.stats ? { stats: cur.stats } : {}) };
+  if (!order) delete (out as { order?: unknown }).order;
+  return Object.keys(out).length ? out : undefined;
+}
+
 /**
  * The card to publish after a rebuild. With no live card it is the built card as a new free card
  * with website mode on. Otherwise the new words, pages and photos go INTO the live card, and
@@ -333,13 +344,22 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
   // "Wellwa Life India Private Limited"). A title that names some other business is stale however it got there.
   const firstWord = norm(built.company).split(/\s+/).find((w) => w.length >= 3) ?? "";
   const titleFits = (t: string | undefined) => !t || !firstWord || norm(t).includes(firstWord);
-  const keepSeo = sameBusiness && titleFits(existing.seoTitle);
+  // Written from the business's own website: that site is the truth, so nothing stale of the old card's title,
+  // website / email links or brand art may ride along (seen live: a seller card rebuilt from haldirams.com kept
+  // the Shubhora feather in the footer, abc@gmail.com and https://shubhora.com as the business's own links).
+  const fromSite = built.builtFrom === "own-site";
+  const keepSeo = sameBusiness && titleFits(existing.seoTitle) && !fromSite;
   // A card that is Shubhora's own seller card keeps its brand art; any other business sheds it here.
-  const sheds = existing.kb !== "shubhora";
+  const sheds = existing.kb !== "shubhora" || fromSite;
   const keptAvatar = sheds && isShubhoraBrandArt(existing.avatarUrl) ? undefined : existing.avatarUrl;
   const keptCover = sheds && isShubhoraBrandArt(existing.coverUrl) ? undefined : existing.coverUrl;
   const ownCover = !!keptCover && !isOurArt(keptCover) && !(built.coverUrl ?? "").startsWith("http");
   const builtTypes = new Set(built.links.map((l) => l.type));
+  // Link types the build owns outright when the site is the truth; and our own address is never anyone's website.
+  const keepLink = (l: Card["links"][number]) =>
+    !!(l.value ?? "").trim() && !builtTypes.has(l.type)
+    && !(fromSite && (l.type === "website" || l.type === "email"))
+    && !(l.type === "website" && isShubhoraHost(l.value));
   const taught = taughtAnswers(existing.botKnowledge, built.botKnowledge);
   const knowledge = built.botKnowledge ?? existing.botKnowledge;
 
@@ -361,7 +381,7 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
     themeColor: ownLook ? existing.themeColor : built.themeColor,
     avatarColor: ownLook ? existing.avatarColor : built.avatarColor,
     template: ownLook ? existing.template : built.template,
-    links: [...built.links, ...(existing.links ?? []).filter((l) => (l.value ?? "").trim() && !builtTypes.has(l.type))],
+    links: [...built.links, ...(existing.links ?? []).filter(keepLink)],
     seo: { ...existing.seo, ...definedOnly(built.seo) },
     // The owner's own search title and description survive a rebuild — unless the business itself changed
     // (a different company name), when the old ones describe something that is no longer on the card.
@@ -381,6 +401,11 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
       logoUrl: built.site?.logoUrl ?? (sheds && isShubhoraBrandArt(existing.site?.logoUrl) ? undefined : existing.site?.logoUrl),
       hero: built.site?.hero ?? existing.site?.hero,
       generatedAt: existing.site?.generatedAt,
+      // A look measured from a reference site in an earlier build (and the section order that came with it)
+      // belongs to that build: a rebuild without a reference starts clean. A style the owner picked by hand
+      // (no `reference` on record) stays, and so do the sections they hid and the trust facts they typed.
+      ...(existing.site?.reference && !built.site?.reference ? { style: built.site?.style, reference: undefined } : {}),
+      home: mergeHome(existing.site?.home, built.site?.home, !!existing.site?.reference && !built.site?.reference),
     },
     id: opts.id,
     username: opts.username,
@@ -427,6 +452,10 @@ export type SetupInfo = {
    *  gave, false when the owner corrected it after seeing the site's name — then the build keeps the owner's
    *  name instead of the site's. Undefined when the website was never peeked at. */
   nameFromSite?: boolean;
+  /** Same idea for the trade and the about text: true = the website gave it (so a rebuild may follow the site
+   *  again), false = the owner set it by hand after seeing the site's (never overridden). */
+  categoryFromSite?: boolean;
+  aboutFromSite?: boolean;
 };
 
 /** A product row saved on the Products page (poster_products). */
@@ -455,7 +484,12 @@ export type FactsResponse = {
 export type BuildRow = { id?: string; name: string; brand: string; price: string; photo: string; studio?: boolean };
 
 /** POST /api/card/build */
-export type BuildRequest = { facts: Partial<CardFacts>; products: BuildRow[] };
+export type BuildRequest = {
+  facts: Partial<CardFacts>; products: BuildRow[];
+  /** The website (or whose it is) is new to this account since the last build — the build then lets the site's
+   *  own words replace the form's older notes rather than blend the two. */
+  siteChanged?: boolean;
+};
 
 /** Maker details found on the web for one product, shown under "Please check" before publishing. */
 export type WebCheck = {

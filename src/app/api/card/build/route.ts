@@ -21,7 +21,9 @@ import { importSite, siteImportText, storeSiteMedia, type SiteImport, type Store
 import { referenceImages } from "@/lib/media/ai-image";
 import { lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
-import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, saveFacts } from "@/lib/card-inputs";
+import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
+import { matchCategory } from "@/lib/category-match";
+import { categoryOf } from "@/lib/poster-categories";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -172,6 +174,59 @@ export async function POST(request: Request) {
     else if (formLogoIsOurs) setup = { ...setup, logo: "" };
   }
 
+  /* ---- the owner's OWN website is the truth about the business ---- */
+  // Seen live (1 Oct 2026): the account still carried an older set-up — "Hariom Furniture", trade furniture, a
+  // furniture "about", abc@gmail.com — and the website given was haldirams.com. The build took only the NAME
+  // from the site; the trade, the about and the contacts came from the form, and the card read "Sweets and
+  // Furniture". A business's own website is its public, considered description of itself; where the form
+  // disagrees, the website is right — the trade, the about, the address, the email, the timings, the links.
+  const ownSite = importRole === "own" && got?.imp.name ? got.imp : null;
+  let tradeSwitched = false;
+  const siteIsNew = b.siteChanged === true;
+  if (ownSite) {
+    if (setup.nameFromSite !== false) setup = { ...setup, business: ownSite.name.slice(0, 80) };
+    // The trade, from the site's own words (name and description first, then its ranges and products): a plain
+    // keyword match that answers only when sure, and costs nothing. The owner's hand-picked trade (set after
+    // seeing the site's) is never overridden.
+    const siteWords = [ownSite.name, ownSite.description, ...ownSite.categories, ...ownSite.products.map((p) => p.name), ...ownSite.facts].join(" ");
+    const guess = matchCategory(siteWords);
+    const c = guess ? categoryOf(guess) : null;
+    if (c && c.key !== setup.category && setup.categoryFromSite !== false) {
+      setup = { ...setup, category: c.key, categoryLabel: c.en, persona: c.persona };
+      tradeSwitched = true;
+      console.log("[card] trade from site", JSON.stringify({ form: inputs.setup.category, site: c.key, url: ownSite.url }));
+    }
+    // The form's older notes are dropped when the site is new to this account, the trade changed, or the about
+    // itself came from the site — never when a legacy owner wrote their own about for the same trade.
+    const dropFormText = tradeSwitched || siteIsNew || setup.aboutFromSite === true;
+    if (dropFormText) {
+      setup = { ...setup, about: ownSite.description.slice(0, 1200) };
+      facts = { ...facts, work: "", specialText: "", customers: [] };
+    }
+    // Contacts the site states become the card's real address / email / timings / links where the form has none
+    // (and, for a site new to this account, the site's email and address win over an older form's).
+    const a = ownSite.address;
+    if (a.full && (!setup.address || siteIsNew || tradeSwitched)) setup = { ...setup, address: ([a.street, a.region, a.pin].filter(Boolean).join(", ") || a.full).slice(0, 200) };
+    if (a.city && !setup.city) setup = { ...setup, city: a.city.slice(0, 60) };
+    if (ownSite.email && (!setup.email || siteIsNew || tradeSwitched)) setup = { ...setup, email: ownSite.email.slice(0, 120) };
+    if (ownSite.hours.length && !facts.hours) facts = { ...facts, hours: ownSite.hours.join("\n").slice(0, 120) };
+    const so = ownSite.social;
+    facts = { ...facts, social: {
+      ...facts.social,
+      instagram: facts.social.instagram || so.instagram,
+      facebook: facts.social.facebook || so.facebook,
+      youtube: facts.social.youtube || so.youtube,
+    } };
+    // What the site settled is written back to the account, so the posters, the footer line and the next
+    // set-up visit agree with the card (best effort; the card is built either way).
+    const metaPatch: Record<string, unknown> = {};
+    if (tradeSwitched) Object.assign(metaPatch, { category: setup.category, categoryFromSite: true });
+    if (dropFormText) Object.assign(metaPatch, { about: setup.about, aboutFromSite: true });
+    if (setup.address !== inputs.setup.address) metaPatch.address = setup.address;
+    if (setup.city !== inputs.setup.city) metaPatch.city = setup.city;
+    if (Object.keys(metaPatch).length) void patchBusinessMeta(me.id, metaPatch);
+  }
+
   // Free or paid, read once: it decides where the card's pictures come from, and nothing that costs money
   // may run before this is known.
   const paidPlan = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
@@ -246,17 +301,6 @@ export async function POST(request: Request) {
   const joined = siteText ? (extra ? { ...siteText, text: `${siteText.text}\n${extra}`.slice(0, 11000) } : siteText) : got ? { url: got.imp.url, text: extra } : null;
   const site = joined ? { ...joined, dealer: importRole === "dealer" } : null;
 
-  /* ---- the owner's OWN website is the truth about the business ---- */
-  // Seen in testing: the account's form said "Shubh Mobile Point, mobile / electronics", the website given was
-  // wellwalife.com, and the card came out as a mobile shop selling water ionizers — because the brief took
-  // the name and the trade from the form and only slipped the website's words in underneath. A business's
-  // own website is its considered, public description of itself; a set-up form is a quick sketch. Where the
-  // two disagree, the website is right: its name becomes the card's, and the AI is told in so many words to
-  // take what the business does from the site.
-  const ownSite = importRole === "own" && got?.imp.name ? got.imp : null;
-  // …unless the owner saw the site's name on the set-up form and changed it (nameFromSite === false).
-  if (ownSite && setup.nameFromSite !== false) setup = { ...setup, business: ownSite.name.slice(0, 80) };
-
   /* ---- the words (one AI call) ---- */
   const details = (ownSite
     ? `THIS BUSINESS'S OWN WEBSITE: ${ownSite.url}\nIts name, what it sells or does, and how it describes itself are to be taken from the website's own words below. Where the form details disagree with the website — including the trade named under "Trade" — the website is right: write the job title, the about and the services for the business the website actually describes.\n\n`
@@ -280,6 +324,7 @@ export async function POST(request: Request) {
     persona: setup.persona,
     booking: BOOKING_CATEGORIES.has(setup.category),
     products: list.map(productName),
+    ...(ownSite ? { ownSite: ownSite.url } : {}),
   };
   // The trade's stock photos are fetched while the AI writes (both take a while; neither needs the other).
   const mediaP = (async () => {
@@ -296,6 +341,7 @@ export async function POST(request: Request) {
     setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
+    ...(ownSite ? { builtFrom: "own-site" as const, tradeSwitched } : {}),
   });
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;

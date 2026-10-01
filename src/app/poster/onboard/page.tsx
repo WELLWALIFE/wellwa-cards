@@ -377,9 +377,12 @@ function Onboard() {
       if (!t.has("name") && !(b.name ?? "").trim() && d.name) n.name = d.name.slice(0, 80);
       if (!t.has("city") && !(b.city ?? "").trim() && d.city) n.city = d.city.slice(0, 60);
       if (!t.has("address") && !(b.address ?? "").trim() && d.address) n.address = d.address.slice(0, 200);
-      if (!t.has("about") && !(b.about ?? "").trim() && d.about) n.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ");
+      // A website new to this account replaces an older about and trade too (they described an earlier set-up);
+      // a site already on record only fills what is empty.
+      const fresh = !siteAtLoad.current.url || hostOf(d.url) !== hostOf(siteAtLoad.current.url);
+      if (!t.has("about") && (fresh || !(b.about ?? "").trim()) && d.about) n.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ");
       if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
-      if (!t.has("category") && !b.category && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
+      if (!t.has("category") && (fresh || !b.category) && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
       return n;
     });
   }
@@ -611,8 +614,11 @@ function Onboard() {
           city, about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(),
           linkBy: bizName ? linkBy() : "name",
           // The site's name was shown and kept → the build may keep taking the name from the site; shown and
-          // corrected → the build keeps this one. Not peeked this visit → whatever was on record.
+          // corrected → the build keeps this one. Not peeked this visit → whatever was on record. Same for the
+          // trade and the about text.
           ...(nameFromSite !== undefined ? { nameFromSite } : biz.nameFromSite !== undefined ? { nameFromSite: biz.nameFromSite } : {}),
+          ...(peekName ? { categoryFromSite: !touched.current.has("category") && !!peek.data?.category && biz.category === peek.data.category } : biz.categoryFromSite !== undefined ? { categoryFromSite: biz.categoryFromSite } : {}),
+          ...(peekName ? { aboutFromSite: !touched.current.has("about") && !!peek.data?.about && (biz.about ?? "").trim() === peek.data.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") } : biz.aboutFromSite !== undefined ? { aboutFromSite: biz.aboutFromSite } : {}),
         },
       } });
       if (!sb || up?.error) { setErr("Could not save your business details. Please try again."); return; }
@@ -629,8 +635,9 @@ function Onboard() {
       }).catch(() => undefined);
       // A different website (or a different role for it) on an account that already has a live card: that card
       // is built again from the new site — ?again=1 throws the old preview away; publishing still asks first.
-      if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1"); return; }
-      router.push(next || await nextStep());
+      if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1&site=new"); return; }
+      const to = next || await nextStep();
+      router.push(siteChanged && to.startsWith("/poster/card/build") ? `${to}${to.includes("?") ? "&" : "?"}site=new` : to);
     } catch {
       setErr("Could not save your business details. Please try again.");
     } finally {

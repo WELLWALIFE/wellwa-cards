@@ -16,6 +16,7 @@ import { htmlOf, looksEmpty } from "@/lib/render-page";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
 export type SiteProduct = { name: string; price: string; mrp: string; description: string; specs: string[]; images: string[]; url: string };
+export type SiteAddress = { street: string; city: string; region: string; pin: string; full: string };
 export type SiteImport = {
   url: string;
   name: string;
@@ -24,6 +25,17 @@ export type SiteImport = {
   gallery: string[];         // other large pictures
   products: SiteProduct[];
   facts: string[];           // phone, email, address, opening hours, description — as the site states them
+  // The same things, structured, so the build can make them the card's real address / email / timings / links
+  // instead of a sentence the AI may or may not repeat (1 Oct 2026: a site's address went to the AI as prose
+  // and the card's map showed only the city).
+  description: string;
+  phone: string;
+  email: string;
+  address: SiteAddress;
+  hours: string[];
+  social: { instagram: string; facebook: string; youtube: string };
+  /** What the site itself calls its ranges — the nav's category / collection labels ("Sweets", "Namkeen", "Gift Hampers"). */
+  categories: string[];
 };
 
 type Obj = Record<string, unknown>;
@@ -145,6 +157,50 @@ function logoOf(html: string, base: string, ld: Obj[]): string | null {
   const touch = html.match(/<link[^>]+rel=["']apple-touch-icon[^"']*["'][^>]*>/i)?.[0];
   const t = touch ? absolute(attr(touch, "href"), base) : null;
   return t;
+}
+
+/** The site's own Instagram / Facebook / YouTube pages (never share / login / intent links). */
+function socialOf(html: string): { instagram: string; facebook: string; youtube: string } {
+  const out = { instagram: "", facebook: "", youtube: "" };
+  for (const m of html.matchAll(/<a\b[^>]+href=["']([^"'#]+)["']/gi)) {
+    const u = m[1].replace(/&amp;/g, "&").trim();
+    if (/\/(sharer|share|intent|login|dialog|plugins)\b|\?u=|facebook\.com\/sharer/i.test(u)) continue;
+    if (!out.instagram && /^https?:\/\/(www\.)?instagram\.com\/[\w.]{2,}/i.test(u)) out.instagram = u.slice(0, 300);
+    else if (!out.facebook && /^https?:\/\/(www\.|m\.)?(facebook\.com|fb\.com)\/[\w.]{2,}/i.test(u)) out.facebook = u.slice(0, 300);
+    else if (!out.youtube && /^https?:\/\/(www\.)?(youtube\.com\/(@|c\/|channel\/|user\/)[\w.-]{2,}|youtu\.be\/)/i.test(u)) out.youtube = u.slice(0, 300);
+  }
+  return out;
+}
+
+/** Category / collection pages linked from the site, with the labels the site gives them. Shopify, WooCommerce,
+ *  Wix and most Indian shop themes link their ranges this way from the header or footer. */
+export function categoryLinks(html: string, base: string): { label: string; url: string }[] {
+  let origin: string;
+  try { origin = new URL(base).origin; } catch { return []; }
+  const seen = new Map<string, string>();
+  for (const m of html.matchAll(/<a\b([^>]+)>([\s\S]{0,300}?)<\/a>/gi)) {
+    const href = attr(` ${m[1]}`, "href");
+    const u = absolute(href, base);
+    if (!u) continue;
+    let p: URL;
+    try { p = new URL(u); } catch { continue; }
+    if (p.origin !== origin) continue;
+    if (!/\/(category|categories|collections?|product-category|c|shop|range|ranges)\/[^/?#]+/i.test(p.pathname)) continue;
+    if (/\/(all|new|sale|offers?|cart|checkout|account|login|wishlist)\/?$/i.test(p.pathname)) continue;
+    const label = txt(m[2], 60).replace(/\s*\(\d+\)\s*$/, "").trim();
+    if (label.length < 2 || label.length > 40 || /^(shop|all|view all|see all|more|home|menu|click here)$/i.test(label)) continue;
+    const key = `${p.pathname}`.toLowerCase().replace(/\/$/, "");
+    if (!seen.has(key)) seen.set(key, label);
+    if (seen.size >= 16) break;
+  }
+  const out: { label: string; url: string }[] = [];
+  const labels = new Set<string>();
+  for (const [path, label] of seen) {
+    if (labels.has(label.toLowerCase())) continue;
+    labels.add(label.toLowerCase());
+    out.push({ label, url: `${origin}${path}` });
+  }
+  return out;
 }
 
 /** Product page links on this site (Shopify / WooCommerce / most shop themes). */
@@ -298,6 +354,8 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
   if (hours.length) facts.push(`Opening hours on the website: ${hours.join("; ")}`);
   const desc = txt(org.description, 400) || meta(home.html, "og:description") || meta(home.html, "description");
   if (desc) facts.push(`Website description: ${desc}`);
+  const cats = categoryLinks(home.html, home.url);
+  if (cats.length) facts.push(`Ranges / categories on the website: ${cats.map((c) => c.label).join(", ")}`);
 
   // Products: structured data on the home page → shop catalogs → product pages.
   const byName = new Map<string, SiteProduct>();
@@ -331,6 +389,13 @@ export async function importSite(raw: string): Promise<SiteImport | null> {
     covers, gallery,
     products: [...byName.values()],
     facts,
+    description: desc,
+    phone: txt(org.telephone, 30),
+    email: txt(org.email, 80) || (home.html.match(/mailto:([\w.+-]+@[\w-]+\.[\w.-]+)/i)?.[1] ?? ""),
+    address: addressOf(org),
+    hours,
+    social: socialOf(home.html),
+    categories: cats.map((c) => c.label),
   };
 }
 

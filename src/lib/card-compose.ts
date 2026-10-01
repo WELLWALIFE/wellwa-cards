@@ -9,6 +9,7 @@ import { styleFromReference, styleFromLook, homeOrderFromLook, type ReferenceSty
 import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
+import { isShubhoraHost } from "@/lib/site-role";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
   type CardFacts, type Lang, type Missing, type MissingKey, type SavedProduct, type SetupInfo, type WebCheck,
@@ -168,13 +169,31 @@ export function factsText(i: {
       : setup.reach === "online" ? `Service area: online, worldwide${setup.city ? ` (based in ${setup.city}; customers can be anywhere — say so in the about: online / video call / remote)` : ""}`
       : setup.city ? `Service area: ${setup.city} and nearby (a local business — write for local customers)` : "",
     setup.address && `Address: ${[setup.address, setup.city].filter(Boolean).join(", ")}`,
-    site?.text && (site.dealer
-      ? `From the website of the BRAND we sell as a dealer / distributor (${site.url}) — product facts only; this is NOT our own business, so never present its history, factory, awards or contact details as ours:\n${site.text}`
-      : `From the owner's own website (${site.url}):\n${site.text}`),
   ].filter(Boolean) as string[];
+  const siteLine = site?.text
+    ? site.dealer
+      ? `From the website of the BRAND we sell as a dealer / distributor (${site.url}) — product facts only; this is NOT our own business, so never present its history, factory, awards or contact details as ours:\n${site.text}`
+      : `From the business's OWN website (${site.url}) — the truth about what it sells or does:\n${site.text}`
+    : "";
+  // The owner's own site leads and the form's notes follow it, labelled as the older of the two — the AI
+  // reads top-down, and "owner's words" on a stale form line used to outrank the site (card read
+  // "Sweets and Furniture" from a sweets site plus an old furniture note).
+  if (siteLine && !site?.dealer) {
+    const notes = lines.length ? ["Set-up form (older notes — where they differ from the website, the website is right):", ...lines.map((l) => l.replace(" (owner's words)", ""))] : [];
+    return [siteLine, ...notes].join("\n");
+  }
+  if (siteLine) lines.push(siteLine);
   if (lines.length) return lines.join("\n");
   const who = setup.business || setup.person;
   return `${who}, ${setup.categoryLabel || "Business"}${setup.city ? ` in ${setup.city}` : ""}.`;
+}
+
+/** Does a search title / description mention the trade (its first word: "Sweets" of "Sweets / bakery") or the business? */
+function titleFitsTrade(text: string, tradeLabel: string, business: string): boolean {
+  const t = text.toLowerCase();
+  const trade = tradeLabel.split(/\s*\/\s*/)[0]?.trim().toLowerCase() ?? "";
+  const biz = business.trim().toLowerCase().split(/\s+/).find((w) => w.length >= 3) ?? "";
+  return (!!trade && t.includes(trade)) || (!!biz && t.includes(biz));
 }
 
 /* ================= the composer ================= */
@@ -202,6 +221,11 @@ export type ComposeInput = {
   details?: string;
   /** A website the owner likes: its look becomes the website's design (site.style); nothing else of it is used. */
   reference?: { url: string; style?: ReferenceStyle; look?: MeasuredLook } | null;
+  /** The card was written from the business's OWN website (route.ts): marks the card so a merge into an older
+   *  card sheds that card's stale title, links and brand art. */
+  builtFrom?: "own-site";
+  /** The own site named a different trade than the form, and the build followed the site. */
+  tradeSwitched?: boolean;
 };
 
 const MISSING_LABEL: Record<MissingKey, string> = {
@@ -248,7 +272,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   add("email", "Email", (setup.email ?? "").trim());
   // A reference website is somebody else's site, and a dealer's brand site is the brand's: neither is ever the
   // owner's "Website" link. Only a site the owner called their OWN (or the set-up's business.website) is.
-  const ownSite = facts.websiteRole === "own" ? facts.website || setup.website : setup.website;
+  // …and https://shubhora.com, left on an account by the seller template, is never a customer's website.
+  const ownSiteRaw = facts.websiteRole === "own" ? facts.website || setup.website : setup.website;
+  const ownSite = isShubhoraHost(ownSiteRaw) ? "" : ownSiteRaw;
   add("website", "Website", webUrl(ownSite) || (facts.websiteRole === "own" ? input.siteUrl ?? "" : ""));
   const mapUrl = mapLink(facts.social.google) || mapLink(setup.map);
   add("location", "Google Maps", mapUrl);
@@ -428,8 +454,11 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     pages,
     language: lang,
     seo,
-    ...(copy.seoTitle ? { seoTitle: copy.seoTitle } : {}),
-    ...(copy.seoDescription ? { seoDescription: copy.seoDescription } : {}),
+    // When the own site switched the trade, a search title that does not name the new trade (or the business)
+    // is one the AI wrote from the older notes: left empty, seo.ts builds a true one from the facts.
+    ...(copy.seoTitle && (!input.tradeSwitched || titleFitsTrade(copy.seoTitle, cat?.en ?? "", setup.business)) ? { seoTitle: copy.seoTitle } : {}),
+    ...(copy.seoDescription && (!input.tradeSwitched || titleFitsTrade(copy.seoDescription, cat?.en ?? "", setup.business)) ? { seoDescription: copy.seoDescription } : {}),
+    ...(input.builtFrom ? { builtFrom: input.builtFrom } : {}),
     botKnowledge: `${header}\n${input.details ?? ""}`.trim().slice(0, 3000),
     site: {
       enabled: true,
