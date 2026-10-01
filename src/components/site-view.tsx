@@ -21,7 +21,7 @@ import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
 import { siteDesign } from "@/lib/site-style";
-import { cardProducts } from "@/lib/product-page";
+import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, trustFacts, type HomeSection } from "@/lib/site-home";
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
@@ -240,7 +240,12 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const hasAppointment = page?.blocks.some((b) => b.kind === "appointment");
 
   // Home: the composed section list (own blocks + pulled previews); other pages: their blocks in runs.
-  const sections: HomeSection[] = isHome ? homeSections(card, pages) : pageBlocks.map((b) => ({ key: b.id, kind: "block", block: b }));
+  // The hero already shows the trust chips as pills: printing the same five again as a "Why choose us" section
+  // read as a mistake next to the real why-us points below it (seen live, 1 Oct 2026).
+  const pilled = pills.length ? new Set(pills.map((x) => x.trim())) : null;
+  const sections: HomeSection[] = (isHome ? homeSections(card, pages) : pageBlocks.map((b) => ({ key: b.id, kind: "block", block: b } as HomeSection)))
+    .filter((s) => !(isHome && pilled && s.kind === "block" && s.block.kind === "highlights"
+      && s.block.items.length === pilled.size && s.block.items.every((x) => pilled.has((x ?? "").trim()))));
   const groups: (Exclude<HomeSection, { kind: "block" }> | CardBlock[])[] = [];
   for (const s of sections) {
     if (s.kind !== "block") { groups.push(s); continue; }
@@ -963,6 +968,61 @@ function OfferCode({ code }: { code: string }) {
 type Zoom = { images: string[]; i: number; alt: string } | null;
 const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.imageUrl] : [])].filter((u, j, a) => u && a.indexOf(u) === j).slice(0, 3);
 
+/** One product on a page of its own: the picture big on the left, everything about it on the right. The grid
+ *  card is a teaser; this is the page a visitor lands on from a shared link or from search. */
+function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: ProductItem; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void }) {
+  const t = useT();
+  const hi = card.language === "hi";
+  const gallery = galleryOf(p);
+  const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
+  const saved = mrp && price && mrp > price ? mrp - price : null;
+  const discount = saved && mrp ? Math.round((saved / mrp) * 100) : null;
+  const features = (p.features ?? []).filter(Boolean);
+  const specs = (p.specs ?? []).filter((x) => x.label || x.value);
+  const waText = `Hi ${card.name.split(" ")[0]}, I'm interested in "${p.name}". Please share details.`;
+  const initial = Array.from((p.name ?? "").trim())[0]?.toUpperCase() ?? "";
+  return (
+    <div className="grid gap-10 md:grid-cols-2 md:gap-14 items-start">
+      <div className="grid gap-3">
+        <div className="aspect-square relative overflow-hidden rounded-3xl border border-border" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
+          {gallery[0]
+            ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-8 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain" eager /></button>
+            : <span aria-hidden="true" className="absolute inset-10 rounded-2xl grid place-items-center text-7xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
+          {discount && <span className="absolute right-5 top-5 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white shadow-card">{discount}% OFF</span>}
+        </div>
+        {gallery.length > 1 && (
+          <div className="grid grid-cols-4 gap-3">
+            {gallery.slice(1, 5).map((u, j) => (
+              <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j + 1, alt: p.name })} className={`aspect-square overflow-hidden rounded-2xl border border-border bg-surface p-2 ${FOCUS}`}>
+                <FitImg src={u} alt="" className="h-full w-full object-contain" />
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+      <div>
+        {p.badge && <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span>}
+        <h2 className="mt-3 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(p.name)}</h2>
+        {(p.price || p.mrp) && (
+          <p className="mt-4 text-2xl font-semibold">
+            {p.price || p.mrp}
+            {saved && <span className="ml-3 text-base text-muted line-through font-normal">{p.mrp}</span>}
+            {saved && <span className="block mt-1 text-sm font-medium" style={{ color: "var(--tc)" }}>{hi ? `आप ₹${saved.toLocaleString("en-IN")} बचाते हैं` : `You save ₹${saved.toLocaleString("en-IN")}`}</span>}
+          </p>
+        )}
+        {p.desc && <p className="mt-5 text-[17px] text-muted leading-relaxed">{t(p.desc)}</p>}
+        {features.length > 0 && <ul className="mt-6 space-y-2 text-[16px]">{features.slice(0, 8).map((f, j) => <li key={j} className="flex items-start gap-2.5"><Check className="h-4 w-4 mt-1.5 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
+        {specs.length > 0 && (
+          <dl className="mt-7 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[15px] border-t border-border pt-5">
+            {specs.map((x, j) => <div key={j} className="contents"><dt className="text-muted">{t(x.label)}</dt><dd className="font-medium">{t(x.value)}</dd></div>)}
+          </dl>
+        )}
+        {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`mt-8 inline-flex ${BTN} px-7 py-4 text-[15px] ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
+      </div>
+    </div>
+  );
+}
+
 function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void }) {
   const t = useT();
   // Each product has an address of its own (/p-kaju-katli): a link the owner can send by itself, and a page
@@ -1171,6 +1231,15 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
       return <Section wide index={index} theme={theme} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
     }
     case "product":
+      // A product page carries one product: it gets the detail layout, and no heading that repeats its name.
+      if (block.items.length === 1 && isProductSlug(block.id.replace(/^prodb-/, ""))) {
+        return (
+          <Section wide index={index} theme={theme}>
+            <ProductDetail p={block.items[0]} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} />
+            {lightbox}
+          </Section>
+        );
+      }
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} />

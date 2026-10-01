@@ -80,6 +80,15 @@ export function titlesFor(lang: Lang, ai: Partial<Record<TitleKey, string>> | un
 
 /* ================= small text helpers ================= */
 
+/** A city the way it is written on a sign: "dharuhera" → "Dharuhera", "NEW DELHI" → "New Delhi". A name the
+ *  owner typed in a hurry is printed in the hero, the footer line and the search data, so it is tidied once
+ *  (anything already mixed-case, like "Navi Mumbai", is left exactly as they wrote it). */
+export function cityCase(v: string): string {
+  const s = (v ?? "").trim();
+  if (!s || /[a-z]/.test(s) !== /^[^A-Z]*$/.test(s)) return s;   // mixed case: the owner's own spelling stands
+  return s.toLowerCase().replace(/(^|[\s/,.-])([a-z])/g, (_, a, b) => a + b.toUpperCase());
+}
+
 const uid = () => Math.random().toString(36).slice(2, 10);
 
 /** The text of a chip without its emoji: "💵 Cash" → "Cash". */

@@ -52,13 +52,19 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
   }
   // One product at its own address: its own title, its own description, its own picture in a share preview.
   const product = findProduct(card, slug);
-  const page = product ? productPageOf(product) : pageOf(card, slug);
+  const page = product ? productPageOf(card, product) : pageOf(card, slug);
   const { brand, home } = await addresses(card);
   const updates = slug === "updates" && !page;
-  const business = seoTitle(card).split(" – ")[0];
-  const title = product
-    ? `${product.item.name}${product.item.price ? ` — ${product.item.price}` : ""} | ${business}`.slice(0, 70)
-    : updates ? `Updates — ${business}` : seoTitle(card, page);
+  const business = (card.lead === "business" && card.company ? card.company : card.name).trim();
+  // "Kaju Katli — ₹325 | Haldiram's, Dharuhera": the thing, the price, who sells it and where. The city is
+  // dropped before the price, and the price before the name, when there is no room for all of it.
+  const seller = [business, card.seo?.city].filter(Boolean).join(", ");
+  const productTitle = () => {
+    const name = product!.item.name.trim(), p = product!.item.price?.trim();
+    for (const t of [`${name}${p ? ` — ${p}` : ""} | ${seller}`, `${name}${p ? ` — ${p}` : ""} | ${business}`, `${name} | ${business}`]) if (t.length <= 70) return t;
+    return `${name} | ${business}`.slice(0, 70);
+  };
+  const title = product ? productTitle() : updates ? `Updates — ${business}` : seoTitle(card, page);
   const description = product
     ? [product.item.desc, product.item.price && `Price ${product.item.price}.`, `Order from ${business}${card.seo?.city ? `, ${card.seo.city}` : ""} on WhatsApp.`].filter(Boolean).join(" ").slice(0, 155)
     : seoDescription(card, page);
@@ -104,7 +110,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
     );
   }
   const product = findProduct(card, slug);
-  const page = product ? productPageOf(product) : pageOf(card, slug);
+  const page = product ? productPageOf(card, product) : pageOf(card, slug);
 
   await countCardView(username);
 

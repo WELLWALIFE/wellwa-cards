@@ -42,12 +42,18 @@ export function findProduct(card: Card, slug: string | null | undefined) {
   return isProductSlug(slug) ? cardProducts(card).find((p) => p.slug === slug) ?? null : null;
 }
 
-/** The product shown as a page of its own: the card's nav stays, the page holds just this one. */
-export function productPageOf(found: { item: ProductItem; slug: string }): CardPage {
+/** The product shown as a page of its own: the card's nav stays, the page holds this one in full and a few
+ *  others under it — a visitor who landed here from a search or a shared link sees there is more to buy. */
+export function productPageOf(card: Card, found: { item: ProductItem; slug: string }): CardPage {
+  const others = cardProducts(card).filter((x) => x.slug !== found.slug && x.item.name !== found.item.name).slice(0, 4);
+  const hi = card.language === "hi";
   return {
     id: `prod-${found.slug}`,
     slug: found.slug,
     label: found.item.name.slice(0, 40),
-    blocks: [{ id: `prodb-${found.slug}`, kind: "product", title: found.item.name, items: [found.item] }],
+    blocks: [
+      { id: `prodb-${found.slug}`, kind: "product", title: found.item.name, items: [found.item] },
+      ...(others.length >= 2 ? [{ id: `prodmore-${found.slug}`, kind: "product" as const, title: hi ? "और भी देखिए" : "More from this shop", items: others.map((x) => x.item) }] : []),
+    ],
   };
 }

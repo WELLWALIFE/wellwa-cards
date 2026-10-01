@@ -27,7 +27,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { googleRow } from "@/lib/google-server";
-import { composeCard, factsText, productName, mergeRefresh, addStockMedia } from "@/lib/card-compose";
+import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
 
@@ -312,6 +312,8 @@ export async function POST(request: Request) {
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
   const knowledge = factsText({ setup, facts, products: list, info: new Map(), site });
   const business = setup.business || setup.person;
+  // The city is printed in the hero chip, the footer line and the search data: "dharuhera" is tidied once here.
+  if (setup.city && cityCase(setup.city) !== setup.city) setup = { ...setup, city: cityCase(setup.city) };
   const recipe = recipeFor(setup.category);
   const tdata = tradeDataFor(setup.category);
   // The owner's standing on Google, if they have connected the profile (best effort — never fails a build).
