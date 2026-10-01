@@ -13,6 +13,7 @@
 
 import { getTemplate } from "@/lib/templates";
 import type { Card, CardPage } from "@/lib/types";
+import { ownNotes, ownPersona } from "../../bridge/shubhora-kb.mjs";
 
 /** The slug the Shubhora side lives on: /c/<user>/shubhora. */
 export const SHUBHORA_PAGE_SLUG = "shubhora";
@@ -70,4 +71,48 @@ export function withShubhoraPage<T extends { pages: CardPage[]; kb?: Card["kb"] 
 export function withoutShubhoraPage<T extends { pages: CardPage[]; kb?: Card["kb"] }>(card: T): T {
   const mine = card.pages.filter((p) => p.slug !== SHUBHORA_PAGE_SLUG);
   return { ...card, kb: undefined, pages: mine };
+}
+
+/** Shubhora's own artwork, put on the card by the seller template. */
+const SHUBHORA_ART = /\/art\/brand\/shubhora-/i;
+
+/** Turn a partner whose WHOLE card is Shubhora (`kb: "shubhora"`) into a "both" card, so they can add their
+ *  own business without losing the Shubhora side.
+ *
+ *  Their Shubhora pages are replaced by the one standard Shubhora page, which keeps every bit of that content
+ *  alive on its own link (/c/<user>/shubhora) and keeps it updating with the template. What comes off is the
+ *  identity the seller template gave them — Shubhora's company name, job title, tagline, about, logo, banner,
+ *  pop-up, search words and its own links — because from here the card is their own business. Their link,
+ *  username, domain, number, buttons, their photo and anything they wrote themselves all stay.
+ *
+ *  The card is left with an empty home page on purpose: the caller sends them straight to the business form
+ *  and the AI card builder, which fill it. */
+export function toBothFromShubhora(card: Card, own?: { photo?: string | null }): Card {
+  const page = shubhoraPage();
+  const home: CardPage = { id: "p1", slug: "home", label: "Home", blocks: [] };
+  // The seller template's own links (shubhora.com, the Shubhora videos) come off; the owner's phone,
+  // WhatsApp and email — which they filled in themselves — stay. Matching the template's own values is
+  // exact, so a link they added or edited is never dropped by accident.
+  const tplLinks = new Set(
+    (getTemplate("vcard-reseller")?.data.links ?? [])
+      .map((l) => l.value)
+      .filter((v) => v && !/^\+91$/.test(v) && !/you@example\.com/i.test(v)),
+  );
+  const avatarWasTheirs = !SHUBHORA_ART.test(card.avatarUrl ?? "");
+  return {
+    ...card,
+    kb: "both",
+    company: "", jobTitle: "", tagline: "", about: "",
+    avatarUrl: avatarWasTheirs ? card.avatarUrl : (own?.photo || ""),
+    ...(avatarWasTheirs ? {} : { avatarShape: undefined }),
+    coverUrl: SHUBHORA_ART.test(card.coverUrl ?? "") ? "" : card.coverUrl,
+    popup: undefined,
+    // Their own words are kept; the template's defaults, which spoke for Shubhora, are not.
+    botPersona: ownPersona(card.botPersona),
+    botKnowledge: ownNotes(card.botKnowledge),
+    // These described Shubhora on Google. The builder writes new ones for their business.
+    seoTitle: "", seoDescription: "",
+    links: card.links.filter((l) => !tplLinks.has(l.value)),
+    pages: page ? [home, page] : [home],
+  };
 }

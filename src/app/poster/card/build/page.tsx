@@ -18,7 +18,7 @@ import { Camera, Check, CheckCircle2, ChevronLeft, CircleDashed, Globe, LoaderCi
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
-import { hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
@@ -493,25 +493,35 @@ export default function BuildCard() {
       // made from. Anything the owner changed in the editor meanwhile (popup, pixels, a new page, the design)
       // therefore stays, instead of being overwritten by an older preview.
       let out = shown;
+      // mergeBuiltCard replaces the card's pages with the newly built ones, so a Shubhora page that is
+      // already live would be thrown away by a rebuild. Remember it (and whether its tab was switched on)
+      // and put it back below.
+      let keepShubhora = hasShubhoraPage(shown);
+      let shubhoraVisible = !shown.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
       if (built) {
         let live: Card | null;
         try {
           const cards = await fetchMyCardsStrict();
           live = cards.find((c) => c.id === existing?.id) ?? cards.find((c) => c.username === card.username) ?? null;
         } catch { setErr(OFFLINE); return; }
+        if (live && hasShubhoraPage(live)) {
+          keepShubhora = true;
+          shubhoraVisible = !live.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
+        }
         out = applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
       }
       // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
       // made at set-up is not lost on the way to the finished card. It is appended last and marked hidden, so
-      // the card still opens on the owner's own home page and their customers never see it.
-      const addShubhora = alsoShubhora && !hasShubhoraPage(out);
-      if (addShubhora) out = withShubhoraPage(out);
+      // the card still opens on the owner's own home page and their customers never see it. A page that was
+      // already live is put back the same way, with its tab left however the owner had it.
+      const addShubhora = (alsoShubhora || keepShubhora) && !hasShubhoraPage(out);
+      if (addShubhora) out = withShubhoraPage(out, { visible: keepShubhora && shubhoraVisible });
       const r = await publishCard(out);
       if (!r.ok) { setErr(r.error); return; }
       // The choice has been carried out, so it is not carried again: someone who later takes the page off and
       // rebuilds their card with AI should not have it come back on its own. Adding it again is one tap on
       // My V-Card.
-      if (addShubhora) {
+      if (addShubhora && alsoShubhora) {
         setAlsoShubhora(false);
         await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: null } }).catch(() => undefined);
       }

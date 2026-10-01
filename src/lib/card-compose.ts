@@ -478,7 +478,10 @@ export function mergeRefresh(current: TemplateCard & { id?: string; username?: s
   const freshHome = fresh.pages.find((p) => p.slug === "home");
   const home = out.pages.find((p) => p.slug === "home") ?? out.pages[0];
   if (!home || !freshHome) return out;
-  const allBlocks = () => out.pages.flatMap((p) => p.blocks);
+  // A hidden page (the Shubhora page on a "both" card) belongs to a different audience, not to the owner's
+  // own card. Its blocks must not make this think their business already has products or an FAQ — otherwise
+  // their own products and FAQ pages would never be added.
+  const allBlocks = () => out.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
   const hasTitled = (kind: CardBlock["kind"], title: string) => allBlocks().some((b) => b.kind === kind && norm(b.title) === norm(title));
   const freshTitle = (kind: CardBlock["kind"], i: number) => freshHome.blocks.filter((b) => b.kind === kind)[i];
 

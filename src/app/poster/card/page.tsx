@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
-import { LoaderCircle, ExternalLink, Pencil, Copy, Check, Share2, QrCode, Eye, Palette, Sparkles, Globe, RefreshCw, ChevronDown, CheckCircle2 } from "lucide-react";
+import { LoaderCircle, ExternalLink, Pencil, Copy, Check, Share2, QrCode, Eye, Palette, Sparkles, Globe, RefreshCw, ChevronDown, CheckCircle2, Store } from "lucide-react";
 import { SITE_URL } from "@/lib/site-url";
 import { CardLink } from "@/components/poster/card-sheet";
 import { api, isLoggedIn } from "@/lib/poster-client";
@@ -15,8 +15,9 @@ import type { FactsResponse } from "@/lib/card-facts";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { DomainConnect } from "@/components/domain-connect";
-import { isThinCard } from "@/lib/card-personalize";
-import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage, withoutShubhoraPage } from "@/lib/shubhora-page";
+import { isThinCard, loadOwnDetails } from "@/lib/card-personalize";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage, withoutShubhoraPage, toBothFromShubhora } from "@/lib/shubhora-page";
+import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { CardChecklist } from "@/components/poster/card-checklist";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { initials } from "@/lib/initials";
@@ -96,6 +97,23 @@ export default function CardTab() {
   // The Shubhora side of a card whose owner also runs their own business: a second link off the same card.
   const shUrl = card ? `${url}/${SHUBHORA_PAGE_SLUG}` : "";
   async function copySh() { try { await navigator.clipboard.writeText(shUrl); setShCopied(true); setTimeout(() => setShCopied(false), 2000); } catch { /* ignore */ } }
+
+  /** A partner whose WHOLE card is Shubhora, who also wants their own business on it. Their Shubhora
+   *  content moves to its own page and link (nothing is lost), the seller template's identity comes off,
+   *  and they go straight to the business form and the AI builder to make their own card. */
+  async function addOwnBusiness() {
+    if (!card || shBusy) return;
+    setShBusy("migrate"); setNote("");
+    try {
+      const own = await loadOwnDetails().catch(() => null);
+      const next = toBothFromShubhora(card, { photo: own?.photo });
+      const p = await publishCard(next);
+      if (!p.ok) { setShBusy(""); setNote(p.error || "Could not save. Please try again."); return; }
+      router.push("/poster/onboard?step=business&next=/poster/card/build");
+    } catch {
+      setShBusy(""); setNote(lang === "hi" ? "Internet की दिक्कत — फिर से कोशिश करें।" : "Network issue — please try again.");
+    }
+  }
 
   /** Add or take away the Shubhora page. The owner's own pages, identity, link, domain and posters are never
    *  touched either way — only this one page is added to or removed from the card. */
@@ -187,6 +205,24 @@ export default function CardTab() {
           </details>
         </div>
       </div>
+      {/* Already a Shubhora partner, whole card and all: the way to add their own business without losing
+          any of it. Shown only on a card that is entirely Shubhora's. */}
+      {isShubhoraCard(card) && !hasShubhoraPage(card) && (
+        <div className="space-y-2.5 rounded-2xl border border-border bg-surface p-4">
+          <p className="flex items-center gap-2 text-sm font-bold"><Store className="h-4 w-4 text-brand" /> {lang === "hi" ? "अपना business भी जोड़ें?" : "Add your own business too?"}</p>
+          <p className="text-xs text-muted">
+            {lang === "hi"
+              ? "अभी ये पूरा card Shubhora का है। अपना business भी करते हैं तो card आपके business का बन जाएगा, और Shubhora अपने अलग link पर चला जाएगा — कुछ भी खोएगा नहीं। आपका link, number और photo वही रहेंगे।"
+              : "Right now this whole card is Shubhora's. If you also run your own business, the card becomes your business and Shubhora moves to its own separate link — nothing is lost. Your link, number and photo stay the same."}
+          </p>
+          <button type="button" onClick={addOwnBusiness} disabled={!!shBusy}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
+            {shBusy === "migrate" ? <><LoaderCircle className="h-4 w-4 animate-spin" /> {lang === "hi" ? "तैयार कर रहे हैं…" : "Setting it up…"}</> : <>{lang === "hi" ? "अपना business जोड़ें" : "Add my business"} →</>}
+          </button>
+          <p className="text-[11px] text-muted">{lang === "hi" ? "अगली screen पर अपने business की जानकारी भरनी होगी, फिर AI आपका card बना देगा।" : "The next screen asks about your business, then the AI builds your card."}</p>
+        </div>
+      )}
+
       {/* Two audiences, two links, never mixed: this page is not on the owner's own card, and their business
           is not on this page. */}
       {hasShubhoraPage(card) && (
