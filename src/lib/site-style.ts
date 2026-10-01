@@ -299,10 +299,14 @@ export function lookIsBlank(m: MeasuredLook): boolean {
 export function styleFromLook(m: MeasuredLook): SiteStyle {
   const style: SiteStyle = {};
 
-  // Colour. Only an accent that text can actually sit on, and only from a page that is itself readable.
+  // Colour. brandPalette() already pulls a colour into a readable band and builds a deep variant for the
+  // fills that carry white text, so the only accents refused here are the ones no palette can save: a
+  // near-white wash, near-black, or a grey. Urban Ladder's orange (#ec7744) and Nothing's yellow (#ffc700)
+  // are real brand colours and used to be thrown away for failing a white-text contrast test that
+  // brandPalette answers on its own.
   const readablePage = contrast(m.bg, m.ink) >= 4.5;
   const accent = m.accent && hex6(m.accent);
-  const usable = accent && contrast(accent, "#ffffff") >= 3 && luminance(accent) < 0.72;
+  const usable = accent && toHsl(accent)[1] >= 0.2 && luminance(accent) > 0.06 && luminance(accent) < 0.9;
   if (usable && accent) { style.palette = "brand"; style.color = accent; }
   else if (luminance(m.bg) < 0.25 && readablePage) style.palette = "noir";
 
