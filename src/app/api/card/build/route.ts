@@ -358,7 +358,7 @@ export async function POST(request: Request) {
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
 
   /* ---- the layout (code) ---- */
-  const { card, checks, missing } = composeCard({
+  const { card, checks, missing: composed } = composeCard({
     setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
@@ -392,6 +392,12 @@ export async function POST(request: Request) {
   // generic line — fixed in code; and what had to stand in for the owner's own material is reported.
   const audited = auditCard(built, { stockPhotos: stockUrls, city: setup.city, trade: tdata, lang: facts.lang });
   built = audited.card;
+  // "Make it better" says what THIS build could not fill: the audit knows the card went out wearing stock
+  // pictures of the trade, which no fixed checklist can tell.
+  let missing = composed;
+  if (audited.standIns.includes("stock-photos") && !missing.some((m) => m.key === "banner" || m.key === "ownPhotos")) {
+    missing = [{ key: "ownPhotos" as const, label: "📷 Replace the stock photos with yours" }, ...missing].slice(0, 6);
+  }
   if (audited.fixed.length) console.log("[card] audit", JSON.stringify(audited.fixed));
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,

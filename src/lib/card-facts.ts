@@ -500,7 +500,7 @@ export type WebCheck = {
   plain: { desc?: string; features: string[] };
 };
 
-export type MissingKey = "products" | "prices" | "productPhotos" | "banner" | "hours" | "upi" | "map" | "reviews" | "qualification";
+export type MissingKey = "products" | "prices" | "productPhotos" | "banner" | "hours" | "upi" | "map" | "reviews" | "qualification" | "ownPhotos";
 
 /** A "Make it better" chip: something that would improve the card. */
 export type Missing = { key: MissingKey; label: string };

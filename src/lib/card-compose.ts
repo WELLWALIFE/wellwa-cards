@@ -297,6 +297,8 @@ const MISSING_LABEL: Record<MissingKey, string> = {
   map: "📍 Pin your shop on the map",
   reviews: "⭐ Ask 3 customers for a review",
   qualification: "🎓 Add your degree or registration",
+  // Added by the build when the audit found the card wearing stock pictures of the trade (card-audit.ts).
+  ownPhotos: "📷 Replace the stock photos with yours",
 };
 
 export function composeCard(input: ComposeInput): { card: TemplateCard; checks: WebCheck[]; missing: Missing[] } {
@@ -371,7 +373,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     // The one-line description must not just repeat the price (the AI sometimes writes "₹900 per kg" as the line).
     const bare = (x: string) => x.replace(/[^a-z0-9]/gi, "").toLowerCase();
     const isPrice = (x: string) => !!x && (bare(x) === bare(price) || bare(x) === bare(p.price) || (!!price && bare(price).includes(bare(x))));
-    const desc = line && !isPrice(line) ? line : web?.summary && !isPrice(web.summary) ? web.summary : "";
+    // …and a line that ENDS in the price repeats what is printed right under it ("…for gifting. ₹1200").
+    const noPrice = (x: string) => x.replace(/[\s.·—–-]*(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d{1,2})?(?:\s*\/\s*\w+)?\s*$/i, "").trim();
+    const desc = noPrice(line && !isPrice(line) ? line : web?.summary && !isPrice(web.summary) ? web.summary : "");
     // Anything the lookup found about this product went into the brief the AI wrote from, so its line may
     // repeat a maker's claim even when nothing is printed word for word. The owner is therefore asked to check
     // EVERY product we looked up, and unticking one leaves only what they typed themselves.

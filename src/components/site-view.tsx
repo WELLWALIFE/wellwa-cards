@@ -970,6 +970,10 @@ const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.
 
 /** One product on a page of its own: the picture big on the left, everything about it on the right. The grid
  *  card is a teaser; this is the page a visitor lands on from a shared link or from search. */
+/** A product line that ends in the price repeats what is printed right beside it. The builder strips this now,
+ *  so this is for the cards that were built before it did. */
+const descOf = (p: ProductItem) => (p.desc ?? "").replace(/[\s.·—–-]*(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d{1,2})?(?:\s*\/\s*\w+)?\s*$/i, "").trim();
+
 function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: ProductItem; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void }) {
   const t = useT();
   const hi = card.language === "hi";
@@ -1001,16 +1005,16 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
         )}
       </div>
       <div>
+        {/* The page's own heading already carries the name; here it is the price that leads. */}
         {p.badge && <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span>}
-        <h2 className="mt-3 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(p.name)}</h2>
         {(p.price || p.mrp) && (
-          <p className="mt-4 text-2xl font-semibold">
+          <p className={`text-[28px] md:text-[34px] font-semibold tracking-tight ${p.badge ? "mt-4" : ""}`}>
             {p.price || p.mrp}
-            {saved && <span className="ml-3 text-base text-muted line-through font-normal">{p.mrp}</span>}
+            {saved && <span className="ml-3 text-lg text-muted line-through font-normal">{p.mrp}</span>}
             {saved && <span className="block mt-1 text-sm font-medium" style={{ color: "var(--tc)" }}>{hi ? `आप ₹${saved.toLocaleString("en-IN")} बचाते हैं` : `You save ₹${saved.toLocaleString("en-IN")}`}</span>}
           </p>
         )}
-        {p.desc && <p className="mt-5 text-[17px] text-muted leading-relaxed">{t(p.desc)}</p>}
+        {descOf(p) && <p className="mt-5 text-[17px] text-muted leading-relaxed">{t(descOf(p))}</p>}
         {features.length > 0 && <ul className="mt-6 space-y-2 text-[16px]">{features.slice(0, 8).map((f, j) => <li key={j} className="flex items-start gap-2.5"><Check className="h-4 w-4 mt-1.5 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
         {specs.length > 0 && (
           <dl className="mt-7 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[15px] border-t border-border pt-5">
@@ -1077,7 +1081,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
                   ? <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); go(slug); }} className={`rounded ${FOCUS}`}>{title}</a>
                   : title;
               })()}
-              {p.desc && <p className="mt-1.5 text-muted text-[15px] leading-relaxed">{t(p.desc)}</p>}
+              {descOf(p) && <p className="mt-1.5 text-muted text-[15px] leading-relaxed">{t(descOf(p))}</p>}
               {features.length > 0 && <ul className="mt-4 space-y-1.5 text-[15px]">{features.slice(0, 5).map((f, j) => <li key={j} className="flex items-start gap-2"><Check className="h-4 w-4 mt-1 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
               {specs.length > 0 && (
                 <details className="mt-4 group/specs">

@@ -619,6 +619,7 @@ export default function BuildCard() {
       : key === "upi" ? "q-pay"
       : key === "map" ? "q-map"
       : key === "qualification" ? "q-qual"
+      : key === "ownPhotos" ? "q-photos"
       : "q-products";
     setState("form");
     setTimeout(() => {
