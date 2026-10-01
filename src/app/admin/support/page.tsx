@@ -121,6 +121,9 @@ export default function LiveHelpPage() {
         return;
       }
       setAsThem(j);
+      // Opened for convenience, and shown below as well: this browser's app login becomes theirs, so an
+      // owner who unlocked this console with their own account (not the admin password) needs the private
+      // window instead, or this console stops working mid-session.
       if (j.link) window.open(j.link, "_blank", "noopener");
     } catch {
       setErr("No internet — please try again.");
@@ -290,6 +293,24 @@ export default function LiveHelpPage() {
                       className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-brand/40 bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink disabled:opacity-60">
                       {busy === "as" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <SquareArrowOutUpRight className="h-4 w-4" />} Open their app as them
                     </button>
+                  )}
+                  {asThem?.link && (
+                    <div className="mt-2 space-y-1.5 rounded-lg border border-border bg-surface2 px-3 py-2">
+                      <p className="text-xs">
+                        Opened in a new tab. <b>This browser&apos;s app login is now theirs.</b> This console keeps
+                        working if you unlocked it with the admin password. If you came in on your own owner
+                        login, close that tab and open this address in a private window instead:
+                      </p>
+                      <div className="flex items-center gap-2">
+                        <code className="min-w-0 flex-1 truncate text-[11px]">{asThem.link}</code>
+                        <button type="button" onClick={() => navigator.clipboard?.writeText(asThem.link ?? "")}
+                          className="shrink-0 rounded-lg border border-border px-2 py-1 text-xs font-semibold">Copy</button>
+                      </div>
+                      <p className="text-[11px] text-muted">
+                        It works once, for a short time. When you are done, tap “← Back to admin” at the bottom of
+                        their app.
+                      </p>
+                    </div>
                   )}
                   {asThem?.password && (
                     <p className="mt-2 rounded-lg border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
