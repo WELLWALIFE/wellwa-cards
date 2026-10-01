@@ -14,20 +14,20 @@ export const ALIASES: Record<string, string[]> = {
   medical: ["dawai", "dawa", "chemist", "pharmacy"],
   restaurant: ["dhaba", "khana", "food", "hotel", "biryani", "pizza"],
   coaching: ["tuition", "classes", "academy", "institute"],
-  electrician: ["plumber", "ac repair", "bijli", "mistri"],
+  electrician: ["plumber", "ac repair", "bijli", "mistri", "electricals", "electrical", "electric works"],
   mobile: ["phone", "electronics", "repair", "smartphone", "gadgets"],
-  jewellery: ["sunar", "gold", "jewelry", "zevar", "diamond"],
-  tailor: ["darzi", "silai", "stitching", "boutique"],
+  jewellery: ["sunar", "gold", "jewelry", "jewellers", "jewelers", "zevar", "diamond"],
+  tailor: ["darzi", "silai", "stitching", "boutique", "tailors", "tailoring"],
   realestate: ["property", "plot", "flat", "dealer", "apartments"],
-  auto: ["garage", "mechanic", "car", "bike"],
+  auto: ["garage", "mechanic", "car", "bike", "motors", "automobiles", "auto works"],
   dentist: ["dant", "teeth", "dental"],
   astro: ["jyotish", "pandit", "kundli", "vastu"],
-  travel: ["tour", "ticket", "taxi", "holidays"],
+  travel: ["tour", "ticket", "taxi", "holidays", "travels", "tours", "tour and travels"],
   printing: ["flex", "press", "banner"],
   furniture: ["sofa", "decor", "mattress", "furnishing"],
   hardware: ["paint", "sanitary", "tiles"],
   gym: ["yoga", "fitness"],
-  catering: ["halwai", "caterer"],
+  catering: ["halwai", "caterer", "caterers", "tent house", "bhoj"],
   dairy: ["doodh", "milk"],
   agri: ["khad", "beej", "seeds", "fertilizer"],
   transport: ["truck", "logistics"],
@@ -86,7 +86,11 @@ export function matchCategory(text: string): string | null {
   }
   scores.sort((a, b) => b.score - a.score);
   const best = scores[0];
-  if (!best || best.score < 4) return null;
+  // A page of website text is full of stray words, so it must say the trade twice (or in a phrase) to count.
+  // A business NAME is three words with no noise — "Sharma Sweets", "City Dental Care" — and one whole-word
+  // hit in it is the trade (owner's call, 1 Oct 2026: the person should not have to open the trade list).
+  const short = t.trim().length <= 60;
+  if (!best || best.score < (short ? 2 : 4)) return null;
   if (scores[1] && scores[1].score >= best.score) return null;   // a tie is not an answer
   return best.key;
 }

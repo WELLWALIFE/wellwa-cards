@@ -21,6 +21,7 @@ import { fetchMyCardsStrict, nameSlug, publishCard, suggestUsername } from "@/li
 import { SITE_HOST } from "@/lib/site-url";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
+import { matchCategory } from "@/lib/category-match";
 import type { Business } from "@/lib/journey";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { useT } from "@/lib/poster-i18n";
@@ -122,6 +123,8 @@ function Onboard() {
   const peekFor = useRef({ url: "", role: "", state: "" });
   /** Fields the person typed into: a late peek result never writes over them. */
   const touched = useRef(new Set<string>());
+  /** The trade the business name suggested (not the owner's own pick, and not the website's). */
+  const guessedTrade = useRef("");
   /** A social / maps link pasted as the website, waiting for "keep it as that?" */
   const [pendingSocial, setPendingSocial] = useState<Detour | null>(null);
   const [detours, setDetours] = useState<Detour[]>([]);
@@ -368,6 +371,15 @@ function Onboard() {
     return { ...b, category: k, role, kind: role === "business" ? "business" as const : "person" as const, reach: b.reachTouched ? b.reach : reachOf(role, k) };
   };
   const touch = (k: string) => { touched.current.add(k); };
+  /** Most Indian businesses say their trade in their name — "Sharma Sweets", "Apollo Clinic", "Verma Electricals".
+   *  When the owner has not picked a trade themselves, the name picks it, so the list never has to be opened. */
+  function guessTrade(b: typeof biz): typeof biz {
+    if (touched.current.has("category")) return b;
+    const k = matchCategory(`${b.name ?? ""} ${b.about ?? ""}`);
+    if (!k || k === b.category || !categoryOf(k)) return b;
+    guessedTrade.current = k;
+    return withCategory(b, k);
+  }
 
   /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
   function prefill(d: PeekData) {
@@ -464,7 +476,21 @@ function Onboard() {
     if (typeof navigator === "undefined" || !navigator.geolocation) { setErr(LOCATION_OFF); return; }
     setBusy("pin");
     navigator.geolocation.getCurrentPosition(
-      (p) => { setBusy(""); setBiz((b) => ({ ...b, map: `https://maps.google.com/?q=${p.coords.latitude.toFixed(6)},${p.coords.longitude.toFixed(6)}` })); },
+      async (p) => {
+        const { latitude: lat, longitude: lng } = p.coords;
+        setBiz((b) => ({ ...b, map: `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}` }));
+        // The pin also knows the city and the locality: the owner does not type what the phone already knows.
+        try {
+          const r = await fetch(`/api/geo/city?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`);
+          const g = (await r.json()) as { ok?: boolean; city?: string; area?: string };
+          if (g.ok) setBiz((b) => ({
+            ...b,
+            ...(g.city && !touched.current.has("city") && !(b.city ?? "").trim() ? { city: g.city } : {}),
+            ...(g.area && !touched.current.has("address") && !(b.address ?? "").trim() ? { address: g.area } : {}),
+          }));
+        } catch { /* the pin alone is still worth having */ }
+        setBusy("");
+      },
       () => { setBusy(""); setErr(LOCATION_OFF); },
       { enableHighAccuracy: true, timeout: 15000 },
     );
@@ -860,8 +886,12 @@ function Onboard() {
           {/* 1 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}
             <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => withCategory(b, k)); }} placeholder={T("Choose your type of business", "अपना काम चुनें")} />
-            {site.kind === "own" && peek.state === "found" && !!peek.data?.category && biz.category === peek.data.category && !touched.current.has("category") && (
-              <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
+            {!touched.current.has("category") && !!biz.category && (
+              site.kind === "own" && peek.state === "found" && biz.category === peek.data?.category
+                ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
+                : biz.category === guessedTrade.current
+                ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your name — change it if wrong.", "आपके नाम से अंदाज़ा — गलत हो तो बदलें।")}</span>
+                : null
             )}
           </div>
 
@@ -869,7 +899,7 @@ function Onboard() {
           <label className="block text-sm font-semibold">
             {biz.role === "business" ? T("Business name", "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : T("Company / brand you promote", "Company / brand")}
             {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
-            <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz({ ...biz, name: e.target.value }); }}
+            <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
               onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
               placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} />
             {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
