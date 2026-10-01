@@ -508,6 +508,12 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
 
   /* ---- website, search, chat bot ---- */
   const firstImage = items.find((i) => i.imageUrl)?.imageUrl;
+  // The hero's shape follows what the card has: a shop with product photos gets a mosaic of them, a
+  // professional with a portrait gets the portrait; anything else is decided by the renderer (banner / split).
+  const heroVariant: "grid" | "person" | undefined =
+    lead === "business" && items.filter((i) => i.imageUrl).length >= 3 ? "grid"
+    : professional && setup.photo ? "person"
+    : undefined;
   const headline = lead === "business" ? setup.business : name;
   const seo: NonNullable<TemplateCard["seo"]> = {};
   if (cat?.en) seo.category = cat.en;
@@ -564,7 +570,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
               : {}),
             reference: { url: input.reference.url, at: new Date().toISOString() },
           }
-        : { style: tradeStyle(setup.category, lang) }),
+        : { style: { ...tradeStyle(setup.category, lang), ...(heroVariant ? { hero: heroVariant } : {}) } }),
     },
   };
 

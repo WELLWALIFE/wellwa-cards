@@ -112,7 +112,7 @@ export function ctaLabel(cta: Cta, lang: "en" | "hi" | "hinglish"): string {
 /** The website look a trade wears when nothing else was chosen (owner's call, 1 Oct 2026: a jeweller, an
  *  ayurveda clinic, a gym and a CA must not all look the same). Fonts and corners from the category's own style
  *  key and group; a reference site or the owner's hand-picked style always wins over this. */
-export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"): { font: string; radius: "sharp" | "soft" | "round" } {
+export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"): { font: string; radius: "sharp" | "soft" | "round"; palette?: string } {
   const c = categoryOf(categoryKey);
   const key = c?.key ?? "";
   const style = c?.style ?? "classic";
@@ -129,7 +129,20 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"):
   // A Hindi website reads best in a Devanagari pair.
   if (lang === "hi") font = "hindi";
   const radius: "sharp" | "soft" | "round" = font === "luxury" || font === "elegant" || font === "editorial" ? "sharp" : font === "friendly" || font === "hindi" ? "round" : "soft";
-  return { font, radius };
+  // A palette where the trade has an obvious one; otherwise the card's own accent colour ("brand") already
+  // differs by category.
+  const palette =
+    /^(jewellery)$/.test(key) ? "gold"
+    : /^(salon|spa|mehndi)$/.test(key) ? "rose"
+    : /^(ayurveda|agri|dairy|ngo)$/.test(key) ? "emerald"
+    : /^(hotel|furniture|cafe)$/.test(key) ? "cocoa"
+    : /^(sweets|catering|temple|restaurant)$/.test(key) ? "saffron"
+    : /^(lawyer|photography)$/.test(key) ? "noir"
+    : /^(gym|auto)$/.test(key) ? "crimson"
+    : /^(realestate|builder|manufacturer|transport|security)$/.test(key) ? "steel"
+    : /^(doctor|dentist|hospital|water)$/.test(key) ? "ocean"
+    : undefined;
+  return { font, radius, ...(palette ? { palette } : {}) };
 }
 
 /** A phrase too generic to stand in a section (the trade's own list plus the ones every trade shares). */

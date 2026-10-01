@@ -140,7 +140,8 @@ export interface SiteStyle {
   color?: string;
   /** Font pair key ("modern", "elegant", …); unset = the card look's fonts. */
   font?: string;
-  hero?: "split" | "photo" | "stage" | "minimal";
+  /** grid = a mosaic of product photos beside the words (shops); person = the owner's portrait (professionals). */
+  hero?: "split" | "photo" | "stage" | "minimal" | "grid" | "person";
   radius?: "sharp" | "soft" | "round";
 }
 

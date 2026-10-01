@@ -92,8 +92,13 @@ function heroPills(card: Card): string[] {
 
 /** The first product photo on the card — the hero picture when the owner chose none. */
 function firstProductPhoto(card: Card): string | undefined {
-  for (const pg of card.pages) for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u) return u; }
-  return undefined;
+  return productPhotos(card)[0];
+}
+/** One photo per product, in card order (for the hero mosaic). */
+function productPhotos(card: Card): string[] {
+  const out: string[] = [];
+  for (const pg of card.pages) for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u && !out.includes(u)) out.push(u); }
+  return out;
 }
 
 /** Sections fade up as they scroll into view. Only once JS runs (`js` on the root), so the page is never blank;
@@ -162,8 +167,13 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // Only on cards from the new V-Card flow (they carry `lead`): older live
   // cards keep today's overlay, which their text-heavy banners were designed under.
   const lightHero = !!card.coverUrl && !isCuratedArt(card.coverUrl) && !!card.lead;
+  const mosaic = productPhotos(card).slice(0, 4);
+  const portrait = card.avatarUrl && card.avatarShape !== "square" ? card.avatarUrl : undefined;
   const layout = (() => {
     const l = card.site?.style?.hero;
+    // A mosaic needs three product photos and a portrait needs a photo; otherwise the next best shape.
+    if (l === "grid" && mosaic.length < 3) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
+    if (l === "person" && !portrait) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
     if (l) return l === "photo" && !card.coverUrl ? "split" : l;
     // The hero picture is the banner itself (a stock photograph of the trade, put in both slots by the
     // builder): a photograph goes across the top, never into a white product frame.
@@ -171,6 +181,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     if (heroImg) return "split";
     return card.coverUrl ? "photo" : "split";
   })();
+  // What stands beside the words: the product mosaic, the portrait, or the one picture.
+  const heroVisual = layout === "grid" ? mosaic.length >= 3 : layout === "person" ? !!portrait : !!heroImg;
   const darkHero = layout !== "minimal" && pal.tone === "dark";
   const heroInk = layout === "minimal" ? "var(--ink)" : pal.ink;
   // On a dark hero the main button is white with the deep colour; on a light hero it is the brand gradient.
@@ -324,8 +336,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               </>
             )}
             {layout !== "photo" && layout !== "minimal" && <div aria-hidden="true" className="dots absolute inset-0 opacity-60" style={{ maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)" }} />}
-            <div className={`relative w-full mx-auto max-w-6xl px-6 ${layout === "stage" ? "pt-20 pb-0 md:pt-24 text-center" : `py-20 md:py-24 grid gap-12 items-center ${heroImg ? "md:grid-cols-[1.15fr_1fr]" : ""}`}`}>
-              <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroImg ? "" : "md:max-w-[640px]"}`}>
+            <div className={`relative w-full mx-auto max-w-6xl px-6 ${layout === "stage" ? "pt-20 pb-0 md:pt-24 text-center" : `py-20 md:py-24 grid gap-12 items-center ${heroVisual ? "md:grid-cols-[1.15fr_1fr]" : ""}`}`}>
+              <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroVisual ? "" : "md:max-w-[640px]"}`}>
                 {/* Brand as the headline, role as the eyebrow, the about text as the sub —
                     never the tagline as a headline (it usually repeats the role). */}
                 {eyebrowRole && <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: layout === "minimal" ? "var(--p-mark)" : "var(--p-accent)" }}>{t(eyebrowRole)}</p>}
@@ -364,7 +376,27 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                   </div>
                 )}
               </div>
-              {heroImg && layout !== "stage" && (
+              {layout === "grid" && mosaic.length >= 3 && (
+                <div className="relative justify-self-center md:justify-self-end animate-rise w-full max-w-[460px]">
+                  <div aria-hidden="true" className="absolute -inset-8 rounded-[3rem] blur-3xl opacity-50" style={{ background: "var(--grad)" }} />
+                  <div className="relative grid grid-cols-2 gap-3">
+                    {mosaic.map((u, i) => (
+                      <div key={u} className={`overflow-hidden rounded-2xl bg-white/95 shadow-float ${i === 0 && mosaic.length === 3 ? "col-span-2 aspect-[2/1]" : "aspect-square"}`}>
+                        <Img src={u} alt="" className="h-full w-full object-cover" eager={i === 0} />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {layout === "person" && portrait && (
+                <div className="relative justify-self-center md:justify-self-end animate-rise">
+                  <div aria-hidden="true" className="absolute -inset-10 rounded-full blur-3xl opacity-60" style={{ background: "var(--grad)" }} />
+                  <div className="relative h-[300px] w-[300px] md:h-[380px] md:w-[380px] overflow-hidden rounded-[2.5rem] border-4 border-white/80 shadow-float bg-white/90">
+                    <Img src={portrait} alt={card.name} className="h-full w-full object-cover" eager />
+                  </div>
+                </div>
+              )}
+              {heroImg && layout !== "stage" && layout !== "grid" && layout !== "person" && (
                 <div className="relative justify-self-center md:justify-self-end animate-rise">
                   <div aria-hidden="true" className="absolute -inset-8 rounded-[3rem] blur-3xl opacity-50" style={{ background: "var(--grad)" }} />
                   <div className={`relative rounded-3xl p-3 shadow-float ${layout === "minimal" ? "bg-surface border border-border" : "bg-white/95"}`}><Img src={heroImg} alt={card.company || card.name} className="max-h-[400px] w-auto rounded-2xl object-contain" eager /></div>
@@ -693,6 +725,25 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
   );
 }
 
+/** "How it works": numbered circles joined by a line, the step under each — a path a visitor follows. */
+function StepsRow({ items }: { items: { name: string; desc: string }[] }) {
+  const t = useT();
+  const list = items.filter((s) => s.name.trim()).slice(0, 5);
+  const cols = list.length >= 4 ? "md:grid-cols-4" : list.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
+  return (
+    <ol className={`relative grid gap-8 ${cols}`}>
+      <span aria-hidden="true" className="absolute left-0 right-0 top-6 hidden h-px md:block" style={{ background: "linear-gradient(90deg, transparent, var(--p-mid) 15%, var(--p-mid) 85%, transparent)", opacity: 0.45 }} />
+      {list.map((s, i) => (
+        <li key={i} className="relative">
+          <span className="relative z-10 grid h-12 w-12 place-items-center rounded-full text-base font-bold shadow-float" style={{ background: "var(--grad)", color: "var(--p-on)" }}>{i + 1}</span>
+          <h3 className="mt-5 text-[17px] font-semibold">{t(s.name.replace(/^\d+[.)]\s*/, ""))}</h3>
+          {s.desc && <p className="mt-2 text-[15px] text-muted leading-relaxed">{t(s.desc)}</p>}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
 function HighlightsGrid({ items, theme }: { items: string[]; theme: string }) {
   const t = useT();
   const list = items.map((s) => s.trim()).filter(Boolean);
@@ -976,8 +1027,11 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links }: RunPro
       return <Section wide index={index} theme={theme}><AboutBody block={block} hi={hi} /></Section>;
     case "highlights":
       return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><HighlightsGrid items={block.items} theme={theme} /></Section>;
-    case "services":
-      return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><ServicesGrid items={block.items} /></Section>;
+    case "services": {
+      // "How it works" (numbered names) reads as a path, not a grid of cards.
+      const isSteps = /^\d+[.)]\s/.test(block.items[0]?.name ?? "");
+      return <Section wide index={index} theme={theme} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
+    }
     case "product":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>

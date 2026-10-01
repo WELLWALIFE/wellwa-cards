@@ -158,6 +158,8 @@ export const HERO_LAYOUTS: { key: HeroLayout; name: string; hi: string; blurb: s
   { key: "photo", name: "Photo", hi: "फ़ोटो", blurb: "Your banner photo across the top" },
   { key: "stage", name: "Stage", hi: "स्टेज", blurb: "Headline centred, the product below it" },
   { key: "minimal", name: "Minimal", hi: "मिनिमल", blurb: "Light and calm — dark text on a soft tint" },
+  { key: "grid", name: "Product grid", hi: "प्रोडक्ट ग्रिड", blurb: "Words left, a mosaic of your product photos right" },
+  { key: "person", name: "Portrait", hi: "पोर्ट्रेट", blurb: "Words left, your photo right — doctors, CAs, coaches" },
 ];
 export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolean; cover: boolean }): HeroLayout {
   if (style?.hero) return style.hero;
