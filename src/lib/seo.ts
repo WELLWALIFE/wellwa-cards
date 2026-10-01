@@ -255,7 +255,10 @@ export function localLine(card: Card): string {
   const f = seoFacts(card);
   if (!f.city && !f.areas.length) return "";
   const head = f.category ? `${f.category}${f.city ? ` in ${f.city}` : ""}` : f.city;
-  return f.areas.length ? `${head} · Serving ${f.areas.join(", ")}` : head;
+  // The city is already in `head`; an area that repeats it is not a second place. (The builder drops these
+  // now — this is for the cards built before it did.)
+  const areas = f.areas.filter((a) => a.trim().toLowerCase() !== f.city.trim().toLowerCase());
+  return areas.length ? `${head} · Serving ${areas.join(", ")}` : head;
 }
 
 /** Link to a page of the card: /c/<user>/<slug> on Shubhora, /<slug> on the owner's own domain. */

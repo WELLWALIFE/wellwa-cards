@@ -416,7 +416,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     const delivery = cat?.group === "Retail" || cat?.group === "Food";
     trust.push(delivery ? (lang === "hi" ? "🚚 होम डिलीवरी" : "🚚 Home delivery") : (lang === "hi" ? "🏠 घर पर सेवा" : "🏠 Home service"));
   }
-  const areas = facts.areas.split(",").map((x) => x.trim()).filter(Boolean);
+  // An area served that is simply the city repeats it: "Sweets / bakery in Dharuhera · Serving dharuhera"
+  // (seen live). The city is already said, so only the places BESIDES it are areas.
+  const cityKey = cityCase(setup.city).toLowerCase();
+  const areas = facts.areas.split(",").map((x) => cityCase(x.trim())).filter((x) => x && x.toLowerCase() !== cityKey);
   if (setup.reach === "india") trust.push(lang === "hi" ? "🇮🇳 पूरे भारत में सेवा" : lang === "hinglish" ? "🇮🇳 Poore India mein seva" : "🇮🇳 Serving all India");
   else if (setup.reach === "online") trust.push(lang === "hi" ? "🌐 ऑनलाइन · कहीं से भी" : lang === "hinglish" ? "🌐 Online · kahin se bhi" : "🌐 Online · worldwide");
   else if (areas.length) {
