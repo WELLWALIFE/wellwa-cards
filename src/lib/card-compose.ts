@@ -11,6 +11,7 @@ import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
+import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade-questions";
 import type { TradeData } from "@/lib/trade-data/types";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
@@ -164,6 +165,8 @@ export function factsText(i: {
   }).join(" | ");
   const lines = [
     setup.about && `About (owner's words): ${setup.about}`,
+    // The trade's own answers — "Classes: Nursery–12th", "Board: CBSE", "We have / offer: …" (trade-questions.ts).
+    ...tradeAnswerLines(setup.category, facts.tradeAnswers),
     facts.work && `What we do (owner's words): ${facts.work}`,
     facts.customers.length && `Our customers: ${facts.customers.map(plain).filter(Boolean).join(", ")}`,
     special.length && `What makes us special (owner's words): ${special.join(", ")}`,
@@ -423,9 +426,13 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // Services (every trade, shops too — bulk orders, delivery, repairs are services): the AI's, minus the vague
   // ones, filled up from the trade's own seeds so the list is never thin. A shop with products keeps its
   // services as a second section; a personal card has none.
+  // The owner ticked what they have (trade-questions.ts): only those seeds fill the list, never a service they
+  // do not offer. Unanswered → every seed of the trade, as before.
+  const picked = pickedOfferings(setup.category, facts.tradeAnswers);
+  const tradeSeeds = picked && trade ? { ...trade, services: trade.services.filter((s) => picked.has(s.en)) } : trade;
   const services: ServiceItem[] = personal ? [] : fillServices(
     (copy.services ?? []).filter((s) => s.name && !productNames.has(s.name.toLowerCase()) && !isGeneric(s.name, trade)),
-    trade, seedLine, 6);
+    tradeSeeds, seedLine, 6);
 
   /* ---- trust strip (code only, never AI) ---- */
   const trust: string[] = [];
@@ -459,6 +466,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // own still shows where it stands.
   const g = input.googleRating;
   if (g && g.avg > 0 && g.count >= 1 && !(stats.count >= 3)) trust.push(`⭐ ${g.avg.toFixed(1)} · ${g.count} ${lang === "hi" ? "Google रिव्यू" : g.count === 1 ? "Google review" : "Google reviews"}`);
+  // The trade's own answers as pills: "🏫 Nursery–12th", "📘 CBSE", "🍽️ Pure veg" (trade-questions.ts).
+  for (const p of tradeAnswerPills(setup.category, facts.tradeAnswers, lang)) trust.push(p);
   for (const s of facts.special) if (s.trim()) trust.push(s.trim());
   if (facts.specialText && facts.specialText.length <= 40 && !facts.specialText.includes("\n")) trust.push(`✨ ${facts.specialText}`);
   // The AI's facts-backed highlights ("Since 1937", "Pure ghee") used to be written and thrown away.

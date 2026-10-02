@@ -50,6 +50,9 @@ export type CardFacts = {
   team: string;
   /** Years of experience (1–2 digits) — the trust pill when there is no "since" year. */
   experience: string;
+  /** The trade's own questions (trade-questions.ts): question key → chosen options / typed line, e.g.
+   *  { classes: ["Nursery–12th"], board: ["CBSE"], offerings: ["School transport", …] }. English option names. */
+  tradeAnswers: Record<string, string[]>;
   /** google = the owner's Google Maps link. */
   social: { instagram: string; facebook: string; youtube: string; google: string };
   bannerUrl: string;
@@ -85,6 +88,7 @@ export const EMPTY_FACTS: CardFacts = deepFreeze<CardFacts>({
   customers: [],
   special: [],
   specialText: "",
+  tradeAnswers: {},
   homeService: "",
   hours: "",
   since: "",
@@ -185,6 +189,13 @@ function normalizeObj(r: Obj): CardFacts {
   const style = cleanStyle(r.style);
   const whatsapp = text(r.whatsapp, 20).replace(/\D/g, "").slice(-10);
   const experience = text(r.experience, 4).replace(/\D/g, "");
+  const tradeAnswers: Record<string, string[]> = {};
+  const ta = obj(r.tradeAnswers);
+  for (const k of Object.keys(ta).slice(0, 24)) {
+    if (!/^[a-z][a-z0-9_-]{0,39}$/.test(k)) continue;
+    const v = list(ta[k], 16, 80);
+    if (v.length) tradeAnswers[k] = v;
+  }
 
   return {
     v: 1,
@@ -209,6 +220,7 @@ function normalizeObj(r: Obj): CardFacts {
     designation: text(r.designation, 60),
     whatsapp: whatsapp.length === 10 ? whatsapp : "",
     team: text(r.team, 40),
+    tradeAnswers,
     experience: experience && Number(experience) >= 1 && Number(experience) <= 80 ? String(Number(experience)) : "",
     social: {
       instagram: text(social.instagram, 300),

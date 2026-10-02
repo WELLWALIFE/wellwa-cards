@@ -30,6 +30,7 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
+import { TradeQuestions } from "@/components/poster/trade-questions";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
 const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
@@ -991,6 +992,10 @@ function Onboard() {
                 : null
             )}
           </div>
+
+          {/* 1b — the trade's own questions (classes and board for a school, cuisine for a restaurant …): the fields
+              after the category follow the category (owner's call, 2 Oct 2026). Saved with the company facts. */}
+          {!!biz.category && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} />}
 
           {/* 2 — the name; "leads with" is worked out from 1 and changed only when wanted */}
           <label className="block text-sm font-semibold">

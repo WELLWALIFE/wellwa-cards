@@ -26,6 +26,7 @@ import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessM
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
+import { pickedOfferings } from "@/lib/trade-questions";
 import { auditCard } from "@/lib/card-audit";
 import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
@@ -331,10 +332,12 @@ export async function POST(request: Request) {
   // The owner's standing on Google, if they have connected the profile (best effort — never fails a build).
   const gRow = await googleRow(me.id).catch(() => null);
   const gRating = gRow?.rating && gRow.review_count ? { avg: Number(gRow.rating), count: Number(gRow.review_count) } : null;
+  const picked = pickedOfferings(setup.category, facts.tradeAnswers);
   const guide = tdata ? {
     catalog: recipe.catalog,
     explain: tdata.explain,
-    services: tdata.services.map((x) => `${x.en} — ${x.desc}`),
+    // The owner ticked what they have (trade-questions.ts): the AI is told only those, never one they lack.
+    services: tdata.services.filter((x) => !picked || picked.has(x.en)).map((x) => `${x.en} — ${x.desc}`),
     whyUs: tdata.whyUs.map((x) => x.en),
     steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
     faq: tdata.faq.map((x) => x.q),

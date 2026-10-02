@@ -18,7 +18,7 @@ export type FactsPatch = Partial<Omit<CardFacts, "social">> & { social?: Partial
 export type FactsGroup = "company" | "products";
 
 /** The facts each step saves — what its PATCH to /api/card/facts carries, nothing from another step. */
-export const COMPANY_FACT_KEYS = ["designation", "bannerUrl", "photos", "since", "experience", "team", "hours", "homeService", "areas", "payments", "upi", "qualification", "social"] as const;
+export const COMPANY_FACT_KEYS = ["designation", "bannerUrl", "photos", "since", "experience", "team", "hours", "homeService", "areas", "payments", "upi", "qualification", "social", "tradeAnswers"] as const;
 export const PRODUCT_FACT_KEYS = ["special", "specialText", "customers", "offer", "work"] as const;
 export const YOU_FACT_KEYS = ["whatsapp"] as const;
 export function pickFacts(f: CardFacts, keys: readonly (keyof CardFacts)[]): Record<string, unknown> {
