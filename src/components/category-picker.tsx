@@ -51,7 +51,9 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
   }, [sheetQ]);
 
   function pick(k: string) { onChange(k); setOpen(false); setTyping(false); setQ(""); setSheetQ(""); box.current?.blur(); }
-  function openSheet() { setSheetQ(q); setTyping(false); setOpen(true); }
+  // The full list is the FULL list (owner, 2 Oct 2026: "kya yahi full list hai?"): it opens with an empty search,
+  // every trade in its group; the typed letters stay in the box above for the suggestions.
+  function openSheet() { setSheetQ(""); setTyping(false); setOpen(true); }
 
   const showDrop = typing && (q.trim().length > 0);
   return (
@@ -96,7 +98,7 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
             <div className="flex items-center gap-2 border-b border-border p-3">
               <div className="flex flex-1 items-center gap-2 rounded-lg bg-surface2 px-3 py-2">
                 <Search className="h-4 w-4 text-muted" />
-                <input ref={search} value={sheetQ} onChange={(e) => setSheetQ(e.target.value)} placeholder={lang === "hi" ? "खोजें… जैसे मिठाई, डॉक्टर" : "Search… e.g. mithai, doctor, parlour"}
+                <input ref={search} value={sheetQ} onChange={(e) => setSheetQ(e.target.value)} placeholder={lang === "hi" ? `सभी ${CATEGORIES.length} काम — खोजें… जैसे मिठाई, डॉक्टर` : `All ${CATEGORIES.length} trades — search… e.g. mithai, doctor`}
                   className="w-full bg-transparent text-sm font-normal outline-none" />
               </div>
               <button type="button" onClick={() => setOpen(false)} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface2"><X className="h-5 w-5" /></button>
