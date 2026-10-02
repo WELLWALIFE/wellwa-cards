@@ -36,6 +36,7 @@ import {
 import { SITE_CARDS } from "@/lib/site-role";
 import { useT } from "@/lib/poster-i18n";
 import { ProfileSteps } from "@/components/poster/profile-steps";
+import { LookPicker } from "@/components/poster/look-picker";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -984,6 +985,10 @@ export default function BuildCard() {
                 </label>
           )}
         </div>
+      </Sec>
+
+      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto is your trade's own look — a jeweller opens gold and serif, a clinic calm blue. Change anything; the preview updates.", "Auto आपके काम का अपना look है — jeweller को gold और serif, clinic को शांत नीला। कुछ भी बदलें; preview बदलता है।")}>
+        <LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} />
       </Sec>
 
       <details id="q-more" ref={moreRef} className="rounded-2xl border border-border bg-surface p-4">

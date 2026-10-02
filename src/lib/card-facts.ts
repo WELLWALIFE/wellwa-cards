@@ -9,6 +9,8 @@ import type { Card, SpecRow } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { luminance } from "@/lib/color";
 import { isShubhoraHost } from "@/lib/site-role";
+import { cleanStyle } from "@/lib/site-style";
+import type { SiteStyle } from "@/lib/types";
 
 /* ================= facts ================= */
 
@@ -48,6 +50,8 @@ export type CardFacts = {
   hidden: string[];
   lang: Lang;
   primaryCardId: string;
+  /** The website look the owner picked before the build (palette, font, hero, corners); unset = the trade's own. */
+  style?: SiteStyle;
 };
 
 /** A UPI ID such as sharmasweets@okhdfc. */
@@ -166,9 +170,11 @@ function normalizeObj(r: Obj): CardFacts {
   }
   const primaryCardId = text(r.primaryCardId, 36);
   const assertedAt = text(r.dealerAssertedAt, 30);
+  const style = cleanStyle(r.style);
 
   return {
     v: 1,
+    ...(style && Object.keys(style).length ? { style } : {}),
     website,
     // A competitor's site is a reference site (look only) — the word reaches here from older clients and must
     // never fall through to "own", which would import the competitor's name and products.

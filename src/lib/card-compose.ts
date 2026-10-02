@@ -5,7 +5,7 @@
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
 import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
-import { styleFromReference, styleFromLook, homeOrderFromLook, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
+import { styleFromReference, styleFromLook, homeOrderFromLook, cleanStyle, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
@@ -598,15 +598,16 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       // "Make it like this website": its colours, fonts, rounding, hero and the order it puts things in —
       // never its words, pictures or facts. What the browser measured wins over what the HTML hinted at;
       // the old guess is the fallback for a page no browser could open.
+      // …and over all of it, what the owner picked by hand before the build (facts.style).
       ...(input.reference?.look || input.reference?.style
         ? {
-            style: input.reference.look ? styleFromLook(input.reference.look) : styleFromReference(input.reference.style!),
+            style: { ...(input.reference.look ? styleFromLook(input.reference.look) : styleFromReference(input.reference.style!)), ...(cleanStyle(facts.style) ?? {}) },
             ...(input.reference.look && homeOrderFromLook(input.reference.look)
               ? { home: { order: homeOrderFromLook(input.reference.look)! } }
               : {}),
             reference: { url: input.reference.url, at: new Date().toISOString() },
           }
-        : { style: { ...tradeStyle(setup.category, lang), ...(heroVariant ? { hero: heroVariant } : {}) } }),
+        : { style: { ...tradeStyle(setup.category, lang), ...(heroVariant ? { hero: heroVariant } : {}), ...(cleanStyle(facts.style) ?? {}) } }),
     },
   };
 
