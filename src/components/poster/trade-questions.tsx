@@ -8,7 +8,7 @@ import { useState } from "react";
 import { Sec, chipCls, field, type FactsPatch } from "@/components/poster/facts-fields";
 import type { CardFacts } from "@/lib/card-facts";
 import { categoryOf } from "@/lib/poster-categories";
-import { tradeQuestionsFor, type TradeQuestion } from "@/lib/trade-questions";
+import { tradeQuestionsFor } from "@/lib/trade-questions";
 
 const isOtherOption = (en: string) => /^(other|others)$/i.test(en.trim());
 
