@@ -18,7 +18,7 @@ import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
-import { SHUBHORA_PAGE_SLUG } from "@/lib/shubhora-page";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
@@ -164,7 +164,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const MAX_NAV = 6;
   // A product's own page is reached from a product card or from search, never from the menu.
   const unlistedSet = new Set(unlisted);
-  const navPages = pages.filter((p) => !unlistedSet.has(p.slug));
+  // A hidden page (the owner's Shubhora page on a "both" card) opens by its own address only — never from the menu.
+  const navPages = pages.filter((p) => !unlistedSet.has(p.slug) && !p.hidden);
   const navMain = navPages.slice(0, MAX_NAV), navMore = navPages.slice(MAX_NAV);
   const avatarCls = card.avatarShape === "square" ? "rounded-xl object-contain bg-white p-0.5" : "rounded-full object-cover bg-white";
   const logo = card.site?.logoUrl;                  // website logo (desktop settings); falls back to the card avatar
@@ -312,7 +313,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             <span className="font-semibold text-[17px] truncate">{t(card.company || card.name)}</span>
           </button>
           {/* A "both" card: Shubhora is one small icon here (owner's call, 2 Oct 2026); it opens the owner's Shubhora page. */}
-          {card.kb === "both" && active !== SHUBHORA_PAGE_SLUG && (
+          {hasShubhoraPage(card) && active !== SHUBHORA_PAGE_SLUG && (
             <a href={hrefFor(SHUBHORA_PAGE_SLUG)} onClick={(e) => { e.preventDefault(); go(SHUBHORA_PAGE_SLUG); }} title="Shubhora" className={`shrink-0 rounded-lg ${FOCUS}`}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/art/brand/shubhora-logo.png" alt="Shubhora" className="h-7 w-7 rounded-md border border-border bg-white object-contain p-0.5" />
