@@ -68,7 +68,13 @@ export async function POST(request: Request) {
   const b = obj(await request.json().catch(() => null));
 
   /* ---- inputs ---- */
-  const inputs = await loadCardInputs(me);
+  const inputs0 = await loadCardInputs(me);
+  // "Both" (owner's call, 2 Oct 2026): Shubhora is presented only by the small icon / strip and its own hidden page.
+  // Shubhora's plans, saved as products by an earlier "Sell Shubhora" choice, never go on a business's own card
+  // (a Shubhora partner's own card — the business IS Shubhora — keeps them).
+  const shubhoraBiz = /shubhora/i.test(`${inputs0.setup.business} ${inputs0.setup.person}`);
+  const isShubhoraProduct = (p: { name?: string | null; brand?: string | null }) => /shubhora/i.test(`${p.name ?? ""} ${p.brand ?? ""}`);
+  const inputs = shubhoraBiz ? inputs0 : { ...inputs0, ownRows: inputs0.ownRows.filter((r) => !isShubhoraProduct(r)) };
   let setup = inputs.setup;
   const sent = b.facts && typeof b.facts === "object" && !Array.isArray(b.facts) ? b.facts : b;
   // Only the owner's own uploads may be the shop banner or work photos (never a picture hot-linked from another site).
@@ -78,6 +84,7 @@ export async function POST(request: Request) {
   const seen = new Set<string>();
   const rows: Row[] = [];
   for (const x of (Array.isArray(b.products) ? b.products : []).slice(0, 6)) {
+    if (!shubhoraBiz && x && typeof x === "object" && isShubhoraProduct(x as { name?: string; brand?: string })) continue;
     const o = obj(x);
     const name = S(o.name, 60);
     if (!name || seen.has(name.toLowerCase())) continue;
@@ -104,7 +111,8 @@ export async function POST(request: Request) {
   // The seller template leaves https://shubhora.com in the account's business.website; a business set up after
   // it must never have OUR site own-imported and come out named "Shubhora".
   const ownUrl = isShubhoraHost(setup.website) ? "" : setup.website;
-  const website = role === "reference" ? ownUrl : facts.website || ownUrl;
+  // …and the card facts' website too: https://shubhora.com there (the seller set-up leaves it) is never own-imported.
+  const website = role === "reference" ? ownUrl : (isShubhoraHost(facts.website) ? "" : facts.website) || ownUrl;
   const refT0 = Date.now();
   const referenceP = role === "reference" && facts.website
     ? within(readReference(facts.website, { look: true }).catch(() => null), 90_000).then((r) => {

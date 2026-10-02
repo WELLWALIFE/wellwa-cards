@@ -12,7 +12,7 @@
 // they are actually talking to about Shubhora.
 
 import { getTemplate } from "@/lib/templates";
-import type { Card, CardPage } from "@/lib/types";
+import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { ownNotes, ownPersona } from "../../bridge/shubhora-kb.mjs";
 
 /** The slug the Shubhora side lives on: /c/<user>/shubhora. */
@@ -115,4 +115,25 @@ export function toBothFromShubhora(card: Card, own?: { photo?: string | null }):
     links: card.links.filter((l) => !tplLinks.has(l.value)),
     pages: page ? [home, page] : [home],
   };
+}
+
+/** Shubhora's own material that reached a "both" card's OWN pages (built before 2 Oct 2026, when the build still took
+ *  the Shubhora plans as the owner's products and shubhora.com as their website): the plan products, the Shubhora
+ *  demo videos / PDFs and the "Register free" call. Taken off the visible pages at render time; the hidden Shubhora
+ *  page keeps all of it. Rebuilding the card makes this a no-op. */
+export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): T {
+  const ours = (s: unknown) => /shubhora/i.test(String(s ?? "")) || /\/api\/stock\/vcard\//i.test(String(s ?? ""));
+  const pages = card.pages.map((p) => {
+    if (p.hidden || p.slug === SHUBHORA_PAGE_SLUG) return p;
+    const blocks = p.blocks.flatMap((b): CardBlock[] => {
+      if (b.kind === "product") { const items = b.items.filter((i) => !ours(i.name) && !ours(i.imageUrl) && !(i.images ?? []).some(ours)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "showcase") { const items = b.items.filter((i) => !ours(i.label) && !ours(i.imageUrl) && !ours(i.url)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "video" && (ours(b.url) || ours(b.title))) return [];
+      if (b.kind === "pdf" && (ours(b.fileUrl) || ours(b.title))) return [];
+      if (b.kind === "cta" && (ours(b.title) || ours(b.body) || /signup|join/i.test(b.joinUrl))) return [];
+      return [b];
+    });
+    return { ...p, blocks };
+  });
+  return { ...card, pages };
 }
