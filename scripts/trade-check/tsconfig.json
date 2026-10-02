@@ -1,0 +1,28 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "module": "commonjs",
+    "moduleResolution": "node",
+    "outDir": "./out",
+    "rootDir": "../..",
+    "incremental": false,
+    "declaration": false,
+    "plugins": [],
+    "noEmitOnError": false,
+    "isolatedModules": false,
+    "baseUrl": "../..",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ]
+    }
+  },
+  "include": [
+    "./trades.ts",
+    "../../src/lib/**/*.ts"
+  ],
+  "exclude": [
+    "../../node_modules"
+  ]
+}

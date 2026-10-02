@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "wa": "node bridge/manager.mjs",
+    "check:trades": "tsc -p scripts/trade-check/tsconfig.json; node scripts/trade-check/run.cjs",
     "postinstall": "node scripts/patch-sharp.js"
   },
   "dependencies": {

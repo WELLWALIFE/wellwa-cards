@@ -52,8 +52,11 @@ function defaultSections(card: Card, pages: CardPage[]): HomeSection[] {
   const home = pages.find((p) => p.slug === "home") ?? pages[0];
   const own: HomeSection[] = (home?.blocks ?? []).filter((b) => !isEmptyBlock(b)).map((b) => ({ key: b.id, kind: "block", block: b }));
   const out = [...own];
+  // The "cta" anchor is the closing call-to-action at the end of the page, never a "See all products" link that
+  // sits right under the catalogue — anchoring on that one put the FAQ and the reviews above everything else.
+  const inPageLink = (b: CardBlock) => b.kind === "cta" && (b.joinUrl ?? "").startsWith("#");
   const insertBefore = (kinds: CardBlock["kind"][], s: HomeSection) => {
-    const at = out.findIndex((x) => x.kind === "block" && kinds.includes(x.block.kind));
+    const at = out.findIndex((x) => x.kind === "block" && kinds.includes(x.block.kind) && !inPageLink(x.block));
     out.splice(at < 0 ? out.length : at, 0, s);
   };
 

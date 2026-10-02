@@ -501,7 +501,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
           : [];
       case "whyUs": return promise.length >= 3 ? [{ id: uid(), kind: "highlights", title: t.promise, items: promise.map((x) => (/^\p{Extended_Pictographic}/u.test(x) ? x : `✅ ${x}`)) }] : [];
       case "steps": return steps.length >= 3 ? [{ id: uid(), kind: "services", title: t.steps, items: steps.map((st, i) => ({ name: `${i + 1}. ${st.name}`, desc: st.desc })) }] : [];
-      case "about": return [{ id: uid(), kind: "about", title: t.about, body: copy.about, ...(aboutImage ? { imageUrl: aboutImage } : {}) }];
+      // No about text at all (the AI did not answer and the owner wrote none): no empty box on the card.
+      case "about": return (copy.about || setup.about).trim() ? [{ id: uid(), kind: "about", title: t.about, body: copy.about || setup.about, ...(aboutImage ? { imageUrl: aboutImage } : {}) }] : [];
       case "offer": return offerText ? [{ id: uid(), kind: "offer", title: t.offer, text: offerText, code: "", expires: "" }] : [];
       case "booking": return booking ? [{ id: uid(), kind: "appointment", title: t.booking, url: "", note: facts.hours }] : [];
       case "photos": return workPhotos.length === 2 ? [{ id: uid(), kind: "image", title: t.photos, images: [{ url: workPhotos[1] }] }] : [];
