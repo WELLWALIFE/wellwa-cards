@@ -10,6 +10,9 @@ const nextConfig: NextConfig = {
     ],
     // Replaced uploads keep their address (the slot number), so a resized copy must not outlive the upload for long.
     minimumCacheTTL: 60 * 60,
+    // Dev only: on a NAT64 network (a phone hotspot) the Supabase host resolves to 64:ff9b::/96, which the
+    // optimiser treats as a private address and refuses — every photo would vanish on the laptop. Never in production.
+    ...(process.env.NODE_ENV !== "production" ? { dangerouslyAllowLocalIP: true } : {}),
   },
   async redirects() {
     return [
