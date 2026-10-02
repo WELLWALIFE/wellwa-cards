@@ -177,6 +177,8 @@ export default function BuildCard() {
   /** "Check your details" — the company / product answers, folded; a "Make it better" chip opens it. */
   const reviewRef = useRef<HTMLDetailsElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
+  /** The preview tabs: the finished flow scrolls here when moving from the website to the card. */
+  const previewRef = useRef<HTMLDivElement>(null);
   const autoRef = useRef(false);
   /** The running build, so "Take me back" (and the 160 s guard) can stop a request that never answers. */
   const jobRef = useRef<{ ctrl: AbortController; cancelled: boolean } | null>(null);
@@ -510,6 +512,8 @@ export default function BuildCard() {
       if (me) { dropKey(draftKey(me)); dropKey(formKey(me)); }
       setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
       setLiveUser(r.username || out.username);
+      // The finished flow (owner's call, 2 Oct 2026): the website first, then the card, then OK → home.
+      setTab("site");
       try {
         const cards = await fetchMyCardsStrict();
         const row = cards.find((c) => c.username === (r.username || out.username));
@@ -568,7 +572,11 @@ export default function BuildCard() {
         const row = cards.find((c) => c.username === r.username);
         if (row) await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
       } catch { /* the card is live; the primary mark can wait */ }
-      router.push("/poster/website?published=1");
+      // The same finished flow as an automatic build: website first, then the card, then OK → home.
+      setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
+      setLiveUser(r.username || out.username);
+      setTab("site");
+      try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
@@ -640,11 +648,11 @@ export default function BuildCard() {
     <div className="space-y-4 py-2">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold">{liveUser ? T("Your website is live", "आपकी website live है") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
+        <h1 className="text-lg font-bold">{liveUser ? T("Your website and card are live", "आपकी website और card live हैं") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
       </div>
       {/* One clear line: live or not. */}
       {liveUser ? (
-        <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Your card is live", "आपका card live है")}</b><span className="block text-xs text-muted">{T("Send it on WhatsApp. Want to change something? Tap Edit.", "WhatsApp पर भेज दें। कुछ बदलना है? Edit दबाएँ।")}</span></p></div>
+        <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Website live · Card live", "Website live · Card live")}</b><span className="block text-xs text-muted">{T("One link does both: it opens as your website on a computer and as your card on a phone. See the website first, then the card, then tap OK.", "एक ही link दोनों काम करता है: computer पर website खुलती है, phone पर card। पहले website देखें, फिर card, फिर OK दबाएँ।")}</span></p></div>
       ) : busy !== "publish" && (
         <div className="flex items-center gap-3 rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm"><CircleDashed className="h-6 w-6 shrink-0 text-amber" /><p><b>{T("Not published yet", "अभी publish नहीं हुआ")}</b><span className="block text-xs text-muted">{existing ? T("Your current card stays as it is until you tap Save.", "Save दबाने तक आपका पुराना card वैसा ही रहेगा।") : T("Tap Save to make your card live.", "Save दबाएँ, card live हो जाएगा।")}</span></p></div>
       )}
@@ -711,8 +719,11 @@ export default function BuildCard() {
         </div>
       )}
 
-      <div className="grid grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
-        {([["phone", "Phone", Smartphone], ["site", "Website", Globe]] as const).map(([k, l, I]) => (
+      <div ref={previewRef} className="grid scroll-mt-20 grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
+        {(liveUser
+          ? ([["site", T("1. Website", "1. Website"), Globe], ["phone", T("2. Card", "2. Card"), Smartphone]] as const)
+          : ([["phone", T("Phone", "Phone"), Smartphone], ["site", T("Website", "Website"), Globe]] as const)
+        ).map(([k, l, I]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-surface shadow-sm" : "text-muted"}`}>
             <I className="h-4 w-4" /> {l}
           </button>
@@ -728,18 +739,28 @@ export default function BuildCard() {
           <div ref={frameRef} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
             <iframe title="Website preview" src="/preview/site" style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
           </div>
-          <p className="mt-1.5 text-center text-xs text-muted">{T("This is how your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।")}</p>
+          <p className="mt-1.5 text-center text-xs text-muted">{T("This is how your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।")}{liveUser && <> <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="font-semibold text-brand-ink underline">{T("Open the live website", "Live website खोलें")}</a></>}</p>
         </div>
       )}
 
       {err && <p className="text-sm text-danger">{err}</p>}
       <div className="sticky bottom-20 z-20 space-y-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
         {liveUser && username === liveUser ? (
-          <div className="grid grid-cols-2 gap-2">
-            <a href={`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital visiting card है — contact, products और बाकी सब एक tap में: ${SITE_URL}/c/${username}` : `Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">{T("Share on WhatsApp", "WhatsApp पर share करें")}</a>
-            <button type="button" onClick={() => router.push("/poster/website?published=1")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done", "हो गया")}</button>
-          </div>
+          tab === "site" ? (
+            /* Step 1 of the finished flow: the website is on screen; next comes the card. */
+            <div className="grid grid-cols-2 gap-2">
+              <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-base font-semibold"><Globe className="h-5 w-5" /> {T("Open website", "Website खोलें")}</a>
+              <button type="button" onClick={() => { setTab("phone"); try { previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("Next: your card →", "आगे: आपका card →")}</button>
+            </div>
+          ) : (
+            /* Step 2: the card is on screen; share it, or OK → home. */
+            <div className="grid grid-cols-2 gap-2">
+              <a href={`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital visiting card है — contact, products और बाकी सब एक tap में: ${SITE_URL}/c/${username}` : `Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">{T("Share on WhatsApp", "WhatsApp पर share करें")}</a>
+              <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("OK", "OK")}</button>
+            </div>
+          )
         ) : (
           <button type="button" onClick={publish} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save", "Save करें")}
