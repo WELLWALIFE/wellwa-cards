@@ -311,11 +311,15 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const recipe = recipeFor(setup.category);
   const trade = tradeDataFor(setup.category);
   const t = titlesFor(lang, copy.titles, booking);
-  if (!copy.titles?.products && recipe.catalog !== "products") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; }
+  // A professional's catalogue word is "services" — that is the services page's name, never the products page's.
+  if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; }
   // A school's list is "Courses", a clinic's "Treatments", a gym's "Plans" — not "Our services". When the trade
   // has no products, that list IS the catalogue and wears the catalogue's name.
   const catalogIsServices = recipe.catalog !== "products" && recipe.catalog !== "menu";
-  if (catalogIsServices && recipe.catalog !== "services" && !copy.titles?.services) {
+  // With products on the card the products page already wears that name; a second "Treatments" page beside it
+  // read as a mistake in the menu, so the services list then stays "Services".
+  const hasProducts = input.products.length > 0 && setup.role !== "personal";
+  if (catalogIsServices && !hasProducts && recipe.catalog !== "services" && !copy.titles?.services) {
     t.services = catalogLabel(recipe.catalog, lang);
     t.servicesPage = t.services;
     t.seeAllServices = lang === "hi" ? `सभी ${t.services}` : `See all ${t.services.toLowerCase()}`;

@@ -168,8 +168,16 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const logo = card.site?.logoUrl;                  // website logo (desktop settings); falls back to the card avatar
   const L = useCardLang(card.username);
   const t = L.t;
-  const pills = heroPills(card);
   const facts = trustFacts(card);
+  // A fact the trust strip already states ("Since 2015", "4.7★ · 3 reviews") is not repeated as a pill above it.
+  const factText = facts.map((f) => `${f.value} ${f.label}`.toLowerCase()).join(" ");
+  const pills = heroPills(card).filter((p) => {
+    const txt = splitGlyph(p).text.toLowerCase();
+    const year = /\b(?:19|20)\d{2}\b/.exec(txt)?.[0];
+    if (year && factText.includes(year)) return false;
+    if (/review|रिव्यू|★/.test(txt) && factText.includes("★")) return false;
+    return true;
+  });
   // The owner's own shop banner gets a lighter overlay so the shop stays visible.
   // Only on cards from the new V-Card flow (they carry `lead`): older live
   // cards keep today's overlay, which their text-heavy banners were designed under.

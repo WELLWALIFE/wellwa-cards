@@ -15,7 +15,8 @@ import { NextResponse } from "next/server";
 import { bannerKeys } from "@/lib/banners-server";
 import { rateLimited } from "@/lib/api-security";
 import { restAsService, userFromRequest, stockEngineMod, posterQuota } from "@/lib/poster-server";
-import { writeCard, type CardBrief, type CardCopy } from "@/lib/card-ai";
+import { writeCard, fillThinText, type CardBrief, type CardCopy } from "@/lib/card-ai";
+import { textAudit, applyThinText } from "@/lib/card-text";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
 import { referenceImages } from "@/lib/media/ai-image";
@@ -399,9 +400,26 @@ export async function POST(request: Request) {
     missing = [{ key: "ownPhotos" as const, label: "📷 Replace the stock photos with yours" }, ...missing].slice(0, 6);
   }
   if (audited.fixed.length) console.log("[card] audit", JSON.stringify(audited.fixed));
+  // The text manager (card-text.ts): every section held to what a finished website needs. The trade's seeds fill
+  // what they can; the spots only writing can fix go to ONE short AI ask; what that leaves gets a plain line
+  // from the facts — the card never goes out thin.
+  const tctx = { trade: tdata, lang: facts.lang, business: brief.business, tradeLabel: brief.category, city: setup.city, ...(facts.since ? { since: facts.since } : {}) };
+  let tx = textAudit(built, tctx);
+  built = tx.card;
+  if (tx.thin.length) {
+    let answers: Record<string, string> = {};
+    try { answers = await fillThinText(brief, tx.thin); } catch (e) { console.log("[card] text fill skipped:", e instanceof Error ? e.message : e); }
+    built = applyThinText(built, answers, tx.thin, tctx);
+    const again = textAudit(built, tctx);
+    built = again.card;
+    tx = { card: built, filled: [...tx.filled, ...again.filled, ...Object.keys(answers).map((k) => `written: ${k}`)], thin: again.thin };
+  }
+  if (tx.filled.length) console.log("[card] text", JSON.stringify(tx.filled));
+  if (tx.thin.length) console.log("[card] text still thin", JSON.stringify(tx.thin.map((t) => t.id)));
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
     ...(audited.standIns.length ? { standIns: audited.standIns } : {}),
+    ...(tx.filled.length || tx.thin.length ? { text: { filled: tx.filled, thin: tx.thin.map((t) => t.where) } } : {}),
     ...(website ? { siteRead: !!site } : role === "reference" && facts.website ? { siteRead: !!reference } : {}),
     // What the site actually yielded, so the builder can say so instead of leaving the owner wondering why
     // their products did not come across.

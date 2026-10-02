@@ -11,6 +11,7 @@ import type { TemplateCard } from "@/lib/templates";
 import { TITLE_KEYS, fallbackTitles, titlesFor, type TitleKey } from "@/lib/card-compose";
 
 export type { TitleKey } from "@/lib/card-compose";
+import type { ThinSpot } from "@/lib/card-text";
 
 export type CardBrief = {
   business: string;      // business / brand name
@@ -276,6 +277,35 @@ Trade: ${brief.category}
 City: ${brief.city || "(not given)"}
 Facts:
 ${brief.details.slice(0, 5000)}`;
+}
+
+/** One short ask for exactly the spots the text manager found thin on the BUILT card (card-text.ts): a line under
+ *  a service, an answer to a question, a product's line, the about text. id → text; a spot the AI skips is
+ *  simply absent, and the caller fills it plainly. Light model, bounded; throws only on a dead connection. */
+export async function fillThinText(brief: CardBrief, thin: ThinSpot[]): Promise<Record<string, string>> {
+  const key = process.env.GEMINI_API_KEY;
+  if (!key || !thin.length) return {};
+  const lang = brief.lang && LANG[brief.lang] ? brief.lang : "en";
+  const list = thin.slice(0, 18).map((t) => `"${t.id}": ${t.want}${t.have ? ` (now: "${t.have.replace(/\s+/g, " ").slice(0, 160)}")` : ""}`).join("\n");
+  const text = `You finish the words of a small Indian business's website. Write in ${LANG[lang]}. Use ONLY the facts below; never invent numbers, years, prices, awards or claims. No filler ("best quality", "one-stop solution", "customer satisfaction", "wide range", "top-notch"). Be specific to THIS business. Return ONLY a JSON object whose keys are exactly these ids and whose values are the text asked for:
+${list}
+
+Business: ${brief.business}${brief.person ? ` (owner ${brief.person})` : ""}
+Trade: ${brief.category}
+City: ${brief.city || "(not given)"}
+Products: ${(brief.products ?? []).slice(0, 12).join(", ") || "(none)"}
+Facts:
+${brief.details.slice(0, 5000)}`;
+  const raw = await ask(key, text, 35_000, MODELS[MODELS.length - 1]);
+  const { keep } = numberCheck(briefFacts(brief));
+  const out: Record<string, string> = {};
+  for (const t of thin) {
+    const v = raw[t.id];
+    if (typeof v !== "string") continue;
+    const k = keep(S(v, t.id === "about" ? 1400 : 360));
+    if (k) out[t.id] = k;
+  }
+  return out;
 }
 
 /** The card's words from the facts. One call; a short second one only for the text it left thin; then it throws. */
