@@ -123,12 +123,22 @@ export function toBothFromShubhora(card: Card, own?: { photo?: string | null }):
  *  page keeps all of it. Rebuilding the card makes this a no-op. */
 export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): T {
   const ours = (s: unknown) => /shubhora/i.test(String(s ?? "")) || /\/api\/stock\/vcard\//i.test(String(s ?? ""));
+  // The three plans as the build renamed and re-hosted them ("Growth plan ₹2,999 a month", "Free for 1 year", "Custom
+  // solutions — on request", their pictures copied into the owner's bucket): what they offer plus what they cost.
+  const planText = (i: { name?: string; desc?: string; badge?: string; price?: string; mrp?: string; features?: string[] }) =>
+    [i.name, i.desc, i.badge, i.price, i.mrp, ...(i.features ?? [])].map((x) => String(x ?? "")).join(" | ");
+  const isPlan = (i: { name?: string; desc?: string; badge?: string; price?: string; mrp?: string; features?: string[] }) => {
+    const t = planText(i);
+    const offers = /\b(v-?card|digital (visiting |business )?card|daily poster|status video|ai assistant|whatsapp ai|account manager|custom software|auto-?post)/i.test(t);
+    const costs = /2,?999|free for 1 year|worth ₹?1,?499|on request|any software|growth plan|custom solutions|free digital/i.test(t);
+    return offers && costs;
+  };
   const pages = card.pages.map((p) => {
     // The Shubhora page itself stays off the tab row: the small icon and the strip are its only doors (owner's call).
     if (p.slug === SHUBHORA_PAGE_SLUG) return p.hidden ? p : { ...p, hidden: true };
     if (p.hidden) return p;
     const blocks = p.blocks.flatMap((b): CardBlock[] => {
-      if (b.kind === "product") { const items = b.items.filter((i) => !ours(i.name) && !ours(i.imageUrl) && !(i.images ?? []).some(ours)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "product") { const items = b.items.filter((i) => !ours(i.name) && !ours(i.imageUrl) && !(i.images ?? []).some(ours) && !isPlan(i)); return items.length ? [{ ...b, items }] : []; }
       if (b.kind === "showcase") { const items = b.items.filter((i) => !ours(i.label) && !ours(i.imageUrl) && !ours(i.url)); return items.length ? [{ ...b, items }] : []; }
       if (b.kind === "video" && (ours(b.url) || ours(b.title))) return [];
       if (b.kind === "pdf" && (ours(b.fileUrl) || ours(b.title))) return [];
