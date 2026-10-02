@@ -208,14 +208,20 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     ? { count: ratings.length, avg: ratings.reduce((a, b) => a + b, 0) / ratings.length }
     : { count: reviews.length, avg: reviews.length ? reviews.reduce((a, r) => a + r.rating, 0) / reviews.length : 0 };
 
+  // Shubhora's plans (saved as products by "Sell Shubhora", or reaching a brand-team member through the brand
+  // fallback) are never a business's own products: a "Both" card is the owner's business with Shubhora on the
+  // bottom strip only (owner's call, 2 Oct 2026). A partner whose business IS Shubhora keeps them.
+  const shubhoraBiz = /shubhora/i.test(`${setup.business} ${setup.person}`);
+  const ours = (p: { name?: string | null; brand?: string | null }) => /shubhora/i.test(`${p.name ?? ""} ${p.brand ?? ""}`);
+  const products = shubhoraBiz ? prods.products : prods.products.filter((p) => !ours(p));
   return {
     setup,
     profileId: profile?.id ?? null,
     facts: normalizeFacts(profile?.card_facts ?? {}),
-    products: prods.products,
-    brandProducts: prods.brandProducts,
+    products,
+    brandProducts: prods.brandProducts && products.length > 0,
     reviews,
     reviewStats,
-    ownRows: prods.rows,
+    ownRows: shubhoraBiz ? prods.rows : prods.rows.filter((r) => !ours(r)),
   };
 }

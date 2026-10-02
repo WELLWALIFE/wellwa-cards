@@ -7,7 +7,8 @@ import { SiteView } from "@/components/site-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
-import { hasShubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 
 const KEY = "vcard-preview";
 /** The website editor (/poster/website/edit) previews under its own key, passed as ?k=, so it never
@@ -63,8 +64,8 @@ function PreviewInner() {
 
   if (card === undefined) return null;
   if (!card) return <div className="flex-1 grid min-h-screen place-items-center text-center text-muted">Nothing to preview</div>;
-  // The same cleanup the live site applies: a "both" card keeps Shubhora on its hidden page only.
-  const shown = hasShubhoraPage(card) ? withoutShubhoraLeaks(card) : card;
+  // The same cleanup the live site applies: an own-business card shows Shubhora on the bottom strip only.
+  const shown = isShubhoraCard(card) ? card : withoutShubhoraLeaks(card);
   // The key re-mounts the renderer when a new card arrives, so its page and language state start fresh.
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
   return (

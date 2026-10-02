@@ -18,7 +18,6 @@ import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
-import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
@@ -312,13 +311,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               : <span className="h-10 w-10 shrink-0 rounded-full inline-block" style={{ background: "var(--grad)" }} />}
             <span className="font-semibold text-[17px] truncate">{t(card.company || card.name)}</span>
           </button>
-          {/* A "both" card: Shubhora is one small icon here (owner's call, 2 Oct 2026); it opens the owner's Shubhora page. */}
-          {hasShubhoraPage(card) && active !== SHUBHORA_PAGE_SLUG && (
-            <a href={hrefFor(SHUBHORA_PAGE_SLUG)} onClick={(e) => { e.preventDefault(); go(SHUBHORA_PAGE_SLUG); }} title="Shubhora" className={`shrink-0 rounded-lg ${FOCUS}`}>
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/art/brand/shubhora-logo.png" alt="Shubhora" className="h-7 w-7 rounded-md border border-border bg-white object-contain p-0.5" />
-            </a>
-          )}
+          {/* A "both" card is the owner's own website: Shubhora is on the bottom strip only (owner's call, 2 Oct 2026). */}
           <nav className="hidden md:flex items-center gap-x-0.5 ml-auto h-full" aria-label="Pages">
             {navMain.map((p) => (
               <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} aria-current={active === p.slug ? "page" : undefined} className={`relative h-[68px] whitespace-nowrap px-3 text-[14px] font-medium inline-flex items-center transition-colors ${FOCUS} focus-visible:ring-inset ${active === p.slug ? "text-ink" : "text-muted hover:text-ink"}`}>

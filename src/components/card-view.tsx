@@ -20,7 +20,6 @@ import { Pic, picUrl } from "@/components/pic";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
-import { SHUBHORA_PAGE_SLUG, hasShubhoraPage } from "@/lib/shubhora-page";
 import { trackView, trackClick } from "@/lib/track";
 import { localLine, pageHref } from "@/lib/seo";
 
@@ -495,13 +494,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
             </div>
           </div>
           {localLine(card) && <p className="mt-3 text-center text-xs text-muted">{localLine(card)}</p>}
-          {/* A "both" card: Shubhora is one small icon here (owner's call, 2 Oct 2026); it opens the owner's Shubhora page. */}
-          {hasShubhoraPage(card) && active !== SHUBHORA_PAGE_SLUG && (
-            <a href={linkBase === undefined ? `/c/${card.username}/${SHUBHORA_PAGE_SLUG}` : hrefFor(SHUBHORA_PAGE_SLUG)} className="mt-3 inline-flex items-center gap-1.5 text-xs text-muted">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/art/brand/shubhora-logo.png" alt="" className="h-5 w-5 rounded-md border border-border bg-white object-contain p-0.5" /> Shubhora partner
-            </a>
-          )}
+          {/* A "both" card is the owner's own card: Shubhora is on the bottom strip only (owner's call, 2 Oct 2026). */}
           {card.gstin?.trim() && <p className={`${localLine(card) ? "mt-1" : "mt-3"} text-center text-xs text-muted mono`}>GSTIN {card.gstin.trim()}</p>}
         </div>
       </div>

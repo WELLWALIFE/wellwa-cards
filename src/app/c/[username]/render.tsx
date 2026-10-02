@@ -97,8 +97,11 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });
-  // A "both" card keeps Shubhora on its own hidden page only (owner's call, 2 Oct 2026).
-  const card: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : withoutShubhoraLeaks(stored);
+  // Every card that is the owner's own business ("both" included) shows Shubhora on the bottom strip only; the
+  // cleanup takes any Shubhora material off its visible pages (owner's call, 2 Oct 2026). A partner's card whose
+  // whole business IS Shubhora is left as it is.
+  const withPage: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : stored;
+  const card: Card = isShubhoraCard(stored) ? withPage : withoutShubhoraLeaks(withPage);
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
   if (await fetchCardPaused(card.username)) {
@@ -138,8 +141,11 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const nudge = !!joinHandle && isShubhoraCard(card);
   // The Shubhora strip: on every free card, and on a paid card whose owner also sells Shubhora ("Both" — the card
   // carries the Shubhora page). Never on a white-label partner's card.
-  const shubhora = joinHandle && !brand && (expired || hasShubhoraPage(stored))
-    ? { joinHref: `/signup?by=${encodeURIComponent(joinHandle)}`, moreHref: `${linkBase}/shubhora` }
+  // A "Both" card always carries it, with the owner's own handle when the partner link cannot be looked up.
+  const both = hasShubhoraPage(stored) && !isShubhoraCard(stored);
+  const by = joinHandle ?? (both ? card.username : null);
+  const shubhora = by && !brand && (expired || both)
+    ? { joinHref: `/signup?by=${encodeURIComponent(by)}`, moreHref: `${linkBase}/shubhora` }
     : null;
 
   const shareUrl = home;

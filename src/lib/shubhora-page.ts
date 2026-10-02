@@ -129,7 +129,7 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
     [i.name, i.desc, i.badge, i.price, i.mrp, ...(i.features ?? [])].map((x) => String(x ?? "")).join(" | ");
   const isPlan = (i: { name?: string; desc?: string; badge?: string; price?: string; mrp?: string; features?: string[] }) => {
     const t = planText(i);
-    const offers = /\b(v-?card|digital (visiting |business )?card|daily poster|status video|ai assistant|whatsapp ai|account manager|custom software|auto-?post)/i.test(t);
+    const offers = /\b(v-?card|digital (visiting |business )?card|daily poster|status video|ai assistant|whatsapp ai|account manager|custom software|any software|software (&|and) automation|auto-?post)/i.test(t);
     const costs = /2,?999|free for 1 year|worth ₹?1,?499|on request|any software|growth plan|custom solutions|free digital/i.test(t);
     return offers && costs;
   };
@@ -138,11 +138,14 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
     if (p.slug === SHUBHORA_PAGE_SLUG) return p.hidden ? p : { ...p, hidden: true };
     if (p.hidden) return p;
     const blocks = p.blocks.flatMap((b): CardBlock[] => {
-      if (b.kind === "product") { const items = b.items.filter((i) => !ours(i.name) && !ours(i.imageUrl) && !(i.images ?? []).some(ours) && !isPlan(i)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "product") { const items = b.items.filter((i) => !ours(planText(i)) && !ours(i.imageUrl) && !(i.images ?? []).some(ours) && !isPlan(i)); return items.length ? [{ ...b, items }] : []; }
       if (b.kind === "showcase") { const items = b.items.filter((i) => !ours(i.label) && !ours(i.imageUrl) && !ours(i.url)); return items.length ? [{ ...b, items }] : []; }
       if (b.kind === "video" && (ours(b.url) || ours(b.title))) return [];
       if (b.kind === "pdf" && (ours(b.fileUrl) || ours(b.title))) return [];
       if (b.kind === "cta" && (ours(b.title) || ours(b.body) || /signup|join/i.test(b.joinUrl))) return [];
+      if (b.kind === "gallery") { const images = b.images.filter((i) => !ours(i.url) && !ours(i.label)); return images.length ? [{ ...b, images }] : []; }
+      if (b.kind === "image" || b.kind === "carousel") { const images = b.images.filter((i) => !ours(i.url) && !ours(i.caption)); return images.length ? [{ ...b, images }] : []; }
+      if (b.kind === "faq") { const items = b.items.filter((i) => !ours(i.q) && !ours(i.a)); return items.length ? [{ ...b, items }] : []; }
       return [b];
     });
     return { ...p, blocks };
