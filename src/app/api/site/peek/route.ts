@@ -3,7 +3,7 @@
 // fills the business screen for them).
 //
 //   own    → { ok, url, name, logo, about, city, address, phone, products, category }
-//   dealer → { ok, url, name, products }             (the brand's name and how many products — nothing else)
+//   dealer → { ok, url, name, products, category, logo }   (no address / phone — those are the brand's)
 //   cannot be opened / opened but empty → { ok: false, reason: "unreadable" | "empty" }
 //
 // One home-page read, bounded (the full import of pictures and products happens later, in the build, where
@@ -59,9 +59,14 @@ export async function POST(request: Request) {
   if (peek.empty && !peek.name && !peek.about) return NextResponse.json({ ok: false, reason: "empty" }, { headers: { "Cache-Control": "no-store" } });
 
   if (role === "dealer") {
-    // The brand's name and how many of its products there are to import. Its logo, address and phone are the
-    // brand's, not the dealer's, and never reach the dealer's form.
-    return NextResponse.json({ ok: true, url: peek.url, name: peek.name, products: peek.products }, { headers: { "Cache-Control": "no-store" } });
+    // The brand's name, how many of its products there are to import, the trade it suggests (a Maruti dealer is an
+    // auto showroom) and the brand's logo — used on the dealer's card only when they upload none of their own
+    // (owner's call, 2 Oct 2026). The brand's address and phone are the brand's and never reach the dealer's form.
+    const [logo, category] = await Promise.all([
+      peek.logos.length ? within(copyLogo(me.id, peek.logos).catch(() => null), 20_000) : Promise.resolve(null),
+      guessCategory(`${peek.name} ${peek.title} ${peek.about}`),
+    ]);
+    return NextResponse.json({ ok: true, url: peek.url, name: peek.name, products: peek.products, category, logo: logo?.url ?? "" }, { headers: { "Cache-Control": "no-store" } });
   }
 
   const [logo, category] = await Promise.all([

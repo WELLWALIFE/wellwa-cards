@@ -86,7 +86,7 @@ function Onboard() {
   const [loadErr, setLoadErr] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
   // Step 1 "About you": name, mobile, WhatsApp (same as the mobile unless unticked), email, photo, city and address.
-  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true });
+  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true, city: "", address: "" });
   // The profile's detail answers (card facts): step 1 adds the designation / WhatsApp, step 2 the company details.
   // Loaded with the account, saved with "Save and continue" (the facts route needs the profile to exist first).
   const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
@@ -194,7 +194,7 @@ function Onboard() {
         api<FactsResponse>("/api/card/facts").catch(() => null),
         fetchMyCardsStrict().catch(() => []),
       ]);
-      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; whatsapp?: string };
+      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; whatsapp?: string; home_city?: string; home_address?: string };
       setUid(data.user?.id ?? "");
       // The website already on record: the card facts first (they know whose site it is), else the account's own
       // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
@@ -214,6 +214,7 @@ function Onboard() {
         name: meta.display_name || meta.full_name || (p?.persona !== "business" ? p?.name : "") || "",
         phone: phone0,
         photo: p?.photo_url ?? meta.photo_url ?? null,
+        city: (meta.home_city ?? "").slice(0, 60), address: (meta.home_address ?? "").slice(0, 200),
         whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10),
       });
       setBiz({ kind: p && p.persona !== "business" && !meta.business?.name ? "person" : "business", role: (meta.business?.role as Role) || (p && p.persona !== "business" && !meta.business?.name ? "professional" : "business"), ...meta.business, name: meta.business?.name || (p?.persona === "business" ? p.name : ""), category: meta.business?.category || p?.category || "", city: meta.business?.city || p?.city || "", logo: p?.logo_url ?? null });
@@ -292,6 +293,12 @@ function Onboard() {
     setErr("");
     const digits = you.phone.replace(/\D/g, "");
     if (you.name.trim().length < 2 || digits.length < 10) { setErr("Write your name and 10-digit mobile number."); return; }
+    // Step 1 of the profile (not the name / mobile edit): the residential city and address are required (owner's call).
+    if (!editing && !you.city.trim()) { setErr(T("Write your city.", "अपना शहर लिखें।")); return; }
+    if (!editing && you.address.trim().length < 6) { setErr(T("Write your residential address.", "अपना घर का पता लिखें।")); return; }
+    const home = { home_city: you.city.trim().slice(0, 60), home_address: you.address.trim().slice(0, 200) };
+    // The business city, still empty, starts as the home city (changed on the next step when the shop is elsewhere).
+    if (!editing && !(biz.city ?? "").trim() && home.home_city) setBiz((b) => ({ ...b, city: home.home_city }));
     if (profile || editing) {
       const phone = digits.slice(-10);
       let partnerMissed = false;
@@ -302,7 +309,7 @@ function Onboard() {
         // The WhatsApp number lives in the card facts (the profile exists, so the route takes it); the city and
         // address go on the account's business right away.
         if (profile) await api("/api/card/facts", { method: "PATCH", json: { facts: youFacts() } }).catch(() => undefined);
-        if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { business: bizMeta() } }).catch(() => undefined);
+        if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { ...home, business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city } } }).catch(() => undefined);
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
@@ -320,7 +327,7 @@ function Onboard() {
     try {
       getBrowserSupabase()?.auth.updateUser({ data: {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${digits.slice(-10)}`, photo_url: you.photo || "",
-        whatsapp: youFacts().whatsapp, business: bizMeta(),
+        whatsapp: youFacts().whatsapp, ...home, business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city },
       } }).catch(() => undefined);
     } catch { /* offline: the full save on the next screen writes it again */ }
     setStep("promote");
@@ -434,6 +441,35 @@ function Onboard() {
     });
   }
 
+  /** A brand's site fills what the dealer's form can take from it: the trade (a Maruti dealer is an auto showroom)
+   *  and, until the dealer uploads their own, the brand's logo (owner's call, 2 Oct 2026). Never the name / city. */
+  function prefillDealer(d: PeekData) {
+    setBiz((b) => {
+      const t = touched.current;
+      let n = { ...b };
+      if (!t.has("category") && !b.category && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
+      if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
+      return n;
+    });
+  }
+
+  /** "maruti car" instead of a link: the official website is looked up by name, then read like a pasted link. */
+  async function findByName(q: string): Promise<string> {
+    const r = await api<{ ok: boolean; url?: string; name?: string }>("/api/site/find", { method: "POST", json: { q } });
+    return r.ok && r.data.ok && r.data.url ? r.data.url : "";
+  }
+  const [finding, setFinding] = useState("");
+  async function resolveTyped(): Promise<string> {
+    const v = site.url.trim();
+    if (!v || looksLikeSite(cleanSiteUrl(v)) || socialDetour(v) || v.length < 2) return cleanSiteUrl(v);
+    setFinding(v);
+    try {
+      const url = await findByName(v);
+      if (url) { setSite((st) => ({ ...st, url })); return url; }
+      return "";
+    } finally { setFinding(""); }
+  }
+
   /** Reads the home page while the person is still on the form: ≤45 s, one page, never blocks anything. */
   async function startPeek(next?: SiteState) {
     const st = next ?? site;
@@ -459,6 +495,7 @@ function Onboard() {
       peekFor.current = { url, role, state: "found" };
       setPeek({ state: "found", url, role, data: r.data });
       if (role === "own") prefill(r.data);
+      else prefillDealer(r.data);
     } catch {
       if (seq === peekSeq.current) { peekFor.current = { url, role, state: "unreadable" }; setPeek({ state: "unreadable", url, role, data: null }); }
     } finally { clearTimeout(guard); }
@@ -490,11 +527,16 @@ function Onboard() {
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
   }
 
-  function nextFromWebsite() {
+  async function nextFromWebsite() {
     setSiteErr("");
     if (!site.kind) { setSiteErr(T("Pick one — do you have a website?", "पहले एक चुनें — website है या नहीं")); return; }
     if (site.kind === "none") { setStep("business"); return; }
-    const url = cleanSiteUrl(site.url);
+    let url = cleanSiteUrl(site.url);
+    if (site.url.trim() && !pendingSocial && !looksLikeSite(url)) {
+      const found = await resolveTyped();
+      if (found) url = found;
+      else { setSiteErr(T(`Could not find a website for "${site.url.trim()}" — paste the link, e.g. marutisuzuki.com`, `"${site.url.trim()}" की website नहीं मिली — link डालें, जैसे marutisuzuki.com`)); return; }
+    }
     if (!site.url.trim()) { setSiteErr(T("Write the website link, e.g. sharmasweets.com — or tap ❌ No website", "website का link लिखें, जैसे sharmasweets.com — नहीं है तो ❌ नहीं है दबाएँ")); return; }
     if (pendingSocial) { setSiteErr(T(`That is a ${pendingSocial.label} page, not a website — keep it as a ${pendingSocial.label} link, or change the link.`, `ये ${pendingSocial.label} page है, website नहीं — social link की तरह रखें, या link बदलें`)); return; }
     if (!url || !looksLikeSite(url)) { setSiteErr(T("That does not look like a website link. For example: sharmasweets.com", "ये website का link नहीं लगता। जैसे sharmasweets.com")); return; }
@@ -830,9 +872,10 @@ function Onboard() {
                   <div className="-mt-1 space-y-2.5 rounded-b-2xl border-2 border-t-0 border-brand/40 bg-surface px-3.5 pb-3.5 pt-4">
                     <label className="block text-sm font-semibold">
                       {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Company / brand की website का link") : T("That website's link", "उस website का link")}
-                      <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onBlur={() => startPeek()} inputMode="url" autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                        placeholder={c.k === "dealer" ? "e.g. havells.com" : "e.g. sharmasweets.com"} className={`${field} ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                      <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onBlur={async () => { const url = await resolveTyped(); if (url) void startPeek({ ...site, url }); }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                        placeholder={c.k === "dealer" ? T("e.g. havells.com — or just the brand name", "जैसे havells.com — या सिर्फ़ brand का नाम") : "e.g. sharmasweets.com"} className={`${field} ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
                     </label>
+                    {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
                     {pendingSocial ? (
                       <div className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
                         <p className="font-semibold"><TriangleAlert className="mr-1 inline h-4 w-4 text-amber" />{T(`That is a ${pendingSocial.label} page, not a website.`, `ये ${pendingSocial.label} page है, website नहीं।`)} {pendingSocial.key === "map" ? T("Keep it as your map pin?", "इसे map pin की तरह रखें?") : T(`Keep it as your ${pendingSocial.label} link?`, `इसे ${pendingSocial.label} link की तरह रखें?`)}</p>
@@ -900,8 +943,9 @@ function Onboard() {
           </label>
           <Photo url={you.photo} label="your photo" hint="a clear photo of your face — shown on your card and daily posters" round busy={busy === "photo"} onPick={(f) => choose(f, "photo")} />
           {!editing && (<>
-            <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")}<input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
-            <label className="block text-sm font-semibold">{T("Address", "पता")} <span className="font-normal text-muted">({T("optional — shop / office / home", "optional — दुकान / office / घर")})</span><input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
+            <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")}<input value={you.city} onChange={(e) => setYou({ ...you, city: e.target.value })} placeholder="e.g. Rewari" className={field} /></label>
+            <label className="block text-sm font-semibold">{T("Residential address", "घर का पता")}<input value={you.address} onChange={(e) => setYou({ ...you, address: e.target.value })} placeholder={T("House no., street, area, PIN", "मकान नं., गली, इलाका, PIN")} className={field} />
+              <span className="mt-1 block text-[11px] font-normal text-muted">{T("Your home address — the shop / office address comes on the company step.", "आपके घर का पता — दुकान / office का पता company step पर आएगा।")}</span></label>
           </>)}
           {username === null && <ClaimUsername onDone={loadUsername} />}
           {err && <p className="text-sm text-danger">{err}</p>}
@@ -1008,7 +1052,7 @@ function Onboard() {
           })()}
 
           {/* 3 — city */}
-          <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")} <span className="font-normal text-muted">({T("where you are based", "जहाँ आप हैं")})</span><input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
+          <label className="block text-sm font-semibold">{T("Business city", "Business का शहर")} <span className="font-normal text-muted">({T("where your shop / office is", "जहाँ दुकान / office है")})</span><input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
 
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
@@ -1026,7 +1070,9 @@ function Onboard() {
             </span>
           </div>
 
-          {(biz.role === "business" || !!(biz.name ?? "").trim()) && <Photo url={biz.logo} label={biz.role === "business" ? T("business logo", "business logo") : T("company / brand logo", "company / brand logo")} hint={biz.role === "business" ? T("shown on your card, website and posters", "card, website और posters पर दिखेगा") : T("shown next to your name", "आपके नाम के साथ दिखेगा")} busy={busy === "logo"} onPick={(f) => choose(f, "logo")} />}
+          {(biz.role === "business" || !!(biz.name ?? "").trim()) && <Photo url={biz.logo} label={biz.role === "business" ? T("your logo", "अपना logo") : T("company / brand logo", "company / brand logo")}
+            hint={site.kind === "dealer" ? T("upload your own logo if you have one — otherwise the brand's logo is used", "अपना logo हो तो upload करें — नहीं तो brand का logo लगेगा") : biz.role === "business" ? T("shown on your card, website and posters", "card, website और posters पर दिखेगा") : T("shown next to your name", "आपके नाम के साथ दिखेगा")} busy={busy === "logo"} onPick={(f) => choose(f, "logo")} />}
+          {site.kind === "dealer" && !biz.logo && !!peek.data?.logo && <p className="-mt-2 text-xs text-muted">{T(`Using ${peek.data?.name || "the brand"}'s logo for now.`, `अभी ${peek.data?.name || "brand"} का logo लगेगा।`)}</p>}
 
           {/* Everything else is optional — one tap away, never in the way. */}
           <details className="group rounded-2xl border border-border">

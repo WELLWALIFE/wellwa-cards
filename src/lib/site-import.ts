@@ -586,15 +586,16 @@ async function pool<T, R>(items: T[], n: number, fn: (x: T, i: number) => Promis
 export type StoredSite = { logo: string | null; cover: string | null; gallery: string[]; products: (SiteProduct & { stored: string[] })[] };
 
 /** Copies the logo, the best wide cover, up to 5 gallery photos and up to 2 photos per product into our bucket.
- *  A dealer's brand site gives the product photos only — the brand's logo and shop pictures are the brand's, not the
- *  dealer's, and a dealer's card must never look like the brand's own. */
+ *  A dealer's brand site (owner's call, 2 Oct 2026) gives its pictures too — a Maruti dealer's gallery shows Maruti
+ *  cars, showrooms and service, not stock photos of any garage — and its logo, used only when the dealer uploads
+ *  none of their own (the build decides that). The brand's address and phone never reach the dealer's card. */
 export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" | "dealer" = "own"): Promise<StoredSite> {
   let n = 0;
-  const own = role === "own";
+  void role;
   const [logo, coverCands, galleryCands, productPics] = await Promise.all([
-    own && (s.logos?.length || s.logo) ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
-    pool(own ? s.covers.slice(0, 4) : [], 3, (u) => copyImage(userId, u, "wide", n++, 700)),
-    pool(own ? s.gallery.slice(0, 8) : [], 3, (u) => copyImage(userId, u, "wide", n++, 500)),
+    s.logos?.length || s.logo ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
+    pool(s.covers.slice(0, 4), 3, (u) => copyImage(userId, u, "wide", n++, 700)),
+    pool(s.gallery.slice(0, 8), 3, (u) => copyImage(userId, u, "wide", n++, 500)),
     pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
   ]);
   // The cover must be a wide picture; a tall one joins the gallery instead.

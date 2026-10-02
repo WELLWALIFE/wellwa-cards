@@ -172,7 +172,7 @@ export async function POST(request: Request) {
     if (facts.photos.length < 5 && stored.gallery.length) facts = { ...facts, photos: [...facts.photos, ...stored.gallery.filter((u) => !facts.photos.includes(u))].slice(0, 5) };
     // The owner's OWN site's logo is the business's logo: it wins over the form's, and always over Shubhora's
     // own brand art left on the account by the seller template (seen live as a Shubhora feather in the header
-    // of a card rebuilt from wellwalife.com). A dealer's brand site never supplies the dealer's logo.
+    // of a card rebuilt from wellwalife.com). A dealer's brand logo is used only when the dealer has none of their own.
     const formLogoIsOurs = /\/art\/brand\/shubhora-/i.test(setup.logo ?? "");
     if (stored.logo && (importRole === "own" || !setup.logo || formLogoIsOurs)) setup = { ...setup, logo: stored.logo };
     else if (formLogoIsOurs) setup = { ...setup, logo: "" };
