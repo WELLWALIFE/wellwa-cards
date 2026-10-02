@@ -14,6 +14,7 @@ import {
 import { lookOf, lookCss, lookFontHref } from "@/lib/looks";
 import type { Card, CardBlock, CardImage, CardPage, CardTemplate } from "@/lib/types";
 import { LinkIcon, linkHref } from "@/components/link-icon";
+import { Pic, picUrl } from "@/components/pic";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { trackView, trackClick } from "@/lib/track";
@@ -350,7 +351,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     {/* The visitor popup never shows in the editor's preview (onEdit) — it covered the owner's own card while editing. */}
     {!onEdit && <WelcomePopup card={card} theme={theme} active={active} />}
     {/* The look: fonts + palette + corners for everything inside this card (see src/lib/looks.ts). */}
-    {fontHref && <link rel="stylesheet" href={fontHref} />}
+    {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
     <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) }} />
     <div className="mx-auto w-full max-w-md animate-rise" data-look={look.key} data-tone={look.tone}>
       <div className="rounded-none border-0 sm:rounded-[1.75rem] sm:border border-border bg-surface overflow-hidden shadow-float">
@@ -362,8 +363,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
                   enlarged copy of it fills the space around it, so there are no
                   flat colour bars and nothing gets cropped. */}
               {ownCover && !cfg.mobileAuto && (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={card.coverUrl} alt="" aria-hidden="true"
+                <Pic src={card.coverUrl} alt="" aria-hidden="true" eager sizes="(min-width: 640px) 448px, 100vw"
                   className="absolute inset-0 h-full w-full object-cover scale-110 blur-2xl opacity-60" />
               )}
               {/* object-contain: the banner you set is shown in full. With
@@ -372,10 +372,10 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
                   Curated template artwork under /art or /wellwa is already
                   framed for a banner, so it covers and fills the header at any
                   viewport width. */}
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
+              <Pic
                 src={card.coverUrl}
                 alt=""
+                priority sizes="(min-width: 640px) 448px, 100vw"
                 className={`${
                   cfg.mobileAuto
                     // Mobile: in-flow at natural aspect ratio — the whole banner,
@@ -400,8 +400,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
           )}
           {logoChip && (
             <span className="absolute top-3 left-3 z-10 rounded-xl bg-white p-1.5 shadow-card">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={logoChip} alt={card.company ? `${card.company} logo` : "Logo"} className="block h-10 w-auto max-w-[120px] object-contain" />
+              <Pic src={logoChip} alt={card.company ? `${card.company} logo` : "Logo"} className="block h-10 w-auto max-w-[120px] object-contain" eager w={120} />
             </span>
           )}
           <CardDayNight />
@@ -507,8 +506,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
         brand.hideBranding ? null : (
           <p className="mt-6 flex items-center justify-center gap-1.5 text-xs text-faint">
             {brand.logoUrl && (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={brand.logoUrl} alt="" className="h-4 w-auto opacity-80" />
+              <Pic src={brand.logoUrl} alt="" className="h-4 w-auto opacity-80" w={64} />
             )}
             <span className="mono">Powered by {brand.name}</span>
           </p>
@@ -594,8 +592,7 @@ function Avatar({ card }: { card: Card }) {
   const round = card.avatarShape === "square" ? "rounded-2xl" : "rounded-full";
   if (card.avatarUrl) {
     return (
-      // eslint-disable-next-line @next/next/no-img-element
-      <img src={card.avatarUrl} alt={card.name}
+      <Pic src={card.avatarUrl} alt={card.name} eager w={96}
         className={`look-avatar h-24 w-24 ${round} object-contain bg-surface ring-4 ring-surface shadow-card`} />
     );
   }
@@ -616,8 +613,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
           {block.imageUrl && (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={block.imageUrl} alt="" loading="lazy" decoding="async" className="w-full rounded-2xl mb-3 object-contain bg-surface2/50 max-h-56" />
+            <Pic src={block.imageUrl} alt="" sizes="(min-width: 640px) 448px, 100vw" className="w-full rounded-2xl mb-3 object-contain bg-surface2/50 max-h-56" />
           )}
           <div className="look-sec rounded-2xl bg-surface2 p-4 text-sm text-muted leading-relaxed whitespace-pre-line">{t(block.body)}</div>
         </section>
@@ -713,8 +709,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           <div className="grid grid-cols-3 gap-2">
             {block.images.map((img, i) =>
               img.url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img key={i} src={img.url} alt={img.label} loading="lazy" decoding="async" className="aspect-square w-full rounded-xl object-contain bg-surface2/50 shadow-card" />
+                <Pic key={i} src={img.url} alt={img.label} sizes="(min-width: 640px) 150px, 33vw" className="aspect-square w-full rounded-xl object-contain bg-surface2/50 shadow-card" />
               ) : (
                 <div key={i} className="aspect-square rounded-xl grid place-items-center text-white text-xs font-medium shadow-card"
                   style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}bb)` }}>
@@ -735,8 +730,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
               const inner = (
                 <>
                   <div className="aspect-[16/9] w-full overflow-hidden bg-surface2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {it.imageUrl && <img src={it.imageUrl} alt={it.label} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
+                    {it.imageUrl && <Pic src={it.imageUrl} alt={it.label} sizes="(min-width: 640px) 448px, 100vw" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
                   </div>
                   <div className="px-2.5 py-2">
                     <p className="truncate text-[12px] font-semibold leading-tight">{t(it.label)}</p>
@@ -760,8 +754,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           <div className="space-y-3">
             {block.images.map((img, i) => (
               <figure key={i} className="rounded-2xl overflow-hidden border border-border">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={img.url} alt={img.caption ?? ""} loading="lazy" decoding="async" className="w-full object-contain bg-surface2/50" />
+                <Pic src={img.url} alt={img.caption ?? ""} sizes="(min-width: 640px) 448px, 100vw" className="w-full object-contain bg-surface2/50" />
                 {img.caption && <figcaption className="p-2.5 text-xs text-muted">{t(img.caption)}</figcaption>}
               </figure>
             ))}
@@ -790,7 +783,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
               <iframe src={e.src} title={block.title} className={e.vertical ? "block mx-auto w-full max-w-[320px] aspect-[9/16] bg-black" : "w-full aspect-video"} allowFullScreen
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" />
             ) : e?.type === "video" ? (
-              <video src={e.src} poster={block.posterUrl} preload="metadata" controls className="w-full aspect-video bg-black object-cover" />
+              <video src={e.src} poster={block.posterUrl ? picUrl(block.posterUrl, 640) : undefined} preload="metadata" controls className="w-full aspect-video bg-black object-cover" />
             ) : (
               <div className="aspect-video grid place-items-center" style={{ background: `linear-gradient(135deg, ${theme}, ${theme}88)` }}>
                 <span className="h-14 w-14 rounded-full bg-white/90 grid place-items-center shadow-float">
@@ -817,7 +810,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
             className="w-full block rounded-xl border border-border overflow-hidden text-left hover:bg-surface2 transition-colors"
           >
             {block.posterUrl && (
-              <img src={block.posterUrl} alt={block.fileLabel} loading="lazy" decoding="async" className="w-full aspect-video object-cover" />
+              <Pic src={block.posterUrl} alt={block.fileLabel} sizes="(min-width: 640px) 448px, 100vw" className="w-full aspect-video object-cover" />
             )}
             <span className="flex items-center gap-3 p-3.5">
               <span className="h-10 w-10 rounded-lg grid place-items-center text-white shrink-0" style={{ background: theme }}>
@@ -1202,8 +1195,7 @@ function ProductCarousel({ images, theme }: { images: CardImage[]; theme: string
     <figure className="rounded-2xl overflow-hidden border border-border">
       <div className="relative">
         {/* Curated art fills the frame; the owner's own product photo is shown whole on white. */}
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={img.url} alt={img.caption ?? ""} loading="lazy" decoding="async"
+        <Pic src={img.url} alt={img.caption ?? ""} sizes="(min-width: 640px) 448px, 100vw"
           className={`w-full aspect-[4/5] ${isCuratedArt(img.url) ? "object-cover bg-surface2/50" : "object-contain bg-white"}`} />
         {images.length > 1 && (
           <>
@@ -1263,10 +1255,10 @@ export function ImageLightbox({
         <X className="h-6 w-6" />
       </button>
 
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
+      <Pic
         src={images[index]}
         alt={alt}
+        eager sizes="100vw"
         className="max-h-[80vh] max-w-full object-contain rounded-xl"
         onClick={(e) => e.stopPropagation()}
       />
@@ -1280,8 +1272,7 @@ export function ImageLightbox({
               className={`h-14 w-14 rounded-lg overflow-hidden border-2 bg-white/10 ${i === index ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
               aria-label={`Photo ${i + 1}`}
             >
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={g} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-0.5" />
+              <Pic src={g} alt="" w={56} className="h-full w-full object-contain p-0.5" />
             </button>
           ))}
         </div>
@@ -1338,8 +1329,7 @@ function ProductCard({
             className="block w-full bg-surface2/60 cursor-zoom-in"
             aria-label={`${p.name} — view full image`}
           >
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={main} alt={p.name} loading="lazy" decoding="async" className="w-full h-56 object-contain p-3" />
+            <Pic src={main} alt={p.name} sizes="(min-width: 640px) 448px, 100vw" className="w-full h-56 object-contain p-3" />
           </button>
           {p.badge && (
             <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
@@ -1355,8 +1345,7 @@ function ProductCard({
                   style={i === shot ? { borderColor: theme } : undefined}
                   aria-label={`Photo ${i + 1}`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={g} alt="" loading="lazy" decoding="async" className="h-full w-full object-contain p-0.5" />
+                  <Pic src={g} alt="" w={48} className="h-full w-full object-contain p-0.5" />
                 </button>
               ))}
             </div>

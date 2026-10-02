@@ -25,8 +25,7 @@ import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, trustFacts, type HomeSection } from "@/lib/site-home";
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
-// eslint-disable-next-line @next/next/no-img-element
-const Img = (p: { src: string; alt: string; className?: string; style?: React.CSSProperties; eager?: boolean }) => <img src={p.src} alt={p.alt} className={p.className} style={p.style} loading={p.eager ? "eager" : "lazy"} decoding="async" />;
+import { Pic as Img, picUrl } from "@/components/pic";
 
 /* ---- product photo normaliser ----
  * Cut-out product photos come with wildly different transparent margins (one
@@ -62,15 +61,16 @@ function useTrimmed(src?: string) {
         const url = o.toDataURL("image/png"); trimCache.set(src, url); if (alive) setOut(url);
       } catch { trimCache.set(src, src); }
     };
-    img.src = src;
+    // The margins are measured on a 640px copy from our own optimiser (same origin, ~10x smaller than the upload).
+    img.src = picUrl(src, 640);
     return () => { alive = false; };
   }, [src]);
   return out ?? src;
 }
 /** Product photo that fills its box consistently (see useTrimmed). */
-function FitImg({ src, alt, className, eager }: { src: string; alt: string; className?: string; eager?: boolean }) {
+function FitImg({ src, alt, className, eager, sizes, w }: { src: string; alt: string; className?: string; eager?: boolean; sizes?: string; w?: number }) {
   const s = useTrimmed(src);
-  return <Img src={s ?? src} alt={alt} className={className} eager={eager} />;
+  return <Img src={s ?? src} alt={alt} className={className} eager={eager} sizes={sizes} w={w} />;
 }
 
 const paras = (s?: string | null) => (s ?? "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
@@ -269,7 +269,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
   return (
     <TranslateCtx.Provider value={t}>
-    {fontHref && <link rel="stylesheet" href={fontHref} />}
+    {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
     <style dangerouslySetInnerHTML={{ __html: `.site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px} .site.js [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)} .site.js [data-reveal].in{opacity:1;transform:none} @media (prefers-reduced-motion: reduce){.site.js [data-reveal]{opacity:1;transform:none;transition:none}}` }} />
     <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
       {/* Lifted theme token: the raw brand colour as text fails contrast on dark
@@ -294,9 +294,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         <div className="mx-auto max-w-6xl px-6 h-[68px] flex items-center gap-6">
           <button type="button" onClick={() => go("home")} className={`flex items-center gap-3 shrink-0 max-w-[300px] rounded-lg ${FOCUS}`}>
             {logo
-              ? <Img src={logo} alt={card.company || card.name} className="h-10 max-w-[160px] w-auto shrink-0 object-contain" eager />
+              ? <Img src={logo} alt={card.company || card.name} className="h-10 max-w-[160px] w-auto shrink-0 object-contain" eager w={160} />
               : card.avatarUrl
-              ? <Img src={card.avatarUrl} alt="" className={`h-10 w-10 shrink-0 ${avatarCls}`} />
+              ? <Img src={card.avatarUrl} alt="" className={`h-10 w-10 shrink-0 ${avatarCls}`} eager w={40} />
               : <span className="h-10 w-10 shrink-0 rounded-full inline-block" style={{ background: "var(--grad)" }} />}
             <span className="font-semibold text-[17px] truncate">{t(card.company || card.name)}</span>
           </button>
@@ -346,7 +346,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             : { background: `radial-gradient(60% 80% at 85% 15%, color-mix(in srgb, var(--p-glow) 55%, transparent), transparent 62%), radial-gradient(50% 70% at 5% 95%, color-mix(in srgb, var(--p-mid) 65%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep) 0%, color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)) 100%)` }) }}>
             {layout === "photo" && card.coverUrl && (
               <>
-                <Img src={card.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" eager />
+                <Img src={card.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" priority sizes="100vw" />
                 <div className="absolute inset-0" style={{ background: lightHero
                   ? `linear-gradient(90deg, color-mix(in srgb, var(--p-deep) 84%, transparent) 0%, color-mix(in srgb, var(--p-deep) 55%, transparent) 45%, color-mix(in srgb, var(--p-deep) 18%, transparent) 100%)`
                   : `linear-gradient(90deg, color-mix(in srgb, var(--p-deep) 93%, transparent) 0%, color-mix(in srgb, var(--p-deep) 74%, transparent) 42%, color-mix(in srgb, var(--p-deep) 35%, transparent) 100%)` }} />
@@ -388,7 +388,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                 {/* A shop's header already carries its logo and name: no second owner chip. */}
                 {card.avatarUrl && card.name && card.name !== card.company && !card.site?.hideProfile && card.lead !== "business" && (
                   <div className={`mt-10 inline-flex items-center gap-3 border pl-1.5 pr-5 py-1.5 backdrop-blur ${card.avatarShape === "square" ? "rounded-2xl" : "rounded-full"}`} style={{ background: "color-mix(in srgb, currentColor 9%, transparent)", borderColor: "color-mix(in srgb, currentColor 20%, transparent)" }}>
-                    <Img src={card.avatarUrl} alt={card.name} className={`h-11 w-11 ${avatarCls}`} />
+                    <Img src={card.avatarUrl} alt={card.name} className={`h-11 w-11 ${avatarCls}`} eager w={44} />
                     <span className="leading-tight"><span className="block font-semibold text-[15px]">{card.name}</span>{card.jobTitle && <span className="block text-xs opacity-80">{t(card.jobTitle)}</span>}</span>
                   </div>
                 )}
@@ -399,7 +399,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                   <div className="relative grid grid-cols-2 gap-3">
                     {mosaic.map((u, i) => (
                       <div key={u} className={`overflow-hidden rounded-2xl bg-white/95 shadow-float ${i === 0 && mosaic.length === 3 ? "col-span-2 aspect-[2/1]" : "aspect-square"}`}>
-                        <Img src={u} alt="" className="h-full w-full object-cover" eager={i === 0} />
+                        <Img src={u} alt="" className="h-full w-full object-cover" eager priority={i === 0} sizes={i === 0 && mosaic.length === 3 ? "(min-width: 768px) 460px, 100vw" : "(min-width: 768px) 230px, 50vw"} />
                       </div>
                     ))}
                   </div>
@@ -409,20 +409,20 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                 <div className="relative justify-self-center md:justify-self-end animate-rise">
                   <div aria-hidden="true" className="absolute -inset-10 rounded-full blur-3xl opacity-60" style={{ background: "var(--grad)" }} />
                   <div className="relative h-[300px] w-[300px] md:h-[380px] md:w-[380px] overflow-hidden rounded-[2.5rem] border-4 border-white/80 shadow-float bg-white/90">
-                    <Img src={portrait} alt={card.name} className="h-full w-full object-cover" eager />
+                    <Img src={portrait} alt={card.name} className="h-full w-full object-cover" priority sizes="(min-width: 768px) 380px, 300px" />
                   </div>
                 </div>
               )}
               {heroImg && layout !== "stage" && layout !== "grid" && layout !== "person" && (
                 <div className="relative justify-self-center md:justify-self-end animate-rise">
                   <div aria-hidden="true" className="absolute -inset-8 rounded-[3rem] blur-3xl opacity-50" style={{ background: "var(--grad)" }} />
-                  <div className={`relative rounded-3xl p-3 shadow-float ${layout === "minimal" ? "bg-surface border border-border" : "bg-white/95"}`}><Img src={heroImg} alt={card.company || card.name} className="max-h-[400px] w-auto rounded-2xl object-contain" eager /></div>
+                  <div className={`relative rounded-3xl p-3 shadow-float ${layout === "minimal" ? "bg-surface border border-border" : "bg-white/95"}`}><Img src={heroImg} alt={card.company || card.name} className="max-h-[400px] w-auto rounded-2xl object-contain" priority sizes="(min-width: 768px) 45vw, 100vw" /></div>
                 </div>
               )}
               {heroImg && layout === "stage" && (
                 <div className="relative mt-12 flex justify-center animate-rise">
                   <div aria-hidden="true" className="absolute inset-x-[20%] bottom-0 h-[55%] rounded-[50%] blur-3xl opacity-60" style={{ background: "var(--grad)" }} />
-                  <Img src={heroImg} alt={card.company || card.name} className="relative max-h-[460px] w-auto object-contain drop-shadow-2xl" eager />
+                  <Img src={heroImg} alt={card.company || card.name} className="relative max-h-[460px] w-auto object-contain drop-shadow-2xl" priority sizes="(min-width: 768px) 60vw, 100vw" />
                 </div>
               )}
               {!heroImg && layout === "stage" && <div className="pb-20" />}
@@ -515,7 +515,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       <footer style={{ background: "var(--p-foot)", color: "var(--p-foot-ink)" }}>
         <div className="mx-auto max-w-6xl px-6 pt-14 pb-10 grid md:grid-cols-[1.3fr_1fr_1fr] gap-10 text-sm">
           <div>
-            {logo && <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" />}
+            {logo && <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" w={180} />}
             <p className="text-2xl tracking-tight" style={{ fontFamily: "var(--look-head)", fontWeight: "var(--head-w)" as unknown as number }}>{t(card.company || card.name)}</p>
             {card.jobTitle && <p className="mt-1 opacity-75">{t(card.jobTitle)}</p>}
             {card.tagline && <p className="mt-3 max-w-md opacity-75 leading-relaxed">{t(card.tagline)}</p>}
@@ -646,7 +646,7 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
           const d = new Date(`${u.date}T00:00:00+05:30`);
           return (
             <article key={u.url} className={`overflow-hidden rounded-3xl border border-border bg-surface ${CARD_HOVER}`}>
-              <button type="button" onClick={() => setZoom({ images: items.map((x) => x.url), i, alt: u.title })} className={`block w-full cursor-zoom-in ${FOCUS}`}><Img src={u.url} alt={u.title} className="aspect-[4/5] w-full object-cover" eager={i < 3} /></button>
+              <button type="button" onClick={() => setZoom({ images: items.map((x) => x.url), i, alt: u.title })} className={`block w-full cursor-zoom-in ${FOCUS}`}><Img src={u.url} alt={u.title} className="aspect-[4/5] w-full object-cover" eager={i < 3} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" /></button>
               <div className="p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted"><Newspaper className="mr-1 inline h-3.5 w-3.5" />{d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
                 <h3 className="mt-1 text-[16px] font-semibold">{t(u.title)}</h3>
@@ -928,7 +928,7 @@ function AboutBody({ block, hi }: { block: Extract<CardBlock, { kind: "about" }>
       {block.imageUrl && (
         <div className="relative">
           <div aria-hidden="true" className="absolute -left-4 -top-4 h-28 w-28 rounded-3xl opacity-60" style={{ background: "var(--grad)" }} />
-          <Img src={block.imageUrl} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl border border-border shadow-float" />
+          <Img src={block.imageUrl} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl border border-border shadow-float" sizes="(min-width: 768px) 45vw, 100vw" />
         </div>
       )}
       <div>
@@ -1002,7 +1002,7 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
       <div className="grid gap-3">
         <div className="aspect-square relative overflow-hidden rounded-3xl border border-border" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
           {gallery[0]
-            ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-8 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain" eager /></button>
+            ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-8 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain" eager sizes="(min-width: 768px) 50vw, 100vw" /></button>
             : <span aria-hidden="true" className="absolute inset-10 rounded-2xl grid place-items-center text-7xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
           {discount && <span className="absolute right-5 top-5 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white shadow-card">{discount}% OFF</span>}
         </div>
@@ -1010,7 +1010,7 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
           <div className="grid grid-cols-4 gap-3">
             {gallery.slice(1, 5).map((u, j) => (
               <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j + 1, alt: p.name })} className={`aspect-square overflow-hidden rounded-2xl border border-border bg-surface p-2 ${FOCUS}`}>
-                <FitImg src={u} alt="" className="h-full w-full object-contain" />
+                <FitImg src={u} alt="" className="h-full w-full object-contain" w={128} />
               </button>
             ))}
           </div>
@@ -1063,7 +1063,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
             {!compact && (
               <div className="aspect-[4/5] relative overflow-hidden" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
                 {gallery[0]
-                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none" eager /></button>
+                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none" eager={i < 3} sizes={cols === 4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} /></button>
                   // No photo for this item: its first letter, never an empty box.
                   : <span aria-hidden="true" className="absolute inset-8 rounded-2xl grid place-items-center text-6xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
                 {(p.badge || discount) && (
@@ -1076,7 +1076,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
             )}
             {gallery.length > 1 && (
               <div className="flex gap-2 px-6 pt-4">
-                {gallery.map((u, j) => <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j, alt: p.name })} className={`h-14 w-14 rounded-lg overflow-hidden border border-border bg-surface2/60 ${FOCUS}`}><Img src={u} alt="" className="h-full w-full object-contain p-1" /></button>)}
+                {gallery.map((u, j) => <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j, alt: p.name })} className={`h-14 w-14 rounded-lg overflow-hidden border border-border bg-surface2/60 ${FOCUS}`}><Img src={u} alt="" className="h-full w-full object-contain p-1" w={56} /></button>)}
               </div>
             )}
             <div className="p-6 flex-1 flex flex-col">
@@ -1151,7 +1151,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
           <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:h-[520px]">
             {imgs.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative overflow-hidden rounded-2xl border border-border cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 aspect-square md:aspect-auto" : "aspect-square md:aspect-auto"} ${FOCUS}`}>
-                <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 3} />
+                <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 3} sizes={i === 0 ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 50vw"} />
                 {g.label && <span className="absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent">{t(g.label)}</span>}
               </button>
             ))}
@@ -1303,7 +1303,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 [&>*]:mb-4">
             {shown.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden border border-border ${FOCUS}`}>
-                <Img src={g.url!} alt={g.label} className="w-full h-auto transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 8} />
+                <Img src={g.url!} alt={g.label} className="w-full h-auto transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 8} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
                 {g.label && <span className="absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">{t(g.label)}</span>}
               </button>
             ))}
@@ -1322,7 +1322,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
             {imgs.map((g, i) => (
               <figure key={i}>
                 <button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`block w-full cursor-zoom-in rounded-3xl border border-border bg-white overflow-hidden shadow-card ${FOCUS}`}>
-                  <Img src={g.url} alt={g.caption ?? ""} className={many ? "w-full aspect-[4/3] object-contain p-4" : "w-full h-auto object-contain"} />
+                  <Img src={g.url} alt={g.caption ?? ""} className={many ? "w-full aspect-[4/3] object-contain p-4" : "w-full h-auto object-contain"} sizes={many ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 1024px) 1024px, 100vw"} />
                 </button>
                 {g.caption && <figcaption className="mt-3 text-[15px] text-muted text-center leading-relaxed">{t(g.caption)}</figcaption>}
               </figure>
@@ -1339,7 +1339,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {imgs.map((g, i) => (
               <figure key={i} className={`rounded-3xl border border-border bg-surface overflow-hidden ${CARD_HOVER}`}>
-                <div className="relative aspect-[4/5]" style={{ background: "var(--p-soft)" }}><button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`absolute inset-0 p-4 cursor-zoom-in ${FOCUS}`}><FitImg src={g.url} alt={g.caption ?? ""} className="h-full w-full object-contain" eager /></button></div>
+                <div className="relative aspect-[4/5]" style={{ background: "var(--p-soft)" }}><button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`absolute inset-0 p-4 cursor-zoom-in ${FOCUS}`}><FitImg src={g.url} alt={g.caption ?? ""} className="h-full w-full object-contain" eager={i < 3} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" /></button></div>
                 {g.caption && <figcaption className="p-4 text-center font-medium">{t(g.caption)}</figcaption>}
               </figure>
             ))}
@@ -1439,8 +1439,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
           <div className={shorts ? "mx-auto max-w-sm" : "mx-auto max-w-4xl"}>
             <div className={`rounded-3xl overflow-hidden shadow-float bg-black ${shorts ? "aspect-[9/16]" : "aspect-video"}`}>
               {e?.type === "iframe" ? <iframe src={e.src} title={block.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
-                : e?.type === "video" ? <video src={e.src} poster={block.posterUrl} preload="metadata" controls playsInline className="h-full w-full" />
-                : <a href={block.url} target="_blank" rel="noreferrer" className="relative block h-full w-full" style={{ background: `linear-gradient(135deg, var(--p-mid), var(--p-deep))` }}>{block.posterUrl && <Img src={block.posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" />}<span className="absolute inset-0 grid place-items-center"><span className="h-16 w-16 rounded-full bg-white/90 grid place-items-center shadow-float"><Play className="h-7 w-7 translate-x-0.5" style={{ color: theme }} fill="currentColor" /></span></span></a>}
+                : e?.type === "video" ? <video src={e.src} poster={block.posterUrl ? picUrl(block.posterUrl, 1080) : undefined} preload="metadata" controls playsInline className="h-full w-full" />
+                : <a href={block.url} target="_blank" rel="noreferrer" className="relative block h-full w-full" style={{ background: `linear-gradient(135deg, var(--p-mid), var(--p-deep))` }}>{block.posterUrl && <Img src={block.posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" sizes="(min-width: 1024px) 1024px, 100vw" />}<span className="absolute inset-0 grid place-items-center"><span className="h-16 w-16 rounded-full bg-white/90 grid place-items-center shadow-float"><Play className="h-7 w-7 translate-x-0.5" style={{ color: theme }} fill="currentColor" /></span></span></a>}
             </div>
             {block.caption && <p className="mt-4 text-[15px] text-muted leading-relaxed">{t(block.caption)}</p>}
           </div>
@@ -1465,7 +1465,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <Cmp {...(block.fileUrl ? { href: block.fileUrl, download: block.fileLabel } : {})} className={`max-w-3xl flex flex-col sm:flex-row items-stretch gap-6 rounded-3xl border border-border bg-surface p-5 ${block.fileUrl ? `${CARD_HOVER} ${FOCUS}` : "opacity-70"}`}>
-            {block.posterUrl && <Img src={block.posterUrl} alt={block.fileLabel} className="sm:w-56 w-full aspect-[4/3] sm:aspect-auto object-cover rounded-2xl border border-border" />}
+            {block.posterUrl && <Img src={block.posterUrl} alt={block.fileLabel} className="sm:w-56 w-full aspect-[4/3] sm:aspect-auto object-cover rounded-2xl border border-border" sizes="(min-width: 640px) 224px, 100vw" />}
             <div className="flex-1 flex items-center gap-4 min-w-0">
               <span className="h-12 w-12 rounded-xl grid place-items-center shrink-0" style={{ background: tint(theme), color: "var(--tc)" }}><FileText className="h-6 w-6" /></span>
               <span className="min-w-0 flex-1">
@@ -1486,8 +1486,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
               const inner = (
                 <>
                   <div className="aspect-[16/8] w-full overflow-hidden bg-surface2">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    {it.imageUrl && <img src={it.imageUrl} alt={it.label} loading="lazy" decoding="async" className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" />}
+                    {it.imageUrl && <Img src={it.imageUrl} alt={it.label} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105" sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" />}
                   </div>
                   <div className="p-3">
                     <p className="font-semibold leading-tight">{t(it.label)}</p>

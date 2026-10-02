@@ -1,6 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Pictures are resized and converted to WebP by our own server (sharp) and cached on disk under .next/cache/images.
+  // Only our own files and the Supabase storage bucket may be fetched by the optimiser (see src/components/pic.tsx).
+  images: {
+    remotePatterns: [
+      { protocol: "https", hostname: "**.supabase.co", pathname: "/storage/v1/object/public/**" },
+      { protocol: "https", hostname: "**.supabase.co", pathname: "/storage/v1/render/image/public/**" },
+    ],
+    // Replaced uploads keep their address (the slot number), so a resized copy must not outlive the upload for long.
+    minimumCacheTTL: 60 * 60,
+  },
   async redirects() {
     return [
       { source: "/solutions/mlm-software", destination: "/solutions", permanent: true },

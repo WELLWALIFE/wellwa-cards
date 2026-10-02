@@ -4,7 +4,8 @@ import { getPublicSupabase } from "@/lib/supabase/public";
 import { sampleCards } from "@/lib/sample-data";
 import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
-import type { CardPage } from "@/lib/types";
+import { cardProducts } from "@/lib/product-page";
+import type { Card, CardPage } from "@/lib/types";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
@@ -14,14 +15,19 @@ export const dynamic = "force-dynamic";
 
 type Row = { username: string; pages: CardPage[] | null };
 
-/** Every page of a card that has something on it: home first, then /<slug>. */
+/** Every page of a card that has something on it: home first, then /<slug>, then each product at its own
+ *  address (/p-kaju-katli) — Google indexes a product only when the sitemap lists it. */
 function cardUrls(home: string, r: Row): MetadataRoute.Sitemap {
   const pages = (r.pages ?? []).filter((p, i) => i === 0 || (p.blocks ?? []).length > 0);
   const lastModified = new Date();
-  return pages.map((p, i) => ({
-    url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`,
-    lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7,
-  }));
+  const products = cardProducts({ username: r.username, pages } as Card).filter((p) => p.item.name?.trim());
+  return [
+    ...pages.map((p, i) => ({
+      url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`,
+      lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7,
+    })),
+    ...products.map((p) => ({ url: `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
+  ];
 }
 
 /** Automatic sitemap, per host: on Shubhora the marketing pages and every published card (all its pages); on an
