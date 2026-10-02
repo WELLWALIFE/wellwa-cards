@@ -10,8 +10,10 @@ import {
   Download, MessageCircle, Check, Play, FileText, Share2, Send, BadgeCheck,
   Sun, Moon, Star, ChevronDown, ChevronLeft, ChevronRight, Clock, CalendarClock, MapPin, BadgePercent, Copy, X, ShoppingBag,
   Languages, LoaderCircle, UserPlus, Settings, ArrowRight, Home, Images, HelpCircle, Phone, Wrench, Info, Compass, LayoutTemplate, Sparkles as SparklesIcon, Pencil,
-  TrendingUp, Briefcase, IndianRupee } from "lucide-react";
+  TrendingUp, Briefcase, IndianRupee, Quote } from "lucide-react";
 import { lookOf, lookCss, lookFontHref } from "@/lib/looks";
+import { siteDesign } from "@/lib/site-style";
+import { faqLayout, galleryLayout, servicesLayout } from "@/lib/site-layout";
 import type { Card, CardBlock, CardImage, CardPage, CardTemplate } from "@/lib/types";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic, picUrl } from "@/components/pic";
@@ -344,7 +346,11 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     ? card.site.logoUrl : "";
   const ownCover = !!card.coverUrl && !isCuratedArt(card.coverUrl);
   const look = lookOf(card.template);
-  const fontHref = lookFontHref(look);
+  // The website's design — the trade's palette and font pair (site-style.ts) — is carried onto the card, so the
+  // card a customer gets on WhatsApp and the website they open on a laptop are one brand. A card without a
+  // website style keeps its look's own fonts; the palette then comes from the card's colour.
+  const design = siteDesign(card, look);
+  const fontHref = card.site?.style?.font && card.site.style.font !== "look" ? design.fonts.href : lookFontHref(look);
 
   return (
     <TranslateCtx.Provider value={t}>
@@ -352,7 +358,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     {!onEdit && <WelcomePopup card={card} theme={theme} active={active} />}
     {/* The look: fonts + palette + corners for everything inside this card (see src/lib/looks.ts). */}
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) }} />
+    <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) + `[data-look="${look.key}"]{${design.vars}} [data-look="${look.key}"] h1,[data-look="${look.key}"] h2{font-weight:var(--head-w)}` }} />
     <div className="mx-auto w-full max-w-md animate-rise" data-look={look.key} data-tone={look.tone}>
       <div className="rounded-none border-0 sm:rounded-[1.75rem] sm:border border-border bg-surface overflow-hidden shadow-float">
         {/* ---- Header ---- */}
@@ -619,7 +625,40 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         </section>
       );
 
-    case "highlights":
+    case "highlights": {
+      const items = block.items.map((x) => (x ?? "").trim()).filter(Boolean);
+      // "Why choose us" (every point ticked): the one dark stretch of the card, in the palette's deep colour.
+      const band = items.length >= 3 && items.every((x) => x.startsWith("✅"));
+      if (band) {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <ul className="look-sec relative overflow-hidden rounded-2xl p-4 grid gap-2" style={{ background: `radial-gradient(70% 90% at 90% 10%, color-mix(in srgb, var(--p-glow) 45%, transparent), transparent 62%), linear-gradient(120deg, var(--p-deep), color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)))`, color: "var(--p-ink)" }}>
+              {items.map((it, i) => (
+                <li key={i} className="flex items-start gap-3 rounded-xl border px-3 py-2.5 text-sm font-medium" style={{ borderColor: "color-mix(in srgb, currentColor 22%, transparent)", background: "color-mix(in srgb, currentColor 8%, transparent)" }}>
+                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full" style={{ background: "color-mix(in srgb, currentColor 18%, transparent)", color: "var(--p-accent)" }}><Check className="h-3 w-3" /></span>
+                  <span>{glyphText(it, t).text}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        );
+      }
+      // Short facts ("Since 2015", "GST registered"): a row of pills, not a grid of boxes.
+      if (items.length > 0 && items.every((x) => splitGlyph(x).text.length <= 22)) {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <ul className="flex flex-wrap gap-2">
+              {items.map((it, i) => { const { glyph, text } = glyphText(it, t); return (
+                <li key={i} className="look-sec inline-flex items-center gap-1.5 rounded-full border border-border bg-surface2/60 px-3 py-1.5 text-[13px] font-medium">
+                  {glyph ? <span aria-hidden="true" className="leading-none">{glyph}</span> : <Check className="h-3.5 w-3.5" style={{ color: theme }} />}{text}
+                </li>
+              ); })}
+            </ul>
+          </section>
+        );
+      }
       return (
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
@@ -639,8 +678,47 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           </ul>
         </section>
       );
+    }
 
-    case "services":
+    case "services": {
+      const items = block.items.filter((x) => (x.name ?? "").trim());
+      const name = (x: { name: string }) => t(x.name.replace(/^\d+[.)]\s*/, ""));
+      // "How it works" (numbered names): a path down the card — numbered circles joined by a line.
+      if (/^\d+[.)]\s/.test(items[0]?.name ?? "")) {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <ol className="relative ml-1 space-y-5 border-l-2 pl-6" style={{ borderColor: "color-mix(in srgb, var(--p-mid) 35%, transparent)" }}>
+              {items.slice(0, 6).map((x, i) => (
+                <li key={i} className="relative">
+                  <span className="absolute -left-[31px] top-0 grid h-7 w-7 place-items-center rounded-full text-xs font-bold shadow-card" style={{ background: "var(--grad)", color: "var(--p-on)" }}>{i + 1}</span>
+                  <p className="font-semibold text-sm leading-7">{name(x)}</p>
+                  {x.desc && <p className="text-sm text-muted mt-0.5 leading-relaxed">{t(x.desc)}</p>}
+                </li>
+              ))}
+            </ol>
+          </section>
+        );
+      }
+      // A long list (a clinic's treatments) or one without descriptions: a tidy checklist, not a stack of boxes.
+      if (servicesLayout(items) === "list") {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <div className="look-sec rounded-2xl border border-border divide-y divide-border overflow-hidden">
+              {items.map((x, i) => (
+                <div key={i} className="flex items-start gap-3 px-3.5 py-3">
+                  <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-full" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Check className="h-3.5 w-3.5" /></span>
+                  <div className="min-w-0">
+                    <p className="font-medium text-sm leading-6">{name(x)}</p>
+                    {x.desc && <p className="text-[13px] text-muted leading-relaxed">{t(x.desc)}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      }
       return (
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
@@ -654,6 +732,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           </div>
         </section>
       );
+    }
 
     case "product":
       return (
@@ -702,7 +781,33 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         </section>
       );
 
-    case "gallery":
+    case "gallery": {
+      const imgs = block.images.filter((g) => g.url);
+      const gl = imgs.length === block.images.length ? galleryLayout(imgs.length) : "masonry";
+      if (gl === "single") {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <figure className="look-sec overflow-hidden rounded-2xl border border-border shadow-card" style={{ background: "var(--p-soft)" }}>
+              <Pic src={imgs[0].url!} alt={imgs[0].label} sizes="(min-width: 640px) 448px, 100vw" className="mx-auto w-auto max-w-full h-auto max-h-80 object-contain" />
+              {imgs[0].label && <figcaption className="px-3 py-2 text-xs text-muted">{t(imgs[0].label)}</figcaption>}
+            </figure>
+          </section>
+        );
+      }
+      if (gl === "pair" || gl === "mosaic") {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <div className={`grid gap-2 ${gl === "pair" ? "grid-cols-2" : "grid-cols-3"}`}>
+              {imgs.map((img, i) => (
+                <Pic key={i} src={img.url!} alt={img.label} sizes="(min-width: 640px) 448px, 100vw"
+                  className={`look-sec w-full rounded-xl object-cover shadow-card ${gl === "pair" ? "aspect-[4/5]" : i === 0 ? "col-span-3 aspect-[16/9]" : "aspect-square"}`} />
+              ))}
+            </div>
+          </section>
+        );
+      }
       return (
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
@@ -720,6 +825,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           </div>
         </section>
       );
+    }
 
     case "showcase":
       return (
@@ -829,6 +935,23 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
 
     case "testimonials":
       if (!block.items.length) return null; // stay invisible until real reviews are added
+      if (block.items.length === 1) {
+        const r = block.items[0];
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <figure className="look-sec rounded-2xl border border-border bg-surface2/40 px-5 py-6 text-center">
+              <Quote className="mx-auto h-7 w-7 opacity-30" style={{ color: theme }} />
+              <blockquote className="mt-3 text-[17px] leading-snug" style={{ fontFamily: "var(--look-head)" }}>&ldquo;{t(r.text)}&rdquo;</blockquote>
+              <figcaption className="mt-4 flex flex-col items-center gap-1.5 text-xs font-medium text-muted">
+                <span className="grid h-9 w-9 place-items-center rounded-full text-sm font-semibold" style={{ background: `${theme}1a`, color: theme }}>{Array.from(r.name.trim())[0]?.toUpperCase() ?? "★"}</span>
+                <span>{r.name}</span>
+                <span className="flex gap-0.5">{[1, 2, 3, 4, 5].map((n) => <Star key={n} className="h-3.5 w-3.5" fill={n <= r.rating ? theme : "none"} style={{ color: n <= r.rating ? theme : "var(--faint)" }} />)}</span>
+              </figcaption>
+            </figure>
+          </section>
+        );
+      }
       return (
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
@@ -836,12 +959,28 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         </section>
       );
 
-    case "faq":
+    case "faq": {
+      const qs = block.items.filter((f) => f.q);
+      if (faqLayout(qs.length) === "open") {
+        return (
+          <section>
+            <BlockTitle>{t(block.title)}</BlockTitle>
+            <div className="space-y-2">
+              {qs.map((f, i) => (
+                <div key={i} className="look-sec rounded-xl border border-border p-3.5">
+                  <p className="flex items-start gap-2 text-sm font-semibold leading-snug"><span className="mt-px grid h-5 w-5 shrink-0 place-items-center rounded-md text-[11px] font-bold" style={{ background: `${theme}1a`, color: theme }}>?</span>{t(f.q)}</p>
+                  <p className="mt-2 pl-7 text-sm text-muted leading-relaxed">{t(f.a)}</p>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      }
       return (
         <section>
           <BlockTitle>{t(block.title)}</BlockTitle>
           <div className="space-y-2">
-            {block.items.map((f, i) => (
+            {qs.map((f, i) => (
               <details key={i} className="look-sec group rounded-xl border border-border overflow-hidden">
                 <summary className="flex items-center justify-between gap-2 px-3.5 py-3 text-sm font-medium cursor-pointer list-none hover:bg-surface2 transition-colors">
                   {t(f.q)}
@@ -853,6 +992,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
           </div>
         </section>
       );
+    }
 
     case "hours":
       return (
