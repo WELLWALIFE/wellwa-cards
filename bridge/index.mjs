@@ -1453,7 +1453,10 @@ async function startWhatsApp() {
     ...(pair.phone ? { qrTimeout: PAIR_QR_MS } : {}),
     // The name the customer's phone shows under WhatsApp → Linked devices. WhatsApp stores it once, when the QR is
     // scanned: a number linked earlier keeps its old name until it is linked again; login itself never uses it.
-    browser: ["Shubhora", "Chrome", "1.0"],
+    // A link CODE is different: WhatsApp accepts a code login only from a standard desktop browser identity — with a
+    // custom name the code is shown, typed, and the link is then refused (seen live, 2 Oct 2026: "code se connect
+    // nahi ho raha"). So the socket that asks for a code introduces itself as Chrome on Ubuntu; the QR keeps our name.
+    browser: pair.phone ? baileys.Browsers.ubuntu("Chrome") : ["Shubhora", "Chrome", "1.0"],
     // Real WhatsApp link previews (title, description, big picture from the
     // page's OG tags) on every link we send — tapping opens the link itself.
     generateHighQualityLinkPreview: true,
@@ -1463,19 +1466,22 @@ async function startWhatsApp() {
   sock.ev.on("creds.update", saveCreds);
 
   const thisSock = sock;
+  // The socket is talking to WhatsApp — the moment it can ask for a link code (once per socket).
+  const askCode = () => {
+    if (!pair.phone || pair.asked || gen !== sockGen) return;
+    pair.asked = true;
+    thisSock.requestPairingCode(pair.phone)
+      .then((code) => { if (gen === sockGen) { pair.code = code; console.log("[wa] link code ready for", pair.phone.slice(0, 4) + "…"); } })
+      .catch((e) => { if (gen === sockGen) { pair.error = e?.message || "code failed"; console.error("[wa] link code failed:", pair.error); } });
+  };
   sock.ev.on("connection.update", (u) => {
     if (gen !== sockGen) return; // an old socket we replaced
     const { connection, lastDisconnect, qr } = u;
     if (qr) {
       lastQr = qr; state = "awaiting_qr";
-      // The socket is talking to WhatsApp now — the moment it can ask for a link code (once per socket).
-      if (pair.phone && !pair.asked) {
-        pair.asked = true;
-        thisSock.requestPairingCode(pair.phone)
-          .then((code) => { if (gen === sockGen) { pair.code = code; console.log("[wa] link code ready for", pair.phone.slice(0, 4) + "…"); } })
-          .catch((e) => { if (gen === sockGen) pair.error = e?.message || "code failed"; });
-      }
+      askCode();
     }
+    if (connection === "connecting" && pair.phone && !authState.creds.registered) setTimeout(askCode, 3000);
     if (connection === "open") {
       state = "connected"; lastQr = null;
       pair = { phone: null, code: null, error: null, asked: false, at: 0 };
@@ -1484,6 +1490,7 @@ async function startWhatsApp() {
     }
     if (connection === "close") {
       const code = lastDisconnect?.error?.output?.statusCode;
+      if (pair.phone) console.log("[wa] code socket closed (", code, ")", pair.code ? "after a code was shown" : "before a code was shown");
       state = "disconnected"; me = null;
       // A code lives only as long as its socket: when it closes (typed → WhatsApp restarts the link; or not typed in
       // time) the next socket is a normal one — the page asks for a fresh code if needed.

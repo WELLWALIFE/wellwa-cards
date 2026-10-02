@@ -14,7 +14,7 @@ type State = "on" | "off" | "fix" | "paid" | "loading";
 /** `off`: how to disconnect this one (owner's call, 30 Sep 2026: "sab ka connect hai, disconnect nahi") — the
  *  confirmation text says what stops; the call removes it; rows without one (Google reviews rides on the Google
  *  Business connection) show no button. */
-type Row = { key: string; icon: React.ReactNode; title: string; what: string; href: string; state: State; detail?: string; off?: { ask: string; run: () => Promise<void> } };
+type Row = { key: string; icon: React.ReactNode; title: string; what: string; href: string; state: State; detail?: string; off?: { ask: string; run: () => Promise<void> }; /** Switches under the row (what runs on this connection). */ extra?: React.ReactNode };
 
 function Badge({ s, en }: { s: State; en: boolean }) {
   const map: Record<State, [string, string]> = {
@@ -33,6 +33,10 @@ export default function Connections() {
   const { lang } = useT(); const en = lang === "en";
   const [wa, setWa] = useState<State>("loading");
   const [waNum, setWaNum] = useState("");
+  // One WhatsApp link, two things that can run on it (owner's call, 2 Oct 2026: "connection ek hi, checkbox laga do"):
+  // the daily Status post (social_accounts.auto_post) and the AI auto-reply (the bridge's config.enabled, Growth plan).
+  const [waAi, setWaAi] = useState<boolean | null>(null);
+  const [waBusy, setWaBusy] = useState("");
   const [social, setSocial] = useState<SocialAccount[] | null>(null);
   const [google, setGoogle] = useState<{ state: State; name: string }>({ state: "loading", name: "" });
   const [domain, setDomain] = useState<{ state: State; name: string }>({ state: "loading", name: "" });
@@ -51,6 +55,7 @@ export default function Connections() {
         if (!r.ok || r.data.error) return setWa("off");
         // Linked on the free plan: the number works (Status, leads) — the AI auto-reply needs Growth.
         setWa(r.data.state === "connected" ? (r.data.aiActive === false ? "paid" : "on") : "off");
+        if (r.data.state === "connected") api<{ enabled?: boolean }>("/api/wa/config").then((c) => setWaAi(c.ok ? !!c.data.enabled : false)).catch(() => setWaAi(false));
         // `me` is the linked WhatsApp id, e.g. "919876543210:12@s.whatsapp.net" (or an object with an id).
         const me = typeof r.data.me === "string" ? r.data.me : String((r.data.me as { id?: string } | null)?.id ?? "");
         const digits = me.split(/[:@]/)[0].replace(/\D/g, "");
@@ -80,12 +85,40 @@ export default function Connections() {
   const sState = (p: SocialAccount["provider"]): State => { if (social === null) return "loading"; const a = acct(p); return !a ? "off" : a.status === "reconnect" ? "fix" : "on"; };
   const fb = acct("facebook"); const ig = acct("instagram"); const st = acct("whatsapp");
 
+  const waLinked = wa === "on" || wa === "paid";
+  const statusOn = !!st?.auto_post;
+  const setStatus = async (on: boolean) => {
+    setWaBusy("status"); setMsg("");
+    try { await api("/api/social/accounts", { method: "PATCH", json: { action: "wa_enable", value: on } }); invalidateSocialAccounts(); setSocial(null); fetchSocialAccounts(true).then((c) => setSocial(c.accounts)).catch(() => setSocial([])); }
+    catch { setMsg(en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।"); }
+    finally { setWaBusy(""); }
+  };
+  const setAi = async (on: boolean) => {
+    if (wa === "paid") { router.push("/poster/plan"); return; }
+    setWaBusy("ai"); setMsg("");
+    try { const r = await api<{ enabled?: boolean }>("/api/wa/config", { method: "POST", json: { enabled: on } }); if (r.status === 402) { router.push("/poster/plan"); return; } setWaAi(r.ok ? !!r.data.enabled : waAi); }
+    catch { setMsg(en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।"); }
+    finally { setWaBusy(""); }
+  };
+  const waSwitches = (
+    <div className="space-y-1.5 border-t border-border px-3 py-2.5">
+      <p className="text-[11px] font-semibold text-muted">{waLinked ? (en ? "What runs on this number:" : "इस number पर क्या चले:") : (en ? "Link the number first, then choose what runs on it:" : "पहले number link करें, फिर चुनें क्या चले:")}</p>
+      <label className={`flex items-center gap-2.5 text-sm ${waLinked ? "" : "opacity-60"}`}>
+        <input type="checkbox" className="h-4 w-4" checked={statusOn} disabled={!waLinked || waBusy === "status" || social === null} onChange={(e) => setStatus(e.target.checked)} />
+        <Radio className="h-4 w-4 shrink-0 text-[#25D366]" />
+        <span className="min-w-0"><span className="block font-medium">{en ? "Daily Status auto-post" : "रोज़ Status पर auto-post"}</span><span className="block text-[11px] text-muted">{en ? "AI poster + voice video on your Status every morning — 14 days free on the free plan." : "रोज़ सुबह AI poster + voice video आपके Status पर — free plan में 14 दिन फ़्री।"}</span></span>
+      </label>
+      <label className={`flex items-center gap-2.5 text-sm ${waLinked ? "" : "opacity-60"}`}>
+        <input type="checkbox" className="h-4 w-4" checked={wa === "on" && !!waAi} disabled={!waLinked || waBusy === "ai" || (wa === "on" && waAi === null)} onChange={(e) => setAi(e.target.checked)} />
+        <MessageCircle className="h-4 w-4 shrink-0 text-[#25D366]" />
+        <span className="min-w-0"><span className="block font-medium">{en ? "AI auto-reply (chat bot)" : "AI auto-reply (chat bot)"}{wa === "paid" && <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Growth plan</span>}</span><span className="block text-[11px] text-muted">{en ? "Answers customers 24×7 from your number; every chat saved as a lead." : "आपके number से customers को 24×7 जवाब; हर chat lead में save।"}</span></span>
+      </label>
+    </div>
+  );
   const rows: { group: string; items: Row[] }[] = [
     { group: "WhatsApp", items: [
-      { key: "wa", icon: <MessageCircle className="h-6 w-6 text-[#25D366]" />, title: en ? "WhatsApp AI (auto-reply)" : "WhatsApp AI (auto-reply)", what: en ? "Link once with a code on this phone (or a QR) — the bot answers your customers 24×7 from your own number." : "इसी phone पर एक code से एक बार link करें (या QR) — bot आपके नंबर से customers को 24×7 जवाब देगा।", href: "/poster/leads?tab=wa", state: wa, detail: waNum ? `+91 ${waNum}` : undefined,
-        off: { ask: en ? "Unlink WhatsApp from Shubhora? The AI will stop replying and new messages will not be saved as leads. You can link again any time with a code." : "WhatsApp को Shubhora से हटाएँ? AI जवाब देना बंद कर देगा और नए message leads में save नहीं होंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await api("/api/wa/logout", { method: "POST" }); } } },
-      { key: "status", icon: <Radio className="h-6 w-6 text-[#25D366]" />, title: en ? "WhatsApp Status (daily auto-post)" : "WhatsApp Status (रोज़ auto-post)", what: en ? "Your AI poster + voice video goes on your Status every morning — free for 14 days on the free plan." : "रोज़ सुबह AI poster + voice video आपके Status पर — free plan में भी 14 दिन फ़्री।", href: "/poster/social?tab=whatsapp", state: social === null ? "loading" : st?.auto_post ? "on" : "off",
-        off: { ask: en ? "Turn off the daily WhatsApp Status? Tomorrow's poster and video will not be posted on your Status until you turn it on again." : "रोज़ का WhatsApp Status बंद करें? कल से poster और video आपके Status पर नहीं जाएँगे, जब तक दोबारा चालू न करें।", run: async () => { await api("/api/social/accounts", { method: "PATCH", json: { action: "wa_enable", value: false } }); } } },
+      { key: "wa", icon: <MessageCircle className="h-6 w-6 text-[#25D366]" />, title: "WhatsApp", what: en ? "Link once with a code on this phone (or a QR). Status and the AI bot both run on this one link." : "इसी phone पर एक code से एक बार link करें (या QR)। Status और AI bot दोनों इसी एक link पर चलते हैं।", href: "/poster/leads?tab=wa", state: wa, detail: waNum ? `+91 ${waNum}` : undefined, extra: waSwitches,
+        off: { ask: en ? "Unlink WhatsApp from Shubhora? Status posting and the AI stop, and new messages will not be saved as leads. You can link again any time with a code." : "WhatsApp को Shubhora से हटाएँ? Status post और AI बंद हो जाएँगे, नए message leads में save नहीं होंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await api("/api/wa/logout", { method: "POST" }); } } },
     ] },
     { group: "Social media", items: [
       { key: "fb", icon: <ProviderIcon provider="facebook" className="h-6 w-6" />, title: "Facebook Page", what: en ? "Auto-post posters and videos to your Page." : "Poster और video आपके Page पर अपने-आप।", href: "/poster/social?tab=facebook", state: sState("facebook"), detail: fb?.name,
@@ -133,6 +166,7 @@ export default function Connections() {
                   <Badge s={r.state} en={en} />
                   <ChevronRight className="h-4 w-4 shrink-0 text-faint" />
                 </Link>
+                {r.extra}
                 {connected && r.off && (
                   <div className="flex items-center justify-end border-t border-border px-3 py-1.5">
                     <button type="button" onClick={() => disconnect(r)} disabled={busy === r.key} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:text-danger disabled:opacity-60">
