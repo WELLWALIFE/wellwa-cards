@@ -34,7 +34,7 @@ import {
   type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse,
   type Missing, type MissingKey, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
-import { SITE_CARDS } from "@/lib/site-role";
+import { SITE_CARDS, cleanSiteUrl, looksLikeSite, socialDetour } from "@/lib/site-role";
 import { useT } from "@/lib/poster-i18n";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
@@ -397,6 +397,25 @@ export default function BuildCard() {
 
   /** The whole build. The load pass hands in what it just read, because this function was made before
    *  that state existed; every other caller uses what is on screen. */
+  /** "dps school" instead of a link (owner, 2 Oct 2026: "yahan name se koi site search nahi hui"): the official
+   *  website is looked up by name — the same lookup as step 2 — and put in the box; the person sees what was
+   *  found and can clear it. A name nothing is found for is left as typed, with a line saying so. */
+  const [finding, setFinding] = useState("");
+  const [found, setFound] = useState<{ q: string; url: string; name: string } | null>(null);
+  async function resolveSite(): Promise<string> {
+    const v = facts.website.trim();
+    if (!v || looksLikeSite(cleanSiteUrl(v)) || socialDetour(v) || v.length < 2) return cleanSiteUrl(v);
+    if (found && found.q === v) return found.url;
+    setFinding(v);
+    try {
+      const r = await api<{ ok: boolean; url?: string; name?: string }>("/api/site/find", { method: "POST", json: { q: v } });
+      const url = r.ok && r.data.ok && r.data.url ? r.data.url : "";
+      if (url) { setF({ website: url }); setFound({ q: v, url, name: r.data.name || url }); }
+      else setFound({ q: v, url: "", name: "" });
+      return url;
+    } catch { setFound({ q: v, url: "", name: "" }); return ""; } finally { setFinding(""); }
+  }
+
   async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview" }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
@@ -867,8 +886,15 @@ export default function BuildCard() {
           option. It is one of the most useful answers on the form: a site we can read fills the whole card,
           and a site they merely like gives theirs that look. */}
       <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
-        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com", "जैसे sharmasweets.com")} className={field} />
-        <p className="mt-1 text-xs text-muted">{T("No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
+        <input value={facts.website} onChange={(e) => { setF({ website: e.target.value.trim() }); setFound(null); }} onBlur={() => void resolveSite()} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com, or a name: dps school", "जैसे sharmasweets.com, या नाम: dps school")} className={field} />
+        {finding && <p className="mt-1 text-xs text-muted">{T(`Searching the web for “${finding}”…`, `“${finding}” की website खोजी जा रही है…`)}</p>}
+        {!finding && found && found.url && facts.website === found.url && (
+          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs"><span className="font-semibold text-good">✓ {T("Found", "मिली")}: {found.name}</span><span className="text-muted">{found.url.replace(/^https?:\/\//, "")}</span><button type="button" onClick={() => { setF({ website: "" }); setFound(null); }} className="font-semibold text-brand-ink underline">{T("Not this one", "ये नहीं")}</button></p>
+        )}
+        {!finding && found && !found.url && facts.website === found.q && (
+          <p className="mt-1 text-xs text-amber">{T(`No website found for “${found.q}” — paste its link, or leave the box empty.`, `“${found.q}” की website नहीं मिली — उसका link डालें, या box खाली छोड़ दें।`)}</p>
+        )}
+        <p className="mt-1 text-xs text-muted">{T("Type a link, or just the name — we find the website. No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "link लिखें, या सिर्फ़ नाम — website हम ढूँढ लेंगे। अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
         <div className="mt-3">
           <p className="text-sm font-semibold">{T("This website is…", "ये website है…")}</p>
           <div className="mt-1.5 flex flex-wrap gap-2">
@@ -949,7 +975,7 @@ export default function BuildCard() {
 
 
       {err && <p className="text-sm text-danger">{err}</p>}
-      <button type="button" id="make" onClick={() => { setPlan(access.subscribed ? "premium" : "standard"); setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+      <button type="button" id="make" onClick={async () => { await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
         <Check className="h-5 w-5" /> {T("Save and continue →", "Save करके आगे बढ़ें →")}
       </button>
       <p className="text-center text-xs text-muted">{T("Next: choose Standard (free) or Premium, then make it.", "आगे: Standard (free) या Premium चुनें, फिर बनाएँ।")}</p>
