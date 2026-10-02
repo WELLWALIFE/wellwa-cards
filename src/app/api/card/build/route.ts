@@ -74,7 +74,7 @@ export async function POST(request: Request) {
   // (a Shubhora partner's own card — the business IS Shubhora — keeps them).
   const shubhoraBiz = /shubhora/i.test(`${inputs0.setup.business} ${inputs0.setup.person}`);
   const isShubhoraProduct = (p: { name?: string | null; brand?: string | null }) => /shubhora/i.test(`${p.name ?? ""} ${p.brand ?? ""}`);
-  const inputs = shubhoraBiz ? inputs0 : { ...inputs0, ownRows: inputs0.ownRows.filter((r) => !isShubhoraProduct(r)) };
+  const inputs = shubhoraBiz ? inputs0 : (() => { const products = inputs0.products.filter((p) => !isShubhoraProduct(p)); return { ...inputs0, ownRows: inputs0.ownRows.filter((r) => !isShubhoraProduct(r)), products, brandProducts: inputs0.brandProducts && products.length > 0 }; })();
   let setup = inputs.setup;
   const sent = b.facts && typeof b.facts === "object" && !Array.isArray(b.facts) ? b.facts : b;
   // Only the owner's own uploads may be the shop banner or work photos (never a picture hot-linked from another site).
@@ -279,7 +279,10 @@ export async function POST(request: Request) {
   if (inputs.profileId) await saveFacts(me.id, inputs.profileId, facts); // best effort: the card is built either way
 
   /* ---- the products on the card: the typed rows first, then the rest (minus the ones the owner took off) ---- */
-  const after = await loadProducts(me.id);
+  const after0 = await loadProducts(me.id);
+  // The brand fallback (no products of their own → their brand team's rows) is how the Shubhora plans reached a
+  // school's website (2 Oct 2026): the demo profile sits on the Shubhora brand. Same rule as the owner's rows.
+  const after = shubhoraBiz ? after0 : (() => { const products = after0.products.filter((p) => !isShubhoraProduct(p)); return { ...after0, products, brandProducts: after0.brandProducts && products.length > 0 }; })();
   const taken = new Set<string>();
   const list: SavedProduct[] = rows.map((row, i) => {
     const id = savedIds[i];
