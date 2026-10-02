@@ -95,6 +95,9 @@ export default function CardTab() {
 
   async function copy() { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
   function shareWa() { window.open(`https://wa.me/?text=${encodeURIComponent(t.shareText(card?.company || card?.name || "", url))}`, "_blank"); }
+  // The website: the same link with ?view=site opens the full website on a phone too (owner's call, 2 Oct 2026).
+  const siteUrl = url ? `${url}?view=site` : "";
+  function shareSite() { window.open(`https://wa.me/?text=${encodeURIComponent(lang === "hi" ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteUrl}` : `Visit our website — products, services and everything about us: ${siteUrl}`)}`, "_blank"); }
 
   // The Shubhora side of a card whose owner also runs their own business: a second link off the same card.
   const shUrl = card ? `${url}/${SHUBHORA_PAGE_SLUG}` : "";
@@ -183,7 +186,10 @@ export default function CardTab() {
           </div>
           {/* Three things up front (owner's call, 25 Sep 2026 — seven buttons in a row was too much): share it,
               change it, see it. Everything else waits under "More options". */}
-          <button type="button" onClick={shareWa} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-base font-semibold text-white"><Share2 className="h-5 w-5" /> {t.shareCard}</button>
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={shareWa} className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-3 py-3 text-base font-semibold text-white"><Share2 className="h-5 w-5" /> {lang === "hi" ? "Card share करें" : "Share card"}</button>
+            <button type="button" onClick={shareSite} className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#25D366] px-3 py-3 text-base font-semibold text-[#128C7E]"><Share2 className="h-5 w-5" /> {lang === "hi" ? "Website share करें" : "Share website"}</button>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <Link href={`/poster/d/editor?id=${card.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-base font-semibold text-white"><Pencil className="h-4 w-4" /> {lang === "hi" ? "Card edit करें" : "Edit card"}</Link>
             <CardLink href={url} title={lang === "hi" ? "मेरा कार्ड" : "My card"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-3 text-base font-medium"><ExternalLink className="h-4 w-4" /> {lang === "hi" ? "Card देखें" : "See card"}</CardLink>

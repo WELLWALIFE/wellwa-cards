@@ -5,12 +5,12 @@
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { Check, CircleArrowLeft, CircleArrowRight, Copy, Download, IdCard, LoaderCircle, QrCode, Share2, X } from "lucide-react";
+import { Check, CircleArrowLeft, CircleArrowRight, Copy, Download, Globe, IdCard, LoaderCircle, QrCode, Share2, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
 type Res = { username: string | null; link: string | null; cardLink: string | null; promoter?: boolean };
-type Item = { key: "card" | "L" | "R"; emoji: string; title: string; sub: string; url: string; text: string };
+type Item = { key: "card" | "site" | "L" | "R"; emoji: string; title: string; sub: string; url: string; text: string };
 
 let cache: Res | null = null;
 async function loadLinks(): Promise<Res | null> {
@@ -25,7 +25,7 @@ function withLeg(link: string, leg: "L" | "R") {
 }
 
 /** Clean icons instead of emoji (an emoji swallowed the space after it and looked unfinished). */
-const ICONS = { card: IdCard, L: CircleArrowLeft, R: CircleArrowRight } as const;
+const ICONS = { card: IdCard, site: Globe, L: CircleArrowLeft, R: CircleArrowRight } as const;
 
 function Row({ it, en }: { it: Item; en: boolean }) {
   const Icon = ICONS[it.key];
@@ -64,7 +64,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
         <div className="rounded-xl border border-border p-3 text-center space-y-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={qr} alt="QR code" className="mx-auto h-48 w-48" />
-          <a href={qr} download={`shubhora-${it.key === "card" ? "card" : it.key === "L" ? "left" : "right"}-qr.png`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Download className="h-3.5 w-3.5" /> {en ? "Download QR" : "QR download करें"}</a>
+          <a href={qr} download={`shubhora-${it.key === "card" ? "card" : it.key === "site" ? "website" : it.key === "L" ? "left" : "right"}-qr.png`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Download className="h-3.5 w-3.5" /> {en ? "Download QR" : "QR download करें"}</a>
         </div>
       )}
     </div>
@@ -76,7 +76,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
 export function ShareLinks({ compact = false, allHref }: { compact?: boolean; allHref?: string }) {
   const { lang } = useT(); const en = lang === "en";
   const [res, setRes] = useState<Res | null | undefined>(cache ?? undefined);
-  const [tab, setTab] = useState<"L" | "card" | "R">("card");
+  const [tab, setTab] = useState<Item["key"]>("card");
   useEffect(() => { if (res === undefined) loadLinks().then(setRes); }, [res]);
 
   if (res === undefined) return <div className="py-6 grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div>;
@@ -90,6 +90,14 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
     key: "card", emoji: "📇", title: en ? "My card" : "मेरा card", sub: en ? "Your digital visiting card — for customers" : "आपका digital visiting card — customers के लिए",
     url: res.cardLink, text: en ? `Hi! Here is my digital visiting card — contact, products and more in one tap: ${res.cardLink}` : `नमस्ते! ये मेरा digital visiting card है — contact, products सब एक tap में: ${res.cardLink}`,
   });
+  // The website (owner's call, 2 Oct 2026): the same link with ?view=site opens the full website on a phone too.
+  if (res?.cardLink) {
+    const siteUrl = `${res.cardLink}${res.cardLink.includes("?") ? "&" : "?"}view=site`;
+    items.push({
+      key: "site", emoji: "🌐", title: en ? "My website" : "मेरी website", sub: en ? "Your full website — products, services, about, contact" : "आपकी पूरी website — products, services, about, contact",
+      url: siteUrl, text: en ? `Visit our website — products, services and everything about us: ${siteUrl}` : `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteUrl}`,
+    });
+  }
   if (res?.link) {
     const join = (leg: "L" | "R") => withLeg(res.link as string, leg);
     const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
@@ -98,7 +106,7 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
   if (!items.length) return <p className="text-sm text-muted">{en ? "Make your card and choose a username first — your links appear here." : "पहले card बनाएँ और username चुनें — आपके links यहाँ आएँगे।"}</p>;
 
   const current = items.find((i) => i.key === tab) ?? items.find((i) => i.key === "card") ?? items[0];
-  const label = (k: Item["key"]) => (k === "card" ? "Card" : k === "L" ? (en ? "Left" : "Left") : (en ? "Right" : "Right"));
+  const label = (k: Item["key"]) => (k === "card" ? "Card" : k === "site" ? "Website" : k === "L" ? "Left" : "Right");
   return (
     <div className={compact ? "rounded-2xl border border-border bg-surface p-3 space-y-2.5" : "space-y-3"}>
       <div className="flex items-center justify-between">
