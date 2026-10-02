@@ -176,8 +176,8 @@ export async function PATCH(request: Request) {
   if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
 
-  const { id, email, password, plan, months, suspend, cardYears } = (await request.json()) as {
-    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number;
+  const { id, email, password, plan, months, suspend, cardYears, demo } = (await request.json()) as {
+    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean;
   };
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
   if (plan && !["free", "pro", "team"].includes(plan)) return Response.json({ error: "unknown plan" }, { status: 400 });
@@ -191,6 +191,18 @@ export async function PATCH(request: Request) {
     const r = await fetch(`${SUPA_URL}/rest/v1/rpc/admin_extend_card`, { method: "POST", headers: h, body: JSON.stringify({ p_user: id, p_years: years }) });
     if (!r.ok) return Response.json({ error: `Could not extend the V-Card: ${await r.text()}` }, { status: 400 });
     return Response.json({ ok: true, cardUntil: await r.json() });
+  }
+  // Demo account (owner's call, 2 Oct 2026): the "Reset demo" pill appears in the app for this login, and it may wipe
+  // itself back to fresh after every demo. The flag sits in user_metadata next to the name and mobile.
+  if (typeof demo === "boolean") {
+    const ur = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { headers: h, cache: "no-store" });
+    if (!ur.ok) return Response.json({ error: "user not found" }, { status: 404 });
+    const u = (await ur.json()) as { user_metadata?: Record<string, unknown> };
+    const md = { ...(u.user_metadata ?? {}) };
+    if (demo) md.is_demo = true; else delete md.is_demo;
+    const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify({ user_metadata: md }) });
+    if (!r.ok) return Response.json({ error: "could not set the demo flag" }, { status: 400 });
+    return Response.json({ ok: true, demo });
   }
   try {
     const patch: Record<string, unknown> = {};

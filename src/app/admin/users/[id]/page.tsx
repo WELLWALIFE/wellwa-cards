@@ -11,7 +11,7 @@ import { displayLogin } from "@/lib/phone";
 
 type Row = Record<string, unknown>;
 type Data = {
-  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
+  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
   profile: Row; cards: Row[]; leads: Row[]; posterProfiles: Row[]; payments: Row[]; subscriptions: Row[]; credits: number; ledger: Row[]; devices: Row[];
   google: Row | null; cloud: Row | null; social: Row[]; agents: Row[]; jobs: Row[]; whatsapp: Row | null;
 };
@@ -95,6 +95,17 @@ export default function AdminUserProfile() {
     setNote(`${r.status === 207 ? "Partly cleared" : "All data cleared"} — ${parts.join(", ") || "nothing was there"}. Setup starts again at the next login.`);
     void load();
   }
+  /** Demo account on / off: the app shows this login a "Reset demo" pill that wipes everything back to fresh. */
+  async function toggleDemo() {
+    const on = !data?.auth.is_demo;
+    if (!confirm(on ? "Mark this account as the DEMO account?\n\nA red \"Reset demo\" button appears in the app for this login; one tap wipes its cards, products, connections and setup (the login, plan and partner ID stay)." : "Remove the demo mark? The Reset button disappears from the app.")) return;
+    setBusy("demo");
+    const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id, demo: on }) });
+    const j = await r.json().catch(() => ({})); setBusy("");
+    if (!r.ok) { alert(j.error || "Failed"); return; }
+    setNote(on ? "Demo account: the Reset demo button is now in the app for this login." : "Demo mark removed.");
+    void load();
+  }
   /** One more V-Card year by hand (a ₹1,499 renewal paid in cash / offline) — from the later of today and the current end. */
   async function addCardYear() {
     if (!confirm("Add 1 year to this user's V-Card? (Use this when the ₹1,499 renewal was paid outside the app.)")) return;
@@ -127,6 +138,7 @@ export default function AdminUserProfile() {
         <button onClick={() => setEditProfile(true)} className="rounded-lg bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink">Edit profile</button>
         <button onClick={() => setEdit(true)} className="rounded-lg border border-border px-3 py-2 text-sm">Edit login / plan</button>
         <button onClick={() => suspend(!suspended)} disabled={busy === "susp" || !cards.length} className="rounded-lg border border-border px-3 py-2 text-sm disabled:opacity-40">{suspended ? "Reinstate" : "Suspend"}</button>
+        <button onClick={toggleDemo} disabled={busy === "demo"} className={`rounded-lg border px-3 py-2 text-sm disabled:opacity-40 ${data.auth.is_demo ? "border-danger/40 bg-danger/10 text-danger" : "border-border"}`} title="A demo account gets a Reset button in the app that wipes it back to fresh">{busy === "demo" ? "…" : data.auth.is_demo ? "🧹 Demo account: ON" : "Mark as demo"}</button>
         <button onClick={clearData} disabled={busy === "clear"} className="rounded-lg border border-danger/40 px-3 py-2 text-sm text-danger disabled:opacity-40" title="Delete cards, posters, products and connections — keep the login, username, partner ID, plan and credits">{busy === "clear" ? "Clearing…" : "Clear all data"}</button>
         <button onClick={loginAs} disabled={busy === "login"} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60"><KeyRound className="h-4 w-4" />{busy === "login" ? "…" : "Login as this user"}</button>
       </div>

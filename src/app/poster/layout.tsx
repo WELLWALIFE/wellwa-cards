@@ -5,6 +5,7 @@ import { TopMenu } from "@/components/poster/top-menu";
 import { BackBar } from "@/components/poster/back-bar";
 import { SetupResume } from "@/components/setup-resume";
 import { HelpDock } from "@/components/poster/help-dock";
+import { DemoReset } from "@/components/poster/demo-reset";
 import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
 import { BrandProvider } from "@/components/brand-context";
@@ -32,6 +33,8 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           <PosterNav />
           {/* One Help button on every screen, and the live-help session behind it. */}
           <HelpDock />
+          {/* The demo account's own Reset pill (only on an account Super Admin marked as demo). */}
+          <DemoReset />
           <NativeBridge />
         </div>
       </UiLangProvider>
