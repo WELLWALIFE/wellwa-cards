@@ -54,8 +54,8 @@ export function AdminReturnBar() {
     // A small pill in the top-right corner (owner's call, 2 Oct 2026): the wide bar at the foot sat on the app's
     // Home / Create / Leads tabs. The name is in the tooltip; the pill says only "← Admin".
     <button onClick={back} disabled={busy} title={`Super Admin · viewing as ${who} — back to admin`}
-      className="fixed right-2 z-[100] inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
-      style={{ top: "calc(8px + env(safe-area-inset-top))" }}>
+      className="fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
+      style={{ top: "calc(8px + env(safe-area-inset-top))", right: "max(8px, calc(50% - 14rem + 8px))" }}>
       {busy ? "…" : <>← Admin</>}
     </button>
   );

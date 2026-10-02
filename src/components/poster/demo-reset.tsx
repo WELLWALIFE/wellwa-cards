@@ -26,8 +26,8 @@ export function DemoReset() {
   }
   return (
     <button type="button" onClick={reset} disabled={busy} title="Demo account — wipe everything and start fresh"
-      className="fixed left-2 z-[100] inline-flex items-center gap-1 rounded-full bg-[#b91c1c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
-      style={{ top: "calc(8px + env(safe-area-inset-top))" }}>
+      className="fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#b91c1c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
+      style={{ top: "calc(8px + env(safe-area-inset-top))", left: "max(8px, calc(50% - 14rem + 8px))" }}>
       {busy ? "Resetting…" : "🧹 Reset demo"}
     </button>
   );
