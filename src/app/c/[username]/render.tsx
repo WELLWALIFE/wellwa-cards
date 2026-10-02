@@ -19,7 +19,7 @@ import type { Card, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
-import { hasShubhoraPage, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // With a real database connected, the cloud is the only source of truth — a
 // card that was deleted must 404, not silently fall back to built-in demo data.
@@ -101,7 +101,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // cleanup takes any Shubhora material off its visible pages (owner's call, 2 Oct 2026). A partner's card whose
   // whole business IS Shubhora is left as it is.
   const withPage: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : stored;
-  const card: Card = isShubhoraCard(stored) ? withPage : withoutShubhoraLeaks(withPage);
+  const seller = isShubhoraSellerCard(stored);
+  const card: Card = seller ? withPage : withoutShubhoraLeaks(withPage);
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
   if (await fetchCardPaused(card.username)) {
@@ -142,7 +143,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The Shubhora strip: on every free card, and on a paid card whose owner also sells Shubhora ("Both" — the card
   // carries the Shubhora page). Never on a white-label partner's card.
   // A "Both" card always carries it, with the owner's own handle when the partner link cannot be looked up.
-  const both = hasShubhoraPage(stored) && !isShubhoraCard(stored);
+  const both = hasShubhoraPage(stored) && !seller;
   const by = joinHandle ?? (both ? card.username : null);
   const shubhora = by && !brand && (expired || both)
     ? { joinHref: `/signup?by=${encodeURIComponent(by)}`, moreHref: `${linkBase}/shubhora` }

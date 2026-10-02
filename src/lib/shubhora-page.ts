@@ -117,6 +117,13 @@ export function toBothFromShubhora(card: Card, own?: { photo?: string | null }):
   };
 }
 
+/** A card whose WHOLE business is Shubhora (the seller template): known by what it says — company or name Shubhora,
+ *  "Shubhora partner" as the job title — never by the `kb` flag alone. A flag left on a card from an earlier
+ *  "Sell Shubhora" choice (kb: "shubhora" on a school's card, 2 Oct 2026) must not switch the cleanup off. */
+export function isShubhoraSellerCard(card: { company?: string; name?: string; jobTitle?: string; tagline?: string }): boolean {
+  return /shubhora/i.test(String(card.company ?? "")) || /^shubhora$/i.test(String(card.name ?? "").trim()) || /shubhora partner/i.test(`${card.jobTitle ?? ""} ${card.tagline ?? ""}`);
+}
+
 /** Shubhora's own material that reached a "both" card's OWN pages (built before 2 Oct 2026, when the build still took
  *  the Shubhora plans as the owner's products and shubhora.com as their website): the plan products, the Shubhora
  *  demo videos / PDFs and the "Register free" call. Taken off the visible pages at render time; the hidden Shubhora
@@ -133,6 +140,8 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
     const costs = /2,?999|free for 1 year|worth ₹?1,?499|on request|any software|growth plan|custom solutions|free digital/i.test(t);
     return offers && costs;
   };
+  // The seller template's other plan blocks and words: "Free vs Growth", "About the plans", "Not sure which plan?".
+  const planWords = /shubhora|v-?card|growth plan|growth ₹|₹\s?2,?999|custom solutions|ai credits|digital (visiting |business )?card|which plan|the plans?\b/i;
   const pages = card.pages.map((p) => {
     // The Shubhora page itself stays off the tab row: the small icon and the strip are its only doors (owner's call).
     if (p.slug === SHUBHORA_PAGE_SLUG) return p.hidden ? p : { ...p, hidden: true };
@@ -145,7 +154,12 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
       if (b.kind === "cta" && (ours(b.title) || ours(b.body) || /signup|join/i.test(b.joinUrl))) return [];
       if (b.kind === "gallery") { const images = b.images.filter((i) => !ours(i.url) && !ours(i.label)); return images.length ? [{ ...b, images }] : []; }
       if (b.kind === "image" || b.kind === "carousel") { const images = b.images.filter((i) => !ours(i.url) && !ours(i.caption)); return images.length ? [{ ...b, images }] : []; }
-      if (b.kind === "faq") { const items = b.items.filter((i) => !ours(i.q) && !ours(i.a)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "faq" && planWords.test(b.title)) return [];
+      if (b.kind === "faq") { const items = b.items.filter((i) => !ours(i.q) && !ours(i.a) && !planWords.test(`${i.q} ${i.a}`)); return items.length ? [{ ...b, items }] : []; }
+      if (b.kind === "compare" && planWords.test(`${b.title} ${b.leftLabel} ${b.rightLabel} ${b.rows.map((r) => r.feature).join(" ")}`)) return [];
+      if (b.kind === "contact" && planWords.test(`${b.title} ${b.note ?? ""}`)) return [];
+      if (b.kind === "offer" && planWords.test(`${b.title} ${b.text}`)) return [];
+      if (b.kind === "highlights") { const items = b.items.filter((i) => !planWords.test(i)); return items.length ? [{ ...b, items }] : []; }
       return [b];
     });
     return { ...p, blocks };
