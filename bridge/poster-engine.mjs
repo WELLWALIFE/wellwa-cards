@@ -417,7 +417,7 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
-  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}` : ""}${watermark ? "-w" : ""}.jpg`);
+  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : ""}${watermark ? "-w" : ""}.jpg`);
   if (fs.existsSync(out) && !force) return out;
   // Signature draws its own page from a real photo + the layout code, so it never needs (or pays for) the day's base art;
   // only when it cannot render does the day fall through to the original styles below.

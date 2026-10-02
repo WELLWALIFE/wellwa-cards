@@ -106,6 +106,14 @@ function wrap(text, size, width, max = 2) {
 }
 /** biggest font size (≤ hi) at which the text fits on one line of `width` px, never below lo */
 const fitSize = (text, width, hi, lo) => Math.max(lo, Math.min(hi, Math.floor(width / Math.max(0.1, measure(text)))));
+/** The business name in full, never "NATIONAL ACADEMY…" (owner's call, 2 Oct 2026): one line shrunk down to `lo`,
+ *  and when even that does not fit, two lines at `two` px. → { lines, size } */
+function nameLines(text, width, hi, lo, two) {
+  const name = String(text || "").replace(/\s+/g, " ").trim();
+  if (measure(name) * lo <= width) return { lines: [name], size: fitSize(name, width, hi, lo) };
+  const lines = wrap(name, two, width, 2);
+  return { lines, size: two };
+}
 
 /* ---------------- shared drawing ---------------- */
 function brush(x, y, w, h, rot = -1.6) {
@@ -212,9 +220,14 @@ function chipsRow(chips, y, W) {
   }).join("");
 }
 function vibrantHeader(spec, p, y) {
-  const name = wrap(spec.name, 46, 640, 1)[0] || spec.name;
-  return `<text x="190" y="${y + 50}" font-family="${DEV}, ${LAT}" font-weight="800" font-size="${fitSize(name, 620, 46, 30)}" fill="${p.ink}">${esc(name)}</text>
-  <text x="190" y="${y + 90}" font-family="${DEV2}, ${LAT}" font-weight="600" font-size="25" fill="#4b5090">${esc(wrap(spec.tagline, 25, 640, 1)[0] || "")}</text>
+  const nm = nameLines(spec.name, 560, 46, 26, 28);
+  const two = nm.lines.length > 1;
+  const nameSvg = two
+    ? `<text x="190" y="${y + 34}" font-family="${DEV}, ${LAT}" font-weight="800" font-size="${nm.size}" fill="${p.ink}">${esc(nm.lines[0])}</text>
+  <text x="190" y="${y + 66}" font-family="${DEV}, ${LAT}" font-weight="800" font-size="${nm.size}" fill="${p.ink}">${esc(nm.lines[1])}</text>`
+    : `<text x="190" y="${y + 50}" font-family="${DEV}, ${LAT}" font-weight="800" font-size="${nm.size}" fill="${p.ink}">${esc(nm.lines[0])}</text>`;
+  return `${nameSvg}
+  <text x="190" y="${y + (two ? 96 : 90)}" font-family="${DEV2}, ${LAT}" font-weight="600" font-size="${two ? 22 : 25}" fill="#4b5090">${esc(wrap(spec.tagline, two ? 22 : 25, 560, 1)[0] || "")}</text>
   ${spec.script1 ? `<text x="1010" y="${y + 34}" text-anchor="end" font-family="${SCRIPT}" font-style="italic" font-weight="700" font-size="34" fill="url(#brand)">${esc(spec.script1)}</text>` : ""}
   ${spec.script2 ? `<text x="1010" y="${y + 74}" text-anchor="end" font-family="${SCRIPT}" font-style="italic" font-weight="700" font-size="34" fill="url(#brand)">${esc(spec.script2)}</text><path d="M760 ${y + 92} Q 890 ${y + 80} 1010 ${y + 88}" fill="none" stroke="url(#brand)" stroke-width="4" stroke-linecap="round"/>` : ""}`;
 }
@@ -354,9 +367,14 @@ function uspLine(items, cx, y, size = 24) {
   return out;
 }
 function classicHeader(spec, y, W) {
-  const name = wrap(spec.name, 44, 600, 1)[0] || spec.name;
-  return `<text x="196" y="${y + 40}" font-family="${SERIF}, ${SERIF_DEV}" font-weight="700" font-size="${fitSize(name, 560, 44, 28)}" fill="${CREAM}">${esc(name)}</text>
-  <text x="198" y="${y + 76}" font-family="${LAT}, ${DEV2}" font-weight="600" font-size="19" letter-spacing="4" fill="${GOLD2}">${esc(String(spec.tagline || "").toUpperCase().slice(0, 44))}</text>
+  const nm = nameLines(spec.name, spec.tag ? 520 : 760, 44, 24, 26);
+  const two = nm.lines.length > 1;
+  const nameSvg = two
+    ? `<text x="196" y="${y + 28}" font-family="${SERIF}, ${SERIF_DEV}" font-weight="700" font-size="${nm.size}" fill="${CREAM}">${esc(nm.lines[0])}</text>
+  <text x="196" y="${y + 58}" font-family="${SERIF}, ${SERIF_DEV}" font-weight="700" font-size="${nm.size}" fill="${CREAM}">${esc(nm.lines[1])}</text>`
+    : `<text x="196" y="${y + 40}" font-family="${SERIF}, ${SERIF_DEV}" font-weight="700" font-size="${nm.size}" fill="${CREAM}">${esc(nm.lines[0])}</text>`;
+  return `${nameSvg}
+  <text x="198" y="${y + (two ? 82 : 76)}" font-family="${LAT}, ${DEV2}" font-weight="600" font-size="${two ? 17 : 19}" letter-spacing="4" fill="${GOLD2}">${esc(String(spec.tagline || "").toUpperCase().slice(0, 44))}</text>
   ${spec.tag ? `<rect x="${W - 66 - 250}" y="${y + 14}" width="250" height="52" rx="26" fill="#000" fill-opacity="0.35" stroke="${GOLD}" stroke-opacity="0.8" stroke-width="1.5"/>
   <text x="${W - 66 - 125}" y="${y + 49}" text-anchor="middle" font-family="${DEV2}, ${LAT}" font-weight="700" font-size="${fitSize(spec.tag, 220, 22, 15)}" letter-spacing="2" fill="${GOLD2}">${esc(spec.tag)}</text>` : ""}`;
 }
