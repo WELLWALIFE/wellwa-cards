@@ -43,7 +43,7 @@ export function TopMenu() {
   }, [open]);
   useEffect(() => { setOpen(false); setSharing(false); }, [p]);
 
-  if (!me || /^\/poster\/(start|onboard)/.test(p)) return null;
+  if (!me || /^\/poster\/start/.test(p)) return null;
 
   async function logout() {
     try { await getBrowserSupabase()?.auth.signOut(); } catch { /* already out */ }

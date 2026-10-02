@@ -14,7 +14,9 @@ export function PosterNav() {
     { href: "/poster/business", label: t.tabBusiness, icon: Handshake },
     { href: "/poster/more", label: t.tabMore, icon: UserCircle },
   ];
-  if (p.startsWith("/poster/start") || p.startsWith("/poster/onboard")) return null; // onboarding is full-screen (it has Skip)
+  // The profile steps (You, Company…) stay inside the app, tabs and all (owner's call, 2 Oct 2026); only the very
+  // first "start" screen is full-screen.
+  if (p.startsWith("/poster/start")) return null;
   return (
     // z-40: stays above page content (cards, previews, sticky bars) so the menu never disappears under a page.
     <nav className="fixed bottom-0 left-1/2 -translate-x-1/2 z-40 w-full max-w-md border-t border-border bg-surface/95 backdrop-blur"
