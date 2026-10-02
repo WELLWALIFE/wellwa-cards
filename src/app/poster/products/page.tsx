@@ -59,7 +59,7 @@ export default function ProductsPage() {
   async function continueToSite() {
     setGoing(true);
     try { if (facts && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, PRODUCT_FACT_KEYS) } }); } catch { /* the build form shows them again */ }
-    router.push("/poster/card/build");
+    router.push("/poster/card/build?flow=1");
   }
 
   // A 401/500/503 is NOT an empty shop: api() resolves on any status, so the status is checked before the

@@ -13,8 +13,8 @@ export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href:
   { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&flow=1" },
   { key: "business", en: "Company", hi: "Company", href: "/poster/onboard?step=site" },
   { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
-  { key: "details", en: "Website", hi: "Website", href: "/poster/card/build" },
-  { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build#make" },
+  { key: "details", en: "Website", hi: "Website", href: "/poster/card/build?flow=1" },
+  { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
 ];
 
 export function ProfileSteps({ current }: { current: ProfileStepKey }) {
