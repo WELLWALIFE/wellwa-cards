@@ -410,7 +410,9 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   const group = premium ? artGroupFor(profile) : "Personal";
   const gTag = group !== "Personal" ? `-g${group.slice(0, 3).toLowerCase()}` : "";
   // `tag` keeps different posters for the SAME profile and day apart (e.g. the WhatsApp greeting vs the Facebook business post).
-  const sTag = stock ? `-s${stock.kind.slice(0, 3)}` : "";
+  // A day whose art is painted (a jayanti, a national day) carries no stock tag: the posters rendered on the wrong
+  // stock photo earlier today keep their old file names and are simply not picked up again.
+  const sTag = stock && stockFitsOccasion(themeFor(dateStr)) ? `-s${stock.kind.slice(0, 3)}` : "";
   const vTag = card ? "-vc" : "";
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
