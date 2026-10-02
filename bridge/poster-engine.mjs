@@ -432,7 +432,7 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
-  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : "-t2"}${watermark ? "-w" : ""}.jpg`);
+  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : "-t3"}${watermark ? "-w" : ""}.jpg`);
   if (fs.existsSync(out) && !force) return out;
   // Signature draws its own page from a real photo + the layout code, so it never needs (or pays for) the day's base art;
   // only when it cannot render does the day fall through to the original styles below.
@@ -454,13 +454,20 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   const L = profile.layout && typeof profile.layout === "object" ? profile.layout : {};
   const party = profile.party && typeof profile.party === "object" && (profile.party.name || profile.party.symbol_url) ? profile.party : null;
   const t0 = await titleFor(theme, profile.lang || "hi");
-  const t = { ...t0, big: L.title || t0.big, small: L.sub !== undefined && L.sub !== null ? L.sub : t0.small };
+  const ident = identityFor(profile);
+  // The owner's custom heading replaces the day's title — unless it is just their business name again (a school
+  // typed its own name there: the name then stood twice on the poster and "Gandhi Jayanti" was gone from the top).
+  // The name always stands at the foot, so the top keeps the day's title.
+  const loose = (x) => String(x || "").toLowerCase().replace(/[^a-z0-9\u0900-\u097f]/g, "");
+  const sameName = (a, b) => { const x = loose(a), y = loose(b); return x.length >= 6 && y.length >= 6 && (x.includes(y) || y.includes(x)); };
+  const custTitle = String(L.title || "").trim();
+  const titleIsName = !!custTitle && [ident.big, profile.name, profile.tagline].some((o) => sameName(custTitle, o));
+  const t = { ...t0, big: (titleIsName ? "" : custTitle) || t0.big, small: L.sub !== undefined && L.sub !== null ? L.sub : t0.small };
   const bigBase = Math.round((t.big.length > 18 ? 66 : t.big.length > 12 ? 78 : 92) * (S.titleScale ?? 1));
   // The title (the day's name, or the owner's own line — a school's full name ran off both edges) fits its width.
   const titleRoom = S.titleAlign === "left" ? W - 140 : W - 120;
   const big = fitLines(t.big, titleRoom, bigBase, 40, 46);
   const bigSize = big.size;
-  const ident = identityFor(profile);
   const line = party?.slogan && !ident.line ? party.slogan : ident.line;
   const cta = ident.phone;
   const customLine0 = String(L.custom || "").slice(0, 60);
