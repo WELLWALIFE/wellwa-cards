@@ -8,6 +8,7 @@ import { getPlatformKnowledge, type PlatformKnowledge } from "@/lib/platform";
 import type { Card, CardPage } from "@/lib/types";
 // Shubhora's own facts for Shubhora partners' assistants — one file shared with the WhatsApp bridge.
 import { isShubhoraCard, ownNotes, shubhoraTraining } from "../../bridge/shubhora-kb.mjs";
+import { cardDigest } from "../../bridge/card-digest.mjs";
 
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000";
 
@@ -75,7 +76,8 @@ THIS CARD (facts about this specific seller — always true):
 ${sideBySide ? "" : `- Tagline: ${card.tagline}
 - About: ${card.about}
 `}- Contact: ${card.links.map((l) => `${l.type}:${l.value}`).join(", ")}
-- Pages & content: ${JSON.stringify(content).slice(0, 3000)}
+- Everything on the card / website (products with prices, services, FAQ, timings, address, offers, reviews — answer from these first):
+${cardDigest({ ...card, pages: content }, { maxChars: 9000 })}
 
 THIS SELLER'S WEBSITE (the card page — always call it the "website" when talking to the customer): ${cardSiteUrl(card, brand)}
 

@@ -31,6 +31,7 @@ import { createServer } from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import * as baileys from "@whiskeysockets/baileys";
+import { cardDigest } from "./card-digest.mjs";
 import QRCode from "qrcode";
 import pino from "pino";
 
@@ -997,8 +998,10 @@ async function aiReply(jid, text, opts = {}) {
   const lang = AD_OPENER_RE.test(text) ? "Hinglish (Roman script)" : detectLanguage(text);
   const firstReply = opts.history ? opts.history.length === 0 : (history.get(jid)?.length ?? 0) === 0;
   const card = cardContext?.data;
+  // Everything on the card and website, as plain text (card-digest.mjs): products with prices, services, FAQ,
+  // timings, address, offers, reviews — the bot is trained by the card itself, nothing to type again.
   const cardInfo = card
-    ? `Business card info:\nName: ${card.name}\nRole: ${card.jobTitle}, ${card.company}\nTagline: ${card.tagline}\nAbout: ${card.about}\nPages/content: ${JSON.stringify(card.pages).slice(0, 3000)}`
+    ? `EVERYTHING ON THIS BUSINESS'S CARD AND WEBSITE (facts — always true, answer from these first):\n${cardDigest(card, { maxChars: 9000 })}`
     : `Business: ${config.businessName}`;
   // Card > Brand > Platform, same order the website chat uses.
   const brand = effectiveBrand(card);
@@ -1115,7 +1118,7 @@ async function followupMessage(entry, jid) {
     shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || ""),
     shubhora ? shubhoraTraining(shubhoraOverride).brand_knowledge.slice(0, 5000) : "",
     platformKnowledge.knowledge || "",
-    card ? `Products/pages: ${JSON.stringify(card.pages).slice(0, 2500)}` : "",
+    card ? `On the card / website:\n${cardDigest(card, { maxChars: 4000 })}` : "",
   ].filter(Boolean).join("\n\n");
   const persona = card?.botPersona?.trim() || (shubhora ? shubhoraTraining(shubhoraOverride).brand_persona : "") || platformKnowledge.persona || "";
   // What the business offers and what to invite people to — a Shubhora partner sells Shubhora, not water ionizers.
