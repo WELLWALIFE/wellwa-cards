@@ -3,7 +3,7 @@
 // code, so nothing the owner did not give can appear.
 //
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
-import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, TestimonialItem } from "@/lib/types";
+import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, SiteStyle, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { styleFromReference, styleFromLook, homeOrderFromLook, cleanStyle, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
@@ -283,6 +283,9 @@ export type ComposeInput = {
   details?: string;
   /** A website the owner likes: its look becomes the website's design (site.style); nothing else of it is used. */
   reference?: { url: string; style?: ReferenceStyle; look?: MeasuredLook } | null;
+  /** The designer AI's plan for this business (site-designer.ts): used when there is no reference website;
+   *  the owner's hand-picked look (facts.style) still wins over it. */
+  design?: { style: SiteStyle; order?: HomeKind[] } | null;
   /** The business's rating on Google, when the owner has connected their Google Business profile: real
    *  standing a brand-new card has no reviews of its own to show. */
   googleRating?: { avg: number; count: number } | null;
@@ -530,7 +533,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       case "reviews": return reviews.length ? [{ id: uid(), kind: "testimonials", title: t.reviews, items: reviews }] : [];
     }
   };
-  const order: HomeKind[] = [...recipe.home, ...(["trust", "catalog", "services", "whyUs", "steps", "about", "offer", "booking", "photos", "reviews"] as HomeKind[]).filter((k) => !recipe.home.includes(k))];
+  // The designer's order for this business leads when it gave one (no reference site); the trade's recipe fills in.
+  const lead_ = input.reference?.look || input.reference?.style ? null : input.design?.order;
+  const first: HomeKind[] = lead_ && lead_.length >= 3 ? lead_ : recipe.home;
+  const order: HomeKind[] = [...first, ...(["trust", "catalog", "services", "whyUs", "steps", "about", "offer", "booking", "photos", "reviews"] as HomeKind[]).filter((k) => !first.includes(k))];
   // A personal card keeps its old, short shape.
   for (const k of personal ? (["about", "trust", "photos", "reviews"] as HomeKind[]) : order) home.push(...blockFor(k));
   // The appointment block always exists for a booking trade, even when the recipe did not place it.
@@ -624,7 +630,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
               : {}),
             reference: { url: input.reference.url, at: new Date().toISOString() },
           }
-        : { style: { ...tradeStyle(setup.category, lang), ...(heroVariant ? { hero: heroVariant } : {}), ...(cleanStyle(facts.style) ?? {}) } }),
+        // No reference site: the trade's default look, then the designer AI's plan for this business, then what
+        // the content itself decides (a mosaic / a portrait hero), and over all of it the owner's own pick.
+        : { style: { ...tradeStyle(setup.category, lang), ...(input.design?.style ?? {}), ...(heroVariant ? { hero: heroVariant } : {}), ...(cleanStyle(facts.style) ?? {}) } }),
     },
   };
 

@@ -914,7 +914,7 @@ export default function BuildCard() {
         </div>
       </Sec>
 
-      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto is your trade's own look — a jeweller opens gold and serif, a clinic calm blue. Change anything; the preview updates.", "Auto आपके काम का अपना look है — jeweller को gold और serif, clinic को शांत नीला। कुछ भी बदलें; preview बदलता है।")}>
+      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto: our designer AI picks the look from your trade and details when the website is made — a jeweller gets gold and serif, a clinic calm blue, a school warm and clear. Change anything here and your choice wins.", "Auto: website बनते समय हमारा designer AI आपके काम और details से look चुनता है — jeweller को gold और serif, clinic को शांत नीला, school को warm और साफ़। यहाँ कुछ भी बदलें, आपकी पसंद ऊपर रहेगी।")}>
         <LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} />
       </Sec>
 

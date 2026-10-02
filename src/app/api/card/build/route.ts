@@ -27,6 +27,8 @@ import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
+import { designSite } from "@/lib/site-designer";
+import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
@@ -369,14 +371,22 @@ export async function POST(request: Request) {
       return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "" }), 45_000);
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
+  // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section
+  // order — beside the copy-writer. Not when a reference website sets the look. Never holds the build: slow or
+  // down, the trade's default look stands.
+  const designT0 = Date.now();
+  const designP = reference ? Promise.resolve(null) : within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang) }), 30_000);
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
+  const design = await designP;
+  console.log("[card] design", JSON.stringify({ used: !!design, ms: Date.now() - designT0, ...(design ? { style: design.style, order: design.order ?? null, why: design.why } : {}) }));
 
   /* ---- the layout (code) ---- */
   const { card, checks, missing: composed } = composeCard({
     setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
+    design,
     googleRating: gRating,
     ...(ownSite ? { builtFrom: "own-site" as const, tradeSwitched } : {}),
   });
