@@ -12,7 +12,7 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INTRODUCER_KEY } from "@/lib/username";
 import { Menu, X, MessageCircle, Phone, Download, Check, Star, MapPin, ChevronDown, FileText, Copy, Clock, Play, UserPlus, CalendarClock, ArrowRight, Navigation, Quote, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
-import type { Card, CardBlock, CardPage, ProductItem } from "@/lib/types";
+import type { Card, CardBlock, CardPage, ProductItem, TestimonialItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, isCuratedArt, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
@@ -23,6 +23,7 @@ import { lookOf } from "@/lib/looks";
 import { siteDesign } from "@/lib/site-style";
 import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, trustFacts, type HomeSection } from "@/lib/site-home";
+import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, type ProductsLayout } from "@/lib/site-layout";
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
 import { Pic as Img, picUrl } from "@/components/pic";
@@ -805,7 +806,7 @@ function SiteRun(p: RunProps) {
       const withImg = list.filter((b) => b.imageUrl);
       return (
         <Section wide index={index} theme={theme}>
-          {withImg.length > 0 && <div className="mb-12"><AboutBody block={withImg[0]} hi={hi} /></div>}
+          {withImg.length > 0 && <div className="mb-12"><AboutBody block={withImg[0]} hi={hi} index={index} /></div>}
           <div className={`grid gap-8 ${list.filter((b) => !b.imageUrl || b !== withImg[0]).length > 1 ? "md:grid-cols-2" : ""}`}>
             {list.filter((b) => b !== withImg[0]).map((b) => (
               <div key={b.id} className="rounded-3xl border border-border bg-surface p-8">
@@ -848,12 +849,46 @@ function SiteRun(p: RunProps) {
 function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
   const t = useT();
   const list = items.filter((s) => s.name.trim());
+  const layout = servicesLayout(list);
+  const name = (s: { name: string }) => t(s.name.replace(/^\d+[.)]\s*/, ""));
+  // One or two services: a full-width row each, with room for the whole description.
+  if (layout === "rows") {
+    return (
+      <div className="divide-y divide-border border-t border-border">
+        {list.map((s, i) => (
+          <div key={i} className="grid gap-4 py-9 md:grid-cols-[96px_1fr] md:gap-8 items-start">
+            <span className="text-[40px] md:text-[52px] leading-none font-semibold tracking-tight" style={{ fontFamily: "var(--look-head)", color: "var(--tc)" }}>{String(i + 1).padStart(2, "0")}</span>
+            <div>
+              <h3 className="text-[22px] md:text-[26px] font-semibold tracking-tight leading-tight">{name(s)}</h3>
+              {s.desc && <p className="mt-3 text-[17px] text-muted leading-relaxed max-w-[62ch]">{t(s.desc)}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  // A long list (a clinic's seven treatments): two tidy columns, a tick each, not a wall of cards.
+  if (layout === "list") {
+    return (
+      <div className="grid md:grid-cols-2 gap-x-12 md:border-t md:border-border">
+        {list.map((s, i) => (
+          <div key={i} className="flex items-start gap-4 border-b border-border py-5">
+            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Check className="h-4 w-4" /></span>
+            <div>
+              <h3 className="text-[16px] font-semibold leading-snug">{name(s)}</h3>
+              {s.desc && <p className="mt-1 text-[14px] text-muted leading-relaxed">{t(s.desc)}</p>}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {list.map((s, i) => (
         <div key={i} className={`rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
           <span className="inline-grid h-9 w-9 place-items-center rounded-xl text-xs font-bold tracking-wider" style={{ background: "var(--grad)", color: "var(--p-on)" }}>{String(i + 1).padStart(2, "0")}</span>
-          <h3 className="mt-4 text-[17px] font-semibold">{t(s.name.replace(/^\d+[.)]\s*/, ""))}</h3>
+          <h3 className="mt-4 text-[17px] font-semibold">{name(s)}</h3>
           {s.desc && <p className="mt-2 text-[15px] text-muted leading-relaxed">{t(s.desc)}</p>}
         </div>
       ))}
@@ -921,20 +956,42 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
   );
 }
 
-function AboutBody({ block, hi }: { block: Extract<CardBlock, { kind: "about" }>; hi: boolean }) {
+function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind: "about" }>; hi: boolean; index?: number }) {
   const t = useT();
-  return (
-    <div className={`grid gap-12 items-center ${block.imageUrl ? "md:grid-cols-[0.9fr_1.1fr]" : ""}`}>
-      {block.imageUrl && (
-        <div className="relative">
-          <div aria-hidden="true" className="absolute -left-4 -top-4 h-28 w-28 rounded-3xl opacity-60" style={{ background: "var(--grad)" }} />
-          <Img src={block.imageUrl} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl border border-border shadow-float" sizes="(min-width: 768px) 45vw, 100vw" />
-        </div>
-      )}
-      <div>
-        <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hi ? "परिचय" : t("About")}</p>
+  const layout = aboutLayout(block, index);
+  const eyebrow = <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hi ? "परिचय" : t("About")}</p>;
+  const rule = <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />;
+  // A short text with no photo: one centred statement, large — not a thin paragraph lost in a wide box.
+  if (layout === "statement") {
+    return (
+      <div className="mx-auto max-w-3xl text-center">
+        {eyebrow}
         <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>
-        <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />
+        <span className="mx-auto mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />
+        <div className="mt-7 space-y-4 text-[21px] md:text-[24px] leading-snug" style={{ fontFamily: "var(--look-head)" }}>{paras(block.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
+      </div>
+    );
+  }
+  // A long text with no photo: the heading holds the left column, the story runs down the right.
+  if (layout === "columns") {
+    return (
+      <div className="grid gap-8 md:grid-cols-[0.8fr_1.4fr] md:gap-16 items-start">
+        <div className="md:sticky md:top-24">{eyebrow}<h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>{rule}</div>
+        <div className="space-y-5 text-[17px] leading-relaxed text-muted md:border-l md:border-border md:pl-10">{paras(block.body).map((x, i) => <p key={i} className={i === 0 ? "text-[19px] text-ink" : ""}>{t(x)}</p>)}</div>
+      </div>
+    );
+  }
+  const right = layout === "photo-right";
+  return (
+    <div className={`grid gap-12 items-center ${right ? "md:grid-cols-[1.1fr_0.9fr]" : "md:grid-cols-[0.9fr_1.1fr]"}`}>
+      <div className={`relative ${right ? "md:order-2" : ""}`}>
+        <div aria-hidden="true" className={`absolute -top-4 h-28 w-28 rounded-3xl opacity-60 ${right ? "-right-4" : "-left-4"}`} style={{ background: "var(--grad)" }} />
+        <Img src={block.imageUrl!} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl border border-border shadow-float" sizes="(min-width: 768px) 45vw, 100vw" />
+      </div>
+      <div>
+        {eyebrow}
+        <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>
+        {rule}
         <div className="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">{paras(block.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
     </div>
@@ -986,7 +1043,7 @@ const galleryOf = (p: ProductItem) => [...(p.images ?? []), ...(p.imageUrl ? [p.
  *  so this is for the cards that were built before it did. */
 const descOf = (p: ProductItem) => (p.desc ?? "").replace(/[\s.·—–-]*(?:₹|rs\.?|inr)\s*[\d,]+(?:\.\d{1,2})?(?:\s*\/\s*\w+)?\s*$/i, "").trim();
 
-function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: ProductItem; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void }) {
+function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = false, flip = false }: { p: ProductItem; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; named?: boolean; flip?: boolean }) {
   const t = useT();
   const hi = card.language === "hi";
   const gallery = galleryOf(p);
@@ -999,7 +1056,7 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
   const initial = Array.from((p.name ?? "").trim())[0]?.toUpperCase() ?? "";
   return (
     <div className="grid gap-10 md:grid-cols-2 md:gap-14 items-start">
-      <div className="grid gap-3">
+      <div className={`grid gap-3 ${flip ? "md:order-2" : ""}`}>
         <div className="aspect-square relative overflow-hidden rounded-3xl border border-border" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
           {gallery[0]
             ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-8 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain" eager sizes="(min-width: 768px) 50vw, 100vw" /></button>
@@ -1017,7 +1074,8 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
         )}
       </div>
       <div>
-        {/* The page's own heading already carries the name; here it is the price that leads. */}
+        {/* On a product's own page the heading already carries the name and the price leads; in a showcase the name comes first. */}
+        {named && <h3 className="text-[26px] md:text-[32px] tracking-tight leading-tight mb-4">{t(p.name)}</h3>}
         {p.badge && <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span>}
         {(p.price || p.mrp) && (
           <p className={`text-[28px] md:text-[34px] font-semibold tracking-tight ${p.badge ? "mt-4" : ""}`}>
@@ -1039,8 +1097,18 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom }: { p: Prod
   );
 }
 
-function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void }) {
+function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go, layout }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void; layout?: ProductsLayout }) {
   const t = useT();
+  const shape = layout ?? productsLayout(items.length);
+  // One or two products: each gets the full showcase — big photo, price, every feature — the photo side alternating.
+  if (shape === "showcase") {
+    return (
+      <div className="space-y-16 md:space-y-24">
+        {items.map((p, i) => <ProductDetail key={i} p={p} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={onZoom} named flip={i % 2 === 1} />)}
+      </div>
+    );
+  }
+  const columns = cols === 4 || shape === "dense" ? 4 : 3;
   // Each product has an address of its own (/p-kaju-katli): a link the owner can send by itself, and a page
   // search can index. On the product's own page there is nothing to link to.
   const addressOf = new Map(cardProducts(card).map((x) => [x.item, x.slug]));
@@ -1048,7 +1116,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   // No photo anywhere in the block: compact cards without an empty picture area.
   const compact = !items.some((p) => galleryOf(p).length > 0);
   return (
-    <div className={`grid sm:grid-cols-2 ${cols === 4 ? "lg:grid-cols-4" : "lg:grid-cols-3"} gap-6`}>
+    <div className={`grid sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}>
       {items.map((p, i) => {
         const gallery = galleryOf(p);
         const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
@@ -1063,7 +1131,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
             {!compact && (
               <div className="aspect-[4/5] relative overflow-hidden" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
                 {gallery[0]
-                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none" eager={i < 3} sizes={cols === 4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} /></button>
+                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none" eager={i < 3} sizes={columns === 4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} /></button>
                   // No photo for this item: its first letter, never an empty box.
                   : <span aria-hidden="true" className="absolute inset-8 rounded-2xl grid place-items-center text-6xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
                 {(p.badge || discount) && (
@@ -1127,6 +1195,49 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   );
 }
 
+/** Reviews: one is a big centred quote, two sit side by side with room to read, three or more are cards. */
+function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string }) {
+  const t = useT();
+  const layout = reviewsLayout(items.length);
+  const avatar = (x: TestimonialItem, big = false) => <span className={`grid place-items-center rounded-full ${big ? "h-11 w-11 text-base" : "h-9 w-9 text-sm"}`} style={{ background: tint(theme), color: "var(--tc)" }}>{Array.from(x.name.trim())[0]?.toUpperCase() ?? "★"}</span>;
+  if (layout === "quote") {
+    const x = items[0];
+    return (
+      <figure className="mx-auto max-w-3xl text-center">
+        <Quote className="mx-auto h-10 w-10 opacity-25" style={{ color: "var(--tc)" }} />
+        <blockquote className="mt-5 text-[22px] md:text-[27px] leading-snug" style={{ fontFamily: "var(--look-head)" }}>“{t(x.text)}”</blockquote>
+        <figcaption className="mt-7 flex flex-col items-center gap-2 text-sm font-semibold">{avatar(x, true)}<span>{x.name}</span><Stars n={x.rating} /></figcaption>
+      </figure>
+    );
+  }
+  if (layout === "pair") {
+    return (
+      <div className="grid md:grid-cols-2 gap-6">
+        {items.map((x, i) => (
+          <figure key={i} className="relative rounded-3xl border border-border bg-surface p-9">
+            <Quote className="absolute right-7 top-7 h-9 w-9 opacity-15" style={{ color: "var(--tc)" }} />
+            <Stars n={x.rating} />
+            <blockquote className="mt-5 text-[18px] md:text-[20px] leading-relaxed">“{t(x.text)}”</blockquote>
+            <figcaption className="mt-6 flex items-center gap-3 text-[15px] font-semibold">{avatar(x, true)}{x.name}</figcaption>
+          </figure>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      {items.map((x, i) => (
+        <figure key={i} className={`relative rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
+          <Quote className="absolute right-6 top-6 h-8 w-8 opacity-15" style={{ color: "var(--tc)" }} />
+          <Stars n={x.rating} />
+          <blockquote className="mt-4 text-[15px] leading-relaxed">“{t(x.text)}”</blockquote>
+          <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold">{avatar(x)}{x.name}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 /* ---------- the home page's pulled previews ---------- */
 function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFor }: { section: Exclude<HomeSection, { kind: "block" }>; index: number } & Omit<RunProps, "run" | "index">) {
   const t = useT();
@@ -1139,7 +1250,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "प्रोडक्ट" : t("Products")} title={t(s.title)}
           aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} प्रोडक्ट` : t(`All ${s.total} products`)}</SeeAll> : undefined}>
-          <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} />
+          <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} layout={s.items.length <= 2 ? "showcase" : "grid"} />
           {lightbox}
         </Section>
       );
@@ -1164,16 +1275,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "रिव्यू" : t("Reviews")} title={t(s.title)}
           aside={<div className="flex items-center gap-4"><span className="text-3xl font-semibold tracking-tight" style={{ fontFamily: "var(--look-head)", color: "var(--tc)" }}>{(Math.round(s.avg * 10) / 10).toFixed(1)}</span><span className="text-sm text-muted"><Stars n={Math.round(s.avg)} /><span className="block mt-0.5">{hi ? `${s.total} ग्राहक` : t(`${s.total} customer reviews`)}</span></span>{s.total > s.items.length && <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी पढ़ें" : t("Read all")}</SeeAll>}</div>}>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {s.items.map((x, i) => (
-              <figure key={i} className={`relative rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
-                <Quote className="absolute right-6 top-6 h-8 w-8 opacity-15" style={{ color: "var(--tc)" }} />
-                <Stars n={x.rating} />
-                <blockquote className="mt-4 text-[15px] leading-relaxed">“{t(x.text)}”</blockquote>
-                <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold"><span className="grid h-9 w-9 place-items-center rounded-full text-sm" style={{ background: tint(theme), color: "var(--tc)" }}>{Array.from(x.name.trim())[0]?.toUpperCase() ?? "★"}</span>{x.name}</figcaption>
-              </figure>
-            ))}
-          </div>
+          <ReviewCards items={s.items} theme={theme} />
         </Section>
       );
     case "faq":
@@ -1238,7 +1340,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
 
   switch (block.kind) {
     case "about":
-      return <Section wide index={index} theme={theme}><AboutBody block={block} hi={hi} /></Section>;
+      return <Section wide index={index} theme={theme}><AboutBody block={block} hi={hi} index={index} /></Section>;
     case "highlights": {
       // "Why choose us" — every point ticked — is the one stretch of the page that is not white: a long page of
       // pale sections was the main reason a finished card still read as empty.
@@ -1262,7 +1364,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
       }
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} />
+          <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={block.id.startsWith("prodmore-") ? "grid" : undefined} />
           {lightbox}
         </Section>
       );
@@ -1270,23 +1372,31 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
       if (!block.items.length) return null;
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-            {block.items.map((x, i) => (
-              <figure key={i} className={`relative rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
-                <Quote className="absolute right-6 top-6 h-8 w-8 opacity-15" style={{ color: "var(--tc)" }} />
-                <Stars n={x.rating} />
-                <blockquote className="mt-4 text-[15px] leading-relaxed">“{t(x.text)}”</blockquote>
-                <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold"><span className="grid h-9 w-9 place-items-center rounded-full text-sm" style={{ background: tint(theme), color: "var(--tc)" }}>{Array.from(x.name.trim())[0]?.toUpperCase() ?? "★"}</span>{x.name}</figcaption>
-              </figure>
-            ))}
-          </div>
+          <ReviewCards items={block.items} theme={theme} />
         </Section>
       );
-    case "faq":
+    case "faq": {
+      const qs = block.items.filter((f) => f.q);
+      // Two or three questions: shown open as cards — nothing to click for so little.
+      if (faqLayout(qs.length) === "open") {
+        return (
+          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+            <div className={`grid gap-5 ${qs.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
+              {qs.map((f, i) => (
+                <div key={i} className="rounded-2xl border border-border bg-surface p-7">
+                  <span className="inline-grid h-9 w-9 place-items-center rounded-xl text-sm font-bold" style={{ background: tint(theme), color: "var(--tc)" }}>?</span>
+                  <h3 className="mt-4 text-[17px] font-semibold leading-snug">{t(f.q)}</h3>
+                  <p className="mt-3 text-[15px] text-muted leading-relaxed">{t(f.a)}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
+        );
+      }
       return (
         <Section narrow index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className="divide-y divide-border border-y border-border">
-            {block.items.filter((f) => f.q).map((f, i) => (
+            {qs.map((f, i) => (
               <details key={i} name="faq" className="group py-1">
                 <summary className={`flex items-center justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden rounded-xl px-3 py-4 -mx-3 font-semibold text-[16px] hover:bg-surface2 transition-colors ${FOCUS}`}>{t(f.q)}<ChevronDown className="h-5 w-5 text-muted shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" /></summary>
                 <p className="px-0 pb-5 text-[15px] text-muted leading-relaxed max-w-[65ch]">{t(f.a)}</p>
@@ -1295,9 +1405,44 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
           </div>
         </Section>
       );
+    }
     case "gallery": {
       const imgs = block.images.filter((g) => g.url);
       const shown = showAll ? imgs : imgs.slice(0, 12);
+      const gl = galleryLayout(imgs.length);
+      const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
+      const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
+      // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
+      if (gl !== "masonry") {
+        const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (
+          <button key={i} type="button" onClick={() => open(i)} className={`group relative block overflow-hidden rounded-2xl border border-border cursor-zoom-in ${cls} ${FOCUS}`}>
+            <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager sizes={sizes} />
+            {cap(g, true)}
+          </button>
+        );
+        const n = imgs.length;
+        const mosaicCls = (i: number) =>
+          i === 0 ? "col-span-2 md:row-span-2 aspect-[4/3] md:aspect-auto"
+          : n === 4 && i === 1 ? "col-span-2 aspect-[2/1] md:aspect-auto"
+          : "aspect-square md:aspect-auto";
+        return (
+          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+            {gl === "single" && (
+              <button type="button" onClick={() => open(0)} className={`group relative mx-auto block w-full max-w-5xl overflow-hidden rounded-3xl border border-border shadow-float cursor-zoom-in ${FOCUS}`} style={{ background: "var(--p-soft)" }}>
+                <Img src={imgs[0].url!} alt={imgs[0].label} className="mx-auto w-auto max-w-full h-auto max-h-[640px] object-contain" eager sizes="(min-width: 1024px) 1024px, 100vw" />
+                {cap(imgs[0], true)}
+              </button>
+            )}
+            {gl === "pair" && <div className="grid gap-4 md:grid-cols-2">{imgs.map((g, i) => tile(g, i, "aspect-[4/3]", "(min-width: 768px) 50vw, 100vw"))}</div>}
+            {gl === "mosaic" && (
+              <div className={`grid grid-cols-2 gap-3 md:grid-rows-2 md:h-[520px] ${n === 3 ? "md:grid-cols-3" : "md:grid-cols-4"}`}>
+                {imgs.map((g, i) => tile(g, i, mosaicCls(i), i === 0 ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 50vw"))}
+              </div>
+            )}
+            {lightbox}
+          </Section>
+        );
+      }
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 [&>*]:mb-4">
