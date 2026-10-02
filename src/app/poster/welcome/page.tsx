@@ -40,7 +40,7 @@ export default function WelcomePage() {
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
           {hi ? "Profile भरें (5 मिनट)" : "Fill my profile (5 min)"} <ArrowRight className="h-5 w-5" />
         </Link>
-        <Link href="/poster" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
+        <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}
         </Link>
         <p className="text-[11px] text-muted">{hi ? "बाद में करें तो भी कोई बात नहीं — \"Finish your setup\" आपको यहीं वापस लाएगा।" : "Later is fine too — \"Finish your setup\" brings you right back here."}</p>

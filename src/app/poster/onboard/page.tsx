@@ -29,7 +29,7 @@ import { useAssociate } from "@/lib/associate";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
-import { COMPANY_FACT_KEYS, DESIGNATIONS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
+import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
 const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
@@ -85,8 +85,8 @@ function Onboard() {
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
-  // Step 1 "About you": name, mobile, WhatsApp (same as the mobile unless unticked), photo and designation.
-  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, designation: "", whatsapp: "", waSame: true });
+  // Step 1 "About you": name, mobile, WhatsApp (same as the mobile unless unticked), email, photo, city and address.
+  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true });
   // The profile's detail answers (card facts): step 1 adds the designation / WhatsApp, step 2 the company details.
   // Loaded with the account, saved with "Save and continue" (the facts route needs the profile to exist first).
   const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
@@ -194,7 +194,7 @@ function Onboard() {
         api<FactsResponse>("/api/card/facts").catch(() => null),
         fetchMyCardsStrict().catch(() => []),
       ]);
-      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; designation?: string; whatsapp?: string };
+      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; whatsapp?: string };
       setUid(data.user?.id ?? "");
       // The website already on record: the card facts first (they know whose site it is), else the account's own
       // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
@@ -208,13 +208,12 @@ function Onboard() {
       setProfile(p);
       if (f) setFacts(f);
       const phone0 = (p?.phone || meta.phone || "").replace(/^\+91/, "");
-      // Before the profile exists the designation / WhatsApp wait on the account (step 1 saves them there).
+      // Before the profile exists the WhatsApp number waits on the account (step 1 saves it there).
       const wa = f?.whatsapp || (meta.whatsapp ?? "").replace(/\D/g, "").slice(-10);
       setYou({
         name: meta.display_name || meta.full_name || (p?.persona !== "business" ? p?.name : "") || "",
         phone: phone0,
         photo: p?.photo_url ?? meta.photo_url ?? null,
-        designation: f?.designation || (meta.designation ?? "").slice(0, 60),
         whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10),
       });
       setBiz({ kind: p && p.persona !== "business" && !meta.business?.name ? "person" : "business", role: (meta.business?.role as Role) || (p && p.persona !== "business" && !meta.business?.name ? "professional" : "business"), ...meta.business, name: meta.business?.name || (p?.persona === "business" ? p.name : ""), category: meta.business?.category || p?.category || "", city: meta.business?.city || p?.city || "", logo: p?.logo_url ?? null });
@@ -275,11 +274,18 @@ function Onboard() {
    *  login (the new number signs in), the posters, the V-Card and the partner ID — /api/account/details does the
    *  server side, then the setup's own card sync re-publishes the card picture / number. Before, "Next" only
    *  changed the login, and the card and posters kept the old details until the whole setup was saved again. */
-  /** Step 1's facts: the designation, and the WhatsApp number only when it differs from the mobile. */
-  function youFacts(): { designation: string; whatsapp: string } {
+  /** Step 1's fact: the WhatsApp number, only when it differs from the mobile. */
+  function youFacts(): { whatsapp: string } {
     const mobile = you.phone.replace(/\D/g, "").slice(-10);
     const wa = you.waSame ? "" : you.whatsapp.replace(/\D/g, "").slice(-10);
-    return { designation: you.designation.trim().slice(0, 60), whatsapp: wa && wa !== mobile ? wa : "" };
+    return { whatsapp: wa && wa !== mobile ? wa : "" };
+  }
+  /** The account's business object as it stands now — step 1 writes the city / address into it early, so
+   *  closing the app after step 1 loses nothing; step 2's Save writes the full, checked version again. */
+  function bizMeta(): Business {
+    return { name: (biz.name ?? "").trim(), role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", gstin: (biz.gstin ?? "").trim().toUpperCase(),
+      address: (biz.address ?? "").trim(), city: (biz.city ?? "").trim(), about: (biz.about ?? "").trim(), website: biz.website ?? "", map: (biz.map ?? "").trim(),
+      ...(biz.nameFromSite !== undefined ? { nameFromSite: biz.nameFromSite } : {}), ...(biz.categoryFromSite !== undefined ? { categoryFromSite: biz.categoryFromSite } : {}), ...(biz.aboutFromSite !== undefined ? { aboutFromSite: biz.aboutFromSite } : {}) };
   }
 
   async function nextFromYou() {
@@ -293,8 +299,10 @@ function Onboard() {
       try {
         const r = await api<{ ok?: boolean; error?: string; note?: string }>("/api/account/details", { method: "POST", json: { name: you.name.trim(), phone, photo: you.photo || "" } });
         if (!r.ok) { setErr(r.data.error ?? "Could not save. Please try again."); return; }
-        // The designation and the WhatsApp number live in the card facts (the profile exists, so the route takes them).
+        // The WhatsApp number lives in the card facts (the profile exists, so the route takes it); the city and
+        // address go on the account's business right away.
         if (profile) await api("/api/card/facts", { method: "PATCH", json: { facts: youFacts() } }).catch(() => undefined);
+        if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { business: bizMeta() } }).catch(() => undefined);
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
@@ -312,7 +320,7 @@ function Onboard() {
     try {
       getBrowserSupabase()?.auth.updateUser({ data: {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${digits.slice(-10)}`, photo_url: you.photo || "",
-        designation: you.designation.trim().slice(0, 60), whatsapp: youFacts().whatsapp,
+        whatsapp: youFacts().whatsapp, business: bizMeta(),
       } }).catch(() => undefined);
     } catch { /* offline: the full save on the next screen writes it again */ }
     setStep("promote");
@@ -878,7 +886,7 @@ function Onboard() {
         <section className="space-y-4">
           {editing
             ? <div><h1 className="text-2xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1><p className="text-sm text-muted">{T("One save changes them everywhere — your V-Card, your posters, your login and your partner ID. Your username stays the same.", "एक बार Save करने से हर जगह बदल जाएगा — V-Card, poster, login और partner ID। Username वही रहेगा।")}</p></div>
-            : <div><h1 className="text-2xl font-bold">About you</h1><p className="text-sm text-muted">Takes 30 seconds.</p></div>}
+            : <div><h1 className="text-2xl font-bold">{T("About you", "आपके बारे में")}</h1><p className="text-sm text-muted">{T("Takes 30 seconds. Your company comes next.", "30 second लगेंगे। अगला step आपकी company।")}</p></div>}
           <label className="block text-sm font-semibold">Your name<input value={you.name} onChange={(e) => { if (!associate) setYou({ ...you, name: e.target.value }); }} readOnly={!!associate} placeholder="e.g. Rajesh Sharma" className={`${field} ${associate ? "bg-surface2 text-muted" : ""}`} />
             {associate && <span className="mt-1 block text-[11px] font-normal text-muted">{T("As on your partner KYC — it cannot be changed here.", "आपके partner KYC के अनुसार — यहाँ नहीं बदलेगा।")}</span>}</label>
           <label className="block text-sm font-semibold">{T("Mobile number", "Mobile number")}<input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder="10-digit mobile" className={field} /></label>
@@ -891,13 +899,10 @@ function Onboard() {
             {needEmail && <span className="mt-1 block text-xs font-normal text-muted">{T("Customers can email you from your card.", "Customers card से आपको email कर सकेंगे।")}</span>}
           </label>
           <Photo url={you.photo} label="your photo" hint="a clear photo of your face — shown on your card and daily posters" round busy={busy === "photo"} onPick={(f) => choose(f, "photo")} />
-          <div className="text-sm font-semibold">{T("Your designation / role", "आपका पद / designation")} <span className="font-normal text-muted">({T("optional", "optional")})</span>
-            <div className="mt-1.5 flex flex-wrap gap-1.5">
-              {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setYou({ ...you, designation: you.designation === d ? "" : d })} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${you.designation === d ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{d}</button>)}
-            </div>
-            <input value={you.designation} onChange={(e) => setYou({ ...you, designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
-            <span className="mt-1 block text-[11px] font-normal text-muted">{T("Shown under your name on the card and website.", "Card और website पर आपके नाम के नीचे दिखेगा।")}</span>
-          </div>
+          {!editing && (<>
+            <label className="block text-sm font-semibold">{T("Your city", "आपका शहर")}<input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
+            <label className="block text-sm font-semibold">{T("Address", "पता")} <span className="font-normal text-muted">({T("optional — shop / office / home", "optional — दुकान / office / घर")})</span><input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
+          </>)}
           {username === null && <ClaimUsername onDone={loadUsername} />}
           {err && <p className="text-sm text-danger">{err}</p>}
           <button type="button" onClick={nextFromYou} disabled={busy === "you"}

@@ -10,7 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 
 export type ProfileStepKey = "you" | "business" | "products" | "details" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
-  { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&back=/poster/welcome" },
+  { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&flow=1" },
   { key: "business", en: "Company", hi: "Company", href: "/poster/onboard?step=site" },
   { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
   { key: "details", en: "Website", hi: "Website", href: "/poster/card/build" },
@@ -29,11 +29,11 @@ export function ProfileSteps({ current }: { current: ProfileStepKey }) {
   const finished = PROFILE_STEPS.filter((s) => done(s.key)).length;
   // the step being filled counts as half, so the bar moves as soon as a screen opens
   const pct = Math.min(100, Math.round(((finished + (done(current) ? 0 : 0.5)) / PROFILE_STEPS.length) * 100));
-  const prev = at > 0 ? PROFILE_STEPS[at - 1] : null;
+  const prev = at > 0 ? PROFILE_STEPS[at - 1] : { href: "/poster/welcome", en: "Back", hi: "पीछे" };
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        {prev ? <Link href={prev.href} className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted hover:text-ink"><ChevronLeft className="h-4 w-4" /> {hi ? prev.hi : prev.en}</Link> : <span />}
+        <Link href={prev.href} className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted hover:text-ink"><ChevronLeft className="h-4 w-4" /> {hi ? prev.hi : prev.en}</Link>
         <span className="ml-auto text-xs font-semibold text-muted">{hi ? "प्रोफ़ाइल" : "Profile"} · {pct}%</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full grad-brand transition-[width]" style={{ width: `${pct}%` }} /></div>

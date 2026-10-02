@@ -1,6 +1,6 @@
 "use client";
 // The profile's detail questions, in the step they belong to (owner's flow, 2 Oct 2026):
-//   company  — step 2 "Company / Firm": banner & photos, since / experience / team, timings, home service, areas,
+//   company  — step 2 "Company / Firm": your role in it, banner & photos, since / experience / team, timings, home service, areas,
 //              payments & UPI (only what the website shows — no bank details, no KYC), qualification, social, map
 //   products — step 3 "Products / Services": what makes you special, who buys, the offer, your work in your words
 // One component, three screens: the set-up (step 2), My products (step 3) and the build form ("Check your
@@ -17,9 +17,9 @@ export type FactsPatch = Partial<Omit<CardFacts, "social">> & { social?: Partial
 export type FactsGroup = "company" | "products";
 
 /** The facts each step saves — what its PATCH to /api/card/facts carries, nothing from another step. */
-export const COMPANY_FACT_KEYS = ["bannerUrl", "photos", "since", "experience", "team", "hours", "homeService", "areas", "payments", "upi", "qualification", "social"] as const;
+export const COMPANY_FACT_KEYS = ["designation", "bannerUrl", "photos", "since", "experience", "team", "hours", "homeService", "areas", "payments", "upi", "qualification", "social"] as const;
 export const PRODUCT_FACT_KEYS = ["special", "specialText", "customers", "offer", "work"] as const;
-export const YOU_FACT_KEYS = ["designation", "whatsapp"] as const;
+export const YOU_FACT_KEYS = ["whatsapp"] as const;
 export function pickFacts(f: CardFacts, keys: readonly (keyof CardFacts)[]): Record<string, unknown> {
   const out: Record<string, unknown> = {};
   for (const k of keys) out[k] = f[k];
@@ -121,6 +121,12 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout }: 
   return (
     <>
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
+      <Sec id="q-designation" title={T("Your role in the company", "Company में आपका पद")} hint={T("Shown under your name on the card and website — e.g. Rajesh Sharma · Owner.", "Card और website पर आपके नाम के नीचे — जैसे Rajesh Sharma · Owner।")}>
+        <div className="flex flex-wrap gap-1.5">
+          {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setF({ designation: facts.designation === d ? "" : d })} className={chipCls(facts.designation === d)}>{d}</button>)}
+        </div>
+        <input value={facts.designation} onChange={(e) => setF({ designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
+      </Sec>
       <Sec id="q-photos" title={T("Banner and photos", "Banner और photos")} hint={T("The banner is the wide picture on top of your website; the photos make the gallery.", "Banner website के ऊपर की चौड़ी photo है; बाकी photos से gallery बनती है।")}>
         <p className="text-sm font-semibold">{T("Shop front / banner photo", "दुकान के सामने की / banner photo")}</p>
         {facts.bannerUrl ? (
