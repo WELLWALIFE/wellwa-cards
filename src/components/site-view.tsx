@@ -17,6 +17,7 @@ import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, Translate
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
+import { ShubhoraBar } from "@/components/shubhora-bar";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
@@ -128,7 +129,7 @@ function useReveal(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]
 export type SiteUpdate = { date: string; url: string; title: string; caption?: string | null };
 const UPDATES = "updates";
 
-export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; updates?: SiteUpdate[];
+export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string } | null; updates?: SiteUpdate[];
   /** Pages that are reachable at their own address but are not in the menu — a product's own page. */
   unlisted?: string[] }) {
   // The website wears its own design: palette (or the card's colour), fonts (or the card look's), corners.
@@ -561,18 +562,6 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             {localLine(card) && <p className="mt-5 text-xs opacity-60 leading-relaxed">{localLine(card)}</p>}
           </div>
         </div>
-        {/* Every site ends with one door into Shubhora. The link silently carries the owner's username. */}
-        {joinHandle && !brand && (
-          <div className="mx-auto max-w-6xl px-6 pb-8">
-            <a href={`/signup?by=${encodeURIComponent(joinHandle)}`} data-join-door className="flex items-center gap-3 rounded-2xl px-5 py-4 text-white" style={{ background: "#2f4bd8" }}>
-              <span className="min-w-0 flex-1">
-                <span className="block text-base font-bold">Get your own Shubhora — free</span>
-                <span className="block text-sm text-white/80">Card, website, daily posters, WhatsApp AI</span>
-              </span>
-              <ArrowRight className="h-5 w-5 shrink-0" />
-            </a>
-          </div>
-        )}
         <div style={{ borderTop: "1px solid color-mix(in srgb, currentColor 15%, transparent)" }}>
           <div className="mx-auto max-w-6xl px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-xs opacity-60">
             <span>© {new Date().getFullYear()} {t(card.company || card.name)}</span>
@@ -597,6 +586,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
       {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
+      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
     </div>
     </TranslateCtx.Provider>
   );

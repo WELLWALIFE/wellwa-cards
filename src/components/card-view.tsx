@@ -19,6 +19,7 @@ import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic, picUrl } from "@/components/pic";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
+import { ShubhoraBar } from "@/components/shubhora-bar";
 import { trackView, trackClick } from "@/lib/track";
 import { localLine, pageHref } from "@/lib/seo";
 
@@ -250,7 +251,7 @@ function EditChip({ label, onClick, className = "" }: { label: string; onClick: 
   );
 }
 
-export function CardView({ card, qr, brand, expired = false, shareUrl, initialPage, linkBase, joinHandle, nudge = false, onEdit, editLabel = "Edit" }: {
+export function CardView({ card, qr, brand, expired = false, shareUrl, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, onEdit, editLabel = "Edit" }: {
   card: Card; qr: string; brand?: CardBrand | null; expired?: boolean;
   /** Editor preview: shows an "✏️ Edit" chip on the header, the buttons and every section; tapping one opens it in the editor. */
   onEdit?: (target: EditTarget) => void;
@@ -259,6 +260,8 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
   /** The owner's account username: the "Get your own Shubhora" button at the bottom carries it, so whoever
    *  signs up from this card joins the owner's team without typing anything. Unset on white-label and previews. */
   joinHandle?: string | null;
+  /** The Shubhora strip at the foot (free cards, and paid "Both" cards): where its two buttons go. */
+  shubhora?: { joinHref: string; moreHref: string } | null;
   /** Shubhora partner cards: the "Aapko ye V-Card kaisa laga?" strip that opens the same joining link (see join-nudge.tsx). */
   nudge?: boolean;
   /** Canonical public URL of this card — on a white-label host that is
@@ -495,17 +498,6 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
         </div>
       </div>
 
-      {/* Every card ends with one door into Shubhora. The link silently carries the owner's username. */}
-      {joinHandle && !brand && (
-        <a href={`/signup?by=${encodeURIComponent(joinHandle)}`} data-join-door className="mt-6 flex items-center gap-3 rounded-2xl px-4 py-3 text-white" style={{ background: "#2f4bd8" }}>
-          <span className="min-w-0 flex-1">
-            <span className="block text-sm font-bold">Get your own Shubhora — free</span>
-            <span className="block text-xs text-white/80">Card, website, daily posters, WhatsApp AI</span>
-          </span>
-          <ArrowRight className="h-5 w-5 shrink-0" />
-        </a>
-      )}
-
       {/* Footer credit. A white-label partner replaces it with their own mark;
           "hide branding" drops it entirely, which is what they are paying for. */}
       {brand ? (
@@ -536,6 +528,8 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
       {/* Floating AI chat assistant */}
       {!expired && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={lang} page={active} />}
+      {/* The Shubhora strip — not on the owner's own Shubhora page (that page IS the "know more"). */}
+      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} lang={lang} />}
     </div>
     </TranslateCtx.Provider>
   );

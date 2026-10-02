@@ -19,6 +19,7 @@ import type { Card, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
+import { hasShubhoraPage, shubhoraPage } from "@/lib/shubhora-page";
 
 // With a real database connected, the cloud is the only source of truth — a
 // card that was deleted must 404, not silently fall back to built-in demo data.
@@ -91,8 +92,12 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
 }
 
 export async function CardPageView({ username, slug, viewParam }: { username: string; slug?: string | null; viewParam?: string }) {
-  const card = await loadCard(username);
-  if (!card) notFound();
+  const stored = await loadCard(username);
+  if (!stored) notFound();
+  // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
+  // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
+  const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });
+  const card: Card = shPage ? { ...stored, pages: [...stored.pages, shPage] } : stored;
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
   if (await fetchCardPaused(card.username)) {
@@ -130,6 +135,11 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const tracked = Boolean(tracking && Object.values(tracking).some(Boolean));
   // "Aapko ye V-Card kaisa laga?" strip → the same joining link: Shubhora partner cards only (owner's call, 27 Sep 2026).
   const nudge = !!joinHandle && isShubhoraCard(card);
+  // The Shubhora strip: on every free card, and on a paid card whose owner also sells Shubhora ("Both" — the card
+  // carries the Shubhora page). Never on a white-label partner's card.
+  const shubhora = joinHandle && !brand && (expired || hasShubhoraPage(stored))
+    ? { joinHref: `/signup?by=${encodeURIComponent(joinHandle)}`, moreHref: `${linkBase}/shubhora` }
+    : null;
 
   const shareUrl = home;
   const qr = await qrDataUrl(shareUrl, card.themeColor);
@@ -153,11 +163,11 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
         {tracking && <CardPixels {...tracking} />}
         {sitePreviewOnly && (
           <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[#12144a] px-4 py-2 text-center text-xs text-white">
-            <span><b>Website preview.</b> Visitors see the free card; the full website goes live on Growth.</span>
+            <span><b>Website preview.</b> Right now visitors see your <b className="text-[#ff5252]">FREE</b> card; the full website goes live with the Growth plan.</span>
             <a href={`${SITE_URL}/poster/plan`} className="rounded-full bg-white px-3 py-1 font-semibold text-[#12144a]">Go live</a>
           </div>
         )}
-        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
+        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
         <PixelNotice active={tracked} />
       </>
     );
@@ -170,7 +180,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
       {ld}
       <CardAppBar />
       {tracking && <CardPixels {...tracking} />}
-      <CardView card={pub} qr={qr} brand={brand} expired={expired} shareUrl={shareUrl} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} />
+      <CardView card={pub} qr={qr} brand={brand} expired={expired} shareUrl={shareUrl} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} />
       <PixelNotice active={tracked} />
     </div>
   );
