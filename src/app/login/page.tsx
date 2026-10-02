@@ -24,9 +24,11 @@ export default function LoginPage() {
   function nextPath(): string {
     try {
       const n = new URLSearchParams(window.location.search).get("next") || "";
-      const home = window.matchMedia?.("(max-width: 767px)").matches ? "/poster" : "/dashboard";
+      // Always the app (owner's call, 2 Oct 2026: the whole system runs in the app, on a computer too); the desktop
+      // dashboard stays one tap away under Settings → Advanced.
+      const home = "/poster";
       return /^\/[a-zA-Z0-9/_-]*(\?[a-zA-Z0-9/_=&%.-]*)?$/.test(n) && !n.startsWith("//") ? n : home;
-    } catch { return "/dashboard"; }
+    } catch { return "/poster"; }
   }
 
   // An API route (e.g. /api/partner-panel, which hands the person into the partner panel) needs a real page load.

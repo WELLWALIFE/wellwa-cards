@@ -26,7 +26,8 @@ type Res = { username: string | null; cardSlug: string | null; link: string | nu
 
 const rupee = (paise: number) => `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
 const day = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "");
-const PANEL = (next: string) => `/api/partner-panel?next=${encodeURIComponent(next)}`;
+/** The panel's page, framed inside the app (owner's call, 2 Oct 2026: nothing leaves the app). */
+const PANEL = (next: string) => `/poster/business/panel?next=${encodeURIComponent(next)}`;
 const KIND: Record<string, string> = { direct: "Direct sale", match_new: "Pair (new)", match_renewal: "Pair (renewal)", sponsor: "Sponsor", rank_reward: "Rank reward" };
 
 export default function BusinessPage() {
@@ -108,7 +109,7 @@ function BusinessInner() {
                   <p className="mt-1">{en ? "Green = a Growth ₹2,999 subscription. Every joining under you then counts, from the first one." : "Green = Growth ₹2,999 subscription। फिर आपके नीचे की हर joining गिनी जाएगी, पहली से ही।"}</p>
                   <Link href="/poster/plan" className="mt-2 inline-block rounded-lg bg-white px-3 py-1.5 font-semibold text-[#12144a]">{en ? "Turn Green" : "Green करें"}</Link>
                 </div>); })()}
-            <a href={PANEL("/dashboard")} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-2.5 text-sm font-semibold text-[#12144a]">{en ? "Open User Panel" : "User Panel खोलें"} <ChevronRight className="h-4 w-4" /></a>
+            <Link href={PANEL("/dashboard")} className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-2.5 text-sm font-semibold text-[#12144a]">{en ? "Open User Panel" : "User Panel खोलें"} <ChevronRight className="h-4 w-4" /></Link>
           </>
         ) : (
           <p className="mt-2 text-xs text-white/75">
@@ -149,10 +150,10 @@ function BusinessInner() {
               ["/downloads", "Downloads", Download, p.menu.downloads],
               ["/support", "Support", Headphones, p.menu.support],
             ] as const).filter((x) => x[3]).map(([href, label, Icon]) => (
-              <a key={href} href={PANEL(href)} className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface p-3 text-center text-xs font-semibold"><Icon className="h-5 w-5 text-brand" />{label}</a>
+              <Link key={href} href={PANEL(href)} className="flex flex-col items-center gap-1.5 rounded-xl border border-border bg-surface p-3 text-center text-xs font-semibold"><Icon className="h-5 w-5 text-brand" />{label}</Link>
             ))}
           </div>
-          <p className="text-[11px] text-faint">{en ? "These pages open in the Business section — same login, the App button brings you back." : "ये pages Business section में खुलते हैं — same login, App button से वापस।"}</p>
+          <p className="text-[11px] text-faint">{en ? "These pages open right here in the app — same login, Back brings you here." : "ये pages यहीं app में खुलते हैं — same login, Back से वापस।"}</p>
         </section>
       )}
 

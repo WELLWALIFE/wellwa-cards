@@ -2,8 +2,8 @@
 // Leads + WhatsApp AI inside the phone shell — the dashboard components run
 // as-is (cookie session, PlanProvider from the app layout).
 import { ConnectConsent } from "@/components/poster/connect-consent";
-import { useEffect, useState, type MouseEvent } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, type MouseEvent } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 import { CrmInbox } from "@/components/crm/crm";
@@ -15,13 +15,17 @@ import { Guide } from "@/components/poster/guide";
 
 import { appPath } from "@/lib/poster-sections";
 
-export default function LeadsTab() {
+function LeadsTab() {
   const router = useRouter();
   const { t } = useT();
   const [tab, setTab] = useState<"leads" | "wa" | "learn">(() => {
     try { const q = new URLSearchParams(window.location.search).get("tab"); return q === "wa" || q === "learn" ? q : "leads"; } catch { return "leads"; }
   });
   const [ready, setReady] = useState(false);
+  // The tab in the address (Connections → WhatsApp opens ?tab=wa) must win, also after hydration and when only the
+  // query changes on an already open page (seen live, 2 Oct 2026: ?tab=wa showed the CRM).
+  const wantedTab = useSearchParams().get("tab");
+  useEffect(() => { if (wantedTab === "wa" || wantedTab === "learn" || wantedTab === "leads") setTab(wantedTab); }, [wantedTab]);
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/leads"); return; } setReady(true); })(); }, [router]);
   if (!ready) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
@@ -40,4 +44,8 @@ export default function LeadsTab() {
       {tab === "leads" && <CrmInbox />}
     </div>
   );
+}
+
+export default function LeadsPage() {
+  return <Suspense fallback={<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><LeadsTab /></Suspense>;
 }

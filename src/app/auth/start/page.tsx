@@ -28,8 +28,10 @@ export default function StartPage() {
         body: JSON.stringify({ action: "auto", by: by || undefined, leg: leg === "L" || leg === "R" ? leg : undefined, agree: true }) }).catch(() => null);
       if (a?.ok) { try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ } }
       const w = await fetch("/api/welcome", { method: "POST", headers: auth }).then((r) => r.json()).catch(() => ({}));
-      if (w?.fresh) { router.replace("/poster/onboard"); return; }
-      router.replace(window.matchMedia?.("(max-width: 767px)").matches ? "/poster" : "/dashboard");
+      // A new account: congratulations, then the five profile steps; everyone else: the app (never the desktop
+      // dashboard — owner's call, 2 Oct 2026).
+      if (w?.fresh) { router.replace("/poster/welcome"); return; }
+      router.replace("/poster");
     })();
   }, [router]);
 

@@ -45,7 +45,7 @@ export default function ResetPage() {
     setBusy(false);
     if (error) { setError(error.message); return; }
     try { history.replaceState(null, "", "/auth/reset"); } catch { /* ignore */ }
-    router.replace(window.matchMedia?.("(max-width: 767px)").matches ? "/poster" : "/dashboard");
+    router.replace("/poster");
   }
 
   return (

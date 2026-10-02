@@ -60,7 +60,7 @@ function FeatureTable() {
   );
 }
 
-function WhatsappPageInner() {
+function WhatsappPageInner({ free = false }: { free?: boolean }) {
   const [mode, setMode] = useState<Mode | null>(null);
   // Default to the mode that is actually connected (Cloud API account → API; else QR).
   useEffect(() => { (async () => { try { const r = await api<{ account: { enabled: boolean } | null }>("/api/wa-cloud/account"); setMode(r.ok && r.data.account?.enabled ? "api" : "mobile"); } catch { setMode("mobile"); } })(); }, []);
@@ -93,7 +93,7 @@ function WhatsappPageInner() {
       </div>
 
       <FeatureTable />
-      {mode === "mobile" ? <MobileMode /> : <ApiMode />}
+      {mode === "mobile" ? <MobileMode free={free} /> : <ApiMode />}
     </div>
   );
 }
@@ -711,16 +711,9 @@ function Field({ label, children }: { label: React.ReactNode; children: React.Re
 
 // Every account may link its WhatsApp (owner's call, 27 Sep 2026): the free plan gets the connection (Status posting,
 // messages saved as leads); the AI auto-reply and its settings come with Growth.
+// Both ways to connect are offered to everyone (owner's call, 2 Oct 2026): "My mobile" (QR / code, free) and the
+// official Business API with the owner's own Meta credentials; the free plan only loses the AI settings.
 export default function WhatsappPage() {
   const { allowed, loading } = useFeature("whatsapp");
-  if (loading || allowed) return <WhatsappPageInner />;
-  return (
-    <div className="space-y-4">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight">WhatsApp</h1>
-        <p className="text-sm text-muted">Link your WhatsApp number — free.</p>
-      </div>
-      <MobileMode free />
-    </div>
-  );
+  return <WhatsappPageInner free={!loading && !allowed} />;
 }
