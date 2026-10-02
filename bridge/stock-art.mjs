@@ -38,6 +38,15 @@ const CATEGORY_WORDS = {
 };
 const words = (category) => { const k = String(category || "").toLowerCase().replace(/[^a-z]/g, ""); return CATEGORY_WORDS[k] || (k ? k.replace(/s$/, "") + " shop india" : CATEGORY_WORDS.default); };
 
+/** Occasions a stock-photo search can actually show: festivals with their own look (diyas, rangoli, colours, kites,
+ *  a tree, a rakhi). A jayanti, a national day or an awareness day has no such photo on Pexels — the search came
+ *  back with any Indian man in a garland for Gandhi Jayanti (seen live, 2 Oct 2026) — so those days keep the
+ *  painted art made from the occasion's own theme line (charkha and round glasses, the tricolour…). */
+const PHOTO_OCCASIONS = new Set(["newyear", "sankranti", "baisakhi", "christmas", "navratri", "dussehra", "karwachauth", "dhanteras", "diwali", "govardhan", "bhaidooj", "chhath", "gurunanak", "basantpanchami", "holi", "eid", "bakrid", "rakhi", "janmashtami", "ganesh", "onam", "mothersday", "fathersday"]);
+export function stockFitsOccasion(theme) {
+  return theme?.kind !== "occasion" || PHOTO_OCCASIONS.has(String(theme?.slug || ""));
+}
+
 /** Search queries for the day: festival days lead with the festival, business days with the trade. */
 export function stockQueries(theme, category, kind) {
   const trade = words(category);
@@ -74,7 +83,7 @@ async function judge(cands, { theme, category, kind, window = false }) {
   const want = kind === "festival" ? `a ${theme?.en || "festival"} greeting poster` : kind === "greeting" ? "a good-morning / motivational greeting poster" : `a promotional poster for a ${category || "small"} business (${words(category)})`;
   // window: the Signature layouts show the photo in its own frame — nothing is printed over it, so no calm space needed
   parts.push({ text: `These photos are candidates for the ${window ? "PHOTO of" : "BACKGROUND of"} ${want}, made for customers in INDIA.${window ? "" : " A name, phone number and a short line of text will be printed over the photo later."}
-Score each photo 0–10 for FIT: does it clearly belong to this trade / occasion and look premium, bright and clean? Then CLEAN true/false: no visible text, logos, watermarks or screens with writing; people, if any, look Indian / South Asian and are dressed the way an Indian family business would show them; nothing like alcohol, smoking or meat close-ups${window ? "" : "; there is calm space (sky, wall, blur) where text could sit"}.
+Score each photo 0–10 for FIT: does it clearly belong to this trade / occasion and look premium, bright and clean?${kind === "festival" ? ` For an occasion the photo must UNMISTAKABLY show that occasion's own symbols (its lamps, colours, food, decoration, ritual); a person, a garland, a crowd or a street that could be any day of the year scores 3 or less.` : ""} Then CLEAN true/false: no visible text, logos, watermarks or screens with writing; people, if any, look Indian / South Asian and are dressed the way an Indian family business would show them; nothing like alcohol, smoking or meat close-ups${window ? "" : "; there is calm space (sky, wall, blur) where text could sit"}.
 Return ONLY JSON {"photos":[{"n":0,"fit":0,"clean":true,"note":"<max 6 words>"}]}` });
   try { const j = await gemini(parts); return (j.photos ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false })); } catch { return null; }
 }

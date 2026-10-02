@@ -17,7 +17,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { fileURLToPath } from "node:url";
-import { ensureStockArt, ensureStockPhoto, rosterKind } from "./stock-art.mjs";
+import { ensureStockArt, ensureStockPhoto, rosterKind, stockFitsOccasion } from "./stock-art.mjs";
 import { renderSignature, paletteFor as sigPaletteFor } from "./signature.mjs";
 import { isShubhoraProduct, shubhoraProductArt } from "./shubhora-product-art.mjs";
 import { uspsFor as sigUspsFor, SCRIPT_PAIR as SIG_SCRIPT, CTA as SIG_CTA, TAG as SIG_TAG, LINES as SIG_LINES, BANNER_FALLBACK as SIG_BANNER, groupOf as sigGroupOf, defaultLook as sigDefaultLook, accentOf as sigAccentOf, labelOf as sigLabelOf, paletteOf as sigPaletteOf } from "./signature-presets.mjs";
@@ -226,8 +226,9 @@ export async function artLooksClean(buf) {
 const artInFlight = new Map(); // date-group → promise (two users of one group at 8 AM = one generation)
 export async function ensureBaseArt(dateStr, { force = false, group = "", stock = null } = {}) {
   // Stock first (a real photo chosen for the trade and the day — no AI cost, shared by everyone in that trade);
-  // the AI painting only when no fitting photo was found.
-  if (stock) {
+  // the AI painting only when no fitting photo was found — and always for a jayanti / national / awareness day,
+  // which no stock photo can show (stock-art.mjs, stockFitsOccasion).
+  if (stock && stockFitsOccasion(themeFor(dateStr))) {
     try {
       const art = await ensureStockArt({ theme: themeFor(dateStr), category: stock.category, kind: stock.kind, dateStr });
       if (art?.file) return { file: art.file, theme: { ...themeFor(dateStr), date: dateStr, stock: true, credit: art.credit || "" } };
