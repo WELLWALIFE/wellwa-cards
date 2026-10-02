@@ -124,7 +124,9 @@ export function toBothFromShubhora(card: Card, own?: { photo?: string | null }):
 export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): T {
   const ours = (s: unknown) => /shubhora/i.test(String(s ?? "")) || /\/api\/stock\/vcard\//i.test(String(s ?? ""));
   const pages = card.pages.map((p) => {
-    if (p.hidden || p.slug === SHUBHORA_PAGE_SLUG) return p;
+    // The Shubhora page itself stays off the tab row: the small icon and the strip are its only doors (owner's call).
+    if (p.slug === SHUBHORA_PAGE_SLUG) return p.hidden ? p : { ...p, hidden: true };
+    if (p.hidden) return p;
     const blocks = p.blocks.flatMap((b): CardBlock[] => {
       if (b.kind === "product") { const items = b.items.filter((i) => !ours(i.name) && !ours(i.imageUrl) && !(i.images ?? []).some(ours)); return items.length ? [{ ...b, items }] : []; }
       if (b.kind === "showcase") { const items = b.items.filter((i) => !ours(i.label) && !ours(i.imageUrl) && !ours(i.url)); return items.length ? [{ ...b, items }] : []; }
