@@ -3,7 +3,7 @@
 // else sits under "More details". The same rows feed the V-Card, the website and the daily posters.
 // Owner's call (26 Sep 2026): two prices — the offer price and an optional MRP. When the MRP is higher, the card
 // shows it struck out next to the offer price, with "% OFF" and "You save ₹…" (card-compose / card-view).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, RefreshCw } from "lucide-react";
@@ -15,6 +15,8 @@ import { Guide } from "@/components/poster/guide";
 import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
+import { normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
+import { FactsFields, PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 
 
 type Product = { id: string; name: string; brand_id?: string | null; photo_url: string | null; benefits: string[]; offer: string; active: boolean; category?: string; price?: string; mrp?: string | null; brand?: string; photos?: ProductPhoto[]; facts_confirmed_at?: string | null };
@@ -43,6 +45,22 @@ export default function ProductsPage() {
   const [checking, setChecking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  // Step 3 of the profile (owner's flow, 2 Oct 2026): with the products, what makes you special, who buys, the
+  // offer and your work in your words — saved to the card facts on "Continue".
+  const [facts, setFacts] = useState<CardFacts | null>(null);
+  const [hasAbout, setHasAbout] = useState(false);
+  const factsDirty = useRef(false);
+  const setF = (p: FactsPatch) => { factsDirty.current = true; setFacts((f) => ({ ...(f ?? normalizeFacts({})), ...p, social: { ...(f ?? normalizeFacts({})).social, ...(p.social ?? {}) } })); };
+  const [going, setGoing] = useState(false);
+  useEffect(() => {
+    if (!setupMode) return;
+    api<FactsResponse>("/api/card/facts").then((r) => { if (r.ok && r.data.facts) { setFacts(r.data.facts); setHasAbout(!!r.data.setup?.about?.trim()); } }).catch(() => undefined);
+  }, [setupMode]);
+  async function continueToSite() {
+    setGoing(true);
+    try { if (facts && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, PRODUCT_FACT_KEYS) } }); } catch { /* the build form shows them again */ }
+    router.push("/poster/card/build");
+  }
 
   // A 401/500/503 is NOT an empty shop: api() resolves on any status, so the status is checked before the
   // list is replaced — otherwise a returning owner is told "No products yet" and adds everything again.
@@ -294,12 +312,20 @@ export default function ProductsPage() {
         )}
         {list.length === 0 && !draft && <p className="text-sm text-muted">{en ? "No products yet. Add your first one — it shows on your V-Card, website and posters." : "अभी कोई product नहीं है। पहला जोड़ें — यह आपके V-Card, website और poster पर दिखेगा।"}</p>}
       </div>
+      {/* Step 3's other questions: highlights, customers, offer, your work — one place with the products. */}
+      {setupMode && !draft && facts && (
+        <div className="space-y-3">
+          <p className="pt-1 text-sm font-semibold">{en ? "A little more about what you offer" : "आप जो देते हैं, उसके बारे में थोड़ा और"} <span className="font-normal text-muted">({en ? "optional" : "optional"})</span></p>
+          <FactsFields group="products" facts={facts} setF={setF} hi={!en} hasAbout={hasAbout} />
+        </div>
+      )}
       {/* Setup journey (?setup=1): a product is not required to make the card — one clear way on, with or without. */}
       {setupMode && !draft && (
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">
-          <Link href="/poster/card/build" className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white">
-            {list.length > 0 ? (en ? "Continue — make my V-Card →" : "आगे — मेरा V-Card बनाओ →") : (en ? "Skip — add products later →" : "अभी नहीं — products बाद में →")}
-          </Link>
+          <button type="button" onClick={continueToSite} disabled={going} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            {going ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
+            {list.length > 0 ? (en ? "Continue — website look →" : "आगे — website की पसंद →") : (en ? "Skip — add products later →" : "अभी नहीं — products बाद में →")}
+          </button>
           {list.length === 0 && <p className="mt-1.5 text-center text-[11px] text-muted">{en ? "Your card is made without products; add them any time from here." : "Card बिना products के बन जाएगा; बाद में यहीं से कभी भी जोड़ें।"}</p>}
         </div>
       )}

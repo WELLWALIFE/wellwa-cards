@@ -170,6 +170,9 @@ export function factsText(i: {
     facts.homeService === "yes" && "We offer home delivery / home visits",
     pays.length && `Payment accepted: ${pays.join(", ")}${facts.upi ? ` (UPI ID: ${facts.upi})` : ""}`,
     facts.qualification && `Qualification (exactly as typed): ${facts.qualification}`,
+    facts.designation && `Owner's designation: ${facts.designation}`,
+    facts.experience && `${facts.experience} years of experience`,
+    facts.team && `Team: ${facts.team}`,
     setup.gstin && "GST registered",
     productLine && `Products: ${productLine}`,
     facts.hours && `Timings: ${facts.hours}`,
@@ -339,7 +342,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const personal = role === "personal";
   const name = setup.person || setup.business;
   const company = setup.business && setup.business !== name ? setup.business : "";
-  const jobTitle = professional ? (facts.qualification || cat?.en || copy.jobTitle || "Business") : (copy.jobTitle || cat?.en || "Business");
+  // The owner's own designation first (Owner, Director, Dr., Advocate — profile step 1); else the old rule.
+  const jobTitle = facts.designation || (professional ? (facts.qualification || cat?.en || copy.jobTitle || "Business") : (copy.jobTitle || cat?.en || "Business"));
   let avatarUrl: string | undefined, avatarShape: "circle" | "square" | undefined;
   if (lead === "business") {
     if (setup.logo) { avatarUrl = setup.logo; avatarShape = "square"; } else if (setup.photo) { avatarUrl = setup.photo; avatarShape = "circle"; }
@@ -349,7 +353,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const links: CardLink[] = [];
   const add = (type: CardLink["type"], label: string, value: string) => { if (value) links.push({ id: uid(), type, label, value }); };
   const digits = (setup.phone ?? "").replace(/\D/g, "").slice(-10);
-  if (digits.length === 10) { add("whatsapp", "WhatsApp", `+91${digits}`); add("phone", "Call", `+91${digits}`); }
+  // WhatsApp on a different number than the mobile (profile step 1) — else the mobile is the WhatsApp number.
+  const wa = facts.whatsapp.length === 10 ? facts.whatsapp : digits;
+  if (wa.length === 10) add("whatsapp", "WhatsApp", `+91${wa}`);
+  if (digits.length === 10) add("phone", "Call", `+91${digits}`);
   add("email", "Email", (setup.email ?? "").trim());
   // A reference website is somebody else's site, and a dealer's brand site is the brand's: neither is ever the
   // owner's "Website" link. Only a site the owner called their OWN (or the set-up's business.website) is.
@@ -423,6 +430,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   /* ---- trust strip (code only, never AI) ---- */
   const trust: string[] = [];
   if (facts.since) trust.push(lang === "hi" ? `📅 ${facts.since} से` : lang === "hinglish" ? `📅 ${facts.since} se` : `📅 Since ${facts.since}`);
+  else if (facts.experience) trust.push(lang === "hi" ? `🏅 ${facts.experience}+ साल का अनुभव` : lang === "hinglish" ? `🏅 ${facts.experience}+ saal ka experience` : `🏅 ${facts.experience}+ years of experience`);
   if (setup.gstin) trust.push(lang === "hi" ? "🧾 GST पंजीकृत" : "🧾 GST registered");
   if (facts.homeService === "yes") {
     const delivery = cat?.group === "Retail" || cat?.group === "Food";

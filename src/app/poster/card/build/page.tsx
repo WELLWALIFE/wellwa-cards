@@ -15,12 +15,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import { Camera, Check, CheckCircle2, ChevronLeft, CircleDashed, Globe, LoaderCircle, Pencil, Plus, RefreshCw, Smartphone, Sparkles, X } from "lucide-react";
+import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
-import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
+import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
-import { ImageCropper } from "@/components/editor/image-cropper";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
@@ -29,7 +29,7 @@ import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import {
-  UPI_RE, isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
+  isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
   type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse,
   type Missing, type MissingKey, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
@@ -49,8 +49,6 @@ type Row = { id?: string; name: string; brand: string; price: string; photo: str
  *  a card that has changed since. */
 type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number };
 type FormBackup = { facts: CardFacts; rows: Row[]; dirty: boolean; savedAt: number };
-/** A change to some of the answers; `social` may carry only the one link that changed. */
-type FactsPatch = Partial<Omit<CardFacts, "social">> & { social?: Partial<CardFacts["social"]> };
 const emptyRow = (): Row => ({ name: "", brand: "", price: "", photo: "" });
 
 // Shared with the set-up, which drops both when the website or its role changes there.
@@ -120,17 +118,6 @@ function applyChecks(card: Card, checks: WebCheck[], off: string[]): Card {
   };
 }
 
-/** One question box — big and simple. The id is what a "Make it better" chip scrolls to. */
-function Sec({ id, title, hint, children }: { id?: string; title: string; hint?: string; children: React.ReactNode }) {
-  return (
-    <section id={id} className="scroll-mt-4 space-y-2 rounded-2xl border border-border bg-surface p-4">
-      <p className="text-[15px] font-semibold">{title}</p>
-      {hint && <p className="text-xs text-muted">{hint}</p>}
-      {children}
-    </section>
-  );
-}
-
 // eslint-disable-next-line @next/next/no-img-element
 const Img = (p: { src: string; alt?: string; className?: string }) => <img src={p.src} alt={p.alt ?? ""} className={p.className} />;
 
@@ -175,7 +162,6 @@ export default function BuildCard() {
   const [err, setErr] = useState("");
   const [notice, setNotice] = useState("");
   const [removed, setRemoved] = useState("");
-  const [crop, setCrop] = useState("");
   const [unlock, setUnlock] = useState(false);
   const [premiumUnlock, setPremiumUnlock] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -185,7 +171,8 @@ export default function BuildCard() {
   // The two ready links for this card — your name / business name — for one-tap switching on the preview.
   const [linkOpts, setLinkOpts] = useState<{ name: string | null; business: string | null }>({ name: null, business: null });
 
-  const moreRef = useRef<HTMLDetailsElement>(null);
+  /** "Check your details" — the company / product answers, folded; a "Make it better" chip opens it. */
+  const reviewRef = useRef<HTMLDetailsElement>(null);
   const frameRef = useRef<HTMLDivElement>(null);
   const autoRef = useRef(false);
   /** The running build, so "Take me back" (and the 160 s guard) can stop a request that never answers. */
@@ -393,30 +380,7 @@ export default function BuildCard() {
     }
   }
 
-  async function banner(dataUrl: string) {
-    setCrop(""); setErr("");
-    setBusy("banner");
-    try {
-      const url = await uploadImage(dataUrlToFile(dataUrl, "banner.jpg"), "wide");
-      if (url) setF({ bannerUrl: url }); else setErr(T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।"));
-    } catch { setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); } finally { setBusy(""); }
-  }
 
-  async function addPhoto(f: File) {
-    if (facts.photos.length >= 5) return;
-    setBusy("photo"); setErr("");
-    try {
-      const url = await uploadImage(await compressToFile(f, "photo.jpg", 1600, 0.85), "wide");
-      if (url) setF({ photos: [...facts.photos, url].slice(0, 5) }); else setErr(T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।"));
-    } catch { setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); } finally { setBusy(""); }
-  }
-
-  function pickFile(f: File) {
-    const r = new FileReader();
-    r.onload = () => setCrop(String(r.result || ""));
-    r.onerror = () => setErr(T("Could not open that photo.", "वो photo खुल नहीं पाई।"));
-    r.readAsDataURL(f);
-  }
 
   /* ---------------- build ---------------- */
 
@@ -626,7 +590,7 @@ export default function BuildCard() {
       : "q-products";
     setState("form");
     setTimeout(() => {
-      if (key === "map" && moreRef.current) moreRef.current.open = true;
+      if (reviewRef.current) reviewRef.current.open = true;
       document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
     }, 60);
   }
@@ -787,11 +751,6 @@ export default function BuildCard() {
   /* ---------------- the form ---------------- */
 
   const chip = (on: boolean) => `rounded-full border-2 px-3.5 py-2 text-sm font-medium ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`;
-  const toggle = (key: "customers" | "special" | "payments", v: string) => {
-    const list = facts[key];
-    setF({ [key]: list.includes(v) ? list.filter((x) => x !== v) : [...list, v] } as FactsPatch);
-  };
-  const upiOn = facts.payments.some((p) => /upi/i.test(p));
 
   // "Make": Standard (free — the V-Card, the website as a preview) or Premium (the plan — the website live on
   // computers, the AI assistant, the made-for-you video). Premium checks the subscription first and opens the
@@ -812,12 +771,10 @@ export default function BuildCard() {
 
   return (
     <div className="space-y-4 py-2">
-      {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
-
       <ProfileSteps current="details" />
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => router.push("/poster/setup")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Details & website", "जानकारी और website")}</h1>
+        <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <h1 className="min-w-0 flex-1 text-xl font-bold">{T("How should your website look?", "Website की पसंद")}</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
           without paying for another build. */}
@@ -826,12 +783,46 @@ export default function BuildCard() {
           <ChevronLeft className="h-4 w-4" /> {T("Back to my V-Card", "मेरे V-Card पर वापस")}
         </button>
       )}
+      <p className="text-sm text-muted">{T("Step 4: a website you like and the look. Step 5: make it. Everything is optional — the AI writes the rest from your profile.", "Step 4: कोई website जो पसंद हो और look। Step 5: बनाएँ। सब optional है — बाकी AI आपकी profile से लिखता है।")}</p>
 
-      <div className="space-y-2.5 rounded-2xl border-2 border-amber/40 bg-amber/10 p-3.5">
-        <p className="text-sm"><b>{T("Everything below is optional.", "नीचे सब कुछ optional है।")}</b> <span className="text-muted">{T("Tap now, or add details for a richer V-Card.", "अभी बना लें, या जानकारी भरें तो V-Card और अच्छा बनेगा।")}</span></p>
-        {makeBtn}
-      </div>
+      {/* Out in the open (owner's call, 1 Oct 2026): this was buried inside "More details", and the three
+          choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
+          option. It is one of the most useful answers on the form: a site we can read fills the whole card,
+          and a site they merely like gives theirs that look. */}
+      <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
+        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com", "जैसे sharmasweets.com")} className={field} />
+        <p className="mt-1 text-xs text-muted">{T("No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
+        <div className="mt-3">
+          <p className="text-sm font-semibold">{T("This website is…", "ये website है…")}</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
+              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {hi ? c.th : c.t}</button>
+            ))}
+          </div>
+          <p className="mt-1 text-xs text-muted">{hi ? SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takesHi : SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
+          {facts.websiteRole === "dealer" && !!facts.website && (
+            facts.dealerAssertedAt
+              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> {T("Confirmed: you are this brand’s authorised dealer / distributor.", "Confirm हो गया: आप इस brand के authorised dealer / distributor हैं।")}</p>
+              : <label className="mt-2 flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
+                  <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
+                  <span>I am this brand’s authorised dealer / distributor and may show its product photos on my card. <span className="block text-xs text-muted">मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।</span></span>
+                </label>
+          )}
+        </div>
+      </Sec>
 
+      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto is your trade's own look — a jeweller opens gold and serif, a clinic calm blue. Change anything; the preview updates.", "Auto आपके काम का अपना look है — jeweller को gold और serif, clinic को शांत नीला। कुछ भी बदलें; preview बदलता है।")}>
+        <LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} />
+      </Sec>
+
+      {/* Steps 2 and 3 again, folded (owner's flow, 2 Oct 2026): the company and product answers were given on
+          their own screens; here they are checked, and a "Make it better" chip lands on the exact question. */}
+      <details id="q-review" ref={reviewRef} className="group rounded-2xl border border-border bg-surface2/40">
+        <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+          <span>{T("Check your details", "अपनी जानकारी देखें")} <span className="text-sm font-normal text-muted">({T("products, photos, timings, payments…", "products, photos, समय, payment…")})</span></span>
+          <span className="text-xs font-semibold text-brand-ink">{T("Open", "खोलें")}</span>
+        </summary>
+        <div className="space-y-3 border-t border-border p-3">
       <Sec id="q-products" title={T("Your products or services", "आपके products या services")} hint={T("Add a photo, the price and the brand. Brand and price are optional.", "photo, price और brand डालें। Brand और price optional हैं।")}>
         {rows.map((r, i) => (
           <div key={r.id ?? `new-${i}`} className="space-y-1.5 rounded-xl bg-surface2/60 p-2">
@@ -873,152 +864,17 @@ export default function BuildCard() {
         )}
       </Sec>
 
-      <Sec id="q-photos" title={T("Photos of your shop or work", "दुकान या काम की photos")}>
-        <p className="text-sm font-semibold">{T("Shop front / banner photo", "दुकान के सामने की / banner photo")}</p>
-        {facts.bannerUrl ? (
-          <div className="relative overflow-hidden rounded-xl border border-border" style={{ aspectRatio: "3 / 1" }}>
-            <Img src={facts.bannerUrl} className="h-full w-full object-cover" />
-            <button type="button" onClick={() => setF({ bannerUrl: "" })} className="absolute right-1.5 top-1.5 rounded-full bg-black/60 p-1 text-white" aria-label={T("Remove the banner photo", "Banner photo हटाएँ")}><X className="h-3.5 w-3.5" /></button>
-          </div>
-        ) : (
-          <label className="grid cursor-pointer place-items-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface2 py-6 text-sm text-muted">
-            {busy === "banner" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />} {T("Add your shop photo", "दुकान की photo डालें")}
-            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickFile(f); }} />
-          </label>
-        )}
-        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 5)", "और photos (5 तक)")}</p>
-        <div className="flex flex-wrap gap-2">
-          {facts.photos.map((u, i) => (
-            <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border">
-              <Img src={u} className="h-full w-full object-cover" />
-              <button type="button" onClick={() => setF({ photos: facts.photos.filter((_, k) => k !== i) })} className="absolute right-1 top-1 rounded-full bg-black/60 p-0.5 text-white" aria-label={T("Remove photo", "Photo हटाएँ")}><X className="h-3 w-3" /></button>
-            </div>
-          ))}
-          {facts.photos.length < 5 && (
-            <label className="grid h-20 w-20 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface2 text-muted">
-              {busy === "photo" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />}
-              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) addPhoto(f); }} />
-            </label>
-          )}
-        </div>
-      </Sec>
-
-      <Sec id="q-hours" title={T("Your timings", "आपका समय")}>
-        <div className="flex flex-wrap gap-2">
-          {["Mon–Sat 10 AM – 8 PM", "All days 9 AM – 9 PM", "Mon–Fri 10 AM – 6 PM"].map((c) => <button key={c} type="button" onClick={() => setF({ hours: c })} className={chip(facts.hours === c)}>{c}</button>)}
-        </div>
-        <input value={facts.hours} onChange={(e) => setF({ hours: e.target.value })} placeholder={T("Or type your own, e.g. Sunday closed", "या खुद लिखें, जैसे रविवार बंद")} className={field} />
-      </Sec>
-
-      <Sec id="q-delivery" title={T("Do you deliver or visit homes?", "आप delivery या घर पर service देते हैं?")}>
-        <div className="grid grid-cols-2 gap-2">
-          {([["yes", T("✅ Yes", "✅ हाँ")], ["no", T("❌ No", "❌ नहीं")]] as const).map(([k, l]) => (
-            <button key={k} type="button" onClick={() => setF({ homeService: k })} className={`rounded-xl border-2 py-3 font-semibold ${facts.homeService === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>{l}</button>
-          ))}
-        </div>
-      </Sec>
-
-      <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")}>
-        <div className="flex flex-wrap gap-2">
-          {["💵 Cash", "📱 UPI", "💳 Card", "🧾 EMI"].map((c) => <button key={c} type="button" onClick={() => toggle("payments", c)} className={chip(facts.payments.includes(c))}>{c}</button>)}
-        </div>
-        {upiOn && (
-          <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")}
-            <input value={facts.upi} onChange={(e) => setF({ upi: e.target.value.trim() })} autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
-            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">{T("This does not look like a UPI ID. It looks like name@bank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank")}</span>}
-          </label>
-        )}
-      </Sec>
-
-      <Sec id="q-since" title={T("Since which year?", "किस साल से काम कर रहे हैं?")}>
-        <input value={facts.since} onChange={(e) => setF({ since: e.target.value.replace(/\D/g, "").slice(0, 4) })} inputMode="numeric" placeholder={T("e.g. 2015", "जैसे 2015")} className={field} />
-      </Sec>
-
-      <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")}>
-        <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T("e.g. Free delivery above ₹500", "जैसे ₹500 से ऊपर free delivery")} className={field} />
-      </Sec>
-
-      <Sec id="q-areas" title={T("Which areas do you serve?", "आप किन इलाकों में काम करते हैं?")}>
-        <input value={facts.areas} onChange={(e) => setF({ areas: e.target.value })} placeholder={T("e.g. Karol Bagh, Rajouri Garden, Janakpuri", "जैसे Karol Bagh, Rajouri Garden, Janakpuri")} className={field} />
-      </Sec>
-
-      <Sec id="q-special" title={T("What makes you special?", "आपकी खास बात क्या है?")} hint={T("Tap all that are true.", "जो सही हैं, सब दबा दें।")}>
-        <div className="flex flex-wrap gap-2">
-          {["💰 Fair prices", "⭐ Best quality", "🚚 Fast delivery", "🧑‍🔧 Expert team", "✂️ Custom orders", "🤝 Trusted by many customers"].map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chip(facts.special.includes(c))}>{c}</button>)}
-        </div>
-        <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T("Anything else? e.g. pure desi ghee only", "कुछ और? जैसे सिर्फ़ शुद्ध देसी घी")} className={field} />
-      </Sec>
-
-      {!setup?.about && (
-        <Sec id="q-work" title={T("What do you sell, or what work do you do?", "आप क्या बेचते हैं, या क्या काम करते हैं?")} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
-          <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T("e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties.", "जैसे हम रोज़ ताज़ी मिठाई और नमकीन बनाते हैं, और शादी-party के order भी लेते हैं।")} className={field} />
-        </Sec>
-      )}
-
-      {setup?.persona === "professional" && (
-        <Sec id="q-qual" title={T("Your degree / registration (optional)", "आपकी degree / registration (ज़रूरी नहीं)")}>
-          <input value={facts.qualification} onChange={(e) => setF({ qualification: e.target.value })} placeholder={T("e.g. MBBS, MD · Reg. no. 12345", "जैसे MBBS, MD · Reg. no. 12345")} className={field} />
-        </Sec>
-      )}
-
-      {/* Out in the open (owner's call, 1 Oct 2026): this was buried inside "More details", and the three
-          choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
-          option. It is one of the most useful answers on the form: a site we can read fills the whole card,
-          and a site they merely like gives theirs that look. */}
-      <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
-        <input value={facts.website} onChange={(e) => setF({ website: e.target.value.trim() })} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com", "जैसे sharmasweets.com")} className={field} />
-        <p className="mt-1 text-xs text-muted">{T("No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
-        <div className="mt-3">
-          <p className="text-sm font-semibold">{T("This website is…", "ये website है…")}</p>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
-              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {hi ? c.th : c.t}</button>
-            ))}
-          </div>
-          <p className="mt-1 text-xs text-muted">{hi ? SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takesHi : SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
-          {facts.websiteRole === "dealer" && !!facts.website && (
-            facts.dealerAssertedAt
-              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> {T("Confirmed: you are this brand’s authorised dealer / distributor.", "Confirm हो गया: आप इस brand के authorised dealer / distributor हैं।")}</p>
-              : <label className="mt-2 flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
-                  <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
-                  <span>I am this brand’s authorised dealer / distributor and may show its product photos on my card. <span className="block text-xs text-muted">मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।</span></span>
-                </label>
-          )}
-        </div>
-      </Sec>
-
-      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto is your trade's own look — a jeweller opens gold and serif, a clinic calm blue. Change anything; the preview updates.", "Auto आपके काम का अपना look है — jeweller को gold और serif, clinic को शांत नीला। कुछ भी बदलें; preview बदलता है।")}>
-        <LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} />
-      </Sec>
-
-      <details id="q-more" ref={moreRef} className="rounded-2xl border border-border bg-surface p-4">
-        <summary className="cursor-pointer text-[15px] font-semibold">{T("More details", "और जानकारी")} <span className="font-normal text-muted">{T("(optional)", "(ज़रूरी नहीं)")}</span></summary>
-        <div className="mt-3 space-y-3">
-          {([["instagram", "Instagram", "instagram.com/yourshop"], ["facebook", "Facebook", "facebook.com/yourshop"], ["youtube", "YouTube", "youtube.com/@yourshop"]] as const).map(([k, l, ph]) => (
-            <label key={k} className="block text-sm font-semibold">{l}
-              <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" className={field} />
-            </label>
-          ))}
-          <label id="q-map" className="block scroll-mt-4 text-sm font-semibold">{T("Google Maps link", "Google Maps का link")}
-            <input value={facts.social.google} onChange={(e) => setF({ social: { google: e.target.value.trim() } })} placeholder="maps.app.goo.gl/…" inputMode="url" autoCapitalize="none" className={field} />
-            <span className="mt-1 block text-xs font-normal text-muted">{T("Google Maps → your shop → Share → Copy link", "Google Maps → अपनी दुकान → Share → Copy link")}</span>
-          </label>
-          <div>
-            <p className="text-sm font-semibold">{T("Who buys from you?", "आपसे कौन खरीदता है?")}</p>
-            <div className="mt-1.5 flex flex-wrap gap-2">
-              {["👪 Families", "🏪 Shops", "🏢 Offices", "🎓 Students", "👵 Senior citizens", "🙋 Everyone"].map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chip(facts.customers.includes(c))}>{c}</button>)}
-            </div>
-          </div>
-          <label className="block text-sm font-semibold">{T("Language of your V-Card", "आपके V-Card की भाषा")}
-            <select value={facts.lang} onChange={(e) => setF({ lang: e.target.value as CardFacts["lang"] })} className={field}>
-              <option value="en">English</option><option value="hinglish">Hinglish</option><option value="hi">हिन्दी</option>
-            </select>
-          </label>
+          <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={setup?.persona === "professional"} hasAbout={!!setup?.about} />
+          <FactsFields group="products" facts={facts} setF={setF} hi={hi} hasAbout={!!setup?.about} />
         </div>
       </details>
 
+
       {err && <p className="text-sm text-danger">{err}</p>}
-      {makeBtn}
+      <div className="space-y-2.5 rounded-2xl border-2 border-amber/40 bg-amber/10 p-3.5">
+        <p className="text-sm"><b>{T("Step 5 — make my website & V-Card", "Step 5 — मेरी website और V-Card बनाएँ")}</b> <span className="text-muted">{T("Standard is free. Premium needs the Growth plan.", "Standard free है। Premium के लिए Growth plan चाहिए।")}</span></p>
+        {makeBtn}
+      </div>
       <p className="text-center text-xs text-muted">{T("Free. The AI writes only from your details — no made-up prices or claims.", "Free. AI सिर्फ़ आपकी जानकारी से लिखता है — price या दावे अपने से नहीं बनाता।")}</p>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>

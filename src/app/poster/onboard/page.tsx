@@ -28,7 +28,8 @@ import { useT } from "@/lib/poster-i18n";
 import { useAssociate } from "@/lib/associate";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
-import { vcardDraftKey, vcardFormKey, type FactsResponse } from "@/lib/card-facts";
+import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
+import { COMPANY_FACT_KEYS, DESIGNATIONS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
 const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
@@ -84,7 +85,13 @@ function Onboard() {
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
-  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null });
+  // Step 1 "About you": name, mobile, WhatsApp (same as the mobile unless unticked), photo and designation.
+  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, designation: "", whatsapp: "", waSame: true });
+  // The profile's detail answers (card facts): step 1 adds the designation / WhatsApp, step 2 the company details.
+  // Loaded with the account, saved with "Save and continue" (the facts route needs the profile to exist first).
+  const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
+  const factsDirty = useRef(false);
+  const setF = (p: FactsPatch) => { factsDirty.current = true; setFacts((f) => ({ ...f, ...p, social: { ...f.social, ...(p.social ?? {}) } })); };
   // Four ways a card can lead (owner's call, 23 Sep 2026): a shop/company by its name, a professional or an agent by
   // their own name, or a personal card with no products. Stored as `role`; the older `kind` (business | person) is
   // derived from it for everything downstream.
@@ -187,7 +194,7 @@ function Onboard() {
         api<FactsResponse>("/api/card/facts").catch(() => null),
         fetchMyCardsStrict().catch(() => []),
       ]);
-      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business };
+      const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; designation?: string; whatsapp?: string };
       setUid(data.user?.id ?? "");
       // The website already on record: the card facts first (they know whose site it is), else the account's own
       // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
@@ -199,10 +206,16 @@ function Onboard() {
       if (storedUrl) setSite({ kind: storedRole, url: storedUrl, assertedAt: f?.dealerAssertedAt ?? "" });
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
+      if (f) setFacts(f);
+      const phone0 = (p?.phone || meta.phone || "").replace(/^\+91/, "");
+      // Before the profile exists the designation / WhatsApp wait on the account (step 1 saves them there).
+      const wa = f?.whatsapp || (meta.whatsapp ?? "").replace(/\D/g, "").slice(-10);
       setYou({
         name: meta.display_name || meta.full_name || (p?.persona !== "business" ? p?.name : "") || "",
-        phone: (p?.phone || meta.phone || "").replace(/^\+91/, ""),
+        phone: phone0,
         photo: p?.photo_url ?? meta.photo_url ?? null,
+        designation: f?.designation || (meta.designation ?? "").slice(0, 60),
+        whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10),
       });
       setBiz({ kind: p && p.persona !== "business" && !meta.business?.name ? "person" : "business", role: (meta.business?.role as Role) || (p && p.persona !== "business" && !meta.business?.name ? "professional" : "business"), ...meta.business, name: meta.business?.name || (p?.persona === "business" ? p.name : ""), category: meta.business?.category || p?.category || "", city: meta.business?.city || p?.city || "", logo: p?.logo_url ?? null });
       const mail = data.user?.email ?? "";
@@ -262,6 +275,13 @@ function Onboard() {
    *  login (the new number signs in), the posters, the V-Card and the partner ID — /api/account/details does the
    *  server side, then the setup's own card sync re-publishes the card picture / number. Before, "Next" only
    *  changed the login, and the card and posters kept the old details until the whole setup was saved again. */
+  /** Step 1's facts: the designation, and the WhatsApp number only when it differs from the mobile. */
+  function youFacts(): { designation: string; whatsapp: string } {
+    const mobile = you.phone.replace(/\D/g, "").slice(-10);
+    const wa = you.waSame ? "" : you.whatsapp.replace(/\D/g, "").slice(-10);
+    return { designation: you.designation.trim().slice(0, 60), whatsapp: wa && wa !== mobile ? wa : "" };
+  }
+
   async function nextFromYou() {
     setErr("");
     const digits = you.phone.replace(/\D/g, "");
@@ -273,6 +293,8 @@ function Onboard() {
       try {
         const r = await api<{ ok?: boolean; error?: string; note?: string }>("/api/account/details", { method: "POST", json: { name: you.name.trim(), phone, photo: you.photo || "" } });
         if (!r.ok) { setErr(r.data.error ?? "Could not save. Please try again."); return; }
+        // The designation and the WhatsApp number live in the card facts (the profile exists, so the route takes them).
+        if (profile) await api("/api/card/facts", { method: "PATCH", json: { facts: youFacts() } }).catch(() => undefined);
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
@@ -290,6 +312,7 @@ function Onboard() {
     try {
       getBrowserSupabase()?.auth.updateUser({ data: {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${digits.slice(-10)}`, photo_url: you.photo || "",
+        designation: you.designation.trim().slice(0, 60), whatsapp: youFacts().whatsapp,
       } }).catch(() => undefined);
     } catch { /* offline: the full save on the next screen writes it again */ }
     setStep("promote");
@@ -658,6 +681,8 @@ function Onboard() {
       // website from here, but the card is made either way.
       let siteChanged = false;
       try { siteChanged = await saveSiteFacts(); } catch { /* the V-Card form asks again */ }
+      // Step 1's designation / WhatsApp and step 2's company details (timings, photos, payments, social…).
+      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, COMPANY_FACT_KEYS) : {}) } } }); } catch { /* the build form shows them again */ }
       // Keep the published V-Card in step with the setup (name, business, photo, logo, number).
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
@@ -856,8 +881,23 @@ function Onboard() {
             : <div><h1 className="text-2xl font-bold">About you</h1><p className="text-sm text-muted">Takes 30 seconds.</p></div>}
           <label className="block text-sm font-semibold">Your name<input value={you.name} onChange={(e) => { if (!associate) setYou({ ...you, name: e.target.value }); }} readOnly={!!associate} placeholder="e.g. Rajesh Sharma" className={`${field} ${associate ? "bg-surface2 text-muted" : ""}`} />
             {associate && <span className="mt-1 block text-[11px] font-normal text-muted">{T("As on your partner KYC — it cannot be changed here.", "आपके partner KYC के अनुसार — यहाँ नहीं बदलेगा।")}</span>}</label>
-          <label className="block text-sm font-semibold">Mobile / WhatsApp number<input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder="10-digit mobile" className={field} /></label>
+          <label className="block text-sm font-semibold">{T("Mobile number", "Mobile number")}<input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder="10-digit mobile" className={field} /></label>
+          <div className="text-sm font-semibold">
+            <label className="flex items-center gap-2"><input type="checkbox" checked={you.waSame} onChange={(e) => setYou({ ...you, waSame: e.target.checked })} className="h-4 w-4" /> {T("WhatsApp is the same number", "WhatsApp भी यही number है")}</label>
+            {!you.waSame && <input value={you.whatsapp} onChange={(e) => setYou({ ...you, whatsapp: e.target.value })} inputMode="tel" placeholder={T("WhatsApp number (10 digits)", "WhatsApp number (10 अंक)")} className={field} />}
+          </div>
+          <label className="block text-sm font-semibold">Email{!needEmail && <span className="font-normal text-muted"> ({T("from your sign-up", "sign-up से")})</span>}
+            <input value={email} onChange={(e) => setEmail(e.target.value.trim())} readOnly={!needEmail} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="e.g. sharma@gmail.com" className={`${field} ${needEmail ? "" : "bg-surface2 text-muted"}`} />
+            {needEmail && <span className="mt-1 block text-xs font-normal text-muted">{T("Customers can email you from your card.", "Customers card से आपको email कर सकेंगे।")}</span>}
+          </label>
           <Photo url={you.photo} label="your photo" hint="a clear photo of your face — shown on your card and daily posters" round busy={busy === "photo"} onPick={(f) => choose(f, "photo")} />
+          <div className="text-sm font-semibold">{T("Your designation / role", "आपका पद / designation")} <span className="font-normal text-muted">({T("optional", "optional")})</span>
+            <div className="mt-1.5 flex flex-wrap gap-1.5">
+              {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setYou({ ...you, designation: you.designation === d ? "" : d })} className={`rounded-full border px-3 py-1.5 text-xs font-medium ${you.designation === d ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{d}</button>)}
+            </div>
+            <input value={you.designation} onChange={(e) => setYou({ ...you, designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
+            <span className="mt-1 block text-[11px] font-normal text-muted">{T("Shown under your name on the card and website.", "Card और website पर आपके नाम के नीचे दिखेगा।")}</span>
+          </div>
           {username === null && <ClaimUsername onDone={loadUsername} />}
           {err && <p className="text-sm text-danger">{err}</p>}
           <button type="button" onClick={nextFromYou} disabled={busy === "you"}
@@ -1028,16 +1068,25 @@ function Onboard() {
                   : <span className="text-muted">{T("none", "नहीं है")}</span>}
                 <button type="button" onClick={() => { setSiteErr(""); setStep("site"); }} className="font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>
               </div>
-              {needEmail && (
-                <label className="block text-sm font-semibold">Email
-                  <input value={email} onChange={(e) => setEmail(e.target.value.trim())} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="e.g. sharma@gmail.com" className={field} />
-                  <span className="mt-1 block text-xs font-normal text-muted">{T("Customers can email you from your card.", "Customers card से आपको email कर सकेंगे।")}</span>
-                </label>
-              )}
               {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><input value={biz.gstin ?? ""} onChange={(e) => setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) })} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${field} uppercase tracking-wide`} />
                 <span className="mt-1 block text-xs font-normal text-muted">{(biz.gstin ?? "").length}/15</span></label>}
             </div>
           </details>
+
+          {/* Step 2 of the profile (owner's flow, 2 Oct 2026): everything about the company lives here — banner and
+              photos, since / experience / team, timings, home service, areas, payments (what the site shows; no bank
+              details), qualification, social and the map link. Each answer makes the website fuller; none is required. */}
+          {!editing && (
+            <details open className="group rounded-2xl border border-border bg-surface2/40">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+                <span>{T("Company details for the website", "Website के लिए company की जानकारी")} <span className="font-normal text-muted">({T("optional — photos, timings, payments, social", "optional — photos, समय, payment, social")})</span></span>
+                <ChevronDown className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="space-y-3 border-t border-border p-3">
+                <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
+              </div>
+            </details>
+          )}
           {err && <p className="text-sm text-danger">{err}</p>}
           <button type="button" onClick={save} disabled={busy === "save"} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
             {busy === "save" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and continue", "Save करके आगे बढ़ें")}

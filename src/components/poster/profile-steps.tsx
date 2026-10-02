@@ -1,6 +1,6 @@
 "use client";
-// The profile, in five steps (owner's call, 2 Oct 2026: "profile bharo, site apne aap banegi"): you → business →
-// products → details & website → make. The same bar sits on top of each step's screen, shows how much of the
+// The profile, in five steps (owner's call, 2 Oct 2026: "profile bharo, site apne aap banegi"): you → company /
+// firm → products / services → website look → make. The same bar sits on top of each step's screen, shows how much of the
 // profile is done and takes the owner back a step; every screen underneath keeps what it already saved, so
 // nothing is typed twice.
 import Link from "next/link";
@@ -11,9 +11,9 @@ import { useT } from "@/lib/poster-i18n";
 export type ProfileStepKey = "you" | "business" | "products" | "details" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
   { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&back=/poster/welcome" },
-  { key: "business", en: "Business", hi: "Business", href: "/poster/onboard?step=site" },
+  { key: "business", en: "Company", hi: "Company", href: "/poster/onboard?step=site" },
   { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
-  { key: "details", en: "Details & website", hi: "जानकारी व website", href: "/poster/card/build" },
+  { key: "details", en: "Website", hi: "Website", href: "/poster/card/build" },
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build#make" },
 ];
 

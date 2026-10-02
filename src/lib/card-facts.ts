@@ -42,6 +42,14 @@ export type CardFacts = {
   payments: string[];
   upi: string;
   qualification: string;
+  /** The owner's designation on the card — Owner, Director, Dr., Advocate… (profile step 1, 2 Oct 2026). */
+  designation: string;
+  /** A WhatsApp number different from the mobile (10 digits); "" = the mobile is the WhatsApp number. */
+  whatsapp: string;
+  /** Team size, in the owner's words ("12 people", "family run"). */
+  team: string;
+  /** Years of experience (1–2 digits) — the trust pill when there is no "since" year. */
+  experience: string;
   /** google = the owner's Google Maps link. */
   social: { instagram: string; facebook: string; youtube: string; google: string };
   bannerUrl: string;
@@ -85,6 +93,10 @@ export const EMPTY_FACTS: CardFacts = deepFreeze<CardFacts>({
   payments: [],
   upi: "",
   qualification: "",
+  designation: "",
+  whatsapp: "",
+  team: "",
+  experience: "",
   social: { instagram: "", facebook: "", youtube: "", google: "" },
   bannerUrl: "",
   photos: [],
@@ -171,6 +183,8 @@ function normalizeObj(r: Obj): CardFacts {
   const primaryCardId = text(r.primaryCardId, 36);
   const assertedAt = text(r.dealerAssertedAt, 30);
   const style = cleanStyle(r.style);
+  const whatsapp = text(r.whatsapp, 20).replace(/\D/g, "").slice(-10);
+  const experience = text(r.experience, 4).replace(/\D/g, "");
 
   return {
     v: 1,
@@ -192,6 +206,10 @@ function normalizeObj(r: Obj): CardFacts {
     payments: list(r.payments, 6, 30),
     upi: UPI_RE.test(upi) ? upi : "",
     qualification: text(r.qualification, 120),
+    designation: text(r.designation, 60),
+    whatsapp: whatsapp.length === 10 ? whatsapp : "",
+    team: text(r.team, 40),
+    experience: experience && Number(experience) >= 1 && Number(experience) <= 80 ? String(Number(experience)) : "",
     social: {
       instagram: text(social.instagram, 300),
       facebook: text(social.facebook, 300),
