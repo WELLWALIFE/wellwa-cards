@@ -29,7 +29,7 @@ const CATEGORY_WORDS = {
   clothing: "clothing boutique fabric ethnic wear", boutique: "fashion boutique fabric", jewellery: "gold jewellery close up", jewelry: "gold jewellery close up",
   salon: "hair salon beauty care", beauty: "beauty parlour makeup", restaurant: "indian food thali restaurant", food: "indian food homemade", sweets: "indian sweets mithai", bakery: "bakery cake pastry",
   mobile: "smartphone shop accessories", electronics: "electronics gadgets shop", furniture: "modern furniture home interior", interior: "home interior design", realestate: "modern house apartment building", property: "apartment building city",
-  insurance: "family protection happy indian family", finance: "savings money growth", education: "students classroom learning", coaching: "students studying books", tuition: "children studying",
+  insurance: "family protection happy indian family", finance: "savings money growth", education: "students classroom learning", school: "indian school students classroom uniform", playschool: "kids play school colourful classroom toys", coaching: "students studying books", tuition: "children studying",
   gym: "gym fitness workout", fitness: "yoga fitness morning", pharmacy: "medical store medicines", clinic: "doctor clinic healthcare", hospital: "hospital doctor care", dental: "dentist smile",
   travel: "travel india mountains road trip", tours: "travel destination india", auto: "car service garage", automobile: "car showroom", bike: "motorcycle showroom",
   agriculture: "indian farmer green field", solar: "solar panels rooftop sun", hardware: "hardware tools shop", construction: "construction building site", paint: "house painting colours",

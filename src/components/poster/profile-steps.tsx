@@ -7,6 +7,7 @@ import Link from "next/link";
 import { Check, ChevronLeft } from "lucide-react";
 import { useJourney } from "@/lib/journey";
 import { useT } from "@/lib/poster-i18n";
+import { catalogCopyFor } from "@/lib/catalog-copy";
 
 export type ProfileStepKey = "you" | "business" | "products" | "details" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
@@ -17,9 +18,12 @@ export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href:
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
 ];
 
-export function ProfileSteps({ current }: { current: ProfileStepKey }) {
+/** `category`: the trade, so step 3 is called what it is for that trade — Courses for a school, Menu for a restaurant. */
+export function ProfileSteps({ current, category }: { current: ProfileStepKey; category?: string }) {
   const { lang } = useT();
   const hi = lang === "hi";
+  const copy = catalogCopyFor(category);
+  const name = (s: { key: ProfileStepKey; en: string; hi: string }) => (s.key === "products" ? (hi ? copy.shortHi : copy.short) : hi ? s.hi : s.en);
   const { steps } = useJourney();
   const done = (k: ProfileStepKey) => {
     const j = (key: string) => !!steps?.find((s) => s.key === key)?.done;
@@ -33,7 +37,7 @@ export function ProfileSteps({ current }: { current: ProfileStepKey }) {
   return (
     <div className="space-y-2">
       <div className="flex items-center gap-2">
-        <Link href={prev.href} className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted hover:text-ink"><ChevronLeft className="h-4 w-4" /> {hi ? prev.hi : prev.en}</Link>
+        <Link href={prev.href} className="inline-flex items-center gap-0.5 text-xs font-semibold text-muted hover:text-ink"><ChevronLeft className="h-4 w-4" /> {"key" in prev ? name(prev) : hi ? prev.hi : prev.en}</Link>
         <span className="ml-auto text-xs font-semibold text-muted">{hi ? "प्रोफ़ाइल" : "Profile"} · {pct}%</span>
       </div>
       <div className="h-1.5 w-full overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full grad-brand transition-[width]" style={{ width: `${pct}%` }} /></div>
@@ -41,7 +45,7 @@ export function ProfileSteps({ current }: { current: ProfileStepKey }) {
         {PROFILE_STEPS.map((s, i) => {
           const isCur = i === at, isDone = done(s.key);
           const cls = `min-w-0 flex-1 truncate rounded-full px-1.5 py-1.5 text-center ${isCur ? "bg-brand text-white" : isDone ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`;
-          const label = <>{isDone && !isCur ? <Check className="mr-0.5 inline h-3 w-3" /> : `${i + 1}. `}{hi ? s.hi : s.en}</>;
+          const label = <>{isDone && !isCur ? <Check className="mr-0.5 inline h-3 w-3" /> : `${i + 1}. `}{name(s)}</>;
           return <li key={s.key} className="min-w-0 flex-1">{isCur ? <span className={`block ${cls}`}>{label}</span> : <Link href={s.href} className={`block ${cls}`}>{label}</Link>}</li>;
         })}
       </ol>

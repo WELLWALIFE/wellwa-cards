@@ -61,7 +61,7 @@ const BY_KEY: Record<string, Recipe> = {
   travel: { ...SHOP, catalog: "plans", cta: "enquire" }, auto: SERVICE, printing: SHOP, it: { ...PORTFOLIO, catalog: "services" },
   tailor: { ...SERVICE, home: ["trust", "photos", "services", "whyUs", "steps", "about", "reviews", "offer"] }, mehndi: { ...PORTFOLIO, cta: "book" },
   // education
-  school: { ...LEARNING, cta: "enquire" }, college: LEARNING, computer: LEARNING, coaching: LEARNING, teacher: { ...PROFESSIONAL, catalog: "courses" }, dance: LEARNING,
+  school: { ...LEARNING, cta: "enquire" }, playschool: { ...LEARNING, cta: "enquire", home: ["trust", "services", "whyUs", "photos", "about", "steps", "reviews", "offer"] }, college: LEARNING, computer: LEARNING, coaching: LEARNING, teacher: { ...PROFESSIONAL, catalog: "courses" }, dance: LEARNING,
   student: PERSON,
   // sales
   mlm: AGENT, distributor: SHOP, sales: AGENT, agent: AGENT,
@@ -166,7 +166,7 @@ const SCHEMA_TYPE: Record<string, string> = {
   it: "ProfessionalService", security: "ProfessionalService", cleaning: "ProfessionalService",
   tailor: "ClothingStore", mehndi: "HealthAndBeautyBusiness", astro: "ProfessionalService", courier: "ProfessionalService",
   // education
-  school: "School", coaching: "EducationalOrganization", college: "CollegeOrUniversity",
+  school: "School", playschool: "Preschool", coaching: "EducationalOrganization", college: "CollegeOrUniversity",
   computer: "EducationalOrganization", teacher: "EducationalOrganization", dance: "EducationalOrganization",
   // industry
   agri: "Store", dairy: "Store", manufacturer: "Organization", wholesale: "Store", textile: "Store",

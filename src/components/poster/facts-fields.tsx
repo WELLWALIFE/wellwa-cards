@@ -6,6 +6,7 @@
 // One component, three screens: the set-up (step 2), My products (step 3) and the build form ("Check your
 // details"), so a question is asked once and the "Make it better" chips (q-… ids) still land on it anywhere.
 import { useState } from "react";
+import { catalogCopyFor } from "@/lib/catalog-copy";
 import { Camera, LoaderCircle, X } from "lucide-react";
 import { uploadImage } from "@/lib/poster-client";
 import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
@@ -50,8 +51,10 @@ export const CUSTOMER_CHIPS = ["👪 Families", "🏪 Shops", "🏢 Offices", "�
 export const PAYMENT_CHIPS = ["💵 Cash", "📱 UPI", "💳 Card", "🧾 EMI"];
 const HOURS_CHIPS = ["Mon–Sat 10 AM – 8 PM", "All days 9 AM – 9 PM", "Mon–Fri 10 AM – 6 PM"];
 
-export function FactsFields({ group, facts, setF, hi, professional, hasAbout }: {
+export function FactsFields({ group, facts, setF, hi, professional, hasAbout, category }: {
   group: FactsGroup;
+  /** The trade: step 3 asks in its words (classes for a school, dishes for a restaurant — catalog-copy.ts). */
+  category?: string;
   facts: CardFacts;
   setF: (p: FactsPatch) => void;
   hi: boolean;
@@ -61,6 +64,10 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout }: 
   hasAbout?: boolean;
 }) {
   const T = (en: string, h: string) => (hi ? h : en);
+  const copy = catalogCopyFor(category);
+  // The trade's chips, plus anything already ticked from another list, so it can still be un-ticked.
+  const specialChips = [...copy.special, ...facts.special.filter((x) => !copy.special.includes(x))];
+  const customerChips = [...copy.customers, ...facts.customers.filter((x) => !copy.customers.includes(x))];
   const [crop, setCrop] = useState("");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -98,21 +105,21 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout }: 
     <>
       <Sec id="q-special" title={T("What makes you special?", "आपकी खास बात क्या है?")} hint={T("Tap 3 to 5 that are true — they become your website's highlights.", "3 से 5 दबाएँ जो सही हैं — यही आपकी website की highlights बनेंगी।")}>
         <div className="flex flex-wrap gap-2">
-          {SPECIAL_CHIPS.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
+          {specialChips.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
         </div>
         <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T("In your own words — e.g. pure desi ghee only", "अपने शब्दों में — जैसे सिर्फ़ शुद्ध देसी घी")} className={field} />
       </Sec>
       <Sec id="q-customers" title={T("Who buys from you?", "आपसे कौन खरीदता है?")}>
         <div className="flex flex-wrap gap-2">
-          {CUSTOMER_CHIPS.map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chipCls(facts.customers.includes(c))}>{c}</button>)}
+          {customerChips.map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chipCls(facts.customers.includes(c))}>{c}</button>)}
         </div>
       </Sec>
       <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")} hint={T("Optional — shown on the card and the website.", "Optional — card और website पर दिखेगा।")}>
         <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T("e.g. Free delivery above ₹500", "जैसे ₹500 से ऊपर free delivery")} className={field} />
       </Sec>
       {!hasAbout && (
-        <Sec id="q-work" title={T("What do you sell, or what work do you do?", "आप क्या बेचते हैं, या क्या काम करते हैं?")} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
-          <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T("e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties.", "जैसे हम रोज़ ताज़ी मिठाई और नमकीन बनाते हैं, और शादी-party के order भी लेते हैं।")} className={field} />
+        <Sec id="q-work" title={T(copy.work, copy.workHi)} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
+          <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T(copy.workEg, copy.workEgHi)} className={field} />
         </Sec>
       )}
     </>

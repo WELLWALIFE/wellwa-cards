@@ -769,7 +769,7 @@ function Onboard() {
         <button type="button" onClick={() => router.push(back)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
-      <ProfileSteps current={step === "you" ? "you" : "business"} />
+      <ProfileSteps current={step === "you" ? "you" : "business"} category={biz.category} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-muted">{next ? T("Your details are needed for the card", "Card के लिए आपकी जानकारी चाहिए") : "Setup"}</p>
         {next ? (

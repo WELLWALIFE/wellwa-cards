@@ -60,7 +60,10 @@ export const CATEGORIES: Category[] = [
   c("astro", "ज्योतिष / वास्तु / पंडित", "Astrology / vastu / pandit", "Services", "professional", "traditional", "#ff9933", "पं. / आचार्य"),
   c("courier", "कूरियर / मनी ट्रांसफ़र / CSC", "Courier / CSC / e-mitra", "Services", "business", "clean", "#0369a1", "सेंटर का नाम"),
   // education
-  c("school", "स्कूल / प्ले स्कूल", "School / play school", "Education", "business", "clean", "#2563eb", "स्कूल का नाम"),
+  // School and play school are two trades (owner's call, 2 Oct 2026: a school is not a play school): the site,
+  // the posters and the questions differ.
+  c("school", "स्कूल (नर्सरी से 12वीं)", "School (nursery to 12th)", "Education", "business", "clean", "#2563eb", "स्कूल का नाम"),
+  c("playschool", "प्ले स्कूल / प्री-स्कूल / किंडरगार्टन", "Play school / pre-school", "Education", "business", "festive", "#f59e0b", "प्ले स्कूल का नाम"),
   c("coaching", "कोचिंग / ट्यूशन", "Coaching / tuition", "Education", "home", "bold", "#7c3aed", "इंस्टीट्यूट का नाम"),
   c("college", "कॉलेज / यूनिवर्सिटी", "College", "Education", "business", "clean", "#1e3a8a", "कॉलेज का नाम"),
   c("computer", "कंप्यूटर / स्किल सेंटर", "Computer / skill centre", "Education", "business", "clean", "#0891b2", "सेंटर का नाम"),

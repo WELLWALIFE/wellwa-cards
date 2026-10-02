@@ -42,7 +42,9 @@ export const ALIASES: Record<string, string[]> = {
   footwear: ["shoes", "chappal", "sandals"],
   optical: ["chashma", "spectacles", "eyewear", "lens"],
   gift: ["stationery", "gifts"],
-  school: ["play school", "kindergarten"],
+  school: ["vidyalaya", "vidya mandir", "public school", "high school", "senior secondary", "cbse", "icse", "rbse", "convent", "academy", "gurukul"],
+  playschool: ["play school", "pre school", "preschool", "pre-school", "kindergarten", "kg", "nursery", "montessori", "daycare", "day care", "creche", "kids school", "playway"],
+  college: ["university", "mahavidyalaya", "degree college", "polytechnic"],
   computer: ["skill centre", "typing"],
   manufacturer: ["factory", "manufacturing", "industries"],
   wholesale: ["trading", "traders", "wholesaler"],
@@ -93,4 +95,41 @@ export function matchCategory(text: string): string | null {
   if (!best || best.score < (short ? 2 : 4)) return null;
   if (scores[1] && scores[1].score >= best.score) return null;   // a tie is not an answer
   return best.key;
+}
+
+/**
+ * The 2-3 trades a few typed letters most likely mean, best first — the picker's drop-down (owner's call,
+ * 2 Oct 2026: "search kare, suggested name 2/3 aa jaaye, user ek select kar le"). A word of the English name,
+ * the Hindi name or an everyday alias that STARTS with the typed text counts most; a phrase that merely contains
+ * it counts less. "school" → School, Play school, (Coaching via "school subjects" would not — aliases must start).
+ */
+export function suggestCategories(q: string, n = 3): string[] {
+  const s = q.trim().toLowerCase();
+  if (!s) return [];
+  const sHi = q.trim();
+  const scored: { key: string; score: number }[] = [];
+  for (const c of CATEGORIES) {
+    let score = 0;
+    const en = c.en.toLowerCase();
+    const enWords = en.split(/[^a-z0-9]+/).filter(Boolean);
+    if (en.startsWith(s)) score = Math.max(score, 10);
+    else if (enWords.some((w) => w.startsWith(s))) score = Math.max(score, 8);
+    else if (s.length >= 3 && en.includes(s)) score = Math.max(score, 4);
+    if (c.key === s) score = Math.max(score, 10);
+    else if (c.key.startsWith(s)) score = Math.max(score, 7);
+    const hiWords = c.hi.split(/[\s/()]+/).filter(Boolean);
+    if (hiWords.some((w) => w.startsWith(sHi))) score = Math.max(score, 8);
+    else if (sHi.length >= 2 && c.hi.includes(sHi)) score = Math.max(score, 4);
+    for (const a of ALIASES[c.key] ?? []) {
+      if (a === s) score = Math.max(score, 9);
+      else if (a.startsWith(s)) score = Math.max(score, 7);
+      else if (a.split(" ").some((w) => w.startsWith(s)) && s.length >= 2) score = Math.max(score, 6);
+      else if (s.length >= 4 && a.includes(s)) score = Math.max(score, 3);
+    }
+    // "Other" only when nothing better is typed for
+    if (c.key === "other" && score < 10) score = 0;
+    if (score) scored.push({ key: c.key, score });
+  }
+  scored.sort((a, b) => b.score - a.score || CATEGORIES.findIndex((c) => c.key === a.key) - CATEGORIES.findIndex((c) => c.key === b.key));
+  return scored.slice(0, n).map((x) => x.key);
 }

@@ -771,7 +771,7 @@ export default function BuildCard() {
     const row = (ok: boolean, text: string) => <li className="flex items-start gap-2 text-sm"><span className={ok ? "text-good" : "text-faint"}>{ok ? "✓" : "—"}</span><span className={ok ? "" : "text-muted"}>{text}</span></li>;
     return (
       <div className="space-y-4 py-2">
-        <ProfileSteps current="make" />
+        <ProfileSteps current="make" category={setup?.category} />
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & V-Card", "मेरी website और V-Card बनाएँ")}</h1>
@@ -826,7 +826,7 @@ export default function BuildCard() {
 
   return (
     <div className="space-y-4 py-2">
-      <ProfileSteps current="details" />
+      <ProfileSteps current="details" category={setup?.category} />
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="min-w-0 flex-1 text-xl font-bold">{T("How should your website look?", "Website की पसंद")}</h1>
@@ -920,7 +920,7 @@ export default function BuildCard() {
       </Sec>
 
           <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={setup?.persona === "professional"} hasAbout={!!setup?.about} />
-          <FactsFields group="products" facts={facts} setF={setF} hi={hi} hasAbout={!!setup?.about} />
+          <FactsFields group="products" facts={facts} setF={setF} hi={hi} hasAbout={!!setup?.about} category={setup?.category} />
         </div>
       </details>
 

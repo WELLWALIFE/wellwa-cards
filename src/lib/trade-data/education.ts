@@ -1,11 +1,11 @@
-// Education trades: school / play school, coaching / tuition, college, computer / skill centre, teacher / trainer,
+// Education trades: school, play school, coaching / tuition, college, computer / skill centre, teacher / trainer,
 // dance / music / art class, student. See types.ts for the rules (no numbers, no claims; true of any decent business of the trade).
 import type { TradeData } from "./types";
 
 export const EDUCATION: Record<string, TradeData> = {
   school: {
     explain: [
-      "classes offered (play school / nursery to which class), the board and the medium of instruction",
+      "classes offered (nursery to which class), the board and the medium of instruction",
       "the campus and facilities — classrooms, playground, library, computer lab, transport",
       "admission process and the documents needed",
       "the school's approach — activities, sports, values, attention to each child",
@@ -46,6 +46,46 @@ export const EDUCATION: Record<string, TradeData> = {
     generic: ["connect with us", "explore options", "quality education", "bright future", "best school"],
   },
 
+  playschool: {
+    explain: [
+      "age groups and programmes (play group, nursery, LKG, UKG; daycare if any) and the timings",
+      "how the day goes — play-based learning, activities, rhymes, art, outdoor play, meals or snack time",
+      "safety and care — child-safe campus, CCTV, hygiene, trained caretakers, small groups",
+      "admission: age for each class, documents, when admissions open",
+    ],
+    services: [
+      { en: "Play group & nursery", hi: "प्ले ग्रुप और नर्सरी", desc: "The first school days — learning through play, songs and stories.", descHi: "स्कूल के पहले दिन — खेल, गाने और कहानियों से सीख।" },
+      { en: "LKG & UKG", hi: "LKG और UKG", desc: "Letters, numbers, reading and writing readiness, in a fun way.", descHi: "अक्षर, गिनती, पढ़ने-लिखने की तैयारी — मज़े के साथ।" },
+      { en: "Activities & art", hi: "गतिविधियाँ और आर्ट", desc: "Drawing, craft, music, dance and festival celebrations.", descHi: "ड्रॉइंग, क्राफ़्ट, म्यूज़िक, डांस और त्योहारों की धूम।" },
+      { en: "Outdoor play", hi: "खेल का मैदान", desc: "Safe play area and games every day for growing bodies.", descHi: "सुरक्षित खेल क्षेत्र और रोज़ खेल, बढ़ते बच्चों के लिए।" },
+      { en: "Daycare", hi: "डेकेयर", desc: "Caring supervision beyond school hours for working parents.", descHi: "नौकरी करने वाले माता-पिता के लिए स्कूल के बाद भी देखभाल।" },
+      { en: "Parent updates", hi: "अभिभावकों को अपडेट", desc: "Regular updates and meetings about your child's progress.", descHi: "बच्चे की प्रगति पर नियमित अपडेट और मीटिंग।" },
+      { en: "Admission help", hi: "एडमिशन में मदद", desc: "The right class for your child's age, forms and documents explained.", descHi: "उम्र के हिसाब से सही कक्षा, फ़ॉर्म और दस्तावेज़ की पूरी जानकारी।" },
+    ],
+    whyUs: [
+      { en: "Child-safe, clean campus", hi: "बच्चों के लिए सुरक्षित, साफ़ कैंपस" },
+      { en: "Trained, caring teachers", hi: "प्रशिक्षित, स्नेही शिक्षिकाएँ" },
+      { en: "Learning through play", hi: "खेल-खेल में सीख" },
+      { en: "Small groups, every child seen", hi: "छोटे ग्रुप, हर बच्चे पर ध्यान" },
+      { en: "Parents kept informed", hi: "अभिभावकों को पूरी जानकारी" },
+      { en: "Hygienic, happy environment", hi: "साफ़-सुथरा, खुशनुमा माहौल" },
+    ],
+    steps: [
+      { en: "Enquire on WhatsApp", hi: "WhatsApp पर पूछें", desc: "Tell us your child's age; we suggest the right class.", descHi: "बच्चे की उम्र बताएँ; हम सही कक्षा सुझाएँगे।" },
+      { en: "Visit with your child", hi: "बच्चे के साथ आएँ", desc: "See the classrooms and play area, meet the teachers.", descHi: "कक्षाएँ और खेल क्षेत्र देखें, शिक्षिकाओं से मिलें।" },
+      { en: "Fill the admission form", hi: "एडमिशन फ़ॉर्म भरें", desc: "Form and documents; the first day is fixed.", descHi: "फ़ॉर्म और दस्तावेज़; पहला दिन तय।" },
+      { en: "A happy first day", hi: "खुशनुमा पहला दिन", desc: "A gentle settling-in; you get updates from day one.", descHi: "धीरे-धीरे घुलना-मिलना; पहले दिन से अपडेट मिलते हैं।" },
+    ],
+    faq: [
+      { q: "From what age do you take children?", qHi: "कितनी उम्र से बच्चे लेते हैं?", a: "See the age for each class on this page; message us your child's age and we will guide you.", aHi: "हर कक्षा की उम्र इसी पेज पर है; बच्चे की उम्र भेजें, हम बता देंगे।" },
+      { q: "What are the timings?", qHi: "समय क्या है?", a: "The timings are on this page; daycare hours, if any, are longer — ask us.", aHi: "समय इसी पेज पर है; डेकेयर का समय ज़्यादा होता है — पूछ लें।" },
+      { q: "Is the campus safe?", qHi: "कैंपस सुरक्षित है?", a: "Yes — child-safe furniture, supervision at all times and hygiene are taken care of; come and see.", aHi: "हाँ — बच्चों के लिए सुरक्षित फ़र्नीचर, हर समय निगरानी और सफ़ाई; आकर देखें।" },
+      { q: "What documents are needed?", qHi: "कौन से दस्तावेज़ चाहिए?", a: "Birth certificate, Aadhaar and photos of the child and parents; we confirm the full list.", aHi: "जन्म प्रमाणपत्र, आधार और बच्चे-अभिभावक की फ़ोटो; पूरी लिस्ट हम बता देंगे।" },
+      { q: "What is the fee?", qHi: "फ़ीस कितनी है?", a: "Fees depend on the programme; message us and we will share the structure and what it includes.", aHi: "फ़ीस प्रोग्राम पर निर्भर है; मैसेज करें, पूरा स्ट्रक्चर और उसमें क्या शामिल है बताएँगे।" },
+      { q: "Is there daycare after school?", qHi: "स्कूल के बाद डेकेयर है?", a: "Ask us — where we have it, the hours and meals are explained on enquiry.", aHi: "पूछ लें — जहाँ है, समय और खाने की जानकारी पूछने पर मिलती है।" },
+    ],
+    generic: ["connect with us", "explore options", "quality education", "bright future", "best play school"],
+  },
   coaching: {
     explain: [
       "which classes, subjects and exams are taught (school subjects, board exams, competitive exams, English)",
