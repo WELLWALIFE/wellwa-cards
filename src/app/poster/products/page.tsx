@@ -13,6 +13,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
+import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
 
 
@@ -155,6 +156,7 @@ export default function ProductsPage() {
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
   return (
     <div className="space-y-4">
+      {setupMode && <ProfileSteps current="products" />}
       <div className="flex items-center gap-2">
         <Link href="/poster/setup" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-lg font-bold flex-1">{t.productsTitle}</h1>

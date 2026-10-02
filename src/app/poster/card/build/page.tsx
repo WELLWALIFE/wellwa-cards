@@ -35,6 +35,7 @@ import {
 } from "@/lib/card-facts";
 import { SITE_CARDS } from "@/lib/site-role";
 import { useT } from "@/lib/poster-i18n";
+import { ProfileSteps } from "@/components/poster/profile-steps";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -175,6 +176,7 @@ export default function BuildCard() {
   const [removed, setRemoved] = useState("");
   const [crop, setCrop] = useState("");
   const [unlock, setUnlock] = useState(false);
+  const [premiumUnlock, setPremiumUnlock] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
   // not?" moment. `liveUser` is the link it went live on; a changed link afterwards needs one more save.
@@ -790,19 +792,31 @@ export default function BuildCard() {
   };
   const upiOn = facts.payments.some((p) => /upi/i.test(p));
 
+  // "Make": Standard (free — the V-Card, the website as a preview) or Premium (the plan — the website live on
+  // computers, the AI assistant, the made-for-you video). Premium checks the subscription first and opens the
+  // plan when there is none; the build itself is the same, the plan decides what goes live.
   const makeBtn = (
-    <button type="button" onClick={() => build()} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-      <Sparkles className="h-5 w-5" /> {T("Build my website", "मेरी website बनाएँ")}
-    </button>
+    <div id="make" className="grid gap-2 scroll-mt-4">
+      <button type="button" onClick={() => build()} disabled={!!busy} className="w-full inline-flex flex-col items-center justify-center rounded-2xl border-2 border-brand bg-surface py-3.5 text-brand-ink disabled:opacity-60">
+        <span className="inline-flex items-center gap-2 text-base font-semibold"><Sparkles className="h-5 w-5" /> {T("Make my website & V-Card — Standard", "मेरी website और V-Card बनाएँ — Standard")}</span>
+        <span className="mt-0.5 text-[11px] text-muted">{T("Free · V-Card live, website preview, daily posters", "Free · V-Card live, website preview, daily posters")}</span>
+      </button>
+      <button type="button" onClick={() => (access.subscribed ? build() : setPremiumUnlock(true))} disabled={!!busy || access.loading} className="w-full inline-flex flex-col items-center justify-center rounded-2xl grad-brand py-3.5 text-white disabled:opacity-60">
+        <span className="inline-flex items-center gap-2 text-base font-semibold"><Sparkles className="h-5 w-5" /> {T("Make it Premium", "Premium बनाएँ")}</span>
+        <span className="mt-0.5 text-[11px] opacity-90">{access.subscribed ? T("Your plan is on — website live, AI assistant, video", "आपका plan चालू है — website live, AI assistant, video") : T("Growth plan · website live, AI assistant, video, own domain", "Growth plan · website live, AI assistant, video, अपना domain")}</span>
+      </button>
+      {premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("The website goes live on computers, the AI assistant answers customers and a video is made for you. Activate the plan, then tap Premium again.", "Website computer पर live होती है, AI assistant ग्राहकों को जवाब देता है और आपके लिए video बनता है। Plan चालू करें, फिर Premium दबाएँ।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />}
+    </div>
   );
 
   return (
     <div className="space-y-4 py-2">
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
 
+      <ProfileSteps current="details" />
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => router.push("/poster/setup")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Build your website", "अपनी website बनाएँ")}</h1>
+        <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Details & website", "जानकारी और website")}</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
           without paying for another build. */}

@@ -24,7 +24,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   // Also not on the plan page and the products page: both have their own "next" button, and two different
   // "Continue" buttons on one screen confused new owners (owner's review, 25 Sep 2026).
   // The website editor has its own Save bar in the same place (30 Sep 2026).
-  const onSetupScreens = /^\/poster\/(setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
+  const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
   if (hidden || !nextFree || onSetupScreens) return null;
   const close = () => { setHidden(true); try { sessionStorage.setItem(KEY, "1"); } catch { /* private mode */ } };
   const pct = Math.round((freeDone / freeTotal) * 100);

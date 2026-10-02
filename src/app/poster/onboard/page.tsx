@@ -25,6 +25,8 @@ import { matchCategory } from "@/lib/category-match";
 import type { Business } from "@/lib/journey";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { useT } from "@/lib/poster-i18n";
+import { useAssociate } from "@/lib/associate";
+import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { vcardDraftKey, vcardFormKey, type FactsResponse } from "@/lib/card-facts";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
@@ -67,6 +69,8 @@ function Onboard() {
   const params = useSearchParams();
   type StepKey = "you" | "promote" | "site" | "business";
   const [step, setStep] = useState<StepKey>(params.get("step") === "business" ? "business" : params.get("step") === "site" ? "site" : "you");
+  // A partner's name is what their KYC says: shown, never edited here.
+  const associate = useAssociate();
   const wanted = params.get("step");
   // ?next=/poster/card/build — the card (or another tool) needs these details first: no skip, and "Save" returns there.
   const next = (params.get("next") ?? "").startsWith("/") ? params.get("next")! : "";
@@ -690,6 +694,7 @@ function Onboard() {
         <button type="button" onClick={() => router.push(back)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
+      <ProfileSteps current={step === "you" ? "you" : "business"} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-muted">{next ? T("Your details are needed for the card", "Card के लिए आपकी जानकारी चाहिए") : "Setup"}</p>
         {next ? (
@@ -849,7 +854,8 @@ function Onboard() {
           {editing
             ? <div><h1 className="text-2xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1><p className="text-sm text-muted">{T("One save changes them everywhere — your V-Card, your posters, your login and your partner ID. Your username stays the same.", "एक बार Save करने से हर जगह बदल जाएगा — V-Card, poster, login और partner ID। Username वही रहेगा।")}</p></div>
             : <div><h1 className="text-2xl font-bold">About you</h1><p className="text-sm text-muted">Takes 30 seconds.</p></div>}
-          <label className="block text-sm font-semibold">Your name<input value={you.name} onChange={(e) => setYou({ ...you, name: e.target.value })} placeholder="e.g. Rajesh Sharma" className={field} /></label>
+          <label className="block text-sm font-semibold">Your name<input value={you.name} onChange={(e) => { if (!associate) setYou({ ...you, name: e.target.value }); }} readOnly={!!associate} placeholder="e.g. Rajesh Sharma" className={`${field} ${associate ? "bg-surface2 text-muted" : ""}`} />
+            {associate && <span className="mt-1 block text-[11px] font-normal text-muted">{T("As on your partner KYC — it cannot be changed here.", "आपके partner KYC के अनुसार — यहाँ नहीं बदलेगा।")}</span>}</label>
           <label className="block text-sm font-semibold">Mobile / WhatsApp number<input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder="10-digit mobile" className={field} /></label>
           <Photo url={you.photo} label="your photo" hint="a clear photo of your face — shown on your card and daily posters" round busy={busy === "photo"} onPick={(f) => choose(f, "photo")} />
           {username === null && <ClaimUsername onDone={loadUsername} />}

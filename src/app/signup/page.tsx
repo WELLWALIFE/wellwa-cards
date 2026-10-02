@@ -189,7 +189,8 @@ function SignupInner() {
       // Free credits to try the AI tools, then the plan, then the one-minute setup.
       await fetch("/api/welcome", { method: "POST", headers: auth }).catch(() => {});
       try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
-      router.push("/poster/plan?welcome=1");
+      // Congratulations, then the profile (owner's call, 2 Oct 2026): the plan is chosen at "Make", not before.
+      router.push("/poster/welcome");
     } else {
       setBusy(false);
       setCheckEmail(true); // email confirmation is enabled on the project
