@@ -269,6 +269,21 @@ const noEmoji = (s) => String(s ?? "").replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{
 const esc = (s) => noEmoji(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 const DEV = "Noto Sans Devanagari, Droid Sans Devanagari, Mangal, Kohinoor Devanagari, Devanagari Sangam MN, sans-serif";
 const LAT = "Helvetica, Arial, sans-serif";
+/* Text that always fits (owner's call, 2 Oct 2026: "font perfect karo — chhota hai to bada, bada hai to chhota").
+   measure() is the rough advance width of a string at 1 px; fitPx() the biggest size (≤ hi) at which it fits `width`,
+   never below lo; fitLines() shrinks first and, when even `lo` is too small, breaks the text into two lines. */
+const isDevCh = (ch) => /[ऀ-ൿ]/.test(ch);
+const measure = (str) => [...String(str || "")].reduce((a, ch) => a + (isDevCh(ch) ? (/[\u093E-\u094D\u0951-\u0954\u0962\u0963]/.test(ch) ? 0.2 : 0.72) : /[A-Z]/.test(ch) ? 0.68 : /[ilj.,:;' ]/.test(ch) ? 0.32 : 0.58), 0);
+const fitPx = (text, width, hi, lo) => Math.max(lo, Math.min(hi, Math.floor(width / Math.max(0.1, measure(text)))));
+function fitLines(text, width, hi, lo, two) {
+  const t = String(text || "").replace(/\s+/g, " ").trim();
+  if (measure(t) * lo <= width) return { lines: [t], size: fitPx(t, width, hi, lo) };
+  const words = t.split(" "), lines = []; let cur = "";
+  for (const w of words) { const next = (cur + " " + w).trim(); if (measure(next) * two > width && cur) { lines.push(cur); cur = w; } else cur = next; }
+  if (cur) lines.push(cur);
+  if (lines.length > 2) { lines.length = 2; }
+  return { lines, size: fitPx(lines.reduce((a, b) => (measure(a) > measure(b) ? a : b)), width, two, Math.min(two, 28)) };
+}
 
 async function fetchImage(url) {
   if (!url) return null;
@@ -417,7 +432,7 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
-  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : ""}${watermark ? "-w" : ""}.jpg`);
+  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : "-t2"}${watermark ? "-w" : ""}.jpg`);
   if (fs.existsSync(out) && !force) return out;
   // Signature draws its own page from a real photo + the layout code, so it never needs (or pays for) the day's base art;
   // only when it cannot render does the day fall through to the original styles below.
@@ -440,7 +455,11 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   const party = profile.party && typeof profile.party === "object" && (profile.party.name || profile.party.symbol_url) ? profile.party : null;
   const t0 = await titleFor(theme, profile.lang || "hi");
   const t = { ...t0, big: L.title || t0.big, small: L.sub !== undefined && L.sub !== null ? L.sub : t0.small };
-  const bigSize = Math.round((t.big.length > 18 ? 66 : t.big.length > 12 ? 78 : 92) * (S.titleScale ?? 1));
+  const bigBase = Math.round((t.big.length > 18 ? 66 : t.big.length > 12 ? 78 : 92) * (S.titleScale ?? 1));
+  // The title (the day's name, or the owner's own line — a school's full name ran off both edges) fits its width.
+  const titleRoom = S.titleAlign === "left" ? W - 140 : W - 120;
+  const big = fitLines(t.big, titleRoom, bigBase, 40, 46);
+  const bigSize = big.size;
   const ident = identityFor(profile);
   const line = party?.slogan && !ident.line ? party.slogan : ident.line;
   const cta = ident.phone;
@@ -479,6 +498,9 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
       : `<rect y="${H - 420}" width="${W}" height="420" fill="url(#bot)"/>`;
   const underline = S.underline ? `<rect x="${titleAnchor === "start" ? 70 : W / 2 - 90}" y="${titleY + 22}" width="180" height="6" rx="3" fill="${accent}"/>` : "";
   const nameY = panel ? H - 200 : H - 190;
+  // The business name in full: shrunk to its room (the frame and the logo corner take some), two lines when needed.
+  const nameRoom = W - textX - (S.frame ? 60 : 40) - (logo ? 150 : 0);
+  const nm = fitLines(ident.big, nameRoom, nameSize, 34, 40);
   const lineY = nameY + 58;
   const ctaY = lineY + 58;
   const svg = `<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">
@@ -490,12 +512,12 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   ${bottomBand}
   ${frame}
   ${S.titlePos === "bottom" ? `<rect y="${H - 560}" width="${W}" height="240" fill="url(#bot)"/>` : ""}
-  <text x="${titleX}" y="${titleY}" text-anchor="${titleAnchor}" font-family="${t.font}" font-size="${bigSize}" font-weight="${S.titleWeight ?? 700}" fill="${S.titleFill}" ${S.titleUpper ? 'style="text-transform:uppercase"' : ""}${S.titleShadow ? ` stroke="${veil}" stroke-width="1.2" paint-order="stroke"` : ""}>${esc(t.big)}</text>
-  ${t.small ? `<text x="${titleX}" y="${titleY + 65}" text-anchor="${titleAnchor}" font-family="${LAT}" font-size="30" font-weight="600" letter-spacing="2" fill="${S.subFill === "accent" ? accent : S.subFill}">${esc(t.small)}</text>` : ""}
+  ${big.lines.map((l, i) => `<text x="${titleX}" y="${titleY - (big.lines.length - 1 - i) * (bigSize + 6)}" text-anchor="${titleAnchor}" font-family="${t.font}" font-size="${bigSize}" font-weight="${S.titleWeight ?? 700}" fill="${S.titleFill}" ${S.titleUpper ? 'style="text-transform:uppercase"' : ""}${S.titleShadow ? ` stroke="${veil}" stroke-width="1.2" paint-order="stroke"` : ""}>${esc(l)}</text>`).join("")}
+  ${t.small ? `<text x="${titleX}" y="${titleY + 65}" text-anchor="${titleAnchor}" font-family="${LAT}" font-size="${fitPx(t.small, titleRoom - 2 * t.small.length, 30, 20)}" font-weight="600" letter-spacing="2" fill="${S.subFill === "accent" ? accent : S.subFill}">${esc(t.small)}</text>` : ""}
   ${underline}
-  ${customLine ? `<text x="${W / 2}" y="${S.titlePos === "bottom" ? titleY - 70 : H - 470}" text-anchor="middle" font-family="${DEV}" font-size="34" font-weight="600" fill="#ffffff" stroke="${veil}" stroke-width="1" paint-order="stroke">${esc(customLine)}</text>` : ""}
-  <text x="${textX}" y="${nameY}" text-anchor="${identityAnchor}" font-family="${DEV}" font-size="${nameSize}" font-weight="700" fill="${panel ? ink : S.nameFill}">${esc(ident.big)}</text>
-  ${line ? `<text x="${textX}" y="${lineY}" font-family="${DEV}" font-size="32" fill="${inkSub}">${esc(line)}</text>` : ""}
+  ${customLine ? `<text x="${W / 2}" y="${S.titlePos === "bottom" ? titleY - 70 : H - 470}" text-anchor="middle" font-family="${DEV}" font-size="${fitPx(customLine, W - 120, 34, 22)}" font-weight="600" fill="#ffffff" stroke="${veil}" stroke-width="1" paint-order="stroke">${esc(customLine)}</text>` : ""}
+  ${nm.lines.map((l, i) => `<text x="${textX}" y="${nameY - (nm.lines.length - 1 - i) * (nm.size + 4)}" text-anchor="${identityAnchor}" font-family="${DEV}" font-size="${nm.size}" font-weight="700" fill="${panel ? ink : S.nameFill}">${esc(l)}</text>`).join("")}
+  ${line ? `<text x="${textX}" y="${lineY}" font-family="${DEV}" font-size="${fitPx(line, nameRoom, 32, 22)}" fill="${inkSub}">${esc(line)}</text>` : ""}
   ${cta ? `<g transform="translate(${textX}, ${ctaY - 32}) scale(1.5)"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="${panel ? accent : S.ctaFill === "accent" ? accent : S.ctaFill}"/></g><text x="${textX + 46}" y="${ctaY}" font-family="${LAT}" font-size="34" font-weight="700" fill="${panel ? accent : S.ctaFill === "accent" ? accent : S.ctaFill}">${esc(cta)}</text>` : ""}
   ${watermark ? `<text x="${W / 2}" y="${H - 16}" text-anchor="middle" font-family="${DEV}" font-size="20" fill="${panel ? "#111827" : "#ffffff"}" fill-opacity="0.75">Shubhora · ${WM_HOST}/poster</text>` : ""}
   </svg>`;
@@ -1172,8 +1194,8 @@ async function renderProductPoster(out, dateStr, profile, products, { file, them
   ${headSvg}
   <rect y="${H - 240}" width="${W}" height="240" fill="#062a5c" fill-opacity="0.55"/>
   ${occasion ? `<rect x="${W / 2 - 260}" y="${H - 300}" width="520" height="52" rx="26" fill="#ffe8a3"/><text x="${W / 2}" y="${H - 264}" text-anchor="middle" font-family="${t.font}" font-size="30" font-weight="700" fill="#5b3a00">${esc(t.big)}</text>` : ""}
-  <text x="70" y="${H - 150}" font-family="${DEV}" font-size="50" font-weight="800" fill="#ffffff">${esc(ident.big)}</text>
-  ${line ? `<text x="70" y="${H - 102}" font-family="${DEV}" font-size="30" fill="#dbeafe">${esc(line)}</text>` : ""}
+  <text x="70" y="${H - 150}" font-family="${DEV}" font-size="${fitPx(ident.big, cta ? W - 70 - 490 : W - 140, 50, 28)}" font-weight="800" fill="#ffffff">${esc(ident.big)}</text>
+  ${line ? `<text x="70" y="${H - 102}" font-family="${DEV}" font-size="${fitPx(line, cta ? W - 70 - 490 : W - 140, 30, 20)}" fill="#dbeafe">${esc(line)}</text>` : ""}
   ${feat ? `<text x="70" y="${H - 58}" font-family="${DEV}" font-size="28" font-weight="600" fill="#ffe8a3">${esc(feat)}</text>` : prod.offer ? `<text x="70" y="${H - 58}" font-family="${DEV}" font-size="28" font-weight="700" fill="#ffe8a3">${esc(prod.offer)}</text>` : ""}
   ${cta ? `<rect x="${W - 470}" y="${H - 178}" width="400" height="86" rx="43" fill="#ffffff"/><text x="${W - 270}" y="${H - 142}" text-anchor="middle" font-family="${LAT}" font-size="22" font-weight="700" fill="#1d4ed8">CALL / WHATSAPP NOW</text><text x="${W - 270}" y="${H - 106}" text-anchor="middle" font-family="${LAT}" font-size="34" font-weight="900" fill="#062a5c">${esc(cta)}</text>` : ""}
   ${watermark ? `<text x="${W / 2}" y="${H - 12}" text-anchor="middle" font-family="${DEV}" font-size="20" fill="#ffffff" fill-opacity="0.75">Shubhora · ${WM_HOST}/poster</text>` : ""}
@@ -1197,8 +1219,8 @@ async function renderProductPoster(out, dateStr, profile, products, { file, them
   ${benLines.map((l, i) => `<text x="${W / 2}" y="${cardTop + cardH + 84 + nameLines.length * 72 + 20 + i * 48}" text-anchor="middle" font-family="${DEV}" font-size="38" font-weight="600" fill="#e6f4f2">${esc(l)}</text>`).join("")}
   ${prod.offer ? `<rect x="${W / 2 - 300}" y="${cardTop + cardH + 84 + nameLines.length * 72 + 30 + benLines.length * 48}" width="600" height="70" rx="35" fill="#ffe8a3"/><text x="${W / 2}" y="${cardTop + cardH + 84 + nameLines.length * 72 + 30 + benLines.length * 48 + 48}" text-anchor="middle" font-family="${DEV}" font-size="34" font-weight="800" fill="${deep}">${esc(prod.offer)}</text>` : ""}
   <rect y="${H - 230}" width="${W}" height="230" fill="#06111c" fill-opacity="0.6"/>
-  <text x="${avatar ? 300 : 70}" y="${H - 150}" font-family="${DEV}" font-size="50" font-weight="700" fill="#ffffff">${esc(ident.big)}</text>
-  ${line ? `<text x="${avatar ? 300 : 70}" y="${H - 100}" font-family="${DEV}" font-size="30" fill="#e6f4f2">${esc(line)}</text>` : ""}
+  <text x="${avatar ? 300 : 70}" y="${H - 150}" font-family="${DEV}" font-size="${fitPx(ident.big, W - (avatar ? 300 : 70) - 70, 50, 28)}" font-weight="700" fill="#ffffff">${esc(ident.big)}</text>
+  ${line ? `<text x="${avatar ? 300 : 70}" y="${H - 100}" font-family="${DEV}" font-size="${fitPx(line, W - (avatar ? 300 : 70) - 70, 30, 20)}" fill="#e6f4f2">${esc(line)}</text>` : ""}
   ${cta ? `<g transform="translate(${avatar ? 300 : 70}, ${H - 78}) scale(1.4)"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#7fe3d6"/></g><text x="${(avatar ? 300 : 70) + 44}" y="${H - 48}" font-family="${LAT}" font-size="32" font-weight="700" fill="#7fe3d6">${esc(cta)}</text>` : ""}
   ${watermark ? `<text x="${W / 2}" y="${H - 12}" text-anchor="middle" font-family="${DEV}" font-size="20" fill="#ffffff" fill-opacity="0.75">Shubhora · ${WM_HOST}/poster</text>` : ""}
   </svg>`;
@@ -1285,8 +1307,8 @@ export async function renderTestimonialPoster(out, dateStr, profile, testimonial
   ${[0, 1, 2, 3, 4].map((i) => `<g transform="translate(${W / 2 - 120 + i * 60}, ${cardTopEff + starsY})"><path d="${starPath}" fill="${i < rating ? "#f59e0b" : "#e5e7eb"}"/></g>`).join("")}
   ${who ? `<text x="${W / 2}" y="${cardTopEff + whoY}" text-anchor="middle" font-family="${whoFam}" font-size="32" font-weight="700" fill="${deep}">— ${esc(who)}</text>` : ""}
   <rect y="${H - 230}" width="${W}" height="230" fill="#06111c" fill-opacity="0.6"/>
-  <text x="${avatar ? 300 : 70}" y="${H - 150}" font-family="${DEV}" font-size="50" font-weight="700" fill="#ffffff">${esc(ident.big)}</text>
-  ${line ? `<text x="${avatar ? 300 : 70}" y="${H - 100}" font-family="${DEV}" font-size="30" fill="#e6f4f2">${esc(line)}</text>` : ""}
+  <text x="${avatar ? 300 : 70}" y="${H - 150}" font-family="${DEV}" font-size="${fitPx(ident.big, W - (avatar ? 300 : 70) - 70, 50, 28)}" font-weight="700" fill="#ffffff">${esc(ident.big)}</text>
+  ${line ? `<text x="${avatar ? 300 : 70}" y="${H - 100}" font-family="${DEV}" font-size="${fitPx(line, W - (avatar ? 300 : 70) - 70, 30, 20)}" fill="#e6f4f2">${esc(line)}</text>` : ""}
   ${cta ? `<g transform="translate(${avatar ? 300 : 70}, ${H - 78}) scale(1.4)"><path d="M6.6 10.8c1.4 2.8 3.8 5.2 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1C10.6 21 3 13.4 3 4c0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" fill="#7fe3d6"/></g><text x="${(avatar ? 300 : 70) + 44}" y="${H - 48}" font-family="${LAT}" font-size="32" font-weight="700" fill="#7fe3d6">${esc(cta)}</text>` : ""}
   ${watermark ? `<text x="${W / 2}" y="${H - 12}" text-anchor="middle" font-family="${DEV}" font-size="20" fill="#ffffff" fill-opacity="0.75">Shubhora · ${WM_HOST}/poster</text>` : ""}
   </svg>`;
