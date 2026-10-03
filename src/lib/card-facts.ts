@@ -507,6 +507,8 @@ export type SavedProduct = {
   images: string[];
   offer: string;
   benefits: string[];
+  /** The owner's own grouping ("Starters", "Sarees", "Class 6–8") — the catalogue page is split by it. */
+  category?: string;
 };
 
 /** GET /api/card/facts */

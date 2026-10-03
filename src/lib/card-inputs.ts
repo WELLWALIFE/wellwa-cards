@@ -15,7 +15,7 @@ type Meta = {
 type ProfileRow = { id: string; name: string | null; phone: string | null; photo_url: string | null; logo_url: string | null; city: string | null; category: string | null; persona: string | null; card_facts?: unknown };
 type Photo = { url?: unknown; view?: unknown; role?: unknown };
 /** A poster_products row as read here. price, mrp and brand exist once migration 0050 has run. */
-export type ProductRow = { id: string; name: string; photo_url: string | null; photos: Photo[] | null; benefits: unknown; offer: string | null; price?: string | null; mrp?: string | null; brand?: string | null };
+export type ProductRow = { id: string; name: string; photo_url: string | null; photos: Photo[] | null; benefits: unknown; offer: string | null; price?: string | null; mrp?: string | null; brand?: string | null; category?: string | null };
 export type Review = { name: string; city: string; text: string; rating: number };
 
 export type CardInputs = {
@@ -34,7 +34,7 @@ export type CardInputs = {
 
 const PROFILE_COLS = "id,name,phone,photo_url,logo_url,city,category,persona";
 const PRODUCT_COLS = "id,name,photo_url,photos,benefits,offer";
-const NEW_PRODUCT_COLS = ",price,mrp,brand";
+const NEW_PRODUCT_COLS = ",price,mrp,brand,category";
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : "").trim().slice(0, n);
 
 /**
@@ -117,6 +117,7 @@ export function toSavedProduct(row: ProductRow, brand = false): SavedProduct {
     images,
     offer: S(row.offer, 60),
     benefits,
+    category: S(row.category, 40),
   };
 }
 

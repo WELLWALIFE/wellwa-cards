@@ -12,6 +12,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade-questions";
+import { answerCatalog, catalogBlocks, catalogTitle, joinPage, servicesTitle } from "@/lib/trade-pages";
 import type { TradeData } from "@/lib/trade-data/types";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
@@ -321,7 +322,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const trade = tradeDataFor(setup.category);
   const t = titlesFor(lang, copy.titles, booking);
   // A professional's catalogue word is "services" — that is the services page's name, never the products page's.
-  if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; }
+  if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; t.seeAll = lang === "hi" ? `सभी ${t.products}` : `See all ${t.products.toLowerCase()}`; }
   // A school's list is "Courses", a clinic's "Treatments", a gym's "Plans" — not "Our services". When the trade
   // has no products, that list IS the catalogue and wears the catalogue's name.
   const catalogIsServices = recipe.catalog !== "products" && recipe.catalog !== "menu";
@@ -333,6 +334,12 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     t.servicesPage = t.services;
     t.seeAllServices = lang === "hi" ? `सभी ${t.services}` : `See all ${t.services.toLowerCase()}`;
   }
+  // A school's "services" are its facilities, a hospital's its departments (trade-pages.ts).
+  const svcTitle = servicesTitle(setup.category, lang);
+  if (svcTitle && !copy.titles?.services) { t.services = svcTitle; t.servicesPage = svcTitle; t.seeAllServices = lang === "hi" ? `सभी ${svcTitle}` : `See all ${svcTitle.toLowerCase()}`; }
+  // …and its catalogue is "Classes & fees", a play school's "Programmes", a hotel's "Rooms & tariff".
+  const catTitle = catalogTitle(setup.category, lang, input.products.some((p) => p.price.trim()));
+  if (catTitle && !copy.titles?.products) { t.products = catTitle; t.productsPage = catTitle; t.seeAll = lang === "hi" ? `सभी ${catTitle}` : `See all ${catTitle.toLowerCase()}`; }
   if (!copy.titles?.promise) t.promise = lang === "hi" ? "हमें क्यों चुनें" : lang === "hinglish" ? "Humein kyun chunein" : "Why choose us";
   const ctaText = copy.cta || (booking ? t.cta : ctaLabel(recipe.cta, lang));
   const seedLang = lang === "hi" ? "hi" : "en";
@@ -479,8 +486,12 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
 
   /* ---- pages ---- */
   const workPhotos = facts.photos.filter(Boolean).slice(0, 5);
-  const productPage: CardPage | null = items.length
-    ? { id: uid(), slug: "products", label: t.productsPage, blocks: [{ id: uid(), kind: "product", title: t.products, items }] }
+  // No products of their own: a school's classes by stage, a play school's programmes, a coaching centre's
+  // courses — from the trade's answers (trade-pages.ts). With products: in the owner's own categories.
+  const answerItems: ProductItem[] = items.length || personal ? [] : answerCatalog(setup.category, facts, lang);
+  const catalogItems = items.length ? items : answerItems;
+  const productPage: CardPage | null = catalogItems.length
+    ? { id: uid(), slug: "products", label: t.productsPage, blocks: items.length ? catalogBlocks(items, input.products.slice(0, 12), t.products, lang) : [{ id: uid(), kind: "product", title: t.products, items: answerItems }] }
     : null;
   // Services get their own page whenever there are enough of them — next to the products page for a shop, as the
   // main page for a service trade.
@@ -515,6 +526,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
         const out: CardBlock[] = [];
         if (shots.length >= 2) out.push({ id: uid(), kind: "carousel", title: t.products, images: shots });
         else if (shots.length === 1) out.push({ id: uid(), kind: "image", title: t.products, images: shots });
+        // No photos yet (a school's classes, a coaching centre's courses): the first few as cards.
+        else if (catalogItems.length) out.push({ id: uid(), kind: "product", title: t.products, items: catalogItems.slice(0, 4) });
         if (productPage?.slug === "products") out.push({ id: uid(), kind: "cta", title: "", body: "", joinUrl: "#products", joinLabel: t.seeAll, referralCode: "" });
         return out;
       }
@@ -559,6 +572,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const pages: CardPage[] = [{ id: uid(), slug: "home", label: t.home, blocks: home }];
   if (productPage) pages.push(productPage);
   if (servicesPage) pages.push(servicesPage);
+  // An education trade's Admissions / Join page (trade-pages.ts): at a glance, the steps, the documents, enquiry.
+  const join = personal ? null : joinPage({ category: setup.category, facts, trade, lang, offerText, hours: facts.hours });
+  if (join) pages.push(join);
   if (workPhotos.length >= 3) {
     pages.push({ id: uid(), slug: "gallery", label: t.photos, blocks: [{ id: uid(), kind: "gallery", title: t.photos, images: workPhotos.map((url) => ({ url, color: theme, label: "" })) }] });
   }

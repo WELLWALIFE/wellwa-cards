@@ -36,7 +36,7 @@ const PROFESSIONAL: Recipe = { catalog: "services", cta: "book", home: ["trust",
 /** Treatment-based professional (doctor, dentist, ayurveda, salon, spa). */
 const CLINIC: Recipe = { ...PROFESSIONAL, catalog: "treatments" };
 /** Teaching: courses lead. */
-const LEARNING: Recipe = { catalog: "courses", cta: "enquire", home: ["trust", "services", "whyUs", "about", "steps", "reviews", "photos", "offer"] };
+const LEARNING: Recipe = { catalog: "courses", cta: "enquire", home: ["trust", "catalog", "services", "whyUs", "about", "steps", "reviews", "photos", "offer"] };
 /** Builders, interiors, photographers, events: the work lead. */
 const PORTFOLIO: Recipe = { catalog: "projects", cta: "enquire", home: ["trust", "photos", "services", "whyUs", "steps", "about", "reviews", "offer"] };
 /** An agent / network partner: the plans or products they represent, then them. */
