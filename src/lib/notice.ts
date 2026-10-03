@@ -47,6 +47,6 @@ export function untilLabel(until: string | undefined, hi: boolean): string {
   if (!until) return "";
   const d = new Date(`${until}T00:00:00+05:30`);
   if (Number.isNaN(d.getTime())) return "";
-  const s = d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "short" });
+  const s = d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" });
   return hi ? `${s} तक` : `till ${s}`;
 }
