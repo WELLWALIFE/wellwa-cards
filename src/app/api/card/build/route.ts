@@ -32,10 +32,16 @@ import { logoColor } from "@/lib/media/logo-color";
 import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
+import { bannerFocus } from "@/lib/media/photo-focus";
+import { screenshotCard } from "@/lib/render-page";
+import { reviewDesign } from "@/lib/design-review";
+import { applyEdits } from "@/lib/card-edits";
+import { SITE_URL } from "@/lib/site-url";
 import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
+import type { Card } from "@/lib/types";
 
 // A site that has to be rendered page by page takes longer to read than one that hands over its HTML —
 // wellwalife.com measured 74s before the browser was shared, and Apache on this box allows 300s.
@@ -453,6 +459,32 @@ export async function POST(request: Request) {
   }
   if (tx.filled.length) console.log("[card] text", JSON.stringify(tx.filled));
   if (tx.thin.length) console.log("[card] text still thin", JSON.stringify(tx.thin.map((t) => t.id)));
+  // Where the banner's subject is (photo-focus.ts): the hero keeps it in view on every screen and puts the words
+  // on the side the picture leaves empty. Skipped for drawn art, which has no subject to find.
+  if (built.coverUrl && built.site?.hero && !/\/art\/cover-|\/art\/brand\//i.test(built.coverUrl)) {
+    try {
+      const f = await within(bannerFocus(built.coverUrl), 9_000);
+      if (f) { built = { ...built, site: { ...built.site, hero: { ...built.site.hero, focus: f.focus, textSide: f.textSide } } }; console.log("[card] banner focus", f.focus, "text", f.textSide); }
+    } catch (e) { console.log("[card] banner focus skipped:", e instanceof Error ? e.message : e); }
+  }
+  // The designer looks at the page it made (design-review.ts): the website is drawn in the browser on the server
+  // and the picture goes back to the model, which fixes what only a look can catch. Bounded; the build never
+  // waits on it for long, and a card with no review is simply the card as it was.
+  let designReview: BuildResponse["designReview"];
+  try {
+    const shot = await within(screenshotCard(built, SITE_URL), 40_000);
+    if (shot) {
+      // The reviewer and the editor work on a published card's shape; the unsaved card lacks only its ids.
+      const asCard = { id: "", username: "", plan: "free", active: true, views: 0, createdAt: "", ...built } as unknown as Card;
+      const rv = await within(reviewDesign({ shot, card: asCard, lang: facts.lang, category: brief.category }), 30_000);
+      if (rv) {
+        const ed = rv.ops.length ? applyEdits(asCard, rv.ops, facts.lang) : null;
+        if (ed) { const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...rest } = ed.card; void _i; void _u; void _p; void _a; void _v; void _c; built = rest as typeof built; }
+        designReview = { score: rv.score, notes: rv.notes, fixed: ed?.notes ?? [] };
+        console.log("[card] design-review", rv.score + "/10", JSON.stringify({ notes: rv.notes, fixed: ed?.notes ?? [] }));
+      } else console.log("[card] design-review: no verdict");
+    } else console.log("[card] design-review: no screenshot");
+  } catch (e) { console.log("[card] design-review skipped:", e instanceof Error ? e.message : e); }
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
     ...(audited.standIns.length ? { standIns: audited.standIns } : {}),
@@ -464,6 +496,7 @@ export async function POST(request: Request) {
       ? { siteFound: { products: got?.stored.products.length ?? 0, photos: (got?.stored.gallery.length ?? 0) + (got?.stored.cover ? 1 : 0) } }
       : {}),
     ...(aiPhotos ? { aiPhotos } : {}),
+    ...(designReview ? { designReview } : {}),
   };
   return NextResponse.json(out);
 }

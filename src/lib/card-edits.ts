@@ -5,7 +5,7 @@
 // wrong guess changes nothing and the owner sees exactly what will change before it goes live.
 //
 // Isomorphic: no 'use client', no 'server-only'.
-import type { Card, CardBlock, CardPage, SiteStyle } from "@/lib/types";
+import type { Card, CardBlock, CardPage, SiteLayouts, SiteStyle } from "@/lib/types";
 import { cleanStyle } from "@/lib/site-style";
 import { cleanNotice, activeNotice } from "@/lib/notice";
 
@@ -19,7 +19,7 @@ export type EditOp =
   | { op: "add_item"; id: string; name: string; desc?: string; price?: string }
   | { op: "set_hero"; headline?: string; sub?: string; ctaLabel?: string }
   | { op: "set_identity"; tagline?: string; about?: string; company?: string; jobTitle?: string }
-  | { op: "set_style"; palette?: string; font?: string; hero?: string; radius?: string }
+  | { op: "set_style"; palette?: string; font?: string; hero?: string; radius?: string; pattern?: string; motion?: string; layouts?: SiteLayouts }
   | { op: "hide_page"; slug: string }
   | { op: "show_page"; slug: string }
   | { op: "rename_page"; slug: string; label: string }
@@ -78,7 +78,7 @@ export function cleanOps(raw: unknown): EditOp[] {
       case "add_item": if (id && S(o.name, 80)) out.push({ op: "add_item", id, name: S(o.name, 80), ...(S(o.desc, 240) ? { desc: S(o.desc, 240) } : {}), ...(S(o.price, 30) ? { price: S(o.price, 30) } : {}) }); break;
       case "set_hero": out.push({ op: "set_hero", ...(S(o.headline, 80) ? { headline: S(o.headline, 80) } : {}), ...(S(o.sub, 200) ? { sub: S(o.sub, 200) } : {}), ...(S(o.ctaLabel, 40) ? { ctaLabel: S(o.ctaLabel, 40) } : {}) }); break;
       case "set_identity": out.push({ op: "set_identity", ...(S(o.tagline, 90) ? { tagline: S(o.tagline, 90) } : {}), ...(S(o.about, 1400) ? { about: S(o.about, 1400) } : {}), ...(S(o.company, 80) ? { company: S(o.company, 80) } : {}), ...(S(o.jobTitle, 60) ? { jobTitle: S(o.jobTitle, 60) } : {}) }); break;
-      case "set_style": { const st = cleanStyle({ palette: o.palette, font: o.font, hero: o.hero, radius: o.radius }); if (st && Object.keys(st).length) out.push({ op: "set_style", ...st }); break; }
+      case "set_style": { const st = cleanStyle({ palette: o.palette, font: o.font, hero: o.hero, radius: o.radius, pattern: o.pattern, motion: o.motion, layouts: o.layouts }); if (st && Object.keys(st).length) out.push({ op: "set_style", ...st }); break; }
       case "hide_page": if (slug) out.push({ op: "hide_page", slug }); break;
       case "show_page": if (slug) out.push({ op: "show_page", slug }); break;
       case "rename_page": if (slug && S(o.label, 30)) out.push({ op: "rename_page", slug, label: S(o.label, 30) }); break;
@@ -136,7 +136,7 @@ export function applyEdits(card: Card, ops: EditOp[], lang: "en" | "hi" | "hingl
       }
       case "set_hero": { if (!out.site?.hero) { skip("hero"); break; } out = { ...out, site: { ...out.site, hero: { ...out.site.hero, ...(op.headline ? { headline: op.headline } : {}), ...(op.sub ? { sub: op.sub } : {}), ...(op.ctaLabel ? { ctaLabel: op.ctaLabel } : {}) } } }; notes.push(hi ? "ऊपर का हिस्सा (hero) बदला" : "Changed the top section (hero)"); applied++; break; }
       case "set_identity": { out = { ...out, ...(op.tagline ? { tagline: op.tagline } : {}), ...(op.about ? { about: op.about } : {}), ...(op.company ? { company: op.company } : {}), ...(op.jobTitle ? { jobTitle: op.jobTitle } : {}) }; notes.push(hi ? `बदला: ${Object.keys(op).filter((k) => k !== "op").join(", ")}` : `Changed: ${Object.keys(op).filter((k) => k !== "op").join(", ")}`); applied++; break; }
-      case "set_style": { const { op: _o, ...st } = op; void _o; out = { ...out, site: { ...(out.site ?? { enabled: true }), style: { ...(out.site?.style ?? {}), ...(st as SiteStyle) } } }; notes.push(hi ? `look बदला: ${Object.entries(st).map(([k, v]) => `${k}=${v}`).join(", ")}` : `Look → ${Object.entries(st).map(([k, v]) => `${k}=${v}`).join(", ")}`); applied++; break; }
+      case "set_style": { const { op: _o, ...st } = op; void _o; out = { ...out, site: { ...(out.site ?? { enabled: true }), style: { ...(out.site?.style ?? {}), ...(st as SiteStyle) } } }; const said = Object.entries(st).map(([k, v]) => `${k}=${typeof v === "object" ? JSON.stringify(v) : String(v)}`).join(", "); notes.push(hi ? `look बदला: ${said}` : `Look → ${said}`); applied++; break; }
       case "hide_page": case "show_page": {
         const p = out.pages.find((x) => x.slug === op.slug && !x.hidden); if (!p || p.slug === "home") { skip(op.slug); break; }
         const hidden = new Set(out.site?.hidden ?? []); if (op.op === "hide_page") hidden.add(op.slug); else hidden.delete(op.slug);

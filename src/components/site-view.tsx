@@ -161,6 +161,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const [open, setOpen] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
   const hero = card.site?.hero;
+  // Where the banner's subject is (set at build time, src/lib/media/photo-focus.ts): the crop keeps it in view and
+  // the words take the side it leaves empty.
+  const heroFocus = hero?.focus && /^\d{1,3}% \d{1,3}%$/.test(hero.focus) ? hero.focus : undefined;
+  const wordsRight = hero?.textSide === "right";
   const links = card.links.filter((l) => l.value.trim());
   const wa = links.find((l) => l.type === "whatsapp");
   const phone = links.find((l) => l.type === "phone");
@@ -372,10 +376,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           <section className="relative overflow-hidden" data-reveal>
             {layout === "editorial" ? (
               <div className="relative min-h-[620px] md:min-h-[720px] flex items-end">
-                <Img src={card.coverUrl!} alt="" className="absolute inset-0 h-full w-full object-cover hero-pic" priority sizes="100vw" />
+                <Img src={card.coverUrl!} alt="" className="absolute inset-0 h-full w-full object-cover hero-pic" style={heroFocus ? { objectPosition: heroFocus } : undefined} priority sizes="100vw" />
                 <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--p-deep) 25%, transparent) 0%, transparent 35%, color-mix(in srgb, var(--p-deep) 92%, transparent) 100%)" }} />
-                <div className="relative mx-auto w-full max-w-6xl px-6 pb-14 pt-40 md:pb-20 grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-end" style={{ color: pal.ink }}>
-                  <div className="animate-rise">
+                <div className={`relative mx-auto w-full max-w-6xl px-6 pb-14 pt-40 md:pb-20 grid gap-8 md:items-end ${wordsRight ? "md:grid-cols-[1fr_1.4fr]" : "md:grid-cols-[1.4fr_1fr]"}`} style={{ color: pal.ink }}>
+                  <div className={`animate-rise ${wordsRight ? "md:order-2" : ""}`}>
                     {eyebrowRole && <span className="inline-block rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase backdrop-blur">{t(eyebrowRole)}</span>}
                     <h1 className="mt-5 text-[44px] md:text-[72px] leading-[0.98] tracking-tight">{t(hero?.headline || card.company || card.name)}</h1>
                     {(hero?.sub || card.tagline) && <p className="mt-5 max-w-[52ch] text-lg md:text-xl leading-relaxed opacity-90">{t(hero?.sub || card.tagline)}</p>}
@@ -385,7 +389,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                     </div>
                   </div>
                   {facts.length > 0 && (
-                    <div className="animate-rise rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-md md:justify-self-end md:min-w-[280px]" style={{ animationDelay: "120ms" }}>
+                    <div className={`animate-rise rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-md md:min-w-[280px] ${wordsRight ? "md:order-1 md:justify-self-start" : "md:justify-self-end"}`} style={{ animationDelay: "120ms" }}>
                       <ul className="divide-y divide-white/15">{facts.slice(0, 4).map((f) => <li key={f.label} className="flex items-baseline justify-between gap-4 py-2.5"><span className="text-[22px] font-bold leading-none">{f.value}</span><span className="text-[12px] opacity-85 text-right">{f.label}</span></li>)}</ul>
                     </div>
                   )}
@@ -421,15 +425,16 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             : { background: `radial-gradient(60% 80% at 85% 15%, color-mix(in srgb, var(--p-glow) 55%, transparent), transparent 62%), radial-gradient(50% 70% at 5% 95%, color-mix(in srgb, var(--p-mid) 65%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep) 0%, color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)) 100%)` }) }}>
             {layout === "photo" && card.coverUrl && (
               <>
-                <Img src={card.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" priority sizes="100vw" />
+                <Img src={card.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover" style={heroFocus ? { objectPosition: heroFocus } : undefined} priority sizes="100vw" />
+                {/* The shade starts on the words' side and thins towards the subject, so the picture stays visible where it matters. */}
                 <div className="absolute inset-0" style={{ background: lightHero
-                  ? `linear-gradient(90deg, color-mix(in srgb, var(--p-deep) 84%, transparent) 0%, color-mix(in srgb, var(--p-deep) 55%, transparent) 45%, color-mix(in srgb, var(--p-deep) 18%, transparent) 100%)`
-                  : `linear-gradient(90deg, color-mix(in srgb, var(--p-deep) 93%, transparent) 0%, color-mix(in srgb, var(--p-deep) 74%, transparent) 42%, color-mix(in srgb, var(--p-deep) 35%, transparent) 100%)` }} />
+                  ? `linear-gradient(${wordsRight ? 270 : 90}deg, color-mix(in srgb, var(--p-deep) 84%, transparent) 0%, color-mix(in srgb, var(--p-deep) 55%, transparent) 45%, color-mix(in srgb, var(--p-deep) 18%, transparent) 100%)`
+                  : `linear-gradient(${wordsRight ? 270 : 90}deg, color-mix(in srgb, var(--p-deep) 93%, transparent) 0%, color-mix(in srgb, var(--p-deep) 74%, transparent) 42%, color-mix(in srgb, var(--p-deep) 35%, transparent) 100%)` }} />
               </>
             )}
             {layout !== "photo" && layout !== "minimal" && <div aria-hidden="true" className={`${card.site?.style?.pattern && card.site.style.pattern !== "dots" ? "" : "dots"} absolute inset-0 ${card.site?.style?.pattern === "blobs" ? "opacity-20" : "opacity-60"}`} style={{ ...patternCss(card.site?.style?.pattern, heroInk === "var(--ink)" ? "#0b1220" : "#ffffff"), backgroundRepeat: card.site?.style?.pattern === "blobs" ? "no-repeat" : "repeat", backgroundPosition: card.site?.style?.pattern === "blobs" ? "right top" : undefined, maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)" }} />}
             <div className={`relative w-full mx-auto max-w-6xl px-6 ${layout === "stage" ? "pt-20 pb-0 md:pt-24 text-center" : `py-20 md:py-24 grid gap-12 items-center ${heroVisual ? "md:grid-cols-[1.15fr_1fr]" : ""}`}`}>
-              <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroVisual ? "" : "md:max-w-[640px]"}`}>
+              <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroVisual ? "" : `md:max-w-[640px] ${layout === "photo" && wordsRight ? "md:ml-auto" : ""}`}`}>
                 {/* Brand as the headline, role as the eyebrow, the about text as the sub —
                     never the tagline as a headline (it usually repeats the role). */}
                 {eyebrowRole && <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: layout === "minimal" ? "var(--p-mark)" : "var(--p-accent)" }}>{t(eyebrowRole)}</p>}

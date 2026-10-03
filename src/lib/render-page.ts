@@ -153,6 +153,44 @@ export async function readLayout(url: string): Promise<PageLayout | null> {
   });
 }
 
+/** A picture of the website as a visitor would see it, taken in the browser on the server, so the designer AI can
+ *  look at what it made (owner's call, 3 Oct 2026: "designer ko aankhein do"). The card is handed to the preview
+ *  page through localStorage — nothing is published, nothing leaves the box. JPEG, 1280 wide, the first ~1700px.
+ *  Null when there is no browser or the page would not draw. */
+export async function screenshotCard(card: unknown, siteUrl: string): Promise<Buffer | null> {
+  if (!process.env.CHROME_PATH && process.env.NODE_ENV !== "production") return null;
+  const json = JSON.stringify(card);
+  if (!json || json.length > 3_000_000) return null;
+  return oneAtATime(async () => {
+    let page: Awaited<ReturnType<Browser["newPage"]>> | null = null;
+    try {
+      const browser = await browserFor(LIGHT_ARGS);
+      page = await browser.newPage();
+      await page.setUserAgent("Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130 Safari/537.36 ShubhoraReview/1.0");
+      await page.setViewport({ width: 1280, height: 1700, deviceScaleFactor: 1 });
+      // The preview page reads the card from localStorage before it draws anything; the key is its own, so a
+      // review never collides with an owner's build in a real browser.
+      await page.evaluateOnNewDocument((key: string, value: string) => { try { localStorage.setItem(key, value); } catch { /* storage off: the page says "Nothing to preview" and the review is skipped */ } }, REVIEW_KEY, json);
+      await page.setRequestInterception(true);
+      page.on("request", (r) => (r.resourceType() === "media" ? r.abort().catch(() => undefined) : r.continue().catch(() => undefined)));
+      await page.goto(`${siteUrl}/preview/site?k=${REVIEW_KEY}`, { waitUntil: "networkidle2", timeout: NAV_MS });
+      // Pictures decode and the reveal animations settle.
+      await new Promise((r) => setTimeout(r, SETTLE_MS + 800));
+      const drawn = await page.evaluate(() => !!document.querySelector("h1") && !/Nothing to preview/.test(document.body.innerText));
+      if (!drawn) return null;
+      const shot = await page.screenshot({ type: "jpeg", quality: 72, clip: { x: 0, y: 0, width: 1280, height: 1700 } });
+      return Buffer.from(shot);
+    } catch {
+      return null;
+    } finally {
+      await page?.close().catch(() => undefined);
+      releaseBrowser();
+    }
+  });
+}
+/** The preview page's storage key for a review render (letters, digits and dashes only — see preview/site/view.tsx). */
+const REVIEW_KEY = "vcard-review";
+
 /** Rendered pages, kept a short while. The set-up's website peek renders the home page while the person is
  *  still on the form; the build that follows a minute later reads the same page again (readOwnSite, importSite)
  *  and would launch a second render of it. Short-lived and small: a site changes, and a render is ~1 MB. */

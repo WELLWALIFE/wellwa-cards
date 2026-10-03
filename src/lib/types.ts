@@ -242,7 +242,14 @@ export interface Card {
    *  /api/site/generate from the Shubhora profile/products/reviews. */
   site?: {
     enabled: boolean;
-    hero?: { headline: string; sub: string; imageUrl?: string; ctaLabel?: string };
+    hero?: {
+      headline: string; sub: string; imageUrl?: string; ctaLabel?: string;
+      /** Where the banner's subject is, as CSS object-position ("62% 38%"), read from the photo at build time
+       *  (src/lib/media/photo-focus.ts) so the crop keeps it in view on every screen. */
+      focus?: string;
+      /** Which side the headline sits on in a photo hero: the side the subject leaves empty. */
+      textSide?: "left" | "right" | "center";
+    };
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline
     logoUrl?: string;       // website header/footer logo (the card avatar is usually a portrait)
