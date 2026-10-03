@@ -4,7 +4,7 @@
 //
 // Pure module (no React, no fetch, no DOM): used by the public website renderer, the website editor and the
 // server (reference-website → style).
-import type { Card, SiteStyle } from "./types";
+import type { Card, SiteStyle, SiteLayouts } from "./types";
 import { luminance } from "./color";
 import type { LookDef } from "./looks";
 
@@ -254,7 +254,29 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (typeof o.font === "string" && FONT_PAIRS.some((f) => f.key === o.font)) out.font = o.font;
   if (typeof o.hero === "string" && HERO_LAYOUTS.some((h) => h.key === o.hero)) out.hero = o.hero as HeroLayout;
   if (typeof o.radius === "string" && RADII.some((r) => r.key === o.radius)) out.radius = o.radius as NonNullable<SiteStyle["radius"]>;
+  const lay = cleanLayouts(o.layouts);
+  if (lay) out.layouts = lay;
   return out;
+}
+
+export const LAYOUT_CHOICES: Record<keyof SiteLayouts, readonly string[]> = {
+  about: ["photo-left", "photo-right", "statement", "columns"],
+  services: ["rows", "cards", "list"],
+  products: ["showcase", "grid", "dense"],
+  faq: ["open", "accordion"],
+  reviews: ["quote", "pair", "cards"],
+  gallery: ["mosaic", "masonry"],
+};
+/** The section layouts, each checked against its choices; null when none is valid. */
+export function cleanLayouts(x: unknown): SiteLayouts | null {
+  if (!x || typeof x !== "object") return null;
+  const o = x as Record<string, unknown>;
+  const out: Record<string, string> = {};
+  for (const k of Object.keys(LAYOUT_CHOICES) as (keyof SiteLayouts)[]) {
+    const v = typeof o[k] === "string" ? (o[k] as string).trim().toLowerCase() : "";
+    if (v && LAYOUT_CHOICES[k].includes(v)) out[k] = v;
+  }
+  return Object.keys(out).length ? (out as SiteLayouts) : null;
 }
 
 /* ========== a measured reference website → our design choices ========== */

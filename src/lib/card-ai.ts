@@ -1,4 +1,5 @@
 import "server-only";
+import { logUsage } from "@/lib/ai-usage";
 // AI card writer: turns what the owner tells us about the business (plus an optional reference website) into the
 // WORDS of a card — trade line, tagline, about, services, FAQ, timings, section titles, button text — and, if asked,
 // AI photos. It never decides facts: prices, photos, trust tiles and which blocks exist are placed by code
@@ -203,6 +204,7 @@ async function ask(key: string, text: string, timeoutMs: number, model = MODELS[
   });
   const j = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(`AI error ${r.status}`);
+  logUsage("card-copy", model, j?.usageMetadata);
   const parts = (j?.candidates?.[0]?.content?.parts ?? []) as { text?: unknown; thought?: unknown }[];
   const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
   try {

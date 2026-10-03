@@ -5,6 +5,22 @@
 // Pure module: no React, no DOM. The renderer (site-view.tsx) reads these; a layout the owner never sees
 // is still deterministic, so the same card always renders the same way.
 
+import type { SiteLayouts } from "@/lib/types";
+
+/** The designer's (or the owner's) choice for a section, when the content can carry it; else what the content
+ *  decides. A showcase of twelve products or an open FAQ of nine questions would be worse than the default. */
+export function preferredLayouts(prefs: SiteLayouts | undefined, have: { aboutImage?: boolean; services?: number; products?: number; faq?: number; reviews?: number; gallery?: number }): SiteLayouts {
+  if (!prefs) return {};
+  const out: SiteLayouts = {};
+  if (prefs.about && (have.aboutImage ? prefs.about === "photo-left" || prefs.about === "photo-right" : prefs.about === "statement" || prefs.about === "columns")) out.about = prefs.about;
+  if (prefs.services && have.services !== undefined && (prefs.services !== "rows" || have.services <= 3)) out.services = prefs.services;
+  if (prefs.products && have.products !== undefined && (prefs.products === "grid" || (prefs.products === "showcase" && have.products <= 4) || (prefs.products === "dense" && have.products >= 6))) out.products = prefs.products;
+  if (prefs.faq && have.faq !== undefined && (prefs.faq === "accordion" || have.faq <= 5)) out.faq = prefs.faq;
+  if (prefs.reviews && have.reviews !== undefined && (prefs.reviews === "cards" ? have.reviews >= 3 : prefs.reviews === "pair" ? have.reviews === 2 : have.reviews >= 1)) out.reviews = prefs.reviews;
+  if (prefs.gallery && have.gallery !== undefined && have.gallery >= 4) out.gallery = prefs.gallery;
+  return out;
+}
+
 export type AboutLayout = "photo-left" | "photo-right" | "statement" | "columns";
 /** With a photo the picture alternates sides down the page; without one, a short text becomes a centred
  *  statement and a long one a two-column editorial spread. */

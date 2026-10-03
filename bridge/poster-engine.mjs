@@ -222,6 +222,24 @@ export async function artLooksClean(buf) {
   } catch { return true; } // checker down → don't block the day
 }
 
+/** Vision QA for an occasion (jayanti, national day, festival): the painting must show THAT occasion — no wrong
+ *  person or deity, no real recognisable face, nothing disrespectful (owner's call, 2 Oct 2026: a Gandhi Jayanti
+ *  poster once carried a stock photo of a stranger with a garland). Cheap (flash-lite); checker down → accept. */
+export async function artFitsTheme(buf, theme) {
+  if (!theme || theme.kind !== "occasion") return true;
+  try {
+    const j = await gemini(CHECK_MODEL, {
+      contents: [{ parts: [
+        { inlineData: { mimeType: "image/png", data: buf.toString("base64") } },
+        { text: `This painting is meant for a poster in India for "${theme.en}" (${theme.theme || theme.slug}). Answer YES only if it clearly suits that occasion and shows nothing wrong: no wrong person, deity or symbol for this day, no real recognisable person's face, nothing disrespectful or unrelated, no text. Otherwise answer NO. Reply with exactly one word: YES or NO.` },
+      ] }],
+      generationConfig: { temperature: 0, maxOutputTokens: 5 },
+    });
+    const t = (j.candidates?.[0]?.content?.parts?.[0]?.text ?? "").trim().toUpperCase();
+    return !t.startsWith("NO");
+  } catch { return true; }
+}
+
 /** Today's shared base art (PNG, 3:4). Generated once, QA'd, cached on disk. */
 const artInFlight = new Map(); // date-group → promise (two users of one group at 8 AM = one generation)
 export async function ensureBaseArt(dateStr, { force = false, group = "", stock = null } = {}) {
@@ -252,8 +270,10 @@ async function ensureBaseArtNow(dateStr, k, g, force) {
     tries++;
     const candidate = await generateArt(theme.theme, theme.en, g);
     const png = await sharp(candidate).resize(1080, 1440, { fit: "cover", position: "attention" }).png().toBuffer();
-    if (await artLooksClean(png)) { art = png; break; }
-    console.log(`[poster] ${dateStr}: art try ${tries} rejected by QA (text/logo found)`);
+    if (await artLooksClean(png)) {
+      if (await artFitsTheme(png, theme)) { art = png; break; }
+      console.log(`[poster] ${dateStr}: art try ${tries} rejected by QA (does not fit "${theme.en}")`);
+    } else console.log(`[poster] ${dateStr}: art try ${tries} rejected by QA (text/logo found)`);
     art = art ?? png; // keep the last one as a fallback if all tries fail
   }
   fs.writeFileSync(file, art);

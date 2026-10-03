@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { rateLimited } from "@/lib/api-security";
 import { userFromRequest } from "@/lib/poster-server";
 import { cardOutline, cleanOps } from "@/lib/card-edits";
+import { logUsage } from "@/lib/ai-usage";
 import type { Card } from "@/lib/types";
 
 const MODEL = "gemini-3.5-flash";
@@ -40,6 +41,7 @@ Rules: do only what was asked, with the fewest operations (at most 8). Write any
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 });
+    logUsage(`card-edit:${me.id.slice(0, 8)}`, MODEL, j?.usageMetadata);
     const parts = (j?.candidates?.[0]?.content?.parts ?? []) as { text?: unknown; thought?: unknown }[];
     const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
     let v: { ops?: unknown; summary?: unknown } = {};

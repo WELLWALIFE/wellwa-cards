@@ -2,6 +2,8 @@
 // Raw fetch, not an SDK — matches the pattern already used elsewhere in this
 // codebase for Gemini image/TTS calls (bridge/media-worker.mjs).
 
+import { logUsage } from "@/lib/ai-usage";
+
 const MODEL = "gemini-3.5-flash-lite";
 const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
 
@@ -17,6 +19,8 @@ export async function geminiComplete(opts: {
   maxOutputTokens?: number;
   webSearch?: boolean;
   temperature?: number;
+  /** Shown in the cost log line ("product-lookup", "site-find"). */
+  tag?: string;
 }): Promise<{ text: string; blocked: boolean }> {
   const body: Record<string, unknown> = {
     contents: opts.contents,
@@ -32,6 +36,7 @@ export async function geminiComplete(opts: {
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d?.error?.message || `gemini ${r.status}`);
+  logUsage(opts.tag ?? "gemini", MODEL, d?.usageMetadata);
   const cand = d?.candidates?.[0];
   const blocked = BLOCKED_FINISH.has(cand?.finishReason);
   const text = (cand?.content?.parts ?? [])

@@ -12,8 +12,9 @@
 // Server only (reads GEMINI_API_KEY).
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, type HomeKind } from "@/lib/site-recipes";
-import { FONT_PAIRS, HERO_LAYOUTS, RADII, SITE_PALETTES, type HeroLayout } from "@/lib/site-style";
+import { FONT_PAIRS, HERO_LAYOUTS, RADII, SITE_PALETTES, cleanLayouts, type HeroLayout } from "@/lib/site-style";
 import { tradeAnswerLines } from "@/lib/trade-questions";
+import { logUsage } from "@/lib/ai-usage";
 import type { CardFacts, SetupInfo, SavedProduct } from "@/lib/card-facts";
 import type { SiteStyle } from "@/lib/types";
 
@@ -60,7 +61,8 @@ function menu(): string {
 - font: one of ${fonts}.
 - hero: one of ${heroes}.
 - radius: one of ${radii}.
-- order: the home sections, first to last, from: ${HOME_KINDS.join(", ")} (trust = facts strip; catalog = products / menu / courses; services; whyUs; steps = how it works; about; offer; booking = appointment; photos = work photos; reviews). Leave out any the business has nothing for.`;
+- order: the home sections, first to last, from: ${HOME_KINDS.join(", ")} (trust = facts strip; catalog = products / menu / courses; services; whyUs; steps = how it works; about; offer; booking = appointment; photos = work photos; reviews). Leave out any the business has nothing for.
+- layouts (optional, each one only when you have a reason): about: photo-left | photo-right | statement (short centred text, no photo) | columns (long editorial text); services: rows (1-3 big rows) | cards (3-6) | list (many, tidy checklist); products: showcase (1-4 premium items, big) | grid | dense (many items, four across); faq: open (few questions, shown open) | accordion; reviews: quote (one big quote) | pair | cards; gallery: mosaic | masonry. The renderer ignores a layout the content cannot carry.`;
 }
 
 function briefText(b: DesignBrief): string {
@@ -109,6 +111,8 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   const order = Array.isArray(o.order)
     ? [...new Set(o.order.filter((k): k is HomeKind => typeof k === "string" && (HOME_KINDS as string[]).includes(k)))]
     : [];
+  const layouts = cleanLayouts(o.layouts);
+  if (layouts) style.layouts = layouts;
   const why = typeof o.why === "string" ? o.why.trim().slice(0, 200) : "";
   if (!Object.keys(style).length && order.length < 3) return null;
   return { style, ...(order.length >= 3 ? { order } : {}), why };
@@ -120,7 +124,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
-  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "why": "one line, at most 25 words"}.`;
+  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(timeoutMs),
@@ -133,6 +137,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
     });
     const j = await r.json().catch(() => ({}));
     if (!r.ok) return null;
+    logUsage("site-design", MODEL, j?.usageMetadata);
     const parts = (j?.candidates?.[0]?.content?.parts ?? []) as { text?: unknown; thought?: unknown }[];
     const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
     let v: unknown = null;

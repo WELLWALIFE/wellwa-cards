@@ -478,6 +478,10 @@ export default function BuildCard() {
         setNotice(facts.websiteRole === "reference" && facts.website
           ? T("We could not open that website, so your card got our own look — you can change it any time under My website → Edit website.", "वो website खुल नहीं पाई, इसलिए आपके card को हमारा look मिला — My website → Edit website से जब चाहें बदल सकते हैं।")
           : T("We could not open your website, so your V-Card was made from your other details.", "आपकी website खुल नहीं पाई, इसलिए V-Card आपकी बाकी जानकारी से बना है।"));
+      } else if (r.data.aiPhotos && !(facts.websiteRole === "reference" && facts.website)) {
+        setNotice(hi
+          ? `आपके काम की ${r.data.aiPhotos} pictures बनाई गईं ताकि website खाली न लगे। अपनी असली photos लगाते ही ये हट जाएँगी: My website → "photos needed"।`
+          : `${r.data.aiPhotos} pictures were made for your trade so the website is not empty. Your real photos replace them the moment you add some: My website → "photos needed".`);
       } else if (r.data.aiPhotos) {
         setNotice(hi
           ? `आपका card उस website के look में बना है, और उसे भरने के लिए आपके काम की ${r.data.aiPhotos === 1 ? "1 picture" : `${r.data.aiPhotos} pictures`} बनाई गई — किसी और site की photo हम कभी copy नहीं करते। अपनी photo जब चाहें लगा लें: Edit card → जो photo बदलनी है।`

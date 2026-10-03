@@ -28,6 +28,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
 import { designSite } from "@/lib/site-designer";
+import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { googleRow } from "@/lib/google-server";
@@ -255,19 +256,23 @@ export async function POST(request: Request) {
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card
   // never triggers it: it gets the trade's stock photos instead — Pexels, free for commercial use, and
   // cached per trade, so one search serves everyone in that line of work and the card costs us nothing.
-  if (paidPlan && role === "reference" && facts.website && !facts.bannerUrl && facts.photos.length < 2) {
-    const ref = await referenceP;
-    if (ref?.style) {
+  // Every paid build whose owner has no photos of their own (owner's call, 3 Oct 2026): a banner and two
+  // pictures of THEIR trade and city — in the liked website's mood when one was given, else in the trade's own
+  // colour. The photo coach replaces them with real photos as soon as the owner adds some.
+  if (paidPlan && !facts.bannerUrl && facts.photos.length < 2) {
+    const ref = role === "reference" && facts.website ? await referenceP : null;
+    {
       const made = await within(
         referenceImages(me.id, {
           trade: setup.categoryLabel || setup.category || "",
           city: setup.city || "",
-          dark: ref.style.dark,
-          color: ref.style.colors[0],
-          count: 2,
+          dark: ref?.style?.dark ?? false,
+          color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
+          count: 3,
         }).catch(() => [] as string[]),
-        60_000,
+        80_000,
       ) ?? [];
+      logImages("card-pictures", "gemini-3.1-flash-image", made.length);
       if (made.length) {
         aiPhotos = made.length;
         facts = {

@@ -9,10 +9,10 @@
 // photos, reviews, FAQ and the map that live on the other pages, each linking to its page. The design — palette,
 // fonts, hero layout, corners — comes from card.site.style (src/lib/site-style.ts), with the card's colour and
 // look as the fallback, so a website that never chose a style still wears its brand colour.
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INTRODUCER_KEY } from "@/lib/username";
 import { Menu, X, MessageCircle, Phone, Download, Check, Star, MapPin, ChevronDown, FileText, Copy, Clock, Play, UserPlus, CalendarClock, ArrowRight, Navigation, Quote, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
-import type { Card, CardBlock, CardPage, ProductItem, TestimonialItem } from "@/lib/types";
+import type { Card, CardBlock, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, isCuratedArt, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
@@ -24,7 +24,10 @@ import { lookOf } from "@/lib/looks";
 import { siteDesign } from "@/lib/site-style";
 import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, trustFacts, type HomeSection } from "@/lib/site-home";
-import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, type ProductsLayout } from "@/lib/site-layout";
+import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
+
+/** The designer's section layouts (card.site.style.layouts), read by the section components below. */
+const LayoutCtx = createContext<SiteLayouts | undefined>(undefined);
 import { localLine, mapPin, pageHref } from "@/lib/seo";
 
 import { Pic as Img, picUrl } from "@/components/pic";
@@ -281,7 +284,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
 
   return (
-    <TranslateCtx.Provider value={t}>
+    <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
     <style dangerouslySetInnerHTML={{ __html: `.site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px} .site.js [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)} .site.js [data-reveal].in{opacity:1;transform:none} @media (prefers-reduced-motion: reduce){.site.js [data-reveal]{opacity:1;transform:none;transition:none}}` }} />
     <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
@@ -592,7 +595,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
     </div>
-    </TranslateCtx.Provider>
+    </LayoutCtx.Provider></TranslateCtx.Provider>
   );
 }
 
@@ -849,9 +852,10 @@ function SiteRun(p: RunProps) {
 }
 
 function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
+  const prefs = useContext(LayoutCtx);
   const t = useT();
   const list = items.filter((s) => s.name.trim());
-  const layout = servicesLayout(list);
+  const layout = preferredLayouts(prefs, { services: list.length }).services ?? servicesLayout(list);
   const name = (s: { name: string }) => t(s.name.replace(/^\d+[.)]\s*/, ""));
   // One or two services: a full-width row each, with room for the whole description.
   if (layout === "rows") {
@@ -959,8 +963,9 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
 }
 
 function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind: "about" }>; hi: boolean; index?: number }) {
+  const prefs = useContext(LayoutCtx);
   const t = useT();
-  const layout = aboutLayout(block, index);
+  const layout = preferredLayouts(prefs, { aboutImage: !!block.imageUrl }).about ?? aboutLayout(block, index);
   const eyebrow = <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hi ? "परिचय" : t("About")}</p>;
   const rule = <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />;
   // A short text with no photo: one centred statement, large — not a thin paragraph lost in a wide box.
@@ -1101,7 +1106,8 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = fal
 
 function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go, layout }: { items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void; layout?: ProductsLayout }) {
   const t = useT();
-  const shape = layout ?? productsLayout(items.length);
+  const prefs = useContext(LayoutCtx);
+  const shape = layout ?? preferredLayouts(prefs, { products: items.length }).products ?? productsLayout(items.length);
   // One or two products: each gets the full showcase — big photo, price, every feature — the photo side alternating.
   if (shape === "showcase") {
     return (
@@ -1199,8 +1205,9 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
 
 /** Reviews: one is a big centred quote, two sit side by side with room to read, three or more are cards. */
 function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string }) {
+  const prefs = useContext(LayoutCtx);
   const t = useT();
-  const layout = reviewsLayout(items.length);
+  const layout = preferredLayouts(prefs, { reviews: items.length }).reviews ?? reviewsLayout(items.length);
   const avatar = (x: TestimonialItem, big = false) => <span className={`grid place-items-center rounded-full ${big ? "h-11 w-11 text-base" : "h-9 w-9 text-sm"}`} style={{ background: tint(theme), color: "var(--tc)" }}>{Array.from(x.name.trim())[0]?.toUpperCase() ?? "★"}</span>;
   if (layout === "quote") {
     const x = items[0];
@@ -1380,7 +1387,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
     case "faq": {
       const qs = block.items.filter((f) => f.q);
       // Two or three questions: shown open as cards — nothing to click for so little.
-      if (faqLayout(qs.length) === "open") {
+      if ((preferredLayouts(card.site?.style?.layouts, { faq: qs.length }).faq ?? faqLayout(qs.length)) === "open") {
         return (
           <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
             <div className={`grid gap-5 ${qs.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
@@ -1411,7 +1418,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
     case "gallery": {
       const imgs = block.images.filter((g) => g.url);
       const shown = showAll ? imgs : imgs.slice(0, 12);
-      const gl = galleryLayout(imgs.length);
+      const gl = preferredLayouts(card.site?.style?.layouts, { gallery: imgs.length }).gallery ?? galleryLayout(imgs.length);
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
