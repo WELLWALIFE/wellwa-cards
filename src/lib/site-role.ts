@@ -87,8 +87,8 @@ export const SITE_CARDS: { k: SiteKind; e: string; t: string; th: string; s: str
     k: "reference", e: "🎨",
     t: "A website I like — or a competitor's", th: "कोई website पसंद है — या किसी competitor की",
     s: "Only its look: colours, fonts, layout. Never its words, photos, products or name", sh: "सिर्फ़ उसका look — रंग, font, layout। उसके शब्द, फोटो, products, नाम कभी नहीं",
-    takes: "Only the look is copied. Free plan: stock photos of YOUR trade; paid plan: AI pictures in that site's mood. It is never shown as your website.",
-    takesHi: "सिर्फ़ look copy होगा। Free plan: आपके काम की stock photos; paid: उस site के mood में AI pictures। वो आपकी website के रूप में कभी नहीं दिखेगी।",
+    takes: "Taken as your taste: our designer reads its colours, fonts and layout as hints, keeps what is good and improves the rest. Never its words, photos, products or name; it is never shown as your website.",
+    takesHi: "आपकी पसंद की तरह: हमारा designer उसके रंग, font और layout को hint मानता है, जो अच्छा है रखता है, बाक़ी बेहतर करता है। उसके शब्द, photo, products, नाम कभी नहीं; वो आपकी website के रूप में कभी नहीं दिखेगी।",
   },
   {
     k: "none", e: "❌",

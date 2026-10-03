@@ -9,6 +9,10 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { SiteBuilderOptions } from "@/components/poster/site-builder-options";
+import { PhotoNudge } from "@/components/poster/photo-nudge";
+import { CardChatEdit } from "@/components/poster/card-chat-edit";
+import { fetchMyCardsStrict } from "@/lib/cloud";
+import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { Lock } from "lucide-react";
@@ -28,6 +32,9 @@ export default function WebsitePage() {
   useEffect(() => { try { setPublished(new URLSearchParams(window.location.search).get("published") === "1"); } catch { /* ignore */ } }, []);
   const { plan, loading: planLoading } = usePlan();
   const paid = planLoading || plan !== "free";
+  // The live card, for "change something" (card-chat-edit.tsx).
+  const [card, setCard] = useState<Card | null>(null);
+  useEffect(() => { if (!cardId) return; fetchMyCardsStrict().then((cs) => setCard(cs.find((c) => c.id === cardId) ?? cs[0] ?? null)).catch(() => undefined); }, [cardId]);
 
   // api() resolves on ANY status, so a 401 (expired login) or a server error must be caught here — without
   // this check the screen keeps spinning for ever with nothing to tap.
@@ -93,6 +100,8 @@ export default function WebsitePage() {
               </Link>
             </section>
           )}
+          <PhotoNudge />
+          {card && <CardChatEdit card={card} onChanged={(c) => { setCard(c); load(cardId); }} />}
           {s.cards.length > 1 && (
             <select value={cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
               {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}

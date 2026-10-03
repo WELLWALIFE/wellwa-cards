@@ -547,7 +547,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     }
   };
   // The designer's order for this business leads when it gave one (no reference site); the trade's recipe fills in.
-  const lead_ = input.reference?.look || input.reference?.style ? null : input.design?.order;
+  const lead_ = input.design?.order;
   const first: HomeKind[] = lead_ && lead_.length >= 3 ? lead_ : recipe.home;
   const order: HomeKind[] = [...first, ...(["trust", "catalog", "services", "whyUs", "steps", "about", "offer", "booking", "photos", "reviews"] as HomeKind[]).filter((k) => !first.includes(k))];
   // A personal card keeps its old, short shape.
@@ -638,17 +638,19 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       // never its words, pictures or facts. What the browser measured wins over what the HTML hinted at;
       // the old guess is the fallback for a page no browser could open.
       // …and over all of it, what the owner picked by hand before the build (facts.style).
-      ...(input.reference?.look || input.reference?.style
-        ? {
-            style: { ...(input.reference.look ? styleFromLook(input.reference.look) : styleFromReference(input.reference.style!)), ...(cleanStyle(facts.style) ?? {}) },
-            ...(input.reference.look && homeOrderFromLook(input.reference.look)
-              ? { home: { order: homeOrderFromLook(input.reference.look)! } }
-              : {}),
-            reference: { url: input.reference.url, at: new Date().toISOString() },
-          }
-        // No reference site: the trade's default look, then the designer AI's plan for this business, then what
-        // the content itself decides (a mosaic / a portrait hero), and over all of it the owner's own pick.
-        : { style: { ...tradeStyle(setup.category, lang), ...(input.design?.style ?? {}), ...(heroVariant ? { hero: heroVariant } : {}), ...(cleanStyle(facts.style) ?? {}) } }),
+      // The look, in layers: the trade's default; a website the owner likes (its measured colours, fonts, hero and
+      // order); the designer AI's plan for this business, which was told about that site and decides over it
+      // (owner's call, 3 Oct 2026: the reference is a hint, not a template); what the content itself decides (a
+      // mosaic / a portrait hero); and over all of it the owner's own hand-picked look.
+      style: {
+        ...tradeStyle(setup.category, lang),
+        ...(input.reference?.look ? styleFromLook(input.reference.look) : input.reference?.style ? styleFromReference(input.reference.style) : {}),
+        ...(input.design?.style ?? {}),
+        ...(heroVariant ? { hero: heroVariant } : {}),
+        ...(cleanStyle(facts.style) ?? {}),
+      },
+      ...(input.reference?.look && !input.design?.order && homeOrderFromLook(input.reference.look) ? { home: { order: homeOrderFromLook(input.reference.look)! } } : {}),
+      ...(input.reference ? { reference: { url: input.reference.url, at: new Date().toISOString() } } : {}),
     },
   };
 

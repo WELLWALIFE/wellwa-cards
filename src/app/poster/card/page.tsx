@@ -20,6 +20,8 @@ import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage, withoutShubhoraP
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { CardChecklist } from "@/components/poster/card-checklist";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
+import { PhotoNudge } from "@/components/poster/photo-nudge";
+import { CardChatEdit } from "@/components/poster/card-chat-edit";
 import { initials } from "@/lib/initials";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -169,6 +171,8 @@ export default function CardTab() {
       )}
       <CardRenewBanner />
       <h1 className="text-lg font-bold">{t.cardTitle}</h1>
+      <PhotoNudge />
+      <CardChatEdit card={card} onChanged={() => load()} />
       <Guide hi="ये link हर जगह share करें — bio, WhatsApp, visiting card पर QR। जो भी खोलेगा, उसकी lead आपको मिलेगी।" en="Share this link everywhere — bio, WhatsApp, QR on your visiting card. Whoever opens it becomes your lead." />
       <div className="rounded-2xl border border-border overflow-hidden">
         <div className="grad-brand p-4 text-white flex items-center gap-3">

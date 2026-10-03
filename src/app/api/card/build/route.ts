@@ -44,6 +44,8 @@ type Obj = Record<string, unknown>;
 const obj = (x: unknown): Obj => (x && typeof x === "object" && !Array.isArray(x) ? (x as Obj) : {});
 /** p, or null after ms (the promise keeps running but is no longer waited for). */
 const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
+/** A measured page background that reads as dark. */
+const luminanceDark = (hex: string | undefined) => { const n = parseInt(String(hex ?? "").replace("#", ""), 16); if (!Number.isFinite(n)) return false; const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45; };
 
 type Row = { id: string; name: string; brand: string; price: string; photo: string; studio: boolean };
 
@@ -375,7 +377,8 @@ export async function POST(request: Request) {
   // order — beside the copy-writer. Not when a reference website sets the look. Never holds the build: slow or
   // down, the trade's default look stands.
   const designT0 = Date.now();
-  const designP = reference ? Promise.resolve(null) : within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang) }), 30_000);
+  const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked }), 30_000);
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
   const design = await designP;

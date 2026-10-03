@@ -36,6 +36,9 @@ export type DesignBrief = {
   reviews: number;
   /** The default look the trade would get without the designer. */
   defaults: SiteStyle;
+  /** A website the owner likes (measured / read): taste to take into account and improve on, never a template
+   *  (owner's call, 3 Oct 2026: the reference is a hint to the designer, the designer decides). */
+  liked?: { url: string; colors?: string[]; fonts?: string[]; dark?: boolean; heroImage?: boolean; sections?: string[] } | null;
 };
 
 const PRINCIPLES = `Design principles you follow (current, 2026):
@@ -75,6 +78,7 @@ function briefText(b: DesignBrief): string {
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
     `Default look for this trade (change it only for a reason): ${JSON.stringify(b.defaults)}`,
+    b.liked ? `The owner likes this website: ${b.liked.url} — colours ${(b.liked.colors ?? []).slice(0, 3).join(", ") || "?"}; fonts ${(b.liked.fonts ?? []).slice(0, 2).join(", ") || "?"}; ${b.liked.dark ? "dark" : "light"} page; ${b.liked.heroImage ? "a big photo on top" : "no big photo on top"}${b.liked.sections?.length ? `; sections in order: ${b.liked.sections.join(" > ")}` : ""}. Take this as their TASTE (mood, warmth, formality) and pick the nearest good choices from the menu — improve on it, never copy a weak choice.` : "",
   ].filter(Boolean);
   return lines.join("\n");
 }
