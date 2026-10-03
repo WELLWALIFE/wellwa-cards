@@ -18,6 +18,7 @@ import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
+import { NoticeBar, NoticePopup } from "@/components/notice-view";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
@@ -354,6 +355,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </nav>
         )}
       </header>
+      {/* The owner's notice — news, an offer, a closure — under the header (src/lib/notice.ts). */}
+      <NoticeBar card={card} hi={L.lang === "hi"} />
 
       <main className="flex-1 pb-14 md:pb-0">
         {isHome ? (
@@ -591,6 +594,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         </div>
       )}
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
+      {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={active} hi={L.lang === "hi"} />}
       {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}

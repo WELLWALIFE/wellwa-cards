@@ -8,6 +8,7 @@ import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Globe, Smartphone, ExternalLink, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag } from "lucide-react";
 import { PremiumCard, PremiumGate } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
+import { NoticeBox } from "@/components/poster/notice-box";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
@@ -108,6 +109,7 @@ export default function WebsitePage() {
             </section>
           )}
           <PhotoNudge />
+          {card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
           {card && <CardChatEdit card={card} locked={!paid} onChanged={(c) => { setCard(c); load(cardId); }} />}
           {s.cards.length > 1 && (
             <select value={cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">

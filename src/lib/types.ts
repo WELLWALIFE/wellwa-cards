@@ -242,6 +242,9 @@ export interface Card {
     /** The floating button on the website (bottom-left on desktop, the sticky bar on phones); default WhatsApp. */
     float?: "whatsapp" | "call" | "none";
   };
+  /** A notice — news, an offer, a closure — on the website and card (src/lib/notice.ts); `pastNotices` to re-use. */
+  notice?: CardNotice;
+  pastNotices?: CardNotice[];
   // ---- welcome popup (lead-capture modal, shown once per visit) ----
   popup?: {
     enabled: boolean;
@@ -250,6 +253,18 @@ export interface Card {
     ctaLabel: string;   // e.g. "Claim my discount"
     terms?: string;     // fine print under the button
   };
+}
+
+export interface CardNotice {
+  text: string;        // one or two lines
+  sub?: string;        // a second line
+  label?: string;      // button text
+  url?: string;        // button link (https://…, /page, #section)
+  imageUrl?: string;   // a poster / photo in the pop-up
+  mode: "bar" | "popup" | "both";
+  until?: string;      // YYYY-MM-DD, gone after this day
+  form?: boolean;      // pop-up asks for name and number (a lead)
+  at: string;          // ISO time it was set (pop-up shows once per visit per notice)
 }
 
 export type LeadStatus = "new" | "hot" | "warm" | "cold" | "won";

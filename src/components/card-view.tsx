@@ -20,6 +20,7 @@ import { Pic, picUrl } from "@/components/pic";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
+import { NoticeBar, NoticePopup } from "@/components/notice-view";
 import { trackView, trackClick } from "@/lib/track";
 import { localLine, pageHref } from "@/lib/seo";
 
@@ -359,10 +360,12 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     <TranslateCtx.Provider value={t}>
     {/* The visitor popup never shows in the editor's preview (onEdit) — it covered the owner's own card while editing. */}
     {!onEdit && <WelcomePopup card={card} theme={theme} active={active} />}
+    {!onEdit && <NoticePopup card={card} theme={theme} active={active} hi={lang === "hi"} />}
     {/* The look: fonts + palette + corners for everything inside this card (see src/lib/looks.ts). */}
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
     <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) + `[data-look="${look.key}"]{${design.vars}} [data-look="${look.key}"] h1,[data-look="${look.key}"] h2{font-weight:var(--head-w)}` }} />
     <div className="mx-auto w-full max-w-md animate-rise" data-look={look.key} data-tone={look.tone}>
+      <NoticeBar card={card} hi={lang === "hi"} compact />
       <div className="rounded-none border-0 sm:rounded-[1.75rem] sm:border border-border bg-surface overflow-hidden shadow-float">
         {/* ---- Header ---- */}
         <div className={`relative ${cfg.coverH} overflow-hidden`} style={{ background: cfg.bg }}>

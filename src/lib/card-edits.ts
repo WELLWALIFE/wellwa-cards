@@ -7,6 +7,7 @@
 // Isomorphic: no 'use client', no 'server-only'.
 import type { Card, CardBlock, CardPage, SiteStyle } from "@/lib/types";
 import { cleanStyle } from "@/lib/site-style";
+import { cleanNotice, activeNotice } from "@/lib/notice";
 
 export type EditOp =
   | { op: "remove_block"; id: string }
@@ -21,7 +22,9 @@ export type EditOp =
   | { op: "set_style"; palette?: string; font?: string; hero?: string; radius?: string }
   | { op: "hide_page"; slug: string }
   | { op: "show_page"; slug: string }
-  | { op: "rename_page"; slug: string; label: string };
+  | { op: "rename_page"; slug: string; label: string }
+  | { op: "set_notice"; text: string; sub?: string; label?: string; url?: string; mode?: "bar" | "popup" | "both"; until?: string }
+  | { op: "clear_notice" };
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 
@@ -33,6 +36,8 @@ export function cardOutline(card: Card): string {
   lines.push(`about: ${(card.about ?? "").slice(0, 160)}`);
   if (card.site?.hero) lines.push(`hero: headline="${card.site.hero.headline}" sub="${(card.site.hero.sub ?? "").slice(0, 120)}" cta="${card.site.hero.ctaLabel ?? ""}"`);
   if (card.site?.style) lines.push(`style: ${JSON.stringify(card.site.style)}`);
+  const n = activeNotice(card);
+  lines.push(n ? `notice (bar / pop-up): "${n.text}"${n.sub ? ` — ${n.sub}` : ""}${n.until ? ` till ${n.until}` : ""} mode=${n.mode}` : "notice: none");
   const hidden = new Set(card.site?.hidden ?? []);
   for (const p of card.pages) {
     if (p.hidden) continue;
@@ -74,6 +79,8 @@ export function cleanOps(raw: unknown): EditOp[] {
       case "hide_page": if (slug) out.push({ op: "hide_page", slug }); break;
       case "show_page": if (slug) out.push({ op: "show_page", slug }); break;
       case "rename_page": if (slug && S(o.label, 30)) out.push({ op: "rename_page", slug, label: S(o.label, 30) }); break;
+      case "set_notice": if (S(o.text, 140)) out.push({ op: "set_notice", text: S(o.text, 140), ...(S(o.sub, 200) ? { sub: S(o.sub, 200) } : {}), ...(S(o.label, 40) ? { label: S(o.label, 40) } : {}), ...(S(o.url, 300) ? { url: S(o.url, 300) } : {}), ...(o.mode === "popup" || o.mode === "both" ? { mode: o.mode } : o.mode === "bar" ? { mode: "bar" } : {}), ...(/^\d{4}-\d{2}-\d{2}$/.test(S(o.until, 10)) ? { until: S(o.until, 10) } : {}) }); break;
+      case "clear_notice": out.push({ op: "clear_notice" }); break;
     }
   }
   return out;
@@ -128,6 +135,12 @@ export function applyEdits(card: Card, ops: EditOp[], lang: "en" | "hi" | "hingl
         notes.push(op.op === "hide_page" ? (hi ? `"${p.label}" page menu से हटाया` : `Hid the "${p.label}" page from the menu`) : (hi ? `"${p.label}" page वापस दिखाया` : `Showing the "${p.label}" page again`)); applied++; break;
       }
       case "rename_page": { const p = out.pages.find((x) => x.slug === op.slug && !x.hidden); if (!p) { skip(op.slug); break; } out.pages = out.pages.map((x) => (x === p ? { ...x, label: op.label } : x)); notes.push(hi ? `page का नाम "${op.label}" किया` : `Page renamed to "${op.label}"`); applied++; break; }
+      case "set_notice": {
+        const n = cleanNotice({ ...op, mode: op.mode ?? card.notice?.mode ?? "bar" }); if (!n) { skip("notice"); break; }
+        const past = [out.notice, ...(out.pastNotices ?? [])].filter((x): x is NonNullable<typeof x> => !!x && x.text !== n.text).slice(0, 8);
+        out = { ...out, notice: n, pastNotices: past }; notes.push(hi ? `notice लगाई: "${n.text}"${n.until ? ` (${n.until} तक)` : ""}` : `Notice on: "${n.text}"${n.until ? ` (till ${n.until})` : ""}`); applied++; break;
+      }
+      case "clear_notice": { if (!out.notice) { skip("notice"); break; } out = { ...out, notice: undefined, pastNotices: [out.notice, ...(out.pastNotices ?? [])].slice(0, 8) }; notes.push(hi ? "notice हटाई" : "Notice removed"); applied++; break; }
     }
   }
   return { card: out, notes, applied };

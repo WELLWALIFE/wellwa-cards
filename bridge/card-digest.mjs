@@ -52,6 +52,11 @@ export function cardDigest(card, { maxChars = 9000, pages } = {}) {
   if (who) out.push(`Business: ${who}`);
   if (card.tagline) out.push(`Tagline: ${clean(card.tagline)}`);
   if (card.about) out.push(`About: ${clean(card.about)}`);
+  // The owner's notice (news, an offer, a closure) — only while its date has not passed.
+  if (card.notice?.text) {
+    const today = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
+    if (!card.notice.until || card.notice.until >= today) out.push(`NOTICE (current): ${clean(card.notice.text)}${card.notice.sub ? ` — ${clean(card.notice.sub)}` : ""}${card.notice.until ? ` (till ${card.notice.until})` : ""}`);
+  }
   const links = (card.links ?? []).map((l) => `${clean(l.label || l.type)}: ${clean(l.value)}`).filter((x) => !x.endsWith(": "));
   if (links.length) out.push(`Contact: ${links.join(" | ")}`);
   if (card.gstin) out.push(`GSTIN: ${clean(card.gstin)}`);
