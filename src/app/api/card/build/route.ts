@@ -28,6 +28,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
 import { designSite } from "@/lib/site-designer";
+import { logoColor } from "@/lib/media/logo-color";
 import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
@@ -334,6 +335,9 @@ export async function POST(request: Request) {
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
   const knowledge = factsText({ setup, facts, products: list, info: new Map(), site });
   const business = setup.business || setup.person;
+  // The business's own colour, from its logo (brand-identity): the website wears it unless the designer says no.
+  const logoHex = await logoColor(setup.logo);
+  if (logoHex) console.log("[card] logo colour", logoHex);
   // The city is printed in the hero chip, the footer line and the search data: "dharuhera" is tidied once here.
   if (setup.city && cityCase(setup.city) !== setup.city) setup = { ...setup, city: cityCase(setup.city) };
   const recipe = recipeFor(setup.category);
@@ -383,7 +387,7 @@ export async function POST(request: Request) {
   // down, the trade's default look stands.
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked }), 30_000);
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex }), 30_000);
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
   const design = await designP;
@@ -395,6 +399,7 @@ export async function POST(request: Request) {
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
     design,
+    logoColor: logoHex,
     googleRating: gRating,
     ...(ownSite ? { builtFrom: "own-site" as const, tradeSwitched } : {}),
   });

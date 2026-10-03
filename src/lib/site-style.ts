@@ -256,6 +256,7 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (typeof o.radius === "string" && RADII.some((r) => r.key === o.radius)) out.radius = o.radius as NonNullable<SiteStyle["radius"]>;
   const lay = cleanLayouts(o.layouts);
   if (lay) out.layouts = lay;
+  if (typeof o.pattern === "string" && (["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(o.pattern)) out.pattern = o.pattern as SiteStyle["pattern"];
   return out;
 }
 

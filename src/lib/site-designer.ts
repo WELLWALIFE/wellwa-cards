@@ -40,6 +40,8 @@ export type DesignBrief = {
   /** A website the owner likes (measured / read): taste to take into account and improve on, never a template
    *  (owner's call, 3 Oct 2026: the reference is a hint to the designer, the designer decides). */
   liked?: { url: string; colors?: string[]; fonts?: string[]; dark?: boolean; heroImage?: boolean; sections?: string[] } | null;
+  /** The strongest colour of the owner's logo (#rrggbb): the business's own colour, which the website should wear. */
+  logoColor?: string | null;
 };
 
 const PRINCIPLES = `Design principles you follow (current, 2026):
@@ -61,6 +63,7 @@ function menu(): string {
 - font: one of ${fonts}.
 - hero: one of ${heroes}.
 - radius: one of ${radii}.
+- pattern (the hero's faint background): none, dots, waves (food, water, calm), grid (tech, industry, construction), diagonal (sales, sports, energy), blobs (kids, beauty, creative), rings (premium, wellness).
 - order: the home sections, first to last, from: ${HOME_KINDS.join(", ")} (trust = facts strip; catalog = products / menu / courses; services; whyUs; steps = how it works; about; offer; booking = appointment; photos = work photos; reviews). Leave out any the business has nothing for.
 - layouts (optional, each one only when you have a reason): about: photo-left | photo-right | statement (short centred text, no photo) | columns (long editorial text); services: rows (1-3 big rows) | cards (3-6) | list (many, tidy checklist); products: showcase (1-4 premium items, big) | grid | dense (many items, four across); faq: open (few questions, shown open) | accordion; reviews: quote (one big quote) | pair | cards; gallery: mosaic | masonry. The renderer ignores a layout the content cannot carry.`;
 }
@@ -80,6 +83,7 @@ function briefText(b: DesignBrief): string {
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
     `Default look for this trade (change it only for a reason): ${JSON.stringify(b.defaults)}`,
+    b.logoColor ? `The owner's LOGO colour is ${b.logoColor}: this is the business's own colour — wear it ("brand" with that color) unless it reads badly on screen, and keep the rest of the palette calm around it.` : "",
     b.liked ? `The owner likes this website: ${b.liked.url} — colours ${(b.liked.colors ?? []).slice(0, 3).join(", ") || "?"}; fonts ${(b.liked.fonts ?? []).slice(0, 2).join(", ") || "?"}; ${b.liked.dark ? "dark" : "light"} page; ${b.liked.heroImage ? "a big photo on top" : "no big photo on top"}${b.liked.sections?.length ? `; sections in order: ${b.liked.sections.join(" > ")}` : ""}. Take this as their TASTE (mood, warmth, formality) and pick the nearest good choices from the menu — improve on it, never copy a weak choice.` : "",
   ].filter(Boolean);
   return lines.join("\n");
@@ -113,6 +117,8 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
     : [];
   const layouts = cleanLayouts(o.layouts);
   if (layouts) style.layouts = layouts;
+  const pattern = typeof o.pattern === "string" ? o.pattern.trim().toLowerCase() : "";
+  if ((["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(pattern)) style.pattern = pattern as SiteStyle["pattern"];
   const why = typeof o.why === "string" ? o.why.trim().slice(0, 200) : "";
   if (!Object.keys(style).length && order.length < 3) return null;
   return { style, ...(order.length >= 3 ? { order } : {}), why };
@@ -124,7 +130,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
-  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
+  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "pattern": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(timeoutMs),

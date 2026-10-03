@@ -19,6 +19,7 @@ import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
+import { patternCss } from "@/lib/brand-identity";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
@@ -372,7 +373,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                   : `linear-gradient(90deg, color-mix(in srgb, var(--p-deep) 93%, transparent) 0%, color-mix(in srgb, var(--p-deep) 74%, transparent) 42%, color-mix(in srgb, var(--p-deep) 35%, transparent) 100%)` }} />
               </>
             )}
-            {layout !== "photo" && layout !== "minimal" && <div aria-hidden="true" className="dots absolute inset-0 opacity-60" style={{ maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)" }} />}
+            {layout !== "photo" && layout !== "minimal" && <div aria-hidden="true" className={`${card.site?.style?.pattern && card.site.style.pattern !== "dots" ? "" : "dots"} absolute inset-0 ${card.site?.style?.pattern === "blobs" ? "opacity-20" : "opacity-60"}`} style={{ ...patternCss(card.site?.style?.pattern, heroInk === "var(--ink)" ? "#0b1220" : "#ffffff"), backgroundRepeat: card.site?.style?.pattern === "blobs" ? "no-repeat" : "repeat", backgroundPosition: card.site?.style?.pattern === "blobs" ? "right top" : undefined, maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)" }} />}
             <div className={`relative w-full mx-auto max-w-6xl px-6 ${layout === "stage" ? "pt-20 pb-0 md:pt-24 text-center" : `py-20 md:py-24 grid gap-12 items-center ${heroVisual ? "md:grid-cols-[1.15fr_1fr]" : ""}`}`}>
               <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroVisual ? "" : "md:max-w-[640px]"}`}>
                 {/* Brand as the headline, role as the eyebrow, the about text as the sub —

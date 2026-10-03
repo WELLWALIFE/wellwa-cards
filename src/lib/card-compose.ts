@@ -5,7 +5,7 @@
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
 import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, SiteStyle, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
-import { styleFromReference, styleFromLook, homeOrderFromLook, cleanStyle, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
+import { styleFromReference, styleFromLook, homeOrderFromLook, cleanStyle, SITE_PALETTES, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
@@ -13,6 +13,7 @@ import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade-questions";
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, servicesTitle } from "@/lib/trade-pages";
+import { monogramUrl } from "@/lib/brand-identity";
 import type { TradeData } from "@/lib/trade-data/types";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
@@ -287,6 +288,8 @@ export type ComposeInput = {
   /** The designer AI's plan for this business (site-designer.ts): used when there is no reference website;
    *  the owner's hand-picked look (facts.style) still wins over it. */
   design?: { style: SiteStyle; order?: HomeKind[] } | null;
+  /** The strongest colour of the owner's logo (#rrggbb) — the business's own colour, under the designer's plan. */
+  logoColor?: string | null;
   /** The business's rating on Google, when the owner has connected their Google Business profile: real
    *  standing a brand-new card has no reviews of its own to show. */
   googleRating?: { avg: number; count: number } | null;
@@ -590,6 +593,21 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     : professional && setup.photo ? "person"
     : undefined;
   const headline = lead === "business" ? setup.business : name;
+  // The look, in layers: the trade's default; the business's own colour from its logo; a website the owner likes
+  // (its measured colours, fonts, hero and order); the designer AI's plan, which was told about both and decides
+  // over them (owner's call, 3 Oct 2026: the reference is a hint, not a template); what the content itself decides
+  // (a mosaic / a portrait hero); and over all of it the owner's own hand-picked look.
+  const siteStyle: SiteStyle = {
+    ...tradeStyle(setup.category, lang),
+    ...(input.logoColor ? { palette: "brand", color: input.logoColor } : {}),
+    ...(input.reference?.look ? styleFromLook(input.reference.look) : input.reference?.style ? styleFromReference(input.reference.style) : {}),
+    ...(input.design?.style ?? {}),
+    ...(heroVariant ? { hero: heroVariant } : {}),
+    ...(cleanStyle(facts.style) ?? {}),
+  };
+  // No logo: a monogram in the website's own colour, in its corner style — never a blank header.
+  const brandHex = siteStyle.palette === "brand" ? (siteStyle.color ?? accent) : (SITE_PALETTES.find((p) => p.key === siteStyle.palette)?.mid ?? accent);
+  const logoUrl = setup.logo || monogramUrl(setup.business || name, brandHex, siteStyle.radius === "round" ? "round" : siteStyle.radius === "sharp" ? "sharp" : "soft");
   const seo: NonNullable<TemplateCard["seo"]> = {};
   if (cat?.en) { seo.category = cat.en; seo.categoryKey = cat.key; }
   if (setup.city) seo.city = setup.city;
@@ -627,7 +645,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     botKnowledge: `${header}\n${input.details ?? ""}`.trim().slice(0, 3000),
     site: {
       enabled: true,
-      ...(setup.logo ? { logoUrl: setup.logo } : {}),
+      logoUrl,
       hero: {
         headline,
         sub: copy.hero?.sub || copy.tagline,
@@ -642,13 +660,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       // order); the designer AI's plan for this business, which was told about that site and decides over it
       // (owner's call, 3 Oct 2026: the reference is a hint, not a template); what the content itself decides (a
       // mosaic / a portrait hero); and over all of it the owner's own hand-picked look.
-      style: {
-        ...tradeStyle(setup.category, lang),
-        ...(input.reference?.look ? styleFromLook(input.reference.look) : input.reference?.style ? styleFromReference(input.reference.style) : {}),
-        ...(input.design?.style ?? {}),
-        ...(heroVariant ? { hero: heroVariant } : {}),
-        ...(cleanStyle(facts.style) ?? {}),
-      },
+      style: siteStyle,
       ...(input.reference?.look && !input.design?.order && homeOrderFromLook(input.reference.look) ? { home: { order: homeOrderFromLook(input.reference.look)! } } : {}),
       ...(input.reference ? { reference: { url: input.reference.url, at: new Date().toISOString() } } : {}),
     },

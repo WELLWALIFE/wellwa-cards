@@ -5,6 +5,7 @@
 //   wide    → a shop / work photo, up to 1600×1600, never cropped (JPEG)
 import { NextResponse } from "next/server";
 import sharp from "sharp";
+import type { Sharp } from "sharp";
 import { userFromRequest } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
@@ -23,13 +24,17 @@ export async function POST(request: Request) {
   let out: Buffer;
   try {
     const src = Buffer.from(await file.arrayBuffer());
+    // A phone photo made presentable (owner's call, 3 Oct 2026: "phone ki photo bhi professional lage"): levels
+    // evened out, a touch more life, a little sharpness. Gentle on purpose — a face must stay a face. Logos are
+    // left exactly as drawn.
+    const polish = (img: Sharp) => img.normalise({ lower: 1, upper: 99 }).modulate({ brightness: 1.02, saturation: 1.06 }).sharpen({ sigma: 0.8, m1: 0.5, m2: 1.2 });
     out = kind === "product"
-      ? await sharp(src).rotate().resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true }).png().toBuffer()
+      ? await polish(sharp(src).rotate().resize({ width: 1400, height: 1400, fit: "inside", withoutEnlargement: true })).png().toBuffer()
       : kind === "logo"
       ? await sharp(src).rotate().resize({ width: 600, height: 300, fit: "inside", withoutEnlargement: true }).png().toBuffer()
       : kind === "wide"
-      ? await sharp(src).rotate().resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer()
-      : await sharp(src).rotate().resize(600, 600, { fit: "cover", position: "attention" }).jpeg({ quality: 88 }).toBuffer();
+      ? await polish(sharp(src).rotate().resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true })).jpeg({ quality: 84, mozjpeg: true }).toBuffer()
+      : await polish(sharp(src).rotate().resize(600, 600, { fit: "cover", position: "attention" })).jpeg({ quality: 88 }).toBuffer();
   } catch { return NextResponse.json({ error: "That file is not an image." }, { status: 400 }); }
   const jpeg = kind === "photo" || kind === "wide";
   const key = `poster/${me.id}/${kind}-${Date.now()}.${jpeg ? "jpg" : "png"}`;

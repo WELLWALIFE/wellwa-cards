@@ -143,6 +143,8 @@ export interface SiteStyle {
   /** grid = a mosaic of product photos beside the words (shops); person = the owner's portrait (professionals). */
   hero?: "split" | "photo" | "stage" | "minimal" | "grid" | "person";
   radius?: "sharp" | "soft" | "round";
+  /** The hero's background pattern (src/lib/brand-identity.ts); unset = dots. */
+  pattern?: "none" | "dots" | "waves" | "grid" | "diagonal" | "blobs" | "rings";
   /** How sections are laid out when the designer (site-designer.ts) or the owner chose; unset = decided from the
    *  content (site-layout.ts). A choice the content cannot carry is ignored by the renderer. */
   layouts?: SiteLayouts;
