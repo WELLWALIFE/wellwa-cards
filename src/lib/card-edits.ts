@@ -23,6 +23,7 @@ export type EditOp =
   | { op: "hide_page"; slug: string }
   | { op: "show_page"; slug: string }
   | { op: "rename_page"; slug: string; label: string }
+  | { op: "set_table"; id?: string; page?: string; title: string; columns: string[]; rows: string[][]; note?: string }
   | { op: "set_notice"; text: string; sub?: string; label?: string; url?: string; mode?: "bar" | "popup" | "both"; until?: string }
   | { op: "clear_notice" };
 
@@ -49,6 +50,8 @@ export function cardOutline(card: Card): string {
         : b.kind === "contact" ? (b.note ?? "")
         : b.kind === "cta" ? `${b.joinLabel} → ${b.joinUrl}`
         : "items" in b && Array.isArray(b.items) ? b.items.slice(0, 8).map((it: unknown, i: number) => { const o = it as { name?: string; q?: string; price?: string }; return `[${i}] ${o.name ?? o.q ?? String(it)}${o.price ? ` (${o.price})` : ""}`; }).join("; ")
+        : b.kind === "table" ? `${b.columns.join(" | ")} :: ${b.rows.length} rows`
+        : b.kind === "form" ? `fields: ${b.fields.map((f) => f.label).join(", ")}`
         : "images" in b ? `${b.images.length} images`
         : "";
       lines.push(`  block id=${b.id} kind=${b.kind} title="${"title" in b ? b.title : ""}" :: ${glimpse.slice(0, 220)}`);
@@ -79,6 +82,12 @@ export function cleanOps(raw: unknown): EditOp[] {
       case "hide_page": if (slug) out.push({ op: "hide_page", slug }); break;
       case "show_page": if (slug) out.push({ op: "show_page", slug }); break;
       case "rename_page": if (slug && S(o.label, 30)) out.push({ op: "rename_page", slug, label: S(o.label, 30) }); break;
+      case "set_table": {
+        const columns = Array.isArray(o.columns) ? o.columns.map((c) => S(c, 40)).filter(Boolean).slice(0, 5) : [];
+        const rows = Array.isArray(o.rows) ? o.rows.filter(Array.isArray).map((r) => (r as unknown[]).map((c) => S(c, 80)).slice(0, 5)).filter((r) => r.some(Boolean)).slice(0, 30) : [];
+        if (columns.length >= 2 && rows.length) out.push({ op: "set_table", ...(id ? { id } : {}), ...(S(o.page, 40) ? { page: S(o.page, 40) } : {}), title: S(o.title, 80) || "Price list", columns, rows, ...(S(o.note, 160) ? { note: S(o.note, 160) } : {}) });
+        break;
+      }
       case "set_notice": if (S(o.text, 140)) out.push({ op: "set_notice", text: S(o.text, 140), ...(S(o.sub, 200) ? { sub: S(o.sub, 200) } : {}), ...(S(o.label, 40) ? { label: S(o.label, 40) } : {}), ...(S(o.url, 300) ? { url: S(o.url, 300) } : {}), ...(o.mode === "popup" || o.mode === "both" ? { mode: o.mode } : o.mode === "bar" ? { mode: "bar" } : {}), ...(/^\d{4}-\d{2}-\d{2}$/.test(S(o.until, 10)) ? { until: S(o.until, 10) } : {}) }); break;
       case "clear_notice": out.push({ op: "clear_notice" }); break;
     }
@@ -135,6 +144,14 @@ export function applyEdits(card: Card, ops: EditOp[], lang: "en" | "hi" | "hingl
         notes.push(op.op === "hide_page" ? (hi ? `"${p.label}" page menu से हटाया` : `Hid the "${p.label}" page from the menu`) : (hi ? `"${p.label}" page वापस दिखाया` : `Showing the "${p.label}" page again`)); applied++; break;
       }
       case "rename_page": { const p = out.pages.find((x) => x.slug === op.slug && !x.hidden); if (!p) { skip(op.slug); break; } out.pages = out.pages.map((x) => (x === p ? { ...x, label: op.label } : x)); notes.push(hi ? `page का नाम "${op.label}" किया` : `Page renamed to "${op.label}"`); applied++; break; }
+      case "set_table": {
+        const block: CardBlock = { id: op.id ?? `tb${Math.random().toString(36).slice(2, 8)}`, kind: "table", title: op.title, columns: op.columns, rows: op.rows, highlight: 1, ...(op.note ? { note: op.note } : {}) };
+        const f = op.id ? findBlock(op.id) : null;
+        if (f && f.block.kind === "table") { f.page.blocks[f.i] = block; notes.push(hi ? `"${op.title}" table बदली` : `Updated the "${op.title}" table`); applied++; break; }
+        const page = out.pages.find((p) => !p.hidden && p.slug === (op.page ?? "")) ?? out.pages.find((p) => !p.hidden && p.slug === "products") ?? out.pages.find((p) => !p.hidden);
+        if (!page) { skip("table"); break; }
+        page.blocks.push(block); notes.push(hi ? `"${op.title}" table "${page.label}" page पर जोड़ी` : `Added the "${op.title}" table on the "${page.label}" page`); applied++; break;
+      }
       case "set_notice": {
         const n = cleanNotice({ ...op, mode: op.mode ?? card.notice?.mode ?? "bar" }); if (!n) { skip("notice"); break; }
         const past = [out.notice, ...(out.pastNotices ?? [])].filter((x): x is NonNullable<typeof x> => !!x && x.text !== n.text).slice(0, 8);

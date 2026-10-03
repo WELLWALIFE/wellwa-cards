@@ -21,6 +21,7 @@ import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
+import { FormBlock } from "@/components/form-block";
 import { trackView, trackClick } from "@/lib/track";
 import { localLine, pageHref } from "@/lib/seo";
 
@@ -744,6 +745,30 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         </section>
       );
 
+    case "table": {
+      const hl = block.highlight ?? 1;
+      return (
+        <section>
+          <BlockTitle>{t(block.title)}</BlockTitle>
+          <div className="overflow-hidden rounded-xl border border-border">
+            {block.rows.filter((r) => r.some(Boolean)).map((r, i) => (
+              <div key={i} className={`flex items-start justify-between gap-3 px-3 py-2.5 ${i ? "border-t border-border" : ""}`}>
+                <div className="min-w-0"><p className="text-sm font-semibold">{t(r[0] ?? "")}</p>{block.columns.map((c, j) => (j !== 0 && j !== hl && r[j] ? <p key={j} className="text-[11px] text-muted">{t(c)}: {t(r[j])}</p> : null))}</div>
+                {r[hl] && <p className="shrink-0 text-sm font-bold" style={{ color: theme }}>{t(r[hl])}</p>}
+              </div>
+            ))}
+          </div>
+          {block.note && <p className="mt-2 text-[11px] text-muted">{t(block.note)}</p>}
+        </section>
+      );
+    }
+    case "form":
+      return (
+        <section>
+          <BlockTitle>{t(block.title)}</BlockTitle>
+          <div className="rounded-2xl border border-border p-4"><FormBlock block={block} username={card.username} theme={theme} t={t} /></div>
+        </section>
+      );
     case "compare":
       // Left-vs-right table. Each row is its own card with a two-column body
       // so it still reads on a phone; the left column is "us" in the theme

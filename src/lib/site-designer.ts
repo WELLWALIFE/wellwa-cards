@@ -63,6 +63,7 @@ function menu(): string {
 - font: one of ${fonts}.
 - hero: one of ${heroes}.
 - radius: one of ${radii}.
+- motion: none (a still page), calm (sections rise in once — the default), lively (floating pictures, a moving photo strip — food, kids, events, fashion).
 - pattern (the hero's faint background): none, dots, waves (food, water, calm), grid (tech, industry, construction), diagonal (sales, sports, energy), blobs (kids, beauty, creative), rings (premium, wellness).
 - order: the home sections, first to last, from: ${HOME_KINDS.join(", ")} (trust = facts strip; catalog = products / menu / courses; services; whyUs; steps = how it works; about; offer; booking = appointment; photos = work photos; reviews). Leave out any the business has nothing for.
 - layouts (optional, each one only when you have a reason): about: photo-left | photo-right | statement (short centred text, no photo) | columns (long editorial text); services: rows (1-3 big rows) | cards (3-6) | list (many, tidy checklist); products: showcase (1-4 premium items, big) | grid | dense (many items, four across); faq: open (few questions, shown open) | accordion; reviews: quote (one big quote) | pair | cards; gallery: mosaic | masonry. The renderer ignores a layout the content cannot carry.`;
@@ -108,7 +109,9 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
     HERO_LAYOUTS.some((x) => x.key === h)
     && !(h === "photo" && !b.facts.bannerUrl)
     && !(h === "grid" && productPhotos < 3)
-    && !(h === "person" && !b.setup.photo);
+    && !(h === "person" && !b.setup.photo)
+    && !(h === "editorial" && !b.facts.bannerUrl)
+    && !(h === "marquee" && productPhotos + b.facts.photos.length < 4);
   if (heroOk(hero)) style.hero = hero;
   const radius = typeof o.radius === "string" ? o.radius.trim().toLowerCase() : "";
   if (RADII.some((r) => r.key === radius)) style.radius = radius as SiteStyle["radius"];
@@ -117,6 +120,8 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
     : [];
   const layouts = cleanLayouts(o.layouts);
   if (layouts) style.layouts = layouts;
+  const motion = typeof o.motion === "string" ? o.motion.trim().toLowerCase() : "";
+  if ((["none", "calm", "lively"] as string[]).includes(motion)) style.motion = motion as SiteStyle["motion"];
   const pattern = typeof o.pattern === "string" ? o.pattern.trim().toLowerCase() : "";
   if ((["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(pattern)) style.pattern = pattern as SiteStyle["pattern"];
   const why = typeof o.why === "string" ? o.why.trim().slice(0, 200) : "";
@@ -130,7 +135,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
-  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "pattern": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
+  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(timeoutMs),

@@ -7,6 +7,8 @@ import { ImageUpload } from "./image-upload";
 import { AiTextarea } from "./ai-fields";
 
 const kindLabel: Record<CardBlock["kind"], string> = {
+  table: "Price list / table",
+  form: "Form (enquiry / booking)",
   about: "About / text",
   highlights: "Highlights",
   services: "Services",
@@ -466,6 +468,46 @@ export function BlockEditor({
             <button className="ed-add" onClick={() => onChange({ ...block, rows: [...block.rows, { feature: "", left: "", right: "" }] })}>
               <Plus className="h-3.5 w-3.5" /> Add row
             </button>
+          </div>
+        )}
+        {block.kind === "table" && (
+          <div className="space-y-2">
+            <input className="ed-input" value={block.columns.join(" | ")} placeholder="Columns, separated by | — e.g. Class | Fee per month | Includes"
+              onChange={(e) => onChange({ ...block, columns: e.target.value.split("|").map((x) => x.trim()) })} />
+            <textarea className="ed-input min-h-[120px] font-mono text-xs" value={block.rows.map((r) => r.join(" | ")).join("\n")}
+              placeholder={"One row per line, cells separated by | — e.g.\nNursery–UKG | ₹1,200 | books, activities\nClass 1–5 | ₹1,500 | books, transport"}
+              onChange={(e) => onChange({ ...block, rows: e.target.value.split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((r) => r.some(Boolean)) })} />
+            <div className="flex gap-2">
+              <input className="ed-input" value={block.note ?? ""} placeholder="Note under the table (optional)" onChange={(e) => onChange({ ...block, note: e.target.value })} />
+              <select className="ed-input !w-auto" value={block.highlight ?? 1} onChange={(e) => onChange({ ...block, highlight: Number(e.target.value) })} title="Bold column">
+                {block.columns.map((c, i) => <option key={i} value={i}>Bold: {c || `col ${i + 1}`}</option>)}
+              </select>
+            </div>
+          </div>
+        )}
+        {block.kind === "form" && (
+          <div className="space-y-2">
+            {block.fields.map((f, i) => {
+              const setF = (patch: Partial<typeof f>) => { const fields = block.fields.slice(); fields[i] = { ...f, ...patch }; onChange({ ...block, fields }); };
+              return (
+                <div key={f.key} className="rounded-lg border border-border p-2 space-y-2">
+                  <div className="flex gap-2">
+                    <input className="ed-input" value={f.label} placeholder="Field label, e.g. Child's name" onChange={(e) => setF({ label: e.target.value })} />
+                    <select className="ed-input !w-auto" value={f.type} onChange={(e) => setF({ type: e.target.value as typeof f.type })}>
+                      {(["text", "phone", "email", "select", "date", "textarea"] as const).map((k) => <option key={k} value={k}>{k}</option>)}
+                    </select>
+                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={!!f.required} onChange={(e) => setF({ required: e.target.checked })} /> req.</label>
+                    <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, fields: block.fields.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
+                  </div>
+                  {f.type === "select" && <input className="ed-input" value={(f.options ?? []).join(", ")} placeholder="Choices, separated by commas" onChange={(e) => setF({ options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />}
+                </div>
+              );
+            })}
+            <button className="ed-add" onClick={() => onChange({ ...block, fields: [...block.fields, { key: `f${Date.now().toString(36)}`, label: "", type: "text" }] })}><Plus className="h-3.5 w-3.5" /> Add field</button>
+            <div className="flex gap-2">
+              <input className="ed-input" value={block.button ?? ""} placeholder="Button text, e.g. Send enquiry" onChange={(e) => onChange({ ...block, button: e.target.value })} />
+              <input className="ed-input" value={block.note ?? ""} placeholder="Note under the button (optional)" onChange={(e) => onChange({ ...block, note: e.target.value })} />
+            </div>
           </div>
         )}
       </div>

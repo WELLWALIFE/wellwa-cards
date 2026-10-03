@@ -138,6 +138,25 @@ export function catalogBlocks(items: ProductItem[], products: SavedProduct[], ti
   return groups;
 }
 
+/* ---------------- the price list ---------------- */
+
+/** "Fees at a glance" / "Price list" / "Tariff": the catalogue's priced items as a table, when at least two carry a
+ *  price (owner's call, 3 Oct 2026: a school's fee structure, a hotel's tariff, a gym's plans in one clean table). */
+export function priceTable(items: ProductItem[], category: string, catalog: string, lang: Lang): CardBlock | null {
+  const priced = items.filter((i) => (i.price ?? "").trim());
+  if (priced.length < 2) return null;
+  const title = catalog === "courses" ? T(lang, "Fees at a glance", "फ़ीस एक नज़र में")
+    : category === "hotel" ? T(lang, "Tariff", "किराया")
+    : catalog === "plans" ? T(lang, "Plans & prices", "प्लान और दाम")
+    : catalog === "treatments" || catalog === "services" ? T(lang, "Charges", "चार्ज")
+    : T(lang, "Price list", "दाम की सूची");
+  const what = catalog === "courses" ? T(lang, "Class / course", "कक्षा / कोर्स") : category === "hotel" ? T(lang, "Room", "कमरा") : catalog === "menu" ? T(lang, "Dish", "डिश") : catalog === "plans" ? T(lang, "Plan", "प्लान") : catalog === "treatments" || catalog === "services" ? T(lang, "Service", "सेवा") : T(lang, "Item", "आइटम");
+  const columns = [what, T(lang, "Price", "दाम"), T(lang, "Includes", "शामिल")];
+  const rows = priced.slice(0, 20).map((i) => [i.name, i.price ?? "", (i.features ?? []).slice(0, 2).join(", ") || (i.desc ?? "").slice(0, 60)]);
+  const anyInc = rows.some((r) => r[2]);
+  return { id: uid(), kind: "table", title, columns: anyInc ? columns : columns.slice(0, 2), rows: anyInc ? rows : rows.map((r) => r.slice(0, 2)), highlight: 1, note: T(lang, "Prices may change; message us to confirm.", "दाम बदल सकते हैं; पक्का करने के लिए मैसेज करें।") };
+}
+
 /* ---------------- the join / admissions page ---------------- */
 
 const DOCUMENTS: Record<string, { en: string[]; hi: string[] }> = {
@@ -171,12 +190,26 @@ export function joinPage(opts: { category: string; facts: CardFacts; trade: Trad
   blocks.push({ id: uid(), kind: "highlights", title: T(lang, "Documents needed", "ज़रूरी दस्तावेज़"), items: (lang === "hi" ? docs.hi : docs.en).map((d) => `📄 ${d}`) });
   if (opts.offerText) blocks.push({ id: uid(), kind: "offer", title: T(lang, "Admission offer", "एडमिशन ऑफ़र"), text: opts.offerText, code: "", expires: "" });
   if (opts.hours) blocks.push({ id: uid(), kind: "hours", title: T(lang, "Enquiry timings", "पूछताछ का समय"), rows: opts.hours.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 7).map((day) => ({ day, time: "" })) });
+  // The enquiry form with the fields an admission really needs; a submission is a lead in the CRM.
+  const classOptions = (() => {
+    const v = answer(facts, category === "school" ? "classes" : category === "playschool" ? "programmes" : category === "coaching" ? "classes" : "courses");
+    if (category === "school" && v[0] && STAGES_FOR[v[0]]) return STAGES.filter((s) => STAGES_FOR[v[0]].includes(s.key)).map((s) => T(lang, s.en, s.hi));
+    return v.map((x) => hiLabel(category, category === "playschool" ? "programmes" : category === "coaching" ? "classes" : "courses", x, lang));
+  })();
   blocks.push({
-    id: uid(), kind: "contact",
+    id: uid(), kind: "form",
     title: admissions ? T(lang, "Admission enquiry", "एडमिशन की पूछताछ") : T(lang, "Enquire about a batch", "बैच के बारे में पूछें"),
+    fields: [
+      { key: "name", label: admissions ? T(lang, "Parent's name", "अभिभावक का नाम") : T(lang, "Your name", "आपका नाम"), type: "text", required: true },
+      { key: "phone", label: T(lang, "Mobile / WhatsApp", "मोबाइल / WhatsApp"), type: "phone", required: true },
+      ...(admissions ? [{ key: "child", label: T(lang, "Child's name and age", "बच्चे का नाम और उम्र"), type: "text" as const }] : []),
+      ...(classOptions.length ? [{ key: "class", label: admissions ? T(lang, "Class wanted", "कौन सी कक्षा") : T(lang, "Course / batch", "कोर्स / बैच"), type: "select" as const, options: classOptions }] : [{ key: "class", label: admissions ? T(lang, "Class wanted", "कौन सी कक्षा") : T(lang, "What do you want to learn?", "क्या सीखना है?"), type: "text" as const }]),
+      { key: "message", label: T(lang, "Anything else (optional)", "और कुछ (optional)"), type: "textarea" },
+    ],
+    button: admissions ? T(lang, "Send admission enquiry", "एडमिशन की पूछताछ भेजें") : T(lang, "Send enquiry", "पूछताछ भेजें"),
     note: admissions
-      ? T(lang, "Tell us the child's age and the class you want — we reply on WhatsApp with seats, fees and a visit time.", "बच्चे की उम्र और कौन सी कक्षा चाहिए बताएँ — सीट, फ़ीस और विज़िट का समय हम WhatsApp पर बताएँगे।")
-      : T(lang, "Tell us what you want to learn and your free hours — we reply on WhatsApp with the batch and fees.", "क्या सीखना है और कब समय है बताएँ — बैच और फ़ीस हम WhatsApp पर बताएँगे।"),
+      ? T(lang, "We reply on WhatsApp with seats, fees and a visit time.", "सीट, फ़ीस और विज़िट का समय हम WhatsApp पर बताएँगे।")
+      : T(lang, "We reply on WhatsApp with the batch and fees.", "बैच और फ़ीस हम WhatsApp पर बताएँगे।"),
   });
   return { id: uid(), slug: admissions ? "admissions" : "join", label, blocks };
 }

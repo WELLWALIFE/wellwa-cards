@@ -101,7 +101,19 @@ export type CardBlock =
   | { id: string; kind: "cta"; title: string; body?: string; joinUrl: string; joinLabel: string; referralCode: string }
   | { id: string; kind: "compare"; title: string; leftLabel: string; rightLabel: string; rows: CompareRow[] }
   /** Wide picture tiles with a name and a line under each — templates, branches, brands, projects. A tile with a url opens it. */
-  | { id: string; kind: "showcase"; title: string; items: ShowcaseItem[] };
+  | { id: string; kind: "showcase"; title: string; items: ShowcaseItem[] }
+  /** A price list / fee structure / tariff: columns and rows of text; `highlight` = the column shown bold (the price). */
+  | { id: string; kind: "table"; title: string; columns: string[]; rows: string[][]; note?: string; highlight?: number }
+  /** An enquiry / admission / booking form of the owner's own fields; a submission is a lead. */
+  | { id: string; kind: "form"; title: string; fields: FormField[]; button?: string; note?: string };
+
+export interface FormField {
+  key: string;
+  label: string;
+  type: "text" | "phone" | "email" | "select" | "date" | "textarea";
+  options?: string[];
+  required?: boolean;
+}
 
 export interface ShowcaseItem {
   imageUrl: string;
@@ -141,8 +153,12 @@ export interface SiteStyle {
   /** Font pair key ("modern", "elegant", …); unset = the card look's fonts. */
   font?: string;
   /** grid = a mosaic of product photos beside the words (shops); person = the owner's portrait (professionals). */
-  hero?: "split" | "photo" | "stage" | "minimal" | "grid" | "person";
+  /** editorial = a full-bleed banner with the headline low and large (needs a banner); marquee = a centred headline
+   *  over a slowly moving strip of photos (needs four). */
+  hero?: "split" | "photo" | "stage" | "minimal" | "grid" | "person" | "editorial" | "marquee";
   radius?: "sharp" | "soft" | "round";
+  /** How much the page moves: none (still), calm (sections rise in once), lively (floating pictures, moving strip). */
+  motion?: "none" | "calm" | "lively";
   /** The hero's background pattern (src/lib/brand-identity.ts); unset = dots. */
   pattern?: "none" | "dots" | "waves" | "grid" | "diagonal" | "blobs" | "rings";
   /** How sections are laid out when the designer (site-designer.ts) or the owner chose; unset = decided from the

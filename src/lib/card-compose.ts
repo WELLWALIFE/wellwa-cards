@@ -12,7 +12,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade-questions";
-import { answerCatalog, catalogBlocks, catalogTitle, joinPage, servicesTitle } from "@/lib/trade-pages";
+import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
 import { monogramUrl } from "@/lib/brand-identity";
 import type { TradeData } from "@/lib/trade-data/types";
 import {
@@ -493,8 +493,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // courses — from the trade's answers (trade-pages.ts). With products: in the owner's own categories.
   const answerItems: ProductItem[] = items.length || personal ? [] : answerCatalog(setup.category, facts, lang);
   const catalogItems = items.length ? items : answerItems;
+  // …and under them the price list — fees, tariff, charges — when at least two items carry a price.
+  const table = catalogItems.length ? priceTable(catalogItems, setup.category, recipe.catalog, lang) : null;
   const productPage: CardPage | null = catalogItems.length
-    ? { id: uid(), slug: "products", label: t.productsPage, blocks: items.length ? catalogBlocks(items, input.products.slice(0, 12), t.products, lang) : [{ id: uid(), kind: "product", title: t.products, items: answerItems }] }
+    ? { id: uid(), slug: "products", label: t.productsPage, blocks: [...(items.length ? catalogBlocks(items, input.products.slice(0, 12), t.products, lang) : [{ id: uid(), kind: "product" as const, title: t.products, items: answerItems }]), ...(table ? [table] : [])] }
     : null;
   // Services get their own page whenever there are enough of them — next to the products page for a shop, as the
   // main page for a service trade.

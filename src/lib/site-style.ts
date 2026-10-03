@@ -160,6 +160,8 @@ export const HERO_LAYOUTS: { key: HeroLayout; name: string; hi: string; blurb: s
   { key: "minimal", name: "Minimal", hi: "मिनिमल", blurb: "Light and calm — dark text on a soft tint" },
   { key: "grid", name: "Product grid", hi: "प्रोडक्ट ग्रिड", blurb: "Words left, a mosaic of your product photos right" },
   { key: "person", name: "Portrait", hi: "पोर्ट्रेट", blurb: "Words left, your photo right — doctors, CAs, coaches" },
+  { key: "editorial", name: "Editorial", hi: "एडिटोरियल", blurb: "Your banner full-bleed, the headline low and large, facts in a glass card — hotels, schools, premium" },
+  { key: "marquee", name: "Marquee", hi: "मार्की", blurb: "Headline centred over a slowly moving strip of your photos — shops, food, studios" },
 ];
 export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolean; cover: boolean }): HeroLayout {
   if (style?.hero) return style.hero;
@@ -257,6 +259,7 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   const lay = cleanLayouts(o.layouts);
   if (lay) out.layouts = lay;
   if (typeof o.pattern === "string" && (["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(o.pattern)) out.pattern = o.pattern as SiteStyle["pattern"];
+  if (typeof o.motion === "string" && (["none", "calm", "lively"] as string[]).includes(o.motion)) out.motion = o.motion as SiteStyle["motion"];
   return out;
 }
 

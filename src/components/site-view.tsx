@@ -19,6 +19,7 @@ import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
+import { FormBlock } from "@/components/form-block";
 import { patternCss } from "@/lib/brand-identity";
 import { trackView, trackClick } from "@/lib/track";
 import { tint } from "@/lib/color";
@@ -191,12 +192,17 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // cards keep today's overlay, which their text-heavy banners were designed under.
   const lightHero = !!card.coverUrl && !isCuratedArt(card.coverUrl) && !!card.lead;
   const mosaic = productPhotos(card).slice(0, 4);
+  // The marquee's strip: product photos and the gallery, up to ten, no repeats.
+  const strip = [...new Set([...productPhotos(card), ...card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" ? b.images.map((i) => i.url ?? "") : b.kind === "image" || b.kind === "carousel" ? b.images.map((i) => i.url) : [])).filter(Boolean)])].slice(0, 10);
+  const motion = card.site?.style?.motion ?? "calm";
   const portrait = card.avatarUrl && card.avatarShape !== "square" ? card.avatarUrl : undefined;
   const layout = (() => {
     const l = card.site?.style?.hero;
     // A mosaic needs three product photos and a portrait needs a photo; otherwise the next best shape.
     if (l === "grid" && mosaic.length < 3) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
     if (l === "person" && !portrait) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
+    if (l === "editorial" && !card.coverUrl) return heroImg ? "split" : "stage";
+    if (l === "marquee" && strip.length < 4) return mosaic.length >= 3 ? "grid" : heroImg ? "split" : card.coverUrl ? "photo" : "split";
     if (l) return l === "photo" && !card.coverUrl ? "split" : l;
     // The hero picture is the banner itself (a stock photograph of the trade, put in both slots by the
     // builder): a photograph goes across the top, never into a white product frame.
@@ -288,8 +294,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `.site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px} .site.js [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)} .site.js [data-reveal].in{opacity:1;transform:none} @media (prefers-reduced-motion: reduce){.site.js [data-reveal]{opacity:1;transform:none;transition:none}}` }} />
-    <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="lively"] .hero-pic{animation:floaty 7s ease-in-out infinite} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px} .site.js [data-reveal]{opacity:0;transform:translateY(18px);transition:opacity .7s cubic-bezier(.2,.7,.2,1),transform .7s cubic-bezier(.2,.7,.2,1)} .site.js [data-reveal].in{opacity:1;transform:none} @media (prefers-reduced-motion: reduce){.site.js [data-reveal]{opacity:1;transform:none;transition:none}}` }} />
+    <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
       {/* Lifted theme token: the raw brand colour as text fails contrast on dark
           surfaces, so text/icons use --tc which is lightened in dark mode. */}
       <style>{`.site{--tc:${theme}} @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .site{--tc:color-mix(in srgb, ${theme} 62%, white)}} :root[data-theme="dark"] .site{--tc:color-mix(in srgb, ${theme} 62%, white)}`}</style>
@@ -362,6 +368,54 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       <main className="flex-1 pb-14 md:pb-0">
         {isHome ? (
           <>
+          {layout === "editorial" || layout === "marquee" ? (
+          <section className="relative overflow-hidden" data-reveal>
+            {layout === "editorial" ? (
+              <div className="relative min-h-[620px] md:min-h-[720px] flex items-end">
+                <Img src={card.coverUrl!} alt="" className="absolute inset-0 h-full w-full object-cover hero-pic" priority sizes="100vw" />
+                <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--p-deep) 25%, transparent) 0%, transparent 35%, color-mix(in srgb, var(--p-deep) 92%, transparent) 100%)" }} />
+                <div className="relative mx-auto w-full max-w-6xl px-6 pb-14 pt-40 md:pb-20 grid gap-8 md:grid-cols-[1.4fr_1fr] md:items-end" style={{ color: pal.ink }}>
+                  <div className="animate-rise">
+                    {eyebrowRole && <span className="inline-block rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase backdrop-blur">{t(eyebrowRole)}</span>}
+                    <h1 className="mt-5 text-[44px] md:text-[72px] leading-[0.98] tracking-tight">{t(hero?.headline || card.company || card.name)}</h1>
+                    {(hero?.sub || card.tagline) && <p className="mt-5 max-w-[52ch] text-lg md:text-xl leading-relaxed opacity-90">{t(hero?.sub || card.tagline)}</p>}
+                    <div className="mt-8 flex flex-wrap gap-3">
+                      {!!wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-wa")} className={`${BTN} px-6 py-3 text-[15px] ${FOCUS}`}><MessageCircle className="h-5 w-5" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
+                      {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-6 py-3 text-[15px] font-semibold backdrop-blur ${FOCUS}`}><Phone className="h-5 w-5" /> {t("Call")}</a>}
+                    </div>
+                  </div>
+                  {facts.length > 0 && (
+                    <div className="animate-rise rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-md md:justify-self-end md:min-w-[280px]" style={{ animationDelay: "120ms" }}>
+                      <ul className="divide-y divide-white/15">{facts.slice(0, 4).map((f) => <li key={f.label} className="flex items-baseline justify-between gap-4 py-2.5"><span className="text-[22px] font-bold leading-none">{f.value}</span><span className="text-[12px] opacity-85 text-right">{f.label}</span></li>)}</ul>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="relative pt-20 pb-10 md:pt-24" style={{ color: heroInk, background: `radial-gradient(60% 80% at 50% 0%, color-mix(in srgb, var(--p-glow) 50%, transparent), transparent 60%), var(--p-deep)` }}>
+                <div aria-hidden="true" className="absolute inset-0 opacity-50" style={{ ...patternCss(card.site?.style?.pattern ?? "dots", "#ffffff"), maskImage: "linear-gradient(180deg, black, transparent 70%)", WebkitMaskImage: "linear-gradient(180deg, black, transparent 70%)" }} />
+                <div className="relative mx-auto max-w-[820px] px-6 text-center animate-rise">
+                  {eyebrowRole && <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: "var(--p-accent)" }}>{t(eyebrowRole)}</p>}
+                  <h1 className="mt-4 text-[40px] md:text-[64px] leading-[1.02] tracking-tight">{t(hero?.headline || card.company || card.name)}</h1>
+                  {(hero?.sub || card.tagline) && <p className="mx-auto mt-5 max-w-[52ch] text-lg md:text-xl leading-relaxed opacity-90">{t(hero?.sub || card.tagline)}</p>}
+                  <div className="mt-8 flex flex-wrap justify-center gap-3">
+                    {!!wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-wa")} className={`${BTN} px-6 py-3 text-[15px] ${FOCUS}`}><MessageCircle className="h-5 w-5" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
+                    {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-6 py-3 text-[15px] font-semibold ${FOCUS}`}><Phone className="h-5 w-5" /> {t("Call")}</a>}
+                  </div>
+                </div>
+                <div className="relative mt-12 overflow-hidden" style={{ maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)" }}>
+                  <div className={`site-marquee flex w-max gap-4 px-2 ${motion === "none" ? "" : ""}`}>
+                    {[...strip, ...strip].map((u, i) => (
+                      <div key={`${u}-${i}`} className={`h-[200px] md:h-[260px] shrink-0 overflow-hidden rounded-2xl bg-white/95 shadow-float ${i % 3 === 1 ? "w-[300px] md:w-[380px]" : "w-[200px] md:w-[240px]"} ${i % 2 ? "translate-y-3" : ""}`}>
+                        <Img src={u} alt="" className="h-full w-full object-cover" eager={i < 4} sizes="380px" />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+          ) : (
           <section className={`relative overflow-hidden ${layout === "stage" ? "" : "min-h-[560px] flex items-center"}`} style={{ color: heroInk, ...(layout === "minimal"
             ? { background: `radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--p-glow) 22%, transparent), transparent 60%), var(--p-soft)` }
             : { background: `radial-gradient(60% 80% at 85% 15%, color-mix(in srgb, var(--p-glow) 55%, transparent), transparent 62%), radial-gradient(50% 70% at 5% 95%, color-mix(in srgb, var(--p-mid) 65%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep) 0%, color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)) 100%)` }) }}>
@@ -449,6 +503,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               {!heroImg && layout === "stage" && <div className="pb-20" />}
             </div>
           </section>
+          )}
 
           {/* ---- trust strip: numbers the card itself carries ---- */}
           {facts.length >= 3 && (
@@ -1659,6 +1714,27 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor 
                 : <div key={i} className={cls}>{inner}</div>;
             })}
           </div>
+        </Section>
+      );
+    case "table": {
+      const hl = block.highlight ?? 1;
+      const rows = block.rows.filter((r) => r.some(Boolean));
+      return (
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-card">
+            <table className="w-full text-[15px]">
+              <thead><tr>{block.columns.map((c, i) => <th key={i} className={`p-4 text-left font-semibold ${i === hl ? "" : "text-muted"}`} style={i === hl ? { background: "var(--grad)", color: ink } : { background: "var(--p-soft)" }}>{t(c)}</th>)}</tr></thead>
+              <tbody>{rows.map((r, i) => <tr key={i} className="border-t border-border">{block.columns.map((_, j) => <td key={j} className={`p-4 align-top ${j === 0 ? "font-semibold" : ""} ${j === hl ? "font-bold" : j > 0 ? "text-muted" : ""}`} style={j === hl ? { color: "var(--tc)" } : undefined}>{t(r[j] ?? "")}</td>)}</tr>)}</tbody>
+            </table>
+          </div>
+          {block.note && <p className="mt-3 text-xs text-muted">{t(block.note)}</p>}
+        </Section>
+      );
+    }
+    case "form":
+      return (
+        <Section index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+          <div className="rounded-3xl border border-border bg-surface p-6 md:p-8 shadow-card"><FormBlock block={block} username={card.username} theme={theme} t={t} /></div>
         </Section>
       );
     case "compare":

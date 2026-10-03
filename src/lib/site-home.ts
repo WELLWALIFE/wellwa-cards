@@ -27,6 +27,8 @@ export function isEmptyBlock(b: CardBlock): boolean {
   if ("rows" in b && Array.isArray(b.rows) && b.rows.length === 0) return true;
   if ((b.kind === "image" || b.kind === "carousel" || b.kind === "gallery") && !b.images.some((i) => i.url)) return true;
   if (b.kind === "video" && !b.url) return true;
+  if (b.kind === "form" && !b.fields.some((f) => f.label)) return true;
+  if (b.kind === "table" && !b.rows.some((r) => r.some(Boolean))) return true;
   if (b.kind === "about" && !(b.body ?? "").trim() && !b.imageUrl) return true;
   if (b.kind === "location" && !(b.address ?? "").trim() && !mapOk(b.mapUrl)) return true;
   return false;
@@ -143,7 +145,7 @@ export function sectionLabel(s: HomeSection, lang?: string): string {
       about: ["About", "परिचय"], highlights: ["Highlights", "खासियत"], services: ["Services", "सेवाएँ"], product: ["Products", "प्रोडक्ट"], gallery: ["Photos", "फ़ोटो"],
       image: ["Picture", "चित्र"], carousel: ["Pictures", "चित्र"], video: ["Video", "वीडियो"], pdf: ["PDF", "PDF"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
       hours: ["Timings", "समय"], appointment: ["Appointment", "अपॉइंटमेंट"], location: ["Location", "पता"], offer: ["Offer", "ऑफ़र"], contact: ["Contact", "संपर्क"], cta: ["Call to action", "बटन"],
-      compare: ["Comparison", "तुलना"], showcase: ["Showcase", "शोकेस"],
+      compare: ["Comparison", "तुलना"], showcase: ["Showcase", "शोकेस"], table: ["Price list", "दाम की सूची"], form: ["Form", "फ़ॉर्म"],
     };
     const k = kind[b.kind]?.[h ? 1 : 0] ?? b.kind;
     return title && title.toLowerCase() !== k.toLowerCase() ? `${title} · ${k}` : k || title;

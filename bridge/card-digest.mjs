@@ -29,6 +29,8 @@ function blockLines(b) {
       return `  - ${bits.join(" — ")}`;
     })] : [];
     case "faq": return items.length ? [`${title || "FAQ"}:`, ...items.map((f) => `  Q: ${clean(f.q)}\n  A: ${clean(f.a)}`)] : [];
+    case "table": { const cols = (b.columns ?? []).map(clean); const rows = (b.rows ?? []).filter((r) => r.some(Boolean)).map((r) => r.map((c, i) => `${cols[i] ? `${cols[i]}: ` : ""}${clean(c)}`).join(", ")); return rows.length ? [`${title || "Price list"}:`, ...rows.map((r) => `  - ${r}`), ...(b.note ? [`  (${clean(b.note)})`] : [])] : []; }
+    case "form": return [`${title || "Form"}: visitors can fill it on the website (${(b.fields ?? []).map((f) => clean(f.label)).filter(Boolean).join(", ")}); a submission reaches the owner as a lead.`];
     case "hours": { const rows = (b.rows ?? []).map((r) => `${clean(r.day)} ${clean(r.time)}`.trim()).filter(Boolean); return rows.length ? [`${title || "Timings"}: ${rows.join("; ")}`] : []; }
     case "location": return b.address || b.mapUrl ? [`${title || "Address"}: ${clean(b.address)}${b.mapUrl ? ` (map: ${clean(b.mapUrl)})` : ""}`] : [];
     case "offer": return b.text || b.code ? [`${title || "Offer"}: ${clean(b.text)}${b.code ? ` — code ${clean(b.code)}` : ""}${b.expires ? ` — till ${clean(b.expires)}` : ""}`] : [];
