@@ -161,7 +161,7 @@ export default function CardTab() {
         <div className="rounded-2xl border-2 border-good/40 bg-good/10 p-4 space-y-3">
           <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 className="h-6 w-6 text-good" /> {lang === "hi" ? "आपका digital card live है" : "Your digital card is live"}</p>
           <p className="text-sm text-muted">Share the link anywhere. Want the same link to open as a full website on computers? That comes with Growth.</p>
-          <Link href="/poster/website" className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-base font-semibold">
+          <Link href="/poster/site" className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-base font-semibold">
             <Globe className="h-5 w-5" /> See your website preview
           </Link>
           <Link href="/poster" className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-base font-semibold text-white">

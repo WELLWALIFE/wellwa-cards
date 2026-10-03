@@ -43,7 +43,7 @@ const nav: { section: string; items: NavItem[] }[] = [
     items: [
       { href: "/dashboard", label: "Overview", icon: LayoutDashboard },
       { href: "/cards", label: "My V-Cards", icon: CreditCard },
-      { href: "/poster/website", label: "Website", icon: Globe },
+      { href: "/poster/site", label: "Card & Website", icon: Globe },
     ],
   },
   {

@@ -24,8 +24,8 @@ export default function WelcomePage() {
       <div>
         <h1 className="text-2xl font-bold">{hi ? `बधाई हो${name ? `, ${name}` : ""}!` : `Congratulations${name ? `, ${name}` : ""}!`}</h1>
         <p className="mt-2 text-sm text-muted">
-          {hi ? "आपका Shubhora account बन गया। अब सिर्फ़ अपनी profile भरिए — आपकी website और V-Card अपने आप बन जाएँगे।"
-            : "Your Shubhora account is ready. Now just fill your profile — your website and V-Card are made from it."}
+          {hi ? "आपकी FREE website + digital card — 5 मिनट में। बस profile भरिए, दोनों अपने आप बन जाएँगे।"
+            : "Your FREE website + digital card — in 5 minutes. Just fill your profile; both are made from it."}
         </p>
       </div>
       <ol className="space-y-1.5 text-left text-sm">
@@ -38,7 +38,7 @@ export default function WelcomePage() {
       </ol>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? "Profile भरें (5 मिनट)" : "Fill my profile (5 min)"} <ArrowRight className="h-5 w-5" />
+          {hi ? "शुरू करें (5 मिनट)" : "Start (5 min)"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}

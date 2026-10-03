@@ -6,6 +6,7 @@ import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
 import { api, isLoggedIn, currentProfileId, setCurrentProfileId, captureRef, PERSONAS, type Profile, type Poster, type Quota } from "@/lib/poster-client";
 import { PosterCard } from "@/components/poster/poster-card";
+import { PremiumCard } from "@/components/poster/premium-lock";
 import { PremiumLine } from "@/components/poster/premium-line";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { Guide } from "@/components/poster/guide";
@@ -143,11 +144,13 @@ export default function TodayPage() {
       {/* The three links people share most — card, LEFT join, RIGHT join — one WhatsApp tap each. */}
       <ShareLinks compact allHref="/poster/share" />
       {/* One tap to change the card (owner's call, 25 Sep 2026 — it used to be Home → My V-Card → Edit). */}
-      <Link href="/poster/card/edit" className="flex items-center gap-2 rounded-xl border-2 border-brand/40 bg-brand-soft/50 px-3 py-2.5 text-sm">
+      <Link href="/poster/site" className="flex items-center gap-2 rounded-xl border-2 border-brand/40 bg-brand-soft/50 px-3 py-2.5 text-sm">
         <Pencil className="h-4 w-4 shrink-0 text-brand" />
-        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Edit my V-Card" : "मेरा V-Card edit करें"}</span>
+        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Card & Website — share, edit" : "Card & Website — share, edit"}</span>
         <span className="text-xs font-semibold text-brand-ink">→</span>
       </Link>
+      {/* Premium, visible from the first day (owner's call, 3 Oct 2026: "subscription ka button kahin nahi tha"). */}
+      {quota?.plan === "free" && <PremiumCard compact />}
       {/* Connections: WhatsApp, Facebook, Instagram, Google — one place, always one tap from Home. */}
       <Link href="/poster/connect" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
         <Link2 className="h-4 w-4 shrink-0 text-brand" />
@@ -198,7 +201,7 @@ export default function TodayPage() {
           <p className="text-sm text-ink mt-1">{lang === "en" ? "Your free plan includes the digital V-Card and its leads. Upgrade to get a fresh poster and status video every morning, auto-posted to WhatsApp Status, Facebook and Instagram." : "Free plan me digital V-Card aur uske leads hain. Upgrade karo — roz subah naya poster aur status video, WhatsApp Status, Facebook, Instagram par apne-aap."}</p>
           <div className="mt-3 flex gap-2">
             <Link href="/poster/plan" className="inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{lang === "en" ? "Upgrade — see plans" : "Upgrade karo — plans dekho"}</Link>
-            <Link href="/poster/card" className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold">{lang === "en" ? "My V-Card" : "Mera V-Card"}</Link>
+            <Link href="/poster/site" className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold">{lang === "en" ? "My V-Card" : "Mera V-Card"}</Link>
           </div>
         </div>
       )}
@@ -227,7 +230,7 @@ export default function TodayPage() {
         ? <Guide hi="ये कल का poster है — सुबह 4 बजे Facebook/Status पर अपने-आप जाएगा। कुछ बदलना हो तो poster पर “बदलें” दबाएँ।" en="This is tomorrow's poster — it goes to Facebook/Status by itself at 4 AM. To change it, tap Edit on the poster." />
         : <Guide hi="ये आज का poster है — नीचे के हरे button से WhatsApp पर भेजें। Facebook/Status पर सुबह 4 बजे अपने-आप जाता है।" en="This is today's poster — send it on WhatsApp with the green button. It goes to Facebook/Status automatically at 4 AM." />)}
       <div className="grid grid-cols-4 gap-2 text-center text-[11px] font-medium">
-        {[{ href: "/poster/video", l: t.quickVideo, I: Clapperboard }, { href: "/poster/calendar", l: "Calendar", I: MessageSquare }, { href: "/poster/card", l: t.quickCard, I: CreditCard }, { href: "/poster/connect", l: lang === "en" ? "Connect" : "जोड़ें", I: Link2 }].map((q) => (
+        {[{ href: "/poster/video", l: t.quickVideo, I: Clapperboard }, { href: "/poster/calendar", l: "Calendar", I: MessageSquare }, { href: "/poster/site", l: t.quickCard, I: CreditCard }, { href: "/poster/connect", l: lang === "en" ? "Connect" : "जोड़ें", I: Link2 }].map((q) => (
           <Link key={q.href} href={q.href} className="rounded-xl border border-border bg-surface py-2.5 flex flex-col items-center gap-1"><q.I className="h-5 w-5 text-brand" />{q.l}</Link>
         ))}
       </div>

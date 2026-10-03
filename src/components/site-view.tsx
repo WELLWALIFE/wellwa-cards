@@ -133,7 +133,7 @@ function useReveal(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]
 export type SiteUpdate = { date: string; url: string; title: string; caption?: string | null };
 const UPDATES = "updates";
 
-export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string } | null; updates?: SiteUpdate[];
+export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null; updates?: SiteUpdate[];
   /** Pages that are reachable at their own address but are not in the menu — a product's own page. */
   unlisted?: string[] }) {
   // The website wears its own design: palette (or the card's colour), fonts (or the card look's), corners.
@@ -593,7 +593,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
       {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
-      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
+      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
     </div>
     </LayoutCtx.Provider></TranslateCtx.Provider>
   );

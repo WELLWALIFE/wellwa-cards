@@ -38,9 +38,9 @@ export function useJourney(refreshKey?: string) {
         { key: "business", title: "Your business", sub: "Have a website? Its link fills name, logo and products; else just trade, name and city", href: "/poster/onboard?step=site", premium: false, done: !!(meta.business?.category || meta.business?.name) },
         { key: "products", title: "Products or services", sub: "Photos and prices — shown on your V-Card, website and posters", href: "/poster/products", premium: false, done: (products?.data.products?.length ?? 0) > 0 },
         // Done only when a real card exists — not an untouched "Your Name" draft or an empty one-tap card.
-        { key: "card", title: "Your V-Card", sub: "Your digital visiting card — the AI makes it from your details", href: "/poster/card", premium: false, done: cards.some((c) => !isThinCard(c)) },
+        { key: "card", title: "Your V-Card", sub: "Your digital visiting card — the AI makes it from your details", href: "/poster/site", premium: false, done: cards.some((c) => !isThinCard(c)) },
         // The website is the same card shown on computers: publishing the V-Card turns it on.
-        { key: "website", title: "Your website", sub: "Turns on with your V-Card — have a look", href: "/poster/website", premium: false, done: cards.some((c) => !!c.site?.enabled) },
+        { key: "website", title: "Your website", sub: "Turns on with your V-Card — have a look", href: "/poster/site", premium: false, done: cards.some((c) => !!c.site?.enabled) },
         { key: "poster", title: "Daily posters", sub: "A new poster with your name every morning", href: "/poster", premium: false, done: !!profile },
         { key: "social", title: "Auto-post to Facebook & Instagram", sub: "Your posters post themselves", href: "/poster/social", premium: true, done: !!(soc?.data.accounts ?? []).find((a) => a.provider === "facebook" && a.is_active) },
         { key: "whatsapp", title: "WhatsApp AI assistant", sub: "Answers customers 24×7 and saves every lead", href: "/poster/leads", premium: true, done: wa?.state === "connected" },

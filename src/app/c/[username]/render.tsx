@@ -84,7 +84,8 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
       images: [{ url: ogImage, width: 1200, height: 630, alt: card.company || card.name }],
     },
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-    robots: { index: card.active !== false && (!slug || !!page || updates), follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    // Free plan: live, shareable, but not on Google (owner's call, 3 Oct 2026: Google is Premium).
+    robots: { index: card.active !== false && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
     ...(card.seo?.googleVerify ? { verification: { google: card.seo.googleVerify.replace(/^.*content="([^"]+)".*$/, "$1").trim() } } : {}),
@@ -132,9 +133,10 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // Free plan (or lapsed): the card stays online (its first year free, then ₹1,499 a year — see fetchCardPaused above);
   // the full website and the AI chat need the plan.
   const expired = await fetchCardExpired(card.username);
-  // ?view=site stays open as a preview (the owner sees what the plan gives them); visitors get the website only on a paid plan.
-  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && !expired && !mobile ? "site" : "card";
-  const sitePreviewOnly = view === "site" && expired;
+  // Free or paid, one link, two looks: phones get the card, computers the website (owner's call, 3 Oct 2026: the
+  // free website is a real website — it wears a FREE strip on top and bottom, Premium wears none).
+  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && !mobile ? "site" : "card";
+  const freeSite = view === "site" && expired && !brand;
   const tracking = await fetchCardTracking(card.username);
   const joinHandle = brand ? null : await fetchCardOwnerUsername(card.username);
   const tracked = Boolean(tracking && Object.values(tracking).some(Boolean));
@@ -146,7 +148,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const both = hasShubhoraPage(stored) && !seller;
   const by = joinHandle ?? (both ? card.username : null);
   const shubhora = by && !brand && (expired || both)
-    ? { joinHref: `/signup?by=${encodeURIComponent(by)}`, moreHref: `${linkBase}/shubhora` }
+    ? { joinHref: `/signup?by=${encodeURIComponent(by)}`, moreHref: `${linkBase}/shubhora`, free: expired }
     : null;
 
   const shareUrl = home;
@@ -169,11 +171,11 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
         {ld}
         <CardAppBar />
         {tracking && <CardPixels {...tracking} />}
-        {sitePreviewOnly && (
-          <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[#12144a] px-4 py-2 text-center text-xs text-white">
-            <span><b>Website preview.</b> Right now visitors see your <b className="text-[#ff5252]">FREE</b> card; the full website goes live with the Growth plan.</span>
-            <a href={`${SITE_URL}/poster/plan`} className="rounded-full bg-white px-3 py-1 font-semibold text-[#12144a]">Go live</a>
-          </div>
+        {freeSite && (
+          <a href={joinHandle ? `/signup?by=${encodeURIComponent(joinHandle)}` : "/signup"} className="sticky top-0 z-50 flex items-center justify-center gap-2 bg-[#12144a] px-4 py-1.5 text-center text-[12px] text-white">
+            <span className="rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">FREE</span>
+            <span>Website + digital card by <b>Shubhora</b> · make yours free →</span>
+          </a>
         )}
         <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
         <PixelNotice active={tracked} />

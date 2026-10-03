@@ -132,7 +132,7 @@ export default function BuildCard() {
   const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview">("loading");
   // Step 5 (owner's call, 2 Oct 2026): "Save and continue" opens a page of its own with two tabs — Standard for the
   // free plan, Premium for the paid one — and the build starts from there, never by itself.
-  const [plan, setPlan] = useState<"standard" | "premium">("standard");
+  const [, setPlan] = useState<"standard" | "premium">("standard");
   const [uid, setUid] = useState("");
   /** The person chose "Both — my business and Shubhora" at set-up: their own card is built exactly as usual,
    *  and the Shubhora page is added to it (its own hidden link) when it is published. */
@@ -211,7 +211,7 @@ export default function BuildCard() {
         const u = new URL(window.location.href);
         again = u.searchParams.get("again") === "1";
         flow = u.searchParams.get("flow") === "1";
-        makeNow = u.searchParams.get("make") === "1";
+        makeNow = u.searchParams.get("make") === "1" || flow;
         // ?site=new — the set-up just saved a different website (or role): the site's words lead this build.
         if (u.searchParams.get("site") === "new") siteNew.current = true;
         if (again || u.searchParams.has("site")) { u.searchParams.delete("again"); u.searchParams.delete("site"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
@@ -807,61 +807,46 @@ export default function BuildCard() {
 
 
   if (state === "make") {
-    const tab = (k: "standard" | "premium", label: string, sub: string) => (
-      <button type="button" onClick={() => setPlan(k)} className={`flex-1 rounded-2xl border-2 px-3 py-3 text-left ${plan === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-        <span className="block text-base font-bold">{label}</span>
-        <span className="block text-[11px] text-muted">{sub}</span>
-      </button>
-    );
-    const row = (ok: boolean, text: string) => <li className="flex items-start gap-2 text-sm"><span className={ok ? "text-good" : "text-faint"}>{ok ? "✓" : "—"}</span><span className={ok ? "" : "text-muted"}>{text}</span></li>;
+    const li = (text: string) => <li className="flex items-start gap-2 text-sm"><span className="text-good">✓</span><span>{text}</span></li>;
     return (
       <div className="space-y-4 py-2">
         <ProfileSteps current="make" category={setup?.category} />
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-          <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & V-Card", "मेरी website और V-Card बनाएँ")}</h1>
+          <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
-        <p className="text-sm text-muted">{T("Your profile is saved. Pick how to make it — Standard is free; Premium comes with the Growth plan.", "आपकी profile save हो गई। चुनें कैसे बनाएँ — Standard free है; Premium Growth plan के साथ।")}</p>
-        <div className="flex gap-2">
-          {tab("standard", T("Standard", "Standard"), T("Free", "Free"))}
-          {tab("premium", T("Premium", "Premium"), access.subscribed ? T("Your plan is on", "आपका plan चालू है") : T("Growth plan", "Growth plan"))}
+        <p className="text-sm text-muted">{T("Your profile is saved. One tap makes your website and digital card from it.", "आपकी profile save हो गई। एक tap में उससे आपकी website और digital card बन जाएँगे।")}</p>
+        {/* Free: one button, no wall (owner's call, 3 Oct 2026: "make step easy, warna wo bana hi nahi payega"). */}
+        <div className="space-y-3 rounded-2xl border-2 border-brand/40 bg-brand-soft/30 p-4">
+          <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
+          <ul className="space-y-1">
+            {li(T("Website + digital card on one link, phone and computer", "Website + digital card एक link पर, phone और computer"))}
+            {li(T("Your trade's own look and pages", "आपके काम का अपना look और pages"))}
+            {li(T("Daily poster, leads in your CRM", "रोज़ का poster, leads आपके CRM में"))}
+          </ul>
+          <button type="button" onClick={() => { setPlan("standard"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+            <Sparkles className="h-5 w-5" /> {T("Make my free website", "मेरी free website बनाओ")}
+          </button>
+          <p className="text-center text-[11px] text-muted">{T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
         </div>
-        {plan === "standard" ? (
-          <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-            <ul className="space-y-1.5">
-              {row(true, T("Digital V-Card live on your link (shubhora.com/c/…)", "Digital V-Card आपके link पर live (shubhora.com/c/…)"))}
-              {row(true, T("Website — as a preview on phones", "Website — phone पर preview"))}
-              {row(true, T("Daily poster with your name and number", "रोज़ का poster आपके नाम-नंबर के साथ"))}
-              {row(true, T("Leads from the card saved in your CRM", "Card से आए leads आपके CRM में"))}
-              {row(false, T("Website live on computers and Google", "Website computer और Google पर live"))}
-              {row(false, T("AI assistant on WhatsApp 24×7", "WhatsApp पर AI assistant 24×7"))}
-              {row(false, T("Made-for-you video, own domain", "आपके लिए video, अपना domain"))}
-            </ul>
-            <button type="button" onClick={() => build()} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5" /> {T("Make now — Standard (free)", "अभी बनाएँ — Standard (free)")}
+        <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
+          <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Your plan is on", "आपका plan चालू है") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
+          <ul className="space-y-1">
+            {li(T("No Shubhora tag, website on Google", "Shubhora का tag नहीं, website Google पर"))}
+            {li(T("AI edits — say what to change; your photos, AI pictures when needed", "AI से बदलाव — बस बोल दो; आपकी photos, ज़रूरत हो तो AI pictures"))}
+            {li(T("WhatsApp AI 24×7, auto-post, your own domain", "WhatsApp AI 24×7, auto-post, अपना domain"))}
+          </ul>
+          {access.subscribed ? (
+            <button type="button" onClick={() => { setPlan("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make with Premium", "Premium से बनाओ")}
             </button>
-          </div>
-        ) : (
-          <div className="space-y-3 rounded-2xl border-2 border-brand/40 bg-brand-soft/30 p-4">
-            <ul className="space-y-1.5">
-              {row(true, T("Everything in Standard", "Standard की हर चीज़"))}
-              {row(true, T("Full website live on computers and Google", "पूरी website computer और Google पर live"))}
-              {row(true, T("AI assistant answers customers on WhatsApp 24×7", "WhatsApp पर AI assistant customers को 24×7 जवाब"))}
-              {row(true, T("Made-for-you video, daily Status post", "आपके लिए video, रोज़ Status post"))}
-              {row(true, T("Your own domain (yourshop.com)", "अपना domain (yourshop.com)"))}
-            </ul>
-            {access.subscribed ? (
-              <button type="button" onClick={() => build()} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-                <Sparkles className="h-5 w-5" /> {T("Make now — Premium", "अभी बनाएँ — Premium")}
-              </button>
-            ) : (
-              <button type="button" onClick={() => setPremiumUnlock(true)} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-                <Sparkles className="h-5 w-5" /> {T("Activate the Growth plan → then make", "Growth plan चालू करें → फिर बनाएँ")}
-              </button>
-            )}
-            {!access.subscribed && <p className="text-center text-[11px] text-muted">{T("No plan yet? Make it Standard now — Premium can be turned on later from the same card.", "अभी plan नहीं? Standard बना लें — Premium बाद में इसी card से चालू हो जाएगा।")}</p>}
-          </div>
-        )}
+          ) : (
+            <button type="button" onClick={() => setPremiumUnlock(true)} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Go Premium, then make", "Premium लें, फिर बनाओ")}
+            </button>
+          )}
+        </div>
+        <button type="button" onClick={() => { setState("form"); window.scrollTo({ top: 0 }); }} className="w-full text-center text-sm font-semibold text-brand-ink underline">{T("Advanced (optional): a website you like, the look, check your details →", "Advanced (optional): पसंद की website, look, details check →")}</button>
         {err && <p className="text-sm text-danger">{err}</p>}
         <p className="text-center text-xs text-muted">{T("The AI writes only from your details — no made-up prices or claims.", "AI सिर्फ़ आपकी जानकारी से लिखता है — price या दावे अपने से नहीं बनाता।")}</p>
         {premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("The website goes live on computers, the AI assistant answers customers and a video is made for you. Activate the plan, then tap Make again.", "Website computer पर live होती है, AI assistant ग्राहकों को जवाब देता है और आपके लिए video बनता है। Plan चालू करें, फिर Make दबाएँ।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />}
@@ -871,7 +856,7 @@ export default function BuildCard() {
 
   return (
     <div className="space-y-4 py-2">
-      <ProfileSteps current="details" category={setup?.category} />
+      <ProfileSteps current="make" category={setup?.category} />
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="min-w-0 flex-1 text-xl font-bold">{T("How should your website look?", "Website की पसंद")}</h1>

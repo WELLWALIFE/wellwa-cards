@@ -261,7 +261,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
    *  signs up from this card joins the owner's team without typing anything. Unset on white-label and previews. */
   joinHandle?: string | null;
   /** The Shubhora strip at the foot (free cards, and paid "Both" cards): where its two buttons go. */
-  shubhora?: { joinHref: string; moreHref: string } | null;
+  shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null;
   /** Shubhora partner cards: the "Aapko ye V-Card kaisa laga?" strip that opens the same joining link (see join-nudge.tsx). */
   nudge?: boolean;
   /** Canonical public URL of this card — on a white-label host that is
@@ -530,7 +530,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
       {!expired && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={lang} page={active} />}
       {/* The Shubhora strip — not on the owner's own Shubhora page (that page IS the "know more"). */}
-      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} lang={lang} />}
+      {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={lang} />}
     </div>
     </TranslateCtx.Provider>
   );

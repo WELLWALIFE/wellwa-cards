@@ -95,7 +95,7 @@ export default function PhotosPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/website" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        <Link href="/poster/site" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-lg font-bold flex-1">{T("Photos your website needs", "आपकी website को ये photos चाहिए")}</h1>
       </div>
       <Guide en="Real photos beat stock every time. Take these with your phone in daylight; we put each one in the right place." hi="असली photos stock से हमेशा बेहतर हैं। दिन की रोशनी में phone से लें; हर एक को सही जगह हम लगा देंगे।" />

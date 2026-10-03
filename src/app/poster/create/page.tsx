@@ -2,7 +2,7 @@
 // Create — four doors, not fourteen links. Each door opens its choices on the next step (only where a choice exists).
 import { useState } from "react";
 import Link from "next/link";
-import { Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Globe, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
+import { Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Guide } from "@/components/poster/guide";
 import { useT } from "@/lib/poster-i18n";
@@ -38,10 +38,7 @@ export default function CreateHub() {
       { href: "/poster/photoshoot", I: Camera, t: "Product photoshoot", s: hi ? "1 photo se 4 professional shots" : "1 photo → 4 professional shots", tag: "AI" },
       { href: "/poster/products", I: Gift, t: hi ? "Mere products" : "My products", s: hi ? "Jo posters aur website par dikhenge" : "What your posters and website show" },
     ] },
-    { key: "card", I: CreditCard, t: hi ? "Card & Website" : "Card & Website", s: hi ? "Digital card free · website Growth me · apna domain dono par" : "Digital card free · website with Growth · own domain on both", items: [
-      { href: "/poster/card", I: CreditCard, t: hi ? "Mera digital card" : "My digital card", s: hi ? "Link, QR, apna domain — free" : "Link, QR, your own domain — free", tag: "FREE" },
-      { href: "/poster/website", I: Globe, t: hi ? "Meri website" : "My website", s: hi ? "Same link computer par poori website" : "The same link as a full website on computers", paid: true },
-    ] },
+    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "Ek link — computer par website, phone par card · share, edit, Premium" : "One link — website on computers, card on phones · share, edit, Premium", items: [] },
   ];
 
   const door = doors.find((d) => d.key === open);

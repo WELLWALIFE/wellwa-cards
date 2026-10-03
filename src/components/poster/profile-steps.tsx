@@ -9,12 +9,11 @@ import { useJourney } from "@/lib/journey";
 import { useT } from "@/lib/poster-i18n";
 import { catalogCopyFor } from "@/lib/catalog-copy";
 
-export type ProfileStepKey = "you" | "business" | "products" | "details" | "make";
+export type ProfileStepKey = "you" | "business" | "products" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
   { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&flow=1" },
   { key: "business", en: "Company", hi: "Company", href: "/poster/onboard?step=site" },
   { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
-  { key: "details", en: "Website", hi: "Website", href: "/poster/card/build?flow=1" },
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
 ];
 

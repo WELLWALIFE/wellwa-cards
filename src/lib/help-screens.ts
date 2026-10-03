@@ -88,7 +88,7 @@ const SCREENS: Record<string, HelpScreen> = {
     ],
     mistake: { hi: "price खाली छोड़ना। Price देखकर ही customer WhatsApp करता है।", en: "Leaving the price empty. The price is what makes a customer message you." },
   },
-  "/poster/website": {
+  "/poster/site": {
     title: { hi: "आपकी website", en: "Your website" },
     what: { hi: "ये आपकी website है। computer पर यही link पूरी website खोलता है, phone पर यही आपका card बन जाता है।", en: "This is your website. On a computer this link opens the full site; on a phone the same link is your card." },
     steps: [
@@ -186,7 +186,7 @@ export const GUIDE_TARGETS: { path: string; label: string }[] = [
   { path: "/poster/card/looks", label: "Card looks" },
   { path: "/poster/products", label: "Products" },
   { path: "/poster/testimonials", label: "Customer reviews" },
-  { path: "/poster/website", label: "Website" },
+  { path: "/poster/site", label: "Card & Website" },
   { path: "/poster/create", label: "Today's poster" },
   { path: "/poster/social", label: "Social media" },
   { path: "/poster/connect", label: "Connections (WhatsApp…)" },
