@@ -100,7 +100,8 @@ function firstProductPhoto(card: Card): string | undefined {
 /** One photo per product, in card order (for the hero mosaic). */
 function productPhotos(card: Card): string[] {
   const out: string[] = [];
-  for (const pg of card.pages) for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u && !out.includes(u)) out.push(u); }
+  // Never from a hidden page (the Shubhora page): its plan pictures are not this business's products.
+  for (const pg of card.pages) { if (pg.hidden) continue; for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u && !out.includes(u)) out.push(u); } }
   return out;
 }
 
@@ -254,7 +255,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // The hero already shows the trust chips as pills: printing the same five again as a "Why choose us" section
   // read as a mistake next to the real why-us points below it (seen live, 1 Oct 2026).
   const pilled = pills.length ? new Set(pills.map((x) => x.trim())) : null;
-  const sections: HomeSection[] = (isHome ? homeSections(card, pages) : pageBlocks.map((b) => ({ key: b.id, kind: "block", block: b } as HomeSection)))
+  // The home page pulls previews (products, gallery, reviews, FAQ, visit) from the visible pages only.
+  const sections: HomeSection[] = (isHome ? homeSections(card, pages.filter((p) => !p.hidden)) : pageBlocks.map((b) => ({ key: b.id, kind: "block", block: b } as HomeSection)))
     .filter((s) => !(isHome && pilled && s.kind === "block" && s.block.kind === "highlights"
       && s.block.items.length === pilled.size && s.block.items.every((x) => pilled.has((x ?? "").trim()))));
   const groups: (Exclude<HomeSection, { kind: "block" }> | CardBlock[])[] = [];
@@ -274,7 +276,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const digitsOf = (v: string) => (v ?? "").replace(/\D/g, "").slice(-10);
   const sameNumber = !!wa && !!phone && digitsOf(wa.value) === digitsOf(phone.value);
   const footLinks = sameNumber ? links.filter((l) => l.type !== "phone") : links;
-  const reviewCount = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
+  const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
   const fontHref = design.fonts.href;
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
 

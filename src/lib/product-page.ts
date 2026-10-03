@@ -24,6 +24,7 @@ export function cardProducts(card: Card): { item: ProductItem; slug: string; pag
   const out: { item: ProductItem; slug: string; page: string }[] = [];
   const seen = new Set<string>();
   for (const pg of card.pages) {
+    if (pg.hidden) continue;   // the Shubhora page's plans are not this business's products
     for (const b of pg.blocks) {
       if (b.kind !== "product") continue;
       for (const item of b.items) {

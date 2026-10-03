@@ -35,10 +35,13 @@ export function isEmptyBlock(b: CardBlock): boolean {
 const hi = (card: Card) => card.language === "hi";
 const L = (card: Card, en: string, h: string) => (hi(card) ? h : en);
 
-/** The first page (in nav order) carrying a block of `kind`, skipping the home page. */
+/** The first page (in nav order) carrying a block of `kind`, skipping the home page — and any hidden page: the
+ *  Shubhora page on a "both" card (and the one every card carries for the strip's "Know more") is for a different
+ *  audience, and pulling its plans onto a school's home page as "featured" is how Shubhora's packages reached
+ *  every business website (3 Oct 2026). */
 function find<K extends CardBlock["kind"]>(pages: CardPage[], home: CardPage | undefined, kind: K): { page: CardPage; block: Extract<CardBlock, { kind: K }> } | null {
   for (const pg of pages) {
-    if (pg === home) continue;
+    if (pg === home || pg.hidden) continue;
     const block = pg.blocks.find((b): b is Extract<CardBlock, { kind: K }> => b.kind === kind && !isEmptyBlock(b));
     if (block) return { page: pg, block };
   }
@@ -171,7 +174,7 @@ export function trustFacts(card: Card): TrustFact[] {
   const own = card.site?.home?.stats?.filter((s) => s.value.trim() && s.label.trim());
   if (own && own.length) return own.slice(0, 4);
   const h = hi(card);
-  const blocks = card.pages.flatMap((p) => p.blocks);
+  const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
   const out: TrustFact[] = [];
   const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim());
   if (reviews.length >= 3) {

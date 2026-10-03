@@ -66,7 +66,7 @@ export function buildSystem(
     : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.` : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
   // What the visitor is actually reading. Normally the whole card, so a question about products can be
   // answered from the home page; on a page that must stand alone (Shubhora), only that page.
-  const content = opts.onlyPage ? [opts.onlyPage] : card.pages;
+  const content = opts.onlyPage ? [opts.onlyPage] : card.pages.filter((p) => !p.hidden);
   return `${where}
 
 ${buildTrainingBlock(layers, trade)}${adminK}

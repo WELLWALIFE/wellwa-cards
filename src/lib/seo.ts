@@ -25,7 +25,8 @@ export function cityFromAddress(address: string): string {
   return /\d/.test(last) || last.length > 30 ? "" : last;
 }
 
-const blocks = (card: Card) => card.pages.flatMap((p) => p.blocks);
+// Visible pages only: a hidden page (the Shubhora page) is not this business's content for search engines.
+const blocks = (card: Card) => card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
 const find = <K extends CardBlock["kind"]>(card: Card, kind: K) => blocks(card).filter((b): b is Extract<CardBlock, { kind: K }> => b.kind === kind);
 
 export function seoFacts(card: Card): SeoFacts {
@@ -191,7 +192,7 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
   const gstin = clean(card.gstin);
   const pin = cardPin(card);
   // What the business accepts and roughly what it costs: two fields Google shows in a local result.
-  const chips = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])).join(" ");
+  const chips = blocks(card).flatMap((b) => (b.kind === "highlights" ? b.items : [])).join(" ");
   const pays = [...new Set((chips.match(/\b(UPI|cash|cards?|GPay|PhonePe|Paytm|cheque|EMI|NEFT)\b/gi) ?? []).map((x) => (/^(gpay|phonepe|paytm)$/i.test(x) ? "UPI" : /^cards?$/i.test(x) ? "Card" : x[0].toUpperCase() + x.slice(1).toLowerCase())))];
   const paymentAccepted = [...new Set([...pays, ...(card.links.some((l) => l.type === "upi") ? ["UPI"] : [])])];
   const amounts = find(card, "product").flatMap((b) => b.items).map((p) => Number(price(p.price))).filter((n) => Number.isFinite(n) && n > 0);
