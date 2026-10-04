@@ -394,8 +394,12 @@ async function record(t, work) {
     fromIdx = list.findIndex((x) => x.id === FROM);
     if (fromIdx < 0) throw new Error(`--from "${FROM}": no such scene — one of: ${list.map((x) => x.id).join(", ")}`);
     if (!list[fromIdx].enter && !list[fromIdx].between) throw new Error(`scene "${FROM}" cannot be carried on from (it needs the screen the scene before it leaves)`);
-    kept = JSON.parse(fs.readFileSync(path.join(work, "progress.json"), "utf8")).filter((x, k) => k < fromIdx);
-    if (kept.length < fromIdx || kept.some((x) => !fs.existsSync(x.clip))) throw new Error(`the earlier run did not record every scene before "${FROM}" (${kept.length} of ${fromIdx})`);
+    // progress.json lists what a run finished; a run from before it existed is rebuilt from the clips on disk
+    let prev = [];
+    try { prev = JSON.parse(fs.readFileSync(path.join(work, "progress.json"), "utf8")); } catch { /* none */ }
+    kept = list.slice(0, fromIdx).map((x, k) => prev[k] ?? { id: x.id, say: x.say, clip: path.join(work, `${String(k + 1).padStart(2, "0")}-${x.id}.webm`), wav: voices[k].file, saySec: voices[k].seconds });
+    const missing = kept.filter((x) => !fs.existsSync(x.clip)).map((x) => path.basename(x.clip));
+    if (missing.length) throw new Error(`the earlier run has no clip for: ${missing.join(", ")} (needed before "${FROM}")`);
     log(`carrying on from "${FROM}": ${fromIdx} scenes kept`);
   }
   try {
