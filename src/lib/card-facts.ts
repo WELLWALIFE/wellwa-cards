@@ -530,6 +530,9 @@ export type BuildRequest = {
   /** The website (or whose it is) is new to this account since the last build — the build then lets the site's
    *  own words replace the form's older notes rather than blend the two. */
   siteChanged?: boolean;
+  /** "Write again" (owner's call, 4 Oct 2026): the owner saw this look and wants a DIFFERENT one. The previous
+   *  look comes along so the designer avoids it; `round` counts the tries, so each one differs from the last. */
+  fresh?: { style?: SiteStyle; round?: number };
 };
 
 /** Maker details found on the web for one product, shown under "Please check" before publishing. */

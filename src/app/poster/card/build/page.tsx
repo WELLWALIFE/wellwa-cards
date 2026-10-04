@@ -417,7 +417,9 @@ export default function BuildCard() {
     } catch { setFound({ q: v, url: "", name: "" }); return ""; } finally { setFinding(""); }
   }
 
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview" }) {
+  /** How many times "Write again" was pressed on this preview: each try differs from the last. */
+  const freshRound = useRef(0);
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
@@ -436,7 +438,10 @@ export default function BuildCard() {
       // The site is "new" when the set-up said so, or when the website typed on this form differs from the one
       // the server had when the form opened.
       const siteChanged = siteNew.current || (!!f.website && f.website !== serverSite.current);
-      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}) };
+      // "Write again": the look on screen goes along as the one to avoid (owner's call, 4 Oct 2026).
+      const leaving = over?.fresh ? (shown ?? card) : null;
+      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current } : null;
+      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}) };
       siteNew.current = false;
       const r = await api<Partial<BuildResponse> & { error?: string }>("/api/card/build", { method: "POST", json: body, signal: job.ctrl.signal });
       const built = r.data?.card;
@@ -799,7 +804,7 @@ export default function BuildCard() {
         <div className="flex items-center justify-center gap-5 pt-0.5 text-sm font-semibold">
           <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? T("Edit card", "Card edit करें") : T("Edit first", "पहले edit करें")}</button>
           <span className="h-4 w-px bg-border" />
-          <button type="button" onClick={() => build()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}</button>
+          <button type="button" onClick={() => build({ fresh: true })} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}</button>
         </div>
       </div>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}

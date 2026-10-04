@@ -20,14 +20,14 @@ import { textAudit, applyThinText } from "@/lib/card-text";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
 import { referenceImages } from "@/lib/media/ai-image";
-import { lookIsBlank } from "@/lib/site-style";
+import { cleanStyle, lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
-import { designSite } from "@/lib/site-designer";
+import { designSite, differentFrom } from "@/lib/site-designer";
 import { logoColor } from "@/lib/media/logo-color";
 import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
@@ -321,6 +321,10 @@ export async function POST(request: Request) {
   /* ---- save the facts ---- */
   if (facts.hidden.some((h) => typedNames.has(h))) facts = { ...facts, hidden: facts.hidden.filter((h) => !typedNames.has(h)) };
   if (inputs.profileId) await saveFacts(me.id, inputs.profileId, facts); // best effort: the card is built either way
+  // "Write again" (owner's call, 4 Oct 2026): the owner saw the look and wants another. The look they picked by
+  // hand earlier would pin it, so this build sets it aside (it stays on record for the next ordinary build).
+  const fresh = b.fresh && typeof b.fresh === "object" ? { style: cleanStyle((b.fresh as { style?: unknown }).style) ?? null, round: Math.max(1, Math.min(50, Number((b.fresh as { round?: unknown }).round) || 1)) } : null;
+  if (fresh) { facts = { ...facts, style: undefined }; console.log("[card] write again: a different look", JSON.stringify({ avoid: fresh.style, round: fresh.round })); }
 
   /* ---- the products on the card: the typed rows first, then the rest (minus the ones the owner took off) ---- */
   const after0 = await loadProducts(me.id);
@@ -421,10 +425,12 @@ export async function POST(request: Request) {
   // down, the trade's default look stands.
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true }), 30_000);
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round } : {}) }), 30_000);
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
-  const design = await designP;
+  const design0 = await designP;
+  // A rejected look never comes back: the plan is made to differ from it, whatever the designer said (or did not).
+  const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round }) : design0;
   console.log("[card] design", JSON.stringify({ used: !!design, ms: Date.now() - designT0, ...(design ? { style: design.style, order: design.order ?? null, why: design.why } : {}) }));
 
   /* ---- the layout (code) ---- */
@@ -453,7 +459,7 @@ export async function POST(request: Request) {
     const pool = await mediaP;
     // This business's six from the trade's pool of twelve, by its name: the same shop gets the same pictures on
     // every rebuild, the next shop of the trade gets different ones (owner's call, 4 Oct 2026).
-    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}`) } : null;
+    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh ? `|r${fresh.round}` : ""}`) } : null;
     stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.

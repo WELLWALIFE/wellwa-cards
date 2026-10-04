@@ -45,6 +45,10 @@ export type DesignBrief = {
   /** A real photograph of the trade will stand in as the banner when the owner has none (the build adds it after the
    *  plan), so photo and editorial heroes are open to the designer even then (owner, 4 Oct 2026: "hero banner nahi aa raha"). */
   stockBanner?: boolean;
+  /** The look the owner has just seen and asked to change ("Write again"): the plan must differ from it. */
+  avoid?: SiteStyle | null;
+  /** Which try this is (1 = the first "Write again"), so successive tries rotate through the choices. */
+  round?: number;
 };
 
 const PRINCIPLES = `Design principles you follow (current, 2026):
@@ -87,10 +91,58 @@ function briefText(b: DesignBrief): string {
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
     `Default look for this trade (change it only for a reason): ${JSON.stringify(b.defaults)}`,
+    b.avoid ? `THE OWNER SAW THIS LOOK AND ASKED FOR A DIFFERENT ONE: ${JSON.stringify(b.avoid)}. Choose a clearly different palette (another tone if you can), a different font pairing, a different hero and different section layouts — a second designer's take on the same business, not a touch-up. Keep only what the business itself demands (its logo colour, Hindi type).` : "",
     b.logoColor ? `The owner's LOGO colour is ${b.logoColor}: this is the business's own colour — wear it ("brand" with that color) unless it reads badly on screen, and keep the rest of the palette calm around it.` : "",
     b.liked ? `The owner likes this website: ${b.liked.url} — colours ${(b.liked.colors ?? []).slice(0, 3).join(", ") || "?"}; fonts ${(b.liked.fonts ?? []).slice(0, 2).join(", ") || "?"}; ${b.liked.dark ? "dark" : "light"} page; ${b.liked.heroImage ? "a big photo on top" : "no big photo on top"}${b.liked.sections?.length ? `; sections in order: ${b.liked.sections.join(" > ")}` : ""}. Take this as their TASTE (mood, warmth, formality) and pick the nearest good choices from the menu — improve on it, never copy a weak choice.` : "",
   ].filter(Boolean);
   return lines.join("\n");
+}
+
+/** A hero the content can carry. */
+function heroAllowed(h: string, b: DesignBrief): h is HeroLayout {
+  const productPhotos = b.products.filter((p) => p.images.length || p.photo).length;
+  return HERO_LAYOUTS.some((x) => x.key === h)
+    && !(h === "photo" && !b.facts.bannerUrl && !b.stockBanner)
+    && !(h === "grid" && productPhotos < 3)
+    && !(h === "person" && !b.setup.photo)
+    && !(h === "editorial" && !b.facts.bannerUrl && !b.stockBanner)
+    && !(h === "marquee" && productPhotos + b.facts.photos.length < 4);
+}
+
+/** "Write again": whatever the designer said, the look must differ from the one the owner rejected — palette, font
+ *  and hero at least (owner's call, 4 Oct 2026). Where the plan repeats the old choice, the next option is taken,
+ *  rotating with the round so a third try differs from the second as well. Never throws. */
+export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): SiteDesignPlan {
+  const avoid = b.avoid ?? {};
+  const round = Math.max(1, b.round ?? 1);
+  const style: SiteStyle = { ...(plan?.style ?? {}) };
+  const pick = <T,>(list: T[], same: (x: T) => boolean, i: number): T | undefined => { const rest = list.filter((x) => !same(x)); return rest.length ? rest[i % rest.length] : undefined; };
+  // Palette: the logo's own colour is the business's and stays; otherwise another palette, another tone first.
+  const oldPal = avoid.palette ?? b.defaults.palette;
+  if (!b.logoColor && (!style.palette || style.palette === oldPal)) {
+    const oldTone = SITE_PALETTES.find((p) => p.key === oldPal)?.tone;
+    const pals = SITE_PALETTES.filter((p) => p.key !== "brand");
+    const other = pals.filter((p) => p.tone !== oldTone);
+    const np = pick(other.length ? other : pals, (p) => p.key === oldPal, round * 3 + (b.setup.business.length % 5));
+    if (np) { style.palette = np.key; delete style.color; }
+  }
+  // Font: another pairing (Hindi stays Hindi).
+  const oldFont = avoid.font ?? b.defaults.font;
+  if (b.facts.lang !== "hi" && (!style.font || style.font === oldFont)) {
+    const nf = pick(FONT_PAIRS.filter((f) => f.key !== "look" && f.key !== "hindi"), (f) => f.key === oldFont, round * 2 + (b.setup.city.length % 3));
+    if (nf) style.font = nf.key;
+  }
+  // Hero: another the content can carry.
+  const oldHero = avoid.hero ?? b.defaults.hero;
+  if (!style.hero || style.hero === oldHero) {
+    const nh = pick(HERO_LAYOUTS.filter((h) => heroAllowed(h.key, b)), (h) => h.key === oldHero, round);
+    if (nh) style.hero = nh.key;
+  }
+  // Pattern and corners: a different one when the plan repeats the old.
+  const patterns: NonNullable<SiteStyle["pattern"]>[] = ["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"];
+  if (avoid.pattern && (!style.pattern || style.pattern === avoid.pattern)) style.pattern = pick(patterns, (x) => x === avoid.pattern, round) ?? style.pattern;
+  if (avoid.radius && (!style.radius || style.radius === avoid.radius)) style.radius = pick(RADII.map((r) => r.key), (x) => x === avoid.radius, round) ?? style.radius;
+  return { style, ...(plan?.order ? { order: plan.order } : {}), why: plan?.why ? `${plan.why} (a different take, as asked)` : "A different take on the look, as asked." };
 }
 
 /** The plan, checked against the menu and the content. */
@@ -107,15 +159,7 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   // A Hindi website reads best in the Devanagari pair, whatever the designer liked.
   if (b.facts.lang === "hi") style.font = "hindi";
   const hero = typeof o.hero === "string" ? o.hero.trim().toLowerCase() : "";
-  const productPhotos = b.products.filter((p) => p.images.length || p.photo).length;
-  const heroOk = (h: string): h is HeroLayout =>
-    HERO_LAYOUTS.some((x) => x.key === h)
-    && !(h === "photo" && !b.facts.bannerUrl && !b.stockBanner)
-    && !(h === "grid" && productPhotos < 3)
-    && !(h === "person" && !b.setup.photo)
-    && !(h === "editorial" && !b.facts.bannerUrl && !b.stockBanner)
-    && !(h === "marquee" && productPhotos + b.facts.photos.length < 4);
-  if (heroOk(hero)) style.hero = hero;
+  if (heroAllowed(hero, b)) style.hero = hero;
   const radius = typeof o.radius === "string" ? o.radius.trim().toLowerCase() : "";
   if (RADII.some((r) => r.key === radius)) style.radius = radius as SiteStyle["radius"];
   const order = Array.isArray(o.order)
