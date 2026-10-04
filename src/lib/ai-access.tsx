@@ -10,6 +10,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { PARTNER_ACTIVATE } from "@/lib/associate";
 import { AddCredits } from "@/components/poster/add-credits";
 import { planPrice } from "@/lib/billing";
+import { SubscribeButton } from "@/components/subscribe-button";
 
 export type AiAccess = { loading: boolean; active: boolean; subscribed: boolean; balance: number; associate: boolean; refresh: () => void };
 
@@ -56,10 +57,19 @@ export function UnlockDialog({ reason, onClose, title = "Unlock the AI tools", s
         </div>
         {a.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : (
           <>
-            <a href={a.associate ? PARTNER_ACTIVATE : "/poster/plan"} className="block rounded-xl border-2 border-brand bg-brand-soft p-4">
-              <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
-              <p className="text-sm text-muted mt-0.5">Everything included: website, daily posters, WhatsApp AI, CRM — plus AI credit packs at the lowest price.</p>
-            </a>
+            {a.associate ? (
+              <a href={PARTNER_ACTIVATE} className="block rounded-xl border-2 border-brand bg-brand-soft p-4">
+                <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
+                <p className="text-sm text-muted mt-0.5">Everything included: website, daily posters, WhatsApp AI, CRM — plus AI credit packs at the lowest price.</p>
+              </a>
+            ) : (
+              // Razorpay opens here (owner's call, 4 Oct 2026): UPI autopay or card, and the tools unlock at once.
+              <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
+                <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
+                <p className="text-sm text-muted mt-0.5">Everything included: website, daily posters, WhatsApp AI, CRM — plus AI credit packs at the lowest price.</p>
+                <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={() => { a.refresh(); onClose(); }}>Pay by UPI / card — Razorpay</SubscribeButton>
+              </div>
+            )}
             {!a.associate && !subscriptionOnly && (
               <div className="space-y-2">
                 <p className="flex items-center gap-1.5 text-sm font-semibold"><Coins className="h-4 w-4 text-brand" /> Or pay as you go: add credits</p>

@@ -40,6 +40,10 @@ export type CatalogCopy = {
   customers: string[];
   /** The "your work in your words" question. */
   work: string; workHi: string; workEg: string; workEgHi: string;
+  /** Short examples for the set-up's "About", the offer line and the "in your own words" special line. */
+  aboutEg: string; aboutEgHi: string;
+  offerEg: string; offerEgHi: string;
+  specialEg: string; specialEgHi: string;
 };
 
 const PRODUCTS: CatalogCopy = {
@@ -57,12 +61,16 @@ const PRODUCTS: CatalogCopy = {
   customers: ["👪 Families", "🏪 Shops", "🏢 Offices", "🎓 Students", "👵 Senior citizens", "🙋 Everyone"],
   work: "What do you sell, or what work do you do?", workHi: "आप क्या बेचते हैं, या क्या काम करते हैं?",
   workEg: "e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties.", workEgHi: "जैसे हम रोज़ ताज़ी मिठाई और नमकीन बनाते हैं, और शादी-party के order भी लेते हैं।",
+  aboutEg: "sweets and namkeen, home delivery", aboutEgHi: "मिठाई और नमकीन, home delivery",
+  offerEg: "Free delivery above ₹500", offerEgHi: "₹500 से ऊपर free delivery",
+  specialEg: "pure desi ghee only", specialEgHi: "सिर्फ़ शुद्ध देसी घी",
 };
 
 const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   products: PRODUCTS,
   menu: {
     ...PRODUCTS, word: "menu",
+    aboutEg: "North Indian thali, family seating, home delivery", aboutEgHi: "नॉर्थ इंडियन थाली, family seating, home delivery", offerEg: "20% off on family dinner this month", offerEgHi: "इस महीने family dinner पर 20% off", specialEg: "everything cooked fresh in pure ghee", specialEgHi: "सब कुछ ताज़ा, शुद्ध घी में",
     specialQ: "What makes your food special?", specialQHi: "आपके खाने की खास बात क्या है?", customersQ: "Who eats with you?", customersQHi: "आपके यहाँ कौन खाता है?",
     title: "My menu", titleHi: "मेरा मेन्यू", short: "Menu", shortHi: "मेन्यू", add: "Add dish", addHi: "डिश जोड़ें", one: "a dish", oneHi: "एक डिश",
     name: "Dish / item name — e.g. Paneer Butter Masala, Thali, Chai", nameHi: "डिश का नाम — जैसे पनीर बटर मसाला, थाली, चाय",
@@ -77,6 +85,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   services: {
     ...PRODUCTS, word: "services",
+    aboutEg: "AC repair and wiring, same-day visit in Delhi", aboutEgHi: "AC repair और wiring, Delhi में same-day visit", offerEg: "10% off on your first service", offerEgHi: "पहली service पर 10% off", specialEg: "same-day visit, fixed rates told first", specialEgHi: "same-day visit, दाम पहले बताते हैं",
     specialQ: "What makes your service special?", specialQHi: "आपकी सेवा की खास बात क्या है?", customersQ: "Who are your customers?", customersQHi: "आपके ग्राहक कौन हैं?",
     title: "My services", titleHi: "मेरी सेवाएँ", short: "Services", shortHi: "सेवाएँ", add: "Add service", addHi: "सेवा जोड़ें", one: "a service", oneHi: "एक सेवा",
     name: "Service name — e.g. AC repair, GST filing, Wedding photography", nameHi: "सेवा का नाम — जैसे AC repair, GST filing, Wedding photography",
@@ -91,6 +100,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   treatments: {
     ...PRODUCTS, word: "treatments",
+    aboutEg: "general physician, evening clinic, lab tests on site", aboutEgHi: "general physician, शाम का clinic, lab test यहीं", offerEg: "Free first consultation this month", offerEgHi: "इस महीने पहली consultation free", specialEg: "painless treatment, same-day appointment", specialEgHi: "दर्द-रहित इलाज, same-day appointment",
     specialQ: "What makes your clinic special?", specialQHi: "आपके clinic की खास बात क्या है?", customersQ: "Who are your patients?", customersQHi: "आपके मरीज़ कौन हैं?",
     title: "My treatments & services", titleHi: "मेरे उपचार और सेवाएँ", short: "Treatments", shortHi: "उपचार", add: "Add treatment", addHi: "उपचार जोड़ें", one: "a treatment", oneHi: "एक उपचार",
     name: "Treatment / service — e.g. Root canal, Full body check-up, Hair spa", nameHi: "उपचार / सेवा — जैसे Root canal, Full body check-up, Hair spa",
@@ -106,6 +116,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   courses: {
     ...PRODUCTS, word: "courses",
+    aboutEg: "nursery to class 12, CBSE, smart classes, school bus", aboutEgHi: "नर्सरी से 12वीं, CBSE, smart class, school bus", offerEg: "Admission open — no admission fee this month", offerEgHi: "Admission open — इस महीने admission fee नहीं", specialEg: "small classes, attention to every child", specialEgHi: "छोटी class, हर बच्चे पर ध्यान",
     specialQ: "What makes your institution special?", specialQHi: "आपके संस्थान की खास बात क्या है?", customersQ: "Who studies with you?", customersQHi: "आपके यहाँ कौन पढ़ता है?",
     title: "Classes & courses", titleHi: "कक्षाएँ और कोर्स", short: "Courses", shortHi: "कोर्स", add: "Add class / course", addHi: "कक्षा / कोर्स जोड़ें", one: "a class or course", oneHi: "एक कक्षा / कोर्स",
     name: "Class / course — e.g. Nursery to UKG, Class 1–8, Class 11–12 Science, Spoken English", nameHi: "कक्षा / कोर्स — जैसे Nursery से UKG, कक्षा 1–8, 11–12 Science, Spoken English",
@@ -121,6 +132,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   projects: {
     ...PRODUCTS, word: "projects",
+    aboutEg: "home interiors, modular kitchens, 10 years in Delhi", aboutEgHi: "home interior, modular kitchen, Delhi में 10 साल", offerEg: "Free site visit and quotation", offerEgHi: "Free site visit और quotation", specialEg: "designs to your taste, on-time delivery", specialEgHi: "आपकी पसंद के design, समय पर delivery",
     specialQ: "What makes your work special?", specialQHi: "आपके काम की खास बात क्या है?", customersQ: "Who are your clients?", customersQHi: "आपके client कौन हैं?",
     title: "My work & projects", titleHi: "मेरा काम और प्रोजेक्ट", short: "Work", shortHi: "काम", add: "Add work", addHi: "काम जोड़ें", one: "a project", oneHi: "एक प्रोजेक्ट",
     name: "Project / work — e.g. 3BHK interior, Wedding shoot, Shop front", nameHi: "प्रोजेक्ट / काम — जैसे 3BHK interior, Wedding shoot, Shop front",
@@ -135,6 +147,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   plans: {
     ...PRODUCTS, word: "plans",
+    aboutEg: "term and child plans, claims help, 12 years", aboutEgHi: "term और child plan, claim में मदद, 12 साल", offerEg: "Free policy review this month", offerEgHi: "इस महीने free policy review", specialEg: "help with every claim, honest advice", specialEgHi: "हर claim में मदद, सही सलाह",
     specialQ: "What makes your plans special?", specialQHi: "आपके प्लान की खास बात क्या है?", customersQ: "Who takes your plans?", customersQHi: "आपके प्लान कौन लेता है?",
     title: "My plans & packages", titleHi: "मेरे प्लान और पैकेज", short: "Plans", shortHi: "प्लान", add: "Add plan", addHi: "प्लान जोड़ें", one: "a plan", oneHi: "एक प्लान",
     name: "Plan / package — e.g. Term plan, Monthly gym, Goa 4N/5D", nameHi: "प्लान / पैकेज — जैसे Term plan, Monthly gym, Goa 4N/5D",
@@ -149,6 +162,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   work: {
     ...PRODUCTS, word: "work",
+    aboutEg: "health camps, education for children, 10 years in Delhi", aboutEgHi: "स्वास्थ्य शिविर, बच्चों की शिक्षा, Delhi में 10 साल", offerEg: "Free health camp on Sunday", offerEgHi: "रविवार को free health camp", specialEg: "always available, work for the community", specialEgHi: "हमेशा उपलब्ध, समाज के लिए काम",
     specialQ: "What makes you special?", specialQHi: "आपकी खास बात क्या है?", customersQ: "Who do you work for?", customersQHi: "आप किनके लिए काम करते हैं?",
     title: "What I do", titleHi: "मेरा काम", short: "Work", shortHi: "काम", add: "Add", addHi: "जोड़ें", one: "an item", oneHi: "एक चीज़",
     name: "Name — e.g. Blood donation camp, Annual function, Photo album", nameHi: "नाम — जैसे रक्तदान शिविर, वार्षिक उत्सव, फ़ोटो एल्बम",
@@ -201,4 +215,26 @@ export function orgWordFor(categoryKey: string | null | undefined): OrgWord {
     [en, hi] = word === "courses" ? ["institute", "इंस्टीट्यूट"] : word === "treatments" ? ["clinic", "clinic"] : word === "menu" ? ["restaurant", "रेस्टोरेंट"] : word === "products" ? ["business", "business"] : ["business", "business"];
   }
   return { en, hi: hi ?? en, En: en.replace(/^./, (c) => c.toUpperCase()) };
+}
+
+/** An example name for the name box, in the trade's own kind — never a real brand (owner's call, 4 Oct 2026):
+ *  "Sunrise Public School", "City Care Clinic", "Sharma Sweets". Unknown trade → "Sunrise <org>". */
+const EXAMPLE_NAME: Record<string, string> = {
+  school: "Sunrise Public School", playschool: "Little Stars Play School", college: "City Degree College", coaching: "Bright Minds Coaching", computer: "Digital Computer Institute",
+  doctor: "City Care Clinic", dentist: "Smile Dental Clinic", hospital: "City Care Hospital", physio: "Active Physio Clinic", ayurveda: "Arogya Ayurveda Clinic", vet: "Pet Care Clinic", lab: "City Diagnostic Lab", medical: "City Medical Store",
+  restaurant: "Spice Garden Restaurant", hotel: "Hotel Green View", sweets: "Sharma Sweets", bakery: "Golden Crust Bakery", catering: "Annapurna Caterers", tiffin: "Ghar Ka Khana Tiffin", dairy: "Fresh Dairy",
+  kirana: "Gupta General Store", garments: "Fashion Point", textile: "Saree Palace", jewellery: "Shree Jewellers", mobile: "Mobile Point", furniture: "Home Style Furniture", hardware: "Verma Hardware", footwear: "Step In Footwear", optical: "Clear Vision Opticals", gift: "Gift Gallery",
+  salon: "Glamour Beauty Salon", gym: "Fit Zone Gym", wellness: "Wellness Hub", water: "Pure Water Solutions",
+  electrician: "Raj Electricals", auto: "City Motors", tailor: "Perfect Fit Tailors", printing: "Quick Print", cleaning: "Spark Cleaning Services", photography: "Pixel Studio", event: "Royal Events", travel: "Sky Tours & Travels", transport: "Fast Track Transport", courier: "Speed Courier",
+  realestate: "Prime Properties", builder: "Shree Builders", interior: "Dream Interiors", it: "Tech Solutions", ca: "Sharma & Associates", lawyer: "Verma Law Chambers", insurance: "Secure Life Advisor", finance: "Smart Finance",
+  manufacturer: "Shree Industries", wholesale: "Gupta Traders", agri: "Kisan Agro Centre", ngo: "Seva Foundation", astro: "Jyotish Kendra",
+};
+export function exampleNameFor(categoryKey: string | null | undefined): string {
+  if (categoryKey && EXAMPLE_NAME[categoryKey]) return EXAMPLE_NAME[categoryKey];
+  const org = orgWordFor(categoryKey);
+  return org.en === "business" ? "Sharma Sweets" : `Sunrise ${org.En}`;
+}
+/** The same name as a website address: "sunrisepublicschool.com". */
+export function exampleSiteFor(categoryKey: string | null | undefined): string {
+  return `${exampleNameFor(categoryKey).toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "")}.com`;
 }

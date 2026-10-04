@@ -245,11 +245,14 @@ Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
  * Photos and a clip for a trade. `category` is the poster category key (e.g. "salon"), `label` its English name
  * ("Salon / beauty parlour"). Returns { photos:[{url,credit}], clip:{url,credit}|null } — url paths are public.
  */
-export async function ensureCardMedia({ category, label = "", want = 6 }) {
+// A pool of 12 per trade, not 6, so two shops of one trade never open on the same picture (owner's call, 4 Oct
+// 2026: "har site same image"); the builder picks its six from the pool by the business's name. Stored at 1800px,
+// quality 85, because the hero shows it full-width. "-v2" so the older six-photo caches are made again.
+export async function ensureCardMedia({ category, label = "", want = 12 }) {
   if (!PEXELS) return { photos: [], clip: null };
   fs.mkdirSync(CARD_DIR, { recursive: true });
   const cat = String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other";
-  const meta = path.join(CARD_DIR, `${cat}.json`);
+  const meta = path.join(CARD_DIR, `${cat}-v2.json`);
   if (fs.existsSync(meta)) {
     try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if ((m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))))) return m; } catch { /* rebuild */ }
   }
@@ -257,7 +260,7 @@ export async function ensureCardMedia({ category, label = "", want = 6 }) {
   if (inflight.has(ik)) return inflight.get(ik);
   const p = (async () => {
     const trade = label || words(category);
-    const queries = [`${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`];
+    const queries = [`${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`];
     const photos = []; const seen = new Set();
     for (const q of queries) {
       if (photos.length >= want) break;
@@ -270,8 +273,8 @@ export async function ensureCardMedia({ category, label = "", want = 6 }) {
         seen.add(c.id);
         try {
           const buf = Buffer.from(await (await fetch(c.url, { signal: AbortSignal.timeout(40000) })).arrayBuffer());
-          const file = path.join(CARD_DIR, `${cat}-${photos.length + 1}.jpg`);
-          await sharp(buf).resize({ width: 1400, withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toFile(file);
+          const file = path.join(CARD_DIR, `${cat}-v2-${photos.length + 1}.jpg`);
+          await sharp(buf).resize({ width: 1800, withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toFile(file);
           photos.push({ url: CARD_URL(file), credit: c.credit, id: c.id });
         } catch { /* next */ }
       }

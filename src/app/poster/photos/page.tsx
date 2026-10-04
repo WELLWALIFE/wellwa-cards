@@ -57,7 +57,7 @@ export default function PhotosPage() {
       } else if (w.slot === "photo") {
         const url = await uploadImage(await compressToFile(file, "photo.jpg", 1600, 0.85), "wide");
         if (!url) throw new Error("upload");
-        const photos = [...facts.photos, url].slice(0, 5);
+        const photos = [...facts.photos, url].slice(0, 6);
         await api("/api/card/facts", { method: "PATCH", json: { facts: { photos } } });
         setFacts({ ...facts, photos });
       } else if (w.slot === "product") {

@@ -66,7 +66,8 @@ export type CardFacts = {
 };
 
 /** A UPI ID such as sharmasweets@okhdfc. */
-export const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9]{1,63}$/i;
+/** name@bank. The handle may carry a dot (owner, 4 Oct 2026: "@hdfcbank.com" was refused). */
+export const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.]{1,63}$/i;
 
 const LANGS: readonly Lang[] = ["en", "hi", "hinglish"];
 const CARD_ID_RE = /^[0-9a-f-]{36}$/i;
@@ -182,7 +183,7 @@ function normalizeObj(r: Obj): CardFacts {
   for (const p of Array.isArray(r.photos) ? r.photos.slice(0, 40) : []) {
     const u = httpsUrl(p);
     if (u && u !== bannerUrl && !photos.includes(u)) photos.push(u);
-    if (photos.length >= 5) break;
+    if (photos.length >= 6) break;
   }
   const primaryCardId = text(r.primaryCardId, 36);
   const assertedAt = text(r.dealerAssertedAt, 30);

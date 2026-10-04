@@ -100,7 +100,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
     setBusy("photo"); setErr("");
     try {
       const url = await uploadImage(await compressToFile(f, "photo.jpg", 1600, 0.85), "wide");
-      if (url) setF({ photos: [...facts.photos, url].slice(0, 5) }); else setErr(FAILED);
+      if (url) setF({ photos: [...facts.photos, url].slice(0, 6) }); else setErr(FAILED);
     } catch { setErr(OFFLINE); } finally { setBusy(""); }
   }
 
@@ -110,7 +110,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         <div className="flex flex-wrap gap-2">
           {specialChips.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
         </div>
-        <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T("In your own words — e.g. pure desi ghee only", "अपने शब्दों में — जैसे सिर्फ़ शुद्ध देसी घी")} className={field} />
+        <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T(`In your own words — e.g. ${copy.specialEg}`, `अपने शब्दों में — जैसे ${copy.specialEgHi}`)} className={field} />
       </Sec>
       <Sec id="q-customers" title={T(copy.customersQ, copy.customersQHi)}>
         <div className="flex flex-wrap gap-2">
@@ -118,7 +118,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         </div>
       </Sec>
       <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")} hint={T("Optional — shown on the card and the website.", "Optional — card और website पर दिखेगा।")}>
-        <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T("e.g. Free delivery above ₹500", "जैसे ₹500 से ऊपर free delivery")} className={field} />
+        <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T(`e.g. ${copy.offerEg}`, `जैसे ${copy.offerEgHi}`)} className={field} />
       </Sec>
       {!hasAbout && (
         <Sec id="q-work" title={T(copy.work, copy.workHi)} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
@@ -150,7 +150,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
             <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickFile(f); }} />
           </label>
         )}
-        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 5)", "और photos (5 तक)")}</p>
+        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 6)", "और photos (6 तक)")}</p>
         <div className="flex flex-wrap gap-2">
           {facts.photos.map((u, i) => (
             <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border">
@@ -205,7 +205,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         {upiOn && (
           <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")}
             <input value={facts.upi} onChange={(e) => setF({ upi: e.target.value.trim() })} autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
-            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">{T("This does not look like a UPI ID. It looks like name@bank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank")}</span>}
+            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">{T("This does not look like a UPI ID. It looks like name@bank — e.g. sharmasweets@okhdfcbank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank, जैसे sharmasweets@okhdfcbank")}</span>}
           </label>
         )}
       </Sec>

@@ -875,7 +875,7 @@ export default function BuildCard() {
           option. It is one of the most useful answers on the form: a site we can read fills the whole card,
           and a site they merely like gives theirs that look. */}
       <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
-        <input value={facts.website} onChange={(e) => { setF({ website: e.target.value.trim() }); setFound(null); }} onBlur={() => void resolveSite()} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={setup?.website || T("e.g. sharmasweets.com, or a name: dps school", "जैसे sharmasweets.com, या नाम: dps school")} className={field} />
+        <input value={facts.website} onChange={(e) => { setF({ website: e.target.value.trim() }); setFound(null); }} onBlur={() => void resolveSite()} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={setup?.website || T("e.g. yourbusiness.com, or just the name", "जैसे yourbusiness.com, या सिर्फ़ नाम")} className={field} />
         {finding && <p className="mt-1 text-xs text-muted">{T(`Searching the web for “${finding}”…`, `“${finding}” की website खोजी जा रही है…`)}</p>}
         {!finding && found && found.url && facts.website === found.url && (
           <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs"><span className="font-semibold text-good">✓ {T("Found", "मिली")}: {found.name}</span><span className="text-muted">{found.url.replace(/^https?:\/\//, "")}</span><button type="button" onClick={() => { setF({ website: "" }); setFound(null); }} className="font-semibold text-brand-ink underline">{T("Not this one", "ये नहीं")}</button></p>

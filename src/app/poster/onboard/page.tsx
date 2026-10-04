@@ -30,7 +30,7 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
-import { orgWordFor } from "@/lib/catalog-copy";
+import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
@@ -159,9 +159,17 @@ function Onboard() {
   // "school ki baat kar rahe hain to Company details kyon?").
   const org = orgWordFor(biz.category);
   const place = hi ? org.hi : org.en;
+  // Examples in the trade's own kind, never a real brand (owner's call, 4 Oct 2026): the name box says "Sunrise
+  // Public School" to a school, the About box "nursery to class 12, CBSE…", the city is always Delhi.
+  const egName = exampleNameFor(biz.category);
+  const egSite = exampleSiteFor(biz.category);
+  const copy = catalogCopyFor(biz.category);
   const T = (en: string, hiText: string) => (hi ? hiText : en);
   // "Your card leads with…" is worked out from "What do you do?"; the four choices open only on "Change".
   const [showRole, setShowRole] = useState(false);
+  // "What is your card for?" — Both is the default (owner's call, 4 Oct 2026): their own business, with the Shubhora
+  // page riding along on its own hidden link. Continue runs the chosen flow.
+  const [promote, setPromote] = useState<"both" | "own" | "shubhora">("both");
   // The account's one username. Google sign-ups arrive without it: it is claimed here (from the sign-up form's
   // choice when there was one, else the person picks it now) so the card link and partner account exist from day one.
   const [username, setUsername] = useState<string | null | undefined>(undefined);
@@ -233,7 +241,9 @@ function Onboard() {
       try {
         const raw = localStorage.getItem(`onboard-draft:${data.user?.id ?? ""}`);
         const d = raw ? JSON.parse(raw) as { v?: number; at?: number; step?: StepKey; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; touched?: string[] } : null;
-        if (d?.v === 1 && Date.now() - (d.at ?? 0) < 7 * 86_400_000) {
+        // An account changed on the server after the draft (an admin reset, a save from another phone) wins over it.
+        const serverAt = Date.parse(String(data.user?.updated_at ?? "")) || 0;
+        if (d?.v === 1 && Date.now() - (d.at ?? 0) < 7 * 86_400_000 && serverAt <= (d.at ?? 0) + 5_000) {
           if (d.site?.kind) setSite(d.site);
           if (d.biz) setBiz((b) => ({ ...b, ...d.biz }));
           if (d.you) setYou((y) => ({ ...y, ...d.you, photo: d.you?.photo || y.photo }));
@@ -574,7 +584,7 @@ function Onboard() {
     if (site.url.trim() && !pendingSocial && !looksLikeSite(url)) {
       const found = await resolveTyped();
       if (found) url = found;
-      else { setSiteErr(T(`Could not find a website for "${site.url.trim()}" — paste the link, e.g. marutisuzuki.com`, `"${site.url.trim()}" की website नहीं मिली — link डालें, जैसे marutisuzuki.com`)); return; }
+      else { setSiteErr(T(`Could not find a website for "${site.url.trim()}" — paste the link, e.g. brandname.com`, `"${site.url.trim()}" की website नहीं मिली — link डालें, जैसे brandname.com`)); return; }
     }
     if (!site.url.trim()) { setSiteErr(T("Write the website link, e.g. sharmasweets.com — or tap ❌ No website", "website का link लिखें, जैसे sharmasweets.com — नहीं है तो ❌ नहीं है दबाएँ")); return; }
     if (pendingSocial) { setSiteErr(T(`That is a ${pendingSocial.label} page, not a website — keep it as a ${pendingSocial.label} link, or change the link.`, `ये ${pendingSocial.label} page है, website नहीं — social link की तरह रखें, या link बदलें`)); return; }
@@ -656,6 +666,8 @@ function Onboard() {
         ...(you.photo ? { photo_url: you.photo } : {}),
         ...(biz.category || bizName || city || site.kind ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
         setup_skipped_at: new Date().toISOString(),
+        // Both is the default answer to "What is your card for?" (owner's call, 4 Oct 2026), skipped or not.
+        ...(promote === "both" ? { also_shubhora: true } : {}),
       } }).catch(() => undefined);
       if (!profile) {
         const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: {
@@ -750,6 +762,8 @@ function Onboard() {
     if (!(biz.category ?? "").trim()) { setErr("Choose what you do."); return; }
     if (isBiz && !bizName) { setErr("Write your business name."); return; }
     if (biz.role !== "personal" && !city) { setErr("Write your city — it is needed even for Pan India / online (where you are based)."); return; }
+    // The card, the website and every customer reply are written from this (owner's call, 4 Oct 2026: mandatory).
+    if (biz.role !== "personal" && !(biz.about ?? "").trim()) { setErr(T(`Write a line about your ${org.en} — or tap Write with AI.`, `अपने ${place} के बारे में एक लाइन लिखें — या AI से लिखवाएँ दबाएँ।`)); document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
     const gst = (biz.gstin ?? "").trim().toUpperCase();
     if (gst && !GSTIN.test(gst)) { setErr("The GST number does not look right (15 characters, e.g. 07ABCDE1234F1Z5). Leave it empty if you don't have one."); return; }
     const peekName = peek.state === "found" && peek.role === "own" ? (peek.data?.name ?? "").trim() : "";
@@ -855,59 +869,42 @@ function Onboard() {
       {step === "promote" ? (
         <section className="space-y-4">
           {/* Owner's call, 25 Sep 2026: a referral link does not make someone a networker — many take Shubhora for their
-              own shop. So everyone gets this choice, answerable in one look: their own business first (most people),
-              selling Shubhora second, and "not sure" answered below. */}
+              own shop. So everyone gets this choice, answerable in one look. Both is ticked by default (owner's call,
+              4 Oct 2026): the person's own business, and a Shubhora page of its own on a hidden link. */}
           <div>
             <h1 className="text-2xl font-bold">{T("What is your card for?", "आपका card किस काम के लिए है?")}</h1>
-            <p className="text-sm text-muted">{T("Pick one — you can change it later.", "एक चुनें — बाद में कभी भी बदल सकते हैं।")}</p>
+            <p className="text-sm text-muted">{T("Both is ticked — change it if you want only one. You can change it later too.", "दोनों चुना हुआ है — सिर्फ़ एक चाहिए तो बदल लें। बाद में भी बदल सकते हैं।")}</p>
           </div>
 
-          <button type="button" onClick={() => setStep("site")} disabled={!!busy}
-            className="w-full rounded-2xl border-2 border-brand bg-brand-soft/60 p-4 text-left disabled:opacity-60">
-            <div className="flex items-start gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-card"><Store className="h-6 w-6" /></span>
-              <div className="flex-1">
-                <p className="text-base font-bold">{T("My own business or work", "मेरा अपना business / काम")}</p>
-                <p className="mt-0.5 text-sm text-muted">{T("Shop, clinic, office, service or profession. Your business, products and number go on the card, and customers reach you.", "दुकान, clinic, office, service या profession। Card पर आपका business, products और number होगा — customers सीधे आपसे जुड़ेंगे।")}</p>
-                <p className="mt-1.5 text-xs text-muted">{T("For example", "जैसे")}: Sharma Sweets · Dr. Mehta Clinic · Raj Electricals · LIC agent</p>
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white">{T("Continue", "आगे बढ़ें")} →</p>
-              </div>
-            </div>
-          </button>
+          {([
+            { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Two separate links from one login: your own card and website, and a Shubhora page of its own. Your customers never see Shubhora; the Shubhora link never shows your business.", "एक login से दो अलग link: आपका अपना card और website, और एक अलग Shubhora page। आपके customers को Shubhora नहीं दिखता; Shubhora link पर आपका business नहीं।"), eg: T("Your daily posters stay your own business's.", "रोज़ के poster आपके अपने business के ही बनेंगे।") },
+            { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("Only my own business or work", "सिर्फ़ मेरा अपना business / काम"), s: T("Shop, clinic, school, office, service or profession. Your business, products and number go on the card, and customers reach you.", "दुकान, clinic, school, office, service या profession। Card पर आपका business, products और number होगा — customers सीधे आपसे जुड़ेंगे।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic · Raj Electricals` },
+            // eslint-disable-next-line @next/next/no-img-element
+            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Only selling Shubhora as a partner", "सिर्फ़ Shubhora partner बनकर Shubhora बेचना"), s: T("Help other businesses get Shubhora and earn partner income. A ready Shubhora card (plans, demo video, business plan) is made with your name, photo and number.", "दूसरे businesses को Shubhora दिलाएँ और partner income कमाएँ। आपके नाम, photo और number के साथ तैयार Shubhora card बनता है (plans, demo video, business plan)।"), eg: "" },
+          ]).map((c) => {
+            const on = promote === c.k;
+            return (
+              <button key={c.k} type="button" onClick={() => setPromote(c.k)} disabled={!!busy} aria-pressed={on}
+                className={`w-full rounded-2xl border-2 p-4 text-left disabled:opacity-60 ${on ? "border-brand bg-brand-soft/60" : "border-border bg-surface"}`}>
+                <div className="flex items-start gap-3">
+                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-card">{c.icon}</span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-base font-bold">{c.t}{c.k === "both" && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">{T("Default", "Default")}</span>}</p>
+                    <p className="mt-0.5 text-sm text-muted">{c.s}</p>
+                    {c.eg && <p className="mt-1.5 text-xs text-muted">{c.eg}</p>}
+                  </div>
+                  <span className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong"}`}>{on && <Check className="h-3.5 w-3.5" />}</span>
+                </div>
+              </button>
+            );
+          })}
 
-          <button type="button" onClick={promoteShubhora} disabled={!!busy}
-            className="w-full rounded-2xl border-2 border-border bg-surface p-4 text-left disabled:opacity-60">
-            <div className="flex items-start gap-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/art/brand/shubhora-logo.png" alt="" className="h-12 w-12 shrink-0 rounded-xl bg-white object-contain p-1 shadow-card" />
-              <div className="flex-1">
-                <p className="text-base font-bold">{T("Sell Shubhora as a partner", "Shubhora partner बनकर Shubhora बेचना")}</p>
-                <p className="mt-0.5 text-sm text-muted">{T("Help other businesses get Shubhora and earn partner income. A ready Shubhora card (plans, demo video, business plan) is made with your name, photo and number.", "दूसरे businesses को Shubhora दिलाएँ और partner income कमाएँ। Shubhora का तैयार card (plans, demo video, business plan) आपके नाम, photo और number के साथ बन जाएगा।")}</p>
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full border border-[#2f5bf5] px-3 py-1.5 text-xs font-semibold text-[#2f5bf5]">{busy === "shubhora" ? <><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T("Making your card…", "Card बन रहा है…")}</> : <><Sparkles className="h-3.5 w-3.5" /> {T("Make my Shubhora card", "मेरा Shubhora card बनाएँ")}</>}</p>
-              </div>
-            </div>
-          </button>
-
-          {/* The third choice (owner's call): plenty of partners run their own shop AND sell Shubhora. It used to
-              be one or the other, because turning the Shubhora card on overwrote their own pages. Now both fit in
-              one account — two links that never show each other. */}
-          <button type="button" onClick={bothFlow} disabled={!!busy}
-            className="w-full rounded-2xl border-2 border-border bg-surface p-4 text-left disabled:opacity-60">
-            <div className="flex items-start gap-3">
-              <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface2 text-brand shadow-card"><Layers className="h-6 w-6" /></span>
-              <div className="flex-1">
-                <p className="text-base font-bold">{T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora")}</p>
-                <p className="mt-0.5 text-sm text-muted">{T("You get two separate links from one login: your own card, and a Shubhora page of its own. Your customers never see Shubhora, and the Shubhora link never shows your business.", "एक ही login से दो अलग link मिलेंगे — अपना card, और Shubhora का अलग page। आपके customer को Shubhora नहीं दिखेगा, और Shubhora वाले link पर आपका business नहीं।")}</p>
-                <p className="mt-1.5 text-xs text-muted">{T("Your daily posters stay your own business's.", "रोज़ के poster आपके अपने business के ही बनेंगे।")}</p>
-                <p className="mt-2 inline-flex items-center gap-1.5 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white">{busy === "both" ? <><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : <>{T("Set up both", "दोनों सेट करें")} →</>}</p>
-              </div>
-            </div>
-          </button>
-
-          <div className="rounded-xl bg-surface2 px-3 py-2.5 text-xs text-muted">
-            <b className="text-ink">{T("Not sure?", "पक्का नहीं पता?")}</b> {T("Choose “My own business” — you can add the Shubhora page later from My V-Card, and take it off again any time.", "“मेरा अपना business” चुनें — Shubhora page बाद में My V-Card से जोड़ सकते हैं, और जब चाहें हटा भी सकते हैं।")}
-          </div>
           {err && <p className="text-sm text-danger">{err}</p>}
+          <button type="button" onClick={() => { if (promote === "both") void bothFlow(); else if (promote === "shubhora") void promoteShubhora(); else setStep("site"); }} disabled={!!busy}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+            {busy === "both" || busy === "shubhora" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : <>{T("Continue", "आगे बढ़ें")} →</>}
+          </button>
+          <p className="text-center text-xs text-muted">{T("Not sure? Keep Both — the Shubhora page can be taken off any time from My V-Card.", "पक्का नहीं? दोनों रहने दें — Shubhora page कभी भी My V-Card से हटा सकते हैं।")}</p>
         </section>
       ) : step === "site" ? (
         <section className="space-y-4">
@@ -938,7 +935,7 @@ function Onboard() {
                       {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Company / brand की website का link") : T("That website's link", "उस website का link")}
                       <div className="mt-1 flex items-stretch gap-2">
                         <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookupTyped(); } }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                          placeholder={c.k === "dealer" ? T("e.g. havells.com — or just the brand name", "जैसे havells.com — या सिर्फ़ brand का नाम") : T("e.g. sharmasweets.com — or the name", "जैसे sharmasweets.com — या नाम")} className={`${box} min-w-0 flex-1 ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                          placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`)} className={`${box} min-w-0 flex-1 ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
                         <button type="button" onClick={() => void lookupTyped()} disabled={!!finding || site.url.trim().length < 2} aria-label={T("Search", "खोजें")} title={T("Search", "खोजें")}
                           className="grid w-12 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
                       </div>
@@ -1055,7 +1052,7 @@ function Onboard() {
             {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
             <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
               onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
-              placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} />
+              placeholder={biz.role === "business" ? `e.g. ${egName}` : biz.role === "agent" ? T("e.g. the company or brand you represent", "जैसे जिस company / brand के लिए काम करते हैं") : T(`e.g. ${egName} — or leave empty`, `जैसे ${egName} — या खाली छोड़ें`)} className={field} />
             {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
               <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
                 <span>{T("On your website", "आपकी website पर")}: <b className="text-ink">{peek.data.name}</b></span>
@@ -1131,13 +1128,13 @@ function Onboard() {
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
             <div className="flex items-center justify-between gap-2">
-              <label htmlFor="about">{T("About your business", "आपके business के बारे में")}</label>
+              <label htmlFor="about">{T(`About your ${org.en}`, `आपके ${place} के बारे में`)} <span className="font-normal text-danger">*</span></label>
               <button type="button" onClick={() => writeAbout()} disabled={busy === "about"} className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink disabled:opacity-60">
                 {busy === "about" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {biz.about?.trim() ? T("Improve with AI", "AI से बेहतर करें") : T("Write with AI", "AI से लिखवाएँ")}
               </button>
             </div>
             <textarea id="about" value={biz.about ?? ""} onChange={(e) => { touch("about"); const v = e.target.value; setBiz({ ...biz, about: words(v) > ABOUT_MAX_WORDS ? v.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") : v }); }} rows={4}
-              placeholder={T("A few words is enough — e.g. “sweets and namkeen, home delivery” — then tap Write with AI.", "थोड़े शब्द काफ़ी हैं — जैसे “मिठाई और नमकीन, home delivery” — फिर AI से लिखवाएँ दबाएँ।")} className={field} />
+              placeholder={T(`A few words is enough — e.g. “${copy.aboutEg}” — then tap Write with AI.`, `थोड़े शब्द काफ़ी हैं — जैसे “${copy.aboutEgHi}” — फिर AI से लिखवाएँ दबाएँ।`)} className={field} />
             <span className="mt-1 flex justify-between gap-2 text-xs font-normal text-muted">
               <span>{T("The AI uses this for your card, website and customer replies.", "AI इसी से आपका card, website और customers के जवाब लिखता है।")}</span>
               <span className={`shrink-0 tabular-nums ${words(biz.about ?? "") >= ABOUT_MAX_WORDS ? "text-amber" : ""}`}>{words(biz.about ?? "")}/{ABOUT_MAX_WORDS}</span>

@@ -78,7 +78,7 @@ export function tradeShots(category: string): Shot[] {
   return SHOTS[category] ?? (c ? BY_GROUP[c.group] : undefined) ?? BY_GROUP.Services;
 }
 
-const WANT_PHOTOS = 5;
+const WANT_PHOTOS = 6;
 
 /** What is still missing, in the order it matters: the banner, the work photos, a photo per product without
  *  one, the portrait (when the card leads with the person), the logo. */

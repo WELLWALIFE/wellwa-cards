@@ -52,6 +52,15 @@ type Obj = Record<string, unknown>;
 const obj = (x: unknown): Obj => (x && typeof x === "object" && !Array.isArray(x) ? (x as Obj) : {});
 /** p, or null after ms (the promise keeps running but is no longer waited for). */
 const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
+/** Six of the pool in an order fixed by the seed (a small hash), so a business keeps its pictures across rebuilds. */
+function pickSix<T>(list: T[], seed: string, n = 6): T[] {
+  if (list.length <= n) return list;
+  let h = 2166136261;
+  for (const ch of seed.toLowerCase()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const out = list.slice();
+  for (let i = out.length - 1; i > 0; i--) { h = (Math.imul(h, 1103515245) + 12345) >>> 0; const j = h % (i + 1); [out[i], out[j]] = [out[j], out[i]]; }
+  return out.slice(0, n);
+}
 /** A measured page background that reads as dark. */
 const luminanceDark = (hex: string | undefined) => { const n = parseInt(String(hex ?? "").replace("#", ""), 16); if (!Number.isFinite(n)) return false; const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255; return (0.2126 * r + 0.7152 * g + 0.0722 * b) / 255 < 0.45; };
 
@@ -415,20 +424,24 @@ export async function POST(request: Request) {
   // Real photos + a short clip of the trade where the owner has none (cached per trade; ~20 s the first time).
   let stockUrls: string[] = [];
   try {
-    const media = await mediaP;
+    const pool = await mediaP;
+    // This business's six from the trade's pool of twelve, by its name: the same shop gets the same pictures on
+    // every rebuild, the next shop of the trade gets different ones (owner's call, 4 Oct 2026).
+    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}`) } : null;
     stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
     if (media) built = addStockMedia(built, paidPlan ? media : { ...media, clip: null }, facts.lang);
     if (media?.photos.length) {
       const photo = media.photos[0].url;
-      // A card with no banner of its own gets one from those same stock photos, so it never opens bare.
-      if (!built.coverUrl) built = { ...built, coverUrl: photo };
+      // A card with no banner of its own gets one from those same stock photos, so it never opens bare — and the
+      // fixed drawn banner of the trade gives way to a real photograph of it, different for each business.
+      if (!built.coverUrl || /\/api\/stock\/banners\//.test(built.coverUrl)) built = { ...built, coverUrl: photo };
       // The website hero chose its picture at compose time, before these photos existed, so it fell back to
       // the logo — a mobile shop's website opened on a logo in a box with real phone photos further down.
       // A hero with no photograph takes the first one now.
       const heroImg = built.site?.hero?.imageUrl ?? "";
-      const isLogo = !heroImg || heroImg === setup.logo || /\/art\/brand\//i.test(heroImg) || /logo/i.test(heroImg);
+      const isLogo = !heroImg || heroImg === setup.logo || /\/art\/brand\//i.test(heroImg) || /logo/i.test(heroImg) || /\/api\/stock\/banners\//.test(heroImg);
       if (isLogo && built.site?.hero) built = { ...built, site: { ...built.site, hero: { ...built.site.hero, imageUrl: photo } } };
     }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
