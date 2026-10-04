@@ -593,6 +593,10 @@ export default function BuildCard() {
           shubhoraVisible = !live.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
         }
         out = applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
+        // The look on screen is the one that goes live (owner's call, 4 Oct 2026: "jisko select kare wo open honi
+        // chahiye"). The merge above keeps a live card's earlier style and the server's card carries the designer's;
+        // the preview the owner approved carries the look they picked, and that wins over both.
+        if (shown.site?.style && out.site) out = { ...out, site: { ...out.site, style: { ...shown.site.style } } };
       }
       // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
       // made at set-up is not lost on the way to the finished card. It is appended last and marked hidden, so
