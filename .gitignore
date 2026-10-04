@@ -49,3 +49,6 @@ next-env.d.ts
 
 # compiled trade check (npm run check:trades)
 /scripts/trade-check/out/
+
+# tutorial videos are made on the server (scripts/tutorial-video.mjs)
+/public/tutorials/
