@@ -416,8 +416,11 @@ export async function POST(request: Request) {
   const mediaP = (async () => {
     try {
       const st = await stockEngineMod();
-      // 70 s: a trade's first pool (twelve judged photos) takes longer than the old six; the AI copy runs meanwhile.
-      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand }), 70_000);
+      // The pool answers as soon as six photos are in (owner's call, 4 Oct 2026: "6 laga sakte ho, thoda time lag
+      // jaaye to theek") and keeps filling to twelve in the background. A paid build has already spent up to 80 s on
+      // its own pictures, so it waits a little less; the AI copy runs meanwhile either way.
+      const waitMs = paidPlan ? 110_000 : 150_000;
+      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand, soon: 6, waitMs }), waitMs + 5_000);
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section

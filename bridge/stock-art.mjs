@@ -257,59 +257,97 @@ Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
 // quality 85, because the hero shows it full-width. "-v2" so the older six-photo caches are made again.
 // `brand` ("Hyundai", owner's call 4 Oct 2026): a dealer's photos and clip are of that brand's kind of thing, searched
 // and judged by the brand, in a pool of their own (a Hyundai dealer and a Maruti dealer never share pictures).
-export async function ensureCardMedia({ category, label = "", want = 12, brand = "" }) {
+//
+// A pool takes a while (eight searches, each judged, twelve pictures fetched at 1800px). The builder waiting on it
+// gets its answer as soon as `soon` photos are in (six, enough for the page) — or whatever is there at `waitMs` —
+// while the rest of the pool keeps filling in the background for the next build (owner's call, 4 Oct 2026: "6 laga
+// sakte ho, thoda time lag jaaye to theek, par complete banao"). Progress is written to disk after every photo, so a
+// restart keeps what was found.
+const POOLS = new Map();
+export async function ensureCardMedia({ category, label = "", want = 12, brand = "", soon = 6, waitMs = 150_000 }) {
   if (!PEXELS) return { photos: [], clip: null };
   fs.mkdirSync(CARD_DIR, { recursive: true });
   const brandWord = String(brand || "").trim().slice(0, 40);
   const brandSlug = brandWord.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
   const cat = `${String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other"}${brandSlug ? `-${brandSlug}` : ""}`;
   const meta = path.join(CARD_DIR, `${cat}-v2.json`);
+  const onDisk = (m) => (m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))));
+  let partial = null;
   if (fs.existsSync(meta)) {
-    try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if ((m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))))) return m; } catch { /* rebuild */ }
+    try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if (onDisk(m)) { if (!m.partial && (m.photos ?? []).length >= soon) return m; partial = m; } } catch { /* rebuild */ }
   }
   // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
   // twelve are made in the background for the next one.
-  let legacy = null;
+  let legacy = partial && (partial.photos ?? []).length >= soon ? partial : null;
   const metaV1 = brandSlug ? "" : path.join(CARD_DIR, `${cat}.json`);
-  if (metaV1 && fs.existsSync(metaV1)) {
+  if (!legacy && metaV1 && fs.existsSync(metaV1)) {
     try { const m = JSON.parse(fs.readFileSync(metaV1, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
   }
   const ik = `card:${cat}`;
-  if (inflight.has(ik)) return legacy ?? inflight.get(ik);
-  const p = (async () => {
-    const trade0 = label || words(category);
-    // With a brand, everything is the brand's: "Hyundai car showroom", judged as "Hyundai auto showroom".
-    const trade = brandWord ? `${brandWord} ${trade0}` : trade0;
+  /** What a waiter gets: the pool as it stands now. */
+  const snapshot = (pool) => ({ category: cat, label: pool.label, photos: [...pool.photos], clip: pool.clip, at: new Date().toISOString(), ...(pool.done ? {} : { partial: true }) });
+  /** Resolves with the pool once it holds `soon` photos (or is finished), else with what there is at `waitMs`. */
+  const waitFor = (pool) => new Promise((resolve) => {
+    let settled = false;
+    const finish = () => { if (settled) return; settled = true; clearTimeout(t); pool.waiters.delete(check); resolve(snapshot(pool)); };
+    const check = () => { if (pool.done || pool.photos.length >= soon) finish(); };
+    const t = setTimeout(finish, waitMs);
+    pool.waiters.add(check);
+    check();
+  });
+  if (POOLS.has(ik)) return legacy ?? waitFor(POOLS.get(ik));
+
+  const trade0 = label || words(category);
+  // With a brand, everything is the brand's: "Hyundai car showroom", judged as "Hyundai auto showroom".
+  const trade = brandWord ? `${brandWord} ${trade0}` : trade0;
+  const pool = { label: trade, photos: [], clip: null, done: false, waiters: new Set() };
+  POOLS.set(ik, pool);
+  const notify = () => { for (const w of [...pool.waiters]) w(); };
+  const save = (done) => { try { fs.writeFileSync(meta, JSON.stringify({ category: cat, label: trade, photos: pool.photos, clip: pool.clip, at: new Date().toISOString(), ...(done ? {} : { partial: true }) })); } catch { /* disk */ } };
+
+  const run_ = (async () => {
     // The trade's own search words first ("pharmacy chemist shop" for a medical store — "medical store india" brought
     // general stores, owner's report 4 Oct 2026), then the label's angles.
     const catKey = cat.split("-")[0];
     const hint = CATEGORY_WORDS[catKey] ? `${brandWord ? `${brandWord} ` : ""}${CATEGORY_WORDS[catKey]}` : "";
     const queries = brandWord
-      ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : []), `${brandWord} india`, `${brandWord} showroom`, `${brandWord} product close up`]
-      : [...(hint ? [hint, `${hint} india`] : []), `${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`];
-    const photos = []; const seen = new Set();
+      ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : []), `${brandWord} india`, `${brandWord} showroom`, `${brandWord} product close up`, trade0]
+      : [...(hint ? [hint, `${hint} india`] : []), `${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`, `${trade} store`];
+    const seen = new Set();
+    const spare = [];   // clean, fit 5–6: used when the strict pass leaves the pool short
+    const fetchInto = async (c) => {
+      if (pool.photos.length >= want || seen.has(c.id)) return;
+      seen.add(c.id);
+      try {
+        const buf = Buffer.from(await (await fetch(c.url, { signal: AbortSignal.timeout(40000) })).arrayBuffer());
+        const n = pool.photos.length + 1;
+        const file = path.join(CARD_DIR, `${cat}-v2-${n}-${c.id}.jpg`);
+        await sharp(buf).resize({ width: 1800, withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toFile(file);
+        if (pool.photos.length >= want) { try { fs.unlinkSync(file); } catch { /* ignore */ } return; }
+        pool.photos.push({ url: CARD_URL(file), credit: c.credit, id: c.id });
+        save(false); notify();
+      } catch { /* next */ }
+    };
     for (const q of queries) {
-      if (photos.length >= want) break;
-      const cands = (await landscapePhotos(q)).filter((c) => !seen.has(c.id)).slice(0, 12);
+      if (pool.photos.length >= want) break;
+      const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 12);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Photo");
       const good = scores === null ? cands.slice(0, 3).map((c) => ({ c, fit: 7 })) : scores.filter((s) => s.clean && s.fit >= 7).sort((a, b) => b.fit - a.fit).map((s) => ({ c: cands[s.n], fit: s.fit })).filter((x) => x.c);
-      for (const { c } of good) {
-        if (photos.length >= want || seen.has(c.id)) continue;
-        seen.add(c.id);
-        try {
-          const buf = Buffer.from(await (await fetch(c.url, { signal: AbortSignal.timeout(40000) })).arrayBuffer());
-          const file = path.join(CARD_DIR, `${cat}-v2-${photos.length + 1}.jpg`);
-          await sharp(buf).resize({ width: 1800, withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toFile(file);
-          photos.push({ url: CARD_URL(file), credit: c.credit, id: c.id });
-        } catch { /* next */ }
-      }
+      if (scores !== null) for (const s of scores) { if (s.clean && s.fit >= 5 && s.fit < 7 && cands[s.n]) spare.push({ c: cands[s.n], fit: s.fit }); }
+      // Three downloads at a time: the pool fills in a third of the time.
+      for (let i = 0; i < good.length && pool.photos.length < want; i += 3) await Promise.all(good.slice(i, i + 3).map(({ c }) => fetchInto(c)));
     }
-    let clip = null;
+    // Short of six after the strict pass: the near-misses, best first, so the page never shows two tiles.
+    if (pool.photos.length < soon && spare.length) {
+      log(`card media ${cat}: ${pool.photos.length} strict, taking from ${spare.length} near-misses`);
+      const rest = spare.sort((a, b) => b.fit - a.fit);
+      for (let i = 0; i < rest.length && pool.photos.length < soon; i += 3) await Promise.all(rest.slice(i, i + 3).map(({ c }) => fetchInto(c)));
+    }
     // A clip is on the home page, so it must be unmistakably this trade: judged at 8, not 7, and none at all beats
     // a general store's clip on a medical store's site.
     for (const q of brandWord ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : [])] : [...(hint ? [hint] : []), `${trade} india`, trade]) {
-      const cands = (await landscapeClips(q)).slice(0, 8);
+      const cands = (await landscapeClips(q).catch(() => [])).slice(0, 8);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Clip");
       const pick = scores === null ? null : (() => { const b = scores.filter((s) => s.clean && s.fit >= 8).sort((a, b) => b.fit - a.fit)[0]; return b ? cands[b.n] : null; })();
@@ -320,17 +358,19 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
         await run(FFMPEG, ["-y", "-loglevel", "error", "-i", raw, "-t", "12", "-an", "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,eq=contrast=1.03:saturation=1.05,fps=30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { timeout: 180_000 });
         const poster = file.replace(/\.mp4$/, "-poster.jpg");
         await run(FFMPEG, ["-y", "-loglevel", "error", "-ss", "1", "-i", file, "-frames:v", "1", "-q:v", "3", poster], { timeout: 60_000 }).catch(() => {});
-        clip = { url: CARD_URL(file), poster: fs.existsSync(poster) ? CARD_URL(poster) : "", credit: pick.credit, id: pick.id };
+        pool.clip = { url: CARD_URL(file), poster: fs.existsSync(poster) ? CARD_URL(poster) : "", credit: pick.credit, id: pick.id };
         break;
       } catch (e) { log(`card clip failed (${FFMPEG}): ${e && e.message ? e.message.slice(0, 160) : e}`); }
       finally { try { fs.unlinkSync(raw); } catch { /* ignore */ } }
     }
-    const out = { category: cat, label: trade, photos, clip, at: new Date().toISOString() };
-    if (photos.length || clip) fs.writeFileSync(meta, JSON.stringify(out));
-    log(`card media ${cat}: ${photos.length} photos${clip ? " + clip" : ""}`);
-    return out;
-  })().finally(() => inflight.delete(ik));
-  inflight.set(ik, p);
-  if (legacy) { p.catch(() => undefined); return legacy; }
-  return p;
+  })().catch((e) => log(`card media ${cat} failed: ${e && e.message ? e.message.slice(0, 160) : e}`)).finally(() => {
+    pool.done = true;
+    if (pool.photos.length || pool.clip) save(true);
+    log(`card media ${cat}: ${pool.photos.length} photos${pool.clip ? " + clip" : ""}`);
+    notify();
+    POOLS.delete(ik);
+  });
+  void run_;
+  if (legacy) return legacy;
+  return waitFor(pool);
 }
