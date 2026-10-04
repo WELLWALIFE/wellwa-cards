@@ -115,7 +115,9 @@ async function findUser(email) {
     const r = await fetch(`${SUPA}/auth/v1/admin/users?page=${page}&per_page=1000`, { headers: H });
     const j = await r.json();
     const list = j.users ?? [];
-    const u = list.find((x) => (x.email ?? "").toLowerCase() === email.toLowerCase());
+    // the login email, or (a mobile sign-up, whose login email is a placeholder) the contact email saved in the profile
+    const want = email.toLowerCase();
+    const u = list.find((x) => (x.email ?? "").toLowerCase() === want) ?? list.find((x) => String(x.user_metadata?.contact_email ?? "").toLowerCase() === want);
     if (u) return u;
     if (list.length < 1000) break;
   }
@@ -293,9 +295,10 @@ async function record(t, work) {
   for (const [k, v] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL: SUPA, SUPABASE_SERVICE_ROLE_KEY: KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY: ANON, GEMINI_API_KEY: GEMINI })) if (!v) throw new Error(`${k} missing in .env.local`);
   if (!fs.existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME} (CHROME_PATH)`);
   const user = await findUser(USER);
-  log(`account ${user.email} (${user.id})`);
+  const LOGIN = user.email;   // what the account really signs in with (may differ from --user)
+  log(`account ${LOGIN} (${user.id})`);
   if (!flag("--no-reset")) {
-    const r = await fetch(`${SITE}/api/demo/reset`, { method: "POST", headers: { Authorization: `Bearer ${await bearerFor(USER)}`, "Content-Type": "application/json" }, body: "{}" });
+    const r = await fetch(`${SITE}/api/demo/reset`, { method: "POST", headers: { Authorization: `Bearer ${await bearerFor(LOGIN)}`, "Content-Type": "application/json" }, body: "{}" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok && r.status !== 207) throw new Error(`could not reset the demo account (${r.status}): ${j.error || ""} — mark it as the demo account in Super Admin → Users, or pass --no-reset`);
     log("demo account reset:", JSON.stringify(j.cleared ?? {}));
@@ -318,7 +321,7 @@ async function record(t, work) {
     document.documentElement.appendChild(css);
     window.__ripple = (x, y) => { const d = document.createElement("div"); d.className = "__rp"; d.style.left = `${x}px`; d.style.top = `${y}px`; document.body.appendChild(d); setTimeout(() => d.remove(), 600); };
   });
-  const u = ui(page, { work, email: USER, uid: user.id });
+  const u = ui(page, { work, email: LOGIN, uid: user.id });
   const done = [];
   try {
     for (const [i, s] of t.scenes(u).entries()) {
