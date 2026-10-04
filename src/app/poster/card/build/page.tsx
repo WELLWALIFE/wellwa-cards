@@ -265,9 +265,16 @@ export default function BuildCard() {
       let again = false;
       // ?flow=1 — step 4 of the profile: the form opens, nothing is built until step 5. ?make=1 — straight to step 5.
       let flow = false, makeNow = false;
+      // ?improve=1 — "Improve your website" / "Change the look" from Card & Website (owner's call, 4 Oct 2026: Write
+      // again any time): the LIVE card opens in the preview as it is, nothing is built; the five looks are there and
+      // a look chosen goes live at once. &ask=1 opens "What should change?" straight away.
+      let improve = false, ask = false;
       try {
         const u = new URL(window.location.href);
         again = u.searchParams.get("again") === "1";
+        improve = u.searchParams.get("improve") === "1";
+        ask = u.searchParams.get("ask") === "1";
+        if (improve || ask) { u.searchParams.delete("improve"); u.searchParams.delete("ask"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
         flow = u.searchParams.get("flow") === "1";
         makeNow = u.searchParams.get("make") === "1" || flow;
         // ?site=new — the set-up just saved a different website (or role): the site's words lead this build.
@@ -314,6 +321,13 @@ export default function BuildCard() {
       const startRows = backupRows?.length ? backupRows : fromSaved.length ? fromSaved : [emptyRow(), emptyRow(), emptyRow()];
       setRows(startRows);
 
+      if (improve && live) {
+        const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
+        setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
+        setState("preview"); setTab("site");
+        if (ask) setTimeout(() => setAgainAsk(true), 300);
+        return;
+      }
       if (draft) {
         setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig);
         setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []);
