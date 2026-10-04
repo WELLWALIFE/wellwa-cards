@@ -97,7 +97,7 @@ const TUTORIALS = {
         } },
       { id: "products", say: "तीसरा step — products या services। हर product का नाम, दाम और photo डालिए; website इन्हीं से लिखी जाती है। अभी नहीं डालने हैं तो Skip दबाइए — बाद में कभी भी जोड़ सकते हैं।",
         act: async () => { await pause(1200); await u.scrollBy(300, 1500); await pause(400); await u.tapThen("Skip —", "Make my free website", { timeout: 35000 }); } },
-      { id: "make", enter: async () => { await u.login(); await u.goto(`${SITE}/poster/card/build?make=1`); await u.waitText("Make my free website", 40000); }, say: "और अब आख़िरी step — 'Make my free website' दबाइए। AI आपकी website और card लिखता है, photos चुनता है। इसमें एक से तीन मिनट लगते हैं।",
+      { id: "make", enter: async () => { await u.dropCards(); await u.login(); await u.goto(`${SITE}/poster/card/build?make=1`); await u.waitText("Make my free website", 40000); }, say: "और अब आख़िरी step — 'Make my free website' दबाइए। AI आपकी website और card लिखता है, photos चुनता है। इसमें एक से तीन मिनट लगते हैं।",
         act: async () => {
           await pause(1500);
           // pressed again if the first tap missed: the button is gone once the build has started
@@ -107,7 +107,7 @@ const TUTORIALS = {
           }
           await pause(5000);
         },
-        after: async () => { await u.waitText("Your website is ready", 360000); await pause(1500); } },
+        after: async () => { await u.waitText(["Your website is ready", "Your new website is ready"], 420000); await pause(1500); } },
       { id: "preview", say: "लीजिए — आपकी website तैयार! ऊपर पाँच looks हैं — Designer, Classic, Bold, Elegant और Fresh। जो पसंद आए वो चुनिए; बाद में कभी भी बदल सकते हैं।",
         act: async () => { await pause(1500); await u.tapText("Classic"); await pause(2500); await u.tapText("Bold"); await pause(2500); await u.tapText("Designer"); await pause(1500); await u.scrollBy(500, 2000); await u.scrollBy(-500, 1500); } },
       { id: "save", say: "सब ठीक लगे तो Save दबाइए। बस — आपकी website और digital card live हैं, एक ही link पर।",
@@ -257,8 +257,24 @@ async function backgroundPng(file, W, H, { title, subtitle, logo, titleAt, size 
 export function ui(page, { work, email, uid }) {
   const u = { page };
   u.goto = async (url) => { await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 }); await pause(600); };
-  // body can be missing for an instant while the page swaps documents: an error inside the poller would end the wait
-  u.waitText = (text, timeout = 15000) => page.waitForFunction((t) => !!document.body?.innerText?.includes(t), { timeout }, text);
+  /** Waits until the screen says `text` (or any of several). Done in slices of 20 s: one long wait inside the browser
+   *  dies at Chrome's own 3-minute call limit ("Runtime.callFunctionOn timed out"), long before a website build ends.
+   *  body can be missing for an instant while the page swaps documents, hence the ?. */
+  u.waitText = async (text, timeout = 15000) => {
+    const list = Array.isArray(text) ? text : [text];
+    const until = Date.now() + timeout;
+    for (;;) {
+      const left = until - Date.now();
+      if (left <= 0) throw new Error(`Waiting failed: ${timeout}ms exceeded for ${list.map((t) => `"${t}"`).join(" or ")}`);
+      try {
+        await page.waitForFunction((ts) => ts.some((t) => !!document.body?.innerText?.includes(t)), { timeout: Math.min(left, 20000) }, list);
+        return;
+      } catch (e) {
+        // a slice ran out: take the next; anything else (the page closed, a protocol error) is a real failure
+        if (e?.name !== "TimeoutError") throw e;
+      }
+    }
+  };
   /** The first visible element whose text has `text` (whole text when exact). */
   u.findText = async (text, { exact = false, sel = "button, a, [role='option'], label, summary" } = {}) => {
     const h = await page.evaluateHandle((t, ex, s) => {
@@ -335,6 +351,12 @@ export function ui(page, { work, email, uid }) {
     await page.evaluate(() => { localStorage.removeItem("shubhora.admin.return"); }); // no "Back to admin" bar in the video
     await pause(500);
   };
+  /** Removes the account's cards (an earlier attempt's build leaves one): a build made again then starts from nothing. */
+  u.dropCards = async () => {
+    const r = await fetch(`${SUPA}/rest/v1/cards?owner_id=eq.${uid}`, { method: "DELETE", headers: { ...H, Prefer: "return=representation" } });
+    const j = await r.json().catch(() => []);
+    log(`removed ${Array.isArray(j) ? j.length : 0} card(s) left by an earlier attempt`);
+  };
   u.cardSlug = async () => {
     const r = await fetch(`${SUPA}/rest/v1/cards?owner_id=eq.${uid}&select=username&order=created_at.desc&limit=1`, { headers: H });
     const j = await r.json(); const slug = j?.[0]?.username; if (!slug) throw new Error("no card found after save"); return slug;
@@ -363,7 +385,7 @@ async function record(t, work) {
   const voices = await Promise.all(scenes.map((s) => tts(s.say)));
   log(`voice: ${scenes.length} lines, ${voices.reduce((a, v) => a + v.seconds, 0).toFixed(1)} s`);
 
-  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--lang=en-IN", "--font-render-hinting=none", "--disable-gpu"] });
+  const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 600000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--lang=en-IN", "--font-render-hinting=none", "--disable-gpu"] });
   browser.on("disconnected", () => log("!! Chrome closed"));
   const page = await browser.newPage();
   page.on("error", (e) => log("!! the page crashed:", e.message));
