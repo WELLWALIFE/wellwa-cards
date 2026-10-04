@@ -230,22 +230,44 @@ async function landscapePhotos(query) {
   const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=landscape&size=large&per_page=15&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
   return (r.photos ?? []).filter((p) => p.width >= 1600).map((p) => ({ id: p.id, url: p.src?.large2x || p.src?.large || p.src?.original, thumb: p.src?.medium, credit: p.photographer || "" }));
 }
+/** Three pictures taken along the clip (a fifth in, the middle, four fifths in): one poster frame is not enough to tell
+ *  a pharmacy from a snack stall. Pexels lists a strip of them as `video_pictures`. */
+function framesOf(v) {
+  const pics = (v.video_pictures ?? []).filter((x) => x.picture).sort((a, b) => (a.nr ?? 0) - (b.nr ?? 0)).map((x) => x.picture);
+  if (pics.length < 3) return [v.image].filter(Boolean);
+  return [...new Set([0.2, 0.5, 0.8].map((q) => pics[Math.min(pics.length - 1, Math.floor(pics.length * q))]))];
+}
 async function landscapeClips(query) {
   const r = await fetch(`https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&orientation=landscape&size=medium&per_page=12`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
-  return (r.videos ?? []).filter((v) => (v.duration ?? 0) >= 6).map((v) => { const f = (v.video_files ?? []).filter((x) => x.width >= 1280 && x.width <= 2560 && x.width > x.height && /mp4/.test(x.file_type ?? "mp4")).sort((a, b) => Math.abs(a.width - 1920) - Math.abs(b.width - 1920))[0]; return f ? { id: v.id, url: f.link, thumb: v.image, credit: v.user?.name || "", dur: Number(v.duration) || 0 } : null; }).filter(Boolean);
+  return (r.videos ?? []).filter((v) => (v.duration ?? 0) >= 6).map((v) => { const f = (v.video_files ?? []).filter((x) => x.width >= 1280 && x.width <= 2560 && x.width > x.height && /mp4/.test(x.file_type ?? "mp4")).sort((a, b) => Math.abs(a.width - 1920) - Math.abs(b.width - 1920))[0]; return f ? { id: v.id, url: f.link, thumb: v.image, frames: framesOf(v), credit: v.user?.name || "", dur: Number(v.duration) || 0 } : null; }).filter(Boolean);
 }
-/** Judge for card media: does it show THIS trade, premium and clean, people Indian if any, no text. */
+/** Judge for card media: does it show THIS trade, premium and clean, people Indian if any, no text. A clip is judged on
+ *  its frames and far more harshly: it plays on the home page, so a wrong one is worse than none (owner, 4 Oct 2026:
+ *  a roadside snack shop's clip came up on a medical store's site). */
 async function judgeCard(cands, label, what) {
   const parts = [];
+  const isClip = what === "Clip";
   for (const [k, c] of cands.entries()) {
-    try { const buf = Buffer.from(await (await fetch(c.thumb, { signal: AbortSignal.timeout(15000) })).arrayBuffer()); const small = await sharp(buf).resize({ width: 320 }).jpeg({ quality: 75 }).toBuffer(); parts.push({ text: `${what} ${k}:` }, { inlineData: { mimeType: "image/jpeg", data: small.toString("base64") } }); } catch { /* skip */ }
+    const urls = (c.frames?.length ? c.frames : [c.thumb]).filter(Boolean);
+    for (const [f, u] of urls.entries()) {
+      try {
+        const buf = Buffer.from(await (await fetch(u, { signal: AbortSignal.timeout(15000) })).arrayBuffer());
+        const small = await sharp(buf).resize({ width: 320 }).jpeg({ quality: 75 }).toBuffer();
+        parts.push({ text: `${what} ${k}${urls.length > 1 ? `, frame ${f + 1} of ${urls.length}` : ""}:` }, { inlineData: { mimeType: "image/jpeg", data: small.toString("base64") } });
+      } catch { /* skip */ }
+    }
   }
   if (!parts.length) return [];
   const brandNote = /^[A-Z][\w&.-]*(?: [A-Z][\w&.-]*)? /.test(label) ? ` The label starts with a BRAND: the thing shown must be recognisably that brand's (its cars, phones, paint…), not a rival's — a rival brand's product scores 0–3.` : "";
-  parts.push({ text: `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".${brandNote}
-Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and CLEAN true/false (no readable text, logos, watermarks or screens; people, if any, look Indian / South Asian and appropriately dressed; nothing offensive; no alcohol, smoking or gore).
+  const clean = `CLEAN true/false (no readable text, logos, watermarks or screens; people, if any, look Indian / South Asian and appropriately dressed; nothing offensive; no alcohol, smoking or gore).`;
+  parts.push({ text: isClip
+    ? `These are VIDEO clips (a few frames of each) for the HOME PAGE of a "${label}" business's website in INDIA. It plays right under the heading, so a wrong clip is worse than none.${brandNote}
+First say in 3–6 words what each clip actually shows ("shows"). Then score FIT 0–10: give 9–10 ONLY when you can SEE something that only THIS trade has (a pharmacy: medicine boxes, strips or bottles on shelves, a chemist counter, a pharmacist, a green cross; a school: classrooms, uniforms, a blackboard; a sweet shop: trays of mithai; and so on). A general / kirana / grocery or snack shop, a street stall, a market, a crowd, a generic interior, or any other trade scores 0–2 even if it looks like some small shop. Footage must be bright, steady and premium. Also ${clean}
+Return ONLY JSON {"items":[{"n":0,"shows":"","fit":0,"clean":true}]}`
+    : `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".${brandNote}
+Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and ${clean}
 Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
-  try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false })); } catch { return null; }
+  try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false, shows: String(p.shows ?? "").slice(0, 60) })); } catch { return null; }
 }
 
 /**
@@ -264,21 +286,35 @@ Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
 // sakte ho, thoda time lag jaaye to theek, par complete banao"). Progress is written to disk after every photo, so a
 // restart keeps what was found.
 const POOLS = new Map();
+// Version of the clip choice. 2: judged on three frames and harshly. A pool whose clip was chosen before is kept for its
+// photos, but the clip is chosen again (and the old file is never used).
+const CLIP_V = 2;
 export async function ensureCardMedia({ category, label = "", want = 12, brand = "", soon = 6, waitMs = 150_000 }) {
   if (!PEXELS) return { photos: [], clip: null };
   fs.mkdirSync(CARD_DIR, { recursive: true });
+  // `soon` is how many photos the caller WAITS for (a paid build passes 99: "wait for the whole pool"). A pool that is
+  // finished is complete whatever its size, so what counts as "enough to serve" is the page's six, never `soon` —
+  // with 99 here a paid build never found its cache and searched and judged the whole pool again every time.
+  const floor = Math.min(soon, 6);
   const brandWord = String(brand || "").trim().slice(0, 40);
   const brandSlug = brandWord.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
   const cat = `${String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other"}${brandSlug ? `-${brandSlug}` : ""}`;
   const meta = path.join(CARD_DIR, `${cat}-v2.json`);
   const onDisk = (m) => (m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))));
-  let partial = null;
+  let partial = null, clipOnly = null;
   if (fs.existsSync(meta)) {
-    try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if (onDisk(m)) { if (!m.partial && (m.photos ?? []).length >= soon) return m; partial = m; } } catch { /* rebuild */ }
+    try {
+      const m = JSON.parse(fs.readFileSync(meta, "utf8"));
+      if (m.clip && m.clipV !== CLIP_V) m.clip = null;   // chosen by the old judge: not trusted
+      if (onDisk(m)) {
+        if (!m.partial && (m.photos ?? []).length >= floor) { if (m.clipV === CLIP_V) return m; clipOnly = m; }   // photos done: only the clip again
+        else partial = m;
+      }
+    } catch { /* rebuild */ }
   }
   // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
   // twelve are made in the background for the next one.
-  let legacy = partial && (partial.photos ?? []).length >= soon ? partial : null;
+  let legacy = partial && (partial.photos ?? []).length >= floor ? partial : null;
   const metaV1 = brandSlug ? "" : path.join(CARD_DIR, `${cat}.json`);
   if (!legacy && metaV1 && fs.existsSync(metaV1)) {
     try { const m = JSON.parse(fs.readFileSync(metaV1, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
@@ -300,10 +336,10 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   const trade0 = label || words(category);
   // With a brand, everything is the brand's: "Hyundai car showroom", judged as "Hyundai auto showroom".
   const trade = brandWord ? `${brandWord} ${trade0}` : trade0;
-  const pool = { label: trade, photos: [], clip: null, done: false, waiters: new Set() };
+  const pool = { label: trade, photos: clipOnly ? [...clipOnly.photos] : [], clip: null, clipV: 0, done: false, waiters: new Set() };
   POOLS.set(ik, pool);
   const notify = () => { for (const w of [...pool.waiters]) w(); };
-  const save = (done) => { try { fs.writeFileSync(meta, JSON.stringify({ category: cat, label: trade, photos: pool.photos, clip: pool.clip, at: new Date().toISOString(), ...(done ? {} : { partial: true }) })); } catch { /* disk */ } };
+  const save = (done) => { try { fs.writeFileSync(meta, JSON.stringify({ category: cat, label: trade, photos: pool.photos, clip: pool.clip, clipV: pool.clipV, at: new Date().toISOString(), ...(done ? {} : { partial: true }) })); } catch { /* disk */ } };
 
   const run_ = (async () => {
     // The trade's own search words first ("pharmacy chemist shop" for a medical store — "medical store india" brought
@@ -328,6 +364,7 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
         save(false); notify();
       } catch { /* next */ }
     };
+    if (!clipOnly) {
     for (const q of queries) {
       if (pool.photos.length >= want) break;
       const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 12);
@@ -339,20 +376,24 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       for (let i = 0; i < good.length && pool.photos.length < want; i += 3) await Promise.all(good.slice(i, i + 3).map(({ c }) => fetchInto(c)));
     }
     // Short of six after the strict pass: the near-misses, best first, so the page never shows two tiles.
-    if (pool.photos.length < soon && spare.length) {
+    if (pool.photos.length < floor && spare.length) {
       log(`card media ${cat}: ${pool.photos.length} strict, taking from ${spare.length} near-misses`);
       const rest = spare.sort((a, b) => b.fit - a.fit);
-      for (let i = 0; i < rest.length && pool.photos.length < soon; i += 3) await Promise.all(rest.slice(i, i + 3).map(({ c }) => fetchInto(c)));
+      for (let i = 0; i < rest.length && pool.photos.length < floor; i += 3) await Promise.all(rest.slice(i, i + 3).map(({ c }) => fetchInto(c)));
     }
-    // A clip is on the home page, so it must be unmistakably this trade: judged at 8, not 7, and none at all beats
-    // a general store's clip on a medical store's site.
+    }
+    // A clip is on the home page, so it must be unmistakably this trade: judged on three frames at 9, and none at all
+    // beats a general store's clip on a medical store's site.
+    let judgeFailed = false;
     for (const q of brandWord ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : [])] : [...(hint ? [hint] : []), `${trade} india`, trade]) {
       const cands = (await landscapeClips(q).catch(() => [])).slice(0, 8);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Clip");
-      const pick = scores === null ? null : (() => { const b = scores.filter((s) => s.clean && s.fit >= 8).sort((a, b) => b.fit - a.fit)[0]; return b ? cands[b.n] : null; })();
+      if (scores === null) judgeFailed = true;
+      else log(`card clip "${q}": ${scores.map((x) => `${x.n}:${x.fit}${x.clean ? "" : "✗"} ${x.shows}`).join(" | ")}`);
+      const pick = scores === null ? null : (() => { const b = scores.filter((s) => s.clean && s.fit >= 9 && cands[s.n]).sort((a, b) => b.fit - a.fit)[0]; return b ? cands[b.n] : null; })();
       if (!pick) continue;
-      const file = path.join(CARD_DIR, `${cat}-clip.mp4`), raw = file.replace(/\.mp4$/, "-raw.mp4");
+      const file = path.join(CARD_DIR, `${cat}-clip2.mp4`), raw = file.replace(/\.mp4$/, "-raw.mp4");
       try {
         fs.writeFileSync(raw, Buffer.from(await (await fetch(pick.url, { signal: AbortSignal.timeout(90000) })).arrayBuffer()));
         await run(FFMPEG, ["-y", "-loglevel", "error", "-i", raw, "-t", "12", "-an", "-vf", "scale=1280:720:force_original_aspect_ratio=increase,crop=1280:720,eq=contrast=1.03:saturation=1.05,fps=30", "-c:v", "libx264", "-preset", "veryfast", "-crf", "24", "-pix_fmt", "yuv420p", "-movflags", "+faststart", file], { timeout: 180_000 });
@@ -363,6 +404,8 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       } catch (e) { log(`card clip failed (${FFMPEG}): ${e && e.message ? e.message.slice(0, 160) : e}`); }
       finally { try { fs.unlinkSync(raw); } catch { /* ignore */ } }
     }
+    // Looked and found none is an answer worth keeping (asked again only when the judge itself failed).
+    if (!judgeFailed || pool.clip) pool.clipV = CLIP_V;
   })().catch((e) => log(`card media ${cat} failed: ${e && e.message ? e.message.slice(0, 160) : e}`)).finally(() => {
     pool.done = true;
     if (pool.photos.length || pool.clip) save(true);

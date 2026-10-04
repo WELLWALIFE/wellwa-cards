@@ -10,6 +10,10 @@
 //   … --out /opt/neuraledge/app/public/tutorials      where the mp4s go (default) → https://shubhora.com/tutorials/…
 //   … --voice Charon                                    any Gemini prebuilt voice
 //   … --no-reset                                        do not wipe the demo account first
+//   … --free                                            record as a FREE account: the demo account's plan is set to Free for
+//                                                       the recording and put back afterwards (a Free site has stock photos,
+//                                                       no video clip, no AI banner — what a Free owner really sees)
+//   … --allow-paid                                      record on the paid plan as it is (the Premium site: clip, AI banner)
 //   … --compose <work dir>                              only put the video together again from an earlier recording
 //   … --resume <work dir> --from make                   carry on from a scene after a run stopped there (the account is
 //                                                       left as that run left it: no reset, scenes before it kept)
@@ -156,6 +160,27 @@ async function bearerFor(email) {
   const j = await r.json().catch(() => ({}));
   if (!r.ok || !j.access_token) throw new Error(`login failed: ${j.msg || j.error_description || r.status}`);
   return j.access_token;
+}
+
+/* ============================== helpers: plan ============================== */
+const PLAN_COLS = ["plan", "plan_expires_at", "plan_source", "poster_plan", "poster_plan_expires_at", "saas_expires_at"];
+/** What the build route sees (posterQuota in lib/poster-server.ts): "free", or the paid plan the account is on. */
+export function planNow(r) {
+  let plan = r.poster_plan ?? "free";
+  if (plan !== "free" && r.poster_plan_expires_at && new Date(r.poster_plan_expires_at).getTime() < Date.now()) plan = "free";
+  const until = [r.plan_expires_at, r.saas_expires_at].map((d) => (d ? new Date(d).getTime() : 0));
+  if (plan === "free" && Math.max(...until) > Date.now()) plan = "suite";
+  return plan;
+}
+export async function readPlan(uid) {
+  const r = await fetch(`${SUPA}/rest/v1/profiles?id=eq.${uid}&select=${PLAN_COLS.join(",")}`, { headers: H });
+  const j = await r.json().catch(() => []);
+  if (!r.ok || !j[0]) throw new Error(`could not read the account's plan (${r.status})`);
+  return j[0];
+}
+export async function writePlan(uid, cols) {
+  const r = await fetch(`${SUPA}/rest/v1/profiles?id=eq.${uid}`, { method: "PATCH", headers: { ...H, Prefer: "return=minimal" }, body: JSON.stringify(cols) });
+  if (!r.ok) throw new Error(`could not change the account's plan (${r.status}): ${(await r.text()).slice(0, 200)}`);
 }
 
 /* ============================== helpers: voice ============================== */
@@ -374,6 +399,10 @@ async function record(t, work) {
   const user = await findUser(USER);
   const LOGIN = user.email;   // what the account really signs in with (may differ from --user)
   log(`account ${LOGIN} (${user.id})`);
+  const planBefore = await readPlan(user.id);
+  const planName = planNow(planBefore);
+  if (planName !== "free" && !flag("--free") && !flag("--allow-paid"))
+    throw new Error(`this account is on a PAID plan (${planName}). A Free owner's site has stock photos, no video clip and no AI banner, so a "free website" video recorded here would show things a free owner never gets.\n  Add --free (the plan is set to Free for the recording and put back afterwards), or --allow-paid to record the Premium site as it is.`);
   if (!flag("--no-reset") && !resuming) {
     const r = await fetch(`${SITE}/api/demo/reset`, { method: "POST", headers: { Authorization: `Bearer ${await bearerFor(LOGIN)}`, "Content-Type": "application/json" }, body: "{}" });
     const j = await r.json().catch(() => ({}));
@@ -412,7 +441,29 @@ async function record(t, work) {
     return new Error(`scene "${s.id}"${what}: ${e.message}${cause}\n  screen said: ${seen}${errs ? `\n  errors on screen: ${errs}` : ""}\n  (picture: ${work}/fail-${s.id}.png — to carry on: node scripts/tutorial-video.mjs ${TUTORIAL} --user ${USER} --resume ${work} --from ${s.id})`);
   };
   let fromIdx = 0, kept = [];
+  let flipped = false;
+  const planFile = path.join(work, "plan-before.json");
+  const restorePlan = async () => {
+    if (!flipped) return;
+    try {
+      const saved = JSON.parse(fs.readFileSync(planFile, "utf8"));
+      await writePlan(user.id, Object.fromEntries(PLAN_COLS.map((c) => [c, saved[c] ?? null])));
+      log(`plan put back (${planNow(saved)})`); flipped = false;
+    } catch (e) { log(`!! could NOT put the plan back: ${e.message} — saved values are in ${planFile}`); }
+  };
   try {
+  if (flag("--free") && planName === "free" && fs.existsSync(planFile)) {
+    flipped = true;   // still Free from an earlier run that died before it could put the plan back: put it back at the end
+    log("plan is still Free from an earlier run; it is put back at the end");
+  } else if (flag("--free") && planName !== "free") {
+    // the first run's values are the real ones; a carried-on run (the plan was put back after the stop) flips again
+    if (!fs.existsSync(planFile)) fs.writeFileSync(planFile, JSON.stringify(planBefore, null, 1));
+    await writePlan(user.id, { plan: "free", plan_expires_at: null, poster_plan: "free", poster_plan_expires_at: null, saas_expires_at: null });
+    flipped = true;
+    const check = planNow(await readPlan(user.id));
+    if (check !== "free") throw new Error(`the plan did not change to free (still ${check})`);
+    log(`plan set to Free for the recording (was ${planName}; it is put back at the end)`);
+  }
   if (resuming) {
     fromIdx = list.findIndex((x) => x.id === FROM);
     if (fromIdx < 0) throw new Error(`--from "${FROM}": no such scene — one of: ${list.map((x) => x.id).join(", ")}`);
@@ -442,7 +493,7 @@ async function record(t, work) {
       fs.writeFileSync(path.join(work, "progress.json"), JSON.stringify(done, null, 1));
       if (s.after) { log(`${s.id}: waiting…`); try { await s.after(); } catch (e) { throw await failed(s, e, " (while waiting)"); } }
     }
-  } finally { await browser.close().catch(() => undefined); }
+  } finally { await browser.close().catch(() => undefined); await restorePlan(); }
   fs.writeFileSync(path.join(work, "scenes.json"), JSON.stringify({ tutorial: TUTORIAL, title: t.title, subtitle: t.subtitle, scenes: done }, null, 1));
   return done;
 }
