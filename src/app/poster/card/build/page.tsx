@@ -24,7 +24,7 @@ import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shu
 import { CardView } from "@/components/card-view";
 import { applyLook, fiveLooks, type LookKey } from "@/lib/site-looks";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
-import type { Card, CardBlock } from "@/lib/types";
+import type { Card, CardBlock, SiteStyle } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
 import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
@@ -181,6 +181,9 @@ export default function BuildCard() {
     setCard((c) => (c ? applyLook(c, look) : c));
     // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
     setTab("site");
+    // The first site goes live on its own, before any look is chosen — so a look chosen afterwards is published
+    // at once, or the live link would keep opening on the first (owner's report, 4 Oct 2026).
+    if (liveUser && !busy) void publish({ style: look.style });
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
@@ -574,7 +577,7 @@ export default function BuildCard() {
     } catch { /* offline: the button stays */ } finally { setBusy(""); }
   }
 
-  async function publish() {
+  async function publish(opts?: { style?: SiteStyle }) {
     if (!shown || !card) return;
     if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live V-Card? Your link, QR code, verified badge and settings stay the same.", "अपना live V-Card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
     setBusy("publish"); setErr("");
@@ -602,7 +605,8 @@ export default function BuildCard() {
         // The look on screen is the one that goes live (owner's call, 4 Oct 2026: "jisko select kare wo open honi
         // chahiye"). The merge above keeps a live card's earlier style and the server's card carries the designer's;
         // the preview the owner approved carries the look they picked, and that wins over both.
-        if (shown.site?.style && out.site) out = { ...out, site: { ...out.site, style: { ...shown.site.style } } };
+        const pickedStyle = opts?.style ?? shown.site?.style;
+        if (pickedStyle && out.site) out = { ...out, site: { ...out.site, style: { ...pickedStyle } } };
       }
       // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
       // made at set-up is not lost on the way to the finished card. It is appended last and marked hidden, so
@@ -839,7 +843,7 @@ export default function BuildCard() {
             </div>
           )
         ) : (
-          <button type="button" onClick={publish} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+          <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save", "Save करें")}
           </button>
         )}
