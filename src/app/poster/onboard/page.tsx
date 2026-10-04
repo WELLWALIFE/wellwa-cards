@@ -357,6 +357,13 @@ function Onboard() {
       ...(biz.nameFromSite !== undefined ? { nameFromSite: biz.nameFromSite } : {}), ...(biz.categoryFromSite !== undefined ? { categoryFromSite: biz.categoryFromSite } : {}), ...(biz.aboutFromSite !== undefined ? { aboutFromSite: biz.aboutFromSite } : {}) };
   }
 
+  /** The contact email of a mobile sign-up, kept the moment it is typed: it used to be written only by the last
+   *  "Save and continue", so Next, Skip or a closed tab lost it and Super Admin showed no email (owner, 4 Oct 2026). */
+  const emailMeta = (): { contact_email?: string } => {
+    const e = email.trim().slice(0, 120);
+    return needEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e) ? { contact_email: e } : {};
+  };
+
   async function nextFromYou() {
     setErr("");
     const digits = you.phone.replace(/\D/g, "");
@@ -377,7 +384,7 @@ function Onboard() {
         // The WhatsApp number lives in the card facts (the profile exists, so the route takes it); the city and
         // address go on the account's business right away.
         if (profile) await api("/api/card/facts", { method: "PATCH", json: { facts: youFacts() } }).catch(() => undefined);
-        if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { ...home, business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city } } }).catch(() => undefined);
+        if (!editing) await getBrowserSupabase()?.auth.updateUser({ data: { ...home, ...emailMeta(), business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city } } }).catch(() => undefined);
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
@@ -395,7 +402,7 @@ function Onboard() {
     try {
       getBrowserSupabase()?.auth.updateUser({ data: {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${digits.slice(-10)}`, photo_url: you.photo || "",
-        whatsapp: youFacts().whatsapp, ...home, business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city },
+        whatsapp: youFacts().whatsapp, ...home, ...emailMeta(), business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city },
       } }).catch(() => undefined);
     } catch { /* offline: the full save on the next screen writes it again */ }
     setStep("promote");
@@ -691,6 +698,7 @@ function Onboard() {
         ...(you.name.trim().length >= 2 ? { full_name: you.name.trim(), display_name: you.name.trim() } : {}),
         ...(digits.length === 10 ? { phone: `+91${digits}` } : {}),
         ...(you.photo ? { photo_url: you.photo } : {}),
+        ...emailMeta(),
         ...(biz.category || bizName || city || site.kind ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
         setup_skipped_at: new Date().toISOString(),
         // Both is the default answer to "What is your card for?" (owner's call, 4 Oct 2026), skipped or not.

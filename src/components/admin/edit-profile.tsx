@@ -6,7 +6,7 @@ import { LoaderCircle, X } from "lucide-react";
 
 type Business = { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; map?: string; gstin?: string };
 type Loaded = {
-  email: string; phone: string; meta: Record<string, unknown>; username: string | null; fullName: string | null;
+  email: string; phone: string; meta: Record<string, unknown>; username: string | null; fullName: string | null; mobileLogin?: boolean; contactEmail?: string;
   posterProfile: { id: string; name: string; phone: string | null } | null;
   partner: { code: string; username: string | null; name: string; mobile: string | null; email: string | null; status: string; dob: string | null; gender: string | null } | null;
 };
@@ -34,7 +34,7 @@ export function EditProfile({ id, headers, onClose, onSaved }: { id: string; hea
       setF({
         name: String(md.display_name ?? md.full_name ?? md.name ?? d.fullName ?? d.partner?.name ?? ""),
         username: d.username ?? d.partner?.username ?? "",
-        phone: phoneDigits, email: /@phone\./.test(d.email) ? "" : d.email,
+        phone: phoneDigits, email: d.mobileLogin ? (d.contactEmail || d.partner?.email || "") : d.email,
         photoUrl: String(md.photo_url ?? ""), dob: String(md.dob ?? d.partner?.dob ?? ""), gender: String(md.gender ?? d.partner?.gender ?? ""),
       });
       setBiz((md.business && typeof md.business === "object" ? md.business : {}) as Business);
@@ -50,7 +50,7 @@ export function EditProfile({ id, headers, onClose, onSaved }: { id: string; hea
     if (usernameChanged && !confirm(`Change username to "${f.username}"?\n\nTheir referral (join) links and the name their team sees change too. Links already shared with the old username stop working.`)) return;
     setBusy(true); setErr("");
     const body: Record<string, unknown> = { id, name: f.name, phone: f.phone, photoUrl: f.photoUrl, dob: f.dob, gender: f.gender, business: biz, partner: syncPartner, posterProfile: syncPoster };
-    if (f.email) body.email = f.email;
+    if (f.email || data?.mobileLogin) body.email = f.email;   // a mobile sign-up may also clear its contact email
     if (usernameChanged) body.username = f.username;
     const r = await fetch("/api/admin/profile", { method: "PATCH", headers: await headers(), body: JSON.stringify(body) });
     const j = await r.json().catch(() => ({}));
@@ -78,7 +78,8 @@ export function EditProfile({ id, headers, onClose, onSaved }: { id: string; hea
                 {usernameChanged && <span className="mt-1 block text-[11px] text-amber-700">Changing it changes their join links — old links stop working.</span>}</label>
               <div className="grid grid-cols-2 gap-3">
                 <label className="block"><span className="text-xs font-medium text-muted">Mobile</span><input className={inp} value={f.phone} onChange={(e) => setF((x) => ({ ...x, phone: e.target.value.replace(/\D/g, "").slice(0, 10) }))} inputMode="numeric" placeholder="10 digits" /></label>
-                <label className="block"><span className="text-xs font-medium text-muted">Email</span><input className={inp} type="email" value={f.email} onChange={set("email")} placeholder={/@phone\./.test(data.email) ? "(signs in with mobile)" : ""} /></label>
+                <label className="block"><span className="text-xs font-medium text-muted">{data.mobileLogin ? "Contact email" : "Email"}</span><input className={inp} type="email" value={f.email} onChange={set("email")} placeholder={data.mobileLogin ? "e.g. name@gmail.com" : ""} />
+                  {data.mobileLogin && <span className="mt-1 block text-[11px] text-muted">Signs in with the mobile; this email is for contact, welcome mails and the card.</span>}</label>
                 <label className="block"><span className="text-xs font-medium text-muted">Date of birth</span><input className={inp} type="date" value={f.dob} onChange={set("dob")} /></label>
                 <label className="block"><span className="text-xs font-medium text-muted">Gender</span>
                   <select className={inp} value={f.gender} onChange={set("gender")}><option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></label>

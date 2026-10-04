@@ -51,7 +51,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     auth: {
       id: u.id, email: u.email ?? "", phone: u.phone ?? "", providers, created_at: u.created_at, last_sign_in_at: u.last_sign_in_at,
       email_confirmed_at: u.email_confirmed_at, phone_confirmed_at: u.phone_confirmed_at, banned_until: u.banned_until ?? null,
-      is_demo: u.user_metadata?.is_demo === true,
+      is_demo: u.user_metadata?.is_demo === true, contact_email: String(u.user_metadata?.contact_email ?? ""),
       name: u.user_metadata?.name || u.user_metadata?.full_name || "", avatar: u.user_metadata?.avatar_url || u.user_metadata?.picture || "",
       identities: (u.identities ?? []).map((i: Row) => ({ provider: i.provider, email: (i.identity_data as Row)?.email, phone: (i.identity_data as Row)?.phone, last_sign_in_at: i.last_sign_in_at })),
     },

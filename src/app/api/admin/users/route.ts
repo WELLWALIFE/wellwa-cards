@@ -82,6 +82,7 @@ export async function GET(request: Request) {
         username: pr?.username ?? partner?.username ?? null,
         partner: partner ? partnerOf(partner) : null,
         email: u.email ?? "",
+        contactEmail: String(u.user_metadata?.contact_email ?? ""),
         phone: u.phone ?? pp.find((x) => x.is_default)?.phone ?? pp[0]?.phone ?? "",
         provider: (u.app_metadata?.providers ?? [u.app_metadata?.provider]).filter(Boolean).join(", ") || (u.phone ? "phone" : "email"),
         posterProfiles: pp.map((x) => x.name),

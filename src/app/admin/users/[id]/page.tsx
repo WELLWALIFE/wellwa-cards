@@ -11,7 +11,7 @@ import { displayLogin } from "@/lib/phone";
 
 type Row = Record<string, unknown>;
 type Data = {
-  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
+  auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; contact_email?: string; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
   profile: Row; cards: Row[]; leads: Row[]; posterProfiles: Row[]; payments: Row[]; subscriptions: Row[]; credits: number; ledger: Row[]; devices: Row[];
   google: Row | null; cloud: Row | null; social: Row[]; agents: Row[]; jobs: Row[]; whatsapp: Row | null;
 };
@@ -165,6 +165,7 @@ export default function AdminUserProfile() {
         <Card title="Login details">
           <KV rows={[
             /@phone\./i.test(auth.email) ? ["Login", <>📱 {displayLogin(auth.email)} <Pill ok>mobile sign-up</Pill></>] : ["Email", auth.email ? <>{auth.email} {auth.email_confirmed_at ? <Pill ok>verified</Pill> : <Pill ok={false}>unverified</Pill>}</> : "—"],
+            ...(/@phone\./i.test(auth.email) ? [["Contact email", auth.contact_email || <span key="ce" className="text-muted">— (set in “Edit profile”)</span>] as [string, React.ReactNode]] : []),
             ["Phone", auth.phone ? <>+{auth.phone} {auth.phone_confirmed_at ? <Pill ok>verified</Pill> : <Pill ok={false}>unverified</Pill>}</> : "—"],
             ["Sign-in method", auth.providers.join(", ") || "—"],
             ["Identities", auth.identities.length ? auth.identities.map((i, k) => <div key={k} className="text-xs">{i.provider}: {i.email || (i.phone ? `+${i.phone}` : "")} · last {dt(i.last_sign_in_at)}</div>) : "—"],

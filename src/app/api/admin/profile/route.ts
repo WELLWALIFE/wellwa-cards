@@ -43,6 +43,9 @@ export async function GET(request: Request) {
   if (!u) return Response.json({ error: "user not found" }, { status: 404 });
   return Response.json({
     email: u.email ?? "", phone: u.phone ?? "", meta: u.user_metadata ?? {},
+    // A mobile sign-up's login "email" is a placeholder (p91…@phone…): the email the person gave in the setup lives
+    // in user_metadata.contact_email, and that is the one shown and edited here.
+    mobileLogin: /@phone\./i.test(u.email ?? ""), contactEmail: String(u.user_metadata?.contact_email ?? ""),
     username: (pr as { username?: string | null }[])[0]?.username ?? null,
     fullName: (pr as { full_name?: string | null }[])[0]?.full_name ?? null,
     posterProfile: (pp as { id: string; name: string; phone: string | null }[])[0] ?? null,
@@ -91,7 +94,11 @@ export async function PATCH(request: Request) {
     md.business = keep;
   }
   const authPatch: Record<string, unknown> = { user_metadata: md };
-  if (email && email !== (u.email ?? "").toLowerCase()) authPatch.email = email;
+  // A mobile sign-up keeps its mobile login: the email goes on the account as the contact email (what the setup's
+  // "About you" writes); an email sign-up's email IS the login and changes there.
+  const mobileLogin = /@phone\./i.test(u.email ?? "");
+  if (email !== null && mobileLogin) md.contact_email = email || null;
+  else if (email && email !== (u.email ?? "").toLowerCase()) authPatch.email = email;
   const ar = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify(authPatch) });
   if (!ar.ok) return Response.json({ error: `Login details: ${(await ar.json().catch(() => ({})))?.msg ?? ar.status}` }, { status: 400 });
   done.push("login");

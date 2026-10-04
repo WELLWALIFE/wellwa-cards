@@ -38,6 +38,8 @@ type User = {
   username?: string | null;
   partner?: Partner | null;
   email: string;
+  /** A mobile sign-up's real email (user_metadata.contact_email); its login email is a placeholder. */
+  contactEmail?: string;
   phone?: string;
   provider?: string;
   posterProfiles?: string[];
@@ -178,7 +180,7 @@ export default function AdminUsers() {
   // Rows that share a name, email or mobile with another row — the place to spot one person with two IDs.
   const twins = useMemo(() => {
     const count = new Map<string, number>();
-    const keys = (u: User) => [norm(u.name) && `n:${norm(u.name)}`, norm(u.email) && `e:${norm(u.email)}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`].filter(Boolean) as string[];
+    const keys = (u: User) => [norm(u.name) && `n:${norm(u.name)}`, norm(u.email) && `e:${norm(u.email)}`, norm(u.contactEmail ?? "") && `e:${norm(u.contactEmail ?? "")}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`].filter(Boolean) as string[];
     for (const u of users) for (const k of keys(u)) count.set(k, (count.get(k) ?? 0) + 1);
     return new Set(users.filter((u) => keys(u).some((k) => (count.get(k) ?? 0) > 1)).map((u) => u.id));
   }, [users]);
@@ -231,7 +233,7 @@ export default function AdminUsers() {
         : u.plan !== "free");
     if (!s) return inView;
     return inView.filter((u) =>
-      [u.name, u.email, loginOf(u.email), u.phone, u.username, u.associate, u.plan, u.status, u.partner?.code, u.partner?.username, u.partner?.sponsor, u.partner?.isRoot ? "root" : ""]
+      [u.name, u.email, u.contactEmail, loginOf(u.email), u.phone, u.username, u.associate, u.plan, u.status, u.partner?.code, u.partner?.username, u.partner?.sponsor, u.partner?.isRoot ? "root" : ""]
         .some((v) => String(v ?? "").toLowerCase().includes(s)) ||
       (u.usernames ?? []).some((n) => n.toLowerCase().includes(s)),
     );
@@ -339,7 +341,7 @@ export default function AdminUsers() {
                       {!acct && <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">no app login</span>}
                     </div>
                     {u.username && <p className="text-xs font-semibold text-ink mono">@{u.username}</p>}
-                    <p className="text-xs text-muted mono">{mobileLogin(u.email) ? loginOf(u.email) : <>{u.email || "—"}{u.phone ? ` · +${u.phone.replace(/^\+/, "")}` : ""}</>}</p>
+                    <p className="text-xs text-muted mono">{mobileLogin(u.email) ? <>{loginOf(u.email)}{u.contactEmail ? ` · ${u.contactEmail}` : ""}</> : <>{u.email || "—"}{u.phone ? ` · +${u.phone.replace(/^\+/, "")}` : ""}</>}</p>
                     <p className="text-[11px] text-faint">{mobileLogin(u.email) ? "signed up with mobile" : u.provider ? `via ${u.provider}` : ""}{u.posterProfiles?.length ? ` · profiles: ${u.posterProfiles.join(", ")}` : ""}{u.posterPlan && u.posterPlan !== "free" ? ` · poster ${u.posterPlan}` : ""}</p>
                     {acct ? (
                       <>
