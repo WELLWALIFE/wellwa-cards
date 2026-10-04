@@ -6,7 +6,7 @@
 // One component, three screens: the set-up (step 2), My products (step 3) and the build form ("Check your
 // details"), so a question is asked once and the "Make it better" chips (q-… ids) still land on it anywhere.
 import { useState } from "react";
-import { catalogCopyFor } from "@/lib/catalog-copy";
+import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
 import { Camera, LoaderCircle, X } from "lucide-react";
 import { uploadImage } from "@/lib/poster-client";
 import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
@@ -65,6 +65,9 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
 }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const copy = catalogCopyFor(category);
+  // "school", "clinic", "shop"… — the headers say what the owner runs, never "company" to a school.
+  const org = orgWordFor(category);
+  const place = T(org.en, org.hi);
   // The trade's chips, plus anything already ticked from another list, so it can still be un-ticked.
   const specialChips = [...copy.special, ...facts.special.filter((x) => !copy.special.includes(x))];
   const customerChips = [...copy.customers, ...facts.customers.filter((x) => !copy.customers.includes(x))];
@@ -103,13 +106,13 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
 
   if (group === "products") return (
     <>
-      <Sec id="q-special" title={T("What makes you special?", "आपकी खास बात क्या है?")} hint={T("Tap 3 to 5 that are true — they become your website's highlights.", "3 से 5 दबाएँ जो सही हैं — यही आपकी website की highlights बनेंगी।")}>
+      <Sec id="q-special" title={T(copy.specialQ, copy.specialQHi)} hint={T("Tap 3 to 5 that are true — they become your website's highlights.", "3 से 5 दबाएँ जो सही हैं — यही आपकी website की highlights बनेंगी।")}>
         <div className="flex flex-wrap gap-2">
           {specialChips.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
         </div>
         <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T("In your own words — e.g. pure desi ghee only", "अपने शब्दों में — जैसे सिर्फ़ शुद्ध देसी घी")} className={field} />
       </Sec>
-      <Sec id="q-customers" title={T("Who buys from you?", "आपसे कौन खरीदता है?")}>
+      <Sec id="q-customers" title={T(copy.customersQ, copy.customersQHi)}>
         <div className="flex flex-wrap gap-2">
           {customerChips.map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chipCls(facts.customers.includes(c))}>{c}</button>)}
         </div>
@@ -128,14 +131,14 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   return (
     <>
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
-      <Sec id="q-designation" title={T("Your role in the company", "Company में आपका पद")} hint={T("Shown under your name on the card and website — e.g. Rajesh Sharma · Owner.", "Card और website पर आपके नाम के नीचे — जैसे Rajesh Sharma · Owner।")}>
+      <Sec id="q-designation" title={T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={T("Shown under your name on the card and website — e.g. Rajesh Sharma · Owner.", "Card और website पर आपके नाम के नीचे — जैसे Rajesh Sharma · Owner।")}>
         <div className="flex flex-wrap gap-1.5">
           {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setF({ designation: facts.designation === d ? "" : d })} className={chipCls(facts.designation === d)}>{d}</button>)}
         </div>
         <input value={facts.designation} onChange={(e) => setF({ designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
       </Sec>
       <Sec id="q-photos" title={T("Banner and photos", "Banner और photos")} hint={T("The banner is the wide picture on top of your website; the photos make the gallery.", "Banner website के ऊपर की चौड़ी photo है; बाकी photos से gallery बनती है।")}>
-        <p className="text-sm font-semibold">{T("Shop front / banner photo", "दुकान के सामने की / banner photo")}</p>
+        <p className="text-sm font-semibold">{T(`${org.En} front / banner photo`, `${place} के सामने की / banner photo`)}</p>
         {facts.bannerUrl ? (
           <div className="relative overflow-hidden rounded-xl border border-border" style={{ aspectRatio: "3 / 1" }}>
             <Img src={facts.bannerUrl} className="h-full w-full object-cover" />
@@ -143,7 +146,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
           </div>
         ) : (
           <label className="grid cursor-pointer place-items-center gap-1 rounded-xl border-2 border-dashed border-border bg-surface2 py-6 text-sm text-muted">
-            {busy === "banner" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />} {T("Add your shop / office photo", "दुकान / office की photo डालें")}
+            {busy === "banner" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-6 w-6" />} {T(`Add a photo of your ${org.en}`, `अपने ${place} की photo डालें`)}
             <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickFile(f); }} />
           </label>
         )}

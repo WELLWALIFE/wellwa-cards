@@ -10,7 +10,7 @@ import { normalizeFacts, type CardFacts, type SavedProduct, type SetupInfo } fro
 
 type Meta = {
   display_name?: string; full_name?: string; phone?: string; contact_email?: string;
-  business?: { name?: string; role?: string; reach?: string; category?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string; nameFromSite?: boolean; categoryFromSite?: boolean; aboutFromSite?: boolean };
+  business?: { name?: string; role?: string; reach?: string; category?: string; trade?: string; city?: string; address?: string; about?: string; website?: string; gstin?: string; map?: string; nameFromSite?: boolean; categoryFromSite?: boolean; aboutFromSite?: boolean };
 };
 type ProfileRow = { id: string; name: string | null; phone: string | null; photo_url: string | null; logo_url: string | null; city: string | null; category: string | null; persona: string | null; card_facts?: unknown };
 type Photo = { url?: unknown; view?: unknown; role?: unknown };
@@ -184,7 +184,9 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     business: S(biz.name, 80) || (profile?.persona === "business" ? S(profile?.name, 80) : ""),
     person: S(meta.display_name, 60) || S(meta.full_name, 60),
     category: S(biz.category, 40) || S(profile?.category, 40),
-    categoryLabel: cat?.en ?? "",
+    // A trade typed by the owner because the list had none ("drone repair") is the label everything downstream
+    // works from — the writer, the designer, the posters — in place of a bare "Other".
+    categoryLabel: (!cat || cat.key === "other") && S(biz.trade, 40) ? S(biz.trade, 40) : (cat?.en ?? ""),
     persona: cat?.persona ?? profile?.persona ?? "business",
     city: S(biz.city, 60) || S(profile?.city, 60),
     address: S(biz.address, 200),

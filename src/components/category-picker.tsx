@@ -4,7 +4,7 @@
 // 2 Oct 2026: "search kare, suggested name 2/3 aa jaaye, user ek select kar le"). The full grouped list is one
 // tap away for anyone who would rather browse; it opens as a bottom sheet on phones and a centred panel on computers.
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, List, Search, X } from "lucide-react";
+import { Check, ChevronDown, List, PenLine, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_GROUPS, categoryOf } from "@/lib/poster-categories";
 // The everyday words live with the trade guesser (the website peek uses the same list at set-up).
 import { ALIASES, suggestCategories } from "@/lib/category-match";
@@ -20,8 +20,12 @@ function aliasMatch(key: string, s: string): boolean {
   return list.some((a) => (s.length >= 3 && (a.startsWith(s) || a.split(" ").some((w) => w.startsWith(s)))) || typed.includes(` ${a} `));
 }
 
-export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Choose…", className = "" }: {
+export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Choose…", className = "", custom = "", onCustom }: {
   value: string; onChange: (key: string) => void; lang?: "en" | "hi"; placeholder?: string; className?: string;
+  /** A trade typed in the owner's own words when the list had no fit (shown in the box when the value is "other"). */
+  custom?: string;
+  /** "Use what I typed as my trade" (owner's call, 4 Oct 2026: a trade the list lacks must still be fillable). */
+  onCustom?: (text: string) => void;
 }) {
   const [open, setOpen] = useState(false);           // the full list (sheet)
   const [typing, setTyping] = useState(false);       // the inline search box has focus
@@ -29,7 +33,7 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
   const [sheetQ, setSheetQ] = useState("");
   const box = useRef<HTMLInputElement>(null);
   const search = useRef<HTMLInputElement>(null);
-  const label = (k: string) => { const c = categoryOf(k); return c ? (lang === "hi" ? c.hi : c.en) : ""; };
+  const label = (k: string) => { if (k === "other" && custom) return custom; const c = categoryOf(k); return c ? (lang === "hi" ? c.hi : c.en) : ""; };
   const groupOf = (k: string) => categoryOf(k)?.group ?? "";
 
   useEffect(() => {
@@ -51,6 +55,13 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
   }, [sheetQ]);
 
   function pick(k: string) { onChange(k); setOpen(false); setTyping(false); setQ(""); setSheetQ(""); box.current?.blur(); }
+  /** The typed words become the trade: the closest listed trade is kept underneath when one matches. */
+  function keepTyped(text: string) {
+    const t = text.trim().slice(0, 40);
+    if (!t || !onCustom) return;
+    onCustom(t); setOpen(false); setTyping(false); setQ(""); setSheetQ(""); box.current?.blur();
+  }
+  const typedOk = (t: string) => t.trim().length >= 3 && !!onCustom;
   // The full list is the FULL list (owner, 2 Oct 2026: "kya yahi full list hai?"): it opens with an empty search,
   // every trade in its group; the typed letters stay in the box above for the suggestions.
   function openSheet() { setSheetQ(""); setTyping(false); setOpen(true); }
@@ -82,7 +93,14 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
                 </button>
               </li>
             ))}
-            {!suggestions.length && <li className="px-3.5 py-2.5 text-sm text-muted">{lang === "hi" ? "कुछ नहीं मिला — पूरी सूची देखें।" : "Nothing matches — see the full list."}</li>}
+            {!suggestions.length && !typedOk(q) && <li className="px-3.5 py-2.5 text-sm text-muted">{lang === "hi" ? "कुछ नहीं मिला — पूरी सूची देखें।" : "Nothing matches — see the full list."}</li>}
+            {typedOk(q) && (
+              <li>
+                <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={() => keepTyped(q)} className={`flex w-full items-center gap-2 border-t border-border px-3.5 py-2.5 text-left text-[13px] font-semibold text-brand-ink hover:bg-surface2 ${!suggestions.length ? "bg-brand-soft/60" : ""}`}>
+                  <PenLine className="h-4 w-4 shrink-0" /> <span className="min-w-0">{lang === "hi" ? <>मेरा काम “{q.trim()}” है — यही रखें</> : <>Use “{q.trim()}” as my trade</>}<span className="block text-[11px] font-normal text-muted">{lang === "hi" ? "सूची में न हो तो अपने शब्दों में" : "Not in the list — in your own words"}</span></span>
+                </button>
+              </li>
+            )}
             <li>
               <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openSheet} className="flex w-full items-center gap-2 border-t border-border px-3.5 py-2.5 text-left text-[13px] font-semibold text-brand hover:bg-surface2">
                 <List className="h-4 w-4" /> {lang === "hi" ? "पूरी सूची देखें" : "See the full list"}
@@ -119,7 +137,12 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
                   })}
                 </div>
               ))}
-              {!groups.length && <p className="p-6 text-center text-sm text-muted">{lang === "hi" ? "कुछ नहीं मिला — सबसे मिलता-जुलता चुनें।" : "Nothing found — pick the closest one."}</p>}
+              {!groups.length && (
+                <div className="p-6 text-center text-sm text-muted">
+                  <p>{lang === "hi" ? "कुछ नहीं मिला — सबसे मिलता-जुलता चुनें।" : "Nothing found — pick the closest one."}</p>
+                  {typedOk(sheetQ) && <button type="button" onClick={() => keepTyped(sheetQ)} className="mt-3 inline-flex items-center gap-2 rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white"><PenLine className="h-4 w-4" /> {lang === "hi" ? `“${sheetQ.trim()}” ही रखें` : `Use “${sheetQ.trim()}”`}</button>}
+                </div>
+              )}
             </div>
           </div>
         </div>

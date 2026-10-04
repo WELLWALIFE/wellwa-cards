@@ -103,6 +103,31 @@ export function matchCategory(text: string): string | null {
  * the Hindi name or an everyday alias that STARTS with the typed text counts most; a phrase that merely contains
  * it counts less. "school" → School, Play school, (Coaching via "school subjects" would not — aliases must start).
  */
+/** Edit distance, capped: "collage" → "college" is 1. Typed words are short, so this is cheap. */
+function editDistance(a: string, b: string, cap = 3): number {
+  if (Math.abs(a.length - b.length) > cap) return cap + 1;
+  const prev = new Array(b.length + 1).fill(0).map((_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    let left = i, best = i;
+    for (let j = 1; j <= b.length; j++) {
+      const v = Math.min(prev[j] + 1, left + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+      prev[j - 1] = left; left = v; best = Math.min(best, v);
+    }
+    prev[b.length] = left;
+    if (best > cap) return cap + 1;
+  }
+  return prev[b.length];
+}
+/** A typed word that is a near miss of a real word: "collage" ~ "college", "resturant" ~ "restaurant",
+ *  "parlar" ~ "parlour". One slip in a short word, two in a long one. */
+export function nearWord(typed: string, word: string): boolean {
+  if (typed.length < 5 || word.length < 4) return false;
+  const allow = typed.length >= 7 ? 2 : 1;
+  if (editDistance(typed, word, allow) <= allow) return true;
+  // The typed text is the start of the word with a slip: "colleg" / "collage" against "college / university".
+  return word.length > typed.length && editDistance(typed, word.slice(0, typed.length), allow) <= allow;
+}
+
 export function suggestCategories(q: string, n = 3): string[] {
   const s = q.trim().toLowerCase();
   if (!s) return [];
@@ -125,6 +150,12 @@ export function suggestCategories(q: string, n = 3): string[] {
       else if (a.startsWith(s)) score = Math.max(score, 7);
       else if (a.split(" ").some((w) => w.startsWith(s)) && s.length >= 2) score = Math.max(score, 6);
       else if (s.length >= 4 && a.includes(s)) score = Math.max(score, 3);
+    }
+    // A typo still finds the trade (owner's call, 4 Oct 2026: "collage" found nothing): a near miss of a word of the
+    // English name, the key or an alias counts, below any exact start.
+    if (!score && s.length >= 4 && /^[a-z0-9 ]+$/.test(s)) {
+      const pool = [...enWords, c.key, ...(ALIASES[c.key] ?? []).flatMap((a) => a.split(" "))];
+      if (pool.some((w) => nearWord(s, w))) score = 5;
     }
     // "Other" only when nothing better is typed for
     if (c.key === "other" && score < 10) score = 0;

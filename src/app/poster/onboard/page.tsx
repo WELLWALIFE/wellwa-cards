@@ -10,7 +10,7 @@
 // and the card facts (the website and whose it is).
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, ChevronDown, Globe, Layers, LoaderCircle, MapPin, Sparkles, Store, TriangleAlert } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronDown, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
@@ -30,10 +30,12 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
+import { orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 
-const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
+const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
+const field = `mt-1 w-full ${box}`;
 const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const ABOUT_MAX_WORDS = 150;
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
@@ -153,6 +155,10 @@ function Onboard() {
   const [crop, setCrop] = useState<{ kind: "photo" | "logo"; src: string } | null>(null);
   const { lang } = useT();
   const hi = lang === "hi";
+  // "school", "clinic", "shop"… — every header on this screen says what the owner runs (owner's call, 4 Oct 2026:
+  // "school ki baat kar rahe hain to Company details kyon?").
+  const org = orgWordFor(biz.category);
+  const place = hi ? org.hi : org.en;
   const T = (en: string, hiText: string) => (hi ? hiText : en);
   // "Your card leads with…" is worked out from "What do you do?"; the four choices open only on "Change".
   const [showRole, setShowRole] = useState(false);
@@ -222,13 +228,45 @@ function Onboard() {
       const mail = data.user?.email ?? "";
       setNeedEmail(IS_PHONE_EMAIL.test(mail));
       setEmail(meta.contact_email || (IS_PHONE_EMAIL.test(mail) ? "" : mail));
+      // What this phone had typed and not yet saved comes back over what the server knows (it is newer: the
+      // draft is cleared the moment Save or Skip goes through). Seven days old is forgotten.
+      try {
+        const raw = localStorage.getItem(`onboard-draft:${data.user?.id ?? ""}`);
+        const d = raw ? JSON.parse(raw) as { v?: number; at?: number; step?: StepKey; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; touched?: string[] } : null;
+        if (d?.v === 1 && Date.now() - (d.at ?? 0) < 7 * 86_400_000) {
+          if (d.site?.kind) setSite(d.site);
+          if (d.biz) setBiz((b) => ({ ...b, ...d.biz }));
+          if (d.you) setYou((y) => ({ ...y, ...d.you, photo: d.you?.photo || y.photo }));
+          if (d.facts) { setFacts(normalizeFacts(d.facts)); factsDirty.current = true; }
+          if (Array.isArray(d.detours)) setDetours(d.detours);
+          for (const k of d.touched ?? []) touched.current.add(k);
+          if (!wanted && d.step && d.step !== "you") setStep(d.step);
+        }
+      } catch { /* a bad draft is just ignored */ }
+      draftReady.current = true;
       setLoading(false);
     } catch {
       setLoadErr("No internet — tap to try again");
       setLoading(false);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
   useEffect(() => { load(); }, [load]);
+
+  // Everything typed here is kept on this phone as it is typed (owner's call, 4 Oct 2026: "card fill karte jaayein
+  // to auto save hona chahiye"): a page reload, a tap on another step's link or a closed tab brings it all back —
+  // the website answer included, which used to snap back to "my own" until Save. Cleared by Save and Skip.
+  const draftReady = useRef(false);
+  useEffect(() => {
+    if (!draftReady.current || !uid) return;
+    const t = setTimeout(() => {
+      try {
+        localStorage.setItem(`onboard-draft:${uid}`, JSON.stringify({ v: 1, at: Date.now(), step, site, biz, you, facts, detours, touched: [...touched.current] }));
+      } catch { /* storage full or off: nothing lost but the convenience */ }
+    }, 400);
+    return () => clearTimeout(t);
+  }, [uid, step, site, biz, you, facts, detours]);
+  function clearDraft() { try { if (uid) localStorage.removeItem(`onboard-draft:${uid}`); } catch { /* ignore */ } }
 
   /** A picked photo opens the crop / zoom window first; the framed square is what gets uploaded. */
   function choose(file: File, kind: "photo" | "logo") {
@@ -547,6 +585,29 @@ function Onboard() {
     void startPeek({ ...site, url });
     setStep("business");
   }
+  // The website answer is written as soon as the step is left, not only at Save (owner's call, 4 Oct 2026: it
+  // snapped back to "my own" on return). Needs the profile the facts route insists on; before that, the draft holds it.
+  useEffect(() => {
+    if (step === "site" || step === "promote" || !profile || !site.kind || !draftReady.current) return;
+    void saveSiteFacts().catch(() => undefined);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step]);
+
+  // The link box searches by itself (owner's call, 4 Oct 2026: "auto search hona chahiye"): a pause after typing
+  // looks the site up — a name becomes its link, a link is read — and the 🔍 button does the same on demand.
+  const typedUrl = useRef("");
+  useEffect(() => {
+    const v = site.url.trim();
+    typedUrl.current = v;
+    if (!site.kind || site.kind === "none" || v.length < 3 || pendingSocial) return;
+    const t = setTimeout(() => { if (typedUrl.current === v) void lookupTyped(); }, looksLikeSite(cleanSiteUrl(v)) ? 700 : 1400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [site.url, site.kind]);
+  async function lookupTyped() {
+    const url = await resolveTyped();
+    if (url && (site.kind === "own" || site.kind === "dealer")) void startPeek({ ...site, url });
+  }
 
   /** 📍 Uses the phone's GPS where the owner is standing — an exact map pin, no typing. */
   function pinShop() {
@@ -593,7 +654,7 @@ function Onboard() {
         ...(you.name.trim().length >= 2 ? { full_name: you.name.trim(), display_name: you.name.trim() } : {}),
         ...(digits.length === 10 ? { phone: `+91${digits}` } : {}),
         ...(you.photo ? { photo_url: you.photo } : {}),
-        ...(biz.category || bizName || city || site.kind ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
+        ...(biz.category || bizName || city || site.kind ? { business: { name: bizName, role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), city, address: (biz.address ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), gstin: (biz.gstin ?? "").trim().toUpperCase(), linkBy: bizName ? linkBy() : "name" } } : {}),
         setup_skipped_at: new Date().toISOString(),
       } }).catch(() => undefined);
       if (!profile) {
@@ -606,6 +667,7 @@ function Onboard() {
       }
       // The website answer survives the skip (the facts route needs the profile that now exists).
       await saveSiteFacts().catch(() => undefined);
+      clearDraft();
       router.push("/poster");
     } catch {
       router.push("/poster");
@@ -714,7 +776,7 @@ function Onboard() {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${phone}`, photo_url: you.photo || "",
         ...(needEmail ? { contact_email: email.trim().slice(0, 120) } : {}),
         business: {
-          name: bizName, role: biz.role, reach: biz.role === "personal" ? "local" : (biz.reach ?? "local"), category: biz.category || "", gstin: gst, address: (biz.address ?? "").trim(),
+          name: bizName, role: biz.role, reach: biz.role === "personal" ? "local" : (biz.reach ?? "local"), category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), gstin: gst, address: (biz.address ?? "").trim(),
           city, about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(),
           linkBy: bizName ? linkBy() : "name",
           // The site's name was shown and kept → the build may keep taking the name from the site; shown and
@@ -739,6 +801,7 @@ function Onboard() {
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
       }).catch(() => undefined);
+      clearDraft();
       // A different website (or a different role for it) on an account that already has a live card: that card
       // is built again from the new site — ?again=1 throws the old preview away; publishing still asks first.
       if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1&site=new"); return; }
@@ -873,8 +936,13 @@ function Onboard() {
                   <div className="-mt-1 space-y-2.5 rounded-b-2xl border-2 border-t-0 border-brand/40 bg-surface px-3.5 pb-3.5 pt-4">
                     <label className="block text-sm font-semibold">
                       {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Company / brand की website का link") : T("That website's link", "उस website का link")}
-                      <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onBlur={async () => { const url = await resolveTyped(); if (url) void startPeek({ ...site, url }); }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                        placeholder={c.k === "dealer" ? T("e.g. havells.com — or just the brand name", "जैसे havells.com — या सिर्फ़ brand का नाम") : "e.g. sharmasweets.com"} className={`${field} ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                      <div className="mt-1 flex items-stretch gap-2">
+                        <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookupTyped(); } }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
+                          placeholder={c.k === "dealer" ? T("e.g. havells.com — or just the brand name", "जैसे havells.com — या सिर्फ़ brand का नाम") : T("e.g. sharmasweets.com — or the name", "जैसे sharmasweets.com — या नाम")} className={`${box} min-w-0 flex-1 ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                        <button type="button" onClick={() => void lookupTyped()} disabled={!!finding || site.url.trim().length < 2} aria-label={T("Search", "खोजें")} title={T("Search", "खोजें")}
+                          className="grid w-12 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
+                      </div>
+                      <span className="mt-1 block text-[11px] font-normal text-muted">{T("Type the link or just the name — it is looked up by itself.", "link या सिर्फ़ नाम लिखें — अपने आप खोज लेंगे।")}</span>
                     </label>
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
                     {pendingSocial ? (
@@ -962,7 +1030,7 @@ function Onboard() {
             const filled = ownPeek?.state === "found";
             return (
               <div>
-                <h1 className="text-2xl font-bold">{T("Your business", "आपका business")}</h1>
+                <h1 className="text-2xl font-bold">{T(biz.category ? `Your ${org.en}` : "Your business", biz.category ? `आपका ${org.hi}` : "आपका business")}</h1>
                 <p className="text-sm text-muted">{filled
                   ? T("This came from your website — correct? Fix anything that is off and Save.", "Website से ये मिला — सही है? ठीक करें और Save दबाएँ।")
                   : T("Just three things — what you do, the name, the city. Your card, website and posters are made from them.", "बस तीन बातें — काम, नाम, शहर। इन्हीं से आपका card, website और posters बनेंगे।")}</p>
@@ -981,9 +1049,23 @@ function Onboard() {
             );
           })()}
 
-          {/* 1 — what you do (decides the card, the website and the posters) */}
+          {/* 1 — the name first (owner's call, 4 Oct 2026): "Sharma Sweets" already says the trade, so the trade box below fills itself */}
+          <label className="block text-sm font-semibold">
+            {biz.role === "business" ? T(biz.category ? `${org.En} name` : "Business name", biz.category ? (categoryOf(biz.category)?.hint || `${org.hi} का नाम`) : "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : T("Company / brand you promote", "Company / brand")}
+            {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
+            <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
+              onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
+              placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} />
+            {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
+              <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
+                <span>{T("On your website", "आपकी website पर")}: <b className="text-ink">{peek.data.name}</b></span>
+                <button type="button" onClick={() => { touched.current.delete("name"); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
+              </span>
+            )}</label>
+          {/* 2 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}
-            <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => withCategory(b, k)); }} placeholder={T("Choose your type of business", "अपना काम चुनें")} />
+            <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
+              custom={biz.trade ?? ""} onCustom={(text) => { touch("category"); setBiz((b) => ({ ...withCategory(b, matchCategory(text) || "other"), trade: text })); }} />
             {!touched.current.has("category") && !!biz.category && (
               site.kind === "own" && peek.state === "found" && biz.category === peek.data?.category
                 ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
@@ -997,19 +1079,6 @@ function Onboard() {
               after the category follow the category (owner's call, 2 Oct 2026). Saved with the company facts. */}
           {!!biz.category && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} />}
 
-          {/* 2 — the name; "leads with" is worked out from 1 and changed only when wanted */}
-          <label className="block text-sm font-semibold">
-            {biz.role === "business" ? T("Business name", "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : T("Company / brand you promote", "Company / brand")}
-            {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
-            <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
-              onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
-              placeholder={biz.role === "business" ? "e.g. Sharma Sweets" : biz.role === "agent" ? "e.g. LIC of India, Shubhora" : T("e.g. Apollo Clinic — or leave empty", "जैसे Apollo Clinic — या खाली छोड़ें")} className={field} />
-            {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
-              <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
-                <span>{T("On your website", "आपकी website पर")}: <b className="text-ink">{peek.data.name}</b></span>
-                <button type="button" onClick={() => { touched.current.delete("name"); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
-              </span>
-            )}</label>
           {(() => { const r = ROLES.find((x) => x.k === biz.role) ?? ROLES[0]; return (
             <div className="-mt-2 rounded-xl bg-surface2 px-3 py-2 text-xs">
               <div className="flex items-center justify-between gap-2">
@@ -1057,7 +1126,7 @@ function Onboard() {
           })()}
 
           {/* 3 — city */}
-          <label className="block text-sm font-semibold">{T("Business city", "Business का शहर")} <span className="font-normal text-muted">({T("where your shop / office is", "जहाँ दुकान / office है")})</span><input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
+          <label className="block text-sm font-semibold">{T(`${org.En} city`, `${place} का शहर`)} <span className="font-normal text-muted">({T(`where your ${org.en} is`, `जहाँ ${place} है`)})</span><input value={biz.city ?? ""} onChange={(e) => { touch("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder="e.g. Delhi" className={field} /></label>
 
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
@@ -1135,11 +1204,11 @@ function Onboard() {
           {!editing && (
             <details open className="group rounded-2xl border border-border bg-surface2/40">
               <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-sm font-semibold [&::-webkit-details-marker]:hidden">
-                <span>{T("Company details for the website", "Website के लिए company की जानकारी")} <span className="font-normal text-muted">({T("optional — photos, timings, payments, social", "optional — photos, समय, payment, social")})</span></span>
+                <span>{T(`${org.En} details for the website`, `Website के लिए ${place} की जानकारी`)} <span className="font-normal text-muted">({T("optional — photos, timings, payments, social", "optional — photos, समय, payment, social")})</span></span>
                 <ChevronDown className="h-4 w-4 shrink-0 text-muted transition-transform group-open:rotate-180" />
               </summary>
               <div className="space-y-3 border-t border-border p-3">
-                <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
+                <FactsFields group="company" category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
               </div>
             </details>
           )}

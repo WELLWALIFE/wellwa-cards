@@ -7,7 +7,7 @@ import Link from "next/link";
 import { Check, ChevronLeft } from "lucide-react";
 import { useJourney } from "@/lib/journey";
 import { useT } from "@/lib/poster-i18n";
-import { catalogCopyFor } from "@/lib/catalog-copy";
+import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
 
 export type ProfileStepKey = "you" | "business" | "products" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
@@ -22,7 +22,10 @@ export function ProfileSteps({ current, category }: { current: ProfileStepKey; c
   const { lang } = useT();
   const hi = lang === "hi";
   const copy = catalogCopyFor(category);
-  const name = (s: { key: ProfileStepKey; en: string; hi: string }) => (s.key === "products" ? (hi ? copy.shortHi : copy.short) : hi ? s.hi : s.en);
+  // Step 2 is called what the owner runs — School, Clinic, Shop — once the trade is known; Company until then.
+  const org = orgWordFor(category);
+  const name = (s: { key: ProfileStepKey; en: string; hi: string }) =>
+    s.key === "products" ? (hi ? copy.shortHi : copy.short) : s.key === "business" && category ? (hi ? org.hi.replace(/^./, (c) => c.toUpperCase()) : org.En) : hi ? s.hi : s.en;
   const { steps } = useJourney();
   const done = (k: ProfileStepKey) => {
     const j = (key: string) => !!steps?.find((s) => s.key === key)?.done;

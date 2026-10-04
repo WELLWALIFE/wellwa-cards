@@ -30,8 +30,12 @@ export type CatalogCopy = {
   guide: string; guideHi: string;
   /** Empty state. */
   empty: string; emptyHi: string;
+  /** The "What makes you special?" question, in the trade's words — "What makes your school special?". */
+  specialQ: string; specialQHi: string;
   /** "What makes you special?" chips — true of a good business of this kind. */
   special: string[];
+  /** The "Who buys from you?" question, in the trade's words — "Who studies with you?", "Who are your patients?". */
+  customersQ: string; customersQHi: string;
   /** "Who buys from you?" chips. */
   customers: string[];
   /** The "your work in your words" question. */
@@ -47,7 +51,9 @@ const PRODUCTS: CatalogCopy = {
   lines: "Benefit / offer lines (a different one each day)", linesHi: "खूबियाँ / ऑफ़र लाइनें (हर लाइन अलग दिन)",
   guide: "Add a clear photo, name and price. It shows on your V-Card, website and daily posters.", guideHi: "साफ़ फ़ोटो, नाम और ₹ दाम डालें। यही आपके V-Card, website और रोज़ के poster पर दिखेगा।",
   empty: "No products yet. Add your first one — it shows on your V-Card, website and posters.", emptyHi: "अभी कोई product नहीं है। पहला जोड़ें — यह आपके V-Card, website और poster पर दिखेगा।",
+  specialQ: "What makes you special?", specialQHi: "आपकी खास बात क्या है?",
   special: ["💰 Fair prices", "⭐ Best quality", "🚚 Fast delivery", "🧑‍🔧 Expert team", "✂️ Custom orders", "🤝 Trusted by many customers"],
+  customersQ: "Who buys from you?", customersQHi: "आपसे कौन खरीदता है?",
   customers: ["👪 Families", "🏪 Shops", "🏢 Offices", "🎓 Students", "👵 Senior citizens", "🙋 Everyone"],
   work: "What do you sell, or what work do you do?", workHi: "आप क्या बेचते हैं, या क्या काम करते हैं?",
   workEg: "e.g. We make fresh sweets and namkeen every day, and take orders for weddings and parties.", workEgHi: "जैसे हम रोज़ ताज़ी मिठाई और नमकीन बनाते हैं, और शादी-party के order भी लेते हैं।",
@@ -57,6 +63,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   products: PRODUCTS,
   menu: {
     ...PRODUCTS, word: "menu",
+    specialQ: "What makes your food special?", specialQHi: "आपके खाने की खास बात क्या है?", customersQ: "Who eats with you?", customersQHi: "आपके यहाँ कौन खाता है?",
     title: "My menu", titleHi: "मेरा मेन्यू", short: "Menu", shortHi: "मेन्यू", add: "Add dish", addHi: "डिश जोड़ें", one: "a dish", oneHi: "एक डिश",
     name: "Dish / item name — e.g. Paneer Butter Masala, Thali, Chai", nameHi: "डिश का नाम — जैसे पनीर बटर मसाला, थाली, चाय",
     price: "Price ₹", priceHi: "दाम ₹", priceEg: "e.g. 180 per plate", priceEgHi: "जैसे 180 per plate",
@@ -70,6 +77,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   services: {
     ...PRODUCTS, word: "services",
+    specialQ: "What makes your service special?", specialQHi: "आपकी सेवा की खास बात क्या है?", customersQ: "Who are your customers?", customersQHi: "आपके ग्राहक कौन हैं?",
     title: "My services", titleHi: "मेरी सेवाएँ", short: "Services", shortHi: "सेवाएँ", add: "Add service", addHi: "सेवा जोड़ें", one: "a service", oneHi: "एक सेवा",
     name: "Service name — e.g. AC repair, GST filing, Wedding photography", nameHi: "सेवा का नाम — जैसे AC repair, GST filing, Wedding photography",
     price: "Charges ₹ (optional)", priceHi: "चार्ज ₹ (optional)", priceEg: "e.g. 500 per visit, or leave blank", priceEgHi: "जैसे 500 per visit, या खाली छोड़ें",
@@ -83,6 +91,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   treatments: {
     ...PRODUCTS, word: "treatments",
+    specialQ: "What makes your clinic special?", specialQHi: "आपके clinic की खास बात क्या है?", customersQ: "Who are your patients?", customersQHi: "आपके मरीज़ कौन हैं?",
     title: "My treatments & services", titleHi: "मेरे उपचार और सेवाएँ", short: "Treatments", shortHi: "उपचार", add: "Add treatment", addHi: "उपचार जोड़ें", one: "a treatment", oneHi: "एक उपचार",
     name: "Treatment / service — e.g. Root canal, Full body check-up, Hair spa", nameHi: "उपचार / सेवा — जैसे Root canal, Full body check-up, Hair spa",
     price: "Fee ₹ (optional)", priceHi: "फ़ीस ₹ (optional)", priceEg: "e.g. 300 consultation, or leave blank", priceEgHi: "जैसे 300 consultation, या खाली छोड़ें",
@@ -97,6 +106,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   courses: {
     ...PRODUCTS, word: "courses",
+    specialQ: "What makes your institution special?", specialQHi: "आपके संस्थान की खास बात क्या है?", customersQ: "Who studies with you?", customersQHi: "आपके यहाँ कौन पढ़ता है?",
     title: "Classes & courses", titleHi: "कक्षाएँ और कोर्स", short: "Courses", shortHi: "कोर्स", add: "Add class / course", addHi: "कक्षा / कोर्स जोड़ें", one: "a class or course", oneHi: "एक कक्षा / कोर्स",
     name: "Class / course — e.g. Nursery to UKG, Class 1–8, Class 11–12 Science, Spoken English", nameHi: "कक्षा / कोर्स — जैसे Nursery से UKG, कक्षा 1–8, 11–12 Science, Spoken English",
     price: "Fee ₹ (optional)", priceHi: "फ़ीस ₹ (optional)", priceEg: "e.g. 1,500 per month, or leave blank", priceEgHi: "जैसे 1,500 per month, या खाली छोड़ें",
@@ -111,6 +121,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   projects: {
     ...PRODUCTS, word: "projects",
+    specialQ: "What makes your work special?", specialQHi: "आपके काम की खास बात क्या है?", customersQ: "Who are your clients?", customersQHi: "आपके client कौन हैं?",
     title: "My work & projects", titleHi: "मेरा काम और प्रोजेक्ट", short: "Work", shortHi: "काम", add: "Add work", addHi: "काम जोड़ें", one: "a project", oneHi: "एक प्रोजेक्ट",
     name: "Project / work — e.g. 3BHK interior, Wedding shoot, Shop front", nameHi: "प्रोजेक्ट / काम — जैसे 3BHK interior, Wedding shoot, Shop front",
     price: "Starting price ₹ (optional)", priceHi: "शुरुआती दाम ₹ (optional)", priceEg: "e.g. 25,000 onwards, or leave blank", priceEgHi: "जैसे 25,000 से, या खाली छोड़ें",
@@ -124,6 +135,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   plans: {
     ...PRODUCTS, word: "plans",
+    specialQ: "What makes your plans special?", specialQHi: "आपके प्लान की खास बात क्या है?", customersQ: "Who takes your plans?", customersQHi: "आपके प्लान कौन लेता है?",
     title: "My plans & packages", titleHi: "मेरे प्लान और पैकेज", short: "Plans", shortHi: "प्लान", add: "Add plan", addHi: "प्लान जोड़ें", one: "a plan", oneHi: "एक प्लान",
     name: "Plan / package — e.g. Term plan, Monthly gym, Goa 4N/5D", nameHi: "प्लान / पैकेज — जैसे Term plan, Monthly gym, Goa 4N/5D",
     price: "Price ₹", priceHi: "दाम ₹", priceEg: "e.g. 1,200 per month", priceEgHi: "जैसे 1,200 per month",
@@ -137,6 +149,7 @@ const BY_WORD: Record<CatalogWord, CatalogCopy> = {
   },
   work: {
     ...PRODUCTS, word: "work",
+    specialQ: "What makes you special?", specialQHi: "आपकी खास बात क्या है?", customersQ: "Who do you work for?", customersQHi: "आप किनके लिए काम करते हैं?",
     title: "What I do", titleHi: "मेरा काम", short: "Work", shortHi: "काम", add: "Add", addHi: "जोड़ें", one: "an item", oneHi: "एक चीज़",
     name: "Name — e.g. Blood donation camp, Annual function, Photo album", nameHi: "नाम — जैसे रक्तदान शिविर, वार्षिक उत्सव, फ़ोटो एल्बम",
     price: "Price ₹ (optional)", priceHi: "दाम ₹ (optional)", priceEg: "leave blank if not for sale", priceEgHi: "बिकता न हो तो खाली छोड़ें",
@@ -166,4 +179,26 @@ export function tradeNeeds(categoryKey: string | null | undefined): { trade: str
   // "classes offered (play school / nursery to which class), the board and the medium of instruction" → first letter up
   const items = d.explain.slice(0, 4).map((s) => s.trim().replace(/^./, (ch) => ch.toUpperCase()));
   return { trade: c.en, tradeHi: c.hi, items };
+}
+
+/** The noun for the place or body behind the card, in the trade's own words — "school", "clinic", "restaurant",
+ *  "company" — so a form never asks a school for its "company details" (owner's call, 4 Oct 2026). */
+export type OrgWord = { en: string; hi: string; /** Capitalised, for a label's start: "School". */ En: string };
+const ORG_BY_KEY: Record<string, [string, string]> = {
+  school: ["school", "स्कूल"], playschool: ["play school", "प्ले स्कूल"], college: ["college", "कॉलेज"], coaching: ["institute", "इंस्टीट्यूट"], computer: ["institute", "इंस्टीट्यूट"],
+  doctor: ["clinic", "clinic"], dentist: ["clinic", "clinic"], hospital: ["hospital", "अस्पताल"], physio: ["clinic", "clinic"], ayurveda: ["clinic", "clinic"], vet: ["clinic", "clinic"], lab: ["lab", "lab"],
+  restaurant: ["restaurant", "रेस्टोरेंट"], hotel: ["hotel", "होटल"], sweets: ["shop", "दुकान"], kirana: ["shop", "दुकान"], medical: ["store", "store"], garments: ["showroom", "शोरूम"], furniture: ["showroom", "शोरूम"], jewellery: ["showroom", "शोरूम"], mobile: ["shop", "दुकान"], hardware: ["shop", "दुकान"], footwear: ["shop", "दुकान"], optical: ["shop", "दुकान"], gift: ["shop", "दुकान"], textile: ["shop", "दुकान"],
+  salon: ["salon", "सैलून"], gym: ["gym", "जिम"], tiffin: ["kitchen", "किचन"], catering: ["kitchen", "किचन"], bakery: ["bakery", "बेकरी"],
+  ngo: ["organisation", "संस्था"], temple: ["temple", "मंदिर"], society: ["society", "सोसायटी"], community: ["organisation", "संस्था"],
+  builder: ["company", "company"], realestate: ["office", "office"], ca: ["office", "office"], lawyer: ["office", "office"], insurance: ["office", "office"], finance: ["office", "office"],
+  manufacturer: ["factory", "फ़ैक्टरी"], wholesale: ["firm", "firm"], transport: ["company", "company"], courier: ["company", "company"],
+};
+export function orgWordFor(categoryKey: string | null | undefined): OrgWord {
+  const hit = categoryKey ? ORG_BY_KEY[categoryKey] : undefined;
+  let en = hit?.[0], hi = hit?.[1];
+  if (!en) {
+    const word = categoryKey ? recipeFor(categoryKey).catalog : "products";
+    [en, hi] = word === "courses" ? ["institute", "इंस्टीट्यूट"] : word === "treatments" ? ["clinic", "clinic"] : word === "menu" ? ["restaurant", "रेस्टोरेंट"] : word === "products" ? ["business", "business"] : ["business", "business"];
+  }
+  return { en, hi: hi ?? en, En: en.replace(/^./, (c) => c.toUpperCase()) };
 }
