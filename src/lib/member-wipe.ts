@@ -46,7 +46,9 @@ export async function wipeMemberData(id: string, h: Record<string, string>, user
   // account's drafts (the setup, the V-Card form, the built preview) drops them when it next opens — see
   // lib/local-reset.ts. Always written, so the account's version moves even when nothing was saved yet.
   const md = { ...(userMetadata ?? {}) } as Record<string, unknown>;
-  for (const k of SETUP_KEYS) delete md[k];
+  // null, not delete: Supabase MERGES user_metadata on an admin update, so a key left out of the body stays as it
+  // was — the old business, trade and About came back after every clear (owner, 4 Oct 2026). null removes the key.
+  for (const k of SETUP_KEYS) md[k] = null;
   md.data_cleared_at = new Date().toISOString();
   {
     const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify({ user_metadata: md }) });

@@ -200,7 +200,7 @@ export async function PATCH(request: Request) {
     if (!ur.ok) return Response.json({ error: "user not found" }, { status: 404 });
     const u = (await ur.json()) as { user_metadata?: Record<string, unknown> };
     const md = { ...(u.user_metadata ?? {}) };
-    if (demo) md.is_demo = true; else delete md.is_demo;
+    if (demo) md.is_demo = true; else md.is_demo = null;   // null: user_metadata is merged, a missing key would stay
     const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify({ user_metadata: md }) });
     if (!r.ok) return Response.json({ error: "could not set the demo flag" }, { status: 400 });
     return Response.json({ ok: true, demo });
