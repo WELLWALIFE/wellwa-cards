@@ -41,7 +41,7 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
  */
 export async function referenceImages(
   userId: string,
-  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string },
+  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string; /** What the owner asked the picture to show, in their words or the AI's brief from them. */ wish?: string },
 ): Promise<string[]> {
   const brand = (opts.brand || "").trim().slice(0, 40);
   // "Hyundai auto showroom" — the brand's cars, phones or paint, not the trade's in general.
@@ -52,10 +52,12 @@ export async function referenceImages(
     : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
   const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
+  const wish = (opts.wish || "").trim().replace(/\s+/g, " ").slice(0, 600);
+  const wishLine = wish ? ` THE OWNER ASKS FOR THIS, AND IT COMES FIRST: ${wish}` : "";
   const briefs = [
-    `Photorealistic wide banner photograph of a ${trade}${where}.${brandLine} ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
-    `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use.${brandLine} ${mood}${accent} Shallow depth of field.`,
-    `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside.${brandLine} ${mood}${accent} Welcoming and tidy, no clutter.`,
+    `Photorealistic wide banner photograph of a ${trade}${where}.${brandLine}${wishLine} ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
+    `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use.${brandLine}${wishLine} ${mood}${accent} Shallow depth of field.`,
+    `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside.${brandLine}${wishLine} ${mood}${accent} Welcoming and tidy, no clutter.`,
   ];
   const want = Math.max(1, Math.min(3, opts.count ?? 2));
   const made = await Promise.all(

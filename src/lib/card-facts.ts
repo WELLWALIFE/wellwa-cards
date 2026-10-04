@@ -552,6 +552,10 @@ export type BuildRequest = {
     wants?: WriteAgainWant[];
     /** Their own words about it — "bigger photo", "shorter headline". */
     note?: string;
+    /** What the new picture should show (their words, or the AI's full brief from them). */
+    imageNote?: string;
+    /** What should change in the words. */
+    wordsNote?: string;
   };
   /** The card as it is now: with `refresh`, its words and pages are kept and only the rest changes. */
   refresh?: boolean;

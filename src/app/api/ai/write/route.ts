@@ -8,6 +8,12 @@ import { clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-secur
 type Body = { task: string; input: string; role?: string; company?: string };
 
 const PROMPTS: Record<string, (b: Body) => string> = {
+  // "Write again" helpers (owner's call, 4 Oct 2026): the owner says in a few rough words what picture or what
+  // change they want, and the AI turns it into a full brief the picture model / the writer can act on.
+  "image-wish": (b) => `The owner of ${b.company || "a small business"}${b.role ? ` (${b.role})` : ""} in India wants a new picture for the top of their website and said, in their own words: "${b.input}".
+Write the complete picture brief for an image model, in plain English, 2–4 sentences: exactly what is shown, the setting, the people if any (Indian, naturally dressed), the mood, the light and the colours. It is a wide banner photograph with clear empty space on one side for a headline. No text, letters, logos or watermarks in the picture. Keep everything the owner asked for; add only what makes it a good photograph. Return only the brief.`,
+  "words-wish": (b) => `The owner of ${b.company || "a small business"}${b.role ? ` (${b.role})` : ""} in India wants the words on their website changed and said, in their own words: "${b.input}".
+Write their request clearly for the copywriter, in plain English, 1–3 sentences: what to change, in what tone, and what must stay. Do not write the website text itself. Return only the request.`,
   tagline: (b) => `Write ONE punchy, professional tagline (max 10 words) for a digital business card. Person/role: ${b.role || b.input}. Company: ${b.company || ""}. Return only the tagline, no quotes.`,
   bio: (b) => `Write a warm, confident 2-3 sentence "About me" bio for a digital business card. Details: ${b.input}. Role: ${b.role || ""}, Company: ${b.company || ""}. First person. Return only the bio.`,
   rewrite: (b) => `Rewrite this to be clearer, warmer and more professional, same length. Return only the rewrite:\n\n${b.input}`,
@@ -102,7 +108,7 @@ export async function POST(request: Request) {
   // "About your business" is the owner's own words on their card, website and WhatsApp replies. Canned demo text
   // would put a made-up business ("We are a family-run business…") on a real card, so this task only ever returns
   // real AI text or an honest error, and the owner's typed notes stay untouched.
-  const real = body.task === "about-business";
+  const real = body.task === "about-business" || body.task === "image-wish" || body.task === "words-wish";
   const key = process.env.GEMINI_API_KEY;
   if (!key) {
     return real

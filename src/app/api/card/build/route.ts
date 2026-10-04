@@ -271,10 +271,11 @@ export async function POST(request: Request) {
     const f = b.fresh as { style?: unknown; round?: unknown; wants?: unknown; note?: unknown };
     const wants = (Array.isArray(f.wants) ? f.wants : []).filter((w): w is WriteAgainWant => w === "look" || w === "layout" || w === "banner" || w === "photos" || w === "pictures" || w === "words");
     const note = S(f.note, 200);
-    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : note ? [] : (["look", "layout"] as WriteAgainWant[]), note };
+    const imageNote = S((f as { imageNote?: unknown }).imageNote, 600), wordsNote = S((f as { wordsNote?: unknown }).wordsNote, 400);
+    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (note || imageNote || wordsNote) ? [] : (["look", "layout"] as WriteAgainWant[]), note, imageNote, wordsNote };
   })() : null;
   // One credit per thing asked for (owner's call, 4 Oct 2026: "ek image = 1 credit, text = 1 credit, jitna kaam utne").
-  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, fresh.note) : 0;
+  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, `${fresh.note}${fresh.imageNote}${fresh.wordsNote}`) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
     if (!paidPlan) return NextResponse.json({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, { status: 402 });
@@ -343,6 +344,7 @@ export async function POST(request: Request) {
           dark: ref?.style?.dark ?? false,
           color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
           count: facts.photos.length < 2 ? 3 : 1,
+          ...(fresh?.imageNote ? { wish: fresh.imageNote } : {}),
         }).catch(() => [] as string[]),
         80_000,
       ) ?? [];
@@ -410,7 +412,7 @@ export async function POST(request: Request) {
     : "") + factsText({ setup, facts, products: list, info, site });
   // The card's chat bot answers only in the owner's own words: the maker's web text may steer the wording
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
-  const knowledge = `${factsText({ setup, facts, products: list, info: new Map(), site })}${fresh?.note ? `\n\nThe owner's request for this rewrite: ${fresh.note}` : ""}`;
+  const knowledge = `${factsText({ setup, facts, products: list, info: new Map(), site })}${fresh?.note ? `\n\nThe owner's request for this rewrite: ${fresh.note}` : ""}${fresh?.wordsNote ? `\n\nThe owner's request for the WORDS (follow it): ${fresh.wordsNote}` : ""}`;
   const business = setup.business || setup.person;
   // The business's own colour, from its logo (brand-identity): the website wears it unless the designer says no.
   const logoHex = await logoColor(setup.logo);

@@ -179,6 +179,24 @@ export default function BuildCard() {
   const [againAsk, setAgainAsk] = useState(false);
   const [againWants, setAgainWants] = useState<Want[]>(["look"]);
   const [againNote, setAgainNote] = useState("");
+  // The picture and the words, described (owner's call, 4 Oct 2026: "image kaisi chahiye, text me kya — box ho, aur
+  // AI ki help: wo kuch likhe to AI usko poora prompt bana de").
+  const [imageNote, setImageNote] = useState("");
+  const [wordsNote, setWordsNote] = useState("");
+  const [helping, setHelping] = useState<"" | "image" | "words">("");
+  async function helpWrite(kind: "image" | "words") {
+    const raw = (kind === "image" ? imageNote : wordsNote).trim();
+    if (!raw || helping) return;
+    setHelping(kind);
+    try {
+      const r = await fetch("/api/ai/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
+        task: kind === "image" ? "image-wish" : "words-wish", input: raw, company: shown?.company || shown?.name || "", role: setup?.categoryLabel ?? "",
+      }) }).then((x) => x.json()).catch(() => ({}));
+      const text = String(r?.text ?? "").trim();
+      if (text) { if (kind === "image") setImageNote(text.slice(0, 600)); else setWordsNote(text.slice(0, 400)); }
+      else setErr(r?.error || T("The AI could not write it now — your own words will be used.", "AI अभी नहीं लिख पाया — आपके शब्द ही जाएँगे।"));
+    } finally { setHelping(""); }
+  }
   const WANTS: { k: Want; t: string; th: string; s: string; sh: string }[] = [
     { k: "look", t: "Look & colours", th: "Look और रंग", s: "Palette, fonts", sh: "रंग, font" },
     { k: "layout", t: "Layout", th: "Layout", s: "Hero style, section order", sh: "Hero का ढंग, sections का क्रम" },
@@ -187,7 +205,7 @@ export default function BuildCard() {
     { k: "words", t: "Words", th: "शब्द", s: "Headline, about, sections", sh: "Headline, about, sections" },
   ];
   // One credit per thing asked (owner's call, 4 Oct 2026); the total shows on the button before anything is spent.
-  const againCost = writeAgainCredits(againWants, againNote);
+  const againCost = writeAgainCredits(againWants, `${againNote}${imageNote}${wordsNote}`);
   function writeAgain() {
     if (busy) return;
     if (!access.subscribed) { setPremiumUnlock(true); return; }
@@ -462,7 +480,7 @@ export default function BuildCard() {
 
   /** How many times "Write again" was pressed on this preview: each try differs from the last. */
   const freshRound = useRef(0);
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string }) {
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string; imageNote?: string; wordsNote?: string }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
@@ -484,7 +502,7 @@ export default function BuildCard() {
       // "Write again": the look on screen goes along as the one to avoid (owner's call, 4 Oct 2026).
       const leaving = over?.fresh ? (shown ?? card) : null;
       const wants: WriteAgainWant[] = over?.wants?.length ? over.wants : over?.note?.trim() ? [] : ["look", "layout"];
-      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}) } : null;
+      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}), ...(over?.imageNote?.trim() ? { imageNote: over.imageNote.trim().slice(0, 600) } : {}), ...(over?.wordsNote?.trim() ? { wordsNote: over.wordsNote.trim().slice(0, 400) } : {}) } : null;
       // Words not asked for: the card as it is goes along, so its words and pages stay and only the rest changes.
       const keepWords = !!fresh && !wants.includes("words") && !!leaving;
       const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}), ...(keepWords ? { refresh: true, current: leaving as unknown as Record<string, unknown> } : {}) };
@@ -902,10 +920,33 @@ export default function BuildCard() {
                 );
               })}
             </div>
-            <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything specific? e.g. bigger hero photo, shorter headline, lighter colours", "कुछ खास? जैसे बड़ी hero photo, छोटा headline, हल्के रंग")} className={`${field} mt-3`} />
+            {(againWants.includes("banner") || againWants.includes("photos")) && (
+              <div className="mt-3 rounded-xl border border-border bg-surface2/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="image-note" className="text-sm font-semibold">{T("The picture — what should it show?", "Picture — उसमें क्या दिखे?")}</label>
+                  <button type="button" onClick={() => void helpWrite("image")} disabled={!imageNote.trim() || !!helping} className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink disabled:opacity-60">
+                    {helping === "image" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("Help me write", "AI से लिखवाएँ")}
+                  </button>
+                </div>
+                <textarea id="image-note" value={imageNote} onChange={(e) => setImageNote(e.target.value.slice(0, 600))} rows={3} placeholder={T("In your words — e.g. our shop from outside in the evening, lights on, two customers at the counter", "अपने शब्दों में — जैसे शाम को हमारी दुकान बाहर से, lights जली हुई, counter पर दो ग्राहक")} className={`${field} text-sm`} />
+                <p className="mt-1 text-[11px] text-muted">{T("Write a few words, then tap Help me write — the AI turns them into a full picture brief you can edit.", "थोड़े शब्द लिखें, फिर AI से लिखवाएँ दबाएँ — AI पूरा picture brief बना देगा, जिसे आप बदल भी सकते हैं।")}</p>
+              </div>
+            )}
+            {againWants.includes("words") && (
+              <div className="mt-3 rounded-xl border border-border bg-surface2/40 p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <label htmlFor="words-note" className="text-sm font-semibold">{T("The words — what should change?", "शब्द — क्या बदले?")}</label>
+                  <button type="button" onClick={() => void helpWrite("words")} disabled={!wordsNote.trim() || !!helping} className="inline-flex items-center gap-1 rounded-lg border border-brand/40 bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink disabled:opacity-60">
+                    {helping === "words" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("Help me write", "AI से लिखवाएँ")}
+                  </button>
+                </div>
+                <textarea id="words-note" value={wordsNote} onChange={(e) => setWordsNote(e.target.value.slice(0, 400))} rows={3} placeholder={T("e.g. shorter headline, mention 20 years of experience, friendlier tone, keep the prices", "जैसे छोटा headline, 20 साल का अनुभव बताओ, दोस्ताना लहजा, दाम वही रहें")} className={`${field} text-sm`} />
+              </div>
+            )}
+            <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything else? e.g. lighter colours, bigger photos", "कुछ और? जैसे हल्के रंग, बड़ी photos")} className={`${field} mt-3`} />
             <p className="mt-3 flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
             {!access.loading && access.balance < againCost && <p className="mt-1 text-xs text-danger">{T(`You have ${access.balance} credits — add some to continue.`, `आपके पास ${access.balance} credit हैं — आगे के लिए credit डालें।`)}</p>}
-            <button type="button" disabled={!againWants.length && !againNote.trim()} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote }); }}
+            <button type="button" disabled={!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim()} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote, imageNote, wordsNote }); }}
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
             </button>
