@@ -271,6 +271,17 @@ export async function POST(request: Request) {
   let aiPhotos = 0;
   /** The banner AI made for this Premium build, so the website opens on it (hero photo / editorial). */
   let aiBannerUrl = "";
+  // The brand the business lives on (owner's call, 4 Oct 2026: "Hyundai dealer → Hyundai cars in every picture"):
+  // a dealer's brand from its site, else the one brand most of their products carry. Every picture, photo and
+  // clip is then of that brand's kind of thing, not of the trade in general.
+  const brand = (() => {
+    if (importRole === "dealer" && got?.imp.name) return got.imp.name.slice(0, 40);
+    const counts = new Map<string, number>();
+    for (const p of inputs.ownRows) { const b = (p.brand ?? "").trim(); if (b && !/shubhora/i.test(b)) counts.set(b, (counts.get(b) ?? 0) + 1); }
+    const top = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    return top && top[1] >= 2 && top[1] * 2 >= inputs.ownRows.length ? top[0].slice(0, 40) : "";
+  })();
+  if (brand) console.log("[card] brand", brand);
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card
   // never triggers it: it gets the trade's stock photos instead — Pexels, free for commercial use, and
   // cached per trade, so one search serves everyone in that line of work and the card costs us nothing.
@@ -286,6 +297,7 @@ export async function POST(request: Request) {
       const made = await within(
         referenceImages(me.id, {
           trade: setup.categoryLabel || setup.category || "",
+          brand,
           city: setup.city || "",
           dark: ref?.style?.dark ?? false,
           color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
@@ -401,7 +413,7 @@ export async function POST(request: Request) {
     try {
       const st = await stockEngineMod();
       // 70 s: a trade's first pool (twelve judged photos) takes longer than the old six; the AI copy runs meanwhile.
-      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "" }), 70_000);
+      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand }), 70_000);
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section

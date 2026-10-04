@@ -241,7 +241,8 @@ async function judgeCard(cands, label, what) {
     try { const buf = Buffer.from(await (await fetch(c.thumb, { signal: AbortSignal.timeout(15000) })).arrayBuffer()); const small = await sharp(buf).resize({ width: 320 }).jpeg({ quality: 75 }).toBuffer(); parts.push({ text: `${what} ${k}:` }, { inlineData: { mimeType: "image/jpeg", data: small.toString("base64") } }); } catch { /* skip */ }
   }
   if (!parts.length) return [];
-  parts.push({ text: `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".
+  const brandNote = /^[A-Z][\w&.-]*(?: [A-Z][\w&.-]*)? /.test(label) ? ` The label starts with a BRAND: the thing shown must be recognisably that brand's (its cars, phones, paint…), not a rival's — a rival brand's product scores 0–3.` : "";
+  parts.push({ text: `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".${brandNote}
 Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and CLEAN true/false (no readable text, logos, watermarks or screens; people, if any, look Indian / South Asian and appropriately dressed; nothing offensive; no alcohol, smoking or gore).
 Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
   try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false })); } catch { return null; }
@@ -254,10 +255,14 @@ Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
 // A pool of 12 per trade, not 6, so two shops of one trade never open on the same picture (owner's call, 4 Oct
 // 2026: "har site same image"); the builder picks its six from the pool by the business's name. Stored at 1800px,
 // quality 85, because the hero shows it full-width. "-v2" so the older six-photo caches are made again.
-export async function ensureCardMedia({ category, label = "", want = 12 }) {
+// `brand` ("Hyundai", owner's call 4 Oct 2026): a dealer's photos and clip are of that brand's kind of thing, searched
+// and judged by the brand, in a pool of their own (a Hyundai dealer and a Maruti dealer never share pictures).
+export async function ensureCardMedia({ category, label = "", want = 12, brand = "" }) {
   if (!PEXELS) return { photos: [], clip: null };
   fs.mkdirSync(CARD_DIR, { recursive: true });
-  const cat = String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other";
+  const brandWord = String(brand || "").trim().slice(0, 40);
+  const brandSlug = brandWord.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
+  const cat = `${String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other"}${brandSlug ? `-${brandSlug}` : ""}`;
   const meta = path.join(CARD_DIR, `${cat}-v2.json`);
   if (fs.existsSync(meta)) {
     try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if ((m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))))) return m; } catch { /* rebuild */ }
@@ -265,18 +270,23 @@ export async function ensureCardMedia({ category, label = "", want = 12 }) {
   // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
   // twelve are made in the background for the next one.
   let legacy = null;
-  const metaV1 = path.join(CARD_DIR, `${cat}.json`);
-  if (fs.existsSync(metaV1)) {
+  const metaV1 = brandSlug ? "" : path.join(CARD_DIR, `${cat}.json`);
+  if (metaV1 && fs.existsSync(metaV1)) {
     try { const m = JSON.parse(fs.readFileSync(metaV1, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
   }
   const ik = `card:${cat}`;
   if (inflight.has(ik)) return legacy ?? inflight.get(ik);
   const p = (async () => {
-    const trade = label || words(category);
+    const trade0 = label || words(category);
+    // With a brand, everything is the brand's: "Hyundai car showroom", judged as "Hyundai auto showroom".
+    const trade = brandWord ? `${brandWord} ${trade0}` : trade0;
     // The trade's own search words first ("pharmacy chemist shop" for a medical store — "medical store india" brought
     // general stores, owner's report 4 Oct 2026), then the label's angles.
-    const hint = CATEGORY_WORDS[cat] || "";
-    const queries = [...(hint ? [hint, `${hint} india`] : []), `${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`];
+    const catKey = cat.split("-")[0];
+    const hint = CATEGORY_WORDS[catKey] ? `${brandWord ? `${brandWord} ` : ""}${CATEGORY_WORDS[catKey]}` : "";
+    const queries = brandWord
+      ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : []), `${brandWord} india`, `${brandWord} showroom`, `${brandWord} product close up`]
+      : [...(hint ? [hint, `${hint} india`] : []), `${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`];
     const photos = []; const seen = new Set();
     for (const q of queries) {
       if (photos.length >= want) break;
@@ -298,7 +308,7 @@ export async function ensureCardMedia({ category, label = "", want = 12 }) {
     let clip = null;
     // A clip is on the home page, so it must be unmistakably this trade: judged at 8, not 7, and none at all beats
     // a general store's clip on a medical store's site.
-    for (const q of [...(hint ? [hint] : []), `${trade} india`, trade]) {
+    for (const q of brandWord ? [brandWord, `${brandWord} ${trade0}`, ...(hint ? [hint] : [])] : [...(hint ? [hint] : []), `${trade} india`, trade]) {
       const cands = (await landscapeClips(q)).slice(0, 8);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Clip");

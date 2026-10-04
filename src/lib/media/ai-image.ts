@@ -40,18 +40,21 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
  */
 export async function referenceImages(
   userId: string,
-  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number },
+  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string },
 ): Promise<string[]> {
-  const trade = (opts.trade || "small business").slice(0, 60);
+  const brand = (opts.brand || "").trim().slice(0, 40);
+  // "Hyundai auto showroom" — the brand's cars, phones or paint, not the trade's in general.
+  const trade = `${brand ? `${brand} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
   const mood = opts.dark
     ? "Moody, low-key lighting against a dark background; rich shadows, one warm light source."
     : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
+  const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
   const briefs = [
-    `Photorealistic wide banner photograph of a ${trade}${where}. ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
-    `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use. ${mood}${accent} Shallow depth of field.`,
-    `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside. ${mood}${accent} Welcoming and tidy, no clutter.`,
+    `Photorealistic wide banner photograph of a ${trade}${where}.${brandLine} ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
+    `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use.${brandLine} ${mood}${accent} Shallow depth of field.`,
+    `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside.${brandLine} ${mood}${accent} Welcoming and tidy, no clutter.`,
   ];
   const want = Math.max(1, Math.min(3, opts.count ?? 2));
   const made = await Promise.all(
