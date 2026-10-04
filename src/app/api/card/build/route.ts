@@ -543,6 +543,15 @@ export async function POST(request: Request) {
         if (ed) { const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...rest } = ed.card; void _i; void _u; void _p; void _a; void _v; void _c; built = rest as typeof built; }
         designReview = { score: rv.score, notes: rv.notes, fixed: ed?.notes ?? [] };
         console.log("[card] design-review", rv.score + "/10", JSON.stringify({ notes: rv.notes, fixed: ed?.notes ?? [] }));
+        // Whatever the review did, the banner stays on top (owner's call, 4 Oct 2026: "top banner banwao, premium
+        // me") — a Premium build's AI banner, or any real photograph that is the cover.
+        const cv = built.coverUrl ?? "";
+        const realCv = !!cv && !/\/art\/cover-|\/art\/brand\/|\/api\/stock\/banners\//.test(cv);
+        const h = built.site?.style?.hero ?? "";
+        if ((aiBannerUrl || realCv) && built.site && !facts.style?.hero && !["photo", "editorial"].includes(h)) {
+          built = { ...built, site: { ...built.site, style: { ...(built.site.style ?? {}), hero: "photo" }, hero: { ...(built.site.hero ?? { headline: setup.business, sub: "" }), imageUrl: aiBannerUrl || cv } } };
+          console.log("[card] hero → photo (banner kept on top after review)", h || "unset");
+        }
       } else console.log("[card] design-review: no verdict");
     } else console.log("[card] design-review: no screenshot");
   } catch (e) { console.log("[card] design-review skipped:", e instanceof Error ? e.message : e); }

@@ -30,7 +30,7 @@ const BRIEF = `You are a senior web designer reviewing a small-business website 
 
 Fix only what the picture shows is wrong. Typical fixes:
 - the headline wraps to 3+ lines or crowds the picture → set_hero with a shorter headline (≤ 6 words) and/or a shorter sub (≤ 18 words), same meaning, same language;
-- the hero layout fights its material (a photo hero with a busy photo behind text; a split hero with a weak picture; a stage hero with nothing to stage) → set_style hero to a better one from: split, photo, stage, minimal, grid, person, editorial, marquee;
+- the hero: the page opens on its banner photograph by the owner's rule, so the hero may only move between "photo" and "editorial" (the two that show the banner across the top) — never to split, stage, minimal, grid, person or marquee; fix a busy photo behind text with a shorter headline, not by hiding the banner;
 - a background pattern that muddies the hero → set_style pattern "none" or a quieter one (dots, waves, grid, diagonal, blobs, rings);
 - motion that distracts → set_style motion calm or none;
 - a section whose title does not say what it holds → set_title;
@@ -85,7 +85,11 @@ function clean(v: unknown): DesignReview | null {
   const o = v as Record<string, unknown>;
   const score = Math.max(1, Math.min(10, Math.round(Number(o.score) || 0)));
   const notes = Array.isArray(o.notes) ? o.notes.filter((n): n is string => typeof n === "string" && n.trim().length > 0).map((n) => n.trim().slice(0, 120)).slice(0, 4) : [];
-  const ops = cleanOps(o.ops).filter((op) => ALLOWED.has(op.op)).slice(0, 5);
+  const ops = cleanOps(o.ops).filter((op) => ALLOWED.has(op.op)).map((op) => {
+    // The banner stays on top (owner's call, 4 Oct 2026): a hero change is kept only between photo and editorial.
+    if (op.op === "set_style" && op.hero && op.hero !== "photo" && op.hero !== "editorial") { const { hero: _h, ...rest } = op; void _h; return rest; }
+    return op;
+  }).filter((op) => op.op !== "set_style" || Object.keys(op).length > 1).slice(0, 5);
   if (!score && !ops.length) return null;
   return { score, notes, ops };
 }
