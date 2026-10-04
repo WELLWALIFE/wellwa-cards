@@ -22,6 +22,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
+import { applyLook, fiveLooks, type LookKey } from "@/lib/site-looks";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
@@ -169,6 +170,16 @@ export default function BuildCard() {
   const [unlock, setUnlock] = useState(false);
   const [premiumUnlock, setPremiumUnlock] = useState(false);
   const [designNote, setDesignNote] = useState("");
+  // Five looks for the website on screen (site-looks.ts): the designer's, then four more; a tap swaps the style on
+  // the spot, and the first brings the designer's back.
+  const [lookKey, setLookKey] = useState<LookKey>("designer");
+  const looks = useMemo(() => (built?.site ? fiveLooks(built, built.site.style) : []), [built]);
+  function pickLook(k: LookKey) {
+    const look = looks.find((l) => l.key === k);
+    if (!look) return;
+    setLookKey(k);
+    setCard((c) => (c ? applyLook(c, look) : c));
+  }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
   // not?" moment. `liveUser` is the link it went live on; a changed link afterwards needs one more save.
@@ -471,7 +482,7 @@ export default function BuildCard() {
       const nextChecks = r.data.checks ?? [];
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone");
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey("designer");
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
       // Three different things, which used to be one vague line:
       //   • the site could not be opened at all;
@@ -753,6 +764,24 @@ export default function BuildCard() {
         </div>
       )}
 
+      {/* Five looks (owner's call, 4 Oct 2026): the designer's first, four more opinions; back to the first any time. */}
+      {looks.length > 0 && shown.site && (
+        <div>
+          <p className="mb-1.5 text-xs font-semibold text-muted">{T("Look", "Look")} <span className="font-normal">— {T("tap to try another; the words and pictures stay", "दूसरा देखें; शब्द और photos वही रहेंगे")}</span></p>
+          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {looks.map((l, i) => {
+              const on = lookKey === l.key;
+              return (
+                <button key={l.key} type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
+                  className={`shrink-0 rounded-xl border-2 px-3 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
+                  <span className="block text-sm font-semibold">{i + 1}. {hi ? l.hi : l.name}</span>
+                  <span className="block text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
       <div ref={previewRef} className="grid scroll-mt-20 grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
         {(liveUser
           ? ([["site", T("1. Website", "1. Website"), Globe], ["phone", T("2. Card", "2. Card"), Smartphone]] as const)
