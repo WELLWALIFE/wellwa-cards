@@ -239,11 +239,15 @@ function Onboard() {
       // What this phone had typed and not yet saved comes back over what the server knows (it is newer: the
       // draft is cleared the moment Save or Skip goes through). Seven days old is forgotten.
       try {
-        const raw = localStorage.getItem(`onboard-draft:${data.user?.id ?? ""}`);
-        const d = raw ? JSON.parse(raw) as { v?: number; at?: number; step?: StepKey; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; touched?: string[] } : null;
-        // An account changed on the server after the draft (an admin reset, a save from another phone) wins over it.
+        const key = `onboard-draft:${data.user?.id ?? ""}`;
+        const raw = localStorage.getItem(key);
+        const d = raw ? JSON.parse(raw) as { v?: number; at?: number; base?: number; step?: StepKey; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; touched?: string[] } : null;
+        // Only a draft typed over THIS server version comes back; one from before a reset or another phone's save is thrown away.
         const serverAt = Date.parse(String(data.user?.updated_at ?? "")) || 0;
-        if (d?.v === 1 && Date.now() - (d.at ?? 0) < 7 * 86_400_000 && serverAt <= (d.at ?? 0) + 5_000) {
+        serverBase.current = serverAt;
+        const fresh = d?.v === 2 && d.base === serverAt && Date.now() - (d.at ?? 0) < 7 * 86_400_000;
+        if (d && !fresh) { try { localStorage.removeItem(key); } catch { /* ignore */ } }
+        if (d && fresh) {
           if (d.site?.kind) setSite(d.site);
           if (d.biz) setBiz((b) => ({ ...b, ...d.biz }));
           if (d.you) setYou((y) => ({ ...y, ...d.you, photo: d.you?.photo || y.photo }));
@@ -267,15 +271,27 @@ function Onboard() {
   // to auto save hona chahiye"): a page reload, a tap on another step's link or a closed tab brings it all back —
   // the website answer included, which used to snap back to "my own" until Save. Cleared by Save and Skip.
   const draftReady = useRef(false);
+  /** The account's server version (auth updated_at) this screen loaded over. A draft is only ever restored onto the
+   *  SAME version: after a demo / admin reset, or a save from another phone, the version moves and the draft is
+   *  dropped. A second tab still open from before a reset (owner, 4 Oct 2026: a medical shop kept coming out as a
+   *  school) carries the old version and may not write over the fresh one. */
+  const serverBase = useRef(0);
   useEffect(() => {
     if (!draftReady.current || !uid) return;
     const t = setTimeout(() => {
       try {
-        localStorage.setItem(`onboard-draft:${uid}`, JSON.stringify({ v: 1, at: Date.now(), step, site, biz, you, facts, detours, touched: [...touched.current] }));
+        const key = `onboard-draft:${uid}`;
+        const cur = JSON.parse(localStorage.getItem(key) || "null") as { base?: number } | null;
+        if (cur?.base && cur.base > serverBase.current) return;   // a newer tab owns the draft
+        localStorage.setItem(key, JSON.stringify({ v: 2, at: Date.now(), base: serverBase.current, step, site, biz, you, facts, detours, touched: [...touched.current] }));
       } catch { /* storage full or off: nothing lost but the convenience */ }
     }, 400);
     return () => clearTimeout(t);
   }, [uid, step, site, biz, you, facts, detours]);
+  /** After this screen itself writes to the account (Both, Shubhora), the version moves on and the draft follows. */
+  async function bumpServerBase() {
+    try { const { data } = (await getBrowserSupabase()?.auth.getUser()) ?? { data: { user: null } }; serverBase.current = Date.parse(String(data.user?.updated_at ?? "")) || serverBase.current; } catch { /* keep */ }
+  }
   function clearDraft() { try { if (uid) localStorage.removeItem(`onboard-draft:${uid}`); } catch { /* ignore */ } }
 
   /** A picked photo opens the crop / zoom window first; the framed square is what gets uploaded. */
@@ -448,6 +464,7 @@ function Onboard() {
       // person may well close the app in between.
       const up = await sb?.auth.updateUser({ data: { also_shubhora: true } });
       if (up?.error) { setErr("Could not save. Please try again."); return; }
+      await bumpServerBase();
       setStep("site");
     } catch {
       setErr("No internet — please try again.");
@@ -749,9 +766,26 @@ function Onboard() {
     }
   }
 
+  /** A tab left open from before a reset (or another phone's save) must not write its old answers back over the
+   *  fresh account: when the server version moved under it, the screen reloads instead of saving. */
+  async function accountMoved(): Promise<boolean> {
+    try {
+      const { data } = (await getBrowserSupabase()?.auth.getUser()) ?? { data: { user: null } };
+      const now = Date.parse(String(data.user?.updated_at ?? "")) || 0;
+      if (serverBase.current && now && now !== serverBase.current) {
+        setErr(T("This account was changed elsewhere (a reset, or another phone). Reloading…", "यह account कहीं और बदला गया (reset, या दूसरे phone से)। दोबारा खुल रहा है…"));
+        clearDraft();
+        setTimeout(() => window.location.reload(), 1200);
+        return true;
+      }
+    } catch { /* offline: let the save try */ }
+    return false;
+  }
+
   /** One save for both steps: the poster profile + the account details. */
   async function save() {
     setErr("");
+    if (await accountMoved()) return;
     const phone = you.phone.replace(/\D/g, "").slice(-10);
     if (you.name.trim().length < 2) { setStep("you"); setErr("Write your name."); return; }
     if (phone.length !== 10) { setStep("you"); setErr("Write your 10-digit mobile number."); return; }
