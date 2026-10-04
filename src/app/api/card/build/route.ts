@@ -421,7 +421,7 @@ export async function POST(request: Request) {
   // down, the trade's default look stands.
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex }), 30_000);
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true }), 30_000);
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
   const design = await designP;
@@ -469,6 +469,16 @@ export async function POST(request: Request) {
       const heroImg = built.site?.hero?.imageUrl ?? "";
       const isLogo = !heroImg || heroImg === setup.logo || /\/art\/brand\//i.test(heroImg) || /logo/i.test(heroImg) || /\/api\/stock\/banners\//.test(heroImg);
       if (isLogo && built.site?.hero) built = { ...built, site: { ...built.site, hero: { ...built.site.hero, imageUrl: photo } } };
+    }
+    // The website opens on a banner (owner's call, 4 Oct 2026: "hero banner nahi aa raha"): with a real photograph
+    // as the cover, a hero that would never show it (split, stage, minimal) becomes the photo hero — unless the
+    // owner picked the hero by hand. Grid, person and marquee keep their own pictures.
+    const cover = built.coverUrl ?? "";
+    const realCover = !!cover && !/\/art\/cover-|\/art\/brand\/|\/api\/stock\/banners\//.test(cover);
+    const heroNow = built.site?.style?.hero ?? "";
+    if (realCover && built.site && !facts.style?.hero && (!heroNow || ["split", "stage", "minimal"].includes(heroNow))) {
+      built = { ...built, site: { ...built.site, style: { ...(built.site.style ?? {}), hero: "photo" }, hero: { ...(built.site.hero ?? { headline: setup.business, sub: "" }), imageUrl: cover } } };
+      console.log("[card] hero → photo (cover on top)", heroNow || "unset");
     }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
   // The last look (card-audit.ts): the same stock photo in three places, a city-only map, a thin section, a

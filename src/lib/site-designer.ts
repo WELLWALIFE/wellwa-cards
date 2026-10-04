@@ -42,6 +42,9 @@ export type DesignBrief = {
   liked?: { url: string; colors?: string[]; fonts?: string[]; dark?: boolean; heroImage?: boolean; sections?: string[] } | null;
   /** The strongest colour of the owner's logo (#rrggbb): the business's own colour, which the website should wear. */
   logoColor?: string | null;
+  /** A real photograph of the trade will stand in as the banner when the owner has none (the build adds it after the
+   *  plan), so photo and editorial heroes are open to the designer even then (owner, 4 Oct 2026: "hero banner nahi aa raha"). */
+  stockBanner?: boolean;
 };
 
 const PRINCIPLES = `Design principles you follow (current, 2026):
@@ -79,7 +82,7 @@ function briefText(b: DesignBrief): string {
     `Trade: ${cat?.en ?? setup.categoryLabel ?? setup.category} — group ${cat?.group ?? "?"}; the card leads with the ${setup.role === "business" ? "business name" : "person"}; their things are called "${recipe.catalog}".`,
     `Where: ${setup.city || "—"}; reach: ${setup.reach}. Website language: ${facts.lang}.`,
     ...tradeAnswerLines(setup.category, facts.tradeAnswers),
-    `Has: ${products.length} ${recipe.catalog} (${productPhotos} with photos), ${facts.photos.length} work photos, banner photo: ${facts.bannerUrl ? "yes" : "no"}, logo: ${setup.logo ? "yes" : "no"}, owner portrait: ${setup.photo ? "yes" : "no"}, reviews: ${b.reviews}, timings: ${facts.hours ? "yes" : "no"}, since: ${facts.since || "—"}, experience: ${facts.experience ? `${facts.experience} years` : "—"}, offer: ${facts.offer ? "yes" : "no"}, home service: ${facts.homeService || "—"}.`,
+    `Has: ${products.length} ${recipe.catalog} (${productPhotos} with photos), ${facts.photos.length} work photos, banner photo: ${facts.bannerUrl ? "yes (the owner's own)" : b.stockBanner ? "yes (a real photograph of the trade, provided)" : "no"}, logo: ${setup.logo ? "yes" : "no"}, owner portrait: ${setup.photo ? "yes" : "no"}, reviews: ${b.reviews}, timings: ${facts.hours ? "yes" : "no"}, since: ${facts.since || "—"}, experience: ${facts.experience ? `${facts.experience} years` : "—"}, offer: ${facts.offer ? "yes" : "no"}, home service: ${facts.homeService || "—"}.`,
     facts.special.length ? `What makes them special: ${facts.special.join(", ")}` : "",
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
@@ -107,10 +110,10 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   const productPhotos = b.products.filter((p) => p.images.length || p.photo).length;
   const heroOk = (h: string): h is HeroLayout =>
     HERO_LAYOUTS.some((x) => x.key === h)
-    && !(h === "photo" && !b.facts.bannerUrl)
+    && !(h === "photo" && !b.facts.bannerUrl && !b.stockBanner)
     && !(h === "grid" && productPhotos < 3)
     && !(h === "person" && !b.setup.photo)
-    && !(h === "editorial" && !b.facts.bannerUrl)
+    && !(h === "editorial" && !b.facts.bannerUrl && !b.stockBanner)
     && !(h === "marquee" && productPhotos + b.facts.photos.length < 4);
   if (heroOk(hero)) style.hero = hero;
   const radius = typeof o.radius === "string" ? o.radius.trim().toLowerCase() : "";
