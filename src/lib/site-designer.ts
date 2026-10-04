@@ -50,7 +50,7 @@ export type DesignBrief = {
   /** Which try this is (1 = the first "Write again"), so successive tries rotate through the choices. */
   round?: number;
   /** What the owner asked to change on "Write again": look (colours, type), layout (hero, order), or both when unset. */
-  wants?: ("look" | "layout" | "pictures" | "words")[];
+  wants?: ("look" | "layout" | "banner" | "photos" | "words" | "pictures")[];
   /** The owner's own words about the change. */
   request?: string;
 };

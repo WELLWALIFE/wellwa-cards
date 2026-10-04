@@ -32,7 +32,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import {
   isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
-  type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse,
+  type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse, type WriteAgainWant, writeAgainCredits,
   type Missing, type MissingKey, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
 import { SITE_CARDS, cleanSiteUrl, looksLikeSite, socialDetour } from "@/lib/site-role";
@@ -175,20 +175,22 @@ export default function BuildCard() {
   const [againUnlock, setAgainUnlock] = useState(false);
   // "What should change?" (owner's call, 4 Oct 2026: "poochhe kya change karna hai — hero image, look, text"):
   // the owner ticks what they want different, adds a line if they like, and only that changes.
-  type Want = "look" | "layout" | "pictures" | "words";
+  type Want = Exclude<WriteAgainWant, "pictures">;
   const [againAsk, setAgainAsk] = useState(false);
-  const [againWants, setAgainWants] = useState<Want[]>(["look", "layout"]);
+  const [againWants, setAgainWants] = useState<Want[]>(["look"]);
   const [againNote, setAgainNote] = useState("");
   const WANTS: { k: Want; t: string; th: string; s: string; sh: string }[] = [
     { k: "look", t: "Look & colours", th: "Look और रंग", s: "Palette, fonts", sh: "रंग, font" },
-    { k: "layout", t: "Layout", th: "Layout", s: "Hero, section order", sh: "Hero, sections का क्रम" },
-    { k: "pictures", t: "Pictures / hero image", th: "Photos / hero image", s: "New banner and photos", sh: "नया banner और photos" },
+    { k: "layout", t: "Layout", th: "Layout", s: "Hero style, section order", sh: "Hero का ढंग, sections का क्रम" },
+    { k: "banner", t: "Hero image", th: "Hero image", s: "A new banner on top", sh: "ऊपर नया banner" },
+    { k: "photos", t: "Photos", th: "Photos", s: "A new set in the gallery", sh: "Gallery में नया set" },
     { k: "words", t: "Words", th: "शब्द", s: "Headline, about, sections", sh: "Headline, about, sections" },
   ];
+  // One credit per thing asked (owner's call, 4 Oct 2026); the total shows on the button before anything is spent.
+  const againCost = writeAgainCredits(againWants, againNote);
   function writeAgain() {
     if (busy) return;
     if (!access.subscribed) { setPremiumUnlock(true); return; }
-    if (access.balance < 5) { setAgainUnlock(true); return; }
     setAgainAsk(true);
   }
   // Five looks for the website on screen (site-looks.ts): the designer's, then four more; a tap swaps the style on
@@ -460,7 +462,7 @@ export default function BuildCard() {
 
   /** How many times "Write again" was pressed on this preview: each try differs from the last. */
   const freshRound = useRef(0);
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: ("look" | "layout" | "pictures" | "words")[]; note?: string }) {
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
@@ -481,7 +483,7 @@ export default function BuildCard() {
       const siteChanged = siteNew.current || (!!f.website && f.website !== serverSite.current);
       // "Write again": the look on screen goes along as the one to avoid (owner's call, 4 Oct 2026).
       const leaving = over?.fresh ? (shown ?? card) : null;
-      const wants: ("look" | "layout" | "pictures" | "words")[] = over?.wants?.length ? over.wants : ["look", "layout"];
+      const wants: WriteAgainWant[] = over?.wants?.length ? over.wants : over?.note?.trim() ? [] : ["look", "layout"];
       const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}) } : null;
       // Words not asked for: the card as it is goes along, so its words and pages stay and only the rest changes.
       const keepWords = !!fresh && !wants.includes("words") && !!leaving;
@@ -880,7 +882,7 @@ export default function BuildCard() {
         <div className="flex items-center justify-center gap-5 pt-0.5 text-sm font-semibold">
           <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? T("Edit card", "Card edit करें") : T("Edit first", "पहले edit करें")}</button>
           <span className="h-4 w-px bg-border" />
-          <button type="button" onClick={writeAgain} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}{access.loading ? null : access.subscribed ? <span className="text-[11px] font-normal">· 5 credits</span> : <span className="inline-flex items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}</button>
+          <button type="button" onClick={writeAgain} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}{access.loading ? null : access.subscribed ? <span className="text-[11px] font-normal">· {T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}</button>
         </div>
       </div>
       {againAsk && (
@@ -894,21 +896,23 @@ export default function BuildCard() {
                 return (
                   <button key={w.k} type="button" aria-pressed={on} onClick={() => setAgainWants((cur) => (cur.includes(w.k) ? cur.filter((x) => x !== w.k) : [...cur, w.k]))}
                     className={`rounded-xl border-2 p-3 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                    <span className="block text-sm font-semibold">{on ? "✓ " : ""}{hi ? w.th : w.t}</span>
+                    <span className="flex items-center justify-between gap-2 text-sm font-semibold"><span>{on ? "✓ " : ""}{hi ? w.th : w.t}</span><span className="shrink-0 rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] font-bold text-muted">1 credit</span></span>
                     <span className="block text-[11px] text-muted">{hi ? w.sh : w.s}</span>
                   </button>
                 );
               })}
             </div>
             <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything specific? e.g. bigger hero photo, shorter headline, lighter colours", "कुछ खास? जैसे बड़ी hero photo, छोटा headline, हल्के रंग")} className={`${field} mt-3`} />
-            <button type="button" disabled={!againWants.length && !againNote.trim()} onClick={() => { setAgainAsk(false); void build({ fresh: true, wants: againWants, note: againNote }); }}
-              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5" /> {T("Write again · 5 credits", "दोबारा लिखवाएँ · 5 credit")}
+            <p className="mt-3 flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
+            {!access.loading && access.balance < againCost && <p className="mt-1 text-xs text-danger">{T(`You have ${access.balance} credits — add some to continue.`, `आपके पास ${access.balance} credit हैं — आगे के लिए credit डालें।`)}</p>}
+            <button type="button" disabled={!againWants.length && !againNote.trim()} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote }); }}
+              className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
             </button>
           </div>
         </div>
       )}
-      {againUnlock && <UnlockDialog title={T("Write again uses 5 credits", "दोबारा लिखवाने में 5 credit लगते हैं")} reason={T("A new look and new words each time. Add credits — your website stays as it is meanwhile.", "हर बार नया look और नए शब्द। Credit डालें — तब तक आपकी website वैसी ही रहेगी।")} onClose={() => { setAgainUnlock(false); access.refresh(); }} />}
+      {againUnlock && <UnlockDialog title={T("Write again: one credit per change", "दोबारा लिखवाना: हर बदलाव 1 credit")} reason={T("Add credits — your website stays as it is meanwhile.", "Credit डालें — तब तक आपकी website वैसी ही रहेगी।")} onClose={() => { setAgainUnlock(false); access.refresh(); }} />}
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );

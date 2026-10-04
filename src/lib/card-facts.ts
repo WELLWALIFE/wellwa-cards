@@ -525,6 +525,19 @@ export type FactsResponse = {
 export type BuildRow = { id?: string; name: string; brand: string; price: string; photo: string; studio?: boolean };
 
 /** POST /api/card/build */
+/** What "Write again" may change, each one credit (owner's call, 4 Oct 2026: "jitna kaam utne credit"): the look
+ *  (colours, type), the layout (hero, order), the banner (hero image), the photos (gallery set), the words. "pictures"
+ *  is the older name for banner + photos. */
+export type WriteAgainWant = "look" | "layout" | "banner" | "photos" | "words" | "pictures";
+export const WRITE_AGAIN_PRICE: Record<Exclude<WriteAgainWant, "pictures">, number> = { look: 1, layout: 1, banner: 1, photos: 1, words: 1 };
+/** Credits for a Write again: one per thing asked, at least one (a note alone is a request too). */
+export function writeAgainCredits(wants: WriteAgainWant[], note?: string): number {
+  const set = new Set<Exclude<WriteAgainWant, "pictures">>();
+  for (const w of wants) { if (w === "pictures") { set.add("banner"); set.add("photos"); } else set.add(w); }
+  let n = 0; for (const w of set) n += WRITE_AGAIN_PRICE[w];
+  return Math.max(1, n || (note?.trim() ? 1 : 0));
+}
+
 export type BuildRequest = {
   facts: Partial<CardFacts>; products: BuildRow[];
   /** The website (or whose it is) is new to this account since the last build — the build then lets the site's
@@ -536,7 +549,7 @@ export type BuildRequest = {
     style?: SiteStyle; round?: number;
     /** What the owner asked to change (owner's call, 4 Oct 2026: "poochhe kya change karna hai"): the look (colours,
      *  type), the layout (hero, order), the pictures, the words. Unset = look and layout, as before. */
-    wants?: ("look" | "layout" | "pictures" | "words")[];
+    wants?: WriteAgainWant[];
     /** Their own words about it — "bigger photo", "shorter headline". */
     note?: string;
   };

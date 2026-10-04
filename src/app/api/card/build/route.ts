@@ -39,7 +39,7 @@ import { applyEdits } from "@/lib/card-edits";
 import { SITE_URL } from "@/lib/site-url";
 import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
-import { BOOKING_CATEGORIES, mergeFacts, type BuildResponse, type SavedProduct } from "@/lib/card-facts";
+import { BOOKING_CATEGORIES, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
 import type { Card } from "@/lib/types";
 
@@ -269,10 +269,12 @@ export async function POST(request: Request) {
   // that costs money runs, and given back if the AI does not answer. A free account is told it is Premium.
   const fresh = b.fresh && typeof b.fresh === "object" ? (() => {
     const f = b.fresh as { style?: unknown; round?: unknown; wants?: unknown; note?: unknown };
-    const wants = (Array.isArray(f.wants) ? f.wants : []).filter((w): w is "look" | "layout" | "pictures" | "words" => w === "look" || w === "layout" || w === "pictures" || w === "words");
-    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (["look", "layout"] as ("look" | "layout" | "pictures" | "words")[]), note: S(f.note, 200) };
+    const wants = (Array.isArray(f.wants) ? f.wants : []).filter((w): w is WriteAgainWant => w === "look" || w === "layout" || w === "banner" || w === "photos" || w === "pictures" || w === "words");
+    const note = S(f.note, 200);
+    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : note ? [] : (["look", "layout"] as WriteAgainWant[]), note };
   })() : null;
-  const WRITE_AGAIN_CREDITS = 5;
+  // One credit per thing asked for (owner's call, 4 Oct 2026: "ek image = 1 credit, text = 1 credit, jitna kaam utne").
+  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, fresh.note) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
     if (!paidPlan) return NextResponse.json({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, { status: 402 });
@@ -280,7 +282,7 @@ export async function POST(request: Request) {
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
     if (!spend.ok) return NextResponse.json({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, { status: 402 });
     refundWriteAgain = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again-refund", p_ref: ref }) });
-    console.log("[card] write again: 5 credits", me.id);
+    console.log(`[card] write again: ${WRITE_AGAIN_CREDITS} credit(s)`, JSON.stringify(fresh.wants), me.id);
   }
 
   /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
@@ -323,15 +325,15 @@ export async function POST(request: Request) {
   // Premium (owner's call, 4 Oct 2026): the banner is always made by AI when the owner has none — their trade, their
   // city, their colour — and two more pictures only when they have fewer than two of their own. Free gets the
   // trade's stock photographs instead (below).
-  const wantsPictures = !fresh || fresh.wants.includes("pictures");
-  // "Write again" asking for new pictures: the banner and pictures an earlier build made (ref-N files) are let go,
-  // so new ones are made; an owner's own photos always stay.
+  const wantsBanner = !fresh || fresh.wants.includes("banner") || fresh.wants.includes("pictures");
+  const wantsPhotos = !fresh || fresh.wants.includes("photos") || fresh.wants.includes("pictures");
+  const wantsPictures = wantsBanner || wantsPhotos;
+  // "Write again" asking for a new banner / new photos: the ones an earlier build made (ref-N files) are let go, so
+  // new ones are made; an owner's own photos always stay.
   const madeByUs = (u: string) => /\/ref-\d\.(png|jpe?g|webp)(\?|$)/i.test(u);
-  if (fresh && wantsPictures) {
-    if (facts.bannerUrl && madeByUs(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
-    if (facts.photos.some(madeByUs)) facts = { ...facts, photos: facts.photos.filter((u) => !madeByUs(u)) };
-  }
-  if (paidPlan && !facts.bannerUrl && wantsPictures) {
+  if (fresh && wantsBanner && facts.bannerUrl && madeByUs(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
+  if (fresh && wantsPhotos && facts.photos.some(madeByUs)) facts = { ...facts, photos: facts.photos.filter((u) => !madeByUs(u)) };
+  if (paidPlan && !facts.bannerUrl && wantsBanner) {
     const ref = role === "reference" && facts.website ? await referenceP : null;
     {
       const made = await within(
@@ -481,7 +483,7 @@ export async function POST(request: Request) {
   // layout the owner asked for come from the fresh plan all the same.
   if (fresh && current && built.site && card.site) {
     const site0 = built.site;
-    built = { ...built, site: { ...site0, style: card.site.style, ...(fresh.wants.includes("layout") && card.site.home ? { home: card.site.home } : {}), ...(wantsPictures ? { hero: card.site.hero ?? site0.hero } : {}) }, ...(wantsPictures ? { coverUrl: card.coverUrl } : {}) };
+    built = { ...built, site: { ...site0, style: card.site.style, ...(fresh.wants.includes("layout") && card.site.home ? { home: card.site.home } : {}), ...(wantsBanner ? { hero: card.site.hero ?? site0.hero } : {}) }, ...(wantsBanner ? { coverUrl: card.coverUrl } : {}) };
   }
   // A banner made for a Premium build goes on top (owner, 4 Oct 2026: "premium banaya, main top banner nahi bana"):
   // a hero that would not show it (split, stage, minimal, grid) becomes the photo hero — unless the owner picked
@@ -496,7 +498,7 @@ export async function POST(request: Request) {
     const pool = await mediaP;
     // This business's six from the trade's pool of twelve, by its name: the same shop gets the same pictures on
     // every rebuild, the next shop of the trade gets different ones (owner's call, 4 Oct 2026).
-    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh && wantsPictures ? `|r${fresh.round}` : ""}`) } : null;
+    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh && wantsPhotos ? `|r${fresh.round}` : ""}`) } : null;
     stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.
