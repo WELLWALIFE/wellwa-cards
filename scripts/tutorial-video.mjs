@@ -117,18 +117,27 @@ const TUTORIALS = {
 };
 
 /* ============================== helpers: account ============================== */
-async function findUser(email) {
+async function findUser(handle) {
+  const want = handle.trim().toLowerCase();
+  const byId = async (id) => { const r = await fetch(`${SUPA}/auth/v1/admin/users/${id}`, { headers: H }); return r.ok ? r.json() : null; };
+  // the account id, or the app username (Haryana, Next_Level …)
+  if (/^[0-9a-f-]{36}$/.test(want)) { const u = await byId(want); if (u) return u; }
+  if (!want.includes("@")) {
+    const like = want.replace(/[\\%_]/g, (m) => `\\${m}`);
+    const r = await fetch(`${SUPA}/rest/v1/profiles?username=ilike.${encodeURIComponent(like)}&select=id&limit=1`, { headers: H });
+    const id = (await r.json().catch(() => []))?.[0]?.id;
+    if (id) { const u = await byId(id); if (u) return u; }
+  }
   for (let page = 1; page < 50; page++) {
     const r = await fetch(`${SUPA}/auth/v1/admin/users?page=${page}&per_page=1000`, { headers: H });
     const j = await r.json();
     const list = j.users ?? [];
     // the login email, or (a mobile sign-up, whose login email is a placeholder) the contact email saved in the profile
-    const want = email.toLowerCase();
     const u = list.find((x) => (x.email ?? "").toLowerCase() === want) ?? list.find((x) => String(x.user_metadata?.contact_email ?? "").toLowerCase() === want);
     if (u) return u;
     if (list.length < 1000) break;
   }
-  throw new Error(`No account with email ${email}`);
+  throw new Error(`No account with the email, contact email or username "${handle}"`);
 }
 async function magicToken(email) {
   const r = await fetch(`${SUPA}/auth/v1/admin/generate_link`, { method: "POST", headers: H, body: JSON.stringify({ type: "magiclink", email }) });
@@ -331,7 +340,7 @@ export function ui(page, { work, email, uid }) {
 
 /* ============================== record ============================== */
 async function record(t, work) {
-  if (!USER) throw new Error("--user <demo account email> is needed");
+  if (!USER) throw new Error("--user <demo account: login email, contact email or username> is needed");
   for (const [k, v] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL: SUPA, SUPABASE_SERVICE_ROLE_KEY: KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY: ANON, GEMINI_API_KEY: GEMINI })) if (!v) throw new Error(`${k} missing in .env.local`);
   if (!fs.existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME} (CHROME_PATH)`);
   const user = await findUser(USER);
