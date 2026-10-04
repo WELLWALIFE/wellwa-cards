@@ -438,10 +438,10 @@ export default function BuildCard() {
     const back = over?.back ?? (state === "preview" ? "preview" : "form");
     setErr(""); setNotice(""); setState("building");
     // A phone that changes from Wi-Fi to mobile data can leave a fetch hanging for ever, and this is the
-    // longest request in the app: it is given 160 s, and "Take me back" stops it at any time.
+    // longest request in the app: it is given 280 s — a trade's first build may take three minutes (owner, 4 Oct 2026).
     const job = { ctrl: new AbortController(), cancelled: false };
     jobRef.current = job;
-    const guard = setTimeout(() => job.ctrl.abort(), 160_000);
+    const guard = setTimeout(() => job.ctrl.abort(), 280_000);
     try {
       const products: BuildRow[] = rs
         .filter((r) => r.name.trim())
@@ -683,7 +683,11 @@ export default function BuildCard() {
         <p className="text-sm text-muted">{readingSite ? T("Reading your website too — up to 2 minutes. Please keep this screen open.", "आपकी website भी पढ़ी जा रही है — 2 मिनट तक लग सकते हैं। ये screen खुली रखें।") : T("Usually 20-60 seconds", "आम तौर पर 20-60 second")}</p>
         {readingSite && !hi && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
         {/* No way back while it builds (owner, 4 Oct 2026): a build left half-way cost money and showed nothing. */}
-        <p className="text-xs text-muted">{T("About a minute — the pictures, the words and the design are all made for you.", "करीब एक मिनट — pictures, शब्द और design सब आपके लिए बन रहे हैं।")}</p>
+        <p className="text-xs text-muted">{elapsed < 75
+          ? T("Usually 1–2 minutes. The first site of a trade can take 3: its pictures are found and judged one by one.", "आमतौर पर 1–2 मिनट। किसी trade की पहली site में 3 लग सकते हैं: photos एक-एक करके चुनी और परखी जाती हैं।")
+          : elapsed < 150
+          ? T("Still choosing pictures and checking the design — please keep this screen open.", "अभी photos चुनी जा रही हैं और design जाँचा जा रहा है — screen खुली रखें।")
+          : T("Almost there — the designer is looking at the finished page.", "बस थोड़ा और — designer बना हुआ page देख रहा है।")}</p>
       </div>
     );
   }

@@ -45,7 +45,7 @@ import type { Card } from "@/lib/types";
 
 // A site that has to be rendered page by page takes longer to read than one that hands over its HTML —
 // wellwalife.com measured 74s before the browser was shared, and Apache on this box allows 300s.
-export const maxDuration = 240;
+export const maxDuration = 285;
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim().slice(0, n);
 type Obj = Record<string, unknown>;
@@ -282,6 +282,20 @@ export async function POST(request: Request) {
     return top && top[1] >= 2 && top[1] * 2 >= inputs.ownRows.length ? top[0].slice(0, 40) : "";
   })();
   if (brand) console.log("[card] brand", brand);
+  // The trade's stock photos are fetched from here on — beside the paid pictures, the copy and the design, none of
+  // which needs them (owner's call, 4 Oct 2026: the first build may take three minutes, but it must come out complete).
+  const mediaP = (async () => {
+    try {
+      const st = await stockEngineMod();
+      // The pool answers as soon as six photos are in (owner's call, 4 Oct 2026: "6 laga sakte ho, thoda time lag
+      // jaaye to theek") and keeps filling to twelve in the background. A paid build has already spent up to 80 s on
+      // its own pictures, so it waits a little less; the AI copy runs meanwhile either way.
+      // The full pool — twelve photos, and the clip for a paid site — before the page is laid out; only at the wait's
+      // end is a shorter pool accepted. Starting here, it overlaps the paid pictures (80 s) and the copy.
+      const waitMs = 175_000;
+      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand, soon: paidPlan ? 99 : 12, waitMs }), waitMs + 5_000);
+    } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
+  })();
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card
   // never triggers it: it gets the trade's stock photos instead — Pexels, free for commercial use, and
   // cached per trade, so one search serves everyone in that line of work and the card costs us nothing.
@@ -412,17 +426,6 @@ export async function POST(request: Request) {
     // so the AI writes a complete site for THIS trade, not the same four sections for every business.
     ...(guide ? { guide } : {}),
   };
-  // The trade's stock photos are fetched while the AI writes (both take a while; neither needs the other).
-  const mediaP = (async () => {
-    try {
-      const st = await stockEngineMod();
-      // The pool answers as soon as six photos are in (owner's call, 4 Oct 2026: "6 laga sakte ho, thoda time lag
-      // jaaye to theek") and keeps filling to twelve in the background. A paid build has already spent up to 80 s on
-      // its own pictures, so it waits a little less; the AI copy runs meanwhile either way.
-      const waitMs = paidPlan ? 110_000 : 150_000;
-      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "", brand, soon: 6, waitMs }), waitMs + 5_000);
-    } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
-  })();
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section
   // order — beside the copy-writer. Not when a reference website sets the look. Never holds the build: slow or
   // down, the trade's default look stands.
