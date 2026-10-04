@@ -327,7 +327,6 @@ export async function POST(request: Request) {
   // trade's stock photographs instead (below).
   const wantsBanner = !fresh || fresh.wants.includes("banner") || fresh.wants.includes("pictures");
   const wantsPhotos = !fresh || fresh.wants.includes("photos") || fresh.wants.includes("pictures");
-  const wantsPictures = wantsBanner || wantsPhotos;
   // "Write again" asking for a new banner / new photos: the ones an earlier build made (ref-N files) are let go, so
   // new ones are made; an owner's own photos always stay.
   const madeByUs = (u: string) => /\/ref-\d\.(png|jpe?g|webp)(\?|$)/i.test(u);
