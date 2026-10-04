@@ -168,6 +168,7 @@ export default function BuildCard() {
   const [removed, setRemoved] = useState("");
   const [unlock, setUnlock] = useState(false);
   const [premiumUnlock, setPremiumUnlock] = useState(false);
+  const [designNote, setDesignNote] = useState("");
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
   // not?" moment. `liveUser` is the link it went live on; a changed link afterwards needs one more save.
@@ -473,6 +474,8 @@ export default function BuildCard() {
       //     browser runs its scripts, so there is nothing for us (or anything else that does not run them)
       //     to read. Saying "could not open it" there was simply wrong;
       //   • it opened and gave us products and pictures, which is the normal case and needs no notice.
+      // The designer's own line, so the owner sees the site was designed for them (and a build with no plan shows as such).
+      setDesignNote(r.data.design?.why ?? "");
       const found = r.data.siteFound;
       if (r.data.siteRead === false) {
         setNotice(facts.websiteRole === "reference" && facts.website
@@ -663,7 +666,8 @@ export default function BuildCard() {
         <p className="font-semibold">{stage}</p>
         <p className="text-sm text-muted">{readingSite ? T("Reading your website too — up to 2 minutes. Please keep this screen open.", "आपकी website भी पढ़ी जा रही है — 2 मिनट तक लग सकते हैं। ये screen खुली रखें।") : T("Usually 20-60 seconds", "आम तौर पर 20-60 second")}</p>
         {readingSite && !hi && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
-        <button type="button" onClick={() => { const j = jobRef.current; if (j) { j.cancelled = true; j.ctrl.abort(); } }} className="mt-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Take me back", "वापस ले चलें")}</button>
+        {/* No way back while it builds (owner, 4 Oct 2026): a build left half-way cost money and showed nothing. */}
+        <p className="text-xs text-muted">{T("About a minute — the pictures, the words and the design are all made for you.", "करीब एक मिनट — pictures, शब्द और design सब आपके लिए बन रहे हैं।")}</p>
       </div>
     );
   }
@@ -674,6 +678,7 @@ export default function BuildCard() {
         <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold">{liveUser ? T("Your website and card are live", "आपकी website और card live हैं") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
       </div>
+      {designNote && <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">🎨 {T("Designer", "Designer")}: {designNote}</p>}
       {/* One clear line: live or not. */}
       {liveUser ? (
         <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Website live · Card live", "Website live · Card live")}</b><span className="block text-xs text-muted">{T("One link does both: it opens as your website on a computer and as your card on a phone. See the website first, then the card, then tap OK.", "एक ही link दोनों काम करता है: computer पर website खुलती है, phone पर card। पहले website देखें, फिर card, फिर OK दबाएँ।")}</span></p></div>

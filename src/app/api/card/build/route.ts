@@ -269,6 +269,8 @@ export async function POST(request: Request) {
   // Never the reference site's own photographs — those are its owner's. Only used where the owner has
   // nothing of their own, so their photos always win and we never spend on someone who is already covered.
   let aiPhotos = 0;
+  /** The banner AI made for this Premium build, so the website opens on it (hero photo / editorial). */
+  let aiBannerUrl = "";
   // Paid only (owner's call, 1 Oct 2026). Making a picture costs real money every time, so a free card
   // never triggers it: it gets the trade's stock photos instead — Pexels, free for commercial use, and
   // cached per trade, so one search serves everyone in that line of work and the card costs us nothing.
@@ -294,6 +296,7 @@ export async function POST(request: Request) {
       logImages("card-pictures", "gemini-3.1-flash-image", made.length);
       if (made.length) {
         aiPhotos = made.length;
+        if (!facts.bannerUrl) aiBannerUrl = made[0];
         facts = {
           ...facts,
           bannerUrl: facts.bannerUrl || made[0],
@@ -425,6 +428,13 @@ export async function POST(request: Request) {
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;
   let built = current ? mergeRefresh(current, card) : card;
+  // A banner made for a Premium build goes on top (owner, 4 Oct 2026: "premium banaya, main top banner nahi bana"):
+  // a hero that would not show it (split, stage, minimal, grid) becomes the photo hero — unless the owner picked
+  // the hero by hand.
+  if (aiBannerUrl && built.site && !facts.style?.hero && !["photo", "editorial"].includes(built.site.style?.hero ?? "")) {
+    built = { ...built, coverUrl: aiBannerUrl, site: { ...built.site, style: { ...(built.site.style ?? {}), hero: "photo" }, hero: { ...(built.site.hero ?? { headline: setup.business, sub: "" }), imageUrl: aiBannerUrl } } };
+    console.log("[card] hero → photo (AI banner on top)");
+  }
   // Real photos + a short clip of the trade where the owner has none (cached per trade; ~20 s the first time).
   let stockUrls: string[] = [];
   try {
@@ -514,6 +524,7 @@ export async function POST(request: Request) {
       : {}),
     ...(aiPhotos ? { aiPhotos } : {}),
     ...(designReview ? { designReview } : {}),
+    ...(design ? { design: { style: design.style, ...(design.order ? { order: design.order } : {}), why: design.why } } : {}),
   };
   return NextResponse.json(out);
 }
