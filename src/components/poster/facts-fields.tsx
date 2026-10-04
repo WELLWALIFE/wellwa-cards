@@ -100,7 +100,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
     setBusy("photo"); setErr("");
     try {
       const url = await uploadImage(await compressToFile(f, "photo.jpg", 1600, 0.85), "wide");
-      if (url) setF({ photos: [...facts.photos, url].slice(0, 6) }); else setErr(FAILED);
+      if (url) setF({ photos: [...facts.photos, url].slice(0, 12) }); else setErr(FAILED);
     } catch { setErr(OFFLINE); } finally { setBusy(""); }
   }
 
@@ -150,7 +150,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
             <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) pickFile(f); }} />
           </label>
         )}
-        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 6)", "और photos (6 तक)")}</p>
+        <p className="pt-1 text-sm font-semibold">{T("More photos (up to 12)", "और photos (12 तक)")}</p>
         <div className="flex flex-wrap gap-2">
           {facts.photos.map((u, i) => (
             <div key={u} className="relative h-20 w-20 overflow-hidden rounded-xl border border-border">

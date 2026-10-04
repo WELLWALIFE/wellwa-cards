@@ -39,7 +39,7 @@ import { applyEdits } from "@/lib/card-edits";
 import { SITE_URL } from "@/lib/site-url";
 import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
-import { BOOKING_CATEGORIES, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
+import { BOOKING_CATEGORIES, MAX_GALLERY_PHOTOS, MAX_WRITE_AGAIN_PHOTOS, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
 import type { Card } from "@/lib/types";
 
@@ -272,10 +272,15 @@ export async function POST(request: Request) {
     const wants = (Array.isArray(f.wants) ? f.wants : []).filter((w): w is WriteAgainWant => w === "look" || w === "layout" || w === "banner" || w === "photos" || w === "pictures" || w === "words");
     const note = S(f.note, 200);
     const imageNote = S((f as { imageNote?: unknown }).imageNote, 600), wordsNote = S((f as { wordsNote?: unknown }).wordsNote, 400);
-    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (note || imageNote || wordsNote) ? [] : (["look", "layout"] as WriteAgainWant[]), note, imageNote, wordsNote };
+    const photoCount = Math.max(1, Math.min(MAX_WRITE_AGAIN_PHOTOS, Math.round(Number((f as { photoCount?: unknown }).photoCount)) || 1));
+    const photoMode: "add" | "replace" = (f as { photoMode?: unknown }).photoMode === "replace" ? "replace" : "add";
+    const replaceUrls = (Array.isArray((f as { replaceUrls?: unknown }).replaceUrls) ? ((f as { replaceUrls: unknown[] }).replaceUrls) : []).filter((u): u is string => typeof u === "string" && /^https?:\/\//.test(u)).slice(0, MAX_GALLERY_PHOTOS);
+    // Replacing chosen pictures: as many new ones as were tapped.
+    const count = photoMode === "replace" && replaceUrls.length ? Math.min(MAX_WRITE_AGAIN_PHOTOS, replaceUrls.length) : photoCount;
+    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (note || imageNote || wordsNote) ? [] : (["look", "layout"] as WriteAgainWant[]), note, imageNote, wordsNote, photoCount: count, photoMode, replaceUrls };
   })() : null;
   // One credit per thing asked for (owner's call, 4 Oct 2026: "ek image = 1 credit, text = 1 credit, jitna kaam utne").
-  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, `${fresh.note}${fresh.imageNote}${fresh.wordsNote}`) : 0;
+  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, `${fresh.note}${fresh.imageNote}${fresh.wordsNote}`, fresh.photoCount) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
     if (!paidPlan) return NextResponse.json({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, { status: 402 });
@@ -283,7 +288,7 @@ export async function POST(request: Request) {
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
     if (!spend.ok) return NextResponse.json({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, { status: 402 });
     refundWriteAgain = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again-refund", p_ref: ref }) });
-    console.log(`[card] write again: ${WRITE_AGAIN_CREDITS} credit(s)`, JSON.stringify(fresh.wants), me.id);
+    console.log(`[card] write again: ${WRITE_AGAIN_CREDITS} credit(s)`, JSON.stringify({ wants: fresh.wants, photos: fresh.wants.includes("photos") ? `${fresh.photoCount} ${fresh.photoMode}` : undefined }), me.id);
   }
 
   /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
@@ -330,10 +335,21 @@ export async function POST(request: Request) {
   const wantsPhotos = !fresh || fresh.wants.includes("photos") || fresh.wants.includes("pictures");
   // "Write again" asking for a new banner / new photos: the ones an earlier build made (ref-N files) are let go, so
   // new ones are made; an owner's own photos always stay.
-  const madeByUs = (u: string) => /\/ref-\d\.(png|jpe?g|webp)(\?|$)/i.test(u);
+  // Files this build line made earlier: poster/<uid>/ref-N-<time>.png (storeImage).
+  const madeByUs = (u: string) => /\/ref-\d+(-\d+)?\.(png|jpe?g|webp)(\?|$)/i.test(u);
   if (fresh && wantsBanner && facts.bannerUrl && madeByUs(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
-  if (fresh && wantsPhotos && facts.photos.some(madeByUs)) facts = { ...facts, photos: facts.photos.filter((u) => !madeByUs(u)) };
-  if (paidPlan && !facts.bannerUrl && wantsBanner) {
+  // "Replace": exactly the pictures the owner tapped go (their own included — they chose them); with none tapped,
+  // the gallery pictures AI made before go. "Add" (the default): everything stays and the new ones join.
+  if (fresh && wantsPhotos && fresh.photoMode === "replace") {
+    const gone = new Set(fresh.replaceUrls);
+    facts = { ...facts, photos: gone.size ? facts.photos.filter((u) => !gone.has(u)) : facts.photos.filter((u) => !madeByUs(u)) };
+    if (gone.size && facts.bannerUrl && gone.has(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
+  }
+  // What to make: a banner when there is none and one is wanted; gallery pictures — on a first build two when the
+  // owner has fewer than two of their own, on Write again exactly as many as were asked and paid for.
+  const makeBanner = paidPlan && !facts.bannerUrl && wantsBanner;
+  const makePhotos = paidPlan ? (fresh ? (fresh.wants.includes("photos") || fresh.wants.includes("pictures") ? fresh.photoCount : 0) : (facts.photos.length < 2 && wantsBanner ? 2 : 0)) : 0;
+  if (makeBanner || makePhotos > 0) {
     const ref = role === "reference" && facts.website ? await referenceP : null;
     {
       const made = await within(
@@ -343,19 +359,22 @@ export async function POST(request: Request) {
           city: setup.city || "",
           dark: ref?.style?.dark ?? false,
           color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
-          count: facts.photos.length < 2 ? 3 : 1,
+          banner: makeBanner,
+          count: (makeBanner ? 1 : 0) + makePhotos,
           ...(fresh?.imageNote ? { wish: fresh.imageNote } : {}),
         }).catch(() => [] as string[]),
-        80_000,
+        makePhotos > 3 ? 170_000 : 80_000,
       ) ?? [];
       logImages("card-pictures", IMG_MODEL, made.length);
       if (made.length) {
         aiPhotos = made.length;
-        if (!facts.bannerUrl) aiBannerUrl = made[0];
+        const bannerMade = makeBanner ? made[0] : "";
+        const gallery = makeBanner ? made.slice(1) : made;
+        if (bannerMade) aiBannerUrl = bannerMade;
         facts = {
           ...facts,
-          bannerUrl: facts.bannerUrl || made[0],
-          photos: [...facts.photos, ...made.slice(facts.bannerUrl ? 0 : 1)].slice(0, 6),
+          bannerUrl: facts.bannerUrl || bannerMade,
+          photos: [...facts.photos, ...gallery].slice(0, MAX_GALLERY_PHOTOS),
         };
       }
     }

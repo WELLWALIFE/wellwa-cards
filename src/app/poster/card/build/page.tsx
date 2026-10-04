@@ -184,6 +184,9 @@ export default function BuildCard() {
   const [imageNote, setImageNote] = useState("");
   const [wordsNote, setWordsNote] = useState("");
   const [helping, setHelping] = useState<"" | "image" | "words">("");
+  // How many new AI photos (one credit each) and whether they join the gallery or replace the AI-made ones.
+  const [photoCount, setPhotoCount] = useState(2);
+  const [photoMode, setPhotoMode] = useState<"add" | "replace">("add");
   async function helpWrite(kind: "image" | "words") {
     const raw = (kind === "image" ? imageNote : wordsNote).trim();
     if (!raw || helping) return;
@@ -201,11 +204,10 @@ export default function BuildCard() {
     { k: "look", t: "Look & colours", th: "Look और रंग", s: "Palette, fonts", sh: "रंग, font" },
     { k: "layout", t: "Layout", th: "Layout", s: "Hero style, section order", sh: "Hero का ढंग, sections का क्रम" },
     { k: "banner", t: "Hero image", th: "Hero image", s: "A new banner on top", sh: "ऊपर नया banner" },
-    { k: "photos", t: "Photos", th: "Photos", s: "A new set in the gallery", sh: "Gallery में नया set" },
+    { k: "photos", t: "Photos", th: "Photos", s: "New AI photos for the gallery", sh: "Gallery के लिए नई AI photos" },
     { k: "words", t: "Words", th: "शब्द", s: "Headline, about, sections", sh: "Headline, about, sections" },
   ];
   // One credit per thing asked (owner's call, 4 Oct 2026); the total shows on the button before anything is spent.
-  const againCost = writeAgainCredits(againWants, `${againNote}${imageNote}${wordsNote}`);
   function writeAgain() {
     if (busy) return;
     if (!access.subscribed) { setPremiumUnlock(true); return; }
@@ -410,6 +412,18 @@ export default function BuildCard() {
   }, [linkVal, editLink, existing?.id, T]);
 
   const shown = useMemo(() => (card ? applyChecks(card, checks, off) : null), [card, checks, off]);
+  // The pictures on the site now, as thumbnails (owner's call, 4 Oct 2026: "chhota preview, taaki pehchan sake
+  // kaunsi image badalni hai"): with Replace, the owner taps the ones to change — one credit each.
+  const [replaceUrls, setReplaceUrls] = useState<string[]>([]);
+  const galleryNow = useMemo(() => {
+    const seen = new Set<string>(); const out: string[] = [];
+    const add = (u?: string) => { if (u && /^https?:\/\//.test(u) && !seen.has(u) && out.length < 12) { seen.add(u); out.push(u); } };
+    for (const u of facts.photos) add(u);
+    for (const pg of shown?.pages ?? []) { if (pg.hidden) continue; for (const b of pg.blocks) { if (b.kind === "gallery") for (const im of b.images) add(im.url); } }
+    return out;
+  }, [facts.photos, shown]);
+  const photosAsked = photoMode === "replace" ? Math.max(1, replaceUrls.length) : photoCount;
+  const againCost = writeAgainCredits(againWants, `${againNote}${imageNote}${wordsNote}`, photosAsked);
   /** A link that is taken or too short: it can neither be saved nor published (offline = "idle", where
    *  publishing itself is the judge). */
   const linkBad = linkCheck.state === "bad" || linkCheck.state === "checking";
@@ -494,7 +508,7 @@ export default function BuildCard() {
 
   /** How many times "Write again" was pressed on this preview: each try differs from the last. */
   const freshRound = useRef(0);
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string; imageNote?: string; wordsNote?: string }) {
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string; imageNote?: string; wordsNote?: string; photoCount?: number; photoMode?: "add" | "replace"; replaceUrls?: string[] }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
@@ -516,7 +530,7 @@ export default function BuildCard() {
       // "Write again": the look on screen goes along as the one to avoid (owner's call, 4 Oct 2026).
       const leaving = over?.fresh ? (shown ?? card) : null;
       const wants: WriteAgainWant[] = over?.wants?.length ? over.wants : over?.note?.trim() ? [] : ["look", "layout"];
-      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}), ...(over?.imageNote?.trim() ? { imageNote: over.imageNote.trim().slice(0, 600) } : {}), ...(over?.wordsNote?.trim() ? { wordsNote: over.wordsNote.trim().slice(0, 400) } : {}) } : null;
+      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}), ...(over?.imageNote?.trim() ? { imageNote: over.imageNote.trim().slice(0, 600) } : {}), ...(over?.wordsNote?.trim() ? { wordsNote: over.wordsNote.trim().slice(0, 400) } : {}), ...(over?.photoCount ? { photoCount: over.photoCount } : {}), ...(over?.photoMode ? { photoMode: over.photoMode } : {}), ...(over?.replaceUrls?.length ? { replaceUrls: over.replaceUrls.slice(0, 12) } : {}) } : null;
       // Words not asked for: the card as it is goes along, so its words and pages stay and only the rest changes.
       const keepWords = !!fresh && !wants.includes("words") && !!leaving;
       const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}), ...(keepWords ? { refresh: true, current: leaving as unknown as Record<string, unknown> } : {}) };
@@ -928,12 +942,60 @@ export default function BuildCard() {
                 return (
                   <button key={w.k} type="button" aria-pressed={on} onClick={() => setAgainWants((cur) => (cur.includes(w.k) ? cur.filter((x) => x !== w.k) : [...cur, w.k]))}
                     className={`rounded-xl border-2 p-3 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                    <span className="flex items-center justify-between gap-2 text-sm font-semibold"><span>{on ? "✓ " : ""}{hi ? w.th : w.t}</span><span className="shrink-0 rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] font-bold text-muted">1 credit</span></span>
+                    <span className="flex items-center justify-between gap-2 text-sm font-semibold"><span>{on ? "✓ " : ""}{hi ? w.th : w.t}</span><span className="shrink-0 rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] font-bold text-muted">{w.k === "photos" ? T("1 credit each", "1 credit / photo") : "1 credit"}</span></span>
                     <span className="block text-[11px] text-muted">{hi ? w.sh : w.s}</span>
                   </button>
                 );
               })}
             </div>
+            {againWants.includes("banner") && shown.coverUrl && (
+              <div className="mt-3 flex items-center gap-3 rounded-xl border border-border bg-surface2/40 p-2.5">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={shown.coverUrl} alt="" className="h-12 w-20 shrink-0 rounded-lg object-cover" />
+                <p className="text-xs text-muted">{T("This banner on top will be remade.", "ऊपर का यह banner दोबारा बनेगा।")}</p>
+              </div>
+            )}
+            {againWants.includes("photos") && (
+              <div className="mt-3 rounded-xl border border-border bg-surface2/40 p-3">
+                <div className="grid grid-cols-2 gap-1.5">
+                  <button type="button" onClick={() => setPhotoMode("add")} className={`rounded-lg border px-2.5 py-2 text-left text-xs ${photoMode === "add" ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}><b>{T("Add to the gallery", "Gallery में जोड़ें")}</b><span className="block text-muted">{T("the ones there stay", "जो हैं वो रहेंगी")}</span></button>
+                  <button type="button" onClick={() => setPhotoMode("replace")} className={`rounded-lg border px-2.5 py-2 text-left text-xs ${photoMode === "replace" ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}><b>{T("Replace some", "कुछ बदलें")}</b><span className="block text-muted">{T("tap the ones to change", "जो बदलनी हों उन पर tap करें")}</span></button>
+                </div>
+                {photoMode === "add" ? (
+                  <>
+                    <p className="mt-3 text-sm font-semibold">{T("How many new photos?", "कितनी नई photos?")} <span className="font-normal text-muted">({T("1 credit each", "हर photo 1 credit")})</span></p>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {[1, 2, 3, 4, 5, 6].map((n) => <button key={n} type="button" onClick={() => setPhotoCount(n)} className={`h-9 min-w-9 rounded-lg border px-2.5 text-sm font-semibold ${photoCount === n ? "border-brand bg-brand text-white" : "border-border bg-surface"}`}>{n}</button>)}
+                    </div>
+                    {galleryNow.length > 0 && <div className="mt-2 flex gap-1.5 overflow-x-auto pb-1">{galleryNow.map((u) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img key={u} src={u} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover opacity-80" />
+                    ))}</div>}
+                    {galleryNow.length > 0 && <p className="mt-1 text-[11px] text-muted">{T(`These ${galleryNow.length} stay; the new ones join them.`, `ये ${galleryNow.length} रहेंगी; नई इनके साथ जुड़ेंगी।`)}</p>}
+                  </>
+                ) : (
+                  <>
+                    <p className="mt-3 text-sm font-semibold">{T("Tap the photos to change", "जो photos बदलनी हों उन पर tap करें")} <span className="font-normal text-muted">({T("1 credit each", "हर photo 1 credit")})</span></p>
+                    {galleryNow.length ? (
+                      <div className="mt-1.5 grid grid-cols-4 gap-1.5">
+                        {galleryNow.map((u) => {
+                          const on = replaceUrls.includes(u);
+                          return (
+                            <button key={u} type="button" aria-pressed={on} onClick={() => setReplaceUrls((cur) => (cur.includes(u) ? cur.filter((x) => x !== u) : cur.length < 6 ? [...cur, u] : cur))}
+                              className={`relative aspect-square overflow-hidden rounded-lg border-2 ${on ? "border-brand" : "border-transparent"}`}>
+                              {/* eslint-disable-next-line @next/next/no-img-element */}
+                              <img src={u} alt="" className={`h-full w-full object-cover ${on ? "" : "opacity-80"}`} />
+                              {on && <span className="absolute inset-0 grid place-items-center bg-brand/40 text-lg font-bold text-white">✓</span>}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : <p className="mt-1 text-xs text-muted">{T("No photos on the site yet — choose Add instead.", "अभी site पर photos नहीं — Add चुनें।")}</p>}
+                    <p className="mt-1 text-[11px] text-muted">{T(`${replaceUrls.length} chosen — each is remade from your description above.`, `${replaceUrls.length} चुनी — हर एक ऊपर के विवरण से दोबारा बनेगी।`)}</p>
+                  </>
+                )}
+              </div>
+            )}
             {(againWants.includes("banner") || againWants.includes("photos")) && (
               <div className="mt-3 rounded-xl border border-border bg-surface2/40 p-3">
                 <div className="flex items-center justify-between gap-2">
@@ -960,7 +1022,7 @@ export default function BuildCard() {
             <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything else? e.g. lighter colours, bigger photos", "कुछ और? जैसे हल्के रंग, बड़ी photos")} className={`${field} mt-3`} />
             <p className="mt-3 flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
             {!access.loading && access.balance < againCost && <p className="mt-1 text-xs text-danger">{T(`You have ${access.balance} credits — add some to continue.`, `आपके पास ${access.balance} credit हैं — आगे के लिए credit डालें।`)}</p>}
-            <button type="button" disabled={!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim()} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote, imageNote, wordsNote }); }}
+            <button type="button" disabled={(!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim()) || (againWants.includes("photos") && photoMode === "replace" && !replaceUrls.length)} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote, imageNote, wordsNote, photoCount: photosAsked, photoMode, replaceUrls: photoMode === "replace" ? replaceUrls : [] }); }}
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
             </button>

@@ -183,7 +183,7 @@ function normalizeObj(r: Obj): CardFacts {
   for (const p of Array.isArray(r.photos) ? r.photos.slice(0, 40) : []) {
     const u = httpsUrl(p);
     if (u && u !== bannerUrl && !photos.includes(u)) photos.push(u);
-    if (photos.length >= 6) break;
+    if (photos.length >= MAX_GALLERY_PHOTOS) break;
   }
   const primaryCardId = text(r.primaryCardId, 36);
   const assertedAt = text(r.dealerAssertedAt, 30);
@@ -530,11 +530,16 @@ export type BuildRow = { id?: string; name: string; brand: string; price: string
  *  is the older name for banner + photos. */
 export type WriteAgainWant = "look" | "layout" | "banner" | "photos" | "words" | "pictures";
 export const WRITE_AGAIN_PRICE: Record<Exclude<WriteAgainWant, "pictures">, number> = { look: 1, layout: 1, banner: 1, photos: 1, words: 1 };
-/** Credits for a Write again: one per thing asked, at least one (a note alone is a request too). */
-export function writeAgainCredits(wants: WriteAgainWant[], note?: string): number {
+/** The most AI photos one Write again may make for the gallery, and the most the gallery holds. */
+export const MAX_WRITE_AGAIN_PHOTOS = 6;
+export const MAX_GALLERY_PHOTOS = 12;
+/** Credits for a Write again: one per thing asked — and one per photo asked for (owner's call, 4 Oct 2026: "every
+ *  image 1 credit, every time") — at least one (a note alone is a request too). */
+export function writeAgainCredits(wants: WriteAgainWant[], note?: string, photoCount = 1): number {
   const set = new Set<Exclude<WriteAgainWant, "pictures">>();
   for (const w of wants) { if (w === "pictures") { set.add("banner"); set.add("photos"); } else set.add(w); }
-  let n = 0; for (const w of set) n += WRITE_AGAIN_PRICE[w];
+  let n = 0;
+  for (const w of set) n += w === "photos" ? Math.max(1, Math.min(MAX_WRITE_AGAIN_PHOTOS, Math.round(photoCount) || 1)) : WRITE_AGAIN_PRICE[w];
   return Math.max(1, n || (note?.trim() ? 1 : 0));
 }
 
@@ -556,6 +561,12 @@ export type BuildRequest = {
     imageNote?: string;
     /** What should change in the words. */
     wordsNote?: string;
+    /** How many new AI photos for the gallery (1–6, one credit each) and whether they join the gallery or replace
+     *  the ones AI made before (the owner's own photos always stay). */
+    photoCount?: number;
+    photoMode?: "add" | "replace";
+    /** With "replace": the pictures the owner tapped on the thumbnails — exactly these go, one credit each. */
+    replaceUrls?: string[];
   };
   /** The card as it is now: with `refresh`, its words and pages are kept and only the rest changes. */
   refresh?: boolean;

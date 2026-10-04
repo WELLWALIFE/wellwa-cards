@@ -41,7 +41,7 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
  */
 export async function referenceImages(
   userId: string,
-  opts: { trade: string; city?: string; dark?: boolean; color?: string; count?: number; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string; /** What the owner asked the picture to show, in their words or the AI's brief from them. */ wish?: string },
+  opts: { trade: string; city?: string; dark?: boolean; color?: string; /** How many in all (banner first when `banner` is not false). */ count?: number; /** false: no banner, gallery pictures only. */ banner?: boolean; /** "Hyundai": the pictures show that brand's kind of thing (no logos or text, as ever). */ brand?: string; /** What the owner asked the picture to show, in their words or the AI's brief from them. */ wish?: string },
 ): Promise<string[]> {
   const brand = (opts.brand || "").trim().slice(0, 40);
   // "Hyundai auto showroom" — the brand's cars, phones or paint, not the trade's in general.
@@ -59,12 +59,27 @@ export async function referenceImages(
     `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use.${brandLine}${wishLine} ${mood}${accent} Shallow depth of field.`,
     `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside.${brandLine}${wishLine} ${mood}${accent} Welcoming and tidy, no clutter.`,
   ];
-  const want = Math.max(1, Math.min(3, opts.count ?? 2));
-  const made = await Promise.all(
-    briefs.slice(0, want).map(async (prompt, i) => {
-      const png = await aiImage(prompt, i === 0 ? "16:9" : "4:3");
-      return png ? storeImage(userId, `ref-${i + 1}`, png) : null;
-    }),
-  );
+  // Gallery pictures beyond the first two: other angles of the same business, so six do not look like one.
+  const more = [
+    `Photorealistic photograph of customers being served at a ${trade}${where}, candid, mid-action.${brandLine}${wishLine} ${mood}${accent}`,
+    `Photorealistic photograph of the team at work in a ${trade}${where}, natural and unposed.${brandLine}${wishLine} ${mood}${accent}`,
+    `Photorealistic photograph of the products or the finished work of a ${trade}${where}, arranged neatly, from above.${brandLine}${wishLine} ${mood}${accent}`,
+    `Photorealistic photograph of the entrance of a ${trade}${where}, inviting, early evening light.${brandLine}${wishLine} ${mood}${accent}`,
+    `Photorealistic close photograph of textures and details at a ${trade}${where} — materials, tools or ingredients.${brandLine}${wishLine} ${mood}${accent}`,
+    `Photorealistic photograph of a happy customer leaving a ${trade}${where}, candid.${brandLine}${wishLine} ${mood}${accent}`,
+  ];
+  const withBanner = opts.banner !== false;
+  const want = Math.max(1, Math.min(7, opts.count ?? 2));
+  const list = (withBanner ? briefs : briefs.slice(1)).concat(more).slice(0, want);
+  // Three at a time: the image model is slow and seven in one go would take minutes.
+  const made: (string | null)[] = [];
+  for (let i = 0; i < list.length; i += 3) {
+    const chunk = await Promise.all(list.slice(i, i + 3).map(async (prompt, k) => {
+      const n = i + k;
+      const png = await aiImage(prompt, withBanner && n === 0 ? "16:9" : "4:3");
+      return png ? storeImage(userId, `ref-${n + 1}`, png) : null;
+    }));
+    made.push(...chunk);
+  }
   return made.filter((u): u is string => !!u);
 }
