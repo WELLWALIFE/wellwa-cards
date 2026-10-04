@@ -265,6 +265,24 @@ export async function POST(request: Request) {
   // may run before this is known.
   const paidPlan = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
 
+  // "Write again" (owner's call, 4 Oct 2026): Premium only, and 5 credits a time — charged here, before anything
+  // that costs money runs, and given back if the AI does not answer. A free account is told it is Premium.
+  const fresh = b.fresh && typeof b.fresh === "object" ? (() => {
+    const f = b.fresh as { style?: unknown; round?: unknown; wants?: unknown; note?: unknown };
+    const wants = (Array.isArray(f.wants) ? f.wants : []).filter((w): w is "look" | "layout" | "pictures" | "words" => w === "look" || w === "layout" || w === "pictures" || w === "words");
+    return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (["look", "layout"] as ("look" | "layout" | "pictures" | "words")[]), note: S(f.note, 200) };
+  })() : null;
+  const WRITE_AGAIN_CREDITS = 5;
+  let refundWriteAgain: null | (() => Promise<unknown>) = null;
+  if (fresh) {
+    if (!paidPlan) return NextResponse.json({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, { status: 402 });
+    const ref = `write-again-${me.id.slice(0, 8)}-${Date.now()}`;
+    const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
+    if (!spend.ok) return NextResponse.json({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, { status: 402 });
+    refundWriteAgain = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again-refund", p_ref: ref }) });
+    console.log("[card] write again: 5 credits", me.id);
+  }
+
   /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
   // Never the reference site's own photographs — those are its owner's. Only used where the owner has
   // nothing of their own, so their photos always win and we never spend on someone who is already covered.
@@ -305,7 +323,15 @@ export async function POST(request: Request) {
   // Premium (owner's call, 4 Oct 2026): the banner is always made by AI when the owner has none — their trade, their
   // city, their colour — and two more pictures only when they have fewer than two of their own. Free gets the
   // trade's stock photographs instead (below).
-  if (paidPlan && !facts.bannerUrl) {
+  const wantsPictures = !fresh || fresh.wants.includes("pictures");
+  // "Write again" asking for new pictures: the banner and pictures an earlier build made (ref-N files) are let go,
+  // so new ones are made; an owner's own photos always stay.
+  const madeByUs = (u: string) => /\/ref-\d\.(png|jpe?g|webp)(\?|$)/i.test(u);
+  if (fresh && wantsPictures) {
+    if (facts.bannerUrl && madeByUs(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
+    if (facts.photos.some(madeByUs)) facts = { ...facts, photos: facts.photos.filter((u) => !madeByUs(u)) };
+  }
+  if (paidPlan && !facts.bannerUrl && wantsPictures) {
     const ref = role === "reference" && facts.website ? await referenceP : null;
     {
       const made = await within(
@@ -337,7 +363,6 @@ export async function POST(request: Request) {
   if (inputs.profileId) await saveFacts(me.id, inputs.profileId, facts); // best effort: the card is built either way
   // "Write again" (owner's call, 4 Oct 2026): the owner saw the look and wants another. The look they picked by
   // hand earlier would pin it, so this build sets it aside (it stays on record for the next ordinary build).
-  const fresh = b.fresh && typeof b.fresh === "object" ? { style: cleanStyle((b.fresh as { style?: unknown }).style) ?? null, round: Math.max(1, Math.min(50, Number((b.fresh as { round?: unknown }).round) || 1)) } : null;
   if (fresh) { facts = { ...facts, style: undefined }; console.log("[card] write again: a different look", JSON.stringify({ avoid: fresh.style, round: fresh.round })); }
 
   /* ---- the products on the card: the typed rows first, then the rest (minus the ones the owner took off) ---- */
@@ -384,7 +409,7 @@ export async function POST(request: Request) {
     : "") + factsText({ setup, facts, products: list, info, site });
   // The card's chat bot answers only in the owner's own words: the maker's web text may steer the wording
   // (the owner ticks it off under "Please check"), but it is never stored as something they said.
-  const knowledge = factsText({ setup, facts, products: list, info: new Map(), site });
+  const knowledge = `${factsText({ setup, facts, products: list, info: new Map(), site })}${fresh?.note ? `\n\nThe owner's request for this rewrite: ${fresh.note}` : ""}`;
   const business = setup.business || setup.person;
   // The business's own colour, from its logo (brand-identity): the website wears it unless the designer says no.
   const logoHex = await logoColor(setup.logo);
@@ -431,12 +456,12 @@ export async function POST(request: Request) {
   // down, the trade's default look stands.
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round } : {}) }), 30_000);
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
   let copy: CardCopy;
-  try { copy = await writeCard(brief, reference); } catch { return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
+  try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
   const design0 = await designP;
   // A rejected look never comes back: the plan is made to differ from it, whatever the designer said (or did not).
-  const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round }) : design0;
+  const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note }) : design0;
   console.log("[card] design", JSON.stringify({ used: !!design, ms: Date.now() - designT0, ...(design ? { style: design.style, order: design.order ?? null, why: design.why } : {}) }));
 
   /* ---- the layout (code) ---- */
@@ -452,6 +477,12 @@ export async function POST(request: Request) {
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;
   let built = current ? mergeRefresh(current, card) : card;
+  // "Write again" without new words: the current card's words and pages stayed (mergeRefresh); the look and the
+  // layout the owner asked for come from the fresh plan all the same.
+  if (fresh && current && built.site && card.site) {
+    const site0 = built.site;
+    built = { ...built, site: { ...site0, style: card.site.style, ...(fresh.wants.includes("layout") && card.site.home ? { home: card.site.home } : {}), ...(wantsPictures ? { hero: card.site.hero ?? site0.hero } : {}) }, ...(wantsPictures ? { coverUrl: card.coverUrl } : {}) };
+  }
   // A banner made for a Premium build goes on top (owner, 4 Oct 2026: "premium banaya, main top banner nahi bana"):
   // a hero that would not show it (split, stage, minimal, grid) becomes the photo hero — unless the owner picked
   // the hero by hand.
@@ -465,7 +496,7 @@ export async function POST(request: Request) {
     const pool = await mediaP;
     // This business's six from the trade's pool of twelve, by its name: the same shop gets the same pictures on
     // every rebuild, the next shop of the trade gets different ones (owner's call, 4 Oct 2026).
-    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh ? `|r${fresh.round}` : ""}`) } : null;
+    const media = pool ? { ...pool, photos: pickSix(pool.photos, `${setup.business}|${setup.person}|${setup.city}${fresh && wantsPictures ? `|r${fresh.round}` : ""}`) } : null;
     stockUrls = media?.photos.map((p) => p.url) ?? [];
     // Free plan (owner's call, 23 Sep 2026): no made-for-you video on the card — only the photos; the clip comes with the plan.
     // Videos that a template carries (the Shubhora seller card's demos) are part of the template and stay.

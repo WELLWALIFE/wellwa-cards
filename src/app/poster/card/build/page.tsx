@@ -170,6 +170,27 @@ export default function BuildCard() {
   const [unlock, setUnlock] = useState(false);
   const [premiumUnlock, setPremiumUnlock] = useState(false);
   const [designNote, setDesignNote] = useState("");
+  // "Write again" (owner's call, 4 Oct 2026): Premium, 5 credits a time. Free is shown the Premium sheet; a Premium
+  // account short of credits is asked for them.
+  const [againUnlock, setAgainUnlock] = useState(false);
+  // "What should change?" (owner's call, 4 Oct 2026: "poochhe kya change karna hai — hero image, look, text"):
+  // the owner ticks what they want different, adds a line if they like, and only that changes.
+  type Want = "look" | "layout" | "pictures" | "words";
+  const [againAsk, setAgainAsk] = useState(false);
+  const [againWants, setAgainWants] = useState<Want[]>(["look", "layout"]);
+  const [againNote, setAgainNote] = useState("");
+  const WANTS: { k: Want; t: string; th: string; s: string; sh: string }[] = [
+    { k: "look", t: "Look & colours", th: "Look और रंग", s: "Palette, fonts", sh: "रंग, font" },
+    { k: "layout", t: "Layout", th: "Layout", s: "Hero, section order", sh: "Hero, sections का क्रम" },
+    { k: "pictures", t: "Pictures / hero image", th: "Photos / hero image", s: "New banner and photos", sh: "नया banner और photos" },
+    { k: "words", t: "Words", th: "शब्द", s: "Headline, about, sections", sh: "Headline, about, sections" },
+  ];
+  function writeAgain() {
+    if (busy) return;
+    if (!access.subscribed) { setPremiumUnlock(true); return; }
+    if (access.balance < 5) { setAgainUnlock(true); return; }
+    setAgainAsk(true);
+  }
   // Five looks for the website on screen (site-looks.ts): the designer's, then four more; a tap swaps the style on
   // the spot, and the first brings the designer's back.
   const [lookKey, setLookKey] = useState<LookKey>("designer");
@@ -439,7 +460,7 @@ export default function BuildCard() {
 
   /** How many times "Write again" was pressed on this preview: each try differs from the last. */
   const freshRound = useRef(0);
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean }) {
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: ("look" | "layout" | "pictures" | "words")[]; note?: string }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
@@ -460,12 +481,19 @@ export default function BuildCard() {
       const siteChanged = siteNew.current || (!!f.website && f.website !== serverSite.current);
       // "Write again": the look on screen goes along as the one to avoid (owner's call, 4 Oct 2026).
       const leaving = over?.fresh ? (shown ?? card) : null;
-      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current } : null;
-      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}) };
+      const wants: ("look" | "layout" | "pictures" | "words")[] = over?.wants?.length ? over.wants : ["look", "layout"];
+      const fresh = over?.fresh ? { style: leaving?.site?.style ?? {}, round: ++freshRound.current, wants: [...wants], ...(over?.note?.trim() ? { note: over.note.trim().slice(0, 200) } : {}) } : null;
+      // Words not asked for: the card as it is goes along, so its words and pages stay and only the rest changes.
+      const keepWords = !!fresh && !wants.includes("words") && !!leaving;
+      const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}), ...(keepWords ? { refresh: true, current: leaving as unknown as Record<string, unknown> } : {}) };
       siteNew.current = false;
       const r = await api<Partial<BuildResponse> & { error?: string }>("/api/card/build", { method: "POST", json: body, signal: job.ctrl.signal });
       const built = r.data?.card;
-      if (!r.ok || !built) { setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
+      if (!r.ok || !built) {
+        // The server's own word on Write again: Premium, or 5 credits short.
+        if (r.status === 402 && (r.data as { plan?: boolean } | undefined)?.plan) { setState(back); setPremiumUnlock(true); return; }
+        if (r.status === 402 && (r.data as { needCredits?: number } | undefined)?.needCredits) { setState(back); setAgainUnlock(true); access.refresh(); return; }
+        setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
 
       let name = live?.username ?? "";
       if (!name) {
@@ -492,6 +520,7 @@ export default function BuildCard() {
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey("designer");
+      if (fresh) access.refresh();
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
       // Three different things, which used to be one vague line:
       //   • the site could not be opened at all;
@@ -851,9 +880,35 @@ export default function BuildCard() {
         <div className="flex items-center justify-center gap-5 pt-0.5 text-sm font-semibold">
           <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? T("Edit card", "Card edit करें") : T("Edit first", "पहले edit करें")}</button>
           <span className="h-4 w-px bg-border" />
-          <button type="button" onClick={() => build({ fresh: true })} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}</button>
+          <button type="button" onClick={writeAgain} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}{access.loading ? null : access.subscribed ? <span className="text-[11px] font-normal">· 5 credits</span> : <span className="inline-flex items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}</button>
         </div>
       </div>
+      {againAsk && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setAgainAsk(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md rounded-t-2xl bg-surface p-4 shadow-float sm:rounded-2xl">
+            <p className="text-lg font-bold">{T("What should change?", "क्या बदलना है?")}</p>
+            <p className="text-xs text-muted">{T("Tick what you want different — the rest stays exactly as it is.", "जो बदलना हो वो दबाएँ — बाकी वैसा ही रहेगा।")}</p>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {WANTS.map((w) => {
+                const on = againWants.includes(w.k);
+                return (
+                  <button key={w.k} type="button" aria-pressed={on} onClick={() => setAgainWants((cur) => (cur.includes(w.k) ? cur.filter((x) => x !== w.k) : [...cur, w.k]))}
+                    className={`rounded-xl border-2 p-3 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
+                    <span className="block text-sm font-semibold">{on ? "✓ " : ""}{hi ? w.th : w.t}</span>
+                    <span className="block text-[11px] text-muted">{hi ? w.sh : w.s}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything specific? e.g. bigger hero photo, shorter headline, lighter colours", "कुछ खास? जैसे बड़ी hero photo, छोटा headline, हल्के रंग")} className={`${field} mt-3`} />
+            <button type="button" disabled={!againWants.length && !againNote.trim()} onClick={() => { setAgainAsk(false); void build({ fresh: true, wants: againWants, note: againNote }); }}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5" /> {T("Write again · 5 credits", "दोबारा लिखवाएँ · 5 credit")}
+            </button>
+          </div>
+        </div>
+      )}
+      {againUnlock && <UnlockDialog title={T("Write again uses 5 credits", "दोबारा लिखवाने में 5 credit लगते हैं")} reason={T("A new look and new words each time. Add credits — your website stays as it is meanwhile.", "हर बार नया look और नए शब्द। Credit डालें — तब तक आपकी website वैसी ही रहेगी।")} onClose={() => { setAgainUnlock(false); access.refresh(); }} />}
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );

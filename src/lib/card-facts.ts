@@ -532,7 +532,17 @@ export type BuildRequest = {
   siteChanged?: boolean;
   /** "Write again" (owner's call, 4 Oct 2026): the owner saw this look and wants a DIFFERENT one. The previous
    *  look comes along so the designer avoids it; `round` counts the tries, so each one differs from the last. */
-  fresh?: { style?: SiteStyle; round?: number };
+  fresh?: {
+    style?: SiteStyle; round?: number;
+    /** What the owner asked to change (owner's call, 4 Oct 2026: "poochhe kya change karna hai"): the look (colours,
+     *  type), the layout (hero, order), the pictures, the words. Unset = look and layout, as before. */
+    wants?: ("look" | "layout" | "pictures" | "words")[];
+    /** Their own words about it — "bigger photo", "shorter headline". */
+    note?: string;
+  };
+  /** The card as it is now: with `refresh`, its words and pages are kept and only the rest changes. */
+  refresh?: boolean;
+  current?: Record<string, unknown>;
 };
 
 /** Maker details found on the web for one product, shown under "Please check" before publishing. */

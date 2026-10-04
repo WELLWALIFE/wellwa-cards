@@ -49,6 +49,10 @@ export type DesignBrief = {
   avoid?: SiteStyle | null;
   /** Which try this is (1 = the first "Write again"), so successive tries rotate through the choices. */
   round?: number;
+  /** What the owner asked to change on "Write again": look (colours, type), layout (hero, order), or both when unset. */
+  wants?: ("look" | "layout" | "pictures" | "words")[];
+  /** The owner's own words about the change. */
+  request?: string;
 };
 
 const PRINCIPLES = `Design principles you follow (current, 2026):
@@ -91,7 +95,11 @@ function briefText(b: DesignBrief): string {
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
     `Default look for this trade (change it only for a reason): ${JSON.stringify(b.defaults)}`,
-    b.avoid ? `THE OWNER SAW THIS LOOK AND ASKED FOR A DIFFERENT ONE: ${JSON.stringify(b.avoid)}. Choose a clearly different palette (another tone if you can), a different font pairing, a different hero and different section layouts — a second designer's take on the same business, not a touch-up. Keep only what the business itself demands (its logo colour, Hindi type).` : "",
+    b.avoid ? (() => {
+      const w = b.wants?.length ? b.wants : ["look", "layout"];
+      const asks = [w.includes("look") ? "a clearly different palette (another tone if you can) and a different font pairing" : "KEEP the palette and the font pairing exactly", w.includes("layout") ? "a different hero and different section layouts and order" : "KEEP the hero, the section layouts and the order"].join("; ");
+      return `THE OWNER SAW THIS LOOK AND ASKED FOR A CHANGE: ${JSON.stringify(b.avoid)}. They want: ${asks}.${b.request ? ` In their words: "${b.request}".` : ""} A second designer's take on what they asked, not a touch-up elsewhere. Keep what the business itself demands (its logo colour, Hindi type).`;
+    })() : "",
     b.logoColor ? `The owner's LOGO colour is ${b.logoColor}: this is the business's own colour — wear it ("brand" with that color) unless it reads badly on screen, and keep the rest of the palette calm around it.` : "",
     b.liked ? `The owner likes this website: ${b.liked.url} — colours ${(b.liked.colors ?? []).slice(0, 3).join(", ") || "?"}; fonts ${(b.liked.fonts ?? []).slice(0, 2).join(", ") || "?"}; ${b.liked.dark ? "dark" : "light"} page; ${b.liked.heroImage ? "a big photo on top" : "no big photo on top"}${b.liked.sections?.length ? `; sections in order: ${b.liked.sections.join(" > ")}` : ""}. Take this as their TASTE (mood, warmth, formality) and pick the nearest good choices from the menu — improve on it, never copy a weak choice.` : "",
   ].filter(Boolean);
@@ -115,11 +123,18 @@ function heroAllowed(h: string, b: DesignBrief): h is HeroLayout {
 export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): SiteDesignPlan {
   const avoid = b.avoid ?? {};
   const round = Math.max(1, b.round ?? 1);
+  const wants = b.wants?.length ? b.wants : ["look", "layout"];
+  const wantLook = wants.includes("look"), wantLayout = wants.includes("layout");
   const style: SiteStyle = { ...(plan?.style ?? {}) };
+  // What was not asked for stays exactly as it was: the owner changes one thing at a time and sees it change.
+  if (!wantLook) { style.palette = avoid.palette ?? style.palette; if (avoid.color) style.color = avoid.color; else delete style.color; style.font = avoid.font ?? style.font; }
+  if (!wantLayout) { style.hero = avoid.hero ?? style.hero; style.pattern = avoid.pattern ?? style.pattern; style.radius = avoid.radius ?? style.radius; style.motion = avoid.motion ?? style.motion; if (avoid.layouts) style.layouts = avoid.layouts; }
+  const guard = (plan?: SiteDesignPlan | null) => ({ style, ...(wantLayout && plan?.order ? { order: plan.order } : {}), why: plan?.why ? `${plan.why} (as asked)` : "Changed as asked." });
+  if (!wantLook && !wantLayout) return guard(plan);
   const pick = <T,>(list: T[], same: (x: T) => boolean, i: number): T | undefined => { const rest = list.filter((x) => !same(x)); return rest.length ? rest[i % rest.length] : undefined; };
   // Palette: the logo's own colour is the business's and stays; otherwise another palette, another tone first.
   const oldPal = avoid.palette ?? b.defaults.palette;
-  if (!b.logoColor && (!style.palette || style.palette === oldPal)) {
+  if (wantLook && !b.logoColor && (!style.palette || style.palette === oldPal)) {
     const oldTone = SITE_PALETTES.find((p) => p.key === oldPal)?.tone;
     const pals = SITE_PALETTES.filter((p) => p.key !== "brand");
     const other = pals.filter((p) => p.tone !== oldTone);
@@ -128,21 +143,21 @@ export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): Site
   }
   // Font: another pairing (Hindi stays Hindi).
   const oldFont = avoid.font ?? b.defaults.font;
-  if (b.facts.lang !== "hi" && (!style.font || style.font === oldFont)) {
+  if (wantLook && b.facts.lang !== "hi" && (!style.font || style.font === oldFont)) {
     const nf = pick(FONT_PAIRS.filter((f) => f.key !== "look" && f.key !== "hindi"), (f) => f.key === oldFont, round * 2 + (b.setup.city.length % 3));
     if (nf) style.font = nf.key;
   }
   // Hero: another the content can carry.
   const oldHero = avoid.hero ?? b.defaults.hero;
-  if (!style.hero || style.hero === oldHero) {
+  if (wantLayout && (!style.hero || style.hero === oldHero)) {
     const nh = pick(HERO_LAYOUTS.filter((h) => heroAllowed(h.key, b)), (h) => h.key === oldHero, round);
     if (nh) style.hero = nh.key;
   }
   // Pattern and corners: a different one when the plan repeats the old.
   const patterns: NonNullable<SiteStyle["pattern"]>[] = ["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"];
-  if (avoid.pattern && (!style.pattern || style.pattern === avoid.pattern)) style.pattern = pick(patterns, (x) => x === avoid.pattern, round) ?? style.pattern;
-  if (avoid.radius && (!style.radius || style.radius === avoid.radius)) style.radius = pick(RADII.map((r) => r.key), (x) => x === avoid.radius, round) ?? style.radius;
-  return { style, ...(plan?.order ? { order: plan.order } : {}), why: plan?.why ? `${plan.why} (a different take, as asked)` : "A different take on the look, as asked." };
+  if (wantLayout && avoid.pattern && (!style.pattern || style.pattern === avoid.pattern)) style.pattern = pick(patterns, (x) => x === avoid.pattern, round) ?? style.pattern;
+  if (wantLayout && avoid.radius && (!style.radius || style.radius === avoid.radius)) style.radius = pick(RADII.map((r) => r.key), (x) => x === avoid.radius, round) ?? style.radius;
+  return guard(plan);
 }
 
 /** The plan, checked against the menu and the content. */
