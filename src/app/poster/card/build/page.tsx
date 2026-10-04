@@ -179,6 +179,8 @@ export default function BuildCard() {
     if (!look) return;
     setLookKey(k);
     setCard((c) => (c ? applyLook(c, look) : c));
+    // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
+    setTab("site");
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
@@ -355,9 +357,13 @@ export default function BuildCard() {
   const linkBad = linkCheck.state === "bad" || linkCheck.state === "checking";
 
   /* the website preview: the real desktop renderer in an iframe, scaled down to the phone's width */
+  const previewFrame = useRef<HTMLIFrameElement>(null);
   useEffect(() => {
     if (state !== "preview" || tab !== "site" || !shown) return;
     writeJson(PREVIEW_KEY, { ...shown, username: "__preview" });
+    // The frame is told as well: a storage event alone did not reach it on every browser (the five looks only
+    // ever showed the first, owner's report 4 Oct 2026).
+    try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
   }, [state, tab, shown]);
 
   useEffect(() => {
@@ -808,7 +814,7 @@ export default function BuildCard() {
       ) : (
         <div>
           <div ref={frameRef} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
-            <iframe title="Website preview" src="/preview/site" style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+            <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
           </div>
           <p className="mt-1.5 text-center text-xs text-muted">{T("This is how your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।")}{liveUser && <> <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="font-semibold text-brand-ink underline">{T("Open the live website", "Live website खोलें")}</a></>}</p>
         </div>
