@@ -390,6 +390,7 @@ async function record(t, work) {
     return new Error(`scene "${s.id}"${what}: ${e.message}${cause}\n  screen said: ${seen}${errs ? `\n  errors on screen: ${errs}` : ""}\n  (picture: ${work}/fail-${s.id}.png — to carry on: node scripts/tutorial-video.mjs ${TUTORIAL} --user ${USER} --resume ${work} --from ${s.id})`);
   };
   let fromIdx = 0, kept = [];
+  try {
   if (resuming) {
     fromIdx = list.findIndex((x) => x.id === FROM);
     if (fromIdx < 0) throw new Error(`--from "${FROM}": no such scene — one of: ${list.map((x) => x.id).join(", ")}`);
@@ -402,7 +403,6 @@ async function record(t, work) {
     if (missing.length) throw new Error(`the earlier run has no clip for: ${missing.join(", ")} (needed before "${FROM}")`);
     log(`carrying on from "${FROM}": ${fromIdx} scenes kept`);
   }
-  try {
     for (const [i, s] of list.entries()) {
       if (i < fromIdx) { done.push(kept[i]); continue; }
       if (resuming && i === fromIdx && s.enter) { log(`${s.id}: opening the screen…`); await s.enter(); }
@@ -477,7 +477,8 @@ async function compose(work, outDir) {
 }
 
 /* ============================== main ============================== */
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) try {
+const RUN_DIRECT = !!process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (RUN_DIRECT) try {
   const t = TUTORIALS[TUTORIAL];
   if (!t) throw new Error(`unknown tutorial "${TUTORIAL}" — one of: ${Object.keys(TUTORIALS).join(", ")}`);
   let work = COMPOSE_ONLY || RESUME;
@@ -498,3 +499,5 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   console.error(`\nERROR: ${e.message}${e.cause?.message && !String(e.message).includes(e.cause.message) ? `\n  cause: ${e.cause.message}` : ""}`);
   process.exitCode = 1;
 }
+// Whatever happened, the command ends: a child process left running (Chrome, ffmpeg) would keep it hanging.
+if (RUN_DIRECT) setTimeout(() => process.exit(process.exitCode ?? 0), 500);
