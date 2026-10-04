@@ -22,7 +22,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.join(__dirname, "..");
 const OUT_DIR = path.join(APP, "public", "wellwa", "followups", "daily");
 const LOGO = path.join(APP, "public", "wellwa", "images", "wellwa-logo.png");
-const MODEL = process.env.BANNER_MODEL || "gemini-3.1-flash-image";
+const MODEL = process.env.BANNER_MODEL || process.env.IMG_MODEL || "gemini-3.1-flash-lite-image";
 
 function loadEnv() {
   const env = { ...process.env };

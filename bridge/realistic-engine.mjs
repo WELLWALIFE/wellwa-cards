@@ -13,7 +13,7 @@ const FAL = "https://queue.fal.run";
 // separate ratio param, it inherits the input image's aspect automatically.
 const GEMINI_RATIO = { reel: "9:16", square: "1:1", wide: "16:9" };
 const KLING = "fal-ai/kling-video/v2.5-turbo/pro/image-to-video";
-const IMG_MODEL = "gemini-3.1-flash-image";
+const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image"; // the lite image model everywhere (owner, 4 Oct 2026)
 
 // NOTE: there used to be a SHOTS table of six hardcoded water-ionizer briefs
 // picked by hashing the product name whenever a scene had no `visual`. A tailor

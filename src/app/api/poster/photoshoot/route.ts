@@ -7,7 +7,7 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
-const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-image"; // 2.5 shuts down 2026-10-02; the 3.1 preview went 2026-06-25 (GA id since 29 Sep 2026)
+const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image"; // the lite image model everywhere (owner, 4 Oct 2026)
 export const maxDuration = 120;
 /** Owner's price (2026-09-17): 5 credits per photo; the user picks which of the 4 shots to make. A failed shot is refunded. */
 const PER_PHOTO = 5;

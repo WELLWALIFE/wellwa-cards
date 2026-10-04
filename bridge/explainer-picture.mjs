@@ -19,7 +19,7 @@ const VISION = "gemini-3.5-flash";
 // The long video's own image model switch (EXPLAINER_GEMINI_IMG), falling back to the app-wide IMG_MODEL.
 // Separate on purpose: reels and posters draw from the owner's product photos as references, which the
 // cheaper "lite" model handles less well; a long video's pictures are made from words alone.
-const IMG = () => process.env.EXPLAINER_GEMINI_IMG || process.env.IMG_MODEL || "gemini-3.1-flash-image";
+const IMG = () => process.env.EXPLAINER_GEMINI_IMG || process.env.IMG_MODEL || "gemini-3.1-flash-lite-image";
 const EP = "https://generativelanguage.googleapis.com/v1beta/models";
 
 export const FRAMES = ["object", "hands", "screen", "place", "pair", "person"];

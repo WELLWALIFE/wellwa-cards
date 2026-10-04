@@ -3,7 +3,8 @@ import "server-only";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
-const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-image";
+// The lite image model everywhere (owner's call, 4 Oct 2026: "sasta hai aur achha bhi"): half the price a picture.
+export const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image";
 export const NO_TEXT = "ABSOLUTELY NO TEXT, letters, numbers, logos or watermarks anywhere in the image.";
 
 export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9"): Promise<Buffer | null> {

@@ -12,7 +12,7 @@ import { renderRealisticAd } from "./realistic-engine.mjs";
 import { wordCues, renderCuePngs, burnCaptions, reframe } from "./caption-engine.mjs";
 import { FORMATS } from "./ad-engine.mjs";
 
-const imgModel = () => process.env.IMG_MODEL || "gemini-3.1-flash-image"; // read lazily: the worker copies .env.local into process.env after imports
+const imgModel = () => process.env.IMG_MODEL || "gemini-3.1-flash-lite-image"; // read lazily: the worker copies .env.local into process.env after imports
 const RATIO = { reel: "9:16", square: "1:1", wide: "16:9" };
 const MAX_ATTEMPTS = 3;
 const sha = (s) => crypto.createHash("sha1").update(s).digest("hex").slice(0, 16);

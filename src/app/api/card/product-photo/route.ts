@@ -13,7 +13,7 @@ import { rateLimited } from "@/lib/api-security";
 
 export const maxDuration = 120;
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
-const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-image";
+const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image"; // the lite image model everywhere (owner, 4 Oct 2026)
 const PER_PHOTO = 5;
 const UUID = /^[0-9a-f-]{36}$/i;
 type Photo = { url?: unknown; view?: unknown; role?: unknown };

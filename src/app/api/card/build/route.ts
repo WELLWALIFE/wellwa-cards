@@ -19,7 +19,7 @@ import { writeCard, fillThinText, type CardBrief, type CardCopy } from "@/lib/ca
 import { textAudit, applyThinText } from "@/lib/card-text";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
-import { referenceImages } from "@/lib/media/ai-image";
+import { IMG_MODEL, referenceImages } from "@/lib/media/ai-image";
 import { cleanStyle, lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
@@ -319,7 +319,7 @@ export async function POST(request: Request) {
         }).catch(() => [] as string[]),
         80_000,
       ) ?? [];
-      logImages("card-pictures", "gemini-3.1-flash-image", made.length);
+      logImages("card-pictures", IMG_MODEL, made.length);
       if (made.length) {
         aiPhotos = made.length;
         if (!facts.bannerUrl) aiBannerUrl = made[0];

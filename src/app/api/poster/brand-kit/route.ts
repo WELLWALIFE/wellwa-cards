@@ -12,7 +12,7 @@ import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
 const STYLES = new Set(["modern", "classic", "playful", "premium"]);
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
-const IMAGE_MODEL = "gemini-3.1-flash-image"; // 2.5 shuts down 2026-10-02, the 3.1 preview went 2026-06-25
+const IMAGE_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image"; // the lite image model everywhere (owner, 4 Oct 2026)
 const JUDGE = "gemini-3.5-flash-lite";
 const LOGO_CREDITS = 2;
 
