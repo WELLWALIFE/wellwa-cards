@@ -59,7 +59,9 @@ export async function reviewDesign(o: { shot: Buffer; card: Card; lang: Lang; ca
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: BRIEF }] },
         contents: [{ parts: [{ inlineData: { mimeType: "image/jpeg", data: o.shot.toString("base64") } }, { text }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.3, maxOutputTokens: 700 },
+        // 3.5-flash thinks before it answers and the thinking counts against this cap: 700 left no room for the
+        // answer (every review came back "no verdict" at out≈684, 4 Oct 2026).
+        generationConfig: { responseMimeType: "application/json", temperature: 0.3, maxOutputTokens: 3000 },
       }),
     });
     const j = await r.json().catch(() => ({}));
@@ -69,7 +71,10 @@ export async function reviewDesign(o: { shot: Buffer; card: Card; lang: Lang; ca
     const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
     let v: unknown = null;
     try { v = JSON.parse(out); } catch { const a = out.indexOf("{"), z = out.lastIndexOf("}"); if (a >= 0 && z > a) { try { v = JSON.parse(out.slice(a, z + 1)); } catch { v = null; } } }
-    return clean(v);
+    const verdict = clean(v);
+    // A miss is said out loud, with what came back, so it can be seen in the log rather than guessed at.
+    if (!verdict) console.log("[card] design-review raw", JSON.stringify({ finish: j?.candidates?.[0]?.finishReason ?? null, parts: parts.length, text: out.slice(0, 240) }));
+    return verdict;
   } catch {
     return null;
   }
