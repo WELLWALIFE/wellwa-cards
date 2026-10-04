@@ -294,6 +294,16 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
   const fontHref = design.fonts.href;
   const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
+  // The closing band's line (owner's call, 4 Oct 2026: "Talk to the Founder", not the first name). The designation
+  // when the card has a short one (Owner, Founder, Dr., Advocate…); a trade label like "Sweets / bakery" is not a
+  // person, so then it is simply "us".
+  const ctaTalk = (() => {
+    const d = (card.jobTitle || "").trim();
+    const isRole = !!d && d.length <= 24 && !/[/(]/.test(d) && d.split(/\s+/).length <= 3;
+    if (!isRole) return "Talk to us today";
+    if (/^dr\.?$/i.test(d)) return `Talk to Dr. ${card.name.split(" ").pop() || ""} today`.replace(/\s+today/, " today");
+    return `Talk to the ${d} today`;
+  })();
 
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}>
@@ -580,7 +590,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               <div aria-hidden="true" className="dots absolute inset-0 opacity-50" />
               <div className="relative">
                 <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-accent)" }}>{hiLang ? "बात करें" : t("Get in touch")}</p>
-                <h2 className="mt-3 text-2xl md:text-[34px] tracking-tight" style={{ textWrap: "balance" }}>{t(hasAppointment ? "Ready to see it for yourself?" : `Talk to ${card.name.split(" ")[0] || card.company} today`)}</h2>
+                <h2 className="mt-3 text-2xl md:text-[34px] tracking-tight" style={{ textWrap: "balance" }}>{t(hasAppointment ? "Ready to see it for yourself?" : ctaTalk)}</h2>
                 <p className="mt-3 text-[15px] opacity-85 max-w-xl">{t(card.tagline || "Usually replies within a few hours on WhatsApp.")}</p>
               </div>
               <div className="relative flex flex-wrap gap-3">

@@ -5,8 +5,10 @@
 // and a direct link) → we keep checking DNS and, the moment it points here, fit the security certificate and switch
 // the site live. The owner can close the page: a background job finishes it and sends a notification.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Copy, ExternalLink, Globe, LoaderCircle, MessageCircle, RefreshCw, Trash2, X } from "lucide-react";
+import { Check, Copy, ExternalLink, Globe, LoaderCircle, Lock, MessageCircle, RefreshCw, Trash2, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { usePlan } from "@/lib/plan";
+import { PremiumSheet } from "@/components/poster/premium-lock";
 
 type Rec = { host: string; type: string; name: string; value: string; current: string[]; ok: boolean };
 type Status = { domain: string; provider: { name: string; dnsUrl: string; steps: string[] }; records: Rec[]; ready: boolean; live?: string[]; lastError?: string | null };
@@ -28,6 +30,12 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   const [copied, setCopied] = useState("");
   const [next, setNext] = useState(20);
   const verifyAt = useRef(0);
+  // Your own domain is Premium (owner's call, 4 Oct 2026: "free user domain apna nahi laga sakta"): on a free or
+  // lapsed account the Connect button opens the Premium sheet instead, and the server refuses too (402). Where
+  // no plan provider is mounted the plan stays "loading", so nothing is locked here and the server decides alone.
+  const { plan, loading: planLoading, expired } = usePlan();
+  const locked = !planLoading && (plan === "free" || expired);
+  const [upsell, setUpsell] = useState(false);
 
   const refresh = useCallback(async (domain: string) => {
     const r = await call("GET", `/api/domains?domain=${encodeURIComponent(domain)}`);
@@ -68,11 +76,15 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   }, [next]);
 
   async function connect() {
-    // Your own domain works on the free plan too (the card lives there; the website needs the plan).
+    if (locked) { setUpsell(true); return; }
     setBusy("connect"); setErr("");
     const r = await call("POST", "/api/domains", { domain: input, cardId, username });
     setBusy("");
-    if (!r.ok) { setErr(String(r.j.error ?? "Could not add that domain.")); return; }
+    if (!r.ok) {
+      // The server's own plan check: the sheet, not an error line.
+      if (r.j.plan === true) { setUpsell(true); return; }
+      setErr(String(r.j.error ?? "Could not add that domain.")); return;
+    }
     const s = r.j as unknown as Status;
     setStatus(s); setLive([]); setInput(s.domain); onChange?.(s.domain); setNext(20);
     if (s.ready) verify(s.domain);
@@ -94,12 +106,15 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
         <div className="flex gap-2">
           <input value={input} onChange={(e) => setInput(e.target.value.trim().toLowerCase())} placeholder="yourbusiness.com" inputMode="url"
             className="flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm" />
-          <button type="button" onClick={connect} disabled={!input || !!busy} className="shrink-0 inline-flex items-center gap-1.5 rounded-lg grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />} Connect
+          <button type="button" onClick={connect} disabled={(!input && !locked) || !!busy} className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${locked ? "bg-[#12144a] text-[#ffd54a]" : "grad-brand text-white"}`}>
+            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {locked ? "Premium" : "Connect"}
           </button>
         </div>
-        <p className="text-[11px] text-muted">Already own a domain? Type it here. We show the exact steps for your domain company, then finish everything else ourselves — including the free security certificate (https).</p>
+        <p className="text-[11px] text-muted">{locked
+          ? "Your own domain (yourbusiness.com) comes with Premium. Your free Shubhora link keeps working as it is."
+          : "Already own a domain? Type it here. We show the exact steps for your domain company, then finish everything else ourselves — including the free security certificate (https)."}</p>
         {err && <p className="text-xs text-danger">{err}</p>}
+        {upsell && <PremiumSheet feature="Your own domain" onClose={() => setUpsell(false)} />}
       </div>
     );
   }
