@@ -371,6 +371,8 @@ function Onboard() {
     // Step 1 of the profile (not the name / mobile edit): the residential city and address are required (owner's call).
     if (!editing && !you.city.trim()) { setErr(T("Write your city.", "अपना शहर लिखें।")); return; }
     if (!editing && you.address.trim().length < 6) { setErr(T("Write your residential address.", "अपना घर का पता लिखें।")); return; }
+    // A tab left open from before a reset must not write its old answers over the fresh account (see accountMoved).
+    if (await accountMoved()) return;
     const home = { home_city: you.city.trim().slice(0, 60), home_address: you.address.trim().slice(0, 200) };
     // The business city, still empty, starts as the home city (changed on the next step when the shop is elsewhere).
     if (!editing && !(biz.city ?? "").trim() && home.home_city) setBiz((b) => ({ ...b, city: home.home_city }));
@@ -388,6 +390,9 @@ function Onboard() {
         partnerMissed = !!r.data.note;
         // The name and number were changed on the server: refresh this session's copy of them.
         await getBrowserSupabase()?.auth.refreshSession().catch(() => undefined);
+        // This screen's own write moved the account's version; the guard must follow it, or the last Save would
+        // take our own step-1 write for "changed elsewhere" and reload the form away.
+        await bumpServerBase();
         await syncCardFromSetup({
           name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone,
           oldPhoto: profile?.photo_url ?? null, oldLogo: profile?.logo_url ?? null,
@@ -400,10 +405,11 @@ function Onboard() {
       return;
     }
     try {
-      getBrowserSupabase()?.auth.updateUser({ data: {
+      await getBrowserSupabase()?.auth.updateUser({ data: {
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${digits.slice(-10)}`, photo_url: you.photo || "",
         whatsapp: youFacts().whatsapp, ...home, ...emailMeta(), business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city },
-      } }).catch(() => undefined);
+      } });
+      await bumpServerBase();
     } catch { /* offline: the full save on the next screen writes it again */ }
     setStep("promote");
   }
@@ -685,6 +691,7 @@ function Onboard() {
   async function skipForNow() {
     setBusy("skip"); setErr("");
     try {
+      if (await accountMoved()) return;
       const digits = you.phone.replace(/\D/g, "").slice(-10);
       const sb = getBrowserSupabase();
       let email = "";
@@ -704,6 +711,7 @@ function Onboard() {
         // Both is the default answer to "What is your card for?" (owner's call, 4 Oct 2026), skipped or not.
         ...(promote === "both" ? { also_shubhora: true } : {}),
       } }).catch(() => undefined);
+      await bumpServerBase();
       if (!profile) {
         const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: {
           is_default: true, persona: biz.role === "business" ? (cat?.persona ?? "business") : biz.role === "personal" ? "personal" : biz.role === "agent" ? "business" : "professional",
@@ -1069,7 +1077,7 @@ function Onboard() {
             <label className="block text-sm font-semibold">{T("Residential address", "घर का पता")}<input value={you.address} onChange={(e) => setYou({ ...you, address: e.target.value })} placeholder={T("House no., street, area, PIN", "मकान नं., गली, इलाका, PIN")} className={field} />
               <span className="mt-1 block text-[11px] font-normal text-muted">{T("Your home address — the shop / office address comes on the company step.", "आपके घर का पता — दुकान / office का पता company step पर आएगा।")}</span></label>
           </>)}
-          {username === null && <ClaimUsername onDone={loadUsername} />}
+          {username === null && <ClaimUsername onDone={() => { void bumpServerBase(); return loadUsername(); }} />}
           {err && <p className="text-sm text-danger">{err}</p>}
           <button type="button" onClick={nextFromYou} disabled={busy === "you"}
             className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-70">

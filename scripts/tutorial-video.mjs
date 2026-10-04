@@ -65,23 +65,23 @@ const TUTORIALS = {
         act: async () => { await u.goto(`${SITE}/`); await u.scrollBy(500, 2500); } },
       { id: "signup", say: "सबसे पहले shubhora.com खोलिए और Start free दबाइए। अपना नाम, mobile number, email और password भरिए, और Create my account दबाइए।",
         act: async () => {
-          await u.tapText("Start free"); await u.waitText("Create", 20000); await pause(600);
+          await u.tapThen("Start free", "Create", { timeout: 25000 }); await pause(600);
           await u.type('[placeholder="Ram Kumar"]', "Rajesh Sharma"); await u.type('[placeholder="9876543210"]', "9811122233");
           await u.type('[placeholder="you@example.com"]', "rajesh.sharma@gmail.com"); await u.type('[placeholder="At least 6 characters"]', "sharma@123");
           await pause(800);
         } },
       { id: "welcome", say: "Account बनते ही ये screen आती है — पाँच छोटे steps, और आपकी website तैयार। Start दबाइए।",
         between: async () => { await u.login(); await u.goto(`${SITE}/poster/welcome`); await u.waitText("Congratulations", 20000); },
-        act: async () => { await pause(1800); await u.tapText("Start (5 min)"); await u.waitText("About you", 20000); } },
+        act: async () => { await pause(1800); await u.tapThen("Start (5 min)", "About you", { timeout: 25000 }); } },
       { id: "you", say: "पहला step — आपके बारे में। नाम और mobile पहले से भरे हैं। अपनी photo लगाइए, अपना शहर और घर का पता लिखिए, और Next दबाइए।",
         act: async () => {
           await pause(800); await u.type(u.afterLabel(/^Your city/), "Delhi"); await u.type(u.afterLabel(/^Residential address/), "12, Main Market, Lajpat Nagar");
-          await pause(500); await u.tapText("Next", { exact: true }); await u.waitText("What is your card for?", 20000);
+          await pause(500); await u.tapThen("Next", "What is your card for?", { exact: true, timeout: 25000 });
         } },
       { id: "promote", say: "आपका card किस काम के लिए है? अपनी दुकान या काम के लिए 'Only my own business' चुनिए। Shubhora partner भी बनना हो तो 'Both' रहने दीजिए। फिर Continue।",
-        act: async () => { await pause(1500); await u.tapText("Only my own business"); await pause(700); await u.tapText("Continue"); await u.waitText("Does your business have a website?", 20000); } },
+        act: async () => { await pause(1500); await u.tapText("Only my own business"); await pause(700); await u.tapThen("Continue", "Does your business have a website?", { timeout: 25000 }); } },
       { id: "site", say: "क्या आपकी पहले से कोई website है? है तो link डालिए — नाम, logo, products सब उसी से आ जाएँगे। नहीं है तो 'No website' चुनिए और Next दबाइए।",
-        act: async () => { await pause(1500); await u.tapText("No website"); await pause(900); await u.tapText("Next →"); await u.waitText("Your business", 20000); } },
+        act: async () => { await pause(1500); await u.tapText("No website"); await pause(900); await u.tapThen("Next →", "Just three things", { timeout: 25000 }); } },
       { id: "business", say: "अब आपका business। नाम लिखिए — जैसे Sharma Medical Store; काम अपने आप पहचान लेता है, नहीं तो list से चुन लीजिए। शहर लिखिए। About में दो-चार शब्द लिखकर 'Write with AI' दबाइए — पूरा परिचय AI लिख देगा। फिर Save and continue।",
         act: async () => {
           await pause(600); await u.type(u.afterLabel(/name\b/i), "Sharma Medical Store"); await pause(900);
@@ -89,17 +89,25 @@ const TUTORIALS = {
           await u.type(u.afterLabel(/city/i), "Delhi");
           await u.type("#about", "दवाइयाँ, surgical सामान, 24 घंटे खुला"); await pause(300);
           await u.tapText("with AI"); await u.page.waitForFunction(() => (document.getElementById("about")?.value.length ?? 0) > 80, { timeout: 60000 });
-          await pause(1500); await u.tapText("Save and continue"); await u.waitText("Skip —", 30000);
+          await pause(1500); await u.tapThen("Save and continue", "Skip —", { timeout: 45000 });
         } },
       { id: "products", say: "तीसरा step — products या services। हर product का नाम, दाम और photo डालिए; website इन्हीं से लिखी जाती है। अभी नहीं डालने हैं तो Skip दबाइए — बाद में कभी भी जोड़ सकते हैं।",
-        act: async () => { await pause(1200); await u.scrollBy(300, 1500); await pause(400); await u.tapText("Skip —"); await u.waitText("Make my free website", 30000); } },
+        act: async () => { await pause(1200); await u.scrollBy(300, 1500); await pause(400); await u.tapThen("Skip —", "Make my free website", { timeout: 35000 }); } },
       { id: "make", say: "और अब आख़िरी step — 'Make my free website' दबाइए। AI आपकी website और card लिखता है, photos चुनता है। इसमें एक से तीन मिनट लगते हैं।",
-        act: async () => { await pause(1500); await u.tapText("Make my free website"); await pause(5000); },
-        after: async () => { await u.waitText("Your website is ready", 300000); await pause(1500); } },
+        act: async () => {
+          await pause(1500);
+          // pressed again if the first tap missed: the button is gone once the build has started
+          for (let i = 0; i < 2; i++) {
+            await u.tapText("Make my free website");
+            try { await u.page.waitForFunction(() => !document.body.innerText.includes("Make my free website"), { timeout: 9000 }); break; } catch { if (i) throw new Error("the build did not start"); }
+          }
+          await pause(5000);
+        },
+        after: async () => { await u.waitText("Your website is ready", 360000); await pause(1500); } },
       { id: "preview", say: "लीजिए — आपकी website तैयार! ऊपर पाँच looks हैं — Designer, Classic, Bold, Elegant और Fresh। जो पसंद आए वो चुनिए; बाद में कभी भी बदल सकते हैं।",
         act: async () => { await pause(1500); await u.tapText("Classic"); await pause(2500); await u.tapText("Bold"); await pause(2500); await u.tapText("Designer"); await pause(1500); await u.scrollBy(500, 2000); await u.scrollBy(-500, 1500); } },
       { id: "save", say: "सब ठीक लगे तो Save दबाइए। बस — आपकी website और digital card live हैं, एक ही link पर।",
-        act: async () => { await pause(800); await u.tapText("Save", { exact: true }); await u.waitText("Your website and card are live", 120000); await pause(2000); } },
+        act: async () => { await pause(800); await u.tapThen("Save", "Your website and card are live", { exact: true, timeout: 150000 }); await pause(2000); } },
       { id: "live", say: "ये रहा आपका link — shubhora.com और आगे आपका नाम। इसे WhatsApp पर भेजिए, status पर लगाइए, या QR code print करवाइए — customer को आपका पूरा business एक नज़र में दिखेगा।",
         act: async () => { const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}`); await pause(1500); await u.scrollBy(1400, 7000); await u.scrollBy(-1400, 2500); } },
       { id: "outro", say: "तो देर किस बात की — आज ही shubhora.com पर अपनी free website बनाइए। मिलते हैं अगले video में।",
@@ -233,7 +241,7 @@ async function backgroundPng(file, W, H, { title, subtitle, logo, titleAt, size 
 }
 
 /* ============================== helpers: the phone ============================== */
-function ui(page, { work, email, uid }) {
+export function ui(page, { work, email, uid }) {
   const u = { page };
   u.goto = async (url) => { await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 }); await pause(600); };
   u.waitText = (text, timeout = 15000) => page.waitForFunction((t) => document.body.innerText.includes(t), { timeout }, text);
@@ -261,17 +269,49 @@ function ui(page, { work, email, uid }) {
     if (!el) throw new Error(`no field after label ${re}`);
     return el;
   };
+  /** Waits until an element stops moving (a smooth scroll in progress), and returns its final box. A tap at a spot
+   *  read while the page was still scrolling lands on whatever slid under it — on a long form the Save button was
+   *  "pressed" on a label above it and the scene never moved on. */
+  u.settle = async (el) => {
+    let last = null, still = 0;
+    for (let i = 0; i < 50; i++) {
+      const b = await el.boundingBox();
+      if (b && last && Math.abs(b.y - last.y) < 0.5 && Math.abs(b.x - last.x) < 0.5) { if (++still >= 3) return b; } else still = 0;
+      last = b; await pause(100);
+    }
+    return last;
+  };
   /** A tap the viewer can see: a ripple at the spot, then the touch. */
   u.tap = async (target, o) => {
     const el = typeof target === "function" ? await target() : typeof target === "string" ? await page.waitForSelector(target, { visible: true, timeout: 15000 }) : target;
-    await el.evaluate((e) => e.scrollIntoView({ block: "center", behavior: "smooth" })); await pause(450);
-    const b = await el.boundingBox(); if (!b) throw new Error("tap: element has no box");
-    const x = b.x + b.width / 2, y = b.y + Math.min(b.height / 2, 28);
+    let b = null, x = 0, y = 0;
+    for (let attempt = 0; attempt < 3; attempt++) {
+      await el.evaluate((e, smooth) => e.scrollIntoView({ block: "center", behavior: smooth ? "smooth" : "instant" }), attempt === 0);
+      b = await u.settle(el); if (!b) throw new Error("tap: element has no box");
+      x = b.x + b.width / 2; y = b.y + Math.min(b.height / 2, 28);
+      // is the element itself (or something inside it) at that spot, not a bar or label sitting over it?
+      const hit = await el.evaluate((e, x, y) => { const t = document.elementFromPoint(x, y); return !!t && (e === t || e.contains(t) || t.contains(e)); }, x, y);
+      if (hit) break;
+    }
     await page.evaluate((x, y) => window.__ripple?.(x, y), x, y); await pause(180);
     await page.touchscreen.tap(x, y); await pause(o?.settle ?? 500);
   };
   u.tapText = async (text, o = {}) => u.tap(await u.findText(text, o), o);
-  u.type = async (target, text) => { await u.tap(target, { settle: 250 }); await page.keyboard.type(text, { delay: 55 }); await pause(350); };
+  /** Taps a button and waits for what it should bring up; taps once more when nothing came (a tap that missed). */
+  u.tapThen = async (text, expect, { timeout = 20000, tries = 2, ...o } = {}) => {
+    for (let i = 0; i < tries; i++) {
+      if (i && await page.evaluate((t) => document.body.innerText.includes(t), expect)) return;
+      await u.tapText(text, o);
+      try { await u.waitText(expect, i === tries - 1 ? timeout : Math.min(9000, timeout)); return; }
+      catch (e) { if (i === tries - 1) throw e; }
+    }
+  };
+  /** Taps a field and types into it, replacing whatever was in it (the city, for one, is filled from the home city). */
+  u.type = async (target, text) => {
+    await u.tap(target, { settle: 250 });
+    await page.evaluate(() => { const a = document.activeElement; if (a && typeof a.select === "function") a.select(); });
+    await page.keyboard.type(text, { delay: 55 }); await pause(350);
+  };
   u.scrollBy = async (dy, ms) => { const steps = Math.max(4, Math.round(ms / 120)); for (let i = 0; i < steps; i++) { await page.evaluate((d) => window.scrollBy({ top: d, behavior: "auto" }), dy / steps); await pause(ms / steps); } };
   /** Signs the phone into the account through the app's own "Login as" page, then opens the app. */
   u.login = async () => {
@@ -335,7 +375,8 @@ async function record(t, work) {
         await rec.stop().catch(() => undefined); await u.shot(`fail-${s.id}`);
         // what the screen said at that moment, in the error itself (first lines only)
         const seen = await page.evaluate(() => document.body.innerText.replace(/\s*\n\s*/g, " | ").slice(0, 420)).catch(() => "");
-        throw new Error(`scene "${s.id}": ${e.message}\n  screen said: ${seen}\n  (picture: ${work}/fail-${s.id}.png)`);
+        const errs = await page.evaluate(() => [...document.querySelectorAll(".text-danger")].map((x) => x.innerText.trim()).filter(Boolean).join(" / ").slice(0, 300)).catch(() => "");
+        throw new Error(`scene "${s.id}": ${e.message}\n  screen said: ${seen}${errs ? `\n  errors on screen: ${errs}` : ""}\n  (picture: ${work}/fail-${s.id}.png)`);
       }
       const left = voices[i].seconds * 1000 + 800 - (Date.now() - t0);
       if (left > 0) await pause(left);
@@ -400,7 +441,7 @@ async function compose(work, outDir) {
 }
 
 /* ============================== main ============================== */
-try {
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) try {
   const t = TUTORIALS[TUTORIAL];
   if (!t) throw new Error(`unknown tutorial "${TUTORIAL}" — one of: ${Object.keys(TUTORIALS).join(", ")}`);
   let work = COMPOSE_ONLY;
