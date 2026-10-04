@@ -7,7 +7,7 @@ import { BrandLogo } from "@/components/brand-context";
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle, Lock, MailCheck, UserRound, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { toE164, phoneEmail } from "@/lib/phone";
-import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
+import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY, DEFAULT_INTRODUCER } from "@/lib/username";
 
 type Check = { state: "idle" | "checking" | "ok" | "bad"; reason?: string };
 
@@ -98,14 +98,16 @@ function SignupInner() {
     const leg = legParam === "L" || legParam === "R" ? legParam : fromLink ? "" : (storedLeg === "L" || storedLeg === "R" ? storedLeg : "");
     legRef.current = leg as "L" | "R" | "";
     try { if (leg) localStorage.setItem(INTRODUCER_LEG_KEY, leg); else if (fromLink) localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
-    const handle = fromLink || stored;
-    if (!handle) return;
+    // Nothing from a link or an earlier visit: the main site's default sponsor (shown, never kept in the browser,
+    // so a member's card opened later can still introduce this person).
+    const handle = fromLink || stored || DEFAULT_INTRODUCER;
+    const isDefault = !fromLink && !stored;
     handleRef.current = handle;
     (async () => {
       try {
         const r = await fetch(`/api/introducer?by=${encodeURIComponent(handle)}`, { cache: "no-store" });
         const j = (await r.json()) as { by?: string | null };
-        if (j.by) { setBy(j.by); try { localStorage.setItem(INTRODUCER_KEY, j.by); } catch { /* ignore */ } }
+        if (j.by) { setBy(j.by); if (!isDefault) try { localStorage.setItem(INTRODUCER_KEY, j.by); } catch { /* ignore */ } }
       } catch { /* offline: no chip, the link's handle is still sent with the sign-up */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

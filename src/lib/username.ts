@@ -15,3 +15,7 @@ export const usernameOk = (u: string) => USERNAME_RE.test(u) && !looksLikePartne
 export const INTRODUCER_KEY = "shubhora.by";
 /** The side (L | R) the introducer's link asked for, kept next to the introducer until sign-up. */
 export const INTRODUCER_LEG_KEY = "shubhora.by.leg";
+/** The sponsor for a sign-up that carries no introducer at all (the main site's "Start free", no link, nothing kept in
+ *  the browser): Next_Level, not the Shubhora root (owner's call, 4 Oct 2026). Links from a member's card or a partner's
+ *  joining link always win. Changeable without a rebuild of the server side via DEFAULT_INTRODUCER. */
+export const DEFAULT_INTRODUCER = process.env.NEXT_PUBLIC_DEFAULT_INTRODUCER || "Next_Level";

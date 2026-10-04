@@ -11,7 +11,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { partnerCall, partnerLinked, registerPartner, type PartnerSummary } from "@/lib/partner-link";
-import { cleanAccountUsername, usernameOk } from "@/lib/username";
+import { cleanAccountUsername, usernameOk, DEFAULT_INTRODUCER } from "@/lib/username";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 
 async function saveMeta(userId: string, patch: Record<string, unknown>) {
@@ -107,7 +107,7 @@ export async function POST(request: Request) {
   if (b.action === "auto") {
     const p = await profile(me.token, me.id);
     if (p?.username) return NextResponse.json({ ok: true, username: p.username, note: "already set" });
-    const by = String(b.by ?? "").trim().slice(0, 40) || null;
+    const by = String(b.by ?? "").trim().slice(0, 40) || process.env.DEFAULT_INTRODUCER || DEFAULT_INTRODUCER;
     const username = await autoAccount(me, by, b.leg === "L" || b.leg === "R" ? b.leg : undefined, b.agree === true);
     return NextResponse.json(username ? { ok: true, username } : { error: "Could not make the username." }, { status: username ? 200 : 502 });
   }
@@ -120,7 +120,7 @@ export async function POST(request: Request) {
 
   const username = cleanAccountUsername(String(b.username ?? ""));
   if (!usernameOk(username)) return NextResponse.json({ error: "Username: 4 to 20 letters, numbers or _." }, { status: 400 });
-  const by = String(b.by ?? "").trim().slice(0, 40) || null;
+  const by = String(b.by ?? "").trim().slice(0, 40) || process.env.DEFAULT_INTRODUCER || DEFAULT_INTRODUCER;
   // The claim runs as the user (auth.uid() inside the function): the database checks availability and reserved names.
   const r = await restAsUser<{ ok: boolean; error?: string; username?: string; referred_by?: string | null }>(me.token, "rpc/claim_username", {
     method: "POST", body: JSON.stringify({ p_username: username, p_by: by }),
