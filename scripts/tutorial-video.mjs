@@ -331,7 +331,12 @@ async function record(t, work) {
       const rec = await page.screencast({ path: clip, ffmpegPath: FFMPEG });
       const t0 = Date.now();
       try { await s.act(); }
-      catch (e) { await rec.stop().catch(() => undefined); await u.shot(`fail-${s.id}`); throw new Error(`scene "${s.id}": ${e.message} (see ${work}/fail-${s.id}.png)`); }
+      catch (e) {
+        await rec.stop().catch(() => undefined); await u.shot(`fail-${s.id}`);
+        // what the screen said at that moment, in the error itself (first lines only)
+        const seen = await page.evaluate(() => document.body.innerText.replace(/\s*\n\s*/g, " | ").slice(0, 420)).catch(() => "");
+        throw new Error(`scene "${s.id}": ${e.message}\n  screen said: ${seen}\n  (picture: ${work}/fail-${s.id}.png)`);
+      }
       const left = voices[i].seconds * 1000 + 800 - (Date.now() - t0);
       if (left > 0) await pause(left);
       await rec.stop();
