@@ -29,6 +29,7 @@ import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
 import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { dropStaleLocal } from "@/lib/local-reset";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import {
   isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
@@ -268,6 +269,9 @@ export default function BuildCard() {
       const who = await getBrowserSupabase()?.auth.getUser();
       const me = who?.data.user?.id ?? "";
       setUid(me);
+      // Cleared by Super Admin since this phone last looked: the form backup and the built preview kept here are
+      // the OLD trade's, and go before anything below reads them.
+      dropStaleLocal(who?.data.user);
       setAlsoShubhora(!!who?.data.user?.user_metadata?.also_shubhora);
       // "Make my V-Card again with AI" asks for a NEW card, so any saved preview is thrown away first.
       let again = false;

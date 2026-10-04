@@ -7,10 +7,9 @@
 import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { endPartnerSession } from "@/lib/logout";
+import { dropStaleLocal, PER_ACCOUNT_KEYS as PER_ACCOUNT } from "@/lib/local-reset";
 
 const LAST_USER = "shubhora.uid";
-/** Browser storage that belongs to one account (not scoped by account id where it is written). */
-const PER_ACCOUNT = ["akp-draft", "akp-video-draft", "akp-profile", "akp-crm-ws", "vcard-preview"];
 
 function switched(uid: string | null) {
   if (!uid) return;                                   // signed out: the logout flows clean up themselves
@@ -30,7 +29,10 @@ export function AccountGuard() {
     const sb = getBrowserSupabase();
     if (!sb) return;
     sb.auth.getSession().then(({ data }) => switched(data.session?.user.id ?? null)).catch(() => undefined);
-    const { data } = sb.auth.onAuthStateChange((_e, s) => switched(s?.user.id ?? null));
+    // The same account, cleared by Super Admin since this phone last looked: its local drafts go too. getUser()
+    // asks the server, because the session kept here does not learn of an admin's change on its own.
+    sb.auth.getUser().then(({ data }) => dropStaleLocal(data.user)).catch(() => undefined);
+    const { data } = sb.auth.onAuthStateChange((_e, s) => { switched(s?.user.id ?? null); dropStaleLocal(s?.user); });
     return () => data.subscription.unsubscribe();
   }, []);
   return null;

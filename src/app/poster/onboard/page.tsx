@@ -28,6 +28,7 @@ import { useT } from "@/lib/poster-i18n";
 import { useAssociate } from "@/lib/associate";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
+import { dropStaleLocal } from "@/lib/local-reset";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
@@ -211,6 +212,8 @@ function Onboard() {
       ]);
       const meta = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; phone?: string; photo_url?: string; contact_email?: string; business?: Business; whatsapp?: string; home_city?: string; home_address?: string };
       setUid(data.user?.id ?? "");
+      // Cleared by Super Admin since this phone last looked: the draft kept here is from before, and goes.
+      dropStaleLocal(data.user);
       // The website already on record: the card facts first (they know whose site it is), else the account's own
       // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
       const f = fr?.ok ? fr.data.facts : null;
@@ -742,12 +745,14 @@ function Onboard() {
 
   // "About you" asks again what the sign-up form just asked (owner's call, 25 Sep 2026: too many steps). When the
   // name, the mobile and the username are already there, setup opens on the next step; "1. About you" stays tappable
-  // for the photo.
+  // for the photo. The home city is step 1's own answer (required there), so it is the sign that step 1 was
+  // done: after a reset the name and mobile stay but the city, address, photo and WhatsApp are gone, and the
+  // step is shown again instead of skipped (owner, 4 Oct 2026).
   const skippedYou = useRef(false);
   useEffect(() => {
     if (skippedYou.current || loading || wanted || autoSkip || username === undefined) return;
     skippedYou.current = true;
-    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10) { setYouSkipped(true); setStep("promote"); }
+    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10 && you.city.trim()) { setYouSkipped(true); setStep("promote"); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, username]);
 
