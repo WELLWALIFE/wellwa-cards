@@ -112,7 +112,7 @@ export default function LoginPage() {
             <>
               <div className="my-5 flex items-center gap-3 text-xs text-faint"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
               <GoogleButton label="Log in with Google" divider={false} />
-              <p className="mt-2 text-center text-[11px] text-faint">New here? Google makes your account — by continuing you accept the <a href="/terms" target="_blank" className="underline">Terms</a>, <a href="/privacy" target="_blank" className="underline">Privacy Policy</a> and <a href="/partners/legal/agreement" target="_blank" className="underline">Partner Agreement</a>.</p>
+              <p className="mt-2 text-center text-[11px] text-faint">Only for accounts already on Shubhora. New here? <Link href="/signup" className="underline">Create your account</Link> with email.</p>
             </>
           )}
         </form>

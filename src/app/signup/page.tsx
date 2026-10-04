@@ -6,7 +6,6 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { BrandLogo } from "@/components/brand-context";
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle, Lock, MailCheck, UserRound, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { GoogleButton } from "@/components/google-button";
 import { toE164, phoneEmail } from "@/lib/phone";
 import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 
@@ -315,13 +314,6 @@ function SignupInner() {
             )}
           </div>
 
-          {sb && (
-            <>
-              <div className="my-5 flex items-center gap-3 text-xs text-faint"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
-              <GoogleButton label="Continue with Google" divider={false} />
-              <p className="mt-2 text-center text-[11px] text-faint">By continuing with Google you accept the <a href="/terms" target="_blank" className="underline">Terms</a>, <a href="/privacy" target="_blank" className="underline">Privacy Policy</a> and <a href="/partners/legal/agreement" target="_blank" className="underline">Partner Agreement</a>. Your username and partner ID are made at once — the introducer stays the same.</p>
-            </>
-          )}
         </form>
         <p className="text-center text-sm text-muted mt-5">
           Already have an account? <Link href="/login" className="text-brand-ink font-medium">Log in</Link>

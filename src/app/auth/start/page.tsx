@@ -1,7 +1,7 @@
 "use client";
 
-// Where "Continue with Google" comes back to. A new account gets its welcome (free credits + welcome email) and
-// opens the setup; an existing one goes to its usual home (phones the phone app, computers the dashboard).
+// Where "Log in with Google" comes back to. Joining with Google is off (/api/auth/google-gate turns a brand-new
+// Google account away); an existing account goes to its usual home.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -20,6 +20,13 @@ export default function StartPage() {
       if (!session && code) session = (await sb.auth.exchangeCodeForSession(code)).data.session;
       if (!session) { setError("Google sign-in did not finish. Please try again."); return; }
       const auth = { Authorization: `Bearer ${session.access_token}` };
+      // Joining with Google is off: Google only logs in accounts that already exist.
+      const gate = await fetch("/api/auth/google-gate", { method: "POST", headers: auth }).then((r) => r.json()).catch(() => ({}));
+      if (gate?.blocked) {
+        await sb.auth.signOut().catch(() => {});
+        setError("No Shubhora account with this Google email. Please create your account with email first.");
+        return;
+      }
       await fetch("/api/join", { method: "POST", headers: auth }).catch(() => {});
       // Username + partner ID straight away, under the introducer whose link they came from (kept in this browser).
       let by = "", leg = "";
@@ -38,7 +45,7 @@ export default function StartPage() {
   return (
     <div className="min-h-screen grid place-items-center p-6 text-center">
       {error
-        ? <p className="text-sm font-medium text-danger">{error} <a href="/login" className="underline">Back to log in</a></p>
+        ? <p className="text-sm font-medium text-danger">{error} <a href="/signup" className="underline">Create account</a> · <a href="/login" className="underline">Back to log in</a></p>
         : <p className="text-sm text-muted">Signing you in…</p>}
     </div>
   );
