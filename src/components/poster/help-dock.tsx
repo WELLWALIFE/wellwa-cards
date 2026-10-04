@@ -12,6 +12,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { CircleQuestionMark, Headset, LoaderCircle, PlayCircle, Send, Sparkles, TriangleAlert, X } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { helpFor, screenName } from "@/lib/help-screens";
@@ -52,7 +53,18 @@ export function HelpDock() {
   const screen = helpFor(path);
   const live = session?.status === "live";
 
-  useEffect(() => { isLoggedIn().then(setSignedIn).catch(() => setSignedIn(false)); }, []);
+  // Checked again on every screen and whenever the session changes (owner, 4 Oct 2026: the button had vanished):
+  // one check at mount could run before the session was there — right after a login, or the demo reset — and
+  // then the button never came.
+  useEffect(() => {
+    let on = true;
+    const check = () => { isLoggedIn().then((v) => { if (on) setSignedIn(v); }).catch(() => { if (on) setSignedIn(false); }); };
+    check();
+    const sb = getBrowserSupabase();
+    const { data: sub } = sb?.auth.onAuthStateChange(() => check()) ?? { data: { subscription: null } };
+    const t = setTimeout(check, 1500);
+    return () => { on = false; clearTimeout(t); sub.subscription?.unsubscribe(); };
+  }, [path]);
   useEffect(() => { setOpen(false); setQuestion(""); setAnswer(""); }, [path]);
 
   /** A question about this screen. The server is told which screen, so the answer is about what they see. */
