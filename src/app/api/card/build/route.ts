@@ -275,7 +275,10 @@ export async function POST(request: Request) {
   // Every paid build whose owner has no photos of their own (owner's call, 3 Oct 2026): a banner and two
   // pictures of THEIR trade and city — in the liked website's mood when one was given, else in the trade's own
   // colour. The photo coach replaces them with real photos as soon as the owner adds some.
-  if (paidPlan && !facts.bannerUrl && facts.photos.length < 2) {
+  // Premium (owner's call, 4 Oct 2026): the banner is always made by AI when the owner has none — their trade, their
+  // city, their colour — and two more pictures only when they have fewer than two of their own. Free gets the
+  // trade's stock photographs instead (below).
+  if (paidPlan && !facts.bannerUrl) {
     const ref = role === "reference" && facts.website ? await referenceP : null;
     {
       const made = await within(
@@ -284,7 +287,7 @@ export async function POST(request: Request) {
           city: setup.city || "",
           dark: ref?.style?.dark ?? false,
           color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
-          count: 3,
+          count: facts.photos.length < 2 ? 3 : 1,
         }).catch(() => [] as string[]),
         80_000,
       ) ?? [];
@@ -294,7 +297,7 @@ export async function POST(request: Request) {
         facts = {
           ...facts,
           bannerUrl: facts.bannerUrl || made[0],
-          photos: [...facts.photos, ...made.slice(facts.bannerUrl ? 0 : 1)].slice(0, 5),
+          photos: [...facts.photos, ...made.slice(facts.bannerUrl ? 0 : 1)].slice(0, 6),
         };
       }
     }
@@ -394,7 +397,8 @@ export async function POST(request: Request) {
   const mediaP = (async () => {
     try {
       const st = await stockEngineMod();
-      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "" }), 45_000);
+      // 70 s: a trade's first pool (twelve judged photos) takes longer than the old six; the AI copy runs meanwhile.
+      return await within(st.ensureCardMedia({ category: setup.category || "other", label: setup.categoryLabel || "" }), 70_000);
     } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); return null; }
   })();
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section

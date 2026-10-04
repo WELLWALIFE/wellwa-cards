@@ -256,8 +256,15 @@ export async function ensureCardMedia({ category, label = "", want = 12 }) {
   if (fs.existsSync(meta)) {
     try { const m = JSON.parse(fs.readFileSync(meta, "utf8")); if ((m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))))) return m; } catch { /* rebuild */ }
   }
+  // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
+  // twelve are made in the background for the next one.
+  let legacy = null;
+  const metaV1 = path.join(CARD_DIR, `${cat}.json`);
+  if (fs.existsSync(metaV1)) {
+    try { const m = JSON.parse(fs.readFileSync(metaV1, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
+  }
   const ik = `card:${cat}`;
-  if (inflight.has(ik)) return inflight.get(ik);
+  if (inflight.has(ik)) return legacy ?? inflight.get(ik);
   const p = (async () => {
     const trade = label || words(category);
     const queries = [`${trade} india`, trade, `indian ${trade} professional`, `${trade} interior`, `${trade} shop front`, `${trade} close up`];
@@ -303,5 +310,6 @@ export async function ensureCardMedia({ category, label = "", want = 12 }) {
     return out;
   })().finally(() => inflight.delete(ik));
   inflight.set(ik, p);
+  if (legacy) { p.catch(() => undefined); return legacy; }
   return p;
 }

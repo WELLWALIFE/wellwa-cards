@@ -769,7 +769,14 @@ export function addStockMedia<T extends TemplateCard>(card: T, media: StockMedia
   // 1. about picture
   const about = home.blocks.find((b) => b.kind === "about");
   if (about && about.kind === "about" && !about.imageUrl && photos[0]) about.imageUrl = photos[0].url;
-  // 2. gallery page (when there is no gallery / image / carousel anywhere, apart from product shots)
+  // 2a. a gallery the owner's (or AI's) one or two pictures made is topped up to six with the trade's photos, so
+  //     the Photos section never shows a lonely tile or two (owner, 4 Oct 2026: "photo section khaali aaya").
+  for (const b of all()) {
+    if (b.kind !== "gallery" || b.images.length >= 3) continue;
+    const have = new Set(b.images.map((i) => i.url));
+    for (const ph of photos) { if (b.images.length >= 6) break; if (!have.has(ph.url)) { b.images.push({ url: ph.url, color: card.themeColor, label: "" }); have.add(ph.url); } }
+  }
+  // 2b. gallery page (when there is no gallery / image / carousel anywhere, apart from product shots)
   const hasGallery = all().some((b) => b.kind === "gallery" || (b.kind === "image" && !/product/i.test(b.title)) );
   if (!hasGallery && photos.length >= 3) {
     const title = l === "hi" ? "फ़ोटो" : "Photos";
