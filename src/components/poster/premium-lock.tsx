@@ -23,7 +23,7 @@ export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: 
   const { refresh } = usePlan();
   return (
     <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md rounded-t-2xl bg-surface p-4 shadow-float sm:rounded-2xl">
+      <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-surface p-4 shadow-float sm:max-h-[90dvh] sm:rounded-2xl">
         <div className="flex items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl grad-brand text-white"><Sparkles className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">

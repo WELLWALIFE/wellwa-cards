@@ -177,6 +177,12 @@ export default function BuildCard() {
   // the owner ticks what they want different, adds a line if they like, and only that changes.
   type Want = Exclude<WriteAgainWant, "pictures">;
   const [againAsk, setAgainAsk] = useState(false);
+  // Background page stays still while the sheet is open, so a finger drag scrolls the sheet, not the preview under it.
+  useEffect(() => {
+    if (!againAsk) return;
+    const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
+    return () => { document.body.style.overflow = prev; };
+  }, [againAsk]);
   const [againWants, setAgainWants] = useState<Want[]>(["look"]);
   const [againNote, setAgainNote] = useState("");
   // The picture and the words, described (owner's call, 4 Oct 2026: "image kaisi chahiye, text me kya — box ho, aur
@@ -933,7 +939,7 @@ export default function BuildCard() {
       </div>
       {againAsk && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setAgainAsk(false)}>
-          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md rounded-t-2xl bg-surface p-4 shadow-float sm:rounded-2xl">
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-surface p-4 pb-0 shadow-float sm:max-h-[90dvh] sm:rounded-2xl">
             <p className="text-lg font-bold">{T("What should change?", "क्या बदलना है?")}</p>
             <p className="text-xs text-muted">{T("Tick what you want different — the rest stays exactly as it is.", "जो बदलना हो वो दबाएँ — बाकी वैसा ही रहेगा।")}</p>
             <div className="mt-3 grid grid-cols-2 gap-2">
@@ -1020,12 +1026,15 @@ export default function BuildCard() {
               </div>
             )}
             <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything else? e.g. lighter colours, bigger photos", "कुछ और? जैसे हल्के रंग, बड़ी photos")} className={`${field} mt-3`} />
-            <p className="mt-3 flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
+            {/* The sheet grows past the screen once photos/describe boxes open, so it scrolls and the total + button stay pinned. */}
+            <div className="sticky bottom-0 -mx-4 mt-3 border-t border-border bg-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
+            <p className="flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
             {!access.loading && access.balance < againCost && <p className="mt-1 text-xs text-danger">{T(`You have ${access.balance} credits — add some to continue.`, `आपके पास ${access.balance} credit हैं — आगे के लिए credit डालें।`)}</p>}
             <button type="button" disabled={(!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim()) || (againWants.includes("photos") && photoMode === "replace" && !replaceUrls.length)} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote, imageNote, wordsNote, photoCount: photosAsked, photoMode, replaceUrls: photoMode === "replace" ? replaceUrls : [] }); }}
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
             </button>
+            </div>
           </div>
         </div>
       )}

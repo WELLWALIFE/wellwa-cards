@@ -70,7 +70,7 @@ export function ShubhoraBar({ username, joinHref, moreHref, lang, aboveBar = fal
             <div className="fixed inset-0 z-[120]" onClick={close}>
               <div className={`absolute inset-0 bg-black/50 transition-opacity ${up ? "opacity-100" : "opacity-0"}`} />
               <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true"
-                className={`absolute inset-x-0 bottom-0 mx-auto max-w-md rounded-t-3xl bg-white p-5 text-[#111] shadow-float transition-transform duration-300 ease-out ${up ? "translate-y-0" : "translate-y-full"}`}
+                className={`absolute inset-x-0 bottom-0 mx-auto max-h-[92dvh] max-w-md overflow-y-auto overscroll-contain rounded-t-3xl bg-white p-5 text-[#111] shadow-float transition-transform duration-300 ease-out ${up ? "translate-y-0" : "translate-y-full"}`}
                 style={{ paddingBottom: "max(20px, env(safe-area-inset-bottom))" }}>
                 <button type="button" onClick={close} aria-label={S.close} className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-black/5"><X className="h-5 w-5" /></button>
                 <div className="flex items-center gap-3 pr-10">
