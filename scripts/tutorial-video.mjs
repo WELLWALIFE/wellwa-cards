@@ -11,6 +11,8 @@
 //   … --voice Charon                                    any Gemini prebuilt voice
 //   … --no-reset                                        do not wipe the demo account first
 //   … --compose <work dir>                              only put the video together again from an earlier recording
+//   … --resume <work dir> --from make                   carry on from a scene after a run stopped there (the account is
+//                                                       left as that run left it: no reset, scenes before it kept)
 // The demo account is wiped (its own Reset) before the recording, so the video starts from a fresh account.
 import fs from "node:fs";
 import os from "node:os";
@@ -37,13 +39,15 @@ setupFonts();
 const args = process.argv.slice(2);
 const flag = (k) => args.includes(k);
 const opt = (k, d) => { const i = args.indexOf(k); return i >= 0 && args[i + 1] ? args[i + 1] : d; };
-const WITH_VALUE = new Set(["--user", "--site", "--out", "--voice", "--compose"]);
+const WITH_VALUE = new Set(["--user", "--site", "--out", "--voice", "--compose", "--resume", "--from"]);
 const TUTORIAL = args.find((a, i) => !a.startsWith("--") && !WITH_VALUE.has(args[i - 1])) || "website";
 const USER = opt("--user", "");
 const SITE = (opt("--site", env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com")).replace(/\/$/, "");
 const OUT = opt("--out", path.join(APP, "public", "tutorials"));
 const VOICE = opt("--voice", "Charon");
 const COMPOSE_ONLY = opt("--compose", "");
+const RESUME = opt("--resume", "");   // work folder of an earlier run that stopped part-way
+const FROM = opt("--from", "");       // …and the scene to carry on from (its earlier scenes are kept as recorded)
 const SUPA = env.NEXT_PUBLIC_SUPABASE_URL, KEY = env.SUPABASE_SERVICE_ROLE_KEY, ANON = env.NEXT_PUBLIC_SUPABASE_ANON_KEY, GEMINI = env.GEMINI_API_KEY;
 const CHROME = env.CHROME_PATH || "/usr/bin/chromium-browser";
 const TTS_MODEL = env.TTS_MODEL || "gemini-2.5-flash-preview-tts";
@@ -93,13 +97,13 @@ const TUTORIALS = {
         } },
       { id: "products", say: "तीसरा step — products या services। हर product का नाम, दाम और photo डालिए; website इन्हीं से लिखी जाती है। अभी नहीं डालने हैं तो Skip दबाइए — बाद में कभी भी जोड़ सकते हैं।",
         act: async () => { await pause(1200); await u.scrollBy(300, 1500); await pause(400); await u.tapThen("Skip —", "Make my free website", { timeout: 35000 }); } },
-      { id: "make", say: "और अब आख़िरी step — 'Make my free website' दबाइए। AI आपकी website और card लिखता है, photos चुनता है। इसमें एक से तीन मिनट लगते हैं।",
+      { id: "make", enter: async () => { await u.login(); await u.goto(`${SITE}/poster/card/build?make=1`); await u.waitText("Make my free website", 40000); }, say: "और अब आख़िरी step — 'Make my free website' दबाइए। AI आपकी website और card लिखता है, photos चुनता है। इसमें एक से तीन मिनट लगते हैं।",
         act: async () => {
           await pause(1500);
           // pressed again if the first tap missed: the button is gone once the build has started
           for (let i = 0; i < 2; i++) {
             await u.tapText("Make my free website");
-            try { await u.page.waitForFunction(() => !document.body.innerText.includes("Make my free website"), { timeout: 9000 }); break; } catch { if (i) throw new Error("the build did not start"); }
+            try { await u.page.waitForFunction(() => !document.body?.innerText?.includes("Make my free website"), { timeout: 9000 }); break; } catch { if (i) throw new Error("the build did not start"); }
           }
           await pause(5000);
         },
@@ -211,7 +215,7 @@ function wrap(text, perLine) {
 async function captionPng(file, text, { width, size }) {
   const perLine = Math.max(12, Math.floor((width - 72) / (size * 0.56)));
   const lines = wrap(text, perLine).slice(0, 5);
-  const lh = Math.round(size * 1.42), padY = 26, padX = 36;
+  const lh = Math.round(size * 1.42), padY = 26;
   const h = lines.length * lh + padY * 2;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${h}">
     <rect x="0" y="0" width="${width}" height="${h}" rx="26" fill="#0b1018" fill-opacity="0.84"/>
@@ -253,7 +257,8 @@ async function backgroundPng(file, W, H, { title, subtitle, logo, titleAt, size 
 export function ui(page, { work, email, uid }) {
   const u = { page };
   u.goto = async (url) => { await page.goto(url, { waitUntil: "networkidle2", timeout: 60000 }); await pause(600); };
-  u.waitText = (text, timeout = 15000) => page.waitForFunction((t) => document.body.innerText.includes(t), { timeout }, text);
+  // body can be missing for an instant while the page swaps documents: an error inside the poller would end the wait
+  u.waitText = (text, timeout = 15000) => page.waitForFunction((t) => !!document.body?.innerText?.includes(t), { timeout }, text);
   /** The first visible element whose text has `text` (whole text when exact). */
   u.findText = async (text, { exact = false, sel = "button, a, [role='option'], label, summary" } = {}) => {
     const h = await page.evaluateHandle((t, ex, s) => {
@@ -309,7 +314,7 @@ export function ui(page, { work, email, uid }) {
   /** Taps a button and waits for what it should bring up; taps once more when nothing came (a tap that missed). */
   u.tapThen = async (text, expect, { timeout = 20000, tries = 2, ...o } = {}) => {
     for (let i = 0; i < tries; i++) {
-      if (i && await page.evaluate((t) => document.body.innerText.includes(t), expect)) return;
+      if (i && await page.evaluate((t) => !!document.body?.innerText?.includes(t), expect).catch(() => false)) return;
       await u.tapText(text, o);
       try { await u.waitText(expect, i === tries - 1 ? timeout : Math.min(9000, timeout)); return; }
       catch (e) { if (i === tries - 1) throw e; }
@@ -340,13 +345,14 @@ export function ui(page, { work, email, uid }) {
 
 /* ============================== record ============================== */
 async function record(t, work) {
+  const resuming = !!RESUME;
   if (!USER) throw new Error("--user <demo account: login email, contact email or username> is needed");
   for (const [k, v] of Object.entries({ NEXT_PUBLIC_SUPABASE_URL: SUPA, SUPABASE_SERVICE_ROLE_KEY: KEY, NEXT_PUBLIC_SUPABASE_ANON_KEY: ANON, GEMINI_API_KEY: GEMINI })) if (!v) throw new Error(`${k} missing in .env.local`);
   if (!fs.existsSync(CHROME)) throw new Error(`Chrome not found at ${CHROME} (CHROME_PATH)`);
   const user = await findUser(USER);
   const LOGIN = user.email;   // what the account really signs in with (may differ from --user)
   log(`account ${LOGIN} (${user.id})`);
-  if (!flag("--no-reset")) {
+  if (!flag("--no-reset") && !resuming) {
     const r = await fetch(`${SITE}/api/demo/reset`, { method: "POST", headers: { Authorization: `Bearer ${await bearerFor(LOGIN)}`, "Content-Type": "application/json" }, body: "{}" });
     const j = await r.json().catch(() => ({}));
     if (!r.ok && r.status !== 207) throw new Error(`could not reset the demo account (${r.status}): ${j.error || ""} — mark it as the demo account in Super Admin → Users, or pass --no-reset`);
@@ -358,7 +364,9 @@ async function record(t, work) {
   log(`voice: ${scenes.length} lines, ${voices.reduce((a, v) => a + v.seconds, 0).toFixed(1)} s`);
 
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--lang=en-IN", "--font-render-hinting=none", "--disable-gpu"] });
+  browser.on("disconnected", () => log("!! Chrome closed"));
   const page = await browser.newPage();
+  page.on("error", (e) => log("!! the page crashed:", e.message));
   await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.evaluateOnNewDocument(() => {
@@ -372,26 +380,41 @@ async function record(t, work) {
   });
   const u = ui(page, { work, email: LOGIN, uid: user.id });
   const done = [];
+  const list = t.scenes(u);
+  // what a failed scene looked like, in the error itself: the screen's words, the red lines, the real cause
+  const failed = async (s, e, what) => {
+    await u.shot(`fail-${s.id}`);
+    const seen = await page.evaluate(() => (document.body?.innerText ?? "").replace(/\s*\n\s*/g, " | ").slice(0, 420)).catch(() => "");
+    const errs = await page.evaluate(() => [...document.querySelectorAll(".text-danger")].map((x) => x.innerText.trim()).filter(Boolean).join(" / ").slice(0, 300)).catch(() => "");
+    const cause = e.cause?.message ? `\n  cause: ${e.cause.message}` : "";
+    return new Error(`scene "${s.id}"${what}: ${e.message}${cause}\n  screen said: ${seen}${errs ? `\n  errors on screen: ${errs}` : ""}\n  (picture: ${work}/fail-${s.id}.png — to carry on: node scripts/tutorial-video.mjs ${TUTORIAL} --user ${USER} --resume ${work} --from ${s.id})`);
+  };
+  let fromIdx = 0, kept = [];
+  if (resuming) {
+    fromIdx = list.findIndex((x) => x.id === FROM);
+    if (fromIdx < 0) throw new Error(`--from "${FROM}": no such scene — one of: ${list.map((x) => x.id).join(", ")}`);
+    if (!list[fromIdx].enter && !list[fromIdx].between) throw new Error(`scene "${FROM}" cannot be carried on from (it needs the screen the scene before it leaves)`);
+    kept = JSON.parse(fs.readFileSync(path.join(work, "progress.json"), "utf8")).filter((x, k) => k < fromIdx);
+    if (kept.length < fromIdx || kept.some((x) => !fs.existsSync(x.clip))) throw new Error(`the earlier run did not record every scene before "${FROM}" (${kept.length} of ${fromIdx})`);
+    log(`carrying on from "${FROM}": ${fromIdx} scenes kept`);
+  }
   try {
-    for (const [i, s] of t.scenes(u).entries()) {
-      if (s.between) { log(`${s.id}: preparing…`); await s.between(); }
+    for (const [i, s] of list.entries()) {
+      if (i < fromIdx) { done.push(kept[i]); continue; }
+      if (resuming && i === fromIdx && s.enter) { log(`${s.id}: opening the screen…`); await s.enter(); }
+      else if (s.between) { log(`${s.id}: preparing…`); await s.between(); }
       const clip = path.join(work, `${String(i + 1).padStart(2, "0")}-${s.id}.webm`);
       log(`${s.id}: recording (${voices[i].seconds.toFixed(1)} s of words)`);
       const rec = await page.screencast({ path: clip, ffmpegPath: FFMPEG });
       const t0 = Date.now();
       try { await s.act(); }
-      catch (e) {
-        await rec.stop().catch(() => undefined); await u.shot(`fail-${s.id}`);
-        // what the screen said at that moment, in the error itself (first lines only)
-        const seen = await page.evaluate(() => document.body.innerText.replace(/\s*\n\s*/g, " | ").slice(0, 420)).catch(() => "");
-        const errs = await page.evaluate(() => [...document.querySelectorAll(".text-danger")].map((x) => x.innerText.trim()).filter(Boolean).join(" / ").slice(0, 300)).catch(() => "");
-        throw new Error(`scene "${s.id}": ${e.message}\n  screen said: ${seen}${errs ? `\n  errors on screen: ${errs}` : ""}\n  (picture: ${work}/fail-${s.id}.png)`);
-      }
+      catch (e) { await rec.stop().catch(() => undefined); throw await failed(s, e, ""); }
       const left = voices[i].seconds * 1000 + 800 - (Date.now() - t0);
       if (left > 0) await pause(left);
       await rec.stop();
       done.push({ id: s.id, say: s.say, clip, wav: voices[i].file, saySec: voices[i].seconds });
-      if (s.after) { log(`${s.id}: waiting…`); await s.after(); }
+      fs.writeFileSync(path.join(work, "progress.json"), JSON.stringify(done, null, 1));
+      if (s.after) { log(`${s.id}: waiting…`); try { await s.after(); } catch (e) { throw await failed(s, e, " (while waiting)"); } }
     }
   } finally { await browser.close().catch(() => undefined); }
   fs.writeFileSync(path.join(work, "scenes.json"), JSON.stringify({ tutorial: TUTORIAL, title: t.title, subtitle: t.subtitle, scenes: done }, null, 1));
@@ -453,10 +476,13 @@ async function compose(work, outDir) {
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) try {
   const t = TUTORIALS[TUTORIAL];
   if (!t) throw new Error(`unknown tutorial "${TUTORIAL}" — one of: ${Object.keys(TUTORIALS).join(", ")}`);
-  let work = COMPOSE_ONLY;
-  if (!work) {
-    work = path.join(os.tmpdir(), "shubhora-tutorial", `${TUTORIAL}-${new Date().toISOString().replace(/[:.]/g, "-")}`);
-    fs.mkdirSync(work, { recursive: true });
+  let work = COMPOSE_ONLY || RESUME;
+  if (RESUME && !FROM) throw new Error("--resume needs --from <scene>");
+  if (!COMPOSE_ONLY) {
+    if (!work) {
+      work = path.join(os.tmpdir(), "shubhora-tutorial", `${TUTORIAL}-${new Date().toISOString().replace(/[:.]/g, "-")}`);
+      fs.mkdirSync(work, { recursive: true });
+    }
     log(`work: ${work}`);
     await record(t, work);
   }
@@ -465,6 +491,6 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (const o of outs) console.log(`  ${o}  →  ${SITE}/tutorials/${path.basename(o)}`);
   console.log(`\nTo change only the layout or captions: node scripts/tutorial-video.mjs ${TUTORIAL} --compose ${work}`);
 } catch (e) {
-  console.error("\nERROR:", e.message);
+  console.error(`\nERROR: ${e.message}${e.cause?.message && !String(e.message).includes(e.cause.message) ? `\n  cause: ${e.cause.message}` : ""}`);
   process.exitCode = 1;
 }
