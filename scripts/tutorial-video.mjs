@@ -32,7 +32,6 @@ try {
 const require = createRequire(path.join(APP, "package.json"));
 const puppeteer = require("puppeteer-core");
 const sharp = require("sharp");
-const { createClient } = require("@supabase/supabase-js");
 setupFonts();
 
 const args = process.argv.slice(2);
@@ -131,10 +130,11 @@ async function magicToken(email) {
   return t;
 }
 async function bearerFor(email) {
-  const sb = createClient(SUPA, ANON, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { data, error } = await sb.auth.verifyOtp({ token_hash: await magicToken(email), type: "magiclink" });
-  if (error || !data.session) throw new Error(`login failed: ${error?.message}`);
-  return data.session.access_token;
+  // straight to Supabase's verify endpoint: its JS client needs a WebSocket, which Node 20 (the server's) lacks
+  const r = await fetch(`${SUPA}/auth/v1/verify`, { method: "POST", headers: { apikey: ANON, "Content-Type": "application/json" }, body: JSON.stringify({ type: "magiclink", token_hash: await magicToken(email) }) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok || !j.access_token) throw new Error(`login failed: ${j.msg || j.error_description || r.status}`);
+  return j.access_token;
 }
 
 /* ============================== helpers: voice ============================== */
