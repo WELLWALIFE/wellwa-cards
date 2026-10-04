@@ -47,7 +47,7 @@ const LOCATION_OFF = "Location is off. Turn it on, or paste your Google Maps lin
 type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
 /** What /api/site/peek learned from the home page. */
 type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; products: number; category?: string; empty?: boolean };
-type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer"; data: PeekData | null };
+type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer" | "reference"; data: PeekData | null };
 const NO_PEEK: PeekState = { state: "idle", url: "", role: "own", data: null };
 /** The one social / maps link that was pasted as a "website" and kept as what it is. */
 type Detour = { key: "instagram" | "facebook" | "youtube" | "map"; url: string; label: string };
@@ -519,6 +519,12 @@ function Onboard() {
     });
   }
 
+  /** A website the person likes says what trade they are in (owner's call, 4 Oct 2026: "reference website se bhi
+   *  category auto select") — only the trade, and only until they pick one themselves. */
+  function prefillReference(d: PeekData) {
+    setBiz((b) => (!touched.current.has("category") && d.category && categoryOf(d.category) && d.category !== b.category ? withCategory(b, d.category) : b));
+  }
+
   /** "maruti car" instead of a link: the official website is looked up by name, then read like a pasted link. */
   async function findByName(q: string): Promise<string> {
     const r = await api<{ ok: boolean; url?: string; name?: string }>("/api/site/find", { method: "POST", json: { q } });
@@ -540,7 +546,7 @@ function Onboard() {
   async function startPeek(next?: SiteState) {
     const st = next ?? site;
     const url = cleanSiteUrl(st.url);
-    if ((st.kind !== "own" && st.kind !== "dealer") || !url || !looksLikeSite(url) || socialDetour(url) || isShubhoraHost(url)) return;
+    if ((st.kind !== "own" && st.kind !== "dealer" && st.kind !== "reference") || !url || !looksLikeSite(url) || socialDetour(url) || isShubhoraHost(url)) return;
     const same = peekFor.current.url === url && peekFor.current.role === st.kind;
     if (same && peekFor.current.state !== "unreadable") return;
     const seq = ++peekSeq.current;
@@ -561,7 +567,8 @@ function Onboard() {
       peekFor.current = { url, role, state: "found" };
       setPeek({ state: "found", url, role, data: r.data });
       if (role === "own") prefill(r.data);
-      else prefillDealer(r.data);
+      else if (role === "dealer") prefillDealer(r.data);
+      else prefillReference(r.data);
     } catch {
       if (seq === peekSeq.current) { peekFor.current = { url, role, state: "unreadable" }; setPeek({ state: "unreadable", url, role, data: null }); }
     } finally { clearTimeout(guard); }
@@ -571,7 +578,7 @@ function Onboard() {
     setSiteErr(""); setPendingSocial(null);
     const next: SiteState = { kind: k, url: k === "none" ? "" : site.url, assertedAt: k === "dealer" ? site.assertedAt : "" };
     setSite(next);
-    if (k === "none" || k === "reference") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
+    if (k === "none") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
     else if (next.url) void startPeek(next);
   }
 
@@ -633,7 +640,7 @@ function Onboard() {
   }, [site.url, site.kind]);
   async function lookupTyped() {
     const url = await resolveTyped();
-    if (url && (site.kind === "own" || site.kind === "dealer")) void startPeek({ ...site, url });
+    if (url && site.kind && site.kind !== "none") void startPeek({ ...site, url });
   }
 
   /** 📍 Uses the phone's GPS where the owner is standing — an exact map pin, no typing. */
@@ -996,12 +1003,14 @@ function Onboard() {
                     <p className="text-xs text-muted">{hi ? c.takesHi : c.takes}</p>
                     {/* …and only while it still describes the link in the box: typing a new one must not leave
                         "Found: Haldiram's" standing under a box that now says bikano.com. */}
-                    {(c.k === "own" || c.k === "dealer") && peek.state !== "idle" && peek.role === c.k && peek.url === cleanSiteUrl(site.url) && (
+                    {peek.state !== "idle" && peek.role === c.k && peek.url === cleanSiteUrl(site.url) && (
                       <p className={`flex items-start gap-1.5 text-xs font-semibold ${peek.state === "found" ? "text-good" : peek.state === "reading" ? "text-muted" : "text-amber"}`}>
                         {peek.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : peek.state === "found" ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
                         <span>
                           {peek.state === "reading" ? T(`Reading ${hostOf(peek.url)}…`, `${hostOf(peek.url)} पढ़ रहे हैं…`)
-                            : peek.state === "found" ? `${T("Found", "मिला")}: ${[peek.data?.name || hostOf(peek.url), c.k === "own" && peek.data?.logo ? "logo" : "", peek.data?.products ? `${peek.data.products} products` : ""].filter(Boolean).join(" · ")}`
+                            : peek.state === "found" ? (c.k === "reference"
+                              ? (peek.data?.category && categoryOf(peek.data.category) ? T(`Looks like a ${categoryOf(peek.data.category)!.en.toLowerCase()} website — "What do you do?" is filled from it, change it if wrong.`, `${categoryOf(peek.data.category)!.hi} की website लगती है — "आप क्या काम करते हैं?" इससे भरा, गलत हो तो बदलें।`) : T("Read for its look.", "look के लिए पढ़ ली।"))
+                              : `${T("Found", "मिला")}: ${[peek.data?.name || hostOf(peek.url), c.k === "own" && peek.data?.logo ? "logo" : "", peek.data?.products ? `${peek.data.products} products` : ""].filter(Boolean).join(" · ")}`)
                             : peek.state === "empty" ? T("The site opened but was empty — write the name yourself; we read it fully when the card is built.", "website खुली पर खाली है — नाम आप लिख दें, card बनाते समय पूरी पढ़ेंगे")
                             : T("This website does not let us read it — you can go on, but nothing will come from it.", "ये website हमें पढ़ने नहीं देती — आगे बढ़ सकते हैं, पर इससे कुछ नहीं मिलेगा")}
                         </span>
@@ -1098,8 +1107,8 @@ function Onboard() {
             <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
               custom={biz.trade ?? ""} onCustom={(text) => { touch("category"); setBiz((b) => ({ ...withCategory(b, matchCategory(text) || "other"), trade: text })); }} />
             {!touched.current.has("category") && !!biz.category && (
-              site.kind === "own" && peek.state === "found" && biz.category === peek.data?.category
-                ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
+              (site.kind === "own" || site.kind === "dealer" || site.kind === "reference") && peek.state === "found" && biz.category === peek.data?.category
+                ? <span className="mt-1 block text-[11px] font-normal text-muted">{site.kind === "reference" ? T("Guessed from the website you like — change it if wrong.", "आपकी पसंद की website से अंदाज़ा — गलत हो तो बदलें।") : T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
                 : biz.category === guessedTrade.current
                 ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your name — change it if wrong.", "आपके नाम से अंदाज़ा — गलत हो तो बदलें।")}</span>
                 : null

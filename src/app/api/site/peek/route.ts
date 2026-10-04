@@ -1,4 +1,4 @@
-// POST (bearer) { url, role: "own" | "dealer" } → what the website says about itself, for the set-up's website
+// POST (bearer) { url, role: "own" | "dealer" | "reference" } → what the website says about itself, for the set-up's website
 // step (owner's call, 1 Oct 2026: the person should type as little as possible — a site they already have
 // fills the business screen for them).
 //
@@ -49,7 +49,7 @@ export async function POST(request: Request) {
 
   const b = (await request.json().catch(() => ({}))) as { url?: unknown; role?: unknown };
   const url = cleanSiteUrl(typeof b.url === "string" ? b.url : "");
-  const role = b.role === "dealer" ? "dealer" : "own";
+  const role = b.role === "dealer" ? "dealer" : b.role === "reference" ? "reference" : "own";
   if (!url || !looksLikeSite(url) || socialDetour(url) || isShubhoraHost(url)) {
     return NextResponse.json({ ok: false, reason: "unreadable" }, { status: 400 });
   }
@@ -58,6 +58,12 @@ export async function POST(request: Request) {
   if (!peek) return NextResponse.json({ ok: false, reason: "unreadable" }, { headers: { "Cache-Control": "no-store" } });
   if (peek.empty && !peek.name && !peek.about) return NextResponse.json({ ok: false, reason: "empty" }, { headers: { "Cache-Control": "no-store" } });
 
+  if (role === "reference") {
+    // A website the person merely likes (owner's call, 4 Oct 2026): only the trade it suggests, so "What do you do?"
+    // fills itself — never its name, logo, words or pictures, which are someone else's.
+    const category = await guessCategory(`${peek.name} ${peek.title} ${peek.about}`);
+    return NextResponse.json({ ok: true, url: peek.url, name: "", products: 0, category }, { headers: { "Cache-Control": "no-store" } });
+  }
   if (role === "dealer") {
     // The brand's name, how many of its products there are to import, the trade it suggests (a Maruti dealer is an
     // auto showroom) and the brand's logo — used on the dealer's card only when they upload none of their own
