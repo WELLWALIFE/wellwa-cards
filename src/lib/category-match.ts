@@ -98,6 +98,23 @@ export function matchCategory(text: string): string | null {
 }
 
 /**
+ * The listed trade the typed text names OUTRIGHT — "school", "मिठाई", "kirana", "mobile shop" — or null. Unlike
+ * matchCategory (made for business names and website text, where one trade word is a strong hint), a trade the
+ * owner typed in their own words is taken whole: "Drone repair" is not a mobile shop because of "repair", and
+ * "Mithai wala" is the owner's own name for a sweets shop only if they pick it (owner, 5 Oct 2026).
+ */
+export function exactCategory(text: string): string | null {
+  const t = norm(text ?? "").trim();
+  if (!t) return null;
+  for (const c of CATEGORIES) {
+    if (c.key === "other") continue;
+    const names = [c.key, ...c.en.split(/\s*\/\s*/), ...c.hi.split(/\s*\/\s*/), ...(ALIASES[c.key] ?? [])];
+    if (names.some((w) => norm(w).trim() === t)) return c.key;
+  }
+  return null;
+}
+
+/**
  * The 2-3 trades a few typed letters most likely mean, best first — the picker's drop-down (owner's call,
  * 2 Oct 2026: "search kare, suggested name 2/3 aa jaaye, user ek select kar le"). A word of the English name,
  * the Hindi name or an everyday alias that STARTS with the typed text counts most; a phrase that merely contains

@@ -16,7 +16,7 @@
 // the poster profile (posters, card, website), the account (the AI reads "about") and the card facts.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, ChevronDown, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
+import { Camera, Check, CheckCircle2, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
@@ -27,7 +27,7 @@ import { fetchMyCardsStrict, nameSlug, publishCard, suggestUsername } from "@/li
 import { SITE_HOST } from "@/lib/site-url";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
-import { matchCategory } from "@/lib/category-match";
+import { exactCategory, matchCategory } from "@/lib/category-match";
 import type { Business } from "@/lib/journey";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { useT } from "@/lib/poster-i18n";
@@ -133,7 +133,7 @@ function Onboard() {
   ];
   const reachOf = (role: Role, catKey: string): Reach =>
     role === "agent" || /^(courier|transport|manufacturer|wholesale|distributor|textile|pharma|agri)$/.test(catKey) ? "india" : /^(it|influencer|astro)$/.test(catKey) ? "online" : "local";
-  const [biz, setBiz] = useState<Business & { logo?: string | null; kind: "business" | "person"; role: Role; roleTouched?: boolean; reachTouched?: boolean; linkBy?: "name" | "business" }>({ kind: "business", role: "business", reach: "local" });
+  const [biz, setBiz] = useState<Business & { logo?: string | null; kind: "business" | "person"; role: Role; roleTouched?: boolean; reachTouched?: boolean; linkBy?: "name" | "business"; /** The trade guessed from the name (not picked): kept in the state, not a ref, because a setState updater runs twice in dev and must stay pure. */ guessed?: string }>({ kind: "business", role: "business", reach: "local" });
   /** The card link the owner picked — or, untouched, the business name for a shop and the person's name otherwise. */
   const linkBy = (): "name" | "business" => biz.linkBy ?? (biz.role === "business" && (biz.name ?? "").trim() ? "business" : "name");
   const [uid, setUid] = useState("");
@@ -148,7 +148,6 @@ function Onboard() {
   /** Fields the person typed into: a late peek result never writes over them. */
   const touched = useRef(new Set<string>());
   /** The trade the business name suggested (not the owner's own pick, and not the website's). */
-  const guessedTrade = useRef("");
   /** A social / maps link pasted as the website, waiting for "keep it as that?" */
   const [pendingSocial, setPendingSocial] = useState<Detour | null>(null);
   const [detours, setDetours] = useState<Detour[]>([]);
@@ -207,7 +206,6 @@ function Onboard() {
       // follows our own writes, or the first Next read them as "changed elsewhere" and reloaded the form away.
       await bumpServerBase();
     })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadUsername]);
 
   /** One read of the account + profile. A network failure shows a retry, never an endless spinner. */
@@ -292,8 +290,10 @@ function Onboard() {
    *  dropped. A second tab still open from before a reset (owner, 4 Oct 2026: a medical shop kept coming out as a
    *  school) carries the old version and may not write over the fresh one. */
   const serverBase = useRef(0);
+  /** Set by clearDraft (Save, Skip): the unmount flush below must not write the draft back after it was cleared. */
+  const draftDead = useRef(false);
   const writeDraft = useCallback(() => {
-    if (!draftReady.current || !uid) return;
+    if (!draftReady.current || !uid || draftDead.current) return;
     try {
       const key = `onboard-draft:${uid}`;
       const cur = JSON.parse(localStorage.getItem(key) || "null") as { base?: number } | null;
@@ -311,7 +311,7 @@ function Onboard() {
   async function bumpServerBase() {
     try { const { data } = (await getBrowserSupabase()?.auth.getUser()) ?? { data: { user: null } }; serverBase.current = Date.parse(String(data.user?.updated_at ?? "")) || serverBase.current; } catch { /* keep */ }
   }
-  function clearDraft() { try { if (uid) localStorage.removeItem(`onboard-draft:${uid}`); } catch { /* ignore */ } }
+  function clearDraft() { draftDead.current = true; try { if (uid) localStorage.removeItem(`onboard-draft:${uid}`); } catch { /* ignore */ } }
 
   /** A picked photo opens the crop / zoom window first; the framed square is what gets uploaded. */
   function choose(file: File, kind: "photo" | "logo") {
@@ -369,7 +369,7 @@ function Onboard() {
    *  closing the app after step 1 loses nothing; step 2's Save writes the full, checked version again. */
   function bizMeta(): Business {
     return { name: (biz.name ?? "").trim(), role: biz.role, reach: biz.reach ?? "local", category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), gstin: (biz.gstin ?? "").trim().toUpperCase(),
-      address: (biz.address ?? "").trim(), city: (biz.city ?? "").trim(), about: (biz.about ?? "").trim(), website: biz.website ?? "", map: (biz.map ?? "").trim(), linkBy: (biz.name ?? "").trim() ? linkBy() : "name",
+      address: (biz.address ?? "").trim(), city: (biz.city ?? "").trim(), about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(), linkBy: (biz.name ?? "").trim() ? linkBy() : "name",
       ...(biz.nameFromSite !== undefined ? { nameFromSite: biz.nameFromSite } : {}), ...(biz.categoryFromSite !== undefined ? { categoryFromSite: biz.categoryFromSite } : {}), ...(biz.aboutFromSite !== undefined ? { aboutFromSite: biz.aboutFromSite } : {}) };
   }
 
@@ -387,15 +387,16 @@ function Onboard() {
     // Step 1 of the profile (not the name / mobile edit): the residential city and address are required (owner's call).
     if (!editing && !you.city.trim()) { setErr(T("Write your city.", "अपना शहर लिखें।")); return; }
     if (!editing && you.address.trim().length < 6) { setErr(T("Write your residential address.", "अपना घर का पता लिखें।")); return; }
+    // Busy before the version check: a second tap while it waits on the network must not run the save twice.
+    setBusy("you");
     // A tab left open from before a reset must not write its old answers over the fresh account (see accountMoved).
-    if (await accountMoved()) return;
+    if (await accountMoved()) { setBusy(""); return; }
     const home = { home_city: you.city.trim().slice(0, 60), home_address: you.address.trim().slice(0, 200) };
     // The business city, still empty, starts as the home city (changed on the next step when the shop is elsewhere).
     if (!editing && !(biz.city ?? "").trim() && home.home_city) setBiz((b) => ({ ...b, city: home.home_city }));
     if (profile || editing) {
       const phone = digits.slice(-10);
       let partnerMissed = false;
-      setBusy("you");
       try {
         const r = await api<{ ok?: boolean; error?: string; note?: string }>("/api/account/details", { method: "POST", json: { name: you.name.trim(), phone, photo: you.photo || "" } });
         if (!r.ok) { setErr(r.data.error ?? "Could not save. Please try again."); return; }
@@ -426,7 +427,7 @@ function Onboard() {
         whatsapp: youFacts().whatsapp, ...home, ...emailMeta(), business: { ...bizMeta(), city: (biz.city ?? "").trim() || home.home_city },
       } });
       await bumpServerBase();
-    } catch { /* offline: the full save on the next screen writes it again */ }
+    } catch { /* offline: the full save on the next screen writes it again */ } finally { setBusy(""); }
     setStep("promote");
   }
 
@@ -511,18 +512,26 @@ function Onboard() {
     return { ...b, category: k, role, kind: role === "business" ? "business" as const : "person" as const, reach: b.reachTouched ? b.reach : reachOf(role, k) };
   };
   const touch = (k: string) => { touched.current.add(k); };
-  /** A different trade asks different questions: the old trade's ticked offerings would otherwise show up as the
-   *  owner's own typed services (they are not in the new list) and reach the AI as if they had written them. */
-  const changeTrade = (k: string) => { if (k !== biz.category && (facts.tradeAnswers?.offerings?.length ?? 0) > 0) setF({ tradeAnswers: { ...facts.tradeAnswers, offerings: [] } }); };
+  /** A different trade asks different questions: the old trade's ticks would otherwise show up as the owner's own
+   *  typed answers (they are not in the new lists — a school's "classes" are not a coaching's) and reach the AI as
+   *  if they had written them. Every answer goes, not only the offerings. */
+  const changeTrade = (k: string) => { if (k !== biz.category && Object.keys(facts.tradeAnswers ?? {}).length > 0) setF({ tradeAnswers: {} }); };
   /** Most Indian businesses say their trade in their name — "Sharma Sweets", "Apollo Clinic", "Verma Electricals".
    *  When the owner has not picked a trade themselves, the name picks it, so the list never has to be opened. */
   function guessTrade(b: typeof biz): typeof biz {
     if (touched.current.has("category")) return b;
     const k = matchCategory(`${b.name ?? ""} ${b.about ?? ""}`);
-    if (!k || k === b.category || !categoryOf(k)) return b;
-    guessedTrade.current = k;
-    return withCategory(b, k);
+    if (!k || !categoryOf(k)) {
+      // The guess stood on the name a few letters ago ("Yadav Drone Car" → auto, mid-typing "Yadav Drone Care"): the
+      // finished name no longer says it, so it goes — only what the owner ends up typing counts.
+      if (b.category && b.category === b.guessed) return { ...withCategory(b, ""), guessed: "" };
+      return b;
+    }
+    if (k === b.category) return b;
+    return { ...withCategory(b, k), guessed: k };
   }
+  /** False while the trade is only a guess from the name that the name, as it now reads, no longer supports. */
+  const guessHolds = () => !biz.guessed || biz.category !== biz.guessed || matchCategory(`${biz.name ?? ""} ${biz.about ?? ""}`) === biz.category;
 
   /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
   function prefill(d: PeekData) {
@@ -738,7 +747,7 @@ function Onboard() {
           photo_url: you.photo || null, logo_url: biz.logo || null, category: biz.category || "", style: cat?.style ?? "classic", mode: "greeting", layout: {},
         } });
         if (r.ok && r.data.profile) setCurrentProfileId(r.data.profile.id);
-      }
+      } else await syncProfile().catch(() => undefined);
       // The website answer survives the skip (the facts route needs the profile that now exists).
       await saveSiteFacts().catch(() => undefined);
       clearDraft();
@@ -831,7 +840,6 @@ function Onboard() {
   /** One save for both steps: the poster profile + the account details. */
   async function save() {
     setErr("");
-    if (await accountMoved()) return;
     const phone = you.phone.replace(/\D/g, "").slice(-10);
     if (you.name.trim().length < 2) { setStep("you"); setErr("Write your name."); return; }
     if (phone.length !== 10) { setStep("you"); setErr("Write your 10-digit mobile number."); return; }
@@ -849,6 +857,7 @@ function Onboard() {
     const peekName = peek.state === "found" && peek.role === "own" ? (peek.data?.name ?? "").trim() : "";
     const nameFromSite: boolean | undefined = !peekName ? undefined : bizName.toLowerCase() === peekName.toLowerCase() ? true : touched.current.has("name") ? false : undefined;
     setBusy("save");
+    if (await accountMoved()) { setBusy(""); return; }
     try {
       const before = profile;
       const cat = categoryOf(biz.category ?? "");
@@ -856,10 +865,11 @@ function Onboard() {
         id: profile?.id, is_default: true,
         persona: isBiz ? (cat?.persona ?? "business") : biz.role === "personal" ? (cat?.persona && cat.persona !== "business" ? cat.persona : "personal") : biz.role === "agent" ? "business" : "professional",
         name: isBiz ? bizName : you.name.trim(),
-        tagline: profile?.tagline || tradeWord(),
+        // The trade as it stands now, not as it was when ensureProfile made the profile at the first Next.
+        tagline: tradeWord() || profile?.tagline || "",
         phone, city, lang: profile?.lang ?? "hi",
         photo_url: you.photo || null, logo_url: biz.logo || null,
-        category: biz.category || "", style: profile?.style ?? cat?.style ?? "classic", mode: profile?.mode ?? "greeting", layout: profile?.layout ?? {},
+        category: biz.category || "", style: profileStyle(profile), mode: profile?.mode ?? "greeting", layout: profile?.layout ?? {},
       } });
       if (!r.ok || !r.data.profile) { setErr(r.data.error ?? "Could not save. Please try again."); return; }
       setProfile(r.data.profile); setCurrentProfileId(r.data.profile.id);
@@ -920,26 +930,57 @@ function Onboard() {
 
   const profileRef = useRef<Profile | null>(null);
   profileRef.current = profile;
+  /** The poster style follows the trade: a trade other than the one the profile has takes its own style; the same
+   *  trade keeps the style the profile already has. */
+  function profileStyle(p: Profile | null): string {
+    const cat = categoryOf(biz.category ?? "");
+    return p?.style && (p.category ?? "") === (biz.category || "") ? p.style : cat?.style ?? p?.style ?? "classic";
+  }
+  /** The poster profile as these screens would write it now. The route PATCHes the whole row, so the full body goes
+   *  every time; what the profile already has (lang, mode, layout) is kept. */
+  function profileBody(p: Profile | null) {
+    const digits = you.phone.replace(/\D/g, "").slice(-10);
+    const cat = categoryOf(biz.category ?? "");
+    const bizName = (biz.name ?? "").trim();
+    return {
+      ...(p ? { id: p.id } : {}), is_default: true,
+      persona: biz.role === "business" ? (cat?.persona ?? "business") : biz.role === "personal" ? "personal" : biz.role === "agent" ? "business" : "professional",
+      name: biz.role === "business" && bizName ? bizName : you.name.trim() || "My business", tagline: tradeWord() || p?.tagline || "", phone: digits.length === 10 ? digits : "", city: (biz.city ?? "").trim(), lang: p?.lang ?? "hi",
+      photo_url: you.photo || null, logo_url: biz.logo || null, category: biz.category || "", style: profileStyle(p), mode: p?.mode ?? "greeting", layout: p?.layout ?? {},
+    };
+  }
+  /** The create in flight: a second Next while the first still waits shares it, so there is never a second profile. */
+  const creating = useRef<Promise<Profile | null> | null>(null);
   /** The poster profile the facts route needs, made the moment the name and the trade are known (screen 4), so
    *  every later screen can save its answers on the server right away; the last Save fills it in fully. */
   async function ensureProfile(): Promise<Profile | null> {
     if (profileRef.current) return profileRef.current;
-    const digits = you.phone.replace(/\D/g, "").slice(-10);
-    const cat = categoryOf(biz.category ?? "");
-    const bizName = (biz.name ?? "").trim();
-    const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: {
-      is_default: true, persona: biz.role === "business" ? (cat?.persona ?? "business") : biz.role === "personal" ? "personal" : biz.role === "agent" ? "business" : "professional",
-      name: biz.role === "business" && bizName ? bizName : you.name.trim() || "My business", tagline: tradeWord(), phone: digits.length === 10 ? digits : "", city: (biz.city ?? "").trim(), lang: "hi",
-      photo_url: you.photo || null, logo_url: biz.logo || null, category: biz.category || "", style: cat?.style ?? "classic", mode: "greeting", layout: {},
-    } }).catch(() => null);
-    if (r?.ok && r.data.profile) { profileRef.current = r.data.profile; setProfile(r.data.profile); setCurrentProfileId(r.data.profile.id); return r.data.profile; }
-    return null;
+    if (creating.current) return creating.current;
+    creating.current = (async () => {
+      const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: profileBody(null) }).catch(() => null);
+      if (r?.ok && r.data.profile) { profileRef.current = r.data.profile; setProfile(r.data.profile); setCurrentProfileId(r.data.profile.id); return r.data.profile; }
+      return null;
+    })();
+    try { return await creating.current; } finally { creating.current = null; }
+  }
+  /** The profile made earlier gets what the later screens corrected or added (city, logo, a fixed name or trade):
+   *  before this only Save wrote them, so a Skip or the card's build read a profile with no logo and the first
+   *  guess's trade. Nothing is sent when nothing differs. */
+  async function syncProfile() {
+    const p = profileRef.current;
+    if (!p) return;
+    const body = profileBody(p);
+    const same = body.persona === p.persona && body.name === p.name && body.tagline === (p.tagline ?? "") && body.phone === (p.phone ?? "") && body.city === (p.city ?? "")
+      && body.photo_url === p.photo_url && body.logo_url === p.logo_url && body.category === (p.category ?? "") && body.style === (p.style ?? "classic");
+    if (same) return;
+    const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: body }).catch(() => null);
+    if (r?.ok && r.data.profile) { profileRef.current = r.data.profile; setProfile(r.data.profile); }
   }
   /** What this screen has goes to the server before the next opens (best effort; the draft holds it either way). */
   async function persistStep() {
     try {
       const sb = getBrowserSupabase();
-      if ((biz.category ?? "").trim() && (you.name.trim().length >= 2 || (biz.name ?? "").trim())) await ensureProfile();
+      if ((biz.category ?? "").trim() && (you.name.trim().length >= 2 || (biz.name ?? "").trim())) { if (profileRef.current) await syncProfile(); else await ensureProfile(); }
       await sb?.auth.updateUser({ data: { ...emailMeta(), business: bizMeta() } });
       await bumpServerBase();
       if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, COMPANY_FACT_KEYS) } }).catch(() => undefined);
@@ -969,8 +1010,8 @@ function Onboard() {
       const gst = (biz.gstin ?? "").trim().toUpperCase();
       if (gst && !GSTIN.test(gst)) { setErr(T("The GST number does not look right (15 characters). Leave it empty if you don't have one.", "GST number ठीक नहीं लगता (15 अक्षर)। नहीं है तो खाली छोड़ें।")); return; }
     }
-    if (await accountMoved()) return;
     setBusy("next");
+    if (await accountMoved()) { setBusy(""); return; }
     try { await persistStep(); } finally { setBusy(""); }
     const nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 1)];
     setStep(nxt);
@@ -1207,7 +1248,7 @@ function Onboard() {
             {biz.role === "business" ? T(biz.category ? `${org.En} name` : "Business name", biz.category ? (categoryOf(biz.category)?.hint || `${org.hi} का नाम`) : "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : T("Company / brand you promote", "Company / brand")}
             {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}
             <input value={biz.name ?? ""} onChange={(e) => { touch("name"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
-              onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
+              onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && guessHolds() && !(biz.about ?? "").trim()) { autoAbout.current = true; void writeAbout(true); } }}
               placeholder={biz.role === "business" ? `e.g. ${egName}` : biz.role === "agent" ? T("e.g. the company or brand you represent", "जैसे जिस company / brand के लिए काम करते हैं") : T(`e.g. ${egName} — or leave empty`, `जैसे ${egName} — या खाली छोड़ें`)} className={field} />
             {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
               <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
@@ -1218,7 +1259,10 @@ function Onboard() {
           {/* 2 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}
             <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
-              custom={biz.trade ?? ""} onCustom={(text, nearest) => { touch("category"); const k = matchCategory(text) || nearest || "other"; changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: text.trim().slice(0, 40) })); }} />
+              custom={biz.trade ?? ""} onCustom={(text) => { touch("category"); const k = exactCategory(text) || "other"; changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: text.trim().slice(0, 40) })); }} />
+            {/* Never the picker's fuzzy "nearest", nor matchCategory's single word hit ("Drone repair" → mobile, by the
+                alias "repair"; the details screen then asked mobile-shop questions — owner, 5 Oct 2026): only the
+                whole text naming a listed trade leaves "other". */}
             {/* "Other" from the list: the trade in the owner's own words, kept as typed — it names the website, the
                 card and the AI's brief (owner, 5 Oct 2026: typed text vanished; a card said "Other"). */}
             {biz.category === "other" && (
@@ -1230,7 +1274,7 @@ function Onboard() {
             {!touched.current.has("category") && !!biz.category && (
               (site.kind === "own" || site.kind === "dealer" || site.kind === "reference") && peek.state === "found" && biz.category === peek.data?.category
                 ? <span className="mt-1 block text-[11px] font-normal text-muted">{site.kind === "reference" ? T("Guessed from the website you like — change it if wrong.", "आपकी पसंद की website से अंदाज़ा — गलत हो तो बदलें।") : T("Guessed from your website — change it if wrong.", "website से अंदाज़ा — गलत हो तो बदलें।")}</span>
-                : biz.category === guessedTrade.current
+                : !!biz.guessed && biz.category === biz.guessed
                 ? <span className="mt-1 block text-[11px] font-normal text-muted">{T("Guessed from your name — change it if wrong.", "आपके नाम से अंदाज़ा — गलत हो तो बदलें।")}</span>
                 : null
             )}

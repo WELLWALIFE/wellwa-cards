@@ -263,6 +263,24 @@ export default function BuildCard() {
     if (flushTimer.current) clearTimeout(flushTimer.current);
     flushTimer.current = setTimeout(flushPublish, 500);
   }
+  /** A look or an adjustment goes live when the site is live — and also while the first card is on its way live
+   *  (goLive / publish running): it is queued and published the moment that finishes, instead of being snapped back
+   *  to the pre-tap card when the publish writes the card to the screen. */
+  function liveTap(next: Card) {
+    if (liveUser || publishing.current) queuePublish(next);
+  }
+  /** Leaving the screen with a tap still in its 500 ms wait: it is published now, not forgotten. */
+  useEffect(() => () => { if (flushTimer.current) { clearTimeout(flushTimer.current); flushPublish(); } }, []);
+  /** Everything queued or running is put live before the screen is left for the editor, so the editor opens on
+   *  the card as the owner last saw it — not on the look before their tap. Capped: a stuck publish never holds
+   *  the owner here. */
+  async function settlePublish() {
+    if (flushTimer.current) { clearTimeout(flushTimer.current); flushTimer.current = null; }
+    const next = pendingPublish.current;
+    if (next && !publishing.current) { pendingPublish.current = null; await publishRef.current({ card: next, quiet: true }); }
+    const until = Date.now() + 15000;
+    while ((publishing.current || pendingPublish.current) && Date.now() < until) await new Promise((res) => setTimeout(res, 150));
+  }
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
     if (!look || !card) return;
@@ -270,12 +288,15 @@ export default function BuildCard() {
     setCard(next);
     // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
     setTab("site");
-    if (liveUser) queuePublish(next);
+    liveTap(next);
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
   // not?" moment. `liveUser` is the link it went live on; a changed link afterwards needs one more save.
   const [liveUser, setLiveUser] = useState("");
+  /** The same, for the banner's follower: it was started from an older render and must read the value of now. */
+  const liveUserRef = useRef("");
+  useEffect(() => { liveUserRef.current = liveUser; }, [liveUser]);
   // The Premium banner, made at Final (docs/website-looks-v2.md §7): the site goes live on its stock pictures, then
   // /api/card/banner paints the banner in the chosen look and it lands here, with Keep / Another / Back to stock.
   type BannerState = { state: "idle" | "running" | "done" | "failed"; job?: string; elapsed?: number; error?: string; charged?: number; prev?: boolean };
@@ -680,6 +701,10 @@ export default function BuildCard() {
       const nextLooks = (r.data.looks ?? []) as LookPlan[];
       // The website first (the looks are its), then the card — so the preview opens on the Website tab.
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
+      // A new build is never the card that is live, however the screen got there (Write again on a live preview,
+      // ?improve=1, a restored draft): "Make it live" comes back, with its "update your live card?" question. It
+      // used to stay "Live", so a paid rewrite could not be published at all — except silently, by tapping a look.
+      setLiveUser("");
       if (v.fresh) access.refresh();
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now(), ...(nextLooks.length ? { looks: nextLooks } : {}) } satisfies Draft);
       // Kept on this phone now (the draft above), so the server need not offer it again.
@@ -740,7 +765,15 @@ export default function BuildCard() {
     try {
       const cards = await fetchMyCardsStrict();
       const row = cards.find((c) => c.id === cardId);
-      if (row) { setCard(row); setExisting(row); setLiveSig(cardSig(row)); if (row.active) setLiveUser(row.username); const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = row; void _i; void _u; void _p; void _a; void _v; void _c; setBuilt(tpl as TemplateCard); }
+      if (!row) return;
+      setExisting(row); setLiveSig(cardSig(row));
+      // The screen is replaced only while it shows the live card itself. A fresh build waiting for "Make it live"
+      // (liveUser is "" then), or a look tapped and not yet live, would otherwise be thrown away for the live row
+      // when the banner lands a minute later — the paid rewrite gone, its job already claimed.
+      if (!liveUserRef.current || publishing.current || pendingPublish.current) return;
+      // A new link saved but not yet put live stays too: the row would put the old one back.
+      setCard((c) => (c && c.username !== row.username ? c : row)); if (row.active) setLiveUser(row.username);
+      const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = row; void _i; void _u; void _p; void _a; void _v; void _c; setBuilt(tpl as TemplateCard);
     } catch { /* offline: the next open shows it */ }
   }
   /** Starts (or joins) the banner job and follows it to the end. `again`: one more, a credit a picture. */
@@ -779,6 +812,9 @@ export default function BuildCard() {
 
   /** The first card goes live on its own. A failure just leaves the "Make it live" button, nothing is lost. */
   async function goLive(full: Card, me: string, also = alsoShubhora) {
+    // Marked like publish(): a look tapped meanwhile waits in pendingPublish (never a second publish alongside this
+    // one) and goes live from the finally below.
+    publishing.current = true;
     setBusy("publish");
     try {
       // "Both — my business and Shubhora": the first card goes live from here without ever reaching publish(),
@@ -793,7 +829,9 @@ export default function BuildCard() {
         await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: null } }).catch(() => undefined);
       }
       if (me) { dropKey(draftKey(me)); dropKey(formKey(me)); }
-      setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
+      // A look tapped while this ran is ahead of `out`: the card on screen keeps it (only the live id and link are
+      // taken) and the queued publish puts it live next. Nothing tapped: the published card, as before.
+      setCard((c) => (c ? pendingPublish.current ? { ...c, id: out.id, username: r.username || c.username } : { ...out, username: r.username || c.username } : c));
       setLiveUser(r.username || out.username);
       // The finished flow (owner's call, 2 Oct 2026): the website first, then the card, then OK → home.
       setTab("site");
@@ -807,7 +845,11 @@ export default function BuildCard() {
           if (access.subscribed && !ownBanner && !madeByUs(row.coverUrl)) void startBanner(row.id);
         }
       } catch { /* the card is live; the primary mark can wait */ }
-    } catch { /* offline: the button stays */ } finally { setBusy(""); }
+    } catch { /* offline: the button stays */ } finally {
+      publishing.current = false;
+      setBusy("");
+      if (pendingPublish.current) flushPublish();
+    }
   }
 
   /** `card`: the card to put live when it is not the one on screen yet (a look just tapped — React state has not
@@ -839,7 +881,13 @@ export default function BuildCard() {
           keepShubhora = true;
           shubhoraVisible = !live.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
         }
-        out = applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
+        // The screen shows the live card itself (it went live from here, or opened with ?improve=1) and only its look,
+        // adjustments or link changed: the live row AS IT IS NOW is the base, with the look laid on below. Merging
+        // the build it came from would put that build's stock picture back over the Premium banner (§7) the banner
+        // job has since painted, and lose anything else done to the card meanwhile. A new build merges as before.
+        out = live && liveUser
+          ? applyChecks({ ...live, username: card.username, site: { ...live.site, enabled: true } }, checks, off)
+          : applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
         // The look on screen is the one that goes live (owner's call, 4 Oct 2026: "jisko select kare wo open honi
         // chahiye"). The merge above keeps a live card's earlier style and the server's card carries the designer's;
         // the preview the owner approved carries the look they picked, and that wins over both.
@@ -881,8 +929,9 @@ export default function BuildCard() {
       // A newer tap is already waiting: the card on screen is ahead of this one, so it is left alone.
       if (!pendingPublish.current) setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
       setLiveUser(r.username || out.username);
-      setTab("site");
-      if (!opts?.quiet) { try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
+      // A quiet publish (a look, in the background) leaves the tabs and the bar as the owner has them: it used to pull
+      // the Card tab back to the Website and flip the bar's button under their finger.
+      if (!opts?.quiet) { setTab("site"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
@@ -892,10 +941,14 @@ export default function BuildCard() {
     }
   }
 
-  function editFirst() {
+  async function editFirst() {
     if (!shown) return;
-    // Already live from this screen: the editor opens the live card itself (no stale copy on top of it).
-    if (liveUser && existing) { router.push(`/poster/d/editor?id=${existing.id}`); return; }
+    // Already live from this screen: the editor opens the live card itself (no stale copy on top of it) — once a
+    // look still on its way live has landed, or the editor would load the old look and save it back over the new.
+    if (liveUser && existing) {
+      if (pendingPublish.current || publishing.current) { setBusy("edit"); try { await settlePublish(); } finally { setBusy(""); } }
+      router.push(`/poster/d/editor?id=${existing.id}`); return;
+    }
     try { sessionStorage.setItem(SEED_KEY, JSON.stringify(shown)); } catch { /* private mode */ }
     // The editor takes over from here: this saved preview must never come back later and undo what is done there.
     if (uid) { dropKey(draftKey(uid)); dropKey(formKey(uid)); }
@@ -994,7 +1047,9 @@ export default function BuildCard() {
                   : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
               : busy === "publish"
                 ? T("Making it live…", "Live किया जा रहा है…")
-                : existing
+                : checks.length > 0
+                  ? T(`Not live yet — check the ${checks.length} details below, then tap Make it live.`, `अभी live नहीं — नीचे ${checks.length} details देख लें, फिर Make it live दबाएँ।`)
+                  : existing
                   ? T("Not live yet — your current card stays until you tap Make it live.", "अभी live नहीं — Make it live दबाने तक पुराना card वैसा ही रहेगा।")
                   : T("Not live yet — tap Make it live.", "अभी live नहीं — Make it live दबाएँ।")}
           </span>
@@ -1105,7 +1160,9 @@ export default function BuildCard() {
 
       {/* Everything that used to sit above the fold: the designer's line, the notice, "Please check", "Make it better". */}
       {(designNote || notice || checks.length > 0 || missing.length > 0) && (
-        <details className="rounded-2xl border border-border bg-surface2/40">
+        <details open={checks.length > 0 && !liveUser} className="rounded-2xl border border-border bg-surface2/40">
+          {/* Open on its own while there are details to check and the card is not live yet: finish() holds the first
+              go-live back for exactly this pause, which a closed fold took away (the maker's specs went live unread). */}
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
             <span>{T("Details", "Details")} <span className="text-xs font-normal text-muted">{checks.length > 0 ? T(`· ${checks.length} to check`, `· ${checks.length} देखने हैं`) : missing.length > 0 ? T("· make it better", "· और अच्छा बनाएँ") : ""}</span></span>
             <span className="text-xs font-semibold text-brand-ink">{T("Open", "खोलें")}</span>
@@ -1166,14 +1223,14 @@ export default function BuildCard() {
             </div>
             {/* Add / remove (docs/website-looks-v2.md §6): tiles, sections, dark / light, clip / photo — instant, no build,
                 no credit. On a live site the change goes live by itself, like a look. */}
-            {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); if (liveUser) queuePublish(next); }} />}
+            {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); liveTap(next); }} />}
             <div className="divide-y divide-border rounded-xl border border-border bg-surface">
               <button type="button" onClick={() => { setMore(false); setState("form"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <ChevronLeft className="h-5 w-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit details", "जानकारी बदलें")}</b><span className="block text-xs text-muted">{T("Back to the questions — website, look, products", "सवालों पर वापस — website, look, products")}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
               </button>
-              <button type="button" onClick={() => { setMore(false); editFirst(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+              <button type="button" onClick={() => { setMore(false); void editFirst(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <Pencil className="h-5 w-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit card", "Card edit करें")}</b><span className="block text-xs text-muted">{T("The editor: words, photos, pages", "Editor: शब्द, photos, pages")}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted" />

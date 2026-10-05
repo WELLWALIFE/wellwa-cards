@@ -15,6 +15,7 @@ import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
 import { monogramUrl } from "@/lib/brand-identity";
 import type { TradeData } from "@/lib/trade-data/types";
+import { PERSONAL, PERSONAL_DEFAULT } from "@/lib/trade-data/personal";
 import {
   BOOKING_CATEGORIES, coverArtFor, readableTheme,
   type CardFacts, type Lang, type Missing, type MissingKey, type SavedProduct, type SetupInfo, type WebCheck,
@@ -235,17 +236,26 @@ const sameText = (a: string, b: string) => {
   return shared / Math.min(wa.size, wb.size) >= 0.6;
 };
 
+/** Seed names an "other" account may have TICKED under an older "what you offer" list (the card's own features —
+ *  "Enquiries", "Save & share my card" — and the personal seeds): no tick list exists for "other" any more, and a
+ *  tick is never the owner's typed service (owner's call, 5 Oct 2026: the website must never offer them). */
+const OLD_OTHER_SEEDS: ReadonlySet<string> = new Set([
+  "What I do", "Enquiries", "Appointments & visits", "Location & timings", "Updates & news", "References", "Save & share my card",
+  ...[...PERSONAL_DEFAULT.services, ...PERSONAL.personal.services, ...(PERSONAL.other?.services ?? [])].map((s) => s.en),
+].map((s) => s.toLowerCase()));
+
 /** The "what do you have / offer" answers (trade-questions.ts), split: `seeds` — the trade's own services the owner
  *  ticked (null when the question was never answered: every seed stands, as before); `typed` — what they wrote
  *  themselves ("Other ✎"), which no seed list knows and which used to reach nothing (owner's test, 5 Oct 2026).
- *  An "other" trade has no tick list and placeholder seeds (trade-questions.ts): its typed lines are read all the
- *  same, and once it has any, the placeholders step aside. */
+ *  An "other" trade has no tick list and placeholder seeds (trade-questions.ts): only what the owner TYPED is read —
+ *  a stale tick of an older seed list is not theirs — and once it has any, the placeholders step aside. */
 export function ownOfferings(categoryKey: string, answers: Record<string, string[]> | undefined, trade: TradeData | null): { typed: string[]; seeds: TradeData["services"] | null } {
   const picked = pickedOfferings(categoryKey, answers);
   const other = categoryKey === "other";
   const seedNames = new Set((trade?.services ?? []).map((s) => s.en.toLowerCase()));
+  const isSeed = (x: string) => seedNames.has(x) || (other && OLD_OTHER_SEEDS.has(x));
   const given = picked ? [...picked] : other ? answers?.offerings ?? [] : [];
-  const typed = [...new Set(given.map((x) => x.trim()).filter((x) => x && !isOther(x) && !seedNames.has(x.toLowerCase())))].slice(0, 7);
+  const typed = [...new Set(given.map((x) => x.trim()).filter((x) => x && !isOther(x) && !isSeed(x.toLowerCase())))].slice(0, 7);
   const seeds = picked && trade ? trade.services.filter((s) => picked.has(s.en)) : other && typed.length ? [] : null;
   return { typed, seeds };
 }
@@ -378,9 +388,10 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const personal = role === "personal";
   const name = setup.person || setup.business;
   const company = setup.business && setup.business !== name ? setup.business : "";
-  // The category's name — except the list's "Other", which is no trade: then the label the owner's words gave.
+  // The trade in the owner's words first (card-inputs tradeLabelOf: "Mithai wala" over the list's Sweets), else the
+  // category's name — never the list's "Other", which is no trade.
   const catName = cat && cat.key !== "other" ? cat.en : "";
-  const tradeName = catName || notOther(setup.categoryLabel);
+  const tradeName = notOther(setup.categoryLabel) || catName;
   // The owner's own designation first (Owner, Director, Dr., Advocate — profile step 1); else the old rule.
   const jobTitle = facts.designation || (professional ? (facts.qualification || catName || copy.jobTitle || tradeName || "Business") : (copy.jobTitle || tradeName || "Business"));
   let avatarUrl: string | undefined, avatarShape: "circle" | "square" | undefined;

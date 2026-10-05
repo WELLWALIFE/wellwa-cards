@@ -5,8 +5,9 @@
 // Every chip question also has "+ Write your own": it opens a line for the real answer (owner's call: "other se AI
 // kya samjhega?"), and that typed text is what is saved — never the word "Other".
 // Owner's call, 5 Oct 2026 ("typed text disappears"): the button only opens the line — a second tap focuses it and
-// never wipes anything; a draft is never added on blur, only on Add / Enter / comma; typed values sit under the line
-// as dashed ✎ chips with their own ×; a short "Added ✓" says what happened; the form and the save share one cap.
+// never wipes anything; a draft becomes a chip on Add / Enter / comma and also when the line loses focus (a Next tap
+// must not lose it); typed values sit under the line as dashed ✎ chips with their own ×; a short "Added ✓" says what
+// happened; the form and the save share one cap — a full list refuses a tick too, and says so.
 import { useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { Sec, box, chipCls, field, type FactsPatch } from "@/components/poster/facts-fields";
@@ -34,7 +35,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
   const c = categoryOf(category);
   // Which questions have their "Write your own" line open (also open whenever a typed answer is saved).
   const [otherOpen, setOtherOpen] = useState<Record<string, boolean>>({});
-  // Tick-all: what is being typed before Add. One-answer: the line as typed, committed on blur / Enter.
+  // Tick-all: what is being typed before Add (committed on blur too). One-answer: the line as typed, committed on blur / Enter.
   const [otherDraft, setOtherDraft] = useState<Record<string, string>>({});
   // "Added ✓" and friends, per question, for a moment.
   const [flash, setFlash] = useState<Record<string, string>>({});
@@ -73,9 +74,15 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
         const draft = otherDraft[q.key];
         const otherOn = !!otherOpen[q.key] || typedAll.length > 0;
         const seedFor = (t: string) => options.find((o) => sameText(o.en, t) || sameText(o.hi, t));
+        const full = cur.length >= MAX_TRADE_ANSWERS;
+        const fullNote = () => note(q.key, T(`List is full — ${MAX_TRADE_ANSWERS} at most`, `सूची भर गई — ज़्यादा से ज़्यादा ${MAX_TRADE_ANSWERS}`));
+        /** Tick / untick a seed. A full list takes no more (the save keeps only the first 16 — a tick past that
+         *  showed, then vanished on reload). */
         const toggle = (v: string) => {
           if (q.type === "one") { setOtherOpen((o) => ({ ...o, [q.key]: false })); setDraft(q.key, undefined); return set(q.key, picked.includes(v) ? [] : [v]); }
-          set(q.key, picked.includes(v) ? cur.filter((x) => x !== v) : [...cur, v]);
+          if (picked.includes(v)) return set(q.key, cur.filter((x) => x !== v));
+          if (full) return fullNote();
+          set(q.key, [...cur, v]);
         };
         /** Open only: when the line is already open, a tap just focuses it. */
         const openOther = () => {
@@ -95,26 +102,30 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
           if (v !== typed) set(q.key, v ? [v] : []);
           setDraft(q.key, undefined);
         };
-        /** Tick-all: the draft becomes chips (Enter, comma or + Add); several at once when separated by commas. A part
-         *  that names a seed ticks the seed; a repeat is reported, never silently dropped. */
+        /** Tick-all: the draft becomes chips (Enter, comma, + Add, or the line losing focus); several at once when
+         *  separated by commas. A part that names a seed ticks the seed; a repeat is reported; the parts a full list
+         *  cannot take stay in the line and are named — nothing is silently dropped. */
         const addTyped = () => {
           const parts = (draft ?? "").split(/[,،]/).map((x) => x.trim().slice(0, 80)).filter(Boolean);
           if (!parts.length) return;
           let next = cur, added = 0, ticked = 0, dup = 0;
+          const left: string[] = [];
           for (const p of parts) {
             const seed = seedFor(p);
             const v = seed?.en ?? p;
             if (next.some((x) => sameText(x, v))) { dup++; continue; }
-            if (next.length >= MAX_TRADE_ANSWERS) continue;
+            if (next.length >= MAX_TRADE_ANSWERS) { left.push(p); continue; }
             next = [...next, v];
             if (seed) ticked++; else added++;
           }
           if (next !== cur) set(q.key, next);
-          if (added || ticked || dup) setDraft(q.key, undefined);
-          note(q.key, added ? T("Added ✓", "जुड़ गया ✓")
+          if (added || ticked || dup) setDraft(q.key, left.length ? left.join(", ") : undefined);
+          const got = added + ticked;
+          const fullMsg = T(`List is full — ${MAX_TRADE_ANSWERS} at most`, `सूची भर गई — ज़्यादा से ज़्यादा ${MAX_TRADE_ANSWERS}`);
+          note(q.key, left.length ? (got ? T(`Added ${got} · list full for: ${left.join(", ")}`, `${got} जुड़े · सूची भर गई, नहीं जुड़े: ${left.join(", ")}`) : fullMsg)
+            : added ? T("Added ✓", "जुड़ गया ✓")
             : ticked ? T("already in the list ✓", "सूची में पहले से है ✓")
-            : dup ? T("already added", "पहले से जुड़ा है")
-            : T(`List is full — ${MAX_TRADE_ANSWERS} at most`, `सूची भर गई — ज़्यादा से ज़्यादा ${MAX_TRADE_ANSWERS}`));
+            : T("already added", "पहले से जुड़ा है"));
         };
         const removeTyped = (v: string) => set(q.key, cur.filter((x) => x !== v));
         const nearCap = cur.length >= MAX_TRADE_ANSWERS - 4;
@@ -124,7 +135,8 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
           <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)} hint={q.type === "many" && q.key !== "offerings" ? T("Tick all that apply.", "जितने हों, सब दबाएँ।") : undefined}>
             <div className="flex flex-wrap gap-2">
               {options.map((o) => (
-                <button key={o.en} type="button" onClick={() => toggle(o.en)} className={chipCls(picked.includes(o.en))}>{hi ? o.hi : o.en}</button>
+                <button key={o.en} type="button" onClick={() => toggle(o.en)} disabled={full && !picked.includes(o.en)} title={full && !picked.includes(o.en) ? T(`List is full — ${MAX_TRADE_ANSWERS} at most`, `सूची भर गई — ज़्यादा से ज़्यादा ${MAX_TRADE_ANSWERS}`) : undefined}
+                  className={`${chipCls(picked.includes(o.en))} disabled:cursor-not-allowed disabled:opacity-50`}>{hi ? o.hi : o.en}</button>
               ))}
               <button type="button" onClick={openOther} aria-expanded={otherOn} className={writeCls(otherOn)}>{T("+ Write your own", "+ अपना लिखें")}</button>
             </div>
@@ -138,6 +150,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
                 <div className="flex items-stretch gap-2">
                   <input ref={setRef} autoFocus={!!otherOpen[q.key]} value={draft ?? ""} onChange={(e) => setDraft(q.key, e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTyped(); } }}
+                    onBlur={() => { if ((draft ?? "").trim()) addTyped(); }}
                     placeholder={T("Write one and press Enter — or several with commas", "एक लिखकर Enter दबाएँ — या comma से कई")} className={`${box} min-w-0 flex-1`} />
                   <button type="button" onClick={addTyped} disabled={!(draft ?? "").trim()} className="shrink-0 rounded-xl grad-brand px-4 text-sm font-semibold text-white disabled:opacity-50">+ {T("Add", "जोड़ें")}</button>
                 </div>
@@ -152,7 +165,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
             )}
             {(msg || nearCap) && (
               <div className="flex items-center justify-between gap-2 text-xs">
-                <p role="status" className={msg ? "animate-rise font-medium text-brand-ink" : ""}>{msg}</p>
+                <p role="status" className={msg ? "animate-rise font-medium text-brand-ink" : "text-muted"}>{msg || (full ? T("List is full — untick one to tick another", "सूची भर गई — दूसरा दबाने के लिए एक हटाएँ") : "")}</p>
                 {nearCap && <span className="text-muted">{cur.length}/{MAX_TRADE_ANSWERS}</span>}
               </div>
             )}

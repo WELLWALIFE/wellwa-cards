@@ -3,8 +3,10 @@
 // "What do you do?" — type a few letters and pick one of the 2-3 trades suggested underneath (owner's call,
 // 2 Oct 2026: "search kare, suggested name 2/3 aa jaaye, user ek select kar le"). The full grouped list is one
 // tap away for anyone who would rather browse; it opens as a bottom sheet on phones and a centred panel on computers.
-// What the owner types never vanishes (owner's call, 5 Oct 2026): it is the first row of the drop-down, it is kept
-// on blur / Done / Enter unless it IS a listed trade, and it stays in the box as "own words · matched trade".
+// What the owner types never vanishes (owner's call, 5 Oct 2026): it is the first row of the drop-down, it stays in
+// the box after a blur, and it becomes the trade on Done / Enter or the "Use … as my trade" row — unless it IS a
+// listed trade. A blur alone keeps a few letters typed while scrolling the list ("sch" for School) in the box, and
+// makes them the trade only when nothing in the list matches them. Kept, it reads "own words · matched trade".
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, List, PenLine, Search, X } from "lucide-react";
 import { CATEGORIES, CATEGORY_GROUPS, categoryOf } from "@/lib/poster-categories";
@@ -90,11 +92,14 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
   function pick(k: string) { onChange(k); setQ(""); }
   /** The typed words become the trade; the closest listed one goes along so the parent can keep its look. */
   function keepTyped(text: string) { const t = text.trim().slice(0, 40); if (t && onCustom) onCustom(t, suggestCategories(t, 1)[0]); }
-  /** Blur, Done or Enter: what was typed is the trade — the listed one when it names it outright, else the owner's own words. */
-  function commit() {
+  /** What was typed is the trade — the listed one when it names it outright, else the owner's own words (3+ letters,
+   *  not already theirs). `chosen` = Done / Enter: the owner means it. A blur is not a choice: while the list still
+   *  offers trades for the letters ("sch" → School), they were scrolling, and the letters wait in the box. */
+  function commit(chosen: boolean) {
     if (exactKey) { if (exactKey !== value || custom) pick(exactKey); return; }
     const t = q.trim();
-    if (typedOk(t) && t.slice(0, 40) !== custom) keepTyped(t);
+    if (!typedOk(t) || t.slice(0, 40) === custom) return;
+    if (chosen || !suggestions.length) keepTyped(t);
   }
   /** Fold the drop-down and drop focus; the blur this causes must not commit again (the choice is already made). */
   function close() {
@@ -104,9 +109,11 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
   function closeSheet() { setOpen(false); setSheetQ(""); }
   // The full list is the FULL list (owner, 2 Oct 2026: "kya yahi full list hai?"): it opens with an empty search,
   // every trade in its group; what was typed is committed first so it is still there if the sheet is closed unpicked.
-  function openSheet() { commit(); close(); setSheetQ(""); setOpen(true); }
+  function openSheet() { commit(false); close(); setSheetQ(""); setOpen(true); }
 
   const showDrop = list && q.trim().length > 0;
+  // Letters left in the box by a blur that did not commit them: shown as typed, so they never vanish.
+  const waiting = !typing && q.trim().length > 0 && q.trim().slice(0, 40) !== custom;
   const ownRow = typedOk(q) && !exactKey;            // the typed words come first — unless they ARE a listed trade
   const ownOn = q.trim().slice(0, 40) === custom;
   return (
@@ -114,13 +121,13 @@ export function CategoryPicker({ value, onChange, lang = "en", placeholder = "Ch
       <div ref={root} className={`relative mt-1 ${className}`}>
         <div className={`flex items-center gap-2 rounded-xl border bg-surface px-3.5 py-3 text-[15px] ${typing ? "border-brand" : "border-border"}`}>
           <Search className="h-4 w-4 shrink-0 text-muted" />
-          <input ref={box} value={typing ? q : label(value)} role="combobox" aria-expanded={showDrop} aria-autocomplete="list" aria-controls="cat-suggest" enterKeyHint="done"
+          <input ref={box} value={typing || waiting ? q : label(value)} role="combobox" aria-expanded={showDrop} aria-autocomplete="list" aria-controls="cat-suggest" enterKeyHint="done"
             onFocus={() => { setTyping(true); setList(true); }}
-            onBlur={() => { setTyping(false); if (!settled.current) commit(); }}
+            onBlur={() => { setTyping(false); if (!settled.current) commit(false); }}
             onChange={(e) => { setQ(e.target.value); setList(true); }}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(); close(); } else if (e.key === "Escape") close(); }}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commit(true); close(); } else if (e.key === "Escape") close(); }}
             placeholder={typing ? (lang === "hi" ? "लिखें… जैसे school, मिठाई, doctor" : "Type… e.g. school, mithai, doctor") : placeholder}
-            className={`w-full bg-transparent outline-none ${(value || custom) && !typing ? "font-medium text-ink" : "font-normal text-ink placeholder:text-faint"}`} />
+            className={`w-full bg-transparent outline-none ${(value || custom) && !typing && !waiting ? "font-medium text-ink" : "font-normal text-ink placeholder:text-faint"}`} />
           <button type="button" onMouseDown={(e) => e.preventDefault()} onClick={openSheet} aria-label={lang === "hi" ? "पूरी सूची" : "Full list"} title={lang === "hi" ? "पूरी सूची" : "Full list"}
             className="grid h-7 w-7 shrink-0 place-items-center rounded-md text-muted hover:bg-surface2"><ChevronDown className="h-4 w-4" /></button>
         </div>

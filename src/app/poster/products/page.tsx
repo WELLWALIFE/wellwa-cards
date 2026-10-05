@@ -3,7 +3,7 @@
 // else sits under "More details". The same rows feed the V-Card, the website and the daily posters.
 // Owner's call (26 Sep 2026): two prices — the offer price and an optional MRP. When the MRP is higher, the card
 // shows it struck out next to the offer price, with "% OFF" and "You save ₹…" (card-compose / card-view).
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, RefreshCw } from "lucide-react";
@@ -37,12 +37,17 @@ const mrpShown = (price: string | null | undefined, mrp: string | null | undefin
 /* Owner's call (5 Oct 2026): the "a little more" answers were saved only by Continue — typing, then the back arrow
    or a step pill, lost them. Now the build form's autosave: 1.2 s after an edit → PATCH the product keys, a backup
    on this phone first (vcard-products:<uid>, like vcard-form) so a reload keeps them, and one last keepalive PATCH
-   when the page is left. Storage is never trusted (private mode / a full disk throw). */
-type FactsBackup = { facts: Partial<CardFacts>; dirty: boolean; savedAt: number };
+   when the page is left. Storage is never trusted (private mode / a full disk throw). The backup also keeps `base`,
+   the server's values the edits were typed over (and `sent`, the last slice a PATCH carried): on a later load a key
+   is restored only where the server still holds one of those — an answer changed since on the build form is never
+   written over by an old backup. */
+type FactsBackup = { facts: Partial<CardFacts>; base?: Partial<CardFacts>; sent?: Partial<CardFacts>; dirty: boolean; savedAt: number };
 const backupKey = (uid: string) => `vcard-products:${uid}`;
 const DAY = 24 * 60 * 60 * 1000;
 function readJson<T>(key: string): T | null { try { const raw = localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : null; } catch { return null; } }
 function writeJson(key: string, value: unknown) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ } }
+const same = (a: unknown, b: unknown) => JSON.stringify(a ?? "") === JSON.stringify(b ?? "");
+const blank = (v: unknown) => v == null || v === "" || (Array.isArray(v) && !v.length);
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -70,68 +75,103 @@ export default function ProductsPage() {
   const C = (e: string, h: string) => (en ? e : h);
   const factsDirty = useRef(false);
   const [edits, setEdits] = useState(0);
-  const [uid, setUid] = useState("");
+  const uid = useRef("");
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   /** The product keys not yet on the server, and the headers a leaving-page PATCH can still send without awaiting. */
   const pending = useRef<Record<string, unknown> | null>(null);
   const authRef = useRef<Record<string, string> | null>(null);
+  /** The server's product slice the current edits started from (what a restored backup must still find there). */
+  const base = useRef<Record<string, unknown> | null>(null);
+  /** The slice the latest PATCH carried — the server may hold it when the next one never landed (tab closed). */
+  const sent = useRef<Record<string, unknown> | null>(null);
   const saveSeq = useRef(0);
+  /** PATCHes go one after the other (the route has no version check: two in flight could land in either order and the
+   *  older slice would win), and a response marks the backup clean only when no newer edit has happened since. */
+  const chain = useRef<Promise<unknown>>(Promise.resolve());
+  const inflight = useRef(0);
   const setF = (p: FactsPatch) => { factsDirty.current = true; setEdits((n) => n + 1); setFacts((f) => ({ ...(f ?? normalizeFacts({})), ...p, social: { ...(f ?? normalizeFacts({})).social, ...(p.social ?? {}) } })); };
   const [going, setGoing] = useState(false);
+  const send = useCallback((body: Record<string, unknown>, seq: number, keepalive: boolean): Promise<boolean> => {
+    const go = () => fetch("/api/card/facts", { method: "PATCH", headers: authRef.current ?? { "content-type": "application/json" }, body: JSON.stringify({ facts: body }), ...(keepalive ? { keepalive: true } : {}) })
+      .then((r) => {
+        if (!r.ok || seq !== saveSeq.current) return r.ok; // typed again meanwhile: that run owns the backup
+        pending.current = null; factsDirty.current = false; base.current = body;
+        if (uid.current) writeJson(backupKey(uid.current), { facts: body, base: body, dirty: false, savedAt: Date.now() });
+        return true;
+      }, () => false);
+    sent.current = body;
+    const p = inflight.current > 0 ? chain.current.then(go, go) : go();
+    inflight.current++;
+    const done = p.finally(() => { inflight.current--; });
+    chain.current = done;
+    return done;
+  }, []);
   useEffect(() => {
     (async () => {
-      const who = await getBrowserSupabase()?.auth.getUser().catch(() => null);
-      const me = who?.data.user?.id ?? "";
+      const sb = getBrowserSupabase();
+      const who = await sb?.auth.getUser().catch(() => null);
+      // getUser() asks the auth server; when that call fails but the facts still load, the local session names the
+      // account — the autosave must not stop because one auth call hiccupped.
+      const me = who?.data.user?.id || (await sb?.auth.getSession().catch(() => null))?.data.session?.user.id || "";
       const cleared = dropStaleLocal(who?.data.user);
-      setUid(me);
+      uid.current = me;
       authRef.current = await authHeaders();
       const r = await api<FactsResponse>("/api/card/facts");
       if (!r.ok || !r.data.facts) return;
       let f = r.data.facts;
-      // A backup whose PATCH never landed (offline, page killed): it goes over the server's copy and is saved now.
+      const server = pickFacts(f, PRODUCT_FACT_KEYS);
+      base.current = server;
+      // A backup whose PATCH never landed (offline, page killed): its changed keys go over the server's copy and are
+      // saved now — but only where the server still holds what they were typed over, or the slice of the PATCH
+      // before (an older backup without a base: only where the server has nothing). A key changed since elsewhere
+      // stands; a backup with nothing left to restore is finished with.
       const b = me && !cleared ? readJson<FactsBackup>(backupKey(me)) : null;
-      if (b?.dirty && Date.now() - (b.savedAt ?? 0) < 7 * DAY) { f = { ...f, ...b.facts }; factsDirty.current = true; setEdits((n) => n + 1); }
+      if (b?.dirty && Date.now() - (b.savedAt ?? 0) < 7 * DAY) {
+        const restored: Partial<CardFacts> = {};
+        for (const k of PRODUCT_FACT_KEYS) {
+          if (!(k in (b.facts ?? {})) || same(b.facts[k], server[k])) continue;
+          const untouched = b.base ? same(server[k], b.base[k]) || (!!b.sent && same(server[k], b.sent[k])) : blank(server[k]);
+          if (untouched) (restored as Record<string, unknown>)[k] = b.facts[k];
+        }
+        if (Object.keys(restored).length) { f = { ...f, ...restored }; factsDirty.current = true; setEdits((n) => n + 1); }
+        else writeJson(backupKey(me), { ...b, dirty: false });
+      }
       setFacts(f); setHasAbout(!!r.data.setup?.about?.trim()); setCategory(r.data.setup?.category ?? "");
     })().catch(() => undefined);
   }, []);
   useEffect(() => {
-    if (!uid || !edits || !facts) return;
+    if (!edits || !facts) return;
     const slice = pickFacts(facts, PRODUCT_FACT_KEYS);
     pending.current = slice;
-    writeJson(backupKey(uid), { facts: slice, dirty: true, savedAt: Date.now() });
-    setSaveState("saving");
     const seq = ++saveSeq.current;
+    if (uid.current) writeJson(backupKey(uid.current), { facts: slice, base: base.current ?? {}, ...(sent.current ? { sent: sent.current } : {}), dirty: true, savedAt: Date.now() });
+    setSaveState("saving");
     const t = setTimeout(async () => {
       try {
         authRef.current = await authHeaders();
-        const r = await api("/api/card/facts", { method: "PATCH", json: { facts: slice } });
+        const ok = await send(slice, seq, false);
         if (seq !== saveSeq.current) return; // typed again meanwhile: that run reports
-        if (!r.ok) { setSaveState("failed"); return; }
-        pending.current = null; factsDirty.current = false;
-        writeJson(backupKey(uid), { facts: slice, dirty: false, savedAt: Date.now() });
-        setSaveState("saved");
-      } catch { if (seq === saveSeq.current) setSaveState("failed"); /* offline: the backup keeps the answers */ }
+        setSaveState(ok ? "saved" : "failed"); /* failed / offline: the backup keeps the answers */
+      } catch { if (seq === saveSeq.current) setSaveState("failed"); }
     }, 1200);
     return () => clearTimeout(t);
-  }, [edits, facts, uid]);
-  // Left before the 1.2 s (back arrow, a step pill, the tab closed): send what is pending at once. sendBeacon
-  // cannot carry the Bearer header /api/card/facts needs, so a keepalive fetch does the same job.
+  }, [edits, facts, send]);
+  // Left before the 1.2 s (back arrow, a step pill, the tab closed): send what is pending at once, after any PATCH
+  // still in flight. sendBeacon cannot carry the Bearer header /api/card/facts needs, so a keepalive fetch does the
+  // same job.
   useEffect(() => {
     const flush = () => {
-      const body = pending.current, h = authRef.current;
-      if (!body || !h) return;
+      const body = pending.current;
+      if (!body || !authRef.current) return;
       pending.current = null;
-      try {
-        fetch("/api/card/facts", { method: "PATCH", headers: h, body: JSON.stringify({ facts: body }), keepalive: true })
-          .then((r) => { if (r.ok && uid) writeJson(backupKey(uid), { facts: body, dirty: false, savedAt: Date.now() }); }).catch(() => undefined);
-      } catch { /* the backup on this phone keeps them */ }
+      try { send(body, saveSeq.current, true).catch(() => undefined); } catch { /* the backup on this phone keeps them */ }
     };
     window.addEventListener("pagehide", flush);
     return () => { window.removeEventListener("pagehide", flush); flush(); };
-  }, [uid]);
+  }, [send]);
   async function continueToSite() {
     setGoing(true);
-    try { if (facts && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, PRODUCT_FACT_KEYS) } }); } catch { /* the build form shows them again */ }
+    try { if (facts && factsDirty.current) await send(pickFacts(facts, PRODUCT_FACT_KEYS), saveSeq.current, false); } catch { /* the build form shows them again */ }
     router.push("/poster/card/build?make=1");
   }
 

@@ -38,26 +38,23 @@ const NEW_PRODUCT_COLS = ",price,mrp,brand,category";
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : "").trim().slice(0, n);
 
 const isOther = (s: string) => /^(other|others|अन्य)$/i.test(s.trim());
-/** A trailing joining word makes a bad label ("Mobile repair and" → "Mobile repair"). */
-const JOIN_WORD = /^(and|&|or|in|at|of|for|with|to|the|a|an|और|में|के|की|का|से|पर|है|हैं)$/i;
 
 /**
  * The trade in words — never the list's bare "Other" (owner's test, 5 Oct 2026: the card read "a complete website
- * of a Other"). A known trade is its category name. An "other" (or unknown) one: the trade the owner typed because
- * the list had none ("drone repair"); else their "what do you do" line (trade-questions.ts, key `main`); else the
- * opening words of their about; else "Business" — the word every caller already fell back to.
+ * of a Other"). The trade the owner typed comes first, for ANY category ("Mithai wala" stays "Mithai wala" even
+ * when the list matched it to Sweets — the list's key keeps the seeds and the look, the owner's words are what the
+ * card, the website and the AI brief say). Else a known trade is its category name; an "other" (or unknown) one is
+ * their "what do you do" line (trade-questions.ts, key `main`); else "Business" — the word every caller already
+ * fell back to. The about text is never a source: its opening words ("Sharma Enterprises is") are no trade.
  */
-export function tradeLabelOf(setup: Pick<SetupInfo, "category" | "categoryLabel" | "about">, answers?: CardFacts["tradeAnswers"]): string {
-  const cat = categoryOf(setup.category);
-  if (cat && cat.key !== "other") return cat.en;
+export function tradeLabelOf(setup: Pick<SetupInfo, "category" | "categoryLabel">, answers?: CardFacts["tradeAnswers"]): string {
   const typed = S(setup.categoryLabel, 40);
   if (typed && !isOther(typed)) return typed;
+  const cat = categoryOf(setup.category);
+  if (cat && cat.key !== "other") return cat.en;
   const main = S(answers?.main?.[0], 60);
   if (main && !isOther(main)) return main;
-  const words = S(setup.about, 240).split(/[.!?।\n]/)[0].split(/\s+/).filter(Boolean);
-  const n = words.length > 3 && JOIN_WORD.test(words[3]) ? 3 : 4;
-  const lead = words.slice(0, n).join(" ").replace(/[,;:\-–—]+$/, "").slice(0, 40).trim();
-  return lead && !isOther(lead) ? lead : "Business";
+  return "Business";
 }
 
 /**
@@ -210,9 +207,9 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     business: S(biz.name, 80) || (profile?.persona === "business" ? S(profile?.name, 80) : ""),
     person: S(meta.display_name, 60) || S(meta.full_name, 60),
     category,
-    // A trade typed by the owner because the list had none ("drone repair") is the label everything downstream
-    // works from — the writer, the designer, the posters — in place of a bare "Other" (tradeLabelOf).
-    categoryLabel: tradeLabelOf({ category, categoryLabel: S(biz.trade, 40), about }, facts.tradeAnswers),
+    // The trade as the owner typed it ("Mithai wala", "drone repair") is the label everything downstream works
+    // from — the writer, the designer, the posters — whatever the list matched it to, never a bare "Other" (tradeLabelOf).
+    categoryLabel: tradeLabelOf({ category, categoryLabel: S(biz.trade, 40) }, facts.tradeAnswers),
     persona: cat?.persona ?? profile?.persona ?? "business",
     city: S(biz.city, 60) || S(profile?.city, 60),
     address: S(biz.address, 200),
