@@ -51,7 +51,13 @@ export async function reviewDesign(o: { shot: Buffer; card: Card; lang: Lang; ca
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const langLine = o.lang === "hi" ? "Write notes and any new headline/sub in Hindi (Devanagari)." : o.lang === "hinglish" ? "Write notes and any new headline/sub in Hinglish (Roman Hindi)." : "Write notes and any new headline/sub in English.";
-  const text = `Business: ${o.card.company || o.card.name}${o.category ? ` (${o.category})` : ""}. ${langLine}\n\nOUTLINE (block ids in brackets):\n${cardOutline(o.card).slice(0, 6000)}`;
+  // The blueprint (docs/website-looks-v2.md §8): what this page's structure must look like, and what not to touch.
+  const bp = o.card.site?.style?.blueprint;
+  const bpLine = bp === "bento" ? "This page is a BENTO board: the hero is a grid of tiles (photo, name, call / WhatsApp, open now, rating, map, offer, product, since). Check: no tile is empty or repeats another, every tile's text fits, the board reads top-left to bottom-right. The hero layout words (photo / editorial) do not apply here — never send set_style hero."
+    : bp === "cinematic" ? "This page is CINEMATIC: a full-screen photo under a dark gradient with the headline rising. Check: the headline is legible on the photo (the gradient is strong enough), the rail of products shows whole cards, the photo bands between sections carry no text. Never send set_style hero."
+    : bp === "story" ? "This page is a STORY: full-screen slides inside a phone frame beside the name and QR. Check: every slide is full (no slide with only a heading), the cover's headline is legible on its photo, the contact slide has its buttons. Never send set_style hero or move_block."
+    : "";
+  const text = `Business: ${o.card.company || o.card.name}${o.category ? ` (${o.category})` : ""}. ${langLine}${bpLine ? `\n\n${bpLine}` : ""}\n\nOUTLINE (block ids in brackets):\n${cardOutline(o.card).slice(0, 6000)}`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(o.timeoutMs ?? 30_000),

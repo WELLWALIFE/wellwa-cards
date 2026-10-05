@@ -40,6 +40,7 @@ import { SITE_CARDS, cleanSiteUrl, looksLikeSite, socialDetour } from "@/lib/sit
 import { useT } from "@/lib/poster-i18n";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
+import { LookTweaks } from "@/components/poster/look-tweaks";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -802,6 +803,11 @@ export default function BuildCard() {
         // the preview the owner approved carries the look they picked, and that wins over both.
         const pickedStyle = opts?.style ?? shown.site?.style;
         if (pickedStyle && out.site) out = { ...out, site: { ...out.site, style: { ...pickedStyle } } };
+        // The owner's adjustments on the preview (tiles, clip / photo, section order and hidden list) go live too.
+        if (out.site && shown.site) {
+          const h = shown.site.hero;
+          out = { ...out, site: { ...out.site, ...(shown.site.home ? { home: shown.site.home } : {}), ...(out.site.hero ? { hero: { ...out.site.hero, ...(h?.tiles ? { tiles: h.tiles } : {}), ...(h?.video !== undefined ? { video: h.video } : {}) } } : {}) } };
+        }
       }
       // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
       // made at set-up is not lost on the way to the finished card. It is appended last and marked hidden, so
@@ -1027,6 +1033,8 @@ export default function BuildCard() {
           </div>
         </div>
       )}
+      {/* Add / remove (docs/website-looks-v2.md §6): tiles, sections, dark / light, clip / photo — instant, no build, no credit. */}
+      {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); }} />}
       <div ref={previewRef} className="grid scroll-mt-20 grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
         {(liveUser
           ? ([["site", T("1. Website", "1. Website"), Globe], ["phone", T("2. Card", "2. Card"), Smartphone]] as const)
