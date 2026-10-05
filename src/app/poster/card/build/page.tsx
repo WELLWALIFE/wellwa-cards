@@ -22,7 +22,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
-import { applyLook, threeLooks, type LookKey } from "@/lib/site-looks";
+import { applyLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock, SiteStyle } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
@@ -50,7 +50,7 @@ type Row = { id?: string; name: string; brand: string; price: string; photo: str
 /** A finished preview kept on this phone. `built` is the card the server wrote (before it was merged into the
  *  live card) and `liveSig` says which live card it was merged into, so a preview is never published on top of
  *  a card that has changed since. */
-type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number };
+type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number; looks?: LookPlan[] };
 /** The server's build, as GET/POST /api/card/build describe it (card-jobs.ts). */
 type BuildStage = "details" | "website" | "pictures" | "writing" | "checking";
 type JobView = { job: string; state: "running" | "done" | "failed"; stage: BuildStage; fresh: boolean; elapsed: number; claimed: boolean; status?: number; result?: unknown };
@@ -228,7 +228,8 @@ export default function BuildCard() {
   // Three looks for the website on screen (site-looks.ts, docs/website-looks-v2.md): three blueprints — a tile board,
   // full-screen scenes, swipe slides — on the same content; a tap swaps the whole design on the spot.
   const [lookKey, setLookKey] = useState<LookKey>("bento");
-  const looks = useMemo(() => (built?.site ? threeLooks(built, built.site.style) : []), [built]);
+  const [plans, setPlans] = useState<LookPlan[] | undefined>(undefined);
+  const looks = useMemo(() => (built?.site ? threeLooks(built, built.site.style, plans) : []), [built, plans]);
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
     if (!look) return;
@@ -363,7 +364,7 @@ export default function BuildCard() {
       }
       if (draft) {
         setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig);
-        setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []);
+        setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []); setPlans(draft.looks);
         setState(makeNow ? "make" : "preview");
         return;
       }
@@ -405,8 +406,8 @@ export default function BuildCard() {
   /* keep the draft in step with the preview (link change, "Please check" ticks) */
   useEffect(() => {
     if (state !== "preview" || !card || !uid) return;
-    writeJson(draftKey(uid), { card, built, liveSig, checks, missing, off, savedAt: Date.now() } satisfies Draft);
-  }, [state, card, built, liveSig, checks, missing, off, uid]);
+    writeJson(draftKey(uid), { card, built, liveSig, checks, missing, off, savedAt: Date.now(), ...(plans ? { looks: plans } : {}) } satisfies Draft);
+  }, [state, card, built, liveSig, checks, missing, off, uid, plans]);
 
   const username = card?.username ?? "";
   // Your-name / business-name links for the preview's one-tap switch (each checked free for THIS card).
@@ -627,9 +628,10 @@ export default function BuildCard() {
       const nextChecks = r.data.checks ?? [];
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey(built.site?.style?.blueprint ?? "bento");
+      const nextLooks = (r.data.looks ?? []) as LookPlan[];
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey(built.site?.style?.blueprint ?? "bento"); setPlans(nextLooks.length ? nextLooks : undefined);
       if (v.fresh) access.refresh();
-      if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
+      if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now(), ...(nextLooks.length ? { looks: nextLooks } : {}) } satisfies Draft);
       // Kept on this phone now (the draft above), so the server need not offer it again.
       void claimIt();
       // Three different things, which used to be one vague line:

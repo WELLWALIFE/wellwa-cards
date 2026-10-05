@@ -17,13 +17,19 @@ import { tradeAnswerLines } from "@/lib/trade-questions";
 import { logUsage } from "@/lib/ai-usage";
 import type { CardFacts, SetupInfo, SavedProduct } from "@/lib/card-facts";
 import type { SiteStyle } from "@/lib/types";
+import { BLUEPRINTS, cleanTiles, TILES, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
+import { moodPlans, tradeMood, type MoodPlan } from "@/lib/trade-moods";
 
 export type SiteDesignPlan = {
   style: SiteStyle;
   /** Home sections, first to last (the composer's HomeKind words). */
   order?: HomeKind[];
+  /** Bento: the tiles on the board, in order. */
+  tiles?: TileKey[];
   /** One line on why — logged, shown nowhere. */
   why: string;
+  /** The three looks (docs/website-looks-v2.md §5): this plan first, then two more on the other blueprints. */
+  looks?: MoodPlan[];
 };
 
 const MODEL = "gemini-3.5-flash-lite";
@@ -62,7 +68,8 @@ const PRINCIPLES = `Design principles you follow (current, 2026):
 - Light palettes (ivory, pearl) only for premium, calm or editorial brands with good photos; dark, saturated palettes for energy and trust (ocean / teal for health and education, emerald for agriculture and nature, saffron / crimson for temples, food and festivals, gold / noir for jewellery and luxury, steel for builders and law, royal / rose for beauty and fashion).
 - Corners: round for friendly and kids, soft for most, sharp for luxury, law, editorial and industrial.
 - Order the home page by what a new customer wants first: a shop shows what it sells, a service shows what it does and why, a professional shows who they are, a school shows classes and why parents choose it; reviews near the end, the offer where it helps.
-- Never pick a layout the content cannot fill.`;
+- Never pick a layout the content cannot fill.
+- A BLUEPRINT is the page's structure (the biggest decision): bento = a board of tiles, everything at a glance (shops, services, clinics); cinematic = a full-screen photo and scenes (hotels, gyms, jewellers, premium); story = full-screen swipe slides like Instagram (cafes, fashion, salons, creators). You give THREE plans on THREE different blueprints: the first is your pick for this business.`;
 
 function menu(): string {
   const pals = SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => `${p.key} (${p.tone}, ${p.mid})`).join(", ");
@@ -70,6 +77,8 @@ function menu(): string {
   const heroes = HERO_LAYOUTS.map((h) => `${h.key} — ${h.blurb}`).join("; ");
   const radii = RADII.map((r) => r.key).join(", ");
   return `The renderer can draw exactly these (use these words only):
+- blueprint: one of ${BLUEPRINTS.map((b) => `${b.key} — ${b.blurb}`).join("; ")}.
+- tiles (bento only; the board shows these, in this order, only when the business has them): ${TILES.map((t) => t.key).join(", ")}.
 - palette: one of ${pals}; or "brand" with "color": "#rrggbb" when the business has a clear own colour (its logo, its trade's traditional colour).
 - font: one of ${fonts}.
 - hero: one of ${heroes}.
@@ -95,6 +104,7 @@ function briefText(b: DesignBrief): string {
     facts.customers.length ? `Customers: ${facts.customers.join(", ")}` : "",
     setup.about ? `About (owner's words): ${setup.about.slice(0, 400)}` : "",
     `Default look for this trade (change it only for a reason): ${JSON.stringify(b.defaults)}`,
+    (() => { const m = tradeMood(setup.category); return `Mood for this trade: ${m.mood}. Blueprints that usually suit it, best first: ${m.blueprints.join(" > ")}${m.order ? `; a customer of this trade wants the home page in roughly this order: ${m.order.join(" > ")}` : ""}.`; })(),
     b.avoid ? (() => {
       const w = b.wants?.length ? b.wants : ["look", "layout"];
       const asks = [w.includes("look") ? "a clearly different palette (another tone if you can) and a different font pairing" : "KEEP the palette and the font pairing exactly", w.includes("layout") ? "a different hero and different section layouts and order" : "KEEP the hero, the section layouts and the order"].join("; ");
@@ -129,7 +139,7 @@ export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): Site
   // What was not asked for stays exactly as it was: the owner changes one thing at a time and sees it change.
   if (!wantLook) { style.palette = avoid.palette ?? style.palette; if (avoid.color) style.color = avoid.color; else delete style.color; style.font = avoid.font ?? style.font; }
   if (!wantLayout) { style.hero = avoid.hero ?? style.hero; style.pattern = avoid.pattern ?? style.pattern; style.radius = avoid.radius ?? style.radius; style.motion = avoid.motion ?? style.motion; if (avoid.layouts) style.layouts = avoid.layouts; }
-  const guard = (plan?: SiteDesignPlan | null) => ({ style, ...(wantLayout && plan?.order ? { order: plan.order } : {}), why: plan?.why ? `${plan.why} (as asked)` : "Changed as asked." });
+  const guard = (plan?: SiteDesignPlan | null): SiteDesignPlan => ({ style, ...(wantLayout && plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}), why: plan?.why ? `${plan.why} (as asked)` : "Changed as asked.", looks: threePlans([{ ...style, blueprint: style.blueprint, order: plan?.order, tiles: plan?.tiles, why: plan?.why }], b).map((p) => ({ blueprint: p.style.blueprint!, style: p.style, ...(p.order ? { order: p.order } : {}), ...(p.tiles ? { tiles: p.tiles } : {}), why: p.why })) });
   if (!wantLook && !wantLayout) return guard(plan);
   const pick = <T,>(list: T[], same: (x: T) => boolean, i: number): T | undefined => { const rest = list.filter((x) => !same(x)); return rest.length ? rest[i % rest.length] : undefined; };
   // Palette: the logo's own colour is the business's and stays; otherwise another palette, another tone first.
@@ -147,6 +157,8 @@ export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): Site
     const nf = pick(FONT_PAIRS.filter((f) => f.key !== "look" && f.key !== "hindi"), (f) => f.key === oldFont, round * 2 + (b.setup.city.length % 3));
     if (nf) style.font = nf.key;
   }
+  // Blueprint: a layout change is a different page, not the same board in other colours.
+  if (wantLayout && avoid.blueprint && (!style.blueprint || style.blueprint === avoid.blueprint)) style.blueprint = pick(BLUEPRINTS.map((x) => x.key), (k) => k === avoid.blueprint, round) ?? style.blueprint;
   // Hero: another the content can carry.
   const oldHero = avoid.hero ?? b.defaults.hero;
   if (wantLayout && (!style.hero || style.hero === oldHero)) {
@@ -186,9 +198,33 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   if ((["none", "calm", "lively"] as string[]).includes(motion)) style.motion = motion as SiteStyle["motion"];
   const pattern = typeof o.pattern === "string" ? o.pattern.trim().toLowerCase() : "";
   if ((["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(pattern)) style.pattern = pattern as SiteStyle["pattern"];
+  const blueprint = typeof o.blueprint === "string" ? o.blueprint.trim().toLowerCase() : "";
+  if (BLUEPRINTS.some((x) => x.key === blueprint)) style.blueprint = blueprint as BlueprintKey;
+  const tiles = cleanTiles(o.tiles);
   const why = typeof o.why === "string" ? o.why.trim().slice(0, 200) : "";
   if (!Object.keys(style).length && order.length < 3) return null;
-  return { style, ...(order.length >= 3 ? { order } : {}), why };
+  return { style, ...(order.length >= 3 ? { order } : {}), ...(tiles && style.blueprint === "bento" ? { tiles } : {}), why };
+}
+
+/** The AI's plans → three, on three different blueprints, the mood brief filling whatever is missing or doubled. */
+function threePlans(raws: unknown[], b: DesignBrief): SiteDesignPlan[] {
+  const got = raws.map((r) => clean(r, b)).filter((p): p is SiteDesignPlan => !!p && !!p.style.blueprint);
+  const seen = new Set<BlueprintKey>();
+  const out: SiteDesignPlan[] = [];
+  for (const p of got) { const k = p.style.blueprint!; if (!seen.has(k)) { seen.add(k); out.push(p); } }
+  const base = out[0]?.style ?? b.defaults;
+  for (const mp of moodPlans(b.setup.category, { ...b.defaults, ...base })) {
+    if (out.length >= 3) break;
+    if (seen.has(mp.blueprint)) continue;
+    seen.add(mp.blueprint);
+    out.push({ style: mp.style, ...(mp.order ? { order: mp.order } : {}), ...(mp.tiles ? { tiles: mp.tiles } : {}), why: mp.why });
+  }
+  return out.slice(0, 3);
+}
+
+/** The three looks of a build with no AI plan at all (AI off, slow, or the trade check): the mood brief's three. */
+export function fallbackLooks(b: Pick<DesignBrief, "setup" | "defaults">): MoodPlan[] {
+  return moodPlans(b.setup.category, b.defaults);
 }
 
 /** The designer's plan for this business, or null (AI off, slow, or nothing usable) — the caller then keeps the
@@ -197,7 +233,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
-  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website. Reply with JSON: {"palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 25 words"}.`;
+  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website: THREE plans, each on a different blueprint, your pick first. Reply with JSON: {"plans": [{"blueprint": "...", "palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "tiles": ["..."] (bento only), "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 20 words, to the owner"}, {...}, {...}]}.`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(timeoutMs),
@@ -205,7 +241,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
       body: JSON.stringify({
         systemInstruction: { parts: [{ text: system }] },
         contents: [{ parts: [{ text }] }],
-        generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 600 },
+        generationConfig: { responseMimeType: "application/json", temperature: 0.4, maxOutputTokens: 1600 },
       }),
     });
     const j = await r.json().catch(() => ({}));
@@ -215,7 +251,12 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
     const out = parts.filter((p) => typeof p?.text === "string" && !p.thought).map((p) => p.text as string).join("").trim();
     let v: unknown = null;
     try { v = JSON.parse(out); } catch { const a = out.indexOf("{"), z = out.lastIndexOf("}"); if (a >= 0 && z > a) { try { v = JSON.parse(out.slice(a, z + 1)); } catch { v = null; } } }
-    return clean(v, b);
+    const raws = v && typeof v === "object" && Array.isArray((v as { plans?: unknown }).plans) ? (v as { plans: unknown[] }).plans : v ? [v] : [];
+    const plans = threePlans(raws, b);
+    if (!plans.length) return null;
+    const [first, ...rest] = plans;
+    const looks: MoodPlan[] = [first, ...rest].map((p) => ({ blueprint: p.style.blueprint!, style: p.style, ...(p.order ? { order: p.order } : {}), ...(p.tiles ? { tiles: p.tiles } : {}), why: p.why }));
+    return { ...first, looks };
   } catch {
     return null;
   }

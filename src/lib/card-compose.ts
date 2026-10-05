@@ -287,7 +287,7 @@ export type ComposeInput = {
   reference?: { url: string; style?: ReferenceStyle; look?: MeasuredLook } | null;
   /** The designer AI's plan for this business (site-designer.ts): used when there is no reference website;
    *  the owner's hand-picked look (facts.style) still wins over it. */
-  design?: { style: SiteStyle; order?: HomeKind[] } | null;
+  design?: { style: SiteStyle; order?: HomeKind[]; tiles?: string[] } | null;
   /** The strongest colour of the owner's logo (#rrggbb) — the business's own colour, under the designer's plan. */
   logoColor?: string | null;
   /** The business's rating on Google, when the owner has connected their Google Business profile: real
@@ -653,6 +653,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
         sub: copy.hero?.sub || copy.tagline,
         ...(firstImage || setup.logo ? { imageUrl: firstImage || setup.logo } : {}),
         ctaLabel: ctaText,
+        ...(input.design?.tiles?.length ? { tiles: input.design.tiles } : {}),
       },
       // "Make it like this website": its colours, fonts, rounding, hero and the order it puts things in —
       // never its words, pictures or facts. What the browser measured wins over what the HTML hinted at;

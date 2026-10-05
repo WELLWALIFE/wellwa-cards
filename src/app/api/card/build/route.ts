@@ -31,7 +31,7 @@ import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
-import { designSite, differentFrom } from "@/lib/site-designer";
+import { designSite, differentFrom, fallbackLooks } from "@/lib/site-designer";
 import { logoColor } from "@/lib/media/logo-color";
 import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
@@ -680,6 +680,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     ...(aiPhotos ? { aiPhotos } : {}),
     ...(designReview ? { designReview } : {}),
     ...(design ? { design: { style: design.style, ...(design.order ? { order: design.order } : {}), why: design.why } } : {}),
+    // The three looks: the designer's, or the trade's mood brief's when the designer gave none.
+    looks: design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang), ...(built.site?.style ?? {}) } }),
   };
   return answer(out);
 }

@@ -602,6 +602,8 @@ export type BuildResponse = {
   /** The designer AI's plan for this build (site-designer.ts): the look it chose and its one-line reason, so the
    *  owner can see the site was designed for them, and so a build with no plan (AI off or slow) is visible. */
   design?: { style: SiteStyle; order?: string[]; why: string };
+  /** The three looks (docs/website-looks-v2.md §5): the designer's pick first, then the other two blueprints. */
+  looks?: { blueprint: "bento" | "cinematic" | "story"; style: SiteStyle; order?: string[]; tiles?: string[]; why: string }[];
   /** The text manager's report (card-text.ts): what it filled from the trade or had written, and what is still
    *  thinner than a finished website wants — so the owner can be told where their own words would help most. */
   text?: { filled: string[]; thin: string[] };
