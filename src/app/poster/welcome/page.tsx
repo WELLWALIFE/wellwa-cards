@@ -7,6 +7,7 @@ import { PartyPopper, ArrowRight, Clock } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
 import { PROFILE_STEPS } from "@/components/poster/profile-steps";
+import { SETUP_SCREENS } from "@/lib/setup-steps";
 
 export default function WelcomePage() {
   const { lang } = useT();
@@ -28,17 +29,18 @@ export default function WelcomePage() {
             : "Your FREE website + digital card — in 5 minutes. Just fill your profile; both are made from it."}
         </p>
       </div>
-      <ol className="space-y-1.5 text-left text-sm">
-        {PROFILE_STEPS.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-3 rounded-xl border border-border bg-surface px-3 py-2.5">
-            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-brand-soft text-xs font-bold text-brand-ink">{i + 1}</span>
-            <span className="font-medium">{hi ? s.hi : s.en}</span>
+      {/* The same ten screens the bar counts (setup-steps.ts), so the number here is the number there. */}
+      <ol className="grid grid-cols-2 gap-1.5 text-left text-[13px]">
+        {SETUP_SCREENS.map((s, i) => (
+          <li key={s.key} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">{i + 1}</span>
+            <span className="min-w-0"><span className="block truncate font-medium">{hi ? s.hi : s.en}</span><span className="block truncate text-[11px] text-muted">{hi ? s.blurbHi : s.blurb}</span></span>
           </li>
         ))}
       </ol>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? "शुरू करें (5 मिनट)" : "Start (5 min)"} <ArrowRight className="h-5 w-5" />
+          {hi ? "शुरू करें — 10 छोटे steps, 5 मिनट" : "Start — 10 short steps, 5 min"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}

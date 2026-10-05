@@ -5,7 +5,7 @@
 //   products — step 3 "Products / Services": what makes you special, who buys, the offer, your work in your words
 // One component, three screens: the set-up (step 2), My products (step 3) and the build form ("Check your
 // details"), so a question is asked once and the "Make it better" chips (q-… ids) still land on it anywhere.
-import { useState } from "react";
+import { createContext, useContext, useState } from "react";
 import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
 import { Camera, LoaderCircle, X } from "lucide-react";
 import { uploadImage } from "@/lib/poster-client";
@@ -31,8 +31,14 @@ export const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-
 export const field = `mt-1 w-full ${box}`;
 export const chipCls = (on: boolean) => `rounded-full border-2 px-3.5 py-2 text-sm font-medium ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`;
 
+/** The questions a screen shows (their q-… ids); unset = all of the group. The set-up splits the company group over
+ *  three screens (setup-steps.ts) without the questions moving house. */
+const OnlyCtx = createContext<readonly string[] | undefined>(undefined);
+
 /** One question box — big and simple. The id is what a "Make it better" chip scrolls to. */
 export function Sec({ id, title, hint, children }: { id?: string; title: string; hint?: string; children: React.ReactNode }) {
+  const only = useContext(OnlyCtx);
+  if (only && id && !only.includes(id)) return null;
   return (
     <section id={id} className="scroll-mt-4 space-y-2 rounded-2xl border border-border bg-surface p-4">
       <p className="text-[15px] font-semibold">{title}</p>
@@ -51,8 +57,10 @@ export const CUSTOMER_CHIPS = ["👪 Families", "🏪 Shops", "🏢 Offices", "�
 export const PAYMENT_CHIPS = ["💵 Cash", "📱 UPI", "💳 Card", "🧾 EMI"];
 const HOURS_CHIPS = ["Mon–Sat 10 AM – 8 PM", "All days 9 AM – 9 PM", "Mon–Fri 10 AM – 6 PM"];
 
-export function FactsFields({ group, facts, setF, hi, professional, hasAbout, category }: {
+export function FactsFields({ group, facts, setF, hi, professional, hasAbout, category, only }: {
   group: FactsGroup;
+  /** Show only these questions (q-… ids) — the set-up spreads the group over several screens. */
+  only?: readonly string[];
   /** The trade: step 3 asks in its words (classes for a school, dishes for a restaurant — catalog-copy.ts). */
   category?: string;
   facts: CardFacts;
@@ -105,7 +113,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   }
 
   if (group === "products") return (
-    <>
+    <OnlyCtx.Provider value={only}>
       <Sec id="q-special" title={T(copy.specialQ, copy.specialQHi)} hint={T("Tap 3 to 5 that are true — they become your website's highlights.", "3 से 5 दबाएँ जो सही हैं — यही आपकी website की highlights बनेंगी।")}>
         <div className="flex flex-wrap gap-2">
           {specialChips.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
@@ -125,11 +133,11 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
           <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T(copy.workEg, copy.workEgHi)} className={field} />
         </Sec>
       )}
-    </>
+    </OnlyCtx.Provider>
   );
 
   return (
-    <>
+    <OnlyCtx.Provider value={only}>
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
       <Sec id="q-designation" title={T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={T("Shown under your name on the card and website — e.g. Rajesh Sharma · Owner.", "Card और website पर आपके नाम के नीचे — जैसे Rajesh Sharma · Owner।")}>
         <div className="flex flex-wrap gap-1.5">
@@ -227,6 +235,6 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
           <span className="mt-1 block text-xs font-normal text-muted">{T("Google Maps → your shop → Share → Copy link", "Google Maps → अपनी दुकान → Share → Copy link")}</span>
         </label>
       </Sec>
-    </>
+    </OnlyCtx.Provider>
   );
 }
