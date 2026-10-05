@@ -25,11 +25,10 @@ import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
 import { cleanStyle, lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
-import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
+import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts, tradeLabelOf } from "@/lib/card-inputs";
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
-import { pickedOfferings } from "@/lib/trade-questions";
 import { designSite, differentFrom, fallbackLooks } from "@/lib/site-designer";
 import { logoColor } from "@/lib/media/logo-color";
 import { tradeStyle } from "@/lib/site-recipes";
@@ -40,7 +39,7 @@ import { reviewDesign } from "@/lib/design-review";
 import { applyEdits } from "@/lib/card-edits";
 import { SITE_URL } from "@/lib/site-url";
 import { googleRow } from "@/lib/google-server";
-import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase } from "@/lib/card-compose";
+import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase, ownOfferings } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, MAX_GALLERY_PHOTOS, MAX_WRITE_AGAIN_PHOTOS, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
 import type { Card } from "@/lib/types";
@@ -469,12 +468,13 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // The owner's standing on Google, if they have connected the profile (best effort — never fails a build).
   const gRow = await googleRow(me.id).catch(() => null);
   const gRating = gRow?.rating && gRow.review_count ? { avg: Number(gRow.rating), count: Number(gRow.review_count) } : null;
-  const picked = pickedOfferings(setup.category, facts.tradeAnswers);
+  const own = ownOfferings(setup.category, facts.tradeAnswers, tdata);
   const guide = tdata ? {
     catalog: recipe.catalog,
     explain: tdata.explain,
-    // The owner ticked what they have (trade-questions.ts): the AI is told only those, never one they lack.
-    services: tdata.services.filter((x) => !picked || picked.has(x.en)).map((x) => `${x.en} — ${x.desc}`),
+    // The owner ticked what they have (trade-questions.ts): the AI is told only those, never one they lack — and
+    // what they typed themselves ("Other ✎") first, in their own words (owner's test, 5 Oct 2026).
+    services: [...own.typed, ...(own.seeds ?? tdata.services).map((x) => `${x.en} — ${x.desc}`)],
     whyUs: tdata.whyUs.map((x) => x.en),
     steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
     faq: tdata.faq.map((x) => x.q),
@@ -587,7 +587,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // The text manager (card-text.ts): every section held to what a finished website needs. The trade's seeds fill
   // what they can; the spots only writing can fix go to ONE short AI ask; what that leaves gets a plain line
   // from the facts — the card never goes out thin.
-  const tctx = { trade: tdata, lang: facts.lang, business: brief.business, tradeLabel: brief.category, city: setup.city, ...(facts.since ? { since: facts.since } : {}) };
+  // The trade in words, never the list's "Other" (tradeLabelOf): "X is a business in Rewari", not "a other".
+  const tctx = { trade: tdata, lang: facts.lang, business: brief.business, tradeLabel: tradeLabelOf(setup, facts.tradeAnswers), city: setup.city, ...(facts.since ? { since: facts.since } : {}) };
   let tx = textAudit(built, tctx);
   built = tx.card;
   if (tx.thin.length) {

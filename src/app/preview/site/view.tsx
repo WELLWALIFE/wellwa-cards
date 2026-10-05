@@ -32,6 +32,8 @@ export function PreviewSite() {
 
 // Free plan: the website is a preview only (visitors get the card) — say so at the top, with the upgrade link.
 // Growth / Pro (or a card plan set by admin): the website as visitors will see it.
+// Shown only under the website editor's own key: the build preview (the default key) is a 390 px frame showing the
+// three looks, and the bar ate a third of it (owner's call, 5 Oct 2026).
 function UpgradeBar() {
   const { plan, loading } = usePlan();
   if (loading || plan !== "free") return null;
@@ -69,7 +71,7 @@ function PreviewInner() {
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
   return (
     <>
-      {!editor && <UpgradeBar />}
+      {editor && <UpgradeBar />}
       <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown} qr={qr} free={loading || plan === "free"} />
     </>
   );

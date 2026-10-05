@@ -69,6 +69,11 @@ export type CardFacts = {
 /** name@bank. The handle may carry a dot (owner, 4 Oct 2026: "@hdfcbank.com" was refused). */
 export const UPI_RE = /^[a-z0-9._-]{2,256}@[a-z][a-z0-9.]{1,63}$/i;
 
+/** The most answers one trade question keeps — ticked options and typed values together. The form
+ *  (trade-questions.tsx) and the save share it (owner, 5 Oct 2026: the form took 20, the save kept 16, so the last
+ *  typed values vanished without a word). */
+export const MAX_TRADE_ANSWERS = 16;
+
 const LANGS: readonly Lang[] = ["en", "hi", "hinglish"];
 const CARD_ID_RE = /^[0-9a-f-]{36}$/i;
 
@@ -194,7 +199,7 @@ function normalizeObj(r: Obj): CardFacts {
   const ta = obj(r.tradeAnswers);
   for (const k of Object.keys(ta).slice(0, 24)) {
     if (!/^[a-z][a-z0-9_-]{0,39}$/.test(k)) continue;
-    const v = list(ta[k], 16, 80);
+    const v = list(ta[k], MAX_TRADE_ANSWERS, 80);
     if (v.length) tradeAnswers[k] = v;
   }
 

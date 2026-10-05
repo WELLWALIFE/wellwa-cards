@@ -37,6 +37,29 @@ const PRODUCT_COLS = "id,name,photo_url,photos,benefits,offer";
 const NEW_PRODUCT_COLS = ",price,mrp,brand,category";
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : "").trim().slice(0, n);
 
+const isOther = (s: string) => /^(other|others|अन्य)$/i.test(s.trim());
+/** A trailing joining word makes a bad label ("Mobile repair and" → "Mobile repair"). */
+const JOIN_WORD = /^(and|&|or|in|at|of|for|with|to|the|a|an|और|में|के|की|का|से|पर|है|हैं)$/i;
+
+/**
+ * The trade in words — never the list's bare "Other" (owner's test, 5 Oct 2026: the card read "a complete website
+ * of a Other"). A known trade is its category name. An "other" (or unknown) one: the trade the owner typed because
+ * the list had none ("drone repair"); else their "what do you do" line (trade-questions.ts, key `main`); else the
+ * opening words of their about; else "Business" — the word every caller already fell back to.
+ */
+export function tradeLabelOf(setup: Pick<SetupInfo, "category" | "categoryLabel" | "about">, answers?: CardFacts["tradeAnswers"]): string {
+  const cat = categoryOf(setup.category);
+  if (cat && cat.key !== "other") return cat.en;
+  const typed = S(setup.categoryLabel, 40);
+  if (typed && !isOther(typed)) return typed;
+  const main = S(answers?.main?.[0], 60);
+  if (main && !isOther(main)) return main;
+  const words = S(setup.about, 240).split(/[.!?।\n]/)[0].split(/\s+/).filter(Boolean);
+  const n = words.length > 3 && JOIN_WORD.test(words[3]) ? 3 : 4;
+  const lead = words.slice(0, n).join(" ").replace(/[,;:\-–—]+$/, "").slice(0, 40).trim();
+  return lead && !isOther(lead) ? lead : "Business";
+}
+
 /**
  * A select that also asks for columns added by migration 0050. Until the owner has run that migration PostgREST
  * refuses the whole select, so it is asked once more without them: the V-Card still works, it just cannot keep
@@ -174,6 +197,9 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
   const biz = meta.business ?? {};
   const profile = profiles[0] ?? null;
   const cat = categoryOf(biz.category || profile?.category || "");
+  const facts = normalizeFacts(profile?.card_facts ?? {});
+  const category = S(biz.category, 40) || S(profile?.category, 40);
+  const about = S(biz.about, 1200);
 
   const email = who?.email && !/@phone\./.test(who.email) ? who.email : S(meta.contact_email, 120);
   const setup: SetupInfo = {
@@ -183,16 +209,16 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
     reach: (["local", "india", "online"] as const).find((r) => r === biz.reach) ?? "local",
     business: S(biz.name, 80) || (profile?.persona === "business" ? S(profile?.name, 80) : ""),
     person: S(meta.display_name, 60) || S(meta.full_name, 60),
-    category: S(biz.category, 40) || S(profile?.category, 40),
+    category,
     // A trade typed by the owner because the list had none ("drone repair") is the label everything downstream
-    // works from — the writer, the designer, the posters — in place of a bare "Other".
-    categoryLabel: (!cat || cat.key === "other") && S(biz.trade, 40) ? S(biz.trade, 40) : (cat?.en ?? ""),
+    // works from — the writer, the designer, the posters — in place of a bare "Other" (tradeLabelOf).
+    categoryLabel: tradeLabelOf({ category, categoryLabel: S(biz.trade, 40), about }, facts.tradeAnswers),
     persona: cat?.persona ?? profile?.persona ?? "business",
     city: S(biz.city, 60) || S(profile?.city, 60),
     address: S(biz.address, 200),
     website: S(biz.website, 300),
     gstin: S(biz.gstin, 15).toUpperCase().replace(/[^0-9A-Z]/g, ""),
-    about: S(biz.about, 1200),
+    about,
     map: S(biz.map, 300),
     logo: S(profile?.logo_url, 500),
     photo: S(profile?.photo_url, 500),
@@ -220,7 +246,7 @@ export async function loadCardInputs(me: { id: string; token: string }): Promise
   return {
     setup,
     profileId: profile?.id ?? null,
-    facts: normalizeFacts(profile?.card_facts ?? {}),
+    facts,
     products,
     brandProducts: prods.brandProducts && products.length > 0,
     reviews,

@@ -94,6 +94,11 @@ export function cityCase(v: string): string {
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
+/** The list's last entry, "Other", is not a trade and is never written on a card (owner's test, 5 Oct 2026:
+ *  "a complete website of a Other"): "" for it, so the caller falls through to its next word. */
+const isOther = (s: string) => /^\s*(other|others|अन्य)\s*$/i.test(s);
+const notOther = (s: string | undefined) => (s && !isOther(s) ? s : "");
+
 /** The text of a chip without its emoji: "💵 Cash" → "Cash". */
 export function plain(s: string): string {
   return (s ?? "").replace(/\p{Extended_Pictographic}|[\u{1F1E6}-\u{1F1FF}\u{1F3FB}-\u{1F3FF}‍️⃣]/gu, "").replace(/\s+/g, " ").trim();
@@ -204,7 +209,7 @@ export function factsText(i: {
   if (siteLine) lines.push(siteLine);
   if (lines.length) return lines.join("\n");
   const who = setup.business || setup.person;
-  return `${who}, ${setup.categoryLabel || "Business"}${setup.city ? ` in ${setup.city}` : ""}.`;
+  return `${who}, ${notOther(setup.categoryLabel) || "a local business"}${setup.city ? ` in ${setup.city}` : ""}.`;
 }
 
 /** Does a search title / description mention the trade (its first word: "Sweets" of "Sweets / bakery") or the business? */
@@ -229,6 +234,21 @@ const sameText = (a: string, b: string) => {
   let shared = 0; for (const w of wa) if (wb.has(w)) shared++;
   return shared / Math.min(wa.size, wb.size) >= 0.6;
 };
+
+/** The "what do you have / offer" answers (trade-questions.ts), split: `seeds` — the trade's own services the owner
+ *  ticked (null when the question was never answered: every seed stands, as before); `typed` — what they wrote
+ *  themselves ("Other ✎"), which no seed list knows and which used to reach nothing (owner's test, 5 Oct 2026).
+ *  An "other" trade has no tick list and placeholder seeds (trade-questions.ts): its typed lines are read all the
+ *  same, and once it has any, the placeholders step aside. */
+export function ownOfferings(categoryKey: string, answers: Record<string, string[]> | undefined, trade: TradeData | null): { typed: string[]; seeds: TradeData["services"] | null } {
+  const picked = pickedOfferings(categoryKey, answers);
+  const other = categoryKey === "other";
+  const seedNames = new Set((trade?.services ?? []).map((s) => s.en.toLowerCase()));
+  const given = picked ? [...picked] : other ? answers?.offerings ?? [] : [];
+  const typed = [...new Set(given.map((x) => x.trim()).filter((x) => x && !isOther(x) && !seedNames.has(x.toLowerCase())))].slice(0, 7);
+  const seeds = picked && trade ? trade.services.filter((s) => picked.has(s.en)) : other && typed.length ? [] : null;
+  return { typed, seeds };
+}
 
 /** The AI's services, topped up from the trade's seeds (never a duplicate) to `want`. */
 function fillServices(own: ServiceItem[], trade: TradeData | null, line: (x: TradeData["services"][number]) => { name: string; desc: string }, want: number): ServiceItem[] {
@@ -358,8 +378,11 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const personal = role === "personal";
   const name = setup.person || setup.business;
   const company = setup.business && setup.business !== name ? setup.business : "";
+  // The category's name — except the list's "Other", which is no trade: then the label the owner's words gave.
+  const catName = cat && cat.key !== "other" ? cat.en : "";
+  const tradeName = catName || notOther(setup.categoryLabel);
   // The owner's own designation first (Owner, Director, Dr., Advocate — profile step 1); else the old rule.
-  const jobTitle = facts.designation || (professional ? (facts.qualification || cat?.en || copy.jobTitle || "Business") : (copy.jobTitle || cat?.en || "Business"));
+  const jobTitle = facts.designation || (professional ? (facts.qualification || catName || copy.jobTitle || tradeName || "Business") : (copy.jobTitle || tradeName || "Business"));
   let avatarUrl: string | undefined, avatarShape: "circle" | "square" | undefined;
   if (lead === "business") {
     if (setup.logo) { avatarUrl = setup.logo; avatarShape = "square"; } else if (setup.photo) { avatarUrl = setup.photo; avatarShape = "circle"; }
@@ -440,11 +463,16 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // ones, filled up from the trade's own seeds so the list is never thin. A shop with products keeps its
   // services as a second section; a personal card has none.
   // The owner ticked what they have (trade-questions.ts): only those seeds fill the list, never a service they
-  // do not offer. Unanswered → every seed of the trade, as before.
-  const picked = pickedOfferings(setup.category, facts.tradeAnswers);
-  const tradeSeeds = picked && trade ? { ...trade, services: trade.services.filter((s) => picked.has(s.en)) } : trade;
+  // do not offer. Unanswered → every seed of the trade, as before. What they typed themselves ("Other ✎") is
+  // theirs and leads, with the AI's line under it when it wrote one (owner's test, 5 Oct 2026: typed offerings
+  // never reached the website, and a list of only typed ones lost its Services section).
+  const own = ownOfferings(setup.category, facts.tradeAnswers, trade);
+  const tradeSeeds = own.seeds && trade ? { ...trade, services: own.seeds } : trade;
+  const aiServices = (copy.services ?? []).filter((s) => s.name && !productNames.has(s.name.toLowerCase()) && !isGeneric(s.name, trade));
+  const typed: ServiceItem[] = own.typed.filter((n) => !productNames.has(n.toLowerCase()))
+    .map((n) => ({ name: n.charAt(0).toUpperCase() + n.slice(1), desc: aiServices.find((s) => sameText(s.name, n))?.desc ?? "" }));
   const services: ServiceItem[] = personal ? [] : fillServices(
-    (copy.services ?? []).filter((s) => s.name && !productNames.has(s.name.toLowerCase()) && !isGeneric(s.name, trade)),
+    [...typed, ...aiServices.filter((s) => !typed.some((o) => sameText(o.name, s.name)))],
     tradeSeeds, seedLine, 6);
 
   /* ---- trust strip (code only, never AI) ---- */
@@ -611,13 +639,13 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const brandHex = siteStyle.palette === "brand" ? (siteStyle.color ?? accent) : (SITE_PALETTES.find((p) => p.key === siteStyle.palette)?.mid ?? accent);
   const logoUrl = setup.logo || monogramUrl(setup.business || name, brandHex, siteStyle.radius === "round" ? "round" : siteStyle.radius === "sharp" ? "sharp" : "soft");
   const seo: NonNullable<TemplateCard["seo"]> = {};
-  if (cat?.en) { seo.category = cat.en; seo.categoryKey = cat.key; }
+  if (cat?.en) { seo.category = tradeName || "Business"; seo.categoryKey = cat.key; }
   if (setup.city) seo.city = setup.city;
   if (areas.length) seo.areas = areas.slice(0, 12);
   else if (setup.reach === "india") seo.areas = ["All India"];
   else if (setup.reach === "online") seo.areas = ["Online", "Worldwide"];
   const reachLine = setup.reach === "india" ? " Serves customers all over India." : setup.reach === "online" ? " Works online — customers anywhere in the world." : setup.city ? ` Serves ${setup.city} and nearby areas.` : "";
-  const header = `${setup.business || name} — ${setup.categoryLabel || cat?.en || "Business"}${setup.city ? `, ${setup.city}` : ""}.${reachLine}`;
+  const header = `${setup.business || name} — ${notOther(setup.categoryLabel) || catName || "Business"}${setup.city ? `, ${setup.city}` : ""}.${reachLine}`;
 
   const card: TemplateCard = {
     name,

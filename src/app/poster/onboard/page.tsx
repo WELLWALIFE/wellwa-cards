@@ -511,6 +511,9 @@ function Onboard() {
     return { ...b, category: k, role, kind: role === "business" ? "business" as const : "person" as const, reach: b.reachTouched ? b.reach : reachOf(role, k) };
   };
   const touch = (k: string) => { touched.current.add(k); };
+  /** A different trade asks different questions: the old trade's ticked offerings would otherwise show up as the
+   *  owner's own typed services (they are not in the new list) and reach the AI as if they had written them. */
+  const changeTrade = (k: string) => { if (k !== biz.category && (facts.tradeAnswers?.offerings?.length ?? 0) > 0) setF({ tradeAnswers: { ...facts.tradeAnswers, offerings: [] } }); };
   /** Most Indian businesses say their trade in their name — "Sharma Sweets", "Apollo Clinic", "Verma Electricals".
    *  When the owner has not picked a trade themselves, the name picks it, so the list never has to be opened. */
   function guessTrade(b: typeof biz): typeof biz {
@@ -1214,8 +1217,8 @@ function Onboard() {
             )}</label>
           {/* 2 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}
-            <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
-              custom={biz.trade ?? ""} onCustom={(text) => { touch("category"); setBiz((b) => ({ ...withCategory(b, matchCategory(text) || "other"), trade: text.trim().slice(0, 40) })); }} />
+            <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
+              custom={biz.trade ?? ""} onCustom={(text, nearest) => { touch("category"); const k = matchCategory(text) || nearest || "other"; changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: text.trim().slice(0, 40) })); }} />
             {/* "Other" from the list: the trade in the owner's own words, kept as typed — it names the website, the
                 card and the AI's brief (owner, 5 Oct 2026: typed text vanished; a card said "Other"). */}
             {biz.category === "other" && (

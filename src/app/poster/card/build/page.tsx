@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
-import { Camera, Check, CheckCircle2, ChevronLeft, CircleDashed, Globe, LoaderCircle, Pencil, Plus, RefreshCw, Smartphone, Sparkles, X } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -23,8 +23,9 @@ import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestU
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
 import { applyLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
+import { paletteFor } from "@/lib/site-style";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
-import type { Card, CardBlock, SiteStyle } from "@/lib/types";
+import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
 import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
@@ -51,7 +52,7 @@ type Row = { id?: string; name: string; brand: string; price: string; photo: str
 /** A finished preview kept on this phone. `built` is the card the server wrote (before it was merged into the
  *  live card) and `liveSig` says which live card it was merged into, so a preview is never published on top of
  *  a card that has changed since. */
-type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number; looks?: LookPlan[] };
+type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number; looks?: LookPlan[]; /** The link the card went live on from this screen, so a reload does not say "not live yet" about a live site. */ liveUser?: string };
 /** The server's build, as GET/POST /api/card/build describe it (card-jobs.ts). */
 type BuildStage = "details" | "website" | "pictures" | "writing" | "checking";
 type JobView = { job: string; state: "running" | "done" | "failed"; stage: BuildStage; fresh: boolean; elapsed: number; claimed: boolean; status?: number; result?: unknown };
@@ -130,6 +131,13 @@ function applyChecks(card: Card, checks: WebCheck[], off: string[]): Card {
 // eslint-disable-next-line @next/next/no-img-element
 const Img = (p: { src: string; alt?: string; className?: string }) => <img src={p.src} alt={p.alt ?? ""} className={p.className} />;
 
+/** The blueprint's shape in a few CSS boxes (bento: four tiles; cinematic: a wide frame; story: a phone with its dots). */
+function LookGlyph({ k, ink }: { k: LookKey; ink: string }) {
+  if (k === "bento") return <span className="grid h-6 w-7 grid-cols-2 gap-[3px]">{[0, 1, 2, 3].map((i) => <span key={i} className="rounded-[2px]" style={{ background: ink, opacity: 0.85 }} />)}</span>;
+  if (k === "cinematic") return <span className="relative block h-5 w-8 rounded-[3px] border-2" style={{ borderColor: ink, opacity: 0.85 }}><span className="absolute bottom-0.5 left-0.5 h-[3px] w-3 rounded-full" style={{ background: ink }} /></span>;
+  return <span className="flex h-7 w-4 gap-[2px] rounded-[3px] border-2 p-[2px]" style={{ borderColor: ink, opacity: 0.85 }}>{[0, 1, 2].map((i) => <span key={i} className="h-[2px] flex-1 rounded-full" style={{ background: ink, opacity: i === 0 ? 1 : 0.45 }} />)}</span>;
+}
+
 export default function BuildCard() {
   const router = useRouter();
   const access = useAiAccess();
@@ -163,8 +171,13 @@ export default function BuildCard() {
   const [missing, setMissing] = useState<Missing[]>([]);
   const [off, setOff] = useState<string[]>([]);
   const [qr, setQr] = useState("");
-  const [tab, setTab] = useState<"phone" | "site">("phone");
+  const [tab, setTab] = useState<"phone" | "site">("site");
   const [scale, setScale] = useState(0.28);
+  // The website preview opens at phone width (owner's call, 5 Oct 2026: the 1280 px page scaled to a quarter was
+  // unreadable); "Computer view" shows the scaled desktop frame as before.
+  const [desk, setDesk] = useState(false);
+  /** The "Change…" sheet: adjust this look, edit details, edit card, write again — one place instead of five paths. */
+  const [more, setMore] = useState(false);
 
   const [editLink, setEditLink] = useState(false);
   const [linkVal, setLinkVal] = useState("");
@@ -186,10 +199,10 @@ export default function BuildCard() {
   const [againAsk, setAgainAsk] = useState(false);
   // Background page stays still while the sheet is open, so a finger drag scrolls the sheet, not the preview under it.
   useEffect(() => {
-    if (!againAsk) return;
+    if (!againAsk && !more) return;
     const prev = document.body.style.overflow; document.body.style.overflow = "hidden";
     return () => { document.body.style.overflow = prev; };
-  }, [againAsk]);
+  }, [againAsk, more]);
   const [againWants, setAgainWants] = useState<Want[]>(["look"]);
   const [againNote, setAgainNote] = useState("");
   // The picture and the words, described (owner's call, 4 Oct 2026: "image kaisi chahiye, text me kya — box ho, aur
@@ -228,19 +241,36 @@ export default function BuildCard() {
   }
   // Three looks for the website on screen (site-looks.ts, docs/website-looks-v2.md): three blueprints — a tile board,
   // full-screen scenes, swipe slides — on the same content; a tap swaps the whole design on the spot.
-  const [lookKey, setLookKey] = useState<LookKey>("bento");
   const [plans, setPlans] = useState<LookPlan[] | undefined>(undefined);
   const looks = useMemo(() => (built?.site ? threeLooks(built, built.site.style, plans) : []), [built, plans]);
+  /** A look or an adjustment on a LIVE site goes live by itself — the live link would otherwise keep opening on the
+   *  first look (owner's report, 4 Oct 2026). Taps are debounced: while one publish runs, the latest card waits and
+   *  is published once it is done, so the last tap always wins and none is lost. */
+  const pendingPublish = useRef<Card | null>(null);
+  const publishing = useRef(false);
+  const flushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const publishRef = useRef<(opts?: { card?: Card; quiet?: boolean }) => Promise<void>>(async () => undefined);
+  useEffect(() => { publishRef.current = publish; });
+  function flushPublish() {
+    flushTimer.current = null;
+    const next = pendingPublish.current;
+    if (!next || publishing.current) return;
+    pendingPublish.current = null;
+    void publishRef.current({ card: next, quiet: true });
+  }
+  function queuePublish(next: Card) {
+    pendingPublish.current = next;
+    if (flushTimer.current) clearTimeout(flushTimer.current);
+    flushTimer.current = setTimeout(flushPublish, 500);
+  }
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
-    if (!look) return;
-    setLookKey(k);
-    setCard((c) => (c ? applyLook(c, look) : c));
+    if (!look || !card) return;
+    const next = applyLook(card, look);
+    setCard(next);
     // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
     setTab("site");
-    // The first site goes live on its own, before any look is chosen — so a look chosen afterwards is published
-    // at once, or the live link would keep opening on the first (owner's report, 4 Oct 2026).
-    if (liveUser && !busy) void publish({ style: look.style });
+    if (liveUser) queuePublish(next);
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
@@ -369,14 +399,16 @@ export default function BuildCard() {
       }
 
       if (improve && live) {
-        const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
-        setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
+        // A card made before websites had one: a seed site, so the three looks can be drawn and worn (owner's call, 5 Oct 2026).
+        const withSite = live.site ? live : { ...live, site: { enabled: true } };
+        const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = withSite; void _i; void _u; void _p; void _a; void _v; void _c;
+        setCard(withSite); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
         setState("preview"); setTab("site");
         if (ask) setTimeout(() => setAgainAsk(true), 300);
         return;
       }
       if (draft) {
-        setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig);
+        setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig); setLiveUser(draft.liveUser ?? "");
         setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []); setPlans(draft.looks);
         setState(makeNow ? "make" : "preview");
         return;
@@ -419,8 +451,8 @@ export default function BuildCard() {
   /* keep the draft in step with the preview (link change, "Please check" ticks) */
   useEffect(() => {
     if (state !== "preview" || !card || !uid) return;
-    writeJson(draftKey(uid), { card, built, liveSig, checks, missing, off, savedAt: Date.now(), ...(plans ? { looks: plans } : {}) } satisfies Draft);
-  }, [state, card, built, liveSig, checks, missing, off, uid, plans]);
+    writeJson(draftKey(uid), { card, built, liveSig, checks, missing, off, savedAt: Date.now(), ...(plans ? { looks: plans } : {}), ...(liveUser ? { liveUser } : {}) } satisfies Draft);
+  }, [state, card, built, liveSig, checks, missing, off, uid, plans, liveUser]);
 
   const username = card?.username ?? "";
   // Your-name / business-name links for the preview's one-tap switch (each checked free for THIS card).
@@ -456,6 +488,10 @@ export default function BuildCard() {
   }, [linkVal, editLink, existing?.id, T]);
 
   const shown = useMemo(() => (card ? applyChecks(card, checks, off) : null), [card, checks, off]);
+  /** The look on screen is read off the card itself (a draft restore, ?improve=1 or a banner refresh used to leave a
+   *  separate "picked" state pointing at the wrong one). */
+  const activeLook: LookKey | undefined = shown?.site?.style?.blueprint ?? looks[0]?.key;
+  const isStory = activeLook === "story";
   // The pictures on the site now, as thumbnails (owner's call, 4 Oct 2026: "chhota preview, taaki pehchan sake
   // kaunsi image badalni hai"): with Replace, the owner taps the ones to change — one credit each.
   const [replaceUrls, setReplaceUrls] = useState<string[]>([]);
@@ -483,7 +519,7 @@ export default function BuildCard() {
   }, [state, tab, shown]);
 
   useEffect(() => {
-    if (state !== "preview" || tab !== "site") return;
+    if (state !== "preview" || tab !== "site" || !desk) return;
     const el = frameRef.current;
     if (!el) return;
     const fit = () => setScale(Math.min(1, (el.clientWidth || 360) / 1280));
@@ -491,7 +527,7 @@ export default function BuildCard() {
     const ro = new ResizeObserver(fit);
     ro.observe(el);
     return () => ro.disconnect();
-  }, [state, tab]);
+  }, [state, tab, desk]);
 
   /* ---------------- photos ---------------- */
 
@@ -642,7 +678,8 @@ export default function BuildCard() {
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
       const nextLooks = (r.data.looks ?? []) as LookPlan[];
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey(built.site?.style?.blueprint ?? "bento"); setPlans(nextLooks.length ? nextLooks : undefined);
+      // The website first (the looks are its), then the card — so the preview opens on the Website tab.
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
       if (v.fresh) access.refresh();
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now(), ...(nextLooks.length ? { looks: nextLooks } : {}) } satisfies Draft);
       // Kept on this phone now (the draft above), so the server need not offer it again.
@@ -703,7 +740,7 @@ export default function BuildCard() {
     try {
       const cards = await fetchMyCardsStrict();
       const row = cards.find((c) => c.id === cardId);
-      if (row) { setCard(row); setExisting(row); setLiveSig(cardSig(row)); const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = row; void _i; void _u; void _p; void _a; void _v; void _c; setBuilt(tpl as TemplateCard); }
+      if (row) { setCard(row); setExisting(row); setLiveSig(cardSig(row)); if (row.active) setLiveUser(row.username); const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = row; void _i; void _u; void _p; void _a; void _v; void _c; setBuilt(tpl as TemplateCard); }
     } catch { /* offline: the next open shows it */ }
   }
   /** Starts (or joins) the banner job and follows it to the end. `again`: one more, a credit a picture. */
@@ -773,20 +810,25 @@ export default function BuildCard() {
     } catch { /* offline: the button stays */ } finally { setBusy(""); }
   }
 
-  async function publish(opts?: { style?: SiteStyle }) {
+  /** `card`: the card to put live when it is not the one on screen yet (a look just tapped — React state has not
+   *  settled, and the stale `shown` used to copy the previous look's tiles and home order over the new one).
+   *  `quiet`: a look / adjustment on a live site — the page must not jump to the top. */
+  async function publish(opts?: { card?: Card; quiet?: boolean }) {
     if (!shown || !card) return;
+    const base = opts?.card ? applyChecks(opts.card, checks, off) : shown;
     if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live V-Card? Your link, QR code, verified badge and settings stay the same.", "अपना live V-Card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
+    publishing.current = true;
     setBusy("publish"); setErr("");
     try {
       // The live card is read again and the new words are merged into THAT, not into the copy this preview was
       // made from. Anything the owner changed in the editor meanwhile (popup, pixels, a new page, the design)
       // therefore stays, instead of being overwritten by an older preview.
-      let out = shown;
+      let out = base;
       // mergeBuiltCard replaces the card's pages with the newly built ones, so a Shubhora page that is
       // already live would be thrown away by a rebuild. Remember it (and whether its tab was switched on)
       // and put it back below.
-      let keepShubhora = hasShubhoraPage(shown);
-      let shubhoraVisible = !shown.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
+      let keepShubhora = hasShubhoraPage(base);
+      let shubhoraVisible = !base.pages.find((p) => p.slug === SHUBHORA_PAGE_SLUG)?.hidden;
       if (built) {
         let live: Card | null;
         try {
@@ -801,12 +843,12 @@ export default function BuildCard() {
         // The look on screen is the one that goes live (owner's call, 4 Oct 2026: "jisko select kare wo open honi
         // chahiye"). The merge above keeps a live card's earlier style and the server's card carries the designer's;
         // the preview the owner approved carries the look they picked, and that wins over both.
-        const pickedStyle = opts?.style ?? shown.site?.style;
+        const pickedStyle = base.site?.style;
         if (pickedStyle && out.site) out = { ...out, site: { ...out.site, style: { ...pickedStyle } } };
         // The owner's adjustments on the preview (tiles, clip / photo, section order and hidden list) go live too.
-        if (out.site && shown.site) {
-          const h = shown.site.hero;
-          out = { ...out, site: { ...out.site, ...(shown.site.home ? { home: shown.site.home } : {}), ...(out.site.hero ? { hero: { ...out.site.hero, ...(h?.tiles ? { tiles: h.tiles } : {}), ...(h?.video !== undefined ? { video: h.video } : {}) } } : {}) } };
+        if (out.site && base.site) {
+          const h = base.site.hero;
+          out = { ...out, site: { ...out.site, ...(base.site.home ? { home: base.site.home } : {}), ...(out.site.hero ? { hero: { ...out.site.hero, ...(h?.tiles ? { tiles: h.tiles } : {}), ...(h?.video !== undefined ? { video: h.video } : {}) } } : {}) } };
         }
       }
       // "Both — my business and Shubhora": the Shubhora page rides along on the first publish, so the choice
@@ -829,19 +871,24 @@ export default function BuildCard() {
         const cards = await fetchMyCardsStrict();
         const row = cards.find((c) => c.username === r.username);
         if (row) {
+          // The live card is this one now: the draft kept here matches it, so a reload shows this preview, live.
+          setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
           if (access.subscribed && !ownBanner && !madeByUs(row.coverUrl)) void startBanner(row.id);
         }
       } catch { /* the card is live; the primary mark can wait */ }
       // The same finished flow as an automatic build: website first, then the card, then OK → home.
-      setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
+      // A newer tap is already waiting: the card on screen is ahead of this one, so it is left alone.
+      if (!pendingPublish.current) setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
       setLiveUser(r.username || out.username);
       setTab("site");
-      try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+      if (!opts?.quiet) { try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
+      publishing.current = false;
       setBusy("");
+      if (pendingPublish.current) flushPublish();
     }
   }
 
@@ -925,11 +972,61 @@ export default function BuildCard() {
 
   if (state === "preview" && shown) return (
     <div className="space-y-4 py-2">
-      <div className="flex items-center gap-2">
-        <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold">{liveUser ? T("Your website and card are live", "आपकी website और card live हैं") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
+      {/* Owner's call, 5 Oct 2026 ("site banne ke baad 3 view nahi dikh rahe, bada complicated UI"): ONE status card,
+          then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
+      <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
+          <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
+        </div>
+        <div className="flex items-center gap-2 text-sm">
+          <p className="min-w-0 flex-1 truncate"><span className="text-muted">{T("Link: ", "Link: ")}</span><b>{SITE_HOST}/c/{username}</b></p>
+          {!editLink && <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); }} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>}
+        </div>
+        <p className="flex items-start gap-1.5 text-xs text-muted">
+          {liveUser ? <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-good" /> : busy === "publish" ? <LoaderCircle className="mt-px h-3.5 w-3.5 shrink-0 animate-spin text-brand" /> : <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0 text-amber" />}
+          <span>
+            {liveUser
+              ? username !== liveUser
+                ? T("Live on the old link — tap Save the new link.", "पुराने link पर live है — नया link save करें।")
+                : isStory
+                  ? T("Live. One link — it opens as the website on phones too.", "Live। एक ही link — phone पर भी website ही खुलती है।")
+                  : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
+              : busy === "publish"
+                ? T("Making it live…", "Live किया जा रहा है…")
+                : existing
+                  ? T("Not live yet — your current card stays until you tap Make it live.", "अभी live नहीं — Make it live दबाने तक पुराना card वैसा ही रहेगा।")
+                  : T("Not live yet — tap Make it live.", "अभी live नहीं — Make it live दबाएँ।")}
+          </span>
+        </p>
       </div>
-      {designNote && <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">🎨 {T("Designer", "Designer")}: {designNote}</p>}
+      {editLink && (
+        <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
+          {/* One tap: the link from the business name or from your name (owner's call, 25 Sep 2026). */}
+          {linkOpts.name && linkOpts.business && (
+            <div className="grid grid-cols-2 gap-2">
+              {([["business", linkOpts.business!, T("Business name", "Business का नाम")], ["name", linkOpts.name!, T("Your name", "आपका नाम")]] as const).map(([k, slug, label]) => {
+                const on = cleanUsername(linkVal) === slug;
+                return (
+                  <button key={k} type="button" onClick={() => { setLinkVal(slug); void setLinkPref(k); }}
+                    className={`rounded-xl border-2 px-2.5 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
+                    <span className="flex items-center gap-1 text-[11px] text-muted">{on && <Check className="h-3 w-3 text-brand" />}{label}</span>
+                    <span className="block truncate text-xs font-semibold">/c/{slug}</span>
+                  </button>
+                );
+              })}
+            </div>
+          )}
+          <input value={linkVal} onChange={(e) => setLinkVal(e.target.value)} autoCapitalize="none" spellCheck={false} placeholder="your-name" className={`${box} w-full`} />
+          {linkCheck.state === "checking" && <p className="text-xs text-muted">{T("Checking…", "देख रहे हैं…")}</p>}
+          {linkCheck.state === "ok" && <p className="text-xs font-semibold text-good">✓ {SITE_HOST}/c/{cleanUsername(linkVal)} {T("is free", "खाली है")}</p>}
+          {linkCheck.state === "bad" && <p className="text-xs font-semibold text-danger">{linkCheck.reason}</p>}
+          <div className="flex gap-2">
+            <button type="button" disabled={linkBad} onClick={() => { setCard((c) => (c ? { ...c, username: cleanUsername(linkVal) } : c)); setEditLink(false); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{T("Save link", "link save करें")}</button>
+            <button type="button" onClick={() => setEditLink(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Cancel", "रहने दें")}</button>
+          </div>
+        </div>
+      )}
       {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
         <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("When you make it live, your Premium banner is painted in this very look (about a minute).", "Live करते ही आपका Premium banner इसी look में बनेगा (करीब 1 मिनट)।")}</p>
@@ -946,100 +1043,33 @@ export default function BuildCard() {
           </div>
         </div>
       )}
-      {/* One clear line: live or not. */}
-      {liveUser ? (
-        <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Website live · Card live", "Website live · Card live")}</b><span className="block text-xs text-muted">{T("One link does both: it opens as your website on a computer and as your card on a phone. See the website first, then the card, then tap OK.", "एक ही link दोनों काम करता है: computer पर website खुलती है, phone पर card। पहले website देखें, फिर card, फिर OK दबाएँ।")}</span></p></div>
-      ) : busy !== "publish" && (
-        <div className="flex items-center gap-3 rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm"><CircleDashed className="h-6 w-6 shrink-0 text-amber" /><p><b>{T("Not published yet", "अभी publish नहीं हुआ")}</b><span className="block text-xs text-muted">{existing ? T("Your current card stays as it is until you tap Save.", "Save दबाने तक आपका पुराना card वैसा ही रहेगा।") : T("Tap Save to make your card live.", "Save दबाएँ, card live हो जाएगा।")}</span></p></div>
-      )}
-      {notice && <p className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-sm">{notice}</p>}
-
-      <div className="rounded-2xl border border-border bg-surface p-3 space-y-2">
-        <div className="flex items-center gap-2">
-          <p className="min-w-0 flex-1 text-sm"><span className="text-muted">{T("Your link: ", "आपका link: ")}</span><b className="break-all">{SITE_HOST}/c/{username}</b></p>
-          {!editLink && <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); }} className="shrink-0 text-sm font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>}
-        </div>
-        {/* One tap: the link from the business name or from your name (owner's call, 25 Sep 2026). */}
-        {!editLink && linkOpts.name && linkOpts.business && (
-          <div className="grid grid-cols-2 gap-2">
-            {([["business", linkOpts.business!, T("Business name", "Business का नाम")], ["name", linkOpts.name!, T("Your name", "आपका नाम")]] as const).map(([k, slug, label]) => {
-              const on = username === slug;
-              return (
-                <button key={k} type="button" onClick={() => { setCard((c) => (c ? { ...c, username: slug } : c)); void setLinkPref(k); }}
-                  className={`rounded-xl border-2 px-2.5 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
-                  <span className="flex items-center gap-1 text-[11px] text-muted">{on && <Check className="h-3 w-3 text-brand" />}{label}</span>
-                  <span className="block truncate text-xs font-semibold">/c/{slug}</span>
-                </button>
-              );
-            })}
-          </div>
-        )}
-        {editLink && (
-          <div className="space-y-2">
-            <input value={linkVal} onChange={(e) => setLinkVal(e.target.value)} autoCapitalize="none" spellCheck={false} placeholder="your-name" className={`${box} w-full`} />
-            {linkCheck.state === "checking" && <p className="text-xs text-muted">{T("Checking…", "देख रहे हैं…")}</p>}
-            {linkCheck.state === "ok" && <p className="text-xs font-semibold text-good">✓ {SITE_HOST}/c/{cleanUsername(linkVal)} {T("is free", "खाली है")}</p>}
-            {linkCheck.state === "bad" && <p className="text-xs font-semibold text-danger">{linkCheck.reason}</p>}
-            <div className="flex gap-2">
-              <button type="button" disabled={linkBad} onClick={() => { setCard((c) => (c ? { ...c, username: cleanUsername(linkVal) } : c)); setEditLink(false); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{T("Save link", "link save करें")}</button>
-              <button type="button" onClick={() => setEditLink(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Cancel", "रहने दें")}</button>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {checks.length > 0 && (
-        <div className="space-y-2 rounded-2xl border-2 border-amber/40 bg-amber/10 p-4">
-          <p className="text-[15px] font-semibold">{T("Please check", "एक बार देख लें")}</p>
-          <p className="text-xs text-muted">{T("These details came from the maker’s website. Keep only what is right.", "ये जानकारी बनाने वाली company की website से आई है। जो सही है, वही रखें।")}</p>
-          {checks.map((c) => (
-            <label key={c.name} className="flex items-start gap-2.5 rounded-xl bg-surface p-2.5 text-sm">
-              <input type="checkbox" checked={!off.includes(c.name)} onChange={() => setOff((o) => (o.includes(c.name) ? o.filter((x) => x !== c.name) : [...o, c.name]))} className="mt-0.5 h-5 w-5 shrink-0" />
-              <span className="min-w-0">
-                <b className="block">{c.name}</b>
-                {c.web.summary && <span className="block text-xs text-muted">{c.web.summary}</span>}
-                {c.web.features.length > 0 && <span className="block text-xs text-muted">{c.web.features.slice(0, 3).join(" · ")}</span>}
-                {c.web.specs.length > 0 && <span className="block text-xs text-muted">{c.web.specs.slice(0, 3).map((s) => `${s.label}: ${s.value}`).join(" · ")}</span>}
-              </span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {missing.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-[15px] font-semibold">{T("Make it better", "और अच्छा बनाएँ")}</p>
-          <div className="flex flex-wrap gap-2">
-            {missing.map((m) => <button key={m.key} type="button" onClick={() => goto(m.key)} className="rounded-full border-2 border-border bg-surface px-3.5 py-2 text-sm font-medium">{m.label}</button>)}
-          </div>
-        </div>
-      )}
-
-      {/* Three looks (owner's call, 5 Oct 2026): three blueprints on the same content; the designer's pick first. */}
+      {/* 2. The three looks (docs/website-looks-v2.md): three blueprints on the same content, the designer's pick first.
+          A 3-column grid — the old horizontal strip showed one chip on a 360 px phone and sat eighth on the page. */}
       {looks.length > 0 && shown.site && (
-        <div>
-          <p className="mb-1.5 text-xs font-semibold text-muted">{T("Look", "Look")} <span className="font-normal">— {T("three designs of the same website; tap to switch", "एक ही website के तीन design; tap करके बदलें")}</span></p>
-          <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-            {looks.map((l, i) => {
-              const on = lookKey === l.key;
+        <section>
+          <p className="text-sm font-semibold">{T("Pick a design", "Design चुनें")}</p>
+          <p className="text-xs text-muted">{T("Same words and photos, three designs. Tap to switch — nothing is spent.", "वही शब्द और photos, तीन design। Tap करके बदलें — कुछ खर्च नहीं होता।")}</p>
+          <div className="mt-2 grid grid-cols-3 gap-2">
+            {looks.map((l) => {
+              const on = activeLook === l.key;
+              const p = paletteFor({ themeColor: shown.themeColor, site: { enabled: true, style: l.style } });
               return (
                 <button key={l.key} type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
-                  className={`shrink-0 rounded-xl border-2 px-3 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                  <span className="block text-sm font-semibold">{i + 1}. {hi ? l.hi : l.name}</span>
-                  <span className="block text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
+                  className={`min-w-0 rounded-xl border-2 p-1.5 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
+                  <span className="grid aspect-[16/10] w-full place-items-center rounded-lg" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}><LookGlyph k={l.key} ink={p.ink} /></span>
+                  <span className="mt-1.5 flex items-center gap-1 text-sm font-bold">{on && <Check className="h-3.5 w-3.5 shrink-0 text-brand" />}<span className="truncate">{hi ? l.hi : l.name}</span></span>
+                  <span className="block truncate text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
                 </button>
               );
             })}
           </div>
-        </div>
+          {liveUser && busy === "publish" && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin text-brand" /> {T("Putting this design live…", "ये design live किया जा रहा है…")}</p>}
+        </section>
       )}
-      {/* Add / remove (docs/website-looks-v2.md §6): tiles, sections, dark / light, clip / photo — instant, no build, no credit. */}
-      {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); }} />}
+
+      {/* 3. The preview: Website | Card, in that order always. */}
       <div ref={previewRef} className="grid scroll-mt-20 grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
-        {(liveUser
-          ? ([["site", T("1. Website", "1. Website"), Globe], ["phone", T("2. Card", "2. Card"), Smartphone]] as const)
-          : ([["phone", T("Phone", "Phone"), Smartphone], ["site", T("Website", "Website"), Globe]] as const)
-        ).map(([k, l, I]) => (
+        {([["site", T("Website", "Website"), Globe], ["phone", T("Card", "Card"), Smartphone]] as const).map(([k, l, I]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center justify-center gap-1.5 rounded-lg py-2 text-sm font-semibold ${tab === k ? "bg-surface shadow-sm" : "text-muted"}`}>
             <I className="h-4 w-4" /> {l}
           </button>
@@ -1049,46 +1079,114 @@ export default function BuildCard() {
       {tab === "phone" ? (
         <div className="-mx-4 rounded-none border-y border-border bg-surface2/40 py-4">
           <CardView card={{ ...shown, username: "__preview" }} qr={qr} shareUrl={`${SITE_URL}/c/${username}`} />
+          {liveUser && (
+            <p className="mt-3 text-center text-xs">
+              <a href={`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital visiting card है — contact, products और बाकी सब एक tap में: ${SITE_URL}/c/${username}` : `Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer" className="font-semibold text-brand-ink underline">{T("Share on WhatsApp", "WhatsApp पर share करें")}</a>
+            </p>
+          )}
         </div>
       ) : (
         <div>
-          <div ref={frameRef} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
-            <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+          <div className="mb-1.5 flex items-center justify-between gap-2 text-xs text-muted">
+            <span className="min-w-0 truncate">{desk ? T("How your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।") : T("Your website, at phone width.", "आपकी website, phone की चौड़ाई में।")}{liveUser && <> <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="font-semibold text-brand-ink underline">{T("Open live", "Live खोलें")}</a></>}</span>
+            <button type="button" onClick={() => setDesk((d) => !d)} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1 font-semibold">{desk ? <><Smartphone className="h-3.5 w-3.5" /> {T("Phone view", "Phone view")}</> : <><Monitor className="h-3.5 w-3.5" /> {T("Computer view", "Computer view")}</>}</button>
           </div>
-          <p className="mt-1.5 text-center text-xs text-muted">{T("This is how your link opens on a computer.", "आपका link computer पर ऐसे खुलता है।")}{liveUser && <> <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="font-semibold text-brand-ink underline">{T("Open the live website", "Live website खोलें")}</a></>}</p>
+          {desk ? (
+            <div ref={frameRef} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
+              <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+            </div>
+          ) : (
+            <div className="mx-auto h-[600px] w-full max-w-[390px] overflow-hidden rounded-2xl border border-border bg-white">
+              <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} className="h-full w-full border-0" />
+            </div>
+          )}
         </div>
       )}
 
+      {/* Everything that used to sit above the fold: the designer's line, the notice, "Please check", "Make it better". */}
+      {(designNote || notice || checks.length > 0 || missing.length > 0) && (
+        <details className="rounded-2xl border border-border bg-surface2/40">
+          <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
+            <span>{T("Details", "Details")} <span className="text-xs font-normal text-muted">{checks.length > 0 ? T(`· ${checks.length} to check`, `· ${checks.length} देखने हैं`) : missing.length > 0 ? T("· make it better", "· और अच्छा बनाएँ") : ""}</span></span>
+            <span className="text-xs font-semibold text-brand-ink">{T("Open", "खोलें")}</span>
+          </summary>
+          <div className="space-y-3 border-t border-border p-3">
+            {designNote && <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">🎨 {T("Designer", "Designer")}: {designNote}</p>}
+            {notice && <p className="rounded-xl border border-amber/40 bg-amber/10 p-3 text-sm">{notice}</p>}
+            {checks.length > 0 && (
+              <div className="space-y-2 rounded-2xl border-2 border-amber/40 bg-amber/10 p-3">
+                <p className="text-[15px] font-semibold">{T("Please check", "एक बार देख लें")}</p>
+                <p className="text-xs text-muted">{T("These details came from the maker’s website. Keep only what is right.", "ये जानकारी बनाने वाली company की website से आई है। जो सही है, वही रखें।")}</p>
+                {checks.map((c) => (
+                  <label key={c.name} className="flex items-start gap-2.5 rounded-xl bg-surface p-2.5 text-sm">
+                    <input type="checkbox" checked={!off.includes(c.name)} onChange={() => setOff((o) => (o.includes(c.name) ? o.filter((x) => x !== c.name) : [...o, c.name]))} className="mt-0.5 h-5 w-5 shrink-0" />
+                    <span className="min-w-0">
+                      <b className="block">{c.name}</b>
+                      {c.web.summary && <span className="block text-xs text-muted">{c.web.summary}</span>}
+                      {c.web.features.length > 0 && <span className="block text-xs text-muted">{c.web.features.slice(0, 3).join(" · ")}</span>}
+                      {c.web.specs.length > 0 && <span className="block text-xs text-muted">{c.web.specs.slice(0, 3).map((s) => `${s.label}: ${s.value}`).join(" · ")}</span>}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
+            {missing.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-[15px] font-semibold">{T("Make it better", "और अच्छा बनाएँ")}</p>
+                <div className="flex flex-wrap gap-2">
+                  {missing.map((m) => <button key={m.key} type="button" onClick={() => goto(m.key)} className="rounded-full border-2 border-border bg-surface px-3.5 py-2 text-sm font-medium">{m.label}</button>)}
+                </div>
+              </div>
+            )}
+          </div>
+        </details>
+      )}
+
       {err && <p className="text-sm text-danger">{err}</p>}
-      <div className="sticky bottom-20 z-20 space-y-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
+      {/* 4. One main button, one "Change…" (owner's call, 5 Oct 2026): the bar used to hold five paths and a button
+          whose meaning changed. Not live → Make it live. Live → Done → next: your card, then OK → home. */}
+      <div className="sticky bottom-20 z-20 grid grid-cols-[1fr_auto] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
         {liveUser && username === liveUser ? (
-          tab === "site" ? (
-            /* Step 1 of the finished flow: the website is on screen; next comes the card. */
-            <div className="grid grid-cols-2 gap-2">
-              <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-base font-semibold"><Globe className="h-5 w-5" /> {T("Open website", "Website खोलें")}</a>
-              <button type="button" onClick={() => { setTab("phone"); try { previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("Next: your card →", "आगे: आपका card →")}</button>
-            </div>
-          ) : (
-            /* Step 2: the card is on screen; share it, or OK → home. */
-            <div className="grid grid-cols-2 gap-2">
-              <a href={`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital visiting card है — contact, products और बाकी सब एक tap में: ${SITE_URL}/c/${username}` : `Hi! Here is my digital visiting card — contact, products and more in one tap: ${SITE_URL}/c/${username}`)}`} target="_blank" rel="noreferrer"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] py-3 text-base font-semibold text-white">{T("Share on WhatsApp", "WhatsApp पर share करें")}</a>
-              <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("OK", "OK")}</button>
-            </div>
-          )
+          tab === "site"
+            ? <button type="button" onClick={() => { setTab("phone"); try { previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white">{T("Done → next: your card", "हो गया → आगे: आपका card")}</button>
+            : <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("OK", "OK")}</button>
         ) : (
-          <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save", "Save करें")}
+          <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Make it live", "Live करें")}
           </button>
         )}
-        {/* Second-row actions as quiet links: the bar used to cover a quarter of the card preview. */}
-        <div className="flex items-center justify-center gap-5 pt-0.5 text-sm font-semibold">
-          <button type="button" onClick={editFirst} disabled={!!busy} className="inline-flex items-center gap-1.5 text-brand-ink disabled:opacity-60"><Pencil className="h-4 w-4" /> {liveUser ? T("Edit card", "Card edit करें") : T("Edit first", "पहले edit करें")}</button>
-          <span className="h-4 w-px bg-border" />
-          <button type="button" onClick={writeAgain} disabled={!!busy} className="inline-flex items-center gap-1.5 text-muted disabled:opacity-60"><Sparkles className="h-4 w-4" /> {T("Write again", "दोबारा लिखवाएँ")}{access.loading ? null : access.subscribed ? <span className="text-[11px] font-normal">· {T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}</button>
-        </div>
+        <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-base font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>
       </div>
+      {more && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setMore(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[92dvh] w-full max-w-md space-y-3 overflow-y-auto overscroll-contain rounded-t-2xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-float sm:max-h-[90dvh] sm:rounded-2xl">
+            <div className="flex items-center justify-between">
+              <p className="text-lg font-bold">{T("Change…", "बदलें…")}</p>
+              <button type="button" onClick={() => setMore(false)} className="rounded-lg p-1 text-muted" aria-label={T("Close", "बंद करें")}><X className="h-5 w-5" /></button>
+            </div>
+            {/* Add / remove (docs/website-looks-v2.md §6): tiles, sections, dark / light, clip / photo — instant, no build,
+                no credit. On a live site the change goes live by itself, like a look. */}
+            {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); if (liveUser) queuePublish(next); }} />}
+            <div className="divide-y divide-border rounded-xl border border-border bg-surface">
+              <button type="button" onClick={() => { setMore(false); setState("form"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+                <ChevronLeft className="h-5 w-5 shrink-0 text-muted" />
+                <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit details", "जानकारी बदलें")}</b><span className="block text-xs text-muted">{T("Back to the questions — website, look, products", "सवालों पर वापस — website, look, products")}</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+              </button>
+              <button type="button" onClick={() => { setMore(false); editFirst(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+                <Pencil className="h-5 w-5 shrink-0 text-muted" />
+                <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit card", "Card edit करें")}</b><span className="block text-xs text-muted">{T("The editor: words, photos, pages", "Editor: शब्द, photos, pages")}</span></span>
+                <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+              </button>
+              <button type="button" onClick={() => { setMore(false); writeAgain(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+                <Sparkles className="h-5 w-5 shrink-0 text-muted" />
+                <span className="min-w-0 flex-1"><b className="block text-sm">{T("Write again", "दोबारा लिखवाएँ")}</b><span className="block text-xs text-muted">{T("The AI writes it afresh — say what should change", "AI दोबारा लिखता है — बताएँ क्या बदले")}</span></span>
+                {access.loading ? null : access.subscribed ? <span className="shrink-0 text-[11px] text-muted">{T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {againAsk && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setAgainAsk(false)}>
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[92dvh] w-full max-w-md overflow-y-auto overscroll-contain rounded-t-2xl bg-surface p-4 pb-0 shadow-float sm:max-h-[90dvh] sm:rounded-2xl">
@@ -1350,7 +1448,7 @@ export default function BuildCard() {
         )}
       </Sec>
 
-          {!!setup?.category && <TradeQuestions category={setup.category} facts={facts} setF={setF} hi={hi} />}
+          {!!setup?.category && <TradeQuestions category={setup.category} facts={facts} setF={setF} hi={hi} tradeLabel={setup.categoryLabel} />}
           <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={setup?.persona === "professional"} hasAbout={!!setup?.about} />
           <FactsFields group="products" facts={facts} setF={setF} hi={hi} hasAbout={!!setup?.about} category={setup?.category} />
         </div>

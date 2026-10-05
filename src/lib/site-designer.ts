@@ -96,7 +96,7 @@ function briefText(b: DesignBrief): string {
   const productPhotos = products.filter((p) => p.images.length || p.photo).length;
   const lines = [
     `Business: ${setup.business || setup.person}${setup.person && setup.person !== setup.business ? ` (owner: ${setup.person})` : ""}`,
-    `Trade: ${cat?.en ?? setup.categoryLabel ?? setup.category} — group ${cat?.group ?? "?"}; the card leads with the ${setup.role === "business" ? "business name" : "person"}; their things are called "${recipe.catalog}".`,
+    `Trade: ${cat && cat.key !== "other" ? cat.en : setup.categoryLabel || setup.category} — group ${cat?.group ?? "?"}; the card leads with the ${setup.role === "business" ? "business name" : "person"}; their things are called "${recipe.catalog}".`,
     `Where: ${setup.city || "—"}; reach: ${setup.reach}. Website language: ${facts.lang}.`,
     ...tradeAnswerLines(setup.category, facts.tradeAnswers),
     `Has: ${products.length} ${recipe.catalog} (${productPhotos} with photos), ${facts.photos.length} work photos, banner photo: ${facts.bannerUrl ? "yes (the owner's own)" : b.stockBanner ? "yes (a real photograph of the trade, provided)" : "no"}, logo: ${setup.logo ? "yes" : "no"}, owner portrait: ${setup.photo ? "yes" : "no"}, reviews: ${b.reviews}, timings: ${facts.hours ? "yes" : "no"}, since: ${facts.since || "—"}, experience: ${facts.experience ? `${facts.experience} years` : "—"}, offer: ${facts.offer ? "yes" : "no"}, home service: ${facts.homeService || "—"}.`,

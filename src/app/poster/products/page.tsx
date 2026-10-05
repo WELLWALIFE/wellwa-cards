@@ -7,7 +7,9 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, RefreshCw } from "lucide-react";
-import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
+import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { dropStaleLocal } from "@/lib/local-reset";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -31,6 +33,16 @@ const amount = (v: string | null | undefined) => { const m = /\d[\d,]*(?:\.\d+)?
 const rs = (v: string) => (/^\s*[\d,.]/.test(v) ? `₹${v.trim()}` : v.trim());
 /** The MRP is shown (struck out) only when it is more than the offer price — exactly when the card shows it. */
 const mrpShown = (price: string | null | undefined, mrp: string | null | undefined) => !!(price?.trim() && mrp?.trim()) && amount(mrp) > amount(price);
+
+/* Owner's call (5 Oct 2026): the "a little more" answers were saved only by Continue — typing, then the back arrow
+   or a step pill, lost them. Now the build form's autosave: 1.2 s after an edit → PATCH the product keys, a backup
+   on this phone first (vcard-products:<uid>, like vcard-form) so a reload keeps them, and one last keepalive PATCH
+   when the page is left. Storage is never trusted (private mode / a full disk throw). */
+type FactsBackup = { facts: Partial<CardFacts>; dirty: boolean; savedAt: number };
+const backupKey = (uid: string) => `vcard-products:${uid}`;
+const DAY = 24 * 60 * 60 * 1000;
+function readJson<T>(key: string): T | null { try { const raw = localStorage.getItem(key); return raw ? (JSON.parse(raw) as T) : null; } catch { return null; } }
+function writeJson(key: string, value: unknown) { try { localStorage.setItem(key, JSON.stringify(value)); } catch { /* private mode */ } }
 
 export default function ProductsPage() {
   const router = useRouter();
@@ -57,11 +69,66 @@ export default function ProductsPage() {
   const needs = tradeNeeds(category);
   const C = (e: string, h: string) => (en ? e : h);
   const factsDirty = useRef(false);
-  const setF = (p: FactsPatch) => { factsDirty.current = true; setFacts((f) => ({ ...(f ?? normalizeFacts({})), ...p, social: { ...(f ?? normalizeFacts({})).social, ...(p.social ?? {}) } })); };
+  const [edits, setEdits] = useState(0);
+  const [uid, setUid] = useState("");
+  const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  /** The product keys not yet on the server, and the headers a leaving-page PATCH can still send without awaiting. */
+  const pending = useRef<Record<string, unknown> | null>(null);
+  const authRef = useRef<Record<string, string> | null>(null);
+  const saveSeq = useRef(0);
+  const setF = (p: FactsPatch) => { factsDirty.current = true; setEdits((n) => n + 1); setFacts((f) => ({ ...(f ?? normalizeFacts({})), ...p, social: { ...(f ?? normalizeFacts({})).social, ...(p.social ?? {}) } })); };
   const [going, setGoing] = useState(false);
   useEffect(() => {
-    api<FactsResponse>("/api/card/facts").then((r) => { if (r.ok && r.data.facts) { setFacts(r.data.facts); setHasAbout(!!r.data.setup?.about?.trim()); setCategory(r.data.setup?.category ?? ""); } }).catch(() => undefined);
+    (async () => {
+      const who = await getBrowserSupabase()?.auth.getUser().catch(() => null);
+      const me = who?.data.user?.id ?? "";
+      const cleared = dropStaleLocal(who?.data.user);
+      setUid(me);
+      authRef.current = await authHeaders();
+      const r = await api<FactsResponse>("/api/card/facts");
+      if (!r.ok || !r.data.facts) return;
+      let f = r.data.facts;
+      // A backup whose PATCH never landed (offline, page killed): it goes over the server's copy and is saved now.
+      const b = me && !cleared ? readJson<FactsBackup>(backupKey(me)) : null;
+      if (b?.dirty && Date.now() - (b.savedAt ?? 0) < 7 * DAY) { f = { ...f, ...b.facts }; factsDirty.current = true; setEdits((n) => n + 1); }
+      setFacts(f); setHasAbout(!!r.data.setup?.about?.trim()); setCategory(r.data.setup?.category ?? "");
+    })().catch(() => undefined);
   }, []);
+  useEffect(() => {
+    if (!uid || !edits || !facts) return;
+    const slice = pickFacts(facts, PRODUCT_FACT_KEYS);
+    pending.current = slice;
+    writeJson(backupKey(uid), { facts: slice, dirty: true, savedAt: Date.now() });
+    setSaveState("saving");
+    const seq = ++saveSeq.current;
+    const t = setTimeout(async () => {
+      try {
+        authRef.current = await authHeaders();
+        const r = await api("/api/card/facts", { method: "PATCH", json: { facts: slice } });
+        if (seq !== saveSeq.current) return; // typed again meanwhile: that run reports
+        if (!r.ok) { setSaveState("failed"); return; }
+        pending.current = null; factsDirty.current = false;
+        writeJson(backupKey(uid), { facts: slice, dirty: false, savedAt: Date.now() });
+        setSaveState("saved");
+      } catch { if (seq === saveSeq.current) setSaveState("failed"); /* offline: the backup keeps the answers */ }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [edits, facts, uid]);
+  // Left before the 1.2 s (back arrow, a step pill, the tab closed): send what is pending at once. sendBeacon
+  // cannot carry the Bearer header /api/card/facts needs, so a keepalive fetch does the same job.
+  useEffect(() => {
+    const flush = () => {
+      const body = pending.current, h = authRef.current;
+      if (!body || !h) return;
+      pending.current = null;
+      try {
+        fetch("/api/card/facts", { method: "PATCH", headers: h, body: JSON.stringify({ facts: body }), keepalive: true })
+          .then((r) => { if (r.ok && uid) writeJson(backupKey(uid), { facts: body, dirty: false, savedAt: Date.now() }); }).catch(() => undefined);
+      } catch { /* the backup on this phone keeps them */ }
+    };
+    window.addEventListener("pagehide", flush);
+    return () => { window.removeEventListener("pagehide", flush); flush(); };
+  }, [uid]);
   async function continueToSite() {
     setGoing(true);
     try { if (facts && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, PRODUCT_FACT_KEYS) } }); } catch { /* the build form shows them again */ }
@@ -335,7 +402,14 @@ export default function ProductsPage() {
       {/* Step 3's other questions: highlights, customers, offer, your work — one place with the products. */}
       {setupMode && !draft && facts && (
         <div className="space-y-3">
-          <p className="pt-1 text-sm font-semibold">{en ? "A little more about what you offer" : "आप जो देते हैं, उसके बारे में थोड़ा और"} <span className="font-normal text-muted">({en ? "optional" : "optional"})</span></p>
+          <div className="flex items-baseline gap-2 pt-1">
+            <p className="text-sm font-semibold">{en ? "A little more about what you offer" : "आप जो देते हैं, उसके बारे में थोड़ा और"} <span className="font-normal text-muted">({en ? "optional" : "optional"})</span></p>
+            {saveState !== "idle" && (
+              <span role="status" className={`ml-auto shrink-0 text-[11px] ${saveState === "failed" ? "text-danger" : "text-muted"}`}>
+                {saveState === "saving" ? C("Saving…", "सेव हो रहा है…") : saveState === "saved" ? C("Saved ✓", "सेव हुआ ✓") : C("Not saved — kept on this phone", "सेव नहीं हुआ — इस फ़ोन पर रखा है")}
+              </span>
+            )}
+          </div>
           <FactsFields group="products" facts={facts} setF={setF} hi={!en} hasAbout={hasAbout} category={category} />
         </div>
       )}

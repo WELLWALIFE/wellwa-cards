@@ -221,14 +221,15 @@ export const PERSONAL: Record<string, TradeData> = {
       "where you are and when you are available",
       "how to reach you: WhatsApp, call, visit",
     ],
+    // Neutral service names any trade may have (owner's call, 5 Oct 2026): the card's own features ("Save & share
+    // my card") were seeding an "other" business's website as its services.
     services: [
-      { en: "What I do", hi: "मेरा काम", desc: "The main work, trade or service, explained simply.", descHi: "मुख्य काम, पेशा या सेवा, आसान शब्दों में।" },
-      { en: "Enquiries", hi: "पूछताछ", desc: "Ask anything on WhatsApp and get a clear reply.", descHi: "WhatsApp पर कुछ भी पूछें, साफ़ जवाब मिलेगा।" },
-      { en: "Appointments & visits", hi: "अपॉइंटमेंट और मुलाक़ात", desc: "Fix a time to meet, at your place or mine.", descHi: "मिलने का समय तय करें, आपकी जगह या मेरी।" },
-      { en: "Location & timings", hi: "पता और समय", desc: "Address, map link and the hours I am available.", descHi: "पता, मैप लिंक और उपलब्धता का समय।" },
-      { en: "Updates & news", hi: "अपडेट और ख़बरें", desc: "New work, offers or announcements shared here and on WhatsApp.", descHi: "नया काम, ऑफ़र या सूचना यहाँ और WhatsApp पर।" },
-      { en: "References", hi: "रेफ़रेंस", desc: "Speak to people I have worked with before you decide.", descHi: "फ़ैसले से पहले उन लोगों से बात करें जिनके साथ काम किया है।" },
-      { en: "Save & share my card", hi: "कार्ड सेव और शेयर करें", desc: "One tap saves the contact; one link shares it.", descHi: "एक टैप में नंबर सेव, एक लिंक से शेयर।" },
+      { en: "Consultation", hi: "परामर्श", desc: "Talk through what you need and get clear advice before any work.", descHi: "काम से पहले अपनी ज़रूरत बताएँ और साफ़ सलाह लें।" },
+      { en: "Home visit", hi: "घर पर विज़िट", desc: "Service at your place when the work needs it.", descHi: "जब काम को ज़रूरत हो, आपकी जगह पर सेवा।" },
+      { en: "Repair & maintenance", hi: "रिपेयर और मेंटेनेंस", desc: "Fixing what is broken and keeping things in good order.", descHi: "जो ख़राब है उसे ठीक करना और सब सही हालत में रखना।" },
+      { en: "Custom orders", hi: "ऑर्डर पर काम", desc: "Work made to your requirement, size or design.", descHi: "आपकी ज़रूरत, साइज़ या डिज़ाइन के मुताबिक़ काम।" },
+      { en: "Delivery", hi: "डिलीवरी", desc: "Finished work or goods brought to you.", descHi: "तैयार काम या सामान आप तक पहुँचाया जाता है।" },
+      { en: "Support", hi: "सपोर्ट", desc: "Help after the work is done — questions, follow-ups and small fixes.", descHi: "काम के बाद भी मदद — सवाल, फ़ॉलो-अप और छोटे सुधार।" },
     ],
     whyUs: [
       { en: "Honest work, plain words", hi: "ईमानदार काम, सीधी बात" },

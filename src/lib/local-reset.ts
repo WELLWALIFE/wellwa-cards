@@ -11,7 +11,7 @@
 /** Browser storage that belongs to one account but is not scoped by account id where it is written. */
 export const PER_ACCOUNT_KEYS = ["akp-draft", "akp-video-draft", "akp-profile", "akp-crm-ws", "vcard-preview"];
 /** Keys written as `<prefix><uid>`. */
-const PER_UID_PREFIXES = ["onboard-draft:", "vcard-draft:", "vcard-form:"];
+const PER_UID_PREFIXES = ["onboard-draft:", "vcard-draft:", "vcard-form:", "vcard-products:"];
 const SESSION_KEYS = ["setup-resume-hidden", "card-seed"];
 
 const seenKey = (uid: string) => `shubhora.cleared:${uid}`;

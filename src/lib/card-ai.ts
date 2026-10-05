@@ -95,6 +95,12 @@ const words = (v: unknown, n: number) => {
 };
 const strs = (a: unknown, n: number, len: number) => (Array.isArray(a) ? a.map((x) => S(x, len)).filter(Boolean).slice(0, n) : []);
 
+/* The list's last entry, "Other", is not a trade and is never written (owner's test, 5 Oct 2026: the prompt read
+   "a complete website of a Other"). In a sentence such a business is "a local business"; as a label, "Business". */
+const isOther = (c: string) => !c.trim() || /^(other|others|अन्य)$/i.test(c.trim());
+const tradeIn = (b: CardBrief) => (isOther(b.category) ? "local business" : b.category);
+const tradeLabel = (b: CardBrief) => (isOther(b.category) ? "Business" : b.category);
+
 /* A number the owner never gave (a year, "500+ customers", "10 years") is an invented fact. The prompt forbids them;
    this is the check behind it: every number in the free text must also be in the facts, or that sentence goes. */
 const DEV_DIGITS = "०१२३४५६७८९";
@@ -122,7 +128,7 @@ const briefFacts = (brief: CardBrief) =>
  *  the owner told us is far better than a failed build, which would also cost one of the 6 builds an hour. */
 function plainCopy(brief: CardBrief, lang: keyof typeof LANG): { tagline: string; about: string } {
   const where = brief.city ? (lang === "en" ? ` in ${brief.city}` : `, ${brief.city}`) : "";
-  const line = `${brief.business} — ${brief.category}${where}`.replace(/\s+/g, " ").trim();
+  const line = `${brief.business}${isOther(brief.category) ? "" : ` — ${brief.category}`}${where}`.replace(/\s+/g, " ").trim();
   return { tagline: words(line, 90), about: `${line}${lang === "hi" ? "।" : "."}` };
 }
 
@@ -130,6 +136,8 @@ function prompt(brief: CardBrief, lang: keyof typeof LANG, ref?: Reference | nul
   const products = (brief.products ?? []).filter(Boolean).slice(0, 12);
   const en = fallbackTitles("en");
   const titleMeaning = TITLE_KEYS.map((k) => `${k} = "${en[k]}"`).join("; ");
+  const trade = tradeIn(brief);
+  const tradeFact = isOther(brief.category) ? "not named — a local business; take what it does or sells from the owner's words below" : brief.category;
   return `You are a senior brand copywriter and web designer. You write the words for the digital business card (V-Card) of a small business in India, so that it looks and reads like a premium brand's website — the owner is not an expert, you are, and it must be excellent on the first try. Write every text value in ${LANG[lang]}. Return ONLY JSON.
 
 QUALITY (what makes it premium)
@@ -144,7 +152,7 @@ QUALITY (what makes it premium)
 FACTS (the only source of truth)
 Business name: ${brief.business}
 Owner: ${brief.person || "(not given)"}
-Trade: ${brief.category}${brief.ownSite ? " (confirmed from the business's own website — the site's words describe what it sells or does; older form notes that disagree are wrong)" : ""}
+Trade: ${tradeFact}${brief.ownSite ? " (confirmed from the business's own website — the site's words describe what it sells or does; older form notes that disagree are wrong)" : ""}
 City: ${brief.city || "(not given)"}
 Booking business: ${brief.booking ? "yes" : "no"}
 Products on the card (exact names): ${products.length ? products.join(" | ") : "(none)"}
@@ -154,11 +162,11 @@ ${ref ? `
 REFERENCE WEBSITE the owner likes (${ref.url}) — only for tone and the kind of sections. Never copy its sentences, names, prices or claims.
 ${ref.summary}
 ` : ""}${brief.guide ? `
-TRADE GUIDE — what a complete website of a ${brief.category} covers (adapt to THIS business's facts; keep what applies; the owner's own items always come first; write in the card language):
+TRADE GUIDE — what a complete website of a ${trade} covers (adapt to THIS business's facts; keep what applies; the owner's own items always come first; write in the card language):
 - The ${brief.guide.catalog} are what this business offers; call them that.
 - The about must explain: ${brief.guide.explain.join("; ")}.
 - Usual services of the trade: ${brief.guide.services.join(" | ")}
-- Why customers choose a good ${brief.category}: ${brief.guide.whyUs.join(" | ")}
+- Why customers choose a good ${trade}: ${brief.guide.whyUs.join(" | ")}
 - How a new customer works with such a business: ${brief.guide.steps.join(" | ")}
 - Questions new customers ask: ${brief.guide.faq.join(" | ")}
 ` : ""}
@@ -177,7 +185,7 @@ RULES
 3. No health, cure or income claims.
 4. jobTitle: at most 5 words — the trade in plain words (e.g. "Sweets & Namkeen"), never a qualification or speciality.
 5. tagline: at most 10 words, no claims.
-6. about: 110-170 words in 2-3 short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${brief.category} (care, quality, honest advice, timely service), with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
+6. about: 110-170 words in 2-3 short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${trade} (care, quality, honest advice, timely service), with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
 7. hero.sub: at most 25 words — what they offer and where, worded differently from "about".
 8. services: 5-7 items. Use the services the owner named (and the ones the website shows); then the usual services of this trade from the TRADE GUIDE that fit, worded for THIS business (the owner can delete any). Never repeat a product name, never a price. desc at most 20 words, explaining what the customer gets. Never a vague item like "Connect with us" or "Explore options" — every item is a real service.
 9. highlights: 0-4 short points, only from the facts.
@@ -186,7 +194,7 @@ RULES
 9d. more: 60-110 words for the website's About section — what customers in this city or trade look for and how we help, worded differently from "about", no numbers or claims.
 10. offer: only when the owner gave an offer, else {"title":"","text":""}.
 11. hours: only when timings were given, else [].
-12. faq: 6-8 questions a new customer of a ${brief.category} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then the trade's usual questions (TRADE GUIDE) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers 15-40 words.
+12. faq: 6-8 questions a new customer of a ${trade} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then the trade's usual questions (TRADE GUIDE) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers 15-40 words.
 13. contactNote: 1 short sentence inviting a WhatsApp message or a call.
 14. cta: a 2-4 word button text in the card language: "Book" wording for a booking business, "Order" wording for shops that sell products, otherwise "Enquire" wording (e.g. "Order on WhatsApp").
 15. titles: fill every key with a short heading in the card language. Meaning in English: ${titleMeaning}.
@@ -238,7 +246,7 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
   const offer = obj(raw.offer);
   const cta = S(raw.cta, 60).replace(/\s+/g, " ");
   return {
-    jobTitle: [S(raw.jobTitle, 60)].filter(backed)[0] || brief.category.slice(0, 60),
+    jobTitle: [S(raw.jobTitle, 60)].filter((x) => backed(x) && !isOther(x))[0] || tradeLabel(brief).slice(0, 60),
     tagline: keep(S(raw.tagline, 90)), about: keep(S(raw.about, 1400)),
     color: typeof raw.color === "string" && COLORS.includes(raw.color) ? raw.color : COLORS[0],
     highlights: strs(raw.highlights, 8, 40).filter(backed).slice(0, 4),
@@ -275,7 +283,7 @@ function gapPrompt(brief: CardBrief, lang: keyof typeof LANG, gaps: string[]): s
 ${want}
 
 Business: ${brief.business}${brief.person ? ` (owner ${brief.person})` : ""}
-Trade: ${brief.category}
+Trade: ${tradeIn(brief)}
 City: ${brief.city || "(not given)"}
 Facts:
 ${brief.details.slice(0, 5000)}`;
@@ -293,7 +301,7 @@ export async function fillThinText(brief: CardBrief, thin: ThinSpot[]): Promise<
 ${list}
 
 Business: ${brief.business}${brief.person ? ` (owner ${brief.person})` : ""}
-Trade: ${brief.category}
+Trade: ${tradeIn(brief)}
 City: ${brief.city || "(not given)"}
 Products: ${(brief.products ?? []).slice(0, 12).join(", ") || "(none)"}
 Facts:
@@ -357,7 +365,7 @@ export async function writeCard(brief: CardBrief, ref?: Reference | null): Promi
 
 export async function makeCardPhotos(userId: string, brief: CardBrief, count: number) {
   // Scenes only: no people, no shop, no brand. A photo must never pretend to show the owner, their team or their place.
-  const trade = (brief.category || "small business").trim();
+  const trade = isOther(brief.category) ? "small business" : brief.category.trim();
   const slots = [
     { key: "cover", ratio: "16:9" as const, prompt: `Wide, softly blurred ambience photograph suggesting a ${trade} in India — surfaces, light and colour only. No people, faces or hands, no text, no logos, no brand names, not a specific shop.` },
     { key: "about", ratio: "4:3" as const, prompt: `Close-up still-life photograph of everyday tools or materials of a ${trade}, soft light. No people, no text, no logos, no brand names.` },
@@ -406,8 +414,8 @@ export function assembleCard(brief: CardBrief, c: CardCopy, photos: { key: strin
     avatarColor: c.color, themeColor: c.color, template: "gradient", verified: false,
     coverUrl: photo("cover"),
     links, pages,
-    botKnowledge: `${brief.business} — ${brief.category}${brief.city ? `, ${brief.city}` : ""}.\n${brief.details.slice(0, 3000)}`,
+    botKnowledge: `${brief.business} — ${tradeLabel(brief)}${brief.city ? `, ${brief.city}` : ""}.\n${brief.details.slice(0, 3000)}`,
     language: lang,
-    seo: { category: brief.category.slice(0, 60), ...(brief.city ? { city: brief.city.slice(0, 40) } : {}) },
+    seo: { category: tradeLabel(brief).slice(0, 60), ...(brief.city ? { city: brief.city.slice(0, 40) } : {}) },
   };
 }

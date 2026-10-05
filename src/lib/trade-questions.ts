@@ -11,6 +11,7 @@
 // Isomorphic: no 'use client', no 'server-only'.
 import { categoryOf } from "@/lib/poster-categories";
 import { tradeDataFor } from "@/lib/site-recipes";
+import { PERSONAL, PERSONAL_DEFAULT } from "@/lib/trade-data/personal";
 
 export type TradeOption = { en: string; hi: string };
 export type TradeQuestion = {
@@ -166,6 +167,13 @@ const BY_KEY: Record<string, TradeQuestion[]> = {
   govt: [text("dept", "Department", "विभाग", "e.g. Education Dept, Rajasthan", "जैसे शिक्षा विभाग, राजस्थान", "🏛️"), text("post", "Post", "पद", "e.g. Block Development Officer", "जैसे खंड विकास अधिकारी")],
   army: [one("service", "Service", "सेवा", "Army|सेना, Navy|नौसेना, Air Force|वायुसेना, Police|पुलिस, CRPF / BSF / paramilitary|अर्धसैनिक, Retired|सेवानिवृत्त", "🎖️"), text("rank", "Rank", "रैंक", "e.g. Subedar (Retd.)", "जैसे सूबेदार (सेवानिवृत्त)")],
   influencer: [many("platform", "Platforms", "प्लेटफ़ॉर्म", "Instagram, YouTube, Facebook, Other|अन्य", "📣"), text("niche", "About what", "किस बारे में", "e.g. Food, Travel, Comedy", "जैसे खाना, घूमना, कॉमेडी")],
+  // A trade we have no file for (owner's call, 5 Oct 2026: an "other" business was asked nothing about itself, only
+  // shown the card's own features as "what you offer") — three generic questions any work can answer.
+  other: [
+    text("main", "What do you do or sell? (your main work, in a line)", "आप क्या करते या बेचते हैं? (मुख्य काम, एक लाइन में)", "e.g. Mobile repair and accessories", "जैसे मोबाइल रिपेयर और एक्सेसरीज़"),
+    many("for", "Who do you serve?", "किनके लिए काम करते हैं?", "Families|परिवार, Shops & businesses|दुकानें और व्यवसाय, Offices|ऑफ़िस, Schools & students|स्कूल और छात्र, Farmers|किसान, Online customers|ऑनलाइन ग्राहक, Other|अन्य"),
+    text("special", "What are you known for?", "आप किस बात के लिए जाने जाते हैं?", "e.g. Same-day service, honest pricing", "जैसे उसी दिन सर्विस, सही दाम"),
+  ],
 };
 
 /** When a trade has no questions of its own: one line about what it mainly does. */
@@ -188,11 +196,17 @@ export function tradeOwnQuestions(categoryKey: string): TradeQuestion[] {
   return BY_KEY[categoryKey] ?? BY_GROUP[c.group] ?? [];
 }
 
-/** "What do you have / offer?" — the trade's usual services from trade-data as tick boxes. */
+/** Service names that describe the card itself, not a business ("Save my contact", "Share my card" — the personal
+ *  seeds). A trade whose list is only these has nothing to tick, and the website must never offer them. */
+const CARD_FEATURES: ReadonlySet<string> = new Set([...PERSONAL_DEFAULT.services, ...PERSONAL.personal.services].map((s) => s.en.toLowerCase()));
+const isCardFeatureList = (services: { en: string }[]) => services.every((s) => CARD_FEATURES.has(s.en.toLowerCase()));
+
+/** "What do you have / offer?" — the trade's usual services from trade-data as tick boxes. Not for "other": its seeds
+ *  are placeholders, not this business's services (owner's call, 5 Oct 2026). */
 export function offeringsQuestion(categoryKey: string): TradeQuestion | null {
   const c = categoryOf(categoryKey);
   const d = tradeDataFor(categoryKey);
-  if (!c || !d?.services?.length || c.persona === "personal" || c.persona === "student") return null;
+  if (!c || !d?.services?.length || c.persona === "personal" || c.persona === "student" || categoryKey === "other" || isCardFeatureList(d.services)) return null;
   return { key: "offerings", en: "What do you have / offer? Tick all that apply.", hi: "आपके यहाँ क्या-क्या है? जो हो उसे दबाएँ।", type: "many", options: d.services.map((s) => ({ en: s.en, hi: s.hi })) };
 }
 
@@ -215,7 +229,7 @@ export function tradeAnswerLines(categoryKey: string, answers: TradeAnswers | un
   for (const q of tradeQuestionsFor(categoryKey)) {
     const v = (answers[q.key] ?? []).filter(Boolean);
     if (!v.length) continue;
-    out.push(q.key === "offerings" ? `We have / offer: ${v.join(", ")}` : `${q.en.replace(/\?$/, "")}: ${v.join(", ")}`);
+    out.push(q.key === "offerings" ? `We have / offer: ${v.join(", ")}` : `${q.en.replace(/\s*\([^)]*\)\s*$/, "").replace(/\?$/, "")}: ${v.join(", ")}`);
   }
   return out;
 }
