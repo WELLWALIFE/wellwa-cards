@@ -162,7 +162,7 @@ export type TrustFact = { value: string; label: string };
 
 const yearNow = () => new Date().getFullYear();
 /** "Since 2015" / "Est. 2009" / "2015 से" anywhere in the owner's own words → the year. */
-function sinceYear(texts: string[]): number | null {
+export function sinceYear(texts: string[]): number | null {
   for (const t of texts) {
     const m = /(?:since|est\.?|estd\.?|established|from|शुरू|से)\s*[:\-]?\s*((?:19|20)\d\d)\b/i.exec(t ?? "") ?? /\b((?:19|20)\d\d)\s*(?:से|se)\b/i.exec(t ?? "");
     if (m) { const y = Number(m[1]); if (y >= 1900 && y <= yearNow()) return y; }
