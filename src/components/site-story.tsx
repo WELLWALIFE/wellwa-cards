@@ -152,7 +152,7 @@ export function StoryView({ card, hi, t, qr, photo, clip, focus, phone, wa, waHr
   return (
     <>
       {/* phone: the story is the page */}
-      <div className="h-[100svh] md:hidden">{story}</div>
+      <div className="h-[100svh] md:hidden" style={{ height: "calc(100svh - var(--site-top, 0px))" }}>{story}</div>
       {/* computer: the story in a phone, beside the business */}
       <div className="hidden min-h-[100svh] items-center justify-center gap-14 px-8 py-12 md:flex" style={{ background: `radial-gradient(60% 80% at 70% 20%, color-mix(in srgb, var(--p-glow) 40%, transparent), transparent 60%), radial-gradient(50% 70% at 10% 90%, color-mix(in srgb, var(--p-mid) 45%, transparent), transparent 60%), var(--p-deep)`, color: "var(--p-ink)" }}>
         <div className="max-w-md">

@@ -135,7 +135,10 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const expired = await fetchCardExpired(card.username);
   // Free or paid, one link, two looks: phones get the card, computers the website (owner's call, 3 Oct 2026: the
   // free website is a real website — it wears a FREE strip on top and bottom, Premium wears none).
-  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && !mobile ? "site" : "card";
+  // The Story look is built for phones (docs/website-looks-v2.md §3.3; owner's call, 5 Oct 2026: "phone par story
+  // website khule"): a phone gets the website itself then, not the card. ?view=card still opens the card.
+  const story = card.site?.style?.blueprint === "story";
+  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && (!mobile || story) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
   const tracking = await fetchCardTracking(card.username);
   const joinHandle = brand ? null : await fetchCardOwnerUsername(card.username);
@@ -177,6 +180,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
             <span>Website + digital card by <b>Shubhora</b> · make yours free →</span>
           </a>
         )}
+        {freeSite && story && <style>{`.site{--site-top:30px}`}</style>}
         <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
         <PixelNotice active={tracked} />
       </>
