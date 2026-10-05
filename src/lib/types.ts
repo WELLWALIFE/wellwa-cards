@@ -146,6 +146,9 @@ export interface CardPage {
 
 /** Website design choices (see src/lib/site-style.ts for the palettes, font pairs and hero layouts). */
 export interface SiteStyle {
+  /** The page's structure (docs/website-looks-v2.md): bento = a tile board, cinematic = full-screen scenes,
+   *  story = swipe slides. Unset = the classic page (hero + sections), as every site before October 2026. */
+  blueprint?: "bento" | "cinematic" | "story";
   /** Palette key ("midnight", "ocean", …) or "brand" — colours built from `color` / the card's theme colour. */
   palette?: string;
   /** A website-only brand colour (#rrggbb), e.g. read from the reference website; the card keeps its own. */
@@ -249,6 +252,10 @@ export interface Card {
       focus?: string;
       /** Which side the headline sits on in a photo hero: the side the subject leaves empty. */
       textSide?: "left" | "right" | "center";
+      /** Bento blueprint: which tiles the board shows, in order (src/lib/site-blueprints.ts); unset = the default set. */
+      tiles?: string[];
+      /** The hero shows the trade clip (Premium) rather than the photo; unset = the clip when there is one. */
+      video?: boolean;
     };
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline

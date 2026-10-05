@@ -1,56 +1,54 @@
-// Five looks for one website (owner's call, 4 Oct 2026: "5 looks bana do, default pehla; doosre par click kare to
-// doosra; 5 dekh kar pehla achha lage to pehle par aa sake"). The first is the designer's own plan for this
-// business; the other four are second, third, fourth and fifth opinions on the same content — a calm classic, a
-// bold one, an elegant one, a fresh one — each built from the trade's own palette family so a sweet shop's "bold"
-// is not a bank's. Applied on the spot: only site.style changes, the words, pictures and sections stay, so no
-// build is run and nothing is paid for a look.
+// Three looks for one website (docs/website-looks-v2.md): the same words, pictures and sections on three different
+// BLUEPRINTS (site-blueprints.ts) — a tile board, full-screen scenes, swipe slides — never the same page in three
+// colours (owner's call, 5 Oct 2026: "look ka matlab design change, colour hi nahi"). The first is the designer's
+// pick for this business; the other two are the remaining blueprints with that plan's palette and type, the
+// cinematic one always on a dark palette (a full-screen photo needs a dark page under it). Applied on the spot:
+// only site.style (+ the board's tiles and the home order) changes, so no build runs and nothing is paid.
 //
+// Until the designer AI returns three plans of its own (looks v2 step 5), the three are derived here.
 // Isomorphic: no 'use client', no 'server-only'.
 import type { Card, SiteStyle } from "@/lib/types";
+import { BLUEPRINTS, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
 
-export type LookKey = "designer" | "classic" | "bold" | "elegant" | "fresh";
-export type Look = { key: LookKey; name: string; hi: string; blurb: string; blurbHi: string; style: SiteStyle };
+export type LookKey = BlueprintKey;
+export type Look = { key: LookKey; name: string; hi: string; blurb: string; blurbHi: string; style: SiteStyle; order?: string[]; tiles?: TileKey[] };
 
+/** A plan the designer AI (or the trade's mood brief) made for one blueprint. */
+export type LookPlan = { blueprint: BlueprintKey; style: SiteStyle; order?: string[]; tiles?: TileKey[]; why?: string };
+
+const LIGHT = new Set(["ivory", "pearl"]);
 const WARM = new Set(["saffron", "gold", "cocoa", "crimson", "rose", "ivory"]);
-const COOL = new Set(["ocean", "teal", "emerald", "pearl", "midnight", "steel"]);
-const pal = (s: SiteStyle | undefined) => s?.palette ?? "";
 
-/** The five, for this card. `designer` is the look the build gave it (the designer's plan, after the review). */
-export function fiveLooks(card: Pick<Card, "site">, designer: SiteStyle | undefined): Look[] {
-  const d = designer ?? card.site?.style ?? {};
-  const base = pal(d);
-  const warm = WARM.has(base) || (base === "brand" && !!d.color && isWarm(d.color));
-  const hi = d.font === "hindi";
-  const font = (k: string) => (hi ? "hindi" : k);
-  const classic: SiteStyle = { palette: warm ? "ivory" : "pearl", font: font("elegant"), hero: "split", radius: "soft", pattern: "none", motion: "calm" };
-  const bold: SiteStyle = { palette: ["gold", "cocoa", "noir", "ivory"].includes(base) ? "noir" : COOL.has(base) ? "midnight" : ["rose", "crimson", "saffron"].includes(base) ? "crimson" : "steel", font: font("bold"), hero: "photo", radius: "sharp", pattern: "diagonal", motion: "lively" };
-  const elegant: SiteStyle = { palette: warm ? "gold" : ["royal"].includes(base) ? "royal" : COOL.has(base) ? "ocean" : "cocoa", font: font("luxury"), hero: "editorial", radius: "round", pattern: "rings", motion: "calm" };
-  const fresh: SiteStyle = { palette: ["teal", "emerald"].includes(base) ? "saffron" : ["saffron", "gold", "crimson"].includes(base) ? "teal" : ["royal", "rose"].includes(base) ? "emerald" : "royal", font: font("friendly"), hero: "stage", radius: "round", pattern: "blobs", motion: "lively" };
-  // Four opinions that are really four: none repeats the designer's palette, and none repeats another's.
-  const taken = new Set<string>([base]);
-  const alt = ["pearl", "ivory", "midnight", "steel", "gold", "ocean", "teal", "royal", "emerald", "cocoa", "noir", "crimson"];
-  for (const s of [classic, bold, elegant, fresh]) {
-    if (taken.has(s.palette ?? "")) s.palette = alt.find((k) => !taken.has(k)) ?? s.palette;
-    taken.add(s.palette ?? "");
-  }
-  return [
-    { key: "designer", name: "Designer", hi: "Designer", blurb: "Made for your business", blurbHi: "आपके business के लिए बना", style: { ...d } },
-    { key: "classic", name: "Classic", hi: "क्लासिक", blurb: "Calm, light, trusted", blurbHi: "शांत, हल्का, भरोसेमंद", style: classic },
-    { key: "bold", name: "Bold", hi: "बोल्ड", blurb: "Dark, strong, confident", blurbHi: "गहरा, दमदार", style: bold },
-    { key: "elegant", name: "Elegant", hi: "एलिगेंट", blurb: "Fine serif, premium", blurbHi: "नफ़ीस, premium", style: elegant },
-    { key: "fresh", name: "Fresh", hi: "फ्रेश", blurb: "Bright, round, lively", blurbHi: "चमकीला, गोल, जीवंत", style: fresh },
-  ];
+/** The three, for this card: from the build's plans when it carried them, else derived from the designer's style. */
+export function threeLooks(card: Pick<Card, "site">, designer: SiteStyle | undefined, plans?: LookPlan[]): Look[] {
+  const d: SiteStyle = { ...(designer ?? card.site?.style ?? {}) };
+  const first = d.blueprint ?? "bento";
+  const rest = BLUEPRINTS.map((b) => b.key).filter((k) => k !== first);
+  const want: BlueprintKey[] = [first, ...rest];
+  const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
+  return want.map((key) => {
+    const bp = BLUEPRINTS.find((b) => b.key === key)!;
+    const plan = byKey.get(key);
+    const style: SiteStyle = plan ? { ...plan.style, blueprint: key } : derive(d, key);
+    return { key, name: bp.name, hi: bp.hi, blurb: plan?.why || bp.blurb, blurbHi: plan?.why || bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}) };
+  });
 }
 
-/** The card wearing this look: only the website's style changes; words, pictures and pages stay. */
+/** The designer's plan carried onto another blueprint: its palette and type, the blueprint's own structure. */
+function derive(d: SiteStyle, key: BlueprintKey): SiteStyle {
+  const bp = BLUEPRINTS.find((b) => b.key === key)!;
+  const { hero: _h, layouts: _l, ...paint } = d; void _h; void _l;
+  const s: SiteStyle = { ...paint, ...bp.defaults, blueprint: key };
+  if (key === "cinematic" && (LIGHT.has(d.palette ?? "") || !d.palette)) s.palette = WARM.has(d.palette ?? "") ? "cocoa" : "midnight";
+  if (key === "cinematic") { delete s.color; if (d.palette === "brand" && d.color) { s.palette = "brand"; s.color = d.color; } }
+  return s;
+}
+
+/** The card wearing this look: the website's style (and, for a plan, its tiles and section order) changes; words,
+ *  pictures and pages stay. */
 export function applyLook<T extends Pick<Card, "site">>(card: T, look: Look): T {
   if (!card.site) return card;
-  return { ...card, site: { ...card.site, style: { ...look.style } } };
-}
-
-function isWarm(hex: string): boolean {
-  const n = parseInt(hex.replace("#", ""), 16);
-  if (!Number.isFinite(n)) return false;
-  const r = (n >> 16) & 255, g = (n >> 8) & 255, b = n & 255;
-  return r >= b && r + g > 2 * b;
+  const hero = card.site.hero ? { ...card.site.hero, ...(look.tiles ? { tiles: look.tiles } : {}) } : card.site.hero;
+  const home = look.order ? { ...(card.site.home ?? {}), order: look.order } : card.site.home;
+  return { ...card, site: { ...card.site, style: { ...look.style }, ...(hero ? { hero } : {}), ...(home ? { home } : {}) } };
 }

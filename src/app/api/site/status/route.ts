@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { siteStatus, patchSite, cleanStyle, cleanHome, type SitePatch } from "@/lib/site-server";
+import { cleanTiles } from "@/lib/site-blueprints";
 
 export const maxDuration = 60;
 
@@ -29,6 +30,8 @@ export async function PATCH(request: Request) {
     if (S(h.sub, 240) !== undefined) patch.hero.sub = S(h.sub, 240);
     if (S(h.ctaLabel, 30) !== undefined) patch.hero.ctaLabel = S(h.ctaLabel, 30);
     if (typeof h.imageUrl === "string") patch.hero.imageUrl = /^https:\/\/.{0,400}$/.test(h.imageUrl) ? h.imageUrl : "";
+    const tiles = cleanTiles(h.tiles); if (tiles) patch.hero.tiles = tiles;
+    if (typeof h.video === "boolean") patch.hero.video = h.video;
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
   if (b.bar === null) patch.bar = null;

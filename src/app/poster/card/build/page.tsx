@@ -22,7 +22,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
-import { applyLook, fiveLooks, type LookKey } from "@/lib/site-looks";
+import { applyLook, threeLooks, type LookKey } from "@/lib/site-looks";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock, SiteStyle } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
@@ -225,10 +225,10 @@ export default function BuildCard() {
     if (!access.subscribed) { setPremiumUnlock(true); return; }
     setAgainAsk(true);
   }
-  // Five looks for the website on screen (site-looks.ts): the designer's, then four more; a tap swaps the style on
-  // the spot, and the first brings the designer's back.
-  const [lookKey, setLookKey] = useState<LookKey>("designer");
-  const looks = useMemo(() => (built?.site ? fiveLooks(built, built.site.style) : []), [built]);
+  // Three looks for the website on screen (site-looks.ts, docs/website-looks-v2.md): three blueprints — a tile board,
+  // full-screen scenes, swipe slides — on the same content; a tap swaps the whole design on the spot.
+  const [lookKey, setLookKey] = useState<LookKey>("bento");
+  const looks = useMemo(() => (built?.site ? threeLooks(built, built.site.style) : []), [built]);
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
     if (!look) return;
@@ -627,7 +627,7 @@ export default function BuildCard() {
       const nextChecks = r.data.checks ?? [];
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey("designer");
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey(built.site?.style?.blueprint ?? "bento");
       if (v.fresh) access.refresh();
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
       // Kept on this phone now (the draft above), so the server need not offer it again.
@@ -932,10 +932,10 @@ export default function BuildCard() {
         </div>
       )}
 
-      {/* Five looks (owner's call, 4 Oct 2026): the designer's first, four more opinions; back to the first any time. */}
+      {/* Three looks (owner's call, 5 Oct 2026): three blueprints on the same content; the designer's pick first. */}
       {looks.length > 0 && shown.site && (
         <div>
-          <p className="mb-1.5 text-xs font-semibold text-muted">{T("Look", "Look")} <span className="font-normal">— {T("tap to try another; the words and pictures stay", "दूसरा देखें; शब्द और photos वही रहेंगे")}</span></p>
+          <p className="mb-1.5 text-xs font-semibold text-muted">{T("Look", "Look")} <span className="font-normal">— {T("three designs of the same website; tap to switch", "एक ही website के तीन design; tap करके बदलें")}</span></p>
           <div className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
             {looks.map((l, i) => {
               const on = lookKey === l.key;

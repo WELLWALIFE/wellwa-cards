@@ -169,6 +169,10 @@ export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolea
   return has.cover ? "photo" : "split";
 }
 
+/** The page structures (docs/website-looks-v2.md §3); the registry with names and defaults is site-blueprints.ts. */
+export const BLUEPRINT_KEYS = ["bento", "cinematic", "story"] as const;
+export type BlueprintKey = (typeof BLUEPRINT_KEYS)[number];
+
 export const RADII: { key: NonNullable<SiteStyle["radius"]>; name: string; hi: string; r: string }[] = [
   { key: "sharp", name: "Sharp", hi: "शार्प", r: "0.4rem" },
   { key: "soft", name: "Soft", hi: "सॉफ्ट", r: "1rem" },
@@ -251,6 +255,7 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (!x || typeof x !== "object") return null;
   const o = x as Record<string, unknown>;
   const out: SiteStyle = {};
+  if (typeof o.blueprint === "string" && (BLUEPRINT_KEYS as readonly string[]).includes(o.blueprint)) out.blueprint = o.blueprint as SiteStyle["blueprint"];
   if (typeof o.palette === "string" && PALETTE_KEYS.includes(o.palette)) out.palette = o.palette;
   const color = hex6(o.color); if (color) out.color = color;
   if (typeof o.font === "string" && FONT_PAIRS.some((f) => f.key === o.font)) out.font = o.font;
