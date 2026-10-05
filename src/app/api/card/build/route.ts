@@ -23,7 +23,6 @@ import { writeCard, fillThinText, type CardBrief, type CardCopy } from "@/lib/ca
 import { textAudit, applyThinText } from "@/lib/card-text";
 import { readOwnSite, readReference } from "@/lib/reference-site";
 import { importSite, siteImportText, storeSiteMedia, type SiteImport, type StoredSite } from "@/lib/site-import";
-import { IMG_MODEL, referenceImages } from "@/lib/media/ai-image";
 import { cleanStyle, lookIsBlank } from "@/lib/site-style";
 import { lookupProducts } from "@/lib/product-lookup";
 import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessMeta, saveFacts } from "@/lib/card-inputs";
@@ -33,7 +32,6 @@ import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
 import { pickedOfferings } from "@/lib/trade-questions";
 import { designSite, differentFrom, fallbackLooks } from "@/lib/site-designer";
 import { logoColor } from "@/lib/media/logo-color";
-import { logImages } from "@/lib/ai-usage";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { bannerFocus } from "@/lib/media/photo-focus";
@@ -336,12 +334,14 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     return { style: cleanStyle(f.style) ?? null, round: Math.max(1, Math.min(50, Number(f.round) || 1)), wants: wants.length ? wants : (note || imageNote || wordsNote) ? [] : (["look", "layout"] as WriteAgainWant[]), note, imageNote, wordsNote, photoCount: count, photoMode, replaceUrls };
   })() : null;
   // One credit per thing asked for (owner's call, 4 Oct 2026: "ek image = 1 credit, text = 1 credit, jitna kaam utne").
-  const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, `${fresh.note}${fresh.imageNote}${fresh.wordsNote}`, fresh.photoCount) : 0;
+  // Pictures (banner, photos) are made and charged at Final by /api/card/banner; this build charges the rest.
+  const wordWants = fresh ? fresh.wants.filter((w) => w !== "photos" && w !== "banner" && w !== "pictures") : [];
+  const WRITE_AGAIN_CREDITS = fresh && (wordWants.length || fresh.note || fresh.wordsNote) ? writeAgainCredits(wordWants, `${fresh.note}${fresh.wordsNote}`) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
     if (!paidPlan) return answer({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, 402);
     const ref = `write-again-${me.id.slice(0, 8)}-${Date.now()}`;
-    const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
+    const spend = WRITE_AGAIN_CREDITS === 0 ? { ok: true } : await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
     if (!spend.ok) return answer({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, 402);
     refundWriteAgain = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again-refund", p_ref: ref }) });
     console.log(`[card] write again: ${WRITE_AGAIN_CREDITS} credit(s)`, JSON.stringify({ wants: fresh.wants, photos: fresh.wants.includes("photos") ? `${fresh.photoCount} ${fresh.photoMode}` : undefined }), me.id);
@@ -350,9 +350,6 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   /* ---- a reference website: pictures made in its look, of the owner's OWN trade ---- */
   // Never the reference site's own photographs — those are its owner's. Only used where the owner has
   // nothing of their own, so their photos always win and we never spend on someone who is already covered.
-  let aiPhotos = 0;
-  /** The banner AI made for this Premium build, so the website opens on it (hero photo / editorial). */
-  let aiBannerUrl = "";
   // The brand the business lives on (owner's call, 4 Oct 2026: "Hyundai dealer → Hyundai cars in every picture"):
   // a dealer's brand from its site, else the one brand most of their products carry. Every picture, photo and
   // clip is then of that brand's kind of thing, not of the trade in general.
@@ -401,41 +398,13 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     facts = { ...facts, photos: gone.size ? facts.photos.filter((u) => !gone.has(u)) : facts.photos.filter((u) => !madeByUs(u)) };
     if (gone.size && facts.bannerUrl && gone.has(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
   }
-  // What to make: a banner when there is none and one is wanted; gallery pictures — on a first build two when the
-  // owner has fewer than two of their own, on Write again exactly as many as were asked and paid for.
-  const makeBanner = paidPlan && !facts.bannerUrl && wantsBanner;
-  const makePhotos = paidPlan ? (fresh ? (fresh.wants.includes("photos") || fresh.wants.includes("pictures") ? fresh.photoCount : 0) : (facts.photos.length < 2 && wantsBanner ? 2 : 0)) : 0;
-  if (makeBanner || makePhotos > 0) {
-    step("pictures");
-    const ref = role === "reference" && facts.website ? await referenceP : null;
-    {
-      const made = await within(
-        referenceImages(me.id, {
-          trade: setup.categoryLabel || setup.category || "",
-          brand,
-          city: setup.city || "",
-          dark: ref?.style?.dark ?? false,
-          color: ref?.style?.colors[0] ?? categoryOf(setup.category)?.accent,
-          banner: makeBanner,
-          count: (makeBanner ? 1 : 0) + makePhotos,
-          ...(fresh?.imageNote ? { wish: fresh.imageNote } : {}),
-        }).catch(() => [] as string[]),
-        makePhotos > 3 ? 170_000 : 80_000,
-      ) ?? [];
-      logImages("card-pictures", IMG_MODEL, made.length);
-      if (made.length) {
-        aiPhotos = made.length;
-        const bannerMade = makeBanner ? made[0] : "";
-        const gallery = makeBanner ? made.slice(1) : made;
-        if (bannerMade) aiBannerUrl = bannerMade;
-        facts = {
-          ...facts,
-          bannerUrl: facts.bannerUrl || bannerMade,
-          photos: [...facts.photos, ...gallery].slice(0, MAX_GALLERY_PHOTOS),
-        };
-      }
-    }
-  }
+  // Pictures are made at Final, never here (docs/website-looks-v2.md §7, owner's call 5 Oct 2026: "pehle stock image,
+  // final par AI image"): the website is built and shown with the trade's stock photographs; once the owner keeps a
+  // look and makes it live, /api/card/banner paints the Premium banner (and two gallery pictures when they have
+  // fewer than two of their own) in that look's colour. Nothing is ever paid for a look that was not kept.
+  const aiPhotos = 0;
+  const aiBannerUrl = "";
+  void wantsBanner; void wantsPhotos;
 
   /* ---- save the facts ---- */
   if (facts.hidden.some((h) => typedNames.has(h))) facts = { ...facts, hidden: facts.hidden.filter((h) => !typedNames.has(h)) };

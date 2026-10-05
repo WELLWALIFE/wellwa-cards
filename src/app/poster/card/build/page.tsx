@@ -245,6 +245,12 @@ export default function BuildCard() {
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
   // not?" moment. `liveUser` is the link it went live on; a changed link afterwards needs one more save.
   const [liveUser, setLiveUser] = useState("");
+  // The Premium banner, made at Final (docs/website-looks-v2.md §7): the site goes live on its stock pictures, then
+  // /api/card/banner paints the banner in the chosen look and it lands here, with Keep / Another / Back to stock.
+  type BannerState = { state: "idle" | "running" | "done" | "failed"; job?: string; elapsed?: number; error?: string; charged?: number; prev?: boolean };
+  const [banner, setBanner] = useState<BannerState>({ state: "idle" });
+  const madeByUs = (u?: string) => !!u && /\/ref-\d+(-\d+)?\.(png|jpe?g|webp)(\?|$)/i.test(u);
+  const ownBanner = !!facts.bannerUrl && !madeByUs(facts.bannerUrl);
   // The two ready links for this card — your name / business name — for one-tap switching on the preview.
   const [linkOpts, setLinkOpts] = useState<{ name: string | null; business: string | null }>({ name: null, business: null });
 
@@ -353,6 +359,12 @@ export default function BuildCard() {
         if (jv.state === "running") void follow(jv, ctx);
         else { setState(ctx.back); void finish(jv, ctx); }
         return;
+      }
+
+      // A banner left running (or finished while this screen was closed) is followed to its end here.
+      if (live) {
+        const bj = await api<JobView | { job: null }>("/api/card/banner").catch(() => null);
+        if (bj?.ok && bj.data.job && !(bj.data as JobView).claimed) void followBanner(bj.data as JobView, live.id);
       }
 
       if (improve && live) {
@@ -685,6 +697,48 @@ export default function BuildCard() {
 
   /* ---------------- publish ---------------- */
 
+  /** The live card as the server has it now → the screen (after the banner landed, or was put back). */
+  async function refreshLive(cardId: string) {
+    try {
+      const cards = await fetchMyCardsStrict();
+      const row = cards.find((c) => c.id === cardId);
+      if (row) { setCard(row); setExisting(row); setLiveSig(cardSig(row)); const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = row; void _i; void _u; void _p; void _a; void _v; void _c; setBuilt(tpl as TemplateCard); }
+    } catch { /* offline: the next open shows it */ }
+  }
+  /** Starts (or joins) the banner job and follows it to the end. `again`: one more, a credit a picture. */
+  async function startBanner(cardId: string, again = false) {
+    if (!access.subscribed) { setPremiumUnlock(true); return; }
+    setBanner({ state: "running", elapsed: 0 });
+    const r = await api<JobView & { error?: string; charged?: number; own?: boolean; needCredits?: number; plan?: boolean }>("/api/card/banner", { method: "POST", json: { cardId, ...(again ? { again: true, count: 1 } : {}) } }).catch(() => null);
+    if (!r || !r.ok || !r.data?.job) {
+      if (r?.data?.own) { setBanner({ state: "idle" }); return; }
+      if (r?.status === 402 && r.data?.needCredits) { setBanner({ state: "idle" }); setAgainUnlock(true); access.refresh(); return; }
+      setBanner({ state: "failed", error: r?.data?.error || T("The banner could not be made now.", "Banner अभी नहीं बन पाया।") }); return;
+    }
+    void followBanner(r.data, cardId, r.data.charged);
+  }
+  async function followBanner(first: JobView, cardId: string, charged?: number) {
+    let v = first;
+    while (v.state === "running") {
+      if (!mounted.current) return;
+      setBanner({ state: "running", job: v.job, elapsed: v.elapsed, charged });
+      await new Promise((res) => setTimeout(res, 4000));
+      const r = await api<JobView | { job: null }>("/api/card/banner").catch(() => null);
+      if (r?.ok && r.data.job) v = r.data as JobView;
+    }
+    if (!mounted.current) return;
+    const res = (v.result ?? {}) as { ok?: boolean; error?: string; prev?: unknown };
+    if (v.state === "done" && res.ok) { await refreshLive(cardId); setBanner({ state: "done", job: v.job, charged, prev: !!res.prev }); if (charged) access.refresh(); }
+    else { setBanner({ state: "failed", job: v.job, error: res.error || T("The banner could not be made now.", "Banner अभी नहीं बन पाया।") }); void api("/api/card/banner", { method: "POST", json: { claim: v.job } }).catch(() => undefined); }
+  }
+  async function bannerKeep() { if (banner.job) void api("/api/card/banner", { method: "POST", json: { claim: banner.job } }).catch(() => undefined); setBanner({ state: "idle" }); }
+  async function bannerRevert(cardId: string) {
+    if (!banner.job) return;
+    setBusy("banner");
+    try { const r = await api<{ ok?: boolean }>("/api/card/banner", { method: "POST", json: { revert: banner.job } }); if (r.ok) { await refreshLive(cardId); setBanner({ state: "idle" }); } }
+    finally { setBusy(""); }
+  }
+
   /** The first card goes live on its own. A failure just leaves the "Make it live" button, nothing is lost. */
   async function goLive(full: Card, me: string, also = alsoShubhora) {
     setBusy("publish");
@@ -711,6 +765,8 @@ export default function BuildCard() {
         if (row) {
           setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
+          // Final (docs/website-looks-v2.md §7): the Premium banner is painted now, in the look that went live.
+          if (access.subscribed && !ownBanner && !madeByUs(row.coverUrl)) void startBanner(row.id);
         }
       } catch { /* the card is live; the primary mark can wait */ }
     } catch { /* offline: the button stays */ } finally { setBusy(""); }
@@ -766,7 +822,10 @@ export default function BuildCard() {
       try {
         const cards = await fetchMyCardsStrict();
         const row = cards.find((c) => c.username === r.username);
-        if (row) await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
+        if (row) {
+          await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
+          if (access.subscribed && !ownBanner && !madeByUs(row.coverUrl)) void startBanner(row.id);
+        }
       } catch { /* the card is live; the primary mark can wait */ }
       // The same finished flow as an automatic build: website first, then the card, then OK → home.
       setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
@@ -865,6 +924,22 @@ export default function BuildCard() {
         <h1 className="text-lg font-bold">{liveUser ? T("Your website and card are live", "आपकी website और card live हैं") : busy === "publish" ? T("Making your website live…", "आपकी website live की जा रही है…") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
       </div>
       {designNote && <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">🎨 {T("Designer", "Designer")}: {designNote}</p>}
+      {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
+      {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
+        <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("When you make it live, your Premium banner is painted in this very look (about a minute).", "Live करते ही आपका Premium banner इसी look में बनेगा (करीब 1 मिनट)।")}</p>
+      )}
+      {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your Premium banner…", "आपका Premium banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
+      {banner.state === "failed" && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{banner.error} <button type="button" onClick={() => existing && startBanner(existing.id)} className="ml-2 font-semibold underline">{T("Try again", "दोबारा")}</button></p>}
+      {banner.state === "done" && existing && (
+        <div className="space-y-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm">
+          <p><b className="text-good">✨ {T("Your Premium banner is on the website.", "आपकी website पर Premium banner लग गया।")}</b> <span className="text-xs text-muted">{T("See it on the Website tab.", "Website tab में देखें।")}</span></p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={bannerKeep} className="rounded-lg grad-brand px-3.5 py-2 text-sm font-semibold text-white">{T("Keep it", "रखो")}</button>
+            <button type="button" disabled={busy === "banner"} onClick={() => startBanner(existing.id, true)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{T("Make another", "दूसरा बनाओ")} <CreditPrice credits={1} /></button>
+            {banner.prev && <button type="button" disabled={busy === "banner"} onClick={() => bannerRevert(existing.id)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{T("Back to stock photo", "Stock photo वापस")}</button>}
+          </div>
+        </div>
+      )}
       {/* One clear line: live or not. */}
       {liveUser ? (
         <div className="flex items-center gap-3 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm"><CheckCircle2 className="h-6 w-6 shrink-0 text-good" /><p><b className="text-good">{T("Website live · Card live", "Website live · Card live")}</b><span className="block text-xs text-muted">{T("One link does both: it opens as your website on a computer and as your card on a phone. See the website first, then the card, then tap OK.", "एक ही link दोनों काम करता है: computer पर website खुलती है, phone पर card। पहले website देखें, फिर card, फिर OK दबाएँ।")}</span></p></div>
