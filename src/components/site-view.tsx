@@ -29,6 +29,7 @@ import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, sinceYear, trustFacts, type HomeSection } from "@/lib/site-home";
 import { BottomSheet, CountUp, Marquee, OpenNowChip, SMART_CSS } from "@/components/site-smart";
 import { BentoHero, bentoFacts, BENTO_CSS } from "@/components/site-bento";
+import { CinematicHero, ParallaxBand, QuoteRotator, CINEMATIC_CSS } from "@/components/site-cinematic";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
 
@@ -239,7 +240,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     on(); window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
   }, [bp]);
-  const bento = bp === "bento" ? bentoFacts(card) : null;
+  const bento = bp === "bento" || bp === "cinematic" ? bentoFacts(card) : null;
+  // Cinematic: the photos not already on the hero, as the bands between the scenes.
+  const bands = bp === "cinematic" ? strip.filter((u) => u !== card.coverUrl && u !== heroImg).slice(0, 3) : [];
   const sinceOf = bp ? sinceYear([...card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? ""]) : null;
   // Announcement bar: shown until its date (IST day), closable for the visit.
   const bar = card.site?.bar;
@@ -328,7 +331,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="lively"] .hero-pic{animation:floaty 7s ease-in-out infinite} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px}${SMART_CSS}${bp === "bento" ? BENTO_CSS : ""}` }} />
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="lively"] .hero-pic{animation:floaty 7s ease-in-out infinite} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px}${SMART_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : ""}` }} />
     <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
       {/* Lifted theme token: the raw brand colour as text fails contrast on dark
           surfaces, so text/icons use --tc which is lightened in dark mode. */}
@@ -401,7 +404,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
       <main className="relative flex-1 pb-14 md:pb-0">
         {bp === "bento" && <div aria-hidden="true" className="site-aurora"><i /><i /><i /></div>}
-        {isHome && bento ? (
+        {isHome && bp === "cinematic" ? (
+          <CinematicHero card={card} hi={hiLang} t={t} photo={card.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
+            phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={pills} />
+        ) : isHome && bento ? (
           <div className="relative">
             <BentoHero card={card} hi={hiLang} t={t} photo={card.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
               phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} rating={bento.rating} map={bento.map} offer={bento.offer} product={bento.product} onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); else openProduct(p); } }}
@@ -576,9 +582,13 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </section>
         )}
 
-        {groups.map((g, i) => Array.isArray(g)
-          ? <SiteRun key={g[0].id} run={g} index={i} {...runProps} />
-          : <Pulled key={g.key} section={g} index={i} {...runProps} />)}
+        {groups.map((g, i) => (
+          <div key={Array.isArray(g) ? g[0].id : g.key} className="contents">
+            {Array.isArray(g) ? <SiteRun run={g} index={i} {...runProps} /> : <Pulled section={g} index={i} {...runProps} />}
+            {/* Cinematic: a slow photo band after every second scene (never one the hero already shows). */}
+            {bands.length > 0 && i % 2 === 1 && bands[(i - 1) / 2] && <ParallaxBand src={bands[(i - 1) / 2]} />}
+          </div>
+        ))}
 
         {/* Updates — the owner's recent daily posters: the whole page, or the latest three on Home. */}
         {showUpdates && (page?.slug === UPDATES || (isHome && !(card.site?.home?.hidden ?? []).includes(UPDATES))) && (
@@ -1231,6 +1241,7 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = fal
 function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go, layout, openProduct }: { openProduct?: (p: ProductItem) => void; items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void; layout?: ProductsLayout }) {
   const t = useT();
   const prefs = useContext(LayoutCtx);
+  const bp = useContext(BlueprintCtx);
   const shape = layout ?? preferredLayouts(prefs, { products: items.length }).products ?? productsLayout(items.length);
   // One or two products: each gets the full showcase — big photo, price, every feature — the photo side alternating.
   if (shape === "showcase") {
@@ -1248,7 +1259,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   // No photo anywhere in the block: compact cards without an empty picture area.
   const compact = !items.some((p) => galleryOf(p).length > 0);
   return (
-    <div className={`grid sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}>
+    <div className={bp === "cinematic" && items.length >= 3 ? "site-rail" : `grid sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}>
       {items.map((p, i) => {
         const gallery = galleryOf(p);
         const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
@@ -1334,6 +1345,7 @@ function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string
   const prefs = useContext(LayoutCtx);
   const bp = useContext(BlueprintCtx);
   const t = useT();
+  if (bp === "cinematic") return <QuoteRotator items={items} t={t} />;
   // Bento: three or more reviews drift by as a strip (site-smart.tsx Marquee); a tap or the pointer holds it.
   if (bp === "bento" && items.length >= 3) {
     return (
