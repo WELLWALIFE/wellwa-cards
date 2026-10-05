@@ -11,7 +11,11 @@
 //   3. ONE cheap text-AI call writes the wording only (card-ai.ts);
 //   4. code lays the card out (card-compose.ts) — prices, photos, timings and trust tiles are the owner's, never AI's.
 // The card is returned, not saved: the owner checks it and publishes. Free; rate-limited.
-import { NextResponse } from "next/server";
+// The build runs as a job (card-jobs.ts): it carries on when the screen is closed, a second tap joins it, and the
+// finished card waits on the server until the phone takes it.
+import { NextResponse, after } from "next/server";
+import { claim, currentJob, jobView, startJob, touch, type BuildStage, type CardJob } from "@/lib/card-jobs";
+import { notify } from "@/lib/notify";
 import { bannerKeys } from "@/lib/banners-server";
 import { rateLimited } from "@/lib/api-security";
 import { restAsService, userFromRequest, stockEngineMod, posterQuota } from "@/lib/poster-server";
@@ -79,16 +83,67 @@ async function writeProduct(path: string, method: "POST" | "PATCH", body: Obj): 
   return r.ok ? r.data?.[0]?.id ?? null : null;
 }
 
+type Me = { id: string; token: string };
+type Done = { status: number; body: unknown };
+const answer = (body: unknown, status = 200): Done => ({ status, body });
+
+/** GET (bearer) → this account's latest build: { job: null } or { job, state, stage, elapsed, status?, result? }.
+ *  The phone asks every few seconds while it waits, and once on opening (a build left running, or finished while
+ *  the screen was closed, is picked up). */
+export async function GET(request: Request) {
+  const me = await userFromRequest(request);
+  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
+  const job = await currentJob(me.id);
+  if (!job) return NextResponse.json({ job: null });
+  touch(me.id);
+  return NextResponse.json(jobView(job));
+}
+
+/** POST (bearer):
+ *   { claim: <job id> }       — the phone has taken that finished build; it is not offered again;
+ *   { async: true, ...build } — starts the build (or joins the one already running) and answers at once with the job;
+ *   { ...build }              — older phones: the same, but the answer waits for the finished card. */
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  // Keyed on the logged-in owner alone: an IP from X-Forwarded-For is whatever the caller sent, so mixing it
-  // in would hand anybody a fresh bucket (and a new one every time a phone changes mobile tower).
-  if (rateLimited(`card-build:${me.id}`, 6, 60 * 60_000)) {
-    return NextResponse.json({ error: "You have made your V-Card 6 times in the last hour. Please try again in an hour." }, { status: 429 });
-  }
   const b = obj(await request.json().catch(() => null));
+  if (typeof b.claim === "string") return NextResponse.json({ ok: await claim(me.id, b.claim) });
 
+  // A second tap while a build runs joins it — never a second paid build (owner's call, 5 Oct 2026).
+  const running = await currentJob(me.id);
+  if (running?.state !== "running") {
+    // Keyed on the logged-in owner alone: an IP from X-Forwarded-For is whatever the caller sent, so mixing it
+    // in would hand anybody a fresh bucket (and a new one every time a phone changes mobile tower).
+    if (rateLimited(`card-build:${me.id}`, 6, 60 * 60_000)) {
+      return NextResponse.json({ error: "You have made your V-Card 6 times in the last hour. Please try again in an hour." }, { status: 429 });
+    }
+  }
+  const { job, done, joined } = await startJob(me.id, { fresh: !!b.fresh }, (step) => runBuild(me, b, step), tellOwner);
+  if (joined) console.log("[card] build joined", job.id, me.id);
+  if (b.async === true) {
+    // The build outlives this answer; a graceful restart waits for it.
+    if (!joined) after(() => done.then(() => undefined));
+    return NextResponse.json({ ...jobView(job), joined }, { status: 202 });
+  }
+  // This phone is waiting on the line, so it needs no message when the build ends (unless it hangs up).
+  const watching = setInterval(() => { if (!request.signal.aborted) touch(me.id); }, 5_000);
+  const end = await done.finally(() => clearInterval(watching));
+  // The old one-request answer: the phone that waited has its card, so the result is not offered again.
+  if (!joined) await claim(me.id, end.id);
+  return NextResponse.json(end.result, { status: end.status ?? 500 });
+}
+
+/** The owner left the screen before the build finished: tell them it is ready (or that it failed). */
+async function tellOwner(job: CardJob) {
+  if (Date.now() - job.seenAt < 20_000) return;
+  const ok = job.state === "done";
+  await notify(job.uid, "website_ready", ok
+    ? { title: "Your website is ready", body: "आपकी website तैयार है — देखने और live करने के लिए खोलें।", path: "/poster/card/build", ref: job.id,
+        whatsappText: `*आपकी website तैयार है*\nYour website is ready. Open it to see it and make it live:\n\n${SITE_URL}/poster/card/build` }
+    : { title: "Your website could not be made", body: "आपकी website नहीं बन पाई — खोलकर दोबारा try करें।", path: "/poster/card/build", ref: job.id, channels: ["push"] });
+}
+
+async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<Done> {
   /* ---- inputs ---- */
   const inputs0 = await loadCardInputs(me);
   // "Both" (owner's call, 2 Oct 2026): Shubhora is presented only by the small icon / strip and its own hidden page.
@@ -123,7 +178,7 @@ export async function POST(request: Request) {
     });
   }
 
-  if (!setup.business && !setup.person) return NextResponse.json({ error: "Add your name and business in the setup first." }, { status: 400 });
+  if (!setup.business && !setup.person) return answer({ error: "Add your name and business in the setup first." }, 400);
 
   /* ---- the owner's website: its text and everything else on it, started now (it takes the longest) ---- */
   // Their own site, or the brand's site of the products they sell as a dealer / distributor (then: products only),
@@ -184,6 +239,7 @@ export async function POST(request: Request) {
 
   /* ---- what the website gave: its products (new ones only), cover, gallery and logo where the owner has none ---- */
   const typedNames = new Set(rows.map((r) => r.name.toLowerCase()));
+  if (website) step("website");
   const got = await importP;
   if (got) {
     const { stored } = got;
@@ -283,10 +339,10 @@ export async function POST(request: Request) {
   const WRITE_AGAIN_CREDITS = fresh ? writeAgainCredits(fresh.wants, `${fresh.note}${fresh.imageNote}${fresh.wordsNote}`, fresh.photoCount) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
-    if (!paidPlan) return NextResponse.json({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, { status: 402 });
+    if (!paidPlan) return answer({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, 402);
     const ref = `write-again-${me.id.slice(0, 8)}-${Date.now()}`;
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
-    if (!spend.ok) return NextResponse.json({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, { status: 402 });
+    if (!spend.ok) return answer({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, 402);
     refundWriteAgain = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again-refund", p_ref: ref }) });
     console.log(`[card] write again: ${WRITE_AGAIN_CREDITS} credit(s)`, JSON.stringify({ wants: fresh.wants, photos: fresh.wants.includes("photos") ? `${fresh.photoCount} ${fresh.photoMode}` : undefined }), me.id);
   }
@@ -350,6 +406,7 @@ export async function POST(request: Request) {
   const makeBanner = paidPlan && !facts.bannerUrl && wantsBanner;
   const makePhotos = paidPlan ? (fresh ? (fresh.wants.includes("photos") || fresh.wants.includes("pictures") ? fresh.photoCount : 0) : (facts.photos.length < 2 && wantsBanner ? 2 : 0)) : 0;
   if (makeBanner || makePhotos > 0) {
+    step("pictures");
     const ref = role === "reference" && facts.website ? await referenceP : null;
     {
       const made = await within(
@@ -479,8 +536,9 @@ export async function POST(request: Request) {
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
   const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
+  step("writing");
   let copy: CardCopy;
-  try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return NextResponse.json({ error: "The AI did not respond. Please try again." }, { status: 502 }); }
+  try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return answer({ error: "The AI did not respond. Please try again." }, 502); }
   const design0 = await designP;
   // A rejected look never comes back: the plan is made to differ from it, whatever the designer said (or did not).
   const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note }) : design0;
@@ -584,6 +642,7 @@ export async function POST(request: Request) {
   // The designer looks at the page it made (design-review.ts): the website is drawn in the browser on the server
   // and the picture goes back to the model, which fixes what only a look can catch. Bounded; the build never
   // waits on it for long, and a card with no review is simply the card as it was.
+  step("checking");
   let designReview: BuildResponse["designReview"];
   try {
     const shot = await within(screenshotCard(built, SITE_URL), 40_000);
@@ -622,5 +681,5 @@ export async function POST(request: Request) {
     ...(designReview ? { designReview } : {}),
     ...(design ? { design: { style: design.style, ...(design.order ? { order: design.order } : {}), why: design.why } } : {}),
   };
-  return NextResponse.json(out);
+  return answer(out);
 }

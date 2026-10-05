@@ -52,3 +52,6 @@ next-env.d.ts
 
 # tutorial videos are made on the server (scripts/tutorial-video.mjs)
 /public/tutorials/
+
+# Website builds kept for their owners (src/lib/card-jobs.ts)
+/.card-jobs/

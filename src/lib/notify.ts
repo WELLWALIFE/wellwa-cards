@@ -19,6 +19,7 @@ export const NOTIFICATION_TYPES = {
   card_renewal:  { label: "V-Card renewal",        hint: "30, 7 and 1 day before the V-Card year ends, on the end day, 2 days before the pause, and at the pause.", push: true, whatsapp: true },
   payment:       { label: "Payment received",      hint: "A payment is confirmed and the plan is active.",      push: true,  whatsapp: true },
   website_live:  { label: "Website is live",       hint: "The owner's own domain is connected and secured.",     push: true,  whatsapp: true },
+  website_ready: { label: "Website made",          hint: "The website the owner asked for is ready (or could not be made) and they had left the screen.", push: true, whatsapp: true },
   announcement:  { label: "News from Shubhora",    hint: "Messages the admin sends to everyone.",               push: true,  whatsapp: false },
   system_alert:  { label: "Platform alarms (owners)", hint: "The render worker or the AI picture service needs a human: balance out, a video failed.", push: true, whatsapp: true },
 } as const;

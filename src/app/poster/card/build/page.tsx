@@ -51,6 +51,11 @@ type Row = { id?: string; name: string; brand: string; price: string; photo: str
  *  live card) and `liveSig` says which live card it was merged into, so a preview is never published on top of
  *  a card that has changed since. */
 type Draft = { card: Card; built: TemplateCard | null; liveSig: string; checks: WebCheck[]; missing: Missing[]; off: string[]; savedAt: number };
+/** The server's build, as GET/POST /api/card/build describe it (card-jobs.ts). */
+type BuildStage = "details" | "website" | "pictures" | "writing" | "checking";
+type JobView = { job: string; state: "running" | "done" | "failed"; stage: BuildStage; fresh: boolean; elapsed: number; claimed: boolean; status?: number; result?: unknown };
+/** What finishing a build needs from the moment it was asked for (or from the load pass, before state exists). */
+type FinishCtx = { live: Card | null; me: string; back: "form" | "preview" | "make"; f: CardFacts; also: boolean };
 type FormBackup = { facts: CardFacts; rows: Row[]; dirty: boolean; savedAt: number };
 const emptyRow = (): Row => ({ name: "", brand: "", price: "", photo: "" });
 
@@ -248,8 +253,12 @@ export default function BuildCard() {
   /** The preview tabs: the finished flow scrolls here when moving from the website to the card. */
   const previewRef = useRef<HTMLDivElement>(null);
   const autoRef = useRef(false);
-  /** The running build, so "Take me back" (and the 160 s guard) can stop a request that never answers. */
-  const jobRef = useRef<{ ctrl: AbortController; cancelled: boolean } | null>(null);
+  /** The build is the server's (card-jobs.ts): this screen only follows it, and stops asking once it is gone. */
+  const mounted = useRef(true);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
+  /** Where the server's build is, and whether this phone lost the connection while following it. */
+  const [stage, setStage] = useState<BuildStage>("details");
+  const [lost, setLost] = useState(false);
 
   const setF = useCallback((p: FactsPatch) => {
     setFacts((f) => ({ ...f, ...p, social: { ...f.social, ...(p.social ?? {}) } }));
@@ -333,6 +342,18 @@ export default function BuildCard() {
       const startRows = backupRows?.length ? backupRows : fromSaved.length ? fromSaved : [emptyRow(), emptyRow(), emptyRow()];
       setRows(startRows);
 
+      // A build asked for earlier — still running on the server, or finished while this screen was closed — is
+      // picked up here: the website made then is shown (and a first card goes live), never made a second time.
+      const jr = await api<JobView | { job: null }>("/api/card/build").catch(() => null);
+      const jv = jr?.ok && jr.data.job ? (jr.data as JobView) : null;
+      if (jv && !jv.claimed) {
+        const ctx: FinishCtx = { live, me, back: makeNow ? "make" : "form", f: next, also: !!who?.data.user?.user_metadata?.also_shubhora };
+        autoRef.current = true;
+        if (jv.state === "running") void follow(jv, ctx);
+        else { setState(ctx.back); void finish(jv, ctx); }
+        return;
+      }
+
       if (improve && live) {
         const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
         setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
@@ -404,7 +425,6 @@ export default function BuildCard() {
   /* staged wording while the server works */
   useEffect(() => {
     if (state !== "building") return;
-    setElapsed(0);
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [state]);
@@ -524,12 +544,7 @@ export default function BuildCard() {
     const live = over && "existing" in over ? over.existing ?? null : existing;
     const me = over?.uid ?? uid;
     const back = over?.back ?? (state === "preview" ? "preview" : "form");
-    setErr(""); setNotice(""); setState("building");
-    // A phone that changes from Wi-Fi to mobile data can leave a fetch hanging for ever, and this is the
-    // longest request in the app: it is given 280 s — a trade's first build may take three minutes (owner, 4 Oct 2026).
-    const job = { ctrl: new AbortController(), cancelled: false };
-    jobRef.current = job;
-    const guard = setTimeout(() => job.ctrl.abort(), 280_000);
+    setErr(""); setNotice(""); setElapsed(0); setStage("details"); setState("building");
     try {
       const products: BuildRow[] = rs
         .filter((r) => r.name.trim())
@@ -545,13 +560,48 @@ export default function BuildCard() {
       const keepWords = !!fresh && !wants.includes("words") && !!leaving;
       const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}), ...(keepWords ? { refresh: true, current: leaving as unknown as Record<string, unknown> } : {}) };
       siteNew.current = false;
-      const r = await api<Partial<BuildResponse> & { error?: string }>("/api/card/build", { method: "POST", json: body, signal: job.ctrl.signal });
+      const r = await api<JobView & { error?: string }>("/api/card/build", { method: "POST", json: { ...body, async: true } });
+      if (!r.ok || !r.data?.job) { setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
+      await follow(r.data, { live, me, back, f, also: alsoShubhora });
+    } catch {
+      setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
+    }
+  }
+
+  /** Waits for the server's build — asking every few seconds — and turns its card into the preview. A lost
+   *  connection only pauses the asking: the build carries on on the server and is picked up when the phone is back. */
+  async function follow(first: JobView, ctx: FinishCtx) {
+    setState("building");
+    let v = first;
+    while (v.state === "running") {
+      if (!mounted.current) return;
+      setStage(v.stage); setElapsed(v.elapsed);
+      await new Promise((res) => setTimeout(res, 3000));
+      try {
+        const r = await api<JobView | { job: null }>("/api/card/build");
+        if (r.ok && r.data.job) { v = r.data as JobView; setLost(false); }
+        else if (r.ok) { setErr(T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(ctx.back); return; }
+        else setLost(true);
+      } catch { setLost(true); }
+    }
+    setLost(false);
+    if (mounted.current) await finish(v, ctx);
+  }
+
+  /** A finished build (just now, or while the screen was closed) → the preview; the first card goes live. */
+  async function finish(v: JobView, ctx: FinishCtx) {
+    const { live, me, back, f } = ctx;
+    const claimIt = () => api("/api/card/build", { method: "POST", json: { claim: v.job } }).catch(() => undefined);
+    const r = { ok: (v.status ?? 500) < 400, status: v.status ?? 500, data: (v.result ?? {}) as Partial<BuildResponse> & { error?: string } };
+    try {
       const built = r.data?.card;
       if (!r.ok || !built) {
+        void claimIt();
         // The server's own word on Write again: Premium, or 5 credits short.
         if (r.status === 402 && (r.data as { plan?: boolean } | undefined)?.plan) { setState(back); setPremiumUnlock(true); return; }
         if (r.status === 402 && (r.data as { needCredits?: number } | undefined)?.needCredits) { setState(back); setAgainUnlock(true); access.refresh(); return; }
-        setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
+        setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return;
+      }
 
       let name = live?.username ?? "";
       if (!name) {
@@ -578,8 +628,10 @@ export default function BuildCard() {
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("phone"); setLookKey("designer");
-      if (fresh) access.refresh();
+      if (v.fresh) access.refresh();
       if (me) writeJson(draftKey(me), { card: full, built, liveSig: sig, checks: nextChecks, missing: nextMissing, off: [], savedAt: Date.now() } satisfies Draft);
+      // Kept on this phone now (the draft above), so the server need not offer it again.
+      void claimIt();
       // Three different things, which used to be one vague line:
       //   • the site could not be opened at all;
       //   • it opened and gave us nothing, because it is built in JavaScript — the page is empty until a
@@ -590,10 +642,10 @@ export default function BuildCard() {
       setDesignNote(r.data.design?.why ?? "");
       const found = r.data.siteFound;
       if (r.data.siteRead === false) {
-        setNotice(facts.websiteRole === "reference" && facts.website
+        setNotice(f.websiteRole === "reference" && f.website
           ? T("We could not open that website, so your card got our own look — you can change it any time under My website → Edit website.", "वो website खुल नहीं पाई, इसलिए आपके card को हमारा look मिला — My website → Edit website से जब चाहें बदल सकते हैं।")
           : T("We could not open your website, so your V-Card was made from your other details.", "आपकी website खुल नहीं पाई, इसलिए V-Card आपकी बाकी जानकारी से बना है।"));
-      } else if (r.data.aiPhotos && !(facts.websiteRole === "reference" && facts.website)) {
+      } else if (r.data.aiPhotos && !(f.websiteRole === "reference" && f.website)) {
         setNotice(hi
           ? `आपके काम की ${r.data.aiPhotos} pictures बनाई गईं ताकि website खाली न लगे। अपनी असली photos लगाते ही ये हट जाएँगी: My website → "photos needed"।`
           : `${r.data.aiPhotos} pictures were made for your trade so the website is not empty. Your real photos replace them the moment you add some: My website → "photos needed".`);
@@ -601,9 +653,9 @@ export default function BuildCard() {
         setNotice(hi
           ? `आपका card उस website के look में बना है, और उसे भरने के लिए आपके काम की ${r.data.aiPhotos === 1 ? "1 picture" : `${r.data.aiPhotos} pictures`} बनाई गई — किसी और site की photo हम कभी copy नहीं करते। अपनी photo जब चाहें लगा लें: Edit card → जो photo बदलनी है।`
           : `Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Edit card → the photo you want to change.`);
-      } else if (facts.websiteRole === "reference" && facts.website) {
+      } else if (f.websiteRole === "reference" && f.website) {
         setNotice(T("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.", "आपका card उस website के look में बना है, photos आपके काम की हैं — किसी और site की photo हम कभी copy नहीं करते। अपनी photos जब चाहें डाल लें: Edit card → जो photo बदलनी है।"));
-      } else if (found && !found.products && !found.photos && facts.websiteRole !== "reference") {
+      } else if (found && !found.products && !found.photos && f.websiteRole !== "reference") {
         setNotice(T("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.", "आपकी website खुली, पर पढ़ने के लिए कुछ नहीं मिला — उसके page JavaScript से बनते हैं, इसलिए browser चलाए बिना खाली रहते हैं। आपका card बाकी जानकारी से बना है। नीचे (या Products screen पर) अपने products डाल दें — photo और price के साथ दिख जाएँगे।"));
       } else if (r.data.standIns?.length) {
         // What the build had to stand in for (card-audit.ts): said plainly, so the owner knows what to replace.
@@ -622,25 +674,23 @@ export default function BuildCard() {
       setState("preview");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
       // The very first card, with nothing to double-check: live straight away. Anything else waits for the button.
-      if (!live && nextChecks.length === 0) void goLive(full, me);
+      if (!live && nextChecks.length === 0) void goLive(full, me, ctx.also);
     } catch {
-      setErr(job.cancelled ? "" : T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
-    } finally {
-      clearTimeout(guard);
-      if (jobRef.current === job) jobRef.current = null;
+      // The finished card stays on the server (not claimed): opening this screen again picks it up.
+      setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
     }
   }
 
   /* ---------------- publish ---------------- */
 
   /** The first card goes live on its own. A failure just leaves the "Make it live" button, nothing is lost. */
-  async function goLive(full: Card, me: string) {
+  async function goLive(full: Card, me: string, also = alsoShubhora) {
     setBusy("publish");
     try {
       // "Both — my business and Shubhora": the first card goes live from here without ever reaching publish(),
       // so the hidden Shubhora page is added here too — otherwise the choice made at set-up was simply lost.
       let out = full;
-      const addShubhora = alsoShubhora && !hasShubhoraPage(out);
+      const addShubhora = also && !hasShubhoraPage(out);
       if (addShubhora) out = withShubhoraPage(out, { visible: false });
       const r = await publishCard(out);
       if (!r.ok) return;
@@ -769,26 +819,39 @@ export default function BuildCard() {
   );
 
   if (state === "building") {
-    const looking = rows.some((r) => r.name.trim() && r.brand.trim()) || !!(facts.website || setup?.website);
-    // A website of their own (or their brand's) is read page by page — a JavaScript-built one in a real
-    // browser — and that is the slow part: say so, rather than promising a minute and taking two.
+    // A website of their own (or their brand's) is read page by page — a JavaScript-built one in a real browser.
     const readingSite = !!(facts.website && facts.websiteRole !== "reference") || (!facts.website && !!setup?.website);
-    const stage = elapsed < 6 ? T("Reading your details…", "आपकी जानकारी पढ़ी जा रही है…")
-      : readingSite && elapsed < 90 ? T("Reading your website — logo, photos, products…", "आपकी website पढ़ी जा रही है — logo, photos, products…")
-      : looking && elapsed < 18 ? T("Finding product details…", "Product की जानकारी ढूँढी जा रही है…")
-      : T("Writing your V-Card…", "आपका V-Card लिखा जा रहा है…");
+    const ORDER: BuildStage[] = ["details", "website", "pictures", "writing", "checking"];
+    const at = ORDER.indexOf(stage);
+    const steps: [BuildStage, string][] = [
+      ["details", T("Reading your details", "आपकी जानकारी पढ़ी जा रही है")],
+      ...(readingSite ? [["website", T("Reading your website — logo, photos, products", "आपकी website पढ़ी जा रही है — logo, photos, products")] as [BuildStage, string]] : []),
+      ["pictures", T("Choosing photos of your trade", "आपके काम की photos चुनी जा रही हैं")],
+      ["writing", T("Writing your website", "आपकी website लिखी जा रही है")],
+      ["checking", T("Checking the design", "Design जाँचा जा रहा है")],
+    ];
+    const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
     return (
-      <div className="py-24 grid place-items-center gap-3 text-center">
-        <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
-        <p className="font-semibold">{stage}</p>
-        <p className="text-sm text-muted">{readingSite ? T("Reading your website too — up to 2 minutes. Please keep this screen open.", "आपकी website भी पढ़ी जा रही है — 2 मिनट तक लग सकते हैं। ये screen खुली रखें।") : T("Usually 20-60 seconds", "आम तौर पर 20-60 second")}</p>
-        {readingSite && !hi && <p className="text-xs text-muted">आपकी website पढ़ी जा रही है — 1-2 मिनट लग सकते हैं, screen बंद न करें</p>}
-        {/* No way back while it builds (owner, 4 Oct 2026): a build left half-way cost money and showed nothing. */}
-        <p className="text-xs text-muted">{elapsed < 75
-          ? T("Usually 1–2 minutes. The first site of a trade can take 3: its pictures are found and judged one by one.", "आमतौर पर 1–2 मिनट। किसी trade की पहली site में 3 लग सकते हैं: photos एक-एक करके चुनी और परखी जाती हैं।")
-          : elapsed < 150
-          ? T("Still choosing pictures and checking the design — please keep this screen open.", "अभी photos चुनी जा रही हैं और design जाँचा जा रहा है — screen खुली रखें।")
-          : T("Almost there — the designer is looking at the finished page.", "बस थोड़ा और — designer बना हुआ page देख रहा है।")}</p>
+      <div className="mx-auto max-w-sm space-y-5 py-14">
+        <div className="grid place-items-center gap-2 text-center">
+          <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
+          <p className="text-lg font-bold">{T("Your website is being made", "आपकी website बन रही है")}</p>
+          <p className="text-xs text-muted">{T("Usually 1–2 minutes; the first website of a trade can take 3.", "आम तौर पर 1–2 मिनट; किसी trade की पहली website में 3 लग सकते हैं।")} · {clock}</p>
+        </div>
+        <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
+          {steps.map(([k, label]) => {
+            const i = ORDER.indexOf(k);
+            return (
+              <li key={k} className={`flex items-center gap-2.5 ${i > at ? "text-muted" : ""}`}>
+                {i < at ? <CheckCircle2 className="h-5 w-5 shrink-0 text-good" /> : i === at ? <LoaderCircle className="h-5 w-5 shrink-0 animate-spin text-brand" /> : <CircleDashed className="h-5 w-5 shrink-0" />}
+                <span className={i === at ? "font-semibold" : ""}>{label}</span>
+              </li>
+            );
+          })}
+        </ul>
+        {/* The build is the server's (card-jobs.ts): closing the screen no longer loses it, and a second tap joins it. */}
+        <p className="rounded-xl bg-surface2 px-3 py-2.5 text-sm">{T("You can close this screen. Your website keeps being made, and we will tell you when it is ready. Opening this screen again shows it.", "आप ये screen बंद कर सकते हैं। आपकी website बनती रहेगी, और तैयार होते ही हम आपको बता देंगे। ये screen दोबारा खोलते ही दिख जाएगी।")}</p>
+        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">{T("No internet right now — your website is still being made on our server and shows here once you are back online.", "अभी internet नहीं है — आपकी website हमारे server पर बन रही है, internet आते ही यहाँ दिख जाएगी।")}</p>}
       </div>
     );
   }
