@@ -311,7 +311,7 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
   await waitText(/Bento|Cinematic|Story/, 60000); await sleep(2500);
   await dump("preview"); await shot("preview");
   if (await clickText(/Cinematic/)) { await sleep(2500); await shot("preview-cinematic"); }
-  if (await clickText(/Story/)) { await sleep(2500); await shot("preview-story"); }
+  if (await clickText(/Poster|Story/)) { await sleep(2500); await shot("preview-poster"); }
   if (await clickText(/^Card$|^Card ·/)) { await sleep(1200); await shot("preview-card-tab"); await clickText(/^Website/); await sleep(600); }
   if (await clickText(/Change…|Change\.\.\.|बदलें/)) { await sleep(800); await dump("change-sheet"); await shot("change-sheet", false); await page.keyboard.press("Escape"); await sleep(400); }
   if (await clickText(/Desktop|computer|कंप्यूटर/i)) { await sleep(1500); await shot("preview-desk"); }
