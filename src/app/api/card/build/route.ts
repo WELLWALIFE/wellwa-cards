@@ -637,6 +637,10 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       } else console.log("[card] design-review: no verdict");
     } else console.log("[card] design-review: no screenshot");
   } catch (e) { console.log("[card] design-review skipped:", e instanceof Error ? e.message : e); }
+  // The three looks: the designer's, or the trade's mood brief's when the designer gave none. A card with no blueprint of
+  // its own wears the first look from the start — the preview showed it as a plain cover under a "Bento" tick (6 Oct 2026).
+  const looks = design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang), ...(built.site?.style ?? {}) } });
+  if (built.site && !built.site.style?.blueprint && looks[0]) built = { ...built, site: { ...built.site, style: { ...(built.site.style ?? {}), ...looks[0].style, blueprint: looks[0].blueprint } } };
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
     ...(audited.standIns.length ? { standIns: audited.standIns } : {}),
@@ -650,8 +654,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     ...(aiPhotos ? { aiPhotos } : {}),
     ...(designReview ? { designReview } : {}),
     ...(design ? { design: { style: design.style, ...(design.order ? { order: design.order } : {}), why: design.why } } : {}),
-    // The three looks: the designer's, or the trade's mood brief's when the designer gave none.
-    looks: design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang), ...(built.site?.style ?? {}) } }),
+    looks,
   };
   return answer(out);
 }

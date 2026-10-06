@@ -508,7 +508,9 @@ export default function BuildCard() {
     return () => clearTimeout(t);
   }, [linkVal, editLink, existing?.id, T]);
 
-  const shown = useMemo(() => (card ? applyChecks(card, checks, off) : null), [card, checks, off]);
+  // A card with no blueprint of its own (built before the looks, or by a build the designer skipped) is shown wearing the
+  // first look, which is the one the picker marks (owner, 6 Oct 2026: the "Bento" tick showed a plain cover).
+  const shown = useMemo(() => (card ? applyChecks(!card.site?.style?.blueprint && looks[0] ? applyLook(card, looks[0]) : card, checks, off) : null), [card, checks, off, looks]);
   /** The look on screen is read off the card itself (a draft restore, ?improve=1 or a banner refresh used to leave a
    *  separate "picked" state pointing at the wrong one). */
   const activeLook: LookKey | undefined = shown?.site?.style?.blueprint ?? looks[0]?.key;

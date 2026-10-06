@@ -84,9 +84,9 @@ export const HERO_VARIANT_BLURBS: Record<HeroVariant, string> = {
   "cover-ink": "a dark ink field, type only (no photo, or a dark mood)",
   "cover-split": "words on paper left, the picture 4:5 right, no scrim (clinics, CAs, schools, kirana)",
   "cover-centre": "one centred block over the photo (hotels, banquets, events)",
-  "slide-photo": "the photo slide with the headline low — the default first slide",
+  "slide-photo": "the photo slide with the headline low over the picture (hotels, events, cafés at night)",
   "slide-ink": "a dark ink slide, type only (no photo)",
-  "slide-duo": "the photo on the top half, a paper panel with the words below (bright photos, garments, kirana)",
+  "slide-duo": "the photo on the top half, a paper panel with the words below — the default first slide",
   "slide-type": "a paper slide led by type (boutiques, persons)",
 };
 /** The gate on each variant, in words the designer reads. */

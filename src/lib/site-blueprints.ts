@@ -33,7 +33,7 @@ export const BLUEPRINTS: Blueprint[] = [
   },
   {
     key: "story", name: "Story", hi: "स्टोरी", blurb: "Swipe slides, like Instagram stories", blurbHi: "Instagram stories जैसी swipe slides",
-    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "slide-photo" },
+    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "slide-duo" },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
 ];
