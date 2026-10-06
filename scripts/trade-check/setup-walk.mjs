@@ -100,6 +100,7 @@ const routes = [
   ["DELETE", /^\/api\/poster\/products/, (_b, url) => { const id = url.searchParams.get("id"); state.products = state.products.filter((p) => p.id !== id); log("products DELETE", id); return { ok: true }; }],
   ["POST", /^\/api\/poster\/products\/ai$/, () => ({ products: [] })],
   ["POST", /^\/api\/ai\/write$/, (b) => { log("ai/write", { task: b.task, role: b.role, company: b.company }); return { text: `${b.company || "We"} fix drones, gimbals and camera batteries for DJI and every other brand — same-day service, genuine parts and a six-month warranty. Doorstep pickup across ${/City: (.*)/.exec(b.input || "")?.[1] || "the city"}.` }; }],
+  ["POST", /^\/api\/poster\/upload$/, (_b, url) => { log("upload POST", url.pathname); return { url: "/api/stock/banners/cafe.jpg" }; }],
   ["GET", /^\/api\/wa\/status$/, () => ({ state: "none" })],
   ["GET", /^\/api\/social\/accounts$/, () => ({ accounts: [] })],
   ["GET", /^\/api\/google\/status$/, () => ({ connected: false })],
@@ -288,6 +289,22 @@ if (await waitText(/About & logo|परिचय और logo/)) {
 // 9 — photos & more → Save
 if (await waitText(/Photos & more|Photos और बाकी/)) {
   await dump("extras"); await shot("extras");
+  // A photo straight from the camera (4000×3000, 10 MB, EXIF-rotated) must open the crop window and upload
+  // (owner, 6 Oct 2026: "camera se upload nahi ho rahi").
+  const camera = process.env.CAMERA_JPG || "";
+  if (camera && fs.existsSync(camera)) {
+    const inputs = await page.$$("input[type=file]");
+    if (inputs[0]) {
+      await inputs[0].uploadFile(camera); await sleep(4000);
+      const cropOpen = await page.evaluate(() => !!document.querySelector("canvas") && [...document.querySelectorAll("button")].some((b) => /Use|Apply|Done|लगाएँ|ठीक/.test(b.innerText)));
+      console.log("  camera photo → crop window open:", cropOpen);
+      await shot("banner-crop", false);
+      await clickText(/^(Use|Apply|Done|OK)|लगाएँ|ठीक/); await sleep(2500);
+      const banner = await page.evaluate(() => !!document.querySelector("img[src*='/api/stock/banners/cafe.jpg']"));
+      console.log("  banner uploaded and shown:", banner, "| error on screen:", await page.evaluate(() => [...document.querySelectorAll("p")].map((p) => p.innerText).find((t) => /Could not|नहीं/.test(t)) || "none"));
+      await shot("banner-done");
+    }
+  }
   await clickText(/Save and continue|Save करके/); await sleep(2500);
 }
 await dump("after-save"); await shot("after-save");

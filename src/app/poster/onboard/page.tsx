@@ -18,7 +18,7 @@ import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Camera, Check, CheckCircle2, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
-import { dataUrlToFile } from "@/lib/image-utils";
+import { dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { CategoryPicker } from "@/components/category-picker";
 import { syncCardFromSetup, loadOwnDetails, personalize } from "@/lib/card-personalize";
@@ -316,10 +316,10 @@ function Onboard() {
   function clearDraft() { draftDead.current = true; try { if (uid) localStorage.removeItem(`onboard-draft:${uid}`); } catch { /* ignore */ } }
 
   /** A picked photo opens the crop / zoom window first; the framed square is what gets uploaded. */
-  function choose(file: File, kind: "photo" | "logo") {
-    const r = new FileReader();
-    r.onload = () => setCrop({ kind, src: String(r.result) });
-    r.readAsDataURL(file);
+  async function choose(file: File, kind: "photo" | "logo") {
+    setErr("");
+    try { setCrop({ kind, src: await shrinkForCrop(file, kind === "logo" ? 1600 : 2000) }); }
+    catch { setErr(T("Could not open that photo — please pick a JPG or PNG.", "वो photo खुल नहीं पाई — JPG या PNG चुनें।")); }
   }
   async function upload(dataUrl: string, kind: "photo" | "logo") {
     setCrop(null); setBusy(kind); setErr("");

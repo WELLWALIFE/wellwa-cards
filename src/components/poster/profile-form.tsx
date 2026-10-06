@@ -5,7 +5,7 @@ import { PERSONAS, LANGS, uploadImage, type Persona, type Profile, type Party } 
 import { categoryOf, STYLE_LIST } from "@/lib/poster-categories";
 import { X } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
+import { compressToFile, dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { CategoryPicker } from "@/components/category-picker";
 
@@ -30,11 +30,9 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
 
   // A picked photo opens the crop / zoom window first; the framed square is what gets uploaded.
   const [crop, setCrop] = useState<{ kind: "photo" | "logo"; src: string } | null>(null);
-  function pick(kind: "photo" | "logo", file: File | null) {
+  async function pick(kind: "photo" | "logo", file: File | null) {
     if (!file) return;
-    const r = new FileReader();
-    r.onload = () => setCrop({ kind, src: String(r.result) });
-    r.readAsDataURL(file);
+    try { setCrop({ kind, src: await shrinkForCrop(file, kind === "logo" ? 1600 : 2000) }); } catch { /* an undecodable file: the picker simply stays as it was */ }
   }
   async function upload(kind: "photo" | "logo", dataUrl: string) {
     setCrop(null); setUploading(kind);

@@ -9,7 +9,7 @@ import { createContext, useContext, useState } from "react";
 import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
 import { Camera, LoaderCircle, X } from "lucide-react";
 import { uploadImage } from "@/lib/poster-client";
-import { compressToFile, dataUrlToFile } from "@/lib/image-utils";
+import { compressToFile, dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { UPI_RE, type CardFacts } from "@/lib/card-facts";
 
@@ -90,11 +90,11 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   const OFFLINE = T("No internet — please try again.", "internet नहीं है — दोबारा try करें।");
   const FAILED = T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।");
 
-  function pickFile(f: File) {
-    const r = new FileReader();
-    r.onload = () => setCrop(String(r.result || ""));
-    r.onerror = () => setErr(T("Could not open that photo.", "वो photo खुल नहीं पाई।"));
-    r.readAsDataURL(f);
+  async function pickFile(f: File) {
+    setErr(""); setBusy("banner");
+    try { setCrop(await shrinkForCrop(f)); }
+    catch { setErr(T("Could not open that photo — please pick a JPG or PNG.", "वो photo खुल नहीं पाई — JPG या PNG चुनें।")); }
+    finally { setBusy(""); }
   }
   async function banner(dataUrl: string) {
     setCrop(""); setErr(""); setBusy("banner");

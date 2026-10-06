@@ -7,9 +7,10 @@
 // upload/page-load too. Downscaling to a sane max dimension first keeps
 // the UI snappy and the network payload small — the server still does its
 // own final resize on save, this is purely a client-side pre-shrink.
-export async function compressImageFile(file: File, maxDim = 1600, quality = 0.85, format: "jpeg" | "png" = "jpeg"): Promise<string> {
+export async function compressImageFile(file: File, maxDim = 1600, quality = 0.85, format: "jpeg" | "png" = "jpeg", strict = false): Promise<string> {
   try {
-    const bitmap = await createImageBitmap(file).catch(async () => {
+    // "from-image": a camera photo carries its rotation in EXIF; without this a sideways banner came out of the crop.
+    const bitmap = await createImageBitmap(file, { imageOrientation: "from-image" }).catch(async () => {
       // Safari/older WebView fallback: decode via an <img> element instead.
       const url = URL.createObjectURL(file);
       try {
@@ -29,11 +30,21 @@ export async function compressImageFile(file: File, maxDim = 1600, quality = 0.8
     ctx.drawImage(bitmap as CanvasImageSource, 0, 0, cw, ch);
     if ("close" in bitmap) (bitmap as ImageBitmap).close();
     return format === "png" ? canvas.toDataURL("image/png") : canvas.toDataURL("image/jpeg", quality);
-  } catch {
+  } catch (e) {
+    if (strict) throw e;
     // Compression failed for some reason (huge file, odd format) — fall back
     // to the original rather than losing the picture entirely.
     return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result)); r.onerror = rej; r.readAsDataURL(file); });
   }
+}
+
+/** A picked photo, shrunk BEFORE it opens in the crop window (owner, 6 Oct 2026: a banner straight from the camera
+ *  never uploaded — 4000×3000 px, 6–8 MB, read whole as base64 into the cropper, the phone gave up). 2000 px is more
+ *  than any crop outputs; a logo stays PNG so its transparency survives. Throws when the browser cannot decode the file
+ *  (a HEIC on Android, a broken download) so the picker can say so instead of showing an empty crop window. */
+export function shrinkForCrop(file: File, maxDim = 2000): Promise<string> {
+  const png = /png|gif|svg|webp/i.test(file.type);
+  return compressImageFile(file, maxDim, 0.9, png ? "png" : "jpeg", true);
 }
 
 /** A compressed data URL back into a File, for callers that upload via FormData. */
