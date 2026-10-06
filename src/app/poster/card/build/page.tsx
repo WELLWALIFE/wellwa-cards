@@ -14,7 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
-import { Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -1148,6 +1148,12 @@ export default function BuildCard() {
             })}
           </div>
           {liveUser && busy === "publish" && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin text-brand" /> {T("Putting this design live…", "ये design live किया जा रहा है…")}</p>}
+          {/* Owner, 6 Oct 2026: "3 tab ke neeche button — website doosre page par khule": the design on screen, full size, in
+              a new tab — the live link once it is live, the preview (this phone's saved copy) before that. */}
+          <button type="button" onClick={() => { writeJson(PREVIEW_KEY, { ...shown, username: "__preview" }); window.open(liveUser && username === liveUser ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${PREVIEW_KEY}`, "_blank", "noopener"); }}
+            className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold">
+            <Globe className="h-4 w-4 text-brand" /> {T("Open this website in a new tab", "यह website नए tab में खोलें")} <ExternalLink className="h-4 w-4 text-muted" />
+          </button>
         </section>
       )}
 

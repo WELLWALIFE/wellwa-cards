@@ -329,6 +329,16 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
   await sleep(2500); await dump("building"); await shot("building");
   await waitText(/Bento|Cinematic|Story/, 60000); await sleep(2500);
   await dump("preview"); await shot("preview");
+  // the website in a new tab, from the button under the three designs
+  {
+    const popup = new Promise((resolve) => browser.once("targetcreated", (t) => resolve(t)));
+    if (await clickText(/Open this website in a new tab|नए tab में खोलें/)) {
+      const t = await Promise.race([popup, sleep(8000).then(() => null)]);
+      const p2 = t ? await t.page() : null;
+      if (p2) { await sleep(4000); console.log("  new tab:", p2.url(), "| h1:", await p2.evaluate(() => document.querySelector("h1")?.textContent?.trim().slice(0, 50))); await p2.setViewport({ width: 1280, height: 800 }); await p2.screenshot({ path: `${OUT}/newtab-website.png` }); await p2.close(); }
+      else console.log("!! no new tab opened");
+    }
+  }
   if (await clickText(/Cinematic/)) { await sleep(2500); await shot("preview-cinematic"); }
   if (await clickText(/Poster|Story/)) { await sleep(2500); await shot("preview-poster"); }
   if (await clickText(/^Card$|^Card ·/)) { await sleep(1200); await shot("preview-card-tab"); await clickText(/^Website/); await sleep(600); }
