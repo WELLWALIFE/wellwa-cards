@@ -144,7 +144,16 @@ export interface CardPage {
   hidden?: boolean;
 }
 
-/** Website design choices (see src/lib/site-style.ts for the palettes, font pairs and hero layouts). */
+/** The hero's shape within a blueprint (docs/premium-look.md §3.7): board-* for bento, cover-* for cinematic,
+ *  slide-* for story. The renderer falls back to the blueprint's default when the card cannot fill the chosen one. */
+export const HERO_VARIANTS = [
+  "board", "board-statement", "board-photo-first", "board-ink", "board-still",
+  "cover", "cover-ink", "cover-split", "cover-centre",
+  "slide-photo", "slide-ink", "slide-duo", "slide-type",
+] as const;
+export type HeroVariant = (typeof HERO_VARIANTS)[number];
+
+/** Website design choices (see src/lib/site-style.ts for the palettes, font sets and hero layouts). */
 export interface SiteStyle {
   /** The page's structure (docs/website-looks-v2.md): bento = a tile board, cinematic = full-screen scenes,
    *  story = swipe slides. Unset = the classic page (hero + sections), as every site before October 2026. */
@@ -153,8 +162,10 @@ export interface SiteStyle {
   palette?: string;
   /** A website-only brand colour (#rrggbb), e.g. read from the reference website; the card keeps its own. */
   color?: string;
-  /** Font pair key ("modern", "elegant", …); unset = the card look's fonts. */
+  /** Font set key ("luxury", "elegant", …, FONT_SETS; "modern"/"friendly" still read); unset = the card look's fonts. */
   font?: string;
+  /** The hero's shape within the blueprint (§3.7); unset = the blueprint's default. Classic sites ignore it. */
+  heroVariant?: HeroVariant;
   /** grid = a mosaic of product photos beside the words (shops); person = the owner's portrait (professionals). */
   /** editorial = a full-bleed banner with the headline low and large (needs a banner); marquee = a centred headline
    *  over a slowly moving strip of photos (needs four). */
@@ -252,6 +263,12 @@ export interface Card {
       focus?: string;
       /** Which side the headline sits on in a photo hero: the side the subject leaves empty. */
       textSide?: "left" | "right" | "center";
+      /** A 24 px WebP of the banner as a data: URL (≤ 600 bytes): painted under the photo until it loads. */
+      lqip?: string;
+      /** The banner is bright where the text sits (mean luminance of its bottom 45 % > 0.6): deeper scrim, no Ken Burns. */
+      bright?: boolean;
+      /** The small line above the headline ("JEWELLER · REWARI"); unset = trade · city from the card. */
+      kicker?: string;
       /** Bento blueprint: which tiles the board shows, in order (src/lib/site-blueprints.ts); unset = the default set. */
       tiles?: string[];
       /** The hero shows the trade clip (Premium) rather than the photo; unset = the clip when there is one. */

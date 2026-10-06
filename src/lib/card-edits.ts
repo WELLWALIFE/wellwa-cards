@@ -19,7 +19,7 @@ export type EditOp =
   | { op: "add_item"; id: string; name: string; desc?: string; price?: string }
   | { op: "set_hero"; headline?: string; sub?: string; ctaLabel?: string }
   | { op: "set_identity"; tagline?: string; about?: string; company?: string; jobTitle?: string }
-  | { op: "set_style"; palette?: string; font?: string; hero?: string; radius?: string; pattern?: string; motion?: string; layouts?: SiteLayouts }
+  | { op: "set_style"; palette?: string; font?: string; hero?: string; heroVariant?: string; radius?: string; pattern?: string; motion?: string; layouts?: SiteLayouts }
   | { op: "hide_page"; slug: string }
   | { op: "show_page"; slug: string }
   | { op: "rename_page"; slug: string; label: string }
@@ -78,7 +78,7 @@ export function cleanOps(raw: unknown): EditOp[] {
       case "add_item": if (id && S(o.name, 80)) out.push({ op: "add_item", id, name: S(o.name, 80), ...(S(o.desc, 240) ? { desc: S(o.desc, 240) } : {}), ...(S(o.price, 30) ? { price: S(o.price, 30) } : {}) }); break;
       case "set_hero": out.push({ op: "set_hero", ...(S(o.headline, 80) ? { headline: S(o.headline, 80) } : {}), ...(S(o.sub, 200) ? { sub: S(o.sub, 200) } : {}), ...(S(o.ctaLabel, 40) ? { ctaLabel: S(o.ctaLabel, 40) } : {}) }); break;
       case "set_identity": out.push({ op: "set_identity", ...(S(o.tagline, 90) ? { tagline: S(o.tagline, 90) } : {}), ...(S(o.about, 1400) ? { about: S(o.about, 1400) } : {}), ...(S(o.company, 80) ? { company: S(o.company, 80) } : {}), ...(S(o.jobTitle, 60) ? { jobTitle: S(o.jobTitle, 60) } : {}) }); break;
-      case "set_style": { const st = cleanStyle({ palette: o.palette, font: o.font, hero: o.hero, radius: o.radius, pattern: o.pattern, motion: o.motion, layouts: o.layouts }); if (st && Object.keys(st).length) out.push({ op: "set_style", ...st }); break; }
+      case "set_style": { const st = cleanStyle({ palette: o.palette, font: o.font, hero: o.hero, heroVariant: o.heroVariant, radius: o.radius, pattern: o.pattern, motion: o.motion, layouts: o.layouts }); if (st && Object.keys(st).length) out.push({ op: "set_style", ...st }); break; }
       case "hide_page": if (slug) out.push({ op: "hide_page", slug }); break;
       case "show_page": if (slug) out.push({ op: "show_page", slug }); break;
       case "rename_page": if (slug && S(o.label, 30)) out.push({ op: "rename_page", slug, label: S(o.label, 30) }); break;

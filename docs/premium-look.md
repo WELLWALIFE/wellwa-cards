@@ -4,6 +4,18 @@ Owner's brief (5 Oct 2026): "look of website is not premium — isko premium loo
 professional banao". This file is the whole plan; a fresh session builds from it. Nothing here adds AI calls, credits, JS
 libraries or runtime dependencies.
 
+## Status (6 Oct 2026)
+
+Built: step 0(a) (hero photo = `coverUrl` only), fixtures in `scripts/trade-check/cards/` (stock poster banners, a Hindi card, a
+no-photo card), steps 1–7 (tokens, self-hosted fonts with Devanagari, `HeroModel`, trade copy, icons, shared hero pieces,
+Cinematic cover + cover-ink, Bento board + board-statement + board-ink, Story slide-photo + slide-ink + slide-duo + slide-type),
+step 8 as a light re-skin (`ClassicHero` stays inside site-view.tsx: cover / split / ink), step 10 (designer menu, `derive`,
+blueprint defaults, design-review prompt, LookTweaks labels), §4 sections, §5 removals, §4.10 preview strip, `look-shots.mjs`
+with `?shot=1` and Hindi shots. The owner kept the Cinematic composition ("cinematic design bahut acha hai") and asked for Bento
+and Story to change — both were rebuilt. Not yet: step 9 (`heroMedia` → `lqip`/`bright`/per-photo `focus` at every `coverUrl`
+write; the heroes already read the fields), step 11's remaining variants (board-photo-first, board-still, cover-split,
+cover-centre), step 12's SSR speed route and the 79-trade sweep.
+
 ## Owner's summary (short)
 
 - **Hero banner, first**: one big headline (a claim, not "Name / trade / trade"), the trade and city once in a small line above it,

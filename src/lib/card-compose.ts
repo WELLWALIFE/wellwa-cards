@@ -11,7 +11,7 @@ import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
-import { tradeAnswerLines, tradeAnswerPills, pickedOfferings } from "@/lib/trade-questions";
+import { tradeAnswerLines, tradeAnswerPills, pickedOfferings, tradeQuestionsFor } from "@/lib/trade-questions";
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
 import { monogramUrl } from "@/lib/brand-identity";
 import type { TradeData } from "@/lib/trade-data/types";
@@ -634,6 +634,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     : professional && setup.photo ? "person"
     : undefined;
   const headline = lead === "business" ? setup.business : name;
+  const speciality = tradeQuestionsFor(setup.category).filter((q) => q.key !== "offerings").map((q) => (facts.tradeAnswers?.[q.key] ?? [])[0]?.trim() ?? "").find((v) => v && v.length <= 28 && !/[/<>]/.test(v)) ?? "";
   // The look, in layers: the trade's default; the business's own colour from its logo; a website the owner likes
   // (its measured colours, fonts, hero and order); the designer AI's plan, which was told about both and decides
   // over them (owner's call, 3 Oct 2026: the reference is a hint, not a template); what the content itself decides
@@ -689,7 +690,13 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       logoUrl,
       hero: {
         headline,
-        sub: copy.hero?.sub || copy.tagline,
+        // Only a line the AI wrote FOR the hero; nothing is put in its place. An empty sub makes the website print
+        // the trade group's benefit line (site-hero.ts heroModel) — never the tagline or "<Trade> in <City> since
+        // <Y>." (docs/premium-look.md §3.1), which read as data, not a reason to stay.
+        sub: copy.hero?.sub || "",
+        // The speciality for the hero's kicker ("Dermatologist", "CBSE"): the first trade answer that is a short
+        // word, never the offerings list (docs/premium-look.md §3.1). The trade's own word stands in without it.
+        ...(speciality ? { kicker: speciality } : {}),
         ...(firstImage || setup.logo ? { imageUrl: firstImage || setup.logo } : {}),
         ctaLabel: ctaText,
         ...(input.design?.tiles?.length ? { tiles: input.design.tiles } : {}),

@@ -18,7 +18,7 @@ import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
 import { normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
-import { FactsFields, PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
+import { PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { catalogCopyFor, tradeNeeds } from "@/lib/catalog-copy";
 
 
@@ -439,20 +439,6 @@ export default function ProductsPage() {
         )}
         {list.length === 0 && !draft && <p className="text-sm text-muted">{C(copy.empty, copy.emptyHi)}</p>}
       </div>
-      {/* Step 3's other questions: highlights, customers, offer, your work — one place with the products. */}
-      {setupMode && !draft && facts && (
-        <div className="space-y-3">
-          <div className="flex items-baseline gap-2 pt-1">
-            <p className="text-sm font-semibold">{en ? "A little more about what you offer" : "आप जो देते हैं, उसके बारे में थोड़ा और"} <span className="font-normal text-muted">({en ? "optional" : "optional"})</span></p>
-            {saveState !== "idle" && (
-              <span role="status" className={`ml-auto shrink-0 text-[11px] ${saveState === "failed" ? "text-danger" : "text-muted"}`}>
-                {saveState === "saving" ? C("Saving…", "सेव हो रहा है…") : saveState === "saved" ? C("Saved ✓", "सेव हुआ ✓") : C("Not saved — kept on this phone", "सेव नहीं हुआ — इस फ़ोन पर रखा है")}
-              </span>
-            )}
-          </div>
-          <FactsFields group="products" facts={facts} setF={setF} hi={!en} hasAbout={hasAbout} category={category} />
-        </div>
-      )}
       {/* Setup journey (?setup=1): a product is not required to make the card — one clear way on, with or without. */}
       {setupMode && !draft && (
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">

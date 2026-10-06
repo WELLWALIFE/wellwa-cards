@@ -11,23 +11,24 @@
 // look as the fallback, so a website that never chose a style still wears its brand colour.
 import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { INTRODUCER_KEY } from "@/lib/username";
-import { Menu, X, MessageCircle, Phone, Download, Check, Star, MapPin, ChevronDown, FileText, Copy, Clock, Play, UserPlus, CalendarClock, ArrowRight, Navigation, Quote, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
+import { X, Download, Check, ChevronDown, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
-import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, isCuratedArt, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
+import { ContactForm, AppointmentBlock, ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
 import { FormBlock } from "@/components/form-block";
-import { patternCss } from "@/lib/brand-identity";
 import { trackView, trackClick } from "@/lib/track";
-import { tint } from "@/lib/color";
 import { lookOf } from "@/lib/looks";
 import { siteDesign } from "@/lib/site-style";
+import { tradeMood } from "@/lib/trade-moods";
+import { heroModel, stripEmoji, tradeLabel, type HeroModel } from "@/lib/site-hero";
+import { Icon, iconFor } from "@/components/site-icons";
 import { cardProducts, isProductSlug } from "@/lib/product-page";
 import { homeSections, isEmptyBlock, sinceYear, trustFacts, type HomeSection } from "@/lib/site-home";
-import { BottomSheet, CountUp, Marquee, OpenNowChip, SMART_CSS } from "@/components/site-smart";
+import { BottomSheet, CountUp, CtaPair, Display, HERO_CSS, HeroPhoto, Kicker, Marquee, OpenNowChip, SMART_CSS, Sub, TrustRow, Wordmark } from "@/components/site-smart";
 import { BentoHero, bentoFacts, BENTO_CSS } from "@/components/site-bento";
 import { CinematicHero, ParallaxBand, QuoteRotator, CINEMATIC_CSS } from "@/components/site-cinematic";
 import { StoryView, STORY_CSS } from "@/components/site-story";
@@ -89,27 +90,33 @@ function FitImg({ src, alt, className, eager, sizes, w }: { src: string; alt: st
 }
 
 const paras = (s?: string | null) => (s ?? "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
-const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tc)]";
-const CARD_HOVER = "transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 hover:shadow-card motion-reduce:transform-none motion-reduce:transition-none";
+const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
+const CARD_HOVER = "transition-[transform,box-shadow] duration-200 hover:-translate-y-0.5 motion-reduce:transform-none motion-reduce:transition-none";
 const GROUPED = new Set(["services", "about", "highlights", "cta"]);
-/** Primary button on light surfaces: the palette gradient. */
-const BTN = "btn-grad inline-flex items-center justify-center gap-2 rounded-full font-semibold transition";
+/** The three control shapes (docs/premium-look.md §4.4, globals.css `.site`): filled primary, ghost, plain link. */
+const BTN = "btn-primary";
+const GHOST = "btn-ghost";
+const LINK = "btn-link";
+/** Class strings the sections share (§4.3): a card is `.s-card` — a line OR a shadow per blueprint, never both. */
+const cls = {
+  card: "s-card",
+  /** The small accent square an icon sits in (address, hours, a step). */
+  iconBox: "icon-box",
+  /** The small line above a section title. */
+  kicker: "kicker",
+} as const;
 
 const isEmpty = isEmptyBlock;
 
-/** Short trust facts for the hero ("📅 Since 2015", "🚚 Home delivery"): the first
- *  highlights block of the first page, when it has 2–6 items of at most 28 characters. */
-function heroPills(card: Card): string[] {
+/** The "good to know" facilities (§4.1): the first highlights block of the first page, when it has 2–6 short
+ *  items — "UPI accepted", "Home delivery", "GST billing" — each stripped of its emoji. */
+function goodToKnow(card: Card): string[] {
   const hl = card.pages[0]?.blocks.find((b): b is Extract<CardBlock, { kind: "highlights" }> => b.kind === "highlights" && !b.items.some((x) => (x ?? "").startsWith("✅")));
   const items = (hl?.items ?? []).map((s) => (s ?? "").trim()).filter(Boolean);
   if (items.length < 2 || items.length > 6) return [];
   return items.every((s) => Array.from(splitGlyph(s).text).length <= 28) ? items : [];
 }
 
-/** The first product photo on the card — the hero picture when the owner chose none. */
-function firstProductPhoto(card: Card): string | undefined {
-  return productPhotos(card)[0];
-}
 /** One photo per product, in card order (for the hero mosaic). */
 function productPhotos(card: Card): string[] {
   const out: string[] = [];
@@ -143,12 +150,15 @@ function useReveal(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]
 export type SiteUpdate = { date: string; url: string; title: string; caption?: string | null };
 const UPDATES = "updates";
 
-export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [] }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null; updates?: SiteUpdate[];
+export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [], initialLang }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null; updates?: SiteUpdate[];
   /** Pages that are reachable at their own address but are not in the menu — a product's own page. */
-  unlisted?: string[] }) {
+  unlisted?: string[];
+  /** The visitor language the page opens in (the preview's `?lang=`); unset = the visitor's saved choice. */
+  initialLang?: string }) {
   // The website wears its own design: palette (or the card's colour), fonts (or the card look's), corners.
   const look = lookOf(card.template);
-  const design = siteDesign(card, look);
+  const mood = tradeMood(card.seo?.categoryKey);
+  const design = siteDesign(card, look, { luxe: mood.luxe, bright: card.site?.hero?.bright });
   const pal = design.palette;
   const theme = pal.mid;                            // fills, accents, --tc
   const ink = design.on;                            // readable ink on a solid `theme` fill
@@ -171,12 +181,12 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // Where the banner's subject is (set at build time, src/lib/media/photo-focus.ts): the crop keeps it in view and
   // the words take the side it leaves empty.
   const heroFocus = hero?.focus && /^\d{1,3}% \d{1,3}%$/.test(hero.focus) ? hero.focus : undefined;
-  const wordsRight = hero?.textSide === "right";
   const links = card.links.filter((l) => l.value.trim());
   const wa = links.find((l) => l.type === "whatsapp");
   const phone = links.find((l) => l.type === "phone");
-  // The hero picture: the owner's choice; unset → the first product photo (never the portrait); "" → none.
-  const heroImg = hero?.imageUrl === undefined ? firstProductPhoto(card) : hero.imageUrl || undefined;
+  // The hero picture is `card.coverUrl` and nothing else (docs/premium-look.md §6 step 0): never hero.imageUrl, a
+  // product shot or the logo — a card without a banner gets the type-led hero.
+  const heroImg = card.coverUrl || undefined;
   const isHome = page?.slug === "home";
   const MAX_NAV = 6;
   // A product's own page is reached from a product card or from search, never from the menu.
@@ -184,50 +194,58 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // A hidden page (the owner's Shubhora page on a "both" card) opens by its own address only — never from the menu.
   const navPages = pages.filter((p) => !unlistedSet.has(p.slug) && !p.hidden);
   const navMain = navPages.slice(0, MAX_NAV), navMore = navPages.slice(MAX_NAV);
-  const avatarCls = card.avatarShape === "square" ? "rounded-xl object-contain bg-white p-0.5" : "rounded-full object-cover bg-white";
-  const logo = card.site?.logoUrl;                  // website logo (desktop settings); falls back to the card avatar
   const L = useCardLang(card.username);
   const t = L.t;
+  const hiNow = L.lang === "hi";
+  // The hero, as one model (site-hero.ts): kicker, claim, one line, trust row, the two buttons, the picture — in
+  // the VISITOR's language, so the language switch re-speaks it.
+  const hm = heroModel(card, L.lang);
+  const trade = tradeLabel(card, hiNow);
+  // The owner's logo in the nav; without one the name stands as a wordmark (the monogram never reaches the website).
+  const logo = hm.logo;
   const facts = trustFacts(card);
-  // A fact the trust strip already states ("Since 2015", "4.7★ · 3 reviews") is not repeated as a pill above it.
+  // A fact the trust row / strip already states ("Since 2015", "4.7★ · 3 reviews") is not repeated below it.
   const factText = facts.map((f) => `${f.value} ${f.label}`.toLowerCase()).join(" ");
-  const pills = heroPills(card).filter((p) => {
+  const pills = goodToKnow(card).filter((p) => {
     const txt = splitGlyph(p).text.toLowerCase();
     const year = /\b(?:19|20)\d{2}\b/.exec(txt)?.[0];
-    if (year && factText.includes(year)) return false;
-    if (/review|रिव्यू|★/.test(txt) && factText.includes("★")) return false;
+    if (year && (factText.includes(year) || hm.trust.since)) return false;
+    if (/review|रिव्यू|★/.test(txt) && (factText.includes("★") || hm.trust.rating)) return false;
     return true;
   });
-  // The owner's own shop banner gets a lighter overlay so the shop stays visible.
-  // Only on cards from the new V-Card flow (they carry `lead`): older live
-  // cards keep today's overlay, which their text-heavy banners were designed under.
-  const lightHero = !!card.coverUrl && !isCuratedArt(card.coverUrl) && !!card.lead;
   const mosaic = productPhotos(card).slice(0, 4);
   // The marquee's strip: product photos and the gallery, up to ten, no repeats.
   const strip = [...new Set([...productPhotos(card), ...card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" ? b.images.map((i) => i.url ?? "") : b.kind === "image" || b.kind === "carousel" ? b.images.map((i) => i.url) : [])).filter(Boolean)])].slice(0, 10);
   const motion = card.site?.style?.motion ?? "calm";
   const portrait = card.avatarUrl && card.avatarShape !== "square" ? card.avatarUrl : undefined;
-  const layout = (() => {
+  // The classic hero's shape (HERO_LAYOUTS, §3.6): photo / editorial = the cover; split = words on paper beside the
+  // picture; grid / person / stage / minimal / marquee keep their layouts with tokens. A shape the card cannot fill
+  // falls to the next: no banner → "ink" (a type-led dark field), never a logo or product shot stretched to fit.
+  const layout: ClassicLayout = (() => {
     const l = card.site?.style?.hero;
-    // A mosaic needs three product photos and a portrait needs a photo; otherwise the next best shape.
-    if (l === "grid" && mosaic.length < 3) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
-    if (l === "person" && !portrait) return heroImg ? "split" : card.coverUrl ? "photo" : "split";
-    if (l === "editorial" && !card.coverUrl) return heroImg ? "split" : "stage";
-    if (l === "marquee" && strip.length < 4) return mosaic.length >= 3 ? "grid" : heroImg ? "split" : card.coverUrl ? "photo" : "split";
-    if (l) return l === "photo" && !card.coverUrl ? "split" : l;
-    // The hero picture is the banner itself (a stock photograph of the trade, put in both slots by the
-    // builder): a photograph goes across the top, never into a white product frame.
-    if (heroImg && card.coverUrl && heroImg === card.coverUrl) return "photo";
-    if (heroImg) return "split";
-    return card.coverUrl ? "photo" : "split";
+    const cover = !!hm.photo;
+    if (l === "grid" && mosaic.length < 3) return cover ? "photo" : "ink";
+    if (l === "person" && !portrait) return cover ? "photo" : "ink";
+    if (l === "editorial" && !cover) return "stage";
+    if (l === "marquee" && strip.length < 4) return mosaic.length >= 3 ? "grid" : cover ? "photo" : "ink";
+    if (l === "photo" || l === "split") return cover ? l : "ink";
+    if (l) return l;
+    return cover ? "photo" : "ink";
   })();
-  // What stands beside the words: the product mosaic, the portrait, or the one picture.
-  const heroVisual = layout === "grid" ? mosaic.length >= 3 : layout === "person" ? !!portrait : !!heroImg;
-  const darkHero = layout !== "minimal" && pal.tone === "dark";
-  const heroInk = layout === "minimal" ? "var(--ink)" : pal.ink;
-  // On a dark hero the main button is white with the deep colour; on a light hero it is the brand gradient.
-  const heroPrimary: React.CSSProperties = darkHero ? { background: "#ffffff", color: pal.deep } : { background: "var(--grad)", color: ink, boxShadow: "0 12px 28px -14px var(--p-mid)" };
   const rootRef = useRef<HTMLDivElement>(null);
+  // The phone's sticky bar appears only once the hero has left the viewport (§4.9): a sentinel after the hero.
+  const heroEnd = useRef<HTMLDivElement>(null);
+  const [pastHero, setPastHero] = useState(false);
+  useEffect(() => {
+    const el = heroEnd.current;
+    if (!isHome || !el || !("IntersectionObserver" in window)) { setPastHero(true); return; }
+    const io = new IntersectionObserver((es) => { for (const e of es) setPastHero(!e.isIntersecting && e.boundingClientRect.top < 0); }, { threshold: 0 });
+    io.observe(el);
+    return () => io.disconnect();
+  }, [isHome, active]);
+  // The preview's forced language (`?lang=`): spoken once, after useCardLang read the saved one.
+  const setLang = L.setLang;
+  useEffect(() => { if (initialLang) setLang(initialLang); }, [initialLang, setLang]);
   // A product tapped on a phone opens in a sheet over the page (site-smart.tsx); on a computer it opens its own page.
   const [sheet, setSheet] = useState<ProductItem | null>(null);
   const openProduct = (p: ProductItem) => setSheet(p);
@@ -236,14 +254,13 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const bp = card.site?.style?.blueprint;
   const [scrolled, setScrolled] = useState(false);
   useEffect(() => {
-    if (!bp) return;
     const on = () => setScrolled(window.scrollY > 24);
     on(); window.addEventListener("scroll", on, { passive: true });
     return () => window.removeEventListener("scroll", on);
-  }, [bp]);
+  }, []);
   const bento = bp ? bentoFacts(card) : null;
   // Cinematic: the photos not already on the hero, as the bands between the scenes.
-  const bands = bp === "cinematic" ? strip.filter((u) => u !== card.coverUrl && u !== heroImg).slice(0, 3) : [];
+  const bands = bp === "cinematic" ? strip.filter((u) => u !== card.coverUrl).slice(0, 3) : [];
   const sinceOf = bp ? sinceYear([...card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? ""]) : null;
   // Announcement bar: shown until its date (IST day), closable for the visit.
   const bar = card.site?.bar;
@@ -256,7 +273,6 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   }, [bar?.text, bar?.until, card.username]);
   const barLive = !!bar?.text && !barExpired;
   const closeBar = () => { setBarClosed(true); try { sessionStorage.setItem(`site-bar:${card.username}:${bar?.text}`, "1"); } catch { /* ignore */ } };
-  const float = card.site?.float ?? "whatsapp";
   const mapLink = links.find((l) => l.type === "location");
 
   // The owner's own preview ("__preview") is never counted as a visit.
@@ -284,7 +300,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   }
   // Every WhatsApp button opens with a line that names the business and says the visitor came from the
   // website — the owner knows the lead's source, and the visitor need not think of an opening.
-  const waOpen = card.language === "hi" ? `नमस्ते ${card.company || card.name}, मैंने आपकी website देखी — ` : `Hi ${card.company || card.name}, I saw your website — `;
+  const waOpen = card.language === "hi" ? `नमस्ते ${hm.name}, मैंने आपकी website देखी — ` : `Hi ${hm.name}, I saw your website — `;
   const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
   const lastKind = pageBlocks.at(-1)?.kind;
@@ -293,7 +309,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // Home: the composed section list (own blocks + pulled previews); other pages: their blocks in runs.
   // The hero already shows the trust chips as pills: printing the same five again as a "Why choose us" section
   // read as a mistake next to the real why-us points below it (seen live, 1 Oct 2026).
-  const pilled = pills.length ? new Set(pills.map((x) => x.trim())) : null;
+  const strip0 = goodToKnow(card);
+  const pilled = strip0.length ? new Set(strip0.map((x) => x.trim())) : null;
   // The home page pulls previews (products, gallery, reviews, FAQ, visit) from the visible pages only.
   const sections: HomeSection[] = (isHome ? homeSections(card, pages.filter((p) => !p.hidden)) : pageBlocks.map((b) => ({ key: b.id, kind: "block", block: b } as HomeSection)))
     .filter((s) => !(isHome && pilled && s.kind === "block" && s.block.kind === "highlights"
@@ -317,7 +334,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const footLinks = sameNumber ? links.filter((l) => l.type !== "phone") : links;
   const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
   const fontHref = design.fonts.href;
-  const eyebrowRole = card.jobTitle && card.jobTitle !== (hero?.headline || card.company || card.name) ? card.jobTitle : "";
+  // The blueprints' small line above the name: the hero model's kicker ("Jeweller · Rewari"), never the slug.
+  const eyebrowRole = hm.kicker;
   // The closing band's line (owner's call, 4 Oct 2026: "Talk to the Founder", not the first name). The designation
   // when the card has a short one (Owner, Founder, Dr., Advocate…); a trade label like "Sweets / bakery" is not a
   // person, so then it is simply "us".
@@ -332,42 +350,36 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="lively"] .hero-pic{animation:floaty 7s ease-in-out infinite} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--look-body)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--look-head)} .site[data-look] h1,.site[data-look] h2{font-weight:var(--head-w)} .site[data-look] .rounded-2xl{border-radius:var(--r)} .site[data-look] .rounded-xl{border-radius:calc(var(--r)*.8)} .site[data-look] .rounded-3xl{border-radius:calc(var(--r)*1.4)} .site .btn-grad{background:var(--grad);color:var(--p-on);box-shadow:0 12px 28px -14px var(--p-mid)} .site .btn-grad:hover{filter:brightness(1.06)} .site .dots{background-image:radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px);background-size:22px 22px}${SMART_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? STORY_CSS : ""}` }} />
-    <div ref={rootRef} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} data-story={bp === "story" && isHome ? "" : undefined} style={{ background: "var(--surface)", ["--tc" as string]: theme } as React.CSSProperties}>
-      {/* Lifted theme token: the raw brand colour as text fails contrast on dark
-          surfaces, so text/icons use --tc which is lightened in dark mode. */}
-      <style>{`.site{--tc:${theme}} @media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .site{--tc:color-mix(in srgb, ${theme} 62%, white)}} :root[data-theme="dark"] .site{--tc:color-mix(in srgb, ${theme} 62%, white)}`}</style>
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? STORY_CSS : ""}` }} />
+    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} data-story={bp === "story" && isHome ? "" : undefined} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
       {barLive && !barClosed && (
-        <div className="relative z-30 text-center text-sm font-medium" style={{ background: "var(--grad)", color: "var(--p-on)" }}>
+        <div className="relative z-30 text-center text-sm font-medium" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>
           <div className="mx-auto flex max-w-6xl items-center justify-center gap-2 px-10 py-2">
             <Megaphone className="h-4 w-4 shrink-0" />
             {bar!.link
               ? <a href={bar!.link} onClick={(e) => { if (bar!.link!.startsWith("#")) { e.preventDefault(); go(bar!.link!.slice(1)); } }} target={bar!.link!.startsWith("#") ? undefined : "_blank"} rel="noreferrer" className="underline-offset-2 hover:underline">{t(bar!.text)}</a>
               : <span>{t(bar!.text)}</span>}
           </div>
-          <button type="button" onClick={closeBar} aria-label="Close" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full p-1.5 opacity-80 hover:opacity-100"><X className="h-4 w-4" /></button>
+          <button type="button" onClick={closeBar} aria-label="Close" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 opacity-80 hover:opacity-100"><X className="h-4 w-4" /></button>
         </div>
       )}
 
-      {/* ---- header ---- */}
+      {/* ---- header: wordmark (or the owner's logo) · pages · language · WhatsApp once the hero has scrolled ---- */}
       <header className={`site-head sticky top-0 z-30 glass border-b border-border ${scrolled ? "scrolled" : ""}`}>
-        <div className="mx-auto max-w-6xl px-6 h-[68px] flex items-center gap-6">
-          <button type="button" onClick={() => go("home")} className={`flex items-center gap-3 shrink-0 max-w-[300px] rounded-lg ${FOCUS}`}>
+        <div className="mx-auto max-w-6xl px-5 md:px-6 h-[60px] md:h-[68px] flex items-center gap-6">
+          <button type="button" onClick={() => go("home")} className={`flex items-center gap-3 shrink-0 max-w-[300px] rounded-lg text-left ${FOCUS}`}>
             {logo
-              ? <Img src={logo} alt={card.company || card.name} className="h-10 max-w-[160px] w-auto shrink-0 object-contain" eager w={160} />
-              : card.avatarUrl
-              ? <Img src={card.avatarUrl} alt="" className={`h-10 w-10 shrink-0 ${avatarCls}`} eager w={40} />
-              : <span className="h-10 w-10 shrink-0 rounded-full inline-block" style={{ background: "var(--grad)" }} />}
-            <span className="font-semibold text-[17px] truncate">{t(card.company || card.name)}</span>
+              ? <Img src={logo} alt={hm.name} className="h-9 max-w-[160px] w-auto shrink-0 object-contain md:h-10" eager w={160} />
+              : <Wordmark name={t(hm.name)} trade={isHome ? undefined : t(trade)} lang={L.lang} />}
           </button>
           {/* A "both" card is the owner's own website: Shubhora is on the bottom strip only (owner's call, 2 Oct 2026). */}
           <nav className="hidden md:flex items-center gap-x-0.5 ml-auto h-full" aria-label="Pages">
             {navMain.map((p) => (
               <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} aria-current={active === p.slug ? "page" : undefined} className={`relative h-[68px] whitespace-nowrap px-3 text-[14px] font-medium inline-flex items-center transition-colors ${FOCUS} focus-visible:ring-inset ${active === p.slug ? "text-ink" : "text-muted hover:text-ink"}`}>
                 {t(p.label)}
-                {active === p.slug && <span className="absolute left-3 right-3 bottom-0 h-[2px] rounded-t-full" style={{ background: "var(--grad)" }} />}
+                {active === p.slug && <span className="absolute left-3 right-3 bottom-0 h-px" style={{ background: "var(--accent)" }} />}
               </a>
             ))}
             {navMore.length > 0 && (
@@ -376,7 +388,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                 {moreOpen && (
                   <>
                     <div className="fixed inset-0 z-20" onClick={() => setMoreOpen(false)} />
-                    <div role="menu" className="absolute right-0 top-[60px] z-30 w-52 rounded-xl border border-border bg-surface shadow-float p-1">
+                    <div role="menu" className={`absolute right-0 top-[60px] z-30 w-52 ${cls.card} p-1`} style={{ boxShadow: "var(--e-1)" }}>
                       {navMore.map((p) => <button key={p.id} type="button" role="menuitem" onClick={() => go(p.slug)} className={`w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-surface2 ${FOCUS} ${active === p.slug ? "font-semibold" : ""}`}>{t(p.label)}</button>)}
                     </div>
                   </>
@@ -385,205 +397,78 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             )}
           </nav>
           <div className="hidden md:block"><LanguagePicker lang={L.lang} setLang={L.setLang} busy={L.translating} theme={theme} /></div>
-          {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-head-phone")} aria-label="Call" className={`hidden lg:grid h-10 w-10 place-items-center rounded-full border border-border hover:bg-surface2 ${FOCUS}`}><Phone className="h-4 w-4" /></a>}
+          {/* One WhatsApp affordance per screen (§7.1): the nav's appears once the hero's own button has scrolled away. */}
           {wa && (
-            <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-whatsapp")} className={`max-md:hidden ${BTN} px-5 py-2.5 text-sm ${FOCUS}`}>
-              <MessageCircle className="h-4 w-4" /> WhatsApp
+            <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-whatsapp")} className={`max-md:hidden ${BTN} btn-sm ${FOCUS} ${isHome && !scrolled ? "invisible" : ""}`} aria-hidden={isHome && !scrolled ? true : undefined} tabIndex={isHome && !scrolled ? -1 : undefined}>
+              <Icon name="whatsapp" /> WhatsApp
             </a>
           )}
-          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu" className={`md:hidden ml-auto h-10 w-10 grid place-items-center rounded-lg border border-border ${FOCUS}`}>{open ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}</button>
+          <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} aria-label="Menu" className={`md:hidden ml-auto h-10 w-10 grid place-items-center rounded-lg border border-border ${FOCUS}`}>{open ? <X className="h-5 w-5" /> : <Icon name="menu" size={20} />}</button>
         </div>
         {open && (
-          <nav className="md:hidden border-t border-border bg-surface px-6 py-2 flex flex-col" aria-label="Pages">
+          <nav className="md:hidden border-t border-border bg-surface px-5 py-2 flex flex-col" aria-label="Pages">
             {pages.map((p) => <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`py-3 text-left text-[15px] font-medium border-b border-border last:border-0 ${active === p.slug ? "text-ink" : "text-muted"}`}>{t(p.label)}</a>)}
             <div className="py-3"><LanguagePicker lang={L.lang} setLang={L.setLang} busy={L.translating} theme={theme} /></div>
           </nav>
         )}
       </header>
       {/* The owner's notice — news, an offer, a closure — under the header (src/lib/notice.ts). */}
-      <NoticeBar card={card} hi={L.lang === "hi"} />
+      <NoticeBar card={card} hi={hiNow} />
 
       <main className="relative flex-1 pb-14 md:pb-0">
-        {bp === "bento" && <div aria-hidden="true" className="site-aurora"><i /><i /><i /></div>}
         {isHome && bp === "story" ? (
-          <StoryView card={card} hi={hiLang} t={t} qr={qr} photo={card.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus}
+          <StoryView card={card} hi={L.lang === "hi"} t={t} qr={qr} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus}
             phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} map={bento?.map} onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); else openProduct(p); } }} go={go} eyebrow={eyebrowRole} logo={logo} />
         ) : isHome && bp === "cinematic" ? (
-          <CinematicHero card={card} hi={hiLang} t={t} photo={card.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
-            phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={pills} />
+          <CinematicHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
+            phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={[]} />
         ) : isHome && bento ? (
           <div className="relative">
-            <BentoHero card={card} hi={hiLang} t={t} photo={card.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
+            <BentoHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
               phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} rating={bento.rating} map={bento.map} offer={bento.offer} product={bento.product} onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); else openProduct(p); } }}
-              since={sinceOf ?? undefined} booking={bento.booking} go={go} eyebrow={eyebrowRole} logo={logo} pills={pills} darkPage={false} />
+              since={sinceOf ?? undefined} booking={bento.booking} go={go} eyebrow={eyebrowRole} logo={logo} pills={[]} darkPage={false} />
           </div>
         ) : isHome ? (
-          <>
-          {layout === "editorial" || layout === "marquee" ? (
-          <section className="relative overflow-hidden" data-reveal>
-            {layout === "editorial" ? (
-              <div className="relative min-h-[620px] md:min-h-[720px] flex items-end">
-                <Img src={card.coverUrl!} alt="" className={`absolute inset-0 h-full w-full object-cover hero-pic ${motion === "none" ? "" : "kb"}`} style={heroFocus ? { objectPosition: heroFocus } : undefined} priority sizes="100vw" />
-                <div className="absolute inset-0" style={{ background: "linear-gradient(180deg, color-mix(in srgb, var(--p-deep) 25%, transparent) 0%, transparent 35%, color-mix(in srgb, var(--p-deep) 92%, transparent) 100%)" }} />
-                <div className={`relative mx-auto w-full max-w-6xl px-6 pb-14 pt-40 md:pb-20 grid gap-8 md:items-end ${wordsRight ? "md:grid-cols-[1fr_1.4fr]" : "md:grid-cols-[1.4fr_1fr]"}`} style={{ color: pal.ink }}>
-                  <div className={`animate-rise ${wordsRight ? "md:order-2" : ""}`}>
-                    {eyebrowRole && <span className="inline-block rounded-full border border-white/30 bg-white/10 px-3 py-1 text-[12px] font-semibold tracking-[0.16em] uppercase backdrop-blur">{t(eyebrowRole)}</span>}
-                    <h1 className="mt-5 text-[44px] md:text-[72px] leading-[0.98] tracking-tight">{t(hero?.headline || card.company || card.name)}</h1>
-                    {(hero?.sub || card.tagline) && <p className="mt-5 max-w-[52ch] text-lg md:text-xl leading-relaxed opacity-90">{t(hero?.sub || card.tagline)}</p>}
-                    <div className="mt-8 flex flex-wrap gap-3">
-                      {!!wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-wa")} className={`${BTN} px-6 py-3 text-[15px] ${FOCUS}`}><MessageCircle className="h-5 w-5" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
-                      {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-6 py-3 text-[15px] font-semibold backdrop-blur ${FOCUS}`}><Phone className="h-5 w-5" /> {t("Call")}</a>}
-                    </div>
-                    {hoursRows && <div className="mt-5"><OpenNowChip rows={hoursRows} hi={hiLang} tone="glass" /></div>}
-                  </div>
-                  {facts.length > 0 && (
-                    <div className={`animate-rise rounded-3xl border border-white/20 bg-white/10 p-5 backdrop-blur-md md:min-w-[280px] ${wordsRight ? "md:order-1 md:justify-self-start" : "md:justify-self-end"}`} style={{ animationDelay: "120ms" }}>
-                      <ul className="divide-y divide-white/15">{facts.slice(0, 4).map((f) => <li key={f.label} className="flex items-baseline justify-between gap-4 py-2.5"><span className="text-[22px] font-bold leading-none">{f.value}</span><span className="text-[12px] opacity-85 text-right">{f.label}</span></li>)}</ul>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              <div className="relative pt-20 pb-10 md:pt-24" style={{ color: heroInk, background: `radial-gradient(60% 80% at 50% 0%, color-mix(in srgb, var(--p-glow) 50%, transparent), transparent 60%), var(--p-deep)` }}>
-                <div aria-hidden="true" className="absolute inset-0 opacity-50" style={{ ...patternCss(card.site?.style?.pattern ?? "dots", "#ffffff"), maskImage: "linear-gradient(180deg, black, transparent 70%)", WebkitMaskImage: "linear-gradient(180deg, black, transparent 70%)" }} />
-                <div className="relative mx-auto max-w-[820px] px-6 text-center animate-rise">
-                  {eyebrowRole && <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: "var(--p-accent)" }}>{t(eyebrowRole)}</p>}
-                  <h1 className="mt-4 text-[40px] md:text-[64px] leading-[1.02] tracking-tight">{t(hero?.headline || card.company || card.name)}</h1>
-                  {(hero?.sub || card.tagline) && <p className="mx-auto mt-5 max-w-[52ch] text-lg md:text-xl leading-relaxed opacity-90">{t(hero?.sub || card.tagline)}</p>}
-                  <div className="mt-8 flex flex-wrap justify-center gap-3">
-                    {!!wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-wa")} className={`${BTN} px-6 py-3 text-[15px] ${FOCUS}`}><MessageCircle className="h-5 w-5" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
-                    {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`inline-flex items-center gap-2 rounded-full border border-white/40 bg-white/10 px-6 py-3 text-[15px] font-semibold ${FOCUS}`}><Phone className="h-5 w-5" /> {t("Call")}</a>}
-                  </div>
-                </div>
-                <div className="relative mt-12 overflow-hidden" style={{ maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)" }}>
-                  <div className={`site-marquee flex w-max gap-4 px-2 ${motion === "none" ? "" : ""}`}>
-                    {[...strip, ...strip].map((u, i) => (
-                      <div key={`${u}-${i}`} className={`h-[200px] md:h-[260px] shrink-0 overflow-hidden rounded-2xl bg-white/95 shadow-float ${i % 3 === 1 ? "w-[300px] md:w-[380px]" : "w-[200px] md:w-[240px]"} ${i % 2 ? "translate-y-3" : ""}`}>
-                        <Img src={u} alt="" className="h-full w-full object-cover" eager={i < 4} sizes="380px" />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </section>
-          ) : (
-          <section className={`relative overflow-hidden ${layout === "stage" ? "" : "min-h-[560px] flex items-center"}`} style={{ color: heroInk, ...(layout === "minimal"
-            ? { background: `radial-gradient(70% 90% at 100% 0%, color-mix(in srgb, var(--p-glow) 22%, transparent), transparent 60%), var(--p-soft)` }
-            : { background: `radial-gradient(60% 80% at 85% 15%, color-mix(in srgb, var(--p-glow) 55%, transparent), transparent 62%), radial-gradient(50% 70% at 5% 95%, color-mix(in srgb, var(--p-mid) 65%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep) 0%, color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)) 100%)` }) }}>
-            {layout === "photo" && card.coverUrl && (
-              <>
-                <Img src={card.coverUrl} alt="" className={`absolute inset-0 h-full w-full object-cover ${motion === "none" ? "" : "kb"}`} style={heroFocus ? { objectPosition: heroFocus } : undefined} priority sizes="100vw" />
-                {/* The shade starts on the words' side and thins towards the subject, so the picture stays visible where it matters. */}
-                <div className="absolute inset-0" style={{ background: lightHero
-                  ? `linear-gradient(${wordsRight ? 270 : 90}deg, color-mix(in srgb, var(--p-deep) 84%, transparent) 0%, color-mix(in srgb, var(--p-deep) 55%, transparent) 45%, color-mix(in srgb, var(--p-deep) 18%, transparent) 100%)`
-                  : `linear-gradient(${wordsRight ? 270 : 90}deg, color-mix(in srgb, var(--p-deep) 93%, transparent) 0%, color-mix(in srgb, var(--p-deep) 74%, transparent) 42%, color-mix(in srgb, var(--p-deep) 35%, transparent) 100%)` }} />
-              </>
-            )}
-            {layout !== "photo" && layout !== "minimal" && <div aria-hidden="true" className={`${card.site?.style?.pattern && card.site.style.pattern !== "dots" ? "" : "dots"} absolute inset-0 ${card.site?.style?.pattern === "blobs" ? "opacity-20" : "opacity-60"}`} style={{ ...patternCss(card.site?.style?.pattern, heroInk === "var(--ink)" ? "#0b1220" : "#ffffff"), backgroundRepeat: card.site?.style?.pattern === "blobs" ? "no-repeat" : "repeat", backgroundPosition: card.site?.style?.pattern === "blobs" ? "right top" : undefined, maskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)", WebkitMaskImage: "linear-gradient(180deg, transparent, black 30%, black 70%, transparent)" }} />}
-            <div className={`relative w-full mx-auto max-w-6xl px-6 ${layout === "stage" ? "pt-20 pb-0 md:pt-24 text-center" : `py-20 md:py-24 grid gap-12 items-center ${heroVisual ? "md:grid-cols-[1.15fr_1fr]" : ""}`}`}>
-              <div className={`animate-rise ${layout === "stage" ? "mx-auto max-w-[760px]" : heroVisual ? "" : `md:max-w-[640px] ${layout === "photo" && wordsRight ? "md:ml-auto" : ""}`}`}>
-                {/* Brand as the headline, role as the eyebrow, the about text as the sub —
-                    never the tagline as a headline (it usually repeats the role). */}
-                {eyebrowRole && <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: layout === "minimal" ? "var(--p-mark)" : "var(--p-accent)" }}>{t(eyebrowRole)}</p>}
-                <h1 className="mt-4 text-[42px] md:text-[60px] leading-[1.02] tracking-tight" style={{ textWrap: "balance" }}>{t(hero?.headline || card.company || card.name)}</h1>
-                {(hero?.sub || card.about || card.tagline) && <p className={`mt-5 text-lg md:text-[19px] leading-relaxed ${layout === "stage" ? "mx-auto" : ""} max-w-[48ch]`} style={{ opacity: layout === "minimal" ? 1 : 0.9, color: layout === "minimal" ? "var(--muted)" : undefined }}>{t(hero?.sub || paras(card.about)[0]?.slice(0, 220) || card.tagline)}</p>}
-                <div className={`mt-9 flex flex-wrap gap-3 ${layout === "stage" ? "justify-center" : ""}`}>
-                  {wa && (
-                    <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-whatsapp")} className={`inline-flex items-center gap-2 rounded-full px-7 py-4 text-[15px] font-semibold shadow-float transition hover:brightness-105 ${FOCUS}`} style={heroPrimary}>
-                      <MessageCircle className="h-4 w-4" /> {t(hero?.ctaLabel || "WhatsApp")}
-                    </a>
-                  )}
-                  {phone && (
-                    <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`inline-flex items-center gap-2 rounded-full border px-6 py-4 text-[15px] font-semibold backdrop-blur ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 40%, transparent)", background: "color-mix(in srgb, currentColor 8%, transparent)" }}>
-                      <Phone className="h-4 w-4" /> {phone.value}
-                    </a>
-                  )}
-                </div>
-                {hoursRows && <div className={`mt-5 flex ${layout === "stage" ? "justify-center" : ""}`}><OpenNowChip rows={hoursRows} hi={hiLang} tone={darkHero ? "glass" : "light"} /></div>}
-                {pills.length > 0 && (
-                  <ul className={`mt-7 flex flex-wrap gap-2 ${layout === "stage" ? "justify-center" : ""}`} aria-label="Highlights">
-                    {pills.map((s, i) => {
-                      const { glyph, text } = glyphText(s, t);
-                      return (
-                        <li key={i} className="inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-sm font-medium" style={{ background: "color-mix(in srgb, currentColor 9%, transparent)", borderColor: "color-mix(in srgb, currentColor 22%, transparent)" }}>
-                          {glyph ? <span aria-hidden="true" className="leading-none">{glyph}</span> : <Check className="h-4 w-4 shrink-0" style={{ color: darkHero ? "var(--p-accent)" : "var(--tc)" }} />}
-                          {text}
-                        </li>
-                      );
-                    })}
-                  </ul>
-                )}
-                {/* A shop's header already carries its logo and name: no second owner chip. */}
-                {card.avatarUrl && card.name && card.name !== card.company && !card.site?.hideProfile && card.lead !== "business" && (
-                  <div className={`mt-10 inline-flex items-center gap-3 border pl-1.5 pr-5 py-1.5 backdrop-blur ${card.avatarShape === "square" ? "rounded-2xl" : "rounded-full"}`} style={{ background: "color-mix(in srgb, currentColor 9%, transparent)", borderColor: "color-mix(in srgb, currentColor 20%, transparent)" }}>
-                    <Img src={card.avatarUrl} alt={card.name} className={`h-11 w-11 ${avatarCls}`} eager w={44} />
-                    <span className="leading-tight"><span className="block font-semibold text-[15px]">{card.name}</span>{card.jobTitle && <span className="block text-xs opacity-80">{t(card.jobTitle)}</span>}</span>
-                  </div>
-                )}
-              </div>
-              {layout === "grid" && mosaic.length >= 3 && (
-                <div className="relative justify-self-center md:justify-self-end animate-rise w-full max-w-[460px]">
-                  <div aria-hidden="true" className="absolute -inset-8 rounded-[3rem] blur-3xl opacity-50" style={{ background: "var(--grad)" }} />
-                  <div className="relative grid grid-cols-2 gap-3">
-                    {mosaic.map((u, i) => (
-                      <div key={u} className={`overflow-hidden rounded-2xl bg-white/95 shadow-float ${i === 0 && mosaic.length === 3 ? "col-span-2 aspect-[2/1]" : "aspect-square"}`}>
-                        <Img src={u} alt="" className="h-full w-full object-cover" eager priority={i === 0} sizes={i === 0 && mosaic.length === 3 ? "(min-width: 768px) 460px, 100vw" : "(min-width: 768px) 230px, 50vw"} />
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {layout === "person" && portrait && (
-                <div className="relative justify-self-center md:justify-self-end animate-rise">
-                  <div aria-hidden="true" className="absolute -inset-10 rounded-full blur-3xl opacity-60" style={{ background: "var(--grad)" }} />
-                  <div className="relative h-[300px] w-[300px] md:h-[380px] md:w-[380px] overflow-hidden rounded-[2.5rem] border-4 border-white/80 shadow-float bg-white/90">
-                    <Img src={portrait} alt={card.name} className="h-full w-full object-cover" priority sizes="(min-width: 768px) 380px, 300px" />
-                  </div>
-                </div>
-              )}
-              {heroImg && layout !== "stage" && layout !== "grid" && layout !== "person" && (
-                <div className="relative justify-self-center md:justify-self-end animate-rise">
-                  <div aria-hidden="true" className="absolute -inset-8 rounded-[3rem] blur-3xl opacity-50" style={{ background: "var(--grad)" }} />
-                  <div className={`relative rounded-3xl p-3 shadow-float ${layout === "minimal" ? "bg-surface border border-border" : "bg-white/95"}`}><Img src={heroImg} alt={card.company || card.name} className="max-h-[400px] w-auto rounded-2xl object-contain" priority sizes="(min-width: 768px) 45vw, 100vw" /></div>
-                </div>
-              )}
-              {heroImg && layout === "stage" && (
-                <div className="relative mt-12 flex justify-center animate-rise">
-                  <div aria-hidden="true" className="absolute inset-x-[20%] bottom-0 h-[55%] rounded-[50%] blur-3xl opacity-60" style={{ background: "var(--grad)" }} />
-                  <Img src={heroImg} alt={card.company || card.name} className="relative max-h-[460px] w-auto object-contain drop-shadow-2xl" priority sizes="(min-width: 768px) 60vw, 100vw" />
-                </div>
-              )}
-              {!heroImg && layout === "stage" && <div className="pb-20" />}
-            </div>
-          </section>
-          )}
-
-          {/* ---- trust strip: numbers the card itself carries ---- */}
-          {facts.length >= 3 && (
-            <section className="border-b border-border bg-surface">
-              <div className={`mx-auto max-w-6xl px-6 py-7 grid gap-6 ${facts.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
-                {facts.map((f, i) => (
-                  <div key={i} className={`flex flex-col items-center text-center ${i ? "md:border-l md:border-border" : ""}`} data-reveal style={{ ["--i" as string]: i } as React.CSSProperties}>
-                    <CountUp value={t(f.value)} className="text-[26px] md:text-[30px] leading-none tracking-tight font-semibold" style={{ fontFamily: "var(--look-head)", color: "var(--tc)" }} />
-                    <span className="mt-2 text-[13px] text-muted">{t(f.label)}</span>
-                  </div>
-                ))}
-              </div>
-            </section>
-          )}
-          </>
+          <ClassicHero hm={hm} layout={layout} lang={L.lang} hi={hiNow} t={t} username={card.username} onBook={go} mosaic={mosaic} portrait={portrait} strip={strip} motion={motion} textSide={hero?.textSide} />
         ) : (
-          <section style={{ background: `radial-gradient(60% 100% at 100% 0%, color-mix(in srgb, var(--p-glow) 18%, transparent), transparent 60%), linear-gradient(110deg, var(--p-soft), transparent 70%)` }}>
-            <div className="mx-auto max-w-6xl px-6 pt-14 pb-12 flex flex-wrap items-end justify-between gap-6">
+          /* ---- page header: the page's name, the business as its kicker, one button ---- */
+          <section style={{ background: "var(--paper-2)" }}>
+            <div className="mx-auto max-w-6xl px-5 md:px-6 pt-12 pb-10 md:pt-16 md:pb-14 flex flex-wrap items-end justify-between gap-6">
               <div>
-                <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{t(card.company || card.name)}</p>
-                <h1 className="mt-2 text-[36px] md:text-[46px] tracking-tight">{t(page?.label ?? "")}</h1>
-                <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />
+                <Kicker lang={L.lang}>{t(hm.name)}</Kicker>
+                <Display as="h1" className="mt-3" lang={L.lang}>{t(page?.label ?? "")}</Display>
               </div>
-              {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-page-whatsapp")} className={`${BTN} px-5 py-2.5 text-sm ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
+              {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-page-whatsapp")} className={`${BTN} ${FOCUS}`}><Icon name="whatsapp" /> {t(hero?.ctaLabel || "WhatsApp")}</a>}
             </div>
           </section>
+        )}
+        {/* The sticky bar's sentinel: once this line has scrolled above the viewport, the bar comes in. */}
+        <div ref={heroEnd} aria-hidden="true" style={{ height: 1, marginTop: -1 }} />
+
+        {isHome && !(bp === "story") && (
+          <>
+            {/* ---- "good to know" (§4.1): the facilities in one quiet line, hairlines above and below ---- */}
+            {pills.length >= 2 && (
+              <section className="mx-auto max-w-6xl px-5 md:px-6 pt-6">
+                <ul className="gtk" aria-label={hiNow ? "जानने योग्य" : "Good to know"}>
+                  {pills.map((s, i) => { const text = stripEmoji(glyphText(s, t).text); const ic = iconFor(s); return <li key={i}>{ic && <Icon name={ic} />}{text}</li>; })}
+                </ul>
+              </section>
+            )}
+            {/* ---- numbers the card itself carries (§4.6): the final number in the HTML, counted up once seen ---- */}
+            {facts.length >= 3 && (
+              <section className="mx-auto max-w-6xl px-5 md:px-6">
+                <div className={`py-8 md:py-10 grid gap-6 ${facts.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
+                  {facts.map((f, i) => (
+                    <div key={i} className={`flex flex-col ${i ? "md:border-l md:border-border md:pl-6" : ""}`} data-reveal style={{ ["--i" as string]: i } as React.CSSProperties}>
+                      <CountUp value={t(f.value)} className="stat" />
+                      <span className="mt-1.5 text-[12px] text-muted">{t(f.label)}</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            )}
+          </>
         )}
 
         {!(isHome && bp === "story") && groups.map((g, i) => (
@@ -602,17 +487,17 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </Section>
         )}
 
-        {/* Explore — the other pages as big tiles at the end of the home page; visitors rarely open the menu on their own. */}
+        {/* Explore — the other pages as tiles at the end of the home page; visitors rarely open the menu on their own. */}
         {page?.slug === first && explorePages.length > 0 && (
-          <section className="mx-auto max-w-6xl px-6 py-14" data-reveal>
-            <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hiLang ? "और देखें" : t("Explore")}</p>
-            <h2 className="mt-2 text-2xl tracking-tight mb-6">{hiLang ? "पूरी वेबसाइट" : t("More on this website")}</h2>
+          <section className="mx-auto max-w-6xl px-5 md:px-6 py-14" data-reveal>
+            <p className={cls.kicker}>{hiLang ? "और देखें" : t("Explore")}</p>
+            <h2 className="sec-h2 mt-3 mb-6">{hiLang ? "पूरी वेबसाइट" : t("More on this website")}</h2>
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {explorePages.map((p) => { const { Icon, hint } = pageMeta(p, card.language); return (
-                <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`group flex items-center gap-4 rounded-2xl border border-border bg-surface p-5 ${CARD_HOVER} ${FOCUS}`}>
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl" style={{ background: "var(--grad)", color: ink }}><Icon className="h-6 w-6" /></span>
-                  <span className="min-w-0 flex-1"><span className="block text-[17px] font-semibold">{t(p.label)}</span>{hint && <span className="block text-sm text-muted">{hint}</span>}</span>
-                  <ArrowRight className="h-5 w-5 text-muted transition-transform group-hover:translate-x-1" />
+              {explorePages.map((p) => { const { Icon: PageIcon, hint } = pageMeta(p, card.language); return (
+                <a key={p.id} href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`group flex items-center gap-4 ${cls.card} p-5 ${CARD_HOVER} ${FOCUS}`}>
+                  <span className={cls.iconBox}><PageIcon className="h-5 w-5" /></span>
+                  <span className="min-w-0 flex-1"><span className="block text-[16px] font-semibold">{t(p.label)}</span>{hint && <span className="block text-sm text-muted">{hint}</span>}</span>
+                  <Icon name="arrow-right" className="text-muted transition-transform group-hover:translate-x-1" />
                 </a>
               ); })}
             </div>
@@ -621,60 +506,57 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
         {/* A new business has no reviews to show, and no way to collect the first ones: its visitors are asked. */}
         {page?.slug === first && reviewCount < 3 && (
-          <section className="mx-auto max-w-6xl px-6 pb-4 pt-10" data-reveal>
-            <ReviewInvite username={card.username} business={card.company || card.name} hi={hiLang} />
+          <section className="mx-auto max-w-6xl px-5 md:px-6 pb-4 pt-10" data-reveal>
+            <ReviewInvite username={card.username} business={hm.name} hi={hiLang} />
           </section>
         )}
 
-        {/* closing band — skipped when the page already ends on a contact/appointment block */}
+        {/* closing band (§4.8): an ink field, the wordmark, one primary — skipped when the page already ends on a contact/appointment block */}
         {page?.slug !== "contact" && wa && lastKind !== "contact" && lastKind !== "appointment" && (
-          <section className="mx-auto max-w-6xl px-6 pb-20 pt-6" data-reveal>
-            <div className="relative overflow-hidden rounded-3xl px-8 py-12 md:px-14 md:py-16 grid md:grid-cols-[1fr_auto] gap-8 items-center" style={{ background: `radial-gradient(60% 90% at 90% 10%, color-mix(in srgb, var(--p-glow) 60%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep), color-mix(in srgb, var(--p-deep) 55%, var(--p-mid)))`, color: pal.ink }}>
-              <div aria-hidden="true" className="dots absolute inset-0 opacity-50" />
-              <div className="relative">
-                <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-accent)" }}>{hiLang ? "बात करें" : t("Get in touch")}</p>
-                <h2 className="mt-3 text-2xl md:text-[34px] tracking-tight" style={{ textWrap: "balance" }}>{t(hasAppointment ? "Ready to see it for yourself?" : ctaTalk)}</h2>
-                <p className="mt-3 text-[15px] opacity-85 max-w-xl">{t(card.tagline || "Usually replies within a few hours on WhatsApp.")}</p>
+          <section className="hero-dark" data-reveal>
+            <div className="mx-auto max-w-6xl px-5 md:px-6 py-16 md:py-24 grid md:grid-cols-[1fr_auto] gap-10 items-end">
+              <div className="max-w-xl">
+                <Wordmark name={t(hm.name)} lang={L.lang} />
+                <h2 className="sec-h2 mt-6" style={{ textWrap: "balance" }}>{t(hasAppointment ? "Ready to see it for yourself?" : ctaTalk)}</h2>
+                <p className="lede">{t(card.tagline || "Usually replies within a few hours on WhatsApp.")}</p>
               </div>
-              <div className="relative flex flex-wrap gap-3">
-                <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-cta-whatsapp")} className={`inline-flex items-center gap-2 rounded-full px-7 py-4 text-[15px] font-semibold shadow-float ${FOCUS}`} style={pal.tone === "dark" ? { background: "#ffffff", color: pal.deep } : { background: "var(--grad)", color: ink }}><MessageCircle className="h-4 w-4" /> {t(hero?.ctaLabel || "Chat on WhatsApp")}</a>
-                {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-cta-phone")} className={`inline-flex items-center gap-2 rounded-full border px-6 py-4 text-[15px] font-semibold ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 45%, transparent)" }}><Phone className="h-4 w-4" /> {t("Call")}</a>}
+              <div className="hero-ctas">
+                <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-cta-whatsapp")} className={`${BTN} ${FOCUS}`} data-kind="whatsapp"><Icon name="whatsapp" /> {t(hero?.ctaLabel || "Chat on WhatsApp")}</a>
+                {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-cta-phone")} className={`${LINK} ${FOCUS}`}>{t("Call")} <Icon name="arrow-right" /></a>}
               </div>
             </div>
           </section>
         )}
       </main>
 
-      {/* ---- footer: the deep palette colour, light text ---- */}
-      <footer style={{ background: "var(--p-foot)", color: "var(--p-foot-ink)" }}>
-        <div className="mx-auto max-w-6xl px-6 pt-14 pb-10 grid md:grid-cols-[1.3fr_1fr_1fr] gap-10 text-sm">
+      {/* ---- footer (§4.8): the ink field, the wordmark, the pages and the ways to reach the business ---- */}
+      <footer className="hero-dark">
+        <div className="mx-auto max-w-6xl px-5 md:px-6 pt-14 pb-10 grid md:grid-cols-[1.3fr_1fr_1fr] gap-10 text-sm">
           <div>
-            {logo && <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" w={180} />}
-            <p className="text-2xl tracking-tight" style={{ fontFamily: "var(--look-head)", fontWeight: "var(--head-w)" as unknown as number }}>{t(card.company || card.name)}</p>
-            {card.jobTitle && <p className="mt-1 opacity-75">{t(card.jobTitle)}</p>}
-            {card.tagline && <p className="mt-3 max-w-md opacity-75 leading-relaxed">{t(card.tagline)}</p>}
-            {card.gstin?.trim() && <p className="mt-2 text-xs mono opacity-60">GSTIN {card.gstin.trim()}</p>}
+            {logo ? <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" w={180} /> : <Wordmark name={t(hm.name)} trade={t(trade)} lang={L.lang} className="text-[19px]" />}
+            {card.tagline && <p className="mt-4 max-w-md leading-relaxed" style={{ color: "var(--hero-muted)" }}>{t(card.tagline)}</p>}
+            {card.gstin?.trim() && <p className="mt-2 text-xs mono" style={{ color: "var(--hero-muted)" }}>GSTIN {card.gstin.trim()}</p>}
             {/* One link, one QR — the same address the phone card carries. */}
             <div className="mt-6 flex items-center gap-4">
               <Img src={qr} alt="QR code" className="h-20 w-20 rounded-xl bg-white p-1.5" />
               <div className="space-y-2">
-                <p className="text-xs opacity-70">{t("Scan to open this site on your phone")}</p>
-                {shareUrl && <p className="text-xs mono break-all opacity-60">{shareUrl.replace(/^https?:\/\//, "")}</p>}
+                <p className="text-xs" style={{ color: "var(--hero-muted)" }}>{t("Scan to open this site on your phone")}</p>
+                {shareUrl && <p className="text-xs mono break-all" style={{ color: "var(--hero-muted)" }}>{shareUrl.replace(/^https?:\/\//, "")}</p>}
                 <div className="flex flex-wrap gap-2">
-                  <a href={`/c/${card.username}/vcf`} onClick={() => trackClick(card.username, "vcard")} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-white/10 ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 30%, transparent)" }}><Download className="h-3.5 w-3.5" /> {t("Save contact")}</a>
-                  <a href="?view=card" className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-medium transition hover:bg-white/10 ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 30%, transparent)" }}>{t("Digital card")}</a>
+                  <a href={`/c/${card.username}/vcf`} onClick={() => trackClick(card.username, "vcard")} className={`${GHOST} btn-xs ${FOCUS}`}><Download className="h-3.5 w-3.5" /> {t("Save contact")}</a>
+                  <a href="?view=card" className={`${GHOST} btn-xs ${FOCUS}`}>{t("Digital card")}</a>
                 </div>
               </div>
             </div>
           </div>
           <div>
-            <p className="text-[12px] font-semibold tracking-[0.16em] uppercase opacity-70">{t("Pages")}</p>
+            <p className="kicker">{t("Pages")}</p>
             <ul className="mt-4 space-y-2.5">
               {navPages.map((p) => <li key={p.id}><a href={hrefFor(p.slug)} onClick={(e) => { e.preventDefault(); go(p.slug); }} className={`opacity-85 hover:opacity-100 rounded ${FOCUS}`}>{t(p.label)}</a></li>)}
             </ul>
           </div>
           <div>
-            <p className="text-[12px] font-semibold tracking-[0.16em] uppercase opacity-70">{t("Contact")}</p>
+            <p className="kicker">{t("Contact")}</p>
             <ul className="mt-4 space-y-2.5">
               {footLinks.map((l) => (
                 l.type === "upi"
@@ -683,35 +565,29 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                   : <li key={l.id}><a href={linkHref(l.type, l.value, l.type === "whatsapp" ? waOpen : undefined)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}><LinkIcon type={l.type} className="h-4 w-4 shrink-0" /><span className="truncate max-w-[260px]">{l.value || l.label}</span>{sameNumber && l.type === "whatsapp" && <span className="shrink-0 text-xs opacity-60">· {t("WhatsApp & call")}</span>}</a></li>
               ))}
             </ul>
-            {localLine(card) && <p className="mt-5 text-xs opacity-60 leading-relaxed">{localLine(card)}</p>}
+            {localLine(card) && <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--hero-muted)" }}>{localLine(card)}</p>}
           </div>
         </div>
-        <div style={{ borderTop: "1px solid color-mix(in srgb, currentColor 15%, transparent)" }}>
-          <div className="mx-auto max-w-6xl px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-xs opacity-60">
-            <span>© {new Date().getFullYear()} {t(card.company || card.name)}</span>
+        <div style={{ borderTop: "1px solid var(--hero-line)" }}>
+          <div className="mx-auto max-w-6xl px-5 md:px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--hero-muted)" }}>
+            <span>© {new Date().getFullYear()} {t(hm.name)}</span>
             <span className="mono">{brand ? (brand.hideBranding ? "" : `Powered by ${brand.name}`) : "Powered by Shubhora"}</span>
           </div>
         </div>
       </footer>
-      {/* Floating WhatsApp / Call (desktop, bottom-left — the chat sits bottom-right) and the sticky action bar on phones. */}
-      {float !== "none" && (float === "call" ? phone : wa) && (
-        <a href={float === "call" ? linkHref(phone!.type, phone!.value) : waHref()} target={float === "call" ? undefined : "_blank"} rel="noreferrer" onClick={() => trackClick(card.username, float === "call" ? "site-float-phone" : "site-float-whatsapp")} aria-label={float === "call" ? "Call" : "WhatsApp"}
-          className={`fixed bottom-5 left-5 z-40 hidden h-14 w-14 place-items-center rounded-full text-white shadow-float transition hover:scale-105 md:grid ${FOCUS}`} style={{ background: float === "call" ? "var(--p-mid)" : "#25D366" }}>
-          {float === "call" ? <Phone className="h-6 w-6" /> : <MessageCircle className="h-7 w-7" />}
-        </a>
-      )}
+      {/* The sticky action bar on phones (§4.9): in only once the hero has scrolled away; the floating bubble is gone. */}
       {(wa || phone) && (
-        <div className="site-bar fixed inset-x-0 bottom-0 z-40 grid gap-px border-t border-border bg-border md:hidden" style={{ gridTemplateColumns: `repeat(${[phone, wa, mapLink].filter(Boolean).length}, 1fr)`, paddingBottom: "env(safe-area-inset-bottom)" }}>
-          {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-bar-phone")} className="flex items-center justify-center gap-2 bg-surface py-3 text-sm font-semibold"><Phone className="h-4 w-4" style={{ color: "var(--tc)" }} /> {t("Call")}</a>}
-          {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-bar-whatsapp")} className="flex items-center justify-center gap-2 py-3 text-sm font-semibold text-white" style={{ background: "#25D366" }}><MessageCircle className="h-4 w-4" /> WhatsApp</a>}
-          {mapLink && <a href={linkHref(mapLink.type, mapLink.value)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-bar-map")} className="flex items-center justify-center gap-2 bg-surface py-3 text-sm font-semibold"><Navigation className="h-4 w-4" style={{ color: "var(--tc)" }} /> {hiLang ? "रास्ता" : t("Directions")}</a>}
+        <div className="site-bar fixed inset-x-0 bottom-0 z-40 grid gap-px border-t border-border bg-border md:hidden" data-shown={pastHero ? "" : undefined} style={{ gridTemplateColumns: `repeat(${[phone, wa, mapLink].filter(Boolean).length}, 1fr)`, paddingBottom: "env(safe-area-inset-bottom)" }}>
+          {phone && <a href={linkHref(phone.type, phone.value)} onClick={() => trackClick(card.username, "site-bar-phone")} className="flex items-center justify-center gap-2 bg-surface py-3.5 text-sm font-semibold"><Icon name="phone" /> {t("Call")}</a>}
+          {wa && <a href={waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-bar-whatsapp")} className="flex items-center justify-center gap-2 py-3.5 text-sm font-semibold text-white" style={{ background: "var(--wa)" }}><Icon name="whatsapp" /> WhatsApp</a>}
+          {mapLink && <a href={linkHref(mapLink.type, mapLink.value)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-bar-map")} className="flex items-center justify-center gap-2 bg-surface py-3.5 text-sm font-semibold"><Icon name="directions" /> {hiLang ? "रास्ता" : t("Directions")}</a>}
         </div>
       )}
       <BottomSheet open={!!sheet} onClose={() => setSheet(null)} title={sheet ? t(sheet.name) : undefined}>
         {sheet && <ProductSheetBody p={sheet} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={!!wa} hrefFor={hrefFor} go={(slug) => { setSheet(null); go(slug); }} />}
       </BottomSheet>
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
-      {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={active} hi={L.lang === "hi"} />}
+      {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={active} hi={hiNow} />}
       {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
@@ -720,11 +596,83 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   );
 }
 
-/* ---------- section shell: one header contract, alternating surfaces ---------- */
+/* ---------- the classic hero (§3.6): one model, eight shapes, tokens only ---------- */
+type ClassicLayout = NonNullable<Card["site"]>["style"] extends infer S ? (S extends { hero?: infer H } ? NonNullable<H> : never) | "ink" : never;
+
+/** The hero of a site without a blueprint. `photo` / `editorial` = the cover (the photo full-bleed, the words low
+ *  over a bottom scrim); `split` = words on paper beside the picture (4:5, no scrim); `grid` = the product mosaic;
+ *  `person` = the portrait; `stage` = centred words, the picture wide under them; `marquee` = centred words over a
+ *  slow strip; `minimal` = words only; `ink` = words only on the ink field (no banner). No wash, dots or glow. */
+function ClassicHero({ hm, layout, lang, hi, t, username, onBook, mosaic, portrait, strip, motion, textSide }: {
+  hm: HeroModel; layout: ClassicLayout; lang: string; hi: boolean; t: (s: string) => string; username: string; onBook: (slug: string) => void;
+  mosaic: string[]; portrait?: string; strip: string[]; motion: string; textSide?: "left" | "right" | "center";
+}) {
+  const dark = layout === "photo" || layout === "editorial" || layout === "ink";
+  const center = layout === "stage" || layout === "marquee" || (dark && textSide === "center");
+  const right = dark && textSide === "right";
+  const words = (
+    <div className="hero-col hero-stagger" data-center={center ? "" : undefined}>
+      <Kicker lang={lang}>{t(hm.kicker)}</Kicker>
+      <Display lang={lang}>{t(hm.headline)}</Display>
+      <Sub lang={lang}>{t(hm.sub)}</Sub>
+      <TrustRow trust={hm.trust} hours={hm.hours} hi={hi} />
+      <CtaPair primary={hm.primary} secondary={hm.secondary} username={username} secondaryStyle={dark ? "link" : "ghost"} onBook={onBook} />
+    </div>
+  );
+  if (dark) {
+    return (
+      <section className={`hero-dark relative overflow-hidden flex items-end ${layout === "editorial" ? "min-h-[86svh]" : layout === "ink" ? "min-h-[64svh]" : "min-h-[78svh]"}`} aria-label={hm.name}>
+        {hm.photo && <div className="absolute inset-0"><HeroPhoto photo={hm.photo} clip={hm.clip} clipOn="desktop" crop="cover" priority scrim side={right ? "right" : center ? "center" : "left"} grain kenBurns={motion !== "none"} className="h-full w-full" /></div>}
+        {!hm.photo && <i aria-hidden="true" className="hero-grain" />}
+        <div className={`relative mx-auto w-full max-w-6xl px-5 md:px-6 pt-32 pb-12 md:pb-20 flex ${right ? "justify-end" : center ? "justify-center" : ""}`}>{words}</div>
+      </section>
+    );
+  }
+  const aside = layout === "grid" && mosaic.length >= 3 ? (
+    <div className="grid grid-cols-2 gap-3 w-full max-w-[460px] justify-self-center md:justify-self-end hero-ph-in">
+      {mosaic.map((u, i) => (
+        <div key={u} className={`overflow-hidden rounded-2xl ${i === 0 && mosaic.length === 3 ? "col-span-2 aspect-[2/1]" : "aspect-square"}`} style={{ background: "var(--paper-2)" }}>
+          <Img src={u} alt="" className="h-full w-full object-cover" eager priority={i === 0} sizes={i === 0 && mosaic.length === 3 ? "(min-width: 768px) 460px, 100vw" : "(min-width: 768px) 230px, 50vw"} />
+        </div>
+      ))}
+    </div>
+  ) : layout === "person" && portrait ? (
+    <div className="relative h-[300px] w-[300px] md:h-[380px] md:w-[380px] overflow-hidden rounded-3xl justify-self-center md:justify-self-end hero-ph-in" style={{ background: "var(--paper-2)" }}>
+      <Img src={portrait} alt={hm.name} className="h-full w-full object-cover" priority sizes="(min-width: 768px) 380px, 300px" />
+    </div>
+  ) : layout === "split" && hm.photo ? (
+    <div className="relative w-full max-h-[56svh] md:max-h-none aspect-[4/5] overflow-hidden rounded-3xl justify-self-center md:justify-self-end"><HeroPhoto photo={hm.photo} crop="split" priority className="h-full w-full" /></div>
+  ) : null;
+  const wide = (layout === "stage" || layout === "minimal") && hm.photo ? (
+    <div className="relative mt-12 aspect-[16/9] overflow-hidden rounded-3xl"><HeroPhoto photo={hm.photo} crop="cover" priority lazy={false} className="h-full w-full" /></div>
+  ) : null;
+  return (
+    <section className="relative overflow-hidden" aria-label={hm.name} style={{ background: "var(--paper)" }}>
+      <div className={`relative mx-auto w-full max-w-6xl px-5 md:px-6 ${center ? "pt-16 pb-10 md:pt-24 md:pb-12 text-center" : `py-16 md:py-24 grid gap-10 items-center ${aside ? (layout === "split" ? "md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)]" : "md:grid-cols-[1.15fr_1fr]") : ""}`}`}>
+        {layout === "split" && aside && <div className="md:hidden">{aside}</div>}
+        <div className={center ? "mx-auto flex justify-center" : ""}>{words}</div>
+        {aside && <div className={layout === "split" ? "max-md:hidden" : ""}>{aside}</div>}
+        {wide}
+      </div>
+      {layout === "marquee" && strip.length >= 4 && (
+        <div className="relative mt-4 pb-16 overflow-hidden" style={{ maskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)", WebkitMaskImage: "linear-gradient(90deg, transparent, black 8%, black 92%, transparent)" }}>
+          <div className="site-marquee flex w-max gap-4 px-2">
+            {[...strip, ...strip].map((u, i) => (
+              <div key={`${u}-${i}`} className={`h-[200px] md:h-[260px] shrink-0 overflow-hidden rounded-2xl ${i % 3 === 1 ? "w-[300px] md:w-[380px]" : "w-[200px] md:w-[240px]"}`} style={{ background: "var(--paper-2)" }}>
+                <Img src={u} alt="" className="h-full w-full object-cover" eager={i < 4} sizes="380px" />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+/* ---------- section shell (§4.2): kicker + H2 + lede, alternating paper, the band an ink field ---------- */
 function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, index = 0, tone = "auto", tight = false, children, className = "" }: {
   title?: string; eyebrow?: string; lead?: string; aside?: React.ReactNode; wide?: boolean; narrow?: boolean; index?: number;
-  /** "band": the palette's deep colour with light text — one dark stretch breaks a long white page.
-   *  "auto": the alternating tint. */
+  /** "band": the ink field with light text — one dark stretch breaks a long paper page. "auto": paper / paper-2. */
   tone?: "auto" | "band";
   /** A section of short lines (why-us ticks, steps) does not need a full-height stretch around it. */
   tight?: boolean;
@@ -732,19 +680,15 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
 }) {
   const band = tone === "band";
   return (
-    <section className={`${band ? "relative overflow-hidden" : ""} ${className}`} data-reveal
-      style={band
-        ? { background: `radial-gradient(70% 90% at 90% 10%, color-mix(in srgb, var(--p-glow) 45%, transparent), transparent 62%), linear-gradient(120deg, var(--p-deep), color-mix(in srgb, var(--p-deep) 60%, var(--p-mid)))`, color: "var(--p-ink)" }
-        : index % 2 ? { background: "var(--p-soft)" } : undefined}>
-      {band && <div aria-hidden="true" className="dots absolute inset-0 opacity-40" />}
-      <div className={`relative mx-auto px-6 ${tight ? "py-12 md:py-14" : "py-14 md:py-[76px]"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
+    <section className={`${band ? "hero-dark relative overflow-hidden" : ""} ${className}`} data-reveal style={band ? undefined : index % 2 ? { background: "var(--paper-2)" } : { background: "var(--paper)" }}>
+      {band && <i aria-hidden="true" className="hero-grain" />}
+      <div className={`relative mx-auto px-5 md:px-6 ${tight ? "py-12 md:py-16" : "sec-pad"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
         {(title || eyebrow || lead) && (
-          <div className={`${tight ? "mb-8" : "mb-10"} flex flex-wrap items-end justify-between gap-6`}>
+          <div className={`${tight ? "mb-8" : "mb-10 md:mb-12"} flex flex-wrap items-end justify-between gap-6`}>
             <div className="max-w-2xl">
-              {eyebrow && <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: band ? "var(--p-accent)" : "var(--p-mark)" }}>{eyebrow}</p>}
-              {title && <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{title}</h2>}
-              {title && <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: band ? "var(--p-accent)" : "var(--grad)" }} />}
-              {lead && <p className={`mt-4 text-[17px] leading-relaxed ${band ? "opacity-85" : "text-muted"}`}>{lead}</p>}
+              {eyebrow && <p className={cls.kicker}>{eyebrow}</p>}
+              {title && <h2 className={`sec-h2 ${eyebrow ? "mt-3" : ""}`}>{title}</h2>}
+              {lead && <p className="lede">{lead}</p>}
             </div>
             {aside}
           </div>
@@ -755,9 +699,44 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
   );
 }
 
+/** The sections' own rules (§4), inlined with the tokens: the "good to know" line, section type, cards, products,
+ *  reviews, the sticky bar's entrance. Everything else is the shared `.site` block in globals.css. */
+const VIEW_CSS = `
+.site .gtk{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s5);padding:var(--s3) 0;margin:0;list-style:none;border-top:1px solid var(--line);border-bottom:1px solid var(--line);font-size:var(--t-meta);font-weight:500;color:var(--muted)}
+.site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
+.site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.site .sec-pad{padding-block:var(--section-pad)}
+.site .sec-h2{font-family:var(--font-display,var(--look-head));font-size:var(--t-h2);line-height:1.05;letter-spacing:-.015em;font-weight:var(--display-w,var(--head-w,600));margin:0;text-wrap:balance}
+.site .lede{margin:var(--s4) 0 0;font-size:var(--t-sub);line-height:1.45;color:var(--muted);max-width:52ch;text-wrap:pretty}
+.site .hero-dark .lede{color:var(--hero-muted)}
+.site .hero-dark .hero-wordmark small{color:var(--hero-muted)}
+.site .hero-col{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);max-width:var(--hero-col)}
+.site .hero-col[data-center]{align-items:center;text-align:center}
+.site .hero-col .display{margin-top:var(--s1)}.site .hero-col .hero-ctas{margin-top:var(--s3)}
+.site .hero-col .hero-sub{color:var(--muted)}.site .hero-dark .hero-col .hero-sub{color:var(--hero-text)}
+.site .icon-box{display:grid;place-items:center;width:40px;height:40px;flex:none;border-radius:var(--r-ctl);background:var(--accent-soft);color:var(--accent)}
+.site .hero-dark .icon-box{background:rgba(255,255,255,.1);color:var(--hero-text)}
+.site .btn-sm{min-height:40px;padding:0 var(--s4);font-size:14px}.site .btn-xs{min-height:32px;padding:0 var(--s3);font-size:12px;gap:.35rem}
+.site .hero-dark .btn-xs{border-color:var(--hero-line);color:var(--hero-text)}
+.site .num{font-variant-numeric:tabular-nums lining-nums}
+.site .p-img{position:relative;aspect-ratio:4/5;background:var(--paper-2);overflow:hidden}
+.site .p-ph{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-display,var(--look-head));font-size:72px;color:var(--ink);opacity:.2}
+.site .p-name{font-size:15px;font-weight:500;line-height:1.35}.site .p-price{font-size:15px;font-weight:600;font-variant-numeric:tabular-nums lining-nums}
+.site .p-wa{display:inline-flex;align-items:center;gap:.4em;font-size:13px;font-weight:600;color:var(--ink);text-decoration:none}.site .p-wa svg{color:var(--wa)}.site .p-wa:hover{text-decoration:underline;text-underline-offset:.2em}
+.site .rev-q{margin:0;font-family:var(--font-display,var(--look-head));font-style:italic;font-weight:400;font-size:26px;line-height:1.3;letter-spacing:0;text-wrap:pretty}
+.site .rev-rule{display:block;width:40px;height:1px;background:var(--accent)}
+.site .rev-name{font-size:13px;font-weight:500;color:var(--muted)}
+.site .stars{display:inline-flex;gap:2px;color:var(--star)}.site .stars [data-off]{color:var(--line)}
+.site .faq{border-top:1px solid var(--line)}.site .faq details{border-bottom:1px solid var(--line)}
+.site .faq summary{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);cursor:pointer;list-style:none;padding:var(--s4) 0;font-size:16px;font-weight:600}
+.site .faq summary::-webkit-details-marker{display:none}.site .faq details[open] summary svg{transform:rotate(180deg)}.site .faq summary svg{flex:none;color:var(--muted);transition:transform .2s}
+.site .faq p{margin:0;padding:0 0 var(--s5);font-size:var(--t-body);line-height:var(--body-lh);color:var(--muted);max-width:65ch}
+.site .site-bar{transform:translateY(110%)}.site .site-bar[data-shown]{transform:none}
+`;
+
 /** "See all 12 products →" — the link from a home preview to its page. */
 function SeeAll({ href, go, slug, children }: { href: string; go: (s: string) => void; slug: string; children: React.ReactNode }) {
-  return <a href={href} onClick={(e) => { e.preventDefault(); go(slug); }} className={`inline-flex items-center gap-1.5 rounded-full border border-border bg-surface px-4 py-2 text-sm font-semibold hover:bg-surface2 ${FOCUS}`} style={{ color: "var(--tc)" }}>{children} <ArrowRight className="h-4 w-4" /></a>;
+  return <a href={href} onClick={(e) => { e.preventDefault(); go(slug); }} className={`${LINK} ${FOCUS}`}>{children} <Icon name="arrow-right" /></a>;
 }
 
 /** Recent daily posters as cards: picture, date, the caption's first lines, share on WhatsApp. */
@@ -772,13 +751,13 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
           const text = clean(u.caption);
           const d = new Date(`${u.date}T00:00:00+05:30`);
           return (
-            <article key={u.url} className={`overflow-hidden rounded-3xl border border-border bg-surface ${CARD_HOVER}`}>
+            <article key={u.url} className={`overflow-hidden ${cls.card} ${CARD_HOVER}`}>
               <button type="button" onClick={() => setZoom({ images: items.map((x) => x.url), i, alt: u.title })} className={`block w-full cursor-zoom-in ${FOCUS}`}><Img src={u.url} alt={u.title} className="aspect-[4/5] w-full object-cover" eager={i < 3} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" /></button>
               <div className="p-5">
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-muted"><Newspaper className="mr-1 inline h-3.5 w-3.5" />{d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
                 <h3 className="mt-1 text-[16px] font-semibold">{t(u.title)}</h3>
                 {text && <p className="mt-1.5 text-sm leading-relaxed text-muted line-clamp-3">{t(text.slice(0, 220))}</p>}
-                {hasWa && <a href={waHref(`Hi, I saw your update "${u.title}"`)} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-update-whatsapp")} className={`mt-3 inline-flex items-center gap-1.5 text-sm font-semibold ${FOCUS}`} style={{ color: "var(--tc)" }}><MessageCircle className="h-4 w-4" /> {hi ? "पूछें" : t("Ask about this")}</a>}
+                {hasWa && <a href={waHref(`Hi, I saw your update "${u.title}"`)} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-update-whatsapp")} className={`p-wa mt-3 ${FOCUS}`}><Icon name="whatsapp" /> {hi ? "पूछें" : t("Ask about this")}</a>}
               </div>
             </article>
           );
@@ -829,12 +808,12 @@ function ReviewInvite({ username, business, hi }: { username: string; business: 
     finally { setBusy(false); }
   }
 
-  const field = "w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] outline-none focus:border-[var(--tc)]";
+  const field = "w-full rounded-xl border border-border bg-surface px-4 py-3 text-[15px] outline-none focus:border-[var(--accent)]";
   return (
-    <div className="rounded-3xl border border-border bg-surface p-7 md:p-9">
+    <div className={`${cls.card} p-7 md:p-9`}>
       {sent ? (
         <div className="flex items-start gap-3">
-          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Check className="h-5 w-5" /></span>
+          <span className={cls.iconBox}><Icon name="check" /></span>
           <div>
             <h2 className="text-xl tracking-tight">{L("Thank you!", "धन्यवाद!")}</h2>
             <p className="mt-1 text-[15px] text-muted">{L(`${business} will see your words and put them on this page.`, `${business} आपकी बात देखकर इसी page पर लगाएँगे।`)}</p>
@@ -843,12 +822,12 @@ function ReviewInvite({ username, business, hi }: { username: string; business: 
       ) : !open ? (
         <div className="flex flex-wrap items-center justify-between gap-5">
           <div>
-            <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{L("Your words", "आपकी राय")}</p>
-            <h2 className="mt-2 text-[24px] md:text-[28px] tracking-tight">{L("Been here? Tell others.", "यहाँ आ चुके हैं? दूसरों को बताइए।")}</h2>
+            <p className={cls.kicker}>{L("Your words", "आपकी राय")}</p>
+            <h2 className="mt-3 text-[24px] md:text-[28px] tracking-tight">{L("Been here? Tell others.", "यहाँ आ चुके हैं? दूसरों को बताइए।")}</h2>
             <p className="mt-2 text-[15px] text-muted max-w-xl">{L("A line from you helps the next customer decide. It goes up once the owner has seen it.", "आपकी दो लाइनें अगले ग्राहक का फ़ैसला आसान कर देंगी। मालिक के देखने के बाद यहाँ लग जाएँगी।")}</p>
           </div>
-          <button type="button" onClick={() => setOpen(true)} className={`inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-semibold shadow-float ${FOCUS}`} style={{ background: "var(--grad)", color: "var(--p-on)" }}>
-            <Star className="h-4 w-4" /> {L("Write a review", "Review लिखें")}
+          <button type="button" onClick={() => setOpen(true)} className={`${GHOST} ${FOCUS}`}>
+            <Icon name="star" /> {L("Write a review", "Review लिखें")}
           </button>
         </div>
       ) : (
@@ -857,7 +836,7 @@ function ReviewInvite({ username, business, hi }: { username: string; business: 
           <span className="inline-flex gap-1">
             {[1, 2, 3, 4, 5].map((i) => (
               <button key={i} type="button" onClick={() => setRating(i)} aria-label={`${i}`} className={`rounded ${FOCUS}`}>
-                <Star className="h-8 w-8" style={{ color: i <= rating ? "#f59e0b" : "var(--border)", fill: i <= rating ? "#f59e0b" : "transparent" }} />
+                <Icon name="star" size={30} fill={i <= rating} style={{ color: i <= rating ? "var(--star)" : "var(--line)" }} />
               </button>
             ))}
           </span>
@@ -869,10 +848,10 @@ function ReviewInvite({ username, business, hi }: { username: string; business: 
           <input value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
           {err && <p className="text-sm text-danger">{err}</p>}
           <div className="flex flex-wrap gap-3">
-            <button type="button" onClick={send} disabled={busy || !name.trim() || text.trim().length < 10} className={`inline-flex items-center gap-2 rounded-full px-6 py-3.5 text-[15px] font-semibold shadow-float disabled:opacity-60 ${FOCUS}`} style={{ background: "var(--grad)", color: "var(--p-on)" }}>
+            <button type="button" onClick={send} disabled={busy || !name.trim() || text.trim().length < 10} className={`${BTN} disabled:opacity-60 ${FOCUS}`}>
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{L("Send", "भेजें")}
             </button>
-            <button type="button" onClick={() => setOpen(false)} className={`rounded-full border border-border px-5 py-3.5 text-[15px] font-semibold ${FOCUS}`}>{L("Cancel", "रहने दें")}</button>
+            <button type="button" onClick={() => setOpen(false)} className={`${GHOST} ${FOCUS}`}>{L("Cancel", "रहने दें")}</button>
           </div>
           <p className="text-xs text-muted">{L("Your review is sent to the owner and appears here once they approve it.", "आपकी review मालिक के पास जाएगी और उनके मंज़ूर करने पर यहाँ दिखेगी।")}</p>
         </div>
@@ -893,15 +872,16 @@ function UpiLine({ value, username }: { value: string; username: string }) {
       <a href={linkHref("upi", value)} onClick={() => trackClick(username, "upi")} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}>
         <LinkIcon type="upi" className="h-4 w-4 shrink-0" /><span className="truncate max-w-[200px] mono">{value}</span>
       </a>
-      <button type="button" onClick={copy} className={`shrink-0 rounded-full border px-2.5 py-1 text-[11px] font-medium transition hover:bg-white/10 ${FOCUS}`} style={{ borderColor: "color-mix(in srgb, currentColor 30%, transparent)" }}>
+      <button type="button" onClick={copy} className={`${GHOST} btn-xs shrink-0 ${FOCUS}`}>
         {copied ? t("Copied") : t("Copy")}
       </button>
     </span>
   );
 }
 
-function Stars({ n }: { n: number }) {
-  return <span className="inline-flex gap-0.5" aria-label={`${n} out of 5`}>{[1, 2, 3, 4, 5].map((i) => <Star key={i} className="h-4 w-4" style={{ color: i <= n ? "#f59e0b" : "var(--border)", fill: i <= n ? "#f59e0b" : "transparent" }} />)}</span>;
+/** Five line stars (site-icons), the accent for the ones that count — never #f5b301. */
+function Stars({ n, size = 14 }: { n: number; size?: number }) {
+  return <span className="stars" aria-label={`${n} out of 5`}>{[1, 2, 3, 4, 5].map((i) => <Icon key={i} name="star" size={size} fill={i <= n} data-off={i <= n ? undefined : ""} />)}</span>;
 }
 
 type RunProps = { run: CardBlock[]; index: number; card: Card; theme: string; ink: string; waHref: (t?: string) => string; go: (slug: string) => void; links: Card["links"]; hrefFor: (slug: string) => string;
@@ -936,7 +916,7 @@ function SiteRun(p: RunProps) {
           {withImg.length > 0 && <div className="mb-12"><AboutBody block={withImg[0]} hi={hi} index={index} /></div>}
           <div className={`grid gap-8 ${list.filter((b) => !b.imageUrl || b !== withImg[0]).length > 1 ? "md:grid-cols-2" : ""}`}>
             {list.filter((b) => b !== withImg[0]).map((b) => (
-              <div key={b.id} className="rounded-3xl border border-border bg-surface p-8">
+              <div key={b.id} className={`${cls.card} p-8`}>
                 <h2 className="text-[22px] tracking-tight">{t(b.title)}</h2>
                 <div className="mt-4 space-y-4 text-[15px] leading-relaxed text-muted">{paras(b.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
               </div>
@@ -985,7 +965,7 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
       <div className="divide-y divide-border border-t border-border">
         {list.map((s, i) => (
           <div key={i} className="grid gap-4 py-9 md:grid-cols-[96px_1fr] md:gap-8 items-start">
-            <span className="text-[40px] md:text-[52px] leading-none font-semibold tracking-tight" style={{ fontFamily: "var(--look-head)", color: "var(--tc)" }}>{String(i + 1).padStart(2, "0")}</span>
+            <span className="stat text-[40px] md:text-[52px]" style={{ color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
             <div>
               <h3 className="text-[22px] md:text-[26px] font-semibold tracking-tight leading-tight">{name(s)}</h3>
               {s.desc && <p className="mt-3 text-[17px] text-muted leading-relaxed max-w-[62ch]">{t(s.desc)}</p>}
@@ -1001,7 +981,7 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
       <div className="grid md:grid-cols-2 gap-x-12 md:border-t md:border-border">
         {list.map((s, i) => (
           <div key={i} className="flex items-start gap-4 border-b border-border py-5">
-            <span className="mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Check className="h-4 w-4" /></span>
+            <span className="mt-0.5 shrink-0" style={{ color: "var(--accent)" }}><Icon name="check" size={18} /></span>
             <div>
               <h3 className="text-[16px] font-semibold leading-snug">{name(s)}</h3>
               {s.desc && <p className="mt-1 text-[14px] text-muted leading-relaxed">{t(s.desc)}</p>}
@@ -1014,8 +994,8 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
   return (
     <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
       {list.map((s, i) => (
-        <div key={i} className={`rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
-          <span className="inline-grid h-9 w-9 place-items-center rounded-xl text-xs font-bold tracking-wider" style={{ background: "var(--grad)", color: "var(--p-on)" }}>{String(i + 1).padStart(2, "0")}</span>
+        <div key={i} className={`${cls.card} p-7 ${CARD_HOVER}`}>
+          <span className="num text-[12px] font-semibold tracking-[.12em]" style={{ color: "var(--accent)" }}>{String(i + 1).padStart(2, "0")}</span>
           <h3 className="mt-4 text-[17px] font-semibold">{name(s)}</h3>
           {s.desc && <p className="mt-2 text-[15px] text-muted leading-relaxed">{t(s.desc)}</p>}
         </div>
@@ -1031,10 +1011,10 @@ function StepsRow({ items }: { items: { name: string; desc: string }[] }) {
   const cols = list.length >= 4 ? "md:grid-cols-4" : list.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2";
   return (
     <ol className={`relative grid gap-8 ${cols}`}>
-      <span aria-hidden="true" className="absolute left-0 right-0 top-6 hidden h-px md:block" style={{ background: "linear-gradient(90deg, transparent, var(--p-mid) 15%, var(--p-mid) 85%, transparent)", opacity: 0.45 }} />
+      <span aria-hidden="true" className="absolute left-0 right-0 top-6 hidden h-px md:block" style={{ background: "var(--line)" }} />
       {list.map((s, i) => (
         <li key={i} className="relative">
-          <span className="relative z-10 grid h-12 w-12 place-items-center rounded-full text-base font-bold shadow-float" style={{ background: "var(--grad)", color: "var(--p-on)" }}>{i + 1}</span>
+          <span className="relative z-10 grid h-12 w-12 place-items-center rounded-full text-base font-semibold num" style={{ background: "var(--accent)", color: "var(--on-accent)" }}>{i + 1}</span>
           <h3 className="mt-5 text-[17px] font-semibold">{t(s.name.replace(/^\d+[.)]\s*/, ""))}</h3>
           {s.desc && <p className="mt-2 text-[15px] text-muted leading-relaxed">{t(s.desc)}</p>}
         </li>
@@ -1045,6 +1025,7 @@ function StepsRow({ items }: { items: { name: string; desc: string }[] }) {
 
 function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme: string; band?: boolean }) {
   const t = useT();
+  void theme;
   const list = items.map((s) => s.trim()).filter(Boolean);
   // Same split as the phone card; the item is translated whole, then its emoji comes off.
   const short = list.length > 0 && list.every((s) => splitGlyph(s).text.length <= 24);
@@ -1055,9 +1036,9 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
     return (
       <div className={`grid sm:grid-cols-2 ${list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
         {list.map((it, i) => { const { text } = glyphText(it, t); return (
-          <div key={i} className={`flex items-start gap-3 rounded-2xl border px-5 py-4 ${band ? "" : `border-border bg-surface ${CARD_HOVER}`}`}
-            style={band ? { borderColor: "color-mix(in srgb, currentColor 22%, transparent)", background: "color-mix(in srgb, currentColor 8%, transparent)" } : undefined}>
-            <span className="mt-0.5 grid h-7 w-7 shrink-0 place-items-center rounded-full" style={band ? { background: "color-mix(in srgb, currentColor 16%, transparent)", color: "var(--p-accent)" } : { background: tint(theme), color: "var(--tc)" }}><Check className="h-4 w-4" /></span>
+          <div key={i} className={`flex items-start gap-3 px-5 py-4 ${band ? "rounded-2xl" : `${cls.card} ${CARD_HOVER}`}`}
+            style={band ? { border: "1px solid var(--hero-line)" } : undefined}>
+            <span className="mt-0.5 shrink-0" style={{ color: band ? "var(--hero-text)" : "var(--accent)" }}><Icon name="check" size={18} /></span>
             <span className="text-[15px] font-medium leading-snug">{text}</span>
           </div>
         ); })}
@@ -1066,18 +1047,18 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
   }
   if (short) {
     return (
-      <ol className="flex flex-wrap gap-3">
-        {list.map((it, i) => { const { glyph, text } = glyphText(it, t); return <li key={i} className="inline-flex items-center gap-2 rounded-full border border-border bg-surface px-4 py-2 text-sm font-medium"><span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-bold" style={{ background: tint(theme), color: "var(--tc)" }}>{glyph ?? i + 1}</span>{text}</li>; })}
-      </ol>
+      <ul className="gtk">
+        {list.map((it, i) => { const { text } = glyphText(it, t); const ic = iconFor(it); return <li key={i}>{ic ? <Icon name={ic} /> : <Icon name="check" />}{stripEmoji(text)}</li>; })}
+      </ul>
     );
   }
   const cols = list.length % 3 === 0 || list.length === 5 ? "lg:grid-cols-3" : "lg:grid-cols-4";
   return (
     <div className={`grid sm:grid-cols-2 ${cols} gap-5`}>
-      {list.map((it, i) => { const { glyph, text } = glyphText(it, t); return (
-        <div key={i} className={`rounded-2xl border border-border bg-surface p-6 ${CARD_HOVER}`}>
-          <span className="h-11 w-11 rounded-xl grid place-items-center text-xl" style={{ background: tint(theme), color: "var(--tc)" }}>{glyph ?? <Check className="h-5 w-5" />}</span>
-          <p className="mt-4 font-semibold text-[15px] leading-snug">{text}</p>
+      {list.map((it, i) => { const { text } = glyphText(it, t); return (
+        <div key={i} className={`${cls.card} p-6 ${CARD_HOVER}`}>
+          <span className={cls.iconBox}><Icon name={iconFor(it) ?? "check"} size={18} /></span>
+          <p className="mt-4 font-semibold text-[15px] leading-snug">{stripEmoji(text)}</p>
         </div>
       ); })}
     </div>
@@ -1088,16 +1069,15 @@ function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind:
   const prefs = useContext(LayoutCtx);
   const t = useT();
   const layout = preferredLayouts(prefs, { aboutImage: !!block.imageUrl }).about ?? aboutLayout(block, index);
-  const eyebrow = <p className="text-[12px] font-semibold tracking-[0.16em] uppercase" style={{ color: "var(--p-mark)" }}>{hi ? "परिचय" : t("About")}</p>;
-  const rule = <span className="mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />;
+  const eyebrow = <p className={cls.kicker}>{hi ? "परिचय" : t("About")}</p>;
   // A short text with no photo: one centred statement, large — not a thin paragraph lost in a wide box.
   if (layout === "statement") {
     return (
       <div className="mx-auto max-w-3xl text-center">
         {eyebrow}
-        <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>
-        <span className="mx-auto mt-4 block h-1 w-12 rounded-full" style={{ background: "var(--grad)" }} />
-        <div className="mt-7 space-y-4 text-[21px] md:text-[24px] leading-snug" style={{ fontFamily: "var(--look-head)" }}>{paras(block.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
+        <h2 className="sec-h2 mt-3">{t(block.title)}</h2>
+        <span className="rev-rule mx-auto mt-6" />
+        <div className="mt-7 space-y-4 text-[21px] md:text-[24px] leading-snug" style={{ fontFamily: "var(--font-display, var(--look-head))" }}>{paras(block.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
     );
   }
@@ -1105,7 +1085,7 @@ function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind:
   if (layout === "columns") {
     return (
       <div className="grid gap-8 md:grid-cols-[0.8fr_1.4fr] md:gap-16 items-start">
-        <div className="md:sticky md:top-24">{eyebrow}<h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>{rule}</div>
+        <div className="md:sticky md:top-24">{eyebrow}<h2 className="sec-h2 mt-3">{t(block.title)}</h2></div>
         <div className="space-y-5 text-[17px] leading-relaxed text-muted md:border-l md:border-border md:pl-10">{paras(block.body).map((x, i) => <p key={i} className={i === 0 ? "text-[19px] text-ink" : ""}>{t(x)}</p>)}</div>
       </div>
     );
@@ -1114,13 +1094,11 @@ function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind:
   return (
     <div className={`grid gap-12 items-center ${right ? "md:grid-cols-[1.1fr_0.9fr]" : "md:grid-cols-[0.9fr_1.1fr]"}`}>
       <div className={`relative ${right ? "md:order-2" : ""}`}>
-        <div aria-hidden="true" className={`absolute -top-4 h-28 w-28 rounded-3xl opacity-60 ${right ? "-right-4" : "-left-4"}`} style={{ background: "var(--grad)" }} />
-        <Img src={block.imageUrl!} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl border border-border shadow-float" sizes="(min-width: 768px) 45vw, 100vw" />
+        <Img src={block.imageUrl!} alt="" className="relative w-full h-auto max-h-[520px] object-cover rounded-3xl" sizes="(min-width: 768px) 45vw, 100vw" />
       </div>
       <div>
         {eyebrow}
-        <h2 className="mt-2 text-[28px] md:text-[34px] tracking-tight leading-tight">{t(block.title)}</h2>
-        {rule}
+        <h2 className="sec-h2 mt-3">{t(block.title)}</h2>
         <div className="mt-6 space-y-4 text-[17px] leading-relaxed text-muted">{paras(block.body).map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
     </div>
@@ -1133,10 +1111,10 @@ function CtaCard({ block, card, theme, ink, go }: { block: Extract<CardBlock, { 
   const sep = block.joinUrl.includes("?") ? "&" : "?";
   const link = block.referralCode ? `${block.joinUrl}${sep}ref=${encodeURIComponent(block.referralCode)}` : block.joinUrl;
   const internal = link.startsWith("#");
-  const btn = `${BTN} px-6 py-3 text-[15px] ${FOCUS}`;
+  const btn = `${BTN} ${FOCUS}`;
   void theme; void ink;
   return (
-    <div className="rounded-3xl border border-border bg-surface p-8 flex flex-col">
+    <div className={`${cls.card} p-8 flex flex-col`}>
       {block.title && <h3 className="text-[22px] font-semibold tracking-tight">{t(block.title)}</h3>}
       {block.body && <p className={`${block.title ? "mt-2 text-[15px] text-muted" : "text-[20px] font-semibold tracking-tight"} leading-relaxed`}>{t(block.body)}</p>}
       <div className="mt-auto pt-6 space-y-3">
@@ -1144,7 +1122,7 @@ function CtaCard({ block, card, theme, ink, go }: { block: Extract<CardBlock, { 
           ? <button type="button" onClick={() => { trackClick(card.username, "cta-join"); go(link.slice(1)); }} className={btn}>{t(block.joinLabel || "Learn more")}</button>
           : <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(card.username, "cta-join")} className={btn}><UserPlus className="h-4 w-4" /> {t(block.joinLabel || "Join Now")}</a>)}
         {link && block.referralCode && (
-          <button type="button" onClick={() => { try { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }} className={`w-full flex items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs text-muted ${FOCUS}`}>
+          <button type="button" onClick={() => { try { navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }} className={`w-full flex items-center justify-between gap-2 rounded-xl border border-border px-3 py-2 text-xs text-muted ${FOCUS}`}>
             <span className="truncate">{link}</span><span className="inline-flex items-center gap-1 shrink-0"><Copy className="h-3.5 w-3.5" /> {copied ? "Copied" : "Copy referral link"}</span>
           </button>
         )}
@@ -1156,7 +1134,7 @@ function CtaCard({ block, card, theme, ink, go }: { block: Extract<CardBlock, { 
 function OfferCode({ code }: { code: string }) {
   const [copied, setCopied] = useState(false);
   return (
-    <button type="button" onClick={() => { try { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }} className={`inline-flex items-center gap-3 rounded-2xl border px-6 py-4 text-xl font-bold mono ${FOCUS}`} style={{ background: "color-mix(in srgb, currentColor 12%, transparent)", borderColor: "color-mix(in srgb, currentColor 35%, transparent)" }}>
+    <button type="button" onClick={() => { try { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }} className={`inline-flex items-center gap-3 rounded-xl border px-5 py-3 text-lg font-semibold mono num ${FOCUS}`} style={{ borderColor: "var(--hero-line)" }}>
       {code}<span className="inline-flex items-center gap-1 text-xs font-semibold"><Copy className="h-4 w-4" /> {copied ? "Copied" : "Copy"}</span>
     </button>
   );
@@ -1182,7 +1160,7 @@ function ProductSheetBody({ p, card, theme, ink, waHref, hasWa, hrefFor, go }: {
   return (
     <div className="pt-2">
       <ProductDetail p={p} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} />
-      {slug && <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); go(slug); }} className={`mt-6 inline-flex items-center gap-1.5 text-sm font-semibold ${FOCUS}`} style={{ color: "var(--tc)" }}>{t("Open its page")} <ArrowRight className="h-4 w-4" /></a>}
+      {slug && <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); go(slug); }} className={`${LINK} mt-6 text-sm ${FOCUS}`}>{t("Open its page")} <Icon name="arrow-right" /></a>}
       {zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
     </div>
   );
@@ -1190,6 +1168,7 @@ function ProductSheetBody({ p, card, theme, ink, waHref, hasWa, hrefFor, go }: {
 
 function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = false, flip = false }: { p: ProductItem; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; named?: boolean; flip?: boolean }) {
   const t = useT();
+  void theme; void ink;
   const hi = card.language === "hi";
   const gallery = galleryOf(p);
   const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
@@ -1202,16 +1181,16 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = fal
   return (
     <div className="grid gap-10 md:grid-cols-2 md:gap-14 items-start">
       <div className={`grid gap-3 ${flip ? "md:order-2" : ""}`}>
-        <div className="aspect-square relative overflow-hidden rounded-3xl border border-border" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
+        <div className="p-img rounded-3xl">
           {gallery[0]
             ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-8 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain" eager sizes="(min-width: 768px) 50vw, 100vw" /></button>
-            : <span aria-hidden="true" className="absolute inset-10 rounded-2xl grid place-items-center text-7xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
-          {discount && <span className="absolute right-5 top-5 rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white shadow-card">{discount}% OFF</span>}
+            : <span aria-hidden="true" className="p-ph">{initial}</span>}
+          {discount && <span className="absolute right-5 top-5 num text-[12px] font-semibold" style={{ color: "var(--accent)" }}>{discount}% off</span>}
         </div>
         {gallery.length > 1 && (
           <div className="grid grid-cols-4 gap-3">
             {gallery.slice(1, 5).map((u, j) => (
-              <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j + 1, alt: p.name })} className={`aspect-square overflow-hidden rounded-2xl border border-border bg-surface p-2 ${FOCUS}`}>
+              <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j + 1, alt: p.name })} className={`aspect-square overflow-hidden rounded-2xl p-2 ${FOCUS}`} style={{ background: "var(--paper-2)" }}>
                 <FitImg src={u} alt="" className="h-full w-full object-contain" w={128} />
               </button>
             ))}
@@ -1220,23 +1199,23 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = fal
       </div>
       <div>
         {/* On a product's own page the heading already carries the name and the price leads; in a showcase the name comes first. */}
-        {named && <h3 className="text-[26px] md:text-[32px] tracking-tight leading-tight mb-4">{t(p.name)}</h3>}
-        {p.badge && <span className="inline-block rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span>}
+        {p.badge && <p className={cls.kicker}>{t(p.badge)}</p>}
+        {named && <h3 className={`text-[26px] md:text-[32px] tracking-tight leading-tight ${p.badge ? "mt-3" : ""}`}>{t(p.name)}</h3>}
         {(p.price || p.mrp) && (
-          <p className={`text-[28px] md:text-[34px] font-semibold tracking-tight ${p.badge ? "mt-4" : ""}`}>
+          <p className={`num text-[24px] md:text-[28px] font-semibold tracking-tight ${named || p.badge ? "mt-4" : ""}`}>
             {p.price || p.mrp}
             {saved && <span className="ml-3 text-lg text-muted line-through font-normal">{p.mrp}</span>}
-            {saved && <span className="block mt-1 text-sm font-medium" style={{ color: "var(--tc)" }}>{hi ? `आप ₹${saved.toLocaleString("en-IN")} बचाते हैं` : `You save ₹${saved.toLocaleString("en-IN")}`}</span>}
+            {saved && <span className="block mt-1 text-sm font-medium" style={{ color: "var(--accent)" }}>{hi ? `आप ₹${saved.toLocaleString("en-IN")} बचाते हैं` : `You save ₹${saved.toLocaleString("en-IN")}`}</span>}
           </p>
         )}
         {descOf(p) && <p className="mt-5 text-[17px] text-muted leading-relaxed">{t(descOf(p))}</p>}
-        {features.length > 0 && <ul className="mt-6 space-y-2 text-[16px]">{features.slice(0, 8).map((f, j) => <li key={j} className="flex items-start gap-2.5"><Check className="h-4 w-4 mt-1.5 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
+        {features.length > 0 && <ul className="mt-6 space-y-2 text-[16px]">{features.slice(0, 8).map((f, j) => <li key={j} className="flex items-start gap-2.5"><Icon name="check" className="mt-1 shrink-0" style={{ color: "var(--accent)" }} />{t(f)}</li>)}</ul>}
         {specs.length > 0 && (
           <dl className="mt-7 grid grid-cols-[auto_1fr] gap-x-6 gap-y-2 text-[15px] border-t border-border pt-5">
             {specs.map((x, j) => <div key={j} className="contents"><dt className="text-muted">{t(x.label)}</dt><dd className="font-medium">{t(x.value)}</dd></div>)}
           </dl>
         )}
-        {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`mt-8 inline-flex ${BTN} px-7 py-4 text-[15px] ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
+        {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} data-kind="whatsapp" className={`${BTN} hero-cta mt-8 ${FOCUS}`}><Icon name="whatsapp" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
       </div>
     </div>
   );
@@ -1244,6 +1223,7 @@ function ProductDetail({ p, card, theme, ink, waHref, hasWa, onZoom, named = fal
 
 function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3, hrefFor, go, layout, openProduct }: { openProduct?: (p: ProductItem) => void; items: ProductItem[]; card: Card; theme: string; ink: string; waHref: (t?: string) => string; hasWa: boolean; onZoom: (z: Zoom) => void; cols?: 3 | 4; hrefFor?: (slug: string) => string; go?: (slug: string) => void; layout?: ProductsLayout }) {
   const t = useT();
+  void theme; void ink;
   const prefs = useContext(LayoutCtx);
   const bp = useContext(BlueprintCtx);
   const shape = layout ?? preferredLayouts(prefs, { products: items.length }).products ?? productsLayout(items.length);
@@ -1269,73 +1249,63 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
         const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
         const saved = mrp && price && mrp > price ? mrp - price : null;
         const discount = saved && mrp ? Math.round((saved / mrp) * 100) : null;
-        const features = (p.features ?? []).filter(Boolean);
-        const specs = (p.specs ?? []).filter((s) => s.label || s.value);
+        const specs = (p.specs ?? []).filter((x) => x.label || x.value);
         const waText = `Hi ${card.name.split(" ")[0]}, I'm interested in "${p.name}". Please share details.`;
         const initial = Array.from((p.name ?? "").trim())[0]?.toUpperCase() ?? "";
+        const slug = addressOf.get(p);
+        // A phone opens the product in a sheet over the page; a computer opens its own page.
+        const open = (e: React.MouseEvent) => { e.preventDefault(); if (openProduct && isPhone()) openProduct(p); else if (slug) go!(slug); };
+        const linkable = !single && ((slug && hrefFor && go) || openProduct);
+        const title = <h3 className="p-name">{t(p.name)}</h3>;
         return (
-          <div key={i} className={`group rounded-3xl border border-border bg-surface overflow-hidden flex flex-col ${CARD_HOVER}`}>
+          <div key={i} className={`group ${cls.card} overflow-hidden flex flex-col ${CARD_HOVER}`}>
+            {/* The picture 4:5 on paper-2, the whole product in the frame (§4.5); no photo → the initial, faint. */}
             {!compact && (
-              <div className="aspect-[4/5] relative overflow-hidden" style={{ background: `radial-gradient(80% 60% at 50% 100%, ${tint(theme, 0.14)}, transparent 70%), var(--p-soft)` }}>
+              <div className="p-img">
                 {gallery[0]
-                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.04] motion-reduce:transform-none" eager={i < 3} sizes={columns === 4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} /></button>
-                  // No photo for this item: its first letter, never an empty box.
-                  : <span aria-hidden="true" className="absolute inset-8 rounded-2xl grid place-items-center text-6xl font-semibold" style={{ background: tint(theme), color: "var(--tc)" }}>{initial}</span>}
+                  ? <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`absolute inset-0 p-6 cursor-zoom-in ${FOCUS}`}><FitImg src={gallery[0]} alt={p.name} className="h-full w-full object-contain transition-transform duration-500 group-hover:scale-[1.03] motion-reduce:transform-none" eager={i < 3} sizes={columns === 4 ? "(min-width: 1024px) 25vw, (min-width: 640px) 50vw, 100vw" : "(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"} /></button>
+                  : <span aria-hidden="true" className="p-ph">{initial}</span>}
                 {(p.badge || discount) && (
-                  <div className="absolute inset-x-4 top-4 flex flex-wrap items-start justify-between gap-2 pointer-events-none">
-                    {p.badge ? <span className="max-w-full truncate rounded-full px-3 py-1 text-xs font-semibold shadow-card" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span> : <span />}
-                    {discount && <span className="rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white shadow-card">{discount}% OFF</span>}
+                  <div className="absolute inset-x-4 top-4 flex items-start justify-between gap-2 pointer-events-none text-[12px] font-semibold">
+                    {p.badge ? <span className="kicker" style={{ fontSize: 11 }}>{t(p.badge)}</span> : <span />}
+                    {discount && <span className="num" style={{ color: "var(--accent)" }}>{discount}% off</span>}
                   </div>
                 )}
               </div>
             )}
             {gallery.length > 1 && (
-              <div className="flex gap-2 px-6 pt-4">
-                {gallery.map((u, j) => <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j, alt: p.name })} className={`h-14 w-14 rounded-lg overflow-hidden border border-border bg-surface2/60 ${FOCUS}`}><Img src={u} alt="" className="h-full w-full object-contain p-1" w={56} /></button>)}
+              <div className="flex gap-2 px-5 pt-4">
+                {gallery.map((u, j) => <button key={j} type="button" onClick={() => onZoom({ images: gallery, i: j, alt: p.name })} className={`h-12 w-12 rounded-lg overflow-hidden ${FOCUS}`} style={{ background: "var(--paper-2)" }}><Img src={u} alt="" className="h-full w-full object-contain p-1" w={56} /></button>)}
               </div>
             )}
-            <div className="p-6 flex-1 flex flex-col">
-              {compact && (p.badge || discount) && (
-                <div className="mb-3 flex flex-wrap gap-2">
-                  {p.badge && <span className="rounded-full px-3 py-1 text-xs font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(p.badge)}</span>}
-                  {discount && <span className="rounded-full bg-danger px-3 py-1 text-xs font-semibold text-white">{discount}% OFF</span>}
-                </div>
-              )}
-              {(() => {
-                const slug = addressOf.get(p);
-                const title = <h3 className="text-[17px] font-semibold">{t(p.name)}</h3>;
-                // A phone opens the product in a sheet over the page; a computer opens its own page.
-                const open = (e: React.MouseEvent) => { e.preventDefault(); if (openProduct && isPhone()) openProduct(p); else if (slug) go!(slug); };
-                return slug && hrefFor && go && !single
-                  ? <a href={hrefFor(slug)} onClick={open} className={`rounded ${FOCUS}`}>{title}</a>
-                  : openProduct && !single ? <button type="button" onClick={open} className={`text-left rounded ${FOCUS}`}>{title}</button> : title;
-              })()}
-              {descOf(p) && <p className="mt-1.5 text-muted text-[15px] leading-relaxed">{t(descOf(p))}</p>}
-              {features.length > 0 && <ul className="mt-4 space-y-1.5 text-[15px]">{features.slice(0, 5).map((f, j) => <li key={j} className="flex items-start gap-2"><Check className="h-4 w-4 mt-1 shrink-0" style={{ color: "var(--tc)" }} />{t(f)}</li>)}</ul>}
-              {specs.length > 0 && (
-                <details className="mt-4 group/specs">
-                  <summary className={`cursor-pointer list-none [&::-webkit-details-marker]:hidden text-sm font-medium inline-flex items-center gap-1 rounded ${FOCUS}`} style={{ color: "var(--tc)" }}>Specifications <ChevronDown className="h-4 w-4 transition-transform group-open/specs:rotate-180" /></summary>
-                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">{specs.map((s, j) => <div key={j} className="contents"><dt className="text-muted">{t(s.label)}</dt><dd className="font-medium">{t(s.value)}</dd></div>)}</dl>
-                </details>
-              )}
-              <div className="mt-auto pt-5">
+            <div className="p-5 flex-1 flex flex-col gap-1.5">
+              {compact && p.badge && <p className="kicker" style={{ fontSize: 11 }}>{t(p.badge)}</p>}
+              <div className="flex items-start justify-between gap-4">
+                {linkable
+                  ? (slug && hrefFor && go
+                    ? <a href={hrefFor(slug)} onClick={open} className={`rounded ${FOCUS}`}>{title}</a>
+                    : <button type="button" onClick={open} className={`text-left rounded ${FOCUS}`}>{title}</button>)
+                  : title}
                 {(p.price || p.mrp) && (
-                  <p className="mb-4 text-lg font-semibold">
+                  <p className="p-price shrink-0 text-right">
                     {p.price || p.mrp}
-                    {saved && <span className="ml-2 text-sm text-muted line-through font-normal">{p.mrp}</span>}
-                    {saved && <span className="block text-xs font-medium" style={{ color: "var(--tc)" }}>You save ₹{saved.toLocaleString("en-IN")}</span>}
+                    {saved && <span className="block text-[12px] text-muted line-through font-normal">{p.mrp}</span>}
                   </p>
                 )}
-                <div className="flex gap-2">
-                  {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`flex-1 ${BTN} px-5 py-3 text-sm ${FOCUS}`}><MessageCircle className="h-4 w-4" /> {t(p.ctaLabel || "Order on WhatsApp")}</a>}
-                  {(() => {
-                    const slug = addressOf.get(p);
-                    return slug && hrefFor && go && !single
-                      ? <a href={hrefFor(slug)} onClick={(e) => { e.preventDefault(); if (openProduct && isPhone()) openProduct(p); else go(slug); }} aria-label={t("Open this product")} className={`grid h-[46px] w-[46px] shrink-0 place-items-center rounded-full border border-border ${FOCUS}`}><ArrowRight className="h-4 w-4" /></a>
-                      : null;
-                  })()}
-                </div>
               </div>
+              {descOf(p) && <p className="text-muted text-[14px] leading-relaxed line-clamp-2">{t(descOf(p))}</p>}
+              {specs.length > 0 && (
+                <details className="mt-1 group/specs">
+                  <summary className={`cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[13px] font-medium inline-flex items-center gap-1 rounded text-muted ${FOCUS}`}>{t("Specifications")} <Icon name="chevron-down" className="transition-transform group-open/specs:rotate-180" /></summary>
+                  <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">{specs.map((sp, j) => <div key={j} className="contents"><dt className="text-muted">{t(sp.label)}</dt><dd className="font-medium">{t(sp.value)}</dd></div>)}</dl>
+                </details>
+              )}
+              {(hasWa || (slug && hrefFor && go && !single)) && (
+                <div className="mt-auto pt-4 flex items-center justify-between gap-3">
+                  {hasWa ? <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`p-wa ${FOCUS}`}><Icon name="whatsapp" /> {t(p.ctaLabel || "Order on WhatsApp")}</a> : <span />}
+                  {slug && hrefFor && go && !single && <a href={hrefFor(slug)} onClick={open} aria-label={t("Open this product")} className={`text-muted hover:text-ink rounded ${FOCUS}`}><Icon name="arrow-right" /></a>}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1344,64 +1314,33 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   );
 }
 
-/** Reviews: one is a big centred quote, two sit side by side with room to read, three or more are cards. */
+/** Reviews (§4.7): the words set large in the display italic, a 1 px accent rule, the name small. One is a centred
+ *  statement; two sit side by side; three to five are a grid; six or more drift by as a strip (site-smart Marquee). */
 function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string }) {
   const prefs = useContext(LayoutCtx);
   const bp = useContext(BlueprintCtx);
   const t = useT();
+  void theme;
   if (bp === "cinematic") return <QuoteRotator items={items} t={t} />;
-  // Bento: three or more reviews drift by as a strip (site-smart.tsx Marquee); a tap or the pointer holds it.
-  if (bp === "bento" && items.length >= 3) {
+  const one = (x: TestimonialItem, i: number, big = false) => (
+    <figure key={i} className={`flex flex-col ${big ? "items-center text-center" : ""}`}>
+      <Stars n={Math.round(Number(x.rating) || 5)} />
+      <blockquote className={`rev-q mt-4 ${big ? "md:text-[32px]" : ""} ${items.length >= 3 && !big ? "line-clamp-6" : ""}`}>“{t(x.text)}”</blockquote>
+      <span className="rev-rule mt-5" />
+      <figcaption className="rev-name mt-3">{x.name}</figcaption>
+    </figure>
+  );
+  if (items.length >= 6) {
     return (
-      <Marquee speed={Math.max(30, items.length * 12)} className="-mx-6" gap="gap-4">
-        {items.map((r, i) => (
-          <figure key={i} className="w-[300px] shrink-0 rounded-3xl border border-border bg-surface p-5 md:w-[360px]">
-            <Stars n={Math.round(Number(r.rating) || 5)} />
-            <blockquote className="mt-3 line-clamp-5 text-[15px] leading-relaxed">“{t(r.text)}”</blockquote>
-            <figcaption className="mt-3 text-sm font-semibold">{r.name}</figcaption>
-          </figure>
-        ))}
+      <Marquee speed={Math.max(40, items.length * 10)} className="-mx-5 md:-mx-6" gap="gap-10">
+        {items.map((r, i) => <div key={i} className="w-[300px] shrink-0 md:w-[380px]">{one(r, i)}</div>)}
       </Marquee>
     );
   }
   const layout = preferredLayouts(prefs, { reviews: items.length }).reviews ?? reviewsLayout(items.length);
-  const avatar = (x: TestimonialItem, big = false) => <span className={`grid place-items-center rounded-full ${big ? "h-11 w-11 text-base" : "h-9 w-9 text-sm"}`} style={{ background: tint(theme), color: "var(--tc)" }}>{Array.from(x.name.trim())[0]?.toUpperCase() ?? "★"}</span>;
-  if (layout === "quote") {
-    const x = items[0];
-    return (
-      <figure className="mx-auto max-w-3xl text-center">
-        <Quote className="mx-auto h-10 w-10 opacity-25" style={{ color: "var(--tc)" }} />
-        <blockquote className="mt-5 text-[22px] md:text-[27px] leading-snug" style={{ fontFamily: "var(--look-head)" }}>“{t(x.text)}”</blockquote>
-        <figcaption className="mt-7 flex flex-col items-center gap-2 text-sm font-semibold">{avatar(x, true)}<span>{x.name}</span><Stars n={x.rating} /></figcaption>
-      </figure>
-    );
-  }
-  if (layout === "pair") {
-    return (
-      <div className="grid md:grid-cols-2 gap-6">
-        {items.map((x, i) => (
-          <figure key={i} className="relative rounded-3xl border border-border bg-surface p-9">
-            <Quote className="absolute right-7 top-7 h-9 w-9 opacity-15" style={{ color: "var(--tc)" }} />
-            <Stars n={x.rating} />
-            <blockquote className="mt-5 text-[18px] md:text-[20px] leading-relaxed">“{t(x.text)}”</blockquote>
-            <figcaption className="mt-6 flex items-center gap-3 text-[15px] font-semibold">{avatar(x, true)}{x.name}</figcaption>
-          </figure>
-        ))}
-      </div>
-    );
-  }
-  return (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-      {items.map((x, i) => (
-        <figure key={i} className={`relative rounded-2xl border border-border bg-surface p-7 ${CARD_HOVER}`}>
-          <Quote className="absolute right-6 top-6 h-8 w-8 opacity-15" style={{ color: "var(--tc)" }} />
-          <Stars n={x.rating} />
-          <blockquote className="mt-4 text-[15px] leading-relaxed">“{t(x.text)}”</blockquote>
-          <figcaption className="mt-5 flex items-center gap-3 text-sm font-semibold">{avatar(x)}{x.name}</figcaption>
-        </figure>
-      ))}
-    </div>
-  );
+  if (layout === "quote" || items.length === 1) return <div className="mx-auto max-w-3xl">{one(items[0], 0, true)}</div>;
+  if (layout === "pair" || items.length === 2) return <div className="grid md:grid-cols-2 gap-10 md:gap-16">{items.map((x, i) => one(x, i))}</div>;
+  return <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-10 md:gap-x-12 md:gap-y-14">{items.map((x, i) => one(x, i))}</div>;
 }
 
 /* ---------- the home page's pulled previews ---------- */
@@ -1440,18 +1379,18 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
     case "reviews":
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "रिव्यू" : t("Reviews")} title={t(s.title)}
-          aside={<div className="flex items-center gap-4"><span className="text-3xl font-semibold tracking-tight" style={{ fontFamily: "var(--look-head)", color: "var(--tc)" }}>{(Math.round(s.avg * 10) / 10).toFixed(1)}</span><span className="text-sm text-muted"><Stars n={Math.round(s.avg)} /><span className="block mt-0.5">{hi ? `${s.total} ग्राहक` : t(`${s.total} customer reviews`)}</span></span>{s.total > s.items.length && <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी पढ़ें" : t("Read all")}</SeeAll>}</div>}>
+          aside={<div className="flex items-center gap-4"><span className="stat">{(Math.round(s.avg * 10) / 10).toFixed(1)}</span><span className="text-sm text-muted"><Stars n={Math.round(s.avg)} /><span className="block mt-0.5">{hi ? `${s.total} ग्राहक` : t(`${s.total} customer reviews`)}</span></span>{s.total > s.items.length && <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी पढ़ें" : t("Read all")}</SeeAll>}</div>}>
           <ReviewCards items={s.items} theme={theme} />
         </Section>
       );
     case "faq":
       return (
         <Section wide index={index} theme={theme} eyebrow="FAQ" title={t(s.title)} aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी सवाल" : t("All questions")}</SeeAll> : undefined}>
-          <div className="grid md:grid-cols-2 gap-x-10">
+          <div className="faq grid md:grid-cols-2 gap-x-10">
             {s.items.map((f, i) => (
-              <details key={i} name="home-faq" className="group border-b border-border py-1">
-                <summary className={`flex items-center justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden rounded-xl px-3 py-4 -mx-3 font-semibold text-[16px] hover:bg-surface2 transition-colors ${FOCUS}`}>{t(f.q)}<ChevronDown className="h-5 w-5 text-muted shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" /></summary>
-                <p className="pb-5 text-[15px] text-muted leading-relaxed max-w-[65ch]">{t(f.a)}</p>
+              <details key={i} name="home-faq">
+                <summary className={FOCUS}>{t(f.q)}<Icon name="chevron-down" size={18} /></summary>
+                <p>{t(f.a)}</p>
               </details>
             ))}
           </div>
@@ -1469,23 +1408,23 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
           <div className={`grid gap-6 ${mapQ ? "md:grid-cols-[1fr_1.2fr]" : ""}`}>
             <div className="space-y-5">
               {loc && (address || dir) && (
-                <div className="flex items-start gap-4 rounded-2xl border border-border bg-surface p-6">
-                  <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0" style={{ background: tint(theme), color: "var(--tc)" }}><MapPin className="h-5 w-5" /></span>
+                <div className={`flex items-start gap-4 ${cls.card} p-6`}>
+                  <span className={cls.iconBox}><Icon name="pin" size={18} /></span>
                   <div className="flex-1">
-                    <p className="text-xs font-semibold uppercase tracking-wider text-muted">{t(loc.title || "Address")}</p>
-                    {address && <p className="mt-1 text-[16px] leading-relaxed">{t(address)}</p>}
-                    {dir && <a href={dir} target="_blank" rel="noreferrer" className={`mt-3 ${BTN} px-4 py-2 text-sm ${FOCUS}`}><Navigation className="h-4 w-4" /> {hi ? "रास्ता देखें" : t("Get directions")}</a>}
+                    <p className={cls.kicker}>{t(loc.title || "Address")}</p>
+                    {address && <p className="mt-2 text-[16px] leading-relaxed">{t(address)}</p>}
+                    {dir && <a href={dir} target="_blank" rel="noreferrer" className={`${LINK} mt-3 text-sm ${FOCUS}`}><Icon name="directions" /> {hi ? "रास्ता देखें" : t("Get directions")}</a>}
                   </div>
                 </div>
               )}
               {s.hours && (
-                <div className="rounded-2xl border border-border bg-surface p-6">
-                  <div className="flex items-center gap-3 mb-3"><span className="h-11 w-11 rounded-xl grid place-items-center" style={{ background: tint(theme), color: "var(--tc)" }}><Clock className="h-5 w-5" /></span><p className="font-semibold">{t(s.hours.title || "Opening hours")}</p><OpenNowChip rows={s.hours.rows} hi={hi} className="ml-auto" /></div>
+                <div className={`${cls.card} p-6`}>
+                  <div className="flex items-center gap-3 mb-3"><span className={cls.iconBox}><Icon name="clock" size={18} /></span><p className="font-semibold">{t(s.hours.title || "Opening hours")}</p><OpenNowChip rows={s.hours.rows} hi={hi} className="ml-auto" /></div>
                   <table className="w-full text-[15px]"><tbody>{s.hours.rows.map((r, i) => <tr key={i} className="border-b border-border last:border-0"><td className="py-2.5 font-medium">{t(r.day)}</td><td className={`py-2.5 text-right tabular-nums ${/closed|बंद/i.test(r.time) ? "text-danger font-medium" : "text-muted"}`}>{t(r.time)}</td></tr>)}</tbody></table>
                 </div>
               )}
             </div>
-            {mapQ && <iframe title="Map" src={`https://www.google.com/maps?q=${encodeURIComponent(mapQ)}&output=embed`} className="w-full min-h-[340px] h-full rounded-2xl border border-border" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
+            {mapQ && <iframe title="Map" src={`https://www.google.com/maps?q=${encodeURIComponent(mapQ)}&output=embed`} className="w-full min-h-[340px] h-full rounded-2xl" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
           </div>
         </Section>
       );
@@ -1543,29 +1482,15 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       );
     case "faq": {
       const qs = block.items.filter((f) => f.q);
-      // Two or three questions: shown open as cards — nothing to click for so little.
-      if ((preferredLayouts(card.site?.style?.layouts, { faq: qs.length }).faq ?? faqLayout(qs.length)) === "open") {
-        return (
-          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-            <div className={`grid gap-5 ${qs.length === 3 ? "md:grid-cols-3" : "md:grid-cols-2"}`}>
-              {qs.map((f, i) => (
-                <div key={i} className="rounded-2xl border border-border bg-surface p-7">
-                  <span className="inline-grid h-9 w-9 place-items-center rounded-xl text-sm font-bold" style={{ background: tint(theme), color: "var(--tc)" }}>?</span>
-                  <h3 className="mt-4 text-[17px] font-semibold leading-snug">{t(f.q)}</h3>
-                  <p className="mt-3 text-[15px] text-muted leading-relaxed">{t(f.a)}</p>
-                </div>
-              ))}
-            </div>
-          </Section>
-        );
-      }
+      // Plain <details> between hairlines (§4.8), no cards; two or three questions start open — nothing to click for so little.
+      const openAll = (preferredLayouts(card.site?.style?.layouts, { faq: qs.length }).faq ?? faqLayout(qs.length)) === "open";
       return (
         <Section narrow index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="divide-y divide-border border-y border-border">
+          <div className="faq">
             {qs.map((f, i) => (
-              <details key={i} name="faq" className="group py-1">
-                <summary className={`flex items-center justify-between gap-4 cursor-pointer list-none [&::-webkit-details-marker]:hidden rounded-xl px-3 py-4 -mx-3 font-semibold text-[16px] hover:bg-surface2 transition-colors ${FOCUS}`}>{t(f.q)}<ChevronDown className="h-5 w-5 text-muted shrink-0 transition-transform group-open:rotate-180 motion-reduce:transition-none" /></summary>
-                <p className="px-0 pb-5 text-[15px] text-muted leading-relaxed max-w-[65ch]">{t(f.a)}</p>
+              <details key={i} name={openAll ? undefined : "faq"} open={openAll || undefined}>
+                <summary className={FOCUS}>{t(f.q)}<Icon name="chevron-down" size={18} /></summary>
+                <p>{t(f.a)}</p>
               </details>
             ))}
           </div>
@@ -1581,7 +1506,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
         const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (
-          <button key={i} type="button" onClick={() => open(i)} className={`group relative block overflow-hidden rounded-2xl border border-border cursor-zoom-in ${cls} ${FOCUS}`}>
+          <button key={i} type="button" onClick={() => open(i)} className={`group relative block overflow-hidden rounded-2xl cursor-zoom-in ${cls} ${FOCUS}`}>
             <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager sizes={sizes} />
             {cap(g, true)}
           </button>
@@ -1594,7 +1519,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         return (
           <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
             {gl === "single" && (
-              <button type="button" onClick={() => open(0)} className={`group relative mx-auto block w-full max-w-5xl overflow-hidden rounded-3xl border border-border shadow-float cursor-zoom-in ${FOCUS}`} style={{ background: "var(--p-soft)" }}>
+              <button type="button" onClick={() => open(0)} className={`group relative mx-auto block w-full max-w-5xl overflow-hidden rounded-3xl cursor-zoom-in ${FOCUS}`} style={{ background: "var(--paper-2)" }}>
                 <Img src={imgs[0].url!} alt={imgs[0].label} className="mx-auto w-auto max-w-full h-auto max-h-[640px] object-contain" eager sizes="(min-width: 1024px) 1024px, 100vw" />
                 {cap(imgs[0], true)}
               </button>
@@ -1613,13 +1538,13 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 [&>*]:mb-4">
             {shown.map((g, i) => (
-              <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden border border-border ${FOCUS}`}>
+              <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden ${FOCUS}`}>
                 <Img src={g.url!} alt={g.label} className="w-full h-auto transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 8} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
                 {g.label && <span className="absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">{t(g.label)}</span>}
               </button>
             ))}
           </div>
-          {imgs.length > shown.length && <button type="button" onClick={() => setShowAll(true)} className={`mx-auto block mt-8 rounded-full border border-border px-5 py-2.5 text-sm font-medium hover:bg-surface2 ${FOCUS}`}>Show all {imgs.length} photos</button>}
+          {imgs.length > shown.length && <div className="mt-8 flex justify-center"><button type="button" onClick={() => setShowAll(true)} className={`${GHOST} ${FOCUS}`}>{t(`Show all ${imgs.length} photos`)}</button></div>}
           {lightbox}
         </Section>
       );
@@ -1632,7 +1557,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           <div className={many ? "grid md:grid-cols-2 gap-6" : "mx-auto max-w-5xl space-y-10"}>
             {imgs.map((g, i) => (
               <figure key={i}>
-                <button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`block w-full cursor-zoom-in rounded-3xl border border-border bg-white overflow-hidden shadow-card ${FOCUS}`}>
+                <button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`block w-full cursor-zoom-in rounded-3xl overflow-hidden ${FOCUS}`} style={{ background: "var(--paper-2)" }}>
                   <Img src={g.url} alt={g.caption ?? ""} className={many ? "w-full aspect-[4/3] object-contain p-4" : "w-full h-auto object-contain"} sizes={many ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 1024px) 1024px, 100vw"} />
                 </button>
                 {g.caption && <figcaption className="mt-3 text-[15px] text-muted text-center leading-relaxed">{t(g.caption)}</figcaption>}
@@ -1649,8 +1574,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
             {imgs.map((g, i) => (
-              <figure key={i} className={`rounded-3xl border border-border bg-surface overflow-hidden ${CARD_HOVER}`}>
-                <div className="relative aspect-[4/5]" style={{ background: "var(--p-soft)" }}><button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`absolute inset-0 p-4 cursor-zoom-in ${FOCUS}`}><FitImg src={g.url} alt={g.caption ?? ""} className="h-full w-full object-contain" eager={i < 3} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" /></button></div>
+              <figure key={i} className={`${cls.card} overflow-hidden ${CARD_HOVER}`}>
+                <div className="p-img"><button type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url), i, alt: g.caption ?? block.title })} className={`absolute inset-0 p-4 cursor-zoom-in ${FOCUS}`}><FitImg src={g.url} alt={g.caption ?? ""} className="h-full w-full object-contain" eager={i < 3} sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw" /></button></div>
                 {g.caption && <figcaption className="p-4 text-center font-medium">{t(g.caption)}</figcaption>}
               </figure>
             ))}
@@ -1662,16 +1587,16 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "offer":
       return (
         <Section wide index={index} theme={theme}>
-          <div className="relative overflow-hidden rounded-3xl p-8 md:p-12 grid md:grid-cols-[1fr_auto] gap-6 items-center" style={{ background: `radial-gradient(60% 90% at 90% 10%, color-mix(in srgb, var(--p-glow) 60%, transparent), transparent 60%), linear-gradient(120deg, var(--p-deep), color-mix(in srgb, var(--p-deep) 55%, var(--p-mid)))`, color: "var(--p-ink)" }}>
-            <div aria-hidden="true" className="dots absolute inset-0 opacity-50" />
+          <div className="hero-dark relative overflow-hidden rounded-3xl p-8 md:p-12 grid md:grid-cols-[1fr_auto] gap-6 items-center">
+            <i aria-hidden="true" className="hero-grain" />
             <div className="relative">
-              <p className="text-[13px] font-semibold tracking-[0.18em] uppercase" style={{ color: "var(--p-accent)" }}>{t(block.title)}</p>
-              <p className="mt-2 text-2xl md:text-3xl tracking-tight" style={{ fontFamily: "var(--look-head)", fontWeight: "var(--head-w)" as unknown as number }}>{t(block.text)}</p>
-              {block.expires && <p className="mt-2 text-sm opacity-85">Valid till {block.expires}</p>}
+              <p className={cls.kicker}>{t(block.title)}</p>
+              <p className="sec-h2 mt-3">{t(block.text)}</p>
+              {block.expires && <p className="mt-3 text-sm" style={{ color: "var(--hero-muted)" }}>{t("Valid till")} {block.expires}</p>}
             </div>
             <div className="relative flex flex-col items-start gap-3">
               {block.code && <OfferCode code={block.code} />}
-              {hasWa && <a href={waHref(`Hi, I'd like to claim: ${block.text}${block.code ? ` (code ${block.code})` : ""}`)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-whatsapp")} className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold shadow-float ${FOCUS}`} style={{ background: "#ffffff", color: "var(--p-deep)" }}><MessageCircle className="h-4 w-4" /> Claim on WhatsApp</a>}
+              {hasWa && <a href={waHref(`Hi, I'd like to claim: ${block.text}${block.code ? ` (code ${block.code})` : ""}`)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-whatsapp")} className={`${BTN} ${FOCUS}`}><Icon name="whatsapp" /> {t("Claim on WhatsApp")}</a>}
             </div>
           </div>
         </Section>
@@ -1685,11 +1610,11 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className={`grid ${mapQ ? "md:grid-cols-[1fr_1.3fr]" : "max-w-xl"} gap-8 items-start`}>
-            <div className="flex items-start gap-4 rounded-2xl border border-border bg-surface p-6">
-              <span className="h-11 w-11 rounded-xl grid place-items-center shrink-0" style={{ background: tint(theme), color: "var(--tc)" }}><MapPin className="h-5 w-5" /></span>
-              <div className="flex-1">{address && <p className="text-[16px] leading-relaxed">{t(block.address)}</p>}<a href={pinUrl || `https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer" className={`${address ? "mt-3" : ""} ${BTN} px-4 py-2 text-sm ${FOCUS}`}><Navigation className="h-4 w-4" /> {hi ? "रास्ता देखें" : t("Get directions")}</a></div>
+            <div className={`flex items-start gap-4 ${cls.card} p-6`}>
+              <span className={cls.iconBox}><Icon name="pin" size={18} /></span>
+              <div className="flex-1">{address && <p className="text-[16px] leading-relaxed">{t(block.address)}</p>}<a href={pinUrl || `https://maps.google.com/?q=${encodeURIComponent(address)}`} target="_blank" rel="noreferrer" className={`${LINK} ${address ? "mt-3" : ""} text-sm ${FOCUS}`}><Icon name="directions" /> {hi ? "रास्ता देखें" : t("Get directions")}</a></div>
             </div>
-            {mapQ && <iframe title="Map" src={`https://www.google.com/maps?q=${encodeURIComponent(mapQ)}&output=embed`} className="w-full h-[340px] rounded-2xl border border-border" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
+            {mapQ && <iframe title="Map" src={`https://www.google.com/maps?q=${encodeURIComponent(mapQ)}&output=embed`} className="w-full h-[340px] rounded-2xl" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />}
           </div>
         </Section>
       );
@@ -1697,8 +1622,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "hours":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="rounded-2xl border border-border bg-surface p-6 max-w-2xl">
-            <div className="flex items-center gap-3 mb-4"><span className="h-11 w-11 rounded-xl grid place-items-center" style={{ background: tint(theme), color: "var(--tc)" }}><Clock className="h-5 w-5" /></span><p className="font-semibold">Opening hours</p></div>
+          <div className={`${cls.card} p-6 max-w-2xl`}>
+            <div className="flex items-center gap-3 mb-4"><span className={cls.iconBox}><Icon name="clock" size={18} /></span><p className="font-semibold">{t("Opening hours")}</p></div>
             <table className="w-full text-[15px]"><tbody>{block.rows.map((r, i) => <tr key={i} className="border-b border-border last:border-0"><td className="py-3 font-medium">{t(r.day)}</td><td className={`py-3 text-right tabular-nums ${/closed|बंद/i.test(r.time) ? "text-danger font-medium" : "text-muted"}`}>{t(r.time)}</td></tr>)}</tbody></table>
           </div>
         </Section>
@@ -1711,11 +1636,11 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
               {block.note && <p className="text-[17px] text-muted leading-relaxed">{t(block.note)}</p>}
               <ul className="space-y-3">
                 {links.map((l) => (
-                  <li key={l.id}><a href={linkHref(l.type, l.value)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`flex items-center gap-3 rounded-2xl border border-border bg-surface px-4 py-3.5 ${CARD_HOVER} ${FOCUS}`}><span className="h-10 w-10 rounded-xl grid place-items-center shrink-0" style={{ background: tint(theme), color: "var(--tc)" }}><LinkIcon type={l.type} className="h-5 w-5" /></span><span className="min-w-0"><span className="block text-xs text-muted">{t(l.label)}</span><span className="block font-medium truncate">{l.value}</span></span></a></li>
+                  <li key={l.id}><a href={linkHref(l.type, l.value)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`flex items-center gap-3 ${cls.card} px-4 py-3.5 ${CARD_HOVER} ${FOCUS}`}><span className={cls.iconBox}><LinkIcon type={l.type} className="h-5 w-5" /></span><span className="min-w-0"><span className="block text-xs text-muted">{t(l.label)}</span><span className="block font-medium truncate">{l.value}</span></span></a></li>
                 ))}
               </ul>
             </div>
-            <div className="rounded-3xl border border-border bg-surface p-6 md:p-8 flex flex-col shadow-card"><ContactForm username={card.username} theme={theme} fill /></div>
+            <div className={`${cls.card} p-6 md:p-8 flex flex-col`}><ContactForm username={card.username} theme={theme} fill /></div>
           </div>
         </Section>
       );
@@ -1725,7 +1650,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         const sep = block.joinUrl.includes("?") ? "&" : "?";
         const link = block.referralCode ? `${block.joinUrl}${sep}ref=${encodeURIComponent(block.referralCode)}` : block.joinUrl;
         const internal = link.startsWith("#");
-        const btn = `${BTN} px-6 py-3 text-[15px] shrink-0 ${FOCUS}`;
+        // A link into the site ("See all products") is navigation, a ghost; an outside link (join, order) is the primary.
+        const btn = `${internal ? GHOST : BTN} shrink-0 ${FOCUS}`;
         const action = link && (internal
           ? <button type="button" onClick={() => { trackClick(card.username, "cta-join"); go(link.slice(1)); }} className={btn}>{t(block.joinLabel || "Learn more")}</button>
           : <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(card.username, "cta-join")} className={btn}>{t(block.joinLabel || "Join Now")}</a>);
@@ -1734,7 +1660,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         if (!block.body) return <section className="mx-auto max-w-6xl px-6 pb-14 -mt-6 flex justify-center" data-reveal>{action}</section>;
         return (
           <section className="mx-auto max-w-6xl px-6 py-6" data-reveal>
-            <div className="rounded-2xl px-8 py-6 flex flex-wrap items-center justify-between gap-6" style={{ background: "var(--p-soft)" }}>
+            <div className="rounded-2xl px-8 py-6 flex flex-wrap items-center justify-between gap-6" style={{ background: "var(--paper-2)" }}>
               <p className="text-[18px] font-semibold tracking-tight">{t(block.body)}</p>
               {action}
             </div>
@@ -1748,10 +1674,10 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className={shorts ? "mx-auto max-w-sm" : "mx-auto max-w-4xl"}>
-            <div className={`rounded-3xl overflow-hidden shadow-float bg-black ${shorts ? "aspect-[9/16]" : "aspect-video"}`}>
+            <div className={`rounded-3xl overflow-hidden bg-black ${shorts ? "aspect-[9/16]" : "aspect-video"}`}>
               {e?.type === "iframe" ? <iframe src={e.src} title={block.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" className="h-full w-full" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen />
                 : e?.type === "video" ? <video src={e.src} poster={block.posterUrl ? picUrl(block.posterUrl, 1080) : undefined} preload="metadata" controls playsInline className="h-full w-full" />
-                : <a href={block.url} target="_blank" rel="noreferrer" className="relative block h-full w-full" style={{ background: `linear-gradient(135deg, var(--p-mid), var(--p-deep))` }}>{block.posterUrl && <Img src={block.posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" sizes="(min-width: 1024px) 1024px, 100vw" />}<span className="absolute inset-0 grid place-items-center"><span className="h-16 w-16 rounded-full bg-white/90 grid place-items-center shadow-float"><Play className="h-7 w-7 translate-x-0.5" style={{ color: theme }} fill="currentColor" /></span></span></a>}
+                : <a href={block.url} target="_blank" rel="noreferrer" className="relative block h-full w-full" style={{ background: "var(--hero-ink)" }}>{block.posterUrl && <Img src={block.posterUrl} alt="" className="absolute inset-0 h-full w-full object-cover" sizes="(min-width: 1024px) 1024px, 100vw" />}<span className="absolute inset-0 grid place-items-center"><span className="h-16 w-16 rounded-full grid place-items-center" style={{ background: "var(--paper)", color: "var(--hero-ink)" }}><Play className="h-7 w-7 translate-x-0.5" fill="currentColor" /></span></span></a>}
             </div>
             {block.caption && <p className="mt-4 text-[15px] text-muted leading-relaxed">{t(block.caption)}</p>}
           </div>
@@ -1761,10 +1687,10 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "appointment":
       return (
         <Section wide index={index} theme={theme}>
-          <div className="rounded-3xl border border-border bg-surface p-8 md:p-12 grid md:grid-cols-[1.2fr_1fr] gap-10 items-center shadow-card">
+          <div className={`${cls.card} p-8 md:p-12 grid md:grid-cols-[1.2fr_1fr] gap-10 items-center`}>
             <div>
-              <p className="text-[12px] font-semibold tracking-[0.16em] uppercase inline-flex items-center gap-1.5" style={{ color: "var(--p-mark)" }}><CalendarClock className="h-4 w-4" /> Book a demo</p>
-              <h2 className="mt-2 text-[28px] tracking-tight leading-tight">{t(block.title)}</h2>
+              <p className={`${cls.kicker} inline-flex items-center gap-1.5`}><CalendarClock className="h-4 w-4" /> {t("Book a demo")}</p>
+              <h2 className="sec-h2 mt-3">{t(block.title)}</h2>
               {block.note && <p className="mt-3 text-[17px] text-muted leading-relaxed max-w-lg">{t(block.note)}</p>}
             </div>
             <div className="max-w-sm w-full md:justify-self-end"><AppointmentBlock block={block} username={card.username} theme={theme} /></div>
@@ -1775,10 +1701,10 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const Cmp = block.fileUrl ? "a" : "div";
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <Cmp {...(block.fileUrl ? { href: block.fileUrl, download: block.fileLabel } : {})} className={`max-w-3xl flex flex-col sm:flex-row items-stretch gap-6 rounded-3xl border border-border bg-surface p-5 ${block.fileUrl ? `${CARD_HOVER} ${FOCUS}` : "opacity-70"}`}>
-            {block.posterUrl && <Img src={block.posterUrl} alt={block.fileLabel} className="sm:w-56 w-full aspect-[4/3] sm:aspect-auto object-cover rounded-2xl border border-border" sizes="(min-width: 640px) 224px, 100vw" />}
+          <Cmp {...(block.fileUrl ? { href: block.fileUrl, download: block.fileLabel } : {})} className={`max-w-3xl flex flex-col sm:flex-row items-stretch gap-6 ${cls.card} p-5 ${block.fileUrl ? `${CARD_HOVER} ${FOCUS}` : "opacity-70"}`}>
+            {block.posterUrl && <Img src={block.posterUrl} alt={block.fileLabel} className="sm:w-56 w-full aspect-[4/3] sm:aspect-auto object-cover rounded-2xl" sizes="(min-width: 640px) 224px, 100vw" />}
             <div className="flex-1 flex items-center gap-4 min-w-0">
-              <span className="h-12 w-12 rounded-xl grid place-items-center shrink-0" style={{ background: tint(theme), color: "var(--tc)" }}><FileText className="h-6 w-6" /></span>
+              <span className={cls.iconBox}><FileText className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold truncate">{block.fileLabel}</span>
                 <span className="block text-sm text-muted mt-0.5">{block.fileUrl ? t(block.hint || "Download PDF") : "File attaches after upload"}</span>
@@ -1805,10 +1731,10 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
                   </div>
                 </>
               );
-              const cls = "group block overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-shadow hover:shadow-float";
+              const tile = `group block overflow-hidden ${cls.card} ${CARD_HOVER}`;
               return it.url
-                ? <a key={i} href={it.url} target="_blank" rel="noreferrer" className={cls}>{inner}</a>
-                : <div key={i} className={cls}>{inner}</div>;
+                ? <a key={i} href={it.url} target="_blank" rel="noreferrer" className={tile}>{inner}</a>
+                : <div key={i} className={tile}>{inner}</div>;
             })}
           </div>
         </Section>
@@ -1818,10 +1744,10 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const rows = block.rows.filter((r) => r.some(Boolean));
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="overflow-x-auto rounded-2xl border border-border bg-surface shadow-card">
-            <table className="w-full text-[15px]">
-              <thead><tr>{block.columns.map((c, i) => <th key={i} className={`p-4 text-left font-semibold ${i === hl ? "" : "text-muted"}`} style={i === hl ? { background: "var(--grad)", color: ink } : { background: "var(--p-soft)" }}>{t(c)}</th>)}</tr></thead>
-              <tbody>{rows.map((r, i) => <tr key={i} className="border-t border-border">{block.columns.map((_, j) => <td key={j} className={`p-4 align-top ${j === 0 ? "font-semibold" : ""} ${j === hl ? "font-bold" : j > 0 ? "text-muted" : ""}`} style={j === hl ? { color: "var(--tc)" } : undefined}>{t(r[j] ?? "")}</td>)}</tr>)}</tbody>
+          <div className={`overflow-x-auto ${cls.card}`}>
+            <table className="w-full text-[15px] num">
+              <thead><tr>{block.columns.map((c, i) => <th key={i} className={`p-4 text-left font-semibold ${i === hl ? "" : "text-muted"}`} style={i === hl ? { background: "var(--accent-soft)", color: "var(--accent)" } : { background: "var(--paper-2)" }}>{t(c)}</th>)}</tr></thead>
+              <tbody>{rows.map((r, i) => <tr key={i} className="border-t border-border">{block.columns.map((_, j) => <td key={j} className={`p-4 align-top ${j === 0 ? "font-semibold" : ""} ${j === hl ? "font-semibold" : j > 0 ? "text-muted" : ""}`} style={j === hl ? { color: "var(--accent)" } : undefined}>{t(r[j] ?? "")}</td>)}</tr>)}</tbody>
             </table>
           </div>
           {block.note && <p className="mt-3 text-xs text-muted">{t(block.note)}</p>}
@@ -1831,18 +1757,18 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "form":
       return (
         <Section index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="rounded-3xl border border-border bg-surface p-6 md:p-8 shadow-card"><FormBlock block={block} username={card.username} theme={theme} t={t} /></div>
+          <div className={`${cls.card} p-6 md:p-8`}><FormBlock block={block} username={card.username} theme={theme} t={t} /></div>
         </Section>
       );
     case "compare":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="overflow-x-auto rounded-2xl border border-border">
+          <div className={`overflow-x-auto ${cls.card}`}>
             <table className="w-full text-[15px]">
               <thead>
                 <tr>
-                  <th className="text-left p-4 text-muted font-medium bg-surface2/60 w-1/4">Feature</th>
-                  <th className="p-4 text-left font-semibold" style={{ background: "var(--grad)", color: ink }}>{t(block.leftLabel)}</th>
+                  <th className="text-left p-4 text-muted font-medium w-1/4" style={{ background: "var(--paper-2)" }}>{t("Feature")}</th>
+                  <th className="p-4 text-left font-semibold" style={{ background: "var(--accent-soft)", color: "var(--accent)" }}>{t(block.leftLabel)}</th>
                   <th className="p-4 text-left font-semibold bg-surface2 text-muted">{t(block.rightLabel)}</th>
                 </tr>
               </thead>
@@ -1852,7 +1778,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
                   return (
                     <tr key={i} className="border-t border-border">
                       <td className="p-4 text-[12px] font-semibold uppercase tracking-wide text-muted align-top">{t(r.feature)}</td>
-                      <td className="p-4 align-top" style={{ background: tint(theme, 0.06) }}><span className="flex items-start gap-2">{lOk ? <Check className="h-4 w-4 shrink-0 mt-0.5" style={{ color: "var(--tc)" }} /> : <X className="h-4 w-4 shrink-0 mt-0.5 text-danger" />}<span className="font-medium">{t(r.left)}</span></span></td>
+                      <td className="p-4 align-top"><span className="flex items-start gap-2">{lOk ? <Icon name="check" className="shrink-0 mt-0.5" style={{ color: "var(--accent)" }} /> : <X className="h-4 w-4 shrink-0 mt-0.5 text-danger" />}<span className="font-medium">{t(r.left)}</span></span></td>
                       <td className="p-4 align-top text-muted"><span className="flex items-start gap-2">{rOk ? <Check className="h-4 w-4 shrink-0 mt-0.5" /> : <X className="h-4 w-4 shrink-0 mt-0.5 text-danger" />}<span>{t(r.right)}</span></span></td>
                     </tr>
                   );

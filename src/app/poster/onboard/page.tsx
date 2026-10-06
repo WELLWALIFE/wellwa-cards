@@ -36,7 +36,9 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
-import { COMPANY_FACT_KEYS, FactsFields, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
+import { COMPANY_FACT_KEYS, FactsFields, pickFacts, PRODUCT_FACT_KEYS, type FactsPatch } from "@/components/poster/facts-fields";
+/** Every fact the business screens ask (the highlights moved here from the Products page, 6 Oct 2026). */
+const SCREEN_FACT_KEYS = [...COMPANY_FACT_KEYS, ...PRODUCT_FACT_KEYS] as const;
 import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
@@ -899,7 +901,7 @@ function Onboard() {
       let siteChanged = false;
       try { siteChanged = await saveSiteFacts(); } catch { /* the V-Card form asks again */ }
       // Step 1's designation / WhatsApp and step 2's company details (timings, photos, payments, social…).
-      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, COMPANY_FACT_KEYS) : {}) } } }); } catch { /* the build form shows them again */ }
+      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, SCREEN_FACT_KEYS) : {}) } } }); } catch { /* the build form shows them again */ }
       // Keep the published V-Card in step with the setup (name, business, photo, logo, number).
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
@@ -983,7 +985,7 @@ function Onboard() {
       if ((biz.category ?? "").trim() && (you.name.trim().length >= 2 || (biz.name ?? "").trim())) { if (profileRef.current) await syncProfile(); else await ensureProfile(); }
       await sb?.auth.updateUser({ data: { ...emailMeta(), business: bizMeta() } });
       await bumpServerBase();
-      if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, COMPANY_FACT_KEYS) } }).catch(() => undefined);
+      if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, SCREEN_FACT_KEYS) } }).catch(() => undefined);
     } catch { /* offline: the draft keeps it; Save writes it all again */ }
   }
   const at = ONBOARD_SCREENS.indexOf(step);
@@ -1331,6 +1333,12 @@ function Onboard() {
         <section className="space-y-4">
           {head(T(`About your ${tradeWord() || org.en}`, `आपके ${tradeWord() || place} के बारे में`), T("A few taps — the website is written from these. Skip what does not apply.", "कुछ tap — इन्हीं से website लिखी जाएगी। जो लागू न हो, छोड़ दें।"))}
           {!!biz.category && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeWord() || undefined} />}
+          {nextBar()}
+        </section>
+      ) : step === "highlights" ? (
+        <section className="space-y-4">
+          {head(T("What makes you special?", "आपकी खासियत क्या है?"), T("Tap what is true, say who you serve, add an offer if there is one — these become the website's highlights.", "जो सही है वो दबाएँ, बताएँ आप किसके लिए हैं, offer हो तो लिखें — यही website की highlights बनेंगी।"))}
+          <FactsFields group="products" only={["q-special", "q-customers", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
           {nextBar()}
         </section>
       ) : step === "where" ? (

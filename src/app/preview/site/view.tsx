@@ -15,6 +15,14 @@ const KEY = "vcard-preview";
 function storageKey(): string {
   try { const k = new URLSearchParams(window.location.search).get("k") ?? ""; return /^[a-z0-9-]{1,40}$/i.test(k) ? k : KEY; } catch { return KEY; }
 }
+/** `?shot=1` (scripts/trade-check/look-shots.mjs): a screenshot of the website alone, no upgrade strip over it. */
+function isShot(): boolean {
+  try { return new URLSearchParams(window.location.search).get("shot") === "1"; } catch { return false; }
+}
+/** `?lang=hi|en` forces the visitor language the page opens in (the look audit shoots English cards in both). */
+function forcedLang(): "hi" | "en" | null {
+  try { const l = new URLSearchParams(window.location.search).get("lang"); return l === "hi" || l === "en" ? l : null; } catch { return null; }
+}
 
 function readCard(): Card | null {
   try {
@@ -30,18 +38,22 @@ export function PreviewSite() {
   return <PlanProvider><PreviewInner /></PlanProvider>;
 }
 
-// Free plan: the website is a preview only (visitors get the card) — say so at the top, with the upgrade link.
+// Free plan: the website is a preview only (visitors get the card) — say so, with the upgrade link.
 // Growth / Pro (or a card plan set by admin): the website as visitors will see it.
 // Shown only under the website editor's own key: the build preview (the default key) is a 390 px frame showing the
-// three looks, and the bar ate a third of it (owner's call, 5 Oct 2026).
-function UpgradeBar() {
+// three looks, and the bar ate a third of it (owner's call, 5 Oct 2026). One 40 px line fixed at the BOTTOM, above
+// the phone's sticky action bar like ShubhoraBar's `aboveBar` (docs/premium-look.md §4.10) — never over the hero.
+function UpgradeBar({ aboveBar }: { aboveBar: boolean }) {
   const { plan, loading } = usePlan();
   if (loading || plan !== "free") return null;
   return (
-    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-3 bg-[#12144a] px-4 py-3 text-center text-base text-white">
-      <span><b>Website preview only.</b> You are on the Free plan — visitors see your card, not this website. Upgrade your account to put the website live.</span>
-      <a href="/poster/plan" target="_top" className="rounded-full bg-white px-4 py-1.5 font-semibold text-[#12144a]">Upgrade now</a>
-    </div>
+    <>
+      <div aria-hidden style={{ height: 40 }} />
+      <div className={`fixed inset-x-0 z-50 flex items-center justify-center gap-3 bg-[#12144a] px-4 text-[13px] text-white ${aboveBar ? "bottom-[calc(52px+env(safe-area-inset-bottom))] md:bottom-0" : "bottom-0"}`} style={{ height: 40 }}>
+        <span className="truncate"><b>Preview only</b> — Free plan: visitors see your card, not this website.</span>
+        <a href="/poster/plan" target="_top" className="shrink-0 font-semibold underline underline-offset-2">Upgrade</a>
+      </div>
+    </>
   );
 }
 
@@ -51,9 +63,17 @@ function PreviewInner() {
   const [qr, setQr] = useState("");
 
   const [editor, setEditor] = useState(false);
+  const [shot, setShot] = useState(false);
+  const [lang, setLang] = useState<"hi" | "en" | null>(null);
   useEffect(() => {
     const key = storageKey();
     setEditor(key !== KEY);
+    setShot(isShot());
+    const l = forcedLang();
+    setLang(l);
+    // useCardLang (card-view.tsx) opens in the language it last saved: the forced one is written there first, so
+    // the renderer's very first paint is already in it.
+    if (l) { try { localStorage.setItem("ne-card-lang", l); } catch { /* ignore */ } }
     setCard(readCard());
     QRCode.toDataURL(SITE_URL, { width: 320, margin: 1 }).then(setQr).catch(() => setQr(""));
     const onStorage = (e: StorageEvent) => { if (e.key === key) setCard(readCard()); };
@@ -69,10 +89,12 @@ function PreviewInner() {
   const shown = isShubhoraSellerCard(card) ? card : withoutShubhoraLeaks(card);
   // The key re-mounts the renderer when a new card arrives, so its page and language state start fresh.
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
+  const links = shown.links.filter((l) => l.value.trim());
+  const hasBar = links.some((l) => l.type === "phone" || l.type === "whatsapp" || l.type === "location");
   return (
     <>
-      {editor && <UpgradeBar />}
-      <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown} qr={qr} free={loading || plan === "free"} />
+      <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown} qr={qr} free={loading || plan === "free"} initialLang={lang ?? undefined} />
+      {editor && !shot && <UpgradeBar aboveBar={hasBar} />}
     </>
   );
 }

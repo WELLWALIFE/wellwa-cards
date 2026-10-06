@@ -197,3 +197,130 @@ input::placeholder, textarea::placeholder { color: var(--placeholder); opacity: 
    or Share that takes a second to start looked like it had not been tapped at all. */
 button:not(:disabled):active, a[role="button"]:active { transform: scale(0.97); filter: brightness(0.94); }
 button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
+
+/* ===================== The website (.site) — docs/premium-look.md §2 ===================== */
+/* The colour and font variables come per site from siteDesign() (src/lib/site-style.ts) in an inline <style>; the
+   static scale, the shapes and the motion live here. */
+
+/* fonts:start */
+/* Written by scripts/fetch-fonts.mjs from FONT_FACES (src/lib/site-style.ts) — do not edit by hand. Self-hosted, swap,
+   latin and Devanagari as separate files so a Devanagari file downloads only when its glyphs paint. */
+@font-face{font-family:"Instrument Serif";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/instrument-serif-400.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Instrument Serif";font-style:italic;font-weight:400;font-display:swap;src:url(/fonts/instrument-serif-400-ital.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Playfair Display";font-style:normal;font-weight:400 500;font-display:swap;src:url(/fonts/playfair-display-400-500.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Newsreader";font-style:normal;font-weight:400 500;font-display:swap;src:url(/fonts/newsreader-400-500.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Fraunces";font-style:normal;font-weight:400 500;font-display:swap;src:url(/fonts/fraunces-400-500.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"DM Serif Display";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/dm-serif-display-400.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Lora";font-style:normal;font-weight:500;font-display:swap;src:url(/fonts/lora-500.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Bricolage Grotesque";font-style:normal;font-weight:600 700;font-display:swap;src:url(/fonts/bricolage-grotesque-600-700.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Space Grotesk";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/space-grotesk-600.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Inter";font-style:normal;font-weight:400 600;font-display:swap;src:url(/fonts/inter-400-600.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Manrope";font-style:normal;font-weight:400 600;font-display:swap;src:url(/fonts/manrope-400-600.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"DM Sans";font-style:normal;font-weight:400 500;font-display:swap;src:url(/fonts/dm-sans-400-500.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Mukta";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mukta-400.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Mukta";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/mukta-600.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Mukta";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/mukta-400-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Mukta";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/mukta-600-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Tiro Devanagari Hindi";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/tiro-devanagari-hindi-400.woff2) format("woff2");unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD}
+@font-face{font-family:"Tiro Devanagari Hindi";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/tiro-devanagari-hindi-400-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Noto Sans Devanagari";font-style:normal;font-weight:400 600;font-display:swap;src:url(/fonts/noto-sans-devanagari-400-600-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Noto Serif Devanagari";font-style:normal;font-weight:400 500;font-display:swap;src:url(/fonts/noto-serif-devanagari-400-500-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Hind";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/hind-400-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Hind";font-style:normal;font-weight:600;font-display:swap;src:url(/fonts/hind-600-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Hind";font-style:normal;font-weight:700;font-display:swap;src:url(/fonts/hind-700-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+@font-face{font-family:"Yatra One";font-style:normal;font-weight:400;font-display:swap;src:url(/fonts/yatra-one-400-deva.woff2) format("woff2");unicode-range:U+0900-097F, U+1CD0-1CFF, U+A8E0-A8FF}
+/* Local fallbacks sized to each web font (scripts/font-metrics.mjs), so the swap moves no line. */
+@font-face{font-family:"Instrument Serif Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:84.05%;ascent-override:117.79%;descent-override:36.88%;line-gap-override:0%}
+@font-face{font-family:"Playfair Display Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:112.3%;ascent-override:96.35%;descent-override:22.35%;line-gap-override:0%}
+@font-face{font-family:"Newsreader Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:105.25%;ascent-override:69.83%;descent-override:25.18%;line-gap-override:0%}
+@font-face{font-family:"Fraunces Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:126.63%;ascent-override:77.23%;descent-override:20.14%;line-gap-override:0%}
+@font-face{font-family:"DM Serif Display Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:110.73%;ascent-override:93.56%;descent-override:30.26%;line-gap-override:0%}
+@font-face{font-family:"Lora Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:117.6%;ascent-override:85.54%;descent-override:23.3%;line-gap-override:0%}
+@font-face{font-family:"Bricolage Grotesque Fallback";src:local("Arial");size-adjust:111.7%;ascent-override:83.26%;descent-override:24.17%;line-gap-override:0%}
+@font-face{font-family:"Space Grotesk Fallback";src:local("Arial");size-adjust:110.76%;ascent-override:88.84%;descent-override:26.36%;line-gap-override:0%}
+@font-face{font-family:"Inter Fallback";src:local("Arial");size-adjust:107.29%;ascent-override:90.29%;descent-override:22.48%;line-gap-override:0%}
+@font-face{font-family:"Manrope Fallback";src:local("Arial");size-adjust:99.74%;ascent-override:106.88%;descent-override:30.08%;line-gap-override:0%}
+@font-face{font-family:"DM Sans Fallback";src:local("Arial");size-adjust:105.58%;ascent-override:93.95%;descent-override:29.36%;line-gap-override:0%}
+@font-face{font-family:"Mukta Fallback";src:local("Arial");size-adjust:94.89%;ascent-override:119.08%;descent-override:56.06%;line-gap-override:0%}
+@font-face{font-family:"Tiro Devanagari Hindi Fallback";src:local("Times New Roman"), local("Noto Serif");size-adjust:112.75%;ascent-override:66.96%;descent-override:21.73%;line-gap-override:29.27%}
+/* fonts:end */
+
+.site {
+  /* The website ignores the app theme: a visitor's dark phone must not paint navy under paper tiles. */
+  color-scheme: var(--scheme, light);
+  --surface: var(--paper, #ffffff); --surface-2: var(--paper-2, #eff1f9);
+  --border: var(--line, #e3e6f2); --border-strong: var(--line, #cfd4e8); --faint: var(--muted, #8a8fae);
+  /* Spacing 4 8 12 16 24 32 48 64 96; gutter 20 → 64; content 1120; hero text column 560. */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
+  --gutter: 20px; --content: 1120px; --hero-col: 560px; --section-pad: clamp(3rem, 8vw, 6rem);
+  /* Type scale, phone (§2.2); the desktop row is below. */
+  --t-display: clamp(2.5rem, 11vw, 3.25rem); --t-h2: 30px; --t-kicker: 11px; --t-sub: 17px; --t-body: 15px;
+  --t-meta: 13px; --t-cta: 15px; --t-stat: 26px; --body-lh: 1.6;
+  /* Corners (overridden per style by radiusVars()) and elevation (per blueprint, below). */
+  --r-ctl: 12px; --r-card: 16px; --r-tile: 20px; --r-img: 8px;
+  --elev: line; --elev-line: 1px solid var(--line, #e3e6f2); --elev-shadow: none;
+  /* Legacy, one release: the sections still paint `--grad`; every use becomes var(--accent) (§5). */
+  --grad: linear-gradient(120deg, var(--p-mid), var(--p-glow));
+}
+@media (min-width: 1024px) {
+  .site { --t-display: clamp(4.5rem, 6vw, 5.5rem); --t-h2: 44px; --t-kicker: 12px; --t-sub: 19px; --t-body: 16px; --t-stat: 28px; --gutter: 64px; }
+}
+/* Elevation per blueprint: a card is a line (bento, classic) OR a shadow (cinematic) OR nothing (story), never both. */
+.site[data-bp="cinematic"] { --elev: shadow; --elev-line: 0; --elev-shadow: var(--e-1); }
+.site[data-bp="story"] { --elev: none; --elev-line: 0; --elev-shadow: none; }
+.site .s-card { background: var(--surface); border-radius: var(--r-card); border: var(--elev-line); box-shadow: var(--elev-shadow); }
+
+/* Hindi: the Devanagari faces need room above and below the line, no tracking, no uppercase (§2.1). */
+.site:lang(hi) { --body-lh: 1.65; }
+.site:lang(hi) .display { font-size: calc(var(--t-display) * .88); line-height: 1.22; letter-spacing: 0; font-weight: var(--display-w-hi, 600); }
+.site:lang(hi) .kicker { letter-spacing: 0; text-transform: none; font-size: 13px; }
+
+/* Type roles */
+.site .display { font-family: var(--font-display, var(--look-head)); font-size: var(--t-display); line-height: var(--display-lh, .98); letter-spacing: var(--display-tr, -.02em); font-weight: var(--display-w, var(--head-w, 600)); text-wrap: balance; margin: 0; }
+.site .display[data-len="long"] { --t-display: 2.75rem; }
+@media (min-width: 1024px) { .site .display[data-len="long"] { --t-display: 4.5rem; } }
+.site .kicker { display: block; font-family: var(--font-text, var(--look-body)); font-size: var(--t-kicker); line-height: 1; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--accent); }
+.site .sub { font-size: var(--t-sub); line-height: 1.45; max-width: 34ch; text-wrap: pretty; margin: 0; }
+.site .trust-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: .55em; font-size: var(--t-meta); font-weight: 500; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
+.site .trust-row > * + *::before { content: "·"; margin-right: .55em; opacity: .6; }
+.site .trust-row .open-dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--wa); margin-right: .4em; vertical-align: 1px; }
+
+/* Three control shapes: filled primary, ghost secondary, plain link. 48 px tall, --r-ctl, no pills. */
+.site .btn-primary, .site .btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; padding: 0 var(--s5); border-radius: var(--r-ctl); font-size: var(--t-cta); font-weight: 600; letter-spacing: 0; line-height: 1; text-decoration: none; transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 80ms ease, filter 150ms ease; }
+.site .btn-primary { background: var(--accent); color: var(--on-accent); }
+.site .btn-primary:hover { filter: brightness(1.06); }
+.site .btn-ghost { background: transparent; color: inherit; border: 1px solid var(--line); }
+.site .btn-ghost:hover { border-color: currentColor; }
+.site .btn-link { display: inline-flex; align-items: center; gap: .35em; font-size: var(--t-cta); font-weight: 600; color: inherit; text-decoration: none; text-underline-offset: .2em; }
+.site .btn-link:hover { text-decoration: underline; }
+.site .btn-primary:active, .site .btn-ghost:active { transform: scale(.97); }
+/* On a dark hero the primary is paper with ink (the accent's lightness is fixed); the ghost borrows the hero's line. */
+.site .hero-dark { background: var(--hero-ink); color: var(--hero-text); }
+.site .hero-dark .btn-primary { background: var(--paper); color: var(--hero-ink); }
+.site .hero-dark .btn-ghost { border-color: var(--hero-line); color: var(--hero-text); }
+.site .hero-dark .kicker { color: var(--hero-muted); }
+.site .hero-dark .trust-row { color: var(--hero-muted); }
+
+/* Photo recipe (§3.2): the scrim only where the text sits, never a full wash or blur. */
+.site .hero-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus, 50% 35%); }
+.site .hero-scrim { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(to top, var(--scrim-bot) 0%, var(--scrim-mid) 38%, var(--scrim-top) 70%); }
+@media (min-width: 1024px) {
+  .site .hero-scrim::after { content: ""; position: absolute; inset: 0; background: linear-gradient(to right, var(--scrim-mid), transparent 60%); }
+  /* Grain: SVG filters are paint-heavy, so desktop only; a dark hero gets it, never paper. */
+  .site .hero-grain { position: absolute; inset: 0; pointer-events: none; opacity: .07; mix-blend-mode: overlay; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.8' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E"); }
+}
+.site .hero-still { background: radial-gradient(120% 90% at 50% 40%, transparent 55%, rgba(0, 0, 0, .28)); }
+
+/* Entrance (§3.8): kicker → H1 → sub → CTA, 12 px up and in, 520 ms, 50 ms apart; the photo fades 240 ms; bento tiles
+   40 ms apart. Reduced motion (and the owner's "none") fade only — the site[data-motion="none"] rule in the inline
+   <style> already stops every animation. */
+@keyframes hero-in { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+@keyframes hero-fade { from { opacity: 0; } to { opacity: 1; } }
+.site .hero-in, .site .hero-stagger > * { animation: hero-in 520ms cubic-bezier(.23, 1, .32, 1) both; animation-delay: calc(var(--i, 0) * 50ms); }
+.site .hero-stagger > :nth-child(2) { --i: 1; } .site .hero-stagger > :nth-child(3) { --i: 2; } .site .hero-stagger > :nth-child(4) { --i: 3; }
+.site .hero-stagger > :nth-child(5) { --i: 4; } .site .hero-stagger > :nth-child(6) { --i: 5; }
+.site .hero-ph-in { animation: hero-fade 240ms ease-out both; }
+.site .tile-in { animation: hero-in 520ms cubic-bezier(.23, 1, .32, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
+@media (prefers-reduced-motion: reduce) {
+  .site .hero-in, .site .hero-stagger > *, .site .tile-in { animation-name: hero-fade; }
+}

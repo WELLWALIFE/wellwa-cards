@@ -24,6 +24,14 @@ export function otherTone(style: SiteStyle | undefined): SiteStyle {
   return out;
 }
 
+/** What the `since` and `contact` tiles became on the premium board (docs/premium-look.md §3.3): the year folds into
+ *  the trust row and the contact tile is the CTA row — the toggles still act, so their names say what they now do. */
+const TILE_LABELS: Partial<Record<TileKey, { en: string; hi: string }>> = {
+  since: { en: "Years in business (trust row)", hi: "कितने साल से (trust row में)" },
+  contact: { en: "Call & WhatsApp buttons", hi: "Call और WhatsApp buttons" },
+};
+const tileLabel = (k: TileKey, hi: boolean) => { const o = TILE_LABELS[k]; const n = TILES.find((t) => t.key === k)!; return hi ? (o?.hi ?? n.hi) : (o?.en ?? n.name); };
+
 const chip = (on: boolean) => `inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-[13px] font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`;
 
 export function LookTweaks({ card, onChange, hi, premium }: { card: Card; onChange: (next: Card) => void; hi: boolean; premium: boolean }) {
@@ -71,10 +79,9 @@ export function LookTweaks({ card, onChange, hi, premium }: { card: Card; onChan
               <ul className="space-y-1">
                 {[...tilesOn, ...canTiles.filter((k) => !tilesOn.includes(k))].map((k, i) => {
                   const on = tilesOn.includes(k);
-                  const name = TILES.find((t) => t.key === k)!;
                   return (
                     <li key={k} className="flex items-center gap-1.5">
-                      <button type="button" onClick={() => setTiles(on ? tilesOn.filter((x) => x !== k) : [...tilesOn, k])} className={`${chip(on)} flex-1 justify-start`}>{on ? "✓ " : ""}{hi ? name.hi : name.name}</button>
+                      <button type="button" onClick={() => setTiles(on ? tilesOn.filter((x) => x !== k) : [...tilesOn, k])} className={`${chip(on)} flex-1 justify-start`}>{on ? "✓ " : ""}{tileLabel(k, hi)}</button>
                       {on && <button type="button" disabled={i === 0} onClick={() => { const a = [...tilesOn]; [a[i - 1], a[i]] = [a[i], a[i - 1]]; setTiles(a); }} className="grid h-8 w-8 place-items-center rounded-lg border border-border disabled:opacity-30" aria-label="Up"><ArrowUp className="h-3.5 w-3.5" /></button>}
                       {on && <button type="button" disabled={i >= tilesOn.length - 1} onClick={() => { const a = [...tilesOn]; [a[i + 1], a[i]] = [a[i], a[i + 1]]; setTiles(a); }} className="grid h-8 w-8 place-items-center rounded-lg border border-border disabled:opacity-30" aria-label="Down"><ArrowDown className="h-3.5 w-3.5" /></button>}
                     </li>

@@ -13,7 +13,8 @@ export type Blueprint = {
   key: BlueprintKey;
   name: string; hi: string;
   blurb: string; blurbHi: string;
-  /** Style the blueprint wants unless the designer says otherwise. */
+  /** Style the blueprint wants unless the designer says otherwise — its ship-first hero variant among them
+   *  (docs/premium-look.md §3.7); the renderer falls back to the no-photo variant when the card has no picture. */
   defaults: Partial<SiteStyle>;
   /** Trades it suits best (poster-categories keys); the mood briefs decide per trade, this is the fallback. */
   fits: string[];
@@ -22,17 +23,17 @@ export type Blueprint = {
 export const BLUEPRINTS: Blueprint[] = [
   {
     key: "bento", name: "Bento", hi: "बेंटो", blurb: "Everything at a glance: a board of tiles", blurbHi: "एक नज़र में सब: tiles का board",
-    defaults: { radius: "round", motion: "calm", pattern: "none" },
+    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "board" },
     fits: ["kirana", "mobile", "hardware", "medical", "clinic", "electrician", "plumber", "ca", "tuition", "coaching", "it", "real-estate", "travel", "insurance"],
   },
   {
     key: "cinematic", name: "Cinematic", hi: "सिनेमैटिक", blurb: "Full-screen photo, scene by scene", blurbHi: "पूरी screen की photo, scene दर scene",
-    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none" },
+    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover" },
     fits: ["hotel", "restaurant", "gym", "jewellery", "car", "events", "wedding", "salon", "interior", "furniture", "architect", "photography"],
   },
   {
     key: "story", name: "Story", hi: "स्टोरी", blurb: "Swipe slides, like Instagram stories", blurbHi: "Instagram stories जैसी swipe slides",
-    defaults: { radius: "round", motion: "lively", pattern: "none" },
+    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "slide-photo" },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
 ];

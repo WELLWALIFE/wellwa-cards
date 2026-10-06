@@ -1,27 +1,30 @@
 "use client";
-// The Bento blueprint's hero (docs/website-looks-v2.md §3.1): a board of tiles, each one thing the business has —
-// its photo or clip, its name, call and WhatsApp, open-now, the rating, the map, an offer, the first product, the
-// years, booking. A tile is drawn only when the card has its content; `site.hero.tiles` picks and orders them.
-// Two columns on a phone, four on a computer; the photo tile spans two by two.
+// The Bento blueprint's hero (docs/premium-look.md §3.3): a calm paper board. The brand block leads — kicker,
+// headline, one line of benefit, a quiet trust row, one filled button and one plain one — then the photo tile,
+// cropped and unwashed, then short strip tiles for what the shop has: open now, the map, an offer, booking.
+// Everything it says comes from heroModel() (src/lib/site-hero.ts); the owner's tile toggles (site.hero.tiles,
+// TILE_KEYS) still decide what is drawn: `since`/`rating` fold into the trust row, `contact` is the CTA row.
+//
+// Phone: a flex column (a flowing brand block cannot share fixed grid rows) — brand · CTA 56 px · 2-col strips 96 px
+// · photo 4:5 lazy below the fold, so the LCP is the H1. Desktop: 12 columns × 120 px rows, 16 px gap — brand 5×3
+// (paper, no border) + photo 7×3, four 3×1 strips, products 12×2 with real thumbnails. Flat `--paper` tiles with a
+// 1 px line (`--elev: line`), `--r-tile`; no glass, blur, aurora, gradients, chips or emoji. Variants: `board`,
+// `board-statement` (no photo: brand 12×3, a hairline under the kicker), `board-ink` (dark brand tile).
 import { useMemo } from "react";
-import { MessageCircle, Phone, MapPin, Star, Tag, CalendarClock, ArrowRight, Navigation } from "lucide-react";
 import type { Card, CardBlock, ProductItem } from "@/lib/types";
 import { TILE_KEYS, type TileKey } from "@/lib/site-blueprints";
-import { useOpenNow } from "@/components/site-smart";
-import { Pic as Img, picUrl } from "@/components/pic";
+import { heroModel, type HeroModel } from "@/lib/site-hero";
+import { Kicker, Display, Sub, TrustRow, HeroPhoto, useOpenNow } from "@/components/site-smart";
+import { Icon, type IconName } from "@/components/site-icons";
+import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
-import { linkHref } from "@/components/link-icon";
 import { safeMapUrl } from "@/components/card-view";
-
-const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--tc)]";
-/** Press feedback: the tile sinks a little under the finger. */
-const PRESS = "transition-transform duration-150 active:scale-[0.985] motion-reduce:transform-none";
 
 export type BentoInput = {
   card: Card;
   hi: boolean;
   t: (s: string) => string;
-  /** The hero photo (cover / first stock photo) and the trade clip when the card carries one and may show it. */
+  /** Legacy: the hero photo and clip are read from heroModel() now (card.coverUrl only); these are ignored. */
   photo?: string; clip?: { url: string; poster?: string };
   focus?: string;
   phone?: string; wa?: string; waHref: (text?: string) => string;
@@ -33,15 +36,17 @@ export type BentoInput = {
   since?: number;
   booking?: { slug: string } | null; go: (slug: string) => void;
   eyebrow?: string; logo?: string;
-  /** Short trust chips for the name tile. */ pills?: string[];
+  /** Legacy: the hero has no chips any more (§5); the facilities live in the "good to know" strip. */ pills?: string[];
   darkPage: boolean;
 };
 
-/** Which tiles this card can fill, in the owner's (or default) order. */
+/** Which tiles this card can fill, in the owner's (or default) order. `photo` is the card's cover photograph (the
+ *  one hero picture, heroModel); `since` and `rating` are trust-row facts; `contact` is the CTA row. */
 export function bentoTiles(i: BentoInput): TileKey[] {
+  const m = heroModel(i.card, i.hi ? "hi" : "en");
   const can: Record<TileKey, boolean> = {
-    photo: !!(i.photo || i.clip), name: true, contact: !!(i.phone || i.wa), open: !!i.hours?.length, rating: !!i.rating && i.rating.count > 0,
-    map: !!i.map, offer: !!i.offer?.text, product: !!i.product, since: !!i.since, booking: !!i.booking,
+    photo: !!m.photo, name: true, contact: !!(i.phone || i.wa), open: !!i.hours?.length, rating: !!m.trust.rating,
+    map: !!i.map, offer: !!i.offer?.text, product: productThumbs(i.card).length >= 2, since: !!m.trust.since, booking: !!i.booking,
   };
   const order = (i.card.site?.hero?.tiles?.length ? i.card.site.hero.tiles : [...TILE_KEYS]) as TileKey[];
   const out = order.filter((k) => can[k]);
@@ -49,103 +54,148 @@ export function bentoTiles(i: BentoInput): TileKey[] {
   return out;
 }
 
+/** The first four products that have a real picture — the desktop products row draws nothing else (§3.3). */
+function productThumbs(card: Card): { item: ProductItem; img: string }[] {
+  const out: { item: ProductItem; img: string }[] = [];
+  for (const p of card.pages.filter((pg) => !pg.hidden).flatMap((pg) => pg.blocks).flatMap((b) => (b.kind === "product" ? b.items : []))) {
+    const img = (p.images?.[0] ?? p.imageUrl ?? "").trim();
+    if (img && (p.name ?? "").trim()) out.push({ item: p, img });
+    if (out.length === 4) break;
+  }
+  return out;
+}
+
+/** "Main market, Rewari" → "Main market": the kicker already names the city, and the strip is narrow on a phone. */
+function dropCity(address: string, city: string): string {
+  const a = address.trim(), c = city.trim().toLowerCase();
+  if (c && a.toLowerCase().endsWith(c)) return a.slice(0, a.length - c.length).replace(/[\s,،-]+$/, "").trim() || a;
+  return a;
+}
+
+const FOCUS = "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]";
+const ctaIcon = (kind: "whatsapp" | "call" | "book"): IconName => (kind === "whatsapp" ? "whatsapp" : kind === "call" ? "phone" : "calendar");
+
 export function BentoHero(i: BentoInput) {
   const { card, hi, t } = i;
-  const tiles = useMemo(() => bentoTiles(i), [i]);
-  const open = useOpenNow(i.hours);
-  const name = card.site?.hero?.headline || card.company || card.name;
-  const sub = card.site?.hero?.sub || card.tagline || "";
-  const glass = i.darkPage ? "border-white/15 bg-white/[0.07] text-[var(--p-ink)]" : "border-border bg-[color-mix(in_srgb,var(--surface)_82%,transparent)]";
-  const tile = `relative overflow-hidden rounded-3xl border backdrop-blur-md shadow-[0_18px_40px_-28px_rgba(0,0,0,.45)] ${glass}`;
+  const lang = hi ? "hi" : "en";
+  const m = useMemo(() => heroModel(card, lang), [card, lang]);
+  const tiles = bentoTiles(i);
+  const has = (k: TileKey) => tiles.includes(k);
+  const openTile = has("open") && !!m.hours?.length;
+  const open = useOpenNow(openTile ? m.hours : undefined);
+
+  // The trust row carries the rating and the Est. year (each behind its toggle) and the open state only when the
+  // open tile is off — a fact is said once on screen one.
+  const trust: HeroModel["trust"] = {
+    ...(has("rating") && m.trust.rating ? { rating: m.trust.rating } : {}),
+    ...(has("since") && m.trust.since ? { since: m.trust.since } : {}),
+    ...(!openTile && m.trust.open ? { open: m.trust.open } : {}),
+  };
+  const ink = m.variant === "board-ink";
+  const photo = has("photo") ? m.photo : undefined;
+  const statement = !photo;
+  const products = has("product") ? productThumbs(card) : [];
+
+  type Strip = "open" | "map" | "offer" | "booking";
+  const strips: Strip[] = [];
+  if (openTile) strips.push("open");
+  if (has("map") && i.map) strips.push("map");
+  if (has("offer") && i.offer?.text) strips.push("offer");
+  if (has("booking") && i.booking) strips.push("booking");
+  const span = strips.length ? Math.max(3, Math.floor(12 / strips.length)) : 12;
+
   const label = (en: string, h: string) => (hi ? h : t(en));
-  const year = new Date().getFullYear();
+  const address = dropCity(i.map?.address ?? "", card.seo?.city ?? "");
+  const onBook = (href: string) => (e: React.MouseEvent) => { if (href.startsWith("#")) { e.preventDefault(); i.go(href.slice(1)); } };
+  const ext = (kind: string) => (kind === "whatsapp" ? { target: "_blank", rel: "noreferrer" } : {});
+  // Tiles enter 40 ms apart (.tile-in, globals.css): the photo first, then the strips, then the products.
   let n = 0;
-  const reveal = () => ({ "data-reveal": "", style: { ["--i" as string]: n++ } as React.CSSProperties });
+  const tileStyle = (extra: Record<string, number> = {}) => ({ ["--i" as string]: ++n, ...extra } as React.CSSProperties);
 
   return (
-    <section className="relative" aria-label={name}>
-      <div className="mx-auto max-w-6xl px-4 pt-5 pb-8 md:px-6 md:pt-8 md:pb-12">
-        <div className="grid auto-rows-[minmax(118px,auto)] grid-cols-2 gap-3 md:auto-rows-[minmax(150px,auto)] md:grid-cols-4 md:gap-4" style={{ gridAutoFlow: "dense" }}>
-          {tiles.map((k) => {
+    <section className="board" data-variant={statement ? (ink ? "board-ink" : "board-statement") : m.variant} lang={lang} aria-label={m.name}>
+      <div className="board-wrap">
+        <div className="board-grid" data-photo={photo ? "" : undefined}>
+
+          {/* ---- brand block: kicker → H1 → sub → trust → CTAs (§3.1); flows, never clips ---- */}
+          <div className={`board-brand hero-stagger ${ink ? "hero-dark" : ""}`}>
+            <Kicker lang={lang}>{t(m.kicker)}</Kicker>
+            {statement && <i aria-hidden="true" className="board-rule" />}
+            <Display lang={lang}>{t(m.headline)}</Display>
+            <Sub lang={lang}>{t(m.sub)}</Sub>
+            <TrustRow trust={trust} hours={!openTile ? m.hours : undefined} hi={hi} />
+            {has("contact") && (
+              <div className="board-ctas hero-ctas">
+                <a href={m.primary.href} {...ext(m.primary.kind)} data-kind={m.primary.kind} className={`btn-primary hero-cta board-cta ${FOCUS}`}
+                  onClick={(e) => { trackClick(card.username, `site-hero-${m.primary.kind}`); onBook(m.primary.href)(e); }}>
+                  <Icon name={ctaIcon(m.primary.kind)} /><span>{t(m.primary.label)}</span><Icon name="arrow-right" className="board-cta-arrow" />
+                </a>
+                {m.secondary && (
+                  <a href={m.secondary.href} data-kind={m.secondary.kind} className={`btn-ghost hero-cta board-cta ${FOCUS}`} aria-label={m.secondary.label}
+                    onClick={(e) => { trackClick(card.username, `site-hero-${m.secondary!.kind}`); onBook(m.secondary!.href)(e); }}>
+                    <Icon name={ctaIcon(m.secondary.kind)} />
+                    <span className="board-cta-long">{t(m.secondary.label)}</span>
+                    <span className="board-cta-short">{m.secondary.kind === "call" ? label("Call", "कॉल") : label("Book", "बुक करें")}</span>
+                  </a>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* ---- photo tile: the cover, cropped to the subject, no scrim; lazy (below the fold on a phone). A trade
+               banner (/api/stock/banners, 1600×600) is a poster: grey frame on top, white fade on the left — the
+               tile zooms into its right half so only the photograph shows. ---- */}
+          {photo && (
+            <div className="board-tile board-photo tile-in" style={tileStyle()} data-banner={photo.src.startsWith("/api/stock/banners/") ? "" : undefined}>
+              <HeroPhoto photo={photo} crop="tile" lazy alt="" className="board-photo-pic" />
+            </div>
+          )}
+
+          {/* ---- strips: one short fact each — 96 px, two up on a phone; one row on a desktop ---- */}
+          {strips.map((k, j) => {
+            const style = tileStyle({ "--span": span });
+            // An odd last strip takes the whole row on a phone.
+            const wide = j === strips.length - 1 && strips.length % 2 === 1 ? "" : undefined;
             switch (k) {
-              case "photo": return (
-                <div key={k} {...reveal()} className={`${tile} col-span-2 row-span-2 min-h-[240px] md:min-h-[320px] bg-[var(--p-deep)]`}>
-                  {i.clip
-                    ? <video src={i.clip.url} poster={i.clip.poster ? picUrl(i.clip.poster, 1080) : undefined} autoPlay muted loop playsInline preload="metadata" className="absolute inset-0 h-full w-full object-cover" />
-                    : <Img src={i.photo!} alt="" className="absolute inset-0 h-full w-full object-cover kb" style={i.focus ? { objectPosition: i.focus } : undefined} priority sizes="(min-width: 768px) 50vw, 100vw" />}
-                  <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/45 to-transparent" />
-                </div>
-              );
-              case "name": return (
-                <div key={k} {...reveal()} className={`${tile} col-span-2 flex flex-col justify-center p-5 md:p-7`}>
-                  <div className="flex items-start gap-3">
-                    {i.logo && <Img src={i.logo} alt="" className="h-12 w-12 shrink-0 rounded-2xl bg-white object-contain p-1" eager w={48} />}
-                    <div className="min-w-0">
-                      {i.eyebrow && <p className="text-[11px] font-semibold uppercase tracking-[0.18em]" style={{ color: i.darkPage ? "var(--p-accent)" : "var(--p-mark)" }}>{t(i.eyebrow)}</p>}
-                      <h1 className="mt-1 text-[30px] leading-[1.02] tracking-tight md:text-[40px]" style={{ textWrap: "balance" }}>{t(name)}</h1>
-                      {sub && <p className="mt-2 max-w-[44ch] text-[15px] leading-relaxed opacity-80 md:text-[16px]">{t(sub)}</p>}
-                    </div>
-                  </div>
-                  {!!i.pills?.length && <ul className="mt-3 flex flex-wrap gap-1.5">{i.pills.slice(0, 4).map((p, j) => <li key={j} className="rounded-full border px-2.5 py-1 text-[12px] font-medium" style={{ borderColor: "color-mix(in srgb, currentColor 18%, transparent)", background: "color-mix(in srgb, currentColor 6%, transparent)" }}>{t(p)}</li>)}</ul>}
-                </div>
-              );
-              case "contact": return (
-                <div key={k} {...reveal()} className="col-span-2 grid grid-cols-2 gap-3 md:gap-4">
-                  {i.wa && <a href={i.waHref()} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-whatsapp")} className={`${tile} ${PRESS} ${FOCUS} flex flex-col justify-between p-4 md:p-5 ${i.phone ? "" : "col-span-2"}`} style={{ background: "#25D366", color: "#fff", borderColor: "transparent" }}>
-                    <MessageCircle className="h-7 w-7" /><span className="text-[16px] font-semibold leading-tight md:text-[18px]">{t(card.site?.hero?.ctaLabel || "WhatsApp")}</span>
-                  </a>}
-                  {i.phone && <a href={linkHref("phone", i.phone)} onClick={() => trackClick(card.username, "site-hero-phone")} className={`${tile} ${PRESS} ${FOCUS} flex flex-col justify-between p-4 md:p-5 ${i.wa ? "" : "col-span-2"}`} style={{ background: "var(--grad)", color: "var(--p-on)", borderColor: "transparent" }}>
-                    <Phone className="h-7 w-7" /><span className="text-[16px] font-semibold leading-tight md:text-[18px]">{label("Call now", "Call करें")}</span>
-                  </a>}
-                </div>
-              );
-              // Always in the DOM from the first paint (the reveal observer only sees what mounts with the board);
-              // the state fills in a moment later.
               case "open": return (
-                <div key={k} {...reveal()} className={`${tile} flex flex-col justify-between p-4 md:p-5`}>
-                  <span className="relative inline-flex h-3 w-3"><span className="absolute inset-0 animate-ping rounded-full motion-reduce:hidden" style={{ background: open?.state === "open" ? "#22c55e" : "#f59e0b", opacity: open ? .5 : 0 }} /><span className="relative h-3 w-3 rounded-full" style={{ background: !open ? "#9ca3af" : open.state === "open" ? "#22c55e" : "#f59e0b" }} /></span>
-                  <div><p className="text-[17px] font-semibold leading-tight">{!open ? label("Timings", "समय") : open.state === "open" ? label("Open now", "अभी खुला है") : label("Closed", "अभी बंद")}</p><p className="mt-0.5 text-[13px] opacity-70">{open ? (hi ? open.noteHi : open.note) : "…"}</p></div>
-                </div>
-              );
-              case "rating": return (
-                <div key={k} {...reveal()} className={`${tile} flex flex-col justify-between p-4 md:p-5`}>
-                  <Star className="h-6 w-6 fill-current" style={{ color: "#f5b301" }} />
-                  <div><p className="text-[28px] font-semibold leading-none tracking-tight" style={{ fontFamily: "var(--look-head)" }}>{(Math.round(i.rating!.avg * 10) / 10).toFixed(1)}</p><p className="mt-1 text-[13px] opacity-70">{hi ? `${i.rating!.count} रिव्यू` : `${i.rating!.count} reviews`}</p></div>
+                <div key={k} style={style} data-wide={wide} className="s-card board-tile board-strip tile-in" aria-live="polite" data-state={open?.state}>
+                  <p className="board-strip-head"><i aria-hidden="true" className="open-dot" />{!open ? label("Timings", "समय") : open.state === "open" ? label("Open now", "अभी खुला है") : label("Closed", "अभी बंद")}</p>
+                  <p className="board-strip-meta">{open ? (hi ? open.noteHi : open.note) : m.hours?.[0]?.time ?? ""}</p>
                 </div>
               );
               case "map": return (
-                <a key={k} {...reveal()} href={i.map!.url} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-map")} className={`${tile} ${PRESS} ${FOCUS} flex flex-col justify-between p-4 md:p-5`}>
-                  <MapPin className="h-6 w-6" style={{ color: "var(--tc)" }} />
-                  <div><p className="line-clamp-2 text-[14px] font-medium leading-snug">{t(i.map!.address || label("Find us on the map", "Map पर देखें"))}</p><p className="mt-1 inline-flex items-center gap-1 text-[13px] font-semibold" style={{ color: "var(--tc)" }}><Navigation className="h-3.5 w-3.5" /> {label("Directions", "रास्ता")}</p></div>
+                <a key={k} style={style} data-wide={wide} href={i.map!.url} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-hero-map")} className={`s-card board-tile board-strip board-link tile-in ${FOCUS}`}>
+                  <p className="board-strip-head"><Icon name="pin" className="board-strip-ic" /><span className="board-clamp">{t(address) || label("Find us on the map", "Map पर देखें")}</span></p>
+                  <p className="board-strip-meta board-strip-go">{label("Directions", "रास्ता")} <Icon name="arrow-up-right" size={13} /></p>
                 </a>
               );
               case "offer": return (
-                <div key={k} {...reveal()} className={`${tile} col-span-2 flex items-center gap-4 p-4 md:p-5`} style={{ background: "color-mix(in srgb, var(--p-accent) 22%, var(--surface))" }}>
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl" style={{ background: "var(--grad)", color: "var(--p-on)" }}><Tag className="h-6 w-6" /></span>
-                  <div className="min-w-0"><p className="text-[11px] font-semibold uppercase tracking-[0.16em]" style={{ color: "var(--p-mark)" }}>{t(i.offer!.title || "Offer")}</p><p className="mt-0.5 line-clamp-2 text-[15px] font-semibold leading-snug">{t(i.offer!.text)}</p>{i.offer!.code && <p className="mt-1 text-[12px] opacity-70">{label("Code", "Code")}: <b className="mono">{i.offer!.code}</b></p>}</div>
-                </div>
-              );
-              case "product": { const p = i.product!; const img = p.images?.[0] ?? p.imageUrl; return (
-                <button key={k} {...reveal()} type="button" onClick={() => i.onProduct?.(p)} className={`${tile} ${PRESS} ${FOCUS} row-span-2 flex flex-col text-left`}>
-                  <div className="relative flex-1 min-h-[120px]" style={{ background: "var(--p-soft)" }}>{img ? <Img src={img} alt={p.name} className="absolute inset-0 h-full w-full object-contain p-4" sizes="(min-width: 768px) 25vw, 50vw" /> : <span className="absolute inset-0 grid place-items-center text-4xl font-semibold" style={{ color: "var(--tc)" }}>{Array.from(p.name.trim())[0]?.toUpperCase()}</span>}</div>
-                  <div className="p-4"><p className="line-clamp-1 text-[14px] font-semibold">{t(p.name)}</p>{(p.price || p.mrp) && <p className="mt-0.5 text-[15px] font-semibold" style={{ color: "var(--tc)" }}>{p.price || p.mrp}</p>}<p className="mt-1 inline-flex items-center gap-1 text-[12px] opacity-70">{label("See", "देखें")} <ArrowRight className="h-3 w-3" /></p></div>
-                </button>
-              ); }
-              case "since": return (
-                <div key={k} {...reveal()} className={`${tile} flex flex-col justify-between p-4 md:col-span-2 md:p-5`}>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] opacity-70">{label("Since", "कब से")}</p>
-                  <div><p className="text-[28px] font-semibold leading-none tracking-tight" style={{ fontFamily: "var(--look-head)" }}>{i.since}</p><p className="mt-1 text-[13px] opacity-70">{year - i.since! >= 2 ? (hi ? `${year - i.since!} साल का भरोसा` : `${year - i.since!} years of trust`) : label("trusted business", "भरोसेमंद")}</p></div>
+                <div key={k} style={style} data-wide={wide} className="s-card board-tile board-strip tile-in">
+                  <p className="board-strip-head"><Icon name="tag" className="board-strip-ic" /><span className="board-clamp">{t(i.offer!.text)}</span></p>
+                  <p className="board-strip-meta">{i.offer!.code ? <>{label("Code", "कोड")} <b className="board-code">{i.offer!.code}</b></> : t(i.offer!.title || label("Offer", "ऑफ़र"))}</p>
                 </div>
               );
               case "booking": return (
-                <button key={k} {...reveal()} type="button" onClick={() => i.go(i.booking!.slug)} className={`${tile} ${PRESS} ${FOCUS} flex flex-col justify-between p-4 text-left md:p-5`}>
-                  <CalendarClock className="h-6 w-6" style={{ color: "var(--tc)" }} />
-                  <p className="text-[15px] font-semibold leading-tight">{label("Book an appointment", "Appointment लें")}</p>
+                <button key={k} style={style} data-wide={wide} type="button" onClick={() => i.go(i.booking!.slug)} className={`s-card board-tile board-strip board-link tile-in ${FOCUS}`}>
+                  <p className="board-strip-head"><Icon name="calendar" className="board-strip-ic" /><span className="board-clamp">{label("Book an appointment", "अपॉइंटमेंट लें")}</span></p>
+                  <p className="board-strip-meta board-strip-go">{label("Pick a time", "समय चुनें")} <Icon name="arrow-right" size={13} /></p>
                 </button>
               );
               default: return null;
             }
           })}
+
+          {/* ---- products: desktop only, real thumbnails 1:1, name · ₹ ---- */}
+          {products.length >= 2 && (
+            <div className="board-products tile-in" style={tileStyle({ "--cols": products.length })}>
+              {products.map(({ item: p, img }, j) => (
+                <button key={j} type="button" onClick={() => i.onProduct?.(p)} className={`s-card board-tile board-product ${FOCUS}`}>
+                  <span className="board-thumb"><Pic src={img} alt={p.name} className="board-thumb-img" sizes="(min-width: 1024px) 25vw, 50vw" /></span>
+                  <span className="board-product-row"><span className="board-clamp-1">{t(p.name)}</span>{(p.price || p.mrp) && <b>{p.price || p.mrp}</b>}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </section>
@@ -169,17 +219,94 @@ export function bentoFacts(card: Card): { rating?: { avg: number; count: number 
   return { rating, map, offer, product, booking: bookingPage ? { slug: bookingPage.slug } : null, ...(video ? { clip: { url: video.url, poster: video.posterUrl } } : {}) };
 }
 
-/** The Bento page's CSS: the aurora behind the board, glass cards, the nav that turns to glass on scroll. */
+/** The board's CSS (§3.3), joined to the site's inline <style>. Phone first: a two-column flow (brand and photo span
+ *  both); from 1024 px a 12-column grid. The shared hero rules it needs (.hero-sub, the trust items, the WhatsApp
+ *  icon colour, the dark brand tile) are repeated under `.board` until HERO_CSS is inlined by the page. No
+ *  backdrop-filter, blur or gradient anywhere. */
 export const BENTO_CSS = `
-@keyframes site-aurora-a{0%{transform:translate(-10%,-6%) scale(1)}50%{transform:translate(8%,10%) scale(1.15)}100%{transform:translate(-10%,-6%) scale(1)}}
-@keyframes site-aurora-b{0%{transform:translate(12%,8%) scale(1.1)}50%{transform:translate(-8%,-10%) scale(.95)}100%{transform:translate(12%,8%) scale(1.1)}}
-.site[data-bp="bento"] .site-aurora{position:absolute;inset:0;overflow:hidden;pointer-events:none;z-index:0}
-.site[data-bp="bento"] .site-aurora i{position:absolute;border-radius:50%;filter:blur(60px);opacity:.55;will-change:transform}
-.site[data-bp="bento"] .site-aurora i:nth-child(1){left:-10%;top:-20%;width:60vw;height:60vw;max-width:720px;max-height:720px;background:var(--p-mid);animation:site-aurora-a 26s ease-in-out infinite}
-.site[data-bp="bento"] .site-aurora i:nth-child(2){right:-15%;top:10%;width:55vw;height:55vw;max-width:640px;max-height:640px;background:var(--p-glow);animation:site-aurora-b 32s ease-in-out infinite}
-.site[data-bp="bento"] .site-aurora i:nth-child(3){left:30%;bottom:-30%;width:50vw;height:50vw;max-width:560px;max-height:560px;background:var(--p-accent);opacity:.35;animation:site-aurora-a 40s ease-in-out infinite reverse}
-.site[data-bp="bento"] header.site-head{background:transparent;border-color:transparent;backdrop-filter:none;transition:background .3s,border-color .3s,backdrop-filter .3s}
-.site[data-bp="bento"] header.site-head.scrolled{background:color-mix(in srgb,var(--surface) 62%,transparent);border-color:var(--border);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
-.site[data-bp="bento"] main section .bg-surface{background:color-mix(in srgb,var(--surface) 78%,transparent);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
-@media (prefers-reduced-motion: reduce){.site[data-bp="bento"] .site-aurora i{animation:none}}
+.site .board{position:relative;background:var(--paper)}
+.site .board-wrap{margin:0 auto;max-width:var(--content);padding:var(--s4) var(--gutter) var(--s6)}
+.site .board-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;gap:var(--s3)}
+.site .board-tile{border-radius:var(--r-tile);overflow:hidden}
+.site .board-brand{grid-column:1 / -1;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s2) 0 var(--s3);--t-display:44px}
+.site .board-brand .display{max-width:16ch}
+.site .board-brand .display[data-len=long]{--t-display:40px;max-width:20ch}
+.site .board-brand .kicker{margin:0}
+.site .board-rule{display:block;width:48px;height:1px;background:var(--gold);margin:calc(var(--s1) * -1) 0 var(--s1)}
+.site .board .hero-sub{margin:0;max-width:34ch;font-size:var(--t-sub);line-height:1.45;text-wrap:pretty;color:var(--muted)}
+.site .board .hero-sub:lang(hi){line-height:1.6}
+.site .board .trust-row{margin-top:var(--s1)}
+.site .board .hero-trust-item{display:inline-flex;align-items:center;gap:.3em;white-space:nowrap}
+.site .board .hero-trust-n{opacity:.7}.site .board .hero-star{color:var(--star)}
+.site .board .open-dot{display:inline-block;width:8px;height:8px;border-radius:9999px;background:var(--wa);flex:none}
+.site .board [data-state=closed] .open-dot{background:var(--muted)}
+.site .board-ctas{display:flex;flex-wrap:nowrap;align-items:stretch;gap:var(--s3);width:100%;margin-top:var(--s2)}
+.site .board-cta{min-height:56px;gap:var(--s3)}
+.site .board-cta.btn-primary{flex:1 1 auto;min-width:0;justify-content:flex-start;padding:0 var(--s5)}
+.site .board-cta.btn-primary>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.site .board-cta.btn-ghost{flex:0 0 auto;padding:0 var(--s4)}
+.site .board-cta-arrow{margin-left:auto}
+.site .board-cta-long{display:none}
+.site .board .hero-cta[data-kind=whatsapp] svg:first-child{color:var(--wa)}
+.site .board-brand.hero-dark{padding:var(--s4);border-radius:var(--r-tile)}
+.site .board-brand.hero-dark .board-cta.btn-primary{padding:0 var(--s4)}
+.site .board-brand.hero-dark .board-cta-arrow{display:none}
+.site .board-brand.hero-dark .hero-sub{color:var(--hero-text);opacity:.9}
+.site .board-brand.hero-dark .board-rule{background:var(--hero-line)}
+.site .board-brand.hero-dark .hero-cta[data-kind=whatsapp] svg:first-child{color:inherit}
+/* strips: two up on a phone, 96 px, one fact each; an odd last one takes the row */
+.site .board-strip{display:flex;flex-direction:column;justify-content:space-between;gap:var(--s2);min-height:96px;padding:var(--s4);text-align:left;color:inherit;text-decoration:none;font:inherit;cursor:default}
+.site .board-strip[data-wide]{grid-column:1 / -1}
+.site .board-link{cursor:pointer;transition:border-color 150ms ease,transform 80ms ease}
+.site .board-link:hover{border-color:var(--muted)}
+.site .board-link:active{transform:scale(.985)}
+.site .board-strip-head{display:flex;align-items:center;gap:.5em;margin:0;font-size:15px;font-weight:600;line-height:1.3}
+.site .board-strip-ic{flex:none;color:var(--muted)}
+.site .board-strip-meta{margin:0;font-size:var(--t-meta);font-weight:500;line-height:1.4;color:var(--muted);font-variant-numeric:tabular-nums}
+.site .board-strip-go{display:inline-flex;align-items:center;gap:.25em;color:var(--accent)}
+.site .board-code{font-weight:600;color:var(--ink);letter-spacing:.04em}
+.site .board-clamp{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site .board-clamp-1{display:block;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+/* photo: 4:5 on a phone, after the strips, no overlay */
+.site .board-photo{position:relative;grid-column:1 / -1;order:9;aspect-ratio:4/5;background:var(--paper-2)}
+.site .board-photo-pic{position:absolute;inset:0}
+.site .board-photo[data-banner] .hero-ph{transform:scale(1.32);transform-origin:62% 84%}
+/* products: a desktop row */
+.site .board-products{display:none}
+@media (min-width:1024px){
+  .site .board-wrap{padding:var(--s6) var(--gutter) var(--s8)}
+  .site .board-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:minmax(120px,auto);gap:var(--s4)}
+  .site .board-brand{grid-column:span 5;grid-row:span 3;justify-content:center;gap:var(--s4);padding:var(--s3) var(--s6) var(--s3) 0;--t-display:64px}
+  .site .board-brand .display{max-width:14ch}
+  .site .board-brand .display[data-len=long]{--t-display:56px;max-width:18ch}
+  .site .board-grid:not([data-photo]) .board-brand{grid-column:span 12;--t-display:80px;padding:var(--s6) 0}
+  .site .board-grid:not([data-photo]) .board-brand .display{max-width:18ch}
+  .site .board-grid:not([data-photo]) .board-brand .display[data-len=long]{--t-display:64px;max-width:22ch}
+  .site .board-brand.hero-dark{padding:var(--s6);--t-display:56px}
+  .site .board-brand.hero-dark .board-cta.btn-primary{padding:0 20px}
+  .site .board-grid:not([data-photo]) .board-brand.hero-dark{padding:var(--s7);--t-display:72px}
+  .site .board-rule{width:64px;margin:0 0 var(--s2)}
+  .site .board-ctas{width:auto;flex-wrap:wrap;margin-top:var(--s3);gap:var(--s3) var(--s3)}
+  .site .board-cta{min-height:48px}
+  .site .board-cta.btn-primary{flex:0 0 auto;justify-content:center;padding:0 20px}
+  .site .board-cta-arrow{display:none}
+  .site .board-cta-long{display:inline}.site .board-cta-short{display:none}
+  .site .board-cta.btn-ghost{padding:0 20px}
+  .site .board-photo{grid-column:span 7;grid-row:span 3;order:0;aspect-ratio:auto;min-height:392px}
+  .site .board-strip{grid-column:span var(--span,3);grid-row:span 1;justify-content:center;gap:6px;min-height:120px;padding:var(--s4) var(--s5)}
+  .site .board-photo[data-banner] .hero-ph{transform:scale(1.4);transform-origin:70% 80%}
+  .site .board-strip[data-wide]{grid-column:span var(--span,3)}
+  .site .board-products{display:grid;grid-column:1 / -1;grid-row:span 2;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:var(--s4)}
+  .site .board-product{display:flex;flex-direction:column;padding:0;text-align:left;font:inherit;color:inherit;cursor:pointer;transition:border-color 150ms ease}
+  .site .board-product:hover{border-color:var(--muted)}
+  .site .board-thumb{display:block;flex:1;min-height:0;background:var(--paper-2)}
+  .site .board-thumb-img{display:block;width:100%;height:100%;object-fit:cover}
+  .site .board-product-row{display:flex;justify-content:space-between;gap:var(--s3);padding:var(--s3) var(--s4);font-size:14px;line-height:1.3}
+  .site .board-product-row b{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+}
+/* Hindi: the Devanagari faces need room above and below the line, no tracking (the .site:lang(hi) rules, repeated
+   here so they hold when only the board carries lang). */
+.site .board:lang(hi) .display{font-size:calc(var(--t-display) * .88);line-height:1.22;letter-spacing:0;font-weight:var(--display-w-hi,600)}
+.site .board:lang(hi) .kicker{letter-spacing:0;text-transform:none;font-size:13px}
+.site[data-motion=none] .board .hero-stagger>*,.site[data-motion=none] .board .tile-in,.site[data-motion=none] .board .hero-ph-in{animation:none}
 `;

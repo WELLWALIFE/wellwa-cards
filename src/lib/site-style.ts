@@ -1,10 +1,11 @@
-// The website's design system: palettes, font pairs, hero layouts and corner radii, resolved from `card.site.style`
+// The website's design system: palettes, font sets, hero layouts and corner radii, resolved from `card.site.style`
 // (the owner's choice in /poster/website/edit, or what a reference website suggested) with the card's own colour
 // and look as the fallback — so a website that never chose anything still renders in its brand colour.
 //
 // Pure module (no React, no fetch, no DOM): used by the public website renderer, the website editor and the
-// server (reference-website → style).
-import type { Card, SiteStyle, SiteLayouts } from "./types";
+// server (reference-website → style). The tokens it emits are documented in docs/premium-look.md §2.
+import type { Card, SiteStyle, SiteLayouts, HeroVariant } from "./types";
+import { HERO_VARIANTS } from "./types";
 import { luminance } from "./color";
 import type { LookDef } from "./looks";
 
@@ -47,6 +48,93 @@ function readable(hex: string): string {
   return h;
 }
 
+/* ================= OKLCH (no dependency) ================= */
+// Every website colour is derived from one hue in OKLCH (docs/premium-look.md §2.3) and emitted as sRGB hex first,
+// OKLCH second — Chrome/WebView < 111 drops the oklch() declaration and keeps the hex.
+
+const lin = (v: number) => (v <= 0.04045 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4);
+const gam = (v: number) => (v <= 0.0031308 ? 12.92 * v : 1.055 * v ** (1 / 2.4) - 0.055);
+function oklabToLinear(L: number, a: number, b: number): [number, number, number] {
+  const l = (L + 0.3963377774 * a + 0.2158037573 * b) ** 3;
+  const m = (L - 0.1055613458 * a - 0.0638541728 * b) ** 3;
+  const s = (L - 0.0894841775 * a - 1.291485548 * b) ** 3;
+  return [4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s, -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s, -0.0041960863 * l - 0.7034186147 * m + 1.707614701 * s];
+}
+/** OKLCH of a #rrggbb colour: l 0..1, c (≈ 0..0.4), h in degrees. */
+export function hexToOklch(hex: string): { l: number; c: number; h: number } {
+  const [r, g, b] = rgb(hex6(hex) ?? "#0e9e90").map((v) => lin(v / 255));
+  const l_ = Math.cbrt(0.4122214708 * r + 0.5363325363 * g + 0.0514459929 * b);
+  const m_ = Math.cbrt(0.2119034982 * r + 0.6806995451 * g + 0.1073969566 * b);
+  const s_ = Math.cbrt(0.0883024619 * r + 0.2817188376 * g + 0.6299787005 * b);
+  const L = 0.2104542553 * l_ + 0.793617785 * m_ - 0.0040720468 * s_;
+  const A = 1.9779984951 * l_ - 2.428592205 * m_ + 0.4505937099 * s_;
+  const B = 0.0259040371 * l_ + 0.7827717662 * m_ - 0.808675766 * s_;
+  const c = Math.hypot(A, B), h = c < 1e-4 ? 0 : ((Math.atan2(B, A) * 180) / Math.PI + 360) % 360;
+  return { l: L, c, h };
+}
+/** #rrggbb for an OKLCH colour (l 0..1); a colour outside sRGB loses chroma until it fits, never its lightness. */
+export function oklchToHex(l: number, c: number, h: number): string {
+  const rad = (h * Math.PI) / 180;
+  const fits = (ch: number) => oklabToLinear(l, ch * Math.cos(rad), ch * Math.sin(rad)).every((v) => v > -1e-4 && v < 1 + 1e-4);
+  let lo = 0, hi = c;
+  if (fits(c)) lo = c;
+  else for (let i = 0; i < 12; i++) { const mid = (lo + hi) / 2; if (fits(mid)) lo = mid; else hi = mid; }
+  const [r, g, b] = oklabToLinear(l, lo * Math.cos(rad), lo * Math.sin(rad)).map((v) => gam(Math.max(0, Math.min(1, v))) * 255);
+  return toHex(r, g, b);
+}
+const pct = (n: number) => `${Math.round(n * 1000) / 10}%`;
+const num = (n: number) => String(Math.round(n * 1000) / 1000).replace(/^0\./, ".");
+const hex8 = (hex: string, a: number) => `${hex}${Math.round(a * 255).toString(16).padStart(2, "0")}`;
+/** One token, hex first and OKLCH second: `--paper:#f7f3ec;--paper:oklch(97% .012 85)`. */
+function tok(name: string, l: number, c: number, h: number, a?: number): string {
+  const hx = oklchToHex(l, c, h);
+  const ok = `oklch(${pct(l)} ${num(c)} ${num(h)}${a === undefined ? "" : ` / ${num(a)}`})`;
+  return `--${name}:${a === undefined ? hx : hex8(hx, a)};--${name}:${ok}`;
+}
+export type Tone = "light" | "dark";
+export type OklchOpts = {
+  /** Chroma of the source colour (capped at .13; a grey brand stays grey). Default .13. */
+  c?: number;
+  /** Jewellers, bridal, hotels: ivory paper, espresso ink, gold for 1 px rules and the kicker only. */
+  luxe?: boolean;
+  /** The hero photo is bright at the bottom: the scrim deepens to .90. */
+  bright?: boolean;
+};
+/** The colour tokens of docs/premium-look.md §2.3 for one hue, as CSS declarations for the `.site` root. */
+export function oklchVars(h: number, tone: Tone, opts: OklchOpts = {}): string {
+  h = ((h % 360) + 360) % 360;
+  // Gold is a line, never a fill: for hues around gold the accent stays quiet.
+  const C = Math.min(opts.c ?? 0.13, h >= 70 && h <= 100 ? 0.09 : 0.13);
+  const dark = tone === "dark";
+  const paper: [number, number, number] = opts.luxe ? [0.96, 0.015, 85] : dark ? [0.18, 0.02, h] : [0.97, 0.012, h];
+  const paper2: [number, number, number] = opts.luxe ? [0.93, 0.02, 85] : dark ? [0.22, 0.025, h] : [0.94, 0.018, h];
+  const lightInk: [number, number, number] = opts.luxe ? [0.24, 0.03, 60] : [0.22, 0.025, h];
+  const ink: [number, number, number] = dark ? [0.95, 0.01, h] : lightInk;
+  const accent: [number, number, number] = [dark ? 0.72 : 0.48, C, h];
+  const accentHex = oklchToHex(...accent), paperHex = oklchToHex(...paper), lightInkHex = oklchToHex(...lightInk);
+  // Text on the accent: paper when it reads, else the light row's ink (a 72 % accent on a dark page carries ink).
+  const onAccent = !dark && contrast(accentHex, paperHex) >= 4.5 ? paperHex : lightInkHex;
+  const shadowInk = oklchToHex(...ink);
+  const out = [
+    `--h:${num(h)}`,
+    tok("paper", ...paper), tok("paper-2", ...paper2), tok("ink", ...ink),
+    tok("muted", ...ink, dark ? 0.7 : 0.64), tok("line", ...ink, dark ? 0.14 : 0.1),
+    tok("accent", ...accent), tok("accent-soft", dark ? 0.3 : 0.93, dark ? 0.05 : 0.04, h),
+    `--on-accent:${onAccent}`,
+    tok("hero-ink", 0.15, 0.02, h), tok("hero-text", 0.97, 0.01, h, 0.94), tok("hero-muted", 0.97, 0.01, h, 0.64),
+    `--hero-line:rgba(255,255,255,.12)`,
+    // WhatsApp's green on the WhatsApp control only; `--wa-dark` for that control on a dark hero of a light page.
+    `--wa:${dark ? "#25d366" : "#1faa5c"}`, `--wa-dark:#25d366`,
+    tok("scrim-bot", 0.15, 0.02, h, opts.bright ? 0.9 : 0.82), tok("scrim-mid", 0.15, 0.02, h, 0.45), `--scrim-top:transparent`,
+    `--star:var(--accent)`,
+    opts.luxe ? tok("gold", 0.72, 0.09, 85) : `--gold:var(--accent)`,
+    // Elevation shadow (ink at 6 %): `.s-card` on the cinematic blueprint, floating sheets, the sticky bar.
+    `--e-1:0 1px 2px ${hex8(shadowInk, 0.06)},0 8px 24px ${hex8(shadowInk, 0.06)}`,
+    `--scheme:${dark ? "dark" : "light"}`,
+  ];
+  return out.join(";");
+}
+
 /* ================= palettes ================= */
 
 export type SitePalette = {
@@ -58,11 +146,16 @@ export type SitePalette = {
   /** Eyebrows and rules on light surfaces (defaults to `mid`). */ mark?: string;
   /** Text on `deep`. */ ink: string;
   /** Footer base when `deep` is light. */ foot?: string;
+  /** The hero's tone (the page itself is paper either way). */
   tone: "dark" | "light";
+  /** OKLCH hue and chroma of `mid`: the input of oklchVars(). */
+  h: number; c: number;
 };
 
-const P = (key: string, name: string, hi: string, deep: string, mid: string, glow: string, accent: string, extra: Partial<SitePalette> = {}): SitePalette =>
-  ({ key, name, hi, deep, mid, glow, accent, ink: "#ffffff", tone: "dark", ...extra });
+const P = (key: string, name: string, hi: string, deep: string, mid: string, glow: string, accent: string, extra: Partial<SitePalette> = {}): SitePalette => {
+  const { h, c } = hexToOklch(mid);
+  return { key, name, hi, deep, mid, glow, accent, ink: "#ffffff", tone: "dark", h, c, ...extra };
+};
 
 /** Hand-picked website palettes. "brand" is special: built from the card's colour (or `style.color`). */
 export const SITE_PALETTES: SitePalette[] = [
@@ -88,12 +181,14 @@ export const PALETTE_KEYS = SITE_PALETTES.map((p) => p.key);
 export function brandPalette(color: string): SitePalette {
   const mid = readable(color);
   const [h, s, l] = toHsl(mid);
+  const ok = hexToOklch(mid);
   return {
     key: "brand", name: "Your colour", hi: "आपका रंग", tone: "dark", ink: "#ffffff",
     deep: mixHex(mid, "#0b1214", 0.62),
     mid,
     glow: fromHsl(h + 18, Math.min(1, s * 1.05), Math.min(0.62, l + 0.14)),
     accent: fromHsl(h + 24, Math.min(1, s), 0.86),
+    h: ok.h, c: ok.c,
   };
 }
 
@@ -121,33 +216,166 @@ export function nearestPalette(color: string): string {
 }
 
 /* ================= fonts ================= */
+// Self-hosted (docs/premium-look.md §2.1): scripts/fetch-fonts.mjs reads FONT_FACES below, downloads one woff2 per
+// row into public/fonts and writes the @font-face block into src/app/globals.css. Nothing here loads from Google.
 
+export type FontFaceRow = { family: string; /** "400" (static) or "400-600" (one variable file). */ w: string; sub: "latin" | "deva"; ital: boolean };
+const face = (family: string, w: string, sub: "latin" | "deva" = "latin", ital = false): FontFaceRow => ({ family, w, sub, ital });
+/** Every self-hosted file: one row = one woff2 (the script parses these rows, so keep one `face(…)` per line). */
+export const FONT_FACES: FontFaceRow[] = [
+  // Display, Latin
+  face("Instrument Serif", "400"),
+  face("Instrument Serif", "400", "latin", true),
+  face("Playfair Display", "400-500"),
+  face("Newsreader", "400-500"),
+  face("Fraunces", "400-500"),
+  face("DM Serif Display", "400"),
+  face("Lora", "500"),
+  face("Bricolage Grotesque", "600-700"),
+  face("Space Grotesk", "600"),
+  // Text, Latin (one variable file each; Mukta is static)
+  face("Inter", "400-600"),
+  face("Manrope", "400-600"),
+  face("DM Sans", "400-500"),
+  face("Mukta", "400"),
+  face("Mukta", "600"),
+  // Devanagari (downloaded only when a Devanagari glyph paints)
+  face("Tiro Devanagari Hindi", "400"),
+  face("Tiro Devanagari Hindi", "400", "deva"),
+  face("Noto Sans Devanagari", "400-600", "deva"),
+  face("Noto Serif Devanagari", "400-500", "deva"),
+  face("Hind", "400", "deva"),
+  face("Hind", "600", "deva"),
+  face("Hind", "700", "deva"),
+  face("Mukta", "400", "deva"),
+  face("Mukta", "600", "deva"),
+  face("Yatra One", "400", "deva"),
+];
+const slug = (family: string) => family.toLowerCase().replace(/\s+/g, "-");
+/** The public path of one self-hosted file: /fonts/<family>-<wght>[-ital][-deva].woff2. */
+export const fontFile = (f: FontFaceRow) => `/fonts/${slug(f.family)}-${f.w}${f.ital ? "-ital" : ""}${f.sub === "deva" ? "-deva" : ""}.woff2`;
+const SELF_HOSTED = new Set(FONT_FACES.map((f) => f.family));
+/** The latin file of `family` that carries weight `w` (a static of that weight, else the variable range). */
+function latinFile(family: string, w: number): string | null {
+  const rows = FONT_FACES.filter((f) => f.family === family && f.sub === "latin" && !f.ital);
+  const hit = rows.find((f) => f.w === String(w)) ?? rows.find((f) => { const [a, b] = f.w.split("-").map(Number); return b !== undefined && w >= a && w <= b; }) ?? rows[0];
+  return hit ? fontFile(hit) : null;
+}
+
+/** Fallback metrics per family: the local Arial / Times New Roman face, size-adjusted to the web font so the swap
+ *  moves nothing (CLS). Percentages, computed by scripts/font-metrics.mjs (fontkit) from the downloaded files. */
+export type FontMetrics = { fb: "Arial" | "Times New Roman"; sizeAdjust: number; ascent: number; descent: number; lineGap: number };
+/* metrics:start */
+export const FONT_METRICS: Record<string, FontMetrics> = {
+  "Instrument Serif": { fb: "Times New Roman", sizeAdjust: 84.05, ascent: 117.79, descent: 36.88, lineGap: 0 },
+  "Playfair Display": { fb: "Times New Roman", sizeAdjust: 112.3, ascent: 96.35, descent: 22.35, lineGap: 0 },
+  "Newsreader": { fb: "Times New Roman", sizeAdjust: 105.25, ascent: 69.83, descent: 25.18, lineGap: 0 },
+  "Fraunces": { fb: "Times New Roman", sizeAdjust: 126.63, ascent: 77.23, descent: 20.14, lineGap: 0 },
+  "DM Serif Display": { fb: "Times New Roman", sizeAdjust: 110.73, ascent: 93.56, descent: 30.26, lineGap: 0 },
+  "Lora": { fb: "Times New Roman", sizeAdjust: 117.6, ascent: 85.54, descent: 23.3, lineGap: 0 },
+  "Bricolage Grotesque": { fb: "Arial", sizeAdjust: 111.7, ascent: 83.26, descent: 24.17, lineGap: 0 },
+  "Space Grotesk": { fb: "Arial", sizeAdjust: 110.76, ascent: 88.84, descent: 26.36, lineGap: 0 },
+  "Inter": { fb: "Arial", sizeAdjust: 107.29, ascent: 90.29, descent: 22.48, lineGap: 0 },
+  "Manrope": { fb: "Arial", sizeAdjust: 99.74, ascent: 106.88, descent: 30.08, lineGap: 0 },
+  "DM Sans": { fb: "Arial", sizeAdjust: 105.58, ascent: 93.95, descent: 29.36, lineGap: 0 },
+  "Mukta": { fb: "Arial", sizeAdjust: 94.89, ascent: 119.08, descent: 56.06, lineGap: 0 },
+  "Tiro Devanagari Hindi": { fb: "Times New Roman", sizeAdjust: 112.75, ascent: 66.96, descent: 21.73, lineGap: 29.27 },
+};
+/* metrics:end */
+
+export type FontSet = {
+  key: string; name: string; hi: string; blurb: string;
+  /** Latin display face and its H1 weight; serif → −.02em tracking, sans → −.03em. */
+  display: { family: string; w: number; serif: boolean; ital?: boolean };
+  /** Latin text face and the weights the page uses (400 body, 500 meta, 600 kicker / CTA). */
+  text: { family: string; w: number[] };
+  /** Devanagari faces: the display face joins the H1 stack on Hindi-first sites; the text face is always in the stack. */
+  deva: { display: { family: string; w: number }; text: string };
+};
+const S = (key: string, name: string, hi: string, blurb: string, display: FontSet["display"], text: FontSet["text"], devaDisplay: FontSet["deva"]["display"], devaText: string): FontSet =>
+  ({ key, name, hi, blurb, display, text, deva: { display: devaDisplay, text: devaText } });
+/** The nine type sets (docs/premium-look.md §2.1). Two families, three weights at most; serif display ≤ 500. */
+export const FONT_SETS: FontSet[] = [
+  S("luxury", "Luxury", "लक्ज़री", "Fine serif — jewellers, boutiques, hotels", { family: "Instrument Serif", w: 400, serif: true, ital: true }, { family: "Inter", w: [400, 500, 600] }, { family: "Tiro Devanagari Hindi", w: 400 }, "Noto Sans Devanagari"),
+  S("elegant", "Elegant", "एलिगेंट", "Classic serif — bridal, salons, garments, events", { family: "Playfair Display", w: 400, serif: true }, { family: "Inter", w: [400, 500, 600] }, { family: "Tiro Devanagari Hindi", w: 400 }, "Hind"),
+  S("editorial", "Editorial", "एडिटोरियल", "Book-like serif — CAs, lawyers, coaching, ayurveda", { family: "Newsreader", w: 400, serif: true }, { family: "Inter", w: [400, 500, 600] }, { family: "Noto Serif Devanagari", w: 400 }, "Mukta"),
+  S("warm", "Warm", "वार्म", "Soft serif, friendly sans — cafes, sweets, bakeries, restaurants", { family: "Fraunces", w: 400, serif: true }, { family: "Manrope", w: [400, 600] }, { family: "Yatra One", w: 400 }, "Mukta"),
+  S("clinic", "Clinic", "क्लिनिक", "Calm and clean — doctors, dentists, hospitals, labs", { family: "DM Serif Display", w: 400, serif: true }, { family: "DM Sans", w: [400, 500] }, { family: "Noto Serif Devanagari", w: 400 }, "Hind"),
+  S("honest", "Honest", "ऑनेस्ट", "Plain and trustworthy — kirana, dairy, agri, hardware (Hindi ready)", { family: "Lora", w: 500, serif: true }, { family: "Mukta", w: [400, 600] }, { family: "Mukta", w: 600 }, "Mukta"),
+  S("bold", "Bold", "बोल्ड", "Strong grotesque — gyms, electronics, auto", { family: "Bricolage Grotesque", w: 700, serif: false }, { family: "Inter", w: [400, 500, 600] }, { family: "Hind", w: 700 }, "Hind"),
+  S("tech", "Tech", "टेक", "Geometric — IT, repair, courier, gadgets", { family: "Space Grotesk", w: 600, serif: false }, { family: "Inter", w: [400, 500, 600] }, { family: "Hind", w: 600 }, "Hind"),
+  S("hindi", "Hindi", "हिन्दी", "Made for Devanagari — हिन्दी websites", { family: "Tiro Devanagari Hindi", w: 400, serif: true }, { family: "Mukta", w: [400, 600] }, { family: "Tiro Devanagari Hindi", w: 400 }, "Mukta"),
+];
+/** Keys stored before the sets existed (FONT_PAIRS of Sept 2026) → the set they now mean. */
+export const FONT_ALIASES: Record<string, string> = { modern: "tech", friendly: "warm" };
+/** The set a stored `style.font` means; null for "look" / unset / unknown. */
+export function fontSetFor(key: string | undefined | null): FontSet | null {
+  if (!key || key === "look") return null;
+  const k = FONT_ALIASES[key] ?? key;
+  return FONT_SETS.find((s) => s.key === k) ?? null;
+}
+
+/** The pickers' list: "look" (the card look's fonts) + the nine sets. `head`/`body` are the Latin faces. */
 export type FontPair = { key: string; name: string; hi: string; head: string; body: string; headWeight?: number; blurb: string };
 export const FONT_PAIRS: FontPair[] = [
   { key: "look", name: "Card look", hi: "कार्ड जैसा", head: "", body: "", blurb: "The fonts of your card's look" },
-  { key: "modern", name: "Modern", hi: "मॉडर्न", head: "Plus Jakarta Sans", body: "Inter", blurb: "Clean, startup-like" },
-  { key: "elegant", name: "Elegant", hi: "एलिगेंट", head: "Playfair Display", body: "Inter", blurb: "Serif headings — boutiques, clinics, studios" },
-  { key: "luxury", name: "Luxury", hi: "लक्ज़री", head: "Cormorant Garamond", body: "Inter", headWeight: 600, blurb: "Fine serif — jewellers, hotels, premium brands" },
-  { key: "friendly", name: "Friendly", hi: "फ्रेंडली", head: "Poppins", body: "Inter", blurb: "Round and warm — shops, food, families (Hindi ready)" },
-  { key: "bold", name: "Bold", hi: "बोल्ड", head: "Manrope", body: "Inter", headWeight: 800, blurb: "Heavy headings — gyms, builders, sales" },
-  { key: "editorial", name: "Editorial", hi: "एडिटोरियल", head: "Lora", body: "Inter", blurb: "Book-like serif — coaches, writers, ayurveda" },
-  { key: "tech", name: "Tech", hi: "टेक", head: "Space Grotesk", body: "Inter", blurb: "Geometric — IT, mobile, gadgets" },
-  { key: "hindi", name: "Hindi", hi: "हिन्दी", head: "Baloo 2", body: "Mukta", blurb: "Made for Devanagari — हिन्दी websites" },
+  ...FONT_SETS.map((s): FontPair => ({ key: s.key, name: s.name, hi: s.hi, head: s.display.family, body: s.text.family, headWeight: s.display.w, blurb: s.blurb })),
 ];
-/** Google Fonts weights each family really has (the css2 API refuses a request naming a weight a family lacks). */
+
+const SANS_FB = `system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif`;
+const SERIF_FB = `Georgia, "Times New Roman", "Noto Serif", serif`;
+const q = (f: string) => `"${f}"`;
+const withFallback = (family: string) => (FONT_METRICS[family] ? `${q(family)}, ${q(`${family} Fallback`)}` : q(family));
+/** The font variables of one set for the inline `<style>`: `--font-display`, `--font-text`, `--font-deva-display`,
+ *  `--display-w`, `--display-w-hi`, `--display-lh`, `--display-tr`, `--text-w`, plus the `--look-head/--look-body/--head-w`
+ *  aliases. `hi`: a Hindi-first site (card.language "hi", or a Devanagari name) — its Devanagari display face joins the
+ *  H1 stack; else a Hindi H1 is set in the Devanagari text face at `--display-w-hi` (600), so no display file downloads
+ *  for one translated line. */
+export function fontCss(set: FontSet, opts: { hi?: boolean } = {}): string {
+  const devaText = q(set.deva.text);
+  const devaIsText = set.deva.display.family === set.deva.text;
+  const devaHead = opts.hi || devaIsText ? q(set.deva.display.family) : devaText;
+  const display = `${withFallback(set.display.family)}, ${devaHead}, ${set.display.serif ? SERIF_FB : SANS_FB}`;
+  // The Devanagari text face first: its files carry a unicode-range, so Latin falls straight through to the text face.
+  const text = set.deva.text === set.text.family ? `${withFallback(set.text.family)}, ${SANS_FB}` : `${devaText}, ${withFallback(set.text.family)}, ${SANS_FB}`;
+  const devaDisplay = `${q(set.deva.display.family)}, ${devaText}, ${set.display.serif ? SERIF_FB : SANS_FB}`;
+  const wHi = opts.hi || devaIsText ? set.deva.display.w : 600;
+  return [
+    `--font-display:${display}`, `--font-text:${text}`, `--font-deva-display:${devaDisplay}`,
+    `--display-w:${set.display.w}`, `--display-w-hi:${wHi}`, `--display-lh:.98`, `--display-tr:${set.display.serif ? "-.02em" : "-.03em"}`,
+    `--text-w:${set.text.w[0]}`,
+    `--look-head:var(--font-display)`, `--look-body:var(--font-text)`, `--head-w:var(--display-w)`,
+  ].join(";");
+}
+/** The two files worth a `<link rel="preload" as="font">`: the display face at its H1 weight and the text file. */
+export function fontPreload(set: FontSet): string[] {
+  return [latinFile(set.display.family, set.display.w), latinFile(set.text.family, set.text.w[0])].filter((x): x is string => !!x);
+}
+
+/** Families without an 800 weight on Google Fonts (the css2 API refuses a request naming a weight a family lacks). */
 const NO_800 = new Set(["Cormorant Garamond", "Lora", "Space Grotesk"]);
-/** Google Fonts stylesheet for the given families (Inter is the site default and needs no request). */
+/** Google Fonts stylesheet for the families that are NOT self-hosted (a card look's fonts); "" when none is needed.
+ *  Inter is self-hosted now, so it never needs a request either. */
 export function fontHref(families: string[]): string {
-  const fams = Array.from(new Set(families.filter(Boolean))).filter((f) => f !== "Inter");
+  const fams = Array.from(new Set(families.filter(Boolean))).filter((f) => f !== "Inter" && !SELF_HOSTED.has(f));
   if (!fams.length) return "";
   return `https://fonts.googleapis.com/css2?${fams.map((f) => `family=${encodeURIComponent(f).replace(/%20/g, "+")}:wght@400;500;600;700${NO_800.has(f) ? "" : ";800"}`).join("&")}&display=swap`;
 }
-export type ResolvedFonts = { key: string; head: string; body: string; headWeight: number; href: string };
-export function fontsFor(style: SiteStyle | undefined, look: LookDef): ResolvedFonts {
-  const pair = FONT_PAIRS.find((f) => f.key === style?.font && f.key !== "look");
-  const head = pair?.head || look.headFont;
-  const body = pair?.body || look.bodyFont || look.headFont;
-  return { key: pair?.key ?? "look", head, body, headWeight: pair?.headWeight ?? (look.key === "bold" ? 800 : 700), href: fontHref([head, body]) };
+export type ResolvedFonts = {
+  key: string; head: string; body: string; headWeight: number;
+  /** Google stylesheet for a card look's fonts; "" for a set (self-hosted). */ href: string;
+  /** The set, or null when the website wears the card look's fonts. */ set: FontSet | null;
+  /** fontCss(set) — or the look's two faces as the same variables. */ css: string;
+  /** fontPreload(set); empty for a look. */ preload: string[];
+};
+export function fontsFor(style: SiteStyle | undefined, look: LookDef, opts: { hi?: boolean } = {}): ResolvedFonts {
+  const set = fontSetFor(style?.font);
+  if (set) {
+    return { key: set.key, head: set.display.family, body: set.text.family, headWeight: set.display.w, href: "", set, css: fontCss(set, opts), preload: fontPreload(set) };
+  }
+  const head = look.headFont, body = look.bodyFont || look.headFont, headWeight = look.key === "bold" ? 800 : 700;
+  const css = [`--font-display:'${head}', Inter, ${SANS_FB}`, `--font-text:'${body}', Inter, ${SANS_FB}`, `--font-deva-display:var(--font-display)`, `--display-w:${headWeight}`, `--display-w-hi:${headWeight}`, `--display-lh:1.02`, `--display-tr:-.02em`, `--text-w:400`, `--look-head:var(--font-display)`, `--look-body:var(--font-text)`, `--head-w:var(--display-w)`].join(";");
+  return { key: "look", head, body, headWeight, href: fontHref([head, body]), set: null, css, preload: [] };
 }
 
 /* ================= hero + corners ================= */
@@ -173,12 +401,18 @@ export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolea
 export const BLUEPRINT_KEYS = ["bento", "cinematic", "story"] as const;
 export type BlueprintKey = (typeof BLUEPRINT_KEYS)[number];
 
-export const RADII: { key: NonNullable<SiteStyle["radius"]>; name: string; hi: string; r: string }[] = [
-  { key: "sharp", name: "Sharp", hi: "शार्प", r: "0.4rem" },
-  { key: "soft", name: "Soft", hi: "सॉफ्ट", r: "1rem" },
-  { key: "round", name: "Round", hi: "राउंड", r: "1.5rem" },
+/** Corner sets: `r` is the legacy `--r` (unchanged); ctl / card / tile / img are the four tokens of §2.4, in px. */
+export const RADII: { key: NonNullable<SiteStyle["radius"]>; name: string; hi: string; r: string; ctl: number; card: number; tile: number; img: number }[] = [
+  { key: "sharp", name: "Sharp", hi: "शार्प", r: "0.4rem", ctl: 4, card: 8, tile: 12, img: 4 },
+  { key: "soft", name: "Soft", hi: "सॉफ्ट", r: "1rem", ctl: 12, card: 16, tile: 20, img: 8 },
+  { key: "round", name: "Round", hi: "राउंड", r: "1.5rem", ctl: 16, card: 24, tile: 28, img: 12 },
 ];
 export const radiusFor = (style: SiteStyle | undefined, look: LookDef): string => RADII.find((r) => r.key === style?.radius)?.r ?? look.vars["--r"] ?? "1rem";
+/** `--r-ctl/--r-card/--r-tile/--r-img` for a style ("soft" when nothing was chosen). */
+export function radiusVars(style: SiteStyle | undefined): string {
+  const r = RADII.find((x) => x.key === style?.radius) ?? RADII[1];
+  return `--r-ctl:${r.ctl}px;--r-card:${r.card}px;--r-tile:${r.tile}px;--r-img:${r.img}px`;
+}
 
 /* ================= the resolved design ================= */
 
@@ -196,23 +430,34 @@ export type SiteDesign = {
   vars: string;
 };
 
-export function siteDesign(card: Pick<Card, "themeColor" | "site" | "template">, look: LookDef): SiteDesign {
+const DEVA = /[ऀ-ॿ]/;
+export type SiteDesignOpts = {
+  /** The mood brief's luxury flag (trade-moods.ts): ivory paper, espresso ink, a gold line. */
+  luxe?: boolean;
+  /** The hero photo is bright where the text sits (hero.bright). */
+  bright?: boolean;
+};
+export function siteDesign(card: Pick<Card, "themeColor" | "site" | "template"> & Partial<Pick<Card, "language" | "name" | "company">>, look: LookDef, opts: SiteDesignOpts = {}): SiteDesign {
   const palette = paletteFor(card);
-  const fonts = fontsFor(card.site?.style, look);
+  const hi = card.language === "hi" || DEVA.test(card.company || card.name || "");
+  const fonts = fontsFor(card.site?.style, look, { hi });
   const radius = radiusFor(card.site?.style, look);
   const on = inkOn(palette.mid);
   const foot = palette.foot ?? palette.deep;
   const mark = palette.mark ?? palette.mid;
   const vars = [
+    // The §2.3 tokens. `palette.tone` is the hero's tone; the page is paper until a dark-page preset exists.
+    oklchVars(palette.h, "light", { c: palette.c, luxe: opts.luxe, bright: opts.bright }),
+    radiusVars(card.site?.style),
+    fonts.css,
+    // Legacy names, one release (docs/premium-look.md §2): the classic page and the sections still read them, with the
+    // palette's own hex so nothing they draw changes colour. `--grad` is gone from here; globals.css carries it.
     `--p-deep:${palette.deep}`, `--p-mid:${palette.mid}`, `--p-glow:${palette.glow}`, `--p-accent:${palette.accent}`,
-    `--p-ink:${palette.ink}`, `--p-on:${on}`, `--p-mark:${mark}`, `--p-foot:${foot}`, `--p-foot-ink:${inkOn(foot)}`,
+    `--p-ink:${palette.ink}`, `--p-on:${on}`, `--p-mark:${mark}`, `--p-foot:${foot}`, `--p-foot-ink:${inkOn(foot)}`, `--tc:${palette.mid}`,
     // 7% was invisible: every section read as one long white page. 12% is a tint a visitor notices without
     // the page turning into stripes.
     `--p-soft:color-mix(in srgb, ${palette.mid} 12%, var(--surface))`,
-    `--grad:linear-gradient(120deg, ${palette.mid}, ${palette.glow})`,
     `--r:${radius}`,
-    `--look-head:'${fonts.head}', Inter, system-ui, sans-serif`, `--look-body:'${fonts.body}', Inter, system-ui, sans-serif`,
-    `--head-w:${fonts.headWeight}`,
   ].join(";");
   return { palette, fonts, radius, heroInk: palette.ink, on, foot, vars };
 }
@@ -234,16 +479,16 @@ const ROUNDED = /poppins|nunito|quicksand|baloo|fredoka|comfortaa|varela|mukta|h
 const TECH = /space grotesk|space mono|ibm plex|jetbrains|fira|roboto mono|sora|syne|archivo/i;
 const HEAVY = /montserrat|manrope|raleway|oswald|bebas|anton|barlow|work sans|outfit/i;
 /** Design choices suggested by a reference website: its colour becomes the website's colour (never the card's),
- *  its font family picks the nearest pair, a big top photo suggests the photo hero. */
+ *  its font family picks the nearest set, a big top photo suggests the photo hero. */
 export function styleFromReference(r: ReferenceStyle): SiteStyle {
   const color = r.colors.map(hex6).find((c): c is string => !!c && luminance(c) < 0.75 && toHsl(c)[1] > 0.12);
   const named = r.fonts.find((f) => FONT_PAIRS.some((p) => p.head && p.head.toLowerCase() === f.toLowerCase()));
   const font = named ? FONT_PAIRS.find((p) => p.head.toLowerCase() === named.toLowerCase())!.key
     : r.fonts.some((f) => SERIF.test(f)) ? "elegant"
-    : r.fonts.some((f) => ROUNDED.test(f)) ? "friendly"
+    : r.fonts.some((f) => ROUNDED.test(f)) ? "warm"
     : r.fonts.some((f) => TECH.test(f)) ? "tech"
     : r.fonts.some((f) => HEAVY.test(f)) ? "bold"
-    : "modern";
+    : "tech";
   const style: SiteStyle = { font, hero: r.heroImage ? "photo" : "split" };
   if (color) { style.palette = "brand"; style.color = color; }
   else if (r.dark) style.palette = "noir";
@@ -258,13 +503,27 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (typeof o.blueprint === "string" && (BLUEPRINT_KEYS as readonly string[]).includes(o.blueprint)) out.blueprint = o.blueprint as SiteStyle["blueprint"];
   if (typeof o.palette === "string" && PALETTE_KEYS.includes(o.palette)) out.palette = o.palette;
   const color = hex6(o.color); if (color) out.color = color;
-  if (typeof o.font === "string" && FONT_PAIRS.some((f) => f.key === o.font)) out.font = o.font;
+  // An old key ("modern", "friendly") is stored as the set it now means.
+  if (typeof o.font === "string" && fontSetFor(o.font)) out.font = FONT_ALIASES[o.font] ?? o.font;
   if (typeof o.hero === "string" && HERO_LAYOUTS.some((h) => h.key === o.hero)) out.hero = o.hero as HeroLayout;
+  if (typeof o.heroVariant === "string" && (HERO_VARIANTS as readonly string[]).includes(o.heroVariant)) out.heroVariant = o.heroVariant as HeroVariant;
   if (typeof o.radius === "string" && RADII.some((r) => r.key === o.radius)) out.radius = o.radius as NonNullable<SiteStyle["radius"]>;
   const lay = cleanLayouts(o.layouts);
   if (lay) out.layouts = lay;
   if (typeof o.pattern === "string" && (["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(o.pattern)) out.pattern = o.pattern as SiteStyle["pattern"];
   if (typeof o.motion === "string" && (["none", "calm", "lively"] as string[]).includes(o.motion)) out.motion = o.motion as SiteStyle["motion"];
+  return out;
+}
+
+/** The hero's media facts (`site.hero.lqip` / `bright` / `kicker`) with only safe values — for whoever writes `hero`
+ *  (the build, the banner finisher, the merge). A 24 px WebP LQIP is ≤ 600 bytes, so ≤ 900 base64 characters. */
+export function cleanHeroExtras(x: unknown): { lqip?: string; bright?: boolean; kicker?: string } {
+  if (!x || typeof x !== "object") return {};
+  const o = x as Record<string, unknown>;
+  const out: { lqip?: string; bright?: boolean; kicker?: string } = {};
+  if (typeof o.lqip === "string" && /^data:image\/webp;base64,[A-Za-z0-9+/=]{20,900}$/.test(o.lqip)) out.lqip = o.lqip;
+  if (typeof o.bright === "boolean") out.bright = o.bright;
+  if (typeof o.kicker === "string" && o.kicker.trim() && o.kicker.trim().length <= 60 && !/[<>]/.test(o.kicker)) out.kicker = o.kicker.trim();
   return out;
 }
 
@@ -345,17 +604,17 @@ export function styleFromLook(m: MeasuredLook): SiteStyle {
   if (usable && accent) { style.palette = "brand"; style.color = accent; }
   else if (luminance(m.bg) < 0.25 && readablePage) style.palette = "noir";
 
-  // Fonts: the family it actually renders, when we have that pair; otherwise the nearest family in feel.
+  // Fonts: the family it actually renders, when we have that set; otherwise the nearest family in feel.
   const named = [m.headFont, m.bodyFont].filter(Boolean)
     .map((f) => FONT_PAIRS.find((p) => p.head && p.head.toLowerCase() === String(f).toLowerCase()))
     .find(Boolean);
   const all = `${m.headFont ?? ""} ${m.bodyFont ?? ""}`;
   style.font = named?.key
     ?? (SERIF.test(all) ? "elegant"
-      : ROUNDED.test(all) ? "friendly"
+      : ROUNDED.test(all) ? "warm"
       : TECH.test(all) ? "tech"
       : HEAVY.test(all) ? "bold"
-      : "modern");
+      : "tech");
 
   // A big picture at the top, or a split hero. A page with no hierarchy in its headings is not a model to
   // follow, so a flat one gets our own quiet hero rather than its flatness.

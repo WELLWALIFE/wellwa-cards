@@ -16,8 +16,9 @@ import { FONT_PAIRS, HERO_LAYOUTS, RADII, SITE_PALETTES, cleanLayouts, type Hero
 import { tradeAnswerLines } from "@/lib/trade-questions";
 import { logUsage } from "@/lib/ai-usage";
 import type { CardFacts, SetupInfo, SavedProduct } from "@/lib/card-facts";
-import type { SiteStyle } from "@/lib/types";
+import type { HeroVariant, SiteStyle } from "@/lib/types";
 import { BLUEPRINTS, cleanTiles, TILES, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
+import { HERO_VARIANTS_BY_BP } from "@/lib/site-hero";
 import { moodPlans, tradeMood, type MoodPlan } from "@/lib/trade-moods";
 
 export type SiteDesignPlan = {
@@ -71,13 +72,39 @@ const PRINCIPLES = `Design principles you follow (current, 2026):
 - Never pick a layout the content cannot fill.
 - A BLUEPRINT is the page's structure (the biggest decision): bento = a board of tiles, everything at a glance (shops, services, clinics); cinematic = a full-screen photo and scenes (hotels, gyms, jewellers, premium); story = full-screen swipe slides like Instagram (cafes, fashion, salons, creators). You give THREE plans on THREE different blueprints: the first is your pick for this business.`;
 
+/** The hero's shape within each blueprint (docs/premium-look.md §3.7): what it is and when it fits. The renderer
+ *  falls back to the no-photo variant on its own when the card has no picture, so the designer need not check. */
+export const HERO_VARIANT_BLURBS: Record<HeroVariant, string> = {
+  board: "the brand block beside the photo tile — the default board",
+  "board-statement": "type only, a wide brand tile with a thin accent rule (no photo)",
+  "board-photo-first": "the photo across the top, the brand block under it (cafes, salons, garments)",
+  "board-ink": "a dark brand tile on the paper board (gyms, electronics)",
+  "board-still": "a still-life of the owner's own product photos beside the words",
+  cover: "the full-bleed photo with the headline low over a bottom scrim — the default cover",
+  "cover-ink": "a dark ink field, type only (no photo, or a dark mood)",
+  "cover-split": "words on paper left, the picture 4:5 right, no scrim (clinics, CAs, schools, kirana)",
+  "cover-centre": "one centred block over the photo (hotels, banquets, events)",
+  "slide-photo": "the photo slide with the headline low — the default first slide",
+  "slide-ink": "a dark ink slide, type only (no photo)",
+  "slide-duo": "the photo on the top half, a paper panel with the words below (bright photos, garments, kirana)",
+  "slide-type": "a paper slide led by type (boutiques, persons)",
+};
+/** The gate on each variant, in words the designer reads. */
+const HERO_VARIANT_GATES: Partial<Record<HeroVariant, string>> = {
+  "board-still": "only with 4 or more product photos of the owner's own",
+  "cover-centre": "only for luxury trades (jewellery, bridal, hotels) and events",
+  "board-statement": "only when there is no banner photo", "cover-ink": "only when there is no banner photo or the mood is dark", "slide-ink": "only when there is no banner photo",
+};
+
 function menu(): string {
   const pals = SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => `${p.key} (${p.tone}, ${p.mid})`).join(", ");
   const fonts = FONT_PAIRS.filter((f) => f.key !== "look").map((f) => `${f.key} — ${f.blurb}`).join("; ");
   const heroes = HERO_LAYOUTS.map((h) => `${h.key} — ${h.blurb}`).join("; ");
   const radii = RADII.map((r) => r.key).join(", ");
+  const variants = BLUEPRINTS.map((b) => `${b.key}: ${HERO_VARIANTS_BY_BP[b.key].map((v) => `${v} — ${HERO_VARIANT_BLURBS[v]}${HERO_VARIANT_GATES[v] ? ` (${HERO_VARIANT_GATES[v]})` : ""}`).join("; ")}`).join(". ");
   return `The renderer can draw exactly these (use these words only):
 - blueprint: one of ${BLUEPRINTS.map((b) => `${b.key} — ${b.blurb}`).join("; ")}.
+- heroVariant (the hero's shape within the blueprint; pick from the chosen blueprint's own list): ${variants}.
 - tiles (bento only; the board shows these, in this order, only when the business has them): ${TILES.map((t) => t.key).join(", ")}.
 - palette: one of ${pals}; or "brand" with "color": "#rrggbb" when the business has a clear own colour (its logo, its trade's traditional colour).
 - font: one of ${fonts}.
@@ -127,6 +154,20 @@ function heroAllowed(h: string, b: DesignBrief): h is HeroLayout {
     && !(h === "marquee" && productPhotos + b.facts.photos.length < 4);
 }
 
+/** A hero variant the blueprint knows and the content can carry (docs/premium-look.md §3.7): `board-still` needs four
+ *  product photos; `cover-centre` is for luxury trades and events; the no-photo variants are left to the renderer,
+ *  which falls back to them itself when the card has no banner. */
+export function heroVariantAllowed(v: string, bp: BlueprintKey | undefined, b: Pick<DesignBrief, "setup" | "products" | "facts" | "stockBanner">): v is HeroVariant {
+  if (!bp || !(HERO_VARIANTS_BY_BP[bp] as readonly string[]).includes(v)) return false;
+  const productPhotos = b.products.filter((p) => p.images.length || p.photo).length;
+  const hasBanner = !!b.facts.bannerUrl || !!b.stockBanner;
+  const luxe = !!tradeMood(b.setup.category).luxe || /^(event|wedding|banquet|hotel)$/.test(b.setup.category);
+  if (v === "board-still" && productPhotos < 4) return false;
+  if (v === "cover-centre" && !luxe) return false;
+  if ((v === "board-statement" || v === "slide-ink") && hasBanner) return false;
+  return true;
+}
+
 /** "Write again": whatever the designer said, the look must differ from the one the owner rejected — palette, font
  *  and hero at least (owner's call, 4 Oct 2026). Where the plan repeats the old choice, the next option is taken,
  *  rotating with the round so a third try differs from the second as well. Never throws. */
@@ -138,7 +179,7 @@ export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): Site
   const style: SiteStyle = { ...(plan?.style ?? {}) };
   // What was not asked for stays exactly as it was: the owner changes one thing at a time and sees it change.
   if (!wantLook) { style.palette = avoid.palette ?? style.palette; if (avoid.color) style.color = avoid.color; else delete style.color; style.font = avoid.font ?? style.font; }
-  if (!wantLayout) { style.hero = avoid.hero ?? style.hero; style.pattern = avoid.pattern ?? style.pattern; style.radius = avoid.radius ?? style.radius; style.motion = avoid.motion ?? style.motion; if (avoid.layouts) style.layouts = avoid.layouts; }
+  if (!wantLayout) { style.hero = avoid.hero ?? style.hero; style.heroVariant = avoid.heroVariant ?? style.heroVariant; style.pattern = avoid.pattern ?? style.pattern; style.radius = avoid.radius ?? style.radius; style.motion = avoid.motion ?? style.motion; if (avoid.layouts) style.layouts = avoid.layouts; }
   const guard = (plan?: SiteDesignPlan | null): SiteDesignPlan => ({ style, ...(wantLayout && plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}), why: plan?.why ? `${plan.why} (as asked)` : "Changed as asked.", looks: threePlans([{ ...style, blueprint: style.blueprint, order: plan?.order, tiles: plan?.tiles, why: plan?.why }], b).map((p) => ({ blueprint: p.style.blueprint!, style: p.style, ...(p.order ? { order: p.order } : {}), ...(p.tiles ? { tiles: p.tiles } : {}), why: p.why })) });
   if (!wantLook && !wantLayout) return guard(plan);
   const pick = <T,>(list: T[], same: (x: T) => boolean, i: number): T | undefined => { const rest = list.filter((x) => !same(x)); return rest.length ? rest[i % rest.length] : undefined; };
@@ -164,6 +205,13 @@ export function differentFrom(plan: SiteDesignPlan | null, b: DesignBrief): Site
   if (wantLayout && (!style.hero || style.hero === oldHero)) {
     const nh = pick(HERO_LAYOUTS.filter((h) => heroAllowed(h.key, b)), (h) => h.key === oldHero, round);
     if (nh) style.hero = nh.key;
+  }
+  // Hero variant: another shape of the SAME blueprint the content can carry; the blueprint's own default otherwise.
+  if (wantLayout && style.blueprint) {
+    const bpKey = style.blueprint;
+    const fits = (v: string | undefined): v is HeroVariant => !!v && heroVariantAllowed(v, bpKey, b);
+    const old = style.blueprint === avoid.blueprint ? avoid.heroVariant : undefined;
+    if (!fits(style.heroVariant) || style.heroVariant === old) style.heroVariant = pick(HERO_VARIANTS_BY_BP[bpKey].filter((v) => fits(v)), (v) => v === old, round) ?? tradeMood(b.setup.category).heroVariant[bpKey];
   }
   // Pattern and corners: a different one when the plan repeats the old.
   const patterns: NonNullable<SiteStyle["pattern"]>[] = ["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"];
@@ -200,6 +248,11 @@ function clean(raw: unknown, b: DesignBrief): SiteDesignPlan | null {
   if ((["none", "dots", "waves", "grid", "diagonal", "blobs", "rings"] as string[]).includes(pattern)) style.pattern = pattern as SiteStyle["pattern"];
   const blueprint = typeof o.blueprint === "string" ? o.blueprint.trim().toLowerCase() : "";
   if (BLUEPRINTS.some((x) => x.key === blueprint)) style.blueprint = blueprint as BlueprintKey;
+  // The hero's shape within that blueprint; one the content cannot carry is dropped and the trade's default stands
+  // (threeLooks / derive fill it, so no plan leaves without one).
+  const variant = typeof o.heroVariant === "string" ? o.heroVariant.trim().toLowerCase() : "";
+  if (style.blueprint && heroVariantAllowed(variant, style.blueprint, b)) style.heroVariant = variant;
+  else if (style.blueprint) style.heroVariant = tradeMood(b.setup.category).heroVariant[style.blueprint];
   const tiles = cleanTiles(o.tiles);
   const why = typeof o.why === "string" ? o.why.trim().slice(0, 200) : "";
   if (!Object.keys(style).length && order.length < 3) return null;
@@ -233,7 +286,7 @@ export async function designSite(b: DesignBrief, timeoutMs = 25_000): Promise<Si
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   const system = `You are a senior web designer with 15 years of agency work on small-business websites in India. You design for THIS business from its facts, never from a template. You answer with one JSON object and nothing else.\n\n${PRINCIPLES}`;
-  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website: THREE plans, each on a different blueprint, your pick first. Reply with JSON: {"plans": [{"blueprint": "...", "palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "tiles": ["..."] (bento only), "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 20 words, to the owner"}, {...}, {...}]}.`;
+  const text = `${briefText(b)}\n\n${menu()}\n\nDecide the design for this business's website: THREE plans, each on a different blueprint, your pick first. Reply with JSON: {"plans": [{"blueprint": "...", "heroVariant": "...", "palette": "...", "color": "#rrggbb or omit", "font": "...", "hero": "...", "radius": "...", "order": ["...", "..."], "tiles": ["..."] (bento only), "pattern": "...", "motion": "...", "layouts": {"about": "...", "services": "...", "products": "...", "faq": "...", "reviews": "...", "gallery": "..."} (only the ones you choose), "why": "one line, at most 20 words, to the owner"}, {...}, {...}]}.`;
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(timeoutMs),

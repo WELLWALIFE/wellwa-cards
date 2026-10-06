@@ -40,7 +40,7 @@ export default function WelcomePage() {
       </ol>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? "शुरू करें — 10 छोटे steps, 5 मिनट" : "Start — 10 short steps, 5 min"} <ArrowRight className="h-5 w-5" />
+          {hi ? `शुरू करें — ${SETUP_SCREENS.length} छोटे steps, 5 मिनट` : `Start — ${SETUP_SCREENS.length} short steps, 5 min`} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}

@@ -86,11 +86,15 @@ export function textAudit(input: TemplateCard, ctx: TextContext): TextReport {
   const about = all.find((b): b is About => b.kind === "about" && (b.body ?? "").trim().length > 0);
   if (card.site) {
     const sub = (card.site.hero?.sub ?? "").trim();
-    if (sub.length < TEXT_STANDARD.heroSub.min) {
+    // An EMPTY sub is left alone: the website then prints the trade group's benefit line (site-hero.ts heroModel).
+    // A short one is lengthened only from the owner's own about text — never "<Trade> in <City>, since <Y>", which
+    // read as data, not a reason to stay (docs/premium-look.md §3.1, §5).
+    if (sub && sub.length < TEXT_STANDARD.heroSub.min) {
       const first = paras(about?.body ?? "")[0]?.split(/(?<=[.!?।])\s/)[0] ?? "";
-      const line = first.length >= TEXT_STANDARD.heroSub.min && first.length <= TEXT_STANDARD.heroSub.max ? first : plainHeroSub(ctx);
-      card.site = { ...card.site, hero: { headline: card.site.hero?.headline ?? "", sub: line, ...(card.site.hero?.imageUrl ? { imageUrl: card.site.hero.imageUrl } : {}), ...(card.site.hero?.ctaLabel ? { ctaLabel: card.site.hero.ctaLabel } : {}) } };
-      filled.push("hero line");
+      if (first.length >= TEXT_STANDARD.heroSub.min && first.length <= TEXT_STANDARD.heroSub.max) {
+        card.site = { ...card.site, hero: { ...card.site.hero, headline: card.site.hero?.headline ?? "", sub: first } };
+        filled.push("hero line");
+      }
     }
   }
 
@@ -225,12 +229,6 @@ export function applyThinText(input: TemplateCard, answers: Record<string, strin
 }
 
 /* ---- plain lines from the facts: the floor, never the aim ---- */
-function plainHeroSub(ctx: TextContext): string {
-  const hi = ctx.lang === "hi";
-  const where = ctx.city ? (hi ? ` — ${ctx.city} में` : ` in ${ctx.city}`) : "";
-  const since = ctx.since ? (hi ? `, ${ctx.since} से` : `, since ${ctx.since}`) : "";
-  return `${ctx.tradeLabel}${where}${since}`.trim();
-}
 export function plainAbout(card: TemplateCard, ctx: TextContext): string {
   const hi = ctx.lang === "hi";
   const all = card.pages.flatMap((p) => p.blocks);

@@ -261,6 +261,14 @@ if (await waitText(/About your|आपके .* के बारे में/)) 
 }
 if (stop("details")) process.exit(0);
 
+// 6b — highlights (moved off the Products page)
+if (await waitText(/What makes you special\?/)) {
+  await dump("highlights"); await shot("highlights");
+  await page.evaluate(() => { [...document.querySelectorAll("section button")].filter((b) => b.offsetParent !== null && !/Next|Write|Skip/.test(b.innerText)).slice(0, 3).forEach((b) => b.click()); });
+  await input(/Free delivery/, "10% off this week", { clear: true });
+  await clickText(/^(Next|आगे)/); await sleep(1500);
+}
+
 // 7 — where & when
 if (await waitText(/Where & when|कहाँ और कब/)) {
   await dump("where"); await shot("where");

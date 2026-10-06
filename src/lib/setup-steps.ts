@@ -3,7 +3,7 @@
 // One question group per screen; every screen saves what it has before the next opens; nothing is typed twice.
 //
 // Isomorphic: no 'use client', no 'server-only'.
-export type ScreenKey = "you" | "promote" | "site" | "trade" | "details" | "where" | "about" | "extras" | "products" | "make";
+export type ScreenKey = "you" | "promote" | "site" | "trade" | "details" | "highlights" | "where" | "about" | "extras" | "products" | "make";
 export type Screen = { key: ScreenKey; chapter: "you" | "business" | "products" | "make"; en: string; hi: string; blurb: string; blurbHi: string };
 
 export const SETUP_SCREENS: Screen[] = [
@@ -12,6 +12,8 @@ export const SETUP_SCREENS: Screen[] = [
   { key: "site", chapter: "business", en: "Website", hi: "Website", blurb: "Have one? It fills the rest", blurbHi: "है तो बाकी अपने आप भरेगा" },
   { key: "trade", chapter: "business", en: "Your business", hi: "आपका business", blurb: "Name and what you do", blurbHi: "नाम और काम" },
   { key: "details", chapter: "business", en: "About your trade", hi: "आपके काम के बारे में", blurb: "A few taps about your trade", blurbHi: "आपके काम के कुछ सवाल" },
+  // Highlights were on the Products page before (owner, 6 Oct 2026: "is page ko product page se alag karo") — the Products page is products only.
+  { key: "highlights", chapter: "business", en: "Highlights", hi: "खासियत", blurb: "What makes you special, who you serve, any offer", blurbHi: "आपकी खासियत, आपके customers, कोई offer" },
   { key: "where", chapter: "business", en: "Where & when", hi: "कहाँ और कब", blurb: "City, map, timings", blurbHi: "शहर, map, समय" },
   { key: "about", chapter: "business", en: "About & logo", hi: "परिचय और logo", blurb: "A few lines, the AI helps", blurbHi: "कुछ लाइनें, AI मदद करेगा" },
   { key: "extras", chapter: "business", en: "Photos & more", hi: "Photos और बाकी", blurb: "Photos, payments, links — optional", blurbHi: "Photos, payment, links — optional" },

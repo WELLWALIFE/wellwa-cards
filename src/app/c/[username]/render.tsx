@@ -12,6 +12,8 @@ import { CardAppBar } from "@/components/card-app-bar";
 import { qrDataUrl } from "@/lib/qr";
 import { CardView } from "@/components/card-view";
 import { SiteView } from "@/components/site-view";
+import { siteDesign } from "@/lib/site-style";
+import { lookOf } from "@/lib/looks";
 import { brandForHost } from "@/lib/brand";
 import { PLATFORM_HOSTS, SITE_URL } from "@/lib/site-url";
 import { seoDescription, seoJsonLd, seoKeywords, seoTitle } from "@/lib/seo";
@@ -169,8 +171,12 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   if (product && view !== "site") return <CardPageView username={username} slug={product.page} viewParam={viewParam} />;
 
   if (view === "site") {
+    // The two first-paint fonts (docs/premium-look.md §2.1): the display face and the text file of the site's set.
+    // React hoists these <link>s into <head>. The preview iframe renders from localStorage and keeps its in-body faces.
+    const preload = siteDesign(card, lookOf(card.template)).fonts.preload;
     return (
       <>
+        {preload.map((href) => <link key={href} rel="preload" as="font" type="font/woff2" href={href} crossOrigin="anonymous" />)}
         {ld}
         <CardAppBar />
         {tracking && <CardPixels {...tracking} />}
