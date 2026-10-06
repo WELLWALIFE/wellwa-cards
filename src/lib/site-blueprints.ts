@@ -32,8 +32,8 @@ export const BLUEPRINTS: Blueprint[] = [
     fits: ["hotel", "restaurant", "gym", "jewellery", "car", "events", "wedding", "salon", "interior", "furniture", "architect", "photography"],
   },
   {
-    key: "story", name: "Story", hi: "स्टोरी", blurb: "Swipe slides, like Instagram stories", blurbHi: "Instagram stories जैसी swipe slides",
-    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "slide-duo" },
+    key: "story", name: "Poster", hi: "पोस्टर", blurb: "A bold colour block, big type, the photo as a card", blurbHi: "रंग का bold block, बड़ा type, photo एक card में",
+    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster" },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
 ];

@@ -6,6 +6,11 @@ libraries or runtime dependencies.
 
 ## Status (6 Oct 2026)
 
+Later the same day the owner dropped the Story slides ("ye layout hi hata ke dusra koi lagao"): the third blueprint (key
+`story` for stored styles) is now **Poster** — a bold block of the trade's colour (ink for luxe trades), the headline set big,
+one filled + one ghost button, the photo as a card hanging over the block's edge with the trust row as its caption; variants
+`poster` / `poster-ink` (src/components/site-poster.tsx). §3.5 below describes the slides it replaced.
+
 Built: step 0(a) (hero photo = `coverUrl` only), fixtures in `scripts/trade-check/cards/` (stock poster banners, a Hindi card, a
 no-photo card), steps 1–7 (tokens, self-hosted fonts with Devanagari, `HeroModel`, trade copy, icons, shared hero pieces,
 Cinematic cover + cover-ink, Bento board + board-statement + board-ink, Story slide-photo + slide-ink + slide-duo + slide-type),

@@ -145,11 +145,11 @@ export interface CardPage {
 }
 
 /** The hero's shape within a blueprint (docs/premium-look.md §3.7): board-* for bento, cover-* for cinematic,
- *  slide-* for story. The renderer falls back to the blueprint's default when the card cannot fill the chosen one. */
+ *  poster-* for the poster (key story). The renderer falls back to the blueprint's default when the card cannot fill the chosen one. */
 export const HERO_VARIANTS = [
   "board", "board-statement", "board-photo-first", "board-ink", "board-still",
   "cover", "cover-ink", "cover-split", "cover-centre",
-  "slide-photo", "slide-ink", "slide-duo", "slide-type",
+  "poster", "poster-ink",
 ] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 

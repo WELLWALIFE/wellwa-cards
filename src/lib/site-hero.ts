@@ -18,12 +18,12 @@ export type { HeroVariant };
 /* ================= variants ================= */
 
 /** The hero variants per blueprint (§3.7; the flat list is HERO_VARIANTS in types.ts). Ship-first: board /
- *  board-statement, cover / cover-ink, slide-photo / slide-ink; the rest are the "Then" column, each behind its gate
+ *  board-statement, cover / cover-ink, poster / poster-ink; the rest are the "Then" column, each behind its gate
  *  (site-designer.ts heroAllowed). */
 export const HERO_VARIANTS_BY_BP: Record<BlueprintKey, readonly HeroVariant[]> = {
   bento: ["board", "board-statement", "board-photo-first", "board-ink", "board-still"],
   cinematic: ["cover", "cover-ink", "cover-split", "cover-centre"],
-  story: ["slide-photo", "slide-ink", "slide-duo", "slide-type"],
+  story: ["poster", "poster-ink"],
 };
 export const isHeroVariant = (v: unknown): v is HeroVariant => typeof v === "string" && (HERO_VARIANTS as readonly string[]).includes(v);
 
@@ -31,10 +31,10 @@ export const isHeroVariant = (v: unknown): v is HeroVariant => typeof v === "str
 const NO_PHOTO: Record<HeroVariant, HeroVariant> = {
   board: "board-statement", "board-statement": "board-statement", "board-photo-first": "board-statement", "board-ink": "board-ink", "board-still": "board-still",
   cover: "cover-ink", "cover-ink": "cover-ink", "cover-split": "cover-ink", "cover-centre": "cover-ink",
-  "slide-photo": "slide-ink", "slide-ink": "slide-ink", "slide-duo": "slide-ink", "slide-type": "slide-type",
+  poster: "poster-ink", "poster-ink": "poster-ink",
 };
 /** Variants that draw the headline over the photo (scrim, grain, Ken Burns, a clip). */
-export const OVER_PHOTO: ReadonlySet<HeroVariant> = new Set<HeroVariant>(["cover", "cover-centre", "slide-photo"]);
+export const OVER_PHOTO: ReadonlySet<HeroVariant> = new Set<HeroVariant>(["cover", "cover-centre"]);
 
 /* ================= the model ================= */
 
@@ -55,7 +55,7 @@ export type HeroModel = {
    *  `bpFocus()` derives the crop per blueprint at render. `dark` = the bottom of the picture is dark (= !bright), so
    *  the standard scrim is enough and grain may sit on it. */
   photo?: { src: string; focus: string; lqip?: string; bright: boolean; dark: boolean };
-  /** The Premium trade clip (card.site.hero.video !== false): `cover` and `slide-photo` only, desktop only on cover. */
+  /** The Premium trade clip (card.site.hero.video !== false): `cover` and `poster` only, desktop only on cover. */
   clip?: { url: string; poster: string };
   logo?: string;
   /** No owner logo (the monogram never reaches the website): the nav shows the name as a wordmark. */
@@ -141,7 +141,7 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   const wanted = isHeroVariant(style?.heroVariant) && variantFits(style.heroVariant!, bp) ? style.heroVariant! : defaultVariant(bp, style?.hero, mood.heroVariant);
   let variant: HeroVariant = wanted;
   const video = site?.hero?.video !== false ? blocks.find((b): b is Extract<CardBlock, { kind: "video" }> => b.kind === "video" && /\.mp4(\?|$)/i.test(b.url)) : undefined;
-  const clip = video && (variant === "cover" || variant === "slide-photo") ? { url: video.url, poster: video.posterUrl || photo?.src || "" } : undefined;
+  const clip = video && variant === "cover" ? { url: video.url, poster: video.posterUrl || photo?.src || "" } : undefined;
   if (!photo && !clip) variant = NO_PHOTO[variant];
   if (variant === "board-still" && stills < 4) variant = "board-statement";
 

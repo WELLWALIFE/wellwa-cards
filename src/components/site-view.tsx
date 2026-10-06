@@ -31,7 +31,7 @@ import { homeSections, isEmptyBlock, sinceYear, trustFacts, type HomeSection } f
 import { BottomSheet, CountUp, CtaPair, Display, HERO_CSS, HeroPhoto, Kicker, Marquee, OpenNowChip, SMART_CSS, Sub, TrustRow, Wordmark } from "@/components/site-smart";
 import { BentoHero, bentoFacts, BENTO_CSS } from "@/components/site-bento";
 import { CinematicHero, ParallaxBand, QuoteRotator, CINEMATIC_CSS } from "@/components/site-cinematic";
-import { StoryView, STORY_CSS } from "@/components/site-story";
+import { PosterHero, POSTER_CSS } from "@/components/site-poster";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
 
@@ -350,8 +350,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? STORY_CSS : ""}` }} />
-    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} data-story={bp === "story" && isHome ? "" : undefined} style={{ background: "var(--surface)" }}>
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : ""}` }} />
+    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
       {barLive && !barClosed && (
@@ -417,8 +417,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
       <main className="relative flex-1 pb-14 md:pb-0">
         {isHome && bp === "story" ? (
-          <StoryView card={card} hi={L.lang === "hi"} t={t} qr={qr} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus}
-            phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} map={bento?.map} onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); else openProduct(p); } }} go={go} eyebrow={eyebrowRole} logo={logo} />
+          <PosterHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "cinematic" ? (
           <CinematicHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
             phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={[]} />
@@ -445,7 +444,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         {/* The sticky bar's sentinel: once this line has scrolled above the viewport, the bar comes in. */}
         <div ref={heroEnd} aria-hidden="true" style={{ height: 1, marginTop: -1 }} />
 
-        {isHome && !(bp === "story") && (
+        {isHome && (
           <>
             {/* ---- "good to know" (§4.1): the facilities in one quiet line, hairlines above and below ---- */}
             {pills.length >= 2 && (
@@ -471,7 +470,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </>
         )}
 
-        {!(isHome && bp === "story") && groups.map((g, i) => (
+        {groups.map((g, i) => (
           <div key={Array.isArray(g) ? g[0].id : g.key} className="contents">
             {Array.isArray(g) ? <SiteRun run={g} index={i} {...runProps} /> : <Pulled section={g} index={i} {...runProps} />}
             {/* Cinematic: a slow photo band after every second scene (never one the hero already shows). */}

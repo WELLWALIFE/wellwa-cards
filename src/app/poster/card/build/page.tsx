@@ -135,7 +135,8 @@ const Img = (p: { src: string; alt?: string; className?: string }) => <img src={
 function LookGlyph({ k, ink }: { k: LookKey; ink: string }) {
   if (k === "bento") return <span className="grid h-6 w-7 grid-cols-2 gap-[3px]">{[0, 1, 2, 3].map((i) => <span key={i} className="rounded-[2px]" style={{ background: ink, opacity: 0.85 }} />)}</span>;
   if (k === "cinematic") return <span className="relative block h-5 w-8 rounded-[3px] border-2" style={{ borderColor: ink, opacity: 0.85 }}><span className="absolute bottom-0.5 left-0.5 h-[3px] w-3 rounded-full" style={{ background: ink }} /></span>;
-  return <span className="flex h-7 w-4 gap-[2px] rounded-[3px] border-2 p-[2px]" style={{ borderColor: ink, opacity: 0.85 }}>{[0, 1, 2].map((i) => <span key={i} className="h-[2px] flex-1 rounded-full" style={{ background: ink, opacity: i === 0 ? 1 : 0.45 }} />)}</span>;
+  // Poster: a filled block with the photo card hanging over its edge.
+  return <span className="relative block h-6 w-7 rounded-[3px]" style={{ background: ink, opacity: 0.85 }}><span className="absolute -bottom-1 right-1 h-3 w-3 rounded-[2px] border" style={{ background: ink, borderColor: "rgba(255,255,255,.9)" }} /></span>;
 }
 
 export default function BuildCard() {

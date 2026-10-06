@@ -70,7 +70,7 @@ const PRINCIPLES = `Design principles you follow (current, 2026):
 - Corners: round for friendly and kids, soft for most, sharp for luxury, law, editorial and industrial.
 - Order the home page by what a new customer wants first: a shop shows what it sells, a service shows what it does and why, a professional shows who they are, a school shows classes and why parents choose it; reviews near the end, the offer where it helps.
 - Never pick a layout the content cannot fill.
-- A BLUEPRINT is the page's structure (the biggest decision): bento = a board of tiles, everything at a glance (shops, services, clinics); cinematic = a full-screen photo and scenes (hotels, gyms, jewellers, premium); story = full-screen swipe slides like Instagram (cafes, fashion, salons, creators). You give THREE plans on THREE different blueprints: the first is your pick for this business.`;
+- A BLUEPRINT is the page's structure (the biggest decision): bento = a board of tiles, everything at a glance (shops, services, clinics); cinematic = a full-screen photo and scenes (hotels, gyms, jewellers, premium); story = POSTER: a bold block of the trade's colour, the headline set big, the photo as a card over its edge (cafés, boutiques, salons, sweets, gifts, fitness). You give THREE plans on THREE different blueprints: the first is your pick for this business.`;
 
 /** The hero's shape within each blueprint (docs/premium-look.md §3.7): what it is and when it fits. The renderer
  *  falls back to the no-photo variant on its own when the card has no picture, so the designer need not check. */
@@ -84,16 +84,14 @@ export const HERO_VARIANT_BLURBS: Record<HeroVariant, string> = {
   "cover-ink": "a dark ink field, type only (no photo, or a dark mood)",
   "cover-split": "words on paper left, the picture 4:5 right, no scrim (clinics, CAs, schools, kirana)",
   "cover-centre": "one centred block over the photo (hotels, banquets, events)",
-  "slide-photo": "the photo slide with the headline low over the picture (hotels, events, cafés at night)",
-  "slide-ink": "a dark ink slide, type only (no photo)",
-  "slide-duo": "the photo on the top half, a paper panel with the words below — the default first slide",
-  "slide-type": "a paper slide led by type (boutiques, persons)",
+  poster: "a block of the trade's colour with the headline set big and the photo as a card hanging over its edge — the default",
+  "poster-ink": "the colour block alone, type only (no photo)",
 };
 /** The gate on each variant, in words the designer reads. */
 const HERO_VARIANT_GATES: Partial<Record<HeroVariant, string>> = {
   "board-still": "only with 4 or more product photos of the owner's own",
   "cover-centre": "only for luxury trades (jewellery, bridal, hotels) and events",
-  "board-statement": "only when there is no banner photo", "cover-ink": "only when there is no banner photo or the mood is dark", "slide-ink": "only when there is no banner photo",
+  "board-statement": "only when there is no banner photo", "cover-ink": "only when there is no banner photo or the mood is dark", "poster-ink": "only when there is no banner photo",
 };
 
 function menu(): string {
@@ -164,7 +162,7 @@ export function heroVariantAllowed(v: string, bp: BlueprintKey | undefined, b: P
   const luxe = !!tradeMood(b.setup.category).luxe || /^(event|wedding|banquet|hotel)$/.test(b.setup.category);
   if (v === "board-still" && productPhotos < 4) return false;
   if (v === "cover-centre" && !luxe) return false;
-  if ((v === "board-statement" || v === "slide-ink") && hasBanner) return false;
+  if ((v === "board-statement" || v === "poster-ink") && hasBanner) return false;
   return true;
 }
 
