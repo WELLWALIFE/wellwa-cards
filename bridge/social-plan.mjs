@@ -5,7 +5,7 @@
 // Cost per user per week ≈ ₹10-20 (voice + an occasional AI picture); no Kling, no credits.
 import path from "node:path";
 import { renderPoster, themeFor, effectiveStyle, offerFor } from "./poster-engine.mjs";
-import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted } from "./poster-video.mjs";
+import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted, voiceLangOf } from "./poster-video.mjs";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 const RUPLOAD = "https://rupload.facebook.com";
@@ -89,8 +89,8 @@ export async function prepareBusinessDay(ctx, prof, date, paid) {
   if (paid) {
     try {
       const brand = prof.tagline || prof.name;
-      const text = voiceWanted(L) ? await suggestVoiceScript({ theme, lang: prof.lang, brand, name: prof.name, phone: prof.phone || "", product: product ? { name: product.name, offer: product.offer, benefits: product.benefits } : null, custom, category: prof.category || "" }) : "";
-      const voice = text ? { text, gender: L.voice?.gender || "female", lang: prof.lang } : null;
+      const text = voiceWanted(L) ? await suggestVoiceScript({ theme, lang: voiceLangOf(prof.layout), brand, name: prof.name, phone: prof.phone || "", product: product ? { name: product.name, offer: product.offer, benefits: product.benefits } : null, custom, category: prof.category || "" }) : "";
+      const voice = text ? { text, gender: L.voice?.gender || "female", lang: voiceLangOf(prof.layout) } : null;
       const mp4 = await renderStatusVideo(file, { music: musicFor(theme, product ? "product" : ""), voice });
       videoUrl = `${site}/api/poster/img/${path.basename(mp4)}`;
     } catch (e) { ctx.log(`  story video failed: ${e.message} → image`); }

@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { renderPoster, themeFor, istDate, effectiveStyle, offerFor, isWaterProduct, isCardDay, OUT_DIR } from "./poster-engine.mjs";
 import { writeCaption, statusCaption } from "./poster-caption.mjs";
-import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted } from "./poster-video.mjs";
+import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted, voiceLangOf } from "./poster-video.mjs";
 import { ensureStockClip, rosterKind } from "./stock-art.mjs";
 import { planFor, publishStory, publishReel, prepareBusinessDay, productOfDay, unpostedVideo, queuePhotoReel, waitForReel } from "./social-plan.mjs";
 
@@ -205,8 +205,8 @@ async function statusVideoFor(prof, day, date) {
   if (voiceOn) {
     const product = dayProd ? { name: dayProd.name, offer: dayProd.offer, benefits: dayProd.benefits } : null;
     const brand = prof.persona === "personal" || prof.persona === "student" ? prof.name : (prof.tagline || prof.name);
-    const text = await suggestVoiceScript({ theme, lang: prof.lang, brand, name: prof.name, phone: prof.phone || "", product, custom, category: prof.category || "" });
-    if (text) voice = { text, gender: L.voice?.gender || "female", lang: prof.lang };
+    const text = await suggestVoiceScript({ theme, lang: voiceLangOf(prof.layout), brand, name: prof.name, phone: prof.phone || "", product, custom, category: prof.category || "" });
+    if (text) voice = { text, gender: L.voice?.gender || "female", lang: voiceLangOf(prof.layout) };
     else console.log(`  ${prof.name}: no voice line today → music only`);
   }
   // A moving stock clip behind the poster (chosen for the trade and the day, cached per trade) — the gradient if none.

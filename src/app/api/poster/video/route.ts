@@ -8,7 +8,7 @@ import { userFromRequest, restAsService, posterVideoEngine, posterEngine, poster
 
 const DIR = path.join(process.cwd(), "public", "poster", "out");
 type PosterRow = { id: string; url: string; profile_id: string; for_date: string; video_url: string; music: string; voice_text: string; voice_gender: string; occasion_slug: string };
-type Prof = { id: string; name: string; tagline: string | null; phone: string | null; lang: string; persona: string; mode?: string; layout?: { voice?: { on?: boolean; gender?: string; by?: string } } };
+type Prof = { id: string; name: string; tagline: string | null; phone: string | null; lang: string; persona: string; mode?: string; layout?: { voice?: { on?: boolean; gender?: string; lang?: string; by?: string } } };
 
 async function load(me: { id: string }, id: string) {
   if (!/^[0-9a-f-]{36}$/i.test(id)) return null;
@@ -35,8 +35,8 @@ export async function GET(request: Request) {
   const plan = await dayPlan(me.id, prof.id, poster.for_date);
   const dayCustom = plan.offer;
   const LANGS = ["hi", "en", "hinglish", "mr", "gu", "pa", "bn", "ta", "te", "kn", "ml", "or"];
-  const lang = LANGS.includes(q.get("lang") ?? "") ? q.get("lang")! : prof.lang;
-  const script = q.get("fresh") === "1" || !poster.voice_text || (q.get("lang") && q.get("lang") !== prof.lang)
+  const lang = LANGS.includes(q.get("lang") ?? "") ? q.get("lang")! : v.voiceLangOf(prof.layout);
+  const script = q.get("fresh") === "1" || !poster.voice_text || (q.get("lang") && q.get("lang") !== v.voiceLangOf(prof.layout))
     ? await v.suggestVoiceScript({ theme, lang, brand: brandOf(prof), name: prof.name, phone: prof.phone ?? "", product, includeName: q.get("name") === "1", includePhone: q.get("phone") === "1", custom: (q.get("custom") || dayCustom || "").slice(0, 120), category: String((prof as { category?: string }).category ?? "") })
     : poster.voice_text;
   return NextResponse.json({ music: v.MUSIC, script, lang, gender: poster.voice_gender || prof.layout?.voice?.gender || "female", voice_on: plan.cal?.overrides?.voice ? plan.cal.overrides.voice === "on" : v.voiceWanted(prof.layout), video_url: poster.video_url, current_music: poster.music || plan.cal?.overrides?.music || v.musicFor(theme, kind), offer: dayCustom });
@@ -57,6 +57,9 @@ export async function POST(request: Request) {
   const von = !free && !!b.voice?.on && typeof b.voice?.text === "string" && b.voice.text.trim().length > 2;
   if (free && b.voice?.on) return NextResponse.json({ error: "plan", message: "The AI voice-over is part of Growth. Your status video without voice is free — switch the voice off." }, { status: 402 });
   const gender = ["female", "female2", "male", "male2"].includes(b.voice?.gender) ? b.voice.gender : "female";
+  const VL = ["hi", "en", "hinglish", "mr", "gu", "pa", "bn", "ta", "te", "kn", "ml", "or"];
+  const vEngine = await posterVideoEngine();
+  const lang = VL.includes(String(b.voice?.lang ?? "")) ? String(b.voice.lang) : vEngine.voiceLangOf(prof.layout);
   const text = von ? String(b.voice.text).trim().slice(0, 260) : "";
   const file = path.join(DIR, path.basename(poster.url));
   try {
@@ -71,12 +74,12 @@ export async function POST(request: Request) {
       const st = await stockEngineMod();
       clip = (await st.ensureStockClip({ theme, category, kind, dateStr: poster.for_date }))?.file ?? null;
     } catch (e) { console.log("[stock] clip skipped:", e instanceof Error ? e.message : e); clip = null; }
-    const out = await v.renderStatusVideo(file, { music, force: b.force === true, voice: von ? { text, gender, lang: prof.lang } : null, clip });
+    const out = await v.renderStatusVideo(file, { music, force: b.force === true, voice: von ? { text, gender, lang } : null, clip });
     const url = OUT_URL(out);
     await restAsService(`posters?id=eq.${poster.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ video_url: url, music, voice_text: text, voice_gender: von ? gender : "" }) });
     // remember the voice preference on the profile — `by: "user"` marks it as the owner's own choice (the 4 AM video
     // keeps its voice unless the owner switched it off here)
-    const layout = { ...(prof.layout ?? {}), voice: { on: von, gender, by: "user" } };
+    const layout = { ...(prof.layout ?? {}), voice: { on: von, gender, lang, by: "user" } };
     await restAsService(`poster_profiles?id=eq.${prof.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ layout }) });
     return NextResponse.json({ ok: true, video_url: url, music, voice: von ? { text, gender } : null });
   } catch (e) { return NextResponse.json({ error: "The video could not be made right now. Please try again in a minute.", detail: (e as Error).message.slice(0, 200) }, { status: 500 }); }

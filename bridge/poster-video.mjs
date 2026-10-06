@@ -48,6 +48,9 @@ export function musicFor(theme, kind = "") {
  *  (`voice.by === "user"`) counts. Rows saved while the voice was disabled (25–29 Sep 2026) carry `on: false`
  *  without `by`, which nobody chose — those still get the voice. */
 export const voiceWanted = (layout) => !(layout?.voice && layout.voice.on === false && layout.voice.by === "user");
+/** The language the voice speaks: Hindi unless the owner picked another one in the video sheet (owner's call, 6 Oct
+ *  2026: "default voice Hindi me jaani chahiye, user change kar sakta hai") — the app's UI language is not the voice's. */
+export const voiceLangOf = (layout) => (layout?.voice?.lang && LANG_NAME[layout.voice.lang] ? layout.voice.lang : "hi");
 
 /* ---------------- voice greeting (Gemini TTS) ----------------
  * Status viewers already know the person, so the voice does mood + brand:
@@ -65,6 +68,9 @@ export const VOICE_ENABLED = true;
 /* --- the spoken line must be right, or there is no spoken line: checks a script has to pass before it is used --- */
 const SCRIPT_RANGE = { hi: /[\u0900-\u097F]/, mr: /[\u0900-\u097F]/, gu: /[\u0A80-\u0AFF]/, pa: /[\u0A00-\u0A7F]/, bn: /[\u0980-\u09FF]/, ta: /[\u0B80-\u0BFF]/, te: /[\u0C00-\u0C7F]/, kn: /[\u0C80-\u0CFF]/, ml: /[\u0D00-\u0D7F]/, or: /[\u0B00-\u0B7F]/ };
 const CLAIMS = /guarantee|guaranteed|100\s*%|\bcures?\b|गारंटी|गारण्टी|दोगुन|दुगन|\bdugn|\bdogun|लाखों कमा|lakho?n? kama|earn (?:lakhs|daily)|risk[- ]free|no side effect/i;
+/** Words that would embarrass the brand or belittle anyone (owner's call, 6 Oct 2026: "kisi ko galat na lage, brand ki
+ *  beizzati na ho"): insults, "cheap", fraud talk, running down other shops. */
+const RUDE = /घटिया|बकवास|बेवकूफ़|बेवक़ूफ़|मूर्ख|चोर|धोखा|धोखेबाज़|नकली|फ़र्ज़ी|फर्जी|सस्ता माल|दूसरों से बेहतर|बाकी सब|दूसरी दुकान|\bidiot|\bstupid|\bfraud|\bscam|\buseless|\bpathetic|\bcheapest|\bfake\b|better than (?:others|the rest)|\bworst\b/i;
 /** "" when the line is fine, otherwise what is wrong with it (goes back to the model once, then the voice is skipped). */
 export function voiceScriptIssue(text, { lang = "hi", allowDigits = false } = {}) {
   const t = String(text || "").trim();
@@ -77,6 +83,8 @@ export function voiceScriptIssue(text, { lang = "hi", allowDigits = false } = {}
   if (/[*_\[\]{}<>|]/.test(t)) return "contains markup characters";
   if (!allowDigits && /\d/.test(t)) return "contains a number that was not given";
   if (CLAIMS.test(t)) return "makes a guarantee / medical / income claim";
+  if (RUDE.test(t)) return "belittles someone or runs down others — not a word that could embarrass the brand";
+  if ((t.match(/[!！]/g) || []).length > 1) return "shouts (more than one exclamation mark)";
   if (mixedWord(t)) return "mixes Latin letters into a native-script word";
   if (lang === "en" || lang === "hinglish") { if (/[\u0900-\u0D7F]/.test(t)) return `contains native-script letters, must be ${lang === "en" ? "English" : "Hinglish in Roman letters"}`; }
   else if (SCRIPT_RANGE[lang] && !SCRIPT_RANGE[lang].test(t)) return `not written in the ${LANG_NAME[lang]} script`;
@@ -111,6 +119,7 @@ Structure:
 2. MESSAGE — ${kindLine}
 3. SIGN-OFF — a short, graceful sign-off from "${brand || name || "us"}"${includeName && name ? ` and the person's name "${name}"` : ""}${includePhone && phone ? ` and the phone number ${phone} read digit by digit` : ""}.
 ${custom ? `The owner wants this message included, in the same words where possible: "${custom}".` : ""}
+Respect above all: polite, warm, formal "आप" (never "तू"/"तुम"), nothing that could embarrass the business or belittle any customer, caste, religion, gender, place or rival — no comparisons with other shops, no sarcasm, no slang, no fear or guilt. Spell every word correctly in that language; the brand name "${brand || name}" is spelled exactly as given (in that script if the language is not English) and said once, in the sign-off.
 Voice of a wise friend, not an announcer: simple everyday words a shopkeeper uses, one idea, each sentence at most 12 words, no clichés ("आइए मिलकर", "सफलता की ओर", "नई शुरुआत", "सपनों को साकार", "आपकी सेवा में"), no exclamation marks, no invented facts, no other phone number, address, price, date or year. Do not invent anything about the business.
 ${lang === "en" || lang === "hinglish" ? "Roman letters only." : `Write ONLY in the ${L} script — not one Latin letter anywhere, brand names too spelled in ${L} letters.`}
 Return only the spoken text.`;
@@ -139,7 +148,12 @@ Return only the spoken text.`;
       if (!issue2) { out = again; issue = ""; }
       else console.log(`[voice] script skipped (${issue}; retry: ${issue2})`);
     }
-    return issue ? "" : out;   // no line rather than a wrong line — the video then plays with music only
+    if (issue) return "";   // no line rather than a wrong line — the video then plays with music only
+    // One proofread before it is spoken (owner's call, 6 Oct 2026: "voice text perfect hona chahiye"): spelling, grammar,
+    // respect, the brand name — the corrected line replaces it only when it passes every check above.
+    const fixed = await ask(`Proofread this ${L} voice-over line for a small Indian business's WhatsApp status. Fix only real mistakes: spelling, grammar, a wrong matra or conjunct, a word that is rude, sarcastic or could embarrass the business "${brand || name}", a brand name spelled wrongly (it must read exactly "${brand || name}"). Keep the meaning, the three sentences, the length and the script; add nothing. Return only the corrected line, or the same line unchanged.\n\n${out}`, 0.2).catch(() => "");
+    if (fixed && !voiceScriptIssue(fixed, { lang, allowDigits }) && Math.abs(fixed.length - out.length) < out.length * 0.4) out = fixed;
+    return out;
   } catch { return ""; }
 }
 /** A Latin letter touching an Indic letter inside one word ("दौlat"): a script the model half-switched. */

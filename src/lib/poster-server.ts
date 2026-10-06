@@ -108,6 +108,8 @@ type VideoEngine = {
   musicFor: (theme: { kind?: string; slug?: string } | null | undefined, kind?: string) => string;
   /** Voice on unless the owner switched it off in the app (`layout.voice.by === "user"`). */
   voiceWanted: (layout: unknown) => boolean;
+  /** Voice language: the owner's pick in the app, else Hindi. */
+  voiceLangOf: (layout: unknown) => string;
 };
 let videoEngine: Promise<VideoEngine> | null = null;
 export function posterVideoEngine(): Promise<VideoEngine> {
@@ -200,9 +202,9 @@ export async function ensureStatusVideo(userId: string, posterId: string): Promi
         if (list.length) product = list[Math.floor(new Date(`${poster.for_date}T00:00:00Z`).getTime() / 86400000) % list.length];
       }
       const brand = prof.persona === "personal" || prof.persona === "student" ? prof.name : (prof.tagline || prof.name);
-      text = await v.suggestVoiceScript({ theme, lang: prof.lang, brand, name: prof.name, phone: prof.phone ?? "", product, custom: (plan.offer || "").slice(0, 120), category: String((prof as { category?: string }).category ?? "") });
+      text = await v.suggestVoiceScript({ theme, lang: v.voiceLangOf(prof.layout), brand, name: prof.name, phone: prof.phone ?? "", product, custom: (plan.offer || "").slice(0, 120), category: String((prof as { category?: string }).category ?? "") });
     }
-    if (text) voice = { text, gender: poster.voice_gender || prof.layout?.voice?.gender || "female", lang: prof.lang };
+    if (text) voice = { text, gender: poster.voice_gender || prof.layout?.voice?.gender || "female", lang: v.voiceLangOf(prof.layout) };
   }
   const music = poster.music || plan.cal?.overrides?.music || v.musicFor(theme, kind);
   // A Signature poster (spec json beside it) becomes a full-frame video of its own 9:16 layout — no clip behind it.

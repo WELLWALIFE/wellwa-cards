@@ -17,13 +17,26 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
 }) {
   const [state, setState] = useState<"" | "sharing" | "shared" | "downloaded" | "saving" | "saved" | "failed">("");
   const [editing, setEditing] = useState(false);
-  const [video, setVideo] = useState<{ open: boolean; url: string; music: string; busy: boolean; err: string; sharing: boolean; voiceOn: boolean; gender: string; script: string; scriptBusy: boolean; withName: boolean; withPhone: boolean; loaded: boolean; lang: string }>({ open: false, url: poster.video_url ?? "", music: poster.music || "soft", busy: false, err: "", sharing: false, voiceOn: false, gender: "female", script: "", scriptBusy: false, withName: false, withPhone: false, loaded: false, lang: profile?.lang ?? "hi" });
+  const [video, setVideo] = useState<{ open: boolean; url: string; music: string; busy: boolean; err: string; sharing: boolean; voiceOn: boolean; gender: string; script: string; scriptBusy: boolean; withName: boolean; withPhone: boolean; loaded: boolean; lang: string }>({ open: false, url: poster.video_url ?? "", music: poster.music || "soft", busy: false, err: "", sharing: false, voiceOn: false, gender: "female", script: "", scriptBusy: false, withName: false, withPhone: false, loaded: false, lang: "hi" });
   const { t, lang } = useT(); const en = lang === "en";
   const [bump, setBump] = useState(0);
   // The file's own timestamp keys the picture, so a poster made again under the same name is never the cached old one.
   const src = `${poster.url}?v=${poster.v || `${encodeURIComponent(date)}-${style ?? ""}`}${bump ? `-${bump}` : ""}`;
 
+  /** The WhatsApp share sends the status VIDEO — voice and music — whenever one exists (owner's call, 6 Oct 2026: "WhatsApp
+   *  par jo image jaati hai usme voice nahi ja rahi"); the plain picture only when no video has been made yet. */
   async function share() {
+    if (video.url) {
+      setState("sharing");
+      const r = await shareVideo();
+      if (r !== "failed") api("/api/poster/share", { method: "POST", json: { id: poster.id } }).catch(() => {});
+      setState(r === "shared" ? "shared" : r === "downloaded" ? "downloaded" : "failed");
+      setTimeout(() => setState(""), 2500);
+      return;
+    }
+    await shareImage();
+  }
+  async function shareImage() {
     setState("sharing");
     const r = await sharePoster(src, caption);
     if (r !== "failed") api("/api/poster/share", { method: "POST", json: { id: poster.id } }).catch(() => {});
@@ -49,7 +62,7 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
   }
   async function makeVideo(music = video.music) {
     setVideo((v) => ({ ...v, open: true, busy: true, err: "", music }));
-    const r = await api<{ video_url?: string; error?: string; message?: string }>("/api/poster/video", { method: "POST", json: { poster_id: poster.id, music, voice: { on: video.voiceOn, gender: video.gender, text: video.script } } });
+    const r = await api<{ video_url?: string; error?: string; message?: string }>("/api/poster/video", { method: "POST", json: { poster_id: poster.id, music, voice: { on: video.voiceOn, gender: video.gender, text: video.script, lang: video.lang } } });
     setVideo((v) => ({ ...v, busy: false, url: r.ok ? r.data.video_url ?? "" : v.url, err: r.ok ? "" : (r.data.message || r.data.error || "Failed") }));
   }
   // The finished video is fetched in the background the moment it exists, so a tap on Share hands the FILE to
@@ -67,6 +80,7 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
     const ready = videoBlob.current?.url === video.url ? videoBlob.current.blob : null;
     const r = await shareFile(`${video.url}?v=${date}`, caption, `shubhora-${date}.mp4`, "video/mp4", ready);
     setVideo((v) => ({ ...v, sharing: false, err: r === "downloaded" ? (en ? "Video saved — post it to Status from your gallery." : "वीडियो सेव हो गया — गैलरी से Status पर लगाएँ।") : v.err }));
+    return r;
   }
 
   return (
@@ -88,8 +102,9 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
 
       <button type="button" onClick={share} disabled={state === "sharing"} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-base font-semibold text-white disabled:opacity-70">
         {state === "sharing" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : state === "shared" ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
-        {state === "shared" ? t.sent : state === "downloaded" ? t.downloaded : state === "failed" ? "❌" : t.shareWa}
+        {state === "shared" ? t.sent : state === "downloaded" ? t.downloaded : state === "failed" ? "❌" : video.url ? (en ? "Share on WhatsApp — video with voice" : "WhatsApp पर भेजें — आवाज़ वाला वीडियो") : t.shareWa}
       </button>
+      {video.url && <button type="button" onClick={shareImage} disabled={state === "sharing"} className="-mt-1 w-full text-center text-xs font-semibold text-muted underline">{en ? "Share the picture only" : "सिर्फ़ तस्वीर भेजें"}</button>}
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={openVideo} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-ink">
           <Clapperboard className="h-4 w-4 text-brand" /> {en ? "Status video" : "स्टेटस वीडियो"}{plan === "free" && <span className="rounded-full bg-good/15 px-1.5 text-[10px] text-good">FREE</span>}
