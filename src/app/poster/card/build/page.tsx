@@ -146,7 +146,7 @@ export default function BuildCard() {
   const hi = lang !== "en";
   const T = useCallback((en: string, hiText: string) => (hi ? hiText : en), [hi]);
 
-  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview">("loading");
+  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview" | "done">("loading");
   // Step 5 (owner's call, 2 Oct 2026): "Save and continue" opens a page of its own with two tabs — Standard for the
   // free plan, Premium for the paid one — and the build starts from there, never by itself.
   const [, setPlan] = useState<"standard" | "premium">("standard");
@@ -753,8 +753,9 @@ export default function BuildCard() {
       }
       setState("preview");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
-      // The very first card, with nothing to double-check: live straight away. Anything else waits for the button.
-      if (!live && nextChecks.length === 0) void goLive(full, me, ctx.also);
+      // Nothing goes live on its own (owner, 6 Oct 2026: "website bante hi 3 option dikhe — view and select any one —
+      // then 'looking nice, live this'"): the owner looks at the three designs, picks one, taps Live.
+      void live; void me; void ctx;
     } catch {
       // The finished card stays on the server (not claimed): opening this screen again picks it up.
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
@@ -934,7 +935,7 @@ export default function BuildCard() {
       setLiveUser(r.username || out.username);
       // A quiet publish (a look, in the background) leaves the tabs and the bar as the owner has them: it used to pull
       // the Card tab back to the Website and flip the bar's button under their finger.
-      if (!opts?.quiet) { setTab("site"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
+      if (!opts?.quiet) { setTab("site"); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
@@ -1026,13 +1027,38 @@ export default function BuildCard() {
     );
   }
 
+  // The finished flow (owner, 6 Oct 2026): Live → "Congratulations, your website and e-card are live" → Edit (the Change…
+  // sheet over the preview) or Continue (home).
+  if (state === "done" && shown) {
+    const liveLink = `${SITE_HOST}/c/${liveUser || username}`;
+    return (
+      <div className="space-y-4 py-2">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => setState("preview")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        </div>
+        <section className="space-y-4 rounded-2xl border-2 border-good/40 bg-good/10 p-5 text-center">
+          <p className="text-4xl" aria-hidden="true">🎉</p>
+          <h1 className="text-2xl font-bold">{T("Congratulations!", "बधाई हो!")}</h1>
+          <p className="text-base">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
+          <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span></a>
+          <p className="text-xs text-muted">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+        </section>
+        <p className="text-center text-sm font-semibold">{T("Want to edit, or continue?", "कुछ बदलना है, या आगे बढ़ें?")}</p>
+        <div className="grid grid-cols-2 gap-2">
+          <button type="button" onClick={() => { setState("preview"); setMore(true); }} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-4 text-base font-semibold"><Pencil className="h-5 w-5" /> {T("Edit", "Edit करें")}</button>
+          <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">{T("Continue", "आगे बढ़ें")} <ChevronRight className="h-5 w-5" /></button>
+        </div>
+      </div>
+    );
+  }
+
   if (state === "preview" && shown) return (
     <div className="space-y-4 py-2">
       {/* Owner's call, 5 Oct 2026 ("site banne ke baad 3 view nahi dikh rahe, bada complicated UI"): ONE status card,
           then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
       <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setState("form")} className="text-muted" aria-label={T("Back to the questions", "सवालों पर वापस")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => setState("make")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -1051,10 +1077,10 @@ export default function BuildCard() {
               : busy === "publish"
                 ? T("Making it live…", "Live किया जा रहा है…")
                 : checks.length > 0
-                  ? T(`Not live yet — check the ${checks.length} details below, then tap Make it live.`, `अभी live नहीं — नीचे ${checks.length} details देख लें, फिर Make it live दबाएँ।`)
+                  ? T(`View the three designs, select one, check the ${checks.length} details below — then tap Live.`, `तीनों design देखें, एक चुनें, नीचे ${checks.length} details देख लें — फिर Live दबाएँ।`)
                   : existing
-                  ? T("Not live yet — your current card stays until you tap Make it live.", "अभी live नहीं — Make it live दबाने तक पुराना card वैसा ही रहेगा।")
-                  : T("Not live yet — tap Make it live.", "अभी live नहीं — Make it live दबाएँ।")}
+                  ? T("View the three designs and select one — your current card stays until you tap Live.", "तीनों design देखें और एक चुनें — Live दबाने तक पुराना card वैसा ही रहेगा।")
+                  : T("View the three designs and select one — then tap Live.", "तीनों design देखें, एक चुनें — फिर Live दबाएँ।")}
           </span>
         </p>
       </div>
@@ -1105,7 +1131,7 @@ export default function BuildCard() {
           A 3-column grid — the old horizontal strip showed one chip on a 360 px phone and sat eighth on the page. */}
       {looks.length > 0 && shown.site && (
         <section>
-          <p className="text-sm font-semibold">{T("Pick a design", "Design चुनें")}</p>
+          <p className="text-sm font-semibold">{T("View and select any one", "देखें और कोई एक चुनें")}</p>
           <p className="text-xs text-muted">{T("Same words and photos, three designs. Tap to switch — nothing is spent.", "वही शब्द और photos, तीन design। Tap करके बदलें — कुछ खर्च नहीं होता।")}</p>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {looks.map((l) => {
@@ -1207,12 +1233,10 @@ export default function BuildCard() {
           whose meaning changed. Not live → Make it live. Live → Done → next: your card, then OK → home. */}
       <div className="sticky bottom-20 z-20 grid grid-cols-[1fr_auto] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
         {liveUser && username === liveUser ? (
-          tab === "site"
-            ? <button type="button" onClick={() => { setTab("phone"); try { previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white">{T("Done → next: your card", "हो गया → आगे: आपका card")}</button>
-            : <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("OK", "OK")}</button>
+          <button type="button" onClick={() => { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {T("Done", "हो गया")}</button>
         ) : (
           <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Make it live", "Live करें")}
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Looks nice — live this", "अच्छा लगा — Live करें")}
           </button>
         )}
         <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-base font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>

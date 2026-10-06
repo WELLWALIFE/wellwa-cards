@@ -10,7 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 /** The five tabs of the bottom menu (and "Me") — their own home, no back row. */
 const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings))?\/?$/;
 /** Full-screen steps, and pages that already have their own back arrow in their heading. */
-const OWN_BACK = /^\/poster\/(start|onboard|brand|explainer|plan|products|reel|website|guide|d\/|text-video|card\/build)/;
+const OWN_BACK = /^\/poster\/(start|onboard|brand|explainer|plan|products|reel|website|guide|d\/|text-video|card\/build|site$|site\?)/;
 
 /** Where "Back" goes when there is no earlier screen in this tab. */
 function parentOf(p: string): string {

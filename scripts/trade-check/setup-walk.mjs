@@ -101,6 +101,8 @@ const routes = [
   ["POST", /^\/api\/poster\/products\/ai$/, () => ({ products: [] })],
   ["POST", /^\/api\/ai\/write$/, (b) => { log("ai/write", { task: b.task, role: b.role, company: b.company }); return { text: `${b.company || "We"} fix drones, gimbals and camera batteries for DJI and every other brand — same-day service, genuine parts and a six-month warranty. Doorstep pickup across ${/City: (.*)/.exec(b.input || "")?.[1] || "the city"}.` }; }],
   ["POST", /^\/api\/poster\/upload$/, (_b, url) => { log("upload POST", url.pathname); return { url: "/api/stock/banners/cafe.jpg" }; }],
+  ["GET", /^\/api\/site\/status/, () => { const c = state.cards[0]; return c ? { hasCard: true, cards: [{ id: c.id, username: c.username, name: c.data?.name ?? "" }], cardId: c.id, username: c.username, url: `http://localhost:3103/c/${c.username}`, customDomain: "", site: { enabled: true, hidden: [] }, pages: [{ slug: "home", label: "Home", blocks: 6 }, { slug: "products", label: "Products", blocks: 2 }], images: [], defaults: { headline: "", sub: "", jobTitle: "" } } : { hasCard: false }; }],
+  ["PATCH", /^\/api\/site\/status/, (b) => { log("site/status PATCH", b); return { ok: true }; }],
   ["GET", /^\/api\/wa\/status$/, () => ({ state: "none" })],
   ["GET", /^\/api\/social\/accounts$/, () => ({ accounts: [] })],
   ["GET", /^\/api\/google\/status$/, () => ({ connected: false })],
@@ -332,7 +334,26 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
   if (await clickText(/^Card$|^Card ·/)) { await sleep(1200); await shot("preview-card-tab"); await clickText(/^Website/); await sleep(600); }
   if (await clickText(/Change…|Change\.\.\.|बदलें/)) { await sleep(800); await dump("change-sheet"); await shot("change-sheet", false); await page.keyboard.press("Escape"); await sleep(400); }
   if (await clickText(/Desktop|computer|कंप्यूटर/i)) { await sleep(1500); await shot("preview-desk"); }
+  // Live → congratulations → Continue (home)
+  if (await clickText(/Looks nice|live this|Live करें/)) {
+    await waitText(/Congratulations|बधाई/, 30000); await sleep(800);
+    await dump("congrats"); await shot("congrats");
+    // Edit → the Change… sheet over the preview; Close → Done → back on the congratulations; Continue → home
+    await clickText(/^Edit|Edit करें/); await sleep(800); await shot("congrats-edit", false);
+    await clickText(/^Close$|बंद करें/); await sleep(400);
+    await clickText(/^(Done|हो गया)$/); await sleep(800);
+    console.log("  back on congratulations:", await page.evaluate(() => /Congratulations|बधाई/.test(document.body.innerText)));
+    await clickText(/^Continue|आगे बढ़ें/); await sleep(2500);
+    console.log("  after Continue:", page.url());
+  } else console.log("!! no Live button on the preview");
 }
+
+// 12 — Card & Website (Create → Card & Website): link, Share, Edit
+await page.goto(`${BASE}/poster/site`, { waitUntil: "networkidle2", timeout: 120000 });
+await waitText(/Card & Website/); await sleep(800);
+await dump("site-page"); await shot("site-page");
+if (await clickText(/^Share$|^Share करें$/)) { await sleep(500); await shot("site-share"); }
+if (await clickText(/^Edit$|^Edit करें$/)) { await sleep(500); await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; })); await sleep(400); await dump("site-edit"); await shot("site-edit"); }
 console.log("\n--- cards on the server:", state.cards.map((c) => ({ id: c.id, username: c.username, blueprint: c.data?.site?.style?.blueprint })));
 console.log("--- all writes:\n" + state.writes.map((w) => "  " + w.slice(0, 160)).join("\n"));
 await browser.close();

@@ -289,7 +289,7 @@ export default function ProductsPage() {
     <div className="space-y-4">
       {setupMode && <ProfileSteps current="products" category={category} />}
       <div className="flex items-center gap-2">
-        <Link href="/poster/setup" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        <Link href={setupMode ? "/poster/onboard?step=extras" : "/poster/setup"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
         {!draft && <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
       </div>
