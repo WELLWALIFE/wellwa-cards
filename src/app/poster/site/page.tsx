@@ -11,7 +11,6 @@ import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
-import { SiteBuilderOptions } from "@/components/poster/site-builder-options";
 import { PhotoNudge } from "@/components/poster/photo-nudge";
 import { CardChatEdit } from "@/components/poster/card-chat-edit";
 import { fetchMyCardsStrict } from "@/lib/cloud";
@@ -33,10 +32,17 @@ export default function WebsitePage() {
   const [err, setErr] = useState("");
   const [panel, setPanel] = useState<Panel>(null);
   // Arrived straight from the builder (?published=1): the greeting at the top; ?edit=1 / ?share=1 open that door.
-  const [published, setPublished] = useState(false);
-  /** Back from a focused edit (?saved=1): one line says it is on the website. */
+  /** Back from a focused edit (?saved=…): one line says it is on the website, for a moment. */
   const [saved, setSaved] = useState(false);
-  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setPublished(q.get("published") === "1"); if (q.get("edit") === "1") setPanel("edit"); if (q.get("share") === "1") setPanel("share"); setSaved(q.get("saved") === "1"); } catch { /* ignore */ } }, []);
+  useEffect(() => {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("edit") === "1") setPanel("edit"); if (q.get("share") === "1") setPanel("share");
+      if (q.has("saved")) { setSaved(true); setTimeout(() => setSaved(false), 8000); }
+      // The one-time flags leave the address, so a reload or Back does not replay them.
+      if (q.has("saved") || q.has("published")) { q.delete("saved"); q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
+    } catch { /* ignore */ }
+  }, []);
   /** Where a focused edit comes back to: this page, the Edit door open. */
   const BACK = encodeURIComponent("/poster/site?edit=1");
   const { plan, loading: planLoading } = usePlan();
@@ -45,9 +51,11 @@ export default function WebsitePage() {
   const [card, setCard] = useState<Card | null>(null);
   useEffect(() => { if (!cardId) return; fetchMyCardsStrict().then((cs) => setCard(cs.find((c) => c.id === cardId) ?? cs[0] ?? null)).catch(() => undefined); }, [cardId]);
   const [copied, setCopied] = useState(false);
-  async function copy() { if (!s || !s.hasCard) return; try { await navigator.clipboard.writeText(s.url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
-  function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${s.url}` : `Hello! Here is my digital card — contact, products and more in one tap: ${s.url}`)}`, "_blank", "noopener"); }
-  function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${s.url}?view=site` : `See our website — products, services and all about us: ${s.url}?view=site`)}`, "_blank", "noopener"); }
+  /** The one address shown, copied, shared and opened: the owner's own domain when connected, else the Shubhora link. */
+  const link = s?.hasCard ? (s.customDomain ? `https://${s.customDomain}` : s.url) : "";
+  async function copy() { if (!s || !s.hasCard) return; try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${link}` : `Hello! Here is my digital card — contact, products and more in one tap: ${link}`)}`, "_blank", "noopener"); }
+  function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${link}?view=site` : `See our website — products, services and all about us: ${link}?view=site`)}`, "_blank", "noopener"); }
 
   // api() resolves on ANY status, so a 401 (expired login) or a server error must be caught here — without
   // this check the screen keeps spinning for ever with nothing to tap.
@@ -68,12 +76,8 @@ export default function WebsitePage() {
     try { await api("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } }); } catch { setMsg("No internet — please try again."); return; }
     load(cardId);
   }
-  /** Back = the screen before this one inside the app, else the Create tab it hangs off. */
-  function back() {
-    let inApp = false;
-    try { inApp = window.history.length > 1 && !!document.referrer && new URL(document.referrer).origin === window.location.origin; } catch { /* no referrer */ }
-    if (inApp) router.back(); else router.push("/poster/create");
-  }
+  /** Back = the Create tab this page hangs off — always, so it never loops back into a form just saved. */
+  function back() { router.push("/poster/create"); }
 
   if (!s) return err ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -85,7 +89,8 @@ export default function WebsitePage() {
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const hidden = new Set(s.hasCard ? s.site?.hidden ?? [] : []);
   const T = (en: string, h: string) => (hi ? h : en);
-  const door = (k: Exclude<Panel, null>) => `flex flex-col items-center justify-center gap-1.5 rounded-2xl border-2 px-3 py-4 text-base font-semibold ${panel === k ? "border-brand bg-brand-soft/60 text-brand-ink" : "border-border bg-surface"}`;
+  const door = (k: Exclude<Panel, null>) => `flex flex-col items-center justify-center gap-1 rounded-2xl border-2 px-3 py-3.5 text-base font-semibold ${panel === k ? "border-brand bg-brand-soft/60 text-brand-ink" : "border-border bg-surface"}`;
+  const doorSub = "block text-[11px] font-normal leading-tight text-muted";
   const row = "flex w-full items-center gap-3 px-3.5 py-3 text-left";
   const rowText = (title: string, sub: string) => <span className="min-w-0 flex-1"><b className="block text-sm">{title}</b><span className="block text-xs text-muted">{sub}</span></span>;
 
@@ -105,9 +110,6 @@ export default function WebsitePage() {
         </section>
       ) : (
         <>
-          {published && (
-            <p className="flex items-center gap-2 rounded-2xl border-2 border-good/40 bg-good/10 px-4 py-3 text-sm font-semibold"><Check className="h-5 w-5 shrink-0 text-good" /> {T("Your website and card are live.", "आपकी website और card live हैं।")}</p>
-          )}
           {s.cards.length > 1 && (
             <select value={cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
               {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}
@@ -118,20 +120,26 @@ export default function WebsitePage() {
           <section className="space-y-3 rounded-2xl border border-border p-3">
             <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2.5">
               <Globe className="h-4 w-4 shrink-0 text-brand" />
-              <code className="min-w-0 flex-1 truncate text-sm font-semibold">{(s.customDomain || s.url).replace(/^https?:\/\//, "")}</code>
+              <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
               <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-4 w-4 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-4 w-4" /> {T("Copy", "Copy")}</>}</button>
             </div>
-            <p className="text-xs text-muted">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+            {/* The one thing people got wrong here (owner, 7 Oct 2026: "Edit dabane par kya edit hoga, card ya website?"):
+                one link, one set of details — the website and the card are the same thing in two shapes. Said once, here. */}
+            <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
+              {s.site?.enabled
+                ? <>{T("One link, one set of details. On a computer it opens as your website, on a phone as your card. Edit once — both change.", "एक link, एक ही जानकारी। Computer पर website खुलती है, phone पर card। एक बार edit करो — दोनों बदलेंगे।")}</>
+                : <>{T("Website mode is off: this link opens the card everywhere. Turn it on under Edit → Advanced.", "Website mode बंद है: ये link हर जगह card खोलता है। Edit → Advanced से चालू करें।")}</>}
+            </p>
             <div className="grid grid-cols-2 gap-2">
-              <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>
-              <CardLink href={s.url} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
+              <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>
+              <CardLink href={link} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
             </div>
           </section>
 
           {/* ---- 2. two doors: Share, Edit ---- */}
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}</button>
-            <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit", "Edit करें")}</button>
+            <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
+            <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit", "Edit करें")}<span className={doorSub}>{T("changes card and website", "card और website दोनों बदलेंगे")}</span></button>
           </div>
 
           {panel === "share" && (
@@ -158,25 +166,28 @@ export default function WebsitePage() {
                   owner wants to change, in plain words, and opens one focused screen that saves straight onto the
                   live website. Everything else (editor, pages, settings) waits under Advanced. */}
               <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
-              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
+              <p className="-mt-2 text-xs text-muted">{T("Your card and website share these details — one change shows on both.", "Card और website की जानकारी एक ही है — एक बदलाव दोनों पर दिखेगा।")}</p>
+              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
               <div className="grid grid-cols-2 gap-2">
                 {([
-                  { k: "ai", I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid },
-                  { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}` },
-                  { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}` },
-                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: "/poster/products" },
-                  { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}` },
-                  { k: "design", I: Paintbrush, t: T("Design", "Design"), s: T("The three designs, colours", "तीन design, रंग"), href: "/poster/card/build?improve=1" },
-                ] as { k: string; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean }[]).map((x) => {
+                  { k: "ai", I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid, scope: "both" },
+                  { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}`, scope: "both" },
+                  { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
+                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "again" },
+                  { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
+                  // The three designs are the WEBSITE's; the phone card's own look lives under Advanced → Card look & settings.
+                  { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("The three designs, colours", "तीन design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
+                ] as { k: string; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean; scope: "both" | "site" | "again" }[]).map((x) => {
                   const inner = (
                     <>
                       <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
                       <span className="mt-2 block text-sm font-bold leading-tight">{x.t}{x.premium && <span className="ml-1.5 inline-flex items-center rounded-full bg-[#12144a] px-1.5 py-0.5 align-middle text-[9px] font-bold text-[#ffd54a]">Premium</span>}</span>
                       <span className="mt-0.5 block text-[11px] leading-tight text-muted">{x.s}</span>
+                      <span className={`mt-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Card + website", "Card + website") : x.scope === "again" ? T("Card now · website via Write again", "Card अभी · website Write again से") : T("Website only", "सिर्फ़ website")}</span>
                     </>
                   );
                   const cls = "block rounded-2xl border-2 border-border bg-surface p-3 text-left";
-                  return x.href ? <Link key={x.k} href={x.href} className={cls}>{inner}</Link> : <button key={x.k} type="button" onClick={x.onClick} className={`${cls} border-brand/40 bg-brand-soft/30`}>{inner}</button>;
+                  return x.href ? <Link key={x.k} href={x.href} className={cls}>{inner}</Link> : <button key={x.k} type="button" onClick={x.onClick} disabled={!card} className={`${cls} border-brand/40 bg-brand-soft/30 disabled:opacity-60`}>{inner}</button>;
                 })}
               </div>
               {card && <CardChatEdit card={card} locked={!paid} url={s.url} onChanged={(c) => { setCard(c); load(cardId); }} />}
@@ -219,8 +230,7 @@ export default function WebsitePage() {
                     <p className="text-sm font-semibold">🌍 {T("Put it on your own domain", "अपने domain पर लगाएँ")}</p>
                     <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
                   </section>
-                  <SiteBuilderOptions cardId={s.cardId} knowledge={s.knowledge} templateKey={s.site?.templateKey} generatedAt={s.site?.generatedAt} onDone={(m) => { setMsg(m); load(s.cardId); }} />
-                  <Link href="/poster/card" className="flex items-center gap-2 text-sm font-medium text-brand-ink"><Smartphone className="h-4 w-4" /> {T("More card settings (looks, Shubhora partner page)", "Card की और settings (looks, Shubhora partner page)")}</Link>
+                  <Link href="/poster/card" className="flex items-center gap-2 text-sm font-medium text-brand-ink"><Smartphone className="h-4 w-4" /> {T("Card look & settings (the phone card's own design, Shubhora partner page)", "Card का look और settings (phone card का अपना design, Shubhora partner page)")}</Link>
                 </div>
               </details>
             </div>

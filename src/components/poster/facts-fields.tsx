@@ -182,7 +182,8 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
           <label className="block text-sm font-semibold">{T("Since (year)", "कब से (साल)")}
             {/* A full year fills the experience from it (owner's call, 7 Oct 2026: "since fill kare to experience auto
                 fill hona chahiye"); the owner can still change the experience afterwards. */}
-            <input value={facts.since} onChange={(e) => { const y = e.target.value.replace(/\D/g, "").slice(0, 4); const n = Number(y), now = new Date().getFullYear(); setF({ since: y, ...(y.length === 4 && n >= 1900 && n <= now ? { experience: String(Math.min(99, now - n)) } : {}) }); }} inputMode="numeric" placeholder="2015" className={field} /></label>
+            <input value={facts.since} onChange={(e) => { const y = e.target.value.replace(/\D/g, "").slice(0, 4); const n = Number(y), now = new Date().getFullYear(); setF({ since: y, ...(y.length === 4 && n >= 1900 && n < now ? { experience: String(Math.min(80, now - n)) } : {}) }); }} inputMode="numeric" placeholder="2015" className={field} />
+            {facts.since.length === 4 && (Number(facts.since) < 1900 || Number(facts.since) > new Date().getFullYear()) && <span className="mt-1 block text-xs font-normal text-danger">{T("That year does not look right.", "ये साल ठीक नहीं लगता।")}</span>}</label>
           <label className="block text-sm font-semibold">{T("Experience (yrs)", "Experience (साल)")}
             <input value={facts.experience} onChange={(e) => setF({ experience: e.target.value.replace(/\D/g, "").slice(0, 2) })} inputMode="numeric" placeholder="10" className={field} /></label>
           <label className="block text-sm font-semibold">{T("Team", "Team")}
@@ -203,10 +204,6 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
             <button key={k} type="button" onClick={() => setF({ homeService: k })} className={`rounded-xl border-2 py-3 font-semibold ${facts.homeService === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>{l}</button>
           ))}
         </div>
-      </Sec>
-
-      <Sec id="q-areas" title={T("Which areas do you serve?", "आप किन इलाकों में काम करते हैं?")}>
-        <input value={facts.areas} onChange={(e) => setF({ areas: e.target.value })} placeholder={T("e.g. Karol Bagh, Rajouri Garden, Janakpuri", "जैसे Karol Bagh, Rajouri Garden, Janakpuri")} className={field} />
       </Sec>
 
       <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")} hint={T("No bank details are asked.", "Bank details नहीं पूछी जातीं।")} help="payments">

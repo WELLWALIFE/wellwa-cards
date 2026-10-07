@@ -13,6 +13,9 @@ import { PremiumSheet } from "@/components/poster/premium-lock";
 import { Lock } from "lucide-react";
 
 const undoKey = (id: string) => `card-undo:${id}`;
+/** What the AI changes: the live card's shape in those parts. Undo is offered only while the card still matches
+ *  what the AI left — once anything else was saved (a focused edit, the notice, the editor) the snapshot is stale. */
+const sig = (c: Card) => JSON.stringify({ p: c.pages, a: c.about, t: c.tagline, co: c.company, s: c.site, n: (c as { notice?: unknown }).notice ?? null });
 
 /** The browser's speech recognition, where it exists (Chrome on Android, Safari): a mic beside the box. */
 type Recognizer = { lang: string; interimResults: boolean; maxAlternatives: number; onresult: ((e: { results: ArrayLike<ArrayLike<{ transcript: string }>> }) => void) | null; onend: (() => void) | null; onerror: (() => void) | null; start: () => void; stop: () => void };
@@ -33,7 +36,15 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
   const [plan, setPlan] = useState<{ next: Card; notes: string[]; summary: string } | null>(null);
   const [done, setDone] = useState("");
   const [canUndo, setCanUndo] = useState(false);
-  useEffect(() => { try { setCanUndo(!!localStorage.getItem(undoKey(card.id))); } catch { /* ignore */ } }, [card.id]);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(undoKey(card.id));
+      const snap = raw ? (JSON.parse(raw) as { before?: Card; after?: string }) : null;
+      const fresh = !!snap?.before && snap.after === sig(card);
+      if (raw && !fresh) localStorage.removeItem(undoKey(card.id));
+      setCanUndo(fresh);
+    } catch { setCanUndo(false); }
+  }, [card]);
   // Speak instead of type (owner's call, 7 Oct 2026): Hindi or English by the app's language; the words land in the box.
   const [canSpeak, setCanSpeak] = useState(false);
   const [listening, setListening] = useState(false);
@@ -67,7 +78,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
       if (!r.ok) { setErr(r.data?.error || T("The AI did not respond. Please try again.", "AI ने जवाब नहीं दिया। दोबारा try करें।")); return; }
       const ops = r.data.ops ?? [];
       const { card: next, notes, applied } = applyEdits(card, ops, lang);
-      if (!applied) { setErr(r.data.summary || T("Could not do that from here — try saying it differently, or use Edit website.", "ये यहाँ से नहीं हो पाया — दूसरे शब्दों में कहें, या Edit website से करें।")); return; }
+      if (!applied) { setErr(r.data.summary || T("Could not do that from here — try saying it differently, or open Advanced → Edit text & photos yourself.", "ये यहाँ से नहीं हो पाया — दूसरे शब्दों में कहें, या Advanced → शब्द और photos खुद बदलें से करें।")); return; }
       setPlan({ next, notes, summary: r.data.summary ?? "" });
     } catch { setErr(T("No internet — please try again.", "internet नहीं — दोबारा try करें।")); }
     finally { setBusy(""); }
@@ -78,7 +89,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
     try {
       const r = await publishCard(plan.next);
       if (!r.ok) { setErr(r.error); return; }
-      try { localStorage.setItem(undoKey(card.id), JSON.stringify(card)); setCanUndo(true); } catch { /* ignore */ }
+      try { localStorage.setItem(undoKey(card.id), JSON.stringify({ before: card, after: sig(plan.next) })); setCanUndo(true); } catch { /* ignore */ }
       setDone(T("Changed and live.", "बदल गया, live है।"));
       setPlan(null); setText("");
       onChanged?.(plan.next);
@@ -89,7 +100,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
     setBusy("undo"); setErr("");
     try {
       const raw = localStorage.getItem(undoKey(card.id)); if (!raw) return;
-      const prev = JSON.parse(raw) as Card;
+      const prev = (JSON.parse(raw) as { before?: Card }).before; if (!prev) return;
       const r = await publishCard(prev);
       if (!r.ok) { setErr(r.error); return; }
       localStorage.removeItem(undoKey(card.id)); setCanUndo(false);
@@ -133,7 +144,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
           </div>
         </div>
       )}
-      {canUndo && !plan && !done && <button type="button" onClick={() => void undo()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted"><Undo2 className="h-3.5 w-3.5" /> {T("Undo the last change", "पिछला बदलाव वापस लो")}</button>}
+      {canUndo && !plan && !done && <button type="button" onClick={() => void undo()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted"><Undo2 className="h-3.5 w-3.5" /> {T("Undo the AI change", "AI का बदलाव वापस लो")}</button>}
     </section>
   );
 }

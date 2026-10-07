@@ -105,7 +105,7 @@ export default function PhotosPage() {
       <div className="space-y-2">
         {wishes.map((w) => {
           const ok = !!done[w.key];
-          const linkTo = w.slot === "portrait" ? "/poster/onboard?step=you&flow=1" : w.slot === "logo" ? "/poster/onboard?step=site" : null;
+          const linkTo = w.slot === "portrait" ? "/poster/onboard?step=you" : w.slot === "logo" ? "/poster/onboard?step=site" : null;
           return (
             <div key={w.key} className={`flex items-center gap-3 rounded-xl border p-3 ${ok ? "border-good/40 bg-good/10" : "border-border"}`}>
               <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${ok ? "bg-good text-white" : "bg-surface2 text-muted"}`}>{ok ? <Check className="h-5 w-5" /> : busy === w.key ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}</span>

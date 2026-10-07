@@ -141,7 +141,8 @@ export type SetupSync = { about?: string; oldAbout?: string; hours?: string; old
 /** "Mon–Sat 10 AM – 8 PM" → { day: "Mon–Sat", time: "10 AM – 8 PM" }; a line with no time keeps the whole line as the day. */
 function hoursRows(text: string): { day: string; time: string }[] {
   return text.split(/\n|·|;/).map((x) => x.trim()).filter(Boolean).slice(0, 7).map((line) => {
-    const m = /^(.*?[A-Za-z\u0900-\u097F\u2013–-]+)\s+(\d.*|[Cc]losed.*|बंद.*)$/.exec(line);
+    // Only a line that starts with a day word is split ("Mon–Sat 10 AM – 8 PM"); "10 AM – 8 PM" alone stays whole, as the build keeps it.
+    const m = /^([A-Za-z\u0900-\u097F][^\d]*?)\s+(\d.*|[Cc]losed.*|बंद.*)$/.exec(line);
     return m ? { day: m[1].trim(), time: m[2].trim() } : { day: line, time: "" };
   });
 }

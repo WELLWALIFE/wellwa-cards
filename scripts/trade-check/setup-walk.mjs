@@ -219,11 +219,11 @@ if (await page.$("button[aria-label$='help']")) { await page.click("button[aria-
 await clickText(/^(Next|आगे|Continue)/); await sleep(1200);
 
 // 3 — card for
-if (await waitText(/What is your card for\?/)) { await dump("promote"); await shot("promote"); await clickText(/^Continue|आगे बढ़ें/); await sleep(1500); } else { await dump("after-you"); await shot("after-you"); }
+if (await waitText(/What is your card for\?/)) { await dump("promote"); await shot("promote"); await clickText(/^(Next|Continue)|आगे/); await sleep(1500); } else { await dump("after-you"); await shot("after-you"); }
 if (stop("promote")) process.exit(0);
 
 // 4 — website
-if (await waitText(/have a website\?/)) {
+if (await waitText(/Which website|have a website\?/)) {
   await dump("site"); await shot("site");
   // Three choices, one required (7 Oct 2026): a reference website with no link means none.
   await clickText(/Reference website/); await sleep(400);
@@ -366,8 +366,8 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
 await page.goto(`${BASE}/poster/site`, { waitUntil: "networkidle2", timeout: 120000 });
 await waitText(/Card & Website/); await sleep(800);
 await dump("site-page"); await shot("site-page");
-if (await clickText(/^Share$|^Share करें$/)) { await sleep(500); await shot("site-share"); }
-if (await clickText(/^Edit$|^Edit करें$/)) {
+if (await clickText(/^Share card or website|^Share करें card/)) { await sleep(500); await shot("site-share"); }
+if (await clickText(/^Edit changes card|^Edit करें card/)) {
   await sleep(500); await dump("site-edit"); await shot("site-edit");
   // A focused edit: Timings & address → the set-up's "Where & when" alone, Save → back here with "Saved" (7 Oct 2026).
   if (await clickText(/Timings & address|समय और पता/)) {

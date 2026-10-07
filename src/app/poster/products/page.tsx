@@ -17,7 +17,7 @@ import { Guide } from "@/components/poster/guide";
 import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
-import { normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
+import { isThinCard, normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { catalogCopyFor, tradeNeeds } from "@/lib/catalog-copy";
 import { Help } from "@/components/poster/field-help";
@@ -58,7 +58,13 @@ export default function ProductsPage() {
   const [list, setList] = useState<Product[] | null>(null);
   // ?setup=1 — reached from the setup journey: show the way on to the card (with or without products).
   const [setupMode, setSetupMode] = useState(false);
-  useEffect(() => { try { const on = new URLSearchParams(window.location.search).get("setup") === "1"; setSetupMode(on); if (on) void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: "products" } }).catch(() => undefined); } catch { /* ignore */ } }, []);
+  // (The set-up's last Save already wrote setup_pos "products"; writing it here again on every open moved the account's
+  // version under a set-up screen still being typed on and dropped its draft.)
+  /** ?back=… — opened from Card & Website → Edit: the arrow returns there. */
+  const [backTo, setBackTo] = useState("");
+  /** A live card exists: products added here reach the website only through Write again (the AI lays them out). */
+  const [hasLive, setHasLive] = useState(false);
+  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (b.startsWith("/")) setBackTo(b); } catch { /* ignore */ } }, []);
   const [brandAdmin, setBrandAdmin] = useState<string | null>(null);
   const [forBrand, setForBrand] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -186,6 +192,7 @@ export default function ProductsPage() {
       const r = await api<{ products?: Product[]; brand_admin_of?: string | null; error?: string }>("/api/poster/products");
       if (!r.ok) { setErr(r.data?.error || t.error); return; }
       setList(r.data.products ?? []); setBrandAdmin(r.data.brand_admin_of ?? null);
+      fetchMyCardsStrict().then((cs) => setHasLive(cs.some((c) => c.active !== false && !isThinCard(c)))).catch(() => undefined);
     } catch {
       setErr(t.error);
     }
@@ -290,26 +297,33 @@ export default function ProductsPage() {
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
   return (
     <div className="space-y-4">
-      {setupMode && <ProfileSteps current="products" category={category} />}
+      {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => router.push("/poster/onboard?step=extras")} />}
       {setupMode ? (
-        /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the same header as
-           every other step, one line on what to do, one big Add button, and the way on at the bottom. */
+        /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the bar above counts
+           the step and holds Back; here the title, one line on what to do, one big Add button, the way on at the bottom. */
         <div className="flex items-start gap-2">
-          <Link href="/poster/onboard?step=extras" className="mt-1 text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
           <div className="min-w-0 flex-1">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-ink">{C(`Step ${screenNo("products")} of ${SETUP_SCREENS.length}`, `Step ${screenNo("products")} / ${SETUP_SCREENS.length}`)}</p>
-            <h1 className="mt-1 text-2xl font-bold">{C(copy.title, copy.titleHi)}<Help k="product" className="translate-y-0" /></h1>
+            <h1 className="text-2xl font-bold">{C(copy.title, copy.titleHi)}<Help k="product" className="translate-y-0" /></h1>
             <p className="mt-1 text-sm text-muted">{C(`Add what you sell or do, with a photo and price. Or skip and add ${copy.short.toLowerCase()} later.`, `जो बेचते या करते हैं वो जोड़ें, photo और दाम के साथ। या अभी छोड़ें, ${copy.shortHi} बाद में जोड़ें।`)}</p>
           </div>
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <Link href="/poster/setup" className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
+          <Link href={backTo || "/poster/setup"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
           <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
           {!draft && <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
       )}
       {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}
+      {err && !draft && <p className="text-sm text-danger">{err}</p>}
+      {/* The truth about the live website (audit, 7 Oct 2026): the AI laid the products out at build time, so a product
+          added here reaches the website through Write again — said here, with the button, instead of silently not. */}
+      {!setupMode && hasLive && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
+          <span className="min-w-0 flex-1">{C("Changes here go on your card and posters at once. For the website, run Write again once you are done.", "यहाँ के बदलाव card और poster पर तुरंत आते हैं। Website के लिए, काम पूरा होने पर एक बार Write again चलाएँ।")}</span>
+          <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Update website", "Website update करें")}</Link>
+        </div>
+      )}
       {setupMode && !draft && (
         <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand-soft/40 py-4 text-base font-semibold text-brand-ink">
           <Plus className="h-5 w-5" /> {C(copy.add, copy.addHi)}
@@ -332,7 +346,7 @@ export default function ProductsPage() {
               {draft.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={draft.photo_url} alt="" className="h-full w-full object-contain" /> : busy ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : <Camera className="h-6 w-6 text-muted" />}
             </span>
             <div className="flex-1 space-y-1.5">
-              <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}<Help k="product" /></span>
+              <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}<Help k="productPhoto" /></span>
               <div className="flex gap-2">
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
                   <Camera className="h-3.5 w-3.5" /> {en ? "Camera" : "कैमरा"}

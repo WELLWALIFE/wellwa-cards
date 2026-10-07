@@ -22,6 +22,7 @@ import { CardChecklist } from "@/components/poster/card-checklist";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { PhotoNudge } from "@/components/poster/photo-nudge";
 import { CardChatEdit } from "@/components/poster/card-chat-edit";
+import { usePlan } from "@/lib/plan";
 import { initials } from "@/lib/initials";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { isShubhoraHost } from "@/lib/site-role";
@@ -38,6 +39,7 @@ export default function CardTab() {
   const [domain, setDomain] = useState<string>("");
   const [failed, setFailed] = useState(false);
   const [published, setPublished] = useState(false);
+  const { plan, loading: planLoading } = usePlan();
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -160,7 +162,7 @@ export default function CardTab() {
       {published && (
         <div className="rounded-2xl border-2 border-good/40 bg-good/10 p-4 space-y-3">
           <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 className="h-6 w-6 text-good" /> {lang === "hi" ? "आपका digital card live है" : "Your digital card is live"}</p>
-          <p className="text-sm text-muted">Share the link anywhere. Want the same link to open as a full website on computers? That comes with Growth.</p>
+          <p className="text-sm text-muted">{lang === "hi" ? "एक ही link: computer पर website, phone पर card। Share करें, या Card & Website से edit करें।" : "One link: the website on a computer, your card on a phone. Share it, or edit it from Card & Website."}</p>
           <Link href="/poster/site" className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-base font-semibold">
             <Globe className="h-5 w-5" /> See your website preview
           </Link>
@@ -172,7 +174,7 @@ export default function CardTab() {
       <CardRenewBanner />
       <h1 className="text-lg font-bold">{t.cardTitle}</h1>
       <PhotoNudge />
-      <CardChatEdit card={card} onChanged={() => load()} />
+      <CardChatEdit card={card} onChanged={() => load()} locked={!planLoading && plan === "free"} />
       <Guide hi="ये link हर जगह share करें — bio, WhatsApp, visiting card पर QR। जो भी खोलेगा, उसकी lead आपको मिलेगी।" en="Share this link everywhere — bio, WhatsApp, QR on your visiting card. Whoever opens it becomes your lead." />
       <div className="rounded-2xl border border-border overflow-hidden">
         <div className="grad-brand p-4 text-white flex items-center gap-3">

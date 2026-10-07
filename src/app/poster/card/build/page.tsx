@@ -190,6 +190,8 @@ export default function BuildCard() {
   const [removed, setRemoved] = useState("");
   const [unlock, setUnlock] = useState(false);
   const [premiumUnlock, setPremiumUnlock] = useState(false);
+  /** Opened from Card & Website → Edit → Website design (?improve=1): Back and Done return there, not to the set-up. */
+  const [improveMode, setImproveMode] = useState(false);
   const [designNote, setDesignNote] = useState("");
   // "Write again" (owner's call, 4 Oct 2026): Premium, 5 credits a time. Free is shown the Premium sheet; a Premium
   // account short of credits is asked for them.
@@ -425,6 +427,7 @@ export default function BuildCard() {
         const withSite = live.site ? live : { ...live, site: { enabled: true } };
         const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = withSite; void _i; void _u; void _p; void _a; void _v; void _c;
         setCard(withSite); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
+        setImproveMode(true);
         setState("preview"); setTab("site");
         if (ask) setTimeout(() => setAgainAsk(true), 300);
         return;
@@ -432,7 +435,9 @@ export default function BuildCard() {
       if (draft) {
         setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig); setLiveUser(draft.liveUser ?? "");
         setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []); setPlans(draft.looks);
-        setState(makeNow ? "make" : "preview");
+        // "Finish setup" and the Make pill arrive with ?make=1: a website already built waits on its preview, never
+        // behind "Make my free website" again (which would build a second time).
+        setState("preview");
         return;
       }
       if (makeNow) { setState("make"); return; }
@@ -635,7 +640,7 @@ export default function BuildCard() {
       const body: BuildRequest = { facts: { ...f, primaryCardId: undefined }, products, ...(siteChanged ? { siteChanged: true } : {}), ...(fresh ? { fresh } : {}), ...(keepWords ? { refresh: true, current: leaving as unknown as Record<string, unknown> } : {}) };
       siteNew.current = false;
       const r = await api<JobView & { error?: string }>("/api/card/build", { method: "POST", json: { ...body, async: true } });
-      if (!r.ok || !r.data?.job) { setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return; }
+      if (!r.ok || !r.data?.job) { setErr(r.data?.error || T("Could not make your website. Please try again.", "आपकी website नहीं बन पाई। दोबारा try करें।")); setState(back); return; }
       await follow(r.data, { live, me, back, f, also: alsoShubhora });
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); setState(back);
@@ -654,7 +659,7 @@ export default function BuildCard() {
       try {
         const r = await api<JobView | { job: null }>("/api/card/build");
         if (r.ok && r.data.job) { v = r.data as JobView; setLost(false); }
-        else if (r.ok) { setErr(T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(ctx.back); return; }
+        else if (r.ok) { setErr(T("Could not make your website. Please try again.", "आपकी website नहीं बन पाई। दोबारा try करें।")); setState(ctx.back); return; }
         else setLost(true);
       } catch { setLost(true); }
     }
@@ -674,7 +679,7 @@ export default function BuildCard() {
         // The server's own word on Write again: Premium, or 5 credits short.
         if (r.status === 402 && (r.data as { plan?: boolean } | undefined)?.plan) { setState(back); setPremiumUnlock(true); return; }
         if (r.status === 402 && (r.data as { needCredits?: number } | undefined)?.needCredits) { setState(back); setAgainUnlock(true); access.refresh(); return; }
-        setErr(r.data?.error || T("Could not make your V-Card. Please try again.", "आपका V-Card नहीं बन पाया। दोबारा try करें।")); setState(back); return;
+        setErr(r.data?.error || T("Could not make your website. Please try again.", "आपकी website नहीं बन पाई। दोबारा try करें।")); setState(back); return;
       }
 
       let name = live?.username ?? "";
@@ -723,25 +728,25 @@ export default function BuildCard() {
       const found = r.data.siteFound;
       if (r.data.siteRead === false) {
         setNotice(f.websiteRole === "reference" && f.website
-          ? T("We could not open that website, so your card got our own look — you can change it any time under My website → Edit website.", "वो website खुल नहीं पाई, इसलिए आपके card को हमारा look मिला — My website → Edit website से जब चाहें बदल सकते हैं।")
-          : T("We could not open your website, so your V-Card was made from your other details.", "आपकी website खुल नहीं पाई, इसलिए V-Card आपकी बाकी जानकारी से बना है।"));
+          ? T("We could not open that website, so your card got our own look — you can change it any time under Card & Website → Edit → Website design.", "वो website खुल नहीं पाई, इसलिए आपके card को हमारा look मिला — Card & Website → Edit → Website design से जब चाहें बदल सकते हैं।")
+          : T("We could not open your website, so your website was made from your other details.", "आपकी website खुल नहीं पाई, इसलिए V-Card आपकी बाकी जानकारी से बना है।"));
       } else if (r.data.aiPhotos && !(f.websiteRole === "reference" && f.website)) {
         setNotice(hi
-          ? `आपके काम की ${r.data.aiPhotos} pictures बनाई गईं ताकि website खाली न लगे। अपनी असली photos लगाते ही ये हट जाएँगी: My website → "photos needed"।`
-          : `${r.data.aiPhotos} pictures were made for your trade so the website is not empty. Your real photos replace them the moment you add some: My website → "photos needed".`);
+          ? `आपके काम की ${r.data.aiPhotos} pictures बनाई गईं ताकि website खाली न लगे। अपनी असली photos लगाते ही ये हट जाएँगी: Card & Website → Edit → Photo & banner।`
+          : `${r.data.aiPhotos} pictures were made for your trade so the website is not empty. Your real photos replace them the moment you add some: Card & Website → Edit → Photo & banner.`);
       } else if (r.data.aiPhotos) {
         setNotice(hi
-          ? `आपका card उस website के look में बना है, और उसे भरने के लिए आपके काम की ${r.data.aiPhotos === 1 ? "1 picture" : `${r.data.aiPhotos} pictures`} बनाई गई — किसी और site की photo हम कभी copy नहीं करते। अपनी photo जब चाहें लगा लें: Edit card → जो photo बदलनी है।`
-          : `Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Edit card → the photo you want to change.`);
+          ? `आपका card उस website के look में बना है, और उसे भरने के लिए आपके काम की ${r.data.aiPhotos === 1 ? "1 picture" : `${r.data.aiPhotos} pictures`} बनाई गई — किसी और site की photo हम कभी copy नहीं करते। अपनी photo जब चाहें लगा लें: Card & Website → Edit → Photo & banner।`
+          : `Your card was built in that website's look, and ${r.data.aiPhotos === 1 ? "a picture was" : `${r.data.aiPhotos} pictures were`} made for your trade to fill it — we never copy another site's photos. Swap them for your own any time: Card & Website → Edit → Photo & banner.`);
       } else if (f.websiteRole === "reference" && f.website) {
-        setNotice(T("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Edit card → the photo you want to change.", "आपका card उस website के look में बना है, photos आपके काम की हैं — किसी और site की photo हम कभी copy नहीं करते। अपनी photos जब चाहें डाल लें: Edit card → जो photo बदलनी है।"));
+        setNotice(T("Your card was built in that website's look, with photos of your trade — we never copy another site's pictures. Put your own photos in any time: Card & Website → Edit → Photo & banner.", "आपका card उस website के look में बना है, photos आपके काम की हैं — किसी और site की photo हम कभी copy नहीं करते। अपनी photos जब चाहें डाल लें: Card & Website → Edit → Photo & banner।"));
       } else if (found && !found.products && !found.photos && f.websiteRole !== "reference") {
         setNotice(T("We opened your website but it had nothing we could read — its pages are drawn by JavaScript, so they are empty until a browser runs them. Your card was made from your other details. Add your products below (or on the Products screen) and they will appear with photos and prices.", "आपकी website खुली, पर पढ़ने के लिए कुछ नहीं मिला — उसके page JavaScript से बनते हैं, इसलिए browser चलाए बिना खाली रहते हैं। आपका card बाकी जानकारी से बना है। नीचे (या Products screen पर) अपने products डाल दें — photo और price के साथ दिख जाएँगे।"));
       } else if (r.data.standIns?.length) {
         // What the build had to stand in for (card-audit.ts): said plainly, so the owner knows what to replace.
         const si = r.data.standIns;
         const parts: string[] = [];
-        if (si.includes("stock-photos")) parts.push(T("the photos are stock pictures of your trade — swap in your own from Edit card", "photos आपके काम की stock pictures हैं — Edit card से अपनी photos लगा लें"));
+        if (si.includes("stock-photos")) parts.push(T("the photos are stock pictures of your trade — put your own in from Card & Website → Edit → Photo & banner", "photos आपके काम की stock pictures हैं — Card & Website → Edit → Photo & banner से अपनी photos लगा लें"));
         const typical = (["typical-services", "typical-steps", "typical-why-us", "typical-faq"] as const).filter((k) => si.includes(k))
           .map((k) => (hi
             ? { "typical-services": "services", "typical-steps": "steps", "typical-why-us": "why-us points", "typical-faq": "सवाल-जवाब" }
@@ -863,7 +868,7 @@ export default function BuildCard() {
   async function publish(opts?: { card?: Card; quiet?: boolean }) {
     if (!shown || !card) return;
     const base = opts?.card ? applyChecks(opts.card, checks, off) : shown;
-    if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live V-Card? Your link, QR code, verified badge and settings stay the same.", "अपना live V-Card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
+    if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live website and card? Your link, QR code, verified badge and settings stay the same.", "अपनी live website और card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
     publishing.current = true;
     setBusy("publish"); setErr("");
     try {
@@ -1029,6 +1034,9 @@ export default function BuildCard() {
     );
   }
 
+  /** The Premium sheet: asked for from the Make screen, the preview (Write again, the banner) and finish() alike. */
+  const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
+
   // The finished flow (owner, 7 Oct 2026): Save and next → "Congratulations, your website and e-card are live" →
   // Edit now (Create → Card & Website → Edit) or Later (home).
   if (state === "done" && shown) {
@@ -1063,7 +1071,7 @@ export default function BuildCard() {
           then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
       <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setState("make")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1"); else setState("make"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
         </div>
         <div className="flex items-center gap-2 text-sm">
@@ -1084,7 +1092,7 @@ export default function BuildCard() {
                 : checks.length > 0
                   ? T(`View the three designs, select one, check the ${checks.length} details below — then Save and next.`, `तीनों design देखें, एक चुनें, नीचे ${checks.length} details देख लें — फिर Save and next दबाएँ।`)
                   : existing
-                  ? T("View the three designs and select one — your current card stays until you tap Live.", "तीनों design देखें और एक चुनें — Live दबाने तक पुराना card वैसा ही रहेगा।")
+                  ? T("View the three designs and select one — your current card stays until you tap Save and next.", "तीनों design देखें और एक चुनें — Save and next दबाने तक पुराना card वैसा ही रहेगा।")
                   : T("View the three designs and select one — then Save and next.", "तीनों design देखें, एक चुनें — फिर Save and next दबाएँ।")}
           </span>
         </p>
@@ -1245,10 +1253,12 @@ export default function BuildCard() {
           is live — the first time through, editing is offered on the next screen. */}
       <div className={`sticky bottom-20 z-20 grid gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float ${liveUser ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
         {liveUser && username === liveUser ? (
-          <button type="button" onClick={() => { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {T("Save and next", "Save करके आगे")}</button>
+          // Already live (a design tapped goes live by itself): from Card & Website this is Done, back there; in the
+          // first flow it is Next, on to the congratulations.
+          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1&saved=1"); else { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save and next", "Save करके आगे")}
           </button>
         )}
         {liveUser && <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-base font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
@@ -1384,6 +1394,7 @@ export default function BuildCard() {
           </div>
         </div>
       )}
+      {premiumDialog}
       {againUnlock && <UnlockDialog title={T("Write again: one credit per change", "दोबारा लिखवाना: हर बदलाव 1 credit")} reason={T("Add credits — your website stays as it is meanwhile.", "Credit डालें — तब तक आपकी website वैसी ही रहेगी।")} onClose={() => { setAgainUnlock(false); access.refresh(); }} />}
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
@@ -1405,6 +1416,8 @@ export default function BuildCard() {
         </div>
         <p className="text-sm text-muted">{T("Your profile is saved. One tap makes your website and digital card from it.", "आपकी profile save हो गई। एक tap में उससे आपकी website और digital card बन जाएँगे।")}</p>
         {/* Free: one button, no wall (owner's call, 3 Oct 2026: "make step easy, warna wo bana hi nahi payega"). */}
+        {/* A Premium owner's build is Premium whatever button is tapped (the server decides by the plan): only that button. */}
+        {!access.subscribed && (
         <div className="space-y-3 rounded-2xl border-2 border-brand/40 bg-brand-soft/30 p-4">
           <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
           <ul className="space-y-1">
@@ -1417,6 +1430,7 @@ export default function BuildCard() {
           </button>
           <p className="text-center text-[11px] text-muted">{T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
         </div>
+        )}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
           <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Your plan is on", "आपका plan चालू है") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
@@ -1437,7 +1451,7 @@ export default function BuildCard() {
         <button type="button" onClick={() => { setState("form"); window.scrollTo({ top: 0 }); }} className="w-full text-center text-sm font-semibold text-brand-ink underline">{T("Advanced (optional): a website you like, the look, check your details →", "Advanced (optional): पसंद की website, look, details check →")}</button>
         {err && <p className="text-sm text-danger">{err}</p>}
         <p className="text-center text-xs text-muted">{T("The AI writes only from your details — no made-up prices or claims.", "AI सिर्फ़ आपकी जानकारी से लिखता है — price या दावे अपने से नहीं बनाता।")}</p>
-        {premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("The website goes live on computers, the AI assistant answers customers and a video is made for you. Activate the plan, then tap Make again.", "Website computer पर live होती है, AI assistant ग्राहकों को जवाब देता है और आपके लिए video बनता है। Plan चालू करें, फिर Make दबाएँ।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />}
+        {premiumDialog}
       </div>
     );
   }
@@ -1453,10 +1467,10 @@ export default function BuildCard() {
           without paying for another build. */}
       {card && (
         <button type="button" onClick={() => setState("preview")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
-          <ChevronLeft className="h-4 w-4" /> {T("Back to my V-Card", "मेरे V-Card पर वापस")}
+          <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
         </button>
       )}
-      <p className="text-sm text-muted">{T("Step 4: a website you like and the look. Everything is optional — the AI writes the rest from your profile.", "Step 4: कोई website जो पसंद हो और look। सब optional है — बाकी AI आपकी profile से लिखता है।")}</p>
+      <p className="text-sm text-muted">{T("A website you like, and the look. Everything is optional — the AI writes the rest from your profile.", "कोई website जो पसंद हो, और look। सब optional है — बाकी AI आपकी profile से लिखता है।")}</p>
 
       {/* Out in the open (owner's call, 1 Oct 2026): this was buried inside "More details", and the three
           choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
@@ -1555,7 +1569,7 @@ export default function BuildCard() {
       <button type="button" id="make" onClick={async () => { await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
         <Check className="h-5 w-5" /> {T("Save and continue →", "Save करके आगे बढ़ें →")}
       </button>
-      <p className="text-center text-xs text-muted">{T("Next: choose Standard (free) or Premium, then make it.", "आगे: Standard (free) या Premium चुनें, फिर बनाएँ।")}</p>
+      <p className="text-center text-xs text-muted">{T("Next: choose Free or Premium, then make it.", "आगे: Free या Premium चुनें, फिर बनाएँ।")}</p>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );

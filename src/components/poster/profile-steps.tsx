@@ -12,7 +12,7 @@ import { SETUP_SCREENS, screenNo, type ScreenKey } from "@/lib/setup-steps";
 
 export type ProfileStepKey = "you" | "business" | "products" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
-  { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you&flow=1" },
+  { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you" },
   { key: "business", en: "Business", hi: "Business", href: "/poster/onboard?step=site" },
   { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
