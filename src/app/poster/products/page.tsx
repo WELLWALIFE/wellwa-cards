@@ -268,16 +268,22 @@ export default function ProductsPage() {
     const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: p.active === false } });
     if (!r.ok) { setErr(r.data.error || t.saveFail); load(); }
   }
+  /** "Make my Shubhora seller card" asks first (owner's call, 7 Oct 2026: a tap used to build it at once, which was
+   *  wrong): the sheet says what will happen, and only "Yes, make it" runs it. */
+  const [askShubhora, setAskShubhora] = useState(false);
   async function promoteShubhora() {
+    setAskShubhora(false);
     setBusy(true); setErr("");
     try {
       for (const d of SHUBHORA) {
         const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { ...d, benefits: d.benefits.split("\n") } });
         if (!r.ok) { setErr(r.data.error || t.saveFail); return; }
       }
-      // …then straight into the ready-made Shubhora seller card (banner, logo, plans, demo videos, business plan).
+      // …then the ready-made Shubhora seller card (banner, logo, plans, demo videos, business plan) in the editor — as a
+      // card of its own when the owner already has a real card of their business, which stays exactly as it is.
       const cards = await fetchMyCardsStrict().catch(() => []);
-      router.push(cards[0] ? `/poster/d/editor?id=${cards[0].id}&template=vcard-reseller` : "/poster/d/editor?id=new&template=vcard-reseller");
+      const own = cards.find((c) => c.active !== false && !isThinCard(c));
+      router.push(own || !cards[0] ? "/poster/d/editor?id=new&template=vcard-reseller" : `/poster/d/editor?id=${cards[0].id}&template=vcard-reseller`);
     } catch { setErr(t.saveFail); setBusy(false); }
   }
   async function remove(p: Product) {
@@ -464,10 +470,26 @@ export default function ProductsPage() {
           <div className={`rounded-xl border p-3 ${list.length === 0 ? "border-brand bg-brand-soft/40" : "border-border"}`}>
             <p className="text-sm font-semibold">{en ? "No products of your own? Sell the V-Card itself." : "Apna koi product nahi? V-Card hi sell karo."}</p>
             <p className="mt-0.5 text-xs text-muted">{en ? "Adds the 3 Shubhora plans (Free, Growth ₹2,999, Custom Solutions) as your products for posters, and opens the ready-made Shubhora seller card — banner, logo, plans, demo videos and the business plan. Put your name and number on it and publish." : "Shubhora ke 3 plan (Free, Growth ₹2,999, Custom Solutions) poster ke liye product ban jaayenge, aur Shubhora ka bana-banaya seller card khulega — banner, logo, plans, demo video, business plan. Apna naam-number daal ke publish kar do."}</p>
-            <button type="button" onClick={promoteShubhora} disabled={busy} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => setAskShubhora(true)} disabled={busy} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {en ? "Make my Shubhora seller card" : "Shubhora seller card banao"}
             </button>
             {err && <p className="mt-2 text-sm text-danger">{err}</p>}
+          </div>
+        )}
+        {askShubhora && (
+          <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 p-3 sm:items-center" onClick={() => setAskShubhora(false)}>
+            <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md space-y-3 rounded-2xl bg-surface p-4 shadow-float">
+              <p className="text-lg font-bold">{en ? "Make a Shubhora seller card?" : "Shubhora seller card बनाएँ?"}</p>
+              <ul className="space-y-1.5 text-sm">
+                <li className="flex gap-2"><span className="text-brand">•</span><span>{en ? "Shubhora's 3 plans (Free, Growth ₹2,999, Custom Solutions) are added to your products." : "Shubhora के 3 plan (Free, Growth ₹2,999, Custom Solutions) आपके products में जुड़ेंगे।"}</span></li>
+                <li className="flex gap-2"><span className="text-brand">•</span><span>{en ? "The ready-made Shubhora card opens in the editor — put your name and number on it and publish." : "बना-बनाया Shubhora card editor में खुलेगा — अपना नाम-number डालकर publish करें।"}</span></li>
+                <li className="flex gap-2"><span className="text-brand">•</span><span>{en ? "Your own business card and website stay exactly as they are; this is a second card on its own link." : "आपका अपना business card और website वैसे ही रहेंगे; ये अपने अलग link पर दूसरा card है।"}</span></li>
+              </ul>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => setAskShubhora(false)} className="flex-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold">{en ? "Cancel" : "रहने दें"}</button>
+                <button type="button" onClick={promoteShubhora} className="flex-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">{en ? "Yes, make it" : "हाँ, बनाओ"}</button>
+              </div>
+            </div>
           </div>
         )}
         {list.length === 0 && !draft && <p className="text-sm text-muted">{C(copy.empty, copy.emptyHi)}</p>}
