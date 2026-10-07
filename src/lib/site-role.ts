@@ -71,24 +71,27 @@ export function isShubhoraHost(url: string): boolean {
 export const SITE_CARDS: { k: SiteKind; e: string; t: string; th: string; s: string; sh: string; takes: string; takesHi: string }[] = [
   {
     k: "own", e: "🏪",
-    t: "Yes — my own website", th: "हाँ, मेरी अपनी website है",
-    s: "Name, logo, photos, products — all filled from it", sh: "नाम, logo, photos, products सब इसी से आ जाएँगे",
-    takes: "We take everything useful — your logo, photos, details and products. Check them on the next screen.",
-    takesHi: "हम सब कुछ लेंगे — logo, photos, जानकारी और products। अगली screen पर देख लेना।",
+    t: "My own website", th: "मेरी अपनी website",
+    s: "Name, logo, photos and products come from it", sh: "नाम, logo, photos और products इसी से आएँगे",
+    takes: "Your logo, photos, details and products are read from it. Check them on the next screen.",
+    takesHi: "आपका logo, photos, जानकारी और products इसी से पढ़े जाएँगे। अगली screen पर देख लें।",
   },
   {
     k: "dealer", e: "🤝",
-    t: "A brand's website — I am its dealer / distributor", th: "मैं किसी company का dealer / distributor हूँ — उनकी website",
-    s: "Only their products come across, as MRP — your own name and number stay", sh: "सिर्फ़ उनके products आएँगे (MRP के साथ) — नाम, number आपका ही रहेगा",
+    t: "A brand's website — I am its dealer", th: "Brand की website — मैं dealer हूँ",
+    s: "Only their products come, with MRP. Your name and number stay yours", sh: "सिर्फ़ उनके products आएँगे, MRP के साथ। नाम और number आपका ही रहेगा",
     takes: "Only the products — names, photos, specifications, MRP. Never the brand's logo, shop pictures, phone or address.",
     takesHi: "सिर्फ़ products — नाम, photo, specification, MRP। Brand का logo, दुकान की photo, phone, पता कभी नहीं।",
   },
   {
     k: "reference", e: "🎨",
-    t: "A website I like — or a competitor's", th: "कोई website पसंद है — या किसी competitor की",
-    s: "Only its look: colours, fonts, layout. Never its words, photos, products or name", sh: "सिर्फ़ उसका look — रंग, font, layout। उसके शब्द, फोटो, products, नाम कभी नहीं",
-    takes: "Taken as your taste: our designer reads its colours, fonts and layout as hints, keeps what is good and improves the rest. Never its words, photos, products or name; it is never shown as your website.",
-    takesHi: "आपकी पसंद की तरह: हमारा designer उसके रंग, font और layout को hint मानता है, जो अच्छा है रखता है, बाक़ी बेहतर करता है। उसके शब्द, photo, products, नाम कभी नहीं; वो आपकी website के रूप में कभी नहीं दिखेगी।",
+    // Owner's call, 7 Oct 2026: the third choice is a "reference website" — any website of a business like theirs,
+    // so the AI knows what they sell or do (and takes its look as a hint). The "no website" choice is gone from
+    // the set-up: everyone picks one of the three; a reference without a link simply means none.
+    t: "Reference website", th: "Reference website",
+    s: "Any website of a business like yours. The AI learns what you sell or do, and its look", sh: "आपके जैसे किसी business की website। AI समझेगा आप क्या बेचते / करते हैं, और look भी",
+    takes: "Only as an idea: what a business like yours offers, and its colours and layout. Never its words, photos, products or name.",
+    takesHi: "सिर्फ़ idea के लिए: आपके जैसा business क्या देता है, और उसके रंग / layout। उसके शब्द, photo, products, नाम कभी नहीं।",
   },
   {
     k: "none", e: "❌",

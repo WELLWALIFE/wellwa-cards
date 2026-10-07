@@ -20,6 +20,8 @@ import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/prod
 import { normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
 import { catalogCopyFor, tradeNeeds } from "@/lib/catalog-copy";
+import { Help } from "@/components/poster/field-help";
+import { SETUP_SCREENS, screenNo } from "@/lib/setup-steps";
 
 
 type Product = { id: string; name: string; brand_id?: string | null; photo_url: string | null; benefits: string[]; offer: string; active: boolean; category?: string; price?: string; mrp?: string | null; brand?: string; photos?: ProductPhoto[]; facts_confirmed_at?: string | null };
@@ -288,23 +290,39 @@ export default function ProductsPage() {
   return (
     <div className="space-y-4">
       {setupMode && <ProfileSteps current="products" category={category} />}
-      <div className="flex items-center gap-2">
-        <Link href={setupMode ? "/poster/onboard?step=extras" : "/poster/setup"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
-        <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
-        {!draft && <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
-      </div>
-      <Guide hi={copy.guideHi} en={copy.guide} />
+      {setupMode ? (
+        /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the same header as
+           every other step, one line on what to do, one big Add button, and the way on at the bottom. */
+        <div className="flex items-start gap-2">
+          <Link href="/poster/onboard?step=extras" className="mt-1 text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
+          <div className="min-w-0 flex-1">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-brand-ink">{C(`Step ${screenNo("products")} of ${SETUP_SCREENS.length}`, `Step ${screenNo("products")} / ${SETUP_SCREENS.length}`)}</p>
+            <h1 className="mt-1 text-2xl font-bold">{C(copy.title, copy.titleHi)}<Help k="product" className="translate-y-0" /></h1>
+            <p className="mt-1 text-sm text-muted">{C(`Add what you sell or do, with a photo and price. Or skip and add ${copy.short.toLowerCase()} later.`, `जो बेचते या करते हैं वो जोड़ें, photo और दाम के साथ। या अभी छोड़ें, ${copy.shortHi} बाद में जोड़ें।`)}</p>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-center gap-2">
+          <Link href="/poster/setup" className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
+          <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
+          {!draft && <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
+        </div>
+      )}
+      {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}
+      {setupMode && !draft && (
+        <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand-soft/40 py-4 text-base font-semibold text-brand-ink">
+          <Plus className="h-5 w-5" /> {C(copy.add, copy.addHi)}
+        </button>
+      )}
       {/* What a website of THIS trade must say — the step's checklist, from the trade data (a school: classes, board,
-          campus, admission; a sweet shop: freshness, bulk orders). The company step already covers name, address,
-          timings and photos; this step covers the rest. */}
+          campus, admission; a sweet shop: freshness, bulk orders). Folded away: help for the few who want it. */}
       {setupMode && needs && !draft && (
-        <div className="rounded-xl border border-border bg-surface2/60 p-3">
-          <p className="text-sm font-semibold">{C(`What a ${needs.trade.toLowerCase()} website needs`, `${needs.tradeHi} की website में क्या-क्या चाहिए`)}</p>
+        <details className="rounded-xl border border-border bg-surface2/60 px-3 py-2">
+          <summary className="cursor-pointer text-sm font-semibold">{C(`What should I add?`, `क्या-क्या जोड़ूँ?`)}</summary>
           <ul className="mt-1.5 space-y-1 text-xs text-muted">
             {needs.items.map((x) => <li key={x} className="flex gap-1.5"><span className="text-brand">•</span><span>{x}</span></li>)}
           </ul>
-          <p className="mt-2 text-[11px] text-muted">{C(`Add each ${copy.one} below with a photo; the rest goes in "a little more" at the bottom. The website is written from these.`, `नीचे ${copy.oneHi} फ़ोटो के साथ जोड़ें; बाक़ी नीचे "थोड़ा और" में। website इन्हीं से लिखी जाती है।`)}</p>
-        </div>
+        </details>
       )}
       {draft && (
         <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
@@ -313,7 +331,7 @@ export default function ProductsPage() {
               {draft.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={draft.photo_url} alt="" className="h-full w-full object-contain" /> : busy ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : <Camera className="h-6 w-6 text-muted" />}
             </span>
             <div className="flex-1 space-y-1.5">
-              <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}</span>
+              <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}<Help k="product" /></span>
               <div className="flex gap-2">
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
                   <Camera className="h-3.5 w-3.5" /> {en ? "Camera" : "कैमरा"}
@@ -330,7 +348,7 @@ export default function ProductsPage() {
           {/* Two prices: the offer price (what the customer pays) and, if there is a discount, the MRP. */}
           <div className={`grid gap-2 ${copy.mrp ? "grid-cols-2" : "grid-cols-1"}`}>
             <label className="block space-y-1">
-              <span className="block text-xs font-semibold">{C(copy.price, copy.priceHi)}</span>
+              <span className="block text-xs font-semibold">{C(copy.price, copy.priceHi)}<Help k="price" /></span>
               <input className={inp} inputMode="decimal" placeholder={C(copy.priceEg, copy.priceEgHi)} value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
             </label>
             {copy.mrp && (
@@ -444,9 +462,9 @@ export default function ProductsPage() {
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">
           <button type="button" onClick={continueToSite} disabled={going} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {going ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
-            {list.length > 0 ? C("Continue — website look →", "आगे — website की पसंद →") : C(`Skip — add ${copy.short.toLowerCase()} later →`, `अभी नहीं — ${copy.shortHi} बाद में →`)}
+            {list.length > 0 ? C("Next → make my website", "आगे → मेरी website बनाएँ") : C(`Skip for now → make my website`, `अभी छोड़ें → website बनाएँ`)}
           </button>
-          {list.length === 0 && <p className="mt-1.5 text-center text-[11px] text-muted">{C(`Your card is made without ${copy.short.toLowerCase()}; add them any time from here.`, `Card बिना ${copy.shortHi} के बन जाएगा; बाद में यहीं से कभी भी जोड़ें।`)}</p>}
+          {list.length === 0 && <p className="mt-1.5 text-center text-[11px] text-muted">{C(`Add ${copy.short.toLowerCase()} any time later.`, `${copy.shortHi} बाद में कभी भी जोड़ें।`)}</p>}
         </div>
       )}
       {checking && <ProductCheckSheet productId={checking.id} productName={checking.name} onClose={() => { setChecking(null); load(); }} />}

@@ -12,6 +12,7 @@ import { uploadImage } from "@/lib/poster-client";
 import { compressToFile, dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { UPI_RE, type CardFacts } from "@/lib/card-facts";
+import { Help, type HelpKey } from "@/components/poster/field-help";
 
 /** A change to some of the answers; `social` may carry only the one link that changed. */
 export type FactsPatch = Partial<Omit<CardFacts, "social">> & { social?: Partial<CardFacts["social"]> };
@@ -36,12 +37,12 @@ export const chipCls = (on: boolean) => `rounded-full border-2 px-3.5 py-2 text-
 const OnlyCtx = createContext<readonly string[] | undefined>(undefined);
 
 /** One question box — big and simple. The id is what a "Make it better" chip scrolls to. */
-export function Sec({ id, title, hint, children }: { id?: string; title: string; hint?: string; children: React.ReactNode }) {
+export function Sec({ id, title, hint, help, children }: { id?: string; title: string; hint?: string; /** The "?" beside the title (field-help.tsx). */ help?: HelpKey; children: React.ReactNode }) {
   const only = useContext(OnlyCtx);
   if (only && id && !only.includes(id)) return null;
   return (
     <section id={id} className="scroll-mt-4 space-y-2 rounded-2xl border border-border bg-surface p-4">
-      <p className="text-[15px] font-semibold">{title}</p>
+      <p className="text-[15px] font-semibold">{title}{help && <Help k={help} />}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
       {children}
     </section>
@@ -114,18 +115,18 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
 
   if (group === "products") return (
     <OnlyCtx.Provider value={only}>
-      <Sec id="q-special" title={T(copy.specialQ, copy.specialQHi)} hint={T("Tap 3 to 5 that are true — they become your website's highlights.", "3 से 5 दबाएँ जो सही हैं — यही आपकी website की highlights बनेंगी।")}>
+      <Sec id="q-special" title={T(copy.specialQ, copy.specialQHi)} hint={T("Tap 3 to 5 that are true.", "3 से 5 दबाएँ जो सही हैं।")} help="special">
         <div className="flex flex-wrap gap-2">
           {specialChips.map((c) => <button key={c} type="button" onClick={() => toggle("special", c)} className={chipCls(facts.special.includes(c))}>{c}</button>)}
         </div>
         <input value={facts.specialText} onChange={(e) => setF({ specialText: e.target.value })} placeholder={T(`In your own words — e.g. ${copy.specialEg}`, `अपने शब्दों में — जैसे ${copy.specialEgHi}`)} className={field} />
       </Sec>
-      <Sec id="q-customers" title={T(copy.customersQ, copy.customersQHi)}>
+      <Sec id="q-customers" title={T(copy.customersQ, copy.customersQHi)} help="customers">
         <div className="flex flex-wrap gap-2">
           {customerChips.map((c) => <button key={c} type="button" onClick={() => toggle("customers", c)} className={chipCls(facts.customers.includes(c))}>{c}</button>)}
         </div>
       </Sec>
-      <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")} hint={T("Optional — shown on the card and the website.", "Optional — card और website पर दिखेगा।")}>
+      <Sec id="q-offer" title={T("Any offer right now?", "अभी कोई offer चल रहा है?")} hint={T("Optional.", "Optional।")} help="offer">
         <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T(`e.g. ${copy.offerEg}`, `जैसे ${copy.offerEgHi}`)} className={field} />
       </Sec>
       {!hasAbout && (
@@ -139,13 +140,13 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   return (
     <OnlyCtx.Provider value={only}>
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
-      <Sec id="q-designation" title={T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={T("Shown under your name on the card and website — e.g. Rajesh Sharma · Owner.", "Card और website पर आपके नाम के नीचे — जैसे Rajesh Sharma · Owner।")}>
+      <Sec id="q-designation" title={T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={T("Shown under your name, e.g. Rajesh Sharma · Owner.", "आपके नाम के नीचे, जैसे Rajesh Sharma · Owner।")} help="designation">
         <div className="flex flex-wrap gap-1.5">
           {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setF({ designation: facts.designation === d ? "" : d })} className={chipCls(facts.designation === d)}>{d}</button>)}
         </div>
         <input value={facts.designation} onChange={(e) => setF({ designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
       </Sec>
-      <Sec id="q-photos" title={T("Banner and photos", "Banner और photos")} hint={T("The banner is the wide picture on top of your website; the photos make the gallery.", "Banner website के ऊपर की चौड़ी photo है; बाकी photos से gallery बनती है।")}>
+      <Sec id="q-photos" title={T("Banner and photos", "Banner और photos")} hint={T("The banner is the wide picture on top of your website. The photos make the gallery.", "Banner website के ऊपर की चौड़ी photo है। बाकी photos से gallery बनती है।")} help="photos">
         <p className="text-sm font-semibold">{T(`${org.En} front / banner photo`, `${place} के सामने की / banner photo`)}</p>
         {facts.bannerUrl ? (
           <div className="relative overflow-hidden rounded-xl border border-border" style={{ aspectRatio: "3 / 1" }}>
@@ -176,10 +177,12 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         {err && <p className="text-sm text-danger">{err}</p>}
       </Sec>
 
-      <Sec id="q-since" title={T("Since when, and how big", "कब से, और कितनी बड़ी team")}>
+      <Sec id="q-since" title={T("Since when, and how big", "कब से, और कितनी बड़ी team")} hint={T("Type the year; the experience fills by itself.", "साल लिखें; experience अपने आप भर जाएगा।")} help="since">
         <div className="grid grid-cols-3 gap-2">
           <label className="block text-sm font-semibold">{T("Since (year)", "कब से (साल)")}
-            <input value={facts.since} onChange={(e) => setF({ since: e.target.value.replace(/\D/g, "").slice(0, 4) })} inputMode="numeric" placeholder="2015" className={field} /></label>
+            {/* A full year fills the experience from it (owner's call, 7 Oct 2026: "since fill kare to experience auto
+                fill hona chahiye"); the owner can still change the experience afterwards. */}
+            <input value={facts.since} onChange={(e) => { const y = e.target.value.replace(/\D/g, "").slice(0, 4); const n = Number(y), now = new Date().getFullYear(); setF({ since: y, ...(y.length === 4 && n >= 1900 && n <= now ? { experience: String(Math.min(99, now - n)) } : {}) }); }} inputMode="numeric" placeholder="2015" className={field} /></label>
           <label className="block text-sm font-semibold">{T("Experience (yrs)", "Experience (साल)")}
             <input value={facts.experience} onChange={(e) => setF({ experience: e.target.value.replace(/\D/g, "").slice(0, 2) })} inputMode="numeric" placeholder="10" className={field} /></label>
           <label className="block text-sm font-semibold">{T("Team", "Team")}
@@ -187,14 +190,14 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         </div>
       </Sec>
 
-      <Sec id="q-hours" title={T("Your timings", "आपका समय")}>
+      <Sec id="q-hours" title={T("Your timings", "आपका समय")} help="hours">
         <div className="flex flex-wrap gap-2">
           {HOURS_CHIPS.map((c) => <button key={c} type="button" onClick={() => setF({ hours: c })} className={chipCls(facts.hours === c)}>{c}</button>)}
         </div>
         <input value={facts.hours} onChange={(e) => setF({ hours: e.target.value })} placeholder={T("Or type your own, e.g. Sunday closed", "या खुद लिखें, जैसे रविवार बंद")} className={field} />
       </Sec>
 
-      <Sec id="q-delivery" title={T("Do you deliver or visit homes?", "आप delivery या घर पर service देते हैं?")}>
+      <Sec id="q-delivery" title={T("Do you deliver or visit homes?", "आप delivery या घर पर service देते हैं?")} help="delivery">
         <div className="grid grid-cols-2 gap-2">
           {([["yes", T("✅ Yes", "✅ हाँ")], ["no", T("❌ No", "❌ नहीं")]] as const).map(([k, l]) => (
             <button key={k} type="button" onClick={() => setF({ homeService: k })} className={`rounded-xl border-2 py-3 font-semibold ${facts.homeService === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>{l}</button>
@@ -206,7 +209,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         <input value={facts.areas} onChange={(e) => setF({ areas: e.target.value })} placeholder={T("e.g. Karol Bagh, Rajouri Garden, Janakpuri", "जैसे Karol Bagh, Rajouri Garden, Janakpuri")} className={field} />
       </Sec>
 
-      <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")} hint={T("Only what the website shows. Bank details are not asked here — add them later, when you want payouts.", "सिर्फ़ website पर दिखाने के लिए। Bank details यहाँ नहीं — बाद में, जब payout चाहिए।")}>
+      <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")} hint={T("No bank details are asked.", "Bank details नहीं पूछी जातीं।")} help="payments">
         <div className="flex flex-wrap gap-2">
           {PAYMENT_CHIPS.map((c) => <button key={c} type="button" onClick={() => toggle("payments", c)} className={chipCls(facts.payments.includes(c))}>{c}</button>)}
         </div>
@@ -219,12 +222,12 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
       </Sec>
 
       {professional && (
-        <Sec id="q-qual" title={T("Your degree / registration (optional)", "आपकी degree / registration (ज़रूरी नहीं)")}>
+        <Sec id="q-qual" title={T("Your degree / registration (optional)", "आपकी degree / registration (ज़रूरी नहीं)")} help="qualification">
           <input value={facts.qualification} onChange={(e) => setF({ qualification: e.target.value })} placeholder={T("e.g. MBBS, MD · Reg. no. 12345", "जैसे MBBS, MD · Reg. no. 12345")} className={field} />
         </Sec>
       )}
 
-      <Sec id="q-social" title={T("Social media and Google Maps", "Social media और Google Maps")} hint={T("Optional — paste the links you have.", "Optional — जो links हैं, paste करें।")}>
+      <Sec id="q-social" title={T("Social media and Google Maps", "Social media और Google Maps")} hint={T("Optional. Paste the links you have.", "Optional। जो links हैं, paste करें।")} help="social">
         {([["instagram", "Instagram", "instagram.com/yourshop"], ["facebook", "Facebook", "facebook.com/yourshop"], ["youtube", "YouTube", "youtube.com/@yourshop"]] as const).map(([k, l, ph]) => (
           <label key={k} className="block text-sm font-semibold">{l}
             <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" className={field} />

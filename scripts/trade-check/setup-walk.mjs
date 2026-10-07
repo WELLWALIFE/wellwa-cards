@@ -213,9 +213,9 @@ await sleep(500);
 await input(/Rajesh Sharma/, "Sunil Yadav");
 await input(/10-digit mobile/, "9812345678");
 await input(/sharma@gmail\.com/, "sunil.yadav@gmail.com");
-await input(/e\.g\. Rewari/, "Rewari");
-await input(/House no\./, "H.No. 12, Sector 4");
 await dump("you"); await shot("you");
+// The "?" beside a field opens a short help sheet (7 Oct 2026).
+if (await page.$("button[aria-label$='help']")) { await page.click("button[aria-label$='help']"); await sleep(400); await shot("you-help"); await clickText(/^Got it$|^समझ गया$/); await sleep(300); }
 await clickText(/^(Next|आगे|Continue)/); await sleep(1200);
 
 // 3 — card for
@@ -225,8 +225,9 @@ if (stop("promote")) process.exit(0);
 // 4 — website
 if (await waitText(/have a website\?/)) {
   await dump("site"); await shot("site");
-  await clickText(/No website|नहीं है/); await sleep(400);
-  await shot("site-none");
+  // Three choices, one required (7 Oct 2026): a reference website with no link means none.
+  await clickText(/Reference website/); await sleep(400);
+  await shot("site-reference");
   await clickText(/^(Next|Continue|आगे)/); await sleep(1200);
 }
 

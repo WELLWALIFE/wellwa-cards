@@ -34,6 +34,8 @@ import { logoColor } from "@/lib/media/logo-color";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { bannerFocus } from "@/lib/media/photo-focus";
+import { IMG_MODEL, referenceImages } from "@/lib/media/ai-image";
+import { logImages } from "@/lib/ai-usage";
 import { screenshotCard } from "@/lib/render-page";
 import { reviewDesign } from "@/lib/design-review";
 import { applyEdits } from "@/lib/card-edits";
@@ -397,13 +399,29 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     facts = { ...facts, photos: gone.size ? facts.photos.filter((u) => !gone.has(u)) : facts.photos.filter((u) => !madeByUs(u)) };
     if (gone.size && facts.bannerUrl && gone.has(facts.bannerUrl)) facts = { ...facts, bannerUrl: "" };
   }
-  // Pictures are made at Final, never here (docs/website-looks-v2.md §7, owner's call 5 Oct 2026: "pehle stock image,
-  // final par AI image"): the website is built and shown with the trade's stock photographs; once the owner keeps a
-  // look and makes it live, /api/card/banner paints the Premium banner (and two gallery pictures when they have
-  // fewer than two of their own) in that look's colour. Nothing is ever paid for a look that was not kept.
-  const aiPhotos = 0;
-  const aiBannerUrl = "";
-  void wantsBanner; void wantsPhotos;
+  // Premium (owner's call, 7 Oct 2026: "premium me pehle hi banner AI se banwao, perfect sa"): the banner is painted
+  // in the build itself — their trade, their city, their colour — so the three looks are shown with it and the
+  // website goes live with it. Gallery pictures, and every "Write again" picture (charged a credit each), still
+  // wait for Final (/api/card/banner), and a free build gets the trade's stock photographs instead.
+  let aiPhotos = 0;
+  let aiBannerUrl = "";
+  const makeBanner = paidPlan && !fresh && !facts.bannerUrl && wantsBanner;
+  if (makeBanner) {
+    step("pictures");
+    const ref = role === "reference" && facts.website ? await referenceP : null;
+    const made = await within(
+      referenceImages(me.id, {
+        trade: setup.categoryLabel || setup.category || "", brand, city: setup.city || "",
+        dark: ref?.style?.dark ?? false, color: ref?.style?.colors?.[0] ?? ref?.look?.accent ?? categoryOf(setup.category)?.accent,
+        banner: true, count: 1,
+      }).catch(() => [] as string[]),
+      80_000,
+    ) ?? [];
+    logImages("card-banner", IMG_MODEL, made.length);
+    if (made[0]) { aiPhotos = 1; aiBannerUrl = made[0]; facts = { ...facts, bannerUrl: made[0] }; }
+    console.log("[card] premium banner", made[0] ? "made" : "skipped");
+  }
+  void wantsPhotos;
 
   /* ---- save the facts ---- */
   if (facts.hidden.some((h) => typedNames.has(h))) facts = { ...facts, hidden: facts.hidden.filter((h) => !typedNames.has(h)) };

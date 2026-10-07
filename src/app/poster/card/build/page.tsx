@@ -1113,7 +1113,7 @@ export default function BuildCard() {
       )}
       {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
-        <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("When you make it live, your Premium banner is painted in this very look (about a minute).", "Live करते ही आपका Premium banner इसी look में बनेगा (करीब 1 मिनट)।")}</p>
+        <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your Premium banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका Premium banner बनाएगा (करीब 1 मिनट)।")}</p>
       )}
       {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your Premium banner…", "आपका Premium banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
       {banner.state === "failed" && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{banner.error} <button type="button" onClick={() => existing && startBanner(existing.id)} className="ml-2 font-semibold underline">{T("Try again", "दोबारा")}</button></p>}
@@ -1415,7 +1415,7 @@ export default function BuildCard() {
           <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Your plan is on", "आपका plan चालू है") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
             {li(T("No Shubhora tag, website on Google", "Shubhora का tag नहीं, website Google पर"))}
-            {li(T("AI edits — say what to change; your photos, AI pictures when needed", "AI से बदलाव — बस बोल दो; आपकी photos, ज़रूरत हो तो AI pictures"))}
+            {li(T("AI paints your banner; AI edits — just say what to change", "AI आपका banner बनाता है; AI से बदलाव — बस बोल दो"))}
             {li(T("WhatsApp AI 24×7, auto-post, your own domain", "WhatsApp AI 24×7, auto-post, अपना domain"))}
           </ul>
           {access.subscribed ? (

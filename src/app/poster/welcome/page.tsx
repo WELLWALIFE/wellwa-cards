@@ -1,13 +1,13 @@
 "use client";
-// The first screen after sign-up (owner's call, 2 Oct 2026): congratulations, and one promise — fill your profile,
-// the website and the V-Card are made from it. "Later" opens the app; the "Finish your setup" bar brings them back.
+// The first screen after sign-up, kept simple (owner's call, 7 Oct 2026: "ye form simple banao"): congratulations,
+// your registration is done, and two buttons. Start opens the set-up; Later opens the app's home — a minimal
+// profile is made on the way (the app needs one), and the "Finish your setup" bar brings them back any time.
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { PartyPopper, ArrowRight, Clock } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
 import { PROFILE_STEPS } from "@/components/poster/profile-steps";
-import { SETUP_SCREENS } from "@/lib/setup-steps";
 
 export default function WelcomePage() {
   const { lang } = useT();
@@ -20,32 +20,21 @@ export default function WelcomePage() {
     }).catch(() => undefined);
   }, []);
   return (
-    <div className="mx-auto max-w-md space-y-6 py-6 text-center">
-      <span className="mx-auto grid h-16 w-16 place-items-center rounded-full grad-brand text-white shadow-float"><PartyPopper className="h-8 w-8" /></span>
-      <div>
+    <div className="mx-auto max-w-md space-y-8 py-10 text-center">
+      <span className="mx-auto grid h-20 w-20 place-items-center rounded-full grad-brand text-white shadow-float"><PartyPopper className="h-9 w-9" /></span>
+      <div className="space-y-2">
         <h1 className="text-2xl font-bold">{hi ? `बधाई हो${name ? `, ${name}` : ""}!` : `Congratulations${name ? `, ${name}` : ""}!`}</h1>
-        <p className="mt-2 text-sm text-muted">
-          {hi ? "आपकी FREE website + digital card — 5 मिनट में। बस profile भरिए, दोनों अपने आप बन जाएँगे।"
-            : "Your FREE website + digital card — in 5 minutes. Just fill your profile; both are made from it."}
-        </p>
+        <p className="text-base font-semibold">{hi ? "आपका registration हो गया है।" : "Your registration is done."}</p>
+        <p className="text-sm text-muted">{hi ? "अब 5 मिनट में अपनी FREE website और digital card बनाएँ।" : "Now make your FREE website and digital card in 5 minutes."}</p>
       </div>
-      {/* The same ten screens the bar counts (setup-steps.ts), so the number here is the number there. */}
-      <ol className="grid grid-cols-2 gap-1.5 text-left text-[13px]">
-        {SETUP_SCREENS.map((s, i) => (
-          <li key={s.key} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-2.5 py-2">
-            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">{i + 1}</span>
-            <span className="min-w-0"><span className="block truncate font-medium">{hi ? s.hi : s.en}</span><span className="block truncate text-[11px] text-muted">{hi ? s.blurbHi : s.blurb}</span></span>
-          </li>
-        ))}
-      </ol>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? `शुरू करें — ${SETUP_SCREENS.length} छोटे steps, 5 मिनट` : `Start — ${SETUP_SCREENS.length} short steps, 5 min`} <ArrowRight className="h-5 w-5" />
+          {hi ? "Website अभी बनाएँ" : "Start website now"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}
         </Link>
-        <p className="text-[11px] text-muted">{hi ? "बाद में करें तो भी कोई बात नहीं — \"Finish your setup\" आपको यहीं वापस लाएगा।" : "Later is fine too — \"Finish your setup\" brings you right back here."}</p>
+        <p className="text-[11px] text-muted">{hi ? "बाद में चुनें तो home खुलेगा — वहाँ से कभी भी शुरू कर सकते हैं।" : "Later opens the home screen — you can start from there any time."}</p>
       </div>
     </div>
   );
