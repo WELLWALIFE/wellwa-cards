@@ -139,7 +139,7 @@ export default function WebsitePage() {
           {/* ---- 2. two doors: Share, Edit ---- */}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
-            <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit", "Edit करें")}<span className={doorSub}>{T("changes card and website", "card और website दोनों बदलेंगे")}</span></button>
+            <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
           {panel === "share" && (
@@ -165,8 +165,18 @@ export default function WebsitePage() {
               {/* One question, six tiles (owner's call, 7 Oct 2026: "edit ko aur easy banao"): each tile is one thing an
                   owner wants to change, in plain words, and opens one focused screen that saves straight onto the
                   live website. Everything else (editor, pages, settings) waits under Advanced. */}
+              {/* Said loud, right where Edit opens (owner, 7 Oct 2026: "pata nahi chal raha kis ko edit kar rahe hain"):
+                  the card and the website are ONE thing — the same details, the same link — so every edit is of both. */}
+              <div className="rounded-2xl border-2 border-brand/40 bg-brand-soft/40 p-3.5">
+                <p className="text-base font-bold">{T("You are editing BOTH: your card and your website.", "आप दोनों edit कर रहे हैं: अपना card और अपनी website।")}</p>
+                <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center text-xs">
+                  <span className="rounded-xl bg-surface px-2 py-2"><Smartphone className="mx-auto mb-1 h-5 w-5 text-brand" /><b className="block">{T("Card", "Card")}</b><span className="text-muted">{T("on phones", "phone पर")}</span></span>
+                  <span className="text-lg font-bold text-brand">=</span>
+                  <span className="rounded-xl bg-surface px-2 py-2"><Globe className="mx-auto mb-1 h-5 w-5 text-brand" /><b className="block">{T("Website", "Website")}</b><span className="text-muted">{T("on computers", "computer पर")}</span></span>
+                </div>
+                <p className="mt-2.5 text-sm">{T("Same details, same link. Change anything below once — it shows on both.", "एक ही जानकारी, एक ही link। नीचे कुछ भी एक बार बदलें — दोनों पर दिखेगा।")}</p>
+              </div>
               <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
-              <p className="-mt-2 text-xs text-muted">{T("Your card and website share these details — one change shows on both.", "Card और website की जानकारी एक ही है — एक बदलाव दोनों पर दिखेगा।")}</p>
               {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
               <div className="grid grid-cols-2 gap-2">
                 {([
@@ -183,7 +193,7 @@ export default function WebsitePage() {
                       <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
                       <span className="mt-2 block text-sm font-bold leading-tight">{x.t}{x.premium && <span className="ml-1.5 inline-flex items-center rounded-full bg-[#12144a] px-1.5 py-0.5 align-middle text-[9px] font-bold text-[#ffd54a]">Premium</span>}</span>
                       <span className="mt-0.5 block text-[11px] leading-tight text-muted">{x.s}</span>
-                      <span className={`mt-1.5 inline-block rounded-full px-1.5 py-0.5 text-[9.5px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Card + website", "Card + website") : x.scope === "again" ? T("Card now · website via Write again", "Card अभी · website Write again से") : T("Website only", "सिर्फ़ website")}</span>
+                      <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Shows on card + website", "Card + website पर दिखेगा") : x.scope === "again" ? T("Card now · website after Write again", "Card अभी · website Write again के बाद") : T("Website only", "सिर्फ़ website")}</span>
                     </>
                   );
                   const cls = "block rounded-2xl border-2 border-border bg-surface p-3 text-left";

@@ -367,7 +367,7 @@ await page.goto(`${BASE}/poster/site`, { waitUntil: "networkidle2", timeout: 120
 await waitText(/Card & Website/); await sleep(800);
 await dump("site-page"); await shot("site-page");
 if (await clickText(/^Share card or website|^Share करें card/)) { await sleep(500); await shot("site-share"); }
-if (await clickText(/^Edit changes card|^Edit करें card/)) {
+if (await clickText(/^Edit card & website|^Card और website edit/)) {
   await sleep(500); await dump("site-edit"); await shot("site-edit");
   // A focused edit: Timings & address → the set-up's "Where & when" alone, Save → back here with "Saved" (7 Oct 2026).
   if (await clickText(/Timings & address|समय और पता/)) {
