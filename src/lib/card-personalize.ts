@@ -134,7 +134,19 @@ function withoutSamples(d: Partial<Card>, own: OwnDetails | null): Partial<Card>
  *  Only the owner's own card is touched: their primary card (the one made on "Make your V-Card"), or their only card.
  *  With several cards and no primary one, nothing is changed — a card made for someone else is never rewritten.
  *  When the cards cannot be loaded (no internet), nothing is changed either. */
-export async function syncCardFromSetup(s: { name: string; business: string; photo: string | null; logo: string | null; phone: string; oldPhoto?: string | null; oldLogo?: string | null }) {
+/** The set-up's words and pictures that the live website shows: each one is written onto the card only when it
+ *  CHANGED in this save (old → new), so a word the owner typed in the editor is never replaced by a stale set-up. */
+export type SetupSync = { about?: string; oldAbout?: string; hours?: string; oldHours?: string; address?: string; oldAddress?: string; banner?: string; oldBanner?: string; photos?: string[]; oldPhotos?: string[] };
+
+/** "Mon–Sat 10 AM – 8 PM" → { day: "Mon–Sat", time: "10 AM – 8 PM" }; a line with no time keeps the whole line as the day. */
+function hoursRows(text: string): { day: string; time: string }[] {
+  return text.split(/\n|·|;/).map((x) => x.trim()).filter(Boolean).slice(0, 7).map((line) => {
+    const m = /^(.*?[A-Za-z\u0900-\u097F\u2013–-]+)\s+(\d.*|[Cc]losed.*|बंद.*)$/.exec(line);
+    return m ? { day: m[1].trim(), time: m[2].trim() } : { day: line, time: "" };
+  });
+}
+
+export async function syncCardFromSetup(s: { name: string; business: string; photo: string | null; logo: string | null; phone: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync }) {
   const { fetchMyCardsStrict, publishCard } = await import("@/lib/cloud");
   let cards: Card[];
   try { cards = await fetchMyCardsStrict(); } catch { return; }
@@ -159,5 +171,28 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
   else if ((preferLogo || !s.photo) && (logoChanged || (s.logo && showsOld))) { next.avatarUrl = s.logo!; next.avatarShape = "square"; }
   if (s.logo) next.site = { enabled: next.site?.enabled ?? false, ...next.site, logoUrl: s.logo };
   if (s.phone) next.links = next.links.map((l) => (l.type === "phone" || l.type === "whatsapp" ? { ...l, value: `+91${s.phone}` } : l));
+  // The focused edits from Card & Website → Edit (owner's call, 7 Oct 2026): what was changed here lands on the live
+  // website at once — before, a new timing or about waited for "Write again".
+  const f = s.facts;
+  if (f) {
+    const changed = (a?: string, b?: string) => (a ?? "").trim() !== (b ?? "").trim() && !!(a ?? "").trim();
+    const mapBlocks = (fn: (b: CardBlock) => CardBlock) => { next.pages = next.pages.map((p) => ({ ...p, blocks: p.blocks.map(fn) })); };
+    if (changed(f.about, f.oldAbout)) {
+      next.about = f.about!.trim();
+      let first = true;
+      mapBlocks((b) => (b.kind === "about" && first ? (first = false, { ...b, body: f.about!.trim() }) : b));
+    }
+    if (changed(f.hours, f.oldHours)) mapBlocks((b) => (b.kind === "hours" ? { ...b, rows: hoursRows(f.hours!) } : b.kind === "appointment" ? { ...b, note: f.hours!.trim() } : b));
+    if (changed(f.address, f.oldAddress)) mapBlocks((b) => (b.kind === "location" ? { ...b, address: f.address!.trim() } : b));
+    if (changed(f.banner, f.oldBanner)) {
+      next.coverUrl = f.banner!.trim();
+      if (next.site) next.site = { ...next.site, hero: { ...(next.site.hero ?? { headline: next.company || next.name, sub: "" }), imageUrl: f.banner!.trim() } };
+    }
+    const fresh = (f.photos ?? []).filter((u) => u && !(f.oldPhotos ?? []).includes(u));
+    if (fresh.length) {
+      let first = true;
+      mapBlocks((b) => (b.kind === "gallery" && first ? (first = false, { ...b, images: [...b.images, ...fresh.filter((u) => !b.images.some((i) => i.url === u)).map((u) => ({ url: u, color: next.themeColor, label: "" }))].slice(0, 12) }) : b));
+    }
+  }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
 }

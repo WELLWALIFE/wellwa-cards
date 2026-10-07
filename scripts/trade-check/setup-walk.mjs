@@ -356,7 +356,7 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
     await waitText(/Congratulations|बधाई/, 30000); await sleep(800);
     await dump("congrats"); await shot("congrats");
     await clickText(/^Edit now|अभी edit/); await sleep(2500);
-    console.log("  after Edit now:", page.url(), "| edit panel:", await page.evaluate(() => /Look & design|Words & photos/.test(document.body.innerText)));
+    console.log("  after Edit now:", page.url(), "| edit panel:", await page.evaluate(() => /What do you want to change/.test(document.body.innerText)));
     await shot("congrats-edit-now");
     // ("Later" is a plain push to /poster; the browser's Back reloads the build page, so it is not re-tested here.)
   } else console.log("!! no Save and next button on the preview");
@@ -367,7 +367,22 @@ await page.goto(`${BASE}/poster/site`, { waitUntil: "networkidle2", timeout: 120
 await waitText(/Card & Website/); await sleep(800);
 await dump("site-page"); await shot("site-page");
 if (await clickText(/^Share$|^Share करें$/)) { await sleep(500); await shot("site-share"); }
-if (await clickText(/^Edit$|^Edit करें$/)) { await sleep(500); await page.evaluate(() => document.querySelectorAll("details").forEach((d) => { d.open = true; })); await sleep(400); await dump("site-edit"); await shot("site-edit"); }
+if (await clickText(/^Edit$|^Edit करें$/)) {
+  await sleep(500); await dump("site-edit"); await shot("site-edit");
+  // A focused edit: Timings & address → the set-up's "Where & when" alone, Save → back here with "Saved" (7 Oct 2026).
+  if (await clickText(/Timings & address|समय और पता/)) {
+    await sleep(2500); console.log("  focused edit opened:", page.url(), "| Save button:", await page.evaluate(() => [...document.querySelectorAll("button")].some((b) => /^Save$|^Save करें$/.test(b.innerText.trim()))));
+    await input(/Or type your own/, "Mon–Sat 9 AM – 7 PM", { clear: true });
+    await shot("site-edit-where");
+    await clickText(/^Save$|^Save करें$/); await sleep(3000);
+    console.log("  after Save:", page.url(), "| saved line:", await page.evaluate(() => /Saved\. It is on your website|Save हो गया/.test(document.body.innerText)));
+    await shot("site-edit-saved");
+    const hoursWrite = state.writes.filter((w) => /cards (UPDATE|INSERT|PATCH)/.test(w)).slice(-1)[0] || "(no card write)";
+    console.log("  last card write:", hoursWrite.slice(0, 160));
+    const hoursBlock = state.cards.flatMap((c) => c.data?.pages ?? []).flatMap((p) => p.blocks ?? []).find((b) => b.kind === "hours");
+    console.log("  hours block on the live card now:", JSON.stringify(hoursBlock?.rows ?? null));
+  }
+}
 console.log("\n--- cards on the server:", state.cards.map((c) => ({ id: c.id, username: c.username, blueprint: c.data?.site?.style?.blueprint })));
 console.log("--- all writes:\n" + state.writes.map((w) => "  " + w.slice(0, 160)).join("\n"));
 await browser.close();

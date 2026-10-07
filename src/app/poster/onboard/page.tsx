@@ -94,9 +94,12 @@ function Onboard() {
   // ?skip=1 — the plan page's Skip: create the minimal profile and open the app without showing the form.
   const autoSkip = params.get("skip") === "1";
   // ?back=/poster/more — an EDIT of name / mobile / photo (Me → "Edit name / mobile"): only "About you", a Save
-  // button, and straight back there afterwards (owner's call, 26 Sep 2026).
+  // button, and straight back there afterwards (owner's call, 26 Sep 2026). With ?step=about|where|extras and a back
+  // (Card & Website → Edit, 7 Oct 2026) the same: that one screen, Save, and back — the live website follows.
   const back = (params.get("back") ?? "").startsWith("/") ? params.get("back")! : "";
   const editing = !!back;
+  /** What the set-up had when it opened: a focused edit writes onto the live card only what CHANGED here. */
+  const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[] }>({ about: "", hours: "", address: "", banner: "", photos: [] });
   useEffect(() => { const w = asStep(wanted); if (w) setStep(w); }, [wanted]); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
@@ -243,6 +246,7 @@ function Onboard() {
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
       if (f) setFacts(f);
+      atLoad.current = { about: meta.business?.about ?? "", hours: f?.hours ?? "", address: [meta.business?.address, meta.business?.city].filter(Boolean).join(", "), banner: f?.bannerUrl ?? "", photos: f?.photos ?? [] };
       const phone0 = (p?.phone || meta.phone || "").replace(/^\+91/, "");
       // Before the profile exists the WhatsApp number waits on the account (step 1 saves it there).
       const wa = f?.whatsapp || (meta.whatsapp ?? "").replace(/\D/g, "").slice(-10);
@@ -909,11 +913,14 @@ function Onboard() {
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
+        facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos },
       }).catch(() => undefined);
       clearDraft();
       // A different website (or a different role for it) on an account that already has a live card: that card
       // is built again from the new site — ?again=1 throws the old preview away; publishing still asks first.
       if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1&site=new"); return; }
+      // A focused edit (Card & Website → Edit): saved, on the website, back where it came from.
+      if (back) { router.push(`${back}${back.includes("?") ? "&" : "?"}saved=1`); return; }
       const to = next || await nextStep();
       router.push(siteChanged && to.startsWith("/poster/card/build") ? `${to}${to.includes("?") ? "&" : "?"}site=new` : to);
     } catch {
@@ -1032,15 +1039,20 @@ function Onboard() {
     </div>
   );
   /** Next / Save at the foot of a business screen, with the error above it. */
-  const nextBar = (last = false) => (
+  const nextBar = (lastScreen = false) => {
+    // A focused edit (?back=…) saves from any screen and returns there.
+    const last = lastScreen || editing;
+    return (
     <div className="space-y-2">
       {err && <p className="text-sm text-danger">{err}</p>}
       <button type="button" onClick={last ? save : goNext} disabled={busy === "save" || busy === "next"} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-        {busy === "save" || busy === "next" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : last ? <Check className="h-5 w-5" /> : null} {last ? T("Save and continue", "Save करके आगे बढ़ें") : T("Next →", "आगे →")}
+        {busy === "save" || busy === "next" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : last ? <Check className="h-5 w-5" /> : null} {editing ? T("Save", "Save करें") : last ? T("Save and continue", "Save करके आगे बढ़ें") : T("Next →", "आगे →")}
       </button>
+      {editing && <p className="text-center text-[11px] text-muted">{T("Save puts it on your website right away.", "Save करते ही website पर आ जाएगा।")}</p>}
       {!last && <p className="text-center text-[11px] text-muted">{T("Saved as you go. Come back any time.", "अपने आप save होता है। कभी भी वापस आएँ।")}</p>}
     </div>
-  );
+    );
+  };
 
   if (loading) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (loadErr) return (
@@ -1057,7 +1069,7 @@ function Onboard() {
       )}
       {editing ? (
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold text-muted">{T("Edit your details", "अपनी जानकारी बदलें")}</p>
+        <p className="text-xs font-semibold text-muted">{T("Edit", "Edit")} · {hi ? screenInfo.hi : screenInfo.en}</p>
         <button type="button" onClick={() => router.push(back)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
@@ -1356,9 +1368,12 @@ function Onboard() {
                   <button type="button" onClick={() => setBiz({ ...biz, map: "" })} className="underline text-muted">{T("Remove", "हटाएँ")}</button>
                 </div>
               ) : (
-                <button type="button" onClick={pinShop} disabled={busy === "pin"} className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-3 text-sm font-semibold disabled:opacity-60">
-                  {busy === "pin" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4 text-brand" />} {T("I am at my shop — pin it on the map", "मैं अपनी दुकान पर हूँ — map पर pin करें")}<Help k="map" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button type="button" onClick={pinShop} disabled={busy === "pin"} className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-3 text-sm font-semibold disabled:opacity-60">
+                    {busy === "pin" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4 text-brand" />} {T("I am at my shop — pin it on the map", "मैं अपनी दुकान पर हूँ — map पर pin करें")}
+                  </button>
+                  <Help k="map" />
+                </div>
               )}
           </div>
           <div className="space-y-4">

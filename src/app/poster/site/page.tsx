@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Sparkles, Package, Camera, LayoutTemplate, Settings, Type, MessageCircle } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Sparkles, Package, Camera, Settings, Type, Mic, Clock } from "lucide-react";
 import { PremiumCard, PremiumGate } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -34,7 +34,11 @@ export default function WebsitePage() {
   const [panel, setPanel] = useState<Panel>(null);
   // Arrived straight from the builder (?published=1): the greeting at the top; ?edit=1 / ?share=1 open that door.
   const [published, setPublished] = useState(false);
-  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setPublished(q.get("published") === "1"); if (q.get("edit") === "1") setPanel("edit"); if (q.get("share") === "1") setPanel("share"); } catch { /* ignore */ } }, []);
+  /** Back from a focused edit (?saved=1): one line says it is on the website. */
+  const [saved, setSaved] = useState(false);
+  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setPublished(q.get("published") === "1"); if (q.get("edit") === "1") setPanel("edit"); if (q.get("share") === "1") setPanel("share"); setSaved(q.get("saved") === "1"); } catch { /* ignore */ } }, []);
+  /** Where a focused edit comes back to: this page, the Edit door open. */
+  const BACK = encodeURIComponent("/poster/site?edit=1");
   const { plan, loading: planLoading } = usePlan();
   const paid = planLoading || plan !== "free";
   // The live card, for "change something" (card-chat-edit.tsx) and the notice.
@@ -150,35 +154,44 @@ export default function WebsitePage() {
 
           {panel === "edit" && (
             <div className="space-y-3">
-              {/* a. the look */}
-              <details open className="rounded-2xl border border-border bg-surface">
-                <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Paintbrush className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Look & design", "Look और design"), T("The three designs, tiles, colours, dark or light", "तीन design, tiles, रंग, dark या light"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
-                <div className="divide-y divide-border border-t border-border">
-                  <Link href="/poster/card/build?improve=1" className={row}><LayoutTemplate className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Change the design", "Design बदलें"), T("View the three designs and pick one — nothing is spent", "तीनों design देखें और एक चुनें — कुछ खर्च नहीं"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href="/poster/card/build?improve=1&ask=1" className={row}><Sparkles className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Write again with AI", "AI से दोबारा लिखवाएँ"), T("Say what should change — words, look, pictures", "बताएँ क्या बदले — शब्द, look, तस्वीरें"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                </div>
-              </details>
-              {/* b. words and photos */}
+              {/* One question, six tiles (owner's call, 7 Oct 2026: "edit ko aur easy banao"): each tile is one thing an
+                  owner wants to change, in plain words, and opens one focused screen that saves straight onto the
+                  live website. Everything else (editor, pages, settings) waits under Advanced. */}
+              <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
+              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
+              <div className="grid grid-cols-2 gap-2">
+                {([
+                  { k: "ai", I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid },
+                  { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}` },
+                  { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}` },
+                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: "/poster/products" },
+                  { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}` },
+                  { k: "design", I: Paintbrush, t: T("Design", "Design"), s: T("The three designs, colours", "तीन design, रंग"), href: "/poster/card/build?improve=1" },
+                ] as { k: string; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean }[]).map((x) => {
+                  const inner = (
+                    <>
+                      <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
+                      <span className="mt-2 block text-sm font-bold leading-tight">{x.t}{x.premium && <span className="ml-1.5 inline-flex items-center rounded-full bg-[#12144a] px-1.5 py-0.5 align-middle text-[9px] font-bold text-[#ffd54a]">Premium</span>}</span>
+                      <span className="mt-0.5 block text-[11px] leading-tight text-muted">{x.s}</span>
+                    </>
+                  );
+                  const cls = "block rounded-2xl border-2 border-border bg-surface p-3 text-left";
+                  return x.href ? <Link key={x.k} href={x.href} className={cls}>{inner}</Link> : <button key={x.k} type="button" onClick={x.onClick} className={`${cls} border-brand/40 bg-brand-soft/30`}>{inner}</button>;
+                })}
+              </div>
+              {card && <CardChatEdit card={card} locked={!paid} url={s.url} onChanged={(c) => { setCard(c); load(cardId); }} />}
+              <PhotoNudge />
+              {/* Advanced: everything the six tiles do not cover. */}
               <details className="rounded-2xl border border-border bg-surface">
-                <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Type className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Words & photos", "शब्द और photos"), T("Your details, products, photos, the full editor", "आपकी जानकारी, products, photos, पूरा editor"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
+                <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Settings className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Advanced", "Advanced"), T("Name & number, full editor, pages, news, settings, your own domain", "नाम और number, पूरा editor, pages, news, settings, अपना domain"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
                 <div className="divide-y divide-border border-t border-border">
-                  <Link href="/poster/onboard?step=trade" className={row}><Pencil className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Edit my details", "मेरी जानकारी बदलें"), T("Name, trade, about, timings, address", "नाम, काम, परिचय, समय, पता"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href="/poster/products" className={row}><Package className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Products & services", "Products और services"), T("Add, change, photos and prices", "जोड़ें, बदलें, photos और दाम"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href="/poster/onboard?step=extras" className={row}><Camera className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Banner & photos", "Banner और photos"), T("Your own photos on the website", "Website पर आपकी अपनी photos"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
+                  <Link href={`/poster/onboard?step=you&back=${BACK}`} className={row}><Pencil className="h-5 w-5 shrink-0 text-muted" />{rowText(T("My name, number & photo", "मेरा नाम, number और photo"), T("Changes everywhere at once", "एक साथ हर जगह बदलेगा"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
+                  <Link href="/poster/card/build?improve=1&ask=1" className={row}><Sparkles className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Write again with AI", "AI से दोबारा लिखवाएँ"), T("New words, look or pictures — a credit each", "नए शब्द, look या तस्वीरें — हर एक पर credit"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                   <Link href={`/poster/d/editor?id=${s.cardId}`} className={row}><Type className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Edit text & photos yourself", "शब्द और photos खुद बदलें"), T("The full editor — every page, every section", "पूरा editor — हर page, हर section"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                   <Link href="/poster/website/edit" className={row}><Globe className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Website pages", "Website के pages"), T("Headline, sections, which pages show", "Headline, sections, कौन से pages दिखें"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                 </div>
-                <div className="space-y-3 border-t border-border p-3">
-                  <p className="flex items-center gap-2 text-sm font-semibold"><MessageCircle className="h-4 w-4 text-brand" /> {T("Tell the AI what to change", "AI को बताएँ क्या बदलना है")}</p>
-                  {card && <CardChatEdit card={card} locked={!paid} onChanged={(c) => { setCard(c); load(cardId); }} />}
-                  {card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
-                  <PhotoNudge />
-                </div>
-              </details>
-              {/* c. settings */}
-              <details className="rounded-2xl border border-border bg-surface">
-                <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Settings className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Settings", "Settings"), T("Website mode, pages, your own domain, Premium", "Website mode, pages, अपना domain, Premium"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
                 <div className="space-y-4 border-t border-border p-3">
+                  {card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
                   <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
                     <span><span className="block text-sm font-medium">{T("Website mode", "Website mode")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
                     <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
