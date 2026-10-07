@@ -396,7 +396,7 @@ function Onboard() {
     // A tab left open from before a reset must not write its old answers over the fresh account (see accountMoved).
     if (await accountMoved()) { setBusy(""); return; }
     // The sign that step 1 was done: after a reset the name and mobile stay but this goes, so the step shows again.
-    const home = { you_done_at: new Date().toISOString() };
+    const home = { you_done_at: new Date().toISOString(), setup_pos: "promote" };
     if (profile || editing) {
       const phone = digits.slice(-10);
       let partnerMissed = false;
@@ -498,7 +498,7 @@ function Onboard() {
       const sb = getBrowserSupabase();
       // Remembered on the account, not in this screen's state: the card is built on a later screen, and the
       // person may well close the app in between.
-      const up = await sb?.auth.updateUser({ data: { also_shubhora: true } });
+      const up = await sb?.auth.updateUser({ data: { also_shubhora: true, setup_pos: "site" } });
       if (up?.error) { setErr("Could not save. Please try again."); return; }
       await bumpServerBase();
       setStep("site");
@@ -883,6 +883,7 @@ function Onboard() {
         // display_name is ours: Google rewrites full_name on every Google sign-in.
         full_name: you.name.trim(), display_name: you.name.trim(), phone: `+91${phone}`, photo_url: you.photo || "",
         ...(needEmail ? { contact_email: email.trim().slice(0, 120) } : {}),
+        setup_pos: "products",
         business: {
           name: bizName, role: biz.role, reach: biz.role === "personal" ? "local" : (biz.reach ?? "local"), category: biz.category || "", trade: (biz.trade ?? "").trim().slice(0, 40), gstin: gst, address: (biz.address ?? "").trim(),
           city, about: (biz.about ?? "").trim(), website: ownSiteUrl(), map: (biz.map ?? "").trim(),
@@ -980,12 +981,13 @@ function Onboard() {
     const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: body }).catch(() => null);
     if (r?.ok && r.data.profile) { profileRef.current = r.data.profile; setProfile(r.data.profile); }
   }
-  /** What this screen has goes to the server before the next opens (best effort; the draft holds it either way). */
-  async function persistStep() {
+  /** What this screen has goes to the server before the next opens (best effort; the draft holds it either way).
+   *  `nxt` — the screen about to open, remembered on the account so "Finish setup" comes back to it. */
+  async function persistStep(nxt?: StepKey) {
     try {
       const sb = getBrowserSupabase();
       if ((biz.category ?? "").trim() && (you.name.trim().length >= 2 || (biz.name ?? "").trim())) { if (profileRef.current) await syncProfile(); else await ensureProfile(); }
-      await sb?.auth.updateUser({ data: { ...emailMeta(), business: bizMeta() } });
+      await sb?.auth.updateUser({ data: { ...emailMeta(), business: bizMeta(), ...(nxt ? { setup_pos: nxt } : {}) } });
       await bumpServerBase();
       if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, SCREEN_FACT_KEYS) } }).catch(() => undefined);
     } catch { /* offline: the draft keeps it; Save writes it all again */ }
@@ -1016,8 +1018,8 @@ function Onboard() {
     }
     setBusy("next");
     if (await accountMoved()) { setBusy(""); return; }
-    try { await persistStep(); } finally { setBusy(""); }
     const nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 1)];
+    try { await persistStep(nxt); } finally { setBusy(""); }
     setStep(nxt);
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
   }
@@ -1103,7 +1105,7 @@ function Onboard() {
           })}
 
           {err && <p className="text-sm text-danger">{err}</p>}
-          <button type="button" onClick={() => { if (promote === "both") void bothFlow(); else if (promote === "shubhora") void promoteShubhora(); else setStep("site"); }} disabled={!!busy}
+          <button type="button" onClick={() => { if (promote === "both") void bothFlow(); else if (promote === "shubhora") void promoteShubhora(); else { setStep("site"); void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: "site" } }).then(bumpServerBase).catch(() => undefined); } }} disabled={!!busy}
             className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
             {busy === "both" || busy === "shubhora" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : <>{T("Continue", "आगे बढ़ें")} →</>}
           </button>

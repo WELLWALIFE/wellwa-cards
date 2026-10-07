@@ -221,7 +221,7 @@ export default function TodayPage() {
 
       {/* The same count as the floating setup sheet (the free steps): two different totals on one screen read as a bug. */}
       {journey.nextFree && (
-        <Link href="/poster/setup" className="block rounded-xl border border-brand bg-brand-soft/50 p-3">
+        <Link href={journey.resumeHref ?? "/poster/setup"} className="block rounded-xl border border-brand bg-brand-soft/50 p-3">
           <p className="text-sm font-semibold">{lang === "en" ? "Finish setup" : "Setup पूरा करें"} · {journey.freeDone}/{journey.freeTotal}</p>
           <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {journey.nextFree.title} →</p>
         </Link>

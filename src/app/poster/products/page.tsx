@@ -58,7 +58,7 @@ export default function ProductsPage() {
   const [list, setList] = useState<Product[] | null>(null);
   // ?setup=1 — reached from the setup journey: show the way on to the card (with or without products).
   const [setupMode, setSetupMode] = useState(false);
-  useEffect(() => { try { setSetupMode(new URLSearchParams(window.location.search).get("setup") === "1"); } catch { /* ignore */ } }, []);
+  useEffect(() => { try { const on = new URLSearchParams(window.location.search).get("setup") === "1"; setSetupMode(on); if (on) void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: "products" } }).catch(() => undefined); } catch { /* ignore */ } }, []);
   const [brandAdmin, setBrandAdmin] = useState<string | null>(null);
   const [forBrand, setForBrand] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -174,6 +174,7 @@ export default function ProductsPage() {
   async function continueToSite() {
     setGoing(true);
     try { if (facts && factsDirty.current) await send(pickFacts(facts, PRODUCT_FACT_KEYS), saveSeq.current, false); } catch { /* the build form shows them again */ }
+    await getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: "make" } }).catch(() => undefined);
     router.push("/poster/card/build?make=1");
   }
 

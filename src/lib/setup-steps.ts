@@ -20,6 +20,10 @@ export const SETUP_SCREENS: Screen[] = [
   { key: "products", chapter: "products", en: "Products", hi: "Products", blurb: "What you sell or do", blurbHi: "आप क्या बेचते / करते हैं" },
   { key: "make", chapter: "make", en: "Make", hi: "बनाएँ", blurb: "Your website and card", blurbHi: "आपकी website और card" },
 ];
+/** The page each screen is on — "Finish setup" returns to exactly the one the owner left (owner's call, 7 Oct 2026:
+ *  "beech me kahin bhi drop kare to complete setup par wahi page khule"). The account remembers it as `setup_pos`. */
+export const screenHref = (k: ScreenKey): string => k === "products" ? "/poster/products?setup=1" : k === "make" ? "/poster/card/build?make=1" : `/poster/onboard?step=${k}`;
+export const isScreenKey = (v: unknown): v is ScreenKey => typeof v === "string" && SETUP_SCREENS.some((s) => s.key === v);
 export const screenNo = (k: ScreenKey) => Math.max(1, SETUP_SCREENS.findIndex((s) => s.key === k) + 1);
 /** The onboarding's own screens, in order (the products and make pages are their own routes). */
 export const ONBOARD_SCREENS = SETUP_SCREENS.filter((s) => s.key !== "products" && s.key !== "make").map((s) => s.key) as Exclude<ScreenKey, "products" | "make">[];

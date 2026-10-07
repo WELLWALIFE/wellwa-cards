@@ -279,6 +279,12 @@ if (await waitText(/Where & when|कहाँ और कब/)) {
   await input(/e\.g\. Delhi/, "Rewari");
   await input(/Shop no\./, "Shop 4, Model Town Market");
   await clickText(/^(Next|आगे)/); await sleep(1500);
+  // Dropped here and came back: "Finish setup" on home must open the exact screen left (7 Oct 2026) — the one
+  // after "where", since Next already moved on.
+  await page.goto(`${BASE}/poster`, { waitUntil: "networkidle2", timeout: 120000 }); await sleep(1500);
+  const resume = await page.evaluate(() => [...document.querySelectorAll("a")].find((a) => /Finish setup|Setup पूरा/.test(a.innerText))?.getAttribute("href") || "(no Finish setup link)");
+  console.log("  Finish setup →", resume, resume === "/poster/onboard?step=about" ? "OK" : "!! expected /poster/onboard?step=about");
+  await page.goto(`${BASE}${resume.startsWith("/") ? resume : "/poster/onboard?step=about"}`, { waitUntil: "networkidle2", timeout: 120000 }); await sleep(1200);
 }
 
 // 8 — about & logo
@@ -345,18 +351,15 @@ if (await clickText(/Make my free website|free website बनाओ|Make my webs
   if (await clickText(/^Card$|^Card ·/)) { await sleep(1200); await shot("preview-card-tab"); await clickText(/^Website/); await sleep(600); }
   if (await clickText(/Change…|Change\.\.\.|बदलें/)) { await sleep(800); await dump("change-sheet"); await shot("change-sheet", false); await page.keyboard.press("Escape"); await sleep(400); }
   if (await clickText(/Desktop|computer|कंप्यूटर/i)) { await sleep(1500); await shot("preview-desk"); }
-  // Live → congratulations → Continue (home)
-  if (await clickText(/Looks nice|live this|Live करें/)) {
+  // Save and next → congratulations → Edit now (Card & Website, Edit panel) / Later (home)
+  if (await clickText(/Save and next|Save करके आगे/)) {
     await waitText(/Congratulations|बधाई/, 30000); await sleep(800);
     await dump("congrats"); await shot("congrats");
-    // Edit → the Change… sheet over the preview; Close → Done → back on the congratulations; Continue → home
-    await clickText(/^Edit|Edit करें/); await sleep(800); await shot("congrats-edit", false);
-    await clickText(/^Close$|बंद करें/); await sleep(400);
-    await clickText(/^(Done|हो गया)$/); await sleep(800);
-    console.log("  back on congratulations:", await page.evaluate(() => /Congratulations|बधाई/.test(document.body.innerText)));
-    await clickText(/^Continue|आगे बढ़ें/); await sleep(2500);
-    console.log("  after Continue:", page.url());
-  } else console.log("!! no Live button on the preview");
+    await clickText(/^Edit now|अभी edit/); await sleep(2500);
+    console.log("  after Edit now:", page.url(), "| edit panel:", await page.evaluate(() => /Look & design|Words & photos/.test(document.body.innerText)));
+    await shot("congrats-edit-now");
+    // ("Later" is a plain push to /poster; the browser's Back reloads the build page, so it is not re-tested here.)
+  } else console.log("!! no Save and next button on the preview");
 }
 
 // 12 — Card & Website (Create → Card & Website): link, Share, Edit

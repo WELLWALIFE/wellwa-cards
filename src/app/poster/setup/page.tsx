@@ -13,7 +13,7 @@ import { PushSetting } from "@/components/push-toggle";
 
 export default function SetupPage() {
   const router = useRouter();
-  const { steps, freeDone, freeTotal, nextFree } = useJourney();
+  const { steps, freeDone, freeTotal, nextFree, resumeHref } = useJourney();
   const access = useAiAccess();
   const [locked, setLocked] = useState<Step | null>(null);
   useEffect(() => { isLoggedIn().then((ok) => { if (!ok) router.push("/login?next=/poster/setup"); }); }, [router]);
@@ -44,7 +44,7 @@ export default function SetupPage() {
       <li key={s.key}>
         {needsPlan && !s.done
           ? <button type="button" onClick={() => setLocked(s)} className={cls}>{body}</button>
-          : <Link href={s.href} className={cls}>{body}</Link>}
+          : <Link href={isNext && resumeHref ? resumeHref : s.href} className={cls}>{body}</Link>}
       </li>
     );
   }

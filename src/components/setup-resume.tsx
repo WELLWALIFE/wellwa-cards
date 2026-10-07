@@ -15,8 +15,10 @@ const KEY = "setup-resume-hidden";
 
 export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   const path = usePathname();
-  const { freeDone, freeTotal, nextFree: firstOpen, prevFree, continueTo } = useJourney(path);
+  const { freeDone, freeTotal, nextFree: firstOpen, prevFree, continueTo, resumeHref } = useJourney(path);
+  // The exact screen the owner left the set-up on wins over the first unfinished step (owner's call, 7 Oct 2026).
   const nextFree = continueTo ?? firstOpen;
+  const goTo = resumeHref ?? nextFree?.href ?? "/poster/setup";
   const [hidden, setHidden] = useState(true);
   useEffect(() => { try { setHidden(sessionStorage.getItem(KEY) === "1"); } catch { setHidden(false); } }, []);
 
@@ -39,7 +41,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
         </div>
         <div className="mt-2.5 flex flex-wrap items-center gap-2">
           {prevFree && <Link href={prevFree.href} className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /> Previous</Link>}
-          <Link href={nextFree.href} className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1 rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">Continue <ChevronRight className="h-4 w-4" /></Link>
+          <Link href={goTo} className="inline-flex flex-1 sm:flex-none items-center justify-center gap-1 rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">Continue <ChevronRight className="h-4 w-4" /></Link>
           <Link href="/poster/setup" className="w-full text-center text-xs text-muted underline sm:w-auto">All steps</Link>
         </div>
       </div>
@@ -54,7 +56,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
         <div className="rounded-2xl border border-brand/30 bg-surface p-2.5 shadow-float">
           <div className="flex items-center gap-2.5">
             <Ring pct={pct} />
-            <Link href={nextFree.href} className="min-w-0 flex-1">
+            <Link href={goTo} className="min-w-0 flex-1">
               <p className="text-[13px] font-semibold leading-tight">Finish setup · {freeDone}/{freeTotal}</p>
               <p className="truncate text-[11.5px] text-muted leading-tight">Next: {nextFree.title}</p>
             </Link>
@@ -66,7 +68,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
                 <ChevronLeft className="h-4 w-4" /> Previous
               </Link>
             )}
-            <Link href={nextFree.href} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2 text-sm font-semibold text-white">
+            <Link href={goTo} className="inline-flex flex-1 items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2 text-sm font-semibold text-white">
               Continue <ChevronRight className="h-4 w-4" />
             </Link>
           </div>

@@ -8,6 +8,7 @@ import { api } from "@/lib/poster-client";
 import { fetchMyCards } from "@/lib/cloud";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { isThinCard } from "@/lib/card-facts";
+import { isScreenKey, screenHref } from "@/lib/setup-steps";
 
 export type StepKey = "you" | "business" | "products" | "card" | "website" | "poster" | "social" | "whatsapp";
 export type Step = { key: StepKey; title: string; sub: string; href: string; done: boolean; premium: boolean };
@@ -17,6 +18,8 @@ export type Business = { name?: string; /** The card's link: the business name o
 /** `refreshKey` (e.g. the current path) re-reads the steps when it changes, so progress stays current. */
 export function useJourney(refreshKey?: string) {
   const [steps, setSteps] = useState<Step[] | null>(null);
+  /** The set-up screen the owner left off on (setup_pos on the account), until the card is live. */
+  const [resumeHref, setResumeHref] = useState<string | null>(null);
   useEffect(() => {
     (async () => {
       const sb = getBrowserSupabase();
@@ -30,7 +33,7 @@ export function useJourney(refreshKey?: string) {
         api<{ accounts?: { provider: string; is_active?: boolean }[] }>("/api/social/accounts").catch(() => null),
         fetch("/api/wa/status", { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
       ]);
-      const meta = (user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; business?: Business };
+      const meta = (user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; business?: Business; setup_pos?: unknown };
       const profile = profiles?.data.profiles?.find((p) => p.is_default) ?? profiles?.data.profiles?.[0];
       const s: Step[] = [
         // Once done, "About you" is where name / mobile / photo are changed: Save there updates every place and comes back here.
@@ -46,6 +49,7 @@ export function useJourney(refreshKey?: string) {
         { key: "whatsapp", title: "WhatsApp AI assistant", sub: "Answers customers 24×7 and saves every lead", href: "/poster/leads", premium: true, done: wa?.state === "connected" },
       ];
       setSteps(s);
+      setResumeHref(isScreenKey(meta.setup_pos) && !cards.some((c) => !isThinCard(c)) ? screenHref(meta.setup_pos) : null);
     })();
   }, [refreshKey]);
   const done = steps?.filter((s) => s.done).length ?? 0;
@@ -61,5 +65,5 @@ export function useJourney(refreshKey?: string) {
   // "Continue" goes forward from the screen the owner is on (products → V-Card → website …), else to the first unfinished step.
   const ahead = here >= 0 ? free.slice(here + 1).find((s) => !s.done) ?? null : null;
   const continueTo = ahead ?? nextFree;
-  return { steps, done, total: steps?.length ?? 8, next, freeDone, freeTotal: free.length || 6, nextFree, prevFree, continueTo };
+  return { steps, done, total: steps?.length ?? 8, next, freeDone, freeTotal: free.length || 6, nextFree, prevFree, continueTo, resumeHref };
 }

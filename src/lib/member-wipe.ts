@@ -22,7 +22,7 @@ const TABLES: [string, string][] = [
 // demo flag) stays. home_city / home_address and whatsapp are profile step 1's answers, so they go too.
 // contact_email is NOT here: for a mobile sign-up it is the person's email (like name and mobile), shown and edited in
 // Super Admin; a clear used to wipe it, and the demo tooling could no longer find the account by it.
-const SETUP_KEYS = ["business", "photo_url", "promote", "setup_done", "kb", "also_shubhora", "setup_skipped_at", "home_city", "home_address", "you_done_at", "whatsapp"];
+const SETUP_KEYS = ["business", "photo_url", "promote", "setup_done", "kb", "also_shubhora", "setup_skipped_at", "home_city", "home_address", "you_done_at", "setup_pos", "whatsapp"];
 const BRIDGE = "http://127.0.0.1:8787";
 
 export async function wipeMemberData(id: string, h: Record<string, string>, userMetadata: Record<string, unknown> | undefined): Promise<{ ok: boolean; cleared: Record<string, number | string> }> {
