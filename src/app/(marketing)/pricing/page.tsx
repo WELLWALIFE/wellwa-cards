@@ -14,8 +14,8 @@ export const metadata: Metadata = pageMeta("/pricing", {
 });
 
 const INCLUDED = [
-  "Digital card + business website on your own domain",
-  "A new poster every morning, posted to WhatsApp Status for you",
+  "Website + digital card on one link, built by AI in 5 minutes",
+  "A new poster and a status video with voice every morning, posted to WhatsApp Status for you",
   "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram",
   "WhatsApp AI assistant that answers customers and captures leads",
   "Lead CRM with pipeline, reminders and broadcasts",
@@ -31,7 +31,7 @@ export default function PricingPage() {
       <section className="mx-auto max-w-6xl px-5 pb-10 pt-16 text-center">
         <span className="mono text-xs uppercase tracking-wide text-faint">Pricing</span>
         <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight md:text-5xl">One subscription. Your whole online presence.</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Start free — your digital V-Card is free for 1 year, no card details needed; upgrade any time.</p>
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Start free — your website and digital card are free for 1 year, no card details needed; upgrade any time.</p>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-6">
@@ -110,7 +110,7 @@ export default function PricingPage() {
           <p className="mt-4 text-sm text-muted">Subscriber credit packs never expire: {CREDIT_PACKS.map((c) => `${c.credits} for ${rupees(c.paise)}`).join(" · ")}.</p>
           <p className="mt-2 text-sm text-muted">No subscription? Use the AI tools pay-as-you-go: {PAYG_PACKS.map((c) => `${c.credits} credits for ${rupees(c.paise)}`).join(" · ")}. {WELCOME_CREDITS > 0 ? ` New accounts get ${WELCOME_CREDITS} free credits to try them.` : ""}</p>
         </div>
-        <p className="mt-8 text-center text-xs text-faint">Prices in Indian rupees, including {GST_PCT}% GST. The free digital V-Card is free for its first year, then ₹1,499 a year (included in Growth). Custom Solutions are quoted per requirement. Cancel any time; the plan runs to the end of the paid month. See our <Link href="/refund" className="underline">refund policy</Link> and <Link href="/terms" className="underline">terms</Link>.</p>
+        <p className="mt-8 text-center text-xs text-faint">Prices in Indian rupees, including {GST_PCT}% GST. The free website and card are free for their first year, then ₹1,499 a year (included in Growth). Custom Solutions are quoted per requirement. Cancel any time; the plan runs to the end of the paid month. See our <Link href="/refund" className="underline">refund policy</Link> and <Link href="/terms" className="underline">terms</Link>.</p>
       </section>
     </div>
   );

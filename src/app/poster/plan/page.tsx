@@ -126,7 +126,7 @@ function MyPlan() {
           <p className="text-sm text-muted">Your account is ready. Start free — upgrade any time.</p>
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2"><p className="font-bold">1. Free</p><p className="text-sm"><span className="mr-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span><b className="text-lg text-good">FREE</b></p></div>
-            <p className="mt-1 text-xs text-muted">Digital V-Card on your link · leads in the CRM · free for 1 year. Posters, videos, website and AI come with Growth.</p>
+            <p className="mt-1 text-xs text-muted">Website + digital card on your link · daily poster · leads in the CRM · free for 1 year. Google, AI banner and edits, auto-post, WhatsApp AI and your own domain come with Growth.</p>
             <p className="mt-1 text-[11px] font-semibold text-good">{FREE_PLAN_TRUST}</p>
             <p className="mt-0.5 text-[10px] text-faint">{FREE_PLAN_TERM}</p>
             <Link href="/poster/onboard" className="mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink">Start free</Link>

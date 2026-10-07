@@ -246,11 +246,11 @@ export default function ProductsPage() {
   // with the curated plan pictures (served by /api/stock, accepted by the products API as same-site paths).
   const SHUBHORA: Draft[] = [
     { name: "Shubhora AI Business Assistant — Growth", price: "2,999 / month", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-growth.jpg", photos: [{ url: "/api/stock/vcard/plan-growth.jpg", view: "front", role: "identity" }],
-      offer: "Pre-launch: join free, book your city's top ID", benefits: ["Digital V-Card + full website on one link", "AI assistant answers customers on WhatsApp 24×7", "Daily poster + status video, auto-posted", "Leads saved in your CRM"].join("\n") },
+      offer: "Pre-launch: join free, book your city's top ID", benefits: ["Website + digital card on one link, built by AI in 5 minutes", "No Shubhora tag, website on Google, your own domain", "AI banner and AI edits — just say what to change", "Daily poster + status video with voice, auto-posted", "WhatsApp AI answers customers 24×7, leads in your CRM"].join("\n") },
     { name: "Shubhora Custom Solutions — Software & Automation", price: "On request — contact us", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-pro.jpg", photos: [{ url: "/api/stock/vcard/plan-pro.jpg", view: "front", role: "identity" }],
       offer: "We make all kinds of software — tell us what you need", benefits: ["Dedicated account manager", "Custom software, apps and websites", "Automation of daily work", "Custom CRM / ERP and dashboards", "AI assistants trained on your business"].join("\n") },
-    { name: "Free Digital V-Card", price: "FREE for 1 year (worth ₹1,499)", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-free.jpg", photos: [{ url: "/api/stock/vcard/plan-free.jpg", view: "front", role: "identity" }],
-      offer: "", benefits: ["Complete digital card on your own link", "Your own domain on the card", "Leads from the card in the CRM", "Share on WhatsApp, QR code, save-contact"].join("\n") },
+    { name: "Free Website + Digital Card", price: "FREE for 1 year (worth ₹1,499)", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-free.jpg", photos: [{ url: "/api/stock/vcard/plan-free.jpg", view: "front", role: "identity" }],
+      offer: "", benefits: ["Website + digital card on one link", "Built by AI in 5 minutes, three designs", "A poster every morning", "Leads in the CRM; share on WhatsApp, QR, save-contact"].join("\n") },
   ];
   const hasShubhora = (list ?? []).some((p) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? ""));
   const offCount = (list ?? []).filter((p) => p.active === false).length;

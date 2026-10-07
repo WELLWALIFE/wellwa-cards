@@ -988,7 +988,7 @@ const vcardReseller: CardTemplateDef = {
             "🗣️ Card in 10 languages (Growth)",
           ] },
           { id: uid("vh", 3), kind: "image", title: "Five tools, one link", images: [
-            { url: "/api/stock/demo/shubhora-one-link-v2.jpg", caption: "The V-Card and your leads are free for your first year. The website, the AI assistant and the daily posters come with Growth." },
+            { url: "/api/stock/demo/shubhora-one-link-v2.jpg", caption: "Your website, card, daily poster and leads are free for your first year. Growth adds Google, the AI banner and edits, auto-posting, the WhatsApp AI and your own domain." },
           ] },
           { id: uid("vh", 4), kind: "cta", title: "This page IS the product", body: "Everything you are scrolling now is what your own card will look like — with your name, your products and your number. Most people have theirs live in about 10 minutes.", joinUrl: "#plans", joinLabel: "See plans and prices", referralCode: "" },
           { id: uid("vh", 5), kind: "services", title: "What you get", items: [

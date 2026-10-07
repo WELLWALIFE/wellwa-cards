@@ -135,7 +135,7 @@ const SCREENS: Record<string, HelpScreen> = {
   },
   "/poster/plan": {
     title: { hi: "आपका plan", en: "Your plan" },
-    what: { hi: "Card और leads पहले साल free हैं। Website, AI assistant और रोज़ के poster Growth में आते हैं।", en: "The card and leads are free for the first year. The website, AI assistant and daily posters come with Growth." },
+    what: { hi: "Website, card, रोज़ का poster और leads पहले साल free हैं। Growth में Shubhora tag हटता है, website Google पर, AI banner और edits, auto-post, WhatsApp AI और अपना domain।", en: "Website, card, the daily poster and leads are free for the first year. Growth removes the Shubhora tag and adds Google, the AI banner and edits, auto-posting, the WhatsApp AI and your own domain." },
     steps: [
       { hi: "देखें कौन सा plan चल रहा है और कब तक।", en: "See which plan is running and until when." },
       { hi: "Growth चालू करना हो तो यहीं से payment करें।", en: "Turn Growth on and pay from here." },

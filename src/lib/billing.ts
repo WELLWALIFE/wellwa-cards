@@ -16,7 +16,7 @@ export const SAAS_PLANS: Record<SaasTier, { base: number; amount: number; credit
 };
 /** What each plan adds on top of the shared feature list (shown on Pricing and in Settings). */
 export const SAAS_EXTRA: Record<SaasTier, string[]> = {
-  growth: ["1 business profile", "WhatsApp AI replies (fair use up to 1,000 a month)", "Daily poster + status video, auto-posted", "Full website on your link", "8 free ad storyboards a month"],
+  growth: ["No Shubhora tag; your website on Google", "AI-painted banner and pictures; edit by saying it", "Daily poster + status video with voice, auto-posted", "WhatsApp AI replies (fair use up to 1,000 a month)", "Your own domain", "1 business profile", "8 free ad storyboards a month"],
   pro: ["Dedicated account manager", "More business profiles or brands", "10,000+ AI replies a month", "CRM seats for your team", "Priority rendering and support", "Monthly SEO and performance report"],
 };
 
@@ -57,9 +57,10 @@ export const rupees = (paise: number) => `₹${(paise / 100).toLocaleString("en-
 export const planPrice = (t: SaasTier) => rupees(SAAS_PLANS[t].amount);
 /** What the free plan gives — free for the first year (FREE_PLAN_TERM says what comes after). */
 export const FREE_PLAN = [
-  "Digital V-Card with all pages, products and gallery",
-  "Your own domain on the card",
-  "Leads from your card, saved in the CRM",
+  "Website + digital card on one link — the website on computers, the card on phones",
+  "Built by AI in 5 minutes from your details; three designs, your trade's own look and pages",
+  "A poster every morning with your name and number",
+  "Leads from your card and website, saved in the CRM",
   "Share on WhatsApp, QR code, save-contact",
 ];
 

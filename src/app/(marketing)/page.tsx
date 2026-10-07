@@ -31,8 +31,8 @@ const day = [
 ];
 
 const modules = [
-  { icon: Globe, title: "Website & digital card", body: "A multi-page business website and a shareable digital card on your own domain, with products, gallery, reviews and booking.", tint: "brand" },
-  { icon: ImageIcon, title: "Daily posters", body: "A fresh, on-brand poster every morning for festivals, offers and good-morning wishes, in your language.", tint: "amber" },
+  { icon: Globe, title: "Website & digital card", body: "One link: your website on computers, your digital card on phones. The AI builds both from your details in five minutes — three designs, your trade's own look, products, gallery, reviews and booking.", tint: "brand" },
+  { icon: ImageIcon, title: "Daily posters & status videos", body: "A fresh, on-brand poster every morning for festivals, offers and good-morning wishes, in your language — and a status video with a voice, shared on WhatsApp in one tap.", tint: "amber" },
   { icon: CalendarDays, title: "Social media on autopilot", body: "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram, planned and published for you.", tint: "ai" },
   { icon: Bot, title: "WhatsApp AI assistant", body: "Answers customers 24/7 on your own number, understands voice notes and hands you the hot leads.", tint: "good" },
   { icon: LayoutDashboard, title: "Lead CRM", body: "Pipeline, reminders, follow-ups and broadcasts for every enquiry from your card, website, ads and WhatsApp.", tint: "brand" },
@@ -51,10 +51,10 @@ const languages = ["English", "हिन्दी", "मराठी", "ગુ�
 const industries = ["Retail shops", "Clinics & doctors", "Salons & spas", "Gyms & fitness", "Restaurants & cafés", "Real estate", "Coaching & education", "Consultants & agents"];
 
 const faqs = [
-  { q: "Do I need to know design or social media?", a: "No. Add your logo, photos and products once. Posters, posts and replies are prepared and published for you every day; you can review or edit anything." },
+  { q: "Do I need to know design or social media?", a: "No. Answer a few simple questions once — about five minutes — and the AI builds your website and card and picks three designs for you. Posters, posts and replies are prepared and published for you every day; to change anything, just say it to the AI in your own words." },
   { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. It connects to the number your customers already message, replies in their language and script, and hands you the conversations that need a person." },
   { q: "Which languages are supported?", a: "English, Hindi and ten more Indian languages, in their own scripts: posters, captions, AI replies and voice-overs." },
-  { q: "Is the free plan really free?", a: "Yes. Your digital V-Card — all its pages, products and gallery, even on your own domain — and the leads it brings are free for the first year, with no card details and no hidden charge. After that the V-Card is ₹1,499 a year, and it is included in Growth. Take Growth whenever you want the website, daily posters, auto-posting and the WhatsApp AI." },
+  { q: "Is the free plan really free?", a: "Yes. Your website and digital card on one link — all pages, products and gallery — the daily poster and the leads they bring are free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in Growth. Take Growth when you want the Shubhora tag off, your website on Google, the AI banner and AI edits, auto-posting with status videos, the WhatsApp AI and your own domain." },
   { q: "Can you build custom software for my company?", a: "Yes. Beyond the Business Suite we build AI assistants, CRMs, automation and web or mobile apps around your workflow, scoped and priced before we start." },
 ];
 
@@ -286,7 +286,7 @@ export default function Home() {
           <div className="grid sm:grid-cols-3 gap-4">
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">Free</h3>
-              <p className="mt-1 text-sm text-muted">Your digital V-Card, free for 1 year</p>
+              <p className="mt-1 text-sm text-muted">Website + digital card, free for 1 year</p>
               <p className="mt-4"><span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span></p>
               <p className="mt-2"><span className="text-4xl font-semibold tracking-tight text-good">FREE</span></p>
               <p className="mt-1 text-xs text-faint">{FREE_PLAN_TRUST}</p>
@@ -357,7 +357,7 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto px-5 py-20 md:py-24 text-center">
           <div className="flex justify-center gap-1 text-[#ffb35c]">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-5 w-5" fill="currentColor" />)}</div>
           <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Tomorrow morning, your first poster could already be out.</h2>
-          <p className="mt-4 text-muted text-lg">Set up your business in minutes. 1 year free, no card details needed.</p>
+          <p className="mt-4 text-muted text-lg">Five minutes to set up: your website and card go live the same day. 1 year free, no card details needed.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
             <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3.5 text-sm font-semibold text-ink hover:bg-surface">Talk to us</Link>
