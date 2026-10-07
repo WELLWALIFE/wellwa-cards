@@ -20,6 +20,11 @@ const FFMPEG = env.FFMPEG_PATH || env.WA_FFMPEG || (fs.existsSync("/opt/neuraled
 const DIR = path.join(APP, "public", "poster", "base", "stock");
 const CLIPS = path.join(DIR, "clips");
 const JUDGE = "gemini-3.5-flash-lite";
+/** The quality bar (owner's call, 7 Oct 2026: "kai baar bahut purani si image le leta hai, ajeeb si — neat and clean
+ *  chahiye"): a photo must look recent, sharp and professional; anything dated, odd or shabby is out. */
+const QUALITY = `Then DATED true/false: true when the photo looks old or odd — film grain, faded or yellow tint, a 1990s–2000s look (old phones, cars, TVs, clothes, interiors), blurry, dark, noisy, over-filtered, an illustration / render / clip-art, an awkward crop or a strange, staged or messy scene. Only a photo that looks like it was shot recently by a professional — sharp, well lit, natural colours, neat and tidy, modern setting — is not dated. A dated photo also scores FIT 0–3.`;
+/** Picks are cached; this version tag makes the old, un-judged-for-quality picks be chosen again. */
+const QUALITY_V = "q2";
 const log = (...a) => console.log("[stock]", ...a);
 const inflight = new Map();
 
@@ -75,7 +80,7 @@ async function gemini(parts) {
 
 /** Pexels photo candidates: portrait (the classic poster art) or landscape (the Signature photo window), big enough, with a small preview for the judge. */
 async function photoList(query, orientation = "portrait") {
-  const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&size=large&per_page=12&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
+  const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&size=large&per_page=30&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
   return (r.photos ?? []).filter((p) => (orientation === "landscape" ? p.width >= 1600 : p.height >= 1400)).map((p) => ({ id: p.id, url: p.src?.large2x || p.src?.large || p.src?.original, thumb: p.src?.medium, credit: p.photographer || "" }));
 }
 
@@ -89,32 +94,37 @@ async function judge(cands, { theme, category, kind, window = false }) {
   const want = kind === "festival" ? `a ${theme?.en || "festival"} greeting poster` : kind === "greeting" ? "a good-morning / motivational greeting poster" : `a promotional poster for a ${category || "small"} business (${words(category)})`;
   // window: the Signature layouts show the photo in its own frame — nothing is printed over it, so no calm space needed
   parts.push({ text: `These photos are candidates for the ${window ? "PHOTO of" : "BACKGROUND of"} ${want}, made for customers in INDIA.${window ? "" : " A name, phone number and a short line of text will be printed over the photo later."}
-Score each photo 0–10 for FIT: does it clearly belong to this trade / occasion and look premium, bright and clean?${kind === "festival" ? ` For an occasion the photo must UNMISTAKABLY show that occasion's own symbols (its lamps, colours, food, decoration, ritual); a person, a garland, a crowd or a street that could be any day of the year scores 3 or less.` : ""} Then CLEAN true/false: no visible text, logos, watermarks or screens with writing; people, if any, look Indian / South Asian and are dressed the way an Indian family business would show them; nothing like alcohol, smoking or meat close-ups${window ? "" : "; there is calm space (sky, wall, blur) where text could sit"}.
-Return ONLY JSON {"photos":[{"n":0,"fit":0,"clean":true,"note":"<max 6 words>"}]}` });
-  try { const j = await gemini(parts); return (j.photos ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false })); } catch { return null; }
+Score each photo 0–10 for FIT: does it clearly belong to this trade / occasion and look premium, bright and clean?${kind === "festival" ? ` For an occasion the photo must UNMISTAKABLY show that occasion's own symbols (its lamps, colours, food, decoration, ritual); a person, a garland, a crowd or a street that could be any day of the year scores 3 or less.` : ""} Then CLEAN true/false: no visible text, logos, watermarks or screens with writing; people, if any, look Indian / South Asian and are dressed the way an Indian family business would show them; nothing like alcohol, smoking or meat close-ups${window ? "" : "; there is calm space (sky, wall, blur) where text could sit"}. ${QUALITY}
+Return ONLY JSON {"photos":[{"n":0,"fit":0,"clean":true,"dated":false,"note":"<max 6 words>"}]}` });
+  try { const j = await gemini(parts); return (j.photos ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false && p.dated !== true })); } catch { return null; }
 }
 
 const keyFor = (theme, category, kind, dateStr) => {
   const cat = String(category || "default").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "default";
   // festivals: one art per festival+trade, reused every year; business days rotate weekly so followers see variety
   const week = Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / (7 * 86400_000)) % 6;
-  return kind === "festival" ? `${theme.slug}-${cat}` : `${kind}-${cat}-w${week}`;
+  return kind === "festival" ? `${theme.slug}-${cat}-${QUALITY_V}` : `${kind}-${cat}-w${week}-${QUALITY_V}`;
 };
 
 async function pickPhoto(theme, category, kind, orientation = "portrait", skip = new Set()) {
   if (!PEXELS) return null;
   const used = new Set(skip);
+  let fallback = null;
   for (const q of stockQueries(theme, category, kind)) {
-    const cands = (await photoList(q, orientation)).filter((c) => c.url && !used.has(c.id)).slice(0, 8);
+    const cands = (await photoList(q, orientation)).filter((c) => c.url && !used.has(c.id)).slice(0, 12);
     if (!cands.length) continue;
     cands.forEach((c) => used.add(c.id));
     const scores = await judge(cands, { theme, category, kind, window: orientation === "landscape" });
     if (scores === null) { log(`judge down → first result for "${q}"`); return { ...cands[0], score: 0, q }; }
-    const best = scores.filter((s) => s.clean && s.fit >= 7).sort((a, b) => b.fit - a.fit)[0];
+    // Only a photo the judge rates 8+ (fits, clean, not dated) is good enough; a 7 is kept only as a last resort.
+    const best = scores.filter((s) => s.clean && s.fit >= 8).sort((a, b) => b.fit - a.fit)[0];
     if (best && cands[best.n]) { log(`"${q}" → photo ${best.n} fit ${best.fit}`); return { ...cands[best.n], score: best.fit, q }; }
-    log(`"${q}": nothing ≥7 (${scores.map((s) => `${s.n}:${s.fit}${s.clean ? "" : "x"}`).join(" ")}) → next query`);
+    const ok = scores.filter((s) => s.clean && s.fit === 7).sort((a, b) => b.fit - a.fit)[0];
+    if (ok && cands[ok.n]) fallback ??= { ...cands[ok.n], score: 7, q };
+    log(`"${q}": nothing ≥8 (${scores.map((s) => `${s.n}:${s.fit}${s.clean ? "" : "x"}`).join(" ")}) → next query`);
   }
-  return null;
+  if (fallback) log(`"${fallback.q}" → a 7, nothing better anywhere`);
+  return fallback;
 }
 
 export async function ensureStockArt({ theme, category = "", kind = "greeting", dateStr }) {
@@ -148,7 +158,7 @@ export async function ensureStockPhoto({ theme, category = "", kind = "greeting"
   // keeps one photo per festival + trade. Each slot is fetched once and then reused forever.
   const cat = String(category || "default").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "default";
   const day = Math.floor(new Date(`${dateStr}T00:00:00Z`).getTime() / 86400_000);
-  const key = kind === "festival" ? `${theme.slug}-${cat}-land` : `${kind}-${cat}-d${day % 6}-land`;
+  const key = kind === "festival" ? `${theme.slug}-${cat}-land-${QUALITY_V}` : `${kind}-${cat}-d${day % 6}-land-${QUALITY_V}`;
   const file = path.join(dir, `${key}.jpg`), meta = path.join(dir, `${key}.json`);
   if (fs.existsSync(file)) { try { return { file, ...JSON.parse(fs.readFileSync(meta, "utf8")) }; } catch { return { file }; } }
   const ik = `photo:${key}`;
@@ -227,7 +237,7 @@ const CARD_DIR = path.join(DIR, "card");
 const CARD_URL = (f) => `/api/stock/${path.basename(f)}`;
 
 async function landscapePhotos(query) {
-  const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=landscape&size=large&per_page=15&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
+  const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=landscape&size=large&per_page=30&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
   return (r.photos ?? []).filter((p) => p.width >= 1600).map((p) => ({ id: p.id, url: p.src?.large2x || p.src?.large || p.src?.original, thumb: p.src?.medium, credit: p.photographer || "" }));
 }
 /** Three pictures taken along the clip (a fifth in, the middle, four fifths in): one poster frame is not enough to tell
@@ -265,9 +275,9 @@ async function judgeCard(cands, label, what) {
 First say in 3–6 words what each clip actually shows ("shows"). Then score FIT 0–10: give 9–10 ONLY when you can SEE something that only THIS trade has (a pharmacy: medicine boxes, strips or bottles on shelves, a chemist counter, a pharmacist, a green cross; a school: classrooms, uniforms, a blackboard; a sweet shop: trays of mithai; and so on). A general / kirana / grocery or snack shop, a street stall, a market, a crowd, a generic interior, or any other trade scores 0–2 even if it looks like some small shop. Footage must be bright, steady and premium. Also ${clean}
 Return ONLY JSON {"items":[{"n":0,"shows":"","fit":0,"clean":true}]}`
     : `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".${brandNote}
-Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and ${clean}
-Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true}]}` });
-  try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false, shows: String(p.shows ?? "").slice(0, 60) })); } catch { return null; }
+Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and ${clean} ${QUALITY}
+Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true,"dated":false}]}` });
+  try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false && p.dated !== true, shows: String(p.shows ?? "").slice(0, 60) })); } catch { return null; }
 }
 
 /**
@@ -299,7 +309,8 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   const brandWord = String(brand || "").trim().slice(0, 40);
   const brandSlug = brandWord.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
   const cat = `${String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other"}${brandSlug ? `-${brandSlug}` : ""}`;
-  const meta = path.join(CARD_DIR, `${cat}-v2.json`);
+  // v3: photos judged for quality too (QUALITY). The v2 pool stands in while the v3 one fills, like v1 did for v2.
+  const meta = path.join(CARD_DIR, `${cat}-v3.json`);
   const onDisk = (m) => (m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))));
   let partial = null, clipOnly = null;
   if (fs.existsSync(meta)) {
@@ -315,9 +326,9 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
   // twelve are made in the background for the next one.
   let legacy = partial && (partial.photos ?? []).length >= floor ? partial : null;
-  const metaV1 = brandSlug ? "" : path.join(CARD_DIR, `${cat}.json`);
-  if (!legacy && metaV1 && fs.existsSync(metaV1)) {
-    try { const m = JSON.parse(fs.readFileSync(metaV1, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
+  for (const old of [path.join(CARD_DIR, `${cat}-v2.json`), ...(brandSlug ? [] : [path.join(CARD_DIR, `${cat}.json`)])]) {
+    if (legacy || !fs.existsSync(old)) continue;
+    try { const m = JSON.parse(fs.readFileSync(old, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
   }
   const ik = `card:${cat}`;
   /** What a waiter gets: the pool as it stands now. */
@@ -357,7 +368,7 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       try {
         const buf = Buffer.from(await (await fetch(c.url, { signal: AbortSignal.timeout(40000) })).arrayBuffer());
         const n = pool.photos.length + 1;
-        const file = path.join(CARD_DIR, `${cat}-v2-${n}-${c.id}.jpg`);
+        const file = path.join(CARD_DIR, `${cat}-v3-${n}-${c.id}.jpg`);
         await sharp(buf).resize({ width: 1800, withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toFile(file);
         if (pool.photos.length >= want) { try { fs.unlinkSync(file); } catch { /* ignore */ } return; }
         pool.photos.push({ url: CARD_URL(file), credit: c.credit, id: c.id });
@@ -367,11 +378,12 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
     if (!clipOnly) {
     for (const q of queries) {
       if (pool.photos.length >= want) break;
-      const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 12);
+      const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 16);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Photo");
-      const good = scores === null ? cands.slice(0, 3).map((c) => ({ c, fit: 7 })) : scores.filter((s) => s.clean && s.fit >= 7).sort((a, b) => b.fit - a.fit).map((s) => ({ c: cands[s.n], fit: s.fit })).filter((x) => x.c);
-      if (scores !== null) for (const s of scores) { if (s.clean && s.fit >= 5 && s.fit < 7 && cands[s.n]) spare.push({ c: cands[s.n], fit: s.fit }); }
+      // Strict: 8+ (this trade, clean, recent, sharp). 6–7 are near-misses, used only when the pool would be short.
+      const good = scores === null ? cands.slice(0, 3).map((c) => ({ c, fit: 7 })) : scores.filter((s) => s.clean && s.fit >= 8).sort((a, b) => b.fit - a.fit).map((s) => ({ c: cands[s.n], fit: s.fit })).filter((x) => x.c);
+      if (scores !== null) for (const s of scores) { if (s.clean && s.fit >= 6 && s.fit < 8 && cands[s.n]) spare.push({ c: cands[s.n], fit: s.fit }); }
       // Three downloads at a time: the pool fills in a third of the time.
       for (let i = 0; i < good.length && pool.photos.length < want; i += 3) await Promise.all(good.slice(i, i + 3).map(({ c }) => fetchInto(c)));
     }
