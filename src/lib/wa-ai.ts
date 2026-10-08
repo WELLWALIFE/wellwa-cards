@@ -38,7 +38,7 @@ export function buildSystem(
   wa?: string,
   platform?: PlatformKnowledge,
   brand?: BrandTraining,
-  channel: "card" | "whatsapp" = "card",
+  channel: "card" | "whatsapp" | "phone" = "card",
   /** `asShubhoraSeller`: answer as a Shubhora seller even though the card itself is not one — the Shubhora
    *  page of a `kb: "both"` card, whose owner also runs their own business. `onlyPage`: the visitor is on
    *  that one page and nothing else on the card may be used. Both keep the owner's two sides apart. */
@@ -63,7 +63,9 @@ export function buildSystem(
   const adminK = platform?.knowledge?.trim() ? `\n\nPLATFORM-WIDE INFO (applies to every card):\n${platform.knowledge.trim().slice(0, 3000)}` : "";
   const where = sideBySide
     ? `You are the assistant on ${card.name}'s SHUBHORA page. ${card.name} is a Shubhora partner. On this page you talk about Shubhora only — what it is, its plans and prices, and the partner business. ${card.name} also runs their own separate business (${card.company}); that is a different page with its own assistant, so never describe, price or promote it here. If the visitor asks about it, say ${card.name.split(" ")[0]} will tell them directly${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.`
-    : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.` : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
+    : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.`
+    : channel === "phone" ? `You are the receptionist answering the PHONE for ${card.company || card.name} — a live voice call. Speak the way a warm, quick Indian receptionist speaks: one or two short sentences at a time, then let the caller talk. Match the caller's language (Hindi, Hinglish or English) from their first words; start in Hindi. Never read out links, ids or long lists; offer to send details on WhatsApp instead. Numbers and prices slowly and clearly. If asked something you do not know, say ${card.name.split(" ")[0]} ji will call back, and take the caller's name.`
+    : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
   // What the visitor is actually reading. Normally the whole card, so a question about products can be
   // answered from the home page; on a page that must stand alone (Shubhora), only that page.
   const content = opts.onlyPage ? [opts.onlyPage] : card.pages.filter((p) => !p.hidden);
@@ -84,14 +86,19 @@ THIS SELLER'S WEBSITE (the card page — always call it the "website" when talki
 CLOSING THE LOOP
 - Anything you can't confirm (exact stock, delivery date, a custom discount): say ${card.name.split(" ")[0]} will confirm${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.
 - Where it fits naturally, steer toward the demo/visit/booking button on the card.${channel === "whatsapp" ? `
-- If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora ? "" : `
+- If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora || channel === "phone" ? "" : `
 
 SELLING — you are ${card.name.split(" ")[0]}'s salesperson, not an FAQ (owner's call, 8 Oct 2026)
 - Lead to a decision: when they ask about something, name the best-fitting item with its price (from the card) and one reason it suits them, then offer the next step — order, book, visit or a call back.
 - When they want to order, book or be called back: get what exactly (items with quantity, or the service with a preferred day/time)${channel === "whatsapp" ? " and their name" : ", their name and their mobile number"} — ask for ONE missing thing at a time. Then confirm in one line and append, as the LAST line of that reply, exactly:
 [[ORDER: {"kind":"order"|"booking"|"callback","name":"…","phone":"…","items":[{"name":"…","qty":1,"price":"…"}],"when":"…","at":"YYYY-MM-DDTHH:MM","note":"…","total":"…"}]]
   For a booking, ask the day AND the time; "at" is that moment in India time (today is ${new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10)}, so "kal 4 baje" = tomorrow 16:00); within the card's opening hours when it states them; "" when they gave none. Prices only from the card; "total" empty when unsure${channel === "whatsapp" ? `; "phone" is "" — on WhatsApp their number is the one they write from` : "; never invent a name or number — ask"}.
-- Send the ORDER line once per request; after it, answer follow-ups normally. Never promise delivery dates or discounts the card does not state.`}`;
+- Send the ORDER line once per request; after it, answer follow-ups normally. Never promise delivery dates or discounts the card does not state.`}${channel !== "phone" ? "" : `
+
+ON THE PHONE — you are ${card.name.split(" ")[0]}'s receptionist and salesperson
+- Find out in the first exchange what the caller needs; answer from the card; suggest the best-fitting item with its price when they are choosing.
+- If they want to order, book or be called back: take their name, what exactly, and for a booking the day and time; repeat it back once to confirm. Their number is the one they are calling from — do not ask for it.
+- Close warmly: say what happens next (we will confirm on WhatsApp / ${card.name.split(" ")[0]} ji will call), thank them, and stop talking. Never say you are an AI unless asked; if asked, say yes, you are ${card.company || card.name}'s AI assistant.`}`;
 }
 
 /** The hand-off a reply may end with: what the customer settled on, for the owner's CRM and the next-step buttons. */

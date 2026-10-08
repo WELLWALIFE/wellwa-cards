@@ -6,6 +6,8 @@ module.exports = {
   apps: [
     { name: "neuraledge-app", script: "/usr/bin/npm", args: "start -- -p 3001", cwd, autorestart: true },
     { name: "neuraledge-bridge", script: `${cwd}/bridge/manager.mjs`, cwd, autorestart: true, interpreter: "/usr/bin/node" },
+    // AI phone receptionist: the telephony provider streams calls to ws://127.0.0.1:8790/stream (Apache proxies /phone/stream).
+    { name: "neuraledge-phone", script: `${cwd}/bridge/phone-worker.mjs`, cwd, autorestart: true, interpreter: "/usr/bin/node" },
     // media worker: Node heap capped so sharp/ffmpeg children keep their share of the 3.6 GB box
     { name: "neuraledge-media", script: `${cwd}/bridge/media-worker.mjs`, cwd, autorestart: true, interpreter: "/usr/bin/node", node_args: "--max-old-space-size=700", max_memory_restart: "900M", kill_timeout: 10000 },
     cron("neuraledge-banner", "banner-daily.mjs", "30 23 * * *"),
