@@ -230,7 +230,9 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
       // The salesman closed on WhatsApp: the lead carries the order (name, what, value) and goes hot.
       if (order && leadId) {
         const kind = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";
-        await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...(order.name ? { name: order.name } : {}), ai_intent: kind, value_paise: orderPaise(order), tags: [order.kind], updated_at: new Date().toISOString() }) });
+        const ist = new Date(Date.now() + 5.5 * 3600_000);
+        const followUp = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + (ist.getUTCHours() >= 18 ? 2 : 1), 11, 0) - 5.5 * 3600_000).toISOString();
+        await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...(order.name ? { name: order.name } : {}), ai_intent: kind, value_paise: orderPaise(order), tags: [order.kind], next_follow_up: followUp, reminded_at: null, updated_at: new Date().toISOString() }) });
         await note(acc.owner_id, leadId, `🛒 ${kind}: ${orderSummary(order)}`, true);
       }
     } else {

@@ -90,8 +90,18 @@ async function main() {
   for (const [owner, leads] of byOwner) {
     const prof = (await restList(`profiles?id=eq.${owner}&select=plan,plan_expires_at`))[0];
     const expiresAt = prof?.plan_expires_at || "2999-12-31T23:59:59.000Z";
-    const lines = leads.slice(0, 10).map((l) => `• *${l.name || l.phone}* ${l.phone?.startsWith("+") ? `(${l.phone})` : ""}\n  ${l.ai_next || l.message?.slice(0, 80) || ""}`.trimEnd());
-    const text = `⏰ *Follow-up reminder*\n${leads.length} customer${leads.length > 1 ? "s" : ""} to contact now:\n\n${lines.join("\n")}${leads.length > 10 ? `\n…and ${leads.length - 10} more` : ""}\n\nOpen Shubhora → CRM to reply or call.`;
+    // Each line ends with a tap-to-message link: the follow-up is already written (name, what they asked), so the owner
+    // sends it in one tap instead of opening the CRM (owner's call, 8 Oct 2026: follow-up engine).
+    const biz = (await restList(`cards?owner_id=eq.${owner}&select=company,name&order=created_at.desc&limit=1`))[0] ?? {};
+    const tap = (l) => {
+      const num = String(l.phone ?? "").replace(/[^0-9]/g, "");
+      if (num.length < 10) return "";
+      const about = (l.message || "").replace(/^(Order|Booking|Call back):\s*/i, "").slice(0, 90);
+      const msg = `Namaste ${(l.name || "").split(" ")[0] || "ji"} ji 🙏 ${biz.company || biz.name || "Shubhora"} se. Aapne ${about ? `"${about}"` : "humse"} ke baare me poocha tha — kya main aapki help karun? Aap kabhi bhi yahan likh sakte hain.`;
+      return `\n  👉 https://wa.me/${num.length === 10 ? "91" + num : num}?text=${encodeURIComponent(msg)}`;
+    };
+    const lines = leads.slice(0, 10).map((l) => `• *${l.name || l.phone}* ${l.phone?.startsWith("+") ? `(${l.phone})` : ""}\n  ${l.ai_next || l.message?.slice(0, 80) || ""}${tap(l)}`.trimEnd());
+    const text = `⏰ *Follow-up reminder*\n${leads.length} customer${leads.length > 1 ? "s" : ""} to contact now:\n\n${lines.join("\n")}${leads.length > 10 ? `\n…and ${leads.length - 10} more` : ""}\n\nTap a link to send the ready message, or open Shubhora → CRM.`;
     const title = `⏰ ${leads.length} follow-up${leads.length > 1 ? "s" : ""} due`;
     const names = leads.map((l) => l.name || l.phone).slice(0, 3).join(", ");
     const wa = allowed("whatsapp") && ["pro", "team"].includes(prof?.plan) ? await selfNote(owner, expiresAt, text) : false;

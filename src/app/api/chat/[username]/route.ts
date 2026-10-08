@@ -238,7 +238,9 @@ async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: st
   const { data: row } = await sb.from("cards").select("id, owner_id").eq("username", card.username).maybeSingle();
   if (!row) return actions;
   const message = `${kindLabel}: ${summary}`.slice(0, 1000);
-  const fields = { name: order.name || "Card chat visitor", phone: order.phone, message, source: "chat", status: "hot", ai_intent: kindLabel, value_paise: paise, tags: [order.kind] };
+  // Follow-up tomorrow at 11 am IST unless the owner closes it first: the CRM reminder (bridge/crm-reminders.mjs) then
+  // hands the owner a tap-to-message link, so a website order never goes quiet (owner's call, 8 Oct 2026).
+  const fields = { name: order.name || "Card chat visitor", phone: order.phone, message, source: "chat", status: "hot", ai_intent: kindLabel, value_paise: paise, tags: [order.kind], next_follow_up: nextFollowUp(), reminded_at: null };
   // This conversation's nameless lead (opened on its first message, within the last hours) is the one to fill in.
   const { data: prior } = await sb.from("leads").select("id").eq("card_id", row.id).eq("name", "Card chat visitor").eq("phone", "")
     .gte("created_at", new Date(Date.now() - 6 * 3600_000).toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
@@ -252,4 +254,12 @@ async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: st
     whatsappText: `*${kindLabel} from your website* 🛒\n${who}\n${summary}\n\n${order.phone ? `Call / WhatsApp: ${order.phone}\n` : ""}${SITE}/leads`,
   }).catch(() => undefined);
   return actions;
+}
+
+/** Tomorrow 11:00 IST (or the day after when it is already evening), as an ISO instant. */
+function nextFollowUp(): string {
+  const ist = new Date(Date.now() + 5.5 * 3600_000);
+  const days = ist.getUTCHours() >= 18 ? 2 : 1;
+  const d = Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + days, 11, 0) - 5.5 * 3600_000;
+  return new Date(d).toISOString();
 }
