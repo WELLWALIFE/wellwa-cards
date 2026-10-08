@@ -9,8 +9,8 @@ const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODE
 
 const BLOCKED_FINISH = new Set(["SAFETY", "PROHIBITED_CONTENT", "RECITATION", "BLOCKLIST", "SPII"]);
 
-type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
-type GeminiMessage = { role: "user" | "model"; parts: GeminiPart[] };
+export type GeminiPart = { text: string } | { inlineData: { mimeType: string; data: string } };
+export type GeminiMessage = { role: "user" | "model"; parts: GeminiPart[] };
 
 export async function geminiComplete(opts: {
   apiKey: string;
@@ -21,10 +21,12 @@ export async function geminiComplete(opts: {
   temperature?: number;
   /** Shown in the cost log line ("product-lookup", "site-find"). */
   tag?: string;
+  /** Ask for a JSON object (responseMimeType) — the caller still parses it. */
+  json?: boolean;
 }): Promise<{ text: string; blocked: boolean }> {
   const body: Record<string, unknown> = {
     contents: opts.contents,
-    generationConfig: { maxOutputTokens: opts.maxOutputTokens ?? 800, ...(opts.temperature != null ? { temperature: opts.temperature } : {}) },
+    generationConfig: { maxOutputTokens: opts.maxOutputTokens ?? 800, ...(opts.temperature != null ? { temperature: opts.temperature } : {}), ...(opts.json ? { responseMimeType: "application/json" } : {}) },
   };
   if (opts.system) body.systemInstruction = { parts: [{ text: opts.system }] };
   if (opts.webSearch) body.tools = [{ google_search: {} }];

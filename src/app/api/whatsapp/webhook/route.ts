@@ -3,8 +3,10 @@
 // POST → routed by entry.changes[].value.metadata.phone_number_id → that owner's account.
 //        Signature (x-hub-signature-256) is checked with the account's app secret when set.
 // Inbound messages → CRM log + menu bot / AI reply; statuses → delivery tracking (src/lib/wa-cloud.ts).
+// Shubhora's OWN number (WA_ONBOARD_OWNER_ID) runs the website-making bot instead (src/lib/wa-onboard.ts).
 import crypto from "node:crypto";
 import { cloudAccountByPhoneId, cloudAccountByVerify, handleCloudValue } from "@/lib/wa-cloud";
+import { handleOnboardValue, isOnboardAccount } from "@/lib/wa-onboard";
 
 export async function GET(request: Request) {
   const u = new URL(request.url);
@@ -37,7 +39,10 @@ export async function POST(request: Request) {
         }
         if (!checked.get(acc.owner_id)) { console.warn("[wa-cloud] bad signature for", acc.owner_id); continue; }
       }
-      work.push(handleCloudValue(acc, v as Parameters<typeof handleCloudValue>[1]).catch((e) => console.error("[wa-cloud]", e?.message ?? e)));
+      const run = isOnboardAccount(acc)
+        ? handleOnboardValue(acc, v as Parameters<typeof handleOnboardValue>[1])
+        : handleCloudValue(acc, v as Parameters<typeof handleCloudValue>[1]);
+      work.push(run.catch((e) => console.error("[wa-cloud]", e?.message ?? e)));
     }
   }
   await Promise.all(work);
