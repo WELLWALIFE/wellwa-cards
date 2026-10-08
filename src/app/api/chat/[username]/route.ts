@@ -12,6 +12,7 @@ import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { languageLock } from "@/lib/ai-training";
 import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, type ChatOrder } from "@/lib/wa-ai";
+import { createBooking, istInstant } from "@/lib/bookings";
 import { getCardByUsername } from "@/lib/sample-data";
 import { getPlatformKnowledge } from "@/lib/platform";
 import { agentCardLookup, agentComplete, agentContext, webState, type AgentMsg } from "@/lib/shubhora-agent-web";
@@ -247,6 +248,9 @@ async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: st
   let leadId = prior?.id as string | undefined;
   if (leadId) await sb.from("leads").update(fields).eq("id", leadId);
   else { const { data: made } = await sb.from("leads").insert({ card_id: row.id, owner_id: row.owner_id, email: "", ...fields }).select("id").maybeSingle(); leadId = made?.id; }
+  // A booking with a day and time goes on the owner's calendar; the reminders cron takes it from there.
+  const at = order.kind === "booking" ? istInstant(order.at) : null;
+  if (at) await createBooking({ ownerId: row.owner_id, cardId: row.id, leadId: leadId ?? null, name: order.name, phone: order.phone, service: order.items.map((i) => i.name).join(", ") || order.note, startsAt: at, note: order.when, source: "chat" });
   const who = `${order.name || "A visitor"}${order.phone ? ` · ${order.phone}` : ""}`;
   await notify(row.owner_id, "new_lead", {
     title: `${order.kind === "booking" ? "📅" : order.kind === "callback" ? "📞" : "🛒"} New ${kindLabel.toLowerCase()}: ${order.name || "visitor"}`,

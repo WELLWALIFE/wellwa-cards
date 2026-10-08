@@ -89,13 +89,13 @@ CLOSING THE LOOP
 SELLING — you are ${card.name.split(" ")[0]}'s salesperson, not an FAQ (owner's call, 8 Oct 2026)
 - Lead to a decision: when they ask about something, name the best-fitting item with its price (from the card) and one reason it suits them, then offer the next step — order, book, visit or a call back.
 - When they want to order, book or be called back: get what exactly (items with quantity, or the service with a preferred day/time)${channel === "whatsapp" ? " and their name" : ", their name and their mobile number"} — ask for ONE missing thing at a time. Then confirm in one line and append, as the LAST line of that reply, exactly:
-[[ORDER: {"kind":"order"|"booking"|"callback","name":"…","phone":"…","items":[{"name":"…","qty":1,"price":"…"}],"when":"…","note":"…","total":"…"}]]
-  Prices only from the card; "total" empty when unsure${channel === "whatsapp" ? `; "phone" is "" — on WhatsApp their number is the one they write from` : "; never invent a name or number — ask"}.
+[[ORDER: {"kind":"order"|"booking"|"callback","name":"…","phone":"…","items":[{"name":"…","qty":1,"price":"…"}],"when":"…","at":"YYYY-MM-DDTHH:MM","note":"…","total":"…"}]]
+  For a booking, ask the day AND the time; "at" is that moment in India time (today is ${new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10)}, so "kal 4 baje" = tomorrow 16:00); within the card's opening hours when it states them; "" when they gave none. Prices only from the card; "total" empty when unsure${channel === "whatsapp" ? `; "phone" is "" — on WhatsApp their number is the one they write from` : "; never invent a name or number — ask"}.
 - Send the ORDER line once per request; after it, answer follow-ups normally. Never promise delivery dates or discounts the card does not state.`}`;
 }
 
 /** The hand-off a reply may end with: what the customer settled on, for the owner's CRM and the next-step buttons. */
-export type ChatOrder = { kind: "order" | "booking" | "callback"; name: string; phone: string; items: { name: string; qty: number; price: string }[]; when: string; note: string; total: string };
+export type ChatOrder = { kind: "order" | "booking" | "callback"; name: string; phone: string; items: { name: string; qty: number; price: string }[]; when: string; /** The booking's moment, "YYYY-MM-DDTHH:MM" India time; "" when none was given. */ at: string; note: string; total: string };
 /** Split a trailing [[ORDER: {…}]] line off an AI reply. */
 export function splitOrder(reply: string): { text: string; order: ChatOrder | null } {
   const m = reply.match(/\[\[ORDER:\s*(\{[\s\S]*\})\s*\]\]\s*$/i);
@@ -105,7 +105,7 @@ export function splitOrder(reply: string): { text: string; order: ChatOrder | nu
     const o = JSON.parse(m[1]) as Record<string, unknown>;
     const kind = (["order", "booking", "callback"] as const).find((k) => k === o.kind) ?? "order";
     const items = (Array.isArray(o.items) ? o.items : []).map((it) => { const x = (it ?? {}) as Record<string, unknown>; return { name: S(x.name, 80), qty: Math.max(1, Math.min(999, Math.round(Number(x.qty)) || 1)), price: S(x.price, 30) }; }).filter((it) => it.name).slice(0, 12);
-    const order: ChatOrder = { kind, name: S(o.name, 80), phone: S(o.phone, 20).replace(/[^0-9+]/g, ""), items, when: S(o.when, 120), note: S(o.note, 300), total: S(o.total, 30) };
+    const order: ChatOrder = { kind, name: S(o.name, 80), phone: S(o.phone, 20).replace(/[^0-9+]/g, ""), items, when: S(o.when, 120), at: S(o.at, 20), note: S(o.note, 300), total: S(o.total, 30) };
     return { text: reply.slice(0, m.index).trim(), order };
   } catch { return { text: reply.slice(0, m.index).trim(), order: null }; }
 }

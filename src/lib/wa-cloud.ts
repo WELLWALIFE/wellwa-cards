@@ -4,6 +4,7 @@
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
 import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, cardSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
+import { createBooking, istInstant } from "@/lib/bookings";
 import type { Card } from "@/lib/types";
 
 export const GRAPH = "https://graph.facebook.com/v21.0";
@@ -234,6 +235,8 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
         const followUp = new Date(Date.UTC(ist.getUTCFullYear(), ist.getUTCMonth(), ist.getUTCDate() + (ist.getUTCHours() >= 18 ? 2 : 1), 11, 0) - 5.5 * 3600_000).toISOString();
         await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...(order.name ? { name: order.name } : {}), ai_intent: kind, value_paise: orderPaise(order), tags: [order.kind], next_follow_up: followUp, reminded_at: null, updated_at: new Date().toISOString() }) });
         await note(acc.owner_id, leadId, `🛒 ${kind}: ${orderSummary(order)}`, true);
+        const at = order.kind === "booking" ? istInstant(order.at) : null;
+        if (at) await createBooking({ ownerId: acc.owner_id, cardId: card.id, leadId, name: order.name || name, phone, service: order.items.map((i) => i.name).join(", ") || order.note, startsAt: at, note: order.when, source: "whatsapp" });
       }
     } else {
       const wa = card.links.find((l) => l.type === "whatsapp")?.value?.replace(/[^0-9]/g, "");

@@ -87,6 +87,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-cleanup || printf '%s\n' 'PATH=/usr
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-card-renewals || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '15 5 * * * root bash $APP/scripts/card-renewals.sh >> /var/log/shubhora-card-renewals.log 2>&1' > /etc/cron.d/shubhora-card-renewals"
 # Weekly website report (views, WhatsApp taps, enquiries, orders) to every owner, Monday 9:30 IST. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-weekly-report || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '0 4 * * 1 root bash $APP/scripts/weekly-report.sh >> /var/log/shubhora-weekly-report.log 2>&1' > /etc/cron.d/shubhora-weekly-report"
+# Booking reminders (customer a day and two hours before, owner two hours before), every 15 minutes. One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/booking-reminders.sh >> /var/log/shubhora-booking-reminders.log 2>&1' > /etc/cron.d/shubhora-booking-reminders"
 echo "→ health check…"
 curl --fail --silent --show-error -o /dev/null -w "   homepage %{http_code}\n" \
   --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/ --max-time 30
