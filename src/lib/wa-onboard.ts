@@ -353,9 +353,15 @@ async function buildFor(token: string, row: Row): Promise<BuildResponse | null> 
     bannerUrl: shop?.url ?? "",
     photos: photos.filter((p) => p.kind !== "logo" && p.url !== shop?.url).map((p) => p.url).slice(0, 5),
   };
-  const products = (f.products ?? []).slice(0, 6).map((p) => ({ name: p.name, brand: "", price: p.price ?? "", photo: "" }));
+  // The build form carries six rows; a rate list often has thirty. The rest are saved as the owner's products first
+  // (the build reads them back, so the catalogue page shows the whole list), the first six ride along on the form.
+  const all = (f.products ?? []).map((p) => ({ name: p.name, brand: "", price: p.price ?? "", photo: "" }));
   const single = photos.filter((p) => p.kind === "product");
-  if (products.length === 1 && single[0]) products[0].photo = single[0].url;
+  if (all.length === 1 && single[0]) all[0].photo = single[0].url;
+  if (all.length > 6 && !row.data.builds) {
+    for (const p of all.slice(6, 40)) await asUser(token, "/api/poster/products", { json: { name: p.name, price: p.price, benefits: [], offer: "", category: "" } }).catch(() => null);
+  }
+  const products = all.slice(0, 6);
   const start = await asUser(token, "/api/card/build", { json: { async: true, facts, products } });
   if (!start.ok && start.status !== 202) { console.error("[wa-onboard] build start", start.status, JSON.stringify(start.data).slice(0, 200)); return null; }
   const t0 = Date.now();
@@ -419,12 +425,12 @@ async function buildAndGoLive(acc: CloudAccount, row: Row, lang: Lang): Promise<
     await saveRow(row);
   } catch (e) {
     console.error("[wa-onboard] build/live failed", e instanceof Error ? e.message : e);
-    row.stage = "photos";
+    // A rebuild that failed leaves the live website as it was; a first build goes back to the photos step.
+    row.stage = row.data.cardId ? "live" : "photos";
     await saveRow(row);
-    await say(acc, row.phone, T(lang,
-      "माफ़ कीजिए 🙏 वेबसाइट अभी नहीं बन पाई। कुछ देर बाद *ready* लिखकर दोबारा try करें।",
-      "Maaf kijiye 🙏 website abhi nahi ban paayi. Thodi der baad *ready* likh kar dobara try karein.",
-      "Sorry 🙏 the website could not be made just now. Please write *ready* in a little while to try again."));
+    await say(acc, row.phone, row.data.cardId
+      ? T(lang, "माफ़ कीजिए 🙏 दोबारा नहीं बन पाई — आपकी पुरानी वेबसाइट वैसी ही लाइव है। थोड़ी देर बाद फिर कहें।", "Maaf kijiye 🙏 dobara nahi ban paayi — aapki purani website waise hi live hai. Thodi der baad phir kahiye.", "Sorry 🙏 the rebuild did not work — your website is live as it was. Please ask again in a little while.")
+      : T(lang, "माफ़ कीजिए 🙏 वेबसाइट अभी नहीं बन पाई। कुछ देर बाद *ready* लिखकर दोबारा try करें।", "Maaf kijiye 🙏 website abhi nahi ban paayi. Thodi der baad *ready* likh kar dobara try karein.", "Sorry 🙏 the website could not be made just now. Please write *ready* in a little while to try again."));
   } finally { building.delete(row.phone); }
 }
 
