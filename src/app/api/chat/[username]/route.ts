@@ -12,7 +12,8 @@ import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { languageLock } from "@/lib/ai-training";
 import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, type ChatOrder } from "@/lib/wa-ai";
-import { createBooking, istInstant } from "@/lib/bookings";
+import { istInstant } from "@/lib/bookings";
+import { createBooking } from "@/lib/bookings-server";
 import { getCardByUsername } from "@/lib/sample-data";
 import { getPlatformKnowledge } from "@/lib/platform";
 import { agentCardLookup, agentComplete, agentContext, webState, type AgentMsg } from "@/lib/shubhora-agent-web";

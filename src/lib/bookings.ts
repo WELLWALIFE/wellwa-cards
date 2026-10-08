@@ -1,6 +1,6 @@
-// Bookings (migration 0064): the rows, the time helpers and the texts the reminders send. Server side only for the
-// writes; the type and formatters are plain and may be imported by the Bookings tab.
-import { restAsService } from "@/lib/poster-server";
+// Bookings (migration 0064): the row type, the time helpers and the texts the reminders send. Isomorphic — the
+// Bookings tab and the phone tab import it in the browser, so nothing server-only lives here (the write is in
+// bookings-server.ts; a node:fs import through poster-server broke the Leads page build, 9 Oct 2026).
 
 export type BookingStatus = "booked" | "done" | "cancelled" | "no_show";
 export type Booking = {
@@ -56,14 +56,4 @@ export function tapLink(phone: string, text: string): string {
   const num = String(phone ?? "").replace(/[^0-9]/g, "");
   if (num.length < 10) return "";
   return `https://wa.me/${num.length === 10 ? `91${num}` : num}?text=${encodeURIComponent(text)}`;
-}
-
-/** Service-role insert (the AI salesman's bookings). Returns the row id, or null. */
-export async function createBooking(b: { ownerId: string; cardId?: string | null; leadId?: string | null; name: string; phone: string; service: string; startsAt: Date; note?: string; source: Booking["source"] }): Promise<string | null> {
-  const r = await restAsService<{ id: string }[]>("bookings", {
-    method: "POST", headers: { Prefer: "return=representation" },
-    body: JSON.stringify({ owner_id: b.ownerId, card_id: b.cardId ?? null, lead_id: b.leadId ?? null, name: b.name.slice(0, 80), phone: b.phone.slice(0, 20), service: b.service.slice(0, 120), starts_at: b.startsAt.toISOString(), note: (b.note ?? "").slice(0, 300), source: b.source }),
-  });
-  if (!r.ok) console.error("[bookings] insert failed", r.status, r.text.slice(0, 160), "— has migration 0064 run?");
-  return r.ok ? r.data?.[0]?.id ?? null : null;
 }

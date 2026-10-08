@@ -6,7 +6,8 @@ import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { geminiComplete } from "@/lib/gemini";
 import { notify } from "@/lib/notify";
-import { createBooking, istInstant, istToday, fmtWhen } from "@/lib/bookings";
+import { istInstant, istToday, fmtWhen } from "@/lib/bookings";
+import { createBooking } from "@/lib/bookings-server";
 import { cardForOwner } from "@/lib/wa-cloud";
 
 const KEY = () => process.env.INTERNAL_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || "";

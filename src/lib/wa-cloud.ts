@@ -4,7 +4,8 @@
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
 import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, cardSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
-import { createBooking, istInstant } from "@/lib/bookings";
+import { istInstant } from "@/lib/bookings";
+import { createBooking } from "@/lib/bookings-server";
 import type { Card } from "@/lib/types";
 
 export const GRAPH = "https://graph.facebook.com/v21.0";
