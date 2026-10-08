@@ -11,6 +11,7 @@ import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { fetchMyCardsStrict } from "@/lib/cloud";
+import { syncProductsToCard } from "@/lib/card-personalize";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
@@ -209,6 +210,7 @@ export default function ProductsPage() {
       } });
       if (!r.ok) { setErr(r.data.error || t.saveFail); return; }
       setDraft(null); await load();
+      void liveSync();
     } catch {
       setErr(t.saveFail);
     } finally {
@@ -266,7 +268,17 @@ export default function ProductsPage() {
   async function toggle(p: Product) {
     setList((cur) => (cur ?? []).map((x) => (x.id === p.id ? { ...x, active: p.active === false } : x)));
     const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: p.active === false } });
-    if (!r.ok) { setErr(r.data.error || t.saveFail); load(); }
+    if (!r.ok) { setErr(r.data.error || t.saveFail); load(); } else void liveSync();
+  }
+  /** What was just saved here goes onto the live website too (audit, 7 Oct 2026) — a changed price, a new photo,
+   *  a product switched off — without "Write again". Best effort, after the save. */
+  async function liveSync() {
+    if (!hasLive) return;
+    try {
+      const r = await api<{ products?: Product[] }>("/api/poster/products");
+      const rows = r.ok ? (r.data.products ?? []) : [];
+      if (rows.length) await syncProductsToCard(rows);
+    } catch { /* the Products page saved; the website follows next time */ }
   }
   /** "Make my Shubhora seller card" asks first (owner's call, 7 Oct 2026: a tap used to build it at once, which was
    *  wrong): the sheet says what will happen, and only "Yes, make it" runs it. */
@@ -290,6 +302,8 @@ export default function ProductsPage() {
     if (!confirm(`Delete "${p.name}"?`)) return;
     try { await api(`/api/poster/products?id=${p.id}`, { method: "DELETE" }); } catch { setErr(t.error); return; }
     load();
+    // Deleted → off the website: sync with the row marked off (it is no longer in the list).
+    if (hasLive) void syncProductsToCard([{ name: p.name, active: false }]);
   }
 
   if (list === null) return err ? (

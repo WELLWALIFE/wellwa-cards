@@ -59,7 +59,8 @@ function Inner() {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <Link href={section === "editor" ? "/poster/card" : "/poster/more"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Opened from Card & Website → Edit → Advanced: Back returns there (audit, 7 Oct 2026), else to the card / More. */}
+        <Link href={/^\/(?!\/)[^\s]*$/.test(sp.get("back") ?? "") ? (sp.get("back") as string) : section === "editor" ? "/poster/card" : "/poster/more"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-base font-bold">{title}</h1>
       </div>
       <div className="poster-embed" onClickCapture={intercept}>

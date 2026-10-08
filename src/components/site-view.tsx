@@ -19,6 +19,7 @@ import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
+import { activeNotice } from "@/lib/notice";
 import { FormBlock } from "@/components/form-block";
 import { trackView, trackClick } from "@/lib/track";
 import { lookOf } from "@/lib/looks";
@@ -271,7 +272,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     setBarExpired(!!bar.until && bar.until < new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10));
     try { if (sessionStorage.getItem(`site-bar:${card.username}:${bar.text}`)) setBarClosed(true); } catch { /* ignore */ }
   }, [bar?.text, bar?.until, card.username]);
-  const barLive = !!bar?.text && !barExpired;
+  // The old site.bar is kept for cards that still carry one, but the notice (News, one place) wins when both exist.
+  const barLive = !!bar?.text && !barExpired && !activeNotice(card);
   const closeBar = () => { setBarClosed(true); try { sessionStorage.setItem(`site-bar:${card.username}:${bar?.text}`, "1"); } catch { /* ignore */ } };
   const mapLink = links.find((l) => l.type === "location");
 

@@ -197,3 +197,57 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
   }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
 }
+
+/** A product row as the Products page keeps it (the fields the live card shows). */
+export type ProductSync = { name: string; price?: string | null; mrp?: string | null; photo_url?: string | null; photos?: { url: string }[] | null; benefits?: unknown; offer?: string | null; active?: boolean; category?: string | null };
+
+/** The Products page's rows onto the live website (audit, 7 Oct 2026: a changed price or photo waited for "Write
+ *  again"). Every product block on the card: an item whose product still exists takes its current price, MRP, photos
+ *  and points; an item whose product was switched off or deleted goes; an active product on no block yet joins the
+ *  first product block. Words the AI wrote (desc) stay. Nothing happens without a live card. */
+export async function syncProductsToCard(rows: ProductSync[]) {
+  const { fetchMyCardsStrict, publishCard } = await import("@/lib/cloud");
+  let cards: Card[];
+  try { cards = await fetchMyCardsStrict(); } catch { return; }
+  if (!cards.length) return;
+  let c: Card | undefined;
+  if (cards.length > 1) {
+    const fr = await api<Partial<FactsResponse>>("/api/card/facts").catch(() => null);
+    const primary = fr?.ok ? fr.data.facts?.primaryCardId : "";
+    c = primary ? cards.find((x) => x.id === primary) : undefined;
+  } else c = cards[0];
+  if (!c || /\byour name\b/i.test(c.name ?? "")) return;
+  const own = rows.filter((r) => (r.name ?? "").trim() && !/shubhora/i.test(`${r.name} ${r.category ?? ""}`));
+  if (!own.length) return;
+  const key = (n: string) => n.trim().toLowerCase().replace(/\s+/g, " ");
+  const byName = new Map(own.map((r) => [key(r.name), r]));
+  const imagesOf = (r: ProductSync) => { const list = [...(r.photos ?? []).map((p) => p?.url).filter((u): u is string => !!u), ...(r.photo_url ? [r.photo_url] : [])]; return [...new Set(list)].slice(0, 3); };
+  const price = (v?: string | null) => (v ?? "").trim() ? ((/^(₹|rs)/i.test(v!.trim()) ? v!.trim() : `₹${v!.trim()}`)) : "";
+  const next = structuredClone(c);
+  const seen = new Set<string>();
+  let firstBlock: Extract<CardBlock, { kind: "product" }> | null = null;
+  for (const pg of next.pages) {
+    for (let i = 0; i < pg.blocks.length; i++) {
+      const b = pg.blocks[i];
+      if (b.kind !== "product") continue;
+      if (!firstBlock || pg.slug === "products") firstBlock = firstBlock && pg.slug !== "products" ? firstBlock : b;
+      b.items = b.items.flatMap((it) => {
+        const r = byName.get(key(it.name));
+        if (!r) return [it];                       // not from the Products page (the AI's own or a service) — untouched
+        if (r.active === false) return [];          // switched off / deleted → off the website
+        seen.add(key(it.name));
+        const imgs = imagesOf(r);
+        const benefits = Array.isArray(r.benefits) ? (r.benefits as unknown[]).map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 6) : it.features;
+        return [{ ...it, ...(price(r.price) ? { price: price(r.price) } : {}), ...(price(r.mrp) ? { mrp: price(r.mrp) } : {}), ...(imgs.length ? { images: imgs, imageUrl: imgs[0] } : {}), ...(r.offer?.trim() ? { badge: r.offer.trim().slice(0, 30) } : {}), features: benefits.length ? benefits : it.features }];
+      });
+    }
+  }
+  const fresh = own.filter((r) => r.active !== false && !seen.has(key(r.name)));
+  if (fresh.length && firstBlock) {
+    for (const r of fresh.slice(0, 12)) {
+      const imgs = imagesOf(r);
+      firstBlock.items.push({ name: r.name.trim().slice(0, 60), ...(price(r.price) ? { price: price(r.price) } : {}), ...(price(r.mrp) ? { mrp: price(r.mrp) } : {}), ...(imgs.length ? { images: imgs, imageUrl: imgs[0] } : {}), ...(r.offer?.trim() ? { badge: r.offer.trim().slice(0, 30) } : {}), features: Array.isArray(r.benefits) ? (r.benefits as unknown[]).map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 6) : [], specs: [] });
+    }
+  }
+  if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
+}
