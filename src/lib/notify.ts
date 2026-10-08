@@ -14,6 +14,7 @@ export const NOTIFICATION_TYPES = {
   new_lead:      { label: "New lead",              hint: "A customer fills the card form or chats with the AI.", push: true,  whatsapp: true },
   followup_due:  { label: "Follow-up reminder",    hint: "A lead's follow-up time in the CRM has come.",         push: true,  whatsapp: true },
   daily_summary: { label: "Morning summary",       hint: "8 am: yesterday's leads and today's follow-ups.",      push: true,  whatsapp: false },
+  weekly_report: { label: "Weekly report",         hint: "Monday 9:30 am: how the website did in 7 days — views, WhatsApp taps, enquiries, orders.", push: true, whatsapp: true },
   poster_ready:  { label: "Today's poster ready",  hint: "The daily poster has been made.",                     push: true,  whatsapp: false },
   plan_expiry:   { label: "Plan ending soon",      hint: "3 days and 1 day before the paid plan ends.",     push: true,  whatsapp: true },
   card_renewal:  { label: "V-Card renewal",        hint: "30, 7 and 1 day before the V-Card year ends, on the end day, 2 days before the pause, and at the pause.", push: true, whatsapp: true },
