@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = {
   followup_due:  { label: "Follow-up reminder",    hint: "A lead's follow-up time in the CRM has come.",         push: true,  whatsapp: true },
   daily_summary: { label: "Morning summary",       hint: "8 am: yesterday's leads and today's follow-ups.",      push: true,  whatsapp: false },
   booking_reminder: { label: "Booking reminder",  hint: "2 hours before a booking; and the customer's reminder to forward when WhatsApp is not linked.", push: true, whatsapp: true },
+  review_ask:    { label: "Review request",        hint: "After a sale: the thank-you + Google review message to forward when WhatsApp is not linked.", push: true, whatsapp: true },
+  festival_wishes: { label: "Festival wishes",     hint: "The owner's note that the festival wishes went to their customers.", push: true, whatsapp: false },
   weekly_report: { label: "Weekly report",         hint: "Monday 9:30 am: how the website did in 7 days — views, WhatsApp taps, enquiries, orders.", push: true, whatsapp: true },
   poster_ready:  { label: "Today's poster ready",  hint: "The daily poster has been made.",                     push: true,  whatsapp: false },
   plan_expiry:   { label: "Plan ending soon",      hint: "3 days and 1 day before the paid plan ends.",     push: true,  whatsapp: true },

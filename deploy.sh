@@ -89,6 +89,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-card-renewals || printf '%s\n' 'PAT
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-weekly-report || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '0 4 * * 1 root bash $APP/scripts/weekly-report.sh >> /var/log/shubhora-weekly-report.log 2>&1' > /etc/cron.d/shubhora-weekly-report"
 # Booking reminders (customer a day and two hours before, owner two hours before), every 15 minutes. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/booking-reminders.sh >> /var/log/shubhora-booking-reminders.log 2>&1' > /etc/cron.d/shubhora-booking-reminders"
+# Festival wishes to every owner's customers, 9:00 IST daily (sends only on a festival day). One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/festival-wishes.sh >> /var/log/shubhora-festival-wishes.log 2>&1' > /etc/cron.d/shubhora-festival-wishes"
 echo "→ health check…"
 curl --fail --silent --show-error -o /dev/null -w "   homepage %{http_code}\n" \
   --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/ --max-time 30

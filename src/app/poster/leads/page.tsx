@@ -13,6 +13,7 @@ import { useT } from "@/lib/poster-i18n";
 import LearnPage from "@/app/poster/learn/page";
 import { Guide } from "@/components/poster/guide";
 import { Bookings } from "@/components/poster/bookings";
+import { CustomerTools } from "@/components/poster/customer-tools";
 
 import { appPath } from "@/lib/poster-sections";
 
@@ -42,6 +43,7 @@ function LeadsTab() {
       {tab === "wa" && <Guide hi="इसी phone पर code से WhatsApp link करें (दूसरे phone की ज़रूरत नहीं) — फिर bot 24×7 जवाब देगा। आप खुद जवाब दें तो bot 15 मिनट चुप रहता है।" en="Link your WhatsApp with a code on this same phone (no second phone needed) — then the bot answers 24×7. If you reply yourself the bot stays quiet for 15 minutes." />}
       {tab === "learn" && <LearnPage />}
       <div className="poster-embed" onClickCapture={(e: MouseEvent<HTMLDivElement>) => { const a = (e.target as HTMLElement).closest("a"); const to = a && a.target !== "_blank" ? appPath(a.getAttribute("href") ?? "") : null; if (to) { e.preventDefault(); router.push(to); } }}>{tab === "wa" ? <WhatsappPage /> : null}</div>
+      {tab === "leads" && <CustomerTools />}
       {tab === "leads" && <CrmInbox />}
       {tab === "bookings" && <Bookings />}
     </div>

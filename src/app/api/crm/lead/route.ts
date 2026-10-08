@@ -4,6 +4,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser, restAsService } from "@/lib/poster-server";
 import { STAGES, LEAD_COLS, addEvent, leadById, resolveScope, agentsFor, type LeadRow } from "@/lib/crm-server";
+import { askForReview } from "@/lib/customer-send";
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : undefined);
 const cleanPhone = (v: unknown) => { let d = String(v ?? "").replace(/[^0-9]/g, ""); if (d.length === 11 && d.startsWith("0")) d = d.slice(1); if (d.length < 10 || d.length > 15) return ""; return "+" + (d.length === 10 ? "91" + d : d); };
@@ -82,5 +83,7 @@ export async function PATCH(request: Request) {
   const lead = Array.isArray(r.data) ? r.data[0] : null;
   if (!lead) return NextResponse.json({ error: friendly(r.text) }, { status: 502 });
   for (const [k, t] of events) await addEvent(me.token, scope.ownerId, lead.id, k, t);
+  // Converted → thank-you with the Google review link (phase 2: review collector).
+  if (patch.status === "converted" && lead.phone) void askForReview(scope.ownerId, { name: lead.name, phone: lead.phone }, `lead:${lead.id}`);
   return NextResponse.json({ lead });
 }

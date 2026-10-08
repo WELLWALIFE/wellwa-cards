@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { restAsUser, userFromRequest } from "@/lib/poster-server";
 import { BOOKING_COLS, istInstant, type Booking, type BookingStatus } from "@/lib/bookings";
+import { askForReview } from "@/lib/customer-send";
 
 const S = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const UUID = /^[0-9a-f-]{36}$/i;
@@ -46,6 +47,8 @@ export async function PATCH(request: Request) {
   for (const k of ["name", "phone", "service", "note"] as const) if (b[k] !== undefined) patch[k] = S(b[k], k === "note" ? 300 : k === "service" ? 120 : 80);
   const r = await restAsUser<Booking[]>(me.token, `bookings?id=eq.${id}&owner_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
   if (!r.ok || !r.data?.[0]) return NextResponse.json({ error: "Could not update the booking." }, { status: 400 });
+  // Done → thank-you with the Google review link (phase 2: review collector).
+  if (patch.status === "done") void askForReview(me.id, { name: r.data[0].name, phone: r.data[0].phone }, `booking:${r.data[0].id}`);
   return NextResponse.json({ booking: r.data[0] });
 }
 
