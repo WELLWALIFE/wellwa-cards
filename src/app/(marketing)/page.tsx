@@ -4,7 +4,7 @@ import { pageMeta } from "@/lib/site-brand";
 
 export const metadata: Metadata = pageMeta("/", {
   title: "Shubhora — Software that runs your business online",
-  description: "AI software, business automation, CRM, WhatsApp automation and the Shubhora Business Suite: website, digital card, daily posters, social posting and lead CRM in one login.",
+  description: "An AI salesman for small businesses: website and digital card built in minutes, orders and bookings taken on WhatsApp and the website, follow-ups, daily posters, social posting and a lead CRM in one login. Start by sending Hi on WhatsApp.",
 });
 import {
   ArrowRight, BadgeCheck, Bot, CalendarDays, Check, CheckCheck, Clapperboard, Globe,
@@ -26,16 +26,16 @@ const SOLUTION_ICONS: Record<string, typeof Bot> = {
 const day = [
   { time: "6:00 AM", icon: ImageIcon, title: "Today's poster is ready", body: "Designed with your logo, photo, phone number and the day's occasion." },
   { time: "7:00 AM", icon: Send, title: "Posted everywhere", body: "WhatsApp Status, Facebook, Instagram and a daily Story go out without you opening an app." },
-  { time: "All day", icon: MessageCircle, title: "Every message answered", body: "The WhatsApp AI replies in your customer's language, sends photos and books the visit." },
-  { time: "Evening", icon: UserRoundPlus, title: "Leads waiting in your CRM", body: "Every enquiry is saved with name, need and next follow-up, so nothing is forgotten." },
+  { time: "All day", icon: MessageCircle, title: "Every message — and every missed call — answered", body: "The AI salesman replies on WhatsApp and your website in the customer's language, suggests the right item, takes the order or booking and sends the UPI link. On Pro it answers the phone too." },
+  { time: "Evening", icon: UserRoundPlus, title: "Orders, bookings and leads in your CRM", body: "Every enquiry saved with name, need and value; a follow-up set for tomorrow, a reminder before each booking, a review request after the sale." },
 ];
 
 const modules = [
   { icon: Globe, title: "Website & digital card", body: "One link: your website on computers, your digital card on phones. The AI builds both from your details in five minutes — three designs, your trade's own look, products, gallery, reviews and booking.", tint: "brand" },
   { icon: ImageIcon, title: "Daily posters & status videos", body: "A fresh, on-brand poster every morning for festivals, offers and good-morning wishes, in your language — and a status video with a voice, shared on WhatsApp in one tap.", tint: "amber" },
   { icon: CalendarDays, title: "Social media on autopilot", body: "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram, planned and published for you.", tint: "ai" },
-  { icon: Bot, title: "WhatsApp AI assistant", body: "Answers customers 24/7 on your own number, understands voice notes and hands you the hot leads.", tint: "good" },
-  { icon: LayoutDashboard, title: "Lead CRM", body: "Pipeline, reminders, follow-ups and broadcasts for every enquiry from your card, website, ads and WhatsApp.", tint: "brand" },
+  { icon: Bot, title: "AI salesman — WhatsApp, website, phone", body: "Answers customers 24/7 in their language, suggests the right item with its price, takes the order or booking and sends the UPI link. On Pro it answers your missed calls too.", tint: "good" },
+  { icon: LayoutDashboard, title: "CRM, bookings & follow-ups", body: "Every order, booking and enquiry in one place; a follow-up set for tomorrow, reminders before each booking, a review request after the sale, festival wishes to every customer — and a Monday report on WhatsApp.", tint: "brand" },
   { icon: Clapperboard, title: "AI Ad & Reel Studio", body: "Turn one product photo into studio photos, reels and a 15-second ad video with a natural voice-over.", tint: "ai" },
 ] as const;
 
@@ -52,7 +52,10 @@ const industries = ["Retail shops", "Clinics & doctors", "Salons & spas", "Gyms 
 
 const faqs = [
   { q: "Do I need to know design or social media?", a: "No. Answer a few simple questions once — about five minutes — and the AI builds your website and card and picks three designs for you. Posters, posts and replies are prepared and published for you every day; to change anything, just say it to the AI in your own words." },
-  { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. It connects to the number your customers already message, replies in their language and script, and hands you the conversations that need a person." },
+  { q: "How do I start?", a: "Send Hi to Shubhora's WhatsApp number. The AI asks a few things — your shop, trade, city — takes two or three photos of your shop or rate list, and your website with a digital card is live in about ten minutes. Changes are one message away: “timing 10 se 8 karo”." },
+  { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. Connect your own number on Meta's official API with one button (or link the app with a QR), and the same AI salesman answers there: it replies in the customer's language, takes the order or booking and hands you the conversations that need a person." },
+  { q: "Can the AI actually take orders and bookings?", a: "Yes. On your website chat and on WhatsApp it suggests the right item with its price, collects name, number and what exactly, confirms it, and gives the customer buttons to send the order on WhatsApp, pay by UPI or call. You get a hot lead and an alert; a booking goes on your calendar with reminders for both of you." },
+  { q: "Does it answer phone calls?", a: "On the Pro plan, yes. You get a number; forward your missed calls to it and the AI receptionist answers in Hindi, Hinglish or English with your own knowledge, takes bookings and call-backs, and sends you the summary and the caller's number on WhatsApp." },
   { q: "Which languages are supported?", a: "English, Hindi and ten more Indian languages, in their own scripts: posters, captions, AI replies and voice-overs." },
   { q: "Is the free plan really free?", a: "Yes. Your website and digital card on one link — all pages, products and gallery — the daily poster and the leads they bring are free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in Growth. Take Growth when you want the Shubhora tag off, your website on Google, the AI banner and AI edits, auto-posting with status videos, the WhatsApp AI and your own domain." },
   { q: "Can you build custom software for my company?", a: "Yes. Beyond the Business Suite we build AI assistants, CRMs, automation and web or mobile apps around your workflow, scoped and priced before we start." },
@@ -98,6 +101,7 @@ function Toast({ icon: Icon, color, title, sub, className }: { icon: typeof Bot;
 
 export default function Home() {
   const growth = SAAS_PLANS.growth;
+  const starter = SAAS_PLANS.starter;
   return (
     <div>
       {/* ---------------- Hero ---------------- */}
@@ -112,8 +116,9 @@ export default function Home() {
               You think it. <span className="grad-text">We build it.</span>
             </h1>
             <p className="mt-6 text-lg md:text-xl leading-relaxed text-muted max-w-xl">
-              Shubhora is an AI software company. Tell us what your business needs and we turn it into working software,
-              or start today with the Shubhora Business Suite: website, posters, social media, WhatsApp AI and CRM in one login.
+              Shubhora gives your business an AI salesman: a website and digital card built in minutes, an assistant that
+              answers on WhatsApp and the website, takes the order or booking, sends the UPI link and follows up — plus daily
+              posters, social posting and a CRM in one login. Need custom software? We build that too.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-5 py-3.5 text-sm font-semibold text-white shadow-glow hover:-translate-y-0.5 transition-transform">
@@ -134,6 +139,7 @@ export default function Home() {
               </Link>
             </div>
             <div className="mt-8 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted">
+              <span className="inline-flex items-center gap-1.5"><MessageCircle className="h-4 w-4 text-brand" /> Send Hi on WhatsApp, website in 10 minutes</span>
               <span className="inline-flex items-center gap-1.5"><BadgeCheck className="h-4 w-4 text-brand" /> 1 year free, no card details needed</span>
               <span className="inline-flex items-center gap-1.5"><ShieldCheck className="h-4 w-4 text-brand" /> Your data stays yours</span>
               <span className="inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> 12 Indian languages</span>
@@ -145,7 +151,7 @@ export default function Home() {
             <div className="absolute top-10 h-[420px] w-[420px] rounded-full blur-3xl opacity-25 grad-logo" />
             <div className="relative mt-6 animate-floaty"><PosterPhone /></div>
             <Toast icon={Send} color="#25D366" title="Posted to WhatsApp Status" sub="and Facebook, Instagram · 7:00 AM" className="left-0 top-16" />
-            <Toast icon={UserRoundPlus} color="#2f5bf5" title="New lead: Priya M." sub="Wants 2 kg kaju katli · follow up 5 PM" className="-right-4 top-[46%]" />
+            <Toast icon={UserRoundPlus} color="#2f5bf5" title="Order taken by AI: Priya M." sub="2 kg kaju katli · ₹2,200 · UPI link sent" className="-right-4 top-[46%]" />
             <Toast icon={Clapperboard} color="#d52fd6" title="Reel published" sub="Instagram · festive offer reel" className="left-4 bottom-10" />
           </div>
         </div>
@@ -189,7 +195,7 @@ export default function Home() {
           <div className="flex flex-wrap items-end justify-between gap-6">
             <div className="max-w-2xl">
               <p className="text-sm font-semibold text-brand-ink">Everything in one login</p>
-              <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Six tools you would otherwise hire for.</h2>
+              <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Six people you would otherwise hire.</h2>
             </div>
             <Link href="/features" className="inline-flex items-center gap-2 text-sm font-semibold text-brand-ink">See every feature <ArrowRight className="h-4 w-4" /></Link>
           </div>
@@ -213,15 +219,15 @@ export default function Home() {
               <MessageCircle className="h-3.5 w-3.5" /> WhatsApp AI assistant
             </span>
             <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Answers like your best salesperson. Day and night.</h2>
-            <p className="mt-4 text-lg text-muted leading-relaxed">Not a menu bot. A trained assistant on your own number that knows your products and prices, and follows your way of selling.</p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">Not a menu bot. An AI salesman on your own WhatsApp number and your website that knows your products and prices, takes the order or booking, sends the UPI link and follows up — the way a good salesperson would.</p>
             <div className="mt-7 grid sm:grid-cols-2 gap-3">
               {[
-                "Replies in the customer's language and script",
-                "Sends product photos, videos and brochures",
-                "Understands voice notes",
-                "Types at human speed, with the typing indicator",
-                "Books visits and demos step by step",
-                "Polite follow-ups that stop when they reply",
+                "Suggests the right product with its price, then closes",
+                "Takes orders and bookings; sends the UPI pay link",
+                "Follows up the next day; reminds before every booking",
+                "Replies in the customer's language, understands voice notes",
+                "Festival wishes and offers to all your customers, from your number",
+                "Answers your missed phone calls too (Pro)",
               ].map((f) => (
                 <div key={f} className="flex items-start gap-2.5 text-sm text-muted leading-relaxed">
                   <Check className="h-4 w-4 text-[#25D366] shrink-0 mt-0.5" />{f}
@@ -277,13 +283,13 @@ export default function Home() {
           <div>
             <p className="text-sm font-semibold text-brand-ink">Simple pricing</p>
             <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Costs less than one part&#8209;time hire.</h2>
-            <p className="mt-4 text-lg text-muted leading-relaxed">One monthly subscription replaces a designer, a social media manager and someone to answer WhatsApp. Start free and upgrade whenever you are ready.</p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">Start free. Add the AI salesman for {rupees(starter.amount)} a month, or take Growth and replace the designer, the social media manager and the person who answers WhatsApp. Upgrade whenever you are ready.</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold hover:bg-surface2">Compare plans</Link>
             </div>
           </div>
-          <div className="grid sm:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">Free</h3>
               <p className="mt-1 text-sm text-muted">Website + digital card, free for 1 year</p>
@@ -291,6 +297,12 @@ export default function Home() {
               <p className="mt-2"><span className="text-4xl font-semibold tracking-tight text-good">FREE</span></p>
               <p className="mt-1 text-xs text-faint">{FREE_PLAN_TRUST}</p>
               <p className="mt-0.5 text-[11px] text-faint">{FREE_PLAN_TERM}</p>
+            </div>
+            <div className="rounded-2xl border border-border bg-surface p-6">
+              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{starter.label}</h3><span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span></div>
+              <p className="mt-1 text-sm text-muted">{starter.tagline}</p>
+              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(starter.amount)}</span><span className="text-sm text-muted"> / month</span></p>
+              <p className="mt-1 text-xs text-faint">Orders, bookings, follow-ups, reminders, review requests, weekly report · incl. {GST_PCT}% GST</p>
             </div>
             <div className="rounded-2xl border border-brand ring-1 ring-brand shadow-float bg-surface p-6">
               <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{growth.label}</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>
