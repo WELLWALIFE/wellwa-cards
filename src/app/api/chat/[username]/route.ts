@@ -11,7 +11,7 @@ import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supab
 import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { languageLock } from "@/lib/ai-training";
-import { buildSystem, getBrandTraining } from "@/lib/wa-ai";
+import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, type ChatOrder } from "@/lib/wa-ai";
 import { getCardByUsername } from "@/lib/sample-data";
 import { getPlatformKnowledge } from "@/lib/platform";
 import { agentCardLookup, agentComplete, agentContext, webState, type AgentMsg } from "@/lib/shubhora-agent-web";
@@ -36,6 +36,25 @@ function sellsShubhora(card: Card, page: string | null): boolean {
   return card.kb === "both" && page === SHUBHORA_PAGE_SLUG && hasShubhoraPage(card);
 }
 
+/** The salesman's opening for an ordinary business card (owner's call, 8 Oct 2026: "ek perfect salesman"): a greeting in
+ *  the card's language, and chips that start a sale — the first products by name, prices, order, timings. */
+function salesMeta(card: Card) {
+  const first = card.name.split(" ")[0];
+  const hindi = card.language === "hi" || /[\u0900-\u097F]/.test(`${card.tagline} ${card.about}`);
+  const products: string[] = [];
+  for (const pg of card.pages) for (const b of pg.blocks) if ((b.kind === "product" || b.kind === "services") && "items" in b) for (const it of b.items as { name?: string }[]) { if (it?.name && products.length < 2) products.push(it.name.slice(0, 28)); }
+  const chips = hindi
+    ? [...products.map((n) => `${n} का दाम?`), "ऑर्डर करना है", "टाइमिंग और पता"]
+    : [...products.map((n) => `${n} price?`), "I want to order", "Timings & address"];
+  return {
+    title: hindi ? `${first} जी का AI सेल्समैन` : `${first}'s AI salesperson`,
+    subtitle: hindi ? "दाम · ऑर्डर · बुकिंग" : "Prices · orders · bookings",
+    greeting: hindi ? `नमस्ते 🙏 मैं ${first} जी का AI असिस्टेंट हूँ। दाम, ऑर्डर या बुकिंग — जो चाहिए, पूछिए।` : `Hi 👋 I am ${first}'s assistant. Ask about prices, place an order or book — I will sort it out.`,
+    chips: chips.slice(0, 4),
+    placeholder: hindi ? "अपना सवाल लिखिए…" : "Type your question…",
+  };
+}
+
 /** What the chat box shows before the first message. Plain cards: nothing special (the box keeps its own English
  *  greeting). A Shubhora partner's card with the new AI: Hindi greeting, the menu as buttons, Hindi placeholder. */
 export async function GET(
@@ -47,7 +66,7 @@ export async function GET(
   if (!card) return Response.json({ v2: false });
   const platform = await getPlatformKnowledge();
   const page = new URL(_request.url).searchParams.get("page");
-  if (v2Mode(platform.aiV2, sellsShubhora(card, page), card.username) !== "shubhora") return Response.json({ v2: false });
+  if (v2Mode(platform.aiV2, sellsShubhora(card, page), card.username) !== "shubhora") return Response.json({ v2: false, sales: salesMeta(card) });
   const seller = firstName(card.name);
   return Response.json({
     v2: true,
@@ -128,10 +147,12 @@ export async function POST(
         })),
       });
       if (!blocked) {
-        const reply = text.trim();
-        if (reply) {
+        const { text: reply, order } = splitOrder(text.trim());
+        if (reply || order) {
           if (firstMessage) logChat(card, safeMessages, { newLead: true }).catch(() => {});
-          return Response.json({ reply });
+          // The salesman closed: the owner gets a hot lead and an alert; the visitor gets the next-step buttons.
+          const actions = order ? await closeOrder(card, order, safeMessages, wa).catch(() => null) : null;
+          return Response.json({ reply: reply || (order ? "✅" : ""), ...(order ? { order } : {}), ...(actions ? { actions } : {}) });
         }
       }
     } catch {
@@ -184,4 +205,51 @@ async function logChat(card: Card, messages: Msg[], opts: { newLead: boolean; al
       signal: AbortSignal.timeout(3000),
     });
   } catch { /* bridge offline — ignore */ }
+}
+
+/** What the visitor can do next, once the salesman has their order: send it to the owner on WhatsApp (prefilled), pay
+ *  by UPI when the card carries a UPI id and the value is known, or call. */
+type Actions = { whatsapp?: string; upi?: string; upiId?: string; call?: string };
+
+/** The order becomes the lead: the "Card chat visitor" row this conversation opened (still nameless) is filled in, or a
+ *  new hot lead is made; the owner is told on push + their WhatsApp. Returns the visitor's buttons. */
+async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: string): Promise<Actions> {
+  const summary = orderSummary(order);
+  const kindLabel = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";
+  const hindi = /[\u0900-\u097F]/.test([...messages].reverse().find((m) => m.role === "user")?.content ?? "");
+  const actions: Actions = {};
+  if (wa) {
+    const msg = hindi
+      ? `नमस्ते, मैं ${order.name || "ग्राहक"}${order.phone ? ` (${order.phone})` : ""}। ${kindLabel === "Order" ? "ऑर्डर" : kindLabel === "Booking" ? "बुकिंग" : "कॉल बैक"}: ${summary}`
+      : `Hi, I am ${order.name || "a customer"}${order.phone ? ` (${order.phone})` : ""}. ${kindLabel}: ${summary}`;
+    actions.whatsapp = `https://wa.me/${wa}?text=${encodeURIComponent(msg)}`;
+  }
+  const upi = card.links.find((l) => l.type === "upi")?.value?.trim();
+  const paise = orderPaise(order);
+  if (upi && order.kind === "order") {
+    actions.upiId = upi;
+    actions.upi = `upi://pay?pa=${encodeURIComponent(upi).replace(/%40/g, "@")}&pn=${encodeURIComponent((card.company || card.name).slice(0, 40))}${paise ? `&am=${(paise / 100).toFixed(2)}` : ""}&cu=INR&tn=${encodeURIComponent(order.items.map((i) => i.name).join(", ").slice(0, 40) || "Order")}`;
+  }
+  const phone = card.links.find((l) => l.type === "phone")?.value?.replace(/[^0-9+]/g, "");
+  if (phone) actions.call = `tel:${phone}`;
+
+  const sb = getAdminSupabase();
+  if (!sb) return actions;
+  const { data: row } = await sb.from("cards").select("id, owner_id").eq("username", card.username).maybeSingle();
+  if (!row) return actions;
+  const message = `${kindLabel}: ${summary}`.slice(0, 1000);
+  const fields = { name: order.name || "Card chat visitor", phone: order.phone, message, source: "chat", status: "hot", ai_intent: kindLabel, value_paise: paise, tags: [order.kind] };
+  // This conversation's nameless lead (opened on its first message, within the last hours) is the one to fill in.
+  const { data: prior } = await sb.from("leads").select("id").eq("card_id", row.id).eq("name", "Card chat visitor").eq("phone", "")
+    .gte("created_at", new Date(Date.now() - 6 * 3600_000).toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+  let leadId = prior?.id as string | undefined;
+  if (leadId) await sb.from("leads").update(fields).eq("id", leadId);
+  else { const { data: made } = await sb.from("leads").insert({ card_id: row.id, owner_id: row.owner_id, email: "", ...fields }).select("id").maybeSingle(); leadId = made?.id; }
+  const who = `${order.name || "A visitor"}${order.phone ? ` · ${order.phone}` : ""}`;
+  await notify(row.owner_id, "new_lead", {
+    title: `${order.kind === "booking" ? "📅" : order.kind === "callback" ? "📞" : "🛒"} New ${kindLabel.toLowerCase()}: ${order.name || "visitor"}`,
+    body: `${summary}${order.phone ? ` · ${order.phone}` : ""}`.slice(0, 160), path: "/leads", ref: leadId ? `order:${leadId}` : undefined,
+    whatsappText: `*${kindLabel} from your website* 🛒\n${who}\n${summary}\n\n${order.phone ? `Call / WhatsApp: ${order.phone}\n` : ""}${SITE}/leads`,
+  }).catch(() => undefined);
+  return actions;
 }

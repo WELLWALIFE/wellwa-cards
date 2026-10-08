@@ -4,9 +4,13 @@ import { useEffect, useRef, useState } from "react";
 import { onTheme } from "@/lib/color";
 import { Bot, X, Send, LoaderCircle, Sparkles, FileText, RotateCcw } from "lucide-react";
 
-type Msg = { role: "user" | "assistant"; content: string; at?: number };
-/** What the server says this card's chat box should look like (a Shubhora partner's card with the new AI: Hindi). */
-type Meta = { v2: boolean; title?: string; subtitle?: string; greeting?: string; chips?: string[]; placeholder?: string };
+type Order = { kind: "order" | "booking" | "callback"; name: string; phone: string; items: { name: string; qty: number; price: string }[]; when: string; total: string };
+type Actions = { whatsapp?: string; upi?: string; upiId?: string; call?: string };
+type Msg = { role: "user" | "assistant"; content: string; at?: number; order?: Order; actions?: Actions };
+/** What the server says this card's chat box should look like (a Shubhora partner's card with the new AI: Hindi;
+ *  every other card: the salesman's greeting and chips in the card's language). */
+type Sales = { title: string; subtitle: string; greeting: string; chips: string[]; placeholder: string };
+type Meta = { v2: boolean; title?: string; subtitle?: string; greeting?: string; chips?: string[]; placeholder?: string; sales?: Sales };
 
 // The AI marks shareable files as "[MEDIA] url" lines (same convention as the
 // WhatsApp bridge). Here they render inline — video plays right in the chat.
@@ -42,7 +46,29 @@ function AssistantBubble({ text }: { text: string }) {
   );
 }
 
-// A returning visitor (new AI only) finds their conversation where they left it, for 30 days.
+/** The salesman closed: what was agreed, and the buttons that finish it (owner's call, 8 Oct 2026). */
+function OrderCard({ order, actions, theme }: { order: Order; actions?: Actions; theme: string }) {
+  const hindi = /[\u0900-\u097F]/.test(order.items.map((i) => i.name).join(" ") + order.when);
+  const head = order.kind === "booking" ? (hindi ? "📅 बुकिंग भेज दी" : "📅 Booking sent") : order.kind === "callback" ? (hindi ? "📞 कॉल बैक माँग ली" : "📞 Call back requested") : (hindi ? "🛒 ऑर्डर भेज दिया" : "🛒 Order sent");
+  const btn = "flex items-center justify-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold no-underline";
+  return (
+    <div className="mt-2 rounded-xl border border-border bg-surface p-3 text-sm">
+      <p className="font-semibold">{head}</p>
+      {order.items.length > 0 && <ul className="mt-1 text-xs text-muted">{order.items.map((it, i) => <li key={i}>{it.qty > 1 ? `${it.qty} × ` : ""}{it.name}{it.price ? ` — ${it.price}` : ""}</li>)}</ul>}
+      {(order.total || order.when) && <p className="mt-1 text-xs text-muted">{[order.total ? `${hindi ? "कुल" : "Total"} ${order.total}` : "", order.when].filter(Boolean).join(" · ")}</p>}
+      {actions && (actions.whatsapp || actions.upi || actions.call) && (
+        <div className="mt-2.5 flex flex-wrap gap-1.5">
+          {actions.whatsapp && <a href={actions.whatsapp} target="_blank" rel="noreferrer" className={btn} style={{ background: theme, color: onTheme(theme) }}>{hindi ? "WhatsApp पर भेजें" : "Send on WhatsApp"}</a>}
+          {actions.upi && <a href={actions.upi} className={`${btn} border border-border`} title={actions.upiId}>{hindi ? "UPI से पेमेंट" : "Pay by UPI"}</a>}
+          {actions.call && <a href={actions.call} className={`${btn} border border-border`}>{hindi ? "कॉल करें" : "Call"}</a>}
+        </div>
+      )}
+      {actions?.upiId && <p className="mt-1.5 text-[11px] text-muted">UPI: {actions.upiId}</p>}
+    </div>
+  );
+}
+
+// A returning visitor finds their conversation where they left it, for 30 days.
 const KEEP_MS = 30 * 24 * 3600 * 1000;
 /** When a message was written (sent with the chat, so the assistant knows a visitor came back days later). */
 const stampNow = () => Date.now();
@@ -83,7 +109,8 @@ export function CardChat({
   const scroller = useRef<HTMLDivElement>(null);
 
   const v2 = !!meta?.v2;
-  const suggestions = v2 && meta?.chips?.length ? meta.chips : ["Products & prices?", "Book a free demo", "Business opportunity"];
+  const sales = !v2 ? meta?.sales : undefined;
+  const suggestions = v2 && meta?.chips?.length ? meta.chips : sales?.chips?.length ? sales.chips : ["Products & prices?", "Book a free demo", "Business opportunity"];
 
   useEffect(() => {
     scroller.current?.scrollTo({ top: scroller.current.scrollHeight, behavior: "smooth" });
@@ -95,13 +122,13 @@ export function CardChat({
     let gone = false;
     fetch(`/api/chat/${username}${page ? `?page=${encodeURIComponent(page)}` : ""}`).then((r) => r.json()).catch(() => ({ v2: false })).then((m: Meta) => {
       if (gone) return;
-      setMeta(m?.v2 ? m : { v2: false });
-      if (m?.v2) setMessages((cur) => (cur.length ? cur : loadSaved(username)));
+      setMeta(m?.v2 ? m : { v2: false, ...(m?.sales ? { sales: m.sales } : {}) });
+      setMessages((cur) => (cur.length ? cur : loadSaved(username)));
     });
     return () => { gone = true; };
   }, [open, meta, username, page]);
 
-  useEffect(() => { if (v2) save(username, messages); }, [v2, messages, username]);
+  useEffect(() => { if (meta) save(username, messages); }, [meta, messages, username]);
 
   async function send(text: string) {
     const q = text.trim();
@@ -116,8 +143,8 @@ export function CardChat({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: next, page }),
       });
-      const data = await r.json();
-      setMessages((m) => [...m, { role: "assistant", content: data.reply ?? (v2 ? "माफ़ कीजिए, फिर से भेजिए।" : "Sorry, please try again."), at: stampNow() }]);
+      const data = await r.json() as { reply?: string; order?: Order; actions?: Actions };
+      setMessages((m) => [...m, { role: "assistant", content: data.reply ?? (v2 ? "माफ़ कीजिए, फिर से भेजिए।" : "Sorry, please try again."), at: stampNow(), ...(data.order ? { order: data.order } : {}), ...(data.actions ? { actions: data.actions } : {}) }]);
     } catch {
       setMessages((m) => [...m, { role: "assistant", content: v2 ? "नेटवर्क की दिक्कत है — फिर से भेजिए।" : "Network issue — please try again.", at: stampNow() }]);
     } finally {
@@ -145,10 +172,10 @@ export function CardChat({
           <div className="flex items-center gap-2.5 px-4 py-3" style={{ background: `linear-gradient(135deg, ${theme}, color-mix(in srgb, ${theme} 80%, #0b1214))`, color: onTheme(theme) }}>
             <span className="h-8 w-8 rounded-full bg-white/20 grid place-items-center"><Bot className="h-4.5 w-4.5" /></span>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold leading-tight">{v2 && meta?.title ? meta.title : <>{first}&apos;s AI assistant</>}</p>
-              <p className="text-[11px] opacity-80 leading-tight flex items-center gap-1"><Sparkles className="h-3 w-3" /> {v2 && meta?.subtitle ? meta.subtitle : <>Answers about {name.split(" ")[0]}&apos;s services</>}</p>
+              <p className="text-sm font-semibold leading-tight">{v2 && meta?.title ? meta.title : sales?.title ? sales.title : <>{first}&apos;s AI assistant</>}</p>
+              <p className="text-[11px] opacity-80 leading-tight flex items-center gap-1"><Sparkles className="h-3 w-3" /> {v2 && meta?.subtitle ? meta.subtitle : sales?.subtitle ? sales.subtitle : <>Answers about {name.split(" ")[0]}&apos;s services</>}</p>
             </div>
-            {v2 && messages.length > 0 && (
+            {messages.length > 0 && (
               <button onClick={() => setMessages([])} className="p-1 rounded-lg hover:bg-white/15" title="नई बातचीत" aria-label="New chat"><RotateCcw className="h-4 w-4" /></button>
             )}
             <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/15"><X className="h-4 w-4" /></button>
@@ -159,7 +186,7 @@ export function CardChat({
               <div className="text-center py-4">
                 {!meta
                   ? <LoaderCircle className="h-4 w-4 animate-spin text-muted mx-auto" />
-                  : <p className="text-sm text-muted">{v2 && meta.greeting ? meta.greeting : <>Hi! 👋 Ask me anything about {name.split(" ")[0]}&apos;s products, prices, or how to book a demo.</>}</p>}
+                  : <p className="text-sm text-muted">{v2 && meta.greeting ? meta.greeting : sales?.greeting ? sales.greeting : <>Hi! 👋 Ask me anything about {name.split(" ")[0]}&apos;s products, prices, or how to book a demo.</>}</p>}
               </div>
             )}
             {messages.map((m, i) => (
@@ -169,6 +196,7 @@ export function CardChat({
                   style={m.role === "user" ? { background: theme, color: onTheme(theme) } : undefined}
                 >
                   {m.role === "assistant" ? <AssistantBubble text={m.content} /> : m.content}
+                  {m.order && <OrderCard order={m.order} actions={m.actions} theme={theme} />}
                 </div>
               </div>
             ))}
@@ -195,7 +223,7 @@ export function CardChat({
             <input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={v2 && meta?.placeholder ? meta.placeholder : "Type your question…"}
+              placeholder={v2 && meta?.placeholder ? meta.placeholder : sales?.placeholder ?? "Type your question…"}
               className="flex-1 rounded-full border border-border bg-surface px-3.5 py-2 text-sm outline-none focus:border-brand"
             />
             <button type="submit" disabled={busy || !input.trim()}

@@ -3,7 +3,7 @@
 // handling (CRM log + menu bot + AI reply) and delivery statuses live here;
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
-import { aiReply, splitAlert, cardSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
+import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, cardSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import type { Card } from "@/lib/types";
 
 export const GRAPH = "https://graph.facebook.com/v21.0";
@@ -222,10 +222,17 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     const history: ChatMsg[] = rows.filter((r) => r.text && !r.text.startsWith("[")).map((r) => ({ role: r.direction === "in" ? "user" : "assistant", content: r.text }));
     if (!history.length || history[history.length - 1].content !== text) history.push({ role: "user", content: text });
     const ai = await aiReply(card, history, "whatsapp");
-    const { text: out, alert } = splitAlert(ai);
-    if (out) {
-      await reply(acc, card, phone, out);
+    const { text: out0, alert } = splitAlert(ai);
+    const { text: out, order } = splitOrder(out0);
+    if (out || order) {
+      if (out) await reply(acc, card, phone, out);
       if (alert && leadId) await note(acc.owner_id, leadId, `🔔 AI alert: ${alert}`, true);
+      // The salesman closed on WhatsApp: the lead carries the order (name, what, value) and goes hot.
+      if (order && leadId) {
+        const kind = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";
+        await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ ...(order.name ? { name: order.name } : {}), ai_intent: kind, value_paise: orderPaise(order), tags: [order.kind], updated_at: new Date().toISOString() }) });
+        await note(acc.owner_id, leadId, `🛒 ${kind}: ${orderSummary(order)}`, true);
+      }
     } else {
       const wa = card.links.find((l) => l.type === "whatsapp")?.value?.replace(/[^0-9]/g, "");
       await reply(acc, card, phone, `Namaste 🙏 ${card.name.split(" ")[0]} aapko jald hi khud jawab denge.${site ? `\nTab tak details yahan dekhein: ${site}` : ""}${wa ? `` : ""}`);

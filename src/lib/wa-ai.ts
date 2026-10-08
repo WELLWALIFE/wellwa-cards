@@ -84,7 +84,45 @@ THIS SELLER'S WEBSITE (the card page — always call it the "website" when talki
 CLOSING THE LOOP
 - Anything you can't confirm (exact stock, delivery date, a custom discount): say ${card.name.split(" ")[0]} will confirm${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.
 - Where it fits naturally, steer toward the demo/visit/booking button on the card.${channel === "whatsapp" ? `
-- If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}`;
+- If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora ? "" : `
+
+SELLING — you are ${card.name.split(" ")[0]}'s salesperson, not an FAQ (owner's call, 8 Oct 2026)
+- Lead to a decision: when they ask about something, name the best-fitting item with its price (from the card) and one reason it suits them, then offer the next step — order, book, visit or a call back.
+- When they want to order, book or be called back: get what exactly (items with quantity, or the service with a preferred day/time)${channel === "whatsapp" ? " and their name" : ", their name and their mobile number"} — ask for ONE missing thing at a time. Then confirm in one line and append, as the LAST line of that reply, exactly:
+[[ORDER: {"kind":"order"|"booking"|"callback","name":"…","phone":"…","items":[{"name":"…","qty":1,"price":"…"}],"when":"…","note":"…","total":"…"}]]
+  Prices only from the card; "total" empty when unsure${channel === "whatsapp" ? `; "phone" is "" — on WhatsApp their number is the one they write from` : "; never invent a name or number — ask"}.
+- Send the ORDER line once per request; after it, answer follow-ups normally. Never promise delivery dates or discounts the card does not state.`}`;
+}
+
+/** The hand-off a reply may end with: what the customer settled on, for the owner's CRM and the next-step buttons. */
+export type ChatOrder = { kind: "order" | "booking" | "callback"; name: string; phone: string; items: { name: string; qty: number; price: string }[]; when: string; note: string; total: string };
+/** Split a trailing [[ORDER: {…}]] line off an AI reply. */
+export function splitOrder(reply: string): { text: string; order: ChatOrder | null } {
+  const m = reply.match(/\[\[ORDER:\s*(\{[\s\S]*\})\s*\]\]\s*$/i);
+  if (!m) return { text: reply.replace(/\[\[ORDER:[\s\S]*$/i, "").trim(), order: null };
+  const S = (v: unknown, n: number) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim().slice(0, n);
+  try {
+    const o = JSON.parse(m[1]) as Record<string, unknown>;
+    const kind = (["order", "booking", "callback"] as const).find((k) => k === o.kind) ?? "order";
+    const items = (Array.isArray(o.items) ? o.items : []).map((it) => { const x = (it ?? {}) as Record<string, unknown>; return { name: S(x.name, 80), qty: Math.max(1, Math.min(999, Math.round(Number(x.qty)) || 1)), price: S(x.price, 30) }; }).filter((it) => it.name).slice(0, 12);
+    const order: ChatOrder = { kind, name: S(o.name, 80), phone: S(o.phone, 20).replace(/[^0-9+]/g, ""), items, when: S(o.when, 120), note: S(o.note, 300), total: S(o.total, 30) };
+    return { text: reply.slice(0, m.index).trim(), order };
+  } catch { return { text: reply.slice(0, m.index).trim(), order: null }; }
+}
+/** Rupees in a price string ("₹1,200", "1200/kg", "Rs 850") → paise; 0 when none. */
+export function paiseOf(s: string): number {
+  const m = String(s ?? "").replace(/,/g, "").match(/\d+(?:\.\d{1,2})?/);
+  return m ? Math.round(parseFloat(m[0]) * 100) : 0;
+}
+/** The order in words, for the owner's alert and the customer's WhatsApp message. */
+export function orderSummary(o: ChatOrder): string {
+  const items = o.items.map((it) => `${it.qty > 1 ? `${it.qty} × ` : ""}${it.name}${it.price ? ` (${it.price})` : ""}`).join(", ");
+  const total = o.total || (o.items.length && o.items.every((it) => paiseOf(it.price)) ? `₹${(o.items.reduce((s, it) => s + paiseOf(it.price) * it.qty, 0) / 100).toLocaleString("en-IN")}` : "");
+  return [items, total ? `Total ${total}` : "", o.when ? `When: ${o.when}` : "", o.note].filter(Boolean).join(" · ");
+}
+/** Order value in paise: the stated total, else the items added up. */
+export function orderPaise(o: ChatOrder): number {
+  return paiseOf(o.total) || o.items.reduce((s, it) => s + paiseOf(it.price) * it.qty, 0);
 }
 
 /** One AI turn. Returns "" when no key / blocked / error so callers can fall back. */
