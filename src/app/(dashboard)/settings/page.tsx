@@ -17,7 +17,7 @@ import { displayLogin } from "@/lib/phone";
 
 // No Free entry to pick: every account is on the free plan until it subscribes.
 // Same plans and prices as the public Pricing page (lib/billing.ts is the single source).
-const plans = (["growth", "pro"] as SaasTier[]).map((t) => ({
+const plans = (["starter", "growth", "pro"] as SaasTier[]).map((t) => ({
   tier: t, name: SAAS_PLANS[t].label, price: `${rupees(SAAS_PLANS[t].amount)} / month incl. GST`,
   features: [SAAS_PLANS[t].tagline, ...SAAS_EXTRA[t]],
 }));

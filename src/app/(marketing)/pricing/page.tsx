@@ -35,7 +35,7 @@ export default function PricingPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-6">
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Free</h2>
             <p className="text-sm text-muted">Your business online</p>
@@ -54,7 +54,7 @@ export default function PricingPage() {
             </ul>
             <Link href="/signup" className="mt-6 inline-flex w-full items-center justify-center rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-surface2">Start free</Link>
           </div>
-          {(["growth"] as const).map((tier) => {
+          {(["starter", "growth"] as const).map((tier) => {
             const p = SAAS_PLANS[tier]; const hot = tier === "growth";
             return (
               <div key={tier} className={`flex flex-col rounded-2xl border bg-surface p-6 ${hot ? "border-brand ring-1 ring-brand" : "border-border"}`}>
@@ -67,7 +67,7 @@ export default function PricingPage() {
                 </div>
                 <p className="mt-1 text-xs text-faint">Includes {GST_PCT}% GST ({rupees(p.base)} + GST)</p>
                 <ul className="mt-5 flex-1 space-y-2.5">
-                  {[...INCLUDED, ...EXTRA[tier]].map((f) => (
+                  {(tier === "starter" ? EXTRA.starter : [...INCLUDED, ...EXTRA[tier]]).map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
                   ))}
                 </ul>
@@ -86,7 +86,7 @@ export default function PricingPage() {
               <span className="text-3xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span>
               <span className="text-sm text-muted">quote for your need</span>
             </div>
-            <p className="mt-1 text-xs text-faint">Anything beyond ₹2,999 — tell us what you need</p>
+            <p className="mt-1 text-xs text-faint">Anything beyond Growth — tell us what you need</p>
             <p className="mt-4 rounded-lg bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-brand-ink">We make all kinds of software</p>
             <ul className="mt-5 flex-1 space-y-2.5">
               {PRO_CUSTOM.items.map((f) => (

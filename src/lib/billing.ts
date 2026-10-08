@@ -2,7 +2,7 @@
 // app runs in demo mode (upgrade "succeeds" locally so the flow is demoable).
 
 export type PaidPlan = "pro" | "team";
-export type SaasTier = "growth" | "pro";
+export type SaasTier = "starter" | "growth" | "pro";
 
 // Owner's call (26 Sep 2026): Growth gets 10 AI credits a month (smallest video = 20, so any video needs a pack),
 // and the monthly credits are NOT advertised anywhere — they are a quiet bonus in the balance, not a plan promise.
@@ -11,11 +11,15 @@ export type SaasTier = "growth" | "pro";
  *  `credits` are the AI credits included every month; they expire with the month, bought packs do not. */
 export const GST_PCT = 18;
 export const SAAS_PLANS: Record<SaasTier, { base: number; amount: number; credits: number; label: string; tagline: string }> = {
+  // Starter (owner's call, 8 Oct 2026): the AI salesman and everything that turns a website into sales — no posters,
+  // social posting, AI pictures or own domain (those are Growth). One-time monthly payment, no mandate.
+  starter: { base: 84661, amount: 99900, credits: 0, label: "Starter", tagline: "An AI salesman on your website and WhatsApp" },   // ₹999 incl. GST
   growth: { base: 254153, amount: 299900, credits: 10, label: "Growth", tagline: "Everything to run one business online" },   // ₹2,999 incl. GST (owner, 22 Sep 2026)
   pro: { base: 423644, amount: 499900, credits: 500, label: "Pro", tagline: "For teams, more brands and more AI video" },          // ₹4,999 incl. GST (owner, 22 Sep 2026)
 };
 /** What each plan adds on top of the shared feature list (shown on Pricing and in Settings). */
 export const SAAS_EXTRA: Record<SaasTier, string[]> = {
+  starter: ["AI salesman on your website: answers, suggests, takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with customer and owner reminders", "Automatic follow-ups on every enquiry", "Festival wishes and offers to all your customers from your WhatsApp", "Google review request after every sale", "Monday report of views, enquiries and orders", "Edit the website by saying it; no Shubhora tag"],
   growth: ["No Shubhora tag; your website on Google", "AI-painted banner and pictures; edit by saying it", "Daily poster + status video with voice, auto-posted", "WhatsApp AI replies (fair use up to 1,000 a month)", "Your own domain", "1 business profile", "8 free ad storyboards a month"],
   pro: ["Dedicated account manager", "More business profiles or brands", "10,000+ AI replies a month", "CRM seats for your team", "Priority rendering and support", "Monthly SEO and performance report"],
 };

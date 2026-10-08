@@ -19,6 +19,8 @@ type Res = {
   card: { state: "included" | "active" | "grace" | "paused"; until: string | null; days_left: number | null; pause_on: string | null; renewed: boolean } | null;
 };
 const INCLUDED: Record<SaasTier, string[]> = {
+  // Starter stands on its own list (no posters, social or AI pictures); Growth and Pro add theirs to COMMON.
+  starter: ["AI salesman on the website: answers, suggests, takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders", "Automatic follow-ups on every enquiry", "Festival wishes and offers to your customers", "Google review request after every sale", "Monday report", "Edit by saying it; no Shubhora tag"],
   // No repeats of the common lines below (the list said "website" and "daily poster" twice).
   growth: ["1 business profile", "WhatsApp AI replies — fair use up to 1,000 a month", "8 free ad storyboards a month"],
   pro: ["3 business profiles or brands", "10,000 AI replies a month", "5 CRM team members", "Priority rendering and support"],
@@ -159,17 +161,17 @@ function MyPlan() {
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
       <div className="space-y-3">
         {/* Pro is custom-priced now (owner's call, 25 Sep 2026): only someone already on Pro still renews it here. */}
-        {(r.tier === "pro" ? (["growth", "pro"] as const) : (["growth"] as const)).map((tier, i) => {
+        {(r.tier === "pro" ? (["starter", "growth", "pro"] as const) : (["starter", "growth"] as const)).map((tier, i) => {
           const p = SAAS_PLANS[tier]; const current = r.tier === tier && r.state === "active";
           return (
             <div key={tier} className={`rounded-2xl border p-4 ${current ? "border-good/50 bg-good/5" : tier === "growth" ? "border-brand/60" : "border-border"}`}>
               <div className="flex items-baseline justify-between gap-2">
-                <p className="font-bold">{welcome ? `${i + 2}. ` : ""}{p.label}{tier === "growth" && !current ? <span className="ml-2 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most chosen</span> : null}</p>
+                <p className="font-bold">{welcome ? `${i + 2}. ` : ""}{p.label}{tier === "starter" && !current ? <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span> : null}{tier === "growth" && !current ? <span className="ml-2 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most chosen</span> : null}</p>
                 <p className="text-sm"><b className="text-lg">{rupees(p.amount)}</b> <span className="text-muted">/ month incl. GST</span></p>
               </div>
               <p className="text-xs text-muted">{p.tagline} · {rupees(p.base)} + {GST_PCT}% GST</p>
               <ul className="mt-2 space-y-1">
-                {[...COMMON, ...INCLUDED[tier]].map((f) => <li key={f} className="flex items-start gap-1.5 text-xs text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />{f}</li>)}
+                {(tier === "starter" ? INCLUDED.starter : [...COMMON, ...INCLUDED[tier]]).map((f) => <li key={f} className="flex items-start gap-1.5 text-xs text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />{f}</li>)}
               </ul>
               {current
                 ? <p className="mt-3 inline-flex items-center gap-1.5 text-sm font-semibold text-good"><Check className="h-4 w-4" /> Your current plan</p>
@@ -180,7 +182,7 @@ function MyPlan() {
         {r.tier !== "pro" && (
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="font-bold">{welcome ? "3. " : ""}{PRO_CUSTOM.label}</p>
+              <p className="font-bold">{welcome ? "4. " : ""}{PRO_CUSTOM.label}</p>
               <p className="text-sm"><b className="text-lg">{PRO_CUSTOM.price}</b> <span className="text-muted">price</span></p>
             </div>
             <p className="text-xs text-muted">{PRO_CUSTOM.tagline}</p>

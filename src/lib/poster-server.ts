@@ -54,13 +54,14 @@ export async function ownProfile(token: string, profileId: string): Promise<Post
 
 /** Plan + poster allowance. Paid: unlimited (limit null). Free: none (limit 0). */
 export async function posterQuota(token: string, userId: string): Promise<{ plan: string; used: number; limit: number | null }> {
-  const prof = await restAsUser<{ poster_plan: string; poster_plan_expires_at: string | null; plan_expires_at: string | null; saas_expires_at: string | null }[]>(token, `profiles?id=eq.${userId}&select=poster_plan,poster_plan_expires_at,plan_expires_at,saas_expires_at`);
+  const prof = await restAsUser<{ poster_plan: string; poster_plan_expires_at: string | null; plan_expires_at: string | null; saas_expires_at: string | null; saas_tier?: string | null }[]>(token, `profiles?id=eq.${userId}&select=poster_plan,poster_plan_expires_at,plan_expires_at,saas_expires_at,saas_tier`);
   let plan = prof.data?.[0]?.poster_plan ?? "free";
   const exp = prof.data?.[0]?.poster_plan_expires_at;
   if (plan !== "free" && exp && new Date(exp).getTime() < Date.now()) plan = "free";
-  // A running Business Suite subscription removes the branding and unlocks previews and videos.
+  // A running Business Suite subscription removes the branding and unlocks previews and videos — Growth and Pro, that is;
+  // Starter (owner's call, 8 Oct 2026) has the salesman, not the posters, videos and AI pictures.
   const suiteUntil = [prof.data?.[0]?.plan_expires_at, prof.data?.[0]?.saas_expires_at].map((d) => (d ? new Date(d).getTime() : 0));
-  if (plan === "free" && Math.max(...suiteUntil) > Date.now()) plan = "suite";
+  if (plan === "free" && prof.data?.[0]?.saas_tier !== "starter" && Math.max(...suiteUntil) > Date.now()) plan = "suite";
   if (plan !== "free") return { plan, used: 0, limit: null };
   // Free plan (owner's call, 23 Sep 2026): the digital V-Card and its leads only — posters, videos and the AI tools
   // are part of the subscription. limit 0 = "not on this plan" everywhere the quota is read.

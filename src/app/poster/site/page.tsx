@@ -46,6 +46,10 @@ export default function WebsitePage() {
   /** Where a focused edit comes back to: this page, the Edit door open. */
   const BACK = encodeURIComponent("/poster/site?edit=1");
   const { plan, loading: planLoading } = usePlan();
+  // Which paid tier (owner's call, 8 Oct 2026): the own domain is Growth's; Starter has the salesman, not the domain.
+  const [tier, setTier] = useState<string | null>(null);
+  useEffect(() => { api<{ tier?: string | null }>("/api/poster/plan").then((r) => { if (r.ok) setTier(r.data.tier ?? null); }).catch(() => undefined); }, []);
+  const domainOk = tier === "growth" || tier === "pro";
   const paid = planLoading || plan !== "free";
   // The live card, for "change something" (card-chat-edit.tsx) and the notice.
   const [card, setCard] = useState<Card | null>(null);
@@ -238,7 +242,9 @@ export default function WebsitePage() {
                   )}
                   <section className="space-y-2">
                     <p className="text-sm font-semibold">🌍 {T("Put it on your own domain", "अपने domain पर लगाएँ")}</p>
-                    <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
+                    {domainOk || s.customDomain
+                      ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
+                      : <p className="rounded-xl border border-border bg-surface p-3 text-sm text-muted">{T("Your own domain (www.yourshop.com) comes with Growth.", "अपना domain (www.yourshop.com) Growth plan में आता है।")} <Link href="/poster/plan" className="font-semibold text-brand-ink">{T("See plans →", "Plans देखें →")}</Link></p>}
                   </section>
                   <Link href="/poster/card" className="flex items-center gap-2 text-sm font-medium text-brand-ink"><Smartphone className="h-4 w-4" /> {T("Card look & settings (the phone card's own design, Shubhora partner page)", "Card का look और settings (phone card का अपना design, Shubhora partner page)")}</Link>
                 </div>

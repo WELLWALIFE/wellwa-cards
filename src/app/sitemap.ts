@@ -5,6 +5,7 @@ import { sampleCards } from "@/lib/sample-data";
 import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
 import { cardProducts } from "@/lib/product-page";
+import { cities } from "@/lib/directory";
 import type { Card, CardPage } from "@/lib/types";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
@@ -75,5 +76,11 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // Only fall back to samples in demo mode — never list deleted cards.
   if (!rows.length && !sb) rows = sampleCards.map((c) => ({ username: c.username, pages: c.pages }));
 
-  return [...staticPages, ...rows.flatMap((r) => cardUrls(`${SITE}/c/${r.username}`, r))];
+  // The city directory: /in, each city, each trade in it.
+  const dir: MetadataRoute.Sitemap = [{ url: `${SITE}/in`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 }];
+  for (const c of await cities().catch(() => [])) {
+    dir.push({ url: `${SITE}/in/${c.slug}`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 });
+    for (const k of c.categories) dir.push({ url: `${SITE}/in/${c.slug}/${k.slug}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.6 });
+  }
+  return [...staticPages, ...dir, ...rows.flatMap((r) => cardUrls(`${SITE}/c/${r.username}`, r))];
 }
