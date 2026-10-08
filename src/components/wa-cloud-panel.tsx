@@ -42,6 +42,57 @@ export function WaCloudPanel() {
 }
 const NeedConnect = () => <p className="rounded-xl border border-dashed border-border p-4 text-sm text-muted">Connect your Cloud API number first (Connect tab).</p>;
 
+/* ---------------- one-button connect (Meta Embedded Signup) ---------------- */
+type FBLoginResp = { authResponse?: { code?: string } | null };
+type FBSdk = { init: (o: Record<string, unknown>) => void; login: (cb: (r: FBLoginResp) => void, o: Record<string, unknown>) => void };
+declare global { interface Window { FB?: FBSdk; fbAsyncInit?: () => void } }
+function loadFb(appId: string): Promise<FBSdk | null> {
+  return new Promise((res) => {
+    if (window.FB) return res(window.FB);
+    window.fbAsyncInit = () => { window.FB?.init({ appId, autoLogAppEvents: true, xfbml: false, version: "v21.0" }); res(window.FB ?? null); };
+    const sc = document.createElement("script"); sc.src = "https://connect.facebook.net/en_US/sdk.js"; sc.async = true; sc.defer = true; sc.onerror = () => res(null);
+    document.body.appendChild(sc);
+    setTimeout(() => res(window.FB ?? null), 12_000);
+  });
+}
+/** The seller's own number on Meta's official API in one go: Meta's window takes the Facebook login, the WhatsApp
+ *  Business account and the number; we get a code and the ids back and finish on the server. */
+function EmbeddedConnect({ onDone }: { onDone: () => void }) {
+  const [cfg, setCfg] = useState<{ ready: boolean; appId: string; configId: string } | null>(null);
+  const [state, setState] = useState<"idle" | "busy" | "error">("idle");
+  const [msg, setMsg] = useState("");
+  useEffect(() => { api<{ ready: boolean; appId: string; configId: string }>("/api/wa-cloud/embedded").then((r) => setCfg(r.ok ? r.data : { ready: false, appId: "", configId: "" })); }, []);
+  if (!cfg?.ready) return null;
+  async function start() {
+    setState("busy"); setMsg("");
+    const FB = await loadFb(cfg!.appId);
+    if (!FB) { setState("error"); setMsg("Facebook did not load — check the internet and try again."); return; }
+    const ids: { phone_number_id?: string; waba_id?: string } = {};
+    const onMsg = (ev: MessageEvent) => {
+      if (!/facebook\.com$/.test(new URL(ev.origin).hostname)) return;
+      try { const d = typeof ev.data === "string" ? JSON.parse(ev.data) : ev.data; if (d?.type === "WA_EMBEDDED_SIGNUP" && d.event === "FINISH") { ids.phone_number_id = d.data?.phone_number_id; ids.waba_id = d.data?.waba_id; } } catch { /* not ours */ }
+    };
+    window.addEventListener("message", onMsg);
+    FB.login(async (resp) => {
+      window.removeEventListener("message", onMsg);
+      const code = resp.authResponse?.code;
+      if (!code) { setState("idle"); setMsg("Cancelled."); return; }
+      const r = await api<{ ok?: boolean; error?: string }>("/api/wa-cloud/embedded", { method: "POST", json: { code, ...ids } });
+      if (r.ok) { setState("idle"); setMsg("Connected ✓ — your number now answers on Meta's official API."); onDone(); }
+      else { setState("error"); setMsg(r.data.error || "Could not finish the connection."); }
+    }, { config_id: cfg!.configId, response_type: "code", override_default_response_type: true, extras: { setup: {}, featureType: "", sessionInfoVersion: "3" } });
+  }
+  return (
+    <div className="rounded-2xl border border-brand/50 bg-brand-soft/30 p-4">
+      <p className="text-sm font-semibold">Connect your WhatsApp number — official, 2 minutes</p>
+      <p className="mt-1 text-xs text-muted">Log in to Facebook, pick your WhatsApp Business account and number in Meta&apos;s window, done. No tokens to copy, no QR, no ban risk — it is Meta&apos;s own API. Use a number that is not on the WhatsApp app right now (or a new one).</p>
+      <button type="button" disabled={state === "busy"} onClick={start} className="grad-brand mt-3 inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold text-white disabled:opacity-60">{state === "busy" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plug className="h-4 w-4" />} Connect with Facebook</button>
+      {msg && <p className={`mt-2 text-xs ${/✓/.test(msg) ? "text-good" : state === "error" ? "text-danger" : "text-muted"}`}>{msg}</p>}
+      <p className="mt-2 text-[11px] text-muted">Or fill the details by hand below.</p>
+    </div>
+  );
+}
+
 /* ---------------- connect ---------------- */
 function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: string; verify: string }; onChange: () => void }) {
   const [f, setF] = useState({ phone_number_id: acc?.phone_number_id ?? "", waba_id: acc?.waba_id ?? "", access_token: "", app_secret: "" });
@@ -65,6 +116,8 @@ function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: st
     setBusy(false); setTest({ ...test, out: r.ok ? "Sent ✓ — check the phone." : r.data.error || "Failed." });
   }
   return (
+    <div className="space-y-4">
+    {!acc && <EmbeddedConnect onDone={onChange} />}
     <div className="grid gap-4 lg:grid-cols-2">
       <section className="space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card">
         <h3 className="font-semibold">1 · Your Meta credentials</h3>
@@ -116,6 +169,7 @@ function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: st
           </div>
         )}
       </section>
+    </div>
     </div>
   );
 }
