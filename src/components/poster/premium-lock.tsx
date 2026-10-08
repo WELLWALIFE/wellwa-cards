@@ -66,10 +66,10 @@ export function PremiumCard({ compact = false }: { compact?: boolean }) {
   const { refresh } = usePlan();
   return (
     <div className="rounded-2xl bg-[#12144a] p-4 text-white">
-      <p className="flex items-center gap-2 text-base font-bold"><Sparkles className="h-4 w-4 text-[#ffd54a]" /> {hi ? "Premium — website और भी अच्छी" : "Premium — a better website"}</p>
-      {!compact && <p className="mt-1 text-xs text-white/80">{hi ? "Google पर, AI से बदलाव, आपकी photos, बिना Shubhora tag, WhatsApp AI." : "On Google, AI edits, your photos, no Shubhora tag, WhatsApp AI."}</p>}
+      <p className="flex items-center gap-2 text-base font-bold"><Sparkles className="h-4 w-4 text-[#ffd54a]" /> {hi ? "Premium — AI सेल्समैन और बेहतर वेबसाइट" : "Premium — an AI salesman and a better website"}</p>
+      {!compact && <p className="mt-1 text-xs text-white/80">{hi ? "Starter ₹999: ऑर्डर, बुकिंग, फ़ॉलो-अप, बिना Shubhora tag। Growth ₹2,999: साथ में पोस्टर, सोशल, AI फ़ोटो, अपना domain।" : "Starter ₹999: orders, bookings, follow-ups, no Shubhora tag. Growth ₹2,999: plus posters, social, AI pictures, your own domain."}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <SubscribeButton tier="growth" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹2,999 / महीना · लें" : "₹2,999 a month · get it"}</SubscribeButton>
+        <SubscribeButton tier="starter" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹999 / महीना से · लें" : "From ₹999 a month · get it"}</SubscribeButton>
         <Link href="/poster/plan" className="text-xs font-semibold text-white/80 underline">{hi ? "सभी plans" : "All plans"}</Link>
       </div>
     </div>

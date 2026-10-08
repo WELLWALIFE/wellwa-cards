@@ -187,7 +187,7 @@ export default function WebsitePage() {
                   { k: "ai", I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid, scope: "both" },
                   { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}`, scope: "both" },
                   { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
-                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "again" },
+                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
                   { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
                   // The three designs are the WEBSITE's; the phone card's own look lives under Advanced → Card look & settings.
                   { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("The three designs, colours", "तीन design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
