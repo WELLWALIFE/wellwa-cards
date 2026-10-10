@@ -160,7 +160,7 @@ function splitMedia(reply) {
     .replace(/^[ \t]*\[MEDIA\][ \t]*(https?:\/\/\S+)[ \t]*(\r?\n|$)/gim, (_, url) => { media.push(url); return ""; })
     .replace(/\n{3,}/g, "\n\n")
     .trim();
-  return { text, media: media.slice(0, 2) };
+  return { text, media: [...new Set(media)].slice(0, 6) };
 }
 
 /* Human pacing: show "typing…" and wait roughly as long as a person would
@@ -998,6 +998,9 @@ function requestedLanguage(text) {
   if (/urdu|उर्दू/.test(w)) return "Urdu";
   return null;
 }
+/** How Hindi is written (owner's call, 10 Oct 2026: "pure Hindi na send kare — Devanagari me likhe but Hinglish use
+ *  kare; model name, brand name, app English me"). Same text as HINDI_STYLE in src/lib/ai-training.ts. */
+const HINDI_STYLE = `Devanagari script, but the words people actually SPEAK (Hinglish), never textbook or pure Hindi: प्राइस (not मूल्य), डिलीवरी (not वितरण), ऑर्डर (not आदेश), टाइम, डिटेल्स, डेमो, वारंटी, बुकिंग, कन्फ़र्म, फ़ोटो, वेबसाइट, लिंक, कॉल. Brand names, model names, app names and links stay in English letters exactly as they are (AlkaFresh 1101, WhatsApp, UPI, Google Pay, alkafresh.in). Good: "जी, AlkaFresh 1101 का प्राइस ₹18,500 है और डिलीवरी 2 दिन में हो जाती है। आप किस शहर से हैं?" Bad: "जी, AlkaFresh 1101 का मूल्य ₹18,500 है एवं वितरण दो दिवस में किया जाता है।" Never Hindi in Roman letters (aap, hai, kya).`;
 /** Hindi in Devanagari for everyone — also when they type English or Hinglish — until they ask for another language
  *  (latest request in the chat wins) or write in another Indian script. */
 function replyLanguage(text, earlier = []) {
@@ -1058,7 +1061,7 @@ async function aiReply(jid, text, opts = {}) {
     : "";
   const docs = cardDocs();
   const docsK = docs.length
-    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, price list, photo, PDF, details in writing). One short line of text plus the [MEDIA] line — never describe the file's contents instead of sending it. One file per reply.`
+    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, catalogue, price list, photo, PDF, details in writing). One short line of text (with our website ${sellerLink()}) plus one [MEDIA] line per file — never describe a file's contents instead of sending it. A brochure in several parts/pages (same name with 1, 2, part 1, page 2…) is ONE thing: send ALL its parts together, in order. "Details"/"brochure" with 4 files or fewer here: send them all. Never the same file twice in a chat unless asked again.`
     : "";
   // A Shubhora partner's notes lose the old frozen copy of Shubhora's facts (the current ones are above).
   const notes = shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || "");
@@ -1088,7 +1091,7 @@ ${cardInfo}${brandK}${brandFaq}${globalK}${docsK}${knowledge}
 Menu the customer may reference: ${JSON.stringify(config.rules.map((r) => r.keywords[0]))}.
 
 Rules:
-- LANGUAGE: Hindi in Devanagari for everyone by default — even when the customer types in English or Hinglish — unless they ask for another language (then keep that one). Translate the facts if they are written in another language. Product names, brands and numbers may stay as they are.
+- LANGUAGE: Hindi in Devanagari for everyone by default — even when the customer types in English or Hinglish — unless they ask for another language (then keep that one). Translate the facts if they are written in another language. HOW TO WRITE HINDI: ${HINDI_STYLE}
 - LENGTH: 2-4 short lines. No preamble, no repeating the question. At most one emoji.
 - ONE TOPIC PER MESSAGE: never dump everything (models + prices + specs + warranty) in one go. Answer only what was asked, then ask your one question.
 - PHOTOS/VIDEOS: send a [MEDIA] line only when the customer asks about a specific product, model or how it looks — never in a greeting or first reply.${firstReply ? `\n- FIRST REPLY (this is the very first message in this chat): greet them by name if known, one line of context, share our website ${sellerLink()}, and ONE question (home use or business opportunity?). 3-4 lines total, NO bullets, NO prices.` : ""}
@@ -1106,7 +1109,7 @@ Rules:
 
 === LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
 Reply language: ${lang}
-Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? "Hindi in Devanagari for everyone by default, even when the customer typed in English or Hinglish, until they ask for another language." : "The customer asked for this language (or wrote in its script): keep it until they ask for another."}
+Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? `Hindi for everyone by default, even when the customer typed in English or Hinglish, until they ask for another language. HOW TO WRITE IT: ${HINDI_STYLE}` : "The customer asked for this language (or wrote in its script): keep it until they ask for another. Brand, model and app names stay in English letters."}
 The knowledge and example answers above may be in another language — they are content samples ONLY. Never copy their language; translate every fact into ${lang}.
 Still end with exactly one short question, also in ${lang}.`,
     });
@@ -1184,7 +1187,7 @@ ${knowledge || config.businessName}
 
 Rules:
 - Write ONE short WhatsApp message (1-2 sentences, max ~2 lines), warm and human, at most one light emoji.
-- Write in ${replyLanguage(entry.lastMsg || "")} (Hindi in Devanagari for everyone unless they asked for another language; their last message was: "${entry.lastMsg || ""}").
+- Write in ${replyLanguage(entry.lastMsg || "")} (Hindi in Devanagari for everyone unless they asked for another language; their last message was: "${entry.lastMsg || ""}"). Hindi means: ${HINDI_STYLE}
 - ${goal}
 - Never sound automated or repetitive. No "just following up" clichés. Never invent medical claims${shubhora ? ", and never promise or mention any income" : ""}.
 - End naturally. You may share our website ${sellerLink()} only if it fits.
@@ -1436,11 +1439,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
   reply = String(reply || "").replace(/\[\[[^\]]*\]\]/g, "").trim();
   saveLead(jid, name, text);
   noteFollowupInbound(jid, name, text);
-  if (reply && DOC_ASK_RE.test(text) && !/\[MEDIA\][^\n]*\.pdf/i.test(reply)) {
-    const docs = cardDocs();
-    const pick = docs.find((d) => /plan/i.test(d.title)) ?? docs[0];
-    if (pick) reply = `${reply}\n[MEDIA] ${pick.url}`;
-  }
+  if (reply && DOC_ASK_RE.test(text)) reply = ensureDocs(reply);
   if (alert) alertOwner(jid, name, alert, text).catch(() => {});
   if (reply) { rememberTurn(jid, "assistant", reply); await deliver(jid, reply); }
 }
@@ -1632,9 +1631,9 @@ async function startWhatsApp() {
             const sellerName = cardContext?.data?.name?.split(" ")[0] || config.businessName;
             await sendReply(jid, mode === "shubhora"
               ? voiceSorry(firstName(cardContext?.data?.name || config.businessName), agentState[jid]?.lang === "en" ? "en" : "hi")
-              : "Maaf kijiye 🙏 main abhi voice message sun nahi pata.\n" +
-                "Aap apni baat text me likh dijiye — turant jawab de dunga.\n" +
-                `Ya phir ${sellerName} khud aapka voice sun kar reply kar denge.`);
+              : "माफ़ कीजिए 🙏 मैं अभी voice message सुन नहीं पाता।\n" +
+                "आप अपनी बात टाइप कर दीजिए, तुरंत जवाब दे दूँगा।\n" +
+                `या फिर ${sellerName} जी खुद आपका voice सुनकर reply कर देंगे।`);
             noteReply(jid);
             // Owner ko self-chat me khabar — audio unke paas hai hi, bas sunna hai.
             try {
@@ -1662,8 +1661,8 @@ async function startWhatsApp() {
             noteFollowupInbound(jid, name, `sent a ${kind}`);
             await sendReply(jid, mode === "shubhora"
               ? mediaAck(agentState[jid]?.lang === "en" ? "en" : "hi")
-              : "Dhanyavaad, mujhe mil gaya 🙏\n" +
-                "Bas ye bata dijiye — aap iske baare me kya jaanna chahte hain, ya kya chahiye?");
+              : "धन्यवाद, मिल गया 🙏\n" +
+                "बस ये बता दीजिए, आप इसके बारे में क्या जानना चाहते हैं, या क्या चाहिए?");
             noteReply(jid);
           } else {
             console.log("[wa] no text (keys:", Object.keys(m.message ?? {}).join(","), ")");
@@ -1719,11 +1718,7 @@ async function startWhatsApp() {
         let { reply, alert } = splitAlert(botOut, text);
         // Asked for the plan / a PDF? Make sure the document actually goes out,
         // even if the AI only talked about it.
-        if (reply && DOC_ASK_RE.test(text) && !/\[MEDIA\][^\n]*\.pdf/i.test(reply)) {
-          const docs = cardDocs();
-          const pick = docs.find((d) => /plan/i.test(d.title)) ?? docs[0];
-          if (pick) reply = `${reply}\n[MEDIA] ${pick.url}`;
-        }
+        if (reply && DOC_ASK_RE.test(text)) reply = ensureDocs(reply);
         if (alert) alertOwner(jid, name, alert, text).catch(() => {});
         if (reply) await deliver(jid, reply);
       } catch (e) {
@@ -1737,7 +1732,41 @@ async function startWhatsApp() {
  * Every PDF block on the card (business plan, brochure…) becomes a file the
  * assistant can hand over on WhatsApp as a real document. URLs are made
  * absolute against the card's public address. */
-const DOC_ASK_RE = /\b(pdf|business\s*plan|plan\s*(bhej|send|chahiye|dikha|do)|brochure|catalou?g(ue)?|presentation|ppt|details?\s*(bhej|send)|document)\b/i;
+const DOC_ASK_RE = /\b(pdf|business\s*plan|plan\s*(bhej|send|chahiye|dikha|do)|brochure|broucher|brosher|catalou?g(ue)?|presentation|ppt|details?\s*(bhej|send|do|chahiye)|specifications?|specs?|price\s*list|document)\b|ब्रोशर|कैटलॉग|डिटेल्स?\s*(भेज|दो|चाहिए)|स्पेसिफ़?िकेशन/i;
+/** The customer asked for the brochure / details / specs: make sure files actually go out even if the AI only talked
+ *  about them. The owner's own bot files first (all of them when there are 4 or fewer — a brochure's parts and the spec
+ *  sheet belong together, 10 Oct 2026); else the card's PDF (the plan first). A reply that already carries a file is
+ *  only completed (the other parts of that set). */
+function ensureDocs(reply) {
+  const own = (cardContext?.data?.botFiles ?? []).filter((f) => f?.url);
+  if (/\[MEDIA\]/i.test(reply)) return completeFileSets(reply);
+  if (own.length && own.length <= 4) return `${reply}\n${own.map((f) => `[MEDIA] ${f.url}`).join("\n")}`;
+  const docs = cardDocs();
+  const pick = docs.find((d) => /plan|brochure/i.test(d.title)) ?? docs[0];
+  return pick ? completeFileSets(`${reply}\n[MEDIA] ${pick.url}`) : reply;
+}
+/** Bot files that differ only by a part/page number ("Brochure 1", "Brochure part 2") are one set; "" = no number. */
+function fileSetKey(label) {
+  const l = String(label ?? "").toLowerCase();
+  if (!/\d/.test(l)) return "";
+  return l.replace(/\b(part|page|pg|pt|bhag|hissa|side|sheet|no\.?|#)\b/g, " ").replace(/\(?\b\d+\s*(\/|of|out of)\s*\d+\b\)?/g, " ").replace(/\b\d+\b/g, " ").replace(/[^a-z\u0900-\u097F]+/g, " ").trim();
+}
+/** One part of a multi-part file in the reply → all its parts, in order, right after it. */
+function completeFileSets(reply) {
+  const files = (cardContext?.data?.botFiles ?? []).filter((f) => f?.url);
+  if (!files.length) return reply;
+  const sent = [...String(reply).matchAll(/^\s*\[MEDIA\]\s*(https?:\/\/\S+)\s*$/gim)].map((m) => m[1]);
+  if (!sent.length) return reply;
+  const num = (l) => { const m = String(l).match(/(\d+)\s*(?:\/|of|out of)?\s*\d*\s*\)?\s*$/) ?? String(l).match(/\d+/); return m ? Number(m[1] ?? m[0]) : 0; };
+  const keys = new Set(files.filter((f) => sent.includes(f.url)).map((f) => fileSetKey(f.label)).filter(Boolean));
+  if (!keys.size) return reply;
+  const add = files.filter((f) => keys.has(fileSetKey(f.label)) && !sent.includes(f.url)).sort((a, b) => num(a.label) - num(b.label)).map((f) => `[MEDIA] ${f.url}`);
+  if (!add.length) return reply;
+  const lines = String(reply).split("\n");
+  let last = -1; lines.forEach((l, i) => { if (/^\s*\[MEDIA\]/i.test(l)) last = i; });
+  lines.splice(last + 1, 0, ...add);
+  return lines.join("\n");
+}
 function cardDocs() {
   const pages = cardContext?.data?.pages ?? [];
   const origin = cardLink().replace(/\/c\/[^/]+$/, "");
@@ -1809,7 +1838,16 @@ function normalizeCardLinks(text) {
   let host;
   try { host = new URL(link).host; } catch { return text; }
   const re = new RegExp("https?://" + host.replace(/\./g, "\\.") + "(/[^\\s)\\]]*)?", "gi");
-  return String(text).replace(re, (m, path) => (path && /^\/(c\/|wellwa\/|api\/|join\/|signup\b|templates\b|partners\/|pricing\b)/.test(path)) ? m : link);
+  const out = String(text).replace(re, (m, path) => (path && /^\/(c\/|wellwa\/|api\/|join\/|signup\b|templates\b|partners\/|pricing\b)/.test(path)) ? m : link);
+  return preferOwnSite(out);
+}
+/** The owner set their own website (card.botSite): the card page never reaches a customer — any card link in a reply
+ *  (the AI's, an old template's, a flow's) becomes that website (owner's call, 10 Oct 2026: "card nahi, meri website"). */
+function preferOwnSite(text) {
+  const own = sellerLink(), link = cardLink();
+  if (own === link) return text;
+  const esc = (u) => u.replace(/[.*+?^${}()|[\]\\/]/g, "\\$&");
+  return String(text).replace(new RegExp(esc(link) + "(/[^\\s)\\]]*)?", "gi"), own);
 }
 
 async function sendCardPreview(jid, text) {
@@ -1822,6 +1860,7 @@ async function sendCardPreview(jid, text) {
  * bubble, always a picture, far more taps than a bare link WhatsApp may not unfurl. Files ([MEDIA] lines) follow as
  * real videos, photos or PDF documents. */
 async function deliver(jid, reply) {
+  reply = preferOwnSite(completeFileSets(String(reply ?? "")));
   const link = cardLink();
   if (config.cardUsername && reply.includes(link) && !cardImageSentAt.has(jid)) {
     cardImageSentAt.set(jid, Date.now());
@@ -1859,11 +1898,12 @@ function adOpenerReply(jid, contactName) {
   const who = (contactName || "").trim().split(/\s+/)[0];
   // Owner-approved first message (2026-09-13): short, warm, website first.
   void seller; void biz;
+  // Hindi (Devanagari, everyday words) like every other reply (10 Oct 2026); the owner's own website when they set one.
   const text =
-    `Hello${who ? ` ${who}` : ""}! 🙏\n` +
-    `All details are on our website — please take a look first:\n` +
-    `${cardLink()}\n` +
-    `Then feel free to ask me anything here. 😊`;
+    `नमस्ते${who ? ` ${who} जी` : ""}! 🙏\n` +
+    `सारी डिटेल्स हमारी वेबसाइट पर हैं, एक बार ज़रूर देखें:\n` +
+    `${sellerLink()}\n` +
+    `फिर यहाँ कुछ भी पूछ सकते हैं। 😊`;
   const h = history.get(jid) ?? [];
   h.push({ role: "user", content: "(Facebook ad auto-message: wants more info)" }, { role: "assistant", content: text });
   history.set(jid, h.slice(-20));

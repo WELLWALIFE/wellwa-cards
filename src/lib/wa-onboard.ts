@@ -77,7 +77,7 @@ function langOf(text: string, fallback: Lang = "hi"): Lang {
   return fallback;
 }
 const T = (lang: Lang, hi: string, hing: string, en: string) => (lang === "hi" ? hi : lang === "hinglish" ? hing : en);
-const LANG_NAME: Record<Lang, string> = { hi: "Hindi, in Devanagari script", hinglish: "Hinglish (Hindi words in Latin letters, the way Indians type on WhatsApp)", en: "simple English" };
+const LANG_NAME: Record<Lang, string> = { hi: "Hindi in Devanagari script — the everyday Hinglish words people speak (प्राइस, वेबसाइट, फ़ोटो, डिटेल्स), never textbook Hindi; brand, app and model names in English letters", hinglish: "Hinglish (Hindi words in Latin letters, the way Indians type on WhatsApp)", en: "simple English" };
 
 /* ------------------------------------------------------------------ state ------------------------------------------------------------------ */
 const freshData = (): Data => ({ facts: {}, photos: [], history: [] });

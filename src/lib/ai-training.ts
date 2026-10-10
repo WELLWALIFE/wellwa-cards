@@ -23,7 +23,7 @@ export const DEFAULT_PLATFORM_PERSONA = `Warm, confident and genuinely helpful �
 
 export const DEFAULT_PLATFORM_RULES = `HOW TO ANSWER — follow every rule:
 
-1. LANGUAGE: reply in exactly the language AND script the customer used. Hindi in Devanagari, Hinglish in Roman, English in English, Marathi in Marathi. If the source facts are in another language, translate them. Never switch language on your own.
+1. LANGUAGE: Hindi in Devanagari — the everyday Hinglish words people speak, brand/model/app names in English letters — for everyone, even when they type English or Hinglish, until they ASK for another language (the LANGUAGE block at the very end decides). If the source facts are in another language, translate them.
 
 2. LENGTH: 2-4 short lines. No preamble, no "great question", no repeating the question back. WhatsApp-friendly. At most one emoji, only where it fits naturally.
 
@@ -444,11 +444,17 @@ export function replyLanguage(lastUserMessage: string, earlierUserMessages: stri
 
 /** The final, highest-priority instruction. Append after everything else. `earlier`: the customer's earlier messages in
  *  this chat, oldest first, so a language they asked for stays. */
+/** How Hindi is written for customers (owner's call, 10 Oct 2026: "pure Hindi na send kare — Devanagari me likhe but
+ *  Hinglish use kare; model name, brand name, app English me"). */
+export const HINDI_STYLE = `Devanagari script, but the words people actually SPEAK (Hinglish), never textbook or pure Hindi: प्राइस (not मूल्य), डिलीवरी (not वितरण), ऑर्डर (not आदेश), टाइम, डिटेल्स, डेमो, वारंटी, बुकिंग, कन्फ़र्म, फ़ोटो, वेबसाइट, लिंक, कॉल. Brand names, model names, app names and links stay in English letters exactly as they are (AlkaFresh 1101, WhatsApp, UPI, Google Pay, alkafresh.in). Good: "जी, AlkaFresh 1101 का प्राइस ₹18,500 है और डिलीवरी 2 दिन में हो जाती है। आप किस शहर से हैं?" Bad: "जी, AlkaFresh 1101 का मूल्य ₹18,500 है एवं वितरण दो दिवस में किया जाता है।" Never Hindi in Roman letters (aap, hai, kya).`;
+
+/** The final, highest-priority instruction. Append after everything else. `earlier`: the customer's earlier messages in
+ *  this chat, oldest first, so a language they asked for stays. */
 export function languageLock(lastUserMessage: string, earlier: string[] = []): string {
   const lang = replyLanguage(lastUserMessage, earlier);
   return `\n\n=== LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
 Reply language: ${lang}
-Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? "Hindi in Devanagari script for everyone by default — even when the customer typed in English or Hinglish — unless they ask for another language. Product names, brands and numbers may stay as they are." : "The customer asked for this language (or wrote in its script): keep it until they ask for another."}
+Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? `Hindi for everyone by default — even when the customer typed in English or Hinglish — unless they ask for another language. HOW TO WRITE IT: ${HINDI_STYLE}` : "The customer asked for this language (or wrote in its script): keep it until they ask for another. Brand names, model names and app names stay in English letters."}
 The knowledge and example answers above may be in a different language — they are content samples ONLY. Never copy their language. Translate every fact into ${lang}.
 Still end with exactly one short question, also in ${lang}.`;
 }

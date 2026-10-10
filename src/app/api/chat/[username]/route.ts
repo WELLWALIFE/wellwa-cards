@@ -11,7 +11,7 @@ import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supab
 import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { languageLock, replyLanguage } from "@/lib/ai-training";
-import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, type ChatOrder } from "@/lib/wa-ai";
+import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, completeFileSets, type ChatOrder } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import { getCardByUsername } from "@/lib/sample-data";
@@ -86,11 +86,11 @@ export async function POST(
 ) {
   if (!sameOriginStrict(request)) return Response.json({ error: "forbidden" }, { status: 403 });
   if (rateLimited(clientKey(request, "public-chat"), 12, 10 * 60_000)) {
-    return Response.json({ reply: "Too many messages. Please contact the owner directly." }, { status: 429 });
+    return Response.json({ reply: "बहुत सारे मैसेज हो गए 🙏 कृपया कार्ड के Call या WhatsApp बटन से सीधे संपर्क करें।" }, { status: 429 });
   }
   // Platform-wide daily AI cap for public chats (owner's review, 28 Sep 2026): a flood can never run up the AI bill.
   if (!publicAiAllowed("chat")) {
-    return Response.json({ reply: "Our assistant is resting for today 🙏 Please use the Call or WhatsApp buttons on this card — the owner will reply." }, { status: 429 });
+    return Response.json({ reply: "हमारा assistant आज के लिए rest पर है 🙏 कार्ड के Call या WhatsApp बटन इस्तेमाल करें, owner खुद जवाब देंगे।" }, { status: 429 });
   }
   if (Number(request.headers.get("content-length") ?? 0) > 30_000) {
     return Response.json({ error: "request too large" }, { status: 413 });
@@ -101,7 +101,7 @@ export async function POST(
   const card = (await fetchCloudCard(username)) ?? getCardByUsername(username);
   if (!card) return Response.json({ reply: "Sorry, this card was not found." }, { status: 404 });
   if (await fetchCardExpired(username)) {
-    return Response.json({ reply: "This assistant is temporarily unavailable. Please use the contact buttons on the card." }, { status: 402 });
+    return Response.json({ reply: "Assistant अभी थोड़ी देर के लिए उपलब्ध नहीं है 🙏 कार्ड के contact बटन इस्तेमाल करें।" }, { status: 402 });
   }
   const safeMessages: Msg[] = (Array.isArray(messages) ? messages : [])
     .slice(-12)
@@ -149,7 +149,7 @@ export async function POST(
         })),
       });
       if (!blocked) {
-        const { text: reply, order } = splitOrder(text.trim());
+        const { text: reply, order } = splitOrder(completeFileSets(text.trim(), card.botFiles));
         if (reply || order) {
           if (firstMessage) logChat(card, safeMessages, { newLead: true }).catch(() => {});
           // The salesman closed: the owner gets a hot lead and an alert; the visitor gets the next-step buttons.

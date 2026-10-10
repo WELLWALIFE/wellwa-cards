@@ -38,6 +38,31 @@ export function sellerSiteUrl(card: Card, brand?: BrandTraining): string {
   return own ? (/^https?:\/\//i.test(own) ? own : `https://${own}`) : cardSiteUrl(card, brand);
 }
 
+/** Files that belong together: labels that differ only by a part/page number ("Brochure 1", "Brochure part 2",
+ *  "AlkaFresh brochure (2/2)") share one set key; "" when the label carries no number. */
+export function fileSetKey(label: string): string {
+  const l = String(label ?? "").toLowerCase();
+  if (!/\d/.test(l)) return "";
+  return l.replace(/\b(part|page|pg|pt|bhag|hissa|side|sheet|no\.?|#)\b/g, " ").replace(/\(?\b\d+\s*(\/|of|out of)\s*\d+\b\)?/g, " ").replace(/\b\d+\b/g, " ").replace(/[^a-z\u0900-\u097F]+/g, " ").trim();
+}
+/** The AI sent one part of a multi-part file ("[MEDIA] <brochure part 1>"): add the other parts of that set, in
+ *  order (owner's call, 10 Oct 2026: "basic brochure ke 2 part hai, ye sath jaaye"). Keeps the reply otherwise. */
+export function completeFileSets(reply: string, files: NonNullable<Card["botFiles"]> | undefined): string {
+  if (!files?.length) return reply;
+  const sent = [...reply.matchAll(/^\s*\[MEDIA\]\s*(https?:\/\/\S+)\s*$/gim)].map((m) => m[1]);
+  if (!sent.length) return reply;
+  const num = (l: string) => { const m = l.match(/(\d+)\s*(?:\/|of|out of)?\s*\d*\s*\)?\s*$/) ?? l.match(/\d+/); return m ? Number(m[1] ?? m[0]) : 0; };
+  const keys = new Set(files.filter((f) => sent.includes(f.url)).map((f) => fileSetKey(f.label)).filter(Boolean));
+  if (!keys.size) return reply;
+  const add = files.filter((f) => keys.has(fileSetKey(f.label)) && !sent.includes(f.url)).sort((a, b) => num(a.label) - num(b.label)).map((f) => `[MEDIA] ${f.url}`);
+  if (!add.length) return reply;
+  // The set's parts stay together: the extra lines go right after the last [MEDIA] line of the reply.
+  const lines = reply.split("\n");
+  let last = -1; lines.forEach((l, i) => { if (/^\s*\[MEDIA\]/i.test(l)) last = i; });
+  lines.splice(last + 1, 0, ...add);
+  return lines.join("\n");
+}
+
 export function buildSystem(
   card: Card,
   wa?: string,
@@ -69,7 +94,7 @@ export function buildSystem(
   const where = sideBySide
     ? `You are the assistant on ${card.name}'s SHUBHORA page. ${card.name} is a Shubhora partner. On this page you talk about Shubhora only — what it is, its plans and prices, and the partner business. ${card.name} also runs their own separate business (${card.company}); that is a different page with its own assistant, so never describe, price or promote it here. If the visitor asks about it, say ${card.name.split(" ")[0]} will tell them directly${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.`
     : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.`
-    : channel === "phone" ? `You are the receptionist answering the PHONE for ${card.company || card.name} — a live voice call. Speak the way a warm, quick Indian receptionist speaks: one or two short sentences at a time, then let the caller talk. Speak Hindi — plain, everyday Hindi — with everyone, even if they speak English or Hinglish, unless they ASK for another language (then switch and stay there). Never read out links, ids or long lists; offer to send details on WhatsApp instead. Numbers and prices slowly and clearly. If asked something you do not know, say ${card.name.split(" ")[0]} ji will call back, and take the caller's name.`
+    : channel === "phone" ? `You are the receptionist answering the PHONE for ${card.company || card.name} — a live voice call. Speak the way a warm, quick Indian receptionist speaks: one or two short sentences at a time, then let the caller talk. Speak Hindi with everyone — the everyday Hinglish people actually speak (प्राइस, डिलीवरी, टाइम, डिटेल्स; brand, model and app names in English), never textbook Hindi — even if they speak English or Hinglish, unless they ASK for another language (then switch and stay there). Never read out links, ids or long lists; offer to send details on WhatsApp instead. Numbers and prices slowly and clearly. If asked something you do not know, say ${card.name.split(" ")[0]} ji will call back, and take the caller's name.`
     : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
   // What the visitor is actually reading. Normally the whole card, so a question about products can be
   // answered from the home page; on a page that must stand alone (Shubhora), only that page.
@@ -86,7 +111,7 @@ ${sideBySide ? "" : `- Tagline: ${card.tagline}
 - Everything on the card / website (products with prices, services, FAQ, timings, address, offers, reviews — answer from these first):
 ${cardDigest({ ...card, pages: content }, { maxChars: 9000 })}
 
-${(card.botFiles ?? []).length && channel !== "phone" ? `FILES YOU CAN SEND (real links only — never invent one). When the customer asks for details, specifications, a brochure, a price list, a photo or "details bhejo", send the matching file: one short line of text, then the URL ALONE on its own line as "[MEDIA] <url>". At most one file per reply; never in a greeting; never describe the file instead of sending it.
+${(card.botFiles ?? []).length && channel !== "phone" ? `FILES YOU CAN SEND (real links only — never invent one). When the customer asks for details, specifications, a brochure, a catalogue, a price list, a photo or "details bhejo", send the matching file(s): one short line of text (with our website link), then each URL ALONE on its own line as "[MEDIA] <url>". A brochure or catalogue in several parts or pages (same name with 1, 2, part 1, page 2…) is ONE thing: always send ALL its parts together, in order. "Details"/"brochure"/"catalogue" with 4 files or fewer here: send them all. Never in a greeting; never describe a file instead of sending it; never send the same file twice in a chat unless asked again.
 ${(card.botFiles ?? []).map((f) => `- ${f.label} (${f.kind}): ${f.url}`).join("\n")}
 
 ` : ""}THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `

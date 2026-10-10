@@ -3,7 +3,7 @@
 // handling (CRM log + menu bot + AI reply) and delivery statuses live here;
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
-import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
+import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import type { Card } from "@/lib/types";
@@ -202,7 +202,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     markRead(acc, m.id);
     if (STOP_RE.test(text)) {
       if (leadId) await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ opted_out: true }) });
-      await reply(acc, card, phone, "Theek hai 🙏 Aapko ab hamari taraf se promotional message nahi aayenge. Kabhi bhi zaroorat ho to yahin likh dein.");
+      await reply(acc, card, phone, "ठीक है 🙏 अब आपको हमारी तरफ़ से promotional message नहीं आएँगे। कभी भी ज़रूरत हो तो यहीं लिख दें।");
       continue;
     }
     // Owner/agent replied in the last 15 min → human is handling this chat.
@@ -220,7 +220,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     }
     if (!acc.ai_enabled) continue;
     if (!text) { // media without caption
-      await reply(acc, card, phone, kind === "audio" ? `Maaf kijiye 🙏 main voice message abhi sun nahi pata — aap likh kar bhej dein, turant jawab dunga.` : "Dhanyavaad, mil gaya 🙏 Bas ye bata dijiye — aap iske baare me kya jaanna chahte hain?");
+      await reply(acc, card, phone, kind === "audio" ? "माफ़ कीजिए 🙏 मैं voice message अभी सुन नहीं पाता। आप टाइप करके भेज दें, तुरंत जवाब दूँगा।" : "धन्यवाद, मिल गया 🙏 बस ये बता दीजिए, आप इसके बारे में क्या जानना चाहते हैं?");
       continue;
     }
     const history: ChatMsg[] = rows.filter((r) => r.text && !r.text.startsWith("[")).map((r) => ({ role: r.direction === "in" ? "user" : "assistant", content: r.text }));
@@ -243,14 +243,15 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
       }
     } else {
       const wa = card.links.find((l) => l.type === "whatsapp")?.value?.replace(/[^0-9]/g, "");
-      await reply(acc, card, phone, `Namaste 🙏 ${card.name.split(" ")[0]} aapko jald hi khud jawab denge.${site ? `\nTab tak details yahan dekhein: ${site}` : ""}${wa ? `` : ""}`);
+      await reply(acc, card, phone, `नमस्ते 🙏 ${card.name.split(" ")[0]} जी आपको जल्दी ही खुद जवाब देंगे।${site ? `\nतब तक डिटेल्स यहाँ देखें: ${site}` : ""}${wa ? `` : ""}`);
     }
   }
 }
 /** "[MEDIA] url" lines in an AI reply → the text, then each file as a real photo / video / document message. */
-async function reply(acc: CloudAccount, card: Card | null, phone: string, text: string) {
+async function reply(acc: CloudAccount, card: Card | null, phone: string, raw: string) {
   try {
-    const media = [...text.matchAll(/^\s*\[MEDIA\]\s*(https?:\/\/\S+)\s*$/gim)].map((m) => m[1]).slice(0, 2);
+    const text = completeFileSets(raw, card?.botFiles);  // a brochure's parts always go together
+    const media = [...new Set([...text.matchAll(/^\s*\[MEDIA\]\s*(https?:\/\/\S+)\s*$/gim)].map((m) => m[1]))].slice(0, 6);
     const plain = text.replace(/^\s*\[MEDIA\].*$/gim, "").replace(/\n{3,}/g, "\n\n").trim();
     if (plain) {
       const id = await sendCloud(acc, phone, { text: plain });
