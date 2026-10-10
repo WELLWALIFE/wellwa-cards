@@ -99,6 +99,17 @@ export async function PATCH(request: Request) {
   const mobileLogin = /@phone\./i.test(u.email ?? "");
   if (email !== null && mobileLogin) md.contact_email = email || null;
   else if (email && email !== (u.email ?? "").toLowerCase()) authPatch.email = email;
+  // A mobile sign-up signs in AS its mobile (p91…@phone…): a new mobile here is a new login too (owner's call,
+  // 10 Oct 2026 — one Mobile field, not two). The number must not be another account's.
+  const loginDigits = (u.email ?? "").match(/^p91(\d{10})@phone\./i)?.[1] ?? "";
+  if (mobileLogin && phone && phone !== loginDigits) {
+    const taken = await fetch(`${SUPA_URL}/rest/v1/rpc/signup_taken`, { method: "POST", headers: h, cache: "no-store", body: JSON.stringify({ p_mobile: phone, p_email: "" }) })
+      .then((r) => (r.ok ? r.json() : {})).catch(() => ({})) as { mobile?: boolean };
+    if (taken.mobile) return Response.json({ error: `+91 ${phone} is already registered on another account — the login was not changed.` }, { status: 409 });
+    authPatch.email = `p91${phone}@phone.neuraledge.me`;
+    authPatch.email_confirm = true;
+    done.push(`login mobile → ${phone}`);
+  }
   const ar = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { method: "PUT", headers: h, body: JSON.stringify(authPatch) });
   if (!ar.ok) return Response.json({ error: `Login details: ${(await ar.json().catch(() => ({})))?.msg ?? ar.status}` }, { status: 400 });
   done.push("login");
