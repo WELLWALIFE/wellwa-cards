@@ -177,13 +177,50 @@ export async function PATCH(request: Request) {
   if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
 
-  const { id, email, password, plan, months, suspend, cardYears, demo } = (await request.json()) as {
-    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean;
+  const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = (await request.json()) as {
+    id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean; mobile?: string;
   };
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
   if (plan && !["free", "pro", "team"].includes(plan)) return Response.json({ error: "unknown plan" }, { status: 400 });
 
   const h = serviceHeaders();
+  // Change the login mobile (owner's call, 10 Oct 2026): a mobile account signs in as p91XXXXXXXXXX@phone.neuraledge.me,
+  // so the new number becomes that address (and the metadata phone the app shows). The number must be free. The
+  // poster profiles' phone and the live cards' Call / WhatsApp buttons that carried the old number follow it.
+  if (mobile !== undefined) {
+    const digits = String(mobile).replace(/\D/g, "").replace(/^(91|0)(?=[6-9]\d{9}$)/, "");
+    if (!/^[6-9]\d{9}$/.test(digits)) return Response.json({ error: "Enter a valid 10-digit Indian mobile number." }, { status: 400 });
+    const ur = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, { headers: h, cache: "no-store" });
+    if (!ur.ok) return Response.json({ error: "user not found" }, { status: 404 });
+    const u = (await ur.json()) as { email?: string; user_metadata?: Record<string, unknown> };
+    const md = { ...(u.user_metadata ?? {}) };
+    const oldDigits = (String(u.email ?? "").match(/^p91(\d{10})@phone\./)?.[1] ?? String(md.phone ?? "").replace(/\D/g, "").slice(-10)) || "";
+    if (digits === oldDigits) return Response.json({ ok: true, mobile: digits, unchanged: true });
+    const taken = await fetch(`${SUPA_URL}/rest/v1/rpc/signup_taken`, { method: "POST", headers: h, cache: "no-store", body: JSON.stringify({ p_mobile: digits, p_email: "" }) })
+      .then((r) => (r.ok ? r.json() : {})).catch(() => ({})) as { mobile?: boolean };
+    if (taken.mobile) return Response.json({ error: `+91 ${digits} is already registered on another account.` }, { status: 409 });
+    const newEmail = `p91${digits}@phone.neuraledge.me`;
+    const wasMobile = /@phone\./.test(String(u.email ?? ""));
+    const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, {
+      method: "PUT", headers: h,
+      // An email account keeps its email as the login and only gets the new mobile in its details.
+      body: JSON.stringify({ ...(wasMobile ? { email: newEmail, email_confirm: true } : {}), user_metadata: { ...md, phone: `+91${digits}` } }),
+    });
+    if (!r.ok) return Response.json({ error: (await r.json().catch(() => ({})))?.msg ?? "could not change the mobile" }, { status: 400 });
+    // Best effort: the poster profiles and the live cards' buttons that showed the old number.
+    await fetch(`${SUPA_URL}/rest/v1/poster_profiles?user_id=eq.${id}${oldDigits ? `&phone=like.*${oldDigits}` : ""}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify({ phone: digits }) }).catch(() => undefined);
+    if (oldDigits) {
+      const cr = await fetch(`${SUPA_URL}/rest/v1/cards?owner_id=eq.${id}&select=id,data`, { headers: h, cache: "no-store" });
+      const cards: { id: string; data: { links?: { type: string; value: string }[] } }[] = cr.ok ? await cr.json() : [];
+      for (const c of cards) {
+        const links = c.data?.links ?? [];
+        if (!links.some((l) => (l.type === "phone" || l.type === "whatsapp") && String(l.value ?? "").replace(/\D/g, "").endsWith(oldDigits))) continue;
+        const data = { ...c.data, links: links.map((l) => ((l.type === "phone" || l.type === "whatsapp") && String(l.value ?? "").replace(/\D/g, "").endsWith(oldDigits) ? { ...l, value: `+91${digits}` } : l)) };
+        await fetch(`${SUPA_URL}/rest/v1/cards?id=eq.${c.id}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify({ data }) }).catch(() => undefined);
+      }
+    }
+    return Response.json({ ok: true, mobile: digits, login: wasMobile ? newEmail : u.email });
+  }
   // V-Card years by hand (a ₹1,499 renewal paid in cash / offline): from the later of today and the current end.
   // Not partner business — nothing is reported to the partner panel.
   if (cardYears !== undefined) {

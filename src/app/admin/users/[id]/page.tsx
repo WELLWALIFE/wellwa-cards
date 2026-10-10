@@ -46,6 +46,7 @@ export default function AdminUserProfile() {
   const [loginInfo, setLoginInfo] = useState<{ mode: string; link?: string; password?: string; phone?: string; email?: string; login_url?: string } | null>(null);
   const [edit, setEdit] = useState(false);
   const [email, setEmail] = useState(""); const [password, setPassword] = useState(""); const [plan, setPlan] = useState("free");
+  const [mobile, setMobile] = useState("");
   const [months, setMonths] = useState(1);
   // "Edit profile" opens straight away when the Users list sent us here with ?edit=profile.
   const [editProfile, setEditProfile] = useState(false);
@@ -57,6 +58,7 @@ export default function AdminUserProfile() {
     const j = await r.json().catch(() => ({}));
     if (!r.ok) { setErr(j.error || `Error ${r.status}`); return; }
     setData(j); setEmail(j.auth.email); setPlan(String(j.profile?.plan ?? "free"));
+    setMobile((String(j.auth.email ?? "").match(/^p91(\d{10})@phone\./)?.[1]) ?? "");
   }, [id]);
   useEffect(() => { const t = setTimeout(() => void load(), 0); return () => clearTimeout(t); }, [load]);
 
@@ -67,12 +69,21 @@ export default function AdminUserProfile() {
     if (!r.ok) { alert(j.error || "Failed"); return; }
     setLoginInfo(j);
   }
+  const isMobileLogin = /@phone\./.test(data?.auth.email ?? "");
+  const currentMobile = (data?.auth.email ?? "").match(/^p91(\d{10})@phone\./)?.[1] ?? "";
   async function save() {
     setBusy("save");
-    const body: Row = { id }; if (email && email !== data?.auth.email) body.email = email; if (password) body.password = password; if (plan !== String(data?.profile?.plan ?? "free")) { body.plan = plan; body.months = months; }
-    const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify(body) });
-    const j = await r.json().catch(() => ({})); setBusy("");
-    if (!r.ok) { alert(j.error || "Failed"); return; }
+    // The login mobile goes first and on its own: it changes the sign-in address, so the rest is sent after it.
+    const newMobile = mobile.replace(/\D/g, "").replace(/^(91|0)(?=[6-9]\d{9}$)/, "");
+    if (newMobile && newMobile !== currentMobile) {
+      const rm = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id, mobile: newMobile }) });
+      const jm = await rm.json().catch(() => ({}));
+      if (!rm.ok) { setBusy(""); alert(jm.error || "Could not change the mobile"); return; }
+    }
+    const body: Row = { id }; if (!isMobileLogin && email && email !== data?.auth.email) body.email = email; if (password) body.password = password; if (plan !== String(data?.profile?.plan ?? "free")) { body.plan = plan; body.months = months; }
+    const r = Object.keys(body).length > 1 ? await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify(body) }) : null;
+    const j = r ? await r.json().catch(() => ({})) : {}; setBusy("");
+    if (r && !r.ok) { alert(j.error || "Failed"); return; }
     setPassword(""); setEdit(false); void load();
   }
   async function suspend(v: boolean) {
@@ -222,7 +233,9 @@ export default function AdminUserProfile() {
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/40 p-4" onClick={() => setEdit(false)}>
           <div className="w-full max-w-md space-y-3 rounded-2xl bg-surface p-5 text-sm shadow-xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-semibold">Edit login / plan</h3>
-            <label className="block"><span className="mb-1 block text-xs text-muted">Email</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2" /></label>
+            <label className="block"><span className="mb-1 block text-xs text-muted">Login mobile (10 digits){isMobileLogin ? " — this is the sign-in" : " — shown in the app; the email stays the sign-in"}</span><input value={mobile} onChange={(e) => setMobile(e.target.value)} inputMode="numeric" placeholder="98765 43210" className="w-full rounded-lg border border-border bg-surface px-3 py-2" /></label>
+            {mobile.replace(/\D/g, "").slice(-10) !== currentMobile && mobile.trim() && <p className="text-xs text-lead">The user will sign in with +91 {mobile.replace(/\D/g, "").slice(-10)} from now on; the Call / WhatsApp buttons on their cards and the poster number change too. Tell them.</p>}
+            {!isMobileLogin && <label className="block"><span className="mb-1 block text-xs text-muted">Email (sign-in)</span><input value={email} onChange={(e) => setEmail(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2" /></label>}
             <label className="block"><span className="mb-1 block text-xs text-muted">New password (leave blank to keep)</span><input type="password" value={password} onChange={(e) => setPassword(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2" autoComplete="new-password" /></label>
             <div className="flex gap-2">
               <label className="block flex-1"><span className="mb-1 block text-xs text-muted">Plan</span><select value={plan} onChange={(e) => setPlan(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2"><option value="free">Free</option><option value="pro">Pro</option><option value="team">Team</option></select></label>
