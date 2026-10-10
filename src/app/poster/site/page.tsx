@@ -13,6 +13,7 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { PhotoNudge } from "@/components/poster/photo-nudge";
 import { CardChatEdit } from "@/components/poster/card-chat-edit";
+import { BotSiteBox } from "@/components/poster/bot-site-box";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
@@ -251,6 +252,9 @@ export default function WebsitePage() {
               </details>
             </div>
           )}
+
+          {/* The bot's own-website setting, on the first page (owner's call, 10 Oct 2026), not behind Edit → Advanced → editor. */}
+          {card && <BotSiteBox card={card} onChanged={(c) => { setCard(c); load(cardId); }} />}
 
           {!paid && <PremiumCard compact />}
         </>

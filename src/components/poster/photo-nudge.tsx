@@ -30,7 +30,7 @@ export function PhotoNudge() {
     <Link href="/poster/photos" className="flex items-center gap-3 rounded-2xl border-2 border-amber/50 bg-amber/10 px-4 py-3">
       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber text-white"><Camera className="h-5 w-5" /></span>
       <span className="min-w-0 flex-1">
-        <span className="block text-[15px] font-bold">{hi ? `${n} photos चाहिए — stock की जगह आपकी असली` : `${n} photos needed — yours instead of stock`}</span>
+        <span className="block text-[15px] font-bold">{hi ? `${n} photo चाहिए — stock की जगह आपकी असली` : `${n} photo${n === 1 ? "" : "s"} needed — yours instead of stock`}</span>
         <span className="block text-[11px] text-muted">{hi ? "phone से लो, हम सही जगह लगा देंगे" : "Take them on your phone; we put each in the right place"}</span>
       </span>
       <span className="text-amber">→</span>
