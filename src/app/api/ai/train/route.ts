@@ -7,9 +7,10 @@
 // text is passed through unchanged.
 
 import { geminiComplete } from "@/lib/gemini";
+import { readOwnSite } from "@/lib/reference-site";
 import { clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-security";
 
-type Body = { pdfBase64?: string; filename?: string; text?: string };
+type Body = { pdfBase64?: string; filename?: string; text?: string; url?: string };
 
 const INSTRUCTION = `You are building a knowledge base for a sales/support chatbot.
 From the document, extract ALL useful facts a customer or prospect might ask about, as clean plain text.
@@ -34,6 +35,25 @@ export async function POST(request: Request) {
   }
 
   const key = process.env.GEMINI_API_KEY;
+
+  // The owner's own website (owner's call, 10 Oct 2026): read its pages and distil them the same way as a PDF.
+  if (body.url) {
+    const raw = String(body.url).trim();
+    if (!/^(https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}/i.test(raw)) return Response.json({ error: "Enter the website address, e.g. alkafresh.in" }, { status: 400 });
+    if (!key) return Response.json({ error: "Reading a website needs the AI key. You can paste its text instead." }, { status: 400 });
+    const site = await readOwnSite(raw).catch(() => null);
+    if (!site || site.text.trim().length < 80) return Response.json({ error: "Could not read that website (it may block robots or be built only in JavaScript). Paste its text instead." }, { status: 422 });
+    try {
+      const { text: knowledge, blocked } = await geminiComplete({
+        apiKey: key, maxOutputTokens: 2500, tag: "ai-train:site",
+        contents: [{ role: "user", parts: [{ text: `${INSTRUCTION}\n\nThe document is the text of the business's own website ${site.url}:\n\n${site.text.slice(0, 60_000)}` }] }],
+      });
+      if (blocked || !knowledge) return Response.json({ error: "Could not distil that website. Paste its text instead." }, { status: 422 });
+      return Response.json({ knowledge, url: site.url });
+    } catch (e) {
+      return Response.json({ error: e instanceof Error ? e.message : "ai error" }, { status: 500 });
+    }
+  }
 
   // Pasted text with no PDF: nothing to distill, return as-is.
   if (!body.pdfBase64) {

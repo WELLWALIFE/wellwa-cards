@@ -120,18 +120,45 @@ export function AiTextarea({
 export function TrainAiPanel({
   persona,
   knowledge,
+  site = "",
   onPersona,
   onKnowledge,
+  onSite,
 }: {
   persona: string;
   knowledge: string;
+  /** The owner's own website: the bot sends this link instead of the card's and answers from it. */
+  site?: string;
   onPersona: (v: string) => void;
   onKnowledge: (v: string) => void;
+  onSite?: (v: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [siteDraft, setSiteDraft] = useState(site);
+
+  /** Read the owner's website into the knowledge base (replacing what an earlier read of it added). */
+  async function readSite() {
+    const raw = siteDraft.trim();
+    if (!raw) return;
+    setErr(null); setStatus("Reading the website…"); setBusy(true);
+    try {
+      const res = await fetch("/api/ai/train", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: raw }) });
+      const data = await res.json();
+      if (!data.knowledge) { setErr(data.error || "Could not read the website."); return; }
+      const url = String(data.url || raw);
+      const header = `--- From my website: ${url.replace(/^https?:\/\//, "")} ---`;
+      // An earlier read of the website is replaced, hand-written notes and PDFs stay.
+      const kept = knowledge.split(/\n\n(?=--- From my website: )/).filter((b) => !b.startsWith("--- From my website: ")).join("\n\n").trim();
+      onKnowledge((kept ? kept + "\n\n" : "") + header + "\n" + String(data.knowledge).trim());
+      onSite?.(url);
+      setSiteDraft(url);
+      setStatus("Website read ✓ — the bot now answers from it and sends this link. Save to keep.");
+    } catch { setErr("Could not read the website. Try again or paste its text below."); }
+    finally { setBusy(false); }
+  }
 
   async function onPdf(file: File) {
     setErr(null);
@@ -177,6 +204,15 @@ export function TrainAiPanel({
           Teach your AI bot about what you sell. It answers on your card chat <strong>and</strong> WhatsApp
           auto-reply. Paste details or upload a product PDF/brochure — AI turns it into a clean knowledge base.
         </p>
+      </div>
+
+      <div className="rounded-lg border border-border p-3">
+        <span className="text-xs font-medium text-muted">My own website (the bot sends THIS link to customers, not the card, and answers from it)</span>
+        <div className="mt-1 flex gap-2">
+          <input className="ed-input mt-0 flex-1" value={siteDraft} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="e.g. alkafresh.in" onChange={(e) => { setSiteDraft(e.target.value); if (!e.target.value.trim()) onSite?.(""); }} />
+          <button type="button" onClick={readSite} disabled={busy || !siteDraft.trim()} className="rounded-md bg-ai px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy ? "…" : "Read website"}</button>
+        </div>
+        <p className="mt-1 text-[11px] text-muted">{site ? <>Set: <b>{site.replace(/^https?:\/\//, "")}</b>. Read it again after you change the website. Clear the box to go back to the card&apos;s link.</> : "Leave empty and the bot sends your Shubhora card link."}</p>
       </div>
 
       <label className="block">

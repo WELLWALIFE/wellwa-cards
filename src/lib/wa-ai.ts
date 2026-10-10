@@ -32,6 +32,11 @@ export async function getBrandTraining(username: string): Promise<BrandTraining>
 export function cardSiteUrl(card: Card, brand?: BrandTraining): string {
   return brand?.brand_domain ? `https://${card.username}.${brand.brand_domain}` : `${SITE}/c/${card.username}`;
 }
+/** The link the assistant gives customers: the owner's OWN website when they set one (Train AI bot), else the card. */
+export function sellerSiteUrl(card: Card, brand?: BrandTraining): string {
+  const own = String(card.botSite ?? "").trim();
+  return own ? (/^https?:\/\//i.test(own) ? own : `https://${own}`) : cardSiteUrl(card, brand);
+}
 
 export function buildSystem(
   card: Card,
@@ -81,7 +86,8 @@ ${sideBySide ? "" : `- Tagline: ${card.tagline}
 - Everything on the card / website (products with prices, services, FAQ, timings, address, offers, reviews — answer from these first):
 ${cardDigest({ ...card, pages: content }, { maxChars: 9000 })}
 
-THIS SELLER'S WEBSITE (the card page — always call it the "website" when talking to the customer): ${cardSiteUrl(card, brand)}
+THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
+- This is the seller's OWN website: send customers there for details, catalogue and orders; never mention the Shubhora card page unless asked. The "From my website" part of the knowledge above is what that site says — answer from it first.` : " (the card page)"}
 
 CLOSING THE LOOP
 - Anything you can't confirm (exact stock, delivery date, a custom discount): say ${card.name.split(" ")[0]} will confirm${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.

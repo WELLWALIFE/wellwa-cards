@@ -239,6 +239,9 @@ export interface Card {
   // ---- AI bot training (used by on-card chat + WhatsApp auto-reply) ----
   botPersona?: string;   // tone/role, e.g. "Friendly water-ionizer expert"
   botKnowledge?: string; // product/business facts, FAQs, prices (manual + PDF-extracted)
+  /** The owner's OWN website (owner's call, 10 Oct 2026: "bot meri website suggest kare, card nahi"): the assistant
+   *  sends customers this link instead of the card's, and its knowledge is read from it (Train AI bot → Read website). */
+  botSite?: string;
   /** What this card sells beyond its own content.
    *  "shubhora": the whole card is a Shubhora partner's — its assistant also gets Shubhora's own,
    *  always-current facts (bridge/shubhora-kb.mjs, or the Super Admin override). Set by the

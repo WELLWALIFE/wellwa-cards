@@ -3,7 +3,7 @@
 // handling (CRM log + menu bot + AI reply) and delivery statuses live here;
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
-import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, cardSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
+import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import type { Card } from "@/lib/types";
@@ -188,7 +188,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
   const msgs = v.messages ?? [];
   if (!msgs.length) return;
   const card = await cardForOwner(acc.owner_id);
-  const site = card ? cardSiteUrl(card, await getBrandTraining(card.username)) : "";
+  const site = card ? sellerSiteUrl(card, await getBrandTraining(card.username)) : "";
   for (const m of msgs) {
     if (!m.id || seen.has(m.id)) continue;
     seen.set(m.id, Date.now()); if (seen.size > 5000) for (const [k, t] of seen) if (Date.now() - t > 3600_000) seen.delete(k);

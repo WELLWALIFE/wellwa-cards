@@ -870,6 +870,8 @@ export function CardEditor({ id }: { id: string }) {
                 <TrainAiPanel
                   persona={card.botPersona ?? ""}
                   knowledge={card.botKnowledge ?? ""}
+                  site={card.botSite ?? ""}
+                  onSite={(v) => patch({ botSite: v || undefined })}
                   onPersona={(v) => patch({ botPersona: v })}
                   onKnowledge={(v) => patch({ botKnowledge: v })}
                 />
