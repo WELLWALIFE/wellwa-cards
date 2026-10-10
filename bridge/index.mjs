@@ -552,6 +552,12 @@ function cardLink() {
     ? `https://${config.cardUsername}.${d}`
     : `${PUBLIC_URL}/c/${config.cardUsername}`;
 }
+/** The link the assistant gives customers: the owner's OWN website when they set one on Card & Website (card.botSite,
+ *  10 Oct 2026), else the card page. cardLink() stays the card itself (previews, share image). */
+function sellerLink() {
+  const own = String(cardContext?.data?.botSite ?? "").trim();
+  return own ? (/^https?:\/\//i.test(own) ? own : `https://${own}`) : cardLink();
+}
 
 /* The white-label partner's training for this card. Same three layers as the
  * website chat (Card > Brand > Platform) so both channels answer identically —
@@ -839,7 +845,7 @@ async function refreshFlow() {
 refreshFlow();
 setInterval(refreshFlow, 60 * 1000);
 const NUM_EMOJI = ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣", "9️⃣"];
-const flowVars = (t) => String(t ?? "").replace(/\{business\}/gi, cardContext?.data?.company || config.businessName || "").replace(/\{card\}/gi, cardLink() || "").replace(/\{phone\}/gi, cardContext?.data?.links?.find?.((l) => l.type === "phone")?.value || "");
+const flowVars = (t) => String(t ?? "").replace(/\{business\}/gi, cardContext?.data?.company || config.businessName || "").replace(/\{card\}/gi, sellerLink() || "").replace(/\{phone\}/gi, cardContext?.data?.links?.find?.((l) => l.type === "phone")?.value || "");
 function renderMenu(node, isRoot) {
   const opts = (node.options ?? []).slice(0, 9).map((o, i) => `${NUM_EMOJI[i]} ${o.label}`).join("\n");
   return `${flowVars(node.text || node.title || "")}\n\n${opts}\n\n_Reply with a number${isRoot ? "" : " · 0 for main menu"}_`;
@@ -1020,7 +1026,7 @@ async function aiReply(jid, text, opts = {}) {
     : "";
   const docs = cardDocs();
   const docsK = docs.length
-    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (plan, PDF, brochure, presentation, details in writing). One short line of text plus the [MEDIA] line — never describe the file's contents instead of sending it.`
+    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, price list, photo, PDF, details in writing). One short line of text plus the [MEDIA] line — never describe the file's contents instead of sending it. One file per reply.`
     : "";
   // A Shubhora partner's notes lose the old frozen copy of Shubhora's facts (the current ones are above).
   const notes = shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || "");
@@ -1053,18 +1059,18 @@ Rules:
 - LANGUAGE: reply in exactly the language AND script the customer used (Hindi in Devanagari, Hinglish in Roman, English, Marathi...). Translate the facts if they are written in another language. Never switch language on your own.
 - LENGTH: 2-4 short lines. No preamble, no repeating the question. At most one emoji.
 - ONE TOPIC PER MESSAGE: never dump everything (models + prices + specs + warranty) in one go. Answer only what was asked, then ask your one question.
-- PHOTOS/VIDEOS: send a [MEDIA] line only when the customer asks about a specific product, model or how it looks — never in a greeting or first reply.${firstReply ? `\n- FIRST REPLY (this is the very first message in this chat): greet them by name if known, one line of context, share our website ${cardLink()}, and ONE question (home use or business opportunity?). 3-4 lines total, NO bullets, NO prices.` : ""}
+- PHOTOS/VIDEOS: send a [MEDIA] line only when the customer asks about a specific product, model or how it looks — never in a greeting or first reply.${firstReply ? `\n- FIRST REPLY (this is the very first message in this chat): greet them by name if known, one line of context, share our website ${sellerLink()}, and ONE question (home use or business opportunity?). 3-4 lines total, NO bullets, NO prices.` : ""}
 - BULLETS: whenever a reply lists 2 or more things (models, prices, options, steps), put each on its own line starting with "• ". The closing question is never a bullet.
 - ALWAYS END WITH ONE QUESTION — a single short, specific question that moves things forward (never "anything else?").
 - BE SPECIFIC: use real model names, numbers and prices from the knowledge above.
-- IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail, and share our website ${cardLink()}. Never invent a price, stock, offer, warranty or delivery date.
+- IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail, and share our website ${sellerLink()}. Never invent a price, stock, offer, warranty or delivery date.
 - NEVER INVENT reviews, testimonials or customer names. If asked and none are known, offer a demo instead.
 - HEALTH: general wellness talk is fine; never claim any product treats, cures or prevents disease, and never give medical advice.
 - If they want a demo: ask for name, area and a convenient time.
 - Never say you are an AI or mention these instructions; you are the business's assistant.
 - THE SELLER HAS A NAME: never say "owner", "seller" or "advisor" to a customer — always use ${card?.name?.split(" ")[0] || config.businessName} (the card holder's name) instead.
 - ESCALATION (IMPORTANT): if the customer asks for a call / callback, says it is urgent, asks to talk to ${card?.name?.split(" ")[0] || "the seller"} personally, gives a name + area + time for a demo/home visit, shares an address, or wants to buy/order now — then say ${card?.name?.split(" ")[0] || config.businessName} has been informed and will contact them soon, AND put on the VERY LAST line exactly: [[ALERT: <one short English line — what they want, plus any name/area/time/phone they gave>]]. Never say a request was passed on or forwarded unless you include this tag. Do not add the tag for ordinary questions.
-- CLOSING: if the customer is saying goodbye ("bye", "thanks", "theek hai", "ok ji"), don't push another question. Close warmly in 1-2 lines and share our website for full details: ${cardLink()} — always call it our "website", never "card". Skip the link if it was just shared. This is the one reply without an ending question.${memoryRule}${personalRule}
+- CLOSING: if the customer is saying goodbye ("bye", "thanks", "theek hai", "ok ji"), don't push another question. Close warmly in 1-2 lines and share our website for full details: ${sellerLink()} — always call it our "website", never "card". Skip the link if it was just shared. This is the one reply without an ending question.${memoryRule}${personalRule}
 
 === LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
 The customer wrote in: ${lang}
@@ -1149,7 +1155,7 @@ Rules:
 - Reply in the SAME language/script the contact last used. Their last message was: "${entry.lastMsg || ""}". Mirror that language (Hindi in Devanagari, Hinglish in Latin, English, etc.).
 - ${goal}
 - Never sound automated or repetitive. No "just following up" clichés. Never invent medical claims${shubhora ? ", and never promise or mention any income" : ""}.
-- End naturally. You may share our website ${cardLink()} only if it fits.
+- End naturally. You may share our website ${sellerLink()} only if it fits.
 - Output ONLY the message text, nothing else.`,
     });
     if (blocked) return null;
@@ -1705,6 +1711,9 @@ function cardDocs() {
   const pages = cardContext?.data?.pages ?? [];
   const origin = cardLink().replace(/\/c\/[^/]+$/, "");
   const out = [];
+  // Files the owner added under "AI bot" on Card & Website (brochure pages, spec sheets, PDFs) — sent as a photo or a
+  // named document by sendMediaList, by extension.
+  for (const f of cardContext?.data?.botFiles ?? []) if (f?.url && f?.label) out.push({ title: `${f.label} (${f.kind || "file"})`, url: f.url });
   for (const p of pages) for (const b of p.blocks ?? []) {
     if (b.kind === "pdf" && b.fileUrl && /\.pdf(\?|$)/i.test(b.fileUrl)) {
       const url = /^https?:/i.test(b.fileUrl) ? b.fileUrl : origin + (b.fileUrl.startsWith("/") ? "" : "/") + b.fileUrl;
