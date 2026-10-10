@@ -199,7 +199,7 @@ function MobileMode({ free = false }: { free?: boolean }) {
           </div>
         )}
         <p className="mt-4 text-[11px] text-faint leading-relaxed">
-          Works like WhatsApp Web (linked device). Official WhatsApp Cloud API option for Pro accounts is coming soon.
+          Works like WhatsApp Web (linked device). For Meta&apos;s official API with your own number, switch to <b>Cloud API</b> above — one button, no QR, no ban risk.
         </p>
       </section>
 
@@ -224,8 +224,10 @@ function LinkBox({ status, qr, onChange }: { status: Status | null; qr: string |
     // The number to suggest: a mobile sign-up's own number, else the business profile's phone.
     (async () => {
       try {
-        const { data } = (await getBrowserSupabase()?.auth.getSession()) ?? { data: { session: null } };
-        const m = data.session?.user.email?.match(/^p(\d{10,15})@phone\./);
+        // getUser, not getSession: the cached session still carries the old address after an admin changed the login
+        // mobile; the server has the current one (10 Oct 2026).
+        const { data } = (await getBrowserSupabase()?.auth.getUser()) ?? { data: { user: null } };
+        const m = data.user?.email?.match(/^p(\d{10,15})@phone\./);
         if (m) { setPhone((p) => p || m[1].slice(-10)); return; }
         const r = await api<{ profiles: { phone: string | null }[] }>("/api/poster/profiles");
         const ph = r.ok ? r.data.profiles.find((x) => x.phone)?.phone : null;
@@ -332,7 +334,7 @@ function UnofficialNotice() {
         <li>WhatsApp prefers automation through its official API, so we recommend linking a <b>dedicated business number</b> rather than your personal one.</li>
         <li>Best used for replying to people who message you. Bulk or marketing broadcasts are better done from the official API.</li>
       </ul>
-      <p className="mt-2 text-muted">Want the fully official, Meta-approved setup? The <b>WhatsApp Cloud API</b> option is coming soon for Pro accounts.</p>
+      <p className="mt-2 text-muted">Want the fully official, Meta-approved setup? Switch to <b>Cloud API</b> above and press <b>Connect with Facebook</b> — your own number on Meta&apos;s API in two minutes, no QR, no ban risk.</p>
     </div>
   );
 }
