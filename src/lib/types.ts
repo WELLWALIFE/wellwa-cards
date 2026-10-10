@@ -242,6 +242,9 @@ export interface Card {
   /** The owner's OWN website (owner's call, 10 Oct 2026: "bot meri website suggest kare, card nahi"): the assistant
    *  sends customers this link instead of the card's, and its knowledge is read from it (Train AI bot → Read website). */
   botSite?: string;
+  /** Files the assistant may SEND a customer on request — brochure pages, spec sheets, a price list, a PDF — as
+   *  "[MEDIA] url" lines (the chat shows them inline, WhatsApp sends them as a photo / document). Owner's call, 10 Oct 2026. */
+  botFiles?: { label: string; url: string; kind: "image" | "pdf" | "video" }[];
   /** What this card sells beyond its own content.
    *  "shubhora": the whole card is a Shubhora partner's — its assistant also gets Shubhora's own,
    *  always-current facts (bridge/shubhora-kb.mjs, or the Super Admin override). Set by the

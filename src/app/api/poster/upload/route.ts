@@ -9,8 +9,8 @@ import type { Sharp } from "sharp";
 import { userFromRequest } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
-type Kind = "photo" | "logo" | "product" | "wide";
-const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide"];
+type Kind = "photo" | "logo" | "product" | "wide" | "doc";
+const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide", "doc"];
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
@@ -21,6 +21,16 @@ export async function POST(request: Request) {
   const kind: Kind = KINDS.includes(asked as Kind) ? (asked as Kind) : "photo";
   if (!(file instanceof Blob)) return NextResponse.json({ error: "No file." }, { status: 400 });
   if (file.size > 12 * 1024 * 1024) return NextResponse.json({ error: "Image too large (max 12 MB)." }, { status: 400 });
+  // doc → a PDF the bot can send as a WhatsApp document (brochure, price list), stored as it is.
+  if (kind === "doc") {
+    const src = Buffer.from(await file.arrayBuffer());
+    if (src.subarray(0, 5).toString() !== "%PDF-") return NextResponse.json({ error: "Only PDF files here." }, { status: 400 });
+    const name = (form?.get("name") ? String(form.get("name")) : "document").replace(/[^a-z0-9._-]+/gi, "-").replace(/-+/g, "-").slice(0, 60).replace(/\.pdf$/i, "");
+    const key = `poster/${me.id}/doc-${Date.now()}-${name || "document"}.pdf`;
+    const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { ...serviceHeaders(), "Content-Type": "application/pdf", "x-upsert": "true" }, body: new Uint8Array(src) });
+    if (!r.ok) return NextResponse.json({ error: "Upload failed.", detail: (await r.text()).slice(0, 200) }, { status: 500 });
+    return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}` });
+  }
   let out: Buffer;
   try {
     const src = Buffer.from(await file.arrayBuffer());

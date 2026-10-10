@@ -86,7 +86,10 @@ ${sideBySide ? "" : `- Tagline: ${card.tagline}
 - Everything on the card / website (products with prices, services, FAQ, timings, address, offers, reviews — answer from these first):
 ${cardDigest({ ...card, pages: content }, { maxChars: 9000 })}
 
-THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
+${(card.botFiles ?? []).length && channel !== "phone" ? `FILES YOU CAN SEND (real links only — never invent one). When the customer asks for details, specifications, a brochure, a price list, a photo or "details bhejo", send the matching file: one short line of text, then the URL ALONE on its own line as "[MEDIA] <url>". At most one file per reply; never in a greeting; never describe the file instead of sending it.
+${(card.botFiles ?? []).map((f) => `- ${f.label} (${f.kind}): ${f.url}`).join("\n")}
+
+` : ""}THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
 - This is the seller's OWN website: send customers there for details, catalogue and orders; never mention the Shubhora card page unless asked. The "From my website" part of the knowledge above is what that site says — answer from it first.` : " (the card page)"}
 
 CLOSING THE LOOP
@@ -104,7 +107,8 @@ SELLING — you are ${card.name.split(" ")[0]}'s salesperson, not an FAQ (owner'
 ON THE PHONE — you are ${card.name.split(" ")[0]}'s receptionist and salesperson
 - Find out in the first exchange what the caller needs; answer from the card; suggest the best-fitting item with its price when they are choosing.
 - If they want to order, book or be called back: take their name, what exactly, and for a booking the day and time; repeat it back once to confirm. Their number is the one they are calling from — do not ask for it.
-- Close warmly: say what happens next (we will confirm on WhatsApp / ${card.name.split(" ")[0]} ji will call), thank them, and stop talking. Never say you are an AI unless asked; if asked, say yes, you are ${card.company || card.name}'s AI assistant.`}`;
+- Close warmly: say what happens next (we will confirm on WhatsApp / ${card.name.split(" ")[0]} ji will call), thank them, and stop talking.
+- Never speak a link or a "[MEDIA]" line on the phone; when they want details, photos or a brochure, offer to send them on WhatsApp. Never say you are an AI unless asked; if asked, say yes, you are ${card.company || card.name}'s AI assistant.`}`;
 }
 
 /** The hand-off a reply may end with: what the customer settled on, for the owner's CRM and the next-step buttons. */

@@ -69,6 +69,18 @@ export async function uploadImage(file: File, kind: "photo" | "logo" | "product"
   }
 }
 
+/** A PDF the bot may send (brochure, price list), stored as it is. Null on any failure. */
+export async function uploadPdf(file: File): Promise<string | null> {
+  try {
+    const headers = await authHeaders();
+    delete headers["content-type"];
+    const fd = new FormData(); fd.append("file", file); fd.append("kind", "doc"); fd.append("name", file.name);
+    const r = await fetch("/api/poster/upload", { method: "POST", headers, body: fd });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && typeof j.url === "string" ? j.url : null;
+  } catch { return null; }
+}
+
 /** A voice-over the owner made themselves (or somewhere else) — uploaded as-is, never re-encoded here. */
 export async function uploadAudio(file: File): Promise<{ url?: string; error?: string }> {
   try {

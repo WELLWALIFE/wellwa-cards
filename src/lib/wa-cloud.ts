@@ -45,6 +45,7 @@ export const phoneInfo = (token: string, phoneNumberId: string) =>
 export type SendPayload =
   | { text: string; previewUrl?: boolean }
   | { imageUrl: string; caption?: string }
+  | { videoUrl: string; caption?: string }
   | { documentUrl: string; fileName?: string; caption?: string }
   | { template: string; lang: string; components?: unknown[] };
 
@@ -54,6 +55,7 @@ export async function sendCloud(acc: Pick<CloudAccount, "access_token" | "phone_
   const body: Record<string, unknown> = { messaging_product: "whatsapp", recipient_type: "individual", to: digits };
   if ("text" in p) Object.assign(body, { type: "text", text: { body: p.text.slice(0, 4096), preview_url: p.previewUrl ?? /https?:\/\//.test(p.text) } });
   else if ("imageUrl" in p) Object.assign(body, { type: "image", image: { link: p.imageUrl, caption: p.caption?.slice(0, 1024) || undefined } });
+  else if ("videoUrl" in p) Object.assign(body, { type: "video", video: { link: p.videoUrl, caption: p.caption?.slice(0, 1024) || undefined } });
   else if ("documentUrl" in p) Object.assign(body, { type: "document", document: { link: p.documentUrl, filename: p.fileName?.slice(0, 80) || "document.pdf", caption: p.caption?.slice(0, 1024) || undefined } });
   else Object.assign(body, { type: "template", template: { name: p.template, language: { code: p.lang }, components: p.components ?? [] } });
   const j = await graph<{ messages?: { id: string }[] }>(acc.access_token, `${acc.phone_number_id}/messages`, { body });
@@ -245,10 +247,22 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     }
   }
 }
+/** "[MEDIA] url" lines in an AI reply → the text, then each file as a real photo / video / document message. */
 async function reply(acc: CloudAccount, card: Card | null, phone: string, text: string) {
   try {
-    const id = await sendCloud(acc, phone, { text });
-    if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", text });
+    const media = [...text.matchAll(/^\s*\[MEDIA\]\s*(https?:\/\/\S+)\s*$/gim)].map((m) => m[1]).slice(0, 2);
+    const plain = text.replace(/^\s*\[MEDIA\].*$/gim, "").replace(/\n{3,}/g, "\n\n").trim();
+    if (plain) {
+      const id = await sendCloud(acc, phone, { text: plain });
+      if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", text: plain });
+    }
+    for (const url of media) {
+      const low = url.toLowerCase().split("?")[0];
+      const label = card?.botFiles?.find((f) => f.url === url)?.label;
+      const payload = /\.(mp4|mov)$/.test(low) ? { videoUrl: url, caption: label } : /\.pdf$/.test(low) ? { documentUrl: url, fileName: `${(label || "document").replace(/[^a-z0-9 _-]+/gi, "").slice(0, 60) || "document"}.pdf`, caption: label } : { imageUrl: url, caption: label };
+      const id = await sendCloud(acc, phone, payload);
+      if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", kind: "videoUrl" in payload ? "video" : "documentUrl" in payload ? "document" : "image", text: `[${label || "file"}] ${url}` });
+    }
   } catch (e) {
     await restAsService(`wa_cloud_accounts?owner_id=eq.${acc.owner_id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ last_error: friendlyGraphError(e).slice(0, 200), updated_at: new Date().toISOString() }) });
   }
