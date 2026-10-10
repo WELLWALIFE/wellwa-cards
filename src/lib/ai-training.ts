@@ -403,12 +403,52 @@ export function detectLanguage(text: string): string {
   return hinglish.test(t) ? "Hinglish (Hindi written in Roman/Latin script)" : "English";
 }
 
-/** The final, highest-priority instruction. Append after everything else. */
-export function languageLock(lastUserMessage: string): string {
-  const lang = detectLanguage(lastUserMessage);
+/** A customer ASKING for a language ("english me bolo", "reply in Tamil", "हिंदी में बताओ") — the only thing that moves the
+ *  reply off Hindi (owner's call, 10 Oct 2026). Returns the language name, or null. */
+export function requestedLanguage(text: string): string | null {
+  const t = (text || "").toLowerCase();
+  const asks = /\b(in|me|mein|mai|mе|m|only|please|plz|pls|reply|answer|bolo|boliye|batao|bataiye|likho|likhiye|karo|kijiye|speak|talk|write|type|language|bhasha|bhaasha)\b|भाषा|बोलो|बताओ|लिखो|में/.test(t);
+  if (!asks) return null;
+  const m = t.match(/\b(english|angrezi|angreji|hindi|hinglish|roman|marathi|gujarati|gujrati|tamil|telugu|bengali|bangla|kannada|malayalam|punjabi|odia|oriya|urdu)\b|अंग्रेज़ी|अंग्रेजी|इंग्लिश|हिंदी|हिन्दी|मराठी|गुजराती|तमिल|तेलुगु|बंगाली|कन्नड़|मलयालम|पंजाबी|उर्दू/);
+  if (!m) return null;
+  const w = m[0];
+  if (/english|angre|इंग्लिश|अंग्रेज/.test(w)) return "English";
+  if (/hinglish|roman/.test(w)) return "Hinglish (Hindi written in Roman/Latin script)";
+  if (/hindi|हिंदी|हिन्दी/.test(w)) return "Hindi (Devanagari script)";
+  if (/marathi|मराठी/.test(w)) return "Marathi (Devanagari script)";
+  if (/gujarati|gujrati|गुजराती/.test(w)) return "Gujarati";
+  if (/tamil|तमिल/.test(w)) return "Tamil";
+  if (/telugu|तेलुगु/.test(w)) return "Telugu";
+  if (/bengali|bangla|बंगाली/.test(w)) return "Bengali";
+  if (/kannada|कन्नड़/.test(w)) return "Kannada";
+  if (/malayalam|मलयालम/.test(w)) return "Malayalam";
+  if (/punjabi|पंजाबी/.test(w)) return "Punjabi (Gurmukhi)";
+  if (/odia|oriya/.test(w)) return "Odia";
+  if (/urdu|उर्दू/.test(w)) return "Urdu";
+  return null;
+}
+
+/** The language a reply must be in (owner's call, 10 Oct 2026: "sabhi message Hindi me, Devanagari, jab tak samne wala
+ *  koi aur language ke liye na bole"): Hindi in Devanagari for everyone — also when they type in English or Hinglish —
+ *  until the customer asks for another language (the latest such request in the chat wins) or writes in another Indian
+ *  script, which is as good as asking. */
+export function replyLanguage(lastUserMessage: string, earlierUserMessages: string[] = []): string {
+  for (const m of [lastUserMessage, ...[...earlierUserMessages].reverse()]) {
+    const asked = requestedLanguage(m);
+    if (asked) return asked;
+  }
+  const detected = detectLanguage(lastUserMessage);
+  if (!/^(English|Hinglish|Hindi)/.test(detected)) return detected;   // Tamil, Gujarati… script: they cannot read Hindi
+  return "Hindi (Devanagari script)";
+}
+
+/** The final, highest-priority instruction. Append after everything else. `earlier`: the customer's earlier messages in
+ *  this chat, oldest first, so a language they asked for stays. */
+export function languageLock(lastUserMessage: string, earlier: string[] = []): string {
+  const lang = replyLanguage(lastUserMessage, earlier);
   return `\n\n=== LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
-The customer wrote in: ${lang}
-Write your ENTIRE reply in ${lang}. Nothing else.
+Reply language: ${lang}
+Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? "Hindi in Devanagari script for everyone by default — even when the customer typed in English or Hinglish — unless they ask for another language. Product names, brands and numbers may stay as they are." : "The customer asked for this language (or wrote in its script): keep it until they ask for another."}
 The knowledge and example answers above may be in a different language — they are content samples ONLY. Never copy their language. Translate every fact into ${lang}.
 Still end with exactly one short question, also in ${lang}.`;
 }

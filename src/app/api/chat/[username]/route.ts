@@ -10,7 +10,7 @@ import { geminiComplete } from "@/lib/gemini";
 import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supabase/public";
 import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { languageLock } from "@/lib/ai-training";
+import { languageLock, replyLanguage } from "@/lib/ai-training";
 import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, type ChatOrder } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
@@ -42,7 +42,7 @@ function sellsShubhora(card: Card, page: string | null): boolean {
  *  the card's language, and chips that start a sale — the first products by name, prices, order, timings. */
 function salesMeta(card: Card) {
   const first = card.name.split(" ")[0];
-  const hindi = card.language === "hi" || /[\u0900-\u097F]/.test(`${card.tagline} ${card.about}`);
+  const hindi = card.language !== "en";   // Hindi for everyone unless the card itself is set to English (owner's call, 10 Oct 2026)
   const products: string[] = [];
   for (const pg of card.pages) for (const b of pg.blocks) if ((b.kind === "product" || b.kind === "services") && "items" in b) for (const it of b.items as { name?: string }[]) { if (it?.name && products.length < 2) products.push(it.name.slice(0, 28)); }
   const chips = hindi
@@ -142,7 +142,7 @@ export async function POST(
             ? { onlyPage: card.pages.find((pg) => pg.slug === SHUBHORA_PAGE_SLUG) }
             : {}),
         })
-          + languageLock(safeMessages[safeMessages.length - 1]?.content ?? ""),
+          + languageLock(safeMessages[safeMessages.length - 1]?.content ?? "", safeMessages.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content)),
         contents: safeMessages.map((m) => ({
           role: m.role === "assistant" ? "model" as const : "user" as const,
           parts: [{ text: m.content }],
@@ -218,7 +218,7 @@ type Actions = { whatsapp?: string; upi?: string; upiId?: string; call?: string 
 async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: string): Promise<Actions> {
   const summary = orderSummary(order);
   const kindLabel = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";
-  const hindi = /[\u0900-\u097F]/.test([...messages].reverse().find((m) => m.role === "user")?.content ?? "");
+  const hindi = !/^English/.test(replyLanguage([...messages].reverse().find((m) => m.role === "user")?.content ?? "", messages.filter((m) => m.role === "user").map((m) => m.content)));
   const actions: Actions = {};
   if (wa) {
     const msg = hindi

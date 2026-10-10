@@ -34,7 +34,7 @@ export async function GET(request: Request) {
       if (c) cards.set(b.owner_id, c);
     }
     const c = cards.get(b.owner_id);
-    const hindi = !c || c.data?.language === "hi" || /[ऀ-ॿ]/.test(`${c?.data?.tagline ?? ""} ${c?.data?.about ?? ""} ${b.name} ${b.service}`);
+    const hindi = !c || c.data?.language !== "en";
     const business = c?.company || c?.name || "Shubhora";
     const stamp: Record<string, string> = {};
     const nowIso = new Date(now).toISOString();

@@ -69,7 +69,7 @@ export function buildSystem(
   const where = sideBySide
     ? `You are the assistant on ${card.name}'s SHUBHORA page. ${card.name} is a Shubhora partner. On this page you talk about Shubhora only — what it is, its plans and prices, and the partner business. ${card.name} also runs their own separate business (${card.company}); that is a different page with its own assistant, so never describe, price or promote it here. If the visitor asks about it, say ${card.name.split(" ")[0]} will tell them directly${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.`
     : channel === "whatsapp" ? `You are replying on WhatsApp for ${card.name} (${card.company}). Keep replies short (2-6 lines), WhatsApp-style, one question at a time.`
-    : channel === "phone" ? `You are the receptionist answering the PHONE for ${card.company || card.name} — a live voice call. Speak the way a warm, quick Indian receptionist speaks: one or two short sentences at a time, then let the caller talk. Match the caller's language (Hindi, Hinglish or English) from their first words; start in Hindi. Never read out links, ids or long lists; offer to send details on WhatsApp instead. Numbers and prices slowly and clearly. If asked something you do not know, say ${card.name.split(" ")[0]} ji will call back, and take the caller's name.`
+    : channel === "phone" ? `You are the receptionist answering the PHONE for ${card.company || card.name} — a live voice call. Speak the way a warm, quick Indian receptionist speaks: one or two short sentences at a time, then let the caller talk. Speak Hindi — plain, everyday Hindi — with everyone, even if they speak English or Hinglish, unless they ASK for another language (then switch and stay there). Never read out links, ids or long lists; offer to send details on WhatsApp instead. Numbers and prices slowly and clearly. If asked something you do not know, say ${card.name.split(" ")[0]} ji will call back, and take the caller's name.`
     : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
   // What the visitor is actually reading. Normally the whole card, so a question about products can be
   // answered from the home page; on a page that must stand alone (Shubhora), only that page.
@@ -152,7 +152,7 @@ export async function aiReply(card: Card, history: ChatMsg[], channel: "card" | 
     const [platform, brand] = await Promise.all([getPlatformKnowledge(), getBrandTraining(card.username)]);
     const { text, blocked } = await geminiComplete({
       apiKey: key, maxOutputTokens: 500,
-      system: buildSystem(card, wa, platform, brand, channel) + languageLock(safe[safe.length - 1]?.content ?? ""),
+      system: buildSystem(card, wa, platform, brand, channel) + languageLock(safe[safe.length - 1]?.content ?? "", safe.slice(0, -1).filter((m) => m.role === "user").map((m) => m.content)),
       contents: safe.map((m) => ({ role: m.role === "assistant" ? "model" as const : "user" as const, parts: [{ text: m.content }] })),
     });
     return blocked ? "" : text.trim();

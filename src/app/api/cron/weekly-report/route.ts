@@ -38,7 +38,7 @@ export async function GET(request: Request) {
     ]);
     // A week with nothing at all is not worth a message (a card nobody has shared yet).
     if (!views && !taps && !enquiries) { quiet++; continue; }
-    const hindi = c.data?.language === "hi" || /[ऀ-ॿ]/.test(`${c.data?.tagline ?? ""} ${c.data?.about ?? ""}`);
+    const hindi = c.data?.language !== "en";
     const biz = c.company || c.name || c.username;
     const link = `${SITE_URL}/c/${c.username}`;
     const body = hindi

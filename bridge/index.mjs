@@ -974,6 +974,37 @@ function ruleReply(text, strict) {
  * the FAQ examples are in Hinglish and the model copied their language even
  * when the customer wrote English. Naming the language as a direct order,
  * placed last, fixes it. */
+/** A customer ASKING for a language ("english me bolo", "reply in Tamil", "हिंदी में बताओ") — the only thing that moves the
+ *  reply off Hindi (owner's call, 10 Oct 2026). Returns the language name, or null. Mirrors src/lib/ai-training.ts. */
+function requestedLanguage(text) {
+  const t = String(text || "").toLowerCase();
+  const asks = /\b(in|me|mein|mai|only|please|plz|pls|reply|answer|bolo|boliye|batao|bataiye|likho|likhiye|karo|kijiye|speak|talk|write|type|language|bhasha|bhaasha)\b|भाषा|बोलो|बताओ|लिखो|में/.test(t);
+  if (!asks) return null;
+  const m = t.match(/\b(english|angrezi|angreji|hindi|hinglish|roman|marathi|gujarati|gujrati|tamil|telugu|bengali|bangla|kannada|malayalam|punjabi|odia|oriya|urdu)\b|अंग्रेज़ी|अंग्रेजी|इंग्लिश|हिंदी|हिन्दी|मराठी|गुजराती|तमिल|तेलुगु|बंगाली|कन्नड़|मलयालम|पंजाबी|उर्दू/);
+  if (!m) return null;
+  const w = m[0];
+  if (/english|angre|इंग्लिश|अंग्रेज/.test(w)) return "English";
+  if (/hinglish|roman/.test(w)) return "Hinglish (Hindi written in Roman/Latin script)";
+  if (/hindi|हिंदी|हिन्दी/.test(w)) return "Hindi (Devanagari script)";
+  if (/marathi|मराठी/.test(w)) return "Marathi (Devanagari script)";
+  if (/gujarati|gujrati|गुजराती/.test(w)) return "Gujarati";
+  if (/tamil|तमिल/.test(w)) return "Tamil";
+  if (/telugu|तेलुगु/.test(w)) return "Telugu";
+  if (/bengali|bangla|बंगाली/.test(w)) return "Bengali";
+  if (/kannada|कन्नड़/.test(w)) return "Kannada";
+  if (/malayalam|मलयालम/.test(w)) return "Malayalam";
+  if (/punjabi|पंजाबी/.test(w)) return "Punjabi (Gurmukhi)";
+  if (/odia|oriya/.test(w)) return "Odia";
+  if (/urdu|उर्दू/.test(w)) return "Urdu";
+  return null;
+}
+/** Hindi in Devanagari for everyone — also when they type English or Hinglish — until they ask for another language
+ *  (latest request in the chat wins) or write in another Indian script. */
+function replyLanguage(text, earlier = []) {
+  for (const m of [text, ...[...earlier].reverse()]) { const asked = requestedLanguage(m); if (asked) return asked; }
+  const d = detectLanguage(text);
+  return /^(English|Hinglish|Hindi)/.test(d) ? "Hindi (Devanagari script)" : d;
+}
 function detectLanguage(t) {
   t = (t || "").trim();
   if (!t) return "English";
@@ -1001,7 +1032,8 @@ async function aiReply(jid, text, opts = {}) {
   if (!GEMINI_KEY) return null; // reply flow is governed by config.replyMode
   // Facebook/Instagram ad auto-text is not the customer's own words — treat it
   // as Hinglish so the reply sounds personal, not like an English brochure.
-  const lang = AD_OPENER_RE.test(text) ? "Hinglish (Roman script)" : detectLanguage(text);
+  const earlierUser = (opts.history ?? history.get(jid) ?? []).filter((m) => m.role === "user").map((m) => String(m.content ?? ""));
+  const lang = replyLanguage(text, earlierUser);
   const firstReply = opts.history ? opts.history.length === 0 : (history.get(jid)?.length ?? 0) === 0;
   const card = cardContext?.data;
   // Everything on the card and website, as plain text (card-digest.mjs): products with prices, services, FAQ,
@@ -1056,7 +1088,7 @@ ${cardInfo}${brandK}${brandFaq}${globalK}${docsK}${knowledge}
 Menu the customer may reference: ${JSON.stringify(config.rules.map((r) => r.keywords[0]))}.
 
 Rules:
-- LANGUAGE: reply in exactly the language AND script the customer used (Hindi in Devanagari, Hinglish in Roman, English, Marathi...). Translate the facts if they are written in another language. Never switch language on your own.
+- LANGUAGE: Hindi in Devanagari for everyone by default — even when the customer types in English or Hinglish — unless they ask for another language (then keep that one). Translate the facts if they are written in another language. Product names, brands and numbers may stay as they are.
 - LENGTH: 2-4 short lines. No preamble, no repeating the question. At most one emoji.
 - ONE TOPIC PER MESSAGE: never dump everything (models + prices + specs + warranty) in one go. Answer only what was asked, then ask your one question.
 - PHOTOS/VIDEOS: send a [MEDIA] line only when the customer asks about a specific product, model or how it looks — never in a greeting or first reply.${firstReply ? `\n- FIRST REPLY (this is the very first message in this chat): greet them by name if known, one line of context, share our website ${sellerLink()}, and ONE question (home use or business opportunity?). 3-4 lines total, NO bullets, NO prices.` : ""}
@@ -1073,8 +1105,8 @@ Rules:
 - CLOSING: if the customer is saying goodbye ("bye", "thanks", "theek hai", "ok ji"), don't push another question. Close warmly in 1-2 lines and share our website for full details: ${sellerLink()} — always call it our "website", never "card". Skip the link if it was just shared. This is the one reply without an ending question.${memoryRule}${personalRule}
 
 === LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
-The customer wrote in: ${lang}
-Write your ENTIRE reply in ${lang}. Nothing else.
+Reply language: ${lang}
+Write your ENTIRE reply in ${lang}. Nothing else. ${lang.startsWith("Hindi") ? "Hindi in Devanagari for everyone by default, even when the customer typed in English or Hinglish, until they ask for another language." : "The customer asked for this language (or wrote in its script): keep it until they ask for another."}
 The knowledge and example answers above may be in another language — they are content samples ONLY. Never copy their language; translate every fact into ${lang}.
 Still end with exactly one short question, also in ${lang}.`,
     });
@@ -1152,7 +1184,7 @@ ${knowledge || config.businessName}
 
 Rules:
 - Write ONE short WhatsApp message (1-2 sentences, max ~2 lines), warm and human, at most one light emoji.
-- Reply in the SAME language/script the contact last used. Their last message was: "${entry.lastMsg || ""}". Mirror that language (Hindi in Devanagari, Hinglish in Latin, English, etc.).
+- Write in ${replyLanguage(entry.lastMsg || "")} (Hindi in Devanagari for everyone unless they asked for another language; their last message was: "${entry.lastMsg || ""}").
 - ${goal}
 - Never sound automated or repetitive. No "just following up" clichés. Never invent medical claims${shubhora ? ", and never promise or mention any income" : ""}.
 - End naturally. You may share our website ${sellerLink()} only if it fits.
@@ -1336,10 +1368,9 @@ async function markPersonal(jid) {
 /** The polite one-liner for a personal chat on a card that is not a Shubhora partner's (mirrors their script). */
 function genericPersonalLine(text) {
   const seller = firstName(cardContext?.data?.name || config.businessName || "");
-  const lang = detectLanguage(text);
-  if (lang.startsWith("Hindi")) return personalLine(seller, "hi");
+  const lang = replyLanguage(text);
   if (lang === "English") return personalLine(seller, "en");
-  return `Namaste! Ye ${seller ? `${seller} ji ka` : ""} business assistant hai — woh khud aapko jawab denge 🙏`.replace(/\s+/g, " ");
+  return personalLine(seller, "hi");
 }
 
 /** A customer's own card, for the assistant's card check ("bana liya — shubhora.com/c/…"): the public data of a live

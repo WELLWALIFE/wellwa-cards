@@ -16,7 +16,7 @@ export async function cardOf(ownerId: string): Promise<OwnerCard | null> {
   return (await restAsService<OwnerCard[]>(`cards?owner_id=eq.${ownerId}&order=created_at.asc&limit=1&select=id,username,company,name,data`)).data?.[0] ?? null;
 }
 export const businessOf = (c: OwnerCard | null) => c?.company || c?.name || "Shubhora";
-export const hindiCard = (c: OwnerCard | null) => !c || c.data?.language === "hi" || /[ऀ-ॿ]/.test(`${c.data?.tagline ?? ""} ${c.data?.about ?? ""}`);
+export const hindiCard = (c: OwnerCard | null) => !c || c.data?.language !== "en";   // Hindi for everyone unless the card is English
 export const siteOf = (c: OwnerCard | null) => (c ? `${SITE_URL}/c/${c.username}` : SITE_URL);
 /** The card's Google Maps link (the review goes there), if the owner gave one. */
 export function googleLink(c: OwnerCard | null): string {

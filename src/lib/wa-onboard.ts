@@ -66,10 +66,14 @@ export const isOnboardAccount = (acc: Pick<CloudAccount, "owner_id">) => !!proce
 
 /* ------------------------------------------------------------------ language ------------------------------------------------------------------ */
 const HINGLISH = /\b(hai|hain|ho|kar|karo|karna|kaise|kya|kyu|nahi|nahin|mera|meri|hamara|dukan|dukaan|chahiye|bhejo|batao|haan|ji|theek|thik|kaam|namaste|shop|wala|wale|banao|bana|do|dedo|lagao|badlo|hatao)\b/i;
-function langOf(text: string, fallback: Lang = "hinglish"): Lang {
-  if (/[ऀ-ॿ]/.test(text)) return "hi";
-  if (HINGLISH.test(text)) return "hinglish";
-  if (/[a-z]{3,}/i.test(text)) return "en";
+/** Hindi (Devanagari) for everyone (owner's call, 10 Oct 2026) — unless they ASK for English / Hinglish; a later
+ *  request wins and stays. */
+function langOf(text: string, fallback: Lang = "hi"): Lang {
+  const t = text.toLowerCase();
+  const asks = /\b(in|me|mein|only|reply|bolo|batao|likho|karo|speak|write|language|bhasha)\b|भाषा|बोलो|बताओ|लिखो|में/.test(t);
+  if (asks && /\b(english|angrezi|angreji)\b|अंग्रेज़ी|अंग्रेजी|इंग्लिश/.test(t)) return "en";
+  if (asks && /\b(hinglish|roman)\b/.test(t)) return "hinglish";
+  if (asks && (/\bhindi\b|हिंदी|हिन्दी/.test(t) || (HINGLISH.test(t) && /\bhindi\b/.test(t)))) return "hi";
   return fallback;
 }
 const T = (lang: Lang, hi: string, hing: string, en: string) => (lang === "hi" ? hi : lang === "hinglish" ? hing : en);
@@ -347,7 +351,7 @@ async function buildFor(token: string, row: Row): Promise<BuildResponse | null> 
   const photos = row.data.photos;
   const shop = photos.find((p) => p.kind === "shop");
   const facts = {
-    lang: row.data.lang ?? "hinglish",
+    lang: row.data.lang ?? "hi",
     hours: S(f.hours, 120), offer: S(f.offer, 200), since: S(f.since, 8), upi: S(f.upi, 80),
     specialText: S(f.about, 600), work: S(f.trade, 200),
     bannerUrl: shop?.url ?? "",
@@ -549,7 +553,7 @@ async function handleOne(acc: CloudAccount, phone: string, waName: string, m: Wa
       if (card) { row.stage = "live"; row.data.cardId = card.id; row.data.cardUsername = card.username; }
     }
   }
-  const lang: Lang = text ? langOf(text, row.data.lang ?? "hinglish") : (row.data.lang ?? "hinglish");
+  const lang: Lang = text ? langOf(text, row.data.lang ?? "hi") : (row.data.lang ?? "hi");
   row.data.lang = lang;
 
   // A voice note is its words.
