@@ -41,6 +41,8 @@ type User = {
   /** A mobile sign-up's real email (user_metadata.contact_email); its login email is a placeholder. */
   contactEmail?: string;
   phone?: string;
+  /** Every mobile the account is known by, 10 digits each (login, metadata, poster profiles, partner ID). */
+  phones?: string[];
   provider?: string;
   posterProfiles?: string[];
   posterPlan?: string;
@@ -180,7 +182,7 @@ export default function AdminUsers() {
   // Rows that share a name, email or mobile with another row — the place to spot one person with two IDs.
   const twins = useMemo(() => {
     const count = new Map<string, number>();
-    const keys = (u: User) => [norm(u.name) && `n:${norm(u.name)}`, norm(u.email) && `e:${norm(u.email)}`, norm(u.contactEmail ?? "") && `e:${norm(u.contactEmail ?? "")}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`].filter(Boolean) as string[];
+    const keys = (u: User) => [norm(u.name) && `n:${norm(u.name)}`, norm(u.email) && `e:${norm(u.email)}`, norm(u.contactEmail ?? "") && `e:${norm(u.contactEmail ?? "")}`, digits(u.phone).length === 10 && `m:${digits(u.phone)}`, ...(u.phones ?? []).map((d) => `m:${d}`)].filter(Boolean) as string[];
     for (const u of users) for (const k of keys(u)) count.set(k, (count.get(k) ?? 0) + 1);
     return new Set(users.filter((u) => keys(u).some((k) => (count.get(k) ?? 0) > 1)).map((u) => u.id));
   }, [users]);
@@ -232,10 +234,13 @@ export default function AdminUsers() {
         : view === "check" ? twins.has(u.id) || mixed(u)
         : u.plan !== "free");
     if (!s) return inView;
+    // A number typed in any form (+91 87082 75430, 8708275430, 75430) matches every mobile the account is known by.
+    const sd = s.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
     return inView.filter((u) =>
       [u.name, u.email, u.contactEmail, loginOf(u.email), u.phone, u.username, u.associate, u.plan, u.status, u.partner?.code, u.partner?.username, u.partner?.sponsor, u.partner?.isRoot ? "root" : ""]
         .some((v) => String(v ?? "").toLowerCase().includes(s)) ||
-      (u.usernames ?? []).some((n) => n.toLowerCase().includes(s)),
+      (u.usernames ?? []).some((n) => n.toLowerCase().includes(s)) ||
+      (sd.length >= 4 && (u.phones ?? []).some((d) => d.includes(sd))),
     );
   }, [users, q, view, twins]);
 
@@ -264,7 +269,7 @@ export default function AdminUsers() {
           </button>
           <label className="flex items-center gap-2 rounded-lg border border-border bg-surface px-3 py-2 w-full sm:w-72 focus-within:ring-1 focus-within:ring-brand">
             <Search className="h-4 w-4 text-faint shrink-0" />
-            <input className="flex-1 bg-transparent text-sm outline-none" placeholder="Search name, username, SH code, phone, email…"
+            <input className="flex-1 bg-transparent text-sm outline-none" placeholder="Search name, username, SH code, mobile (any form), email…"
               value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
         </div>

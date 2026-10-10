@@ -84,6 +84,15 @@ export async function GET(request: Request) {
         email: u.email ?? "",
         contactEmail: String(u.user_metadata?.contact_email ?? ""),
         phone: u.phone ?? pp.find((x) => x.is_default)?.phone ?? pp[0]?.phone ?? "",
+        // Every mobile this account is known by (login address, auth phone, metadata, poster profiles, partner ID),
+        // as 10-digit strings — so a number can be searched and "where else is this number?" answered (10 Oct 2026).
+        phones: [...new Set([
+          (u.email ?? "").match(/^p91(\d{10})@phone\./i)?.[1] ?? "",
+          String(u.phone ?? "").replace(/\D/g, "").slice(-10),
+          String(u.user_metadata?.phone ?? "").replace(/\D/g, "").slice(-10),
+          ...pp.map((x) => String(x.phone ?? "").replace(/\D/g, "").slice(-10)),
+          String(partnerByUser.get(u.id)?.mobile ?? "").replace(/\D/g, "").slice(-10),
+        ].filter((d) => d.length === 10))],
         provider: (u.app_metadata?.providers ?? [u.app_metadata?.provider]).filter(Boolean).join(", ") || (u.phone ? "phone" : "email"),
         posterProfiles: pp.map((x) => x.name),
         posterPlan: pr?.poster_plan ?? "free",
