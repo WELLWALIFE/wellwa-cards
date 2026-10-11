@@ -180,7 +180,10 @@ async function sendReply(jid, reply) {
   const media = rawMedia.filter((u) => /\.(mp4|mov|jpe?g|png|webp|pdf)(\?|#|$)/i.test(u) || normalizeCardLinks(u) !== link);
   const payload = async () => {
     const withLink = config.cardUsername && text.includes(link);
-    const linkPreview = withLink ? await getCardLinkPreview().catch(() => undefined) : undefined;
+    let linkPreview = withLink ? await getCardLinkPreview().catch(() => undefined) : undefined;
+    // A YouTube link (the demo video) goes out with its thumbnail + title, so it reads as a video, not a bare URL.
+    const yt = !linkPreview && text.match(/https?:\/\/(?:www\.|m\.)?(?:youtube\.com\/(?:watch\?[^\s]*v=|shorts\/)|youtu\.be\/)[\w-]+[^\s]*/i)?.[0];
+    if (yt) linkPreview = await youtubePreview(yt).catch(() => undefined);
     return { text: text + BOT_MARKER, ...(linkPreview ? { linkPreview } : {}) };
   };
   if (text) {
@@ -1063,6 +1066,10 @@ async function aiReply(jid, text, opts = {}) {
   const docsK = docs.length
     ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, catalogue, price list, photo, PDF, details in writing). One short line of text (with our website ${sellerLink()}) plus one [MEDIA] line per file — never describe a file's contents instead of sending it. A brochure in several parts/pages (same name with 1, 2, part 1, page 2…) is ONE thing: send ALL its parts together, in order. "Details"/"brochure" with 4 files or fewer here: send them all. Never the same file twice in a chat unless asked again.`
     : "";
+  const demo = demoLink();
+  const linksK = demo
+    ? `\n\nDEMO VIDEO (owner's call): ${demo.label}: ${demo.url}\nWhenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share this link with one short line ("ये रहा demo video 👇", the URL on its own line, NOT as [MEDIA]), then offer the next step (a live demo / home visit / order). Once per chat unless they ask again; never in a bare greeting.`
+    : "";
   // A Shubhora partner's notes lose the old frozen copy of Shubhora's facts (the current ones are above).
   const notes = shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || "");
   const knowledge = notes
@@ -1086,7 +1093,7 @@ async function aiReply(jid, text, opts = {}) {
       messages,
       system: `You are the WhatsApp assistant for ${config.businessName} (a business in India). You answer on behalf of the owner, 24/7.${persona}
 
-${cardInfo}${brandK}${brandFaq}${globalK}${docsK}${knowledge}
+${cardInfo}${brandK}${brandFaq}${globalK}${docsK}${linksK}${knowledge}
 
 Menu the customer may reference: ${JSON.stringify(config.rules.map((r) => r.keywords[0]))}.
 
@@ -1440,6 +1447,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
   saveLead(jid, name, text);
   noteFollowupInbound(jid, name, text);
   if (reply && DOC_ASK_RE.test(text)) reply = ensureDocs(reply);
+  reply = ensureDemo(jid, reply, text);
   if (alert) alertOwner(jid, name, alert, text).catch(() => {});
   if (reply) { rememberTurn(jid, "assistant", reply); await deliver(jid, reply); }
 }
@@ -1719,6 +1727,7 @@ async function startWhatsApp() {
         // Asked for the plan / a PDF? Make sure the document actually goes out,
         // even if the AI only talked about it.
         if (reply && DOC_ASK_RE.test(text)) reply = ensureDocs(reply);
+        reply = ensureDemo(jid, reply, text);
         if (alert) alertOwner(jid, name, alert, text).catch(() => {});
         if (reply) await deliver(jid, reply);
       } catch (e) {
@@ -1738,12 +1747,26 @@ const DOC_ASK_RE = /\b(pdf|business\s*plan|plan\s*(bhej|send|chahiye|dikha|do)|b
  *  sheet belong together, 10 Oct 2026); else the card's PDF (the plan first). A reply that already carries a file is
  *  only completed (the other parts of that set). */
 function ensureDocs(reply) {
-  const own = (cardContext?.data?.botFiles ?? []).filter((f) => f?.url);
+  const own = (cardContext?.data?.botFiles ?? []).filter((f) => f?.url && f.kind !== "link");
   if (/\[MEDIA\]/i.test(reply)) return completeFileSets(reply);
   if (own.length && own.length <= 4) return `${reply}\n${own.map((f) => `[MEDIA] ${f.url}`).join("\n")}`;
   const docs = cardDocs();
   const pick = docs.find((d) => /plan|brochure/i.test(d.title)) ?? docs[0];
   return pick ? completeFileSets(`${reply}\n[MEDIA] ${pick.url}`) : reply;
+}
+/** The owner's demo video link (a bot file of kind "link" on Card & Website), or null. */
+function demoLink() {
+  const links = (cardContext?.data?.botFiles ?? []).filter((f) => f?.kind === "link" && /^https?:\/\//i.test(f.url || ""));
+  return links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`)) ?? links[0] ?? null;
+}
+const DEMO_RE = /\b(demo|demu|trial|try|dikhao|dikhaye|dikhaiye|dekhna|kaise\s+(kaam|chalta|use)|how\s+(does\s+)?it\s+works?|how\s+to\s+use|working|video)\b|डेमो|डेमू|दिखाओ|दिखाइए|दिखाएँ|देखना|कैसे\s+(काम|चलता|यूज़|इस्तेमाल)|वीडियो/i;
+/** Demo talk and the AI did not share the demo video → add it, once per chat (owner's call, 11 Oct 2026). */
+function ensureDemo(jid, reply, text) {
+  const d = demoLink();
+  if (!d || !reply || !DEMO_RE.test(text || "") || reply.includes(d.url)) return reply;
+  const earlier = [...(history.get(jid) ?? []), ...(v2Recent.get(jid) ?? [])]; // old AI's and new AI's own turns
+  if (earlier.some((h) => h.role === "assistant" && String(h.content || "").includes(d.url))) return reply;
+  return `${String(reply).trim()}\n\nDemo video 👇\n${d.url}`;
 }
 /** Bot files that differ only by a part/page number ("Brochure 1", "Brochure part 2") are one set; "" = no number. */
 function fileSetKey(label) {
@@ -1773,7 +1796,7 @@ function cardDocs() {
   const out = [];
   // Files the owner added under "AI bot" on Card & Website (brochure pages, spec sheets, PDFs) — sent as a photo or a
   // named document by sendMediaList, by extension.
-  for (const f of cardContext?.data?.botFiles ?? []) if (f?.url && f?.label) out.push({ title: `${f.label} (${f.kind || "file"})`, url: f.url });
+  for (const f of cardContext?.data?.botFiles ?? []) if (f?.url && f?.label && f.kind !== "link") out.push({ title: `${f.label} (${f.kind || "file"})`, url: f.url });
   for (const p of pages) for (const b of p.blocks ?? []) {
     if (b.kind === "pdf" && b.fileUrl && /\.pdf(\?|$)/i.test(b.fileUrl)) {
       const url = /^https?:/i.test(b.fileUrl) ? b.fileUrl : origin + (b.fileUrl.startsWith("/") ? "" : "/") + b.fileUrl;
@@ -1827,6 +1850,15 @@ async function getCardLinkPreview() {
   }
   cardPreviewCache = { day, linkPreview };
   return linkPreview;
+}
+
+const ytPreviewCache = new Map(); // url -> linkPreview (a video's thumbnail/title do not change)
+async function youtubePreview(url) {
+  if (ytPreviewCache.has(url)) return ytPreviewCache.get(url);
+  const { getUrlInfo } = await import("@whiskeysockets/baileys");
+  const p = await getUrlInfo(url, { thumbnailWidth: 640, fetchOpts: { timeout: 8000 }, uploadImage: sock.waUploadToServer });
+  if (p) ytPreviewCache.set(url, p);
+  return p || undefined;
 }
 
 /** Any link the AI writes on the card's domain (made-up paths included) becomes

@@ -26,6 +26,10 @@ function AssistantBubble({ text }: { text: string }) {
         if (/\.(mp4|mov)([?#]|$)/i.test(url)) {
           return <video key={i} src={url} controls playsInline preload="metadata" className="mt-1.5 w-full rounded-lg" />;
         }
+        const yt = url.match(/(?:youtube\.com\/(?:watch\?(?:.*&)?v=|shorts\/|embed\/)|youtu\.be\/)([\w-]{6,})/i)?.[1];
+        if (yt) { // the demo video plays right here
+          return <iframe key={i} src={`https://www.youtube-nocookie.com/embed/${yt}`} title="video" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowFullScreen className="mt-1.5 aspect-video w-full rounded-lg border-0" />;
+        }
         if (/\.(jpe?g|png|webp)([?#]|$)/i.test(url)) {
           // eslint-disable-next-line @next/next/no-img-element
           return <img key={i} src={url} alt="" className="mt-1.5 w-full rounded-lg" />;

@@ -244,7 +244,8 @@ export interface Card {
   botSite?: string;
   /** Files the assistant may SEND a customer on request — brochure pages, spec sheets, a price list, a PDF — as
    *  "[MEDIA] url" lines (the chat shows them inline, WhatsApp sends them as a photo / document). Owner's call, 10 Oct 2026. */
-  botFiles?: { label: string; url: string; kind: "image" | "pdf" | "video" }[];
+  /** Files the bot may send (uploaded photo / PDF / video) and links it may share ("link": e.g. a YouTube demo video). */
+  botFiles?: { label: string; url: string; kind: "image" | "pdf" | "video" | "link" }[];
   /** What this card sells beyond its own content.
    *  "shubhora": the whole card is a Shubhora partner's — its assistant also gets Shubhora's own,
    *  always-current facts (bridge/shubhora-kb.mjs, or the Super Admin override). Set by the

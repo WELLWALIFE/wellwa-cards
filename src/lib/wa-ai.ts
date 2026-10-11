@@ -38,6 +38,21 @@ export function sellerSiteUrl(card: Card, brand?: BrandTraining): string {
   return own ? (/^https?:\/\//i.test(own) ? own : `https://${own}`) : cardSiteUrl(card, brand);
 }
 
+/** The customer is talking about a demo / seeing it work (any script). */
+export const DEMO_RE = /\b(demo|demu|trial|try|dikhao|dikhaye|dikhaiye|dekhna|kaise\s+(kaam|chalta|use)|how\s+(does\s+)?it\s+works?|how\s+to\s+use|working|video)\b|डेमो|डेमू|दिखाओ|दिखाइए|दिखाएँ|देखना|कैसे\s+(काम|चलता|यूज़|इस्तेमाल)|वीडियो/i;
+/** The owner's demo video link (a botFiles entry of kind "link"), or null. */
+export function demoLink(files: NonNullable<Card["botFiles"]> | undefined): { label: string; url: string } | null {
+  const links = (files ?? []).filter((f) => f.kind === "link" && /^https?:\/\//i.test(f.url));
+  return links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`)) ?? links[0] ?? null;
+}
+/** The customer asked about a demo and the AI did not share the demo video: add it (owner's call, 11 Oct 2026:
+ *  "jab user demo ki baat kare to usko online demo video send kare"). `shared`: it already went out in this chat. */
+export function ensureDemoLink(reply: string, userText: string, files: NonNullable<Card["botFiles"]> | undefined, shared = false): string {
+  const d = demoLink(files);
+  if (!d || shared || !reply.trim() || !DEMO_RE.test(userText || "") || reply.includes(d.url)) return reply;
+  return `${reply.trim()}\n\nDemo video 👇\n${d.url}`;
+}
+
 /** Files that belong together: labels that differ only by a part/page number ("Brochure 1", "Brochure part 2",
  *  "AlkaFresh brochure (2/2)") share one set key; "" when the label carries no number. */
 export function fileSetKey(label: string): string {
@@ -111,8 +126,14 @@ ${sideBySide ? "" : `- Tagline: ${card.tagline}
 - Everything on the card / website (products with prices, services, FAQ, timings, address, offers, reviews — answer from these first):
 ${cardDigest({ ...card, pages: content }, { maxChars: 9000 })}
 
-${(card.botFiles ?? []).length && channel !== "phone" ? `FILES YOU CAN SEND (real links only — never invent one). When the customer asks for details, specifications, a brochure, a catalogue, a price list, a photo or "details bhejo", send the matching file(s): one short line of text (with our website link), then each URL ALONE on its own line as "[MEDIA] <url>". A brochure or catalogue in several parts or pages (same name with 1, 2, part 1, page 2…) is ONE thing: always send ALL its parts together, in order. "Details"/"brochure"/"catalogue" with 4 files or fewer here: send them all. Never in a greeting; never describe a file instead of sending it; never send the same file twice in a chat unless asked again.
-${(card.botFiles ?? []).map((f) => `- ${f.label} (${f.kind}): ${f.url}`).join("\n")}
+${(card.botFiles ?? []).some((f) => f.kind !== "link") && channel !== "phone" ? `FILES YOU CAN SEND (real links only — never invent one). When the customer asks for details, specifications, a brochure, a catalogue, a price list, a photo or "details bhejo", send the matching file(s): one short line of text (with our website link), then each URL ALONE on its own line as "[MEDIA] <url>". A brochure or catalogue in several parts or pages (same name with 1, 2, part 1, page 2…) is ONE thing: always send ALL its parts together, in order. "Details"/"brochure"/"catalogue" with 4 files or fewer here: send them all. Never in a greeting; never describe a file instead of sending it; never send the same file twice in a chat unless asked again.
+${(card.botFiles ?? []).filter((f) => f.kind !== "link").map((f) => `- ${f.label} (${f.kind}): ${f.url}`).join("\n")}
+
+` : ""}${(card.botFiles ?? []).some((f) => f.kind === "link") ? channel === "phone" ? `DEMO VIDEO: we have an online demo video. When the caller wants a demo or to see how it works, say it will be sent to them on WhatsApp right away, and offer a live demo too.
+
+` : `LINKS YOU CAN SHARE (write the URL inside your text, on its own line, never as [MEDIA]; real links only):
+${(card.botFiles ?? []).filter((f) => f.kind === "link").map((f) => `- ${f.label}: ${f.url}`).join("\n")}
+DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share the demo video link with one short line ("ये रहा demo video 👇"), then offer the next step (a live demo / home visit / order). Share it once per chat unless they ask again; never in a bare greeting.
 
 ` : ""}THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
 - This is the seller's OWN website: send customers there for details, catalogue and orders; never mention the Shubhora card page unless asked. The "From my website" part of the knowledge above is what that site says — answer from it first.` : " (the card page)"}

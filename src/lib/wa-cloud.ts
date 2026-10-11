@@ -3,7 +3,7 @@
 // handling (CRM log + menu bot + AI reply) and delivery statuses live here;
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
-import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
+import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, ensureDemoLink, demoLink, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import type { Card } from "@/lib/types";
@@ -227,7 +227,10 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (!history.length || history[history.length - 1].content !== text) history.push({ role: "user", content: text });
     const ai = await aiReply(card, history, "whatsapp");
     const { text: out0, alert } = splitAlert(ai);
-    const { text: out, order } = splitOrder(out0);
+    const { text: out1, order } = splitOrder(out0);
+    // Demo talk → the demo video link goes along (once per chat: an earlier bot message already carrying it counts).
+    const demoShared = !!demoLink(card.botFiles) && rows.some((r) => r.direction === "out" && r.text?.includes(demoLink(card.botFiles)!.url));
+    const out = ensureDemoLink(out1, text, card.botFiles, demoShared);
     if (out || order) {
       if (out) await reply(acc, card, phone, out);
       if (alert && leadId) await note(acc.owner_id, leadId, `🔔 AI alert: ${alert}`, true);
@@ -259,7 +262,13 @@ async function reply(acc: CloudAccount, card: Card | null, phone: string, raw: s
     }
     for (const url of media) {
       const low = url.toLowerCase().split("?")[0];
-      const label = card?.botFiles?.find((f) => f.url === url)?.label;
+      const file = card?.botFiles?.find((f) => f.url === url);
+      const label = file?.label;
+      if (file?.kind === "link" || !/\.(mp4|mov|pdf|jpe?g|png|webp)$/.test(low)) { // a plain link (YouTube…) marked as media: send it as text
+        const id = await sendCloud(acc, phone, { text: url });
+        if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", text: url });
+        continue;
+      }
       const payload = /\.(mp4|mov)$/.test(low) ? { videoUrl: url, caption: label } : /\.pdf$/.test(low) ? { documentUrl: url, fileName: `${(label || "document").replace(/[^a-z0-9 _-]+/gi, "").slice(0, 60) || "document"}.pdf`, caption: label } : { imageUrl: url, caption: label };
       const id = await sendCloud(acc, phone, payload);
       if (id) await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, waId: id, direction: "out", sender: "bot", kind: "videoUrl" in payload ? "video" : "documentUrl" in payload ? "document" : "image", text: `[${label || "file"}] ${url}` });

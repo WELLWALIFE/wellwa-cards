@@ -3,7 +3,7 @@
 // The owner names their own website; the bot then sends customers THAT link instead of the card page and answers from
 // what the site says (read into the card's knowledge base here, saved to the live card at once).
 import { useEffect, useRef, useState } from "react";
-import { Bot, Check, FileText, ImagePlus, LoaderCircle, Trash2 } from "lucide-react";
+import { Bot, Check, FileText, ImagePlus, Link2, LoaderCircle, PlaySquare, Trash2 } from "lucide-react";
 import { publishCard } from "@/lib/cloud";
 import { uploadImage, uploadPdf } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
@@ -76,6 +76,17 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
       if (await saveFiles([...files, { label, url, kind }].slice(0, 12))) setMsg(T("✅ फ़ाइल जुड़ गई — नाम ठीक कर लें ताकि बॉट सही फ़ाइल चुने।", "✅ File added — fix its name so the bot picks the right one."));
     } finally { setFileBusy(false); if (imgRef.current) imgRef.current.value = ""; if (pdfRef.current) pdfRef.current.value = ""; }
   }
+  /** A demo video on YouTube (or any page): the bot shares the link when a customer talks about a demo. */
+  async function addLink() {
+    const raw = (prompt(T("वीडियो / पेज का लिंक (जैसे YouTube demo video):", "Link of the video / page (e.g. YouTube demo video):")) ?? "").trim();
+    if (!raw) return;
+    const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
+    try { new URL(url); } catch { setErr(T("लिंक सही नहीं है।", "That link is not valid.")); return; }
+    if (files.some((f) => f.url === url)) return;
+    setErr(""); setMsg("");
+    const isVideo = /youtu\.be|youtube\.com|vimeo\.com|instagram\.com\/reel|facebook\.com.*video/i.test(url);
+    if (await saveFiles([...files, { label: isVideo ? "Demo video" : "Link", url, kind: "link" as const }].slice(0, 12))) setMsg(T("✅ लिंक जुड़ गया — ग्राहक demo की बात करे तो बॉट यही भेजेगा। नाम में \"demo\" रहने दें।", "✅ Link added — when a customer talks about a demo the bot shares it. Keep \"demo\" in its name."));
+  }
   async function renameFile(url: string) {
     const label = (labels[url] ?? "").trim().slice(0, 60);
     if (!label) return;
@@ -107,7 +118,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
       )}
       <div className="mt-4 border-t border-border pt-3">
         <p className="text-sm font-semibold leading-tight">{T("बॉट जो फ़ाइलें भेज सके", "Files the bot can send")}</p>
-        <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
+        <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। YouTube demo video का लिंक जोड़ें तो ग्राहक demo की बात करते ही बॉट वो भेज देगा। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Add a YouTube demo video link and the bot shares it whenever a customer talks about a demo. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
         {files.length > 0 && (
           <ul className="mt-2 space-y-1.5">
             {files.map((f) => (
@@ -115,7 +126,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
                 {f.kind === "image"
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={f.url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
-                  : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><FileText className="h-5 w-5" /></span>}
+                  : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface2 text-muted">{f.kind === "link" ? (/youtu/i.test(f.url) ? <PlaySquare className="h-5 w-5" /> : <Link2 className="h-5 w-5" />) : <FileText className="h-5 w-5" />}</span>}
                 <input value={labels[f.url] ?? f.label} onChange={(e) => setLabels({ ...labels, [f.url]: e.target.value })} onBlur={() => { if ((labels[f.url] ?? f.label) !== f.label) void renameFile(f.url); }} maxLength={60} className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none" placeholder={T("फ़ाइल का नाम, जैसे AlkaFresh 1101 specifications", "File name, e.g. AlkaFresh 1101 specifications")} />
                 <button type="button" onClick={() => removeFile(f.url)} className="p-1.5 text-muted hover:text-danger" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
               </li>
@@ -125,6 +136,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
         <div className="mt-2 flex flex-wrap gap-2">
           <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => imgRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{fileBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />} {T("फ़ोटो / पेज जोड़ें", "Add photo / page")}</button>
           <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => pdfRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"><FileText className="h-3.5 w-3.5" /> {T("PDF जोड़ें", "Add PDF")}</button>
+          <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => void addLink()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"><PlaySquare className="h-3.5 w-3.5" /> {T("Demo video लिंक (YouTube)", "Demo video link (YouTube)")}</button>
           <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "image")} />
           <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "pdf")} />
         </div>

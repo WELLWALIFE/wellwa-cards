@@ -11,7 +11,7 @@ import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supab
 import { clientKey, publicAiAllowed, rateLimited, sameOriginStrict } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { languageLock, replyLanguage } from "@/lib/ai-training";
-import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, completeFileSets, type ChatOrder } from "@/lib/wa-ai";
+import { buildSystem, getBrandTraining, splitOrder, orderSummary, orderPaise, completeFileSets, ensureDemoLink, demoLink, type ChatOrder } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
 import { getCardByUsername } from "@/lib/sample-data";
@@ -149,7 +149,9 @@ export async function POST(
         })),
       });
       if (!blocked) {
-        const { text: reply, order } = splitOrder(completeFileSets(text.trim(), card.botFiles));
+        const { text: reply0, order } = splitOrder(completeFileSets(text.trim(), card.botFiles));
+        const demo = demoLink(card.botFiles);
+        const reply = ensureDemoLink(reply0, safeMessages[safeMessages.length - 1]?.content ?? "", card.botFiles, !!demo && safeMessages.some((m) => m.role !== "user" && m.content.includes(demo.url)));
         if (reply || order) {
           if (firstMessage) logChat(card, safeMessages, { newLead: true }).catch(() => {});
           // The salesman closed: the owner gets a hot lead and an alert; the visitor gets the next-step buttons.
