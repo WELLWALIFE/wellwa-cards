@@ -36,6 +36,23 @@ export const BLUEPRINTS: Blueprint[] = [
     defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster" },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
+  // The three structures added after the Oct 2026 market review (docs/website-looks-v3.md): what the best bakery,
+  // shop and services sites are built like, none of which the first three could draw.
+  {
+    key: "wordmark", name: "Wordmark", hi: "वर्डमार्क", blurb: "The name set huge, a strip of photos under it", blurbHi: "नाम बहुत बड़ा, नीचे photos की पट्टी",
+    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "mark" },
+    fits: ["cafe", "sweets", "restaurant", "garments", "boutique", "photography", "interior", "event", "dance", "printing"],
+  },
+  {
+    key: "shop", name: "Shop", hi: "शॉप", blurb: "A category row, a promo banner, products with Order buttons", blurbHi: "category row, promo banner, Order button वाले products",
+    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "shelf" },
+    fits: ["kirana", "sweets", "garments", "mobile", "medical", "gift", "footwear", "optical", "hardware", "furniture", "grocery-online", "wholesale", "dairy"],
+  },
+  {
+    key: "collage", name: "Collage", hi: "कोलाज", blurb: "Words and quick actions beside a photo collage", blurbHi: "शब्द और quick actions, बगल में photo collage",
+    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "collage" },
+    fits: ["salon", "spa", "doctor", "dentist", "gym", "electrician", "cleaning", "auto", "school", "coaching", "hospital", "hotel"],
+  },
 ];
 export const blueprintOf = (key: string | undefined) => BLUEPRINTS.find((b) => b.key === key) ?? null;
 

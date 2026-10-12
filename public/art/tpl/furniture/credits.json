@@ -1,0 +1,93 @@
+{
+ "sofa-showroom": {
+  "id": 33349417,
+  "photographer": "Atul Mohan",
+  "url": "https://www.pexels.com/photo/modern-living-room-with-blue-and-beige-furniture-33349417/",
+  "query": "furniture showroom sofas display interior",
+  "role": "cover"
+ },
+ "carpenter-workshop": {
+  "id": 5710910,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/crop-carpenter-grinding-round-piece-of-wood-in-joinery-5710910/",
+  "query": "carpenter sanding wooden furniture workshop",
+  "role": "cover"
+ },
+ "showroom-floor": {
+  "id": 7060822,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/bedroom-interior-with-bed-near-wardrobe-with-shelves-7060822/",
+  "query": "furniture store beds wardrobes display",
+  "role": "space"
+ },
+ "shop-front": {
+  "id": 38443852,
+  "photographer": "BI ravencrow",
+  "url": "https://www.pexels.com/photo/brick-facade-of-illuminated-boutique-at-night-38443852/",
+  "query": "furniture shop glass storefront evening",
+  "role": "space"
+ },
+ "fitting-team": {
+  "id": 31112178,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/female-textile-workers-in-factory-setting-31112178/",
+  "query": "workers assembling wardrobe bedroom",
+  "role": "people"
+ },
+ "customer-fabric": {
+  "id": 4968672,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/close-up-of-hands-working-with-documents-4968672/",
+  "query": "woman choosing sofa fabric swatches",
+  "role": "people"
+ },
+ "sofa": {
+  "id": 7587782,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/room-with-couch-and-tv-7587782/",
+  "query": "grey L shape fabric sofa living room",
+  "role": "product"
+ },
+ "bed": {
+  "id": 3755585,
+  "photographer": "Castorly Stock",
+  "url": "https://www.pexels.com/photo/white-pillows-on-bed-3755585/",
+  "query": "solid wood king bed headboard bedroom",
+  "role": "product"
+ },
+ "dining": {
+  "id": 27952969,
+  "photographer": "Eimi Vergara",
+  "url": "https://www.pexels.com/photo/comedor-27952969/",
+  "query": "six seater wooden dining table chairs",
+  "role": "product"
+ },
+ "wardrobe": {
+  "id": 7986061,
+  "photographer": "Misuto Kazo",
+  "url": "https://www.pexels.com/photo/a-bedside-table-with-a-mirror-7986061/",
+  "query": "sliding door wardrobe mirror bedroom",
+  "role": "product"
+ },
+ "office-chair": {
+  "id": 20388126,
+  "photographer": "Brunxs",
+  "url": "https://www.pexels.com/photo/armchair-in-darkness-in-room-20388126/",
+  "query": "ergonomic mesh office chair desk",
+  "role": "product"
+ },
+ "wood-grain": {
+  "id": 9996341,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/brown-wooden-surface-in-close-up-photography-9996341/",
+  "query": "teak wood grain polish close up",
+  "role": "detail"
+ },
+ "showroom-team": {
+  "id": 8837463,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/woman-leaning-on-the-bookcase-while-holding-a-clipboard-8837463/",
+  "query": "furniture store staff team smiling",
+  "role": "team"
+ }
+}

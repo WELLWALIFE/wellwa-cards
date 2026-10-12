@@ -86,6 +86,12 @@ export const HERO_VARIANT_BLURBS: Record<HeroVariant, string> = {
   "cover-centre": "one centred block over the photo (hotels, banquets, events)",
   poster: "a block of the trade's colour with the headline set big and the photo as a card hanging over its edge — the default",
   "poster-ink": "the colour block alone, type only (no photo)",
+  mark: "the business name set huge on paper, a strip of photos and one colour tile with the button under it — the default wordmark",
+  "mark-ink": "the huge name on the ink field, type only (no photo)",
+  shelf: "a row of round category / product chips, then a promo banner with the photo and the Order button — the default shelf",
+  "shelf-ink": "the chip row and a solid colour promo banner (no photo)",
+  collage: "the words and a grid of quick-action tiles beside a 2×2 photo collage — the default collage",
+  "collage-ink": "the words and the quick-action tiles alone (no photo)",
 };
 /** The gate on each variant, in words the designer reads. */
 const HERO_VARIANT_GATES: Partial<Record<HeroVariant, string>> = {

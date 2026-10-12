@@ -1,0 +1,57 @@
+{
+ "showroom-racks": {
+  "id": 4427652,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-brown-dress-statue-4427652/",
+  "query": "indian clothing shop colourful saree racks",
+  "role": "cover"
+ },
+ "tailor-measuring": {
+  "id": 8837250,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-woman-holding-a-tape-measure-8837250/",
+  "query": "tailor measuring tape fitting fabric",
+  "role": "people"
+ },
+ "sarees": {
+  "id": 28943520,
+  "photographer": "Manish Jangid",
+  "url": "https://www.pexels.com/photo/elegant-woman-in-traditional-indian-saree-28943520/",
+  "query": "banarasi silk saree gold zari",
+  "role": "product"
+ },
+ "kurta-set": {
+  "id": 22431192,
+  "photographer": "MK .",
+  "url": "https://www.pexels.com/photo/a-woman-in-a-traditional-tunique-22431192/",
+  "query": "women cotton kurta palazzo dupatta",
+  "role": "product"
+ },
+ "lehenga": {
+  "id": 12791932,
+  "photographer": "\ud835\udd86\ud835\udd92\ud835\udd86\ud835\udd93 \ud835\udd86\ud835\udd8f\ud835\udd8e\ud835\udd92\ud835\udd86\ud835\udd91 \ud835\udd71\ud835\udd86\ud835\udd98\ud835\udd8d\ud835\udd8e\ud835\udd94\ud835\udd93 \ud835\udd7e\ud835\udd99\ud835\udd9e\ud835\udd91\ud835\udd8e\ud835\udd98\ud835\udd99",
+  "url": "https://www.pexels.com/photo/photo-of-a-woman-wearing-a-dress-12791932/",
+  "query": "red bridal lehenga heavy embroidery",
+  "role": "product"
+ },
+ "kids-ethnic": {
+  "id": 8819078,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-girl-in-traditional-clothing-8819078/",
+  "query": "indian kids festive ethnic wear",
+  "role": "product"
+ },
+ "zari-embroidery": {
+  "id": 12972006,
+  "photographer": "Jimmy Chan",
+  "url": "https://www.pexels.com/photo/a-symbol-made-with-beads-12972006/",
+  "query": "zardozi embroidery closeup gold thread",
+  "role": "detail"
+ },
+ "fabric-stack": {
+  "id": 14933840,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/stack-of-rolled-blankets-14933840/",
+  "query": "colorful folded indian fabric rolls stacked"
+ }
+}

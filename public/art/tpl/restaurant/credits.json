@@ -1,0 +1,92 @@
+{
+ "chef": {
+  "id": 36430088,
+  "photographer": "Willians Huerta",
+  "url": "https://www.pexels.com/photo/chef-adding-finishing-touches-to-gourmet-dish-36430088/",
+  "query": "chef plating dish kitchen"
+ },
+ "thali": {
+  "id": 8818667,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-person-praying-in-front-of-the-foods-on-the-table-8818667/",
+  "query": "indian thali overhead food"
+ },
+ "tandoor": {
+  "id": 20422195,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/meal-on-plate-20422195/",
+  "query": "tandoori kebab platter"
+ },
+ "burger": {
+  "id": 12653336,
+  "photographer": "Sylwester Ficek",
+  "url": "https://www.pexels.com/photo/mouthwatering-burgers-and-fries-on-a-wooden-trays-12653336/",
+  "query": "gourmet burger fries"
+ },
+ "curry": {
+  "id": 20408457,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/indian-food-ingredients-laid-out-on-small-plates-20408457/",
+  "query": "indian curry bowls naan"
+ },
+ "dark": {
+  "id": 24433378,
+  "photographer": "Gia",
+  "url": "https://www.pexels.com/photo/a-table-set-for-two-with-two-glasses-of-wine-24433378/",
+  "query": "fine dining dark moody restaurant table"
+ },
+ "interior": {
+  "id": 9316203,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/an-empty-restaurant-9316203/",
+  "query": "indian restaurant interior warm lighting tables"
+ },
+ "biryani": {
+  "id": 12669168,
+  "photographer": "Pixel Senses",
+  "url": "https://www.pexels.com/photo/rice-with-vegetables-12669168/",
+  "query": "biryani closeup"
+ },
+ "cafe": {
+  "id": 17609723,
+  "photographer": "Emre  Akyol",
+  "url": "https://www.pexels.com/photo/employee-hand-holding-coffee-cup-17609723/",
+  "query": "cafe counter barista coffee"
+ },
+ "latte": {
+  "id": 10206600,
+  "photographer": "Raphael Loquellano",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-cup-of-coffee-10206600/",
+  "query": "latte art coffee cup"
+ },
+ "mocktail": {
+  "id": 12360556,
+  "photographer": "Bilakis",
+  "url": "https://www.pexels.com/photo/cold-drinks-on-table-12360556/",
+  "query": "colorful mocktail drinks"
+ },
+ "facade": {
+  "id": 36527954,
+  "photographer": "Yasin Aydın",
+  "url": "https://www.pexels.com/photo/night-view-of-cozy-cafe-frontage-with-neon-sign-36527954/",
+  "query": "indian restaurant entrance storefront evening"
+ },
+ "family": {
+  "id": 35382036,
+  "photographer": "Ubeydulah Beşir KÖROĞLU",
+  "url": "https://www.pexels.com/photo/sharing-platter-of-delicious-gourmet-food-at-brunch-35382036/",
+  "query": "friends eating together indian restaurant table"
+ },
+ "dessert": {
+  "id": 37294501,
+  "photographer": "Swapnali Khaire",
+  "url": "https://www.pexels.com/photo/delicious-indian-gulab-jamun-dessert-in-bowl-37294501/",
+  "query": "gulab jamun rasmalai dessert plate"
+ },
+ "pizza": {
+  "id": 30737921,
+  "photographer": "tyler sm",
+  "url": "https://www.pexels.com/photo/top-view-of-delicious-cheese-pizza-on-wooden-board-30737921/",
+  "query": "margherita pizza wooden board"
+ }
+}

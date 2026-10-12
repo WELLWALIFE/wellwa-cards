@@ -4,7 +4,7 @@
 // wording is refreshed. One Gemini call for the copy; the page/block structure is the owner's.
 import { aiImage, storeImage } from "@/lib/media/ai-image";
 import { numberCheck } from "@/lib/card-ai";
-import { getTemplate } from "@/lib/templates";
+import { findTemplate } from "@/lib/template-catalog";
 import { readReference, type Reference } from "@/lib/reference-site";
 import { cleanStyle, styleFromReference } from "@/lib/site-style";
 import { cleanHome } from "@/lib/site-home";
@@ -289,7 +289,7 @@ const isOurArt = (url: string) => /^(?:https?:\/\/[^/]+)?\/(?:art|wellwa)\//i.te
 export async function applySiteTemplate(userId: string, key: string, cardId?: string): Promise<Card> {
   const row = await myCard(userId, cardId);
   if (!row) throw new Error("NO_CARD");
-  const t = getTemplate(key);
+  const t = findTemplate(key);
   if (!t || key === "blank") throw new Error("Template not found");
   const cur = row.data; const tpl = t.data;
   // The owner's own cover photo always wins; a generated art cover may be swapped for the new look's cover.
@@ -319,6 +319,10 @@ export async function applySiteTemplate(userId: string, key: string, cardId?: st
         enabled: true,
         hero: cur.site?.hero ?? { headline: cur.company || cur.name, sub: cur.tagline || "" },
         templateKey: key,
+        // A template that carries its own design (blueprint, palette, fonts, hero, section order) brings it along;
+        // the owner's words, photos and numbers stay.
+        ...(tpl.site?.style ? { style: tpl.site.style } : {}),
+        ...(tpl.site?.home ? { home: tpl.site.home } : {}),
       },
     };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data: next, about: next.about, tagline: next.tagline }) });

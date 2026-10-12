@@ -33,6 +33,10 @@ import { BottomSheet, CountUp, CtaPair, Display, HERO_CSS, HeroPhoto, Kicker, Ma
 import { BentoHero, bentoFacts, BENTO_CSS } from "@/components/site-bento";
 import { CinematicHero, ParallaxBand, QuoteRotator, CINEMATIC_CSS } from "@/components/site-cinematic";
 import { PosterHero, POSTER_CSS } from "@/components/site-poster";
+import { WordmarkHero, WORDMARK_CSS } from "@/components/site-wordmark";
+import { ShopHero, SHOP_CSS } from "@/components/site-shop";
+import { CollageHero, COLLAGE_CSS } from "@/components/site-collage";
+import { BODY_CSS } from "@/components/site-bodies";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
 
@@ -352,8 +356,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : ""}` }} />
-    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} style={{ background: "var(--surface)" }}>
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : ""}` }} />
+    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp} data-body={card.site?.style?.body} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
       {barLive && !barClosed && (
@@ -418,7 +422,14 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       <NoticeBar card={card} hi={hiNow} />
 
       <main className="relative flex-1 pb-14 md:pb-0">
-        {isHome && bp === "story" ? (
+        {isHome && bp === "wordmark" ? (
+          <WordmarkHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
+        ) : isHome && bp === "shop" ? (
+          <ShopHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento}
+            onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); } }} />
+        ) : isHome && bp === "collage" ? (
+          <CollageHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento} />
+        ) : isHome && bp === "story" ? (
           <PosterHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "cinematic" ? (
           <CinematicHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}

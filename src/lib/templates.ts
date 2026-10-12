@@ -21,6 +21,9 @@ export type CardTemplateDef = {
   /** The content is real (prices, FAQ, videos, about) and stays as written; only the owner's identity goes in
    *  (name, photo, number, email, city). The Shubhora seller card. */
   keepContent?: boolean;
+  /** Not yet released: in the review board and the admin only — never in the public gallery or the pickers
+   *  (owner reviews the Oct 2026 trade templates first, then releases them). */
+  draft?: boolean;
 };
 
 const uid = (p: string, n: number) => `${p}${n}`;

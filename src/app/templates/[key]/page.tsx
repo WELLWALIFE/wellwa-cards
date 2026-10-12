@@ -2,7 +2,8 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
-import { BUILT_IN_TEMPLATES, NOT_PUBLIC_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
+import { NOT_PUBLIC_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
+import { findTemplate } from "@/lib/template-catalog";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { qrDataUrl } from "@/lib/qr";
 import { CardView } from "@/components/card-view";
@@ -13,7 +14,8 @@ const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").repla
 /** Built-in templates, with any owner-saved row of the same key winning. */
 async function loadTemplate(key: string): Promise<CardTemplateDef | null> {
   // A company's own design (e.g. Wellwa's), and anything carrying the partner plan, is never a public page.
-  if (NOT_PUBLIC_TEMPLATES.has(key) || BUILT_IN_TEMPLATES.find((t) => t.key === key)?.brand) return null;
+  const built = findTemplate(key);
+  if (NOT_PUBLIC_TEMPLATES.has(key) || built?.brand || built?.draft) return null;
   const sb = getPublicSupabase();
   if (sb) {
     try {
@@ -26,7 +28,7 @@ async function loadTemplate(key: string): Promise<CardTemplateDef | null> {
       if (data) return data as CardTemplateDef;
     } catch { /* fall through to built-ins */ }
   }
-  return BUILT_IN_TEMPLATES.find((t) => t.key === key) ?? null;
+  return findTemplate(key) ?? null;
 }
 
 export async function generateMetadata({

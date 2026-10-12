@@ -5,6 +5,7 @@
 
 import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 import { BUILT_IN_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
+import { ALL_TEMPLATES } from "@/lib/template-catalog";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { callerBrandSlug, canUseTemplate, templateBrand } from "@/lib/template-access";
 
@@ -16,7 +17,8 @@ export async function GET(request: Request) {
   const [admin, mine] = await Promise.all([adminAllowed(request).catch(() => false), callerBrandSlug(request)]);
   const allowed = (t: Row) => canUseTemplate(t.brand ?? templateBrand(t.key, BUILT_IN_TEMPLATES), mine, admin);
   const headers = { "Cache-Control": "private, no-store" };
-  const built: Row[] = BUILT_IN_TEMPLATES.map((t, i) => ({ ...t, sort: i, custom: false })).filter(allowed);
+  // Drafts (the trade templates under review) reach the admin only.
+  const built: Row[] = ALL_TEMPLATES.filter((t) => admin || !t.draft).map((t, i) => ({ ...t, sort: i, custom: false })).filter(allowed);
 
   const sb = getPublicSupabase();
   if (!sb) return Response.json({ templates: built }, { headers });

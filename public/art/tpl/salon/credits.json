@@ -1,0 +1,92 @@
+{
+ "cut": {
+  "id": 3356170,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/person-cutting-hair-3356170/",
+  "query": "hairstylist cutting woman hair salon"
+ },
+ "bridal": {
+  "id": 11742214,
+  "photographer": "Imad Clicks",
+  "url": "https://www.pexels.com/photo/a-beautiful-woman-wearing-maang-tikka-11742214/",
+  "query": "indian bridal makeup close up"
+ },
+ "barber": {
+  "id": 3998421,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/man-in-black-suit-holding-mans-face-3998421/",
+  "query": "barber beard trim man"
+ },
+ "nails": {
+  "id": 5484948,
+  "photographer": "Felix Adams",
+  "url": "https://www.pexels.com/photo/person-getting-her-nails-done-5484948/",
+  "query": "nail art manicure hands"
+ },
+ "colour": {
+  "id": 8468125,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/a-hairdresser-coloring-a-woman-s-hair-8468125/",
+  "query": "hair colouring balayage salon"
+ },
+ "wash": {
+  "id": 8834048,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/elderly-woman-at-hair-salon-8834048/",
+  "query": "hair wash salon basin"
+ },
+ "products": {
+  "id": 5632324,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/pink-and-white-beauty-products-5632324/",
+  "query": "makeup products flatlay pastel"
+ },
+ "reception": {
+  "id": 7195809,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/reception-desk-in-beauty-studio-7195809/",
+  "query": "salon reception desk minimal"
+ },
+ "blowdry": {
+  "id": 33401865,
+  "photographer": "Mert Coşkun",
+  "url": "https://www.pexels.com/photo/woman-drying-hair-with-hair-dryer-in-bathroom-33401865/",
+  "query": "hair blow dry styling salon"
+ },
+ "fade": {
+  "id": 18503633,
+  "photographer": "Rahib Hamidov",
+  "url": "https://www.pexels.com/photo/a-person-using-clippers-18503633/",
+  "query": "mens haircut fade barber shop"
+ },
+ "spa": {
+  "id": 6186740,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/white-candle-holder-on-wooden-surface-6186740/",
+  "query": "spa massage stones candles"
+ },
+ "mehndi": {
+  "id": 5776642,
+  "photographer": "Suhail Lone",
+  "url": "https://www.pexels.com/photo/hand-covered-in-henna-tattoos-5776642/",
+  "query": "mehndi henna hands"
+ },
+ "glow": {
+  "id": 11311210,
+  "photographer": "TH Team",
+  "url": "https://www.pexels.com/photo/pretty-woman-in-white-tube-top-11311210/",
+  "query": "woman glowing skin portrait studio"
+ },
+ "interior": {
+  "id": 7750124,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/leather-chairs-in-front-of-round-mirrors-7750124/",
+  "query": "modern hair salon interior chairs mirrors"
+ },
+ "facial": {
+  "id": 12115040,
+  "photographer": "Denys Mikhalevych",
+  "url": "https://www.pexels.com/photo/unrecognizable-beautician-removing-clay-mask-from-woman-face-12115040/",
+  "query": "facial spa treatment woman relaxing"
+ }
+}

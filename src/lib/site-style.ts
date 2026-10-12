@@ -398,7 +398,7 @@ export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolea
 }
 
 /** The page structures (docs/website-looks-v2.md §3); the registry with names and defaults is site-blueprints.ts. */
-export const BLUEPRINT_KEYS = ["bento", "cinematic", "story"] as const;
+export const BLUEPRINT_KEYS = ["bento", "cinematic", "story", "wordmark", "shop", "collage"] as const;
 export type BlueprintKey = (typeof BLUEPRINT_KEYS)[number];
 
 /** Corner sets: `r` is the legacy `--r` (unchanged); ctl / card / tile / img are the four tokens of §2.4, in px. */
@@ -507,6 +507,7 @@ export function cleanStyle(x: unknown): SiteStyle | null {
   if (typeof o.font === "string" && fontSetFor(o.font)) out.font = FONT_ALIASES[o.font] ?? o.font;
   if (typeof o.hero === "string" && HERO_LAYOUTS.some((h) => h.key === o.hero)) out.hero = o.hero as HeroLayout;
   if (typeof o.heroVariant === "string" && (HERO_VARIANTS as readonly string[]).includes(o.heroVariant)) out.heroVariant = o.heroVariant as HeroVariant;
+  if (o.body === "dark") out.body = "dark";
   if (typeof o.radius === "string" && RADII.some((r) => r.key === o.radius)) out.radius = o.radius as NonNullable<SiteStyle["radius"]>;
   const lay = cleanLayouts(o.layouts);
   if (lay) out.layouts = lay;

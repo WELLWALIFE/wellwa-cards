@@ -1,0 +1,66 @@
+{
+ "counter": {
+  "id": 40016098,
+  "photographer": "FAYSAL KHAN",
+  "url": "https://www.pexels.com/photo/fruit-vendor-at-market-in-mandaguchha-pakistan-40016098/",
+  "query": "shopkeeper weighing rice sack scale",
+  "role": "cover"
+ },
+ "exterior": {
+  "id": 13369323,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/men-shopping-in-the-shop-13369323/",
+  "query": "small shop entrance street india",
+  "role": "space"
+ },
+ "spices": {
+  "id": 31280796,
+  "photographer": "Kamakshi",
+  "url": "https://www.pexels.com/photo/vibrant-assortment-of-indian-spice-powders-31280796/",
+  "query": "whole indian spices bowls turmeric",
+  "role": "product"
+ },
+ "household": {
+  "id": 5217900,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/bottles-with-cleaning-products-on-table-5217900/",
+  "query": "detergent soap cleaning products shelf",
+  "role": "product"
+ },
+ "shopfront": {
+  "id": 34344544,
+  "photographer": "@coldbeer",
+  "url": "https://www.pexels.com/photo/local-convenience-store-with-green-field-sign-34344544/",
+  "query": "indian grocery store daytime storefront"
+ },
+ "packing": {
+  "id": 30681021,
+  "photographer": "Roman Saienko",
+  "url": "https://www.pexels.com/photo/traditional-spice-market-in-mathura-india-30681021/",
+  "query": "indian shopkeeper packing groceries bag"
+ },
+ "snacks": {
+  "id": 39138237,
+  "photographer": "AmirHadi Manavi Moghadam",
+  "url": "https://www.pexels.com/photo/assortment-of-colorful-pastries-and-tea-39138237/",
+  "query": "tea cup biscuits indian namkeen"
+ },
+ "dryfruits": {
+  "id": 36576778,
+  "photographer": "Kunal Lakhotia",
+  "url": "https://www.pexels.com/photo/delicious-kulfi-ice-cream-with-nuts-and-vermicelli-36576778/",
+  "query": "almonds cashews pistachios raisins bowls"
+ },
+ "weighing": {
+  "id": 16610859,
+  "photographer": "Efrem  Efre",
+  "url": "https://www.pexels.com/photo/hanging-bowl-with-coffee-beans-16610859/",
+  "query": "brass weighing scale grains market"
+ },
+ "team": {
+  "id": 14349176,
+  "photographer": "Peter Holmboe",
+  "url": "https://www.pexels.com/photo/man-in-gray-sweater-standing-inside-a-store-14349176/",
+  "query": "indian shopkeeper smiling grocery store"
+ }
+}

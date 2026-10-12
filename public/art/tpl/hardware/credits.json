@@ -1,0 +1,86 @@
+{
+ "shopfront": {
+  "id": 37435112,
+  "photographer": "Sami TÜRK",
+  "url": "https://www.pexels.com/photo/vintage-hardware-storefront-with-displayed-goods-37435112/",
+  "query": "indian hardware paint shop front",
+  "role": "cover"
+ },
+ "aisle": {
+  "id": 735338,
+  "photographer": "neil kelly",
+  "url": "https://www.pexels.com/photo/grey-steel-kitchenwares-735338/",
+  "query": "hardware store aisle shelves tools",
+  "role": "space"
+ },
+ "showroom": {
+  "id": 7534282,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/spacious-bathroom-with-minimalist-design-and-shower-cabin-7534282/",
+  "query": "bathroom fittings showroom display taps",
+  "role": "space"
+ },
+ "loading": {
+  "id": 30674793,
+  "photographer": "Mad Knoxx Deluxe",
+  "url": "https://www.pexels.com/photo/workers-loading-bags-onto-truck-in-industrial-setting-30674793/",
+  "query": "worker loading cement bags truck",
+  "role": "people"
+ },
+ "paints": {
+  "id": 5641407,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/buckets-of-paint-on-the-floor-5641407/",
+  "query": "paint buckets colour swatches rollers",
+  "role": "product"
+ },
+ "taps": {
+  "id": 7327156,
+  "photographer": "PNW Production",
+  "url": "https://www.pexels.com/photo/a-person-s-hand-holding-a-silver-faucet-7327156/",
+  "query": "chrome basin mixer tap closeup",
+  "role": "product"
+ },
+ "sanitary": {
+  "id": 6956845,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/contemporary-bathroom-interior-with-washbasin-and-toilet-bowl-6956845/",
+  "query": "white ceramic toilet washbasin bathroom",
+  "role": "product"
+ },
+ "pipes": {
+  "id": 29301874,
+  "photographer": "Sergei Starostin",
+  "url": "https://www.pexels.com/photo/stack-of-pvc-pipes-at-a-construction-site-29301874/",
+  "query": "pvc pipes fittings stacked",
+  "role": "product"
+ },
+ "tools": {
+  "id": 4792482,
+  "photographer": "Anete Lusina",
+  "url": "https://www.pexels.com/photo/screw-set-on-wooden-surface-4792482/",
+  "query": "cordless drill power tools kit",
+  "role": "product"
+ },
+ "locks": {
+  "id": 17325288,
+  "photographer": "Esra Erdem",
+  "url": "https://www.pexels.com/photo/keys-in-open-door-17325288/",
+  "query": "door lock handle brass keys",
+  "role": "product"
+ },
+ "electrical": {
+  "id": 28265032,
+  "photographer": "ranjeet .",
+  "url": "https://www.pexels.com/photo/an-electrical-panel-with-wires-and-switches-28265032/",
+  "query": "copper wire coil switches mcb",
+  "role": "product"
+ },
+ "shade-card": {
+  "id": 6474454,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-holding-a-colors-swatch-6474454/",
+  "query": "paint colour fan deck swatches",
+  "role": "detail"
+ }
+}

@@ -150,6 +150,8 @@ export const HERO_VARIANTS = [
   "board", "board-statement", "board-photo-first", "board-ink", "board-still",
   "cover", "cover-ink", "cover-split", "cover-centre",
   "poster", "poster-ink",
+  // Oct 2026 structures (docs/website-looks-v3.md): the oversized name, the shop shelf, the photo collage.
+  "mark", "mark-ink", "shelf", "shelf-ink", "collage", "collage-ink",
 ] as const;
 export type HeroVariant = (typeof HERO_VARIANTS)[number];
 
@@ -157,7 +159,7 @@ export type HeroVariant = (typeof HERO_VARIANTS)[number];
 export interface SiteStyle {
   /** The page's structure (docs/website-looks-v2.md): bento = a tile board, cinematic = full-screen scenes,
    *  story = swipe slides. Unset = the classic page (hero + sections), as every site before October 2026. */
-  blueprint?: "bento" | "cinematic" | "story";
+  blueprint?: "bento" | "cinematic" | "story" | "wordmark" | "shop" | "collage";
   /** Palette key ("midnight", "ocean", …) or "brand" — colours built from `color` / the card's theme colour. */
   palette?: string;
   /** A website-only brand colour (#rrggbb), e.g. read from the reference website; the card keeps its own. */
@@ -171,6 +173,8 @@ export interface SiteStyle {
    *  over a slowly moving strip of photos (needs four). */
   hero?: "split" | "photo" | "stage" | "minimal" | "grid" | "person" | "editorial" | "marquee";
   radius?: "sharp" | "soft" | "round";
+  /** Cinematic only: the whole page on the ink field (docs/website-looks-v3.md §4); unset = paper under the hero. */
+  body?: "dark";
   /** How much the page moves: none (still), calm (sections rise in once), lively (floating pictures, moving strip). */
   motion?: "none" | "calm" | "lively";
   /** The hero's background pattern (src/lib/brand-identity.ts); unset = dots. */

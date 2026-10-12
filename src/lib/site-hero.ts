@@ -24,6 +24,9 @@ export const HERO_VARIANTS_BY_BP: Record<BlueprintKey, readonly HeroVariant[]> =
   bento: ["board", "board-statement", "board-photo-first", "board-ink", "board-still"],
   cinematic: ["cover", "cover-ink", "cover-split", "cover-centre"],
   story: ["poster", "poster-ink"],
+  wordmark: ["mark", "mark-ink"],
+  shop: ["shelf", "shelf-ink"],
+  collage: ["collage", "collage-ink"],
 };
 export const isHeroVariant = (v: unknown): v is HeroVariant => typeof v === "string" && (HERO_VARIANTS as readonly string[]).includes(v);
 
@@ -32,6 +35,7 @@ const NO_PHOTO: Record<HeroVariant, HeroVariant> = {
   board: "board-statement", "board-statement": "board-statement", "board-photo-first": "board-statement", "board-ink": "board-ink", "board-still": "board-still",
   cover: "cover-ink", "cover-ink": "cover-ink", "cover-split": "cover-ink", "cover-centre": "cover-ink",
   poster: "poster-ink", "poster-ink": "poster-ink",
+  mark: "mark-ink", "mark-ink": "mark-ink", shelf: "shelf-ink", "shelf-ink": "shelf-ink", collage: "collage-ink", "collage-ink": "collage-ink",
 };
 /** Variants that draw the headline over the photo (scrim, grain, Ken Burns, a clip). */
 export const OVER_PHOTO: ReadonlySet<HeroVariant> = new Set<HeroVariant>(["cover", "cover-centre"]);
@@ -191,7 +195,8 @@ export function bpFocus(focus: string | undefined, bp: BlueprintKey | string | u
   const m = /^\s*(\d{1,3})%\s+(\d{1,3})%\s*$/.exec(focus ?? "");
   const clamp = (v: number) => Math.max(0, Math.min(100, v));
   const x = m ? clamp(Number(m[1])) : 50, y = m ? clamp(Number(m[2])) : 35;
-  const pull = bp === "bento" ? 50 : bp === "story" ? 30 : null;
+  // The tile-shaped heroes (board, strip, collage, promo banner) pull the subject toward the middle like the board.
+  const pull = bp === "bento" || bp === "wordmark" || bp === "shop" || bp === "collage" ? 50 : bp === "story" ? 30 : null;
   return `${x}% ${pull === null ? y : Math.round(y + (pull - y) * 0.5)}%`;
 }
 

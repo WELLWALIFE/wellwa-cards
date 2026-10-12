@@ -43,7 +43,7 @@ const bi = (en: string, hi: string): Bi => ({ en, hi });
 /** Ship-first heroes: the board, the full-bleed cover, the converting first slide. */
 // Three patterns a phone tells apart at a glance (owner, 6 Oct 2026: "teeno same ban rahi hai — 3 alag design ka pattern
 // banao"): Bento = a paper board, Cinematic = words over the photo, Poster = a colour block with the photo as a hanging card.
-const HERO: Record<BlueprintKey, HeroVariant> = { bento: "board", cinematic: "cover", story: "poster" };
+const HERO: Record<BlueprintKey, HeroVariant> = { bento: "board", cinematic: "cover", story: "poster", wordmark: "mark", shop: "shelf", collage: "collage" };
 
 type Rule = { re: RegExp; mood: TradeMood };
 const RULES: Rule[] = [

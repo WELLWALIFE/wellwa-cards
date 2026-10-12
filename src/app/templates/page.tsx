@@ -2,7 +2,8 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { pageMeta } from "@/lib/site-brand";
 import { ArrowRight, Eye } from "lucide-react";
-import { BUILT_IN_TEMPLATES, NOT_PUBLIC_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
+import { NOT_PUBLIC_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
+import { ALL_TEMPLATES } from "@/lib/template-catalog";
 import { getPublicSupabase } from "@/lib/supabase/public";
 
 export const metadata: Metadata = pageMeta("/templates", {
@@ -13,7 +14,7 @@ export const metadata: Metadata = pageMeta("/templates", {
 export const dynamic = "force-dynamic";
 
 async function loadAll(): Promise<CardTemplateDef[]> {
-  const built = BUILT_IN_TEMPLATES;
+  const built = ALL_TEMPLATES;
   const sb = getPublicSupabase();
   if (!sb) return built;
   try {
@@ -33,7 +34,7 @@ async function loadAll(): Promise<CardTemplateDef[]> {
 }
 
 export default async function TemplateGallery() {
-  const templates = (await loadAll()).filter((t) => !NOT_PUBLIC_TEMPLATES.has(t.key) && !/direct selling|distributor/i.test(`${t.category} ${t.name}`));
+  const templates = (await loadAll()).filter((t) => !t.draft && !NOT_PUBLIC_TEMPLATES.has(t.key) && !/direct selling|distributor/i.test(`${t.category} ${t.name}`));
 
   return (
     <div className="flex-1 px-5 py-14" style={{ background: "var(--bg)" }}>
