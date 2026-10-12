@@ -40,5 +40,61 @@
   "url": "https://www.pexels.com/photo/trial-frame-and-trial-lenses-on-a-white-surface-6749740/",
   "query": "trial lens set optometry kit",
   "role": "detail"
+ },
+ "fitting-frame": {
+  "id": 6069089,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-white-long-sleeve-shirt-wearing-black-sunglasses-6069089/",
+  "query": "optician helping customer try on glasses",
+  "role": "people"
+ },
+ "frame-wall": {
+  "id": 5202048,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/black-framed-sunglasses-5202048/",
+  "query": "eyeglasses display rack optical shop interior",
+  "role": "space"
+ },
+ "team": {
+  "id": 6749781,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/a-doctor-looking-at-the-camera-6749781/",
+  "query": "optometrist and assistant smiling eye clinic",
+  "role": "team"
+ },
+ "blue-cut": {
+  "id": 8068010,
+  "photographer": "Edmond Dant\u00e8s",
+  "url": "https://www.pexels.com/photo/man-in-white-dress-shirt-using-macbook-air-8068010/",
+  "query": "man wearing glasses looking at laptop screen",
+  "role": "product"
+ },
+ "kids-frames": {
+  "id": 6591654,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-girl-holding-her-eyeglasses-6591654/",
+  "query": "happy child wearing glasses close up",
+  "role": "product"
+ },
+ "lens-lab": {
+  "id": 3846006,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/female-ophthalmologist-working-with-autorefkeratometer-in-doctor-office-3846006/",
+  "query": "optometrist examining eyeglasses lens lab",
+  "role": "people"
+ },
+ "shop-front": {
+  "id": 2767694,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/assorted-color-sunglasses-2767694/",
+  "query": "eyewear store window display glasses",
+  "role": "space"
+ },
+ "womens-frames": {
+  "id": 3598262,
+  "photographer": "Jaime Rivera",
+  "url": "https://www.pexels.com/photo/woman-in-white-and-black-floral-shirt-wearing-sunglasses-3598262/",
+  "query": "smiling woman wearing cat eye glasses",
+  "role": "product"
  }
 }

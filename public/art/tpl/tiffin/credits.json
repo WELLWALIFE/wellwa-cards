@@ -1,0 +1,49 @@
+{
+ "cook": {
+  "id": 7351727,
+  "photographer": "Vivaan Rupani",
+  "url": "https://www.pexels.com/photo/a-person-cooking-chapati-on-tava-7351727/",
+  "query": "woman hands rolling chapati dough",
+  "role": "people"
+ },
+ "vegthali": {
+  "id": 29148133,
+  "photographer": "Eyes2Soul Eyes2Soul",
+  "url": "https://www.pexels.com/photo/traditional-indian-thali-meal-with-naan-bread-29148133/",
+  "query": "indian veg thali roti sabzi dal rice",
+  "role": "product"
+ },
+ "dinner": {
+  "id": 37421007,
+  "photographer": "Kunal Lakhotia",
+  "url": "https://www.pexels.com/photo/traditional-indian-meal-with-flatbread-and-lentils-37421007/",
+  "query": "chapati dal tadka jeera rice plate",
+  "role": "product"
+ },
+ "chicken": {
+  "id": 20408457,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/indian-food-ingredients-laid-out-on-small-plates-20408457/",
+  "query": "home style chicken curry bowl roti",
+  "role": "product"
+ },
+ "team": {
+  "id": 23830927,
+  "photographer": "Sarabjeet Singh",
+  "url": "https://www.pexels.com/photo/a-group-of-chefs-posing-together-in-a-garden-23830927/",
+  "query": "indian kitchen staff aprons smiling together",
+  "role": "team"
+ },
+ "kitchen": {
+  "id": 37330104,
+  "photographer": "Apurva Chandwadkar",
+  "url": "https://www.pexels.com/photo/traditional-indian-cooking-process-with-sliced-vegetables-37330104/",
+  "query": "indian woman cooking home kitchen stove"
+ },
+ "customer": {
+  "id": 4964974,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/a-bearded-man-eating-while-using-his-laptop-4964974/",
+  "query": "indian man eating lunch office"
+ }
+}

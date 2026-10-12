@@ -1,16 +1,68 @@
 {
- "counter": {
-  "id": 30251968,
-  "photographer": "Mohan Nannapaneni",
-  "url": "https://www.pexels.com/photo/indian-sweet-shop-in-kaikaluru-andhra-pradesh-30251968/",
-  "query": "indian sweet shop counter mithai display",
-  "role": "cover"
- },
  "halwai": {
   "id": 38048077,
   "photographer": "\"Beyond India by Shubham Thakur\"",
   "url": "https://www.pexels.com/photo/halwai-preparing-fresh-jalebi-in-chhattisgarh-38048077/",
   "query": "halwai frying jalebi large kadai",
   "role": "cover"
+ },
+ "laddoo": {
+  "id": 19151502,
+  "photographer": "Sharath G.",
+  "url": "https://www.pexels.com/photo/sweets-in-a-box-19151502/",
+  "query": "motichoor laddoo plate orange",
+  "role": "product"
+ },
+ "jamun": {
+  "id": 37294501,
+  "photographer": "Swapnali Khaire",
+  "url": "https://www.pexels.com/photo/delicious-indian-gulab-jamun-dessert-in-bowl-37294501/",
+  "query": "gulab jamun syrup bowl",
+  "role": "product"
+ },
+ "_blocked0": {
+  "id": 30251968
+ },
+ "_blocked1": {
+  "id": 36672621
+ },
+ "_blocked2": {
+  "id": 8819843
+ },
+ "_blocked3": {
+  "id": 8489770
+ },
+ "_blocked4": {
+  "id": 34217297
+ },
+ "_blocked5": {
+  "id": 9420694
+ },
+ "_blocked6": {
+  "id": 8819776
+ },
+ "_blocked7": {
+  "id": 35287414
+ },
+ "_blocked8": {
+  "id": 36576778
+ },
+ "_blocked9": {
+  "id": 18288643
+ },
+ "_blocked10": {
+  "id": 4353667
+ },
+ "_blocked11": {
+  "id": 40016098
+ },
+ "_blocked12": {
+  "id": 7966083
+ },
+ "_blocked13": {
+  "id": 19498989
+ },
+ "_blocked14": {
+  "id": 7450778
  }
 }

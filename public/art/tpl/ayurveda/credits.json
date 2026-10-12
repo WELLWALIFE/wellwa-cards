@@ -1,0 +1,58 @@
+{
+ "cover-herbs": {
+  "id": 5480241,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/black-mortar-and-pestle-over-a-wood-5480241/",
+  "query": "ayurvedic herbs spices wooden bowls mortar",
+  "role": "cover"
+ },
+ "cover-pulse": {
+  "id": 8460083,
+  "photographer": "Los Muertos Crew",
+  "url": "https://www.pexels.com/photo/doctor-and-patient-sitting-in-an-examination-room-8460083/",
+  "query": "ayurvedic doctor pulse diagnosis indian patient",
+  "role": "cover"
+ },
+ "clinic-reception": {
+  "id": 6193192,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-woman-at-a-dental-clinic-6193192/",
+  "query": "ayurveda clinic reception counter wooden interior",
+  "role": "space"
+ },
+ "therapy-room": {
+  "id": 7598366,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/interior-of-a-massage-room-7598366/",
+  "query": "ayurvedic therapy room wooden droni table",
+  "role": "space"
+ },
+ "vaidya-patient": {
+  "id": 11030158,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/person-holding-a-senior-adult-11030158/",
+  "query": "doctor consulting elderly indian woman clinic",
+  "role": "people"
+ },
+ "dispensary-counter": {
+  "id": 8667534,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-woman-handing-the-bottle-with-pink-liquid-to-a-customer-8667534/",
+  "query": "pharmacist handing herbal medicine bottle counter",
+  "role": "people"
+ },
+ "consultation": {
+  "id": 7195122,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/woman-holding-a-pen-7195122/",
+  "query": "ayurvedic doctor writing prescription desk patient",
+  "role": "product"
+ },
+ "homeopathy-vials": {
+  "id": 5682923,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/close-up-of-small-bottles-5682923/",
+  "query": "homeopathy glass vials white pellets",
+  "role": "product"
+ }
+}

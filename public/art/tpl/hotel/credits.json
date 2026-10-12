@@ -27,18 +27,6 @@
   "query": "family hotel suite two beds living area",
   "role": "product"
  },
- "reception-welcome": {
-  "id": 37680832,
-  "photographer": "FAKHRUL HASSAN",
-  "url": "https://www.pexels.com/photo/friendly-hotel-reception-interaction-in-dhaka-37680832/",
-  "query": "indian hotel receptionist smiling front desk"
- },
- "waiter-thali": {
-  "id": 29253334,
-  "photographer": "Ali Dashti",
-  "url": "https://www.pexels.com/photo/traditional-indian-thali-with-fresh-naan-bread-29253334/",
-  "query": "indian thali meal served restaurant waiter"
- },
  "standard-room": {
   "id": 27626182,
   "photographer": "Ahmet ÇÖTÜR",
@@ -50,5 +38,29 @@
   "photographer": "Quang Nguyen Vinh",
   "url": "https://www.pexels.com/photo/a-white-bed-near-the-brown-couch-and-table-14917462/",
   "query": "hotel room queen bed sofa large window"
+ },
+ "banquet-hall": {
+  "id": 40143061,
+  "photographer": "Lalit Jakhar",
+  "url": "https://www.pexels.com/photo/luxurious-hotel-banquet-hall-with-elegant-decor-40143061/",
+  "query": "indian wedding banquet hall stage decoration"
+ },
+ "conference-room": {
+  "id": 28160884,
+  "photographer": "Qdysk qdysk",
+  "url": "https://www.pexels.com/photo/exploring-the-best-coworking-space-in-new-cairo-28160884/",
+  "query": "small conference room projector meeting table"
+ },
+ "reception-welcome": {
+  "id": 7820359,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/man-handing-a-credit-card-to-a-hotel-receptionist-7820359/",
+  "query": "receptionist handing key card hotel guest"
+ },
+ "hotel-team": {
+  "id": 6474521,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/man-in-red-uniform-6474521/",
+  "query": "indian hotel staff standing lobby smiling"
  }
 }

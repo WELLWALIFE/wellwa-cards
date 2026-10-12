@@ -1,11 +1,4 @@
 {
- "counter": {
-  "id": 8657358,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/a-man-handing-a-pump-bottle-to-a-woman-8657358/",
-  "query": "pharmacist handing medicines customer counter india",
-  "role": "cover"
- },
  "firstaid": {
   "id": 5673523,
   "photographer": "Roger Brown",
@@ -27,52 +20,53 @@
   "query": "handwritten prescription stethoscope pen desk",
   "role": "detail"
  },
- "eldercare": {
-  "id": 33391399,
-  "photographer": "beyzz",
-  "url": "https://www.pexels.com/photo/elderly-couple-strolling-in-forest-park-33391399/",
-  "query": "adult diapers walker wheelchair supplies"
- },
  "nebuliser": {
   "id": 6202740,
   "photographer": "cottonbro studio",
   "url": "https://www.pexels.com/photo/portrait-of-boy-with-inhaler-6202740/",
-  "query": "nebulizer mask child inhalation"
- },
- "nutrition": {
-  "id": 33921585,
-  "photographer": "Gupta Sahil",
-  "url": "https://www.pexels.com/photo/creatine-monohydrate-supplement-in-kitchen-33921585/",
-  "query": "protein powder supplement jars"
- },
- "pharmacist": {
-  "id": 7659891,
-  "photographer": "Thirdman",
-  "url": "https://www.pexels.com/photo/medical-practitioner-with-medicine-on-its-palms-7659891/",
-  "query": "indian pharmacist white coat medicines"
+  "query": "nebulizer mask child inhalation",
+  "role": "product"
  },
  "shelves": {
   "id": 14797855,
   "photographer": "World Sikh Organization of Canada",
   "url": "https://www.pexels.com/photo/pharmacist-in-front-of-shelves-with-medicines-14797855/",
-  "query": "pharmacy shelves medicine boxes drugstore"
- },
- "storefront": {
-  "id": 9660933,
-  "photographer": "Jonathan Cooper",
-  "url": "https://www.pexels.com/photo/lighted-signage-in-a-clinic-9660933/",
-  "query": "pharmacy shop front sign india"
- },
- "team": {
-  "id": 8657297,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/pharmacist-using-laptop-in-old-fashioned-pharmacy-8657297/",
-  "query": "pharmacists team white coat drugstore"
+  "query": "pharmacy shelves medicine boxes drugstore",
+  "role": "space"
  },
  "devices": {
   "id": 8670204,
   "photographer": "Mikhail Nilov",
   "url": "https://www.pexels.com/photo/a-sphygmomanometer-up-close-8670204/",
-  "query": "digital blood pressure monitor arm cuff"
+  "query": "digital blood pressure monitor arm cuff",
+  "role": "product"
+ },
+ "delivery": {
+  "id": 12725423,
+  "photographer": "ROMAN ODINTSOV",
+  "url": "https://www.pexels.com/photo/giving-envelope-to-woman-12725423/",
+  "query": "courier delivering package to woman at door",
+  "role": "people"
+ },
+ "eldercare": {
+  "id": 34328480,
+  "photographer": "Caleb Oquendo",
+  "url": "https://www.pexels.com/photo/caring-interaction-between-nurse-and-elderly-patient-34328480/",
+  "query": "senior woman walker nurse home",
+  "role": "product"
+ },
+ "pharmacist": {
+  "id": 19471013,
+  "photographer": "BYB  BYB",
+  "url": "https://www.pexels.com/photo/young-pharmacist-in-drugstore-19471013/",
+  "query": "pharmacist white coat medicine shelves smiling",
+  "role": "people"
+ },
+ "refill": {
+  "id": 4210615,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/stack-of-medicinal-drugs-on-blister-packs-4210615/",
+  "query": "medicine blister packs tablets pile",
+  "role": "product"
  }
 }

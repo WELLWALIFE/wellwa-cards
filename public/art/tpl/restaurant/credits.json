@@ -41,24 +41,6 @@
   "url": "https://www.pexels.com/photo/an-empty-restaurant-9316203/",
   "query": "indian restaurant interior warm lighting tables"
  },
- "biryani": {
-  "id": 12669168,
-  "photographer": "Pixel Senses",
-  "url": "https://www.pexels.com/photo/rice-with-vegetables-12669168/",
-  "query": "biryani closeup"
- },
- "cafe": {
-  "id": 17609723,
-  "photographer": "Emre  Akyol",
-  "url": "https://www.pexels.com/photo/employee-hand-holding-coffee-cup-17609723/",
-  "query": "cafe counter barista coffee"
- },
- "latte": {
-  "id": 10206600,
-  "photographer": "Raphael Loquellano",
-  "url": "https://www.pexels.com/photo/close-up-shot-of-cup-of-coffee-10206600/",
-  "query": "latte art coffee cup"
- },
  "mocktail": {
   "id": 12360556,
   "photographer": "Bilakis",
@@ -89,26 +71,12 @@
   "url": "https://www.pexels.com/photo/top-view-of-delicious-cheese-pizza-on-wooden-board-30737921/",
   "query": "margherita pizza wooden board"
  },
- "dhaba-evening": {
-  "id": 35415466,
-  "photographer": "Yuen Tou  Zan",
-  "url": "https://www.pexels.com/photo/traditional-chinese-restaurant-front-at-dusk-35415466/",
-  "query": "indian dhaba restaurant exterior evening lights",
-  "role": "cover"
- },
  "family-thali-table": {
   "id": 8818723,
   "photographer": "Yan Krukau",
   "url": "https://www.pexels.com/photo/a-person-putting-food-on-the-stainless-plate-8818723/",
   "query": "indian family eating thali restaurant table",
   "role": "cover"
- },
- "dining-hall": {
-  "id": 279768,
-  "photographer": "Pixabay",
-  "url": "https://www.pexels.com/photo/selective-focus-photography-of-brown-wooden-chair-279768/",
-  "query": "indian restaurant interior wooden tables warm",
-  "role": "space"
  },
  "open-kitchen": {
   "id": 37223237,
@@ -117,25 +85,11 @@
   "query": "restaurant open kitchen tandoor flames",
   "role": "space"
  },
- "chef-naan": {
-  "id": 32558920,
-  "photographer": "Valeria Boltneva",
-  "url": "https://www.pexels.com/photo/freshly-baked-bread-in-traditional-clay-oven-32558920/",
-  "query": "chef making naan clay tandoor oven",
-  "role": "people"
- },
  "veg-thali": {
   "id": 29148133,
   "photographer": "Eyes2Soul Eyes2Soul",
   "url": "https://www.pexels.com/photo/traditional-indian-thali-meal-with-naan-bread-29148133/",
   "query": "north indian vegetarian thali steel plate",
-  "role": "product"
- },
- "dal-makhani": {
-  "id": 20446397,
-  "photographer": "Jack Baghel",
-  "url": "https://www.pexels.com/photo/top-view-of-a-meal-20446397/",
-  "query": "dal makhani bowl butter naan",
   "role": "product"
  },
  "paneer-butter-masala": {
@@ -159,18 +113,65 @@
   "query": "tandoori kebab platter mint chutney sizzler",
   "role": "product"
  },
- "party-trays": {
-  "id": 32894086,
-  "photographer": "Portal cypr24.eu",
-  "url": "https://www.pexels.com/photo/glazed-carrots-in-a-serving-tray-close-up-32894086/",
-  "query": "indian catering food foil trays buffet",
-  "role": "product"
- },
  "kitchen-team": {
   "id": 23830927,
   "photographer": "Sarabjeet Singh",
   "url": "https://www.pexels.com/photo/a-group-of-chefs-posing-together-in-a-garden-23830927/",
   "query": "restaurant kitchen staff team aprons smiling",
   "role": "team"
+ },
+ "dining-hall": {
+  "id": 15072154,
+  "photographer": "Vladimir Srajber",
+  "url": "https://www.pexels.com/photo/tables-in-hotel-restaurant-15072154/",
+  "query": "indian restaurant dining hall tables chairs"
+ },
+ "biryani": {
+  "id": 15059053,
+  "photographer": "Shameel mukkath",
+  "url": "https://www.pexels.com/photo/cooked-food-on-brown-bowl-15059053/",
+  "query": "chicken dum biryani handi"
+ },
+ "party-trays": {
+  "id": 2291367,
+  "photographer": "Zak Chapman",
+  "url": "https://www.pexels.com/photo/assorted-cooked-foods-inside-food-warmers-2291367/",
+  "query": "indian buffet catering chafing dishes"
+ },
+ "dal-makhani": {
+  "id": 12737916,
+  "photographer": "dhiraj jain",
+  "url": "https://www.pexels.com/photo/dal-makhani-on-a-white-bowl-12737916/",
+  "query": "dal makhani black lentils bowl naan"
+ },
+ "chef-naan": {
+  "id": 32558920,
+  "photographer": "Valeria Boltneva",
+  "url": "https://www.pexels.com/photo/freshly-baked-bread-in-traditional-clay-oven-32558920/",
+  "query": "cook putting naan in tandoor oven"
+ },
+ "saag-makki-roti": {
+  "id": 5031947,
+  "photographer": "Sutee Pheera",
+  "url": "https://www.pexels.com/photo/a-close-up-shot-of-a-bowl-of-saag-5031947/",
+  "query": "sarson ka saag makki ki roti"
+ },
+ "spice-detail": {
+  "id": 31280796,
+  "photographer": "Kamakshi",
+  "url": "https://www.pexels.com/photo/vibrant-assortment-of-indian-spice-powders-31280796/",
+  "query": "turmeric chilli powder indian spices bowls"
+ },
+ "cafe": {
+  "id": 35819418,
+  "photographer": "Ubeydulah Beşir KÖROĞLU",
+  "url": "https://www.pexels.com/photo/barista-pouring-fresh-coffee-in-cafe-35819418/",
+  "query": "barista pouring coffee cafe counter"
+ },
+ "latte": {
+  "id": 459489,
+  "photographer": "Pixabay",
+  "url": "https://www.pexels.com/photo/cup-of-coffee-on-saucer-459489/",
+  "query": "latte art cup wooden table"
  }
 }

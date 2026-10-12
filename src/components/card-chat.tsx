@@ -109,7 +109,8 @@ export function CardChat({
   const [input, setInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [meta, setMeta] = useState<Meta | null>(null);
-  const first = name.split(" ")[0];
+  // "Your Clinic" (a template's placeholder) reads as "Ask Your Clinic", not "Ask Your"; a real name keeps its first word.
+  const first = /^your\s/i.test(name) ? name.split(" ").slice(0, 2).join(" ") : name.split(" ")[0];
   const scroller = useRef<HTMLDivElement>(null);
 
   const v2 = !!meta?.v2;

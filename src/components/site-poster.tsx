@@ -21,12 +21,11 @@ export function PosterHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t
           <Display lang={lang}>{t(m.headline)}</Display>
           <Sub lang={lang}>{t(m.sub)}</Sub>
           <CtaPair primary={m.primary} secondary={m.secondary} username={card.username} secondaryStyle="ghost" onBook={onBook} className="poster-ctas" />
-          {!photo && <TrustRow trust={m.trust} hours={m.hours} hi={hi} className="poster-trust" />}
+          <TrustRow trust={m.trust} hours={m.hours} hi={hi} className="poster-trust" />
         </div>
         {photo && (
           <figure className="poster-card">
             <HeroPhoto photo={photo} crop="tile" priority className="poster-ph" alt={m.name} />
-            <figcaption><TrustRow trust={m.trust} hours={m.hours} hi={hi} /></figcaption>
           </figure>
         )}
       </div>
@@ -42,7 +41,7 @@ export const POSTER_CSS = `
 .site .poster .display{--t-display:clamp(2.75rem,12vw,3.5rem);max-width:12ch}
 .site .poster .hero-sub{max-width:34ch;opacity:.9;margin-top:var(--s4,16px)}
 .site .poster-ctas{margin-top:var(--s5,24px)}
-.site .poster-trust{margin-top:var(--s5,24px);padding-bottom:var(--s7,48px)}
+.site .poster-trust{margin-top:var(--s5,24px);padding-bottom:var(--s6,32px)}
 /* the photo card hangs over the bottom edge of the colour block into the page below */
 .site .poster-card{position:relative;z-index:1;margin:var(--s5,24px) 0 0;transform:translateY(var(--s7,48px))}
 .site .poster[data-photo]{margin-bottom:calc(var(--s7,48px) + 64px)}

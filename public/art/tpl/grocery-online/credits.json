@@ -55,25 +55,40 @@
   "query": "small business team packing orders together",
   "role": "team"
  },
- "_rej-bedsheet": {
-  "id": 4109759
+ "hamper": {
+  "id": 8819776,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/man-in-blue-long-sleeves-holding-gifts-8819776/",
+  "query": "diwali gift hamper basket dry fruits"
  },
- "_rej-dryfruit": {
-  "id": 36576778
+ "space-stockroom": {
+  "id": 10834810,
+  "photographer": "Ihsan Adityawarman",
+  "url": "https://www.pexels.com/photo/stacked-boxes-in-a-warehouse-10834810/",
+  "query": "small warehouse shelves cardboard boxes inventory"
  },
- "_rej-hamper": {
-  "id": 34628335
+ "bedsheet": {
+  "id": 31902663,
+  "photographer": "juan pinales",
+  "url": "https://www.pexels.com/photo/stack-of-clean-white-bedding-linens-31902663/",
+  "query": "stack of folded cotton bed sheets pillowcases"
  },
- "_rej-lunchbox": {
-  "id": 17736978
+ "space-desk": {
+  "id": 7857567,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/white-papers-on-brown-wooden-table-7857567/",
+  "query": "woman laptop cardboard parcels desk online shop"
  },
- "_rej-pantry": {
-  "id": 3682190
+ "dryfruit": {
+  "id": 11509787,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/handful-of-nuts-on-hand-11509787/",
+  "query": "dry fruits almonds cashews raisins close up"
  },
- "_rej-space-desk": {
-  "id": 7217848
- },
- "_rej-space-stockroom": {
-  "id": 6169157
+ "pantry": {
+  "id": 31280796,
+  "photographer": "Kamakshi",
+  "url": "https://www.pexels.com/photo/vibrant-assortment-of-indian-spice-powders-31280796/",
+  "query": "spice jars kitchen shelf turmeric cumin"
  }
 }

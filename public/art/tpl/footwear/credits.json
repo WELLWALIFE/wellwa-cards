@@ -8,7 +8,7 @@
  },
  "shop-interior": {
   "id": 34279970,
-  "photographer": "Tahir X\u0259lf\u0259quliyev",
+  "photographer": "Tahir Xəlfəquliyev",
   "url": "https://www.pexels.com/photo/elegant-black-leather-shoes-display-on-wooden-shelves-34279970/",
   "query": "footwear showroom interior wooden shelves bench",
   "role": "space"
@@ -66,5 +66,29 @@
   "photographer": "Anna Shvets",
   "url": "https://www.pexels.com/photo/a-man-lacing-the-leather-shoes-5894283/",
   "query": "leather artisan shoe crafting top view"
+ },
+ "kolhapuri": {
+  "id": 38556275,
+  "photographer": "Aditya Oberai",
+  "url": "https://www.pexels.com/photo/colorful-shoe-display-in-bengaluru-market-38556275/",
+  "query": "traditional footwear bengaluru market stall"
+ },
+ "fitting-customer": {
+  "id": 5704722,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/a-two-women-holding-a-shoes-5704722/",
+  "query": "women trying on heels boutique"
+ },
+ "school-shoes": {
+  "id": 10485371,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-girl-wearing-black-school-shoes-with-white-socks-10485371/",
+  "query": "girl black patent school shoes white socks"
+ },
+ "slippers": {
+  "id": 4996734,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/yellow-strapped-slippers-buried-on-a-sandy-shore-4996734/",
+  "query": "zebra flip flops pair sand"
  }
 }

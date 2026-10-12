@@ -35,7 +35,8 @@ const SHOP = `
 .site[data-bp="shop"] main .s-card .p-img{aspect-ratio:1}
 .site[data-bp="shop"] main .s-card>.p-5{padding:var(--s3)}
 .site[data-bp="shop"] main .p-name{font-size:.95rem;line-height:1.25}
-.site[data-bp="shop"] main .p-price{color:var(--accent);font-weight:700;font-size:1rem}
+.site[data-bp="shop"] main .p-price{color:var(--accent);font-weight:700;font-size:1rem;text-align:left}
+@media (max-width:767px){.site[data-bp="shop"] main .s-card .flex.items-start.justify-between{flex-direction:column;gap:2px}.site[data-bp="shop"] main .p-wa{font-size:12px;line-height:1.2;padding:.5rem .6rem}}
 .site[data-bp="shop"] main .s-card .line-clamp-2{font-size:12px;display:none}
 .site[data-bp="shop"] main .s-card details{display:none}
 .site[data-bp="shop"] main .s-card .mt-auto{padding-top:var(--s2)}
@@ -108,11 +109,23 @@ const CINEMATIC_DARK = `
 /** On every blueprint a product PHOTOGRAPH fills its frame (cover), instead of floating inside it with padding like a
  *  cut-out on white — the trade templates and most owners' photos are photographs (review, 13 Oct 2026). */
 const PHOTOS = `
-.site[data-bp] main .p-price{white-space:normal;max-width:9ch}
-.site[data-bp] main .p-img .kicker,.site[data-bp] main .p-img .num{background:var(--surface);color:var(--ink);padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.08em}
+.site[data-bp] main .p-price{white-space:normal}
+.site[data-bp] main iframe[title="Map"]{background:var(--paper-2)}
+.site[data-bp] main .p-img .kicker,.site[data-bp] main .p-img .num{background:var(--paper);color:var(--p-deep);padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.08em}
 @media (max-width:767px){.site[data-bp] main .rev-q{font-size:1.125rem;line-height:1.45}}
 .site[data-bp] main .p-img>button{padding:0}
 .site[data-bp] main .p-img img{object-fit:cover}
 .site[data-bp] main .p-img{background:var(--paper-2)}
 `;
-export const BODY_CSS: Record<string, string> = { wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS };
+/** The classic page with the split hero (words on paper beside a 4:5 photo — clinics, schools, CAs): calm bands in the
+ *  palette's soft tint between paper sections, serif-weight headings, so it is a page of its own and not "the old
+ *  site in a new colour" (review, 13 Oct 2026). */
+const SPLIT = `
+.site[data-bp="split"] main .sec-h2{font-size:clamp(1.9rem,6.5vw,2.75rem);letter-spacing:-.02em}
+.site[data-bp="split"] main section[data-reveal]:nth-of-type(2n){background:var(--p-soft)!important}
+.site[data-bp="split"] main .s-card{border:1px solid var(--line);box-shadow:none;border-radius:var(--r-tile)}
+.site[data-bp="split"] main .icon-box{border-radius:999px;background:var(--p-soft);color:var(--accent)}
+.site[data-bp="split"] main .p-wa{border-radius:999px}
+.site[data-bp="split"] main .rev-q{font-size:1.1rem;line-height:1.55}
+`;
+export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS };
