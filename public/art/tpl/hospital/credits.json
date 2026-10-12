@@ -1,0 +1,79 @@
+{
+ "doctor-patient-ward": {
+  "id": 6129651,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/doctor-talking-to-a-patient-6129651/",
+  "query": "Indian doctor examining patient hospital bed",
+  "role": "cover"
+ },
+ "pathology-lab": {
+  "id": 6629386,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/close-up-of-a-woman-holding-vials-with-blood-6629386/",
+  "query": "pathology lab technician blood sample analyzer",
+  "role": "product"
+ },
+ "maternity-ward": {
+  "id": 4041804,
+  "photographer": "Craig Adderley",
+  "url": "https://www.pexels.com/photo/photo-of-a-woman-with-curly-hair-carrying-her-baby-4041804/",
+  "query": "newborn baby mother maternity ward hospital",
+  "role": "product"
+ },
+ "xray-imaging": {
+  "id": 4225876,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/a-doctor-looking-at-an-x-ray-result-4225876/",
+  "query": "radiologist X-ray ultrasound machine scan",
+  "role": "product"
+ },
+ "medical-team": {
+  "id": 6129494,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/health-care-professionals-smiling-at-the-camera-6129494/",
+  "query": "doctors nurses team standing hospital group",
+  "role": "team"
+ },
+ "doctor-explaining": {
+  "id": 7579823,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-white-suit-with-stethoscope-talking-to-a-person-7579823/",
+  "query": "indian doctor consultation patient clinic desk"
+ },
+ "hospital-corridor": {
+  "id": 5203594,
+  "photographer": "Enrique Silva",
+  "url": "https://www.pexels.com/photo/a-corridor-of-a-hospital-5203594/",
+  "query": "modern hospital corridor empty bright"
+ },
+ "icu-ward": {
+  "id": 20897581,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/a-patient-whose-blood-pressure-and-pulse-are-measured-in-the-hospital-20897581/",
+  "query": "intensive care unit bed monitors"
+ },
+ "nurse-care": {
+  "id": 6129680,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/nurse-taking-sample-from-a-patient-6129680/",
+  "query": "indian nurse checking patient hospital"
+ },
+ "operation-theatre": {
+  "id": 20217787,
+  "photographer": "Weverton Oliveira",
+  "url": "https://www.pexels.com/photo/surgeons-during-operation-20217787/",
+  "query": "surgeons operating room bright lights"
+ },
+ "private-room": {
+  "id": 6129152,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/patient-talking-while-lying-down-on-a-hospital-bed-6129152/",
+  "query": "modern hospital patient room single bed"
+ },
+ "reception-desk": {
+  "id": 4266932,
+  "photographer": "Cedric Fauntleroy",
+  "url": "https://www.pexels.com/photo/a-woman-talking-to-a-receptionist-4266932/",
+  "query": "hospital reception desk receptionist counter"
+ }
+}

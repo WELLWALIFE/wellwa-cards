@@ -39,6 +39,7 @@ import { CollageHero, COLLAGE_CSS } from "@/components/site-collage";
 import { BODY_CSS } from "@/components/site-bodies";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
+import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 
 /** The designer's section layouts (card.site.style.layouts), read by the section components below. */
 const LayoutCtx = createContext<SiteLayouts | undefined>(undefined);
@@ -780,10 +781,15 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
   );
 }
 
+/** What the trade calls its things — "Menu", "Treatments", "Packages", "Courses" — so a clinic's packages are not
+ *  captioned PRODUCTS (review, 13 Oct 2026). From the trade's recipe (site-recipes.ts); "Products" for a shop. */
+function catalogWord(card: Pick<Card, "seo">, hi: boolean): string {
+  return catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en");
+}
 /** The small caption above a section title, per block kind (skipped when it would repeat the title). */
-function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean): string | undefined {
+function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean, catalog?: string): string | undefined {
   const map: Partial<Record<CardBlock["kind"], [string, string]>> = {
-    product: ["Products", "प्रोडक्ट"], services: ["Services", "सेवाएँ"], highlights: ["Why us", "क्यों चुनें"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
+    product: [catalog ?? "Products", catalog ?? "प्रोडक्ट"], services: ["Services", "सेवाएँ"], highlights: ["Why us", "क्यों चुनें"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
     gallery: ["Gallery", "गैलरी"], image: ["Pictures", "चित्र"], carousel: ["Pictures", "चित्र"], video: ["Watch", "देखिए"], location: ["Find us", "पता"], hours: ["Timings", "समय"], contact: ["Contact", "संपर्क"],
     showcase: ["Showcase", "शोकेस"], compare: ["Compare", "तुलना"], pdf: ["Download", "डाउनलोड"],
   };
@@ -1255,7 +1261,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   // No photo anywhere in the block: compact cards without an empty picture area.
   const compact = !items.some((p) => galleryOf(p).length > 0);
   return (
-    <div className={bp === "cinematic" && items.length >= 3 ? "site-rail" : `grid sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}>
+    <div className={bp === "cinematic" && items.length >= 3 && items.length <= 6 ? "site-rail" : `grid sm:grid-cols-2 ${columns === 4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}>
       {items.map((p, i) => {
         const gallery = galleryOf(p);
         const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
@@ -1365,8 +1371,8 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
   switch (s.kind) {
     case "featured":
       return (
-        <Section wide index={index} theme={theme} eyebrow={hi ? "प्रोडक्ट" : t("Products")} title={t(s.title)}
-          aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} प्रोडक्ट` : t(`All ${s.total} products`)}</SeeAll> : undefined}>
+        <Section wide index={index} theme={theme} eyebrow={t(catalogWord(card, hi))} title={t(s.title)}
+          aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} ${catalogWord(card, true)}` : t(`All ${s.total} ${catalogWord(card, false).toLowerCase()}`)}</SeeAll> : undefined}>
           <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} layout={s.items.length <= 2 ? "showcase" : "grid"} openProduct={openProduct} />
           {lightbox}
         </Section>
@@ -1453,7 +1459,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
   const [showAll, setShowAll] = useState(false);
   const hasWa = links.some((l) => l.type === "whatsapp");
   const lightbox = zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
-  const eyebrow = "title" in block ? eyebrowFor(block.kind, block.title ?? "", hi) : undefined;
+  const eyebrow = "title" in block ? eyebrowFor(block.kind, block.title ?? "", hi, block.kind === "product" ? catalogWord(card, hi) : undefined) : undefined;
 
   switch (block.kind) {
     case "about":

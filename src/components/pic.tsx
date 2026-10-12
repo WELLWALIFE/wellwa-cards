@@ -35,6 +35,9 @@ const SUPABASE_HOST = (() => {
 export function optimizable(src: string): boolean {
   if (!src) return false;
   if (src.startsWith("data:") || src.startsWith("blob:")) return false;
+  // The trade templates' photos (public/art/tpl, 1400 px, q74) are already the size the page wants: the optimizer
+  // only adds a slow first request per size (owner review, 13 Oct 2026: empty photo slots on the review board).
+  if (src.startsWith("/art/tpl/")) return false;
   if (src.startsWith("/")) return !src.startsWith("//");
   try {
     const u = new URL(src);

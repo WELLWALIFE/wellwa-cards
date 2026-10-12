@@ -88,5 +88,89 @@
   "photographer": "tyler sm",
   "url": "https://www.pexels.com/photo/top-view-of-delicious-cheese-pizza-on-wooden-board-30737921/",
   "query": "margherita pizza wooden board"
+ },
+ "dhaba-evening": {
+  "id": 35415466,
+  "photographer": "Yuen Tou  Zan",
+  "url": "https://www.pexels.com/photo/traditional-chinese-restaurant-front-at-dusk-35415466/",
+  "query": "indian dhaba restaurant exterior evening lights",
+  "role": "cover"
+ },
+ "family-thali-table": {
+  "id": 8818723,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-person-putting-food-on-the-stainless-plate-8818723/",
+  "query": "indian family eating thali restaurant table",
+  "role": "cover"
+ },
+ "dining-hall": {
+  "id": 279768,
+  "photographer": "Pixabay",
+  "url": "https://www.pexels.com/photo/selective-focus-photography-of-brown-wooden-chair-279768/",
+  "query": "indian restaurant interior wooden tables warm",
+  "role": "space"
+ },
+ "open-kitchen": {
+  "id": 37223237,
+  "photographer": "Tahir Xəlfəquliyev",
+  "url": "https://www.pexels.com/photo/traditional-tandoori-bread-baking-in-clay-oven-37223237/",
+  "query": "restaurant open kitchen tandoor flames",
+  "role": "space"
+ },
+ "chef-naan": {
+  "id": 32558920,
+  "photographer": "Valeria Boltneva",
+  "url": "https://www.pexels.com/photo/freshly-baked-bread-in-traditional-clay-oven-32558920/",
+  "query": "chef making naan clay tandoor oven",
+  "role": "people"
+ },
+ "veg-thali": {
+  "id": 29148133,
+  "photographer": "Eyes2Soul Eyes2Soul",
+  "url": "https://www.pexels.com/photo/traditional-indian-thali-meal-with-naan-bread-29148133/",
+  "query": "north indian vegetarian thali steel plate",
+  "role": "product"
+ },
+ "dal-makhani": {
+  "id": 20446397,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/top-view-of-a-meal-20446397/",
+  "query": "dal makhani bowl butter naan",
+  "role": "product"
+ },
+ "paneer-butter-masala": {
+  "id": 20408432,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/photo-of-a-curry-dish-served-in-a-pan-20408432/",
+  "query": "paneer butter masala curry bowl",
+  "role": "product"
+ },
+ "butter-chicken": {
+  "id": 20408448,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/photo-of-a-curry-dish-served-in-a-pan-20408448/",
+  "query": "butter chicken curry naan copper bowl",
+  "role": "product"
+ },
+ "tandoori-platter": {
+  "id": 36701471,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/vibrant-grilled-dish-with-green-chutney-36701471/",
+  "query": "tandoori kebab platter mint chutney sizzler",
+  "role": "product"
+ },
+ "party-trays": {
+  "id": 32894086,
+  "photographer": "Portal cypr24.eu",
+  "url": "https://www.pexels.com/photo/glazed-carrots-in-a-serving-tray-close-up-32894086/",
+  "query": "indian catering food foil trays buffet",
+  "role": "product"
+ },
+ "kitchen-team": {
+  "id": 23830927,
+  "photographer": "Sarabjeet Singh",
+  "url": "https://www.pexels.com/photo/a-group-of-chefs-posing-together-in-a-garden-23830927/",
+  "query": "restaurant kitchen staff team aprons smiling",
+  "role": "team"
  }
 }

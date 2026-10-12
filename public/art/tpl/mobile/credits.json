@@ -1,0 +1,73 @@
+{
+ "smartphones": {
+  "id": 28919443,
+  "photographer": "webber Amir",
+  "url": "https://www.pexels.com/photo/sleek-smartphone-display-at-tech-store-28919443/",
+  "query": "smartphones lined up display stand",
+  "role": "product"
+ },
+ "earbuds": {
+  "id": 30981655,
+  "photographer": "HS Studio By Hussnain",
+  "url": "https://www.pexels.com/photo/wireless-earbuds-with-charging-case-on-black-background-30981655/",
+  "query": "wireless earbuds charging case white",
+  "role": "product"
+ },
+ "smartwatch": {
+  "id": 19961771,
+  "photographer": "ahmed akeri",
+  "url": "https://www.pexels.com/photo/a-person-looking-at-the-pulse-displayed-on-a-smartwatch-19961771/",
+  "query": "smartwatch wrist fitness display closeup",
+  "role": "product"
+ },
+ "smart-tv": {
+  "id": 5202925,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/black-flat-screen-tv-hanging-on-the-white-wall-5202925/",
+  "query": "smart led tv living room wall",
+  "role": "product"
+ },
+ "screen-replacement": {
+  "id": 31862953,
+  "photographer": "Fotografia Lui Vlad",
+  "url": "https://www.pexels.com/photo/smartphone-repair-tools-on-a-workbench-31862953/",
+  "query": "smartphone screen replacement parts tools",
+  "role": "detail"
+ },
+ "shop-display": {
+  "id": 36680543,
+  "photographer": "Phong Thanh",
+  "url": "https://www.pexels.com/photo/various-smartphones-displaying-app-icons-on-wooden-surface-36680543/",
+  "query": "smartphones glass display counter electronics store"
+ },
+ "salesman-explaining": {
+  "id": 17584250,
+  "photographer": "Pratiksha Rasal",
+  "url": "https://www.pexels.com/photo/man-sitting-with-smartphone-17584250/",
+  "query": "indian shopkeeper showing smartphone customer"
+ },
+ "technician-repair": {
+  "id": 6754838,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-soldering-iron-6754838/",
+  "query": "hands repairing mobile phone tweezers motherboard"
+ },
+ "keypad-phone": {
+  "id": 39464644,
+  "photographer": "Nivin Kalai",
+  "url": "https://www.pexels.com/photo/vintage-mobile-phones-in-a-colorful-pile-39464644/",
+  "query": "old nokia mobile phone buttons"
+ },
+ "accessories": {
+  "id": 5208826,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/top-view-of-cables-and-chargers-on-table-5208826/",
+  "query": "usb c charger cable earphones flat lay"
+ },
+ "premium-phone": {
+  "id": 29020349,
+  "photographer": "thiago japyassu",
+  "url": "https://www.pexels.com/photo/modern-smartphone-on-wooden-surface-29020349/",
+  "query": "apple iphone pro back cameras closeup"
+ }
+}

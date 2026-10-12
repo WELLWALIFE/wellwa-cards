@@ -13,27 +13,6 @@
   "query": "carpenter sanding wooden furniture workshop",
   "role": "cover"
  },
- "showroom-floor": {
-  "id": 7060822,
-  "photographer": "Max Vakhtbovych",
-  "url": "https://www.pexels.com/photo/bedroom-interior-with-bed-near-wardrobe-with-shelves-7060822/",
-  "query": "furniture store beds wardrobes display",
-  "role": "space"
- },
- "shop-front": {
-  "id": 38443852,
-  "photographer": "BI ravencrow",
-  "url": "https://www.pexels.com/photo/brick-facade-of-illuminated-boutique-at-night-38443852/",
-  "query": "furniture shop glass storefront evening",
-  "role": "space"
- },
- "fitting-team": {
-  "id": 31112178,
-  "photographer": "EqualStock IN",
-  "url": "https://www.pexels.com/photo/female-textile-workers-in-factory-setting-31112178/",
-  "query": "workers assembling wardrobe bedroom",
-  "role": "people"
- },
  "customer-fabric": {
   "id": 4968672,
   "photographer": "https://kaboompics.com/",
@@ -48,34 +27,6 @@
   "query": "grey L shape fabric sofa living room",
   "role": "product"
  },
- "bed": {
-  "id": 3755585,
-  "photographer": "Castorly Stock",
-  "url": "https://www.pexels.com/photo/white-pillows-on-bed-3755585/",
-  "query": "solid wood king bed headboard bedroom",
-  "role": "product"
- },
- "dining": {
-  "id": 27952969,
-  "photographer": "Eimi Vergara",
-  "url": "https://www.pexels.com/photo/comedor-27952969/",
-  "query": "six seater wooden dining table chairs",
-  "role": "product"
- },
- "wardrobe": {
-  "id": 7986061,
-  "photographer": "Misuto Kazo",
-  "url": "https://www.pexels.com/photo/a-bedside-table-with-a-mirror-7986061/",
-  "query": "sliding door wardrobe mirror bedroom",
-  "role": "product"
- },
- "office-chair": {
-  "id": 20388126,
-  "photographer": "Brunxs",
-  "url": "https://www.pexels.com/photo/armchair-in-darkness-in-room-20388126/",
-  "query": "ergonomic mesh office chair desk",
-  "role": "product"
- },
  "wood-grain": {
   "id": 9996341,
   "photographer": "Engin Akyurt",
@@ -83,11 +34,58 @@
   "query": "teak wood grain polish close up",
   "role": "detail"
  },
- "showroom-team": {
-  "id": 8837463,
-  "photographer": "Yan Krukau",
-  "url": "https://www.pexels.com/photo/woman-leaning-on-the-bookcase-while-holding-a-clipboard-8837463/",
-  "query": "furniture store staff team smiling",
-  "role": "team"
+ "bed": {
+  "id": 6466236,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/elegant-wooden-sleeping-bed-6466236/",
+  "query": "wooden king size bed frame headboard"
+ },
+ "mattress": {
+  "id": 8089076,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/mattress-on-a-white-bed-frame-8089076/",
+  "query": "white mattress on bed frame"
+ },
+ "dining": {
+  "id": 8143703,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/wooden-chairs-on-a-dining-area-8143703/",
+  "query": "rectangular wooden dining table set"
+ },
+ "showroom-floor": {
+  "id": 7535062,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/contemporary-store-with-elegant-furniture-for-bedroom-and-living-room-7535062/",
+  "query": "furniture store showroom sofas beds"
+ },
+ "tv-unit": {
+  "id": 6527053,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/modern-furniture-and-tv-set-in-cozy-living-room-6527053/",
+  "query": "living room tv wall unit cabinet"
+ },
+ "fitting-team": {
+  "id": 7285926,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/drilling-of-wood-blocks-7285926/",
+  "query": "men assembling furniture with drill"
+ },
+ "office-chair": {
+  "id": 21567547,
+  "photographer": "Sydney Sang",
+  "url": "https://www.pexels.com/photo/black-plastic-chair-21567547/",
+  "query": "ergonomic office chair studio white background"
+ },
+ "shop-front": {
+  "id": 16155275,
+  "photographer": "Dextar Studio \u2122",
+  "url": "https://www.pexels.com/photo/glass-building-by-the-street-16155275/",
+  "query": "modern shop glass facade entrance"
+ },
+ "wardrobe": {
+  "id": 38975410,
+  "photographer": "McFollis",
+  "url": "https://www.pexels.com/photo/minimalist-white-modern-closet-design-in-room-38975410/",
+  "query": "built in wardrobe bedroom interior"
  }
 }

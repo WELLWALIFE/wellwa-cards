@@ -1,0 +1,85 @@
+{
+ "cover-showroom": {
+  "id": 28146843,
+  "photographer": "Pham Ngoc Anh",
+  "url": "https://www.pexels.com/photo/jewelry-display-in-a-store-window-28146843/",
+  "query": "indian gold jewellery showroom display necklaces",
+  "role": "cover"
+ },
+ "cover-bride": {
+  "id": 13770027,
+  "photographer": "Sushil  Pattnaik",
+  "url": "https://www.pexels.com/photo/woman-in-wearing-bridal-jewelries-13770027/",
+  "query": "indian bride gold necklace jhumka closeup",
+  "role": "cover"
+ },
+ "people-goldsmith": {
+  "id": 15955333,
+  "photographer": "COPPERTIST WU",
+  "url": "https://www.pexels.com/photo/close-up-of-person-making-a-pendant-15955333/",
+  "query": "goldsmith hands crafting gold jewellery workbench",
+  "role": "people"
+ },
+ "product-bridal": {
+  "id": 5814060,
+  "photographer": "SKG Photography",
+  "url": "https://www.pexels.com/photo/gorgeous-ethnic-woman-in-traditional-clothes-and-accessories-5814060/",
+  "query": "kundan polki bridal necklace set gold",
+  "role": "product"
+ },
+ "product-jhumka": {
+  "id": 37601639,
+  "photographer": "Dhrupal Shiyal",
+  "url": "https://www.pexels.com/photo/elegant-gold-jhumka-earring-on-woman-s-ear-37601639/",
+  "query": "gold jhumka earrings pearl drops",
+  "role": "product"
+ },
+ "product-gifting": {
+  "id": 7685505,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/woman-holding-a-golden-figurine-7685505/",
+  "query": "gold coins diwali lakshmi gift"
+ },
+ "people-trying": {
+  "id": 27024458,
+  "photographer": "Mysara Hassan",
+  "url": "https://www.pexels.com/photo/bride-with-traditional-temporary-henna-tattoos-27024458/",
+  "query": "woman trying gold bangles jeweller counter"
+ },
+ "product-chain": {
+  "id": 29619153,
+  "photographer": "Eden Kefale",
+  "url": "https://www.pexels.com/photo/elegant-gold-cross-necklace-on-yellow-fabric-29619153/",
+  "query": "22k gold chain necklace yellow"
+ },
+ "product-mangalsutra": {
+  "id": 7862219,
+  "photographer": "Prashanth Viraat",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-beaded-necklace-7862219/",
+  "query": "mangalsutra gold necklace black beads"
+ },
+ "space-counter": {
+  "id": 20299702,
+  "photographer": "Robert So",
+  "url": "https://www.pexels.com/photo/necklaces-in-a-jewelry-store-20299702/",
+  "query": "jewelry shop showcase glass display necklaces"
+ },
+ "product-diamond": {
+  "id": 2849742,
+  "photographer": "Danielle De Angelis",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-ring-2849742/",
+  "query": "diamond engagement ring closeup macro"
+ },
+ "product-payal": {
+  "id": 33339095,
+  "photographer": "Renjith Tomy Pkm",
+  "url": "https://www.pexels.com/photo/traditional-anklets-and-blue-dress-in-nature-33339095/",
+  "query": "silver payal anklet closeup"
+ },
+ "space-facade": {
+  "id": 31112851,
+  "photographer": "Helena Jankovi\u010dov\u00e1 Kov\u00e1\u010dov\u00e1",
+  "url": "https://www.pexels.com/photo/intricate-boutique-display-with-handmade-jewelry-31112851/",
+  "query": "jewelry boutique storefront window display"
+ }
+}

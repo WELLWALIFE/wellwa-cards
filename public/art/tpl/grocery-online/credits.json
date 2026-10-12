@@ -1,0 +1,79 @@
+{
+ "cover-packing": {
+  "id": 7857532,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/woman-sitting-at-the-table-and-packing-orders-7857532/",
+  "query": "woman packing parcel cardboard box small business",
+  "role": "cover"
+ },
+ "cover-rider": {
+  "id": 12725459,
+  "photographer": "ROMAN ODINTSOV",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-person-delivering-a-small-box-12725459/",
+  "query": "delivery rider handing parcel doorstep India",
+  "role": "cover"
+ },
+ "people-orders": {
+  "id": 9461623,
+  "photographer": "Mike Jones",
+  "url": "https://www.pexels.com/photo/a-person-black-smartphone-9461623/",
+  "query": "shop owner checking orders smartphone",
+  "role": "people"
+ },
+ "people-customer": {
+  "id": 6347572,
+  "photographer": "Liza Summer",
+  "url": "https://www.pexels.com/photo/happy-ethnic-female-with-parcels-at-home-6347572/",
+  "query": "smiling woman opening delivery parcel home",
+  "role": "people"
+ },
+ "pickle": {
+  "id": 11584813,
+  "photographer": "Rajesh Raj",
+  "url": "https://www.pexels.com/photo/photo-of-sliced-green-mangoes-in-a-jar-11584813/",
+  "query": "mango pickle glass jar indian",
+  "role": "product"
+ },
+ "brass": {
+  "id": 8819207,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/man-burning-candle-on-home-altar-8819207/",
+  "query": "brass puja thali diya bell",
+  "role": "product"
+ },
+ "detail-label": {
+  "id": 6169036,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-putting-tape-on-a-cardboard-6169036/",
+  "query": "hands sealing parcel tape shipping label",
+  "role": "detail"
+ },
+ "team": {
+  "id": 7674972,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-group-of-women-putting-items-in-boxes-7674972/",
+  "query": "small business team packing orders together",
+  "role": "team"
+ },
+ "_rej-bedsheet": {
+  "id": 4109759
+ },
+ "_rej-dryfruit": {
+  "id": 36576778
+ },
+ "_rej-hamper": {
+  "id": 34628335
+ },
+ "_rej-lunchbox": {
+  "id": 17736978
+ },
+ "_rej-pantry": {
+  "id": 3682190
+ },
+ "_rej-space-desk": {
+  "id": 7217848
+ },
+ "_rej-space-stockroom": {
+  "id": 6169157
+ }
+}

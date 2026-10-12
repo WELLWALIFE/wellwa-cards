@@ -81,6 +81,9 @@ export const WORDMARK_CSS = `
 .site .mark-ctas{margin-top:var(--s3)}
 .site .mark-strip{margin-top:var(--s6);display:grid;grid-template-columns:1fr 1fr;gap:var(--s2);padding:0 var(--s2)}
 .site .mark-strip>:nth-child(3):last-child{grid-column:1/-1;aspect-ratio:2/1}
+.site .mark-strip .mark-tile{grid-column:1/-1;order:9;min-height:0;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s3) var(--s5)}
+.site .mark-strip .mark-tile .mark-tile-foot{flex:1 1 220px}
+.site .mark-tile .btn-primary{white-space:nowrap}
 .site .mark-ph{position:relative;aspect-ratio:1;overflow:hidden;border-radius:var(--r-img);background:var(--paper-2)}
 .site .mark-ph .hero-ph-wrap{position:absolute;inset:0}
 .site .mark-ph-pic,.site .mark-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
@@ -103,6 +106,8 @@ export const WORDMARK_CSS = `
 .site .mark-side{margin-top:0;padding-bottom:var(--s2)}
 .site .mark-strip{margin-top:var(--s7);grid-template-columns:repeat(4,1fr);gap:var(--s3);padding:0 var(--s3)}
 .site .mark-strip>:nth-child(3):last-child{grid-column:auto;aspect-ratio:4/5}
+.site .mark-strip .mark-tile{grid-column:auto;order:0;flex-direction:column;align-items:flex-start;justify-content:space-between;min-height:100%}
+.site .mark-strip .mark-tile .mark-tile-foot{flex:0 0 auto}
 .site .mark-ph{aspect-ratio:4/5}
 .site .mark-tile{padding:var(--s5)}
 }

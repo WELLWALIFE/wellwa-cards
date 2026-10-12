@@ -27,7 +27,9 @@ export function CollageHero({ card, hi, t, onBook, facts }: { card: Card; hi: bo
   if (call) tiles.push({ key: "call", label: L("Call", "कॉल"), icon: "phone", href: call.href });
   if (facts?.map) tiles.push({ key: "map", label: L("Directions", "रास्ता"), icon: "directions", href: facts.map.url, external: true });
   if (facts?.booking) tiles.push({ key: "book", label: L("Book", "बुक करें"), icon: "calendar", onClick: () => onBook?.(facts.booking!.slug) });
-  for (const s of siteServiceNames(card, 8 - tiles.length)) tiles.push({ key: `s-${s}`, label: s, icon: "check" });
+  // Service names fill the grid only when they complete it (two rows of four); a half row of ticks reads as filler.
+  const names = siteServiceNames(card, 8 - tiles.length);
+  if (tiles.length + names.length >= 8) for (const s of names) tiles.push({ key: `s-${s}`, label: s, icon: "check" });
   const n = Math.min(4, photos.length);
   return (
     <section className="collage" data-variant={ink ? "collage-ink" : "collage"} lang={lang} aria-label={m.name}>

@@ -1,39 +1,4 @@
 {
- "shopfront": {
-  "id": 37435112,
-  "photographer": "Sami TÜRK",
-  "url": "https://www.pexels.com/photo/vintage-hardware-storefront-with-displayed-goods-37435112/",
-  "query": "indian hardware paint shop front",
-  "role": "cover"
- },
- "aisle": {
-  "id": 735338,
-  "photographer": "neil kelly",
-  "url": "https://www.pexels.com/photo/grey-steel-kitchenwares-735338/",
-  "query": "hardware store aisle shelves tools",
-  "role": "space"
- },
- "showroom": {
-  "id": 7534282,
-  "photographer": "Max Vakhtbovych",
-  "url": "https://www.pexels.com/photo/spacious-bathroom-with-minimalist-design-and-shower-cabin-7534282/",
-  "query": "bathroom fittings showroom display taps",
-  "role": "space"
- },
- "loading": {
-  "id": 30674793,
-  "photographer": "Mad Knoxx Deluxe",
-  "url": "https://www.pexels.com/photo/workers-loading-bags-onto-truck-in-industrial-setting-30674793/",
-  "query": "worker loading cement bags truck",
-  "role": "people"
- },
- "paints": {
-  "id": 5641407,
-  "photographer": "Nataliya Vaitkevich",
-  "url": "https://www.pexels.com/photo/buckets-of-paint-on-the-floor-5641407/",
-  "query": "paint buckets colour swatches rollers",
-  "role": "product"
- },
  "taps": {
   "id": 7327156,
   "photographer": "PNW Production",
@@ -69,18 +34,59 @@
   "query": "door lock handle brass keys",
   "role": "product"
  },
- "electrical": {
-  "id": 28265032,
-  "photographer": "ranjeet .",
-  "url": "https://www.pexels.com/photo/an-electrical-panel-with-wires-and-switches-28265032/",
-  "query": "copper wire coil switches mcb",
-  "role": "product"
- },
  "shade-card": {
   "id": 6474454,
   "photographer": "Tima Miroshnichenko",
   "url": "https://www.pexels.com/photo/person-holding-a-colors-swatch-6474454/",
   "query": "paint colour fan deck swatches",
   "role": "detail"
+ },
+ "advice": {
+  "id": 14458537,
+  "photographer": "Nina zeynep g\u00fcler \ud83e\udd95 zz",
+  "url": "https://www.pexels.com/photo/retail-clerk-in-a-store-14458537/",
+  "query": "shopkeeper helping customer hardware store counter"
+ },
+ "loading": {
+  "id": 39369724,
+  "photographer": "Ali A BA",
+  "url": "https://www.pexels.com/photo/construction-workers-busy-unloading-cement-39369724/",
+  "query": "workers loading cement bags truck"
+ },
+ "paints": {
+  "id": 6920160,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/high-angle-shot-of-paint-cans-on-white-surface-6920160/",
+  "query": "colorful paint cans open lids"
+ },
+ "aisle": {
+  "id": 33164257,
+  "photographer": "Th2city Santana",
+  "url": "https://www.pexels.com/photo/man-working-in-cluttered-storage-room-33164257/",
+  "query": "home improvement store shelves products"
+ },
+ "showroom": {
+  "id": 7166936,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/a-white-sink-with-mirror-inside-the-bathroom-7166936/",
+  "query": "bathroom showroom washbasin tiles display"
+ },
+ "electrical": {
+  "id": 29596327,
+  "photographer": "Andrew Durkin",
+  "url": "https://www.pexels.com/photo/spools-of-industrial-cable-outside-building-29596327/",
+  "query": "copper wire spool closeup"
+ },
+ "mixing": {
+  "id": 34462180,
+  "photographer": "Eglos Pixel",
+  "url": "https://www.pexels.com/photo/colorful-paint-cans-stacked-in-barcelona-34462180/",
+  "query": "paint cans shelf hardware store"
+ },
+ "team": {
+  "id": 8475204,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/men-wearing-apron-smiling-together-8475204/",
+  "query": "indian shop owner staff portrait store"
  }
 }

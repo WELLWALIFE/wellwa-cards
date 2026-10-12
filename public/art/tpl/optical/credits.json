@@ -1,0 +1,44 @@
+{
+ "shop-hero": {
+  "id": 12291538,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/a-close-up-shot-of-a-variety-of-sunglasses-12291538/",
+  "query": "optical store eyeglasses display wall",
+  "role": "cover"
+ },
+ "eye-test-hero": {
+  "id": 6749729,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/man-in-brown-crew-neck-shirt-getting-his-eyes-checks-6749729/",
+  "query": "optometrist eye examination phoropter patient",
+  "role": "cover"
+ },
+ "sunglasses": {
+  "id": 38384399,
+  "photographer": "Christopher Welsch Leveroni",
+  "url": "https://www.pexels.com/photo/stylish-aviator-sunglasses-with-gradient-lenses-38384399/",
+  "query": "polarized aviator sunglasses closeup",
+  "role": "product"
+ },
+ "contact-lens": {
+  "id": 5843341,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-contact-lens-5843341/",
+  "query": "contact lens on fingertip case",
+  "role": "product"
+ },
+ "reading-glasses": {
+  "id": 3109168,
+  "photographer": "Wallace Chuck",
+  "url": "https://www.pexels.com/photo/gray-magnifying-glass-and-eyeglasses-on-top-of-open-book-3109168/",
+  "query": "reading glasses on open book",
+  "role": "product"
+ },
+ "trial-lens-kit": {
+  "id": 6749740,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/trial-frame-and-trial-lenses-on-a-white-surface-6749740/",
+  "query": "trial lens set optometry kit",
+  "role": "detail"
+ }
+}

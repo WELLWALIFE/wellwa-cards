@@ -1,0 +1,70 @@
+{
+ "shoe-wall": {
+  "id": 13807630,
+  "photographer": "Adrian Frentescu",
+  "url": "https://www.pexels.com/photo/sneakers-displayed-on-a-wooden-wall-13807630/",
+  "query": "shoe store wall display sneakers shelves",
+  "role": "cover"
+ },
+ "shop-interior": {
+  "id": 34279970,
+  "photographer": "Tahir X\u0259lf\u0259quliyev",
+  "url": "https://www.pexels.com/photo/elegant-black-leather-shoes-display-on-wooden-shelves-34279970/",
+  "query": "footwear showroom interior wooden shelves bench",
+  "role": "space"
+ },
+ "lacing-sneaker": {
+  "id": 5319309,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-person-tying-the-lace-of-a-sneaker-5319309/",
+  "query": "man tying running shoe laces",
+  "role": "people"
+ },
+ "running-shoes": {
+  "id": 17931250,
+  "photographer": "Arturo A",
+  "url": "https://www.pexels.com/photo/blue-trainers-for-runners-17931250/",
+  "query": "mesh running shoes pair studio",
+  "role": "product"
+ },
+ "formal-shoes": {
+  "id": 4637874,
+  "photographer": "Milan",
+  "url": "https://www.pexels.com/photo/stylish-brown-leather-boots-on-sofa-4637874/",
+  "query": "brown leather oxford shoes polished",
+  "role": "product"
+ },
+ "womens-heels": {
+  "id": 30471927,
+  "photographer": "pedro furtado",
+  "url": "https://www.pexels.com/photo/elegant-high-heel-sandals-on-model-s-feet-30471927/",
+  "query": "women block heel sandals strap",
+  "role": "product"
+ },
+ "mojari": {
+  "id": 2060242,
+  "photographer": "viresh studio",
+  "url": "https://www.pexels.com/photo/pair-of-brown-flat-shoes-on-brown-surface-2060242/",
+  "query": "embroidered indian mojari juttis gold",
+  "role": "product"
+ },
+ "kids-shoes": {
+  "id": 12955703,
+  "photographer": "Atlantic Ambience",
+  "url": "https://www.pexels.com/photo/a-kid-wearing-a-rubber-shoes-12955703/",
+  "query": "colorful kids sneakers velcro small",
+  "role": "product"
+ },
+ "measuring-feet": {
+  "id": 8400227,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/woman-trying-assorted-sandals-8400227/",
+  "query": "hands helping choose shoes"
+ },
+ "leather-stitching": {
+  "id": 5894283,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/a-man-lacing-the-leather-shoes-5894283/",
+  "query": "leather artisan shoe crafting top view"
+ }
+}

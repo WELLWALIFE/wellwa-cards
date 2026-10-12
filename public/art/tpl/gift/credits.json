@@ -1,0 +1,61 @@
+{
+ "space-stationery": {
+  "id": 33738528,
+  "photographer": "Andi sabandi",
+  "url": "https://www.pexels.com/photo/woman-reading-in-a-vibrant-office-supply-store-33738528/",
+  "query": "stationery shop aisle notebooks pens shelves",
+  "role": "space"
+ },
+ "product-school": {
+  "id": 12861343,
+  "photographer": "Jacob  Yavin",
+  "url": "https://www.pexels.com/photo/white-backpack-with-accessories-12861343/",
+  "query": "school stationery kit notebooks pencils crayons",
+  "role": "product"
+ },
+ "product-candles": {
+  "id": 6831672,
+  "photographer": "Maahid Photos",
+  "url": "https://www.pexels.com/photo/box-with-scented-candles-on-fabric-6831672/",
+  "query": "scented soy candles glass jars gift box",
+  "role": "product"
+ },
+ "detail-ribbon": {
+  "id": 30142670,
+  "photographer": "Karina Rymarchuk",
+  "url": "https://www.pexels.com/photo/hands-tying-blue-ribbon-on-red-gift-box-30142670/",
+  "query": "satin ribbon bow gift box closeup",
+  "role": "detail"
+ },
+ "space-interior": {
+  "id": 5801528,
+  "photographer": "Serena Koi",
+  "url": "https://www.pexels.com/photo/candles-on-the-glass-showcase-5801528/",
+  "query": "gift shop interior shelves products display"
+ },
+ "product-hamper": {
+  "id": 8819781,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/man-in-blue-dress-shirt-holding-brown-wooden-tray-with-food-8819781/",
+  "query": "diwali festive gift box dry fruits diya",
+  "role": "product"
+ },
+ "cover-wrapping": {
+  "id": 3927233,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/brown-gift-box-with-black-ribbon-3927233/",
+  "query": "hands wrapping gift brown paper ribbon"
+ },
+ "product-corporate": {
+  "id": 8062364,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/brown-leather-wallet-on-beige-surface-8062364/",
+  "query": "leather notebook pen gift box flat lay"
+ },
+ "product-frame": {
+  "id": 9451328,
+  "photographer": "Anna Pou",
+  "url": "https://www.pexels.com/photo/white-wooden-picture-frame-on-brown-wooden-table-9451328/",
+  "query": "wooden picture frame family photo table"
+ }
+}

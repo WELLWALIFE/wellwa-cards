@@ -53,5 +53,53 @@
   "photographer": "Engin Akyurt",
   "url": "https://www.pexels.com/photo/stack-of-rolled-blankets-14933840/",
   "query": "colorful folded indian fabric rolls stacked"
+ },
+ "customer-trial": {
+  "id": 28943578,
+  "photographer": "Manish Jangid",
+  "url": "https://www.pexels.com/photo/woman-in-saree-walking-through-vibrant-market-28943578/",
+  "query": "indian woman saree shopping boutique"
+ },
+ "school-uniform": {
+  "id": 3231358,
+  "photographer": "Yogendra  Singh",
+  "url": "https://www.pexels.com/photo/photograph-of-girls-in-a-classroom-3231358/",
+  "query": "indian school students uniform classroom"
+ },
+ "mens-kurta": {
+  "id": 23696192,
+  "photographer": "the Amritdev",
+  "url": "https://www.pexels.com/photo/model-in-a-patterned-vest-over-a-yellow-tunic-23696192/",
+  "query": "indian groom kurta nehru jacket portrait"
+ },
+ "saree-draping": {
+  "id": 9345930,
+  "photographer": "Rezoana Amin Rayna",
+  "url": "https://www.pexels.com/photo/woman-in-red-dress-with-fabric-billowing-behind-her-9345930/",
+  "query": "indian bride draping silk saree pallu"
+ },
+ "shop-front": {
+  "id": 21404145,
+  "photographer": "Lauma Augstkalne",
+  "url": "https://www.pexels.com/photo/mannequins-and-flowers-in-clothing-store-windows-21404145/",
+  "query": "fashion boutique exterior entrance mannequins"
+ },
+ "staff-team": {
+  "id": 38443540,
+  "photographer": "Aditya Oberai",
+  "url": "https://www.pexels.com/photo/colorful-street-market-scene-in-bengaluru-38443540/",
+  "query": "indian salesman showing fabric customer shop"
+ },
+ "shop-interior": {
+  "id": 11435420,
+  "photographer": "Shannon Deans",
+  "url": "https://www.pexels.com/photo/clothes-on-hangers-11435420/",
+  "query": "clothing boutique interior racks hangers bright"
+ },
+ "mens-shirts": {
+  "id": 1884581,
+  "photographer": "Tembela Bohle",
+  "url": "https://www.pexels.com/photo/grayscale-photography-of-assorted-apparels-on-shelf-rack-1884581/",
+  "query": "men shirts folded display store shelf"
  }
 }

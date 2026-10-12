@@ -1,0 +1,54 @@
+{
+ "lobby-lounge": {
+  "id": 189295,
+  "photographer": "Donald Tong",
+  "url": "https://www.pexels.com/photo/yellow-vacant-sofa-in-living-room-189295/",
+  "query": "small hotel lobby lounge sofa warm lighting",
+  "role": "space"
+ },
+ "rooftop-dining": {
+  "id": 2291636,
+  "photographer": "Zak Chapman",
+  "url": "https://www.pexels.com/photo/tables-by-the-pool-2291636/",
+  "query": "rooftop restaurant tables evening city view",
+  "role": "space"
+ },
+ "housekeeping": {
+  "id": 9462742,
+  "photographer": "Liliana Drew",
+  "url": "https://www.pexels.com/photo/housekeepers-changing-bedding-in-hotel-room-9462742/",
+  "query": "housekeeping staff making hotel bed fresh linen",
+  "role": "people"
+ },
+ "family-suite": {
+  "id": 29000006,
+  "photographer": "Quang Nguyen Vinh",
+  "url": "https://www.pexels.com/photo/modern-hotel-room-with-two-beds-and-natural-light-29000006/",
+  "query": "family hotel suite two beds living area",
+  "role": "product"
+ },
+ "reception-welcome": {
+  "id": 37680832,
+  "photographer": "FAKHRUL HASSAN",
+  "url": "https://www.pexels.com/photo/friendly-hotel-reception-interaction-in-dhaka-37680832/",
+  "query": "indian hotel receptionist smiling front desk"
+ },
+ "waiter-thali": {
+  "id": 29253334,
+  "photographer": "Ali Dashti",
+  "url": "https://www.pexels.com/photo/traditional-indian-thali-with-fresh-naan-bread-29253334/",
+  "query": "indian thali meal served restaurant waiter"
+ },
+ "standard-room": {
+  "id": 27626182,
+  "photographer": "Ahmet ÇÖTÜR",
+  "url": "https://www.pexels.com/photo/a-bedroom-with-white-walls-and-wooden-floors-27626182/",
+  "query": "clean double hotel room white bed"
+ },
+ "deluxe-room": {
+  "id": 14917462,
+  "photographer": "Quang Nguyen Vinh",
+  "url": "https://www.pexels.com/photo/a-white-bed-near-the-brown-couch-and-table-14917462/",
+  "query": "hotel room queen bed sofa large window"
+ }
+}

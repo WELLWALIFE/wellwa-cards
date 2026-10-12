@@ -1,0 +1,105 @@
+{
+ "wedding-buffet": {
+  "id": 36766850,
+  "photographer": "kevin yung",
+  "url": "https://www.pexels.com/photo/luxurious-wedding-banquet-setup-with-floral-arrangements-36766850/",
+  "query": "indian wedding buffet catering counters",
+  "role": "cover"
+ },
+ "banquet-hall": {
+  "id": 30215011,
+  "photographer": "Shalika Akalanka",
+  "url": "https://www.pexels.com/photo/elegant-wedding-reception-with-floral-arrangements-30215011/",
+  "query": "decorated banquet hall tables wedding setup",
+  "role": "space"
+ },
+ "veg-thali": {
+  "id": 29148133,
+  "photographer": "Eyes2Soul Eyes2Soul",
+  "url": "https://www.pexels.com/photo/traditional-indian-thali-meal-with-naan-bread-29148133/",
+  "query": "indian vegetarian thali paneer dal roti",
+  "role": "product"
+ },
+ "chaat-counter": {
+  "id": 12427783,
+  "photographer": "Rathaphon Nanthapreecha",
+  "url": "https://www.pexels.com/photo/panipuri-snack-in-close-up-photography-12427783/",
+  "query": "pani puri golgappa chaat stall",
+  "role": "product"
+ },
+ "mithai": {
+  "id": 37294501,
+  "photographer": "Swapnali Khaire",
+  "url": "https://www.pexels.com/photo/delicious-indian-gulab-jamun-dessert-in-bowl-37294501/",
+  "query": "gulab jamun jalebi indian sweets dessert table",
+  "role": "product"
+ },
+ "biryani": {
+  "id": 35287418,
+  "photographer": "Milton Das",
+  "url": "https://www.pexels.com/photo/delicious-hyderabadi-biryani-with-side-dishes-35287418/",
+  "query": "hyderabadi dum biryani handi raita",
+  "role": "product"
+ },
+ "team": {
+  "id": 23830927,
+  "photographer": "Sarabjeet Singh",
+  "url": "https://www.pexels.com/photo/a-group-of-chefs-posing-together-in-a-garden-23830927/",
+  "query": "catering staff team uniform smiling india",
+  "role": "team"
+ },
+ "server-buffet": {
+  "id": 33419107,
+  "photographer": "Mad Knoxx Deluxe",
+  "url": "https://www.pexels.com/photo/colorful-wedding-buffet-outdoor-celebration-33419107/",
+  "query": "waiter serving guests wedding buffet india"
+ },
+ "snacks-box": {
+  "id": 37068875,
+  "photographer": "Mico Medel",
+  "url": "https://www.pexels.com/photo/freshly-made-samosas-in-catering-tray-37068875/",
+  "query": "indian snack box samosa sandwich party"
+ },
+ "tandoori-platter": {
+  "id": 36701439,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/elegant-presentation-of-grilled-tandoori-chicken-36701439/",
+  "query": "tandoori chicken platter mint chutney"
+ },
+ "copper-serveware": {
+  "id": 39388308,
+  "photographer": "Sergei Starostin",
+  "url": "https://www.pexels.com/photo/buffet-tray-of-delicious-spicy-appetizers-39388308/",
+  "query": "silver chafing dish buffet close up"
+ },
+ "kitchen": {
+  "id": 5779775,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-and-woman-standing-at-the-table-5779775/",
+  "query": "restaurant kitchen stainless steel professional chefs"
+ },
+ "satvik-thali": {
+  "id": 8818723,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-person-putting-food-on-the-stainless-plate-8818723/",
+  "query": "puri sabzi halwa kheer thali"
+ },
+ "chef-kadhai": {
+  "id": 14011342,
+  "photographer": "Quang Nguyen Vinh",
+  "url": "https://www.pexels.com/photo/woman-preparing-traditional-dish-14011342/",
+  "query": "indian cook stirring large kadhai"
+ },
+ "chef-tandoor": {
+  "id": 14798273,
+  "photographer": "BOA.vision",
+  "url": "https://www.pexels.com/photo/a-man-preparing-ingredients-14798273/",
+  "query": "man putting naan in tandoor"
+ },
+ "office-lunch": {
+  "id": 12737912,
+  "photographer": "dhiraj jain",
+  "url": "https://www.pexels.com/photo/flatlay-of-indian-food-12737912/",
+  "query": "indian steel tiffin lunch box meal"
+ }
+}

@@ -1,0 +1,107 @@
+{
+ "cover-chai-pour": {
+  "id": 18413480,
+  "photographer": "GOWTHAM AGM",
+  "url": "https://www.pexels.com/photo/man-pouring-hot-drink-through-a-sieve-18413480/",
+  "query": "indian masala chai pouring kulhad steam",
+  "role": "cover"
+ },
+ "cover-cafe-morning": {
+  "id": 38292581,
+  "photographer": "Mohammed-Ali  Hamadache",
+  "url": "https://www.pexels.com/photo/cozy-cafe-interior-with-modern-decor-38292581/",
+  "query": "cozy indian cafe interior morning customers",
+  "role": "cover"
+ },
+ "space-seating": {
+  "id": 27941246,
+  "photographer": "Amar  Preciado",
+  "url": "https://www.pexels.com/photo/a-small-coffee-shop-with-plants-and-a-table-27941246/",
+  "query": "small cafe wooden tables plants window light",
+  "role": "space"
+ },
+ "space-counter": {
+  "id": 33703638,
+  "photographer": "Tuğba Kobal Yılmaz",
+  "url": "https://www.pexels.com/photo/elegant-bakery-counter-with-stylish-decor-33703638/",
+  "query": "cafe counter pastry display case bright",
+  "role": "space"
+ },
+ "people-chaiwala": {
+  "id": 23507012,
+  "photographer": "Robert  Stokoe",
+  "url": "https://www.pexels.com/photo/man-preparing-coffee-23507012/",
+  "query": "indian chai wala pouring tea stall",
+  "role": "people"
+ },
+ "people-friends": {
+  "id": 35055041,
+  "photographer": "Kunal Lakhotia",
+  "url": "https://www.pexels.com/photo/coffee-and-tea-break-outdoors-on-wooden-table-35055041/",
+  "query": "indian friends drinking chai cafe table",
+  "role": "people"
+ },
+ "chai": {
+  "id": 36662612,
+  "photographer": "Sagar Mali",
+  "url": "https://www.pexels.com/photo/traditional-clay-cup-masala-chai-street-vendor-36662612/",
+  "query": "masala chai glass cups tray ginger cardamom",
+  "role": "product"
+ },
+ "filter-coffee": {
+  "id": 17075123,
+  "photographer": "Jhon  Ferreira",
+  "url": "https://www.pexels.com/photo/man-hand-holding-cup-of-coffee-17075123/",
+  "query": "south indian coffee davara tumbler froth",
+  "role": "product"
+ },
+ "bun-maska": {
+  "id": 17223838,
+  "photographer": "Aditya Mara",
+  "url": "https://www.pexels.com/photo/plate-with-food-17223838/",
+  "query": "bun maska pav butter plate india",
+  "role": "product"
+ },
+ "cold-coffee": {
+  "id": 28162736,
+  "photographer": "ahmed akeri",
+  "url": "https://www.pexels.com/photo/smoothie-28162736/",
+  "query": "cold coffee ice cream tall glass chocolate",
+  "role": "product"
+ },
+ "sandwich": {
+  "id": 20422166,
+  "photographer": "Jack Baghel",
+  "url": "https://www.pexels.com/photo/toasts-with-fries-on-plate-20422166/",
+  "query": "grilled veg cheese sandwich plate chutney",
+  "role": "product"
+ },
+ "samosa": {
+  "id": 5031949,
+  "photographer": "Sutee Pheera",
+  "url": "https://www.pexels.com/photo/a-fried-dish-on-white-ceramic-plate-5031949/",
+  "query": "crispy samosas plate chutney india",
+  "role": "product"
+ },
+ "bakes": {
+  "id": 5386673,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/piece-of-cake-5386673/",
+  "query": "chocolate walnut brownie slices plate",
+  "role": "product"
+ },
+ "detail-kulhad": {
+  "id": 3904035,
+  "photographer": "Thoda Creative",
+  "url": "https://www.pexels.com/photo/nachos-beside-dips-3904035/",
+  "query": "kulhad clay cup chai close up",
+  "role": "detail"
+ },
+ "team": {
+  "id": 31353701,
+  "photographer": "🇻🇳🇻🇳Nguyễn Tiến Thịnh 🇻🇳🇻🇳",
+  "url": "https://www.pexels.com/photo/friendly-coffee-shop-team-at-counter-31353701/",
+  "query": "cafe staff smiling aprons counter india",
+  "role": "team"
+ }
+}

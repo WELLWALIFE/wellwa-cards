@@ -1,0 +1,107 @@
+{
+ "doctor-patient": {
+  "id": 14558557,
+  "photographer": "Imad Clicks",
+  "url": "https://www.pexels.com/photo/a-doctor-getting-a-patient-vital-signs-14558557/",
+  "query": "indian doctor consulting patient clinic",
+  "role": "cover"
+ },
+ "nurse-reception": {
+  "id": 4269275,
+  "photographer": "Cedric Fauntleroy",
+  "url": "https://www.pexels.com/photo/a-receptionist-looking-at-a-tablet-4269275/",
+  "query": "indian nurse receptionist clinic desk",
+  "role": "people"
+ },
+ "doctor-explaining": {
+  "id": 2182972,
+  "photographer": "LinkedIn Sales Navigator",
+  "url": "https://www.pexels.com/photo/doctor-pointing-x-ray-result-beside-man-wearing-black-suit-2182972/",
+  "query": "doctor explaining report to patient",
+  "role": "people"
+ },
+ "consultation": {
+  "id": 7578797,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-doctor-sitting-at-a-desk-7578797/",
+  "query": "indian doctor listening patient consultation",
+  "role": "product"
+ },
+ "child-checkup": {
+  "id": 5998457,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-doctor-examining-a-child-patient-5998457/",
+  "query": "pediatrician examining child stethoscope",
+  "role": "product"
+ },
+ "vaccination": {
+  "id": 8413215,
+  "photographer": "SHVETS production",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-health-worker-injecting-a-vaccine-on-a-patient-8413215/",
+  "query": "nurse giving vaccine injection arm",
+  "role": "product"
+ },
+ "prescription-pad": {
+  "id": 7195122,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/woman-holding-a-pen-7195122/",
+  "query": "doctor writing prescription stethoscope desk",
+  "role": "detail"
+ },
+ "clinic-stethoscope": {
+  "id": 18870282,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/young-female-doctor-examining-a-senior-patient-18870282/",
+  "query": "indian doctor examining patient stethoscope",
+  "role": "cover"
+ },
+ "consulting-room": {
+  "id": 32830266,
+  "photographer": "Nenad Delibos",
+  "url": "https://www.pexels.com/photo/modern-gynecological-examination-room-interior-32830266/",
+  "query": "doctor examination room bed clinic interior",
+  "role": "space"
+ },
+ "waiting-area": {
+  "id": 4266942,
+  "photographer": "Cedric Fauntleroy",
+  "url": "https://www.pexels.com/photo/a-doctor-showing-a-tablet-to-a-patient-4266942/",
+  "query": "clinic waiting room chairs patients",
+  "role": "space"
+ },
+ "blood-test": {
+  "id": 5206976,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-person-doing-blood-extraction-5206976/",
+  "query": "phlebotomist drawing blood syringe patient vein",
+  "role": "product"
+ },
+ "bp-check": {
+  "id": 5327862,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/a-person-checking-the-blood-pressure-of-the-patient-5327862/",
+  "query": "blood pressure cuff arm doctor measuring clinic",
+  "role": "product"
+ },
+ "clinic-team": {
+  "id": 6129494,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/health-care-professionals-smiling-at-the-camera-6129494/",
+  "query": "group of indian doctors smiling hospital",
+  "role": "team"
+ },
+ "ecg": {
+  "id": 6129236,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-nurse-checking-a-patient-s-heartbeat-6129236/",
+  "query": "nurse attaching ecg electrodes patient",
+  "role": "product"
+ },
+ "senior-care": {
+  "id": 8088864,
+  "photographer": "Yaroslav Shuraev",
+  "url": "https://www.pexels.com/photo/old-person-s-hand-holding-a-finger-pulse-oximeter-8088864/",
+  "query": "doctor holding hands elderly woman patient",
+  "role": "product"
+ }
+}

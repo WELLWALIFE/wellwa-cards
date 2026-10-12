@@ -1,0 +1,78 @@
+{
+ "counter": {
+  "id": 8657358,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-man-handing-a-pump-bottle-to-a-woman-8657358/",
+  "query": "pharmacist handing medicines customer counter india",
+  "role": "cover"
+ },
+ "firstaid": {
+  "id": 5673523,
+  "photographer": "Roger Brown",
+  "url": "https://www.pexels.com/photo/first-aid-kit-on-gray-background-5673523/",
+  "query": "first aid kit bandages antiseptic open box",
+  "role": "product"
+ },
+ "baby": {
+  "id": 38334623,
+  "photographer": "Mahadev Mandal",
+  "url": "https://www.pexels.com/photo/cute-baby-surrounded-by-skincare-products-38334623/",
+  "query": "baby diapers wipes lotion products",
+  "role": "product"
+ },
+ "prescription": {
+  "id": 5998454,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/woman-in-white-scrub-and-eyeglasses-writing-on-white-paper-5998454/",
+  "query": "handwritten prescription stethoscope pen desk",
+  "role": "detail"
+ },
+ "eldercare": {
+  "id": 33391399,
+  "photographer": "beyzz",
+  "url": "https://www.pexels.com/photo/elderly-couple-strolling-in-forest-park-33391399/",
+  "query": "adult diapers walker wheelchair supplies"
+ },
+ "nebuliser": {
+  "id": 6202740,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/portrait-of-boy-with-inhaler-6202740/",
+  "query": "nebulizer mask child inhalation"
+ },
+ "nutrition": {
+  "id": 33921585,
+  "photographer": "Gupta Sahil",
+  "url": "https://www.pexels.com/photo/creatine-monohydrate-supplement-in-kitchen-33921585/",
+  "query": "protein powder supplement jars"
+ },
+ "pharmacist": {
+  "id": 7659891,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/medical-practitioner-with-medicine-on-its-palms-7659891/",
+  "query": "indian pharmacist white coat medicines"
+ },
+ "shelves": {
+  "id": 14797855,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/pharmacist-in-front-of-shelves-with-medicines-14797855/",
+  "query": "pharmacy shelves medicine boxes drugstore"
+ },
+ "storefront": {
+  "id": 9660933,
+  "photographer": "Jonathan Cooper",
+  "url": "https://www.pexels.com/photo/lighted-signage-in-a-clinic-9660933/",
+  "query": "pharmacy shop front sign india"
+ },
+ "team": {
+  "id": 8657297,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/pharmacist-using-laptop-in-old-fashioned-pharmacy-8657297/",
+  "query": "pharmacists team white coat drugstore"
+ },
+ "devices": {
+  "id": 8670204,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-sphygmomanometer-up-close-8670204/",
+  "query": "digital blood pressure monitor arm cuff"
+ }
+}

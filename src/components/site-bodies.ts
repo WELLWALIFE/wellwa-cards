@@ -30,7 +30,7 @@ const SHOP = `
 .site[data-bp="shop"] main .sec-h2{font-size:clamp(1.5rem,5.5vw,2rem);letter-spacing:-.01em}
 .site[data-bp="shop"] main .sec-pad{padding-top:var(--s7);padding-bottom:var(--s7)}
 .site[data-bp="shop"] main .mb-10,.site[data-bp="shop"] main .mb-12{margin-bottom:var(--s5)}
-.site[data-bp="shop"] main .grid.sm\\:grid-cols-2{grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
+.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s3)}
 .site[data-bp="shop"] main .s-card{border:1px solid var(--line);box-shadow:none;border-radius:var(--r-card)}
 .site[data-bp="shop"] main .s-card .p-img{aspect-ratio:1}
 .site[data-bp="shop"] main .s-card>.p-5{padding:var(--s3)}
@@ -46,7 +46,7 @@ const SHOP = `
 .site[data-bp="shop"] main figure{border:1px solid var(--line);border-radius:var(--r-card);padding:var(--s4);background:var(--surface)}
 .site[data-bp="shop"] main .rev-q{font-size:1rem;line-height:1.5}
 @media (min-width:768px){
-.site[data-bp="shop"] main .grid.sm\\:grid-cols-2{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4)}
+.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4)}
 .site[data-bp="shop"] main .s-card .line-clamp-2{display:-webkit-box;font-size:13px}
 .site[data-bp="shop"] main .p-name{font-size:1rem}
 }
@@ -88,6 +88,12 @@ const POSTER = `
 /** The Cinematic body with `style.body = "dark"` (Dishoom / Behrouz): every section on the ink field, light type, the
  *  accent only on rules and prices — the page stays a dark room from top to bottom. Default cinematic sites keep paper. */
 const CINEMATIC_DARK = `
+/* The dark room covers the header and the footer too, and the accent becomes the palette's light accent (noir: gold) —
+   its mid is near-black, which left the buttons and the nav unreadable (review, 13 Oct 2026). */
+.site[data-body="dark"]{--accent:var(--p-accent);--on-accent:var(--p-deep);--tc:var(--p-accent)}
+.site[data-body="dark"] header.site-head{background:color-mix(in srgb,var(--hero-ink) 86%,transparent);border-color:color-mix(in srgb,var(--hero-text) 14%,transparent);color:var(--hero-text);--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent);--surface:color-mix(in srgb,var(--hero-ink) 90%,white);--border:color-mix(in srgb,var(--hero-text) 18%,transparent)}
+.site[data-body="dark"] header.site-head a,.site[data-body="dark"] header.site-head button{color:var(--hero-text)}
+.site[data-body="dark"] footer{--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent)}
 .site[data-bp="cinematic"][data-body="dark"] main{--paper:var(--hero-ink);--paper-2:color-mix(in srgb,var(--hero-ink) 88%,white);--surface:color-mix(in srgb,var(--hero-ink) 90%,white);--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent);--line:color-mix(in srgb,var(--hero-text) 18%,transparent);--p-soft:color-mix(in srgb,var(--hero-text) 10%,transparent);background:var(--hero-ink);color:var(--hero-text)}
 .site[data-bp="cinematic"][data-body="dark"] main .sec-h2{color:var(--hero-text);font-weight:400;font-size:clamp(2rem,7vw,3rem);letter-spacing:-.01em}
 .site[data-bp="cinematic"][data-body="dark"] main .kicker{color:var(--gold,var(--accent))}
@@ -99,4 +105,14 @@ const CINEMATIC_DARK = `
 .site[data-bp="cinematic"][data-body="dark"] main .rev-q{color:var(--hero-text)}
 `;
 
-export const BODY_CSS: Record<string, string> = { wordmark: WORDMARK, shop: SHOP, collage: COLLAGE, story: POSTER, cinematic: CINEMATIC_DARK };
+/** On every blueprint a product PHOTOGRAPH fills its frame (cover), instead of floating inside it with padding like a
+ *  cut-out on white — the trade templates and most owners' photos are photographs (review, 13 Oct 2026). */
+const PHOTOS = `
+.site[data-bp] main .p-price{white-space:normal;max-width:9ch}
+.site[data-bp] main .p-img .kicker,.site[data-bp] main .p-img .num{background:var(--surface);color:var(--ink);padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.08em}
+@media (max-width:767px){.site[data-bp] main .rev-q{font-size:1.125rem;line-height:1.45}}
+.site[data-bp] main .p-img>button{padding:0}
+.site[data-bp] main .p-img img{object-fit:cover}
+.site[data-bp] main .p-img{background:var(--paper-2)}
+`;
+export const BODY_CSS: Record<string, string> = { wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS };

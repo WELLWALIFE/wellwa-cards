@@ -27,40 +27,70 @@
   "query": "detergent soap cleaning products shelf",
   "role": "product"
  },
- "shopfront": {
-  "id": 34344544,
-  "photographer": "@coldbeer",
-  "url": "https://www.pexels.com/photo/local-convenience-store-with-green-field-sign-34344544/",
-  "query": "indian grocery store daytime storefront"
- },
- "packing": {
-  "id": 30681021,
-  "photographer": "Roman Saienko",
-  "url": "https://www.pexels.com/photo/traditional-spice-market-in-mathura-india-30681021/",
-  "query": "indian shopkeeper packing groceries bag"
- },
- "snacks": {
-  "id": 39138237,
-  "photographer": "AmirHadi Manavi Moghadam",
-  "url": "https://www.pexels.com/photo/assortment-of-colorful-pastries-and-tea-39138237/",
-  "query": "tea cup biscuits indian namkeen"
- },
- "dryfruits": {
-  "id": 36576778,
-  "photographer": "Kunal Lakhotia",
-  "url": "https://www.pexels.com/photo/delicious-kulfi-ice-cream-with-nuts-and-vermicelli-36576778/",
-  "query": "almonds cashews pistachios raisins bowls"
- },
- "weighing": {
-  "id": 16610859,
-  "photographer": "Efrem  Efre",
-  "url": "https://www.pexels.com/photo/hanging-bowl-with-coffee-beans-16610859/",
-  "query": "brass weighing scale grains market"
- },
  "team": {
   "id": 14349176,
   "photographer": "Peter Holmboe",
   "url": "https://www.pexels.com/photo/man-in-gray-sweater-standing-inside-a-store-14349176/",
   "query": "indian shopkeeper smiling grocery store"
+ },
+ "shelves": {
+  "id": 21582447,
+  "photographer": "Kenneth Surillo",
+  "url": "https://www.pexels.com/photo/chips-in-a-store-21582447/",
+  "query": "indian grocery store shelves packaged goods"
+ },
+ "dairy": {
+  "id": 6957827,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/baking-ingredients-in-containers-on-a-table-6957827/",
+  "query": "fresh milk bottle bread eggs"
+ },
+ "shopfront": {
+  "id": 21005657,
+  "photographer": "Harpreet Singh Sidhu",
+  "url": "https://www.pexels.com/photo/man-in-turban-working-at-store-21005657/",
+  "query": "indian kirana general store shop"
+ },
+ "snacks": {
+  "id": 36662612,
+  "photographer": "Sagar Mali",
+  "url": "https://www.pexels.com/photo/traditional-clay-cup-masala-chai-street-vendor-36662612/",
+  "query": "masala chai cup biscuits"
+ },
+ "dryfruits": {
+  "id": 1295572,
+  "photographer": "Marta Branco",
+  "url": "https://www.pexels.com/photo/variety-of-brown-nuts-on-brown-wooden-panel-high-angle-photo-1295572/",
+  "query": "dry fruits almonds cashews walnuts bowl"
+ },
+ "staples": {
+  "id": 4224259,
+  "photographer": "alleksana",
+  "url": "https://www.pexels.com/photo/beans-in-bowls-4224259/",
+  "query": "rice lentils flour bowls grains"
+ },
+ "customer": {
+  "id": 8805183,
+  "photographer": "Mike Jones",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-person-holding-a-grocery-basket-with-vegetables-8805183/",
+  "query": "indian lady shopping grocery store basket"
+ },
+ "packing": {
+  "id": 4199585,
+  "photographer": "Jack Sparrow",
+  "url": "https://www.pexels.com/photo/couple-buying-a-pineapple-4199585/",
+  "query": "grocery store cashier handing paper bag"
+ },
+ "weighing": {
+  "id": 8657361,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/close-up-of-powdered-medication-being-measured-on-a-vintage-scale-standing-next-to-pill-bottles-8657361/",
+  "query": "old brass balance scale shop grains"
+ },
+ "oil-ghee": {
+  "id": 18288643,
+  "photographer": "Mouli Ghosh",
+  "url": "https://www.pexels.com/photo/decoration-by-altar-18288643/",
+  "query": "desi ghee jar"
  }
 }

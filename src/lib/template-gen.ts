@@ -144,8 +144,16 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
     const cover = v.cover && have.has(v.cover) ? v.cover : covers[i % Math.max(1, covers.length)];
     const wanted = (v.gallery ?? []).filter((s) => have.has(s));
     const gallery = [...wanted, ...galleryPool.filter((s) => !wanted.includes(s) && s !== cover)].slice(0, 6);
+    const usedPhoto = new Set<string>();
+    const spare = byRole(sample, have, "product", "detail", "space").filter((s) => !sample.products.some((p) => p.photo === s));
+    const photoOf = (p: SampleProduct): string | undefined => {
+      let s: string | undefined = have.has(p.photo) && !usedPhoto.has(p.photo) ? p.photo : spare.find((x) => !usedPhoto.has(x));
+      if (!s && have.has(p.photo)) s = p.photo;   // nothing spare: the shared photo is better than none
+      if (s) usedPhoto.add(s);
+      return s;
+    };
     const products: ProductItem[] = sample.products.slice(0, 8).map((p) => ({
-      name: p.name, images: have.has(p.photo) ? [url(trade, p.photo)] : [], mrp: p.mrp ?? "", price: p.price, badge: p.badge ?? "",
+      name: p.name, images: (() => { const s = photoOf(p); return s ? [url(trade, s)] : []; })(), mrp: p.mrp ?? "", price: p.price, badge: p.badge ?? "",
       desc: p.desc, features: p.features.slice(0, 4), specs: p.specs.slice(0, 3), ctaLabel: sample.productCta,
     }));
     const home: CardBlock[] = [
@@ -172,8 +180,11 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
       ...(galleryBlock.length ? [{ id: `${key}-p3`, slug: "gallery", label: "Gallery", blocks: galleryBlock }] : []),
       { id: `${key}-p4`, slug: "visit", label: "Visit", blocks: visit },
     ];
-    const style: SiteStyle = { blueprint: v.blueprint, palette: v.palette, ...(v.color ? { color: v.color } : {}), font: v.font, radius: v.radius, motion: v.motion, pattern: "none", ...(v.body ? { body: v.body } : {}), ...(v.heroVariant ? { heroVariant: v.heroVariant as SiteStyle["heroVariant"] } : {}), ...(v.layouts ? { layouts: v.layouts } : {}) };
-    const bpName = BLUEPRINTS.find((b) => b.key === v.blueprint)?.name ?? v.blueprint;
+    // A "cover-split" design is the classic page's split hero (words on paper beside a 4:5 photo): the cinematic cover
+    // only draws the full-bleed shapes, so the blueprint is dropped and `hero: "split"` set (review, 13 Oct 2026).
+    const split = v.blueprint === "cinematic" && v.heroVariant === "cover-split";
+    const style: SiteStyle = { ...(split ? { hero: "split" as const } : { blueprint: v.blueprint }), palette: v.palette, ...(v.color ? { color: v.color } : {}), font: v.font, radius: v.radius, motion: v.motion, pattern: "none", ...(v.body ? { body: v.body } : {}), ...(v.heroVariant && !split ? { heroVariant: v.heroVariant as SiteStyle["heroVariant"] } : {}), ...(v.layouts ? { layouts: v.layouts } : {}) };
+    const bpName = split ? "Split" : BLUEPRINTS.find((b) => b.key === v.blueprint)?.name ?? v.blueprint;
     const color = v.color ?? cat?.accent ?? "#0e9e90";
     return {
       key, name: `${cat?.en ?? cap(trade)} — ${v.name}`, category: `${group} · ${bpName}`, description: v.description, emoji: v.emoji, draft: true,
