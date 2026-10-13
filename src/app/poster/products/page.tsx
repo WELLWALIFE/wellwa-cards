@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw } from "lucide-react";
+import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
 import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
@@ -79,6 +79,28 @@ export default function ProductsPage() {
   // "Label: value" lines whenever a product opens, and go back into those lines on every keystroke.
   const [specRows, setSpecRows] = useState<SpecRow[]>([]);
   const draftKey = draft ? (draft.id ?? "new") : "";
+  // "Make this photo professional": a camera photo made studio-clean by the AI (5 credits, only when tapped; the original is kept).
+  const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
+  useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
+  async function studioPhoto() {
+    if (!draft?.photo_url || studio.busy) return;
+    const was = draft.photo_url;
+    setStudio((x) => ({ ...x, busy: true, note: "" }));
+    try {
+      const r = await api<{ url?: string; error?: string }>("/api/card/product-photo", { method: "POST", json: { photo_url: was, product: draft.name, brand: draft.brand, allowPaid: true, product_id: draft.id } });
+      if (r.ok && r.data.url) {
+        const url = r.data.url;
+        setDraft((d) => (d ? { ...d, photo_url: url, photos: [{ url, view: "generated" as PhotoView, role: "context" as const }, ...d.photos.filter((p) => p.url !== url)].slice(0, 6) } : d));
+        setStudio({ busy: false, note: "ok", orig: studio.orig ?? was });
+      } else setStudio((x) => ({ ...x, busy: false, note: r.data.error ?? (en ? "Your photo is kept as it is." : "आपकी photo वैसी ही रहेगी।") }));
+    } catch { setStudio((x) => ({ ...x, busy: false, note: en ? "No internet — please try again." : "Internet नहीं है — दोबारा try करें।" })); }
+  }
+  function useOriginalPhoto() {
+    const o = studio.orig;
+    if (!draft || !o) return;
+    setDraft({ ...draft, photo_url: o, photos: [{ url: o, view: "front" as PhotoView, role: "identity" as const }, ...draft.photos.filter((p) => p.url !== o && p.url !== draft.photo_url)].slice(0, 6) });
+    setStudio({ busy: false, note: "", orig: null });
+  }
   useEffect(() => { setSpecRows(draft ? specsOf(draft.benefits) : []); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
   const [checking, setChecking] = useState<Product | null>(null);
@@ -390,6 +412,16 @@ export default function ProductsPage() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
+              {draft.photo_url && (
+                <div className="space-y-1">
+                  <button type="button" onClick={studioPhoto} disabled={studio.busy || busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
+                    {studio.busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {studio.busy ? (en ? "Making it professional… about 30 seconds" : "Professional बन रही है… लगभग 30 सेकंड") : (en ? "Make this photo professional with AI · 5 credits" : "AI से photo professional बनाएँ · 5 credits")}
+                  </button>
+                  {studio.note === "ok" && <p className="text-[11px] font-semibold text-good">✨ {en ? "Studio photo ready — same product, clean background." : "Studio photo तैयार — वही product, साफ़ background।"} {studio.orig && <button type="button" onClick={useOriginalPhoto} className="underline text-muted">{en ? "Use my original" : "मेरी original रखें"}</button>}</p>}
+                  {studio.note && studio.note !== "ok" && <p className="text-[11px] font-semibold text-danger">{studio.note}</p>}
+                  {!studio.note && !studio.busy && <p className="text-[11px] text-muted">{en ? "A phone photo becomes a clean studio picture of the same product. Your original is kept." : "फ़ोन की photo उसी product की साफ़ studio picture बन जाती है। आपकी original रखी रहती है।"}</p>}
+                </div>
+              )}
             </div>
           </div>
           <label className="block space-y-1">
