@@ -756,6 +756,8 @@ const VIEW_CSS = `
 .site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
 .site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
 .site .sec-pad{padding-block:var(--section-pad)}
+/* The header is a near-solid bar: at 70% the headings scrolling under it showed through and overlapped the menu (owner, 14 Oct 2026). */
+.site header.site-head.glass{background:color-mix(in srgb,var(--paper) 99%,transparent)}
 .site .site-ann{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:9px 16px;background:var(--accent);color:var(--on-accent);font-size:13px;line-height:1.35;text-align:center}
 .site .site-ann a{color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
 .site .bulk-banner{display:grid;gap:var(--s5);align-items:center;padding:var(--s6) var(--s5);border-radius:var(--r-tile);background:var(--p-soft);border:1px solid var(--line)}
