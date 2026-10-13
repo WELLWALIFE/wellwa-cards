@@ -54,5 +54,54 @@
   "url": "https://www.pexels.com/photo/close-up-of-small-bottles-5682923/",
   "query": "homeopathy glass vials white pellets",
   "role": "product"
+ },
+ "abhyanga-oil": {
+  "id": 37719557,
+  "photographer": "Nothing Ahead",
+  "url": "https://www.pexels.com/photo/relaxing-outdoor-massage-therapy-session-37719557/",
+  "query": "ayurvedic oil massage back therapist",
+  "role": "product"
+ },
+ "shirodhara": {
+  "id": 6629607,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-masseuse-pouring-oil-on-her-hand-6629607/",
+  "query": "shirodhara oil pouring forehead treatment",
+  "role": "product"
+ },
+ "steam-swedana": {
+  "id": 11627566,
+  "photographer": "Ekaterina Mitkina",
+  "url": "https://www.pexels.com/photo/man-hand-touching-woman-feet-11627566/",
+  "query": "herbal steam box therapy ayurveda",
+  "role": "product"
+ },
+ "kati-basti": {
+  "id": 6629613,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-tattooed-woman-getting-a-back-massage-6629613/",
+  "query": "kati basti warm oil lower back therapy",
+  "role": "product"
+ },
+ "diet-thali": {
+  "id": 29148133,
+  "photographer": "Eyes2Soul Eyes2Soul",
+  "url": "https://www.pexels.com/photo/traditional-indian-thali-meal-with-naan-bread-29148133/",
+  "query": "healthy indian vegetarian thali sattvic food",
+  "role": "product"
+ },
+ "churna-detail": {
+  "id": 4199144,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/yellow-turmeric-powder-on-silver-spoon-4199144/",
+  "query": "turmeric ashwagandha powder brass spoon closeup",
+  "role": "detail"
+ },
+ "clinic-team": {
+  "id": 8460371,
+  "photographer": "Los Muertos Crew",
+  "url": "https://www.pexels.com/photo/medical-practitioners-in-office-8460371/",
+  "query": "ayurveda clinic doctors therapists team portrait",
+  "role": "team"
  }
 }

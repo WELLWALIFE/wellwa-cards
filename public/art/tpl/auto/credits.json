@@ -1,11 +1,4 @@
 {
- "garage-bay": {
-  "id": 4116170,
-  "photographer": "Jose Ricardo Barraza Morachis",
-  "url": "https://www.pexels.com/photo/white-car-in-a-repair-shop-4116170/",
-  "query": "indian car garage mechanic hydraulic lift",
-  "role": "cover"
- },
  "service-handover": {
   "id": 4895417,
   "photographer": "Gustavo Fring",
@@ -18,13 +11,6 @@
   "photographer": "Artem Podrez",
   "url": "https://www.pexels.com/photo/white-car-in-a-garage-for-check-up-8986138/",
   "query": "automobile workshop interior lifts clean floor",
-  "role": "space"
- },
- "shop-front": {
-  "id": 39741694,
-  "photographer": "Ben Prater",
-  "url": "https://www.pexels.com/photo/vintage-garage-door-with-retro-signage-in-bristol-39741694/",
-  "query": "car service centre exterior signboard shutter",
   "role": "space"
  },
  "mechanic-explaining": {
@@ -41,48 +27,6 @@
   "query": "mechanic working under car wrench overalls",
   "role": "people"
  },
- "engine-service": {
-  "id": 13065697,
-  "photographer": "Daniel Andraski",
-  "url": "https://www.pexels.com/photo/close-up-of-pouring-oil-to-engine-13065697/",
-  "query": "mechanic pouring engine oil funnel",
-  "role": "product"
- },
- "bike-service": {
-  "id": 18652019,
-  "photographer": "Q. Hưng Phạm",
-  "url": "https://www.pexels.com/photo/mechanic-squatting-and-working-in-black-and-white-18652019/",
-  "query": "motorcycle scooter repair mechanic workshop india",
-  "role": "product"
- },
- "ac-service": {
-  "id": 3784137,
-  "photographer": "Luca Nardone",
-  "url": "https://www.pexels.com/photo/person-refilling-gasoline-on-gas-tank-3784137/",
-  "query": "car ac gas refill manifold gauges",
-  "role": "product"
- },
- "paint-booth": {
-  "id": 6474196,
-  "photographer": "Tima Miroshnichenko",
-  "url": "https://www.pexels.com/photo/a-man-in-gray-suit-painting-a-house-6474196/",
-  "query": "car spray painting booth painter mask",
-  "role": "product"
- },
- "battery-tyres": {
-  "id": 4489765,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/person-in-black-shirt-and-gray-pants-standing-beside-black-car-4489765/",
-  "query": "mechanic fitting car battery engine bay",
-  "role": "product"
- },
- "wheel-alignment": {
-  "id": 8986137,
-  "photographer": "Artem Podrez",
-  "url": "https://www.pexels.com/photo/photo-of-automobile-under-chassis-8986137/",
-  "query": "wheel alignment machine laser sensors tyre",
-  "role": "product"
- },
  "detailing": {
   "id": 6873119,
   "photographer": "Tima Miroshnichenko",
@@ -90,18 +34,34 @@
   "query": "car interior vacuum cleaning detailing seats",
   "role": "product"
  },
+ "ac-service": {
+  "id": 6471913,
+  "photographer": "José Andrés  Pacheco Cortes",
+  "url": "https://www.pexels.com/photo/man-repairing-cables-in-a-car-6471913/",
+  "query": "car air conditioning service manifold gauges"
+ },
+ "battery-tyres": {
+  "id": 8478216,
+  "photographer": "Sergey  Meshkov",
+  "url": "https://www.pexels.com/photo/man-repairing-a-car-8478216/",
+  "query": "mechanic installing new car battery"
+ },
  "car-lift": {
-  "id": 7019605,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/auto-mechanic-working-on-car-shop-7019605/",
-  "query": "car raised on lift underbody inspection flashlight",
-  "role": "detail"
+  "id": 8986119,
+  "photographer": "Artem Podrez",
+  "url": "https://www.pexels.com/photo/mechanic-standing-under-a-car-on-a-car-lift-8986119/",
+  "query": "mechanic inspecting car underneath on lift"
+ },
+ "paint-booth": {
+  "id": 14615263,
+  "photographer": "Dextar Studio ™",
+  "url": "https://www.pexels.com/photo/close-up-of-man-painting-car-details-14615263/",
+  "query": "car spray painting booth painter"
  },
  "team": {
-  "id": 7018498,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/person-passing-wrench-to-repairman-on-floor-7018498/",
-  "query": "garage mechanics team uniform group workshop",
-  "role": "team"
+  "id": 4116231,
+  "photographer": "Jose Ricardo Barraza Morachis",
+  "url": "https://www.pexels.com/photo/mechanics-working-with-cars-4116231/",
+  "query": "team of mechanics standing garage"
  }
 }

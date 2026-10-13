@@ -1,0 +1,61 @@
+{
+ "ca-working": {
+  "id": 7654131,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/woman-using-calculator-at-the-office-7654131/",
+  "query": "indian accountant working laptop calculator documents",
+  "role": "cover"
+ },
+ "client-consult": {
+  "id": 7821708,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/white-papers-on-the-table-7821708/",
+  "query": "accountant explaining tax documents to client office",
+  "role": "cover"
+ },
+ "office-reception": {
+  "id": 5511127,
+  "photographer": "Mike van Schoonderwalt",
+  "url": "https://www.pexels.com/photo/squared-stools-inside-an-office-5511127/",
+  "query": "small professional office reception waiting chairs",
+  "role": "space"
+ },
+ "staff-filing": {
+  "id": 7654584,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-woman-writing-on-a-notebook-7654584/",
+  "query": "indian woman accountant filing return computer",
+  "role": "people"
+ },
+ "client-handshake": {
+  "id": 17682883,
+  "photographer": "Wolrider YURTSEVEN",
+  "url": "https://www.pexels.com/photo/two-shaking-hands-17682883/",
+  "query": "accountant client handshake signed documents",
+  "role": "people"
+ },
+ "itr-filing": {
+  "id": 7821712,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-man-in-corporate-attire-doing-his-taxes-7821712/",
+  "query": "indian man filing income tax online laptop"
+ },
+ "company-registration": {
+  "id": 8815843,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/a-person-s-hand-holding-a-black-and-silver-pen-8815843/",
+  "query": "signing business registration documents pen stamp"
+ },
+ "audit-files": {
+  "id": 8296948,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-calculator-and-documents-on-the-table-8296948/",
+  "query": "office binders files stacked desk audit"
+ },
+ "office-team": {
+  "id": 7580644,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/people-talking-in-the-office-7580644/",
+  "query": "indian office team professionals group"
+ }
+}

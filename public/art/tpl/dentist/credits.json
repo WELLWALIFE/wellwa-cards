@@ -1,0 +1,65 @@
+{
+ "dentist-treating": {
+  "id": 8224633,
+  "photographer": "Lakhinandan Borah",
+  "url": "https://www.pexels.com/photo/photo-of-a-child-in-dental-clinic-8224633/",
+  "query": "indian dentist treating patient dental chair",
+  "role": "cover"
+ },
+ "clinic-operatory": {
+  "id": 5355863,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/dental-facility-5355863/",
+  "query": "modern dental clinic chair operatory",
+  "role": "space"
+ },
+ "child-patient": {
+  "id": 7800560,
+  "photographer": "Nadezhda Moryak",
+  "url": "https://www.pexels.com/photo/dentist-showing-a-dental-tool-to-patient-7800560/",
+  "query": "dentist with smiling child patient",
+  "role": "people"
+ },
+ "assistant-sterilising": {
+  "id": 6627665,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/view-of-a-medical-sterilizer-6627665/",
+  "query": "dental assistant autoclave sterilising instruments",
+  "role": "people"
+ },
+ "scaling-cleaning": {
+  "id": 4269690,
+  "photographer": "Cedric Fauntleroy",
+  "url": "https://www.pexels.com/photo/an-open-mouth-of-a-person-4269690/",
+  "query": "dental scaling teeth cleaning closeup",
+  "role": "product"
+ },
+ "filling-closeup": {
+  "id": 5355843,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/female-dentist-using-a-dental-curing-light-on-a-patient-5355843/",
+  "query": "dentist composite filling curing light",
+  "role": "product"
+ },
+ "root-canal": {
+  "id": 6627706,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/dental-instruments-and-different-kinds-of-teeth-veneers-6627706/",
+  "query": "root canal treatment dental tools",
+  "role": "product"
+ },
+ "crown-shade": {
+  "id": 6627604,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/close-up-artificial-teeth-6627604/",
+  "query": "dental crown shade guide teeth",
+  "role": "product"
+ },
+ "clinic-team": {
+  "id": 5355718,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/dentists-holding-dental-tools-5355718/",
+  "query": "dental clinic staff team scrubs",
+  "role": "team"
+ }
+}

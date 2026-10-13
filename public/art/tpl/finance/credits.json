@@ -1,0 +1,79 @@
+{
+ "consult-cabin": {
+  "id": 8112154,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-couple-walking-in-the-office-8112154/",
+  "query": "modern consulting cabin desk two chairs",
+  "role": "space"
+ },
+ "advisor-explaining": {
+  "id": 8441813,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/a-senior-couple-entering-a-business-deal-8441813/",
+  "query": "financial advisor explaining documents Indian family",
+  "role": "people"
+ },
+ "customer-tablet": {
+  "id": 8067936,
+  "photographer": "Alena Shekhovtcova",
+  "url": "https://www.pexels.com/photo/woman-sitting-with-paper-sheet-and-tablet-8067936/",
+  "query": "Indian woman reviewing loan papers tablet",
+  "role": "people"
+ },
+ "shop-owner": {
+  "id": 3906984,
+  "photographer": "Andrea Piacquadio",
+  "url": "https://www.pexels.com/photo/woman-wearing-an-apron-standing-by-the-shelves-3906984/",
+  "query": "Indian shop owner counter small business",
+  "role": "product"
+ },
+ "rupee-notes": {
+  "id": 8139313,
+  "photographer": "DEV ROY",
+  "url": "https://www.pexels.com/photo/an-abundance-of-indian-rupees-on-surface-8139313/",
+  "query": "Indian rupee notes hand counting",
+  "role": "product"
+ },
+ "car-keys": {
+  "id": 6817034,
+  "photographer": "Gustavo Fring",
+  "url": "https://www.pexels.com/photo/man-and-woman-standing-beside-a-white-car-6817034/",
+  "query": "car showroom key handover customer",
+  "role": "product"
+ },
+ "property-docs": {
+  "id": 12955837,
+  "photographer": "Atlantic Ambience",
+  "url": "https://www.pexels.com/photo/wooden-house-moder-keys-and-contract-on-table-12955837/",
+  "query": "property documents house model stamp",
+  "role": "product"
+ },
+ "sip-growth": {
+  "id": 11743785,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/stacks-of-coins-by-n-hourglass-11743785/",
+  "query": "coins stack plant growth savings",
+  "role": "product"
+ },
+ "credit-score": {
+  "id": 7821760,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/black-laptop-on-the-table-7821760/",
+  "query": "credit score report laptop screen",
+  "role": "product"
+ },
+ "calculator-emi": {
+  "id": 6801639,
+  "photographer": "Hanna Pad",
+  "url": "https://www.pexels.com/photo/statistics-survey-sheet-6801639/",
+  "query": "calculator pen EMI chart close-up",
+  "role": "detail"
+ },
+ "office-team": {
+  "id": 7876742,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/men-standing-looking-at-the-money-7876742/",
+  "query": "finance office team standing portrait",
+  "role": "team"
+ }
+}

@@ -13,13 +13,6 @@
   "query": "indian veg thali roti sabzi dal rice",
   "role": "product"
  },
- "dinner": {
-  "id": 37421007,
-  "photographer": "Kunal Lakhotia",
-  "url": "https://www.pexels.com/photo/traditional-indian-meal-with-flatbread-and-lentils-37421007/",
-  "query": "chapati dal tadka jeera rice plate",
-  "role": "product"
- },
  "chicken": {
   "id": 20408457,
   "photographer": "Jack Baghel",
@@ -40,10 +33,28 @@
   "url": "https://www.pexels.com/photo/traditional-indian-cooking-process-with-sliced-vegetables-37330104/",
   "query": "indian woman cooking home kitchen stove"
  },
- "customer": {
-  "id": 4964974,
-  "photographer": "Ketut Subiyanto",
-  "url": "https://www.pexels.com/photo/a-bearded-man-eating-while-using-his-laptop-4964974/",
-  "query": "indian man eating lunch office"
+ "khichdi": {
+  "id": 28674708,
+  "photographer": "Kunal Lakhotia",
+  "url": "https://www.pexels.com/photo/delicious-indian-dal-and-rice-with-herbs-28674708/",
+  "query": "moong dal khichdi"
+ },
+ "masala": {
+  "id": 2802527,
+  "photographer": "Shantanu Pal",
+  "url": "https://www.pexels.com/photo/assorted-cooking-spices-2802527/",
+  "query": "turmeric chili cumin spices bowls indian"
+ },
+ "sundaythali": {
+  "id": 17050759,
+  "photographer": "Chutney Indian",
+  "url": "https://www.pexels.com/photo/curry-meat-based-dishes-served-on-white-plates-17050759/",
+  "query": "chole bhature plate indian"
+ },
+ "cleankitchen": {
+  "id": 8134756,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/white-kitchen-cabinet-near-white-kitchen-island-8134756/",
+  "query": "commercial kitchen stainless steel counters clean"
  }
 }

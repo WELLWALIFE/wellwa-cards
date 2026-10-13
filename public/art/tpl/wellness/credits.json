@@ -1,0 +1,93 @@
+{
+ "store-shelves": {
+  "id": 36677741,
+  "photographer": "Owen.outdoors",
+  "url": "https://www.pexels.com/photo/rustic-store-shelves-with-assorted-jarred-products-36677741/",
+  "query": "supplement store shelves protein jars",
+  "role": "cover"
+ },
+ "wellness-flatlay": {
+  "id": 7615467,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/sliced-lemon-on-cork-tray-7615467/",
+  "query": "supplements fruits nuts flatlay top view",
+  "role": "cover"
+ },
+ "shop-interior": {
+  "id": 8657378,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/photograph-of-brown-medicine-bottles-8657378/",
+  "query": "health store interior wooden shelves bottles",
+  "role": "space"
+ },
+ "shop-front": {
+  "id": 36753979,
+  "photographer": "Zeynep Sude  Emek",
+  "url": "https://www.pexels.com/photo/traditional-turkish-shopfront-with-knives-and-beads-36753979/",
+  "query": "small shop glass front india street",
+  "role": "space"
+ },
+ "staff-advising": {
+  "id": 6545444,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/a-woman-talking-to-a-customer-6545444/",
+  "query": "shopkeeper explaining product to customer counter",
+  "role": "people"
+ },
+ "customer-label": {
+  "id": 8657360,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/photograph-of-an-elderly-woman-holding-a-medicine-bottle-8657360/",
+  "query": "woman reading supplement bottle label store",
+  "role": "people"
+ },
+ "protein-jar": {
+  "id": 3847479,
+  "photographer": "ready made",
+  "url": "https://www.pexels.com/photo/coffee-powder-in-glass-bowls-3847479/",
+  "query": "whey protein powder jar scoop",
+  "role": "product"
+ },
+ "vitamin-capsules": {
+  "id": 14744700,
+  "photographer": "Supplements On Demand",
+  "url": "https://www.pexels.com/photo/soft-gels-beside-bottled-cap-on-a-white-surface-14744700/",
+  "query": "vitamin softgel capsules bottle wooden table",
+  "role": "product"
+ },
+ "herbal-juice": {
+  "id": 34928259,
+  "photographer": "Masuma Rahaman",
+  "url": "https://www.pexels.com/photo/fresh-indian-gooseberry-juice-with-amla-34928259/",
+  "query": "aloe vera amla juice bottle glass",
+  "role": "product"
+ },
+ "chyawanprash-jar": {
+  "id": 1872893,
+  "photographer": "Valeria Boltneva",
+  "url": "https://www.pexels.com/photo/clear-glass-tea-set-1872893/",
+  "query": "ayurvedic herbal jam jar spoon",
+  "role": "product"
+ },
+ "bp-monitor": {
+  "id": 8670204,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-sphygmomanometer-up-close-8670204/",
+  "query": "digital blood pressure monitor arm cuff",
+  "role": "product"
+ },
+ "glucometer": {
+  "id": 33200683,
+  "photographer": "Arunangshu Banerjee",
+  "url": "https://www.pexels.com/photo/diabetes-monitoring-kit-on-wooden-table-33200683/",
+  "query": "glucometer blood sugar test strips kit",
+  "role": "product"
+ },
+ "label-check": {
+  "id": 8670519,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/woman-holding-a-medicine-container-8670519/",
+  "query": "hand checking expiry date label bottle closeup",
+  "role": "detail"
+ }
+}

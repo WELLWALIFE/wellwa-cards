@@ -1,0 +1,94 @@
+{
+ "cover-massage": {
+  "id": 6629612,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-masseuse-rubbing-massage-oil-on-a-woman-s-back-6629612/",
+  "query": "woman back massage spa candles orchid",
+  "role": "cover"
+ },
+ "cover-stones": {
+  "id": 6187645,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/pebbles-on-a-person-s-bare-back-6187645/",
+  "query": "hot stone massage therapy relaxed client",
+  "role": "cover"
+ },
+ "therapy-room": {
+  "id": 1926811,
+  "photographer": "Aan Amrin",
+  "url": "https://www.pexels.com/photo/lighted-candles-on-white-candle-holder-1926811/",
+  "query": "spa treatment room towels candles dim",
+  "role": "space"
+ },
+ "therapist-prep": {
+  "id": 6629614,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-masseuse-pouring-oil-on-her-hand-6629614/",
+  "query": "spa therapist pouring massage oil hands",
+  "role": "people"
+ },
+ "head-massage": {
+  "id": 6628812,
+  "photographer": "KoolShooters",
+  "url": "https://www.pexels.com/photo/a-woman-in-green-long-sleeves-shirt-6628812/",
+  "query": "indian woman receiving head massage oil",
+  "role": "people"
+ },
+ "swedish": {
+  "id": 37719545,
+  "photographer": "Nothing Ahead",
+  "url": "https://www.pexels.com/photo/professional-massage-therapy-session-outdoors-37719545/",
+  "query": "swedish oil massage back therapist hands",
+  "role": "product"
+ },
+ "abhyanga": {
+  "id": 6628696,
+  "photographer": "KoolShooters",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-bottle-6628696/",
+  "query": "ayurvedic abhyanga oil massage copper bowl",
+  "role": "product"
+ },
+ "head-neck": {
+  "id": 6187846,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/woman-in-red-massaging-a-woman-s-shoulder-and-head-6187846/",
+  "query": "neck shoulder massage seated client spa",
+  "role": "product"
+ },
+ "foot-reflex": {
+  "id": 5793896,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-client-having-a-foot-massage-5793896/",
+  "query": "foot reflexology massage therapist hands sole"
+ },
+ "oils": {
+  "id": 6628474,
+  "photographer": "KoolShooters",
+  "url": "https://www.pexels.com/photo/brown-bottles-on-the-table-6628474/",
+  "query": "massage oil bottles towels spa flatlay"
+ },
+ "deep-tissue": {
+  "id": 35714411,
+  "photographer": "naniko kipiani",
+  "url": "https://www.pexels.com/photo/relaxing-back-massage-therapy-session-35714411/",
+  "query": "deep tissue back massage forearm pressure"
+ },
+ "body-scrub": {
+  "id": 7020264,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/woman-applying-scrub-on-her-hands-7020264/",
+  "query": "coffee scrub exfoliating skin spa treatment"
+ },
+ "reception": {
+  "id": 14022369,
+  "photographer": "Quang Nguyen Vinh",
+  "url": "https://www.pexels.com/photo/wooden-furniture-inside-a-lobby-14022369/",
+  "query": "spa lobby lounge orchids lanterns calm"
+ },
+ "team": {
+  "id": 8183942,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/young-women-in-bras-8183942/",
+  "query": "wellness spa staff group portrait"
+ }
+}

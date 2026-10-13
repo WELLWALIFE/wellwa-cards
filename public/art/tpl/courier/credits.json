@@ -1,0 +1,86 @@
+{
+ "shop-front": {
+  "id": 18111568,
+  "photographer": "Joaquin Carfagna",
+  "url": "https://www.pexels.com/photo/photo-of-an-illuminated-kiosk-at-night-18111568/",
+  "query": "small shop storefront signboard India street",
+  "role": "space"
+ },
+ "shop-interior": {
+  "id": 11833899,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/white-and-black-photocopier-machine-11833899/",
+  "query": "photocopy shop interior computer desk printer",
+  "role": "space"
+ },
+ "staff-weighing": {
+  "id": 40016098,
+  "photographer": "FAYSAL KHAN",
+  "url": "https://www.pexels.com/photo/fruit-vendor-at-market-in-mandaguchha-pakistan-40016098/",
+  "query": "shopkeeper weighing parcel on scale",
+  "role": "people"
+ },
+ "doc-envelope": {
+  "id": 6170189,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-person-holding-a-parcel-6170189/",
+  "query": "courier envelope sealed documents",
+  "role": "product"
+ },
+ "parcel-box": {
+  "id": 4506249,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/crop-man-sealing-cardboard-box-with-tape-4506249/",
+  "query": "cardboard parcel box packing tape",
+  "role": "product"
+ },
+ "intl-shipping": {
+  "id": 6347514,
+  "photographer": "Liza Summer",
+  "url": "https://www.pexels.com/photo/scissors-and-tape-placed-on-carton-box-with-parcel-6347514/",
+  "query": "international shipping label airmail package",
+  "role": "product"
+ },
+ "aadhaar-biometric": {
+  "id": 17155842,
+  "photographer": "panumas nikhomkhai",
+  "url": "https://www.pexels.com/photo/finger-scan-17155842/",
+  "query": "fingerprint biometric scanner hand",
+  "role": "product"
+ },
+ "govt-docs": {
+  "id": 8962523,
+  "photographer": "Leeloo The First",
+  "url": "https://www.pexels.com/photo/eyeglasses-and-documents-on-desk-8962523/",
+  "query": "Indian passport documents pen desk",
+  "role": "product"
+ },
+ "cash-counter": {
+  "id": 8139599,
+  "photographer": "DEV ROY",
+  "url": "https://www.pexels.com/photo/violet-colored-indian-rupees-8139599/",
+  "query": "Indian rupee notes UPI payment counter",
+  "role": "product"
+ },
+ "print-counter": {
+  "id": 3831873,
+  "photographer": "Andrea Piacquadio",
+  "url": "https://www.pexels.com/photo/serious-female-office-worker-using-printer-in-workplace-3831873/",
+  "query": "photocopier machine printing paper",
+  "role": "product"
+ },
+ "tracking-receipt": {
+  "id": 7857533,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/hand-writing-on-box-7857533/",
+  "query": "courier receipt barcode tracking number",
+  "role": "detail"
+ },
+ "team-counter": {
+  "id": 31353701,
+  "photographer": "🇻🇳🇻🇳Nguyễn Tiến Thịnh 🇻🇳🇻🇳",
+  "url": "https://www.pexels.com/photo/friendly-coffee-shop-team-at-counter-31353701/",
+  "query": "shop staff team smiling behind counter",
+  "role": "team"
+ }
+}

@@ -1,0 +1,107 @@
+{
+ "warehouse": {
+  "id": 4058358,
+  "photographer": "Castorly Stock",
+  "url": "https://www.pexels.com/photo/person-holding-white-and-blue-box-4058358/",
+  "query": "pharmaceutical warehouse workers packing medicine cartons",
+  "role": "cover"
+ },
+ "rep-doctor": {
+  "id": 11370618,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/hand-holding-medicine-over-paper-on-desk-11370618/",
+  "query": "medical representative showing medicine brochure doctor clinic",
+  "role": "cover"
+ },
+ "godown-racks": {
+  "id": 13119976,
+  "photographer": "Abdul batin",
+  "url": "https://www.pexels.com/photo/professional-pharmacist-in-modern-drugstore-space-for-text-13119976/",
+  "query": "pharmaceutical distributor storage racks medicine boxes",
+  "role": "space"
+ },
+ "cold-chain": {
+  "id": 8670446,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-syringes-on-a-white-surface-8670446/",
+  "query": "pharmacy refrigerator vaccine insulin cold storage",
+  "role": "space"
+ },
+ "packing": {
+  "id": 6169035,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/man-in-white-chef-uniform-sitting-on-chair-6169035/",
+  "query": "worker packing medicine boxes tape carton",
+  "role": "people"
+ },
+ "chemist-delivery": {
+  "id": 12725459,
+  "photographer": "ROMAN ODINTSOV",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-person-delivering-a-small-box-12725459/",
+  "query": "delivery man handing medicine parcel pharmacy counter india",
+  "role": "people"
+ },
+ "tablets": {
+  "id": 5452239,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/assorted-packs-of-pills-on-a-wooden-table-5452239/",
+  "query": "white tablets blister pack strips close up",
+  "role": "product"
+ },
+ "capsules": {
+  "id": 4210615,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/stack-of-medicinal-drugs-on-blister-packs-4210615/",
+  "query": "capsules blister pack pharmaceutical",
+  "role": "product"
+ },
+ "syrup": {
+  "id": 5921726,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/three-small-glass-bottles-on-pink-surface-5921726/",
+  "query": "amber syrup bottles medicine row",
+  "role": "product"
+ },
+ "cream": {
+  "id": 8015480,
+  "photographer": "Cup of  Couple",
+  "url": "https://www.pexels.com/photo/a-plastic-tube-bottle-leaning-on-an-empty-container-8015480/",
+  "query": "white ointment tube cream pharmaceutical",
+  "role": "product"
+ },
+ "protein": {
+  "id": 15120889,
+  "photographer": "Krzysztof Biernat",
+  "url": "https://www.pexels.com/photo/close-up-of-preparing-protein-shake-with-powder-15120889/",
+  "query": "protein powder jar scoop chocolate",
+  "role": "product"
+ },
+ "visual-aid": {
+  "id": 7195187,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/pills-in-female-hands-7195187/",
+  "query": "pharmaceutical product catalogue brochure doctor desk",
+  "role": "product"
+ },
+ "batch-label": {
+  "id": 3944795,
+  "photographer": "Marta Branco",
+  "url": "https://www.pexels.com/photo/clear-plastic-ampoules-3944795/",
+  "query": "medicine box batch number expiry date label macro",
+  "role": "detail"
+ },
+ "sample-pack": {
+  "id": 4210617,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-pills-on-blister-packs-4210617/",
+  "query": "physician sample medicine pack not for sale",
+  "role": "detail"
+ },
+ "team": {
+  "id": 7581114,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-black-long-sleeve-shirt-standing-in-front-of-his-colleagues-7581114/",
+  "query": "pharmaceutical sales team office group indian",
+  "role": "team"
+ }
+}

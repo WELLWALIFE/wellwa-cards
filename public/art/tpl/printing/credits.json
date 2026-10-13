@@ -1,0 +1,107 @@
+{
+ "press-hero": {
+  "id": 37394506,
+  "photographer": "Bornil Sarker",
+  "url": "https://www.pexels.com/photo/busy-print-shop-with-printing-press-and-workers-37394506/",
+  "query": "offset printing press rollers running sheets",
+  "role": "cover"
+ },
+ "shop-hero": {
+  "id": 6684788,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/an-employee-using-a-payment-terminal-6684788/",
+  "query": "digital printing shop counter customer India",
+  "role": "cover"
+ },
+ "shop-interior": {
+  "id": 31788399,
+  "photographer": "Manuel Campagnoli",
+  "url": "https://www.pexels.com/photo/modern-printing-facility-interior-with-workers-31788399/",
+  "query": "print shop interior large format printer",
+  "role": "space"
+ },
+ "shop-front": {
+  "id": 18111568,
+  "photographer": "Joaquin Carfagna",
+  "url": "https://www.pexels.com/photo/photo-of-an-illuminated-kiosk-at-night-18111568/",
+  "query": "small printing shop storefront signboard street",
+  "role": "space"
+ },
+ "operator-printer": {
+  "id": 7014408,
+  "photographer": "George Milton",
+  "url": "https://www.pexels.com/photo/woman-preparing-paper-for-printing-photos-7014408/",
+  "query": "technician operating wide format vinyl printer",
+  "role": "people"
+ },
+ "designer-client": {
+  "id": 39908073,
+  "photographer": "Sinan KRIYA",
+  "url": "https://www.pexels.com/photo/person-holding-contact-cards-indoors-39908073/",
+  "query": "graphic designer showing print proof client",
+  "role": "people"
+ },
+ "visiting-cards": {
+  "id": 6149105,
+  "photographer": "olia danilevich",
+  "url": "https://www.pexels.com/photo/silent-night-note-card-on-top-of-foil-6149105/",
+  "query": "stack business cards matte black gold foil",
+  "role": "product"
+ },
+ "flex-banner": {
+  "id": 164901,
+  "photographer": "Pixabay",
+  "url": "https://www.pexels.com/photo/vinyl-albums-near-player-164901/",
+  "query": "vinyl banner printing roll solvent machine",
+  "role": "product"
+ },
+ "wedding-cards": {
+  "id": 35059564,
+  "photographer": "Punam Oishy",
+  "url": "https://www.pexels.com/photo/elegant-indian-bridal-jewelry-set-on-red-saree-35059564/",
+  "query": "Indian wedding invitation card red gold",
+  "role": "product"
+ },
+ "bill-books": {
+  "id": 8872400,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/white-papers-in-brown-folder-8872400/",
+  "query": "carbonless invoice receipt book pad printed",
+  "role": "product"
+ },
+ "flyers": {
+  "id": 13589785,
+  "photographer": "Arturo A",
+  "url": "https://www.pexels.com/photo/stack-of-magazines-on-brown-wooden-table-13589785/",
+  "query": "colorful printed flyers brochures stacked",
+  "role": "product"
+ },
+ "stickers": {
+  "id": 14956248,
+  "photographer": "Connor Scott McManus",
+  "url": "https://www.pexels.com/photo/wall-decorated-with-stickers-14956248/",
+  "query": "vinyl sticker labels roll die cut",
+  "role": "product"
+ },
+ "logo-design": {
+  "id": 7147720,
+  "photographer": "Michael Burrows",
+  "url": "https://www.pexels.com/photo/anonymous-female-designer-using-tablet-for-drawing-7147720/",
+  "query": "graphic designer sketching logo drawing tablet",
+  "role": "product"
+ },
+ "paper-swatch": {
+  "id": 6580010,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-choosing-from-fabric-swatches-6580010/",
+  "query": "paper samples swatch book textures",
+  "role": "detail"
+ },
+ "team": {
+  "id": 8297454,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/colleagues-standing-and-holding-books-inside-an-office-8297454/",
+  "query": "printing press staff team workshop smiling",
+  "role": "team"
+ }
+}

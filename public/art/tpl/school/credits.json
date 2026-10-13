@@ -1,0 +1,107 @@
+{
+ "assembly-morning": {
+  "id": 6217466,
+  "photographer": "Siddharth Rathod",
+  "url": "https://www.pexels.com/photo/women-wearing-blue-and-white-uniform-6217466/",
+  "query": "indian school children morning assembly uniform",
+  "role": "cover"
+ },
+ "classroom-teaching": {
+  "id": 5212342,
+  "photographer": "Max Fischer",
+  "url": "https://www.pexels.com/photo/teacher-teaching-his-students-5212342/",
+  "query": "teacher teaching students classroom blackboard india",
+  "role": "cover"
+ },
+ "school-building": {
+  "id": 14928748,
+  "photographer": "Sami TÜRK",
+  "url": "https://www.pexels.com/photo/outdoor-basketball-court-in-istanbul-erkek-high-school-in-turkey-14928748/",
+  "query": "school building exterior playground entrance",
+  "role": "space"
+ },
+ "school-library": {
+  "id": 34708262,
+  "photographer": "Caleb Oquendo",
+  "url": "https://www.pexels.com/photo/colorful-children-s-books-on-library-shelf-34708262/",
+  "query": "school library children reading books shelves",
+  "role": "space"
+ },
+ "teacher-helping": {
+  "id": 7692514,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-woman-teaching-a-student-7692514/",
+  "query": "teacher helping child write notebook desk",
+  "role": "people"
+ },
+ "students-lab-work": {
+  "id": 8471855,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/children-in-a-science-laboratory-8471855/",
+  "query": "students science experiment school laboratory",
+  "role": "people"
+ },
+ "nursery-play": {
+  "id": 8612970,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/two-boys-playing-with-wooden-blocks-in-a-room-8612970/",
+  "query": "kindergarten children playing colourful blocks classroom",
+  "role": "product"
+ },
+ "primary-classroom": {
+  "id": 8618063,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/students-raising-hands-8618063/",
+  "query": "primary school kids raising hands classroom",
+  "role": "product"
+ },
+ "computer-lab": {
+  "id": 5530520,
+  "photographer": "Thành Đỗ",
+  "url": "https://www.pexels.com/photo/girls-using-computers-in-school-5530520/",
+  "query": "school computer lab students monitors",
+  "role": "product"
+ },
+ "board-classroom": {
+  "id": 6683483,
+  "photographer": "Andy Barbour",
+  "url": "https://www.pexels.com/photo/teenage-girl-holding-a-pencil-6683483/",
+  "query": "teenage students writing exam classroom desks",
+  "role": "product"
+ },
+ "science-lab": {
+  "id": 5427861,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/teacher-doing-science-experiments-with-his-students-5427861/",
+  "query": "chemistry lab students beakers microscope school",
+  "role": "product"
+ },
+ "school-bus": {
+  "id": 18435546,
+  "photographer": "aboodi vesakaran",
+  "url": "https://www.pexels.com/photo/yellow-school-bus-18435546/",
+  "query": "yellow school bus children boarding india",
+  "role": "product"
+ },
+ "sports-ground": {
+  "id": 8927020,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/children-having-fun-playing-soccer-8927020/",
+  "query": "school kids playing football field",
+  "role": "product"
+ },
+ "art-craft-hands": {
+  "id": 3972137,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/photo-of-colored-eggs-3972137/",
+  "query": "children hands painting craft colours",
+  "role": "detail"
+ },
+ "teachers-team": {
+  "id": 22616347,
+  "photographer": "Fahad Puthawala",
+  "url": "https://www.pexels.com/photo/teacher-standing-among-young-boys-in-shirts-22616347/",
+  "query": "indian school teachers group staff portrait",
+  "role": "team"
+ }
+}

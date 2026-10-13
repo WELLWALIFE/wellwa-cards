@@ -1,0 +1,107 @@
+{
+ "mountain-road-trip": {
+  "id": 29494193,
+  "photographer": "Kunal Gautam",
+  "url": "https://www.pexels.com/photo/scenic-view-near-atal-tunnel-in-ladakh-29494193/",
+  "query": "family car himalayan mountain road india",
+  "role": "cover"
+ },
+ "agent-planning-trip": {
+  "id": 7647222,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/a-couple-buying-a-new-house-7647222/",
+  "query": "travel agent showing itinerary to indian couple",
+  "role": "cover"
+ },
+ "agency-office": {
+  "id": 819087,
+  "photographer": "Dzenina Lukac",
+  "url": "https://www.pexels.com/photo/white-and-blue-globe-miniature-819087/",
+  "query": "travel agency office desk brochures globe",
+  "role": "space"
+ },
+ "agency-shopfront": {
+  "id": 4473357,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/person-holding-brown-wooden-welcome-signage-4473357/",
+  "query": "small travel agency shop front signboard",
+  "role": "space"
+ },
+ "handing-tickets": {
+  "id": 4922080,
+  "photographer": "Ekaterina Belinskaya",
+  "url": "https://www.pexels.com/photo/person-holding-a-passport-4922080/",
+  "query": "agent handing passport boarding pass customer",
+  "role": "people"
+ },
+ "group-tour-bus": {
+  "id": 30646922,
+  "photographer": "Safi Erneste",
+  "url": "https://www.pexels.com/photo/traveling-backpacks-and-luggage-by-bus-30646922/",
+  "query": "tour group boarding bus luggage smiling",
+  "role": "people"
+ },
+ "kedarnath-temple": {
+  "id": 19019323,
+  "photographer": "Soubhagya Maharana",
+  "url": "https://www.pexels.com/photo/barren-mountains-peaks-19019323/",
+  "query": "kedarnath temple snow peaks pilgrims",
+  "role": "product"
+ },
+ "vaishno-devi-katra": {
+  "id": 33029451,
+  "photographer": "Vishal Chokkala",
+  "url": "https://www.pexels.com/photo/dramatic-aerial-view-of-mountain-valley-33029451/",
+  "query": "katra trikuta hills pilgrims trail",
+  "role": "product"
+ },
+ "goa-beach": {
+  "id": 32262450,
+  "photographer": "urtimud.89",
+  "url": "https://www.pexels.com/photo/tropical-beach-scene-with-palm-trees-and-kayaks-32262450/",
+  "query": "goa beach palm trees shacks sunset",
+  "role": "product"
+ },
+ "kerala-houseboat": {
+  "id": 35347836,
+  "photographer": "Ravi Kant",
+  "url": "https://www.pexels.com/photo/serene-kerala-backwaters-with-traditional-houseboat-35347836/",
+  "query": "alleppey houseboat backwaters coconut palms",
+  "role": "product"
+ },
+ "jaipur-hawa-mahal": {
+  "id": 34865618,
+  "photographer": "Shyamli Kashyap",
+  "url": "https://www.pexels.com/photo/intricate-architectural-detail-of-hawa-mahal-34865618/",
+  "query": "hawa mahal jaipur pink city morning",
+  "role": "product"
+ },
+ "manali-snow": {
+  "id": 28680808,
+  "photographer": "Ansh Kumar",
+  "url": "https://www.pexels.com/photo/scenic-winter-landscape-in-manali-india-28680808/",
+  "query": "solang valley manali snow mountains",
+  "role": "product"
+ },
+ "dubai-skyline": {
+  "id": 14115647,
+  "photographer": "San Photography",
+  "url": "https://www.pexels.com/photo/burj-khalifa-in-silhouette-photo-14115647/",
+  "query": "burj khalifa dubai skyline evening",
+  "role": "product"
+ },
+ "passport-stamps": {
+  "id": 7235804,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/overhead-shot-of-a-camera-and-flowers-near-a-map-7235804/",
+  "query": "passport visa stamps boarding pass map",
+  "role": "detail"
+ },
+ "agency-team": {
+  "id": 7681579,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/woman-wearing-a-headset-7681579/",
+  "query": "travel agency staff team office smiling",
+  "role": "team"
+ }
+}

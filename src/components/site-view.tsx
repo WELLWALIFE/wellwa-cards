@@ -358,7 +358,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
     <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : card.site?.style?.hero === "split" ? BODY_CSS.split : ""}` }} />
-    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-bp={bp ?? (card.site?.style?.hero === "split" ? "split" : undefined)} data-body={card.site?.style?.body} style={{ background: "var(--surface)" }}>
+    <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-home={isHome ? "" : undefined} data-bp={bp ?? (card.site?.style?.hero === "split" ? "split" : undefined)} data-body={card.site?.style?.body} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
       {barLive && !barClosed && (
@@ -1052,7 +1052,7 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
   const ticked = list.length >= 3 && list.every((s) => s.startsWith("✅"));
   if (ticked) {
     return (
-      <div className={`grid sm:grid-cols-2 ${list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
+      <div className={`grid sm:grid-cols-2 ${list.length === 5 ? "lg:grid-cols-5" : list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
         {list.map((it, i) => { const { text } = glyphText(it, t); return (
           <div key={i} className={`flex items-start gap-3 px-5 py-4 ${band ? "rounded-2xl" : `${cls.card} ${CARD_HOVER}`}`}
             style={band ? { border: "1px solid var(--hero-line)" } : undefined}>
@@ -1257,6 +1257,38 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   // Each product has an address of its own (/p-kaju-katli): a link the owner can send by itself, and a page
   // search can index. On the product's own page there is nothing to link to.
   const addressOf = new Map(cardProducts(card).map((x) => [x.item, x.slug]));
+  // The Wordmark page lists its catalogue as a LEDGER — thumbnail, name, one line, a dotted leader, the price — the
+  // menu-board of the bakery and café sites of the Oct 2026 review (docs/website-looks-v3.md §1), not a card grid.
+  if (bp === "wordmark" && items.length >= 3) {
+    return (
+      <ul className="ledger">
+        {items.map((p, i) => {
+          const gallery = galleryOf(p);
+          const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
+          const slug = addressOf.get(p);
+          const open = (e: React.MouseEvent) => { e.preventDefault(); if (openProduct && isPhone()) openProduct(p); else if (slug && go) go(slug); };
+          const waText = `Hi ${card.name.split(" ")[0]}, I'm interested in "${p.name}". Please share details.`;
+          return (
+            <li key={i}>
+              <div className="ledger-th">{gallery[0] && <button type="button" onClick={() => onZoom({ images: gallery, i: 0, alt: p.name })} className={`block h-full w-full ${FOCUS}`}><Img src={gallery[0]} alt={p.name} className="h-full w-full object-cover" sizes="72px" eager={i < 6} /></button>}</div>
+              <div className="ledger-body">
+                <div className="ledger-row">
+                  {slug && hrefFor && go ? <a href={hrefFor(slug)} onClick={open} className={`ledger-name ${FOCUS}`}>{t(p.name)}</a> : <span className="ledger-name">{t(p.name)}</span>}
+                  <i aria-hidden="true" className="ledger-dots" />
+                  {(p.price || p.mrp) && <span className="ledger-price num">{p.price || p.mrp}{mrp && price && mrp > price && <s>{p.mrp}</s>}</span>}
+                </div>
+                <div className="ledger-sub">
+                  {descOf(p) && <span className="ledger-desc">{t(descOf(p))}</span>}
+                  {p.badge && <span className="ledger-badge">{t(p.badge)}</span>}
+                  {hasWa && <a href={waHref(waText)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-product-whatsapp")} className={`ledger-wa ${FOCUS}`}><Icon name="whatsapp" size={13} /> {t(p.ctaLabel || "Order")}</a>}
+                </div>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    );
+  }
   const single = items.length === 1;
   // No photo anywhere in the block: compact cards without an empty picture area.
   const compact = !items.some((p) => galleryOf(p).length > 0);
@@ -1419,7 +1451,8 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       const address = (loc?.address ?? "").trim();
       const pinUrl = safeMapUrl(loc?.mapUrl);
       const pin = mapPin(pinUrl);
-      const mapQ = pin ? `${pin.lat},${pin.lng}` : address;
+      // A template preview (username "preview-…") has a sample address: no map for it, the address card stands alone.
+      const mapQ = card.username.startsWith("preview-") ? "" : pin ? `${pin.lat},${pin.lng}` : address;
       const dir = pinUrl || (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : "");
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "पता और समय" : t("Find us")} title={t(s.title)} aside={<SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "संपर्क पेज" : t("Contact page")}</SeeAll>}>
@@ -1624,7 +1657,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const address = (block.address ?? "").trim();
       const pinUrl = safeMapUrl(block.mapUrl);
       const pin = mapPin(pinUrl);
-      const mapQ = pin ? `${pin.lat},${pin.lng}` : address;
+      const mapQ = card.username.startsWith("preview-") ? "" : pin ? `${pin.lat},${pin.lng}` : address;
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
           <div className={`grid ${mapQ ? "md:grid-cols-[1fr_1.3fr]" : "max-w-xl"} gap-8 items-start`}>

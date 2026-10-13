@@ -1,0 +1,107 @@
+{
+ "truck-highway": {
+  "id": 29057947,
+  "photographer": "Shantum Singh",
+  "url": "https://www.pexels.com/photo/colorful-indian-tata-truck-on-highway-29057947/",
+  "query": "indian truck highway cargo delivery",
+  "role": "cover"
+ },
+ "loading-crew": {
+  "id": 6170156,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/delivery-men-in-ppe-carrying-a-package-6170156/",
+  "query": "movers loading boxes into truck",
+  "role": "cover"
+ },
+ "truck-yard": {
+  "id": 2348359,
+  "photographer": "Kevin Bidwell",
+  "url": "https://www.pexels.com/photo/parked-trucks-under-clouds-2348359/",
+  "query": "trucks parked logistics yard fleet",
+  "role": "space"
+ },
+ "transport-office": {
+  "id": 4267524,
+  "photographer": "112 Uttar Pradesh",
+  "url": "https://www.pexels.com/photo/a-dispatch-officer-at-up-112-4267524/",
+  "query": "logistics office dispatcher desk booking",
+  "role": "space"
+ },
+ "driver-cabin": {
+  "id": 14797991,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/a-man-wearing-a-head-scarf-and-orange-safety-vest-sitting-inside-a-vehicle-holding-the-steering-wheel-14797991/",
+  "query": "indian truck driver cabin smiling",
+  "role": "people"
+ },
+ "packer-wrapping": {
+  "id": 7217823,
+  "photographer": "Blue Bird",
+  "url": "https://www.pexels.com/photo/couple-wrapping-a-chair-7217823/",
+  "query": "mover wrapping sofa bubble wrap",
+  "role": "people"
+ },
+ "mini-truck": {
+  "id": 35188816,
+  "photographer": "Somogro Bangladesh",
+  "url": "https://www.pexels.com/photo/banana-transport-truck-on-sunny-day-in-bangladesh-35188816/",
+  "query": "small pickup truck loaded goods india",
+  "role": "product"
+ },
+ "packed-cartons": {
+  "id": 7203964,
+  "photographer": "SHVETS production",
+  "url": "https://www.pexels.com/photo/man-writing-label-on-box-7203964/",
+  "query": "stacked moving boxes labelled apartment",
+  "role": "product"
+ },
+ "furniture-wrapped": {
+  "id": 7217801,
+  "photographer": "Blue Bird",
+  "url": "https://www.pexels.com/photo/woman-in-green-t-shirt-covering-a-couch-7217801/",
+  "query": "wrapped furniture inside moving truck",
+  "role": "product"
+ },
+ "container-truck": {
+  "id": 36136848,
+  "photographer": "Stephen Cheng",
+  "url": "https://www.pexels.com/photo/scenic-coastal-road-with-trucks-and-ocean-view-36136848/",
+  "query": "container truck open road intercity",
+  "role": "product"
+ },
+ "part-load": {
+  "id": 16924265,
+  "photographer": "Wenxin Dong",
+  "url": "https://www.pexels.com/photo/interior-of-an-empty-warehouse-16924265/",
+  "query": "warehouse parcels pallets loading dock",
+  "role": "product"
+ },
+ "bike-crate": {
+  "id": 13992335,
+  "photographer": "Airam Dato-on",
+  "url": "https://www.pexels.com/photo/a-motorcycle-parked-near-a-concrete-wall-13992335/",
+  "query": "motorcycle crated wooden shipping transport",
+  "role": "product"
+ },
+ "office-shifting": {
+  "id": 7581040,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-carrying-a-white-box-7581040/",
+  "query": "office relocation desks computers boxes",
+  "role": "product"
+ },
+ "tracking-phone": {
+  "id": 6169859,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/grayscale-photo-of-person-holding-smartphone-6169859/",
+  "query": "hand phone gps tracking map truck",
+  "role": "detail"
+ },
+ "crew-team": {
+  "id": 4487515,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/men-sitting-in-a-truck-4487515/",
+  "query": "movers team standing front of truck",
+  "role": "team"
+ }
+}

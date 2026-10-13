@@ -1,0 +1,63 @@
+{
+ "lawyer-desk-client": {
+  "id": 7876153,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/couple-in-lawyer-office-7876153/",
+  "query": "lawyer advising client documents office desk",
+  "role": "cover"
+ },
+ "consultation": {
+  "id": 7875935,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-man-in-blue-suit-sitting-beside-the-white-desk-7875935/",
+  "query": "lawyer consultation client across table",
+  "role": "product"
+ },
+ "legal-notice": {
+  "id": 8112145,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/man-in-black-suit-jacket-writing-on-a-notebook-8112145/",
+  "query": "lawyer writing legal document pen letterhead",
+  "role": "product"
+ },
+ "will-signing": {
+  "id": 7876045,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-man-signing-a-divorce-decree-7876045/",
+  "query": "elderly man signing will document lawyer",
+  "role": "product"
+ },
+ "courtroom": {
+  "id": 5668484,
+  "photographer": "Sora Shimazaki",
+  "url": "https://www.pexels.com/photo/black-wooden-gavel-5668484/",
+  "query": "courtroom judge bench gavel wooden",
+  "role": "product"
+ },
+ "family-counsel": {
+  "id": 7876190,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/man-sitting-beside-the-woman-crying-7876190/",
+  "query": "lawyer counselling couple office empathy",
+  "role": "product"
+ },
+ "law-books-gavel": {
+  "id": 7876088,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/book-and-binder-on-a-desk-7876088/",
+  "query": "law books gavel scales of justice closeup",
+  "role": "detail"
+ },
+ "agreement-signing": {
+  "id": 8815843,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/a-person-s-hand-holding-a-black-and-silver-pen-8815843/",
+  "query": "signing contract document pen closeup"
+ },
+ "lawyer-reading-file": {
+  "id": 8111853,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/woman-working-at-the-desk-in-office-8111853/",
+  "query": "indian lawyer reading documents desk"
+ }
+}

@@ -1,0 +1,107 @@
+{
+ "cover-gate": {
+  "id": 35562107,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/professional-security-guard-at-entrance-35562107/",
+  "query": "security guard uniform society gate India",
+  "role": "cover"
+ },
+ "cover-lobby": {
+  "id": 7513165,
+  "photographer": "SHVETS production",
+  "url": "https://www.pexels.com/photo/faceless-housewife-preparing-to-wash-floor-at-home-7513165/",
+  "query": "housekeeping staff mopping office lobby floor",
+  "role": "cover"
+ },
+ "control-room": {
+  "id": 30692441,
+  "photographer": "AMORIE SAM",
+  "url": "https://www.pexels.com/photo/security-officer-in-dark-control-room-with-monitors-30692441/",
+  "query": "CCTV monitoring room security screens",
+  "role": "space"
+ },
+ "guard-cabin": {
+  "id": 5853118,
+  "photographer": "Omar Ramadan",
+  "url": "https://www.pexels.com/photo/white-and-red-painted-iron-barrier-5853118/",
+  "query": "apartment entrance boom barrier guard cabin",
+  "role": "space"
+ },
+ "guard-register": {
+  "id": 10349994,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/a-female-volunteering-in-search-of-missing-person-10349994/",
+  "query": "security guard writing visitor register",
+  "role": "people"
+ },
+ "supervisor-check": {
+  "id": 34954619,
+  "photographer": "the Amritdev",
+  "url": "https://www.pexels.com/photo/indian-security-personnel-in-uniform-formation-outdoors-34954619/",
+  "query": "supervisor inspecting security guards lineup",
+  "role": "people"
+ },
+ "guard-gate": {
+  "id": 18166929,
+  "photographer": "Jericho San Miguel",
+  "url": "https://www.pexels.com/photo/security-standing-by-gate-18166929/",
+  "query": "uniformed security guard standing gate",
+  "role": "product"
+ },
+ "armed-guard": {
+  "id": 15422351,
+  "photographer": "Dextar Studio ™",
+  "url": "https://www.pexels.com/photo/man-armed-with-rifle-standing-on-sidewalk-15422351/",
+  "query": "armed security guard rifle showroom",
+  "role": "product"
+ },
+ "lady-guard": {
+  "id": 34954627,
+  "photographer": "the Amritdev",
+  "url": "https://www.pexels.com/photo/indian-security-personnel-in-uniform-formation-34954627/",
+  "query": "female security guard uniform India",
+  "role": "product"
+ },
+ "housekeeping": {
+  "id": 4239032,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/crop-housekeeper-cleaning-handle-with-rag-4239032/",
+  "query": "housekeeping worker cleaning office washroom",
+  "role": "product"
+ },
+ "society-gate": {
+  "id": 35814840,
+  "photographer": "HRIDYAKSH GEJWAL",
+  "url": "https://www.pexels.com/photo/black-and-white-urban-alley-at-night-35814840/",
+  "query": "residential society main gate security night",
+  "role": "product"
+ },
+ "event-bouncer": {
+  "id": 35117790,
+  "photographer": "Murat IŞIK",
+  "url": "https://www.pexels.com/photo/stylish-man-holding-umbrella-at-night-event-35117790/",
+  "query": "bouncer black suit event entrance crowd",
+  "role": "product"
+ },
+ "deep-clean": {
+  "id": 4107284,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/black-vacuum-cleaner-on-area-rug-4107284/",
+  "query": "floor scrubber machine office deep cleaning",
+  "role": "product"
+ },
+ "uniform-badge": {
+  "id": 30516935,
+  "photographer": "Malik Usman",
+  "url": "https://www.pexels.com/photo/security-guard-communicating-via-walkie-talkie-30516935/",
+  "query": "security uniform badge walkie talkie closeup",
+  "role": "detail"
+ },
+ "team": {
+  "id": 27820210,
+  "photographer": "Miguel Guerra",
+  "url": "https://www.pexels.com/photo/a-group-of-military-men-in-uniform-27820210/",
+  "query": "security guards team parade uniform",
+  "role": "team"
+ }
+}

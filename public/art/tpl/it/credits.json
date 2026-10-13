@@ -1,0 +1,107 @@
+{
+ "team-coding": {
+  "id": 4974912,
+  "photographer": "olia danilevich",
+  "url": "https://www.pexels.com/photo/person-coding-on-a-macbook-pro-4974912/",
+  "query": "indian software developers office laptops coding",
+  "role": "cover"
+ },
+ "client-demo": {
+  "id": 16675632,
+  "photographer": "Shoper .pl",
+  "url": "https://www.pexels.com/photo/shoper-website-opened-on-the-computer-16675632/",
+  "query": "developer showing website laptop shop owner",
+  "role": "cover"
+ },
+ "office-interior": {
+  "id": 28955771,
+  "photographer": "minhphuc .workspace",
+  "url": "https://www.pexels.com/photo/modern-minimalist-office-desk-workspace-setup-28955771/",
+  "query": "small software office desks monitors plants",
+  "role": "space"
+ },
+ "meeting-room": {
+  "id": 4463588,
+  "photographer": "Shuki Harel",
+  "url": "https://www.pexels.com/photo/concentrated-male-entrepreneur-analyzing-project-standing-near-whiteboard-in-modern-workspace-4463588/",
+  "query": "startup meeting room whiteboard wireframes glass",
+  "role": "space"
+ },
+ "developer-desk": {
+  "id": 3861958,
+  "photographer": "ThisIsEngineering",
+  "url": "https://www.pexels.com/photo/woman-coding-on-computer-3861958/",
+  "query": "indian woman developer dual monitors code",
+  "role": "people"
+ },
+ "designer-sketch": {
+  "id": 11813187,
+  "photographer": "Davide Baraldi",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-an-ipad-11813187/",
+  "query": "ui designer sketching mobile app wireframe",
+  "role": "people"
+ },
+ "website-design": {
+  "id": 40057912,
+  "photographer": "Wolf  Art",
+  "url": "https://www.pexels.com/photo/modern-workspace-with-laptop-tablet-and-phone-40057912/",
+  "query": "responsive website mockup laptop phone screen",
+  "role": "product"
+ },
+ "ecommerce-site": {
+  "id": 7679865,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/person-shopping-online-7679865/",
+  "query": "online shopping website cart laptop screen",
+  "role": "product"
+ },
+ "mobile-app": {
+  "id": 8947141,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/phone-with-a-case-8947141/",
+  "query": "hand holding smartphone app interface mockup",
+  "role": "product"
+ },
+ "billing-software": {
+  "id": 18966444,
+  "photographer": "Matheus Bertelli",
+  "url": "https://www.pexels.com/photo/monitor-keyboard-and-mouse-18966444/",
+  "query": "retail billing software screen barcode scanner",
+  "role": "product"
+ },
+ "google-maps": {
+  "id": 13709181,
+  "photographer": "Amar  Preciado",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-smartphone-13709181/",
+  "query": "phone google maps local shop listing",
+  "role": "product"
+ },
+ "social-media": {
+  "id": 7676391,
+  "photographer": "Ivan S",
+  "url": "https://www.pexels.com/photo/a-woman-recording-herself-with-a-smartphone-7676391/",
+  "query": "creating instagram reel phone ring light",
+  "role": "product"
+ },
+ "ads-dashboard": {
+  "id": 5717766,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/gray-laptop-on-the-table-5717766/",
+  "query": "digital ads analytics dashboard growth chart",
+  "role": "product"
+ },
+ "support-desk": {
+  "id": 7681983,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-man-in-brown-button-up-long-sleeve-shirt-using-a-laptop-7681983/",
+  "query": "it support headset helpdesk laptop",
+  "role": "detail"
+ },
+ "team-photo": {
+  "id": 7988667,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-woman-holding-laptop-in-front-of-her-colleagues-7988667/",
+  "query": "small startup team group photo office",
+  "role": "team"
+ }
+}

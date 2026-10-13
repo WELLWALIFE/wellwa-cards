@@ -1,0 +1,86 @@
+{
+ "wedding-entrance": {
+  "id": 16720894,
+  "photographer": "Abir Joy",
+  "url": "https://www.pexels.com/photo/a-traditional-wedding-couple-in-a-temple-16720894/",
+  "query": "indian wedding floral entrance gate lights night",
+  "role": "cover"
+ },
+ "dj-night-crowd": {
+  "id": 9005508,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-people-having-fun-in-the-club-9005508/",
+  "query": "indian sangeet dj dance floor moving lights crowd",
+  "role": "cover"
+ },
+ "decor-godown": {
+  "id": 10270201,
+  "photographer": "Jonathan Cooper",
+  "url": "https://www.pexels.com/photo/display-of-flowers-in-supermarket-10270201/",
+  "query": "event decor warehouse artificial flowers props shelves",
+  "role": "space"
+ },
+ "planner-office": {
+  "id": 37227610,
+  "photographer": "Disney Magat",
+  "url": "https://www.pexels.com/photo/creative-workspace-with-mood-board-and-planner-37227610/",
+  "query": "event planner office mood board meeting clients",
+  "role": "space"
+ },
+ "florist-stage": {
+  "id": 35872915,
+  "photographer": "Creative Photography",
+  "url": "https://www.pexels.com/photo/traditional-indian-wedding-ceremony-decor-with-couple-35872915/",
+  "query": "decorator arranging marigold flowers wedding stage",
+  "role": "people"
+ },
+ "sound-setup": {
+  "id": 14828527,
+  "photographer": "Yusuf Miah",
+  "url": "https://www.pexels.com/photo/professional-music-studio-equipment-14828527/",
+  "query": "sound engineer mixing console event setup",
+  "role": "people"
+ },
+ "mandap-flowers": {
+  "id": 39797463,
+  "photographer": "Uday Ahir",
+  "url": "https://www.pexels.com/photo/elegant-indian-wedding-mandap-by-the-sea-39797463/",
+  "query": "indian wedding mandap fresh flowers drapes",
+  "role": "product"
+ },
+ "haldi-decor": {
+  "id": 35327990,
+  "photographer": "Deepak Sharma",
+  "url": "https://www.pexels.com/photo/bright-haldi-ceremony-with-bride-in-traditional-wear-35327990/",
+  "query": "haldi ceremony marigold decoration swing yellow",
+  "role": "product"
+ },
+ "tent-lighting": {
+  "id": 4993956,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/outdoor-table-setting-under-a-tent-4993956/",
+  "query": "wedding tent pandal fairy lights chairs night",
+  "role": "product"
+ },
+ "corporate-stage": {
+  "id": 29708245,
+  "photographer": "Matheus Bertelli",
+  "url": "https://www.pexels.com/photo/public-speaking-event-in-modern-conference-room-29708245/",
+  "query": "corporate conference stage led screen podium audience",
+  "role": "product"
+ },
+ "table-centrepiece": {
+  "id": 17001833,
+  "photographer": "Matheus Bertelli",
+  "url": "https://www.pexels.com/photo/flowers-and-candles-on-a-table-17001833/",
+  "query": "wedding dinner table centrepiece candles roses closeup",
+  "role": "detail"
+ },
+ "crew-team": {
+  "id": 17513729,
+  "photographer": "K",
+  "url": "https://www.pexels.com/photo/musicians-preparing-for-concert-17513729/",
+  "query": "event crew team setting up venue stage",
+  "role": "team"
+ }
+}

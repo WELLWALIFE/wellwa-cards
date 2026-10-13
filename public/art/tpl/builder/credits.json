@@ -1,0 +1,72 @@
+{
+ "site-wide": {
+  "id": 19995510,
+  "photographer": "Shantum Singh",
+  "url": "https://www.pexels.com/photo/construction-worker-on-building-19995510/",
+  "query": "indian house construction site workers scaffolding",
+  "role": "cover"
+ },
+ "slab-pour": {
+  "id": 37121398,
+  "photographer": "SÀI GÒN CÔNG TY CP SẢN XUẤT - THƯƠNG MẠI",
+  "url": "https://www.pexels.com/photo/construction-worker-smoothing-fresh-concrete-surface-37121398/",
+  "query": "concrete slab pouring construction workers",
+  "role": "cover"
+ },
+ "finished-home": {
+  "id": 7672060,
+  "photographer": "Sharath G.",
+  "url": "https://www.pexels.com/photo/white-concrete-building-7672060/",
+  "query": "modern indian independent house exterior",
+  "role": "space"
+ },
+ "interior-finish": {
+  "id": 35539079,
+  "photographer": "Peter  Vang",
+  "url": "https://www.pexels.com/photo/spacious-modern-basement-with-natural-light-35539079/",
+  "query": "newly built empty living room tiles",
+  "role": "space"
+ },
+ "engineer-client": {
+  "id": 3862384,
+  "photographer": "ThisIsEngineering",
+  "url": "https://www.pexels.com/photo/civil-engineer-planning-dam-3862384/",
+  "query": "engineer showing blueprint to client site",
+  "role": "people"
+ },
+ "premium-finish": {
+  "id": 6987730,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/living-room-interior-with-classic-furniture-at-home-6987730/",
+  "query": "luxury marble floor living room interior",
+  "role": "product"
+ },
+ "drawings": {
+  "id": 7937319,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/helmet-level-and-sketches-7937319/",
+  "query": "architectural floor plan blueprint helmet",
+  "role": "product"
+ },
+ "commercial": {
+  "id": 5505119,
+  "photographer": "Mike van Schoonderwalt",
+  "url": "https://www.pexels.com/photo/construction-site-with-cranes-5505119/",
+  "query": "commercial building under construction crane",
+  "role": "product"
+ },
+ "rebar": {
+  "id": 11891953,
+  "photographer": "Marco Damm",
+  "url": "https://www.pexels.com/photo/pile-of-rusty-steel-bars-11891953/",
+  "query": "steel rebar tying construction closeup",
+  "role": "detail"
+ },
+ "team": {
+  "id": 18111488,
+  "photographer": "Joaquin Carfagna",
+  "url": "https://www.pexels.com/photo/construction-workers-on-a-street-18111488/",
+  "query": "construction crew helmets team portrait",
+  "role": "team"
+ }
+}

@@ -1,0 +1,107 @@
+{
+ "demo-kitchen": {
+  "id": 33671149,
+  "photographer": "Multitech Institute",
+  "url": "https://www.pexels.com/photo/air-conditioner-repair-technician-in-workshop-33671149/",
+  "query": "technician demonstrating water purifier indian kitchen",
+  "role": "cover"
+ },
+ "pouring-glass": {
+  "id": 6857798,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/hand-pouring-water-in-clear-drinking-glass-6857798/",
+  "query": "pouring clean water glass purifier tap",
+  "role": "cover"
+ },
+ "showroom": {
+  "id": 33257666,
+  "photographer": "Rana Matloob Hussain",
+  "url": "https://www.pexels.com/photo/luxury-jewelry-store-interior-design-with-modern-decor-33257666/",
+  "query": "water purifier showroom display wall",
+  "role": "space"
+ },
+ "shop-front": {
+  "id": 4473357,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/person-holding-brown-wooden-welcome-signage-4473357/",
+  "query": "small appliance shop front india signboard",
+  "role": "space"
+ },
+ "tds-test": {
+  "id": 12326657,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-a-glucometer-12326657/",
+  "query": "TDS meter testing tap water hand",
+  "role": "people"
+ },
+ "technician-install": {
+  "id": 38171157,
+  "photographer": "Elite Power Group",
+  "url": "https://www.pexels.com/photo/electrician-installing-solar-energy-wiring-indoors-38171157/",
+  "query": "technician installing wall mounted water purifier",
+  "role": "people"
+ },
+ "ro-wall": {
+  "id": 32203313,
+  "photographer": "Andrea Davis",
+  "url": "https://www.pexels.com/photo/modern-minimalist-kitchen-with-black-sink-32203313/",
+  "query": "wall mounted RO water purifier kitchen",
+  "role": "product"
+ },
+ "ionizer": {
+  "id": 6980568,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/contemporary-kitchen-interior-with-furniture-and-electric-appliances-6980568/",
+  "query": "alkaline water ionizer countertop machine",
+  "role": "product"
+ },
+ "undersink": {
+  "id": 34558064,
+  "photographer": "HONG SON",
+  "url": "https://www.pexels.com/photo/modern-kitchen-with-blue-cabinets-and-marble-countertops-34558064/",
+  "query": "under sink reverse osmosis system faucet",
+  "role": "product"
+ },
+ "cooler": {
+  "id": 34206531,
+  "photographer": "정규송 Nui MALAMA",
+  "url": "https://www.pexels.com/photo/stainless-steel-hot-water-dispenser-on-stand-34206531/",
+  "query": "stainless steel water cooler office dispenser",
+  "role": "product"
+ },
+ "commercial-plant": {
+  "id": 33514501,
+  "photographer": "Policarpo  Brito",
+  "url": "https://www.pexels.com/photo/stainless-steel-industrial-equipment-in-a-factory-33514501/",
+  "query": "industrial reverse osmosis plant stainless skid",
+  "role": "product"
+ },
+ "filters": {
+  "id": 12726229,
+  "photographer": "Alexey Demidov",
+  "url": "https://www.pexels.com/photo/purifiers-at-a-water-treatment-plant-12726229/",
+  "query": "RO filter cartridges membrane replacement",
+  "role": "product"
+ },
+ "ph-drops": {
+  "id": 28993163,
+  "photographer": "dp singh Bhullar",
+  "url": "https://www.pexels.com/photo/colorful-raindrops-on-window-with-bokeh-28993163/",
+  "query": "pH test drops water glass colour",
+  "role": "detail"
+ },
+ "water-splash": {
+  "id": 8349867,
+  "photographer": "Vilnis Husko",
+  "url": "https://www.pexels.com/photo/drop-of-water-splashing-on-a-surface-8349867/",
+  "query": "clear water droplets splash macro",
+  "role": "detail"
+ },
+ "team": {
+  "id": 35831375,
+  "photographer": "DΛVΞ GΛRCIΛ",
+  "url": "https://www.pexels.com/photo/paramedics-loading-stretcher-into-ambulance-van-outdoors-35831375/",
+  "query": "service technicians team uniform van",
+  "role": "team"
+ }
+}

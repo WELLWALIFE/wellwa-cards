@@ -38,6 +38,7 @@ export const POSTER_CSS = `
 .site .poster[data-field=ink]{background:var(--hero-ink);color:var(--hero-text)}
 .site .poster[data-field=ink] .kicker{color:var(--gold,var(--accent))}
 .site .poster .kicker{color:var(--hero-text);opacity:.8}
+.site .poster .trust-row{color:var(--hero-text);opacity:.85}
 .site .poster .display{--t-display:clamp(2.75rem,12vw,3.5rem);max-width:12ch}
 .site .poster .hero-sub{max-width:34ch;opacity:.9;margin-top:var(--s4,16px)}
 .site .poster-ctas{margin-top:var(--s5,24px)}
@@ -51,7 +52,7 @@ export const POSTER_CSS = `
 .site .poster-card figcaption .trust-row{color:var(--muted)}
 @media (min-width:1024px){
   .site .poster{padding:0 var(--gutter,64px)}
-  .site .poster-in{max-width:var(--content,1120px);margin:0 auto;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:64px;align-items:end;min-height:76vh}
+  .site .poster-in{max-width:var(--content,1120px);margin:0 auto;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:64px;align-items:center;min-height:64vh}
   .site .poster-copy{padding:96px 0 80px}
   .site .poster .display{--t-display:clamp(4rem,5.6vw,5.5rem);max-width:12ch}
   .site .poster-card{margin:0;transform:translateY(96px)}

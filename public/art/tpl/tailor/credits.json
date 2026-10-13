@@ -1,0 +1,107 @@
+{
+ "cover-measuring": {
+  "id": 8526968,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-woman-using-a-measuring-tape-8526968/",
+  "query": "indian tailor measuring tape customer boutique",
+  "role": "cover"
+ },
+ "cover-sewing": {
+  "id": 40151678,
+  "photographer": "Finalchoice",
+  "url": "https://www.pexels.com/photo/close-up-of-sewing-machine-in-katsina-nigeria-40151678/",
+  "query": "tailor sewing machine stitching fabric closeup",
+  "role": "cover"
+ },
+ "shop-interior": {
+  "id": 35285958,
+  "photographer": "Magda Ehlers",
+  "url": "https://www.pexels.com/photo/colorful-fabric-shelf-display-in-textile-store-35285958/",
+  "query": "boutique interior fabric rolls mannequins shelves",
+  "role": "space"
+ },
+ "shop-front": {
+  "id": 12729102,
+  "photographer": "Ayşegül  Aytören",
+  "url": "https://www.pexels.com/photo/clothing-boutique-for-men-12729102/",
+  "query": "small tailoring shop storefront india street",
+  "role": "space"
+ },
+ "fitting-trial": {
+  "id": 9853297,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/person-wearing-black-and-red-bracelet-9853297/",
+  "query": "woman trying blouse fitting tailor pins",
+  "role": "people"
+ },
+ "cutting-table": {
+  "id": 6461103,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/sewing-patterns-on-the-table-6461103/",
+  "query": "tailor cutting fabric scissors chalk pattern table",
+  "role": "people"
+ },
+ "suit": {
+  "id": 20777205,
+  "photographer": "Muneeb Malhotra",
+  "url": "https://www.pexels.com/photo/models-in-traditional-dresses-20777205/",
+  "query": "indian salwar kameez suit stitched embroidered",
+  "role": "product"
+ },
+ "blouse": {
+  "id": 35798160,
+  "photographer": "Ventara Films",
+  "url": "https://www.pexels.com/photo/woman-in-maroon-dress-posing-outdoors-35798160/",
+  "query": "designer saree blouse back embroidery dori",
+  "role": "product"
+ },
+ "lehenga": {
+  "id": 20790065,
+  "photographer": "Simon Niogi",
+  "url": "https://www.pexels.com/photo/model-in-traditional-indian-garments-and-jewelry-posing-in-the-studio-20790065/",
+  "query": "bridal lehenga red embroidered flared skirt",
+  "role": "product"
+ },
+ "gown": {
+  "id": 8575238,
+  "photographer": "Imad Clicks",
+  "url": "https://www.pexels.com/photo/a-woman-in-her-wedding-dress-8575238/",
+  "query": "anarkali gown floor length indian ethnic",
+  "role": "product"
+ },
+ "gents": {
+  "id": 6766244,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-in-blue-denim-jeans-wearing-silver-watch-6766244/",
+  "query": "tailored formal shirt trousers men fabric",
+  "role": "product"
+ },
+ "kurta": {
+  "id": 27519224,
+  "photographer": "Sabir Khan Shourov",
+  "url": "https://www.pexels.com/photo/a-man-in-a-traditional-indian-outfit-standing-in-front-of-a-blue-and-yellow-flower-wall-27519224/",
+  "query": "men kurta pyjama nehru jacket wedding",
+  "role": "product"
+ },
+ "alteration": {
+  "id": 29738269,
+  "photographer": "Jacob Moseholt",
+  "url": "https://www.pexels.com/photo/sewing-essentials-with-red-fabric-and-machine-29738269/",
+  "query": "tailor hemming trousers alteration pins",
+  "role": "product"
+ },
+ "detail-threads": {
+  "id": 4618282,
+  "photographer": "Maxi Gagliano",
+  "url": "https://www.pexels.com/photo/sewing-accessories-on-table-in-bright-room-4618282/",
+  "query": "colorful thread spools buttons lace sewing",
+  "role": "detail"
+ },
+ "team": {
+  "id": 13206031,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/person-using-a-sewing-machine-13206031/",
+  "query": "tailors team sewing workshop india",
+  "role": "team"
+ }
+}

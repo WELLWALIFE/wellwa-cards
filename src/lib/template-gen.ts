@@ -145,7 +145,7 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
     const wanted = (v.gallery ?? []).filter((s) => have.has(s));
     const gallery = [...wanted, ...galleryPool.filter((s) => !wanted.includes(s) && s !== cover)].slice(0, 6);
     const usedPhoto = new Set<string>();
-    const spare = byRole(sample, have, "product", "detail", "space").filter((s) => !sample.products.some((p) => p.photo === s));
+    const spare = byRole(sample, have, "product", "detail").filter((s) => !sample.products.some((p) => p.photo === s));
     const photoOf = (p: SampleProduct): string | undefined => {
       let s: string | undefined = have.has(p.photo) && !usedPhoto.has(p.photo) ? p.photo : spare.find((x) => !usedPhoto.has(x));
       if (!s && have.has(p.photo)) s = p.photo;   // nothing spare: the shared photo is better than none
@@ -163,7 +163,8 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
       ...(booking ? [{ id: id(), kind: "appointment" as const, title: /book/i.test(sample.ctaLabel) ? sample.ctaLabel.replace(/ on WhatsApp/i, "") : "Book a visit", url: "", note: "Tell us the day and time that suits you — we confirm on WhatsApp." }] : []),
     ];
     const catalog: CardBlock[] = [
-      { id: id(), kind: "product", title: sample.catalogTitle, items: products },
+      // The page is already headed by its name: a block of the same name under it read as a doubled heading.
+      { id: id(), kind: "product", title: sample.catalogTitle.trim().toLowerCase() === sample.catalogPage.trim().toLowerCase() ? `Our ${sample.catalogTitle.trim()}` : sample.catalogTitle, items: products },
       { id: id(), kind: "services", title: "Services", items: sample.services.slice(0, 6) },
     ];
     const galleryBlock: CardBlock[] = gallery.length ? [{ id: id(), kind: "gallery", title: "A look inside", images: gallery.map((s): GalleryImage => ({ url: url(trade, s), color: v.color ?? "#999999", label: cap(s) })) }] : [];

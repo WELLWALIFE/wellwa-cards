@@ -1,0 +1,100 @@
+{
+ "living-hero": {
+  "id": 7148779,
+  "photographer": "Souranshi Fashion and  Lifestyle Magazine",
+  "url": "https://www.pexels.com/photo/white-and-red-sectional-couch-7148779/",
+  "query": "modern indian living room interior sofa",
+  "role": "cover"
+ },
+ "kitchen-install": {
+  "id": 15124970,
+  "photographer": "Thới Nam Cao",
+  "url": "https://www.pexels.com/photo/men-working-inside-a-house-under-repairs-15124970/",
+  "query": "carpenter installing modular kitchen cabinets",
+  "role": "cover"
+ },
+ "studio": {
+  "id": 38139753,
+  "photographer": "Jonathan Borba",
+  "url": "https://www.pexels.com/photo/woman-interior-designer-arranging-samples-at-office-desk-38139753/",
+  "query": "interior design studio material samples desk",
+  "role": "space"
+ },
+ "bedroom": {
+  "id": 6489100,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/stylish-bedroom-with-big-wardrobe-6489100/",
+  "query": "modern bedroom wardrobe warm lighting",
+  "role": "space"
+ },
+ "designer-client": {
+  "id": 15764116,
+  "photographer": "Grove Brands",
+  "url": "https://www.pexels.com/photo/architect-working-on-a-computer-15764116/",
+  "query": "interior designer showing 3d render client",
+  "role": "people"
+ },
+ "carpenter": {
+  "id": 5466163,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/carpenter-cutting-wood-board-5466163/",
+  "query": "carpenter sanding plywood wardrobe panel",
+  "role": "people"
+ },
+ "kitchen": {
+  "id": 6265838,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/interior-of-stylish-kitchen-with-shining-lamps-6265838/",
+  "query": "l shaped modular kitchen glossy laminate",
+  "role": "product"
+ },
+ "living": {
+  "id": 7005298,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/contemporary-illuminated-apartment-with-cozy-sofa-and-kitchen-area-7005298/",
+  "query": "full home interior living dining panelling",
+  "role": "product"
+ },
+ "tv-unit": {
+  "id": 7166934,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/hotel-room-with-tv-7166934/",
+  "query": "wall mounted tv unit wooden panel",
+  "role": "product"
+ },
+ "ceiling": {
+  "id": 6980724,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/television-against-sofa-in-modern-living-room-6980724/",
+  "query": "false ceiling cove lighting living room",
+  "role": "product"
+ },
+ "office": {
+  "id": 8297846,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/empty-messy-desk-inside-an-office-8297846/",
+  "query": "small office interior workstations glass cabin",
+  "role": "product"
+ },
+ "drawings": {
+  "id": 12882906,
+  "photographer": "Leonid Altman",
+  "url": "https://www.pexels.com/photo/a-mouse-on-a-laptop-with-a-blank-screen-12882906/",
+  "query": "interior floor plan 3d rendering laptop",
+  "role": "product"
+ },
+ "hardware": {
+  "id": 6395828,
+  "photographer": "Naveen Sahu",
+  "url": "https://www.pexels.com/photo/a-cabinet-with-colorful-drawers-6395828/",
+  "query": "soft close drawer hardware closeup",
+  "role": "detail"
+ },
+ "team": {
+  "id": 30216939,
+  "photographer": "S3T Koncepts",
+  "url": "https://www.pexels.com/photo/skilled-carpenters-at-work-in-dubai-workshop-30216939/",
+  "query": "interior design team carpenters portrait",
+  "role": "team"
+ }
+}

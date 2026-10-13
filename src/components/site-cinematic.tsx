@@ -174,6 +174,10 @@ export const CINEMATIC_CSS = `
 /* The nav shows only once the hero is scrolled; section headings and the product rail. */
 .site[data-bp="cinematic"] header.site-head{position:fixed;left:0;right:0;top:0;transform:translateY(-100%);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .site[data-bp="cinematic"] header.site-head.scrolled{transform:none}
+/* Inner pages keep the header; on the home it lies transparent over the cover until scrolled (review, 13 Oct 2026: no nav). */
+.site[data-bp="cinematic"]:not([data-home]) header.site-head{position:sticky;transform:none}
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){transform:none;background:transparent!important;border-color:transparent!important;backdrop-filter:none;color:#fff;--ink:#fff;--muted:rgba(255,255,255,.75);--border:rgba(255,255,255,.3)}
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) a,.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) button{color:#fff}
 .site[data-bp="cinematic"] main section h2{font-size:var(--t-h2);line-height:1.05;letter-spacing:-.015em}
 .site[data-bp="cinematic"] .site-rail{display:flex;gap:1.25rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 1.25rem 1rem;margin:0 -1.25rem;scrollbar-width:none}
 @media (min-width:768px){.site[data-bp="cinematic"] .site-rail{padding:0 1.5rem 1rem;margin:0 -1.5rem}}

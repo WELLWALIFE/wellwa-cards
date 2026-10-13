@@ -1,0 +1,72 @@
+{
+ "cover-ac-outdoor": {
+  "id": 14522790,
+  "photographer": "Zechen Li",
+  "url": "https://www.pexels.com/photo/air-conditioner-near-ladder-14522790/",
+  "query": "technician installing air conditioner outdoor unit ladder",
+  "role": "cover"
+ },
+ "cover-wiring": {
+  "id": 7286019,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/man-looking-at-a-magnifying-glass-7286019/",
+  "query": "electrician working distribution board wires",
+  "role": "cover"
+ },
+ "space-shop": {
+  "id": 6000686,
+  "photographer": "Dương Nhân",
+  "url": "https://www.pexels.com/photo/close-up-of-light-switches-6000686/",
+  "query": "electrical hardware shop counter switches",
+  "role": "space"
+ },
+ "people-plumber": {
+  "id": 35869441,
+  "photographer": "Vural Yavas",
+  "url": "https://www.pexels.com/photo/vintage-red-pipe-wrench-on-black-background-35869441/",
+  "query": "plumber repairing sink pipe wrench",
+  "role": "people"
+ },
+ "ac-service": {
+  "id": 39396898,
+  "photographer": "Brett Sayles",
+  "url": "https://www.pexels.com/photo/colorful-apartment-facade-in-boise-idaho-39396898/",
+  "query": "cleaning split air conditioner indoor unit filter",
+  "role": "product"
+ },
+ "ac-install": {
+  "id": 34887522,
+  "photographer": "Yusuf Çelik",
+  "url": "https://www.pexels.com/photo/black-and-white-industrial-air-conditioner-unit-34887522/",
+  "query": "mounting split air conditioner wall bracket",
+  "role": "product"
+ },
+ "ac-gauge": {
+  "id": 5640691,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/black-and-silver-round-analog-gauge-5640691/",
+  "query": "refrigerant pressure gauge manifold air conditioner",
+  "role": "product"
+ },
+ "wiring": {
+  "id": 8469950,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/white-ceiling-with-electrical-wiring-poking-out-8469950/",
+  "query": "copper electrical wires conduit ceiling installation",
+  "role": "product"
+ },
+ "mcb-panel": {
+  "id": 38171184,
+  "photographer": "Elite Power Group",
+  "url": "https://www.pexels.com/photo/close-up-of-electrical-circuit-breakers-panel-38171184/",
+  "query": "circuit breaker panel MCB RCCB close up",
+  "role": "product"
+ },
+ "inverter": {
+  "id": 39057090,
+  "photographer": "Elite Power Group",
+  "url": "https://www.pexels.com/photo/electrician-installing-residential-battery-storage-39057090/",
+  "query": "home inverter battery backup installation",
+  "role": "product"
+ }
+}

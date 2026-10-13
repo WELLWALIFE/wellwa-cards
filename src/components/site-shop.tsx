@@ -96,7 +96,7 @@ export const SHOP_CSS = `
 .site .shelf-words .display{--t-display:clamp(1.9rem,8vw,2.5rem)}
 .site .shelf-words .hero-ctas{margin-top:var(--s2)}
 .site .shelf-facts{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5);margin-top:var(--s4);font-size:var(--t-meta);color:var(--muted)}
-.site .shelf-offer{display:inline-flex;align-items:center;gap:.4em;font-weight:600;color:var(--accent);background:var(--p-soft);padding:.45rem .8rem;border-radius:999px}
+.site .shelf-offer{display:flex;width:100%;align-items:center;gap:.6em;font-weight:600;font-size:15px;color:var(--on-accent);background:var(--accent);padding:.8rem 1rem;border-radius:var(--r-card)}
 @media (min-width:1024px){
 .site .shelf{padding:var(--s5) 0 var(--s7)}
 .site .shelf-chip{width:92px}.site .shelf-chip i{width:76px;height:76px}

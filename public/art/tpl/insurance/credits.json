@@ -1,0 +1,79 @@
+{
+ "family-meeting": {
+  "id": 7736037,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-woman-giving-a-key-7736037/",
+  "query": "insurance agent explaining policy indian family home",
+  "role": "cover"
+ },
+ "policy-signing": {
+  "id": 8439697,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/person-in-black-suit-holding-white-digital-tablet-8439697/",
+  "query": "indian couple signing insurance document advisor desk",
+  "role": "cover"
+ },
+ "office-front": {
+  "id": 19818223,
+  "photographer": "Nicu Cobasnean",
+  "url": "https://www.pexels.com/photo/open-sign-hanging-on-a-store-window-19818223/",
+  "query": "small insurance advisor office glass door signboard",
+  "role": "space"
+ },
+ "advisor-cabin": {
+  "id": 8453806,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/photo-of-a-conference-room-8453806/",
+  "query": "insurance advisor office desk files laptop chairs",
+  "role": "space"
+ },
+ "advisor-explaining": {
+  "id": 8439655,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/broker-presenting-an-offer-to-an-elderly-couple-on-a-tablet-8439655/",
+  "query": "indian insurance advisor tablet senior couple smiling",
+  "role": "people"
+ },
+ "policy-handover": {
+  "id": 3760067,
+  "photographer": "Andrea Piacquadio",
+  "url": "https://www.pexels.com/photo/crop-businessman-giving-contract-to-woman-to-sign-3760067/",
+  "query": "agent handing policy document to woman customer",
+  "role": "people"
+ },
+ "term-plan": {
+  "id": 28680703,
+  "photographer": "br prch",
+  "url": "https://www.pexels.com/photo/heartwarming-newborn-feet-in-parents-hands-28680703/",
+  "query": "father mother child hands protection umbrella",
+  "role": "product"
+ },
+ "savings-plan": {
+  "id": 7118211,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-person-picking-the-coins-on-the-wooden-flooring-7118211/",
+  "query": "indian family saving coins jar rupee",
+  "role": "product"
+ },
+ "child-plan": {
+  "id": 8106663,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/women-wearing-academic-dress-holding-diplomas-8106663/",
+  "query": "indian girl student graduation cap books smiling",
+  "role": "product"
+ },
+ "health-plan": {
+  "id": 6097680,
+  "photographer": "Laura James",
+  "url": "https://www.pexels.com/photo/nurse-in-uniform-and-badge-on-street-6097680/",
+  "query": "stethoscope health insurance card hospital desk",
+  "role": "product"
+ },
+ "office-team": {
+  "id": 8815812,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/elderly-couple-and-a-real-estate-agent-8815812/",
+  "query": "small indian office team advisors standing together",
+  "role": "team"
+ }
+}

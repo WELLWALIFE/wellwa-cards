@@ -1,0 +1,58 @@
+{
+ "clean-kitchen": {
+  "id": 10117730,
+  "photographer": "Keegan Checks",
+  "url": "https://www.pexels.com/photo/interior-of-an-apartment-10117730/",
+  "query": "sparkling clean modern Indian kitchen",
+  "role": "space"
+ },
+ "technician": {
+  "id": 9245158,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/man-in-orange-button-up-shirt-wearing-white-mask-9245158/",
+  "query": "pest control worker gloves mask sprayer",
+  "role": "people"
+ },
+ "cleaner": {
+  "id": 6195285,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/woman-in-orange-jumpsuit-and-gray-shirt-using-vacuum-cleaner-6195285/",
+  "query": "housekeeper vacuum cleaning sofa smiling",
+  "role": "people"
+ },
+ "cockroach": {
+  "id": 39414357,
+  "photographer": "Marta Branco",
+  "url": "https://www.pexels.com/photo/vaccination-equipment-on-blue-background-39414357/",
+  "query": "cockroach gel bait kitchen cabinet syringe",
+  "role": "product"
+ },
+ "termite": {
+  "id": 18021337,
+  "photographer": "Petr Ganaj",
+  "url": "https://www.pexels.com/photo/close-up-of-termites-18021337/",
+  "query": "termite treatment drilling wall injection",
+  "role": "product"
+ },
+ "bedbug": {
+  "id": 7614404,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/bedroom-contemporary-interior-design-7614404/",
+  "query": "mattress steam cleaning bed bug treatment",
+  "role": "product"
+ },
+ "fogging": {
+  "id": 4176610,
+  "photographer": "Michelangelo Buonarroti",
+  "url": "https://www.pexels.com/photo/person-in-white-protective-clothing-fumigating-a-rug-in-a-living-space-4176610/",
+  "query": "mosquito fogging machine smoke residential",
+  "role": "product"
+ },
+ "sofa": {
+  "id": 4176549,
+  "photographer": "Michelangelo Buonarroti",
+  "url": "https://www.pexels.com/photo/a-man-wearing-white-protective-clothing-fumigating-clothes-4176549/",
+  "query": "sofa shampoo extraction machine cleaning",
+  "role": "product"
+ }
+}
