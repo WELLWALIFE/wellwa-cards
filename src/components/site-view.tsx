@@ -311,6 +311,14 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // website — the owner knows the lead's source, and the visitor need not think of an opening.
   const waOpen = card.language === "hi" ? `नमस्ते ${hm.name}, मैंने आपकी website देखी — ` : `Hi ${hm.name}, I saw your website — `;
   const offerNow = liveOffer(card);
+  const annRef = useRef<HTMLDivElement>(null);
+  // The strip's height, for the Full photo look whose header floats over the hero: it sits just under the strip.
+  useLayoutEffect(() => {
+    const el = annRef.current; const root = el?.parentElement; if (!el || !root) { return; }
+    const set = () => root.style.setProperty("--ann-h", `${el.offsetHeight}px`);
+    set(); window.addEventListener("resize", set);
+    return () => window.removeEventListener("resize", set);
+  }, [offerNow]);
   const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
   const lastKind = pageBlocks.at(-1)?.kind;
@@ -377,7 +385,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       )}
 
       {offerNow && (
-        <div className="site-ann" role="note">
+        <div ref={annRef} className="site-ann" role="note">
           <span>{t(offerNow.title ? `${offerNow.title}: ${offerNow.text}` : offerNow.text)}</span>
           {wa && <a href={waHref(offerNow.title || offerNow.text)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-strip")}>{hiLang ? "WhatsApp पर पाइए" : t("Claim on WhatsApp")}</a>}
         </div>
@@ -569,7 +577,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       </main>
 
       {/* ---- footer (§4.8): the ink field, the wordmark, the pages and the ways to reach the business ---- */}
-      <footer className="hero-dark">
+      {/* The same ink as the closing band above it (owner, 14 Oct 2026: "footer ka colour contact wali patti me mix ho raha hai"):
+          two near-blacks side by side read as a stain, so the footer takes the band's field and a hairline divides them. */}
+      <footer className="hero-dark" style={{ background: "var(--p-foot)", borderTop: "1px solid color-mix(in srgb, var(--p-foot-ink) 14%, transparent)", ["--hero-ink" as string]: "var(--p-foot)", ["--hero-text" as string]: "var(--p-foot-ink)", ["--hero-muted" as string]: "color-mix(in srgb, var(--p-foot-ink) 72%, transparent)", color: "var(--p-foot-ink)" } as React.CSSProperties}>
         <div className="mx-auto max-w-6xl px-5 md:px-6 pt-14 pb-10 grid md:grid-cols-[1.3fr_1fr_1fr] gap-10 text-sm">
           <div>
             {logo ? <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" w={180} /> : <Wordmark name={t(hm.name)} trade={t(trade)} lang={L.lang} className="text-[19px]" />}

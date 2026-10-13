@@ -105,7 +105,7 @@ const POSTER = `
 const CINEMATIC_DARK = `
 /* The dark room covers the header and the footer too, and the accent becomes the palette's light accent (noir: gold) —
    its mid is near-black, which left the buttons and the nav unreadable (review, 13 Oct 2026). */
-.site[data-body="dark"]{--accent:var(--p-accent);--on-accent:var(--p-deep);--tc:var(--p-accent)}
+.site[data-body="dark"]{--accent:var(--p-accent);--on-accent:var(--p-deep);--tc:var(--p-accent);--p-foot:var(--hero-ink)}
 .site[data-body="dark"] header.site-head{background:color-mix(in srgb,var(--hero-ink) 86%,transparent);border-color:color-mix(in srgb,var(--hero-text) 14%,transparent);color:var(--hero-text);--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent);--surface:color-mix(in srgb,var(--hero-ink) 90%,white);--border:color-mix(in srgb,var(--hero-text) 18%,transparent)}
 .site[data-body="dark"] header.site-head a,.site[data-body="dark"] header.site-head button{color:var(--hero-text)}
 .site[data-body="dark"] header.site-head .btn-primary{background:var(--p-accent);color:var(--p-deep)}

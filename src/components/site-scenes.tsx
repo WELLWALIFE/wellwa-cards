@@ -7,7 +7,7 @@
 //   Big name (wordmark) — an editorial page: About as one giant sentence with a narrow tall photo, services as a menu
 //     of dotted lines, photos staggered in three columns, the FAQ as numbered open answers, one review as a pull quote.
 // Everything is fed plain data by site-view.tsx (which owns translation and the lightbox); nothing here fetches.
-import type { ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { Pic as Img } from "@/components/pic";
 import type { TestimonialItem } from "@/lib/types";
 
@@ -34,16 +34,44 @@ export function SceneAbout({ title, body, image, eyebrow, t }: { title: string; 
   );
 }
 
-/** Tall photos in a swipe strip that runs edge to edge; the caption sits under each. */
+/** Tall photos in a swipe strip that runs edge to edge; the caption sits under each. It slides along by itself every few
+ *  seconds (and back to the start at the end) until a visitor touches it, and carries two arrows, so nobody has to guess
+ *  that there are more pictures past the edge (owner, 14 Oct 2026: "kaise pata chale ki slide karne par aur image aayegi"). */
 export function SceneStrip({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: number) => void; t: T }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const held = useRef(0);   // autoplay waits until this time (ms) once the visitor has used the strip
+  const step = () => { const el = ref.current; const first = el?.firstElementChild as HTMLElement | null; return first ? first.offsetWidth + 12 : 320; };
+  const go = (dir: 1 | -1, byUser = false) => {
+    const el = ref.current; if (!el) return;
+    if (byUser) held.current = Date.now() + 9000;
+    const atEnd = el.scrollLeft + el.clientWidth >= el.scrollWidth - 6;
+    if (dir === 1 && atEnd) el.scrollTo({ left: 0, behavior: "smooth" });
+    else el.scrollBy({ left: dir * step(), behavior: "smooth" });
+  };
+  useEffect(() => {
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const id = window.setInterval(() => {
+      const el = ref.current; if (!el || Date.now() < held.current) return;
+      const r = el.getBoundingClientRect();
+      if (r.bottom < 0 || r.top > (window.innerHeight || 800)) return;   // only while it is on screen
+      go(1);
+    }, 4200);
+    return () => window.clearInterval(id);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  const hold = () => { held.current = Date.now() + 9000; };
   return (
-    <div className="scene-strip" role="list">
-      {imgs.map((g, i) => (
-        <button key={i} type="button" role="listitem" className="scene-shot group" onClick={() => onOpen(i)}>
-          <Img src={g.url!} alt={g.label} className="scene-shot-img" eager={i < 2} sizes="(min-width:768px) 40vw, 80vw" />
-          {g.label && <span className="scene-cap">{t(g.label)}</span>}
-        </button>
-      ))}
+    <div className="scene-strip-wrap">
+      <div ref={ref} className="scene-strip" role="list" onPointerDown={hold} onWheel={hold} onFocus={hold}>
+        {imgs.map((g, i) => (
+          <button key={i} type="button" role="listitem" className="scene-shot group" onClick={() => onOpen(i)}>
+            <Img src={g.url!} alt={g.label} className="scene-shot-img" eager={i < 2} sizes="(min-width:768px) 40vw, 80vw" />
+            {g.label && <span className="scene-cap">{t(g.label)}</span>}
+          </button>
+        ))}
+      </div>
+      <button type="button" className="scene-nav prev" aria-label="Previous photo" onClick={() => go(-1, true)}>‹</button>
+      <button type="button" className="scene-nav next" aria-label="Next photo" onClick={() => go(1, true)}>›</button>
     </div>
   );
 }
@@ -126,11 +154,14 @@ export function MenuServices({ items, t }: { items: { name: string; desc?: strin
   );
 }
 
-/** Photos staggered in three columns, each its own height, the caption set under it — a printed contact sheet. */
+/** Photos in three aligned columns, one frame size, the caption set under each — a printed contact sheet. */
 export function StaggerGallery({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: number) => void; t: T }) {
+  // Whole rows only, every frame one size and aligned: a contact sheet, not photographs dropped on a table (owner,
+  // 14 Oct 2026: "photo sahi se set nahi hai, bikhre pade hain").
+  const n = imgs.length >= 6 ? 6 : 3;
   return (
-    <div className="stagger">
-      {imgs.map((g, i) => (
+    <div className="stagger" data-n={n}>
+      {imgs.slice(0, n).map((g, i) => (
         <button key={i} type="button" className="stagger-it" data-i={i % 3} onClick={() => onOpen(i)}>
           <span className="stagger-ph"><Img src={g.url!} alt={g.label} className="stagger-img" eager={i < 3} sizes="(min-width:768px) 33vw, 50vw" /></span>
           {g.label && <span className="stagger-cap">{t(g.label)}</span>}
@@ -371,12 +402,15 @@ export const SCENES_CSS = `
 .site[data-bp="cinematic"] .scene-h{margin:12px 0 0;font-size:clamp(2.25rem,7vw,4.75rem);line-height:1;letter-spacing:-.02em;font-weight:400;max-width:16ch;text-wrap:balance;color:#fff}
 .site[data-bp="cinematic"] .scene-body{margin-top:var(--s5);max-width:56ch;font-size:1.0625rem;line-height:1.6;color:#fff;text-shadow:0 1px 14px rgb(0 0 0/.55)}.site[data-bp="cinematic"] .scene-h{text-shadow:0 2px 24px rgb(0 0 0/.5)}
 .site[data-bp="cinematic"] .scene-body p+p{margin-top:.8em}
-.site[data-bp="cinematic"] .scene-strip{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;margin:0 -20px;padding:0 20px}
+.site[data-bp="cinematic"] .scene-strip-wrap{position:relative;margin:0 -20px}
+.site[data-bp="cinematic"] .scene-strip{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:0 20px}
+.site[data-bp="cinematic"] .scene-nav{position:absolute;top:50%;z-index:2;width:46px;height:46px;margin-top:-23px;border:0;border-radius:999px;background:rgb(255 255 255/.92);color:#111;font-size:30px;line-height:1;cursor:pointer;box-shadow:0 6px 20px -6px rgb(0 0 0/.5)}
+.site[data-bp="cinematic"] .scene-nav.prev{left:14px}.site[data-bp="cinematic"] .scene-nav.next{right:14px}
 .site[data-bp="cinematic"] .scene-strip::-webkit-scrollbar{display:none}
 .site[data-bp="cinematic"] .scene-shot{position:relative;flex:0 0 78vw;height:min(62vh,520px);scroll-snap-align:center;overflow:hidden;border:0;padding:0;background:var(--paper-2);cursor:zoom-in}
 .site[data-bp="cinematic"] .scene-shot-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .site[data-bp="cinematic"] .scene-cap{position:absolute;left:0;right:0;bottom:0;padding:28px 14px 12px;text-align:left;font-size:13px;color:#fff;background:linear-gradient(to top,rgb(0 0 0/.6),transparent)}
-@media (min-width:768px){.site[data-bp="cinematic"] .scene-shot{flex-basis:38vw}.site[data-bp="cinematic"] .scene-strip{margin:0 calc(50% - 50vw);padding:0 max(24px,calc(50vw - 36rem))}}
+@media (min-width:768px){.site[data-bp="cinematic"] .scene-shot{flex-basis:38vw}.site[data-bp="cinematic"] .scene-strip-wrap{margin:0 calc(50% - 50vw)}.site[data-bp="cinematic"] .scene-strip{padding:0 max(24px,calc(50vw - 36rem))}.site[data-bp="cinematic"] .scene-nav.prev{left:max(14px,calc(50vw - 36rem - 60px))}.site[data-bp="cinematic"] .scene-nav.next{right:max(14px,calc(50vw - 36rem - 60px))}}
 .site[data-bp="cinematic"] .split-faq{display:grid;gap:var(--s6)}
 .site[data-bp="cinematic"] .split-faq-list details{border-bottom:1px solid var(--line);padding:0}
 .site[data-bp="cinematic"] .split-faq-list summary{cursor:pointer;list-style:none;padding:20px 0;font-size:1.15rem;font-family:var(--font-display,var(--look-head))}
@@ -413,8 +447,9 @@ export const SCENES_CSS = `
 .site[data-bp="wordmark"] .stagger-it{display:block;border:0;padding:0;background:none;text-align:left;cursor:zoom-in}
 .site[data-bp="wordmark"] .stagger-ph{position:relative;display:block;overflow:hidden;background:var(--paper-2);aspect-ratio:4/5}
 .site[data-bp="wordmark"] .stagger-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site[data-bp="wordmark"] .stagger[data-n="3"] .stagger-it:first-child{grid-column:1/-1}.site[data-bp="wordmark"] .stagger[data-n="3"] .stagger-it:first-child .stagger-ph{aspect-ratio:16/10}
 .site[data-bp="wordmark"] .stagger-cap{display:block;margin-top:8px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
-@media (min-width:768px){.site[data-bp="wordmark"] .stagger{grid-template-columns:repeat(3,1fr);gap:var(--s5) var(--s5)}.site[data-bp="wordmark"] .stagger-it[data-i="1"]{margin-top:var(--s7)}}
+@media (min-width:768px){.site[data-bp="wordmark"] .stagger{grid-template-columns:repeat(3,1fr);gap:var(--s5) var(--s5)}.site[data-bp="wordmark"] .stagger[data-n="3"] .stagger-it:first-child{grid-column:auto}.site[data-bp="wordmark"] .stagger[data-n="3"] .stagger-it:first-child .stagger-ph{aspect-ratio:4/5}}
 .site[data-bp="wordmark"] .num-faq{list-style:none;margin:0;padding:0;display:grid;gap:var(--s6) var(--s8)}
 .site[data-bp="wordmark"] .num-faq li{border-top:1px solid var(--ink);padding-top:var(--s4)}
 .site[data-bp="wordmark"] .num-faq span{font-size:12px;letter-spacing:.14em;color:var(--accent)}

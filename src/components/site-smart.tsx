@@ -168,6 +168,44 @@ export function heroSizes(crop: HeroCrop): string {
   return crop === "cover" ? "(max-width: 767px) 1600px, 100vw" : "1600px";
 }
 
+/** The hero's short clip as a seamless loop (owner, 14 Oct 2026: "wapis jhatke se ja raha hai"): a plain `loop` jumps from
+ *  the last frame to the first, so two copies of the clip take turns — the second starts a second before the first ends
+ *  and the two cross-fade, so the end never shows. A very short clip, or a browser that will not play the second copy,
+ *  falls back to restarting at the end. */
+function HeroClip({ url, poster }: { url: string; poster?: string }) {
+  const a = useRef<HTMLVideoElement>(null), b = useRef<HTMLVideoElement>(null);
+  useEffect(() => {
+    const va = a.current, vb = b.current; if (!va || !vb) return;
+    let cur = va, nxt = vb, raf = 0, swapping = false;
+    const FADE = 1.2;
+    const restart = (v: HTMLVideoElement) => () => { if (v === cur) { v.currentTime = 0; void v.play().catch(() => undefined); } };
+    const onA = restart(va), onB = restart(vb);
+    va.addEventListener("ended", onA); vb.addEventListener("ended", onB);
+    const tick = () => {
+      const d = cur.duration;
+      // The second copy is only fetched in the last seconds, so a phone that never shows the clip pays for one download.
+      if (d && Number.isFinite(d) && d > FADE * 3 && cur.currentTime > d - 4 && nxt.preload !== "auto") nxt.preload = "auto";
+      if (!swapping && d && Number.isFinite(d) && d > FADE * 3 && cur.currentTime > d - FADE) {
+        swapping = true;
+        const old = cur;
+        nxt.currentTime = 0;
+        void nxt.play().then(() => { nxt.style.opacity = "1"; old.style.opacity = "0"; }).catch(() => { swapping = false; });
+        cur = nxt; nxt = old;
+        window.setTimeout(() => { old.pause(); swapping = false; }, FADE * 1000 + 150);
+      }
+      raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => { cancelAnimationFrame(raf); va.removeEventListener("ended", onA); vb.removeEventListener("ended", onB); };
+  }, []);
+  return (
+    <>
+      <video ref={a} src={url} poster={poster || undefined} className="hero-clip" autoPlay muted playsInline preload="metadata" aria-hidden="true" />
+      <video ref={b} src={url} className="hero-clip" style={{ opacity: 0 }} muted playsInline preload="metadata" aria-hidden="true" />
+    </>
+  );
+}
+
 /** The hero picture (§3.2): LQIP as a plain background under it (browser upscale, no blur filter), the card's subject
  *  point as object-position, a scrim only where the text sits (bottom, plus the text side on desktop), grain on dark
  *  heroes on desktop only, Ken Burns on desktop only and off for a bright photo, a clip or reduced motion. The clip
@@ -190,7 +228,7 @@ export function HeroPhoto({ photo, clip, clipOn = "always", crop = "cover", prio
       data-bright={photo?.bright ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
       {photo && <Pic src={photo.src} alt={alt} className={`hero-ph ${kb ? "hero-kb" : ""}`} style={{ objectPosition: photo.focus }}
         priority={priority} eager={!lazy && !priority} sizes={sizes ?? heroSizes(crop)} aria-hidden={alt ? undefined : true} />}
-      {clip && <video src={clip.url} poster={clip.poster || undefined} className="hero-clip" autoPlay muted loop playsInline preload="metadata" aria-hidden="true" />}
+      {clip && <HeroClip url={clip.url} poster={clip.poster} />}
       {scrim && <div aria-hidden="true" className="hero-scrim" />}
       {grain && <i aria-hidden="true" className="hero-grain" />}
     </div>
@@ -288,7 +326,7 @@ export const HERO_CSS = `
 .site .hero-wordmark small{font:500 11px/1.3 var(--font-text,var(--look-body));font-variant:small-caps;letter-spacing:.08em;color:var(--muted)}
 .site .hero-wordmark:lang(hi),.site .hero-wordmark:lang(hi) small{letter-spacing:0;font-variant:normal}
 .site .hero-ph-wrap{position:relative;overflow:hidden;background:var(--paper-2) center/cover no-repeat}
-.site .hero-clip{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--focus,50% 35%);display:none}
+.site .hero-clip{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:var(--focus,50% 35%);display:none;transition:opacity 1.2s linear}
 .site .hero-ph-wrap[data-clip=always] .hero-clip{display:block}
 .site .hero-ph-wrap[data-bright] .hero-ph{filter:saturate(.92)}
 .site .hero-ph-wrap[data-bright] .hero-scrim{--scrim-bot:color-mix(in srgb,var(--hero-ink) 90%,transparent)}
