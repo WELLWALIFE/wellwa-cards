@@ -172,27 +172,20 @@ export default function WebsitePage() {
                   live website. Everything else (editor, pages, settings) waits under Advanced. */}
               {/* Said loud, right where Edit opens (owner, 7 Oct 2026: "pata nahi chal raha kis ko edit kar rahe hain"):
                   the card and the website are ONE thing — the same details, the same link — so every edit is of both. */}
-              <div className="rounded-2xl border-2 border-brand/40 bg-brand-soft/40 p-3.5">
-                <p className="text-base font-bold">{T("You are editing BOTH: your card and your website.", "आप दोनों edit कर रहे हैं: अपना card और अपनी website।")}</p>
-                <div className="mt-2.5 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-center text-xs">
-                  <span className="rounded-xl bg-surface px-2 py-2"><Smartphone className="mx-auto mb-1 h-5 w-5 text-brand" /><b className="block">{T("Card", "Card")}</b><span className="text-muted">{T("on phones", "phone पर")}</span></span>
-                  <span className="text-lg font-bold text-brand">=</span>
-                  <span className="rounded-xl bg-surface px-2 py-2"><Globe className="mx-auto mb-1 h-5 w-5 text-brand" /><b className="block">{T("Website", "Website")}</b><span className="text-muted">{T("on computers", "computer पर")}</span></span>
-                </div>
-                <p className="mt-2.5 text-sm">{T("Same details, same link. Change anything below once — it shows on both.", "एक ही जानकारी, एक ही link। नीचे कुछ भी एक बार बदलें — दोनों पर दिखेगा।")}</p>
-              </div>
+              <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-ink">{T("Card and website are one — change anything once, it changes on both.", "Card और website एक हैं — एक बार बदलें, दोनों में बदल जाएगा।")}</p>
               <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
               {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
-              <div className="grid grid-cols-2 gap-2">
-                {([
-                  { k: "ai", I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid, scope: "both" },
+              {(() => {
+                const tiles = ([
+                  { k: "ai", more: true, I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid, scope: "both" },
                   { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}`, scope: "both" },
-                  { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
+                  { k: "about", more: true, I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
                   { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
                   { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
                   // The three designs are the WEBSITE's; the phone card's own look lives under Advanced → Card look & settings.
                   { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Six designs, colours", "छह design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
-                ] as { k: string; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean; scope: "both" | "site" | "again" }[]).map((x) => {
+                ] as { k: string; more?: boolean; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean; scope: "both" | "site" | "again" }[]);
+                const tile = (x: (typeof tiles)[number]) => {
                   const inner = (
                     <>
                       <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
@@ -203,8 +196,17 @@ export default function WebsitePage() {
                   );
                   const cls = "block rounded-2xl border-2 border-border bg-surface p-3 text-left";
                   return x.href ? <Link key={x.k} href={x.href} className={cls}>{inner}</Link> : <button key={x.k} type="button" onClick={x.onClick} disabled={!card} className={`${cls} border-brand/40 bg-brand-soft/30 disabled:opacity-60`}>{inner}</button>;
-                })}
-              </div>
+};
+                return (
+                  <>
+                    <div className="grid grid-cols-2 gap-2">{tiles.filter((x) => !x.more).map(tile)}</div>
+                    <details className="rounded-2xl border border-border bg-surface">
+                      <summary className="cursor-pointer list-none px-3.5 py-3 text-sm font-semibold">{T("More changes (AI, about & logo)", "और बदलाव (AI, परिचय और logo)")}</summary>
+                      <div className="grid grid-cols-2 gap-2 p-3 pt-0">{tiles.filter((x) => x.more).map(tile)}</div>
+                    </details>
+                  </>
+                );
+              })()}
               {card && <CardChatEdit card={card} locked={!paid} url={s.url} onChanged={(c) => { setCard(c); load(cardId); }} />}
               <PhotoNudge />
               {/* Advanced: everything the six tiles do not cover. */}
