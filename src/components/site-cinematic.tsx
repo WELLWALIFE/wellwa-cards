@@ -7,7 +7,7 @@
 // slug) · one line of benefit · the trust row · ONE paper-filled button + the phone as a text link. The photo is
 // dimmed only at the bottom where the words sit (plus the text side on desktop), Ken Burns runs on desktop only,
 // and a card without a photo or clip gets the `cover-ink` field (ink, grain on desktop, type-led).
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import type { Card, TestimonialItem } from "@/lib/types";
 import { heroModel, ownUpload } from "@/lib/site-hero";
 import { Kicker, Display, Sub, TrustRow, CtaPair, HeroPhoto } from "@/components/site-smart";
@@ -62,26 +62,26 @@ export function CinematicHero({ card, hi, t, clip, textSide }: {
 /** A photo band between two scenes that moves at a third of the page's speed (transform only; still under reduced motion). */
 export function ParallaxBand({ src, alt = "", caption }: { src: string; alt?: string; caption?: string }) {
   const ref = useRef<HTMLDivElement>(null);
-  useEffect(() => {
+  // The picture is laid out 24% taller than the band and only slides inside that spare height, with a slow zoom of 5%
+  // across the pass: no fixed 1.25 scale (that upscaled a 1400 px photo and blurred it), and the first position is set
+  // before paint, so nothing jumps when the band comes into view (owner, 14 Oct 2026).
+  useLayoutEffect(() => {
     const el = ref.current; if (!el) return;
     if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
     const img = el.firstElementChild as HTMLElement | null; if (!img) return;
     let raf = 0;
-    const on = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(() => {
-        const r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
-        if (r.bottom < 0 || r.top > vh) return;
-        const d = (r.top + r.height / 2 - vh / 2) * -0.22;
-        img.style.transform = `translate3d(0, ${d.toFixed(1)}px, 0) scale(1.25)`;
-      });
+    const place = () => {
+      const r = el.getBoundingClientRect(), vh = window.innerHeight || 800;
+      const p = Math.max(0, Math.min(1, (vh - r.top) / (vh + r.height)));
+      img.style.transform = `translate3d(0, ${((p - 0.5) * 0.2 * r.height).toFixed(1)}px, 0) scale(${(1 + 0.05 * p).toFixed(4)})`;
     };
-    on(); window.addEventListener("scroll", on, { passive: true }); window.addEventListener("resize", on);
+    const on = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(place); };
+    place(); window.addEventListener("scroll", on, { passive: true }); window.addEventListener("resize", on);
     return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf); };
   }, []);
   return (
     <div ref={ref} className="cin-band" aria-hidden={!alt}>
-      <Img src={src} alt={alt} className="cin-band-img" style={{ transform: "scale(1.25)" }} sizes="100vw" />
+      <Img src={src} alt={alt} className="cin-band-img" sizes="100vw" />
       {caption && <p className="cin-cap">{caption}</p>}
     </div>
   );
@@ -156,9 +156,9 @@ export const CINEMATIC_CSS = `
 .site .cin-ink .display[data-len="long"]{--t-display:4.5rem}
 }
 /* Photo bands between scenes and the one big review. */
-.site .cin-band{position:relative;height:46vh;min-height:260px;overflow:hidden}
+.site .cin-band{position:relative;height:46vh;min-height:260px;overflow:hidden;isolation:isolate;contain:paint}
 @media (min-width:768px){.site .cin-band{height:58vh}}
-.site .cin-band-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;will-change:transform}
+.site .cin-band-img{position:absolute;left:0;top:-12%;width:100%;height:124%;object-fit:cover}
 .site .cin-cap{position:absolute;left:var(--gutter);bottom:var(--s5);margin:0;padding:var(--s2) var(--s3);font-size:var(--t-meta);font-weight:500;color:var(--hero-text);background:var(--scrim-bot);border-radius:var(--r-img)}
 .site .cin-quote{margin:0 auto;max-width:720px;text-align:center}
 .site .cin-quote-rule{display:block;width:48px;height:1px;margin:0 auto var(--s5);background:var(--accent)}

@@ -274,7 +274,7 @@ body[data-sheet] .site-bar{transform:translateY(110%)}
  *  globals.css under `.site`, and the pieces above wear those names. A hero section whose text sits on the photo or
  *  on the ink field carries `hero-dark`; its text column carries `hero-stagger` (kicker → H1 → sub → CTA, 50 ms). */
 export const HERO_CSS = `
-@keyframes hero-kb{from{transform:scale(1)}to{transform:scale(1.06)}}
+@keyframes hero-kb{from{transform:scale(1)}to{transform:scale(1.08)}}
 .site .hero-sub{margin:0;max-width:34ch;font-size:var(--t-sub);line-height:1.45;text-wrap:pretty;color:var(--muted)}
 .site .hero-sub:lang(hi){line-height:1.6}
 .site .hero-dark .hero-sub{color:var(--hero-text);opacity:.9}
@@ -294,7 +294,7 @@ export const HERO_CSS = `
 .site .hero-ph-wrap[data-bright] .hero-scrim{--scrim-bot:color-mix(in srgb,var(--hero-ink) 90%,transparent)}
 @media (min-width:768px){
 .site .hero-ph-wrap[data-clip=desktop] .hero-clip{display:block}
-.site .hero-kb{animation:hero-kb 20s linear both;will-change:transform}
+.site .hero-kb{animation:hero-kb 36s cubic-bezier(.25,.1,.25,1) both}
 .site .hero-ph-wrap[data-clip] .hero-kb{animation:none}
 }
 @media (min-width:1024px){
