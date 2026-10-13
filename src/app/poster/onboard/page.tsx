@@ -1151,13 +1151,13 @@ function Onboard() {
           {/* Owner's call, 25 Sep 2026: a referral link does not make someone a networker — many take Shubhora for their
               own shop. So everyone gets this choice, answerable in one look. Both is ticked by default (owner's call,
               4 Oct 2026): the person's own business, and a Shubhora page of its own on a hidden link. */}
-          {head(T("What is your card for?", "आपका card किस काम के लिए है?"), T("Both is already ticked. Change it if you want only one.", "दोनों पहले से चुना है। सिर्फ़ एक चाहिए तो बदल लें।"), "promote")}
+          {head(T("What is your website for?", "आपकी website किस काम के लिए है?"), T("Both is already ticked. Change it if you want only one.", "दोनों पहले से चुना है। सिर्फ़ एक चाहिए तो बदल लें।"), "promote")}
 
           {([
-            { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Your own card and website, plus a separate Shubhora page on its own link.", "आपका अपना card और website, और एक अलग link पर Shubhora page।"), eg: T("Your customers never see Shubhora.", "आपके customers को Shubhora नहीं दिखेगा।") },
             { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("Only my own business or work", "सिर्फ़ मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
             // eslint-disable-next-line @next/next/no-img-element
             { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Only selling Shubhora as a partner", "सिर्फ़ Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card। आप partner income कमाते हैं।"), eg: "" },
+            { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Your own card and website, plus a separate Shubhora page on its own link.", "आपका अपना card और website, और एक अलग link पर Shubhora page।"), eg: T("Your customers never see Shubhora.", "आपके customers को Shubhora नहीं दिखेगा।") },
           ]).map((c) => {
             const on = promote === c.k;
             return (

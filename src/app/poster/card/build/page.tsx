@@ -292,6 +292,17 @@ export default function BuildCard() {
     // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
     setTab("site");
     liveTap(next);
+    // The design is picked: keep the six tabs at the top of the screen with the website right under them, so the page
+    // can be seen change while choosing (owner, 13 Oct 2026).
+    setTimeout(() => looksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
+  /** The website in this look, full size in a new tab: the live link once live, else the preview of this phone. */
+  function openLookInTab(k: LookKey) {
+    const look = looks.find((l) => l.key === k);
+    if (!look || !card) return;
+    const next = applyLook(card, look);
+    writeJson(PREVIEW_KEY, { ...next, username: "__preview" });
+    window.open(liveUser && username === liveUser && next.site?.style?.blueprint === shown?.site?.style?.blueprint ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${PREVIEW_KEY}`, "_blank", "noopener");
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
@@ -314,6 +325,7 @@ export default function BuildCard() {
   const frameRef = useRef<HTMLDivElement>(null);
   /** The preview tabs: the finished flow scrolls here when moving from the website to the card. */
   const previewRef = useRef<HTMLDivElement>(null);
+  const looksRef = useRef<HTMLElement>(null);
   const autoRef = useRef(false);
   /** The build is the server's (card-jobs.ts): this screen only follows it, and stops asking once it is gone. */
   const mounted = useRef(true);
@@ -1143,7 +1155,7 @@ export default function BuildCard() {
       {/* 2. The three looks (docs/website-looks-v2.md): three blueprints on the same content, the designer's pick first.
           A 3-column grid — the old horizontal strip showed one chip on a 360 px phone and sat eighth on the page. */}
       {looks.length > 0 && shown.site && (
-        <section>
+        <section ref={looksRef} className="scroll-mt-16">
           <p className="text-sm font-semibold">{T("View and select one", "देखें और एक चुनें")}</p>
           <p className="text-xs text-muted">{T("Tap a design to see it below. Then save.", "Design दबाएँ, नीचे देखें। फिर save करें।")}</p>
           <div className="mt-2 grid grid-cols-3 gap-2">
@@ -1151,12 +1163,17 @@ export default function BuildCard() {
               const on = activeLook === l.key;
               const p = paletteFor({ themeColor: shown.themeColor, site: { enabled: true, style: l.style } });
               return (
-                <button key={l.key} type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
-                  className={`min-w-0 rounded-xl border-2 p-1.5 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
+                <div key={l.key} className="relative min-w-0">
+                <button type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
+                  className={`w-full min-w-0 rounded-xl border-2 p-1.5 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
                   <span className="grid aspect-[16/10] w-full place-items-center rounded-lg" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}><LookGlyph k={l.key} ink={p.ink} /></span>
                   <span className="mt-1.5 flex items-center gap-1 text-sm font-bold">{on && <Check className="h-3.5 w-3.5 shrink-0 text-brand" />}<span className="truncate">{hi ? l.hi : l.name}</span></span>
                   <span className="block truncate text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
                 </button>
+                {/* Every one of the six designs opens as a full website in a new tab, not only the chosen one. */}
+                <button type="button" onClick={() => openLookInTab(l.key)} aria-label={T("Open this design in a new tab", "यह design नए tab में खोलें")}
+                  className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-brand shadow"><ExternalLink className="h-3.5 w-3.5" /></button>
+                </div>
               );
             })}
           </div>
