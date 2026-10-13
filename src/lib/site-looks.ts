@@ -32,8 +32,12 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
   return want.map((key) => {
     const bp = BLUEPRINTS.find((b) => b.key === key)!;
     const plan = byKey.get(key);
-    const style: SiteStyle = plan ? withHeroVariant({ ...plan.style, blueprint: key }, key, category) : derive(d, key, category);
-    return { key, name: bp.name, hi: bp.hi, blurb: bp.blurb, blurbHi: bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}) };
+    // A plan from the designer AI carries its own few choices; the look's section layouts (the blueprint's defaults) fill
+    // every key it left out, so six looks are six compositions and not six hero shapes over one page (live check, 13 Oct 2026).
+    const style: SiteStyle = plan ? withHeroVariant({ ...plan.style, blueprint: key, layouts: { ...(bp.defaults.layouts ?? {}), ...(plan.style.layouts ?? {}) } }, key, category) : derive(d, key, category);
+    // The plan's tile list may omit the photo (a board with no picture on a business that has one): the photo tile leads.
+    const tiles = plan?.tiles ? (plan.tiles.includes("photo") ? plan.tiles : (["photo", ...plan.tiles] as typeof plan.tiles)) : undefined;
+    return { key, name: bp.name, hi: bp.hi, blurb: bp.blurb, blurbHi: bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(tiles ? { tiles } : {}) };
   });
 }
 
