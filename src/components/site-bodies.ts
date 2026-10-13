@@ -88,6 +88,7 @@ const POSTER = `
 .site[data-bp="story"] main .kicker{letter-spacing:.18em}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1){background:var(--accent)!important;color:var(--on-accent);--ink:var(--on-accent);--muted:color-mix(in srgb,var(--on-accent) 78%,transparent);--line:color-mix(in srgb,var(--on-accent) 25%,transparent);--surface:color-mix(in srgb,var(--on-accent) 10%,transparent);--paper-2:color-mix(in srgb,var(--on-accent) 8%,transparent)}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1) .kicker{color:var(--on-accent);opacity:.8}
+.site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1) ol li>span.num{background:var(--on-accent)!important;color:var(--accent)!important}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1) .p-wa{background:var(--on-accent);color:var(--accent)}
 .site[data-bp="story"] main .s-card{border:2px solid var(--ink);border-radius:var(--r-img);box-shadow:6px 6px 0 0 var(--ink);background:var(--surface)}
 .site[data-bp="story"] main .s-card .p-img{border-bottom:2px solid var(--ink)}
