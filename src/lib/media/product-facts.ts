@@ -17,9 +17,16 @@ export type ProductFacts = {
   unverified: string[]; confirmed_by_owner: boolean;
 };
 
+/** What each photo of a product shows — in plain words (owner, 14 Oct 2026: "drop down ke naam samajh nahi aate"). */
 export const PHOTO_VIEWS: { key: PhotoView; label: string }[] = [
-  { key: "in_use", label: "Working / in use" }, { key: "front", label: "Front" }, { key: "three_quarter", label: "Three-quarter" },
-  { key: "output_closeup", label: "Output close-up" }, { key: "installed", label: "Installed" }, { key: "packaging", label: "Packaging" }, { key: "back", label: "Back" }, { key: "other", label: "Other" },
+  { key: "front", label: "Front side (straight on)" },
+  { key: "three_quarter", label: "Angled view (side + front)" },
+  { key: "back", label: "Back side" },
+  { key: "in_use", label: "Being used (in action)" },
+  { key: "output_closeup", label: "Close-up of the result" },
+  { key: "installed", label: "Fitted in place" },
+  { key: "packaging", label: "Box / packing" },
+  { key: "other", label: "Something else" },
 ];
 export const roleOf = (view: PhotoView): "identity" | "context" => (view === "installed" || view === "generated" ? "context" : "identity");
 /** Fields the owner must have seen before a realistic ad may use the facts. */

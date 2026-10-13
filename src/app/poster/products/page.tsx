@@ -437,6 +437,7 @@ export default function ProductsPage() {
                           <img src={ph.url} alt="" className="h-full w-full object-contain" />
                           {!ph.generated_crop && <button type="button" onClick={() => { const photos = draft.photos.filter((_, k) => k !== i); setDraft({ ...draft, photos, photo_url: photos[0]?.url ?? null }); }} className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white" aria-label="Remove photo"><Trash2 className="h-3 w-3" /></button>}
                         </div>
+                        <span className="block text-[10px] font-semibold text-muted">{en ? "This photo shows:" : "ये photo क्या दिखाती है:"}</span>
                         <select value={ph.view} disabled={!!ph.generated_crop} onChange={(e) => setDraft({ ...draft, photos: draft.photos.map((x, k) => (k === i ? { ...x, view: e.target.value as PhotoView } : x)) })} className="w-full rounded-md border border-border bg-surface px-1 py-1 text-[11px]">
                           {PHOTO_VIEWS.map((v) => <option key={v.key} value={v.key}>{v.label}</option>)}
                         </select>
