@@ -171,6 +171,69 @@ export function PullQuote({ items, t }: { items: TestimonialItem[]; t: T }) {
   );
 }
 
+/* ---------- Order shop and Photo collage (Haldiram's, Chaayos, Urban Company) ---------- */
+
+/** Square rounded tiles with the name set UNDER the photo — Haldiram's "Gift with…" row, Urban Company's "Most booked". */
+export function TileRow({ imgs, onOpen, t, across = 4 }: { imgs: Photo[]; onOpen: (i: number) => void; t: T; across?: number }) {
+  // A last tile alone on a wide screen's second row looks like a mistake: show whole rows only.
+  const n = imgs.length >= across ? imgs.length - (imgs.length % across) : imgs.length;
+  return (
+    <div className="tile-row" role="list">
+      {imgs.slice(0, n).map((g, i) => (
+        <button key={i} type="button" role="listitem" className="tile-it" onClick={() => onOpen(i)}>
+          <span className="tile-ph"><Img src={g.url!} alt={g.label} className="tile-img" eager={i < 4} sizes="(min-width:768px) 22vw, 44vw" /></span>
+          {g.label && <span className="tile-cap">{t(g.label)}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Services as small icon tiles with the name under (Urban Company's category grid); the description is one soft line. */
+export function IconTiles({ items, t }: { items: { name: string; desc?: string }[]; t: T }) {
+  return (
+    <ul className="icon-tiles">
+      {items.map((s, i) => (
+        <li key={i}>
+          <i aria-hidden="true">{String(i + 1).padStart(2, "0")}</i>
+          <h3>{t(clean(s.name))}</h3>
+          {s.desc && <p>{t(s.desc)}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** About as a promo banner: the photo fills one half edge to edge, the words sit on a tinted field (Haldiram's bulk-gifting banner). */
+export function BannerAbout({ title, body, image, eyebrow, flip, t }: { title: string; body: string; image: string; eyebrow: string; flip?: boolean; t: T }) {
+  const ps = paras(body);
+  return (
+    <div className={`banner-about ${flip ? "flip" : ""}`}>
+      <div className="banner-ph"><Img src={image} alt="" className="banner-img" sizes="(min-width:900px) 50vw, 100vw" /></div>
+      <div className="banner-words">
+        <p className="kicker">{eyebrow}</p>
+        <h2 className="banner-h">{t(title)}</h2>
+        <div className="banner-body">{ps.map((x, i) => <p key={i}>{t(x)}</p>)}</div>
+      </div>
+    </div>
+  );
+}
+
+/** Reviews as a swipe row of cards, the rating big on each. */
+export function ReviewRow({ items, t }: { items: TestimonialItem[]; t: T }) {
+  return (
+    <div className="rev-row" role="list">
+      {items.map((x, i) => (
+        <figure key={i} role="listitem">
+          <span className="rev-star" aria-label={`${Math.round(Number(x.rating) || 5)} / 5`}>{"★".repeat(Math.max(1, Math.min(5, Math.round(Number(x.rating) || 5))))}</span>
+          <blockquote>{t(x.text)}</blockquote>
+          <figcaption>{x.name}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 /** CSS for both looks (tokens only), scoped to the blueprint so no other look changes. */
 export const SCENES_CSS = `
 .site[data-bp="cinematic"] .scene-about{position:relative;min-height:min(86vh,720px);display:flex;align-items:flex-end;overflow:hidden;color:#fff;background:#111}
@@ -241,4 +304,48 @@ export const SCENES_CSS = `
 .site[data-bp="wordmark"] .pull-more blockquote{font-family:var(--font-text,var(--look-body));font-size:1rem;line-height:1.55;letter-spacing:0;color:var(--ink)}
 .site[data-bp="wordmark"] .pull-more figcaption{margin-top:8px;font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
 @media (min-width:900px){.site[data-bp="wordmark"] .pull-more{grid-template-columns:repeat(3,1fr);gap:var(--s6)}}
+
+.site[data-bp="shop"] .tile-row,.site[data-bp="collage"] .tile-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 -20px;padding:0 20px 4px}
+.site[data-bp="shop"] .tile-row::-webkit-scrollbar,.site[data-bp="collage"] .tile-row::-webkit-scrollbar,.site[data-bp="shop"] .rev-row::-webkit-scrollbar,.site[data-bp="collage"] .rev-row::-webkit-scrollbar{display:none}
+.site[data-bp="shop"] .tile-it,.site[data-bp="collage"] .tile-it{flex:0 0 clamp(150px,42vw,210px);scroll-snap-align:start;border:0;padding:0;background:none;text-align:left;cursor:zoom-in}
+.site[data-bp="shop"] .tile-ph,.site[data-bp="collage"] .tile-ph{position:relative;display:block;aspect-ratio:1;overflow:hidden;border-radius:var(--r-card);background:var(--paper-2)}
+.site[data-bp="shop"] .tile-img,.site[data-bp="collage"] .tile-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site[data-bp="shop"] .tile-cap,.site[data-bp="collage"] .tile-cap{display:block;margin-top:10px;font-weight:600;font-size:15px;line-height:1.25;color:var(--ink)}
+.site[data-bp="collage"] .tile-ph{aspect-ratio:4/5}
+@media (min-width:900px){.site[data-bp="shop"] .tile-row,.site[data-bp="collage"] .tile-row{margin:0;padding:0;overflow:visible;display:grid;grid-template-columns:repeat(4,1fr)}.site[data-bp="collage"] .tile-row{grid-template-columns:repeat(5,1fr)}}
+.site[data-bp="shop"] .icon-tiles,.site[data-bp="collage"] .icon-tiles{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.site[data-bp="shop"] .icon-tiles li,.site[data-bp="collage"] .icon-tiles li{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:var(--r-card);background:var(--surface);border:1px solid var(--line)}
+.site[data-bp="shop"] .icon-tiles i,.site[data-bp="collage"] .icon-tiles i{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent);font-style:normal;font-size:13px;font-weight:700;letter-spacing:.06em}
+.site[data-bp="shop"] .icon-tiles h3,.site[data-bp="collage"] .icon-tiles h3{margin:6px 0 0;font-size:15px;font-weight:600;line-height:1.25}
+.site[data-bp="shop"] .icon-tiles p,.site[data-bp="collage"] .icon-tiles p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="shop"] .icon-tiles i{border-radius:999px}
+@media (min-width:900px){.site[data-bp="shop"] .icon-tiles{grid-template-columns:repeat(4,1fr)}.site[data-bp="collage"] .icon-tiles{grid-template-columns:repeat(4,1fr);gap:16px}.site[data-bp="collage"] .icon-tiles li{padding:22px}}
+.site[data-bp="shop"] .banner-about,.site[data-bp="collage"] .banner-about{display:grid;overflow:hidden;border-radius:var(--r-tile);background:var(--p-soft)}
+.site[data-bp="shop"] .banner-ph,.site[data-bp="collage"] .banner-ph{position:relative;aspect-ratio:16/10}
+.site[data-bp="shop"] .banner-img,.site[data-bp="collage"] .banner-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site[data-bp="shop"] .banner-words,.site[data-bp="collage"] .banner-words{padding:var(--s5) var(--s5) var(--s6)}
+.site[data-bp="shop"] .banner-h,.site[data-bp="collage"] .banner-h{margin:10px 0 0;font-family:var(--font-display,var(--look-head));font-size:clamp(1.6rem,5vw,2.4rem);line-height:1.1;letter-spacing:-.01em;text-wrap:balance}
+.site[data-bp="shop"] .banner-body,.site[data-bp="collage"] .banner-body{margin-top:var(--s4);color:var(--muted);line-height:1.6;max-width:54ch}
+.site[data-bp="shop"] .banner-body p+p,.site[data-bp="collage"] .banner-body p+p{margin-top:.7em}
+@media (min-width:900px){.site[data-bp="shop"] .banner-about,.site[data-bp="collage"] .banner-about{grid-template-columns:1fr 1fr;min-height:420px}.site[data-bp="shop"] .banner-ph,.site[data-bp="collage"] .banner-ph{aspect-ratio:auto}.site[data-bp="shop"] .banner-words,.site[data-bp="collage"] .banner-words{display:flex;flex-direction:column;justify-content:center;padding:var(--s7)}.site[data-bp="collage"] .banner-about.flip .banner-ph{order:2}.site[data-bp="shop"] .banner-about.flip .banner-ph{order:2}}
+.site[data-bp="shop"] .banner-about{background:linear-gradient(135deg,var(--p-soft),var(--paper-2));border:1px solid var(--line)}
+.site[data-bp="collage"] .banner-about{background:var(--paper-2)}
+.site[data-bp="shop"] .rev-row,.site[data-bp="collage"] .rev-row{display:flex;gap:14px;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 -20px;padding:0 20px 4px}
+.site[data-bp="shop"] .rev-row figure,.site[data-bp="collage"] .rev-row figure{flex:0 0 clamp(250px,78vw,340px);scroll-snap-align:start;margin:0;padding:20px;border-radius:var(--r-card);background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.site[data-bp="shop"] .rev-star,.site[data-bp="collage"] .rev-star{color:var(--accent);letter-spacing:.12em;font-size:15px}
+.site[data-bp="shop"] .rev-row blockquote,.site[data-bp="collage"] .rev-row blockquote{margin:0;font-size:.98rem;line-height:1.55;color:var(--ink);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="shop"] .rev-row figcaption,.site[data-bp="collage"] .rev-row figcaption{margin-top:auto;font-size:13px;font-weight:600;color:var(--muted)}
+@media (min-width:900px){.site[data-bp="shop"] .rev-row,.site[data-bp="collage"] .rev-row{margin:0;padding:0;display:grid;grid-template-columns:repeat(3,1fr);overflow:visible}}
+/* The shop's products become Haldiram's swipe rows: tall cards you slide along, the Order pill at the foot of each. */
+.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img){display:flex;overflow-x:auto;scroll-snap-type:x proximity;scrollbar-width:none;margin:0 -20px;padding:0 20px 6px;gap:14px}
+.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)::-webkit-scrollbar{display:none}
+.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)>*{flex:0 0 clamp(170px,46vw,250px);scroll-snap-align:start}
+@media (min-width:1024px){.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img){margin:0;padding:0 0 6px}.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)>*{flex-basis:calc(25% - 11px)}}
+/* The collage's products: caption under a tall photo, five across, no description. */
+.site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4) var(--s3)}
+.site[data-bp="collage"] main .s-card{border:0;box-shadow:none;background:transparent;border-radius:0}
+.site[data-bp="collage"] main .s-card .p-img{aspect-ratio:4/5;border-radius:var(--r-card)}
+.site[data-bp="collage"] main .s-card>.p-5{padding:10px 0 0}
+.site[data-bp="collage"] main .s-card .line-clamp-2,.site[data-bp="collage"] main .s-card details{display:none}
+@media (min-width:900px){.site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(4,minmax(0,1fr))}}
 `;

@@ -37,7 +37,7 @@ import { WordmarkHero, WORDMARK_CSS } from "@/components/site-wordmark";
 import { ShopHero, SHOP_CSS } from "@/components/site-shop";
 import { CollageHero, COLLAGE_CSS } from "@/components/site-collage";
 import { BODY_CSS } from "@/components/site-bodies";
-import { EditorialAbout, MenuServices, NumberedFaq, PullQuote, SceneAbout, SceneRows, SceneStrip, SplitFaq, StaggerGallery, SCENES_CSS } from "@/components/site-scenes";
+import { BannerAbout, IconTiles, ReviewRow, TileRow, EditorialAbout, MenuServices, NumberedFaq, PullQuote, SceneAbout, SceneRows, SceneStrip, SplitFaq, StaggerGallery, SCENES_CSS } from "@/components/site-scenes";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
@@ -358,7 +358,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp === "cinematic" || bp === "wordmark" ? SCENES_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : card.site?.style?.hero === "split" ? BODY_CSS.split : ""}` }} />
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : card.site?.style?.hero === "split" ? BODY_CSS.split : ""}${bp === "cinematic" || bp === "wordmark" || bp === "shop" || bp === "collage" ? SCENES_CSS : ""}` }} />
     <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-home={isHome ? "" : undefined} data-bp={bp ?? (card.site?.style?.hero === "split" ? "split" : undefined)} data-body={card.site?.style?.body} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
@@ -981,6 +981,7 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
   const name = (s: { name: string }) => t(s.name.replace(/^\d+[.)]\s*/, ""));
   if (bp === "cinematic" && list.length <= 8) return <SceneRows items={list} t={t} />;
   if (bp === "wordmark") return <MenuServices items={list} t={t} />;
+  if ((bp === "shop" || bp === "collage") && list.length >= 3 && list.length <= 12) return <IconTiles items={list} t={t} />;
   // One or two services: a full-width row each, with room for the whole description.
   if (layout === "rows") {
     return (
@@ -1377,6 +1378,7 @@ function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string
   void theme;
   if (bp === "cinematic") return <QuoteRotator items={items} t={t} />;
   if (bp === "wordmark" && items.length && items.length < 6) return <PullQuote items={items} t={t} />;
+  if ((bp === "shop" || bp === "collage") && items.length >= 2) return <ReviewRow items={items} t={t} />;
   const one = (x: TestimonialItem, i: number, big = false) => (
     <figure key={i} className={`flex flex-col ${big ? "items-center text-center" : ""}`}>
       <Stars n={Math.round(Number(x.rating) || 5)} />
@@ -1420,6 +1422,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       const all = <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>;
       const openAt = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
       if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)}
@@ -1512,6 +1515,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const aboutBp = bp;
       if (aboutBp === "cinematic" && block.imageUrl) return <SceneAbout title={block.title} body={block.body} image={block.imageUrl} eyebrow={hi ? "परिचय" : t("About")} t={t} />;
       if (aboutBp === "wordmark" && paras(block.body).length) return <Section wide index={index} theme={theme}><EditorialAbout title={block.title} body={block.body} image={block.imageUrl} eyebrow={hi ? "परिचय" : t("About")} t={t} /></Section>;
+      if ((aboutBp === "shop" || aboutBp === "collage") && block.imageUrl && paras(block.body).length) return <Section wide index={index} theme={theme}><BannerAbout title={block.title} body={block.body} image={block.imageUrl} eyebrow={hi ? "परिचय" : t("About")} flip={aboutBp === "collage"} t={t} /></Section>;
       return <Section wide index={index} theme={theme}><AboutBody block={block} hi={hi} index={index} /></Section>;
     }
     case "highlights": {
@@ -1574,6 +1578,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
       if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><SceneStrip imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
+      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
       if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><StaggerGallery imgs={shown.slice(0, 9)} onOpen={open} t={t} />{lightbox}</Section>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
