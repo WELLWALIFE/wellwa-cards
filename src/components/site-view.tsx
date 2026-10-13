@@ -505,8 +505,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         {groups.map((g, i) => (
           <div key={Array.isArray(g) ? g[0].id : g.key} className="contents">
             {Array.isArray(g) ? <SiteRun run={g} index={i} {...runProps} /> : <Pulled section={g} index={i} {...runProps} />}
-            {/* Cinematic: a slow photo band after every second scene (never one the hero already shows). */}
-            {bands.length > 0 && i % 2 === 1 && bands[(i - 1) / 2] && <ParallaxBand src={bands[(i - 1) / 2]} />}
+            {/* Cinematic: a slow photo band after every second scene (never one the hero already shows, and never the last thing
+                before the footer — a band flush against it read as cut off, owner 14 Oct 2026). */}
+            {bands.length > 0 && i % 2 === 1 && i < groups.length - 1 && bands[(i - 1) / 2] && <ParallaxBand src={bands[(i - 1) / 2]} />}
           </div>
         ))}
 
