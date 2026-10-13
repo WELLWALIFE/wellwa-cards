@@ -81,5 +81,17 @@
   "photographer": "RDNE Stock project",
   "url": "https://www.pexels.com/photo/a-person-cleaning-a-yellow-bowl-using-a-sponge-5591636/",
   "query": "dish soap sponge kitchen sink"
+ },
+ "cover-product-meeting": {
+  "id": 7869068,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-man-in-white-long-sleeves-standing-in-front-of-a-group-of-people-7869068/",
+  "query": "business meeting presentation table bright office"
+ },
+ "whatsapp-order": {
+  "id": 9898392,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-cellphone-9898392/",
+  "query": "hands holding smartphone messaging chat"
  }
 }

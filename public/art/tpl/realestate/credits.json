@@ -47,28 +47,52 @@
   "url": "https://www.pexels.com/photo/facade-of-a-modern-apartment-building-complex-24419854/",
   "query": "modern indian apartment complex towers"
  },
- "site-visit-couple": {
-  "id": 8815906,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/men-talking-to-couple-on-steps-8815906/",
-  "query": "indian couple real estate agent apartment visit"
- },
- "office-interior": {
-  "id": 8112163,
-  "photographer": "Pavel Danilyuk",
-  "url": "https://www.pexels.com/photo/smiling-employee-holding-keys-over-table-near-sitting-clients-8112163/",
-  "query": "indian real estate agent office client meeting"
- },
  "key-handover": {
   "id": 8730048,
   "photographer": "Kampus Production",
   "url": "https://www.pexels.com/photo/a-couple-receiving-keys-from-a-broker-8730048/",
   "query": "indian couple receiving house keys"
  },
+ "site-visit-couple": {
+  "id": 8730026,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/real-estate-agent-holding-documents-and-a-family-hugging-in-the-background-8730026/",
+  "query": "indian family new apartment tour agent"
+ },
  "rental-office": {
-  "id": 5483051,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/black-rolling-chairs-beside-desk-5483051/",
-  "query": "modern empty office space glass partitions bright"
+  "id": 10988763,
+  "photographer": "Andrea De Santis",
+  "url": "https://www.pexels.com/photo/empty-white-hallway-10988763/",
+  "query": "empty modern office space interior"
+ },
+ "office-interior": {
+  "id": 8559989,
+  "photographer": "Timur Weber",
+  "url": "https://www.pexels.com/photo/real-estate-agent-shaking-hands-of-a-young-couple-in-their-new-flat-8559989/",
+  "query": "indian real estate agent meeting clients"
+ },
+ "registry-signing": {
+  "id": 8524972,
+  "photographer": "olia danilevich",
+  "url": "https://www.pexels.com/photo/a-man-writing-on-the-paper-8524972/",
+  "query": "indian family signing documents"
+ },
+ "office-team": {
+  "id": 7580648,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/people-sitting-on-swivel-chairs-7580648/",
+  "query": "indian business team office"
+ },
+ "market-shop": {
+  "id": 26831420,
+  "photographer": "Doğan Alpaslan  Demir",
+  "url": "https://www.pexels.com/photo/closed-stores-at-bazaar-in-turkey-26831420/",
+  "query": "retail shop storefront shutter street"
+ },
+ "residential-plot": {
+  "id": 36422828,
+  "photographer": "Tom Fisk",
+  "url": "https://www.pexels.com/photo/aerial-view-of-construction-site-in-bali-indonesia-36422828/",
+  "query": "open land plot housing development"
  }
 }

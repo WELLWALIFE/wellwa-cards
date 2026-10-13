@@ -1,0 +1,58 @@
+{
+ "home-tuition-table": {
+  "id": 7692559,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-woman-teaching-her-students-7692559/",
+  "query": "Indian teacher tutoring teenage student home table",
+  "role": "cover"
+ },
+ "online-class-whiteboard": {
+  "id": 6325952,
+  "photographer": "Vanessa Garcia",
+  "url": "https://www.pexels.com/photo/photo-of-man-talking-in-front-of-camera-6325952/",
+  "query": "teacher teaching online laptop whiteboard camera",
+  "role": "cover"
+ },
+ "study-room-whiteboard": {
+  "id": 8423430,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/photo-of-a-classroom-8423430/",
+  "query": "small tuition room whiteboard desks chairs",
+  "role": "space"
+ },
+ "bookshelf-textbooks": {
+  "id": 7381555,
+  "photographer": "Francesco Ungaro",
+  "url": "https://www.pexels.com/photo/rows-of-shelves-with-books-at-sunlight-7381555/",
+  "query": "bookshelf school textbooks notebooks lamp",
+  "role": "space"
+ },
+ "student-writing-notes": {
+  "id": 35745581,
+  "photographer": "Ahmet Kurt",
+  "url": "https://www.pexels.com/photo/teacher-and-student-learning-interaction-35745581/",
+  "query": "Indian student writing notebook teacher pointing",
+  "role": "people"
+ },
+ "parent-teacher-meeting": {
+  "id": 8617762,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/teacher-teaching-his-student-8617762/",
+  "query": "teacher talking to mother report card",
+  "role": "people"
+ },
+ "maths-notebook": {
+  "id": 36457238,
+  "photographer": "Gonzalo 8a",
+  "url": "https://www.pexels.com/photo/notebook-and-smartphone-on-checkered-paper-36457238/",
+  "query": "maths equations notebook pen calculator",
+  "role": "product"
+ },
+ "teacher-portrait": {
+  "id": 6256118,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/portrait-of-mathematician-6256118/",
+  "query": "Indian teacher portrait smiling books",
+  "role": "team"
+ }
+}

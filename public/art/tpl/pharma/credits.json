@@ -6,25 +6,11 @@
   "query": "pharmaceutical distributor storage racks medicine boxes",
   "role": "space"
  },
- "packing": {
-  "id": 6169035,
-  "photographer": "Tima Miroshnichenko",
-  "url": "https://www.pexels.com/photo/man-in-white-chef-uniform-sitting-on-chair-6169035/",
-  "query": "worker packing medicine boxes tape carton",
-  "role": "people"
- },
  "tablets": {
   "id": 5452239,
   "photographer": "Tima Miroshnichenko",
   "url": "https://www.pexels.com/photo/assorted-packs-of-pills-on-a-wooden-table-5452239/",
   "query": "white tablets blister pack strips close up",
-  "role": "product"
- },
- "cream": {
-  "id": 8015480,
-  "photographer": "Cup of  Couple",
-  "url": "https://www.pexels.com/photo/a-plastic-tube-bottle-leaning-on-an-empty-container-8015480/",
-  "query": "white ointment tube cream pharmaceutical",
   "role": "product"
  },
  "team": {
@@ -57,5 +43,29 @@
   "photographer": "SHVETS production",
   "url": "https://www.pexels.com/photo/pink-medicine-tablets-on-white-surface-9742746/",
   "query": "medicine strips pile pharmacy"
+ },
+ "syrup": {
+  "id": 5682888,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/woman-holding-medication-bottles-5682888/",
+  "query": "amber medicine bottles"
+ },
+ "cream": {
+  "id": 8015480,
+  "photographer": "Cup of  Couple",
+  "url": "https://www.pexels.com/photo/a-plastic-tube-bottle-leaning-on-an-empty-container-8015480/",
+  "query": "ointment tube white"
+ },
+ "warehouse": {
+  "id": 7019210,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/man-in-green-t-shirt-and-black-pants-arranging-cardboard-box-7019210/",
+  "query": "warehouse worker cardboard boxes shelves"
+ },
+ "packing": {
+  "id": 4247758,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/crop-man-taping-carton-box-while-moving-4247758/",
+  "query": "man taping cardboard box"
  }
 }

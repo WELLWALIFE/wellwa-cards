@@ -188,7 +188,10 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
     const bpName = split ? "Split" : BLUEPRINTS.find((b) => b.key === v.blueprint)?.name ?? v.blueprint;
     const color = v.color ?? cat?.accent ?? "#0e9e90";
     return {
-      key, name: `${cat?.en ?? cap(trade)} — ${v.name}`, category: `${group} · ${bpName}`, description: v.description, emoji: v.emoji, draft: true,
+      key, name: `${cat?.en ?? cap(trade)} — ${v.name}`, category: `${group} · ${bpName}`, description: v.description, emoji: v.emoji,
+      // Released (owner, 13 Oct 2026) once the trade has its OWN five designs, market-reviewed and checked; a trade still on
+      // its group's default designs stays a draft — review board and admin only — until its own are done.
+      ...(ownList && ownList.length >= 5 && have.size >= 8 ? {} : { draft: true }),
       data: {
         name: sample.businessName, jobTitle: sample.jobTitle, company: sample.lead === "business" ? sample.businessName : "",
         tagline: sample.tagline, about: sample.about,

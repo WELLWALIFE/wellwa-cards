@@ -1,0 +1,107 @@
+{
+ "cover-library-laptop": {
+  "id": 39281826,
+  "photographer": "Yara Solis Fuentes",
+  "url": "https://www.pexels.com/photo/university-student-studying-in-monterrey-library-39281826/",
+  "query": "Indian college student laptop library studying",
+  "role": "cover"
+ },
+ "cover-campus-walk": {
+  "id": 7973031,
+  "photographer": "George Pak",
+  "url": "https://www.pexels.com/photo/a-man-and-a-woman-walking-up-the-stairs-7973031/",
+  "query": "Indian students walking college campus bags",
+  "role": "cover"
+ },
+ "study-desk": {
+  "id": 8921700,
+  "photographer": "Bikram Bezbaruah",
+  "url": "https://www.pexels.com/photo/a-woman-with-eyeglasses-writing-on-white-paper-under-a-light-8921700/",
+  "query": "study desk notebooks lamp laptop night",
+  "role": "space"
+ },
+ "library-shelves": {
+  "id": 6333728,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/brown-wooden-chairs-and-tables-6333728/",
+  "query": "university library bookshelves reading table",
+  "role": "space"
+ },
+ "teaching-junior": {
+  "id": 3769995,
+  "photographer": "Andrea Piacquadio",
+  "url": "https://www.pexels.com/photo/focused-students-doing-homework-at-home-3769995/",
+  "query": "teenager teaching young child homework table",
+  "role": "people"
+ },
+ "group-study": {
+  "id": 7972977,
+  "photographer": "George Pak",
+  "url": "https://www.pexels.com/photo/women-and-man-sitting-with-papers-7972977/",
+  "query": "Indian students group study notes discussion",
+  "role": "people"
+ },
+ "notes": {
+  "id": 7128758,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/person-writing-on-a-paper-7128758/",
+  "query": "handwritten notes highlighter notebook physics diagrams",
+  "role": "product"
+ },
+ "coding": {
+  "id": 5242012,
+  "photographer": "Mathews Jumba",
+  "url": "https://www.pexels.com/photo/black-screen-of-a-monitor-5242012/",
+  "query": "laptop screen programming code editor python",
+  "role": "product"
+ },
+ "design-tablet": {
+  "id": 3850229,
+  "photographer": "ready made",
+  "url": "https://www.pexels.com/photo/graphic-tablet-and-open-book-with-drawing-located-on-marble-table-3850229/",
+  "query": "graphic design poster laptop drawing tablet",
+  "role": "product"
+ },
+ "online-class": {
+  "id": 5905712,
+  "photographer": "Katerina Holmes",
+  "url": "https://www.pexels.com/photo/cute-smart-black-boy-preparing-for-test-with-teacher-online-5905712/",
+  "query": "online tutoring laptop video call headphones student",
+  "role": "product"
+ },
+ "science-project": {
+  "id": 15470542,
+  "photographer": "Chengxin Zhao",
+  "url": "https://www.pexels.com/photo/close-up-of-semiconnectors-15470542/",
+  "query": "science fair project arduino circuit model",
+  "role": "product"
+ },
+ "presentation": {
+  "id": 18800448,
+  "photographer": "Matheus Bertelli",
+  "url": "https://www.pexels.com/photo/man-giving-a-presentation-18800448/",
+  "query": "student presenting slides projector classroom",
+  "role": "product"
+ },
+ "stationery": {
+  "id": 5412113,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/green-stick-note-beside-a-pen-5412113/",
+  "query": "pens highlighters sticky notes flat lay",
+  "role": "detail"
+ },
+ "whiteboard": {
+  "id": 6209796,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-person-in-black-sweater-holding-a-marker-while-writing-on-whiteboard-6209796/",
+  "query": "whiteboard mathematics equations marker hand",
+  "role": "detail"
+ },
+ "team-fest": {
+  "id": 13418669,
+  "photographer": "Quyn Phạm",
+  "url": "https://www.pexels.com/photo/group-of-young-girls-smiling-13418669/",
+  "query": "college students team event volunteers smiling",
+  "role": "team"
+ }
+}

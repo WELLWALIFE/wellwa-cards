@@ -1,0 +1,44 @@
+{
+ "cover-evening-aarti": {
+  "id": 21826914,
+  "photographer": "Sayan Mondal",
+  "url": "https://www.pexels.com/photo/man-holding-a-burning-oil-lamp-during-ganga-aarti-celebrations-21826914/",
+  "query": "hindu temple evening aarti oil lamps devotees",
+  "role": "cover"
+ },
+ "cover-shikhara-dawn": {
+  "id": 32594727,
+  "photographer": "Abhisek Tripathy",
+  "url": "https://www.pexels.com/photo/vibrant-decorations-on-indian-temple-dome-32594727/",
+  "query": "indian temple shikhara sunrise saffron flag",
+  "role": "cover"
+ },
+ "pillared-mandap": {
+  "id": 14721496,
+  "photographer": "Alexey Turenkov",
+  "url": "https://www.pexels.com/photo/exterior-of-an-ancient-temple-14721496/",
+  "query": "stone temple mandap pillars interior",
+  "role": "space"
+ },
+ "dharamshala-room": {
+  "id": 3635802,
+  "photographer": "Engin Akyurt",
+  "url": "https://www.pexels.com/photo/bed-by-the-window-3635802/",
+  "query": "simple clean guesthouse room india bed",
+  "role": "space"
+ },
+ "acharya-sankalp": {
+  "id": 35655151,
+  "photographer": "Ethan Sarkar",
+  "url": "https://www.pexels.com/photo/priest-performing-ganga-aarti-ceremony-in-varanasi-35655151/",
+  "query": "hindu priest performing puja sankalp water",
+  "role": "people"
+ },
+ "devotee-folded-hands": {
+  "id": 34429097,
+  "photographer": "AJAY KUMAR",
+  "url": "https://www.pexels.com/photo/woman-in-traditional-indian-attire-performing-ritual-34429097/",
+  "query": "indian woman praying temple folded hands",
+  "role": "people"
+ }
+}

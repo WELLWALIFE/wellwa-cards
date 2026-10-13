@@ -1,38 +1,10 @@
 {
- "mla-public-meeting": {
-  "id": 27371346,
-  "photographer": "Chris wade NTEZICIMPA",
-  "url": "https://www.pexels.com/photo/a-man-in-a-suit-giving-a-speech-at-a-podium-27371346/",
-  "query": "indian politician addressing village public meeting",
-  "role": "cover"
- },
- "ribbon-inauguration": {
-  "id": 29057958,
-  "photographer": "Shantum Singh",
-  "url": "https://www.pexels.com/photo/scenic-view-of-open-road-in-deeg-india-29057958/",
-  "query": "ribbon cutting road inauguration india",
-  "role": "cover"
- },
  "office-exterior": {
   "id": 25310926,
   "photographer": "CP Khanal",
   "url": "https://www.pexels.com/photo/government-building-in-city-25310926/",
   "query": "government office building entrance india",
   "role": "space"
- },
- "waiting-hall": {
-  "id": 39468957,
-  "photographer": "Cine Insomnia",
-  "url": "https://www.pexels.com/photo/urban-night-scene-with-people-and-benches-39468957/",
-  "query": "office waiting hall people benches india",
-  "role": "space"
- },
- "listening-villager": {
-  "id": 30616609,
-  "photographer": "Şeyhmus Kino",
-  "url": "https://www.pexels.com/photo/community-leader-speaking-in-tropical-setting-30616609/",
-  "query": "leader listening elderly villager folded hands",
-  "role": "people"
  },
  "staff-register": {
   "id": 31112235,
@@ -41,27 +13,6 @@
   "query": "office clerk writing register desk india",
   "role": "people"
  },
- "darbar-hearing": {
-  "id": 36519484,
-  "photographer": "CP Khanal",
-  "url": "https://www.pexels.com/photo/nepalese-election-officials-preparing-ballots-outdoors-36519484/",
-  "query": "public hearing crowd officials table india",
-  "role": "product"
- },
- "scheme-camp": {
-  "id": 36519482,
-  "photographer": "CP Khanal",
-  "url": "https://www.pexels.com/photo/organizing-nepal-electoral-documents-outdoors-36519482/",
-  "query": "government scheme registration camp laptop villagers",
-  "role": "product"
- },
- "road-grievance": {
-  "id": 16577231,
-  "photographer": "Shantum Singh",
-  "url": "https://www.pexels.com/photo/destroyed-buildings-by-the-street-16577231/",
-  "query": "broken village road pothole repair india",
-  "role": "product"
- },
  "village-chaupal": {
   "id": 13157793,
   "photographer": "apson_magar",
@@ -69,18 +20,46 @@
   "query": "village chaupal meeting under tree india",
   "role": "product"
  },
- "tricolour-badge": {
-  "id": 39087854,
-  "photographer": "Satyam Pixels",
-  "url": "https://www.pexels.com/photo/protestor-wearing-mask-during-tiranga-yatra-in-ranchi-39087854/",
-  "query": "indian flag lapel pin kurta closeup",
-  "role": "detail"
+ "darbar-hearing": {
+  "id": 4267621,
+  "photographer": "112 Uttar Pradesh",
+  "url": "https://www.pexels.com/photo/happy-elderly-men-talking-to-a-policeman-4267621/",
+  "query": "indian villagers waiting government office"
  },
- "office-team": {
-  "id": 7581125,
+ "hospital-help": {
+  "id": 6519850,
   "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/people-standing-beside-a-whiteboard-7581125/",
-  "query": "indian office staff team group photo",
-  "role": "team"
+  "url": "https://www.pexels.com/photo/blue-and-yellow-ambulance-6519850/",
+  "query": "ambulance india hospital"
+ },
+ "nidhi-works": {
+  "id": 39465289,
+  "photographer": "K. M.  Sadik",
+  "url": "https://www.pexels.com/photo/rural-road-construction-workers-in-action-39465289/",
+  "query": "indian village road construction workers"
+ },
+ "road-grievance": {
+  "id": 13350163,
+  "photographer": "Ankit Rainloure",
+  "url": "https://www.pexels.com/photo/save-our-soil-13350163/",
+  "query": "damaged road india potholes"
+ },
+ "listening-villager": {
+  "id": 19306619,
+  "photographer": "Kushagra Sahu",
+  "url": "https://www.pexels.com/photo/portrait-of-a-man-19306619/",
+  "query": "indian elderly villager portrait"
+ },
+ "letter-desk": {
+  "id": 8441787,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/elderly-man-signing-an-application-form-8441787/",
+  "query": "man signing official papers desk india"
+ },
+ "scheme-camp": {
+  "id": 12731400,
+  "photographer": "Jyotishwar Gaur Hari  Das",
+  "url": "https://www.pexels.com/photo/women-in-colorful-dresses-sitting-12731400/",
+  "query": "indian women queue government counter documents"
  }
 }

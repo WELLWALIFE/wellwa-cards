@@ -1,0 +1,93 @@
+{
+ "cover-sammelan": {
+  "id": 27286536,
+  "photographer": "street photographer By Barun",
+  "url": "https://www.pexels.com/photo/lord-jagannath-save-the-world-god-27286536/",
+  "query": "indian community gathering crowd stage event outdoor",
+  "role": "cover"
+ },
+ "cover-bhawan-wedding": {
+  "id": 39797456,
+  "photographer": "Uday Ahir",
+  "url": "https://www.pexels.com/photo/traditional-indian-wedding-ceremony-decor-39797456/",
+  "query": "indian wedding hall mandap marigold decoration guests",
+  "role": "cover"
+ },
+ "bhawan-exterior": {
+  "id": 16924459,
+  "photographer": "Ramkrishan Rathore",
+  "url": "https://www.pexels.com/photo/facade-of-a-colorful-hindu-temple-16924459/",
+  "query": "indian community hall building entrance gate",
+  "role": "space"
+ },
+ "office-interior": {
+  "id": 10347136,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/documents-notes-and-copybooks-scattered-on-office-desks-10347136/",
+  "query": "indian office desk register files committee meeting room",
+  "role": "space"
+ },
+ "volunteers-bhandara": {
+  "id": 6646987,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-volunteer-scooping-soup-with-a-ladle-6646987/",
+  "query": "indian volunteers serving food community feast",
+  "role": "people"
+ },
+ "membership-form": {
+  "id": 7821495,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/person-writing-on-white-paper-7821495/",
+  "query": "membership card form pen receipt book desk",
+  "role": "product"
+ },
+ "dharamshala-room": {
+  "id": 37460682,
+  "photographer": "UMUT   🆁🅰🆆",
+  "url": "https://www.pexels.com/photo/bright-minimalist-bedroom-with-twin-beds-37460682/",
+  "query": "simple clean guest room twin beds india",
+  "role": "product"
+ },
+ "biodata-meet": {
+  "id": 14769681,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/a-family-having-a-conversation-in-the-living-room-14769681/",
+  "query": "indian families meeting tea living room arranged marriage",
+  "role": "product"
+ },
+ "sammelan-stage": {
+  "id": 9903736,
+  "photographer": "Rohan Dewangan",
+  "url": "https://www.pexels.com/photo/performers-in-traditional-clothes-9903736/",
+  "query": "children cultural dance performance stage india audience",
+  "role": "product"
+ },
+ "bartan-utensils": {
+  "id": 36605427,
+  "photographer": "Talha Resitoglu",
+  "url": "https://www.pexels.com/photo/gourmet-fried-chicken-in-restaurant-setting-36605427/",
+  "query": "stacked steel plates utensils large pots indian kitchen",
+  "role": "product"
+ },
+ "student-books": {
+  "id": 16504588,
+  "photographer": "Shantanu Kumar",
+  "url": "https://www.pexels.com/photo/student-reading-a-book-16504588/",
+  "query": "indian students receiving books scholarship ceremony",
+  "role": "product"
+ },
+ "honour-shawl": {
+  "id": 16114307,
+  "photographer": "Chalta Phirta",
+  "url": "https://www.pexels.com/photo/indian-man-with-white-powdered-face-16114307/",
+  "query": "elderly man honoured shawl garland felicitation india",
+  "role": "detail"
+ },
+ "committee-team": {
+  "id": 23489332,
+  "photographer": "Fliqa India",
+  "url": "https://www.pexels.com/photo/portrait-of-family-members-wearing-traditional-clothing-23489332/",
+  "query": "indian community committee members group photo hall",
+  "role": "team"
+ }
+}
