@@ -1477,7 +1477,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       const dir = pinUrl || (address ? `https://maps.google.com/?q=${encodeURIComponent(address)}` : "");
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "पता और समय" : t("Find us")} title={t(s.title)} aside={<SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "संपर्क पेज" : t("Contact page")}</SeeAll>}>
-          <div className={`grid gap-6 ${mapQ ? "md:grid-cols-[1fr_1.2fr]" : ""}`}>
+          <div className={`grid gap-6 [&>*]:min-w-0 ${mapQ ? "md:grid-cols-[1fr_1.2fr]" : ""}`}>
             <div className="space-y-5">
               {loc && (address || dir) && (
                 <div className={`flex items-start gap-4 ${cls.card} p-6`}>
@@ -1717,7 +1717,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "contact":
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
-          <div className="grid md:grid-cols-[0.9fr_1.1fr] gap-10">
+          <div className="grid md:grid-cols-[0.9fr_1.1fr] gap-10 [&>*]:min-w-0">
             <div className="space-y-5">
               {block.note && <p className="text-[17px] text-muted leading-relaxed">{t(block.note)}</p>}
               <ul className="space-y-3">
