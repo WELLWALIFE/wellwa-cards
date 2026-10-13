@@ -498,7 +498,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
     faq: tdata.faq.map((x) => x.q),
   } : undefined;
-  const research = await within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined), 28_000).catch(() => null);
+  const research = await within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined, [...(business || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 28_000).catch(() => null);
   const brief: CardBrief = {
     business,
     person: setup.person && setup.person !== business ? setup.person : undefined,

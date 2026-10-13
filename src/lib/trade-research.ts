@@ -31,14 +31,25 @@ const cache = new Map<string, { at: number; v: TradeResearch | null }>();
 const list = (v: unknown, n: number, max: number): string[] =>
   (Array.isArray(v) ? v : []).map((x) => String(x ?? "").replace(/\s+/g, " ").trim().slice(0, max)).filter(Boolean).slice(0, n);
 
-export async function researchTrade(trade: string, city: string | undefined, apiKey = process.env.GEMINI_API_KEY): Promise<TradeResearch | null> {
+/** Three angles on the same trade: the second sweet shop in a city is handed different notes from the first, so two
+ *  websites of one trade do not end up explaining the same things in the same order (owner, 14 Oct 2026). */
+export const RESEARCH_ANGLES = [
+  "Take the angle of everyday customers: what they buy week after week, how they judge quality and value, what makes them return.",
+  "Take the angle of occasions and special orders: festivals, gifting, weddings, bulk and custom orders, how to plan them and what to ask.",
+  "Take the angle of craft and ingredients: how things are made or done, what separates good from average, what to look for in the details.",
+];
+
+export async function researchTrade(trade: string, city: string | undefined, variant = 0, apiKey = process.env.GEMINI_API_KEY): Promise<TradeResearch | null> {
   const t = (trade ?? "").trim();
   if (!apiKey || !t || /^(other|business)$/i.test(t)) return null;
-  const key = `${t}|${(city ?? "").trim()}`.toLowerCase();
+  const v0 = ((Math.floor(variant) % RESEARCH_ANGLES.length) + RESEARCH_ANGLES.length) % RESEARCH_ANGLES.length;
+  const key = `${t}|${(city ?? "").trim()}|${v0}`.toLowerCase();
   const hit = cache.get(key);
   if (hit && Date.now() - hit.at < TTL) return hit.v;
   const place = city?.trim() ? ` in ${city.trim()}, India` : " in India";
   const prompt = `Search the web (Google) for a ${t}${place}: read what the leading websites of this trade — well-known brands, template sites, local listings — say, and what customers search for.
+
+${RESEARCH_ANGLES[v0]}
 
 Then write BACKGROUND NOTES in your own words (never copy a sentence), as plain facts about the trade and the place, NOT about any one business:
 - area: 1-2 sentences on what ${city?.trim() ? city.trim() + " (its market, localities or local taste)" : "the region"} is known for as it relates to a ${t}. Empty string if you found nothing solid.
