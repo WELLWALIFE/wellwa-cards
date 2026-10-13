@@ -1052,9 +1052,9 @@ function HighlightsGrid({ items, theme, band = false }: { items: string[]; theme
   const ticked = list.length >= 3 && list.every((s) => s.startsWith("✅"));
   if (ticked) {
     return (
-      <div className={`grid sm:grid-cols-2 ${list.length === 5 ? "lg:grid-cols-5" : list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-4`}>
+      <div className={`grid grid-cols-2 ${list.length === 5 ? "lg:grid-cols-5" : list.length % 3 === 0 || list.length >= 5 ? "lg:grid-cols-3" : "lg:grid-cols-2"} gap-3 md:gap-4 hl-grid`}>
         {list.map((it, i) => { const { text } = glyphText(it, t); return (
-          <div key={i} className={`flex items-start gap-3 px-5 py-4 ${band ? "rounded-2xl" : `${cls.card} ${CARD_HOVER}`}`}
+          <div key={i} className={`flex items-start gap-2 md:gap-3 px-3 py-3 md:px-5 md:py-4 ${band ? "rounded-2xl" : `${cls.card} ${CARD_HOVER}`}`}
             style={band ? { border: "1px solid var(--hero-line)" } : undefined}>
             <span className="mt-0.5 shrink-0" style={{ color: band ? "var(--hero-text)" : "var(--accent)" }}><Icon name="check" size={18} /></span>
             <span className="text-[15px] font-medium leading-snug">{text}</span>

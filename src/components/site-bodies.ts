@@ -107,6 +107,7 @@ const CINEMATIC_DARK = `
 .site[data-body="dark"]{--accent:var(--p-accent);--on-accent:var(--p-deep);--tc:var(--p-accent)}
 .site[data-body="dark"] header.site-head{background:color-mix(in srgb,var(--hero-ink) 86%,transparent);border-color:color-mix(in srgb,var(--hero-text) 14%,transparent);color:var(--hero-text);--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent);--surface:color-mix(in srgb,var(--hero-ink) 90%,white);--border:color-mix(in srgb,var(--hero-text) 18%,transparent)}
 .site[data-body="dark"] header.site-head a,.site[data-body="dark"] header.site-head button{color:var(--hero-text)}
+.site[data-body="dark"] header.site-head .btn-primary{background:var(--p-accent);color:var(--p-deep)}
 .site[data-body="dark"] .hero-dark .btn-primary{background:var(--p-accent);color:var(--p-deep)}
 .site[data-body="dark"] footer{--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent)}
 .site[data-bp="cinematic"][data-body="dark"] main{--paper:var(--hero-ink);--paper-2:color-mix(in srgb,var(--hero-ink) 88%,white);--surface:color-mix(in srgb,var(--hero-ink) 90%,white);--ink:var(--hero-text);--muted:color-mix(in srgb,var(--hero-text) 70%,transparent);--line:color-mix(in srgb,var(--hero-text) 18%,transparent);--p-soft:color-mix(in srgb,var(--hero-text) 10%,transparent);background:var(--hero-ink);color:var(--hero-text)}
@@ -126,7 +127,7 @@ const PHOTOS = `
 .site[data-bp] main .p-price{white-space:normal}
 .site[data-bp] main iframe[title="Map"]{background:var(--paper-2)}
 .site[data-bp] main .p-img .kicker,.site[data-bp] main .p-img .num,.site[data-bp="story"] main section[data-reveal] .p-img .kicker{background:#fff;color:#1a1a1a;padding:3px 8px;border-radius:999px;font-size:10px;letter-spacing:.08em}
-@media (max-width:767px){.site[data-bp] main .rev-q{font-size:1.125rem;line-height:1.45}}
+@media (max-width:767px){.site[data-bp] main .rev-q{font-size:1.125rem;line-height:1.45}.site[data-bp] main .hl-grid .text-\\[15px\\]{font-size:13px}}
 .site[data-bp] main .p-img>button{padding:0}
 .site[data-bp] main .p-img img{object-fit:cover}
 .site[data-bp] main .p-img{background:var(--paper-2)}
@@ -142,4 +143,11 @@ const SPLIT = `
 .site[data-bp="split"] main .p-wa{border-radius:999px}
 .site[data-bp="split"] main .rev-q{font-size:1.1rem;line-height:1.55}
 `;
-export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS };
+/** The Bento body: tile-shaped cards with a line, sections alternating the soft tint, so the board feeling carries down the page. */
+const BENTO = `
+.site[data-bp="bento"] main .s-card{border:1px solid var(--line);box-shadow:none;border-radius:var(--r-tile)}
+.site[data-bp="bento"] main section[data-reveal]:nth-of-type(2n+1){background:var(--p-soft)!important}
+.site[data-bp="bento"] main .sec-h2{font-size:clamp(1.75rem,6vw,2.5rem);letter-spacing:-.02em}
+.site[data-bp="bento"] main .icon-box{border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent)}
+`;
+export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS + BENTO };
