@@ -1,0 +1,86 @@
+{
+ "cover-diwali": {
+  "id": 8819219,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/girl-with-plate-with-candles-celebrating-diwali-8819219/",
+  "query": "indian family celebrating diwali diyas home",
+  "role": "cover"
+ },
+ "living-room": {
+  "id": 9345636,
+  "photographer": "Anna Pou",
+  "url": "https://www.pexels.com/photo/woman-in-orange-and-white-robe-sitting-on-couch-9345636/",
+  "query": "indian family living room marigold decoration",
+  "role": "space"
+ },
+ "kitchen-laughs": {
+  "id": 8307647,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/elderly-woman-and-young-girl-having-fun-together-8307647/",
+  "query": "indian grandmother grandchild kitchen laughing",
+  "role": "people"
+ },
+ "family-selfie": {
+  "id": 21038321,
+  "photographer": "Arya Suraj",
+  "url": "https://www.pexels.com/photo/family-sitting-and-taking-selfie-21038321/",
+  "query": "indian family selfie smartphone smiling outdoors",
+  "role": "people"
+ },
+ "wedding-invite": {
+  "id": 9965894,
+  "photographer": "Donna",
+  "url": "https://www.pexels.com/photo/maroon-envelope-with-gold-rings-9965894/",
+  "query": "indian wedding invitation card gold red",
+  "role": "product"
+ },
+ "navratri-chowki": {
+  "id": 7686115,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/women-in-traditional-clothing-praying-7686115/",
+  "query": "indian women singing bhajan devotional gathering home",
+  "role": "product"
+ },
+ "anniversary-couple": {
+  "id": 33359876,
+  "photographer": "Fliqa India",
+  "url": "https://www.pexels.com/photo/elegant-anniversary-celebration-in-gujarat-33359876/",
+  "query": "elderly indian couple garlands smiling anniversary",
+  "role": "product"
+ },
+ "puja-kalash": {
+  "id": 13471281,
+  "photographer": "star photography",
+  "url": "https://www.pexels.com/photo/close-up-of-an-ornament-13471281/",
+  "query": "indian puja kalash coconut flowers ceremony",
+  "role": "product"
+ },
+ "holi-colours": {
+  "id": 31048851,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/colorful-outdoor-fun-mother-and-daughter-bonding-31048851/",
+  "query": "indian family playing holi colours garden",
+  "role": "product"
+ },
+ "family-lawn": {
+  "id": 6853375,
+  "photographer": "Manish Hirapara",
+  "url": "https://www.pexels.com/photo/group-of-men-in-yellow-robes-6853375/",
+  "query": "large indian joint family group lawn celebration",
+  "role": "product"
+ },
+ "marigold-hands": {
+  "id": 8819309,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/man-holding-a-tray-with-yellow-flower-and-a-lighted-tealight-candle-8819309/",
+  "query": "marigold garland hands closeup",
+  "role": "detail"
+ },
+ "three-generations": {
+  "id": 37409082,
+  "photographer": "Krishna Kids  Photography",
+  "url": "https://www.pexels.com/photo/family-portrait-with-grandparents-and-child-37409082/",
+  "query": "three generation indian family portrait home",
+  "role": "team"
+ }
+}

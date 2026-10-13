@@ -1,46 +1,4 @@
 {
- "cover-circle-time": {
-  "id": 8363788,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/a-teacher-and-her-pupils-sitting-on-chairs-8363788/",
-  "query": "indian preschool children circle time teacher rhymes",
-  "role": "cover"
- },
- "cover-garden-play": {
-  "id": 4047662,
-  "photographer": "Roseson  Studios®",
-  "url": "https://www.pexels.com/photo/child-driving-a-ride-on-toy-car-4047662/",
-  "query": "toddlers playing slide garden preschool sunshine",
-  "role": "cover"
- },
- "classroom-colourful": {
-  "id": 8363770,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/interior-design-of-a-classroom-8363770/",
-  "query": "bright preschool classroom small tables chairs",
-  "role": "space"
- },
- "play-area-indoor": {
-  "id": 4964360,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/baby-sitting-on-carpet-playing-with-wooden-toy-blocks-4964360/",
-  "query": "indoor soft play area toddlers colourful mats",
-  "role": "space"
- },
- "teacher-storybook": {
-  "id": 8466775,
-  "photographer": "Anastasia  Shuraeva",
-  "url": "https://www.pexels.com/photo/children-sitting-in-the-classrrom-8466775/",
-  "query": "teacher reading picture book preschool children floor",
-  "role": "people"
- },
- "didi-handwash": {
-  "id": 6651153,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/a-father-standing-in-a-kitchen-and-his-daughters-sitting-and-standing-by-the-kitchen-counter-6651153/",
-  "query": "caregiver helping toddler wash hands sink",
-  "role": "people"
- },
  "playgroup-sand": {
   "id": 8909394,
   "photographer": "https://kaboompics.com/",
@@ -48,39 +6,11 @@
   "query": "toddler playing sand pit bucket spade",
   "role": "product"
  },
- "nursery-blocks": {
-  "id": 4473566,
-  "photographer": "Ketut Subiyanto",
-  "url": "https://www.pexels.com/photo/children-playing-jenga-4473566/",
-  "query": "children stacking wooden blocks nursery table",
-  "role": "product"
- },
  "lkg-letters": {
   "id": 8923994,
   "photographer": "Mikhail Nilov",
   "url": "https://www.pexels.com/photo/a-close-up-shot-of-a-child-reading-an-educational-book-8923994/",
   "query": "child tracing alphabet letters crayons worksheet",
-  "role": "product"
- },
- "ukg-writing": {
-  "id": 8364062,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/blonde-girl-holding-a-pencil-8364062/",
-  "query": "kindergarten girl writing pencil notebook smiling",
-  "role": "product"
- },
- "daycare-nap": {
-  "id": 6255799,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/a-girl-lying-down-on-a-pillow-6255799/",
-  "query": "toddlers napping mats daycare room",
-  "role": "product"
- },
- "summer-camp": {
-  "id": 6966357,
-  "photographer": "Anastasia  Shuraeva",
-  "url": "https://www.pexels.com/photo/hands-touching-paints-6966357/",
-  "query": "kids finger painting outdoors summer camp",
   "role": "product"
  },
  "admission-kit": {
@@ -103,5 +33,59 @@
   "url": "https://www.pexels.com/photo/children-showing-love-for-their-teacher-8613057/",
   "query": "preschool teachers team smiling classroom doorway",
   "role": "team"
+ },
+ "cover-circle-time": {
+  "id": 8363052,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/group-of-kids-sitting-on-chair-in-front-of-table-8363052/",
+  "query": "indian kindergarten children teacher classroom"
+ },
+ "cover-garden-play": {
+  "id": 7401101,
+  "photographer": "张子铭",
+  "url": "https://www.pexels.com/photo/playground-slides-near-buildings-and-trees-7401101/",
+  "query": "children playing playground slide outdoor"
+ },
+ "classroom-colourful": {
+  "id": 8363754,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/interior-of-a-classroom-8363754/",
+  "query": "colorful kindergarten classroom tables chairs empty"
+ },
+ "play-area-indoor": {
+  "id": 19875335,
+  "photographer": "Nothing Ahead",
+  "url": "https://www.pexels.com/photo/boy-playing-in-pool-with-balls-19875335/",
+  "query": "indoor playground ball pit kids"
+ },
+ "teacher-storybook": {
+  "id": 8613089,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/woman-reading-a-book-to-the-children-8613089/",
+  "query": "teacher reading book to children sitting"
+ },
+ "nursery-blocks": {
+  "id": 7117502,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-kid-playing-toy-blocks-7117502/",
+  "query": "toddler stacking colorful wooden blocks"
+ },
+ "ukg-writing": {
+  "id": 5905476,
+  "photographer": "Katerina Holmes",
+  "url": "https://www.pexels.com/photo/crop-faceless-girl-doing-homework-and-taking-notes-in-notebook-5905476/",
+  "query": "indian girl writing notebook pencil school"
+ },
+ "daycare-nap": {
+  "id": 5895041,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/girl-covered-with-blanket-sleeping-5895041/",
+  "query": "little girl sleeping bed pillow afternoon"
+ },
+ "summer-camp": {
+  "id": 7025973,
+  "photographer": "Vlada Karpovich",
+  "url": "https://www.pexels.com/photo/photo-of-a-little-girl-painting-7025973/",
+  "query": "kids painting art class colorful paint"
  }
 }

@@ -1,0 +1,101 @@
+{
+ "office-floor": {
+  "id": 5444186,
+  "photographer": "myHQ-Workspaces",
+  "url": "https://www.pexels.com/photo/brown-wooden-table-with-chairs-5444186/",
+  "query": "modern corporate office india open desks",
+  "role": "space"
+ },
+ "distribution-centre": {
+  "id": 4483610,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/warehouse-with-concrete-floors-4483610/",
+  "query": "large distribution warehouse interior pallets",
+  "role": "space"
+ },
+ "mentoring-session": {
+  "id": 7581130,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-talking-on-the-phone-7581130/",
+  "query": "indian manager mentoring young professional office",
+  "role": "product"
+ },
+ "warehouse-racks": {
+  "id": 36696522,
+  "photographer": "amerimet  suppliers",
+  "url": "https://www.pexels.com/photo/industrial-warehouse-with-forklifts-in-action-36696522/",
+  "query": "warehouse racking forklift pallets india",
+  "role": "product"
+ },
+ "dashboard-review": {
+  "id": 6248957,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/photo-of-a-woman-holding-a-paper-with-charts-near-her-laptop-6248957/",
+  "query": "manager reviewing analytics dashboard laptop",
+  "role": "product"
+ },
+ "speaking-event": {
+  "id": 3184328,
+  "photographer": "fauxels",
+  "url": "https://www.pexels.com/photo/man-in-beige-blazer-holding-tablet-computer-3184328/",
+  "query": "indian professional speaking college seminar",
+  "role": "product"
+ },
+ "colleagues-corridor": {
+  "id": 3867842,
+  "photographer": "LinkedIn Sales Navigator",
+  "url": "https://www.pexels.com/photo/women-talking-while-walking-on-hallway-3867842/",
+  "query": "indian office colleagues talking corridor",
+  "role": "people"
+ },
+ "handshake-vendor": {
+  "id": 6918529,
+  "photographer": "George Morina",
+  "url": "https://www.pexels.com/photo/business-people-doing-handshake-6918529/",
+  "query": "indian businessmen handshake office",
+  "role": "people"
+ },
+ "detail-id-badge": {
+  "id": 12903186,
+  "photographer": "Mizuno K",
+  "url": "https://www.pexels.com/photo/portrait-of-man-in-a-blue-shirt-12903186/",
+  "query": "corporate id badge lanyard laptop desk",
+  "role": "detail"
+ },
+ "cover-manager-warehouse": {
+  "id": 4484149,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/man-holding-tablet-computer-4484149/",
+  "query": "manager tablet warehouse safety helmet"
+ },
+ "truck-loading": {
+  "id": 1267325,
+  "photographer": "ELEVATE",
+  "url": "https://www.pexels.com/photo/three-white-enclosed-trailers-1267325/",
+  "query": "trucks loading dock warehouse"
+ },
+ "cover-office-portrait": {
+  "id": 7580808,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-blue-dress-shirt-wearing-a-party-hat-on-his-head-7580808/",
+  "query": "indian man formal shirt office portrait"
+ },
+ "team-group": {
+  "id": 7581114,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-black-long-sleeve-shirt-standing-in-front-of-his-colleagues-7581114/",
+  "query": "indian colleagues team office smiling"
+ },
+ "meeting-room": {
+  "id": 7212946,
+  "photographer": "Ivan S",
+  "url": "https://www.pexels.com/photo/colleagues-using-a-laptop-7212946/",
+  "query": "team meeting office table laptops"
+ },
+ "team-floor": {
+  "id": 4483556,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/employees-standing-beside-forklift-4483556/",
+  "query": "warehouse workers team meeting"
+ }
+}

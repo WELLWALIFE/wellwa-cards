@@ -20,25 +20,11 @@
   "query": "housekeeper vacuum cleaning sofa smiling",
   "role": "people"
  },
- "cockroach": {
-  "id": 39414357,
-  "photographer": "Marta Branco",
-  "url": "https://www.pexels.com/photo/vaccination-equipment-on-blue-background-39414357/",
-  "query": "cockroach gel bait kitchen cabinet syringe",
-  "role": "product"
- },
  "termite": {
   "id": 18021337,
   "photographer": "Petr Ganaj",
   "url": "https://www.pexels.com/photo/close-up-of-termites-18021337/",
   "query": "termite treatment drilling wall injection",
-  "role": "product"
- },
- "bedbug": {
-  "id": 7614404,
-  "photographer": "Max Vakhtbovych",
-  "url": "https://www.pexels.com/photo/bedroom-contemporary-interior-design-7614404/",
-  "query": "mattress steam cleaning bed bug treatment",
   "role": "product"
  },
  "fogging": {
@@ -48,11 +34,46 @@
   "query": "mosquito fogging machine smoke residential",
   "role": "product"
  },
+ "spray-cover": {
+  "id": 4098322,
+  "photographer": "Matilda Wormwood",
+  "url": "https://www.pexels.com/photo/a-person-in-white-coverall-cleaning-the-black-table-4098322/",
+  "query": "pest control worker spraying house interior"
+ },
+ "clean-cover": {
+  "id": 6195275,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-vacuuming-the-floor-6195275/",
+  "query": "professional cleaners cleaning living room uniform"
+ },
+ "van": {
+  "id": 6196229,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/woman-standing-near-a-van-6196229/",
+  "query": "cleaning service van equipment"
+ },
+ "deepclean": {
+  "id": 9462766,
+  "photographer": "Liliana Drew",
+  "url": "https://www.pexels.com/photo/hand-in-rubber-glove-cleaning-bathroom-tiles-9462766/",
+  "query": "woman gloves scrubbing bathroom tiles"
+ },
+ "team": {
+  "id": 9462786,
+  "photographer": "Liliana Drew",
+  "url": "https://www.pexels.com/photo/two-women-making-the-bed-9462786/",
+  "query": "cleaning staff team uniform group"
+ },
+ "cockroach": {
+  "id": 27033323,
+  "photographer": "Erik Karits",
+  "url": "https://www.pexels.com/photo/german-cockroach-feeding-on-sugar-27033323/",
+  "query": "cockroach"
+ },
  "sofa": {
-  "id": 4176549,
-  "photographer": "Michelangelo Buonarroti",
-  "url": "https://www.pexels.com/photo/a-man-wearing-white-protective-clothing-fumigating-clothes-4176549/",
-  "query": "sofa shampoo extraction machine cleaning",
-  "role": "product"
+  "id": 7703296,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/photograph-of-a-woman-in-a-white-shirt-vacuuming-7703296/",
+  "query": "upholstery cleaning sofa vacuum"
  }
 }

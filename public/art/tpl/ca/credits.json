@@ -57,5 +57,29 @@
   "photographer": "RDNE Stock project",
   "url": "https://www.pexels.com/photo/people-talking-in-the-office-7580644/",
   "query": "indian office team professionals group"
+ },
+ "ca-cabin": {
+  "id": 5511088,
+  "photographer": "Mike van Schoonderwalt",
+  "url": "https://www.pexels.com/photo/desk-and-chair-in-front-of-window-5511088/",
+  "query": "modern small office cabin desk chair window"
+ },
+ "calculator-closeup": {
+  "id": 11350076,
+  "photographer": "Towfiqu barbhuiya",
+  "url": "https://www.pexels.com/photo/finger-on-calculator-11350076/",
+  "query": "hand pressing calculator keys accounting papers"
+ },
+ "gst-invoice": {
+  "id": 8872400,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/white-papers-in-brown-folder-8872400/",
+  "query": "indian businessman checking bills invoices office"
+ },
+ "bookkeeping-ledger": {
+  "id": 8297220,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-person-working-on-the-documents-using-a-calculator-8297220/",
+  "query": "accountant writing in ledger book closeup"
  }
 }

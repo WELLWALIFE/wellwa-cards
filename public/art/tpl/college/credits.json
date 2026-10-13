@@ -1,0 +1,81 @@
+{
+ "library-reading": {
+  "id": 8199762,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/people-studying-in-library-8199762/",
+  "query": "university library students reading shelves",
+  "role": "space"
+ },
+ "campus-building": {
+  "id": 32034184,
+  "photographer": "Yash Rai",
+  "url": "https://www.pexels.com/photo/la-martiniere-college-architectural-beauty-in-lucknow-32034184/",
+  "query": "college building facade trees india",
+  "role": "space"
+ },
+ "professor-teaching": {
+  "id": 8197536,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/student-and-teacher-looking-at-the-blackboard-8197536/",
+  "query": "professor teaching blackboard classroom students",
+  "role": "people"
+ },
+ "admission-counselling": {
+  "id": 8549944,
+  "photographer": "Edmond Dantès",
+  "url": "https://www.pexels.com/photo/man-and-woman-having-a-conversation-at-the-office-8549944/",
+  "query": "counsellor talking student office desk",
+  "role": "people"
+ },
+ "commerce-class": {
+  "id": 8197511,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/students-studying-in-classroom-8197511/",
+  "query": "students laptop accounting class notebook",
+  "role": "product"
+ },
+ "science-lab": {
+  "id": 8472004,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/a-person-pouring-brown-liquid-in-the-flask-8472004/",
+  "query": "chemistry laboratory students experiment beakers",
+  "role": "product"
+ },
+ "arts-seminar": {
+  "id": 8419263,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/students-in-the-library-8419263/",
+  "query": "students discussion seminar room books",
+  "role": "product"
+ },
+ "campus-hero": {
+  "id": 7972324,
+  "photographer": "George Pak",
+  "url": "https://www.pexels.com/photo/group-of-people-walking-on-a-sidewalk-7972324/",
+  "query": "indian college students walking campus lawn"
+ },
+ "lecture-hall": {
+  "id": 8197558,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/teacher-and-students-inside-a-classroom-8197558/",
+  "query": "university lecture hall students seated professor"
+ },
+ "computer-lab": {
+  "id": 5539285,
+  "photographer": "Thành Đỗ",
+  "url": "https://www.pexels.com/photo/women-sitting-and-working-5539285/",
+  "query": "indian students computer lab desktops"
+ },
+ "faculty-team": {
+  "id": 8197551,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/professor-standing-in-front-of-his-students-8197551/",
+  "query": "indian college professors group standing"
+ },
+ "graduation-caps": {
+  "id": 35487178,
+  "photographer": "Saad Bin  Hasan",
+  "url": "https://www.pexels.com/photo/university-graduation-celebration-in-dhaka-35487178/",
+  "query": "indian graduates convocation caps gowns celebration"
+ }
+}

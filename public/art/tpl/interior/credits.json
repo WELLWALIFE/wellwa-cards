@@ -6,13 +6,6 @@
   "query": "modern indian living room interior sofa",
   "role": "cover"
  },
- "kitchen-install": {
-  "id": 15124970,
-  "photographer": "Thới Nam Cao",
-  "url": "https://www.pexels.com/photo/men-working-inside-a-house-under-repairs-15124970/",
-  "query": "carpenter installing modular kitchen cabinets",
-  "role": "cover"
- },
  "studio": {
   "id": 38139753,
   "photographer": "Jonathan Borba",
@@ -26,20 +19,6 @@
   "url": "https://www.pexels.com/photo/stylish-bedroom-with-big-wardrobe-6489100/",
   "query": "modern bedroom wardrobe warm lighting",
   "role": "space"
- },
- "designer-client": {
-  "id": 15764116,
-  "photographer": "Grove Brands",
-  "url": "https://www.pexels.com/photo/architect-working-on-a-computer-15764116/",
-  "query": "interior designer showing 3d render client",
-  "role": "people"
- },
- "carpenter": {
-  "id": 5466163,
-  "photographer": "Antoni Shkraba",
-  "url": "https://www.pexels.com/photo/carpenter-cutting-wood-board-5466163/",
-  "query": "carpenter sanding plywood wardrobe panel",
-  "role": "people"
  },
  "kitchen": {
   "id": 6265838,
@@ -62,13 +41,6 @@
   "query": "wall mounted tv unit wooden panel",
   "role": "product"
  },
- "ceiling": {
-  "id": 6980724,
-  "photographer": "Max Vakhtbovych",
-  "url": "https://www.pexels.com/photo/television-against-sofa-in-modern-living-room-6980724/",
-  "query": "false ceiling cove lighting living room",
-  "role": "product"
- },
  "office": {
   "id": 8297846,
   "photographer": "Mikhail Nilov",
@@ -76,25 +48,41 @@
   "query": "small office interior workstations glass cabin",
   "role": "product"
  },
- "drawings": {
-  "id": 12882906,
-  "photographer": "Leonid Altman",
-  "url": "https://www.pexels.com/photo/a-mouse-on-a-laptop-with-a-blank-screen-12882906/",
-  "query": "interior floor plan 3d rendering laptop",
-  "role": "product"
- },
- "hardware": {
-  "id": 6395828,
-  "photographer": "Naveen Sahu",
-  "url": "https://www.pexels.com/photo/a-cabinet-with-colorful-drawers-6395828/",
-  "query": "soft close drawer hardware closeup",
-  "role": "detail"
- },
  "team": {
   "id": 30216939,
   "photographer": "S3T Koncepts",
   "url": "https://www.pexels.com/photo/skilled-carpenters-at-work-in-dubai-workshop-30216939/",
   "query": "interior design team carpenters portrait",
   "role": "team"
+ },
+ "hardware": {
+  "id": 10117700,
+  "photographer": "Keegan Checks",
+  "url": "https://www.pexels.com/photo/blue-wooden-drawer-10117700/",
+  "query": "kitchen cabinet drawer slide hinge closeup"
+ },
+ "carpenter": {
+  "id": 18947395,
+  "photographer": "GOWTHAM AGM",
+  "url": "https://www.pexels.com/photo/carpenter-in-workshop-18947395/",
+  "query": "indian carpenter working plywood workshop"
+ },
+ "wardrobe": {
+  "id": 6394559,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/suitcase-in-stylish-corridor-near-mirror-6394559/",
+  "query": "sliding door wardrobe mirror bedroom"
+ },
+ "designer-client": {
+  "id": 7490848,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/women-looking-at-a-fabric-7490848/",
+  "query": "interior designer meeting client fabric samples"
+ },
+ "drawings": {
+  "id": 4792480,
+  "photographer": "Anete Lusina",
+  "url": "https://www.pexels.com/photo/pen-with-ruler-and-eyeglasses-placed-on-house-plan-4792480/",
+  "query": "architect drawing floor plan blueprint desk"
  }
 }

@@ -6,47 +6,12 @@
   "query": "ayurvedic herbs spices wooden bowls mortar",
   "role": "cover"
  },
- "cover-pulse": {
-  "id": 8460083,
-  "photographer": "Los Muertos Crew",
-  "url": "https://www.pexels.com/photo/doctor-and-patient-sitting-in-an-examination-room-8460083/",
-  "query": "ayurvedic doctor pulse diagnosis indian patient",
-  "role": "cover"
- },
- "clinic-reception": {
-  "id": 6193192,
-  "photographer": "Pavel Danilyuk",
-  "url": "https://www.pexels.com/photo/a-woman-at-a-dental-clinic-6193192/",
-  "query": "ayurveda clinic reception counter wooden interior",
-  "role": "space"
- },
  "therapy-room": {
   "id": 7598366,
   "photographer": "Max Vakhtbovych",
   "url": "https://www.pexels.com/photo/interior-of-a-massage-room-7598366/",
   "query": "ayurvedic therapy room wooden droni table",
   "role": "space"
- },
- "vaidya-patient": {
-  "id": 11030158,
-  "photographer": "Towfiqu barbhuiya",
-  "url": "https://www.pexels.com/photo/person-holding-a-senior-adult-11030158/",
-  "query": "doctor consulting elderly indian woman clinic",
-  "role": "people"
- },
- "dispensary-counter": {
-  "id": 8667534,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/a-woman-handing-the-bottle-with-pink-liquid-to-a-customer-8667534/",
-  "query": "pharmacist handing herbal medicine bottle counter",
-  "role": "people"
- },
- "consultation": {
-  "id": 7195122,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/woman-holding-a-pen-7195122/",
-  "query": "ayurvedic doctor writing prescription desk patient",
-  "role": "product"
  },
  "homeopathy-vials": {
   "id": 5682923,
@@ -60,27 +25,6 @@
   "photographer": "Nothing Ahead",
   "url": "https://www.pexels.com/photo/relaxing-outdoor-massage-therapy-session-37719557/",
   "query": "ayurvedic oil massage back therapist",
-  "role": "product"
- },
- "shirodhara": {
-  "id": 6629607,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/a-masseuse-pouring-oil-on-her-hand-6629607/",
-  "query": "shirodhara oil pouring forehead treatment",
-  "role": "product"
- },
- "steam-swedana": {
-  "id": 11627566,
-  "photographer": "Ekaterina Mitkina",
-  "url": "https://www.pexels.com/photo/man-hand-touching-woman-feet-11627566/",
-  "query": "herbal steam box therapy ayurveda",
-  "role": "product"
- },
- "kati-basti": {
-  "id": 6629613,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/a-tattooed-woman-getting-a-back-massage-6629613/",
-  "query": "kati basti warm oil lower back therapy",
   "role": "product"
  },
  "diet-thali": {
@@ -97,11 +41,22 @@
   "query": "turmeric ashwagandha powder brass spoon closeup",
   "role": "detail"
  },
- "clinic-team": {
-  "id": 8460371,
-  "photographer": "Los Muertos Crew",
-  "url": "https://www.pexels.com/photo/medical-practitioners-in-office-8460371/",
-  "query": "ayurveda clinic doctors therapists team portrait",
-  "role": "team"
+ "clinic-reception": {
+  "id": 39833690,
+  "photographer": "shaza jocarlos",
+  "url": "https://www.pexels.com/photo/modern-reception-area-with-elegant-design-39833690/",
+  "query": "wellness spa lobby reception plants wood"
+ },
+ "steam-swedana": {
+  "id": 6187421,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/close-up-of-woman-relaxing-at-traditional-asian-massage-6187421/",
+  "query": "herbal steam therapy ayurveda woman"
+ },
+ "cover-pulse": {
+  "id": 6520070,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/person-checking-another-person-s-pulse-6520070/",
+  "query": "indian doctor hand checking patient pulse"
  }
 }

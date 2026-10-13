@@ -1,0 +1,79 @@
+{
+ "showroom": {
+  "id": 27134985,
+  "photographer": "FOX ^.ᆽ.^= ∫",
+  "url": "https://www.pexels.com/photo/view-of-the-air-conditioning-unit-outside-the-building-27134985/",
+  "query": "home appliance showroom display water purifiers inverters",
+  "role": "space"
+ },
+ "office-desk": {
+  "id": 8062280,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/a-woman-using-a-laptop-8062280/",
+  "query": "sales executive desk laptop quotation brochures",
+  "role": "space"
+ },
+ "customer-visit": {
+  "id": 4307969,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/cheerful-ethnic-couple-cuddling-on-sofa-at-home-4307969/",
+  "query": "salesman explaining brochure to indian couple living room",
+  "role": "people"
+ },
+ "shop-visit": {
+  "id": 14707127,
+  "photographer": "Himanshu Kumawat",
+  "url": "https://www.pexels.com/photo/man-sitting-at-store-with-jewelry-14707127/",
+  "query": "sales rep with dealer at electrical shop counter india",
+  "role": "people"
+ },
+ "water-geyser": {
+  "id": 6436774,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/washstand-under-mirror-in-contemporary-bathroom-at-home-6436774/",
+  "query": "electric storage water heater bathroom wall",
+  "role": "product"
+ },
+ "air-cooler": {
+  "id": 16136420,
+  "photographer": "Tahir Osman",
+  "url": "https://www.pexels.com/photo/tv-and-carpet-in-room-16136420/",
+  "query": "desert air cooler living room summer",
+  "role": "product"
+ },
+ "commercial-ro": {
+  "id": 12451890,
+  "photographer": "Siri Surender",
+  "url": "https://www.pexels.com/photo/a-group-of-girls-walking-on-brown-field-carrying-stainless-steel-pots-on-their-heads-12451890/",
+  "query": "stainless steel commercial RO water plant school",
+  "role": "product"
+ },
+ "ceiling-fan": {
+  "id": 17608951,
+  "photographer": "Burak Evlivan",
+  "url": "https://www.pexels.com/photo/a-table-in-a-room-17608951/",
+  "query": "modern ceiling fan remote white ceiling",
+  "role": "product"
+ },
+ "quotation-tablet": {
+  "id": 8301233,
+  "photographer": "Kindel Media",
+  "url": "https://www.pexels.com/photo/peron-writing-on-a-report-of-adoption-document-8301233/",
+  "query": "tablet quotation form pen handshake close up",
+  "role": "detail"
+ },
+ "installation-tools": {
+  "id": 7206529,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-film-cartridge-7206529/",
+  "query": "technician installing water purifier filter cartridge close up",
+  "role": "detail"
+ },
+ "sales-team": {
+  "id": 34954632,
+  "photographer": "the Amritdev",
+  "url": "https://www.pexels.com/photo/group-of-uniformed-guards-saluting-outdoors-34954632/",
+  "query": "indian sales team uniform standing outside office",
+  "role": "team"
+ }
+}

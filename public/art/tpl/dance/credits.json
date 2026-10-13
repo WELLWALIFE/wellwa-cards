@@ -1,0 +1,86 @@
+{
+ "annual-show": {
+  "id": 28825952,
+  "photographer": "Irfan Abbas",
+  "url": "https://www.pexels.com/photo/graceful-indian-dance-silhouette-in-black-and-white-28825952/",
+  "query": "indian classical dance stage performance lights",
+  "role": "cover"
+ },
+ "group-dance-class": {
+  "id": 3902517,
+  "photographer": "Anna Shvets",
+  "url": "https://www.pexels.com/photo/women-in-black-tops-doing-ballet-3902517/",
+  "query": "dance class students mirror studio india",
+  "role": "cover"
+ },
+ "studio-mirror": {
+  "id": 5135061,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/woman-dancing-ballet-gracefully-inside-studio-5135061/",
+  "query": "empty dance studio mirror wooden floor",
+  "role": "space"
+ },
+ "music-room": {
+  "id": 18870063,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/band-with-drums-on-stage-18870063/",
+  "query": "music classroom harmonium tabla guitar keyboard",
+  "role": "space"
+ },
+ "teacher-correcting": {
+  "id": 5635590,
+  "photographer": "Gustavo Fring",
+  "url": "https://www.pexels.com/photo/a-woman-teaching-girls-in-a-ballet-class-5635590/",
+  "query": "dance teacher correcting child posture class",
+  "role": "people"
+ },
+ "guitar-lesson": {
+  "id": 7520989,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-boy-playing-an-acoustic-guitar-7520989/",
+  "query": "guitar teacher student lesson acoustic",
+  "role": "people"
+ },
+ "kathak-class": {
+  "id": 18086358,
+  "photographer": "Kosygin Leishangthem",
+  "url": "https://www.pexels.com/photo/woman-in-a-colorful-traditional-costume-dancing-on-stage-18086358/",
+  "query": "kathak dancer practice ghungroo studio",
+  "role": "product"
+ },
+ "hiphop-teens": {
+  "id": 10264562,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/women-posing-near-the-window-10264562/",
+  "query": "hip hop dancers teenagers studio",
+  "role": "product"
+ },
+ "vocal-class": {
+  "id": 19262080,
+  "photographer": "Rajesh Syangtan",
+  "url": "https://www.pexels.com/photo/woman-playing-a-musical-keyboard-and-singing-19262080/",
+  "query": "indian classical singer harmonium singing lesson",
+  "role": "product"
+ },
+ "tabla-hands": {
+  "id": 13042108,
+  "photographer": "Indika Dissanayake",
+  "url": "https://www.pexels.com/photo/man-playing-drums-on-a-festival-13042108/",
+  "query": "tabla player hands playing closeup",
+  "role": "product"
+ },
+ "ghungroo": {
+  "id": 6013466,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/a-man-holding-a-ghungroo-6013466/",
+  "query": "ghungroo ankle bells closeup",
+  "role": "detail"
+ },
+ "team": {
+  "id": 11094777,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/men-playing-drums-on-festival-11094777/",
+  "query": "dance music teachers group portrait india",
+  "role": "team"
+ }
+}

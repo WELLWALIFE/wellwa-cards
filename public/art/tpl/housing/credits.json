@@ -1,0 +1,87 @@
+{
+ "guard-visitor": {
+  "id": 35562107,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/professional-security-guard-at-entrance-35562107/",
+  "query": "security guard checking visitor register gate India",
+  "role": "people"
+ },
+ "society-office": {
+  "id": 8296977,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-person-examining-a-document-8296977/",
+  "query": "office desk ledger receipt book calculator",
+  "role": "product"
+ },
+ "society-gym": {
+  "id": 7174396,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/home-gym-with-equipment-in-basement-7174396/",
+  "query": "small apartment gym treadmill dumbbells",
+  "role": "product"
+ },
+ "guest-room": {
+  "id": 37460680,
+  "photographer": "UMUT   🆁🅰🆆",
+  "url": "https://www.pexels.com/photo/cozy-twin-bedroom-with-modern-decor-37460680/",
+  "query": "simple clean guest bedroom double bed AC",
+  "role": "product"
+ },
+ "kids-camp": {
+  "id": 33029296,
+  "photographer": "Tahir Xəlfəquliyev",
+  "url": "https://www.pexels.com/photo/children-painting-outdoors-in-art-class-33029296/",
+  "query": "children skating art class summer camp India",
+  "role": "product"
+ },
+ "notice-board": {
+  "id": 8534462,
+  "photographer": "Hanna Pad",
+  "url": "https://www.pexels.com/photo/a-corkboard-with-blank-notes-8534462/",
+  "query": "notice board pinned papers apartment corridor",
+  "role": "detail"
+ },
+ "committee-meeting": {
+  "id": 25310913,
+  "photographer": "CP Khanal",
+  "url": "https://www.pexels.com/photo/men-sitting-in-room-and-working-25310913/",
+  "query": "residents committee meeting table discussion India",
+  "role": "team"
+ },
+ "society-cover": {
+  "id": 7672061,
+  "photographer": "Sharath G.",
+  "url": "https://www.pexels.com/photo/white-concrete-balconies-in-apartment-buildings-7672061/",
+  "query": "residential apartment buildings India"
+ },
+ "garden-cover": {
+  "id": 12029117,
+  "photographer": "Egor Komarov",
+  "url": "https://www.pexels.com/photo/concrete-building-with-glass-railing-in-the-balcony-12029117/",
+  "query": "apartment complex garden greenery buildings"
+ },
+ "lobby": {
+  "id": 7031907,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/lobby-of-contemporary-apartment-in-beige-color-7031907/",
+  "query": "apartment building lobby entrance"
+ },
+ "society-park": {
+  "id": 38858273,
+  "photographer": "Caleb Oquendo",
+  "url": "https://www.pexels.com/photo/playground-in-suburban-residential-area-38858273/",
+  "query": "children playing apartment complex playground"
+ },
+ "gate-rfid": {
+  "id": 11128710,
+  "photographer": "Michael Pointner",
+  "url": "https://www.pexels.com/photo/cars-waiting-in-line-at-level-crossing-11128710/",
+  "query": "car entering gate barrier"
+ },
+ "noc-papers": {
+  "id": 955392,
+  "photographer": "Cytonn Photography",
+  "url": "https://www.pexels.com/photo/close-up-photography-of-person-writing-on-white-paper-955392/",
+  "query": "signing documents desk pen"
+ }
+}

@@ -1,0 +1,86 @@
+{
+ "classroom-teaching": {
+  "id": 18870255,
+  "photographer": "World Sikh Organization of Canada",
+  "url": "https://www.pexels.com/photo/teacher-teaching-mathematics-in-a-classroom-18870255/",
+  "query": "teacher whiteboard Indian students classroom",
+  "role": "cover"
+ },
+ "students-studying": {
+  "id": 6936004,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/students-sitting-inside-the-classroom-6936004/",
+  "query": "Indian students studying desks notebooks",
+  "role": "cover"
+ },
+ "maths-board": {
+  "id": 6256066,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/blackboard-with-handwritten-calculations-6256066/",
+  "query": "mathematics equations chalkboard geometry",
+  "role": "product"
+ },
+ "board-revision": {
+  "id": 6958534,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/person-using-blue-highlighter-pen-on-a-book-page-6958534/",
+  "query": "stack textbooks highlighter revision notes",
+  "role": "product"
+ },
+ "science-notes": {
+  "id": 5212341,
+  "photographer": "Max Fischer",
+  "url": "https://www.pexels.com/photo/a-person-writing-on-the-notebook-5212341/",
+  "query": "chemistry periodic table notebook formulas",
+  "role": "product"
+ },
+ "omr-test": {
+  "id": 6684219,
+  "photographer": "Andy Barbour",
+  "url": "https://www.pexels.com/photo/a-person-cheating-in-an-exam-6684219/",
+  "query": "OMR answer sheet pencil exam",
+  "role": "product"
+ },
+ "junior-class": {
+  "id": 5905466,
+  "photographer": "Katerina Holmes",
+  "url": "https://www.pexels.com/photo/crop-unrecognizable-diverse-pupils-sitting-at-desk-in-classroom-5905466/",
+  "query": "indian school children classroom writing"
+ },
+ "notes-closeup": {
+  "id": 7128758,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/person-writing-on-a-paper-7128758/",
+  "query": "handwritten study notes highlighter closeup"
+ },
+ "study-room": {
+  "id": 8199659,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/students-studying-inside-the-library-8199659/",
+  "query": "students studying library reading room"
+ },
+ "commerce-class": {
+  "id": 8296977,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-person-examining-a-document-8296977/",
+  "query": "accounting balance sheet pen ledger"
+ },
+ "spoken-english": {
+  "id": 5756655,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-bearded-man-pointing-the-pen-at-the-person-raising-hand-5756655/",
+  "query": "indian student presenting speaking classroom"
+ },
+ "doubt-session": {
+  "id": 7395297,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-white-sweater-sitting-beside-woman-in-brown-sweater-7395297/",
+  "query": "teacher helping indian student desk"
+ },
+ "student-writing-test": {
+  "id": 7092500,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/student-cheating-during-an-exam-7092500/",
+  "query": "indian girl writing exam paper"
+ }
+}

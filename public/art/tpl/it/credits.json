@@ -6,33 +6,12 @@
   "query": "indian software developers office laptops coding",
   "role": "cover"
  },
- "client-demo": {
-  "id": 16675632,
-  "photographer": "Shoper .pl",
-  "url": "https://www.pexels.com/photo/shoper-website-opened-on-the-computer-16675632/",
-  "query": "developer showing website laptop shop owner",
-  "role": "cover"
- },
- "office-interior": {
-  "id": 28955771,
-  "photographer": "minhphuc .workspace",
-  "url": "https://www.pexels.com/photo/modern-minimalist-office-desk-workspace-setup-28955771/",
-  "query": "small software office desks monitors plants",
-  "role": "space"
- },
  "meeting-room": {
   "id": 4463588,
   "photographer": "Shuki Harel",
   "url": "https://www.pexels.com/photo/concentrated-male-entrepreneur-analyzing-project-standing-near-whiteboard-in-modern-workspace-4463588/",
   "query": "startup meeting room whiteboard wireframes glass",
   "role": "space"
- },
- "developer-desk": {
-  "id": 3861958,
-  "photographer": "ThisIsEngineering",
-  "url": "https://www.pexels.com/photo/woman-coding-on-computer-3861958/",
-  "query": "indian woman developer dual monitors code",
-  "role": "people"
  },
  "designer-sketch": {
   "id": 11813187,
@@ -41,39 +20,11 @@
   "query": "ui designer sketching mobile app wireframe",
   "role": "people"
  },
- "website-design": {
-  "id": 40057912,
-  "photographer": "Wolf  Art",
-  "url": "https://www.pexels.com/photo/modern-workspace-with-laptop-tablet-and-phone-40057912/",
-  "query": "responsive website mockup laptop phone screen",
-  "role": "product"
- },
  "ecommerce-site": {
   "id": 7679865,
   "photographer": "MART  PRODUCTION",
   "url": "https://www.pexels.com/photo/person-shopping-online-7679865/",
   "query": "online shopping website cart laptop screen",
-  "role": "product"
- },
- "mobile-app": {
-  "id": 8947141,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/phone-with-a-case-8947141/",
-  "query": "hand holding smartphone app interface mockup",
-  "role": "product"
- },
- "billing-software": {
-  "id": 18966444,
-  "photographer": "Matheus Bertelli",
-  "url": "https://www.pexels.com/photo/monitor-keyboard-and-mouse-18966444/",
-  "query": "retail billing software screen barcode scanner",
-  "role": "product"
- },
- "google-maps": {
-  "id": 13709181,
-  "photographer": "Amar  Preciado",
-  "url": "https://www.pexels.com/photo/close-up-shot-of-a-smartphone-13709181/",
-  "query": "phone google maps local shop listing",
   "role": "product"
  },
  "social-media": {
@@ -97,11 +48,40 @@
   "query": "it support headset helpdesk laptop",
   "role": "detail"
  },
- "team-photo": {
-  "id": 7988667,
-  "photographer": "Mikhail Nilov",
-  "url": "https://www.pexels.com/photo/a-woman-holding-laptop-in-front-of-her-colleagues-7988667/",
-  "query": "small startup team group photo office",
-  "role": "team"
+ "client-demo": {
+  "id": 8069405,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/woman-with-headscarf-talking-to-a-man-wearing-suit-8069405/",
+  "query": "indian businessman laptop presentation client meeting"
+ },
+ "google-maps": {
+  "id": 6169861,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-holding-black-android-smartphone-6169861/",
+  "query": "hand holding phone navigation map app"
+ },
+ "website-design": {
+  "id": 18096282,
+  "photographer": "Emre  Akyol",
+  "url": "https://www.pexels.com/photo/website-displayed-on-a-laptop-standing-on-a-wooden-table-18096282/",
+  "query": "web designer laptop website layout screen"
+ },
+ "developer-desk": {
+  "id": 1181675,
+  "photographer": "Christina Morillo",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-person-typing-on-laptop-1181675/",
+  "query": "indian programmer working two monitors code"
+ },
+ "billing-software": {
+  "id": 5239882,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/person-in-white-shirt-using-macbook-pro-on-brown-wooden-table-5239882/",
+  "query": "pos billing machine shop counter india"
+ },
+ "mobile-app": {
+  "id": 5077066,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/person-using-a-smartphone-5077066/",
+  "query": "hand holding phone food delivery app screen"
  }
 }

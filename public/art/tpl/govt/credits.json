@@ -1,0 +1,46 @@
+{
+ "cover-officer-desk": {
+  "id": 5387258,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/person-signing-a-contract-5387258/",
+  "query": "indian officer signing files office desk",
+  "role": "cover"
+ },
+ "property-papers": {
+  "id": 8296974,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-woman-computing-with-a-calculator-8296974/",
+  "query": "property documents folder passbook calculator",
+  "role": "product"
+ },
+ "cover-office-flag": {
+  "id": 39969961,
+  "photographer": "Abhishek  Biradar",
+  "url": "https://www.pexels.com/photo/iconic-heritage-architecture-in-mumbai-city-39969961/",
+  "query": "indian flag tricolour government building"
+ },
+ "office-exterior": {
+  "id": 15774367,
+  "photographer": "Abhinav Tripathi",
+  "url": "https://www.pexels.com/photo/columns-in-traditional-building-in-delhi-15774367/",
+  "query": "india government building facade"
+ },
+ "public-hearing": {
+  "id": 12432682,
+  "photographer": "Deacon  Medak",
+  "url": "https://www.pexels.com/photo/people-sitting-beside-the-bonfire-12432682/",
+  "query": "indian villagers gathered meeting"
+ },
+ "officer-farmers": {
+  "id": 20527520,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/farmers-in-india-20527520/",
+  "query": "indian farmers talking field"
+ },
+ "land-records": {
+  "id": 7009860,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/a-person-holding-a-map-7009860/",
+  "query": "land survey map"
+ }
+}

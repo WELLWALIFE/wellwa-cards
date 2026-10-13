@@ -1,11 +1,4 @@
 {
- "cover-lift": {
-  "id": 3917334,
-  "photographer": "Andrea Piacquadio",
-  "url": "https://www.pexels.com/photo/man-holding-black-dumbbells-3917334/",
-  "query": "indian man lifting dumbbells gym floor",
-  "role": "cover"
- },
  "cover-yoga": {
   "id": 14989483,
   "photographer": "Kundalini Yoga  Ashram",
@@ -34,20 +27,6 @@
   "query": "trainer spotting bench press gym",
   "role": "people"
  },
- "reception-member": {
-  "id": 7755676,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/a-female-front-desk-receptionist-smiling-to-a-client-7755676/",
-  "query": "gym receptionist welcoming member front desk",
-  "role": "people"
- },
- "gym-floor": {
-  "id": 19025673,
-  "photographer": "Jason Morrison",
-  "url": "https://www.pexels.com/photo/a-barbell-and-weights-in-a-gym-19025673/",
-  "query": "free weights barbell squat rack gym",
-  "role": "product"
- },
  "personal-training": {
   "id": 4853689,
   "photographer": "Ketut Subiyanto",
@@ -62,39 +41,53 @@
   "query": "yoga mats class warrior pose studio",
   "role": "product"
  },
- "zumba-class": {
-  "id": 3775566,
-  "photographer": "Andrea Piacquadio",
-  "url": "https://www.pexels.com/photo/group-of-women-doing-exercise-inside-the-building-3775566/",
-  "query": "zumba dance fitness group energetic",
-  "role": "product"
- },
- "diet-consult": {
-  "id": 8844891,
-  "photographer": "Yaroslav Shuraev",
-  "url": "https://www.pexels.com/photo/food-man-love-people-8844891/",
-  "query": "nutritionist meal plan consultation table",
-  "role": "product"
- },
- "kettlebells": {
-  "id": 8611382,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/gym-equipment-on-the-black-rubber-mat-8611382/",
-  "query": "kettlebells row rubber gym floor",
-  "role": "detail"
- },
- "sanitising": {
-  "id": 7513064,
-  "photographer": "SHVETS production",
-  "url": "https://www.pexels.com/photo/calm-female-sprinkling-detergent-on-mirror-in-apartment-7513064/",
-  "query": "spraying cleaning gym equipment cloth",
-  "role": "detail"
- },
  "trainer-team": {
   "id": 35341600,
   "photographer": "khezez  | خزاز",
   "url": "https://www.pexels.com/photo/women-engaged-in-conversation-at-modern-gym-35341600/",
   "query": "fitness trainers team portrait gym",
   "role": "team"
+ },
+ "kettlebells": {
+  "id": 8612034,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/kettlebells-on-the-floor-8612034/",
+  "query": "black kettlebells row gym floor"
+ },
+ "diet-consult": {
+  "id": 15319047,
+  "photographer": "beyzahzah",
+  "url": "https://www.pexels.com/photo/nutritionist-holding-broccoli-in-office-15319047/",
+  "query": "nutritionist client diet plan consultation"
+ },
+ "gym-floor": {
+  "id": 2261481,
+  "photographer": "Victor Freitas",
+  "url": "https://www.pexels.com/photo/black-barbel-2261481/",
+  "query": "loaded barbell on gym floor plates"
+ },
+ "ladies-batch": {
+  "id": 3776144,
+  "photographer": "Andrea Piacquadio",
+  "url": "https://www.pexels.com/photo/women-in-sports-bra-and-black-leggings-while-doing-exercise-3776144/",
+  "query": "women lifting dumbbells gym class"
+ },
+ "cover-lift": {
+  "id": 5929232,
+  "photographer": "Joel Santos",
+  "url": "https://www.pexels.com/photo/man-lifting-weights-5929232/",
+  "query": "man lifting heavy barbell gym wide"
+ },
+ "sanitising": {
+  "id": 6455929,
+  "photographer": "Julia Larson",
+  "url": "https://www.pexels.com/photo/crop-woman-standing-on-treadmill-in-gym-6455929/",
+  "query": "cleaning treadmill handle wipe gym"
+ },
+ "zumba-class": {
+  "id": 7894538,
+  "photographer": "MART  PRODUCTION",
+  "url": "https://www.pexels.com/photo/a-group-of-women-in-black-sportswear-doing-exercise-7894538/",
+  "query": "group dance aerobics class women"
  }
 }

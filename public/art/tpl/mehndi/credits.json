@@ -20,13 +20,6 @@
   "query": "makeup studio vanity mirror lights chair",
   "role": "space"
  },
- "mehndi-function": {
-  "id": 8819317,
-  "photographer": "Yan Krukau",
-  "url": "https://www.pexels.com/photo/bowl-of-marigold-flowers-on-top-of-a-person-8819317/",
-  "query": "indian mehndi ceremony marigold decor seating",
-  "role": "space"
- },
  "artist-applying-henna": {
   "id": 36594469,
   "photographer": "Mohamed bakar  Aden",
@@ -55,20 +48,6 @@
   "query": "indian bride red lehenga jewellery makeup",
   "role": "product"
  },
- "airbrush-makeup": {
-  "id": 26664572,
-  "photographer": "casper somia",
-  "url": "https://www.pexels.com/photo/bride-doing-makeup-26664572/",
-  "query": "airbrush makeup gun bride face",
-  "role": "product"
- },
- "engagement-makeup": {
-  "id": 38781213,
-  "photographer": "Uday Ahir",
-  "url": "https://www.pexels.com/photo/elegant-traditional-indian-wedding-attire-38781213/",
-  "query": "indian engagement bride pink lehenga curls",
-  "role": "product"
- },
  "party-makeup": {
   "id": 35108817,
   "photographer": "Milton Das",
@@ -83,25 +62,39 @@
   "query": "karwa chauth mehndi hands bangles",
   "role": "product"
  },
+ "airbrush-makeup": {
+  "id": 16067898,
+  "photographer": "stories_by _sodhi",
+  "url": "https://www.pexels.com/photo/young-woman-in-a-traditional-indian-wedding-outfit-16067898/",
+  "query": "makeup artist airbrush indian bride face",
+  "role": "product"
+ },
+ "mehndi-function": {
+  "id": 32259782,
+  "photographer": "Fliqa India",
+  "url": "https://www.pexels.com/photo/beautiful-bride-in-traditional-indian-wedding-attire-32259782/",
+  "query": "indian mehndi ceremony bride marigold decoration",
+  "role": "space"
+ },
  "guest-mehndi": {
-  "id": 12949528,
-  "photographer": "IN STORY",
-  "url": "https://www.pexels.com/photo/close-up-of-people-holding-hands-at-traditional-marriage-ceremony-12949528/",
-  "query": "women guests henna hands wedding function",
+  "id": 6243526,
+  "photographer": "Ibrahim Boran",
+  "url": "https://www.pexels.com/photo/bridesmaids-at-a-bachelorette-party-putting-their-hands-together-6243526/",
+  "query": "women hands henna designs together wedding",
   "role": "product"
  },
  "henna-cones": {
-  "id": 18972911,
-  "photographer": "Sam Clickx",
-  "url": "https://www.pexels.com/photo/woman-making-henna-tattoo-18972911/",
-  "query": "henna cones fresh paste closeup",
+  "id": 35407778,
+  "photographer": "SAIF SIDDIQUE",
+  "url": "https://www.pexels.com/photo/traditional-indian-puja-thali-with-decorative-items-35407778/",
+  "query": "mehndi henna cones tray",
   "role": "detail"
  },
- "team": {
-  "id": 36769743,
-  "photographer": "Huy Nguyễn",
-  "url": "https://www.pexels.com/photo/backstage-preparation-in-fashion-studio-36769743/",
-  "query": "indian women makeup artists team studio",
-  "role": "team"
+ "engagement-makeup": {
+  "id": 30495732,
+  "photographer": "AMA INTERNATIONAL  ACADEMY",
+  "url": "https://www.pexels.com/photo/elegant-indian-bridal-portrait-with-traditional-attire-30495732/",
+  "query": "indian woman engagement lehenga glam makeup portrait",
+  "role": "product"
  }
 }

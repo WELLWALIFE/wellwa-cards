@@ -1,0 +1,85 @@
+{
+ "cover-home-demo": {
+  "id": 10686911,
+  "photographer": "doTERRA International, LLC",
+  "url": "https://www.pexels.com/photo/a-woman-in-knitted-sweater-sitting-on-the-couch-while-holding-a-small-bottle-10686911/",
+  "query": "indian woman presenting wellness products home living room",
+  "role": "cover"
+ },
+ "demo-table": {
+  "id": 17604925,
+  "photographer": "Saul Rivera",
+  "url": "https://www.pexels.com/photo/jars-and-pills-on-white-and-green-background-17604925/",
+  "query": "wellness supplement bottles arranged display table",
+  "role": "space"
+ },
+ "customer-demo": {
+  "id": 7195192,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/a-person-in-teal-shirt-holding-a-glass-bottle-with-capsules-7195192/",
+  "query": "woman showing supplement bottle to customer explaining",
+  "role": "people"
+ },
+ "doorstep-delivery": {
+  "id": 6348105,
+  "photographer": "Liza Summer",
+  "url": "https://www.pexels.com/photo/crop-unrecognizable-woman-carrying-boxes-and-entering-post-office-6348105/",
+  "query": "handing parcel box to customer at door india",
+  "role": "people"
+ },
+ "nutrition-supplements": {
+  "id": 12955610,
+  "photographer": "Atlantic Ambience",
+  "url": "https://www.pexels.com/photo/a-woman-holding-pills-and-a-bottle-12955610/",
+  "query": "vitamin capsules supplement bottle tablets white background",
+  "role": "product"
+ },
+ "home-office": {
+  "id": 7034439,
+  "photographer": "George Milton",
+  "url": "https://www.pexels.com/photo/pensive-woman-taking-notes-at-table-with-laptop-and-cup-of-coffee-7034439/",
+  "query": "woman working laptop home desk notebook"
+ },
+ "protein-shake": {
+  "id": 6944061,
+  "photographer": "Vlada Karpovich",
+  "url": "https://www.pexels.com/photo/a-person-scooping-powder-from-a-jar-6944061/",
+  "query": "protein shake glass powder scoop"
+ },
+ "starter-kit": {
+  "id": 7180485,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/coworkers-discussing-about-the-brochure-information-7180485/",
+  "query": "brochure catalogue documents desk"
+ },
+ "team": {
+  "id": 7580946,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-and-woman-having-a-coffee-break-7580946/",
+  "query": "indian team meeting smiling office"
+ },
+ "personal-care": {
+  "id": 4202321,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/marble-shelf-for-cosmetics-storage-in-modern-bathroom-4202321/",
+  "query": "skincare bottles bathroom shelf"
+ },
+ "gift-hamper": {
+  "id": 7984845,
+  "photographer": "Tamanna Rumee",
+  "url": "https://www.pexels.com/photo/overhead-shot-of-red-gift-boxes-7984845/",
+  "query": "gift box ribbon festive"
+ },
+ "wellness-juice": {
+  "id": 8540993,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/clear-glass-bottles-in-a-wooden-crate-8540993/",
+  "query": "green juice bottle glass"
+ },
+ "home-care": {
+  "id": 5591636,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-person-cleaning-a-yellow-bowl-using-a-sponge-5591636/",
+  "query": "dish soap sponge kitchen sink"
+ }
+}

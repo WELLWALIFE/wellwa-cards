@@ -1,25 +1,4 @@
 {
- "shop-front": {
-  "id": 18111568,
-  "photographer": "Joaquin Carfagna",
-  "url": "https://www.pexels.com/photo/photo-of-an-illuminated-kiosk-at-night-18111568/",
-  "query": "small shop storefront signboard India street",
-  "role": "space"
- },
- "shop-interior": {
-  "id": 11833899,
-  "photographer": "Engin Akyurt",
-  "url": "https://www.pexels.com/photo/white-and-black-photocopier-machine-11833899/",
-  "query": "photocopy shop interior computer desk printer",
-  "role": "space"
- },
- "staff-weighing": {
-  "id": 40016098,
-  "photographer": "FAYSAL KHAN",
-  "url": "https://www.pexels.com/photo/fruit-vendor-at-market-in-mandaguchha-pakistan-40016098/",
-  "query": "shopkeeper weighing parcel on scale",
-  "role": "people"
- },
  "doc-envelope": {
   "id": 6170189,
   "photographer": "Tima Miroshnichenko",
@@ -34,25 +13,11 @@
   "query": "cardboard parcel box packing tape",
   "role": "product"
  },
- "intl-shipping": {
-  "id": 6347514,
-  "photographer": "Liza Summer",
-  "url": "https://www.pexels.com/photo/scissors-and-tape-placed-on-carton-box-with-parcel-6347514/",
-  "query": "international shipping label airmail package",
-  "role": "product"
- },
  "aadhaar-biometric": {
   "id": 17155842,
   "photographer": "panumas nikhomkhai",
   "url": "https://www.pexels.com/photo/finger-scan-17155842/",
   "query": "fingerprint biometric scanner hand",
-  "role": "product"
- },
- "govt-docs": {
-  "id": 8962523,
-  "photographer": "Leeloo The First",
-  "url": "https://www.pexels.com/photo/eyeglasses-and-documents-on-desk-8962523/",
-  "query": "Indian passport documents pen desk",
   "role": "product"
  },
  "cash-counter": {
@@ -76,11 +41,22 @@
   "query": "courier receipt barcode tracking number",
   "role": "detail"
  },
- "team-counter": {
-  "id": 31353701,
-  "photographer": "🇻🇳🇻🇳Nguyễn Tiến Thịnh 🇻🇳🇻🇳",
-  "url": "https://www.pexels.com/photo/friendly-coffee-shop-team-at-counter-31353701/",
-  "query": "shop staff team smiling behind counter",
-  "role": "team"
+ "counter-hero": {
+  "id": 4175032,
+  "photographer": "Khwanchai Phanthong",
+  "url": "https://www.pexels.com/photo/man-delivering-packages-to-a-person-4175032/",
+  "query": "indian courier office parcels counter"
+ },
+ "customer-form": {
+  "id": 6612493,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/a-woman-signing-a-document-6612493/",
+  "query": "indian woman writing form counter"
+ },
+ "shop-front": {
+  "id": 19566900,
+  "photographer": "Harsh Suthar",
+  "url": "https://www.pexels.com/photo/grocery-store-at-night-19566900/",
+  "query": "indian small shop shutter street"
  }
 }

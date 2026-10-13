@@ -1,0 +1,86 @@
+{
+ "godown": {
+  "id": 6169177,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/delivery-man-getting-packages-from-a-van-6169177/",
+  "query": "warehouse cartons forklift delivery van loading",
+  "role": "cover"
+ },
+ "dealer-counter": {
+  "id": 35286026,
+  "photographer": "Magda Ehlers",
+  "url": "https://www.pexels.com/photo/vintage-fan-and-lantern-in-rustic-setting-35286026/",
+  "query": "indian electrical shop fans lights display",
+  "role": "cover"
+ },
+ "racks": {
+  "id": 4487364,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/ladder-on-construction-4487364/",
+  "query": "distribution warehouse shelves stacked boxes",
+  "role": "space"
+ },
+ "showroom": {
+  "id": 36721033,
+  "photographer": "aksinfo7 universe",
+  "url": "https://www.pexels.com/photo/modern-indoor-planters-and-pots-in-showroom-36721033/",
+  "query": "ceiling fans lighting showroom display",
+  "role": "space"
+ },
+ "order-taking": {
+  "id": 8936887,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/a-person-ordering-on-a-counter-8936887/",
+  "query": "salesman tablet retailer shop counter order",
+  "role": "people"
+ },
+ "van-loading": {
+  "id": 6170156,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/delivery-men-in-ppe-carrying-a-package-6170156/",
+  "query": "workers loading cartons delivery van",
+  "role": "people"
+ },
+ "fans": {
+  "id": 6000684,
+  "photographer": "Dương Nhân",
+  "url": "https://www.pexels.com/photo/electric-fan-beside-a-window-6000684/",
+  "query": "ceiling fan brown blades closeup",
+  "role": "product"
+ },
+ "lighting": {
+  "id": 36290319,
+  "photographer": "tom analogicus",
+  "url": "https://www.pexels.com/photo/collection-of-various-energy-efficient-light-bulbs-36290319/",
+  "query": "led bulbs tube lights boxes",
+  "role": "product"
+ },
+ "wires": {
+  "id": 18082922,
+  "photographer": "pipop kunachon",
+  "url": "https://www.pexels.com/photo/a-bunch-of-tangled-wires-18082922/",
+  "query": "copper electrical wire coils colourful",
+  "role": "product"
+ },
+ "switches": {
+  "id": 14129562,
+  "photographer": "Bimbim Sindu",
+  "url": "https://www.pexels.com/photo/electric-switches-mounted-on-white-wall-14129562/",
+  "query": "modular electrical switches sockets white",
+  "role": "product"
+ },
+ "geyser": {
+  "id": 6436774,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/washstand-under-mirror-in-contemporary-bathroom-at-home-6436774/",
+  "query": "electric storage water heater bathroom wall",
+  "role": "product"
+ },
+ "mcb": {
+  "id": 28265032,
+  "photographer": "ranjeet .",
+  "url": "https://www.pexels.com/photo/an-electrical-panel-with-wires-and-switches-28265032/",
+  "query": "mcb circuit breakers distribution board",
+  "role": "product"
+ }
+}

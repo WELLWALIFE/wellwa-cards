@@ -6,39 +6,11 @@
   "query": "modern consulting cabin desk two chairs",
   "role": "space"
  },
- "advisor-explaining": {
-  "id": 8441813,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/a-senior-couple-entering-a-business-deal-8441813/",
-  "query": "financial advisor explaining documents Indian family",
-  "role": "people"
- },
- "customer-tablet": {
-  "id": 8067936,
-  "photographer": "Alena Shekhovtcova",
-  "url": "https://www.pexels.com/photo/woman-sitting-with-paper-sheet-and-tablet-8067936/",
-  "query": "Indian woman reviewing loan papers tablet",
-  "role": "people"
- },
- "shop-owner": {
-  "id": 3906984,
-  "photographer": "Andrea Piacquadio",
-  "url": "https://www.pexels.com/photo/woman-wearing-an-apron-standing-by-the-shelves-3906984/",
-  "query": "Indian shop owner counter small business",
-  "role": "product"
- },
  "rupee-notes": {
   "id": 8139313,
   "photographer": "DEV ROY",
   "url": "https://www.pexels.com/photo/an-abundance-of-indian-rupees-on-surface-8139313/",
   "query": "Indian rupee notes hand counting",
-  "role": "product"
- },
- "car-keys": {
-  "id": 6817034,
-  "photographer": "Gustavo Fring",
-  "url": "https://www.pexels.com/photo/man-and-woman-standing-beside-a-white-car-6817034/",
-  "query": "car showroom key handover customer",
   "role": "product"
  },
  "property-docs": {
@@ -48,32 +20,58 @@
   "query": "property documents house model stamp",
   "role": "product"
  },
- "sip-growth": {
-  "id": 11743785,
-  "photographer": "Towfiqu barbhuiya",
-  "url": "https://www.pexels.com/photo/stacks-of-coins-by-n-hourglass-11743785/",
-  "query": "coins stack plant growth savings",
-  "role": "product"
- },
  "credit-score": {
-  "id": 7821760,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/black-laptop-on-the-table-7821760/",
-  "query": "credit score report laptop screen",
-  "role": "product"
+  "id": 7693217,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/a-man-in-white-long-sleeve-shirt-holding-a-document-7693217/",
+  "query": "indian man laptop financial charts office"
+ },
+ "advisor-handshake": {
+  "id": 7792841,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-2-person-shake-hands-7792841/",
+  "query": "indian business people handshake office deal"
+ },
+ "home-keys": {
+  "id": 8470805,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/an-agent-handing-the-key-to-the-owners-8470805/",
+  "query": "indian family new home keys"
+ },
+ "sip-growth": {
+  "id": 6863247,
+  "photographer": "Nataliya Vaitkevich",
+  "url": "https://www.pexels.com/photo/coins-in-a-jar-6863247/",
+  "query": "coin jar sprouting plant savings"
  },
  "calculator-emi": {
-  "id": 6801639,
-  "photographer": "Hanna Pad",
-  "url": "https://www.pexels.com/photo/statistics-survey-sheet-6801639/",
-  "query": "calculator pen EMI chart close-up",
-  "role": "detail"
+  "id": 5877591,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-person-writing-on-paper-beside-calculator-5877591/",
+  "query": "calculator pen notebook desk closeup"
+ },
+ "advisor-explaining": {
+  "id": 8837533,
+  "photographer": "ANTONI SHKRABA production",
+  "url": "https://www.pexels.com/photo/a-man-and-a-woman-having-a-meeting-8837533/",
+  "query": "indian man explaining document to woman desk"
+ },
+ "car-keys": {
+  "id": 7144203,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/people-sitting-inside-a-car-7144203/",
+  "query": "indian man new car keys smiling"
+ },
+ "customer-tablet": {
+  "id": 8837753,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/woman-holding-tablet-in-front-of-a-laptop-8837753/",
+  "query": "indian woman holding digital tablet smiling"
  },
  "office-team": {
-  "id": 7876742,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/men-standing-looking-at-the-money-7876742/",
-  "query": "finance office team standing portrait",
-  "role": "team"
+  "id": 7580638,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-blue-dress-shirt-standing-beside-a-woman-7580638/",
+  "query": "indian business team standing office smiling"
  }
 }

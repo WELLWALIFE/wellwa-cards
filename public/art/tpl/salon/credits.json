@@ -103,12 +103,6 @@
   "query": "manicure nail polish hands spa pedicure",
   "role": "product"
  },
- "salon-hero": {
-  "id": 7819735,
-  "photographer": "Mikhail Nilov",
-  "url": "https://www.pexels.com/photo/woman-in-brown-coat-holding-black-and-gray-corded-microphone-7819735/",
-  "query": "hairstylist blow drying client hair salon"
- },
  "bridal-hero": {
   "id": 29516470,
   "photographer": "apertur 2.8",
@@ -120,12 +114,6 @@
   "photographer": "Max Vakhtbovych",
   "url": "https://www.pexels.com/photo/photo-of-the-interior-of-a-salon-7750108/",
   "query": "modern hair salon interior mirrors chairs"
- },
- "salon-front": {
-  "id": 7755455,
-  "photographer": "RDNE Stock project",
-  "url": "https://www.pexels.com/photo/a-woman-in-pink-and-white-stripe-dress-7755455/",
-  "query": "beauty salon glass storefront entrance"
  },
  "stylist-cut": {
   "id": 3993470,
@@ -139,34 +127,40 @@
   "url": "https://www.pexels.com/photo/woman-applying-ointment-on-female-patient-face-4586717/",
   "query": "beautician applying face mask woman spa"
  },
- "haircut": {
-  "id": 7819749,
-  "photographer": "Mikhail Nilov",
-  "url": "https://www.pexels.com/photo/smiling-woman-in-brown-dress-up-shirt-holding-a-scissor-with-face-shield-7819749/",
-  "query": "woman new haircut salon mirror smiling"
- },
- "hair-spa": {
-  "id": 8834067,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/an-elderly-woman-having-her-hair-wash-8834067/",
-  "query": "scalp massage hair treatment salon woman"
- },
  "waxing": {
   "id": 35103884,
   "photographer": "Larysa Stratiichuk",
   "url": "https://www.pexels.com/photo/close-up-of-waxing-procedure-in-salon-35103884/",
   "query": "beautician waxing legs beauty salon"
  },
- "products-shelf": {
-  "id": 8467976,
-  "photographer": "Nataliya Vaitkevich",
-  "url": "https://www.pexels.com/photo/hair-and-hairdresser-accessories-8467976/",
-  "query": "hair care product bottles salon shelf"
- },
  "salon-team": {
   "id": 29569638,
   "photographer": "Eric Moura",
   "url": "https://www.pexels.com/photo/bride-getting-ready-with-professional-stylists-29569638/",
   "query": "hair salon team stylists smiling"
+ },
+ "salon-hero": {
+  "id": 10318057,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/hairdresser-straightening-clients-hair-10318057/",
+  "query": "hairdresser styling woman long hair salon"
+ },
+ "haircut": {
+  "id": 3993469,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-black-crew-neck-shirt-3993469/",
+  "query": "woman smiling fresh haircut salon chair"
+ },
+ "products-shelf": {
+  "id": 7440054,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-hair-dresser-servicing-a-customer-7440054/",
+  "query": "shampoo bottles shelf hair salon"
+ },
+ "hair-spa": {
+  "id": 17553843,
+  "photographer": "Luis Quintero",
+  "url": "https://www.pexels.com/photo/hairdresser-washing-man-head-17553843/",
+  "query": "woman relaxing head massage hair salon"
  }
 }

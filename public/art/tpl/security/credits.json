@@ -6,33 +6,12 @@
   "query": "security guard uniform society gate India",
   "role": "cover"
  },
- "cover-lobby": {
-  "id": 7513165,
-  "photographer": "SHVETS production",
-  "url": "https://www.pexels.com/photo/faceless-housewife-preparing-to-wash-floor-at-home-7513165/",
-  "query": "housekeeping staff mopping office lobby floor",
-  "role": "cover"
- },
  "control-room": {
   "id": 30692441,
   "photographer": "AMORIE SAM",
   "url": "https://www.pexels.com/photo/security-officer-in-dark-control-room-with-monitors-30692441/",
   "query": "CCTV monitoring room security screens",
   "role": "space"
- },
- "guard-cabin": {
-  "id": 5853118,
-  "photographer": "Omar Ramadan",
-  "url": "https://www.pexels.com/photo/white-and-red-painted-iron-barrier-5853118/",
-  "query": "apartment entrance boom barrier guard cabin",
-  "role": "space"
- },
- "guard-register": {
-  "id": 10349994,
-  "photographer": "Ron Lach",
-  "url": "https://www.pexels.com/photo/a-female-volunteering-in-search-of-missing-person-10349994/",
-  "query": "security guard writing visitor register",
-  "role": "people"
  },
  "supervisor-check": {
   "id": 34954619,
@@ -41,53 +20,11 @@
   "query": "supervisor inspecting security guards lineup",
   "role": "people"
  },
- "guard-gate": {
-  "id": 18166929,
-  "photographer": "Jericho San Miguel",
-  "url": "https://www.pexels.com/photo/security-standing-by-gate-18166929/",
-  "query": "uniformed security guard standing gate",
-  "role": "product"
- },
- "armed-guard": {
-  "id": 15422351,
-  "photographer": "Dextar Studio ™",
-  "url": "https://www.pexels.com/photo/man-armed-with-rifle-standing-on-sidewalk-15422351/",
-  "query": "armed security guard rifle showroom",
-  "role": "product"
- },
- "lady-guard": {
-  "id": 34954627,
-  "photographer": "the Amritdev",
-  "url": "https://www.pexels.com/photo/indian-security-personnel-in-uniform-formation-34954627/",
-  "query": "female security guard uniform India",
-  "role": "product"
- },
  "housekeeping": {
   "id": 4239032,
   "photographer": "https://kaboompics.com/",
   "url": "https://www.pexels.com/photo/crop-housekeeper-cleaning-handle-with-rag-4239032/",
   "query": "housekeeping worker cleaning office washroom",
-  "role": "product"
- },
- "society-gate": {
-  "id": 35814840,
-  "photographer": "HRIDYAKSH GEJWAL",
-  "url": "https://www.pexels.com/photo/black-and-white-urban-alley-at-night-35814840/",
-  "query": "residential society main gate security night",
-  "role": "product"
- },
- "event-bouncer": {
-  "id": 35117790,
-  "photographer": "Murat IŞIK",
-  "url": "https://www.pexels.com/photo/stylish-man-holding-umbrella-at-night-event-35117790/",
-  "query": "bouncer black suit event entrance crowd",
-  "role": "product"
- },
- "deep-clean": {
-  "id": 4107284,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/black-vacuum-cleaner-on-area-rug-4107284/",
-  "query": "floor scrubber machine office deep cleaning",
   "role": "product"
  },
  "uniform-badge": {
@@ -98,10 +35,33 @@
   "role": "detail"
  },
  "team": {
-  "id": 27820210,
-  "photographer": "Miguel Guerra",
-  "url": "https://www.pexels.com/photo/a-group-of-military-men-in-uniform-27820210/",
-  "query": "security guards team parade uniform",
-  "role": "team"
+  "id": 34954632,
+  "photographer": "the Amritdev",
+  "url": "https://www.pexels.com/photo/group-of-uniformed-guards-saluting-outdoors-34954632/",
+  "query": "indian security guards group uniform"
+ },
+ "armed-guard": {
+  "id": 30516934,
+  "photographer": "Malik Usman",
+  "url": "https://www.pexels.com/photo/security-guard-standing-indoors-at-building-staircase-30516934/",
+  "query": "security guard holding shotgun uniform"
+ },
+ "guard-cabin": {
+  "id": 34182544,
+  "photographer": "Tahir Xəlfəquliyev",
+  "url": "https://www.pexels.com/photo/automated-entrance-barrier-on-cobblestone-street-34182544/",
+  "query": "boom barrier gate security checkpoint"
+ },
+ "guard-register": {
+  "id": 7715197,
+  "photographer": "Kindel Media",
+  "url": "https://www.pexels.com/photo/a-police-writing-on-a-paper-7715197/",
+  "query": "security guard writing clipboard"
+ },
+ "cover-lobby": {
+  "id": 29394626,
+  "photographer": "dp singh Bhullar",
+  "url": "https://www.pexels.com/photo/sikh-police-officer-on-duty-outdoors-29394626/",
+  "query": "indian security guard standing building entrance"
  }
 }

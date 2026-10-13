@@ -59,5 +59,17 @@
   "photographer": "Pavel Danilyuk",
   "url": "https://www.pexels.com/photo/woman-working-at-the-desk-in-office-8111853/",
   "query": "indian lawyer reading documents desk"
+ },
+ "advocate-courtroom": {
+  "id": 5673501,
+  "photographer": "Sora Shimazaki",
+  "url": "https://www.pexels.com/photo/serious-businesswoman-hurrying-with-documents-from-courthouse-5673501/",
+  "query": "lawyer walking courthouse steps briefcase"
+ },
+ "client-meeting": {
+  "id": 7875994,
+  "photographer": "https://kaboompics.com/",
+  "url": "https://www.pexels.com/photo/men-in-corporate-attire-shaking-hands-at-an-office-7875994/",
+  "query": "lawyer handshake client office desk"
  }
 }

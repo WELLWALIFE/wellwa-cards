@@ -1,0 +1,107 @@
+{
+ "shedmilking": {
+  "id": 35518661,
+  "photographer": "Dunmarx Photography",
+  "url": "https://www.pexels.com/photo/brown-and-white-cow-in-a-farm-shed-35518661/",
+  "query": "indian dairy farm buffalo milking shed morning",
+  "role": "cover"
+ },
+ "deliverybike": {
+  "id": 10154783,
+  "photographer": "Maureen Wahu",
+  "url": "https://www.pexels.com/photo/man-transporting-containers-on-motorcycle-10154783/",
+  "query": "milkman motorcycle steel milk cans india street",
+  "role": "cover"
+ },
+ "cattleshed": {
+  "id": 35563872,
+  "photographer": "Erwin Bosman",
+  "url": "https://www.pexels.com/photo/holstein-cows-grazing-in-sunny-rural-pasture-35563872/",
+  "query": "clean cattle shed cows feeding trough",
+  "role": "space"
+ },
+ "dairycounter": {
+  "id": 5108033,
+  "photographer": "Hc Digital",
+  "url": "https://www.pexels.com/photo/person-scooping-chocolate-ice-cream-5108033/",
+  "query": "dairy shop counter paneer dahi display steel",
+  "role": "space"
+ },
+ "pouring": {
+  "id": 4350048,
+  "photographer": "Ketut Subiyanto",
+  "url": "https://www.pexels.com/photo/crop-barista-pouring-milk-into-pitcher-4350048/",
+  "query": "farmer pouring fresh milk steel can",
+  "role": "people"
+ },
+ "paneermaking": {
+  "id": 6694681,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/a-person-shaping-a-clay-dough-6694681/",
+  "query": "hands pressing paneer muslin cloth",
+  "role": "people"
+ },
+ "milkcan": {
+  "id": 20031246,
+  "photographer": "Jigger Ray",
+  "url": "https://www.pexels.com/photo/bottle-of-milk-on-a-table-20031246/",
+  "query": "fresh milk glass bottles steel can",
+  "role": "product"
+ },
+ "cowmilk": {
+  "id": 11816342,
+  "photographer": "Ouça e  Relaxe",
+  "url": "https://www.pexels.com/photo/industry-animal-agriculture-farm-11816342/",
+  "query": "gir cow glass of milk farm",
+  "role": "product"
+ },
+ "paneer": {
+  "id": 19460144,
+  "photographer": "Patrick",
+  "url": "https://www.pexels.com/photo/dairy-food-cubes-on-plate-19460144/",
+  "query": "fresh paneer block cubes wooden board",
+  "role": "product"
+ },
+ "dahi": {
+  "id": 38047948,
+  "photographer": "\"Beyond India by Shubham Thakur\"",
+  "url": "https://www.pexels.com/photo/traditional-clay-pots-at-kota-street-market-38047948/",
+  "query": "curd clay pot matka yogurt",
+  "role": "product"
+ },
+ "ghee": {
+  "id": 7990484,
+  "photographer": "Pew Nguyen",
+  "url": "https://www.pexels.com/photo/honey-jar-with-label-on-wooden-surface-7990484/",
+  "query": "golden ghee glass jar wooden spoon",
+  "role": "product"
+ },
+ "chhach": {
+  "id": 26648792,
+  "photographer": "Esra Erdem",
+  "url": "https://www.pexels.com/photo/ayran-served-in-a-traditional-restaurant-26648792/",
+  "query": "masala buttermilk glass cumin mint",
+  "role": "product"
+ },
+ "khoa": {
+  "id": 40000020,
+  "photographer": "Jahra Tasfia Reza",
+  "url": "https://www.pexels.com/photo/close-up-of-indian-sweet-kala-jamun-on-wooden-board-40000020/",
+  "query": "khoya mawa milk solids kadai",
+  "role": "product"
+ },
+ "lactometer": {
+  "id": 35997322,
+  "photographer": "Camilo Ospina",
+  "url": "https://www.pexels.com/photo/farmer-milking-holstein-cow-in-rustic-barn-35997322/",
+  "query": "lactometer milk fat testing dairy",
+  "role": "detail"
+ },
+ "team": {
+  "id": 20356930,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/farmers-in-india-20356930/",
+  "query": "indian dairy farm family workers smiling cows",
+  "role": "team"
+ }
+}

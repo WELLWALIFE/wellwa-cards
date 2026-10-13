@@ -1,0 +1,93 @@
+{
+ "tractor-deal": {
+  "id": 19137268,
+  "photographer": "Ashwani Babbar",
+  "url": "https://www.pexels.com/photo/man-harrowing-a-field-19137268/",
+  "query": "indian farmer tractor field",
+  "role": "product"
+ },
+ "grain-auction": {
+  "id": 9854639,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-wheat-grains-on-person-s-hand-9854639/",
+  "query": "indian grain mandi wheat sacks traders",
+  "role": "cover"
+ },
+ "client-meeting": {
+  "id": 7581119,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-pointing-on-a-red-folder-7581119/",
+  "query": "indian agent explaining documents farmer",
+  "role": "people"
+ },
+ "farmland-plot": {
+  "id": 36832365,
+  "photographer": "pierre matile",
+  "url": "https://www.pexels.com/photo/scenic-indian-agricultural-landscape-view-36832365/",
+  "query": "indian farmland green fields rural",
+  "role": "product"
+ },
+ "truck-loading": {
+  "id": 30674793,
+  "photographer": "Mad Knoxx Deluxe",
+  "url": "https://www.pexels.com/photo/workers-loading-bags-onto-truck-in-industrial-setting-30674793/",
+  "query": "india truck loading sacks workers",
+  "role": "product"
+ },
+ "deal-handshake": {
+  "id": 8441790,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/close-up-of-shaking-hands-between-men-8441790/",
+  "query": "indian men shaking hands office",
+  "role": "cover"
+ },
+ "used-car": {
+  "id": 7144203,
+  "photographer": "Antoni Shkraba",
+  "url": "https://www.pexels.com/photo/people-sitting-inside-a-car-7144203/",
+  "query": "indian man car keys new car dealership",
+  "role": "product"
+ },
+ "paperwork": {
+  "id": 7567600,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-signing-on-a-paper-7567600/",
+  "query": "signing agreement document pen india",
+  "role": "product"
+ },
+ "arhat-office": {
+  "id": 7580948,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/woman-inside-her-office-7580948/",
+  "query": "indian small business owner office desk computer",
+  "role": "space"
+ },
+ "receipt-stamp": {
+  "id": 3838314,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/letter-stamps-on-the-table-3838314/",
+  "query": "wooden rubber stamp ink pad documents",
+  "role": "detail"
+ },
+ "shop-godown": {
+  "id": 8549214,
+  "photographer": "Janntul  Hasan",
+  "url": "https://www.pexels.com/photo/man-reading-newspaper-inside-a-storeroom-with-stack-of-sacks-8549214/",
+  "query": "india warehouse sacks stacked storage",
+  "role": "product"
+ },
+ "team": {
+  "id": 35704494,
+  "photographer": "Aravind P.S",
+  "url": "https://www.pexels.com/photo/small-market-shop-with-produce-and-owner-35704494/",
+  "query": "indian small business owners group portrait",
+  "role": "team"
+ },
+ "weighing-produce": {
+  "id": 40004771,
+  "photographer": "Aditya Oberai",
+  "url": "https://www.pexels.com/photo/elderly-woman-at-bengaluru-street-market-40004771/",
+  "query": "indian vendor weighing vegetables scale market",
+  "role": "people"
+ }
+}

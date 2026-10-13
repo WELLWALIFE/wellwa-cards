@@ -13,20 +13,6 @@
   "query": "concrete slab pouring construction workers",
   "role": "cover"
  },
- "finished-home": {
-  "id": 7672060,
-  "photographer": "Sharath G.",
-  "url": "https://www.pexels.com/photo/white-concrete-building-7672060/",
-  "query": "modern indian independent house exterior",
-  "role": "space"
- },
- "interior-finish": {
-  "id": 35539079,
-  "photographer": "Peter  Vang",
-  "url": "https://www.pexels.com/photo/spacious-modern-basement-with-natural-light-35539079/",
-  "query": "newly built empty living room tiles",
-  "role": "space"
- },
  "engineer-client": {
   "id": 3862384,
   "photographer": "ThisIsEngineering",
@@ -48,13 +34,6 @@
   "query": "architectural floor plan blueprint helmet",
   "role": "product"
  },
- "commercial": {
-  "id": 5505119,
-  "photographer": "Mike van Schoonderwalt",
-  "url": "https://www.pexels.com/photo/construction-site-with-cranes-5505119/",
-  "query": "commercial building under construction crane",
-  "role": "product"
- },
  "rebar": {
   "id": 11891953,
   "photographer": "Marco Damm",
@@ -62,11 +41,46 @@
   "query": "steel rebar tying construction closeup",
   "role": "detail"
  },
- "team": {
-  "id": 18111488,
-  "photographer": "Joaquin Carfagna",
-  "url": "https://www.pexels.com/photo/construction-workers-on-a-street-18111488/",
-  "query": "construction crew helmets team portrait",
-  "role": "team"
+ "house-site": {
+  "id": 32285897,
+  "photographer": "ProtSilver Chen",
+  "url": "https://www.pexels.com/photo/unfinished-structure-overlooking-a-serene-ocean-view-32285897/",
+  "query": "house under construction concrete columns"
+ },
+ "brickwork": {
+  "id": 19688828,
+  "photographer": "GOWTHAM AGM",
+  "url": "https://www.pexels.com/photo/close-up-of-man-building-bricks-wall-19688828/",
+  "query": "brick wall construction mortar closeup"
+ },
+ "bathroom": {
+  "id": 7512029,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/sink-near-shower-cabin-in-bathroom-7512029/",
+  "query": "modern bathroom glass shower tiles"
+ },
+ "commercial": {
+  "id": 40154013,
+  "photographer": "Ali Madad",
+  "url": "https://www.pexels.com/photo/high-rise-building-construction-in-karachi-pakistan-40154013/",
+  "query": "indian commercial building under construction"
+ },
+ "interior-finish": {
+  "id": 7061336,
+  "photographer": "Max Vakhtbovych",
+  "url": "https://www.pexels.com/photo/spacious-room-empty-with-window-door-7061336/",
+  "query": "empty new apartment living room tiled floor"
+ },
+ "masons": {
+  "id": 12276522,
+  "photographer": "Fausto Hernández",
+  "url": "https://www.pexels.com/photo/a-man-constructing-a-hallow-blacks-wall-12276522/",
+  "query": "bricklayer trowel cement brick wall"
+ },
+ "waterproofing": {
+  "id": 33293448,
+  "photographer": "Crab Lens",
+  "url": "https://www.pexels.com/photo/rooftop-construction-worker-in-istanbul-skyline-33293448/",
+  "query": "flat roof waterproofing membrane worker"
  }
 }

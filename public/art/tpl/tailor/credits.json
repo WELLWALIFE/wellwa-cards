@@ -13,27 +13,6 @@
   "query": "tailor sewing machine stitching fabric closeup",
   "role": "cover"
  },
- "shop-interior": {
-  "id": 35285958,
-  "photographer": "Magda Ehlers",
-  "url": "https://www.pexels.com/photo/colorful-fabric-shelf-display-in-textile-store-35285958/",
-  "query": "boutique interior fabric rolls mannequins shelves",
-  "role": "space"
- },
- "shop-front": {
-  "id": 12729102,
-  "photographer": "Ayşegül  Aytören",
-  "url": "https://www.pexels.com/photo/clothing-boutique-for-men-12729102/",
-  "query": "small tailoring shop storefront india street",
-  "role": "space"
- },
- "fitting-trial": {
-  "id": 9853297,
-  "photographer": "Ron Lach",
-  "url": "https://www.pexels.com/photo/person-wearing-black-and-red-bracelet-9853297/",
-  "query": "woman trying blouse fitting tailor pins",
-  "role": "people"
- },
  "cutting-table": {
   "id": 6461103,
   "photographer": "Pavel Danilyuk",
@@ -83,13 +62,6 @@
   "query": "men kurta pyjama nehru jacket wedding",
   "role": "product"
  },
- "alteration": {
-  "id": 29738269,
-  "photographer": "Jacob Moseholt",
-  "url": "https://www.pexels.com/photo/sewing-essentials-with-red-fabric-and-machine-29738269/",
-  "query": "tailor hemming trousers alteration pins",
-  "role": "product"
- },
  "detail-threads": {
   "id": 4618282,
   "photographer": "Maxi Gagliano",
@@ -103,5 +75,23 @@
   "url": "https://www.pexels.com/photo/person-using-a-sewing-machine-13206031/",
   "query": "tailors team sewing workshop india",
   "role": "team"
+ },
+ "alteration": {
+  "id": 6764919,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/a-tailor-fitting-a-person-in-a-checkered-blazer-6764919/",
+  "query": "tailor hemming trousers pins hands"
+ },
+ "fitting-trial": {
+  "id": 7776139,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/dressmaker-holding-a-fabric-7776139/",
+  "query": "tailor pinning dress fitting woman"
+ },
+ "shop-interior": {
+  "id": 20531146,
+  "photographer": "Bem Partington",
+  "url": "https://www.pexels.com/photo/woman-measuring-fabric-in-a-store-20531146/",
+  "query": "tailor workshop interior fabric rolls worktable"
  }
 }

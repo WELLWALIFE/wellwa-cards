@@ -13,26 +13,12 @@
   "query": "indian sangeet dj dance floor moving lights crowd",
   "role": "cover"
  },
- "decor-godown": {
-  "id": 10270201,
-  "photographer": "Jonathan Cooper",
-  "url": "https://www.pexels.com/photo/display-of-flowers-in-supermarket-10270201/",
-  "query": "event decor warehouse artificial flowers props shelves",
-  "role": "space"
- },
  "planner-office": {
   "id": 37227610,
   "photographer": "Disney Magat",
   "url": "https://www.pexels.com/photo/creative-workspace-with-mood-board-and-planner-37227610/",
   "query": "event planner office mood board meeting clients",
   "role": "space"
- },
- "florist-stage": {
-  "id": 35872915,
-  "photographer": "Creative Photography",
-  "url": "https://www.pexels.com/photo/traditional-indian-wedding-ceremony-decor-with-couple-35872915/",
-  "query": "decorator arranging marigold flowers wedding stage",
-  "role": "people"
  },
  "sound-setup": {
   "id": 14828527,
@@ -55,20 +41,6 @@
   "query": "haldi ceremony marigold decoration swing yellow",
   "role": "product"
  },
- "tent-lighting": {
-  "id": 4993956,
-  "photographer": "Anastasia  Shuraeva",
-  "url": "https://www.pexels.com/photo/outdoor-table-setting-under-a-tent-4993956/",
-  "query": "wedding tent pandal fairy lights chairs night",
-  "role": "product"
- },
- "corporate-stage": {
-  "id": 29708245,
-  "photographer": "Matheus Bertelli",
-  "url": "https://www.pexels.com/photo/public-speaking-event-in-modern-conference-room-29708245/",
-  "query": "corporate conference stage led screen podium audience",
-  "role": "product"
- },
  "table-centrepiece": {
   "id": 17001833,
   "photographer": "Matheus Bertelli",
@@ -76,11 +48,46 @@
   "query": "wedding dinner table centrepiece candles roses closeup",
   "role": "detail"
  },
- "crew-team": {
-  "id": 17513729,
-  "photographer": "K",
-  "url": "https://www.pexels.com/photo/musicians-preparing-for-concert-17513729/",
-  "query": "event crew team setting up venue stage",
-  "role": "team"
+ "dj-console": {
+  "id": 30727065,
+  "photographer": "Hrushik Perumalla",
+  "url": "https://www.pexels.com/photo/dj-mixing-console-with-dynamic-lighting-30727065/",
+  "query": "dj hands mixer console party lights"
+ },
+ "wedding-stage": {
+  "id": 27443634,
+  "photographer": "Sabir Khan Shourov",
+  "url": "https://www.pexels.com/photo/a-man-in-a-blue-suit-standing-in-front-of-a-floral-wall-27443634/",
+  "query": "indian wedding reception stage floral decoration"
+ },
+ "balloon-birthday": {
+  "id": 36704177,
+  "photographer": "Alexander Mass",
+  "url": "https://www.pexels.com/photo/elegant-20th-birthday-party-indoor-decor-setup-36704177/",
+  "query": "birthday balloon arch decoration backdrop"
+ },
+ "decor-godown": {
+  "id": 27951074,
+  "photographer": "HONG SON",
+  "url": "https://www.pexels.com/photo/a-pile-of-red-and-pink-rolls-of-fabric-27951074/",
+  "query": "artificial flowers decoration warehouse storage"
+ },
+ "florist-stage": {
+  "id": 32147257,
+  "photographer": "Busenur Demirkan",
+  "url": "https://www.pexels.com/photo/joyful-wedding-ceremony-with-floral-arch-32147257/",
+  "query": "woman decorating wedding flower arch"
+ },
+ "corporate-stage": {
+  "id": 29708256,
+  "photographer": "Matheus Bertelli",
+  "url": "https://www.pexels.com/photo/speaker-presenting-at-modern-indoor-conference-29708256/",
+  "query": "business conference hall audience stage lights"
+ },
+ "tent-lighting": {
+  "id": 35326223,
+  "photographer": "Alexander Popadin",
+  "url": "https://www.pexels.com/photo/warm-glowing-marquee-lights-at-twilight-35326223/",
+  "query": "wedding marquee string lights evening"
  }
 }

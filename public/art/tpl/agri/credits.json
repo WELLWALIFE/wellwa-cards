@@ -1,0 +1,64 @@
+{
+ "drip": {
+  "id": 10606633,
+  "photographer": "Anil  Sharma",
+  "url": "https://www.pexels.com/photo/green-plant-on-brown-soil-10606633/",
+  "query": "drip irrigation pipe vegetable field",
+  "role": "product"
+ },
+ "seedling": {
+  "id": 1002703,
+  "photographer": "AS Photography",
+  "url": "https://www.pexels.com/photo/closeup-photo-of-sprout-1002703/",
+  "query": "seedling sprout soil closeup",
+  "role": "detail"
+ },
+ "cotton": {
+  "id": 40103327,
+  "photographer": "Mark Stebnicki",
+  "url": "https://www.pexels.com/photo/vast-cotton-field-in-warm-afternoon-light-40103327/",
+  "query": "cotton bolls plant field closeup"
+ },
+ "wheat": {
+  "id": 9854639,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/close-up-photo-of-wheat-grains-on-person-s-hand-9854639/",
+  "query": "wheat grains in hands india"
+ },
+ "sprayer": {
+  "id": 19809409,
+  "photographer": "Gilmer Diaz Estela",
+  "url": "https://www.pexels.com/photo/farmer-is-spraying-plants-19809409/",
+  "query": "knapsack sprayer farmer back closeup"
+ },
+ "spraying": {
+  "id": 10806264,
+  "photographer": "Prakash Aryal",
+  "url": "https://www.pexels.com/photo/a-bald-man-spraying-pesticide-on-paddy-field-10806264/",
+  "query": "farmer spraying pesticide paddy india"
+ },
+ "fertiliser": {
+  "id": 31673795,
+  "photographer": "Kashif Shah",
+  "url": "https://www.pexels.com/photo/hands-holding-granular-fertilizer-outdoors-31673795/",
+  "query": "fertilizer granules closeup hand"
+ },
+ "team": {
+  "id": 20527374,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/farmers-in-india-20527374/",
+  "query": "indian farmers group portrait village"
+ },
+ "organic": {
+  "id": 18864982,
+  "photographer": "Prathyusha Mettupalle",
+  "url": "https://www.pexels.com/photo/woman-potting-a-houseplant-18864982/",
+  "query": "vermicompost black soil hands"
+ },
+ "sowing": {
+  "id": 20527529,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/farmers-in-india-20527529/",
+  "query": "farmer sowing seeds hand field india"
+ }
+}

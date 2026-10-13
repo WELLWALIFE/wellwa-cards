@@ -6,67 +6,11 @@
   "query": "family car himalayan mountain road india",
   "role": "cover"
  },
- "agent-planning-trip": {
-  "id": 7647222,
-  "photographer": "Anastasia  Shuraeva",
-  "url": "https://www.pexels.com/photo/a-couple-buying-a-new-house-7647222/",
-  "query": "travel agent showing itinerary to indian couple",
-  "role": "cover"
- },
- "agency-office": {
-  "id": 819087,
-  "photographer": "Dzenina Lukac",
-  "url": "https://www.pexels.com/photo/white-and-blue-globe-miniature-819087/",
-  "query": "travel agency office desk brochures globe",
-  "role": "space"
- },
- "agency-shopfront": {
-  "id": 4473357,
-  "photographer": "Ketut Subiyanto",
-  "url": "https://www.pexels.com/photo/person-holding-brown-wooden-welcome-signage-4473357/",
-  "query": "small travel agency shop front signboard",
-  "role": "space"
- },
- "handing-tickets": {
-  "id": 4922080,
-  "photographer": "Ekaterina Belinskaya",
-  "url": "https://www.pexels.com/photo/person-holding-a-passport-4922080/",
-  "query": "agent handing passport boarding pass customer",
-  "role": "people"
- },
- "group-tour-bus": {
-  "id": 30646922,
-  "photographer": "Safi Erneste",
-  "url": "https://www.pexels.com/photo/traveling-backpacks-and-luggage-by-bus-30646922/",
-  "query": "tour group boarding bus luggage smiling",
-  "role": "people"
- },
- "kedarnath-temple": {
-  "id": 19019323,
-  "photographer": "Soubhagya Maharana",
-  "url": "https://www.pexels.com/photo/barren-mountains-peaks-19019323/",
-  "query": "kedarnath temple snow peaks pilgrims",
-  "role": "product"
- },
- "vaishno-devi-katra": {
-  "id": 33029451,
-  "photographer": "Vishal Chokkala",
-  "url": "https://www.pexels.com/photo/dramatic-aerial-view-of-mountain-valley-33029451/",
-  "query": "katra trikuta hills pilgrims trail",
-  "role": "product"
- },
  "goa-beach": {
   "id": 32262450,
   "photographer": "urtimud.89",
   "url": "https://www.pexels.com/photo/tropical-beach-scene-with-palm-trees-and-kayaks-32262450/",
   "query": "goa beach palm trees shacks sunset",
-  "role": "product"
- },
- "kerala-houseboat": {
-  "id": 35347836,
-  "photographer": "Ravi Kant",
-  "url": "https://www.pexels.com/photo/serene-kerala-backwaters-with-traditional-houseboat-35347836/",
-  "query": "alleppey houseboat backwaters coconut palms",
   "role": "product"
  },
  "jaipur-hawa-mahal": {
@@ -90,18 +34,46 @@
   "query": "burj khalifa dubai skyline evening",
   "role": "product"
  },
+ "agency-office": {
+  "id": 4895436,
+  "photographer": "Gustavo Fring",
+  "url": "https://www.pexels.com/photo/employees-sitting-by-desk-discussing-work-4895436/",
+  "query": "travel agency office desk computer consultant"
+ },
+ "agency-shopfront": {
+  "id": 13369323,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/men-shopping-in-the-shop-13369323/",
+  "query": "indian travel agency shop exterior"
+ },
+ "agency-team": {
+  "id": 7581114,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-black-long-sleeve-shirt-standing-in-front-of-his-colleagues-7581114/",
+  "query": "indian office team smiling colleagues"
+ },
+ "agent-planning-trip": {
+  "id": 7979418,
+  "photographer": "Kindel Media",
+  "url": "https://www.pexels.com/photo/man-couple-love-people-7979418/",
+  "query": "indian couple travel agent laptop planning"
+ },
+ "vaishno-devi-katra": {
+  "id": 36737806,
+  "photographer": "miheer tewari",
+  "url": "https://www.pexels.com/photo/red-temple-amidst-pine-trees-in-binsar-uttarakhand-36737806/",
+  "query": "vaishno devi katra trikuta mountain path"
+ },
+ "kerala-houseboat": {
+  "id": 31746351,
+  "photographer": "Harish .P",
+  "url": "https://www.pexels.com/photo/scenic-boat-ride-in-alappuzha-s-backwaters-31746351/",
+  "query": "kerala houseboat alleppey backwaters sunny"
+ },
  "passport-stamps": {
   "id": 7235804,
   "photographer": "Nataliya Vaitkevich",
   "url": "https://www.pexels.com/photo/overhead-shot-of-a-camera-and-flowers-near-a-map-7235804/",
-  "query": "passport visa stamps boarding pass map",
-  "role": "detail"
- },
- "agency-team": {
-  "id": 7681579,
-  "photographer": "Mikhail Nilov",
-  "url": "https://www.pexels.com/photo/woman-wearing-a-headset-7681579/",
-  "query": "travel agency staff team office smiling",
-  "role": "team"
+  "query": "indian passport world map travel flatlay"
  }
 }

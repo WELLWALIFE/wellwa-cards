@@ -1,0 +1,86 @@
+{
+ "rally-crowd": {
+  "id": 32796832,
+  "photographer": "Sabbir Bhuiyan",
+  "url": "https://www.pexels.com/photo/large-crowd-gathering-at-outdoor-event-in-city-32796832/",
+  "query": "indian political rally crowd waving flags",
+  "role": "cover"
+ },
+ "leader-greeting": {
+  "id": 7686317,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/woman-in-traditional-clothing-standing-with-praying-hands-7686317/",
+  "query": "indian leader namaste greeting villagers street",
+  "role": "cover"
+ },
+ "listening-elder": {
+  "id": 4267624,
+  "photographer": "112 Uttar Pradesh",
+  "url": "https://www.pexels.com/photo/a-policeman-talking-to-an-elderly-man-4267624/",
+  "query": "young man listening elderly woman village india",
+  "role": "people"
+ },
+ "volunteer-forms": {
+  "id": 6590932,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-man-holding-a-canned-good-and-a-woman-writing-on-the-clipboard-6590932/",
+  "query": "volunteer helping woman fill form camp india",
+  "role": "people"
+ },
+ "darbar-queue": {
+  "id": 12818151,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/photo-of-a-children-standing-in-queue-12818151/",
+  "query": "people waiting queue government office india",
+  "role": "product"
+ },
+ "scheme-camp": {
+  "id": 36519482,
+  "photographer": "CP Khanal",
+  "url": "https://www.pexels.com/photo/organizing-nepal-electoral-documents-outdoors-36519482/",
+  "query": "registration camp tent table documents india village",
+  "role": "product"
+ },
+ "road-inspection": {
+  "id": 9373697,
+  "photographer": "Faizi Ali",
+  "url": "https://www.pexels.com/photo/grayscale-photo-of-men-standing-on-the-field-9373697/",
+  "query": "men inspecting damaged road pothole india",
+  "role": "product"
+ },
+ "hospital-help": {
+  "id": 11781911,
+  "photographer": "Zakir Rushanly",
+  "url": "https://www.pexels.com/photo/wheelchair-near-glass-doors-inside-a-building-11781911/",
+  "query": "indian hospital corridor family waiting",
+  "role": "product"
+ },
+ "youth-sports": {
+  "id": 13509977,
+  "photographer": "Sandeep Singh",
+  "url": "https://www.pexels.com/photo/kids-playing-cricket-13509977/",
+  "query": "indian youth cricket tournament trophy celebration",
+  "role": "product"
+ },
+ "women-shg": {
+  "id": 20356942,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/farmers-in-india-20356942/",
+  "query": "indian women self help group meeting circle",
+  "role": "product"
+ },
+ "karyakarta-flag": {
+  "id": 6647038,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/two-male-volunteers-6647038/",
+  "query": "young volunteers holding flags india street walk",
+  "role": "product"
+ },
+ "tricolour-pin": {
+  "id": 6701789,
+  "photographer": "Zaid Ali",
+  "url": "https://www.pexels.com/photo/a-bearded-man-in-black-suit-jacket-with-brooch-and-handkerchief-6701789/",
+  "query": "indian flag lapel pin kurta close up",
+  "role": "detail"
+ }
+}

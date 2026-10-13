@@ -1,45 +1,10 @@
 {
- "society-exterior": {
-  "id": 25463313,
-  "photographer": "Hakan Tunc",
-  "url": "https://www.pexels.com/photo/building-with-apartments-behind-hedge-25463313/",
-  "query": "Indian apartment building exterior evening sky",
-  "role": "cover"
- },
- "site-visit-couple": {
-  "id": 7937330,
-  "photographer": "Pavel Danilyuk",
-  "url": "https://www.pexels.com/photo/real-estate-agent-showing-apartment-to-couple-7937330/",
-  "query": "real estate agent showing apartment Indian couple",
-  "role": "cover"
- },
- "office-interior": {
-  "id": 7876198,
-  "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/man-in-black-suit-jacket-kissing-woman-in-brown-dress-7876198/",
-  "query": "property consultant office desk client meeting",
-  "role": "space"
- },
  "sample-flat-living": {
   "id": 9877285,
   "photographer": "Nguyễn Thị Minh Nghi",
   "url": "https://www.pexels.com/photo/living-room-in-minimalist-style-9877285/",
   "query": "furnished apartment living room balcony sunlight",
   "role": "space"
- },
- "key-handover": {
-  "id": 8470807,
-  "photographer": "Thirdman",
-  "url": "https://www.pexels.com/photo/a-person-with-curly-hair-handing-the-key-to-the-owners-8470807/",
-  "query": "handing house keys new owner smiling",
-  "role": "people"
- },
- "registry-signing": {
-  "id": 8729998,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/people-talking-8729998/",
-  "query": "Indian family signing property documents office",
-  "role": "people"
  },
  "flat-2bhk": {
   "id": 6636242,
@@ -62,27 +27,6 @@
   "query": "Indian independent house exterior gate garden",
   "role": "product"
  },
- "residential-plot": {
-  "id": 11573714,
-  "photographer": "Alfo Medeiros",
-  "url": "https://www.pexels.com/photo/green-grass-near-brown-wooden-fence-11573714/",
-  "query": "empty residential plot boundary wall colony road",
-  "role": "product"
- },
- "market-shop": {
-  "id": 26831418,
-  "photographer": "Doğan Alpaslan  Demir",
-  "url": "https://www.pexels.com/photo/view-of-an-empty-alley-with-closed-roller-doors-of-the-shops-26831418/",
-  "query": "vacant shop shutter commercial street India",
-  "role": "product"
- },
- "rental-office": {
-  "id": 5483051,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/black-rolling-chairs-beside-desk-5483051/",
-  "query": "empty small office glass cabin partitions",
-  "role": "product"
- },
  "farm-land": {
   "id": 20286978,
   "photographer": "Артем Дворецкий",
@@ -97,11 +41,34 @@
   "query": "property sale deed stamp paper signature pen",
   "role": "detail"
  },
- "office-team": {
-  "id": 8815812,
+ "society-exterior": {
+  "id": 24419854,
+  "photographer": "Sharath G.",
+  "url": "https://www.pexels.com/photo/facade-of-a-modern-apartment-building-complex-24419854/",
+  "query": "modern indian apartment complex towers"
+ },
+ "site-visit-couple": {
+  "id": 8815906,
   "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/elderly-couple-and-a-real-estate-agent-8815812/",
-  "query": "real estate team standing office portrait India",
-  "role": "team"
+  "url": "https://www.pexels.com/photo/men-talking-to-couple-on-steps-8815906/",
+  "query": "indian couple real estate agent apartment visit"
+ },
+ "office-interior": {
+  "id": 8112163,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/smiling-employee-holding-keys-over-table-near-sitting-clients-8112163/",
+  "query": "indian real estate agent office client meeting"
+ },
+ "key-handover": {
+  "id": 8730048,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/a-couple-receiving-keys-from-a-broker-8730048/",
+  "query": "indian couple receiving house keys"
+ },
+ "rental-office": {
+  "id": 5483051,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/black-rolling-chairs-beside-desk-5483051/",
+  "query": "modern empty office space glass partitions bright"
  }
 }

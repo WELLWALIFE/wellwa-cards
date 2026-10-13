@@ -1,0 +1,73 @@
+{
+ "dispatch-yard": {
+  "id": 27490857,
+  "photographer": "逐光 创梦",
+  "url": "https://www.pexels.com/photo/a-large-truck-is-parked-in-a-warehouse-27490857/",
+  "query": "warehouse loading truck steel furniture dispatch",
+  "role": "space"
+ },
+ "welder-work": {
+  "id": 7849742,
+  "photographer": "Centre for Ageing Better",
+  "url": "https://www.pexels.com/photo/man-working-in-workshop-7849742/",
+  "query": "welder mask MIG welding steel frame",
+  "role": "people"
+ },
+ "slotted-rack": {
+  "id": 4483608,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/shelves-on-a-warehouse-4483608/",
+  "query": "slotted angle storage rack warehouse shelves",
+  "role": "product"
+ },
+ "school-desk": {
+  "id": 256519,
+  "photographer": "Pixabay",
+  "url": "https://www.pexels.com/photo/chairs-on-table-256519/",
+  "query": "school desk bench empty classroom rows",
+  "role": "product"
+ },
+ "pallet": {
+  "id": 4487382,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/worker-on-a-construction-4487382/",
+  "query": "steel pallets stacked warehouse forklift",
+  "role": "product"
+ },
+ "locker": {
+  "id": 38543280,
+  "photographer": "Jan van der Wolf",
+  "url": "https://www.pexels.com/photo/minimalist-red-lockers-in-indoor-setting-38543280/",
+  "query": "metal lockers row"
+ },
+ "almirah": {
+  "id": 27504579,
+  "photographer": "HANKE Y",
+  "url": "https://www.pexels.com/photo/white-cabinet-27504579/",
+  "query": "steel cabinet storage metal"
+ },
+ "hospital-bed": {
+  "id": 8410648,
+  "photographer": "Odin Reyna",
+  "url": "https://www.pexels.com/photo/empty-hospital-beds-8410648/",
+  "query": "hospital bed empty room"
+ },
+ "office-table": {
+  "id": 439227,
+  "photographer": "Medhat Ayad",
+  "url": "https://www.pexels.com/photo/white-and-black-desk-beside-bed-and-window-439227/",
+  "query": "office desk drawers computer"
+ },
+ "qc-check": {
+  "id": 33559565,
+  "photographer": "Auto Tech",
+  "url": "https://www.pexels.com/photo/technician-assembling-engine-connecting-rod-33559565/",
+  "query": "factory worker inspecting metal part"
+ },
+ "factory-floor": {
+  "id": 29988963,
+  "photographer": "Cemrecan Yurtman",
+  "url": "https://www.pexels.com/photo/industrial-laser-cutter-in-factory-setting-29988963/",
+  "query": "metal fabrication factory workshop"
+ }
+}

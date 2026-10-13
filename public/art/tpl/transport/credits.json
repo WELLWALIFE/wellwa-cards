@@ -6,27 +6,6 @@
   "query": "indian truck highway cargo delivery",
   "role": "cover"
  },
- "loading-crew": {
-  "id": 6170156,
-  "photographer": "Tima Miroshnichenko",
-  "url": "https://www.pexels.com/photo/delivery-men-in-ppe-carrying-a-package-6170156/",
-  "query": "movers loading boxes into truck",
-  "role": "cover"
- },
- "truck-yard": {
-  "id": 2348359,
-  "photographer": "Kevin Bidwell",
-  "url": "https://www.pexels.com/photo/parked-trucks-under-clouds-2348359/",
-  "query": "trucks parked logistics yard fleet",
-  "role": "space"
- },
- "transport-office": {
-  "id": 4267524,
-  "photographer": "112 Uttar Pradesh",
-  "url": "https://www.pexels.com/photo/a-dispatch-officer-at-up-112-4267524/",
-  "query": "logistics office dispatcher desk booking",
-  "role": "space"
- },
  "driver-cabin": {
   "id": 14797991,
   "photographer": "World Sikh Organization of Canada",
@@ -40,13 +19,6 @@
   "url": "https://www.pexels.com/photo/couple-wrapping-a-chair-7217823/",
   "query": "mover wrapping sofa bubble wrap",
   "role": "people"
- },
- "mini-truck": {
-  "id": 35188816,
-  "photographer": "Somogro Bangladesh",
-  "url": "https://www.pexels.com/photo/banana-transport-truck-on-sunny-day-in-bangladesh-35188816/",
-  "query": "small pickup truck loaded goods india",
-  "role": "product"
  },
  "packed-cartons": {
   "id": 7203964,
@@ -62,27 +34,6 @@
   "query": "wrapped furniture inside moving truck",
   "role": "product"
  },
- "container-truck": {
-  "id": 36136848,
-  "photographer": "Stephen Cheng",
-  "url": "https://www.pexels.com/photo/scenic-coastal-road-with-trucks-and-ocean-view-36136848/",
-  "query": "container truck open road intercity",
-  "role": "product"
- },
- "part-load": {
-  "id": 16924265,
-  "photographer": "Wenxin Dong",
-  "url": "https://www.pexels.com/photo/interior-of-an-empty-warehouse-16924265/",
-  "query": "warehouse parcels pallets loading dock",
-  "role": "product"
- },
- "bike-crate": {
-  "id": 13992335,
-  "photographer": "Airam Dato-on",
-  "url": "https://www.pexels.com/photo/a-motorcycle-parked-near-a-concrete-wall-13992335/",
-  "query": "motorcycle crated wooden shipping transport",
-  "role": "product"
- },
  "office-shifting": {
   "id": 7581040,
   "photographer": "RDNE Stock project",
@@ -90,18 +41,59 @@
   "query": "office relocation desks computers boxes",
   "role": "product"
  },
- "tracking-phone": {
-  "id": 6169859,
-  "photographer": "Tima Miroshnichenko",
-  "url": "https://www.pexels.com/photo/grayscale-photo-of-person-holding-smartphone-6169859/",
-  "query": "hand phone gps tracking map truck",
-  "role": "detail"
- },
  "crew-team": {
   "id": 4487515,
   "photographer": "Tiger Lily",
   "url": "https://www.pexels.com/photo/men-sitting-in-a-truck-4487515/",
   "query": "movers team standing front of truck",
   "role": "team"
+ },
+ "part-load": {
+  "id": 10834810,
+  "photographer": "Ihsan Adityawarman",
+  "url": "https://www.pexels.com/photo/stacked-boxes-in-a-warehouse-10834810/",
+  "query": "warehouse cardboard boxes pallets stacked"
+ },
+ "tracking-phone": {
+  "id": 6169861,
+  "photographer": "Tima Miroshnichenko",
+  "url": "https://www.pexels.com/photo/person-holding-black-android-smartphone-6169861/",
+  "query": "hand smartphone map navigation"
+ },
+ "transport-office": {
+  "id": 7580948,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/woman-inside-her-office-7580948/",
+  "query": "indian woman office desk computer"
+ },
+ "truck-yard": {
+  "id": 32331554,
+  "photographer": "Abhisek Tripathy",
+  "url": "https://www.pexels.com/photo/parked-utility-trucks-with-generators-outdoors-32331554/",
+  "query": "trucks parked row logistics yard"
+ },
+ "bike-crate": {
+  "id": 14522787,
+  "photographer": "Zechen Li",
+  "url": "https://www.pexels.com/photo/a-motorcycle-parked-near-trucks-14522787/",
+  "query": "motorcycle loaded on truck transport"
+ },
+ "container-truck": {
+  "id": 29057949,
+  "photographer": "Shantum Singh",
+  "url": "https://www.pexels.com/photo/heavy-truck-on-indian-expressway-in-deeg-29057949/",
+  "query": "container truck highway india"
+ },
+ "loading-crew": {
+  "id": 6646780,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/a-gray-push-trolley-beside-a-van-with-boxes-of-donated-goods-6646780/",
+  "query": "movers loading cardboard boxes truck"
+ },
+ "mini-truck": {
+  "id": 29057953,
+  "photographer": "Shantum Singh",
+  "url": "https://www.pexels.com/photo/colorful-indian-truck-on-deeg-highway-29057953/",
+  "query": "tata ace mini truck india"
  }
 }

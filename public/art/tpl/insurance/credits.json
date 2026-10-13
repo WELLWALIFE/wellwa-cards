@@ -1,38 +1,10 @@
 {
- "family-meeting": {
-  "id": 7736037,
-  "photographer": "Mikhail Nilov",
-  "url": "https://www.pexels.com/photo/a-woman-giving-a-key-7736037/",
-  "query": "insurance agent explaining policy indian family home",
-  "role": "cover"
- },
  "policy-signing": {
   "id": 8439697,
   "photographer": "Kampus Production",
   "url": "https://www.pexels.com/photo/person-in-black-suit-holding-white-digital-tablet-8439697/",
   "query": "indian couple signing insurance document advisor desk",
   "role": "cover"
- },
- "office-front": {
-  "id": 19818223,
-  "photographer": "Nicu Cobasnean",
-  "url": "https://www.pexels.com/photo/open-sign-hanging-on-a-store-window-19818223/",
-  "query": "small insurance advisor office glass door signboard",
-  "role": "space"
- },
- "advisor-cabin": {
-  "id": 8453806,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/photo-of-a-conference-room-8453806/",
-  "query": "insurance advisor office desk files laptop chairs",
-  "role": "space"
- },
- "advisor-explaining": {
-  "id": 8439655,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/broker-presenting-an-offer-to-an-elderly-couple-on-a-tablet-8439655/",
-  "query": "indian insurance advisor tablet senior couple smiling",
-  "role": "people"
  },
  "policy-handover": {
   "id": 3760067,
@@ -48,32 +20,64 @@
   "query": "father mother child hands protection umbrella",
   "role": "product"
  },
- "savings-plan": {
-  "id": 7118211,
-  "photographer": "cottonbro studio",
-  "url": "https://www.pexels.com/photo/a-person-picking-the-coins-on-the-wooden-flooring-7118211/",
-  "query": "indian family saving coins jar rupee",
-  "role": "product"
+ "family-meeting": {
+  "id": 8441820,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/a-man-sitting-on-couch-holding-a-paper-beside-an-elderly-person-8441820/",
+  "query": "indian insurance agent meeting family living room"
  },
- "child-plan": {
-  "id": 8106663,
+ "advisor-explaining": {
+  "id": 7876299,
   "photographer": "https://kaboompics.com/",
-  "url": "https://www.pexels.com/photo/women-wearing-academic-dress-holding-diplomas-8106663/",
-  "query": "indian girl student graduation cap books smiling",
-  "role": "product"
- },
- "health-plan": {
-  "id": 6097680,
-  "photographer": "Laura James",
-  "url": "https://www.pexels.com/photo/nurse-in-uniform-and-badge-on-street-6097680/",
-  "query": "stethoscope health insurance card hospital desk",
-  "role": "product"
+  "url": "https://www.pexels.com/photo/a-man-in-suit-jacket-wearing-eyeglasses-sitting-at-a-desk-in-front-of-a-couple-7876299/",
+  "query": "indian financial advisor explaining documents couple office"
  },
  "office-team": {
-  "id": 8815812,
-  "photographer": "Kampus Production",
-  "url": "https://www.pexels.com/photo/elderly-couple-and-a-real-estate-agent-8815812/",
-  "query": "small indian office team advisors standing together",
-  "role": "team"
+  "id": 7580638,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/man-in-blue-dress-shirt-standing-beside-a-woman-7580638/",
+  "query": "indian business team office smiling group"
+ },
+ "savings-plan": {
+  "id": 3943715,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/person-putting-coin-in-a-piggy-bank-3943715/",
+  "query": "indian woman saving money piggy bank rupees"
+ },
+ "health-plan": {
+  "id": 7659876,
+  "photographer": "Thirdman",
+  "url": "https://www.pexels.com/photo/doctor-consulting-a-patient-7659876/",
+  "query": "indian doctor stethoscope patient consultation"
+ },
+ "policy-document": {
+  "id": 39148380,
+  "photographer": "George Piskov",
+  "url": "https://www.pexels.com/photo/business-contract-signing-with-elegant-pen-39148380/",
+  "query": "signing contract document pen closeup"
+ },
+ "bike-insurance": {
+  "id": 28928633,
+  "photographer": "Anurag Jamwal",
+  "url": "https://www.pexels.com/photo/man-riding-scooter-on-jalandhar-street-28928633/",
+  "query": "indian man riding scooter helmet"
+ },
+ "advisor-cabin": {
+  "id": 8472482,
+  "photographer": "Cup of  Couple",
+  "url": "https://www.pexels.com/photo/a-laptop-with-a-blank-screen-in-a-workspace-8472482/",
+  "query": "clean modern office desk laptop files window"
+ },
+ "child-plan": {
+  "id": 35745616,
+  "photographer": "Ahmet Kurt",
+  "url": "https://www.pexels.com/photo/smiling-schoolgirl-holding-book-against-pink-background-35745616/",
+  "query": "indian girl school uniform smiling books"
+ },
+ "pension-plan": {
+  "id": 8795103,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-an-elderly-couple-sitting-on-the-wooden-bench-8795103/",
+  "query": "indian elderly couple smiling together park"
  }
 }

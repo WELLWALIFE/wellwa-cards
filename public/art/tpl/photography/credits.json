@@ -6,25 +6,11 @@
   "query": "indian bride groom candid wedding photography",
   "role": "cover"
  },
- "photographer-event": {
-  "id": 39538043,
-  "photographer": "Uday Ahir",
-  "url": "https://www.pexels.com/photo/vibrant-indian-wedding-celebration-with-joyful-crowd-39538043/",
-  "query": "photographer shooting indian wedding ceremony camera",
-  "role": "cover"
- },
  "studio-interior": {
   "id": 30332804,
   "photographer": "Israyosoy S.",
   "url": "https://www.pexels.com/photo/professional-photography-studio-setup-with-lighting-30332804/",
   "query": "photography studio softbox lights backdrop",
-  "role": "space"
- },
- "studio-reception": {
-  "id": 709604,
-  "photographer": "naveen darzz",
-  "url": "https://www.pexels.com/photo/four-assorted-photo-frames-with-photos-709604/",
-  "query": "photo studio reception framed prints wall",
   "role": "space"
  },
  "photographer-camera": {
@@ -33,20 +19,6 @@
   "url": "https://www.pexels.com/photo/young-indian-photographer-taking-pictures-with-his-professional-dslr-camera-photographer-with-camera-15891673/",
   "query": "indian photographer checking camera screen outdoor",
   "role": "people"
- },
- "editing-desk": {
-  "id": 16313525,
-  "photographer": "Kawê  Rodrigues",
-  "url": "https://www.pexels.com/photo/woman-hands-holding-camera-over-desk-16313525/",
-  "query": "photo editor retouching wedding photos monitor",
-  "role": "people"
- },
- "wedding-pheras": {
-  "id": 32923331,
-  "photographer": "Amodita's Frame",
-  "url": "https://www.pexels.com/photo/traditional-indian-wedding-ceremony-scene-32923331/",
-  "query": "indian wedding pheras mandap fire ritual",
-  "role": "product"
  },
  "prewedding": {
   "id": 6056431,
@@ -62,25 +34,11 @@
   "query": "indian sangeet dance stage colourful lights",
   "role": "product"
  },
- "birthday-cake": {
-  "id": 8104171,
-  "photographer": "Ivan S",
-  "url": "https://www.pexels.com/photo/pretty-girl-looking-at-a-cake-8104171/",
-  "query": "child birthday cake candles party balloons",
-  "role": "product"
- },
  "baby-studio": {
   "id": 36753651,
   "photographer": "the Amritdev",
   "url": "https://www.pexels.com/photo/serene-newborn-baby-wrapped-in-blanket-36753651/",
   "query": "newborn baby studio photoshoot wrap basket",
-  "role": "product"
- },
- "product-shoot": {
-  "id": 18880008,
-  "photographer": "Amar  Preciado",
-  "url": "https://www.pexels.com/photo/man-squatting-with-camera-and-lenses-18880008/",
-  "query": "product photography tabletop white background lightbox",
   "role": "product"
  },
  "passport-portrait": {
@@ -91,17 +49,51 @@
   "role": "product"
  },
  "album-pages": {
-  "id": 6279772,
-  "photographer": "Yaroslav Shuraev",
-  "url": "https://www.pexels.com/photo/a-person-holding-a-book-6279772/",
-  "query": "wedding photo album open pages leather",
-  "role": "detail"
+  "id": 7014491,
+  "photographer": "George Milton",
+  "url": "https://www.pexels.com/photo/crop-unrecognizable-woman-looking-through-printed-photos-in-album-7014491/",
+  "query": "wedding photo album printed photographs flat lay"
  },
  "crew-team": {
-  "id": 9889180,
-  "photographer": "Amar  Preciado",
-  "url": "https://www.pexels.com/photo/man-in-brown-blazer-being-recorded-by-a-videographer-9889180/",
-  "query": "photography crew team cameras gimbal",
-  "role": "team"
+  "id": 27868430,
+  "photographer": "Luiz Milczwski",
+  "url": "https://www.pexels.com/photo/a-group-of-people-taking-pictures-with-cameras-27868430/",
+  "query": "event photographers team with cameras"
+ },
+ "photographer-event": {
+  "id": 34014653,
+  "photographer": "Sanket  Mishra",
+  "url": "https://www.pexels.com/photo/young-photographer-capturing-the-moment-34014653/",
+  "query": "indian wedding photographer dslr camera shooting"
+ },
+ "wedding-pheras": {
+  "id": 35008110,
+  "photographer": "ns creation nadeem shaikh",
+  "url": "https://www.pexels.com/photo/joyful-indian-wedding-ceremony-capture-35008110/",
+  "query": "indian wedding couple mandap garlands ceremony"
+ },
+ "editing-desk": {
+  "id": 16313525,
+  "photographer": "Kawê  Rodrigues",
+  "url": "https://www.pexels.com/photo/woman-hands-holding-camera-over-desk-16313525/",
+  "query": "graphic designer retouching photo desktop monitor tablet"
+ },
+ "studio-reception": {
+  "id": 28991540,
+  "photographer": "Cedé Joey",
+  "url": "https://www.pexels.com/photo/stylish-indoor-tattoo-studio-decor-in-germany-28991540/",
+  "query": "photography studio lobby framed portraits wall"
+ },
+ "birthday-cake": {
+  "id": 1793037,
+  "photographer": "lil artsy",
+  "url": "https://www.pexels.com/photo/white-and-blue-floral-table-lamp-1793037/",
+  "query": "birthday cake lit candles close up"
+ },
+ "product-shoot": {
+  "id": 8128067,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/cosmetic-products-on-pastel-surface-8128067/",
+  "query": "cosmetic jar studio product photography pastel"
  }
 }

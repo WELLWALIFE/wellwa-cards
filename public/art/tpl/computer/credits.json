@@ -1,0 +1,79 @@
+{
+ "lab-interior": {
+  "id": 8353774,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/photo-of-workspace-with-two-monitors-and-keyboard-on-table-8353774/",
+  "query": "computer training lab empty desks monitors",
+  "role": "space"
+ },
+ "student-focused": {
+  "id": 12899196,
+  "photographer": "Mizuno K",
+  "url": "https://www.pexels.com/photo/vertical-shot-of-woman-typing-a-multicoloured-code-12899196/",
+  "query": "young Indian woman typing desktop computer",
+  "role": "people"
+ },
+ "tally-accounting": {
+  "id": 7821914,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/black-and-white-pen-on-white-printer-paper-7821914/",
+  "query": "accounting software invoice spreadsheet monitor",
+  "role": "product"
+ },
+ "graphic-design": {
+  "id": 7675023,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/a-woman-working-at-the-computer-7675023/",
+  "query": "graphic designer tablet photoshop monitor",
+  "role": "product"
+ },
+ "typing-keyboard": {
+  "id": 17810854,
+  "photographer": "Israel Torres",
+  "url": "https://www.pexels.com/photo/hands-on-laptop-keyboard-17810854/",
+  "query": "hands typing keyboard close-up",
+  "role": "detail"
+ },
+ "lab-students-wide": {
+  "id": 5539293,
+  "photographer": "Thành Đỗ",
+  "url": "https://www.pexels.com/photo/students-working-on-computers-5539293/",
+  "query": "indian students computer lab classroom"
+ },
+ "basic-class": {
+  "id": 19747901,
+  "photographer": "Aathif Aarifeen",
+  "url": "https://www.pexels.com/photo/man-working-in-office-19747901/",
+  "query": "indian adult learning computer mouse"
+ },
+ "dca-diploma": {
+  "id": 9829307,
+  "photographer": "Ron Lach",
+  "url": "https://www.pexels.com/photo/woman-holding-a-diploma-9829307/",
+  "query": "indian student holding certificate smiling"
+ },
+ "reception-counter": {
+  "id": 8236022,
+  "photographer": "RAJESH KUMAR    VERMA",
+  "url": "https://www.pexels.com/photo/white-reception-counter-8236022/",
+  "query": "modern office reception desk india"
+ },
+ "spoken-english": {
+  "id": 8199141,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/students-sitting-inside-a-classroom-8199141/",
+  "query": "indian students classroom discussion speaking"
+ },
+ "team-trainers": {
+  "id": 19309949,
+  "photographer": "Iqbal farooz",
+  "url": "https://www.pexels.com/photo/portrait-of-boys-standing-together-19309949/",
+  "query": "indian teachers team standing together"
+ },
+ "trainer-explaining": {
+  "id": 5905570,
+  "photographer": "Katerina Holmes",
+  "url": "https://www.pexels.com/photo/black-teacher-communicating-with-teen-girl-in-classroom-5905570/",
+  "query": "indian teacher explaining whiteboard students"
+ }
+}
