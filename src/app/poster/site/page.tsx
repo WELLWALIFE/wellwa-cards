@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Mic, Clock } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone } from "lucide-react";
 import { PremiumCard, PremiumGate } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -33,6 +33,8 @@ export default function WebsitePage() {
   // Opened with Edit (?edit=1): only the edit tiles, starting at "What do you want to change?" — no link, share or open buttons
   // above them (owner, 14 Oct 2026).
   const [editOnly, setEditOnly] = useState(false);
+  // The tiles that are only a switch or a box unfold below their group instead of opening a page.
+  const [openTool, setOpenTool] = useState<"notice" | "mode" | "domain" | null>(null);
   // Arrived straight from the builder (?published=1): the greeting at the top; ?edit=1 / ?share=1 open that door.
   /** Back from a focused edit (?saved=…): one line says it is on the website, for a moment. */
   const [saved, setSaved] = useState(false);
@@ -117,8 +119,6 @@ export default function WebsitePage() {
   const T = (en: string, h: string) => (hi ? h : en);
   const door = (k: Exclude<Panel, null>) => `flex flex-col items-center justify-center gap-1 rounded-2xl border-2 px-3 py-3.5 text-base font-semibold ${panel === k ? "border-brand bg-brand-soft/60 text-brand-ink" : "border-border bg-surface"}`;
   const doorSub = "block text-[11px] font-normal leading-tight text-muted";
-  const row = "flex w-full items-center gap-3 px-3.5 py-3 text-left";
-  const rowText = (title: string, sub: string) => <span className="min-w-0 flex-1"><b className="block text-sm">{title}</b><span className="block text-xs text-muted">{sub}</span></span>;
 
   return (
     <div className="space-y-4">
@@ -169,6 +169,12 @@ export default function WebsitePage() {
             <button type="button" onClick={() => openEdit(true)} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
+          {/* SEO is its own door under Share and Edit (owner, 14 Oct 2026): how the website shows on Google. */}
+          <Link href="/poster/site/seo" className="flex items-center gap-3 rounded-2xl border-2 border-border bg-surface p-3.5 text-left">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
+            <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("City, areas and search words, with a preview of how it looks on Google", "शहर, इलाक़े और search words, Google पर कैसा दिखेगा उसकी झलक के साथ")}</span></span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
+          </Link>
           </>}
 
           {panel === "share" && !editOnly && (
@@ -190,92 +196,108 @@ export default function WebsitePage() {
           )}
 
           {panel === "edit" && (
-            <div className="space-y-3">
-              {/* One question, six tiles (owner's call, 7 Oct 2026: "edit ko aur easy banao"): each tile is one thing an
-                  owner wants to change, in plain words, and opens one focused screen that saves straight onto the
-                  live website. Everything else (editor, pages, settings) waits under Advanced. */}
-              {/* Said loud, right where Edit opens (owner, 7 Oct 2026: "pata nahi chal raha kis ko edit kar rahe hain"):
-                  the card and the website are ONE thing — the same details, the same link — so every edit is of both. */}
+            <div className="space-y-5">
+              {/* Every part of the card and website is ONE tile, in the order a person thinks of it: the words and photos first,
+                  then contact and place, then the look, then settings and Google (owner, 14 Oct 2026: "sabhi section ko alag
+                  alag tab banao, systematically — pehale konsa fir konsa"). A tile opens one focused screen that saves straight
+                  onto the live website; the few that are only a switch or a box unfold right below their group. */}
               {!editOnly && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-ink">{T("Card and website are one — change anything once, it changes on both.", "Card और website एक हैं — एक बार बदलें, दोनों में बदल जाएगा।")}</p>}
               <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
-              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
+              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="underline">{T("See it", "देखें")}</a></p>}
+              <PhotoNudge />
               {(() => {
-                const tiles = ([
-                  { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}`, scope: "both" },
-                  { k: "about", more: true, I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
-                  { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
-                  { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
-                  // The three designs are the WEBSITE's; the phone card's own look lives under Advanced → Card look & settings.
-                  { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Six designs, colours", "छह design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
-                ] as { k: string; more?: boolean; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean; scope: "both" | "site" | "again" }[]);
-                const tile = (x: (typeof tiles)[number]) => {
+                type Tile = { k: string; I: typeof Camera; t: string; s: string; href?: string; tool?: "notice" | "mode" | "domain"; scope?: "both" | "site" };
+                const groups: { k: string; title: string; tiles: Tile[] }[] = [
+                  { k: "words", title: T("1 · Words & photos", "1 · शब्द और photos"), tiles: [
+                    { k: "trade", I: Store, t: T("Business name & type", "Business का नाम और काम"), s: T("Name, what you do, your link", "नाम, काम, आपका link"), href: `/poster/onboard?step=trade&back=${BACK}`, scope: "both" },
+                    { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
+                    { k: "photo", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Every picture on the website", "website की हर picture"), href: `/poster/onboard?step=extras&part=photos&back=${BACK}`, scope: "both" },
+                    { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
+                    { k: "highlights", I: Star, t: T("Why choose us", "आपकी खासियत"), s: T("What makes you special", "आपको क्यों चुनें"), href: `/poster/onboard?step=highlights&back=${BACK}`, scope: "both" },
+                    { k: "details", I: ListChecks, t: T("About your trade", "आपके काम के बारे में"), s: T("A few taps about what you offer", "आप क्या देते हैं — कुछ tap"), href: `/poster/onboard?step=details&back=${BACK}`, scope: "both" },
+                  ] },
+                  { k: "contact", title: T("2 · Contact & place", "2 · संपर्क और जगह"), tiles: [
+                    { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
+                    { k: "you", I: User, t: T("My name, number & photo", "मेरा नाम, number और photo"), s: T("Changes everywhere at once", "एक साथ हर जगह बदलेगा"), href: `/poster/onboard?step=you&back=${BACK}`, scope: "both" },
+                    { k: "links", I: Wallet, t: T("Payments & social links", "Payment और social links"), s: T("UPI, Instagram, Facebook, Maps", "UPI, Instagram, Facebook, Maps"), href: `/poster/onboard?step=extras&part=links&back=${BACK}`, scope: "both" },
+                  ] },
+                  { k: "look", title: T("3 · Look & pages", "3 · Look और pages"), tiles: [
+                    { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Six designs, colours", "छह design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
+                    { k: "pages", I: LayoutList, t: T("Website pages", "Website के pages"), s: T("Headline, sections, order", "Headline, sections, क्रम"), href: "/poster/website/edit", scope: "site" },
+                    { k: "editor", I: FileText, t: T("Edit text & photos yourself", "शब्द और photos खुद बदलें"), s: T("The full editor", "पूरा editor"), href: `/poster/d/editor?id=${s.cardId}&back=${BACK}`, scope: "both" },
+                    { k: "cardlook", I: Smartphone, t: T("Phone card look", "Phone card का look"), s: T("The card's own design", "card का अपना design"), href: "/poster/card" },
+                  ] },
+                  { k: "settings", title: T("4 · Settings & Google", "4 · Settings और Google"), tiles: [
+                    { k: "notice", I: Megaphone, t: T("Offer & news bar", "Offer और news पट्टी"), s: T("A line at the top of the website", "website के ऊपर एक लाइन"), tool: "notice" },
+                    { k: "mode", I: Settings, t: T("Website mode & pages shown", "Website mode और कौन से pages दिखें"), s: T("Switch on or off", "चालू या बंद"), tool: "mode" },
+                    { k: "domain", I: Globe, t: T("Your own domain", "अपना domain"), s: T("www.yourshop.com", "www.yourshop.com"), tool: "domain" },
+                  ] },
+                ];
+                const base = "block rounded-2xl border-2 bg-surface p-3 text-left";
+                const tile = (x: Tile) => {
+                  const on = x.tool && openTool === x.tool;
                   const inner = (
                     <>
                       <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
-                      <span className="mt-2 block text-sm font-bold leading-tight">{x.t}{x.premium && <span className="ml-1.5 inline-flex items-center rounded-full bg-[#12144a] px-1.5 py-0.5 align-middle text-[9px] font-bold text-[#ffd54a]">Premium</span>}</span>
+                      <span className="mt-2 block text-sm font-bold leading-tight">{x.t}</span>
                       <span className="mt-0.5 block text-[11px] leading-tight text-muted">{x.s}</span>
-                      <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Shows on card + website", "Card + website पर दिखेगा") : x.scope === "again" ? T("Card now · website after Write again", "Card अभी · website Write again के बाद") : T("Website only", "सिर्फ़ website")}</span>
+                      {x.scope && <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Shows on card + website", "Card + website पर दिखेगा") : T("Website only", "सिर्फ़ website")}</span>}
                     </>
                   );
-                  const cls = "block rounded-2xl border-2 border-border bg-surface p-3 text-left";
-                  return x.href ? <Link key={x.k} href={x.href} className={cls}>{inner}</Link> : <button key={x.k} type="button" onClick={x.onClick} disabled={!card} className={`${cls} border-brand/40 bg-brand-soft/30 disabled:opacity-60`}>{inner}</button>;
-};
+                  return x.href
+                    ? <Link key={x.k} href={x.href} className={`${base} border-border`}>{inner}</Link>
+                    : <button key={x.k} type="button" onClick={() => setOpenTool(on ? null : x.tool ?? null)} aria-expanded={!!on} className={`${base} ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>{inner}</button>;
+                };
                 return (
                   <>
-                    <div className="grid grid-cols-2 gap-2">{tiles.filter((x) => !x.more).map(tile)}</div>
-                    <details className="rounded-2xl border border-border bg-surface">
-                      <summary className="cursor-pointer list-none px-3.5 py-3 text-sm font-semibold">{T("More changes (about & logo)", "और बदलाव (परिचय और logo)")}</summary>
-                      <div className="grid grid-cols-2 gap-2 p-3 pt-0">{tiles.filter((x) => x.more).map(tile)}</div>
-                    </details>
+                    {groups.map((g) => (
+                      <section key={g.k} className="space-y-2">
+                        <h2 className="text-sm font-bold text-muted">{g.title}</h2>
+                        <div className="grid grid-cols-2 gap-2">
+                          {g.tiles.map(tile)}
+                          {g.k === "settings" && (
+                            <Link href="/poster/site/seo" className={`${base} border-border`}>
+                              <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
+                              <span className="mt-2 block text-sm font-bold leading-tight">{T("Show on Google (SEO)", "Google पर दिखें (SEO)")}</span>
+                              <span className="mt-0.5 block text-[11px] leading-tight text-muted">{T("City, areas, search words", "शहर, इलाक़े, search words")}</span>
+                            </Link>
+                          )}
+                        </div>
+                        {g.k === "settings" && openTool === "notice" && card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
+                        {g.k === "settings" && openTool === "mode" && (
+                          <div className="space-y-3 rounded-2xl border border-border p-3">
+                            <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
+                              <span><span className="block text-sm font-medium">{T("Website mode", "Website mode")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
+                              <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
+                            </label>
+                            <p className="text-sm font-semibold">{T("Pages shown on the website", "Website पर कौन से pages दिखें")}</p>
+                            {s.pages.map((p) => (
+                              <label key={p.slug} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "sections")}</span></span>
+                                <input type="checkbox" className="h-5 w-5" checked={!hidden.has(p.slug)} onChange={(e) => { const h = new Set(hidden); if (e.target.checked) h.delete(p.slug); else h.add(p.slug); patch({ hidden: [...h] }); }} />
+                              </label>
+                            ))}
+                          </div>
+                        )}
+                        {g.k === "settings" && openTool === "domain" && (
+                          <div className="rounded-2xl border border-border p-3">
+                            {domainOk || s.customDomain
+                              ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
+                              : <p className="text-sm text-muted">{T("Your own domain (www.yourshop.com) comes with Growth.", "अपना domain (www.yourshop.com) Growth के साथ आता है।")}</p>}
+                          </div>
+                        )}
+                        {g.k === "settings" && !paid && (
+                          <PremiumGate locked feature={T("Removing the Shubhora tag", "Shubhora tag हटाना")}>
+                            <div className="rounded-xl border border-border bg-surface p-3 pr-20"><p className="flex items-center gap-1.5 text-sm font-semibold"><Tag className="h-4 w-4 text-brand" /> {T("Remove the Shubhora tag", "Shubhora tag हटाएँ")}</p></div>
+                          </PremiumGate>
+                        )}
+                      </section>
+                    ))}
                   </>
                 );
               })()}
-              <PhotoNudge />
-              {/* Advanced: everything the six tiles do not cover. */}
-              <details className="rounded-2xl border border-border bg-surface">
-                <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Settings className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Advanced", "Advanced"), T("Name & number, full editor, pages, news, settings, your own domain", "नाम और number, पूरा editor, pages, news, settings, अपना domain"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
-                <div className="divide-y divide-border border-t border-border">
-                  <Link href={`/poster/onboard?step=you&back=${BACK}`} className={row}><Pencil className="h-5 w-5 shrink-0 text-muted" />{rowText(T("My name, number & photo", "मेरा नाम, number और photo"), T("Changes everywhere at once", "एक साथ हर जगह बदलेगा"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href={`/poster/d/editor?id=${s.cardId}&back=${BACK}`} className={row}><Type className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Edit text & photos yourself", "शब्द और photos खुद बदलें"), T("The full editor — every page, every section", "पूरा editor — हर page, हर section"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href="/poster/website/edit" className={row}><Globe className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Website pages", "Website के pages"), T("Headline, sections, which pages show", "Headline, sections, कौन से pages दिखें"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                </div>
-                <div className="space-y-4 border-t border-border p-3">
-                  {card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
-                  <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
-                    <span><span className="block text-sm font-medium">{T("Website mode", "Website mode")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
-                    <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
-                  </label>
-                  <section className="space-y-2">
-                    <p className="text-sm font-semibold">{T("Pages shown on the website", "Website पर कौन से pages दिखें")}</p>
-                    {s.pages.map((p) => (
-                      <label key={p.slug} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                        <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "sections")}</span></span>
-                        <input type="checkbox" className="h-5 w-5" checked={!hidden.has(p.slug)} onChange={(e) => { const h = new Set(hidden); if (e.target.checked) h.delete(p.slug); else h.add(p.slug); patch({ hidden: [...h] }); }} />
-                      </label>
-                    ))}
-                  </section>
-                  {!paid && (
-                    <div className="grid grid-cols-2 gap-2">
-                      <PremiumGate locked feature={T("Website on Google", "Google पर website")}>
-                        <div className="rounded-xl border border-border bg-surface p-3 pr-20"><p className="flex items-center gap-1.5 text-sm font-semibold"><Search className="h-4 w-4 text-brand" /> {T("Show on Google", "Google पर दिखे")}</p></div>
-                      </PremiumGate>
-                      <PremiumGate locked feature={T("Removing the Shubhora tag", "Shubhora tag हटाना")}>
-                        <div className="rounded-xl border border-border bg-surface p-3 pr-20"><p className="flex items-center gap-1.5 text-sm font-semibold"><Tag className="h-4 w-4 text-brand" /> {T("Remove the Shubhora tag", "Shubhora tag हटाएँ")}</p></div>
-                      </PremiumGate>
-                    </div>
-                  )}
-                  <section className="space-y-2">
-                    <p className="text-sm font-semibold">🌍 {T("Put it on your own domain", "अपने domain पर लगाएँ")}</p>
-                    {domainOk || s.customDomain
-                      ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
-                      : <p className="rounded-xl border border-border bg-surface p-3 text-sm text-muted">{T("Your own domain (www.yourshop.com) comes with Growth.", "अपना domain (www.yourshop.com) Growth plan में आता है।")} <Link href="/poster/plan" className="font-semibold text-brand-ink">{T("See plans →", "Plans देखें →")}</Link></p>}
-                  </section>
-                  <Link href="/poster/card" className="flex items-center gap-2 text-sm font-medium text-brand-ink"><Smartphone className="h-4 w-4" /> {T("Card look & settings (the phone card's own design, Shubhora partner page)", "Card का look और settings (phone card का अपना design, Shubhora partner page)")}</Link>
-                </div>
-              </details>
             </div>
           )}
-
 
           {!paid && <PremiumCard compact />}
         </>
