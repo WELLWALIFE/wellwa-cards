@@ -234,6 +234,112 @@ export function ReviewRow({ items, t }: { items: TestimonialItem[]; t: T }) {
   );
 }
 
+/* ---------- Colour poster (Chaayos, Nham) and Tile board (Notion, Practo) ---------- */
+
+/** Services as solid colour blocks, the name in capitals and a big number — a poster wall. */
+export function ColourBlocks({ items, t }: { items: { name: string; desc?: string }[]; t: T }) {
+  return (
+    <ul className="col-blocks">
+      {items.map((s, i) => (
+        <li key={i} data-c={i % 3}>
+          <span>{String(i + 1).padStart(2, "0")}</span>
+          <h3>{t(clean(s.name))}</h3>
+          {s.desc && <p>{t(s.desc)}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Photos with a solid caption bar across the foot of each, three across (Chaayos "Shop now"). */
+export function LabelWall({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: number) => void; t: T }) {
+  const n = imgs.length >= 3 ? imgs.length - (imgs.length % 3 === 0 ? 0 : imgs.length % 3) : imgs.length;
+  return (
+    <div className="label-wall">
+      {imgs.slice(0, n || imgs.length).map((g, i) => (
+        <button key={i} type="button" className="label-it" data-c={i % 3} onClick={() => onOpen(i)}>
+          <Img src={g.url!} alt={g.label} className="label-img" eager={i < 3} sizes="(min-width:768px) 33vw, 50vw" />
+          {g.label && <span className="label-bar">{t(g.label)}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** Reviews as coloured cards, each its own field, the quote large. */
+export function ColourReviews({ items, t }: { items: TestimonialItem[]; t: T }) {
+  return (
+    <div className="col-revs">
+      {items.slice(0, 3).map((x, i) => (
+        <figure key={i} data-c={i % 3}>
+          <span aria-hidden="true">“</span>
+          <blockquote>{t(x.text)}</blockquote>
+          <figcaption>{x.name}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
+/** Services as a bento: the first card double-size and filled, the rest small, a label on top and an arrow below. */
+export function BentoServices({ items, t }: { items: { name: string; desc?: string }[]; t: T }) {
+  return (
+    <ul className="bento-sv">
+      {items.map((s, i) => (
+        <li key={i} className={i === 0 ? "lead" : ""}>
+          <small>{String(i + 1).padStart(2, "0")}</small>
+          <h3>{t(clean(s.name))}</h3>
+          {s.desc && <p>{t(s.desc)}</p>}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+/** Photos as bento tiles of mixed size, the label a pill in the corner. */
+export function BentoGallery({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: number) => void; t: T }) {
+  return (
+    <div className="bento-gl">
+      {imgs.slice(0, 4).map((g, i) => (
+        <button key={i} type="button" className="bento-gl-it" data-i={i} onClick={() => onOpen(i)}>
+          <Img src={g.url!} alt={g.label} className="bento-gl-img" eager={i < 3} sizes="(min-width:768px) 30vw, 50vw" />
+          {g.label && <span className="bento-pill">{t(g.label)}</span>}
+        </button>
+      ))}
+    </div>
+  );
+}
+
+/** About as two bento cards: the words on a tint, the photo beside them. */
+export function BentoAbout({ title, body, image, eyebrow, t }: { title: string; body: string; image?: string; eyebrow: string; t: T }) {
+  const ps = paras(body);
+  return (
+    <div className={`bento-ab ${image ? "has-img" : ""}`}>
+      <div className="bento-ab-words">
+        <small>{eyebrow}</small>
+        <h2>{t(title)}</h2>
+        <div>{ps.map((x, i) => <p key={i}>{t(x)}</p>)}</div>
+      </div>
+      {image && <div className="bento-ab-ph"><Img src={image} alt="" className="bento-ab-img" sizes="(min-width:900px) 40vw, 100vw" /></div>}
+    </div>
+  );
+}
+
+/** Reviews as bento cards: the first wide, a stars line on each. */
+export function BentoReviews({ items, t }: { items: TestimonialItem[]; t: T }) {
+  return (
+    <div className="bento-rv">
+      {items.slice(0, 3).map((x, i) => (
+        <figure key={i} className={i === 0 ? "lead" : ""}>
+          <span className="bento-stars">{"★".repeat(Math.max(1, Math.min(5, Math.round(Number(x.rating) || 5))))}</span>
+          <blockquote>{t(x.text)}</blockquote>
+          <figcaption>{x.name}</figcaption>
+        </figure>
+      ))}
+    </div>
+  );
+}
+
 /** CSS for both looks (tokens only), scoped to the blueprint so no other look changes. */
 export const SCENES_CSS = `
 .site[data-bp="cinematic"] .scene-about{position:relative;min-height:min(86vh,720px);display:flex;align-items:flex-end;overflow:hidden;color:#fff;background:#111}
@@ -348,4 +454,69 @@ export const SCENES_CSS = `
 .site[data-bp="collage"] main .s-card>.p-5{padding:10px 0 0}
 .site[data-bp="collage"] main .s-card .line-clamp-2,.site[data-bp="collage"] main .s-card details{display:none}
 @media (min-width:900px){.site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(4,minmax(0,1fr))}}
+
+.site[data-bp="story"] .col-blocks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.site[data-bp="story"] .col-blocks li{display:flex;flex-direction:column;gap:8px;padding:18px 16px 22px;min-height:150px;border:2px solid var(--p-deep);box-shadow:5px 5px 0 0 var(--p-deep)}
+.site[data-bp="story"] .col-blocks li[data-c="0"]{background:var(--p-deep);color:#fff}
+.site[data-bp="story"] .col-blocks li[data-c="1"]{background:var(--p-soft);color:var(--p-deep)}
+.site[data-bp="story"] .col-blocks li[data-c="2"]{background:#fff;color:var(--p-deep)}
+.site[data-bp="story"] .col-blocks span{font-family:var(--font-display,var(--look-head));font-size:2.2rem;line-height:1;opacity:.9}
+.site[data-bp="story"] .col-blocks h3{margin:auto 0 0;text-transform:uppercase;letter-spacing:.03em;font-size:1rem;line-height:1.2;font-weight:800}
+.site[data-bp="story"] .col-blocks p{margin:0;font-size:13px;line-height:1.4;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+@media (min-width:900px){.site[data-bp="story"] .col-blocks{grid-template-columns:repeat(4,1fr);gap:16px}}
+.site[data-bp="story"] .label-wall{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.site[data-bp="story"] .label-it{position:relative;display:block;aspect-ratio:3/4;overflow:hidden;border:2px solid var(--p-deep);padding:0;background:var(--paper-2);cursor:zoom-in}
+.site[data-bp="story"] .label-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site[data-bp="story"] .label-bar{position:absolute;left:0;right:0;bottom:0;padding:9px 10px;text-align:center;text-transform:uppercase;letter-spacing:.08em;font-weight:800;font-size:12px;border-top:2px solid var(--p-deep)}
+.site[data-bp="story"] .label-it[data-c="0"] .label-bar{background:var(--p-deep);color:#fff}
+.site[data-bp="story"] .label-it[data-c="1"] .label-bar{background:var(--p-soft);color:var(--p-deep)}
+.site[data-bp="story"] .label-it[data-c="2"] .label-bar{background:#fff;color:var(--p-deep)}
+@media (min-width:768px){.site[data-bp="story"] .label-wall{grid-template-columns:repeat(3,1fr);gap:16px}.site[data-bp="story"] .label-it{aspect-ratio:4/5}}
+.site[data-bp="story"] .col-revs{display:grid;gap:14px}
+.site[data-bp="story"] .col-revs figure{margin:0;padding:22px;border:2px solid var(--p-deep);box-shadow:6px 6px 0 0 var(--p-deep);display:flex;flex-direction:column;gap:10px}
+.site[data-bp="story"] .col-revs figure[data-c="0"]{background:var(--p-deep);color:#fff}
+.site[data-bp="story"] .col-revs figure[data-c="1"]{background:var(--p-soft);color:var(--p-deep)}
+.site[data-bp="story"] .col-revs figure[data-c="2"]{background:#fff;color:var(--p-deep)}
+.site[data-bp="story"] .col-revs span{font-family:var(--font-display,var(--look-head));font-size:3rem;line-height:.6}
+.site[data-bp="story"] .col-revs blockquote{margin:0;font-weight:600;font-size:1.05rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="story"] .col-revs figcaption{margin-top:auto;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:800}
+@media (min-width:900px){.site[data-bp="story"] .col-revs{grid-template-columns:repeat(3,1fr);gap:18px}}
+
+.site[data-bp="bento"] .bento-sv{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.site[data-bp="bento"] .bento-sv li{position:relative;display:flex;flex-direction:column;gap:6px;padding:18px;min-height:132px;border-radius:var(--r-tile);background:var(--surface);border:1px solid var(--line)}
+.site[data-bp="bento"] .bento-sv li.lead{grid-column:1/-1;background:var(--accent);color:var(--on-accent);border-color:transparent;min-height:180px}
+.site[data-bp="bento"] .bento-sv small{font-size:12px;letter-spacing:.14em;opacity:.7}
+.site[data-bp="bento"] .bento-sv h3{margin:auto 0 0;font-size:1.05rem;line-height:1.2;font-weight:700;padding-right:30px}
+.site[data-bp="bento"] .bento-sv li.lead h3{font-size:clamp(1.4rem,4vw,2rem)}
+.site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="bento"] .bento-sv li.lead p{color:inherit;opacity:.85}
+.site[data-bp="bento"] .bento-sv li::after{content:"\\2192";position:absolute;right:14px;bottom:14px;display:grid;place-items:center;width:28px;height:28px;border-radius:999px;background:var(--p-soft);color:var(--accent);font-size:14px}
+.site[data-bp="bento"] .bento-sv li.lead::after{background:var(--on-accent);color:var(--accent)}
+@media (min-width:900px){.site[data-bp="bento"] .bento-sv{grid-template-columns:repeat(4,1fr);gap:14px}.site[data-bp="bento"] .bento-sv li.lead{grid-column:span 2;grid-row:span 2}}
+.site[data-bp="bento"] .bento-gl{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:150px;gap:10px}
+.site[data-bp="bento"] .bento-gl-it{position:relative;overflow:hidden;border:0;padding:0;border-radius:var(--r-tile);background:var(--paper-2);cursor:zoom-in}
+.site[data-bp="bento"] .bento-gl-it[data-i="0"]{grid-column:1/-1;grid-row:span 2}.site[data-bp="bento"] .bento-gl-it[data-i="3"]{grid-column:1/-1}
+.site[data-bp="bento"] .bento-gl-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.site[data-bp="bento"] .bento-pill{position:absolute;left:10px;bottom:10px;padding:5px 12px;border-radius:999px;background:rgb(255 255 255/.92);color:#1a1a1a;font-size:12px;font-weight:600}
+@media (min-width:900px){.site[data-bp="bento"] .bento-gl{grid-template-columns:repeat(4,1fr);grid-auto-rows:190px}.site[data-bp="bento"] .bento-gl-it[data-i="0"]{grid-column:span 2;grid-row:span 2}.site[data-bp="bento"] .bento-gl-it[data-i="3"]{grid-column:span 2}}
+.site[data-bp="bento"] .bento-ab{display:grid;gap:12px}
+.site[data-bp="bento"] .bento-ab-words{padding:var(--s5);border-radius:var(--r-tile);background:var(--surface);border:1px solid var(--line)}
+.site[data-bp="bento"] .bento-ab-words small{font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent);font-weight:700}
+.site[data-bp="bento"] .bento-ab-words h2{margin:10px 0 0;font-family:var(--font-display,var(--look-head));font-size:clamp(1.7rem,5vw,2.6rem);line-height:1.08;letter-spacing:-.02em}
+.site[data-bp="bento"] .bento-ab-words div{margin-top:var(--s4);color:var(--muted);line-height:1.6}
+.site[data-bp="bento"] .bento-ab-words p+p{margin-top:.7em}
+.site[data-bp="bento"] .bento-ab-ph{position:relative;min-height:260px;border-radius:var(--r-tile);overflow:hidden}
+.site[data-bp="bento"] .bento-ab-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+@media (min-width:900px){.site[data-bp="bento"] .bento-ab.has-img{grid-template-columns:1.5fr 1fr;gap:14px}.site[data-bp="bento"] .bento-ab-words{padding:var(--s7)}}
+.site[data-bp="bento"] .bento-rv{display:grid;gap:12px}
+.site[data-bp="bento"] .bento-rv figure{margin:0;padding:22px;border-radius:var(--r-tile);background:var(--surface);border:1px solid var(--line);display:flex;flex-direction:column;gap:10px}
+.site[data-bp="bento"] .bento-rv figure.lead{background:var(--paper);box-shadow:0 10px 30px -22px rgb(0 0 0/.35)}
+.site[data-bp="bento"] .bento-stars{color:var(--accent);letter-spacing:.12em;font-size:14px}
+.site[data-bp="bento"] .bento-rv blockquote{margin:0;line-height:1.55;font-size:1rem;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="bento"] .bento-rv figure.lead blockquote{font-family:var(--font-display,var(--look-head));font-size:1.35rem;line-height:1.3}
+.site[data-bp="bento"] .bento-rv figcaption{margin-top:auto;font-size:13px;font-weight:600;color:var(--muted)}
+@media (min-width:900px){.site[data-bp="bento"] .bento-rv{grid-template-columns:2fr 1fr 1fr;gap:14px}}
+.site[data-bp="bento"] main .faq{border:0;display:grid;gap:10px}
+.site[data-bp="bento"] main .faq details{border:1px solid var(--line);border-radius:var(--r-card);padding:0 18px;background:var(--surface)}
+@media (min-width:900px){.site[data-bp="bento"] main .faq.grid{grid-template-columns:1fr 1fr}}
 `;
