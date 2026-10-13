@@ -32,13 +32,16 @@ export default function WebsitePage() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [panel, setPanel] = useState<Panel>(null);
+  // Opened with Edit (?edit=1): only the edit tiles, starting at "What do you want to change?" — no link, share or open buttons
+  // above them (owner, 14 Oct 2026).
+  const [editOnly, setEditOnly] = useState(false);
   // Arrived straight from the builder (?published=1): the greeting at the top; ?edit=1 / ?share=1 open that door.
   /** Back from a focused edit (?saved=…): one line says it is on the website, for a moment. */
   const [saved, setSaved] = useState(false);
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.get("edit") === "1") setPanel("edit"); if (q.get("share") === "1") setPanel("share");
+      if (q.get("edit") === "1") { setPanel("edit"); if (q.get("share") !== "1" && !q.get("published")) setEditOnly(true); } if (q.get("share") === "1") setPanel("share");
       if (q.has("saved")) { setSaved(true); setTimeout(() => setSaved(false), 8000); }
       // The one-time flags leave the address, so a reload or Back does not replay them.
       if (q.has("saved") || q.has("published")) { q.delete("saved"); q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
@@ -121,6 +124,7 @@ export default function WebsitePage() {
             </select>
           )}
 
+          {!editOnly && <>
           {/* ---- 1. the link ---- */}
           <section className="space-y-3 rounded-2xl border border-border p-3">
             <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2.5">
@@ -147,7 +151,9 @@ export default function WebsitePage() {
             <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
-          {panel === "share" && (
+          </>}
+
+          {panel === "share" && !editOnly && (
             <section className="space-y-2 rounded-2xl border border-border p-3">
               <p className="text-sm font-semibold">{T("Share on WhatsApp", "WhatsApp पर share करें")}</p>
               <button type="button" onClick={shareCard} className="flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-3.5 text-left text-white">
@@ -172,7 +178,7 @@ export default function WebsitePage() {
                   live website. Everything else (editor, pages, settings) waits under Advanced. */}
               {/* Said loud, right where Edit opens (owner, 7 Oct 2026: "pata nahi chal raha kis ko edit kar rahe hain"):
                   the card and the website are ONE thing — the same details, the same link — so every edit is of both. */}
-              <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-ink">{T("Card and website are one — change anything once, it changes on both.", "Card और website एक हैं — एक बार बदलें, दोनों में बदल जाएगा।")}</p>
+              {!editOnly && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-ink">{T("Card and website are one — change anything once, it changes on both.", "Card और website एक हैं — एक बार बदलें, दोनों में बदल जाएगा।")}</p>}
               <p className="text-base font-bold">{T("What do you want to change?", "क्या बदलना है?")}</p>
               {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
               {(() => {

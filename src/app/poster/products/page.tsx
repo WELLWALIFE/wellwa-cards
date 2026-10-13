@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, RefreshCw } from "lucide-react";
+import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw } from "lucide-react";
 import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
@@ -338,7 +338,7 @@ export default function ProductsPage() {
       {err && !draft && <p className="text-sm text-danger">{err}</p>}
       {/* The truth about the live website (audit, 7 Oct 2026): the AI laid the products out at build time, so a product
           added here reaches the website through Write again — said here, with the button, instead of silently not. */}
-      {!setupMode && hasLive && (
+      {!setupMode && hasLive && list.length > 0 && !draft && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
           <span className="min-w-0 flex-1">{C("Changes here go on your card and posters at once. For the website, run Write again once you are done.", "यहाँ के बदलाव card और poster पर तुरंत आते हैं। Website के लिए, काम पूरा होने पर एक बार Write again चलाएँ।")}</span>
           <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Update website", "Website update करें")}</Link>
@@ -361,6 +361,7 @@ export default function ProductsPage() {
       )}
       {draft && (
         <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
+          <p className="text-base font-bold">{draft.id ? C("Edit product", "Product बदलें") : C(copy.add, copy.addHi)}</p>
           <div className="flex items-center gap-3">
             <span className="h-20 w-20 rounded-xl bg-surface border border-border grid place-items-center overflow-hidden shrink-0">
               {draft.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={draft.photo_url} alt="" className="h-full w-full object-contain" /> : busy ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : <Camera className="h-6 w-6 text-muted" />}
@@ -379,7 +380,10 @@ export default function ProductsPage() {
               </div>
             </div>
           </div>
-          <input className={inp} placeholder={C(copy.name, copy.nameHi)} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <label className="block space-y-1">
+            <span className="block text-xs font-semibold">{C("Name", "नाम")} <span className="text-danger">*</span></span>
+            <input className={inp} placeholder={C(copy.name, copy.nameHi)} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          </label>
           {/* Two prices: the offer price (what the customer pays) and, if there is a discount, the MRP. */}
           <div className={`grid gap-2 ${copy.mrp ? "grid-cols-2" : "grid-cols-1"}`}>
             <label className="block space-y-1">
@@ -441,7 +445,7 @@ export default function ProductsPage() {
 
           {err && <p className="text-sm text-danger">{err}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">✕</button>
+            <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{C("Cancel", "रहने दें")}</button>
             <button type="button" onClick={save} disabled={busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
           </div>
         </div>
@@ -460,6 +464,14 @@ export default function ProductsPage() {
           : `${offCount} product छिपे हैं — यहाँ रहेंगे, पर card, website और poster पर नहीं जाएँगे।`}</p>
       )}
       <div className="space-y-2">
+        {list.length === 0 && !draft && !setupMode && (
+          <div className="rounded-2xl border-2 border-dashed border-brand/40 bg-brand-soft/30 p-5 text-center">
+            <Package className="mx-auto h-8 w-8 text-brand" />
+            <p className="mt-2 text-base font-bold">{C("No products yet", "अभी कोई product नहीं")}</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted">{C("Add your first one: a photo, a name and a price. It shows on your card, website and posters.", "पहला जोड़ें: एक photo, नाम और दाम। ये card, website और poster पर दिखेगा।")}</p>
+            <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="mt-3 inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>
+          </div>
+        )}
         {list.map((p) => (
           <div key={p.id} className={`flex items-center gap-3 rounded-xl border p-3 ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border"}`}>
             <div className="h-14 w-14 rounded-lg bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
@@ -481,14 +493,14 @@ export default function ProductsPage() {
         ))}
         {/* Setup journey: the person just chose "my own business" — selling Shubhora is not offered here. */}
         {!draft && !hasShubhora && !setupMode && (
-          <div className={`rounded-xl border p-3 ${list.length === 0 ? "border-brand bg-brand-soft/40" : "border-border"}`}>
-            <p className="text-sm font-semibold">{en ? "No products of your own? Sell the V-Card itself." : "Apna koi product nahi? V-Card hi sell karo."}</p>
+          <details className="rounded-xl border border-border p-3">
+            <summary className="cursor-pointer text-sm font-semibold">{en ? "No products of your own? Sell the V-Card itself." : "Apna koi product nahi? V-Card hi sell karo."}</summary>
             <p className="mt-0.5 text-xs text-muted">{en ? "Adds the 3 Shubhora plans (Free, Growth ₹2,999, Custom Solutions) as your products for posters, and opens the ready-made Shubhora seller card — banner, logo, plans, demo videos and the business plan. Put your name and number on it and publish." : "Shubhora ke 3 plan (Free, Growth ₹2,999, Custom Solutions) poster ke liye product ban jaayenge, aur Shubhora ka bana-banaya seller card khulega — banner, logo, plans, demo video, business plan. Apna naam-number daal ke publish kar do."}</p>
             <button type="button" onClick={() => setAskShubhora(true)} disabled={busy} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {en ? "Make my Shubhora seller card" : "Shubhora seller card banao"}
             </button>
             {err && <p className="mt-2 text-sm text-danger">{err}</p>}
-          </div>
+          </details>
         )}
         {askShubhora && (
           <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 p-3 sm:items-center" onClick={() => setAskShubhora(false)}>
@@ -506,7 +518,7 @@ export default function ProductsPage() {
             </div>
           </div>
         )}
-        {list.length === 0 && !draft && <p className="text-sm text-muted">{C(copy.empty, copy.emptyHi)}</p>}
+        {list.length === 0 && !draft && setupMode && <p className="text-sm text-muted">{C(copy.empty, copy.emptyHi)}</p>}
       </div>
       {/* Setup journey (?setup=1): a product is not required to make the card — one clear way on, with or without. */}
       {setupMode && !draft && (

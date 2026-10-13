@@ -433,6 +433,11 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   };
   // Category tabs need real groups: each group holds two or more products, and there are two to six of them.
   const groupOf = (() => {
+    // The owner's own category on the products wins when it makes real groups; else the AI's groups.
+    const own = new Map<string, number>();
+    for (const p of input.products) { const c = (p.category ?? "").trim().toLowerCase(); if (c) own.set(c, (own.get(c) ?? 0) + 1); }
+    const ownGood = new Set([...own].filter(([, n]) => n >= 2).map(([k]) => k));
+    if (ownGood.size >= 2 && ownGood.size <= 6) return (_d: string, _r: string, mine?: string): string => (ownGood.has((mine ?? "").trim().toLowerCase()) ? (mine ?? "").trim().slice(0, 28) : "");
     const g = copy.productGroups ?? {};
     const by = new Map<string, number>();
     for (const v of Object.values(g)) by.set(v.toLowerCase(), (by.get(v.toLowerCase()) ?? 0) + 1);
@@ -471,7 +476,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       ...(mrp ? { mrp } : {}),
       ...(p.offer ? { badge: p.offer.slice(0, 20) } : {}),
       ...(desc ? { desc } : {}),
-      ...(groupOf(display, p.name) ? { category: groupOf(display, p.name) } : {}),
+      ...(groupOf(display, p.name, p.category) ? { category: groupOf(display, p.name, p.category) } : {}),
       features,
       specs,
       ctaLabel: ctaText,

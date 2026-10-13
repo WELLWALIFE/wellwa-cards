@@ -16,7 +16,8 @@
 // the poster profile (posters, card, website), the account (the AI reads "about") and the card facts.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronLeft, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
+import { SitePhotos } from "@/components/poster/site-photos";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
@@ -384,6 +385,11 @@ function Onboard() {
    *  login (the new number signs in), the posters, the V-Card and the partner ID — /api/account/details does the
    *  server side, then the setup's own card sync re-publishes the card picture / number. Before, "Next" only
    *  changed the login, and the card and posters kept the old details until the whole setup was saved again. */
+  /** The fact keys a save sends. The Photos edit changes the banner and the gallery on the server itself (one tap at a time), so
+   *  this screen's older copy of them must never be sent back over those changes. */
+  function factKeys(): readonly (keyof CardFacts)[] {
+    return editing ? SCREEN_FACT_KEYS.filter((k) => k !== "bannerUrl" && k !== "photos") : SCREEN_FACT_KEYS;
+  }
   /** Step 1's fact: the WhatsApp number, only when it differs from the mobile. */
   function youFacts(): { whatsapp: string; phone2: string } {
     const mobile = you.phone.replace(/\D/g, "").slice(-10);
@@ -961,7 +967,7 @@ function Onboard() {
       let siteChanged = false;
       try { siteChanged = await saveSiteFacts(); } catch { /* the V-Card form asks again */ }
       // Step 1's designation / WhatsApp and step 2's company details (timings, photos, payments, social…).
-      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, SCREEN_FACT_KEYS) : {}) } } }); } catch { /* the build form shows them again */ }
+      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, factKeys()) : {}) } } }); } catch { /* the build form shows them again */ }
       // Keep the published V-Card in step with the setup (name, business, photo, logo, number).
       // A changed website on a live card is rebuilt below (and that publish asks first): then only the identity is
       // synced now, never the new site's about / address ahead of the owner's answer.
@@ -1058,7 +1064,7 @@ function Onboard() {
       if ((biz.category ?? "").trim() && (you.name.trim().length >= 2 || (biz.name ?? "").trim())) { if (profileRef.current) await syncProfile(); else await ensureProfile(); }
       await sb?.auth.updateUser({ data: { ...emailMeta(), business: bizMeta(), ...(nxt ? { setup_pos: nxt } : {}) } });
       await bumpServerBase();
-      if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, SCREEN_FACT_KEYS) } }).catch(() => undefined);
+      if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, factKeys()) } }).catch(() => undefined);
     } catch { /* offline: the draft keeps it; Save writes it all again */ }
   }
   const at = ONBOARD_SCREENS.indexOf(step);
@@ -1135,7 +1141,7 @@ function Onboard() {
       )}
       {editing ? (
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-semibold text-muted">{T("Edit", "Edit")} · {hi ? screenInfo.hi : screenInfo.en}</p>
+        <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); router.push(back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "Edit")} · {hi ? screenInfo.hi : screenInfo.en}</p>
         <button type="button" onClick={() => { clearDraft(); router.push(back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
@@ -1495,8 +1501,10 @@ function Onboard() {
       ) : (
         <section className="space-y-4">
           {head(T("Photos & more", "Photos और बाकी"), T("All optional. No photos? Ready pictures of your trade are used; change them any time.", "सब optional। Photos नहीं हैं? आपके काम की तैयार pictures लगेंगी; कभी भी बदल सकते हैं।"))}
-          <FactsFields group="company" only={["q-photos", "q-pay", "q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
-          <div className="space-y-3 rounded-2xl border border-border p-4">
+          {/* A focused edit shows the photos that are on the website, one by one; the set-up (no website yet) asks for the banner and photos. */}
+          {editing && <SitePhotos hi={hi} />}
+          <FactsFields group="company" only={editing ? ["q-pay", "q-social"] : ["q-photos", "q-pay", "q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
+          {!editing && <div className="space-y-3 rounded-2xl border border-border p-4">
               {/* The website is asked on its own step; here it is only shown, with one way back to change it. */}
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm">
                 <Globe className="h-4 w-4 shrink-0 text-muted" />
@@ -1508,7 +1516,7 @@ function Onboard() {
                   : <span className="text-muted">{T("none", "नहीं है")}</span>}
                 <button type="button" onClick={() => { setSiteErr(""); returnTo.current = "extras"; setStep("site"); }} className="font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>
               </div>
-          </div>
+          </div>}
           {nextBar(true)}
         </section>
       )}

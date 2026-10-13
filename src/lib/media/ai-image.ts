@@ -1,5 +1,6 @@
 import "server-only";
 // One AI photo from a text prompt (Gemini image model), stored in public media storage.
+import sharp from "sharp";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
@@ -22,10 +23,18 @@ export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4
   } catch { return null; }
 }
 
+/** A picture the website will show is stored as a compact JPEG, at most 1600 px wide: the image model hands back a 1-2 MB PNG,
+ *  and a page of six of them is slow on a phone and heavy on our server (owner, 14 Oct 2026: "image size auto compact"). */
+export async function compactImage(src: Buffer, maxWidth = 1600): Promise<Buffer> {
+  try { return await sharp(src).rotate().resize({ width: maxWidth, withoutEnlargement: true }).jpeg({ quality: 82, mozjpeg: true }).toBuffer(); } catch { return src; }
+}
+
 export async function storeImage(userId: string, name: string, png: Buffer): Promise<string | null> {
-  const path = `poster/${userId}/${name}-${Date.now()}.png`;
+  const small = await compactImage(png);
+  const jpeg = small !== png;
+  const path = `poster/${userId}/${name}-${Date.now()}.${jpeg ? "jpg" : "png"}`;
   const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${path}`, {
-    method: "POST", headers: { ...serviceHeaders(), "Content-Type": "image/png", "x-upsert": "true" }, body: new Uint8Array(png),
+    method: "POST", headers: { ...serviceHeaders(), "Content-Type": jpeg ? "image/jpeg" : "image/png", "x-upsert": "true" }, body: new Uint8Array(small),
   }).catch(() => null);
   return r?.ok ? `${SUPA_URL}/storage/v1/object/public/media/${path}` : null;
 }
@@ -82,4 +91,26 @@ export async function referenceImages(
     made.push(...chunk);
   }
   return made.filter((u): u is string => !!u);
+}
+
+/** ONE picture made for ONE place on the website: what that place needs (a wide banner with room for the headline, a picture
+ *  beside the About text, a gallery tile of a named thing), in the website's own mood and colour, of THIS trade and city.
+ *  Null when the model gave nothing. */
+export async function slotImage(
+  userId: string,
+  opts: { kind: "banner" | "about" | "gallery"; trade: string; city?: string; label?: string; dark?: boolean; color?: string; brand?: string },
+): Promise<string | null> {
+  const trade = `${opts.brand ? `${opts.brand.slice(0, 40)} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
+  const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
+  const mood = opts.dark ? "Moody, low-key lighting against a dark background; rich shadows, one warm light source." : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
+  const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
+  const label = (opts.label || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  const prompt =
+    opts.kind === "banner"
+      ? `Photorealistic wide banner photograph of a ${trade}${where}. ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`
+      : opts.kind === "about"
+      ? `Photorealistic photograph of the people and the place of a ${trade}${where} — the owner or the team at work, natural and unposed, a portrait-friendly composition that sits beside a paragraph of text. ${mood}${accent}`
+      : `Photorealistic photograph for a website gallery tile${label ? ` called "${label}"` : ""} of a ${trade}${where}${label ? ` — it must clearly show ${label}` : " — the work, the products or the place"}. ${mood}${accent} Sharp subject, tidy background.`;
+  const png = await aiImage(prompt, opts.kind === "banner" ? "16:9" : "4:3");
+  return png ? storeImage(userId, `ref-${opts.kind === "banner" ? 1 : opts.kind === "about" ? 2 : 3}`, png) : null;
 }
