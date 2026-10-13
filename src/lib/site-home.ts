@@ -109,6 +109,28 @@ function defaultSections(card: Card, pages: CardPage[]): HomeSection[] {
   return out;
 }
 
+/** Each look tells its page in its own order (owner, 14 Oct 2026: the six designs shared one sequence under their heroes).
+ *  Only the content sections trade places among the slots they already hold — the opening block, the visit and the
+ *  closing call stay where they are — and an order the owner or a plan set always wins. The Tile board keeps the default. */
+const LOOK_ORDER: Record<string, string[]> = {
+  cinematic: ["about", "gallery", "product", "services", "highlights", "testimonials", "faq"],
+  story: ["highlights", "product", "about", "services", "testimonials", "gallery", "faq"],
+  wordmark: ["about", "product", "gallery", "services", "testimonials", "highlights", "faq"],
+  shop: ["product", "services", "highlights", "testimonials", "gallery", "about", "faq"],
+  collage: ["services", "highlights", "about", "gallery", "testimonials", "product", "faq"],
+};
+function byLook(list: HomeSection[], bp: string | undefined): HomeSection[] {
+  const rank = bp ? LOOK_ORDER[bp] : undefined;
+  if (!rank) return list;
+  const kindOf = (s: HomeSection) => (s.kind === "block" ? s.block.kind : s.kind === "featured" ? "product" : s.kind === "reviews" ? "testimonials" : s.kind);
+  const at = (s: HomeSection) => rank.indexOf(kindOf(s));
+  const slots = list.map((s, i) => (at(s) >= 0 ? i : -1)).filter((i) => i >= 0);
+  const sorted = slots.map((i) => ({ s: list[i], i })).sort((a, b) => at(a.s) - at(b.s) || a.i - b.i).map((x) => x.s);
+  const out = [...list];
+  slots.forEach((slot, n) => { out[slot] = sorted[n]; });
+  return out;
+}
+
 /** The home sections in the order the website shows them, after the owner's own order and hidden list
  *  (`all`: the hidden ones too, for the editor). */
 export function homeSections(card: Card, pages: CardPage[], opts: { all?: boolean } = {}): HomeSection[] {
@@ -116,6 +138,7 @@ export function homeSections(card: Card, pages: CardPage[], opts: { all?: boolea
   const order = card.site?.home?.order;
   const hidden = new Set(card.site?.home?.hidden ?? []);
   let list = base;
+  if (!(order && order.length)) list = byLook(base, card.site?.style?.blueprint);
   if (order && order.length) {
     const rank = new Map(order.map((k, i) => [k, i]));
     // Sections the owner never saw (added later) keep their default place among the ordered ones.

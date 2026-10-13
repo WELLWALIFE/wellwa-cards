@@ -164,4 +164,32 @@ const WHY = `
 .site[data-bp="story"] main .hl-grid{display:block!important}
 .site[data-bp="story"] main .hl-grid>div{margin-bottom:10px;border-width:2px!important}
 `;
-export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY, shop: PHOTOS + SHOP + WHY, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER + WHY, cinematic: PHOTOS + CINEMATIC_DARK + WHY, bento: PHOTOS + BENTO };
+/** The sections' own composition per look — the heading's place, the FAQ, the About picture and the gallery frames —
+ *  so below the hero the six looks are six pages and not one page in six colours (live check, 14 Oct 2026: the
+ *  section heights of all six looks were within 5% of each other). */
+const SECTIONS = `
+.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
+.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
+.site[data-bp="cinematic"] main .faq summary{text-transform:uppercase;letter-spacing:.08em;font-size:.9rem}
+.site[data-bp="cinematic"] main img.rounded-3xl,.site[data-bp="cinematic"] main .group{border-radius:0}
+.site[data-bp="cinematic"] main .columns-2,.site[data-bp="cinematic"] main .grid.grid-cols-2.gap-3{gap:2px}
+.site[data-bp="cinematic"] main .columns-2>*{margin-bottom:2px}
+.site[data-bp="story"] main .faq{border:0}
+.site[data-bp="story"] main .faq details{border:2px solid var(--ink);box-shadow:5px 5px 0 0 var(--ink);margin-bottom:16px;padding:0 16px;background:var(--surface)}
+.site[data-bp="story"] main img.rounded-3xl{border-radius:0;border:2px solid var(--ink);box-shadow:10px 10px 0 0 var(--ink);transform:rotate(-1.5deg)}
+.site[data-bp="story"] main .group{border-radius:0;border:2px solid var(--ink)}
+.site[data-bp="wordmark"] main .faq summary{font-family:var(--font-display,var(--look-head));font-size:1.45rem;letter-spacing:-.01em;padding-block:22px}
+.site[data-bp="wordmark"] main img.rounded-3xl{border-radius:var(--r-img);aspect-ratio:4/5;max-height:640px;object-fit:cover}
+.site[data-bp="wordmark"] main .group{border-radius:0}
+.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
+.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
+.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .sec-h2::after{content:"";display:block;width:48px;height:4px;border-radius:4px;background:var(--accent);margin:12px auto 0}
+.site[data-bp="shop"] main .faq{border:0}
+.site[data-bp="shop"] main .faq details{border:1px solid var(--line);border-radius:var(--r-card);margin-bottom:10px;padding:0 16px;background:var(--surface)}
+.site[data-bp="shop"] main img.rounded-3xl{border-radius:var(--r-card)}
+.site[data-bp="collage"] main .faq{border:0}
+.site[data-bp="collage"] main .faq details{border:0;background:var(--p-soft);border-radius:var(--r-tile);margin-bottom:10px;padding:0 20px}
+.site[data-bp="collage"] main img.rounded-3xl{border-radius:var(--r-tile);padding:10px;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 30px -18px rgb(0 0 0/.35)}
+.site[data-bp="collage"] main .group{border-radius:var(--r-tile)}
+`;
+export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY + SECTIONS, shop: PHOTOS + SHOP + WHY + SECTIONS, collage: PHOTOS + COLLAGE + SECTIONS, story: PHOTOS + POSTER + WHY + SECTIONS, cinematic: PHOTOS + CINEMATIC_DARK + WHY + SECTIONS, bento: PHOTOS + BENTO };
