@@ -56,6 +56,7 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
   const path = `poster/${userId}/${name}-${Date.now()}.${jpeg ? "jpg" : "png"}`;
   const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${path}`, {
     method: "POST", headers: { ...serviceHeaders(), "Content-Type": jpeg ? "image/jpeg" : "image/png", "x-upsert": "true" }, body: new Uint8Array(small),
+    signal: AbortSignal.timeout(20_000),
   }).catch(() => null);
   return r?.ok ? `${SUPA_URL}/storage/v1/object/public/media/${path}` : null;
 }

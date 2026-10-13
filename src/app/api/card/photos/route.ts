@@ -9,7 +9,9 @@
 //      (bearer) { action: "ai", slot | kind:"gallery" } → one picture made for that place, one credit; `slot` omitted = a new gallery picture
 // `slot` is the id GET gave: "banner", "about:<block>", "gallery:<block>:<index>".
 // Every change lands on the live website at once and, for the banner and the gallery, in the card's facts, so a rebuild keeps it.
+import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
+import { SUPA_URL } from "@/lib/admin-guard";
 import { rateLimited } from "@/lib/api-security";
 import { restAsService, userFromRequest } from "@/lib/poster-server";
 import { myCard } from "@/lib/site-server";
@@ -27,6 +29,8 @@ export const maxDuration = 120;
 type Kind = "banner" | "about" | "gallery";
 type PhotoSlot = { id: string; kind: Kind; url: string; label: string; size: string; ours: boolean; stock: boolean };
 
+// One change at a time per owner: two taps (or two tabs) would both read the same card and the second save would undo the first.
+const inFlight = new Set<string>();
 const madeByUs = (u: string) => /\/ref-\d+(-\d+)?\.(png|jpe?g|webp)(\?|$)/i.test(u);
 const isStock = (u: string) => /^\/(api\/stock|art)\//.test(u) || /\/api\/stock\//.test(u);
 const SIZE: Record<Kind, string> = { banner: "1600 × 900 px · wide", about: "1200 × 900 px", gallery: "1200 × 900 px" };
@@ -89,7 +93,8 @@ export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (rateLimited(`card-photos:${me.id}`, 60, 60 * 60_000)) return NextResponse.json({ error: "Too many changes in an hour. Please wait a little." }, { status: 429 });
-  const b = (await request.json().catch(() => ({}))) as { action?: string; slot?: string; url?: string; cardId?: string };
+  const b = (await request.json().catch(() => ({}))) as { action?: string; slot?: string; url?: string; cardId?: string; expect?: string };
+  if (b.action === "ai" && rateLimited(`card-photos-ai:${me.id}`, 15, 60 * 60_000)) return NextResponse.json({ error: "That is enough pictures for this hour. Please try again a little later." }, { status: 429 });
   const row = await myCard(me.id, typeof b.cardId === "string" ? b.cardId : undefined);
   if (!row) return NextResponse.json({ error: "Create your website first." }, { status: 404 });
   const card = row.data as Card;
@@ -97,11 +102,24 @@ export async function POST(request: Request) {
   const slot = typeof b.slot === "string" ? b.slot : "";
   const url = typeof b.url === "string" ? b.url.trim() : "";
   const galleryCount = slotsOf(card).filter((s) => s.kind === "gallery").length;
+  // A picture the owner sends is one that THIS app stored for them (/api/poster/upload writes to exactly this folder): never an outside
+  // address, a data: or javascript: URL — it goes into the live website and is fetched server-side for the banner's focus point.
+  const OWN = `${SUPA_URL}/storage/v1/object/public/media/poster/${me.id}/`;
+  if ((action === "replace" || action === "add") && (!url.startsWith(OWN) || url.includes("..") || url.includes("?") || url.length > 400)) return NextResponse.json({ error: "Upload the photo first." }, { status: 400 });
+  // The place must still hold the picture the owner was looking at (the gallery's numbering shifts when a photo is removed elsewhere).
+  if ((action === "replace" || action === "remove" || (action === "ai" && slot)) && slot !== "banner") {
+    const now = urlOf(card, slot);
+    if (!now) return NextResponse.json({ error: "That picture is no longer there. Reload the page.", stale: true }, { status: 409 });
+    if (typeof b.expect === "string" && b.expect && b.expect !== now) return NextResponse.json({ error: "The photos changed meanwhile. Reload the page.", stale: true }, { status: 409 });
+  }
+  if (inFlight.has(me.id)) return NextResponse.json({ error: "One change is still being made. Please wait a moment." }, { status: 409 });
+  inFlight.add(me.id);
+  let refund: null | (() => Promise<unknown>) = null;   // set once the credit is taken; the catch below gives it back
+  try {
 
   const inputs = await loadCardInputs(me);
   let next: Card | null = null;
   let newUrl = "";
-  let refund: null | (() => Promise<unknown>) = null;
 
   if (action === "replace") {
     if (!url || !slot) return NextResponse.json({ error: "Nothing to put there." }, { status: 400 });
@@ -121,9 +139,9 @@ export async function POST(request: Request) {
     if (!slot && galleryCount >= MAX_GALLERY_PHOTOS) return NextResponse.json({ error: `The gallery holds ${MAX_GALLERY_PHOTOS} photos.` }, { status: 400 });
     if (slot && !urlOf(card, slot)) return NextResponse.json({ error: "That picture is not on the website." }, { status: 400 });
     // One credit a picture (owner's call, 4 Oct 2026), taken before anything runs and given back when nothing comes out.
-    const ref = `photo-${me.id.slice(0, 8)}-${Date.now()}`;
+    const ref = `photo-${me.id.slice(0, 8)}-${randomUUID()}`;
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: 1, p_reason: "site-photo-ai", p_ref: ref }) });
-    if (!spend.ok) return NextResponse.json({ error: "A picture made by AI uses 1 credit. Add credits and try again.", needCredits: 1 }, { status: 402 });
+    if (!spend.ok) return spend.status >= 500 ? NextResponse.json({ error: "Could not start just now. Nothing was charged. Please try again." }, { status: 503 }) : NextResponse.json({ error: "A picture made by AI uses 1 credit. Add credits and try again.", needCredits: 1 }, { status: 402 });
     refund = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: 1, p_reason: "site-photo-ai-refund", p_ref: ref }) });
     const st = card.site?.style ?? {};
     const pal = SITE_PALETTES.find((p) => p.key === st.palette && p.key !== "brand");
@@ -155,4 +173,10 @@ export async function POST(request: Request) {
     if (slot.startsWith("about:")) { /* the About picture is not a fact */ } else await saveFacts(me.id, inputs.profileId, facts).catch(() => undefined);
   }
   return NextResponse.json({ ok: true, url: newUrl, slots: slotsOf(next) });
+  } catch {
+    await refund?.().catch(() => undefined);
+    return NextResponse.json({ error: "Something went wrong. If a credit was taken it has been given back. Please try again." }, { status: 500 });
+  } finally {
+    inFlight.delete(me.id);
+  }
 }

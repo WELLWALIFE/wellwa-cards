@@ -38,6 +38,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const [err, setErr] = useState("");
   const pick = useRef<HTMLInputElement>(null);
   const target = useRef<string>("");       // the slot a chosen file is for ("" = a new gallery photo)
+  const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
 
   const load = useCallback(async () => {
     const r = await api<Got>("/api/card/photos");
@@ -47,23 +48,39 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   useEffect(() => { void load(); }, [load]);
 
   async function run(key: string, body: Record<string, unknown>) {
+    if (lock.current) return;
+    lock.current = true;
     setBusy(key); setErr("");
-    const r = await api<Got & { ok?: boolean }>("/api/card/photos", { method: "POST", json: body });
-    setBusy("");
-    if (!r.ok) { setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।")); return; }
-    if (r.data.slots) setSlots(r.data.slots);
+    try {
+      // `expect` is the picture the owner was looking at: if the numbering moved meanwhile the server says so instead of changing another one.
+      const slot = typeof body.slot === "string" ? body.slot : "";
+      const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
+      if (!r.ok) {
+        setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"));
+        if (r.status === 409) void load();
+        return;
+      }
+      if (r.data.slots) setSlots(r.data.slots);
+    } catch {
+      setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
+    } finally {
+      lock.current = false;
+      setBusy("");
+    }
   }
   async function chosen(file: File | null) {
     const slot = target.current;
     if (!file) return;
     const kind: Slot["kind"] = slot === "banner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     const key = slot ? `${slot}:replace` : "add";
+    if (lock.current) return;
+    let fitted: File;
+    try { fitted = await fitTo(file, kind); } catch { setErr(T("That file is not a photo.", "ये file photo नहीं है।")); return; }
     setBusy(key); setErr("");
-    try {
-      const url = await uploadImage(await fitTo(file, kind), "wide");
-      if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।")); return; }
-      await run(key, slot ? { action: "replace", slot, url } : { action: "add", url });
-    } catch { setBusy(""); setErr(T("That file is not a photo.", "ये file photo नहीं है।")); }
+    let url: string | null = null;
+    try { url = await uploadImage(fitted, "wide"); } catch { url = null; }
+    if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।")); return; }
+    await run(key, slot ? { action: "replace", slot, url } : { action: "add", url });
   }
   const choose = (slot: string) => { target.current = slot; pick.current?.click(); };
 
@@ -75,10 +92,10 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const tag = (s: Slot) => s.ours ? T("Made by AI", "AI से बनी") : s.stock ? T("Sample picture", "नमूना picture") : T("Your photo", "आपकी photo");
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-xs font-semibold disabled:opacity-50";
 
-  const tile = (s: Slot, wide = false) => {
+  const tile = (s: Slot) => {
     const working = busy.startsWith(`${s.id}:`);
     return (
-      <div key={s.id} className={`overflow-hidden rounded-2xl border border-border bg-surface ${wide ? "" : ""}`}>
+      <div key={s.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
         <div className="relative bg-surface2" style={{ aspectRatio: s.kind === "banner" ? "16 / 9" : "4 / 3" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={s.url} alt={s.label} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
@@ -105,7 +122,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
       <p className="text-sm text-muted">{T("These are the photos on your website. Change any of them — it goes live as soon as you tap. “Make by AI” makes a new picture for that exact place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदलिए — tap करते ही live हो जाती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
       {err && <p className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-semibold text-danger">{err}</p>}
-      {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner, true)}</section>}
+      {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
       <section className="space-y-2">
         <h3 className="text-sm font-bold">{T("Gallery", "Gallery")} <span className="font-normal text-muted">({gallery.length}/{max})</span></h3>
