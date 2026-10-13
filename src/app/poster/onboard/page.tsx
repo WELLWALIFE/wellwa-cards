@@ -755,7 +755,9 @@ function Onboard() {
         const pin = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
         setBiz((b) => ({ ...b, map: pin }));
         // The pin is the Google Maps link: the "Google Maps link" box on Photos & more shows it instead of asking again.
-        if (!facts.social.google) setF({ social: { google: pin } });
+        // A new pin (re-pin) replaces the old one everywhere; a first pin only fills an empty Google Maps box.
+        const repin = !!(biz.map ?? "").trim();
+        if (repin || !facts.social.google) setF({ social: { ...facts.social, google: pin } });
         // The pin also knows the city and the locality: the owner does not type what the phone already knows.
         try {
           const r = await fetch(`/api/geo/city?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`);
@@ -1437,11 +1439,15 @@ function Onboard() {
           <div className="space-y-3">
               <label className="block text-sm font-semibold">{T("Full address", "पूरा पता")}<Help k="address" /><input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
               {biz.map ? (
+                <>
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm font-semibold text-good">
                   <CheckCircle2 className="h-4 w-4" /> <span>{T("Pinned on the map", "Map पर pin हो गया")}</span>
                   <a href={biz.map} target="_blank" rel="noreferrer" className="underline">{T("Open", "खोलें")}</a>
+                  <button type="button" onClick={pinShop} disabled={busy === "pin"} className="inline-flex items-center gap-1 underline disabled:opacity-60">{busy === "pin" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <MapPin className="h-3.5 w-3.5" />}{T("Pin again", "फिर से pin करें")}</button>
                   <button type="button" onClick={() => setBiz({ ...biz, map: "" })} className="underline text-muted">{T("Remove", "हटाएँ")}</button>
                 </div>
+                <p className="-mt-1 text-xs text-muted">{T("To move the pin: stand at your shop and tap “Pin again”.", "pin बदलनी हो तो अपनी दुकान पर खड़े होकर “फिर से pin करें” दबाएँ।")}</p>
+                </>
               ) : (
                 <div className="flex items-center gap-1">
                   <button type="button" onClick={pinShop} disabled={busy === "pin"} className="min-w-0 flex-1 inline-flex items-center justify-center gap-2 rounded-xl border border-border px-3 py-3 text-sm font-semibold disabled:opacity-60">
