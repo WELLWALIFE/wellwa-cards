@@ -28,6 +28,12 @@ import { SETUP_SCREENS, screenNo } from "@/lib/setup-steps";
 type Product = { id: string; name: string; brand_id?: string | null; photo_url: string | null; benefits: string[]; offer: string; active: boolean; category?: string; price?: string; mrp?: string | null; brand?: string; photos?: ProductPhoto[]; facts_confirmed_at?: string | null };
 type Draft = { id?: string; name: string; photo_url: string | null; benefits: string; offer: string; category: string; price: string; mrp?: string; brand: string; photos: ProductPhoto[] };
 
+/** A specification is one benefit line written "Label: value" (no new column: the poster and the website both read the same lines). */
+const SPEC_RE = /^([^:\n]{1,24}):\s*(\S.{0,54})$/;
+type SpecRow = { label: string; value: string };
+const specsOf = (text: string): SpecRow[] => text.split("\n").map((l) => l.trim()).flatMap((l) => { const m = l.match(SPEC_RE); return m ? [{ label: m[1].trim(), value: m[2].trim() }] : []; });
+const benefitText = (text: string) => text.split("\n").filter((l) => !SPEC_RE.test(l.trim())).join("\n");
+const joinBenefits = (benefits: string, rows: SpecRow[]) => [benefitText(benefits).replace(/\n+$/, ""), ...rows.filter((r) => r.label.trim() && r.value.trim()).map((r) => `${r.label.trim().slice(0, 24)}: ${r.value.trim().slice(0, 54)}`)].filter((x, i) => i > 0 || x).join("\n");
 const EMPTY: Draft = { name: "", photo_url: null, benefits: "", offer: "", category: "", price: "", mrp: "", brand: "", photos: [] };
 
 /** The first number in a price ("1,200/kg" → 1200), or NaN — the same reading as card-compose. */
@@ -69,6 +75,12 @@ export default function ProductsPage() {
   const [brandAdmin, setBrandAdmin] = useState<string | null>(null);
   const [forBrand, setForBrand] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
+  // The specification rows being typed (an empty row must stay while its value is typed); they come from the product's own
+  // "Label: value" lines whenever a product opens, and go back into those lines on every keystroke.
+  const [specRows, setSpecRows] = useState<SpecRow[]>([]);
+  const draftKey = draft ? (draft.id ?? "new") : "";
+  useEffect(() => { setSpecRows(draft ? specsOf(draft.benefits) : []); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draftKey]);
   const [checking, setChecking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -411,7 +423,7 @@ export default function ProductsPage() {
           )}
           {copy.brand && <input className={inp} placeholder={en ? "Brand (optional) — only if you sell a company's product" : "Brand (optional) — सिर्फ़ किसी कंपनी का product बेचते हों तो"} value={draft.brand} onChange={(e) => setDraft({ ...draft, brand: e.target.value })} />}
 
-          <details className="rounded-lg border border-border bg-surface/70">
+          <details open className="rounded-lg border border-border bg-surface/70">
             <summary className="cursor-pointer px-3 py-2.5 text-sm font-semibold">{en ? "More details (optional)" : "और जानकारी (optional)"}</summary>
             <div className="space-y-3 border-t border-border p-3">
               {draft.photos.length > 0 && (
@@ -435,7 +447,22 @@ export default function ProductsPage() {
               )}
               <button type="button" disabled={busy || (!draft.name && !draft.photo_url)} onClick={fillWithAi}
                 className="w-full rounded-lg border border-brand bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink disabled:opacity-50">✨ {en ? "Fill benefits/offer with AI (from the photo)" : "AI से खूबियाँ/ऑफ़र भरो (photo देखकर)"}</button>
-              <textarea className={`${inp} w-full leading-relaxed`} rows={5} placeholder={C(copy.lines, copy.linesHi)} value={draft.benefits} onChange={(e) => setDraft({ ...draft, benefits: e.target.value })} />
+              <label className="block space-y-1">
+                <span className="block text-xs font-semibold">{C("Benefits / offer lines", "खूबियाँ / ऑफ़र की लाइनें")}</span>
+                <textarea className={`${inp} w-full leading-relaxed`} rows={4} placeholder={C(copy.lines, copy.linesHi)} value={benefitText(draft.benefits)} onChange={(e) => setDraft({ ...draft, benefits: joinBenefits(e.target.value, specRows) })} />
+              </label>
+              {/* Specifications: size, material, finish, warranty… — a small table on the product's page of the website. */}
+              <div className="space-y-1.5">
+                <span className="block text-xs font-semibold">{C("Specifications", "Specifications")} <span className="font-normal text-muted">({C("optional · size, material, finish…", "optional · size, material, finish…")})</span></span>
+                {specRows.map((r, k) => (
+                  <div key={k} className="flex items-center gap-1.5">
+                    <input className={`${inp} min-w-0 flex-1`} placeholder={C("e.g. Size", "जैसे Size")} value={r.label} maxLength={24} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, label: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} />
+                    <input className={`${inp} min-w-0 flex-[1.4]`} placeholder={C("e.g. 20 litre", "जैसे 20 litre")} value={r.value} maxLength={54} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, value: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} />
+                    <button type="button" aria-label={C("Remove", "हटाएँ")} onClick={() => { const rows = specRows.filter((_, n) => n !== k); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
+                  </div>
+                ))}
+                {specRows.length < 6 && <button type="button" onClick={() => setSpecRows([...specRows, { label: "", value: "" }])} className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {C("Add a specification", "Specification जोड़ें")}</button>}
+              </div>
               <input className={inp} placeholder={t.offerLabel} value={draft.offer} onChange={(e) => setDraft({ ...draft, offer: e.target.value })} />
               <input className={inp} list="product-cats" placeholder={en ? "Category (optional) e.g. Sweets, Namkeen, Gifts" : "Category (optional) जैसे Sweets, Namkeen, Gifts"} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
               <datalist id="product-cats">{[...new Set((list ?? []).map((p) => p.category).filter(Boolean))].map((c) => <option key={c} value={c} />)}</datalist>

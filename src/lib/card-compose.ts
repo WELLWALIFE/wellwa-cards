@@ -454,9 +454,14 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     const images = p.images.filter(Boolean).slice(0, 3);
     const price = rupee(p.price);
     const mrp = p.mrp && p.price && amount(p.mrp) > amount(p.price) ? rupee(p.mrp) : "";
-    const ownFeatures = p.benefits.filter(Boolean);
+    // The owner writes specifications as "Label: value" lines (the product form's Specifications box); they become the
+    // product's specification table, the rest stay benefit lines. Their own table wins over the maker's from the web.
+    const SPEC = /^([^:\n]{1,24}):\s*(\S.{0,54})$/;
+    const ownLines = p.benefits.map((x) => x.trim()).filter(Boolean);
+    const ownSpecs = ownLines.flatMap((l) => { const m = l.match(SPEC); return m ? [{ label: m[1].trim(), value: m[2].trim() }] : []; });
+    const ownFeatures = ownLines.filter((l) => !SPEC.test(l));
     const features = (ownFeatures.length ? ownFeatures : web?.features ?? []).slice(0, 5);
-    const specs = (web?.specs ?? []).slice(0, 6);
+    const specs = (ownSpecs.length ? ownSpecs : web?.specs ?? []).slice(0, 6);
     // The one-line description must not just repeat the price (the AI sometimes writes "₹900 per kg" as the line).
     const bare = (x: string) => x.replace(/[^a-z0-9]/gi, "").toLowerCase();
     const isPrice = (x: string) => !!x && (bare(x) === bare(price) || bare(x) === bare(p.price) || (!!price && bare(price).includes(bare(x))));
