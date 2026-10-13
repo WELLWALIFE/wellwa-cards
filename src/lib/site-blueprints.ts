@@ -23,34 +23,34 @@ export type Blueprint = {
 export const BLUEPRINTS: Blueprint[] = [
   {
     key: "bento", name: "Bento", hi: "बेंटो", blurb: "Everything at a glance: a board of tiles", blurbHi: "एक नज़र में सब: tiles का board",
-    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "board" },
+    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "board", layouts: { about: "photo-left", services: "cards", products: "grid", faq: "open", reviews: "cards", gallery: "mosaic" } },
     fits: ["kirana", "mobile", "hardware", "medical", "clinic", "electrician", "plumber", "ca", "tuition", "coaching", "it", "real-estate", "travel", "insurance"],
   },
   {
     key: "cinematic", name: "Cinematic", hi: "सिनेमैटिक", blurb: "Full-screen photo, scene by scene", blurbHi: "पूरी screen की photo, scene दर scene",
-    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover" },
+    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover", layouts: { about: "statement", services: "list", products: "showcase", faq: "accordion", reviews: "quote", gallery: "masonry" } },
     fits: ["hotel", "restaurant", "gym", "jewellery", "car", "events", "wedding", "salon", "interior", "furniture", "architect", "photography"],
   },
   {
     key: "story", name: "Poster", hi: "पोस्टर", blurb: "A bold colour block, big type, the photo as a card", blurbHi: "रंग का bold block, बड़ा type, photo एक card में",
-    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster" },
+    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster", layouts: { about: "columns", services: "cards", products: "dense", faq: "open", reviews: "pair", gallery: "mosaic" } },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
   // The three structures added after the Oct 2026 market review (docs/website-looks-v3.md): what the best bakery,
   // shop and services sites are built like, none of which the first three could draw.
   {
     key: "wordmark", name: "Wordmark", hi: "वर्डमार्क", blurb: "The name set huge, a strip of photos under it", blurbHi: "नाम बहुत बड़ा, नीचे photos की पट्टी",
-    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "mark" },
+    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "mark", layouts: { about: "photo-right", services: "list", products: "grid", faq: "accordion", reviews: "quote", gallery: "masonry" } },
     fits: ["cafe", "sweets", "restaurant", "garments", "boutique", "photography", "interior", "event", "dance", "printing"],
   },
   {
     key: "shop", name: "Shop", hi: "शॉप", blurb: "A category row, a promo banner, products with Order buttons", blurbHi: "category row, promo banner, Order button वाले products",
-    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "shelf" },
+    defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "shelf", layouts: { about: "photo-left", services: "cards", products: "dense", faq: "accordion", reviews: "cards", gallery: "mosaic" } },
     fits: ["kirana", "sweets", "garments", "mobile", "medical", "gift", "footwear", "optical", "hardware", "furniture", "grocery-online", "wholesale", "dairy"],
   },
   {
     key: "collage", name: "Collage", hi: "कोलाज", blurb: "Words and quick actions beside a photo collage", blurbHi: "शब्द और quick actions, बगल में photo collage",
-    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "collage" },
+    defaults: { radius: "round", motion: "calm", pattern: "none", heroVariant: "collage", layouts: { about: "photo-right", services: "list", products: "grid", faq: "open", reviews: "pair", gallery: "mosaic" } },
     fits: ["salon", "spa", "doctor", "dentist", "gym", "electrician", "cleaning", "auto", "school", "coaching", "hospital", "hotel"],
   },
 ];
