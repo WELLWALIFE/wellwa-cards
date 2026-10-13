@@ -640,7 +640,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // over them (owner's call, 3 Oct 2026: the reference is a hint, not a template); what the content itself decides
   // (a mosaic / a portrait hero); and over all of it the owner's own hand-picked look.
   const siteStyle: SiteStyle = {
-    ...tradeStyle(setup.category, lang),
+    ...tradeStyle(setup.category, lang, setup.business || setup.person || ""),
     ...(input.logoColor ? { palette: "brand", color: input.logoColor } : {}),
     ...(input.reference?.look ? styleFromLook(input.reference.look) : input.reference?.style ? styleFromReference(input.reference.style) : {}),
     ...(input.design?.style ?? {}),

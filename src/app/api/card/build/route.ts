@@ -526,13 +526,13 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // down, the trade's default look stands.
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
   step("writing");
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return answer({ error: "The AI did not respond. Please try again." }, 502); }
   const design0 = await designP;
   // A rejected look never comes back: the plan is made to differ from it, whatever the designer said (or did not).
-  const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note }) : design0;
+  const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note }) : design0;
   console.log("[card] design", JSON.stringify({ used: !!design, ms: Date.now() - designT0, ...(design ? { style: design.style, order: design.order ?? null, why: design.why } : {}) }));
 
   /* ---- the layout (code) ---- */
@@ -661,7 +661,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   } catch (e) { console.log("[card] design-review skipped:", e instanceof Error ? e.message : e); }
   // The three looks: the designer's, or the trade's mood brief's when the designer gave none. A card with no blueprint of
   // its own wears the first look from the start — the preview showed it as a plain cover under a "Bento" tick (6 Oct 2026).
-  const looks = design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang), ...(built.site?.style ?? {}) } });
+  const looks = design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), ...(built.site?.style ?? {}) } });
   if (built.site && !built.site.style?.blueprint && looks[0]) built = { ...built, site: { ...built.site, style: { ...(built.site.style ?? {}), ...looks[0].style, blueprint: looks[0].blueprint } } };
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,

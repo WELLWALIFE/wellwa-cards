@@ -112,7 +112,7 @@ export function ctaLabel(cta: Cta, lang: "en" | "hi" | "hinglish"): string {
 /** The website look a trade wears when nothing else was chosen (owner's call, 1 Oct 2026: a jeweller, an
  *  ayurveda clinic, a gym and a CA must not all look the same). Fonts and corners from the category's own style
  *  key and group; a reference site or the owner's hand-picked style always wins over this. */
-export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"): { font: string; radius: "sharp" | "soft" | "round"; palette?: string } {
+export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish", seed = ""): { font: string; radius: "sharp" | "soft" | "round"; palette?: string } {
   const c = categoryOf(categoryKey);
   const key = c?.key ?? "";
   const style = c?.style ?? "classic";
@@ -131,17 +131,24 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish"):
   const radius: "sharp" | "soft" | "round" = font === "luxury" || font === "elegant" || font === "editorial" ? "sharp" : font === "friendly" || font === "hindi" ? "round" : "soft";
   // A palette where the trade has an obvious one; otherwise the card's own accent colour ("brand") already
   // differs by category.
-  const palette =
-    /^(jewellery)$/.test(key) ? "gold"
-    : /^(salon|spa|mehndi)$/.test(key) ? "rose"
-    : /^(ayurveda|agri|dairy|ngo)$/.test(key) ? "emerald"
-    : /^(hotel|furniture|cafe)$/.test(key) ? "cocoa"
-    : /^(sweets|catering|temple|restaurant)$/.test(key) ? "saffron"
-    : /^(lawyer|photography)$/.test(key) ? "noir"
-    : /^(gym|auto)$/.test(key) ? "crimson"
-    : /^(realestate|builder|manufacturer|transport|security)$/.test(key) ? "steel"
-    : /^(doctor|dentist|hospital|water)$/.test(key) ? "ocean"
-    : undefined;
+  // The trade's obvious palette — and, with a seed (the business name), one of its two or three neighbours, so two
+  // sweet shops or two clinics do not open in the same colours (owner, 14 Oct 2026: "dono same banengi?"). The first
+  // of each list is the trade's own and is what a call without a seed gets.
+  const SHORT: [RegExp, string[]][] = [
+    [/^(jewellery)$/, ["gold", "royal", "noir"]],
+    [/^(salon|spa|mehndi)$/, ["rose", "royal", "gold"]],
+    [/^(ayurveda|agri|dairy|ngo)$/, ["emerald", "teal", "cocoa"]],
+    [/^(hotel|furniture|cafe)$/, ["cocoa", "noir", "gold"]],
+    [/^(sweets|catering|temple|restaurant)$/, ["saffron", "cocoa", "crimson"]],
+    [/^(lawyer|photography)$/, ["noir", "midnight", "steel"]],
+    [/^(gym|auto)$/, ["crimson", "steel", "noir"]],
+    [/^(realestate|builder|manufacturer|transport|security)$/, ["steel", "midnight", "cocoa"]],
+    [/^(doctor|dentist|hospital|water)$/, ["ocean", "teal", "emerald"]],
+  ];
+  const opts = SHORT.find(([re]) => re.test(key))?.[1];
+  let h = 2166136261;
+  for (const ch of seed.toLowerCase()) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  const palette = opts ? opts[seed ? h % opts.length : 0] : undefined;
   return { font, radius, ...(palette ? { palette } : {}) };
 }
 
