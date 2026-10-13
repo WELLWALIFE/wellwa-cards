@@ -48,6 +48,7 @@ export default function AdsPage() {
   const [copy, setCopy] = useState({ primaryText: "", headline: "", description: "" });
   const [link, setLink] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneLocked, setPhoneLocked] = useState(false);   // a number that came from the profile is shown, not edited
   const [offer, setOffer] = useState("");
   const [est, setEst] = useState<{ daily: number; monthlyLow: number; monthlyHigh: number } | null>(null);
   const [busy, setBusy] = useState("");
@@ -70,7 +71,7 @@ export default function AdsPage() {
     const p = list.find((x) => x.is_default) ?? list[0] ?? null;
     setProfile(p);
     if (p) {
-      setPhone(p.phone ?? "");
+      setPhone(p.phone ?? ""); setPhoneLocked((p.phone ?? "").replace(/\D/g, "").length >= 10);
       api<{ posters?: Poster[] }>(`/api/poster/history?profile=${p.id}`).then((r) => setPosters((r.data.posters ?? []).slice(0, 8))).catch(() => {});
       // the profile's town becomes the audience's first circle
       if (p.city) api<{ results: { key: string; name: string; region: string; type: string }[] }>(`/api/ads/search?kind=city&q=${encodeURIComponent(p.city)}`).then((r) => { const c = r.data.results?.[0]; if (c) setTargeting((t) => (t.cities.length ? t : { ...t, cities: [{ key: c.key, name: c.name, radius: 25, type: c.type === "region" ? "region" : "city" }] })); }).catch(() => {});
@@ -288,7 +289,7 @@ export default function AdsPage() {
               {goal === g.key && <Check className="h-5 w-5 text-brand" />}
             </button>
           ); })}
-          {goal !== "website" && <label className="block text-sm font-semibold">{goal === "whatsapp" ? "WhatsApp number" : (hi ? "Phone number" : "Phone number")}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="98765 43210" className={field} /></label>}
+          {goal !== "website" && <label className="block text-sm font-semibold">{goal === "whatsapp" ? "WhatsApp number" : (hi ? "Phone number" : "Phone number")}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="98765 43210" readOnly={phoneLocked} className={`${field} ${phoneLocked ? "bg-black/[.04] text-muted" : ""}`} /></label>}
           {goal === "website" && <label className="block text-sm font-semibold">{hi ? "Kaunsa link khule" : "Which link opens"}<input value={link} onChange={(e) => setLink(e.target.value.trim())} inputMode="url" placeholder="https://shubhora.com/c/…" className={field} /><span className="mt-1 block text-xs font-normal text-muted">{hi ? "Khali chhodein to aapka card/website link lagega." : "Leave empty and your card / website link is used."}</span></label>}
           {products.length > 0 && <div><p className="text-xs font-semibold text-muted mb-1.5">{hi ? "Ad kis product ke baare me hai? (optional)" : "Which product is the ad about? (optional)"}</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setProductId("")} className={chip(!productId)}>{hi ? "Poora business" : "Whole business"}</button>{products.map((p) => <button key={p.id} type="button" onClick={() => setProductId(p.id)} className={chip(productId === p.id)}>{p.name}</button>)}</div></div>}
           <label className="block text-sm font-semibold">{hi ? "Offer (optional)" : "Offer (optional)"}<input value={offer} onChange={(e) => setOffer(e.target.value)} maxLength={80} placeholder={hi ? "e.g. is hafte 10% off" : "e.g. 10% off this week"} className={field} /></label>

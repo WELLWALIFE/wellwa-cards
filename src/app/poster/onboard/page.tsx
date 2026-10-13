@@ -111,6 +111,8 @@ function Onboard() {
   const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true });
   /** Step 1 was finished once on this account (its Next writes you_done_at; older accounts left a home city). */
   const [youDone, setYouDone] = useState(false);
+  // The mobile number the account was made with is the account's own: shown, never edited here (owner, 14 Oct 2026).
+  const [phoneLocked, setPhoneLocked] = useState(false);
   // The profile's detail answers (card facts): step 1 adds the designation / WhatsApp, step 2 the company details.
   // Loaded with the account, saved with "Save and continue" (the facts route needs the profile to exist first).
   const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
@@ -257,6 +259,7 @@ function Onboard() {
         photo: p?.photo_url ?? meta.photo_url ?? null,
         whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10),
       });
+      setPhoneLocked(phone0.replace(/\D/g, "").length >= 10);
       setYouDone(!!(meta.you_done_at || meta.home_city));
       // The answer given last time comes back (Both is the default; "Only my own business" wrote false).
       setPromote(meta.also_shubhora === false ? "own" : "both");
@@ -1156,9 +1159,9 @@ function Onboard() {
           {head(T("What is your website for?", "आपकी website किस काम के लिए है?"), T("Both is already ticked. Change it if you want only one.", "दोनों पहले से चुना है। सिर्फ़ एक चाहिए तो बदल लें।"), "promote")}
 
           {([
-            { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("Only my own business or work", "सिर्फ़ मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
+            { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("My own business or work", "मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
             // eslint-disable-next-line @next/next/no-img-element
-            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Only selling Shubhora as a partner", "सिर्फ़ Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card। आप partner income कमाते हैं।"), eg: "" },
+            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Selling Shubhora as a partner", "Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card। आप partner income कमाते हैं।"), eg: "" },
             { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Your own card and website, plus a separate Shubhora page on its own link.", "आपका अपना card और website, और एक अलग link पर Shubhora page।"), eg: T("Your customers never see Shubhora.", "आपके customers को Shubhora नहीं दिखेगा।") },
           ]).map((c) => {
             const on = promote === c.k;
@@ -1278,7 +1281,7 @@ function Onboard() {
             : head(T("About you", "आपके बारे में"), T("Your name, number and photo. They go on your card and website.", "आपका नाम, number और photo। यही card और website पर जाएँगे।"))}
           <label className="block text-sm font-semibold">{T("Your name", "आपका नाम")} <span className="text-danger">*</span><Help k="name" /><input value={you.name} onChange={(e) => { if (!associate) setYou({ ...you, name: e.target.value }); }} readOnly={!!associate} placeholder={T("e.g. Rajesh Sharma", "जैसे Rajesh Sharma")} className={`${field} ${associate ? "bg-surface2 text-muted" : ""}`} />
             {associate && <span className="mt-1 block text-[11px] font-normal text-muted">{T("As on your partner KYC — it cannot be changed here.", "आपके partner KYC के अनुसार — यहाँ नहीं बदलेगा।")}</span>}</label>
-          <label className="block text-sm font-semibold">{T("Mobile number", "Mobile number")} <span className="text-danger">*</span><Help k="phone" /><input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder={T("10-digit mobile", "10 अंकों का mobile")} className={field} /></label>
+          <label className="block text-sm font-semibold">{T("Mobile number", "Mobile number")} <span className="text-danger">*</span><Help k="phone" /><input value={you.phone} onChange={(e) => setYou({ ...you, phone: e.target.value })} inputMode="tel" placeholder={T("10-digit mobile", "10 अंकों का mobile")} readOnly={phoneLocked} className={`${field} ${phoneLocked ? "bg-black/[.04] text-muted" : ""}`} />{phoneLocked && <span className="mt-1 block text-xs font-normal text-muted">{T("This is your login number. It cannot be changed here.", "यह आपका login number है। यहाँ बदला नहीं जा सकता।")}</span>}</label>
           <div className="text-sm font-semibold">
             <label className="flex items-center gap-2"><input type="checkbox" checked={you.waSame} onChange={(e) => setYou({ ...you, waSame: e.target.checked })} className="h-4 w-4" /> {T("WhatsApp is the same number", "WhatsApp भी यही number है")}<Help k="whatsapp" /></label>
             {!you.waSame && <input value={you.whatsapp} onChange={(e) => setYou({ ...you, whatsapp: e.target.value })} inputMode="tel" placeholder={T("WhatsApp number (10 digits)", "WhatsApp number (10 अंक)")} className={field} />}
@@ -1393,7 +1396,7 @@ function Onboard() {
               </button>
             );
             return (
-              <div className="text-sm font-semibold">{T("Your card link", "आपके card का link")}<Help k="link" />
+              <div className="text-sm font-semibold">{T("Select your sub domain", "अपना sub domain चुनें")}<Help k="link" />
                 <div className="mt-1.5 space-y-2">
                   {opt("business", bSlug, T("Business name", "Business का नाम"))}
                   {opt("name", nSlug, T("Your name", "आपका नाम"))}

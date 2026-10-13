@@ -354,16 +354,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const fontHref = design.fonts.href;
   // The blueprints' small line above the name: the hero model's kicker ("Jeweller · Rewari"), never the slug.
   const eyebrowRole = hm.kicker;
-  // The closing band's line (owner's call, 4 Oct 2026: "Talk to the Founder", not the first name). The designation
+  // The closing band's line: "Talk to us today", whatever the trade or designation (owner, 14 Oct 2026: "yaha koi designation
+  // mat rakho"; it had read "Talk to the Founder today"). It was once the designation
   // when the card has a short one (Owner, Founder, Dr., Advocate…); a trade label like "Sweets / bakery" is not a
   // person, so then it is simply "us".
-  const ctaTalk = (() => {
-    const d = (card.jobTitle || "").trim();
-    const isRole = !!d && d.length <= 24 && !/[/(]/.test(d) && d.split(/\s+/).length <= 3;
-    if (!isRole) return "Talk to us today";
-    if (/^dr\.?$/i.test(d)) return `Talk to Dr. ${card.name.split(" ").pop() || ""} today`.replace(/\s+today/, " today");
-    return `Talk to the ${d} today`;
-  })();
+  const ctaTalk = "Talk to us today";
 
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
@@ -1043,7 +1038,7 @@ function SiteRun(p: RunProps) {
   }
 }
 
-function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
+function ServicesGrid({ items, askHref }: { items: { name: string; desc: string }[]; askHref?: string }) {
   const prefs = useContext(LayoutCtx);
   const t = useT();
   const list = items.filter((s) => s.name.trim());
@@ -1054,7 +1049,7 @@ function ServicesGrid({ items }: { items: { name: string; desc: string }[] }) {
   if (bp === "wordmark") return <MenuServices items={list} t={t} />;
   if ((bp === "shop" || bp === "collage") && list.length >= 3 && list.length <= 12) return <IconTiles items={list} t={t} />;
   if (bp === "story" && list.length >= 3 && list.length <= 12) return <ColourBlocks items={list} t={t} />;
-  if (bp === "bento" && list.length >= 3 && list.length <= 12) return <BentoServices items={list} t={t} />;
+  if (bp === "bento" && list.length >= 3 && list.length <= 12) return <BentoServices items={list} t={t} ask={askHref ? { href: askHref, title: t("Need something else?"), line: t("Ask us on WhatsApp") } : undefined} />;
   // One or two services: a full-width row each, with room for the whole description.
   if (layout === "rows") {
     return (
@@ -1608,7 +1603,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "services": {
       // "How it works" (numbered names) reads as a path, not a grid of cards.
       const isSteps = /^\d+[.)]\s/.test(block.items[0]?.name ?? "");
-      return <Section wide index={index} theme={theme} tight={isSteps} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)} lead={isSteps ? undefined : ledeT("services")}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
+      return <Section wide index={index} theme={theme} tight={isSteps} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)} lead={isSteps ? undefined : ledeT("services")}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} askHref={hasWa ? waHref(hi ? "नमस्ते, मुझे कुछ और चाहिए।" : "Hello, I am looking for something else.") : undefined} />}</Section>;
     }
     case "product":
       // A product page carries one product: it gets the detail layout, and no heading that repeats its name.
@@ -1818,7 +1813,9 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           : <a href={link} target="_blank" rel="noopener noreferrer" onClick={() => trackClick(card.username, "cta-join")} className={btn}>{t(block.joinLabel || "Join Now")}</a>);
         // With nothing to say beside it ("See all products"), the button belongs under the section it follows —
         // a tinted box around one lonely pill made the page look padded out.
-        if (!block.body) return <section className="mx-auto max-w-6xl px-6 pb-14 -mt-6 flex justify-center" data-reveal>{action}</section>;
+        // A bare "See all …" link follows its section on the same ground (it took the page's own background before, so it
+        // sat half in one band and half in the next: owner, 14 Oct 2026, "view all services sahi nahi likha hai").
+        if (!block.body) return <section className="flex justify-center px-6 pb-14 pt-2" data-reveal data-m2={(index + 1) % 2} data-m3={(index + 2) % 3} style={{ background: (index - 1) % 2 ? "var(--paper-2)" : "var(--paper)" }}><div className="mx-auto max-w-6xl">{action}</div></section>;
         return (
           <section className="mx-auto max-w-6xl px-6 py-6" data-reveal>
             <div className="rounded-2xl px-8 py-6 flex flex-wrap items-center justify-between gap-6" style={{ background: "var(--paper-2)" }}>

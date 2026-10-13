@@ -293,7 +293,10 @@ export const BENTO_CSS = `
   .site .board-cta-long{display:inline}.site .board-cta-short{display:none}
   .site .board-cta.btn-ghost{padding:0 20px}
   .site .board-photo{grid-column:span 7;grid-row:span 3;order:0;aspect-ratio:auto;min-height:392px}
-  .site .board-strip{grid-column:span var(--span,3);grid-row:span 1;justify-content:center;gap:6px;min-height:120px;padding:var(--s4) var(--s5)}
+  /* One slim row: the fact on the left, its note on the right — two big boxes holding two short lines read as empty
+     (owner, 14 Oct 2026: "badi khali si lag rahi hai"). */
+  .site .board-strip{grid-column:span var(--span,3);grid-row:span 1;flex-direction:row;align-items:center;justify-content:space-between;gap:var(--s5);min-height:76px;padding:var(--s3) var(--s5)}
+  .site .board-strip-meta{text-align:right;white-space:nowrap}
   .site .board-photo[data-banner] .hero-ph{transform:scale(1.4);transform-origin:70% 80%}
   .site .board-strip[data-wide]{grid-column:span var(--span,3)}
   .site .board-products{display:grid;grid-column:1 / -1;grid-row:span 2;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:var(--s4)}

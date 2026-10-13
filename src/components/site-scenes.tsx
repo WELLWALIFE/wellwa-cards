@@ -313,7 +313,10 @@ export function ColourReviews({ items, t }: { items: TestimonialItem[]; t: T }) 
 }
 
 /** Services as a bento: the first card double-size and filled, the rest small, a label on top and an arrow below. */
-export function BentoServices({ items, t }: { items: { name: string; desc?: string }[]; t: T }) {
+export function BentoServices({ items, t, ask }: { items: { name: string; desc?: string }[]; t: T; ask?: { href: string; title: string; line: string } }) {
+  // An even count leaves the last small tile alone beside the big one; a closing "ask us" tile completes the board (owner,
+  // 14 Oct 2026: "ek aur add kar de to achcha lagega").
+  const withAsk = !!ask && items.length % 2 === 0;
   return (
     <ul className="bento-sv">
       {items.map((s, i) => (
@@ -323,6 +326,9 @@ export function BentoServices({ items, t }: { items: { name: string; desc?: stri
           {s.desc && <p>{t(s.desc)}</p>}
         </li>
       ))}
+      {withAsk && ask && (
+        <li className="ask"><a href={ask.href} target="_blank" rel="noreferrer"><small>+</small><h3>{ask.title}</h3><p>{ask.line}</p></a></li>
+      )}
     </ul>
   );
 }
@@ -544,6 +550,9 @@ export const SCENES_CSS = `
 .site[data-bp="bento"] .bento-sv li.lead h3{font-size:clamp(1.4rem,4vw,2rem)}
 .site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .site[data-bp="bento"] .bento-sv li.lead p{color:inherit;opacity:.85}
+.site[data-bp="bento"] .bento-sv li.ask{padding:0;border-style:dashed;background:transparent}
+.site[data-bp="bento"] .bento-sv li.ask a{display:flex;flex-direction:column;gap:6px;height:100%;min-height:132px;padding:18px;color:inherit;text-decoration:none}
+.site[data-bp="bento"] .bento-sv li.ask small{font-size:22px;line-height:1;color:var(--accent)}
 .site[data-bp="bento"] .bento-sv li::after{content:"\\2192";position:absolute;right:14px;bottom:14px;display:grid;place-items:center;width:28px;height:28px;border-radius:999px;background:var(--p-soft);color:var(--accent);font-size:14px}
 .site[data-bp="bento"] .bento-sv li.lead::after{background:var(--on-accent);color:var(--accent)}
 @media (min-width:900px){.site[data-bp="bento"] .bento-sv{grid-template-columns:repeat(4,1fr);gap:14px}.site[data-bp="bento"] .bento-sv li.lead{grid-column:span 2;grid-row:span 2}}

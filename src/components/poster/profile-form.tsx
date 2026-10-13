@@ -24,6 +24,8 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
   draft: ProfileDraft; onChange: (d: ProfileDraft) => void; onSubmit: () => void; busy: boolean; submitLabel: string; showPersona?: boolean;
 }) {
   const persona = PERSONAS.find((p) => p.key === draft.persona) ?? PERSONAS[1];
+  // A profile that already has its number keeps it: the mobile is the account's own and is not edited here (owner, 14 Oct 2026).
+  const [phoneLocked] = useState(() => !!draft.id && draft.phone.replace(/\D/g, "").length >= 10);
   const [uploading, setUploading] = useState<"" | "photo" | "logo">("");
   const { t, lang } = useT();
   const hint = t.personas[persona.key][2];
@@ -107,8 +109,8 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
       {draft.persona !== "student" && (
         <label className="block">
           <span className="text-sm font-semibold mb-1 block">{t.mobile} <span className="text-faint font-normal">{t.onPoster}</span></span>
-          <input type="tel" inputMode="numeric" value={draft.phone} onChange={(e) => onChange({ ...draft, phone: e.target.value })} placeholder="98765 43210"
-            className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand" />
+          <input type="tel" inputMode="numeric" value={draft.phone} onChange={(e) => onChange({ ...draft, phone: e.target.value })} placeholder="98765 43210" readOnly={phoneLocked}
+            className={`w-full rounded-lg border border-border px-3 py-2.5 text-sm outline-none focus:border-brand ${phoneLocked ? "bg-black/[.04] text-muted" : "bg-surface"}`} />
         </label>
       )}
       {persona.needsLogo && (
