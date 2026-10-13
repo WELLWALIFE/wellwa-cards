@@ -694,7 +694,7 @@ function Section({ title, eyebrow, lead, aside, wide = false, narrow = false, in
 }) {
   const band = tone === "band";
   return (
-    <section className={`${band ? "hero-dark relative overflow-hidden" : ""} ${className}`} data-reveal style={band ? undefined : index % 2 ? { background: "var(--paper-2)" } : { background: "var(--paper)" }}>
+    <section className={`${band ? "hero-dark relative overflow-hidden" : ""} ${className}`} data-reveal data-m2={index % 2} data-m3={index % 3} style={band ? undefined : index % 2 ? { background: "var(--paper-2)" } : { background: "var(--paper)" }}>
       {band && <i aria-hidden="true" className="hero-grain" />}
       <div className={`relative mx-auto px-5 md:px-6 ${tight ? "py-12 md:py-16" : "sec-pad"} ${narrow ? "max-w-2xl" : wide ? "max-w-6xl" : "max-w-3xl"}`}>
         {(title || eyebrow || lead) && (
