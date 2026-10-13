@@ -428,7 +428,7 @@ export default function ProductsPage() {
             <div className="space-y-3 border-t border-border p-3">
               {draft.photos.length > 0 && (
                 <div className="space-y-1.5">
-                  <p className="text-xs text-muted">{en ? <>Photos of this product ({draft.photos.length}/6). For each one, choose what it shows — the AI uses them in your videos and ads. Best of all: one photo of the product <b>being used</b>.</> : <>इस product की photos ({draft.photos.length}/6)। हर photo के लिए चुनिए कि वह क्या दिखाती है — AI इन्हें आपके video और ads में लगाता है। सबसे अच्छी: product <b>इस्तेमाल होते हुए</b> की एक photo।</>}</p>
+                  <p className="text-xs text-muted">{en ? <>Photos of this product ({draft.photos.length}/6). Your website and card show the first one. The others are used when you make a <b>Video ad</b> (Create → Video): choose what each photo shows so the AI picks the right one for each scene. Best of all: one photo of the product <b>being used</b>.</> : <>इस product की photos ({draft.photos.length}/6)। आपकी website और card पर पहली photo दिखती है। बाक़ी तब काम आती हैं जब आप <b>Video ad</b> बनाते हैं (Create → Video): हर photo के लिए चुनिए कि वह क्या दिखाती है, ताकि AI हर scene के लिए सही photo ले। सबसे अच्छी: product <b>इस्तेमाल होते हुए</b> की एक photo।</>}</p>
                   <div className="flex gap-2 overflow-x-auto pb-1">
                     {draft.photos.map((ph, i) => (
                       <div key={ph.url} className="w-24 shrink-0 space-y-1">
