@@ -15,7 +15,7 @@ const OWN_BACK = /^\/poster\/(start|onboard|brand|explainer|plan|products|reel|w
 /** Where "Back" goes when there is no earlier screen in this tab. */
 function parentOf(p: string): string {
   if (p.startsWith("/poster/card/")) return "/poster/card";
-  if (/^\/poster\/(card|video|calendar|testimonials|photoshoot|social|report)/.test(p)) return "/poster/create";
+  if (/^\/poster\/(card|video|calendar|testimonials|photoshoot|social|report|ai)/.test(p)) return "/poster/create";
   if (/^\/poster\/(profiles|setup|connect)/.test(p)) return "/poster/more";
   if (p.startsWith("/poster/learn")) return "/poster/leads";
   if (p.startsWith("/poster/share")) return "/poster";

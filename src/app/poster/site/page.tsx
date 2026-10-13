@@ -5,15 +5,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Sparkles, Package, Camera, Settings, Type, Mic, Clock } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Mic, Clock } from "lucide-react";
 import { PremiumCard, PremiumGate } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { PhotoNudge } from "@/components/poster/photo-nudge";
-import { CardChatEdit } from "@/components/poster/card-chat-edit";
-import { BotSiteBox } from "@/components/poster/bot-site-box";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
@@ -203,7 +201,6 @@ export default function WebsitePage() {
               {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।")} <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="ml-1 font-semibold underline">{T("Open website", "Website खोलें")}</a></p>}
               {(() => {
                 const tiles = ([
-                  { k: "ai", more: true, I: Mic, t: T("Tell the AI", "AI को बताओ"), s: T("Say or type what to change", "बोलो या लिखो क्या बदलना है"), onClick: () => { document.getElementById("ai-edit-box")?.scrollIntoView({ behavior: "smooth", block: "center" }); setTimeout(() => document.getElementById("ai-edit-box")?.focus(), 350); }, premium: !paid, scope: "both" },
                   { k: "photo", I: Camera, t: T("Photo & banner", "Photo और banner"), s: T("Your own pictures", "आपकी अपनी photos"), href: `/poster/onboard?step=extras&back=${BACK}`, scope: "both" },
                   { k: "about", more: true, I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
                   { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
@@ -227,20 +224,18 @@ export default function WebsitePage() {
                   <>
                     <div className="grid grid-cols-2 gap-2">{tiles.filter((x) => !x.more).map(tile)}</div>
                     <details className="rounded-2xl border border-border bg-surface">
-                      <summary className="cursor-pointer list-none px-3.5 py-3 text-sm font-semibold">{T("More changes (AI, about & logo)", "और बदलाव (AI, परिचय और logo)")}</summary>
+                      <summary className="cursor-pointer list-none px-3.5 py-3 text-sm font-semibold">{T("More changes (about & logo)", "और बदलाव (परिचय और logo)")}</summary>
                       <div className="grid grid-cols-2 gap-2 p-3 pt-0">{tiles.filter((x) => x.more).map(tile)}</div>
                     </details>
                   </>
                 );
               })()}
-              {card && <CardChatEdit card={card} locked={!paid} url={s.url} onChanged={(c) => { setCard(c); load(cardId); }} />}
               <PhotoNudge />
               {/* Advanced: everything the six tiles do not cover. */}
               <details className="rounded-2xl border border-border bg-surface">
                 <summary className="flex cursor-pointer items-center gap-3 px-3.5 py-3"><Settings className="h-5 w-5 shrink-0 text-brand" />{rowText(T("Advanced", "Advanced"), T("Name & number, full editor, pages, news, settings, your own domain", "नाम और number, पूरा editor, pages, news, settings, अपना domain"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></summary>
                 <div className="divide-y divide-border border-t border-border">
                   <Link href={`/poster/onboard?step=you&back=${BACK}`} className={row}><Pencil className="h-5 w-5 shrink-0 text-muted" />{rowText(T("My name, number & photo", "मेरा नाम, number और photo"), T("Changes everywhere at once", "एक साथ हर जगह बदलेगा"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
-                  <Link href="/poster/card/build?improve=1&ask=1" className={row}><Sparkles className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Write again with AI", "AI से दोबारा लिखवाएँ"), T("New words, look or pictures — a credit each", "नए शब्द, look या तस्वीरें — हर एक पर credit"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                   <Link href={`/poster/d/editor?id=${s.cardId}&back=${BACK}`} className={row}><Type className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Edit text & photos yourself", "शब्द और photos खुद बदलें"), T("The full editor — every page, every section", "पूरा editor — हर page, हर section"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                   <Link href="/poster/website/edit" className={row}><Globe className="h-5 w-5 shrink-0 text-muted" />{rowText(T("Website pages", "Website के pages"), T("Headline, sections, which pages show", "Headline, sections, कौन से pages दिखें"))}<ChevronRight className="h-4 w-4 shrink-0 text-muted" /></Link>
                 </div>
@@ -281,8 +276,6 @@ export default function WebsitePage() {
             </div>
           )}
 
-          {/* The bot's own-website setting, on the first page (owner's call, 10 Oct 2026), not behind Edit → Advanced → editor. */}
-          {card && <BotSiteBox card={card} onChanged={(c) => { setCard(c); load(cardId); }} />}
 
           {!paid && <PremiumCard compact />}
         </>

@@ -2,7 +2,7 @@
 // Create — four doors, not fourteen links. Each door opens its choices on the next step (only where a choice exists).
 import { useState } from "react";
 import Link from "next/link";
-import { Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
+import { Bot, Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { Guide } from "@/components/poster/guide";
 import { useT } from "@/lib/poster-i18n";
@@ -38,6 +38,8 @@ export default function CreateHub() {
       { href: "/poster/photoshoot", I: Camera, t: "Product photoshoot", s: hi ? "1 photo se 4 professional shots" : "1 photo → 4 professional shots", tag: "AI" },
       { href: "/poster/products", I: Gift, t: hi ? "Mere products" : "My products", s: hi ? "Jo posters aur website par dikhenge" : "What your posters and website show" },
     ] },
+    // AI Training: everything that teaches or drives the AI, in one place (owner, 14 Oct 2026).
+    { key: "ai", I: Bot, t: "AI Training", s: hi ? "AI bot ko sikhayein: apni website, files, WhatsApp AI jawab, bolkar website badlein" : "Teach your AI: your website, files, WhatsApp AI replies, change your website by talking", href: "/poster/ai", items: [] },
     { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "Ek link — computer par website, phone par card · share, edit, Premium" : "One link — website on computers, card on phones · share, edit, Premium", items: [] },
   ];
 
@@ -63,7 +65,7 @@ export default function CreateHub() {
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{hi ? "बनाएँ" : "Create"}</h1>
-      <Guide hi="पाँच दरवाज़े — poster, video, ads, brand, card। रोज़ का poster अपने-आप बनता है; बाकी जब चाहें।" en="Five doors — poster, video, ads, brand, card. The daily poster makes itself; the rest whenever you like." />
+      <Guide hi="छह दरवाज़े — poster, video, ads, brand, AI training, card। रोज़ का poster अपने-आप बनता है; बाकी जब चाहें।" en="Six doors — poster, video, ads, brand, AI training, card. The daily poster makes itself; the rest whenever you like." />
       <div className="grid grid-cols-2 gap-3">
         {doors.map((d) => (
           <button key={d.key} type="button" onClick={() => (d.href ? router.push(d.href) : setOpen(d.key))} className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-surface p-4 text-left">
