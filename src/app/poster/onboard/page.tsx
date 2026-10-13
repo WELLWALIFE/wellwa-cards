@@ -108,7 +108,7 @@ function Onboard() {
   // Step 1 "About you": name, mobile, WhatsApp (same as the mobile unless unticked), email, photo. The home city and
   // address are not asked any more (owner's call, 7 Oct 2026: "ye KYC ka part hai") — the business city comes on
   // "Where & when".
-  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true });
+  const [you, setYou] = useState({ name: "", phone: "", photo: "" as string | null, whatsapp: "", waSame: true, phone2: "" });
   /** Step 1 was finished once on this account (its Next writes you_done_at; older accounts left a home city). */
   const [youDone, setYouDone] = useState(false);
   // The mobile number the account was made with is the account's own: shown, never edited here (owner, 14 Oct 2026).
@@ -257,7 +257,7 @@ function Onboard() {
         name: meta.display_name || meta.full_name || (p?.persona !== "business" ? p?.name : "") || "",
         phone: phone0,
         photo: p?.photo_url ?? meta.photo_url ?? null,
-        whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10),
+        whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10), phone2: f?.phone2 ?? "",
       });
       setPhoneLocked(phone0.replace(/\D/g, "").length >= 10);
       setYouDone(!!(meta.you_done_at || meta.home_city));
@@ -385,10 +385,11 @@ function Onboard() {
    *  server side, then the setup's own card sync re-publishes the card picture / number. Before, "Next" only
    *  changed the login, and the card and posters kept the old details until the whole setup was saved again. */
   /** Step 1's fact: the WhatsApp number, only when it differs from the mobile. */
-  function youFacts(): { whatsapp: string } {
+  function youFacts(): { whatsapp: string; phone2: string } {
     const mobile = you.phone.replace(/\D/g, "").slice(-10);
     const wa = you.waSame ? "" : you.whatsapp.replace(/\D/g, "").slice(-10);
-    return { whatsapp: wa && wa !== mobile ? wa : "" };
+    const p2 = you.phone2.replace(/\D/g, "").slice(-10);
+    return { whatsapp: wa && wa !== mobile ? wa : "", phone2: p2.length === 10 && p2 !== mobile ? p2 : "" };
   }
   /** The account's business object as it stands now — written early, so closing the app loses nothing; the
    *  last Save writes the full, checked version again. */
@@ -1286,6 +1287,9 @@ function Onboard() {
             <label className="flex items-center gap-2"><input type="checkbox" checked={you.waSame} onChange={(e) => setYou({ ...you, waSame: e.target.checked })} className="h-4 w-4" /> {T("WhatsApp is the same number", "WhatsApp भी यही number है")}<Help k="whatsapp" /></label>
             {!you.waSame && <input value={you.whatsapp} onChange={(e) => setYou({ ...you, whatsapp: e.target.value })} inputMode="tel" placeholder={T("WhatsApp number (10 digits)", "WhatsApp number (10 अंक)")} className={field} />}
           </div>
+          <label className="block text-sm font-semibold">{T("Another number", "एक और number")} <span className="font-normal text-muted">({T("optional", "optional")})</span>
+            <input value={you.phone2} onChange={(e) => setYou({ ...you, phone2: e.target.value })} inputMode="tel" placeholder={T("10-digit number, if you want a second one on the website", "10 अंकों का number — website पर दूसरा number चाहिए तो")} className={field} />
+          </label>
           <label className="block text-sm font-semibold">Email{!needEmail && <span className="font-normal text-muted"> ({T("from your sign-up", "sign-up से")})</span>}<Help k="email" />
             <input value={email} onChange={(e) => setEmail(e.target.value.trim())} readOnly={!needEmail} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="e.g. sharma@gmail.com" className={`${field} ${needEmail ? "" : "bg-surface2 text-muted"}`} />
             {needEmail && <span className="mt-1 block text-xs font-normal text-muted">{T("Customers can email you from your card.", "Customers card से आपको email कर सकेंगे।")}</span>}

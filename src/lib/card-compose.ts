@@ -407,6 +407,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const wa = facts.whatsapp.length === 10 ? facts.whatsapp : digits;
   if (wa.length === 10) add("whatsapp", "WhatsApp", `+91${wa}`);
   if (digits.length === 10) add("phone", "Call", `+91${digits}`);
+  // The second number the owner chose to add (never the same as the first).
+  if (facts.phone2.length === 10 && facts.phone2 !== digits) add("phone", "Call", `+91${facts.phone2}`);
   add("email", "Email", (setup.email ?? "").trim());
   // A reference website is somebody else's site, and a dealer's brand site is the brand's: neither is ever the
   // owner's "Website" link. Only a site the owner called their OWN (or the set-up's business.website) is.

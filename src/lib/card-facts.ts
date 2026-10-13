@@ -46,6 +46,8 @@ export type CardFacts = {
   designation: string;
   /** A WhatsApp number different from the mobile (10 digits); "" = the mobile is the WhatsApp number. */
   whatsapp: string;
+  /** A second number the owner may add (10 digits, optional): shown beside the mobile as another Call link. */
+  phone2: string;
   /** Team size, in the owner's words ("12 people", "family run"). */
   team: string;
   /** Years of experience (1–2 digits) — the trust pill when there is no "since" year. */
@@ -105,6 +107,7 @@ export const EMPTY_FACTS: CardFacts = deepFreeze<CardFacts>({
   qualification: "",
   designation: "",
   whatsapp: "",
+  phone2: "",
   team: "",
   experience: "",
   social: { instagram: "", facebook: "", youtube: "", google: "" },
@@ -194,6 +197,7 @@ function normalizeObj(r: Obj): CardFacts {
   const assertedAt = text(r.dealerAssertedAt, 30);
   const style = cleanStyle(r.style);
   const whatsapp = text(r.whatsapp, 20).replace(/\D/g, "").slice(-10);
+  const phone2 = text(r.phone2, 20).replace(/\D/g, "").slice(-10);
   const experience = text(r.experience, 4).replace(/\D/g, "");
   const tradeAnswers: Record<string, string[]> = {};
   const ta = obj(r.tradeAnswers);
@@ -225,6 +229,7 @@ function normalizeObj(r: Obj): CardFacts {
     qualification: text(r.qualification, 120),
     designation: text(r.designation, 60),
     whatsapp: whatsapp.length === 10 ? whatsapp : "",
+    phone2: phone2.length === 10 ? phone2 : "",
     team: text(r.team, 40),
     tradeAnswers,
     experience: experience && Number(experience) >= 1 && Number(experience) <= 80 ? String(Number(experience)) : "",
