@@ -309,6 +309,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // Every WhatsApp button opens with a line that names the business and says the visitor came from the
   // website — the owner knows the lead's source, and the visitor need not think of an opening.
   const waOpen = card.language === "hi" ? `नमस्ते ${hm.name}, मैंने आपकी website देखी — ` : `Hi ${hm.name}, I saw your website — `;
+  const offerNow = liveOffer(card);
   const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
   const lastKind = pageBlocks.at(-1)?.kind;
@@ -371,6 +372,13 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               : <span>{t(bar!.text)}</span>}
           </div>
           <button type="button" onClick={closeBar} aria-label="Close" className="absolute right-2 top-1/2 -translate-y-1/2 rounded-lg p-1.5 opacity-80 hover:opacity-100"><X className="h-4 w-4" /></button>
+        </div>
+      )}
+
+      {offerNow && (
+        <div className="site-ann" role="note">
+          <span>{t(offerNow.title ? `${offerNow.title}: ${offerNow.text}` : offerNow.text)}</span>
+          {wa && <a href={waHref(offerNow.title || offerNow.text)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-strip")}>{hiLang ? "WhatsApp पर पाइए" : t("Claim on WhatsApp")}</a>}
         </div>
       )}
 
@@ -470,9 +478,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               </section>
             )}
             {/* ---- numbers the card itself carries (§4.6): the final number in the HTML, counted up once seen ---- */}
-            {facts.length >= 3 && (
+            {facts.length >= 2 && (
               <section className="mx-auto max-w-6xl px-5 md:px-6">
-                <div className={`py-8 md:py-10 grid gap-6 ${facts.length === 4 ? "grid-cols-2 md:grid-cols-4" : "grid-cols-3"}`}>
+                <div className={`py-8 md:py-10 grid gap-6 ${facts.length === 4 ? "grid-cols-2 md:grid-cols-4" : facts.length === 2 ? "grid-cols-2" : "grid-cols-3"}`}>
                   {facts.map((f, i) => (
                     <div key={i} className={`flex flex-col ${i ? "md:border-l md:border-border md:pl-6" : ""}`} data-reveal style={{ ["--i" as string]: i } as React.CSSProperties}>
                       <CountUp value={t(f.value)} className="stat" />
@@ -492,6 +500,22 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             {bands.length > 0 && i % 2 === 1 && bands[(i - 1) / 2] && <ParallaxBand src={bands[(i - 1) / 2]} />}
           </div>
         ))}
+
+        {/* Bulk and custom orders — a banner for the trades that take them (the leading shop sites carry one). */}
+        {isHome && wa && BULK_TRADES.has(card.seo?.categoryKey ?? "") && (
+          <section className="mx-auto max-w-6xl px-5 md:px-6 py-10 md:py-14" data-reveal>
+            <div className="bulk-banner">
+              <div>
+                <p className={cls.kicker}>{hiLang ? "बड़े और ख़ास ऑर्डर" : t("Bulk & custom orders")}</p>
+                <h2 className="sec-h2 mt-3">{hiLang ? "कुछ बड़ा सोच रहे हैं?" : t("Planning something bigger?")}</h2>
+                <p className="lede">{hiLang ? "बताइए क्या चाहिए और कब तक। हम WhatsApp पर भाव बता देंगे।" : t("Tell us what you need and by when. We reply on WhatsApp with a quote.")}</p>
+              </div>
+              <a href={waHref(hiLang ? "नमस्ते, मुझे बड़े / ख़ास ऑर्डर का भाव चाहिए।" : "Hello, I would like a quote for a bulk / custom order.")} target="_blank" rel="noreferrer" className={`btn-primary hero-cta ${FOCUS}`} onClick={() => trackClick(card.username, "site-bulk-quote")}>
+                <Icon name="whatsapp" /><span>{hiLang ? "भाव पूछिए" : t("Request a quote")}</span>
+              </a>
+            </div>
+          </section>
+        )}
 
         {/* Updates — the owner's recent daily posters: the whole page, or the latest three on Home. */}
         {showUpdates && (page?.slug === UPDATES || (isHome && !(card.site?.home?.hidden ?? []).includes(UPDATES))) && (
@@ -720,6 +744,11 @@ const VIEW_CSS = `
 .site .gtk li{display:inline-flex;align-items:center;gap:.45em}.site .gtk svg{color:var(--accent);flex:none}
 .site .stat{font-family:var(--font-display,var(--look-head));font-size:clamp(20px,5.6vw,var(--t-stat));white-space:nowrap;line-height:1;letter-spacing:-.01em;font-weight:var(--display-w,var(--head-w,600));font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
 .site .sec-pad{padding-block:var(--section-pad)}
+.site .site-ann{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:9px 16px;background:var(--accent);color:var(--on-accent);font-size:13px;line-height:1.35;text-align:center}
+.site .site-ann a{color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.site .bulk-banner{display:grid;gap:var(--s5);align-items:center;padding:var(--s6) var(--s5);border-radius:var(--r-tile);background:var(--p-soft);border:1px solid var(--line)}
+.site .bulk-banner .lede{margin-top:var(--s3);max-width:46ch}
+@media (min-width:768px){.site .bulk-banner{grid-template-columns:1fr auto;padding:var(--s7)}}
 .site .sec-h2{font-family:var(--font-display,var(--look-head));font-size:var(--t-h2);line-height:1.05;letter-spacing:-.015em;font-weight:var(--display-w,var(--head-w,600));margin:0;text-wrap:balance}
 .site .lede{margin:var(--s4) 0 0;font-size:var(--t-sub);line-height:1.45;color:var(--muted);max-width:52ch;text-wrap:pretty}
 .site .hero-dark .lede{color:var(--hero-muted)}
@@ -788,6 +817,34 @@ function catalogWord(card: Pick<Card, "seo">, hi: boolean): string {
   return catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en");
 }
 /** The small caption above a section title, per block kind (skipped when it would repeat the title). */
+/** The offer the owner set (an "offer" block with text, not past its date), for the strip above the header: the leading
+ *  shop sites carry theirs there ("Flat ₹100 off · free delivery"), not only in a band half way down the page. */
+function liveOffer(card: Card): { title: string; text: string } | null {
+  for (const pg of card.pages) {
+    if (pg.hidden) continue;
+    for (const b of pg.blocks) {
+      if (b.kind !== "offer" || !(b.text ?? "").trim()) continue;
+      if (b.expires && !Number.isNaN(Date.parse(b.expires)) && Date.parse(b.expires) + 86_400_000 < Date.now()) continue;
+      return { title: (b.title ?? "").trim(), text: b.text.trim() };
+    }
+  }
+  return null;
+}
+/** Trades that take big or custom orders: they get the "Planning something bigger?" banner (Haldiram's "Planning bulk gifting?"). */
+const BULK_TRADES = new Set(["sweets", "catering", "garments", "textile", "furniture", "interior", "printing", "gift", "event", "wedding", "florist", "tailor", "builder", "manufacturer", "wholesale", "hardware", "tiffin", "cafe", "restaurant", "photography", "jewellery"]);
+
+/** One quiet line under a section's heading, the way the leading sites set one under "Ready made hampers" (review, 14
+ *  Oct 2026): it says what the visitor can do or expect, in plain words, so a heading is never left alone. */
+const LEDES: Partial<Record<CardBlock["kind"], [string, string]>> = {
+  product: ["Tap any one to ask about it or order on WhatsApp.", "किसी पर भी टैप करके पूछिए या WhatsApp पर ऑर्डर कीजिए।"],
+  services: ["What we do for you, in plain words.", "हम आपके लिए क्या करते हैं, सीधे शब्दों में।"],
+  gallery: ["A closer look. Tap a photo to see it bigger.", "क़रीब से देखिए। बड़ा देखने के लिए photo पर टैप कीजिए।"],
+  testimonials: ["In our customers' own words.", "हमारे ग्राहकों के अपने शब्दों में।"],
+  faq: ["Quick answers before you ask.", "पूछने से पहले ही जवाब।"],
+  highlights: ["What you can count on.", "जिन बातों पर आप भरोसा कर सकते हैं।"],
+};
+const ledeFor = (kind: CardBlock["kind"], hi: boolean): string | undefined => LEDES[kind]?.[hi ? 1 : 0];
+
 function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean, catalog?: string): string | undefined {
   const map: Partial<Record<CardBlock["kind"], [string, string]>> = {
     product: [catalog ?? "Products", catalog ?? "प्रोडक्ट"], services: ["Services", "सेवाएँ"], highlights: ["Why us", "क्यों चुनें"], testimonials: ["Reviews", "रिव्यू"], faq: ["FAQ", "सवाल-जवाब"],
@@ -1415,7 +1472,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
   switch (s.kind) {
     case "featured":
       return (
-        <Section wide index={index} theme={theme} eyebrow={t(catalogWord(card, hi))} title={t(s.title)}
+        <Section wide index={index} theme={theme} eyebrow={t(catalogWord(card, hi))} title={t(s.title)} lead={ledeFor("product", hi)}
           aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} ${catalogWord(card, true)}` : t(`All ${s.total} ${catalogWord(card, false).toLowerCase()}`)}</SeeAll> : undefined}>
           <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} layout={s.items.length <= 2 ? "showcase" : "grid"} openProduct={openProduct} />
           {lightbox}
@@ -1425,13 +1482,13 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       const imgs = s.images;
       const all = <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>;
       const openAt = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
-      if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><LabelWall imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><BentoGallery imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
-      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all}><StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeFor("gallery", hi)}><SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeFor("gallery", hi)}><LabelWall imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeFor("gallery", hi)}><BentoGallery imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeFor("gallery", hi)}><TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
+      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeFor("gallery", hi)}><StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
       return (
-        <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)}
+        <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} lead={ledeFor("gallery", hi)}
           aside={<SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>}>
           <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:h-[520px]">
             {imgs.map((g, i) => (
@@ -1447,14 +1504,14 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
     }
     case "reviews":
       return (
-        <Section wide index={index} theme={theme} eyebrow={hi ? "रिव्यू" : t("Reviews")} title={t(s.title)}
+        <Section wide index={index} theme={theme} eyebrow={hi ? "रिव्यू" : t("Reviews")} title={t(s.title)} lead={ledeFor("testimonials", hi)}
           aside={<div className="flex items-center gap-4"><span className="stat">{(Math.round(s.avg * 10) / 10).toFixed(1)}</span><span className="text-sm text-muted"><Stars n={Math.round(s.avg)} /><span className="block mt-0.5">{hi ? `${s.total} ग्राहक` : t(`${s.total} customer reviews`)}</span></span>{s.total > s.items.length && <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी पढ़ें" : t("Read all")}</SeeAll>}</div>}>
           <ReviewCards items={s.items} theme={theme} />
         </Section>
       );
     case "faq":
       if (bp === "cinematic") return <Section wide index={index} theme={theme}><SplitFaq eyebrow="FAQ" title={s.title} items={s.items} t={t} aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी सवाल" : t("All questions")}</SeeAll> : undefined} /></Section>;
-      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow="FAQ" title={t(s.title)} aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी सवाल" : t("All questions")}</SeeAll> : undefined}><NumberedFaq items={s.items} t={t} /></Section>;
+      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow="FAQ" title={t(s.title)} lead={ledeFor("faq", hi)} aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी सवाल" : t("All questions")}</SeeAll> : undefined}><NumberedFaq items={s.items} t={t} /></Section>;
       return (
         <Section wide index={index} theme={theme} eyebrow="FAQ" title={t(s.title)} aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? "सभी सवाल" : t("All questions")}</SeeAll> : undefined}>
           <div className="faq grid md:grid-cols-2 gap-x-10">
@@ -1529,12 +1586,12 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       // "Why choose us" — every point ticked — is the one stretch of the page that is not white: a long page of
       // pale sections was the main reason a finished card still read as empty.
       const band = block.items.length >= 3 && block.items.every((x) => (x ?? "").startsWith("✅"));
-      return <Section wide index={index} theme={theme} tone={band ? "band" : "auto"} tight eyebrow={eyebrow} title={t(block.title)}><HighlightsGrid items={block.items} theme={theme} band={band} /></Section>;
+      return <Section wide index={index} theme={theme} tone={band ? "band" : "auto"} tight eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("highlights", hi)}><HighlightsGrid items={block.items} theme={theme} band={band} /></Section>;
     }
     case "services": {
       // "How it works" (numbered names) reads as a path, not a grid of cards.
       const isSteps = /^\d+[.)]\s/.test(block.items[0]?.name ?? "");
-      return <Section wide index={index} theme={theme} tight={isSteps} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
+      return <Section wide index={index} theme={theme} tight={isSteps} eyebrow={isSteps ? (hi ? "प्रक्रिया" : t("Process")) : eyebrow} title={t(block.title)} lead={isSteps ? undefined : ledeFor("services", hi)}>{isSteps ? <StepsRow items={block.items} /> : <ServicesGrid items={block.items} />}</Section>;
     }
     case "product":
       // A product page carries one product: it gets the detail layout, and no heading that repeats its name.
@@ -1547,7 +1604,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         );
       }
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("product", hi)}>
           <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={block.id.startsWith("prodmore-") ? "grid" : undefined} openProduct={openProduct} />
           {lightbox}
         </Section>
@@ -1555,7 +1612,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
     case "testimonials":
       if (!block.items.length) return null;
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("testimonials", hi)}>
           <ReviewCards items={block.items} theme={theme} />
         </Section>
       );
@@ -1564,9 +1621,9 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       // Plain <details> between hairlines (§4.8), no cards; two or three questions start open — nothing to click for so little.
       const openAll = (preferredLayouts(card.site?.style?.layouts, { faq: qs.length }).faq ?? faqLayout(qs.length)) === "open";
       if (bp === "cinematic") return <Section wide index={index} theme={theme}><SplitFaq eyebrow={eyebrow ?? "FAQ"} title={block.title} items={qs} t={t} /></Section>;
-      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><NumberedFaq items={qs} t={t} /></Section>;
+      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("faq", hi)}><NumberedFaq items={qs} t={t} /></Section>;
       return (
-        <Section narrow index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+        <Section narrow index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("faq", hi)}>
           <div className="faq">
             {qs.map((f, i) => (
               <details key={i} name={openAll ? undefined : "faq"} open={openAll || undefined}>
@@ -1584,11 +1641,11 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const gl = preferredLayouts(card.site?.style?.layouts, { gallery: imgs.length }).gallery ?? galleryLayout(imgs.length);
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
-      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><SceneStrip imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><LabelWall imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><BentoGallery imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
-      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}><StaggerGallery imgs={shown.slice(0, 9)} onOpen={open} t={t} />{lightbox}</Section>;
+      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}><SceneStrip imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
+      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}><LabelWall imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
+      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}><BentoGallery imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
+      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
+      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}><StaggerGallery imgs={shown.slice(0, 9)} onOpen={open} t={t} />{lightbox}</Section>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
         const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (
@@ -1603,7 +1660,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           : n === 4 && i === 1 ? "col-span-2 aspect-[2/1] md:aspect-auto"
           : "aspect-square md:aspect-auto";
         return (
-          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}>
             {gl === "single" && (
               <button type="button" onClick={() => open(0)} className={`group relative mx-auto block w-full max-w-5xl overflow-hidden rounded-3xl cursor-zoom-in ${FOCUS}`} style={{ background: "var(--paper-2)" }}>
                 <Img src={imgs[0].url!} alt={imgs[0].label} className="mx-auto w-auto max-w-full h-auto max-h-[640px] object-contain" eager sizes="(min-width: 1024px) 1024px, 100vw" />
@@ -1621,7 +1678,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         );
       }
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("gallery", hi)}>
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 [&>*]:mb-4">
             {shown.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden ${FOCUS}`}>

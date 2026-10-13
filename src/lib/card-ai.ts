@@ -148,7 +148,7 @@ QUALITY (what makes it premium)
 - Lead with what the customer gets (taste, comfort, time saved, peace of mind, a better look, a job done right) — then how.
 - Confident, warm, calm: short sentences, concrete nouns, no exclamation marks, no emojis, no ALL CAPS, no hype.
 - The tagline is memorable and specific (4-8 words): the craft, the benefit or the place — like a premium brand's line.
-- Section titles are short and inviting, never dull labels.
+- Section titles are short and inviting, never dull labels: a promise or an invitation in 2-5 words ("Made fresh every morning", "Find your piece", "Questions, answered"), not "Our Products" or "Our Services".
 - When the owner's website gives products, specifications or services, use them fully and accurately — they are the owner's own words.
 
 FACTS (the only source of truth)
