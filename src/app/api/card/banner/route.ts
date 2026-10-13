@@ -88,7 +88,7 @@ export async function POST(request: Request) {
   const st = data.site?.style ?? {};
   const pal = SITE_PALETTES.find((p) => p.key === st.palette && p.key !== "brand");
   const color = st.palette === "brand" && st.color ? st.color : pal?.mid ?? categoryOf(setup.category)?.accent;
-  const dark = pal ? pal.tone === "dark" : true;
+  const dark = pal ? pal.tone === "dark" : false;
 
   const { job, done, joined } = await startJob(key, { fresh: again }, async (step) => {
     step("pictures");

@@ -6,6 +6,27 @@ import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 // The lite image model everywhere (owner's call, 4 Oct 2026: "sasta hai aur achha bhi"): half the price a picture.
 export const IMG_MODEL = process.env.IMG_MODEL || "gemini-3.1-flash-lite-image";
+/** What every picture made for a website must look like (owner, 14 Oct 2026: "jo image ai se bane wo perfect ho, aaj ke dor ki,
+ *  old type ki nahi"): the first AI banners were dark, gritty and dusty — a 1990s shop. The model has no negative prompt, so the
+ *  "never" list sits in the prompt itself. */
+export const MODERN_LOOK = "Contemporary commercial photography of the kind a premium brand puts on its website in 2026: bright, airy natural daylight through large windows, crisp sharp detail, a clean modern space that is tidy and well organised, natural true-to-life colour, fresh and current, shot on a modern full-frame camera with a 35mm or 50mm lens. It must never look old-fashioned, dusty, gritty, vintage, sepia, dim, grainy, cluttered, over-processed or like a dark cave. Modern Indian business, well dressed people in current clothes, polished but real.";
+/** A scene for a trade, so the picture shows the right place (key = poster-categories key). */
+const SCENES: Record<string, string> = {
+  hardware: "a modern, well-lit hardware, paint and sanitary store: neat floor-to-ceiling shelves, rows of paint tins with a colour-mixing machine, tidy displays of taps and fittings, wide clean aisles",
+  sweets: "a bright modern mithai shop: glass counters with neatly arranged sweets on clean trays, warm but clean light, gift boxes stacked tidily",
+  kirana: "a clean modern grocery store: well-lit aisles, neatly stocked shelves, fresh produce on display",
+  garments: "a modern clothing showroom: tidy racks, mannequins in current styles, bright even light",
+  furniture: "a modern furniture showroom: styled sofas and dining sets in a bright airy space with large windows",
+  salon: "a modern salon: clean styling stations, big mirrors, soft daylight, calm tidy surfaces",
+  restaurant: "a modern restaurant interior: clean tables, plants, natural light, plated food that looks fresh",
+  doctor: "a modern clinic: clean consulting room, a friendly doctor in a white coat, bright calm light",
+  dentist: "a modern dental clinic: clean chair and equipment, bright calm light",
+  mobile: "a modern mobile phone store: glass display tables, current phones neatly shown, bright light",
+  jewellery: "a modern jewellery showroom: glass cases with beautifully lit pieces, clean elegant surroundings",
+  gym: "a modern gym: clean equipment, big windows, bright energetic light",
+  electrician: "a tidy electrical shop: organised wiring, switches and lights on clean display",
+  interior: "a modern interior-design studio: styled rooms, material samples neatly arranged, bright light",
+};
 export const NO_TEXT = "ABSOLUTELY NO TEXT, letters, numbers, logos or watermarks anywhere in the image.";
 
 export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9"): Promise<Buffer | null> {
@@ -56,15 +77,13 @@ export async function referenceImages(
   // "Hyundai auto showroom" — the brand's cars, phones or paint, not the trade's in general.
   const trade = `${brand ? `${brand} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
-  const mood = opts.dark
-    ? "Moody, low-key lighting against a dark background; rich shadows, one warm light source."
-    : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
+  const mood = `${MODERN_LOOK} ${opts.dark ? "Slightly deeper, richer tones with soft evening window light — still clean and contemporary, never gloomy." : "Bright and airy, clean uncluttered background, soft natural shadows."}`;
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
   const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
   const wish = (opts.wish || "").trim().replace(/\s+/g, " ").slice(0, 600);
   const wishLine = wish ? ` THE OWNER ASKS FOR THIS, AND IT COMES FIRST: ${wish}` : "";
   const briefs = [
-    `Photorealistic wide banner photograph of a ${trade}${where}.${brandLine}${wishLine} ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`,
+    `Photorealistic wide banner photograph of a ${trade}${where}.${brandLine}${wishLine} ${mood}${accent} Composed with clear empty space on one side so a headline can sit there.`,
     `Photorealistic close detail photograph from a ${trade}${where} — the work itself, hands or the product in use.${brandLine}${wishLine} ${mood}${accent} Shallow depth of field.`,
     `Photorealistic photograph of the place a ${trade}${where} works from, seen from inside.${brandLine}${wishLine} ${mood}${accent} Welcoming and tidy, no clutter.`,
   ];
@@ -98,19 +117,22 @@ export async function referenceImages(
  *  Null when the model gave nothing. */
 export async function slotImage(
   userId: string,
-  opts: { kind: "banner" | "about" | "gallery"; trade: string; city?: string; label?: string; dark?: boolean; color?: string; brand?: string },
+  opts: { kind: "banner" | "about" | "gallery"; trade: string; tradeKey?: string; city?: string; label?: string; dark?: boolean; color?: string; brand?: string },
 ): Promise<string | null> {
   const trade = `${opts.brand ? `${opts.brand.slice(0, 40)} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
   const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
-  const mood = opts.dark ? "Moody, low-key lighting against a dark background; rich shadows, one warm light source." : "Bright, airy daylight; clean uncluttered background, soft natural shadows.";
+  // Light unless the website itself is dark: and even then rich, not gloomy.
+  const mood = `${MODERN_LOOK} ${opts.dark ? "Slightly deeper, richer tones with soft evening window light — still clean and contemporary, never gloomy." : "Bright and airy, clean uncluttered background, soft natural shadows."}`;
   const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
   const label = (opts.label || "").replace(/\s+/g, " ").trim().slice(0, 60);
+  const scene = (opts.tradeKey && SCENES[opts.tradeKey]) || `a modern ${trade}`;
   const prompt =
     opts.kind === "banner"
-      ? `Photorealistic wide banner photograph of a ${trade}${where}. ${mood}${accent} Composed with clear empty space on one side so a headline can sit there. Editorial quality, shot on a 35mm lens.`
+      ? `Photorealistic wide banner photograph of ${scene}${where}. ${mood}${accent} Composed with a large area of calm, clean empty space on the left third so a headline can sit there; the subject is on the right. Looks like the hero image of a leading brand's website.`
       : opts.kind === "about"
-      ? `Photorealistic photograph of the people and the place of a ${trade}${where} — the owner or the team at work, natural and unposed, a portrait-friendly composition that sits beside a paragraph of text. ${mood}${accent}`
-      : `Photorealistic photograph for a website gallery tile${label ? ` called "${label}"` : ""} of a ${trade}${where}${label ? ` — it must clearly show ${label}` : " — the work, the products or the place"}. ${mood}${accent} Sharp subject, tidy background.`;
+      ? `Photorealistic photograph of the people and the place of ${scene}${where}: the owner or two team members, smiling and confident, in current smart-casual clothes, working or talking with a customer in the clean space. A portrait-friendly composition that sits beside a paragraph of text. ${mood}${accent}`
+      : `Photorealistic photograph for a website gallery tile${label ? ` called "${label}"` : ""} of ${scene}${where}${label ? ` — it must clearly show ${label}, nothing else` : " — the products, the work or the place"}. ${mood}${accent} One clear subject, sharp, tidy background, looks like current premium product photography.`;
   const png = await aiImage(prompt, opts.kind === "banner" ? "16:9" : "4:3");
+  // "ref-N" is how the app recognises a picture it made itself.
   return png ? storeImage(userId, `ref-${opts.kind === "banner" ? 1 : opts.kind === "about" ? 2 : 3}`, png) : null;
 }
