@@ -38,10 +38,29 @@ export default function WebsitePage() {
   // Arrived straight from the builder (?published=1): the greeting at the top; ?edit=1 / ?share=1 open that door.
   /** Back from a focused edit (?saved=…): one line says it is on the website, for a moment. */
   const [saved, setSaved] = useState(false);
+  /** Edit and this page's first screen are two addresses of ONE component: the address decides which one shows, on arrival and
+   *  on the browser's Back, and "Edit card & website" moves to the Edit address without a reload. */
+  function fromAddress() {
+    try {
+      const q = new URLSearchParams(window.location.search);
+      const edit = q.get("edit") === "1" && q.get("share") !== "1" && !q.get("published");
+      setEditOnly(edit);
+      setPanel(edit ? "edit" : q.get("share") === "1" ? "share" : q.get("edit") === "1" ? "edit" : null);
+    } catch { /* ignore */ }
+  }
+  function openEdit(on: boolean) {
+    window.history.pushState(null, "", on ? "/poster/site?edit=1" : "/poster/site");
+    fromAddress();
+    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+  }
+  useEffect(() => {
+    window.addEventListener("popstate", fromAddress);
+    return () => window.removeEventListener("popstate", fromAddress);
+  }, []);
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.get("edit") === "1") { setPanel("edit"); if (q.get("share") !== "1" && !q.get("published")) setEditOnly(true); } if (q.get("share") === "1") setPanel("share");
+      fromAddress();
       if (q.has("saved")) { setSaved(true); setTimeout(() => setSaved(false), 8000); }
       // The one-time flags leave the address, so a reload or Back does not replay them.
       if (q.has("saved") || q.has("published")) { q.delete("saved"); q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
@@ -85,7 +104,8 @@ export default function WebsitePage() {
     load(cardId);
   }
   /** Back = the Create tab this page hangs off — always, so it never loops back into a form just saved. */
-  function back() { router.push("/poster/create"); }
+  // Back from the Edit page goes to this page's first screen (link, Share, Edit); from there it leaves.
+  function back() { if (editOnly) openEdit(false); else router.push("/poster/create"); }
 
   if (!s) return err ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -148,7 +168,7 @@ export default function WebsitePage() {
           {/* ---- 2. two doors: Share, Edit ---- */}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
-            <button type="button" onClick={() => setPanel(panel === "edit" ? null : "edit")} aria-expanded={panel === "edit"} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
+            <button type="button" onClick={() => openEdit(true)} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
           </>}
