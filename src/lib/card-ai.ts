@@ -31,6 +31,8 @@ export type CardBrief = {
   /** The trade's guide (site-recipes.ts): what the about must explain, the usual services, why-us points, steps
    *  and customer questions of this trade — in English; the AI adapts them to the facts and the card language. */
   guide?: TradeGuide;
+  /** Public background on the trade and the place (trade-research.ts), as prompt text: general knowledge only. */
+  research?: string;
 };
 
 export type TradeGuide = {
@@ -169,6 +171,9 @@ TRADE GUIDE — what a complete website of a ${trade} covers (adapt to THIS busi
 - Why customers choose a good ${trade}: ${brief.guide.whyUs.join(" | ")}
 - How a new customer works with such a business: ${brief.guide.steps.join(" | ")}
 - Questions new customers ask: ${brief.guide.faq.join(" | ")}
+` : ""}${brief.research ? `
+BACKGROUND RESEARCH on a ${trade}${brief.city ? ` in ${brief.city}` : ""} (the public web, re-worded — general knowledge about the trade and the place, NOT facts about THIS business). Use it to make the explanatory text rich and specific: the usual things of the trade by their real names, what customers compare, how to choose, what the place is known for, the questions people ask. Never state it as something this business does, owns, has or promises — only the FACTS above are about the business. Never copy it word for word.
+${brief.research}
 ` : ""}
 JSON shape:
 {"jobTitle":"","tagline":"","about":"","hero":{"sub":""},"color":"<one of ${COLORS.join(", ")} that suits the business>",
@@ -185,16 +190,16 @@ RULES
 3. No health, cure or income claims.
 4. jobTitle: at most 5 words — the trade in plain words (e.g. "Sweets & Namkeen"), never a qualification or speciality.
 5. tagline: at most 10 words, no claims.
-6. about: 110-170 words in 2-3 short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${trade} (care, quality, honest advice, timely service), with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
+6. about: ${brief.research ? "170-240 words in 3-4" : "110-170 words in 2-3"} short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${trade} (care, quality, honest advice, timely service)${brief.research ? ", and enriched with what the BACKGROUND RESEARCH says customers of this trade look for and how to choose well" : ""}, with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
 7. hero.sub: at most 25 words — what they offer and where, worded differently from "about".
-8. services: 5-7 items. Use the services the owner named (and the ones the website shows); then the usual services of this trade from the TRADE GUIDE that fit, worded for THIS business (the owner can delete any). Never repeat a product name, never a price. desc at most 20 words, explaining what the customer gets. Never a vague item like "Connect with us" or "Explore options" — every item is a real service.
+8. services: 5-7 items. Use the services the owner named (and the ones the website shows); then the usual services of this trade from the TRADE GUIDE that fit, worded for THIS business (the owner can delete any). Never repeat a product name, never a price. desc at most ${brief.research ? 28 : 20} words, explaining what the customer gets${brief.research ? " (the research says what each usual thing of the trade is — use it, in general words)" : ""}. Never a vague item like "Connect with us" or "Explore options" — every item is a real service.
 9. highlights: 0-4 short points, only from the facts.
 9b. promise: 5-7 points of at most 6 words each — why customers choose this business: first the ones the facts support (ghee, hallmark, degree, areas, timings, delivery, warranty — without numbers), then the trade's usual reasons from the guide. NO numbers, awards or guarantees.
 9c. steps: 3-4 steps of how a new customer works with us in this trade, in order ("Message us on WhatsApp" → … → the result), name at most 5 words, desc at most 18 words, no numbers; specific to the trade (a sweet shop: pick, order, packed, delivered; a clinic: book, visit, treatment, follow-up), never "Connect with us / Explore options / Finalise".
-9d. more: 60-110 words for the website's About section — what customers in this city or trade look for and how we help, worded differently from "about", no numbers or claims.
+9d. more: ${brief.research ? "100-160" : "60-110"} words for the website's About section — what customers in this city or trade look for and how we help, worded differently from "about", no numbers or claims.
 10. offer: only when the owner gave an offer, else {"title":"","text":""}.
 11. hours: only when timings were given, else [].
-12. faq: 6-8 questions a new customer of a ${trade} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then the trade's usual questions (TRADE GUIDE) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers 15-40 words.
+12. faq: ${brief.research ? "8-10" : "6-8"} questions a new customer of a ${trade} asks. First the ones answered by the facts (timings, payment, delivery, areas served, since when, offer, address, booking). Then the trade's usual questions (TRADE GUIDE) answered in general words with NO numbers, prices, durations or guarantees unless the facts give them; when in doubt the answer says "message us on WhatsApp and we will tell you". Answers ${brief.research ? "25-55" : "15-40"} words${brief.research ? ", the general ones answered from the BACKGROUND RESEARCH in plain words" : ""}.
 13. contactNote: 1 short sentence inviting a WhatsApp message or a call.
 14. cta: a 2-4 word button text in the card language: "Book" wording for a booking business, "Order" wording for shops that sell products, otherwise "Enquire" wording (e.g. "Order on WhatsApp").
 15. titles: fill every key with a short heading in the card language. Meaning in English: ${titleMeaning}.
@@ -247,18 +252,18 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
   const cta = S(raw.cta, 60).replace(/\s+/g, " ");
   return {
     jobTitle: [S(raw.jobTitle, 60)].filter((x) => backed(x) && !isOther(x))[0] || tradeLabel(brief).slice(0, 60),
-    tagline: keep(S(raw.tagline, 90)), about: keep(S(raw.about, 1400)),
+    tagline: keep(S(raw.tagline, 90)), about: keep(S(raw.about, 2200)),
     color: typeof raw.color === "string" && COLORS.includes(raw.color) ? raw.color : COLORS[0],
     highlights: strs(raw.highlights, 8, 40).filter(backed).slice(0, 4),
-    services: (Array.isArray(raw.services) ? raw.services : []).map((x) => ({ name: S(obj(x).name, 60), desc: keep(S(obj(x).desc, 160)) }))
-      .filter((x) => x.name && backed(x.name) && !productSet.has(x.name.toLowerCase())).slice(0, 6),
+    services: (Array.isArray(raw.services) ? raw.services : []).map((x) => ({ name: S(obj(x).name, 60), desc: keep(S(obj(x).desc, 240)) }))
+      .filter((x) => x.name && backed(x.name) && !productSet.has(x.name.toLowerCase())).slice(0, 7),
     offer: S(offer.text, 200) && backed(`${S(offer.title, 60)} ${S(offer.text, 200)}`) ? { title: S(offer.title, 60) || "Offer", text: S(offer.text, 200) } : null,
     hours: (Array.isArray(raw.hours) ? raw.hours : []).map((x) => ({ day: S(obj(x).day, 30), time: S(obj(x).time, 30) })).filter((x) => x.day && x.time).slice(0, 7),
-    faq: (Array.isArray(raw.faq) ? raw.faq : []).map((x) => ({ q: S(obj(x).q, 120), a: S(obj(x).a, 320) })).filter((x) => x.q && x.a && backed(`${x.q} ${x.a}`)).slice(0, 8),
+    faq: (Array.isArray(raw.faq) ? raw.faq : []).map((x) => ({ q: S(obj(x).q, 120), a: S(obj(x).a, 440) })).filter((x) => x.q && x.a && backed(`${x.q} ${x.a}`)).slice(0, 10),
     contactNote: keep(S(raw.contactNote, 160)),
     promise: strs(raw.promise, 8, 48).filter((x) => !/\d/.test(x)).slice(0, 6),
     steps: (Array.isArray(raw.steps) ? raw.steps : []).map((x) => ({ name: S(obj(x).name, 50), desc: S(obj(x).desc, 140) })).filter((x) => x.name && !/\d/.test(`${x.name} ${x.desc}`)).slice(0, 5),
-    more: keep(S(raw.more, 900)),
+    more: keep(S(raw.more, 1400)),
     titles,
     cta: cta.length <= 32 ? cta : "",
     hero: { sub: keep(words(obj(raw.hero).sub, 200)) },

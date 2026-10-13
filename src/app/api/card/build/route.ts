@@ -13,6 +13,7 @@
 // The card is returned, not saved: the owner checks it and publishes. Free; rate-limited.
 // The build runs as a job (card-jobs.ts): it carries on when the screen is closed, a second tap joins it, and the
 // finished card waits on the server until the phone takes it.
+import { researchTrade, researchText } from "@/lib/trade-research";
 import { NextResponse, after } from "next/server";
 import { claim, currentJob, jobView, startJob, touch, type BuildStage, type CardJob } from "@/lib/card-jobs";
 import { notify } from "@/lib/notify";
@@ -497,6 +498,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
     faq: tdata.faq.map((x) => x.q),
   } : undefined;
+  const research = await within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined), 28_000).catch(() => null);
   const brief: CardBrief = {
     business,
     person: setup.person && setup.person !== business ? setup.person : undefined,
@@ -516,6 +518,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     // The trade's guide (site-recipes.ts): what to explain, the usual services, why-us, steps and questions —
     // so the AI writes a complete site for THIS trade, not the same four sections for every business.
     ...(guide ? { guide } : {}),
+    // What the public web says about this trade in this city (best effort, cached, never holds the build).
+    ...(research ? { research: researchText(research) } : {}),
   };
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section
   // order — beside the copy-writer. Not when a reference website sets the look. Never holds the build: slow or
