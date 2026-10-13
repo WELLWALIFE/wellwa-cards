@@ -386,7 +386,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {/* ---- header: wordmark (or the owner's logo) · pages · language · WhatsApp once the hero has scrolled ---- */}
       <header className={`site-head sticky top-0 z-30 glass border-b border-border ${scrolled ? "scrolled" : ""}`}>
         <div className="mx-auto max-w-6xl px-5 md:px-6 h-[60px] md:h-[68px] flex items-center gap-6">
-          <button type="button" onClick={() => go("home")} className={`flex items-center gap-3 shrink-0 max-w-[300px] rounded-lg text-left ${FOCUS}`}>
+          <button type="button" onClick={() => go("home")} className={`flex items-center gap-3 min-w-0 shrink max-w-[300px] rounded-lg text-left ${FOCUS}`}>
             {logo
               ? <Img src={logo} alt={hm.name} className="h-9 max-w-[160px] w-auto shrink-0 object-contain md:h-10" eager w={160} />
               : <Wordmark name={t(hm.name)} trade={isHome ? undefined : t(trade)} lang={L.lang} />}
