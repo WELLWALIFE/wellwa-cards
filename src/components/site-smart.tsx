@@ -176,7 +176,7 @@ function HeroClip({ url, poster }: { url: string; poster?: string }) {
   const a = useRef<HTMLVideoElement>(null), b = useRef<HTMLVideoElement>(null);
   useEffect(() => {
     const va = a.current, vb = b.current; if (!va || !vb) return;
-    let cur = va, nxt = vb, raf = 0, swapping = false;
+    let cur = va, nxt = vb, raf = 0, swapping = false, timer = 0;
     const FADE = 1.2;
     const restart = (v: HTMLVideoElement) => () => { if (v === cur) { v.currentTime = 0; void v.play().catch(() => undefined); } };
     const onA = restart(va), onB = restart(vb);
@@ -187,16 +187,20 @@ function HeroClip({ url, poster }: { url: string; poster?: string }) {
       if (d && Number.isFinite(d) && d > FADE * 3 && cur.currentTime > d - 4 && nxt.preload !== "auto") nxt.preload = "auto";
       if (!swapping && d && Number.isFinite(d) && d > FADE * 3 && cur.currentTime > d - FADE) {
         swapping = true;
-        const old = cur;
-        nxt.currentTime = 0;
-        void nxt.play().then(() => { nxt.style.opacity = "1"; old.style.opacity = "0"; }).catch(() => { swapping = false; });
-        cur = nxt; nxt = old;
-        window.setTimeout(() => { old.pause(); swapping = false; }, FADE * 1000 + 150);
+        const old = cur, incoming = nxt;
+        incoming.currentTime = 0;
+        // The copies trade places only once the second one is really playing; a browser that refuses play() keeps the first
+        // (which then restarts at its end), instead of freezing on a frame.
+        void incoming.play().then(() => {
+          incoming.style.opacity = "1"; old.style.opacity = "0";
+          cur = incoming; nxt = old;
+          timer = window.setTimeout(() => { old.pause(); swapping = false; }, FADE * 1000 + 150);
+        }).catch(() => { swapping = false; });
       }
       raf = requestAnimationFrame(tick);
     };
     raf = requestAnimationFrame(tick);
-    return () => { cancelAnimationFrame(raf); va.removeEventListener("ended", onA); vb.removeEventListener("ended", onB); };
+    return () => { cancelAnimationFrame(raf); window.clearTimeout(timer); va.removeEventListener("ended", onA); vb.removeEventListener("ended", onB); };
   }, []);
   return (
     <>

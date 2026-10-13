@@ -318,7 +318,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     const set = () => root.style.setProperty("--ann-h", `${el.offsetHeight}px`);
     set(); window.addEventListener("resize", set);
     return () => window.removeEventListener("resize", set);
-  }, [offerNow]);
+  }, [offerNow?.text]);
   const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
   const lastKind = pageBlocks.at(-1)?.kind;
@@ -806,7 +806,7 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
             <article key={u.url} className={`overflow-hidden ${cls.card} ${CARD_HOVER}`}>
               <button type="button" onClick={() => setZoom({ images: items.map((x) => x.url), i, alt: u.title })} className={`block w-full cursor-zoom-in ${FOCUS}`}><Img src={u.url} alt={u.title} className="aspect-[4/5] w-full object-cover" eager={i < 3} sizes="(min-width: 1024px) 360px, (min-width: 640px) 50vw, 100vw" /></button>
               <div className="p-5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted"><Newspaper className="mr-1 inline h-3.5 w-3.5" />{d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "long", year: "numeric" })}</p>
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-muted"><Newspaper className="mr-1 inline h-3.5 w-3.5" />{d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Kolkata" })}</p>
                 <h3 className="mt-1 text-[16px] font-semibold">{t(u.title)}</h3>
                 {text && <p className="mt-1.5 text-sm leading-relaxed text-muted line-clamp-3">{t(text.slice(0, 220))}</p>}
                 {hasWa && <a href={waHref(`Hi, I saw your update "${u.title}"`)} target="_blank" rel="noreferrer" onClick={() => trackClick(username, "site-update-whatsapp")} className={`p-wa mt-3 ${FOCUS}`}><Icon name="whatsapp" /> {hi ? "पूछें" : t("Ask about this")}</a>}
@@ -1439,11 +1439,14 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
 
 /** Reviews (§4.7): the words set large in the display italic, a 1 px accent rule, the name small. One is a centred
  *  statement; two sit side by side; three to five are a grid; six or more drift by as a strip (site-smart Marquee). */
-function ReviewCards({ items, theme }: { items: TestimonialItem[]; theme: string }) {
+function ReviewCards({ items: all, theme }: { items: TestimonialItem[]; theme: string }) {
+  // A review with no words is never drawn (the new looks set a quote big, and an empty one would be a bare mark).
+  const items = all.filter((x) => (x.text ?? "").trim());
   const prefs = useContext(LayoutCtx);
   const bp = useContext(BlueprintCtx);
   const t = useT();
   void theme;
+  if (!items.length) return null;
   if (bp === "cinematic") return <QuoteRotator items={items} t={t} />;
   if (bp === "wordmark" && items.length && items.length < 6) return <PullQuote items={items} t={t} />;
   if ((bp === "shop" || bp === "collage") && items.length >= 2) return <ReviewRow items={items} t={t} />;
@@ -1618,7 +1621,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("product")}>
           {productCats(block.items).length >= 2 && <CategoryTabs cats={productCats(block.items)} value={cat} onChange={setCat} all={hi ? "सभी" : t("All")} t={t} />}
-          <ProductGrid items={cat ? block.items.filter((x) => x.category === cat) : block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={block.id.startsWith("prodmore-") ? "grid" : undefined} openProduct={openProduct} />
+          <ProductGrid items={cat ? block.items.filter((x) => (x.category ?? "").trim() === cat) : block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={cat || block.id.startsWith("prodmore-") ? "grid" : undefined} openProduct={openProduct} />
           {lightbox}
         </Section>
       );
@@ -1654,11 +1657,13 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const gl = preferredLayouts(card.site?.style?.layouts, { gallery: imgs.length }).gallery ?? galleryLayout(imgs.length);
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
-      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><SceneStrip imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><LabelWall imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><BentoGallery imgs={shown} onOpen={open} t={t} />{lightbox}</Section>;
-      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
-      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><StaggerGallery imgs={shown.slice(0, 9)} onOpen={open} t={t} />{lightbox}</Section>;
+      const sceneVisible = bp === "bento" ? 4 : bp === "story" ? imgs.length - (imgs.length % 3) : bp === "shop" ? imgs.length - (imgs.length % 4) : bp === "collage" ? imgs.length - (imgs.length % 5) : bp === "wordmark" ? (imgs.length >= 6 ? Math.min(12, Math.floor(imgs.length / 3) * 3) : 3) : imgs.length;
+      const allBtn = sceneVisible > 0 && sceneVisible < imgs.length ? <div className="mt-6 flex justify-center"><button type="button" onClick={() => open(sceneVisible)} className={`${GHOST} ${FOCUS}`}>{hi ? `सभी ${imgs.length} photos देखें` : t(`See all ${imgs.length} photos`)}</button></div> : null;
+      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><SceneStrip imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><LabelWall imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><BentoGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{allBtn}{lightbox}</Section>;
+      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><StaggerGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
         const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (

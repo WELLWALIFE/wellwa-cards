@@ -2,7 +2,7 @@
 // "Card & Website" (owner's call, 3 Oct 2026: one link, one page — computers get the website, phones the card). Rebuilt
 // 6 Oct 2026 ("pura page bada confusing hai — Share ka option, Edit ka option; baaki sab Edit ke andar"): the link, two
 // doors — Share and Edit — and everything else behind Edit, in three sections: Look & design, Words & photos, Settings.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone } from "lucide-react";
@@ -43,13 +43,17 @@ export default function WebsitePage() {
   function fromAddress() {
     try {
       const q = new URLSearchParams(window.location.search);
-      const edit = q.get("edit") === "1" && q.get("share") !== "1" && !q.get("published");
+      const edit = q.get("edit") === "1" && q.get("share") !== "1";
       setEditOnly(edit);
       setPanel(edit ? "edit" : q.get("share") === "1" ? "share" : q.get("edit") === "1" ? "edit" : null);
     } catch { /* ignore */ }
   }
+  const pushedEdit = useRef(false);   // this page itself added the Edit entry to the history
   function openEdit(on: boolean) {
+    // Back out of an Edit this page opened = the browser's own Back (so Back and the arrow never bounce between the two screens).
+    if (!on && pushedEdit.current) { pushedEdit.current = false; window.history.back(); return; }
     window.history.pushState(null, "", on ? "/poster/site?edit=1" : "/poster/site");
+    pushedEdit.current = on;
     fromAddress();
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
   }
@@ -170,7 +174,7 @@ export default function WebsitePage() {
           </div>
 
           {/* SEO is its own door under Share and Edit (owner, 14 Oct 2026): how the website shows on Google. */}
-          <Link href="/poster/site/seo" className="flex items-center gap-3 rounded-2xl border-2 border-border bg-surface p-3.5 text-left">
+          <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-surface p-3.5 text-left">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("City, areas and search words, with a preview of how it looks on Google", "शहर, इलाक़े और search words, Google पर कैसा दिखेगा उसकी झलक के साथ")}</span></span>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
@@ -256,7 +260,7 @@ export default function WebsitePage() {
                         <div className="grid grid-cols-2 gap-2">
                           {g.tiles.map(tile)}
                           {g.k === "settings" && (
-                            <Link href="/poster/site/seo" className={`${base} border-border`}>
+                            <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${base} border-border`}>
                               <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
                               <span className="mt-2 block text-sm font-bold leading-tight">{T("Show on Google (SEO)", "Google पर दिखें (SEO)")}</span>
                               <span className="mt-0.5 block text-[11px] leading-tight text-muted">{T("City, areas, search words", "शहर, इलाक़े, search words")}</span>

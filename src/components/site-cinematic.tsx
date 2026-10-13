@@ -92,10 +92,11 @@ export function ParallaxBand({ src, alt = "", caption }: { src: string; alt?: st
 export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: string) => string }) {
   const [i, setI] = useState(0);
   const [fade, setFade] = useState(true);
+  const pending = useRef(0);
   useEffect(() => {
     if (items.length < 2 || window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const id = setInterval(() => { setFade(false); setTimeout(() => { setI((x) => (x + 1) % items.length); setFade(true); }, 350); }, 6000);
-    return () => clearInterval(id);
+    const id = setInterval(() => { setFade(false); pending.current = window.setTimeout(() => { setI((x) => (x + 1) % items.length); setFade(true); }, 350); }, 6000);
+    return () => { clearInterval(id); window.clearTimeout(pending.current); };
   }, [items.length]);
   const r = items[i]; if (!r) return null;
   const stars = Math.max(0, Math.min(5, Math.round(Number(r.rating) || 5)));
@@ -105,7 +106,7 @@ export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: st
       <p className="cin-quote-stars" aria-label={`${stars} / 5`}>{Array.from({ length: 5 }).map((_, k) => <Icon key={k} name="star" size={14} fill={k < stars} className={k < stars ? "" : "cin-star-off"} />)}</p>
       <blockquote className="cin-quote-text" style={{ opacity: fade ? 1 : 0 }}>“{t(r.text)}”</blockquote>
       <figcaption className="cin-quote-name">{r.name}</figcaption>
-      {items.length > 1 && <div className="cin-quote-dots">{items.map((_, k) => <button key={k} type="button" aria-label={`Review ${k + 1}`} aria-pressed={k === i} onClick={() => { setI(k); setFade(true); }} />)}</div>}
+      {items.length > 1 && <div className="cin-quote-dots">{items.map((_, k) => <button key={k} type="button" aria-label={`Review ${k + 1}`} aria-pressed={k === i} onClick={() => { window.clearTimeout(pending.current); setI(k); setFade(true); }} />)}</div>}
     </figure>
   );
 }

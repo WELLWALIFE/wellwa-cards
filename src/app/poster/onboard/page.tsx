@@ -99,7 +99,7 @@ function Onboard() {
   // ?back=/poster/more — an EDIT of name / mobile / photo (Me → "Edit name / mobile"): only "About you", a Save
   // button, and straight back there afterwards (owner's call, 26 Sep 2026). With ?step=about|where|extras and a back
   // (Card & Website → Edit, 7 Oct 2026) the same: that one screen, Save, and back — the live website follows.
-  const back = (params.get("back") ?? "").startsWith("/") ? params.get("back")! : "";
+  const back = /^\/(?!\/)[^\s]*$/.test(params.get("back") ?? "") ? params.get("back")! : "";   // an in-app path only (never //other-site)
   const editing = !!back;
   /** What the set-up had when it opened: a focused edit writes onto the live card only what CHANGED here. */
   const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[] }>({ about: "", hours: "", address: "", banner: "", photos: [] });
@@ -168,6 +168,7 @@ function Onboard() {
   const [detours, setDetours] = useState<Detour[]>([]);
   /** The website and role as stored when the screen opened — a change means the card must be built again. */
   const siteAtLoad = useRef({ url: "", role: "own" });
+  const factsLoaded = useRef(false);   // the card facts came back at load: only then may a save write the WhatsApp / second number
   const hadLiveCard = useRef(false);
   const [youSkipped, setYouSkipped] = useState(false);
   /** "About your business" is written by the AI once, on its own, when the name is known and it is still empty. */
@@ -243,6 +244,7 @@ function Onboard() {
       // The website already on record: the card facts first (they know whose site it is), else the account's own
       // website from an earlier set-up. Our own address, left by the seller template, is never anyone's website.
       const f = fr?.ok ? fr.data.facts : null;
+      factsLoaded.current = !!f;
       const storedUrl = cleanSiteUrl(f?.website || "") || (isShubhoraHost(meta.business?.website ?? "") ? "" : cleanSiteUrl(meta.business?.website ?? ""));
       const storedRole = f?.website ? f.websiteRole : "own";
       siteAtLoad.current = { url: storedUrl, role: storedRole };
@@ -261,7 +263,9 @@ function Onboard() {
         photo: p?.photo_url ?? meta.photo_url ?? null,
         whatsapp: wa, waSame: !wa || wa === phone0.replace(/\D/g, "").slice(-10), phone2: f?.phone2 ?? "",
       });
-      setPhoneLocked(phone0.replace(/\D/g, "").length >= 10);
+      // Locked only when the account itself was made with this number (its login address is the phone one); someone who signed in
+      // with an email or Google and typed a number later can still correct it.
+      setPhoneLocked(IS_PHONE_EMAIL.test(data.user?.email ?? "") && phone0.replace(/\D/g, "").length >= 10);
       setYouDone(!!(meta.you_done_at || meta.home_city));
       // The answer given last time comes back (Both is the default; "Only my own business" wrote false).
       setPromote(meta.also_shubhora === false ? "own" : "both");
@@ -416,6 +420,8 @@ function Onboard() {
   async function nextFromYou() {
     setErr("");
     const digits = you.phone.replace(/\D/g, "");
+    const p2 = you.phone2.replace(/\D/g, "");
+    if (p2 && p2.slice(-10).length !== 10) { setErr(T("The second number needs 10 digits — or clear it.", "दूसरा number 10 अंकों का चाहिए — या उसे ख़ाली छोड़ें।")); return; }
     if (you.name.trim().length < 2 || digits.length < 10) { setErr(T("Write your name and 10-digit mobile number.", "अपना नाम और 10 अंकों का mobile number लिखें।")); return; }
     // Busy before the version check: a second tap while it waits on the network must not run the save twice.
     setBusy("you");
@@ -440,7 +446,7 @@ function Onboard() {
         // take our own step-1 write for "changed elsewhere" and reload the form away.
         await bumpServerBase();
         await syncCardFromSetup({
-          name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone,
+          name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}),
           oldPhoto: profile?.photo_url ?? null, oldLogo: profile?.logo_url ?? null,
         }).catch(() => undefined);
       } catch {
@@ -908,6 +914,8 @@ function Onboard() {
     const here = (k: StepKey) => !editing || step === k;
     if (!editing && you.name.trim().length < 2) { setStep("you"); setErr(T("Write your name.", "अपना नाम लिखें।")); return; }
     if (!editing && phone.length !== 10) { setStep("you"); setErr(T("Write your 10-digit mobile number.", "10 अंकों का mobile number लिखें।")); return; }
+    const phone2Digits = you.phone2.replace(/\D/g, "");
+    if (phone2Digits && phone2Digits.slice(-10).length !== 10 && (!editing || step === "you")) { setStep("you"); setErr(T("The second number needs 10 digits — or clear it.", "दूसरा number 10 अंकों का चाहिए — या उसे ख़ाली छोड़ें।")); return; }
     const isBiz = biz.role === "business";
     const bizName = (biz.name ?? "").trim();   // any role may carry a company / brand; required only for a business
     const city = (biz.city ?? "").trim();
@@ -976,7 +984,7 @@ function Onboard() {
       // synced now, never the new site's about / address ahead of the owner's answer.
       const rebuilds = siteChanged && hadLiveCard.current;
       await syncCardFromSetup({
-        name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone,
+        name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}),
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
         ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos } }),
       }).catch(() => undefined);

@@ -62,9 +62,9 @@ export function SceneStrip({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: num
   const hold = () => { held.current = Date.now() + 9000; };
   return (
     <div className="scene-strip-wrap">
-      <div ref={ref} className="scene-strip" role="list" onPointerDown={hold} onWheel={hold} onFocus={hold}>
+      <div ref={ref} className="scene-strip" onPointerDown={hold} onWheel={hold} onFocus={hold}>
         {imgs.map((g, i) => (
-          <button key={i} type="button" role="listitem" className="scene-shot group" onClick={() => onOpen(i)}>
+          <button key={i} type="button" className="scene-shot group" onClick={() => onOpen(i)}>
             <Img src={g.url!} alt={g.label} className="scene-shot-img" eager={i < 2} sizes="(min-width:768px) 40vw, 80vw" />
             {g.label && <span className="scene-cap">{t(g.label)}</span>}
           </button>
@@ -158,7 +158,7 @@ export function MenuServices({ items, t }: { items: { name: string; desc?: strin
 export function StaggerGallery({ imgs, onOpen, t }: { imgs: Photo[]; onOpen: (i: number) => void; t: T }) {
   // Whole rows only, every frame one size and aligned: a contact sheet, not photographs dropped on a table (owner,
   // 14 Oct 2026: "photo sahi se set nahi hai, bikhre pade hain").
-  const n = imgs.length >= 6 ? 6 : 3;
+  const n = imgs.length >= 6 ? Math.min(12, Math.floor(imgs.length / 3) * 3) : 3;
   return (
     <div className="stagger" data-n={n}>
       {imgs.slice(0, n).map((g, i) => (
@@ -209,9 +209,9 @@ export function TileRow({ imgs, onOpen, t, across = 4 }: { imgs: Photo[]; onOpen
   // A last tile alone on a wide screen's second row looks like a mistake: show whole rows only.
   const n = imgs.length >= across ? imgs.length - (imgs.length % across) : imgs.length;
   return (
-    <div className="tile-row" role="list">
+    <div className="tile-row">
       {imgs.slice(0, n).map((g, i) => (
-        <button key={i} type="button" role="listitem" className="tile-it" onClick={() => onOpen(i)}>
+        <button key={i} type="button" className="tile-it" onClick={() => onOpen(i)}>
           <span className="tile-ph"><Img src={g.url!} alt={g.label} className="tile-img" eager={i < 4} sizes="(min-width:768px) 22vw, 44vw" /></span>
           {g.label && <span className="tile-cap">{t(g.label)}</span>}
         </button>
@@ -253,9 +253,9 @@ export function BannerAbout({ title, body, image, eyebrow, flip, t }: { title: s
 /** Reviews as a swipe row of cards, the rating big on each. */
 export function ReviewRow({ items, t }: { items: TestimonialItem[]; t: T }) {
   return (
-    <div className="rev-row" role="list">
+    <div className="rev-row">
       {items.map((x, i) => (
-        <figure key={i} role="listitem">
+        <figure key={i}>
           <span className="rev-star" aria-label={`${Math.round(Number(x.rating) || 5)} / 5`}>{"★".repeat(Math.max(1, Math.min(5, Math.round(Number(x.rating) || 5))))}</span>
           <blockquote>{t(x.text)}</blockquote>
           <figcaption>{x.name}</figcaption>
@@ -390,9 +390,9 @@ export function productCats(items: { category?: string }[]): string[] {
 /** "All · Barfi · Laddu …": one tap filters the products below; the chosen one is underlined. */
 export function CategoryTabs({ cats, value, onChange, all, t }: { cats: string[]; value: string; onChange: (c: string) => void; all: string; t: T }) {
   return (
-    <div className="cat-tabs" role="tablist">
+    <div className="cat-tabs">
       {["", ...cats].map((c) => (
-        <button key={c || "all"} type="button" role="tab" aria-selected={value === c} data-on={value === c ? "" : undefined} onClick={() => onChange(c)}>{c ? t(c) : all}</button>
+        <button key={c || "all"} type="button" aria-pressed={value === c} data-on={value === c ? "" : undefined} onClick={() => onChange(c)}>{c ? t(c) : all}</button>
       ))}
     </div>
   );
@@ -516,27 +516,27 @@ export const SCENES_CSS = `
 @media (min-width:900px){.site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 .site[data-bp="story"] .col-blocks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.site[data-bp="story"] .col-blocks li{display:flex;flex-direction:column;gap:8px;padding:18px 16px 22px;min-height:150px;border:2px solid var(--p-deep);box-shadow:5px 5px 0 0 var(--p-deep)}
-.site[data-bp="story"] .col-blocks li[data-c="0"]{background:var(--p-deep);color:#fff}
-.site[data-bp="story"] .col-blocks li[data-c="1"]{background:var(--p-soft);color:var(--p-deep)}
-.site[data-bp="story"] .col-blocks li[data-c="2"]{background:#fff;color:var(--p-deep)}
+.site[data-bp="story"] .col-blocks li{display:flex;flex-direction:column;gap:8px;padding:18px 16px 22px;min-height:150px;border:2px solid var(--p-foot);box-shadow:5px 5px 0 0 var(--p-foot)}
+.site[data-bp="story"] .col-blocks li[data-c="0"]{background:var(--p-foot);color:var(--p-foot-ink)}
+.site[data-bp="story"] .col-blocks li[data-c="1"]{background:var(--p-soft);color:var(--p-foot)}
+.site[data-bp="story"] .col-blocks li[data-c="2"]{background:#fff;color:var(--p-foot)}
 .site[data-bp="story"] .col-blocks span{font-family:var(--font-display,var(--look-head));font-size:2.2rem;line-height:1;opacity:.9}
 .site[data-bp="story"] .col-blocks h3{margin:auto 0 0;text-transform:uppercase;letter-spacing:.03em;font-size:1rem;line-height:1.2;font-weight:800}
 .site[data-bp="story"] .col-blocks p{margin:0;font-size:13px;line-height:1.4;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 @media (min-width:900px){.site[data-bp="story"] .col-blocks{grid-template-columns:repeat(4,1fr);gap:16px}}
 .site[data-bp="story"] .label-wall{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-.site[data-bp="story"] .label-it{position:relative;display:block;aspect-ratio:3/4;overflow:hidden;border:2px solid var(--p-deep);padding:0;background:var(--paper-2);cursor:zoom-in}
+.site[data-bp="story"] .label-it{position:relative;display:block;aspect-ratio:3/4;overflow:hidden;border:2px solid var(--p-foot);padding:0;background:var(--paper-2);cursor:zoom-in}
 .site[data-bp="story"] .label-img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
-.site[data-bp="story"] .label-bar{position:absolute;left:0;right:0;bottom:0;padding:9px 10px;text-align:center;text-transform:uppercase;letter-spacing:.08em;font-weight:800;font-size:12px;border-top:2px solid var(--p-deep)}
-.site[data-bp="story"] .label-it[data-c="0"] .label-bar{background:var(--p-deep);color:#fff}
-.site[data-bp="story"] .label-it[data-c="1"] .label-bar{background:var(--p-soft);color:var(--p-deep)}
-.site[data-bp="story"] .label-it[data-c="2"] .label-bar{background:#fff;color:var(--p-deep)}
+.site[data-bp="story"] .label-bar{position:absolute;left:0;right:0;bottom:0;padding:9px 10px;text-align:center;text-transform:uppercase;letter-spacing:.08em;font-weight:800;font-size:12px;border-top:2px solid var(--p-foot)}
+.site[data-bp="story"] .label-it[data-c="0"] .label-bar{background:var(--p-foot);color:var(--p-foot-ink)}
+.site[data-bp="story"] .label-it[data-c="1"] .label-bar{background:var(--p-soft);color:var(--p-foot)}
+.site[data-bp="story"] .label-it[data-c="2"] .label-bar{background:#fff;color:var(--p-foot)}
 @media (min-width:768px){.site[data-bp="story"] .label-wall{grid-template-columns:repeat(3,1fr);gap:16px}.site[data-bp="story"] .label-it{aspect-ratio:4/5}}
 .site[data-bp="story"] .col-revs{display:grid;gap:14px}
-.site[data-bp="story"] .col-revs figure{margin:0;padding:22px;border:2px solid var(--p-deep);box-shadow:6px 6px 0 0 var(--p-deep);display:flex;flex-direction:column;gap:10px}
-.site[data-bp="story"] .col-revs figure[data-c="0"]{background:var(--p-deep);color:#fff}
-.site[data-bp="story"] .col-revs figure[data-c="1"]{background:var(--p-soft);color:var(--p-deep)}
-.site[data-bp="story"] .col-revs figure[data-c="2"]{background:#fff;color:var(--p-deep)}
+.site[data-bp="story"] .col-revs figure{margin:0;padding:22px;border:2px solid var(--p-foot);box-shadow:6px 6px 0 0 var(--p-foot);display:flex;flex-direction:column;gap:10px}
+.site[data-bp="story"] .col-revs figure[data-c="0"]{background:var(--p-foot);color:var(--p-foot-ink)}
+.site[data-bp="story"] .col-revs figure[data-c="1"]{background:var(--p-soft);color:var(--p-foot)}
+.site[data-bp="story"] .col-revs figure[data-c="2"]{background:#fff;color:var(--p-foot)}
 .site[data-bp="story"] .col-revs span{font-family:var(--font-display,var(--look-head));font-size:3rem;line-height:.6}
 .site[data-bp="story"] .col-revs blockquote{margin:0;font-weight:600;font-size:1.05rem;line-height:1.4;display:-webkit-box;-webkit-line-clamp:7;-webkit-box-orient:vertical;overflow:hidden}
 .site[data-bp="story"] .col-revs figcaption{margin-top:auto;font-size:12px;text-transform:uppercase;letter-spacing:.1em;font-weight:800}
@@ -594,6 +594,11 @@ export const CAT_TABS_CSS = `
 @media (min-width:900px){.site .cat-tabs{margin:0 0 var(--s5);padding:0;flex-wrap:wrap}}
 .site[data-bp="wordmark"] .cat-tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:6px 2px;margin-right:14px;font-family:var(--font-display,var(--look-head));font-size:1.15rem;font-weight:var(--display-w,500);color:var(--muted)}
 .site[data-bp="wordmark"] .cat-tabs button[data-on]{background:none;color:var(--ink);border-bottom-color:var(--accent)}
-.site[data-bp="story"] .cat-tabs button{border:2px solid var(--p-deep);border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-weight:800;font-size:12px;box-shadow:3px 3px 0 0 var(--p-deep)}
-.site[data-bp="story"] .cat-tabs button[data-on]{background:var(--p-deep);border-color:var(--p-deep);color:#fff}
+.site[data-bp="story"] .cat-tabs button{border:2px solid var(--p-foot);border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-weight:800;font-size:12px;box-shadow:3px 3px 0 0 var(--p-foot)}
+.site[data-bp="story"] .cat-tabs button[data-on]{background:var(--p-foot);border-color:var(--p-foot);color:var(--p-foot-ink)}
+
+/* Devanagari needs room: the tight English line-heights and negative tracking clip its marks and break its conjuncts. */
+.site .scene-h:lang(hi),.site .scene-rows h3:lang(hi),.site .num-faq h3:lang(hi),.site .menu-row h3:lang(hi),.site .col-blocks h3:lang(hi),.site .label-bar:lang(hi),.site .banner-h:lang(hi),.site .bento-ab-words h2:lang(hi),.site .cat-tabs button:lang(hi){line-height:1.3;letter-spacing:0}
+/* The full-bleed strips use 100vw, which counts the scrollbar: clip the sideways overflow (clip, unlike hidden, keeps sticky working). */
+.site[data-bp="cinematic"] main{overflow-x:clip}
 `;

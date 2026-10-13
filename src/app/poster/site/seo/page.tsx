@@ -28,7 +28,13 @@ export default function SiteSeoPage() {
   useEffect(() => {
     (async () => {
       if (!(await isLoggedIn())) { router.push("/login?next=/poster/site/seo"); return; }
-      try { const cs = await fetchMyCardsStrict(); if (cs[0]) setCard(cs[0]); else setNone(true); } catch { setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।")); }
+      try {
+        const cs = await fetchMyCardsStrict();
+        // The card the hub showed (?card=), else the newest.
+        const want = new URLSearchParams(window.location.search).get("card");
+        const pick = cs.find((c) => c.id === want) ?? cs[0];
+        if (pick) setCard(pick); else setNone(true);
+      } catch { setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।")); }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
@@ -45,7 +51,7 @@ export default function SiteSeoPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/site" className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></Link>
+        <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.push("/poster/site"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</h1>
       </div>
       <p className="text-sm text-muted">{T("Tell Google where you are and what you do, so people searching “your trade in your city” find you.", "Google को बताइए आप कहाँ हैं और क्या करते हैं, ताकि “आपका काम + आपका शहर” खोजने वालों को आप मिलें।")}</p>
@@ -60,7 +66,7 @@ export default function SiteSeoPage() {
         <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
       ) : (
         <>
-          <SeoPanel card={card} onChange={(p) => setCard((c) => (c ? { ...c, ...p } : c))} address={`${SITE_HOST}/c/${card.username}`} />
+          <SeoPanel card={card} onChange={(p) => { setMsg(""); setCard((c) => (c ? { ...c, ...p } : c)); }} address={`${SITE_HOST}/c/${card.username}`} />
           {msg && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {msg}</p>}
           <button type="button" onClick={save} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save", "Save करें")}

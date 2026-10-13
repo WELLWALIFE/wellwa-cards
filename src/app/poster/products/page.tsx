@@ -33,7 +33,13 @@ const SPEC_RE = /^([^:\n]{1,24}):\s*(\S.{0,54})$/;
 type SpecRow = { label: string; value: string };
 const specsOf = (text: string): SpecRow[] => text.split("\n").map((l) => l.trim()).flatMap((l) => { const m = l.match(SPEC_RE); return m ? [{ label: m[1].trim(), value: m[2].trim() }] : []; });
 const benefitText = (text: string) => text.split("\n").filter((l) => !SPEC_RE.test(l.trim())).join("\n");
-const joinBenefits = (benefits: string, rows: SpecRow[]) => [benefitText(benefits).replace(/\n+$/, ""), ...rows.filter((r) => r.label.trim() && r.value.trim()).map((r) => `${r.label.trim().slice(0, 24)}: ${r.value.trim().slice(0, 54)}`)].filter((x, i) => i > 0 || x).join("\n");
+/** The benefit lines as typed (kept raw in the box so Enter and half-typed lines survive) + the specification rows, within the server's
+ *  limits: 12 lines of 80 characters, the specs first in line (a spec is cut by the limit last, never mid-row). */
+const joinBenefits = (benefits: string, rows: SpecRow[]) => {
+  const specs = rows.filter((r) => r.label.trim() && r.value.trim()).slice(0, 6).map((r) => `${r.label.trim().slice(0, 24)}: ${r.value.trim().slice(0, 54)}`);
+  const lines = benefits.split("\n").map((l) => l.trim()).filter(Boolean).map((l) => l.slice(0, 80)).slice(0, Math.max(0, 12 - specs.length));
+  return [...lines, ...specs].join("\n");
+};
 const EMPTY: Draft = { name: "", photo_url: null, benefits: "", offer: "", category: "", price: "", mrp: "", brand: "", photos: [] };
 
 /** The first number in a price ("1,200/kg" → 1200), or NaN — the same reading as card-compose. */
@@ -71,29 +77,34 @@ export default function ProductsPage() {
   const [backTo, setBackTo] = useState("");
   /** A live card exists: products added here reach the website only through Write again (the AI lays them out). */
   const [hasLive, setHasLive] = useState(false);
-  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (b.startsWith("/")) setBackTo(b); } catch { /* ignore */ } }, []);
+  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (/^\/(?!\/)[^\s]*$/.test(b)) setBackTo(b); } catch { /* ignore */ } }, []);
   const [brandAdmin, setBrandAdmin] = useState<string | null>(null);
   const [forBrand, setForBrand] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
   // The specification rows being typed (an empty row must stay while its value is typed); they come from the product's own
   // "Label: value" lines whenever a product opens, and go back into those lines on every keystroke.
   const [specRows, setSpecRows] = useState<SpecRow[]>([]);
+  const [benText, setBenText] = useState("");   // the benefits box exactly as typed; a line written "Label: value" becomes a specification when the product is saved
   const draftKey = draft ? (draft.id ?? "new") : "";
   // "Make this photo professional": a camera photo made studio-clean by the AI (5 credits, only when tapped; the original is kept).
   const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
+  const draftKeyRef = useRef("");
+  useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);   // read after the studio picture arrives, to see whether the same product is still open
   async function studioPhoto() {
     if (!draft?.photo_url || studio.busy) return;
-    const was = draft.photo_url;
+    const was = draft.photo_url, forKey = draftKey;
     setStudio((x) => ({ ...x, busy: true, note: "" }));
     try {
       const r = await api<{ url?: string; error?: string }>("/api/card/product-photo", { method: "POST", json: { photo_url: was, product: draft.name, brand: draft.brand, allowPaid: true, product_id: draft.id } });
+      if (draftKeyRef.current !== forKey) return;   // the owner closed this product (or opened another) meanwhile: the picture is on the product itself when it was saved
       if (r.ok && r.data.url) {
         const url = r.data.url;
-        setDraft((d) => (d ? { ...d, photo_url: url, photos: [{ url, view: "generated" as PhotoView, role: "context" as const }, ...d.photos.filter((p) => p.url !== url)].slice(0, 6) } : d));
+        // The studio picture is the product's FRONT photo from now on (the server picks the main photo from "front"); the original steps back.
+        setDraft((d) => (d ? { ...d, photo_url: url, photos: [{ url, view: "front" as PhotoView, role: "identity" as const }, ...d.photos.filter((p) => p.url !== url).map((p) => (p.view === "front" ? { ...p, view: "other" as PhotoView } : p))].slice(0, 6) } : d));
         setStudio({ busy: false, note: "ok", orig: studio.orig ?? was });
       } else setStudio((x) => ({ ...x, busy: false, note: r.data.error ?? (en ? "Your photo is kept as it is." : "आपकी photo वैसी ही रहेगी।") }));
-    } catch { setStudio((x) => ({ ...x, busy: false, note: en ? "No internet — please try again." : "Internet नहीं है — दोबारा try करें।" })); }
+    } catch { if (draftKeyRef.current === forKey) setStudio((x) => ({ ...x, busy: false, note: en ? "No internet — please try again." : "Internet नहीं है — दोबारा try करें।" })); }
   }
   function useOriginalPhoto() {
     const o = studio.orig;
@@ -101,7 +112,7 @@ export default function ProductsPage() {
     setDraft({ ...draft, photo_url: o, photos: [{ url: o, view: "front" as PhotoView, role: "identity" as const }, ...draft.photos.filter((p) => p.url !== o && p.url !== draft.photo_url)].slice(0, 6) });
     setStudio({ busy: false, note: "", orig: null });
   }
-  useEffect(() => { setSpecRows(draft ? specsOf(draft.benefits) : []); // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { setSpecRows(draft ? specsOf(draft.benefits) : []); setBenText(draft ? benefitText(draft.benefits) : ""); // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draftKey]);
   const [checking, setChecking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
@@ -271,7 +282,9 @@ export default function ProductsPage() {
     try {
       const r = await api<{ name?: string; benefits?: string[]; offer?: string; error?: string }>("/api/poster/products/ai", { method: "POST", json: { name: draft.name, photo_url: draft.photo_url, lang: en ? "en" : "hi" } });
       if (!r.ok) { setErr(r.data.error || t.error); return; }
-      setDraft({ ...draft, name: draft.name || r.data.name || "", benefits: (r.data.benefits ?? []).map((x) => String(x).trim()).filter(Boolean).slice(0, 6).join("\n"), offer: draft.offer || r.data.offer || "" });
+      const aiLines = (r.data.benefits ?? []).map((x) => String(x).trim()).filter(Boolean).slice(0, 6).join("\n");
+      setBenText(aiLines);   // the AI's lines replace the benefits box; the specification rows stay
+      setDraft({ ...draft, name: draft.name || r.data.name || "", benefits: joinBenefits(aiLines, specRows), offer: draft.offer || r.data.offer || "" });
     } catch {
       setErr(t.error);
     } finally {
@@ -482,16 +495,17 @@ export default function ProductsPage() {
                 className="w-full rounded-lg border border-brand bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink disabled:opacity-50">✨ {en ? "Fill benefits/offer with AI (from the photo)" : "AI से खूबियाँ/ऑफ़र भरो (photo देखकर)"}</button>
               <label className="block space-y-1">
                 <span className="block text-xs font-semibold">{C("Benefits / offer lines", "खूबियाँ / ऑफ़र की लाइनें")}</span>
-                <textarea className={`${inp} w-full leading-relaxed`} rows={4} placeholder={C(copy.lines, copy.linesHi)} value={benefitText(draft.benefits)} onChange={(e) => setDraft({ ...draft, benefits: joinBenefits(e.target.value, specRows) })} />
+                <textarea className={`${inp} w-full leading-relaxed`} rows={4} placeholder={C(copy.lines, copy.linesHi)} value={benText} onChange={(e) => { setBenText(e.target.value); setDraft({ ...draft, benefits: joinBenefits(e.target.value, specRows) }); }} />
+                <span className="block text-[11px] text-muted">{C("A line written like “Size: 20 litre” becomes a specification.", "“Size: 20 litre” जैसी लाइन specification बन जाती है।")}</span>
               </label>
               {/* Specifications: size, material, finish, warranty… — a small table on the product's page of the website. */}
               <div className="space-y-1.5">
                 <span className="block text-xs font-semibold">{C("Specifications", "Specifications")} <span className="font-normal text-muted">({C("optional · size, material, finish…", "optional · size, material, finish…")})</span></span>
                 {specRows.map((r, k) => (
                   <div key={k} className="flex items-center gap-1.5">
-                    <input className={`${inp} min-w-0 flex-1`} placeholder={C("e.g. Size", "जैसे Size")} value={r.label} maxLength={24} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, label: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} />
-                    <input className={`${inp} min-w-0 flex-[1.4]`} placeholder={C("e.g. 20 litre", "जैसे 20 litre")} value={r.value} maxLength={54} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, value: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} />
-                    <button type="button" aria-label={C("Remove", "हटाएँ")} onClick={() => { const rows = specRows.filter((_, n) => n !== k); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(draft.benefits, rows) }); }} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
+                    <input className={`${inp} min-w-0 flex-1`} placeholder={C("e.g. Size", "जैसे Size")} value={r.label} maxLength={24} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, label: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(benText, rows) }); }} />
+                    <input className={`${inp} min-w-0 flex-[1.4]`} placeholder={C("e.g. 20 litre", "जैसे 20 litre")} value={r.value} maxLength={54} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, value: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(benText, rows) }); }} />
+                    <button type="button" aria-label={C("Remove", "हटाएँ")} onClick={() => { const rows = specRows.filter((_, n) => n !== k); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(benText, rows) }); }} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
                 {specRows.length < 6 && <button type="button" onClick={() => setSpecRows([...specRows, { label: "", value: "" }])} className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {C("Add a specification", "Specification जोड़ें")}</button>}

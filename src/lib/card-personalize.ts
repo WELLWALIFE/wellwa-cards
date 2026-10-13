@@ -147,7 +147,7 @@ function hoursRows(text: string): { day: string; time: string }[] {
   });
 }
 
-export async function syncCardFromSetup(s: { name: string; business: string; photo: string | null; logo: string | null; phone: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync }) {
+export async function syncCardFromSetup(s: { name: string; business: string; photo: string | null; logo: string | null; phone: string; /** A separate WhatsApp number and an optional second number (undefined = leave the card as it is). */ whatsapp?: string; phone2?: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync }) {
   const { fetchMyCardsStrict, publishCard } = await import("@/lib/cloud");
   let cards: Card[];
   try { cards = await fetchMyCardsStrict(); } catch { return; }
@@ -171,7 +171,23 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
   if (!preferLogo && (photoChanged || (s.photo && showsOld))) { next.avatarUrl = s.photo!; next.avatarShape = "circle"; }
   else if ((preferLogo || !s.photo) && (logoChanged || (s.logo && showsOld))) { next.avatarUrl = s.logo!; next.avatarShape = "square"; }
   if (s.logo) next.site = { enabled: next.site?.enabled ?? false, ...next.site, logoUrl: s.logo };
-  if (s.phone) next.links = next.links.map((l) => (l.type === "phone" || l.type === "whatsapp" ? { ...l, value: `+91${s.phone}` } : l));
+  if (s.phone) {
+    // The first Call link is the mobile; the WhatsApp link is the separate WhatsApp number when there is one; any further Call link is
+    // the optional second number — added, kept in step or removed to match what the owner typed (it was copied from the mobile before).
+    let seen = 0;
+    const links = next.links.flatMap((l) => {
+      if (l.type === "whatsapp") return [{ ...l, value: `+91${s.whatsapp || s.phone}` }];
+      if (l.type !== "phone") return [l];
+      seen += 1;
+      if (seen === 1) return [{ ...l, value: `+91${s.phone}` }];
+      return s.phone2 === undefined ? [l] : s.phone2 ? [{ ...l, value: `+91${s.phone2}` }] : [];
+    });
+    if (s.phone2 && seen < 2) {
+      const at = links.findIndex((l) => l.type === "phone");
+      if (at >= 0) links.splice(at + 1, 0, { id: uid(), type: "phone", label: "Call", value: `+91${s.phone2}` });
+    }
+    next.links = links;
+  }
   // The focused edits from Card & Website → Edit (owner's call, 7 Oct 2026): what was changed here lands on the live
   // website at once — before, a new timing or about waited for "Write again".
   const f = s.facts;

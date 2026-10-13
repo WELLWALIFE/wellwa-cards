@@ -124,11 +124,15 @@ function byLook(list: HomeSection[], bp: string | undefined): HomeSection[] {
   if (!rank) return list;
   const kindOf = (s: HomeSection) => (s.kind === "block" ? s.block.kind : s.kind === "featured" ? "product" : s.kind === "reviews" ? "testimonials" : s.kind);
   const at = (s: HomeSection) => rank.indexOf(kindOf(s));
-  const slots = list.map((s, i) => (at(s) >= 0 ? i : -1)).filter((i) => i >= 0);
-  const sorted = slots.map((i) => ({ s: list[i], i })).sort((a, b) => at(a.s) - at(b.s) || a.i - b.i).map((x) => x.s);
-  const out = [...list];
+  // A bare "See all …" link (an untitled cta that points into the page) belongs to the section just before it and moves with it.
+  const bare = (s: HomeSection) => s.kind === "block" && s.block.kind === "cta" && !(s.block.title ?? "").trim() && !(s.block.body ?? "").trim() && (s.block.joinUrl ?? "").startsWith("#");
+  const units: HomeSection[][] = [];
+  for (const s of list) { if (bare(s) && units.length) units[units.length - 1].push(s); else units.push([s]); }
+  const slots = units.map((u, i) => (at(u[0]) >= 0 ? i : -1)).filter((i) => i >= 0);
+  const sorted = slots.map((i) => ({ u: units[i], i })).sort((a, b) => at(a.u[0]) - at(b.u[0]) || a.i - b.i).map((x) => x.u);
+  const out = [...units];
   slots.forEach((slot, n) => { out[slot] = sorted[n]; });
-  return out;
+  return out.flat();
 }
 
 /** The home sections in the order the website shows them, after the owner's own order and hidden list
