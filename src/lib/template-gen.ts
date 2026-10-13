@@ -13,7 +13,7 @@ import { categoryOf } from "./poster-categories";
 import { BLUEPRINTS } from "./site-blueprints";
 
 export type SamplePhoto = { slug: string; query: string; orientation: "landscape" | "portrait"; role: "cover" | "space" | "people" | "product" | "detail" | "team" };
-export type SampleProduct = { name: string; price: string; mrp?: string; badge?: string; desc: string; features: string[]; specs: { label: string; value: string }[]; photo: string };
+export type SampleProduct = { name: string; price: string; mrp?: string; badge?: string; category?: string; desc: string; features: string[]; specs: { label: string; value: string }[]; photo: string };
 export type TradeSample = {
   trade: string; businessName: string; jobTitle: string; lead: "business" | "person";
   tagline: string; about: string; highlights: string[];
@@ -155,7 +155,7 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
       return s;
     };
     const products: ProductItem[] = sample.products.slice(0, 8).map((p) => ({
-      name: p.name, images: (() => { const s = photoOf(p); return s ? [url(trade, s)] : []; })(), mrp: p.mrp ?? "", price: p.price, badge: p.badge ?? "",
+      name: p.name, images: (() => { const s = photoOf(p); return s ? [url(trade, s)] : []; })(), mrp: p.mrp ?? "", price: p.price, badge: p.badge ?? "", ...(p.category ? { category: p.category } : {}),
       desc: p.desc, features: p.features.slice(0, 4), specs: p.specs.slice(0, 3), ctaLabel: sample.productCta,
     }));
     const home: CardBlock[] = [

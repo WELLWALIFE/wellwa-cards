@@ -79,6 +79,7 @@ export interface ProductItem {
   features: string[];  // key selling points
   specs: SpecRow[];    // technical specification rows
   ctaLabel?: string;   // button text, e.g. "Book demo", "Order on WhatsApp"
+  category?: string;   // the kind of thing it is ("Barfi", "Sofas") — the website's category tabs, from six products up
 }
 
 export type CardBlock =

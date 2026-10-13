@@ -429,6 +429,17 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     for (const [k, v] of Object.entries(lines)) if (v && want.includes(k.trim().toLowerCase())) return v;
     return "";
   };
+  // Category tabs need real groups: each group holds two or more products, and there are two to six of them.
+  const groupOf = (() => {
+    const g = copy.productGroups ?? {};
+    const by = new Map<string, number>();
+    for (const v of Object.values(g)) by.set(v.toLowerCase(), (by.get(v.toLowerCase()) ?? 0) + 1);
+    const good = new Set([...by].filter(([, n]) => n >= 2).map(([k]) => k));
+    return good.size >= 2 && good.size <= 6 ? (display: string, raw: string): string => {
+      for (const [k, v] of Object.entries(g)) if (good.has(v.toLowerCase()) && [display, raw].some((x) => x.toLowerCase() === k.trim().toLowerCase())) return v;
+      return "";
+    } : () => "";
+  })();
   const items: ProductItem[] = (personal ? [] : input.products.slice(0, 12)).map((p) => {
     const display = productName(p);
     const web = p.brand ? info.get(infoKey(p)) : undefined;
@@ -458,6 +469,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       ...(mrp ? { mrp } : {}),
       ...(p.offer ? { badge: p.offer.slice(0, 20) } : {}),
       ...(desc ? { desc } : {}),
+      ...(groupOf(display, p.name) ? { category: groupOf(display, p.name) } : {}),
       features,
       specs,
       ctaLabel: ctaText,

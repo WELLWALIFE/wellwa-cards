@@ -340,6 +340,27 @@ export function BentoReviews({ items, t }: { items: TestimonialItem[]; t: T }) {
   );
 }
 
+/* ---------- category tabs (Lenskart's Eyeglasses / Sunglasses, Naturals' Men / Women) ---------- */
+
+/** The groups of a product list that can carry tabs: two to six, each with two or more products, in first-seen order. */
+export function productCats(items: { category?: string }[]): string[] {
+  const n = new Map<string, number>();
+  for (const x of items) { const c = (x.category ?? "").trim(); if (c) n.set(c, (n.get(c) ?? 0) + 1); }
+  const cats = [...n].filter(([, k]) => k >= 2).map(([c]) => c);
+  return cats.length >= 2 && cats.length <= 6 ? cats : [];
+}
+
+/** "All · Barfi · Laddu …": one tap filters the products below; the chosen one is underlined. */
+export function CategoryTabs({ cats, value, onChange, all, t }: { cats: string[]; value: string; onChange: (c: string) => void; all: string; t: T }) {
+  return (
+    <div className="cat-tabs" role="tablist">
+      {["", ...cats].map((c) => (
+        <button key={c || "all"} type="button" role="tab" aria-selected={value === c} data-on={value === c ? "" : undefined} onClick={() => onChange(c)}>{c ? t(c) : all}</button>
+      ))}
+    </div>
+  );
+}
+
 /** CSS for both looks (tokens only), scoped to the blueprint so no other look changes. */
 export const SCENES_CSS = `
 .site[data-bp="cinematic"] .scene-about{position:relative;min-height:min(86vh,720px);display:flex;align-items:flex-end;overflow:hidden;color:#fff;background:#111}
@@ -517,4 +538,18 @@ export const SCENES_CSS = `
 .site[data-bp="bento"] main .faq{border:0;display:grid;gap:10px}
 .site[data-bp="bento"] main .faq details{border:1px solid var(--line);border-radius:var(--r-card);padding:0 18px;background:var(--surface)}
 @media (min-width:900px){.site[data-bp="bento"] main .faq.grid{grid-template-columns:1fr 1fr}}
+
+`;
+
+/** The category tabs' CSS: on every site that has them, whichever look it wears. */
+export const CAT_TABS_CSS = `
+.site .cat-tabs{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;margin:0 -20px var(--s5);padding:0 20px 2px}
+.site .cat-tabs::-webkit-scrollbar{display:none}
+.site .cat-tabs button{flex:0 0 auto;padding:9px 16px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--ink);font-size:14px;font-weight:600;cursor:pointer}
+.site .cat-tabs button[data-on]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+@media (min-width:900px){.site .cat-tabs{margin:0 0 var(--s5);padding:0;flex-wrap:wrap}}
+.site[data-bp="wordmark"] .cat-tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:6px 2px;margin-right:14px;font-family:var(--font-display,var(--look-head));font-size:1.15rem;font-weight:var(--display-w,500);color:var(--muted)}
+.site[data-bp="wordmark"] .cat-tabs button[data-on]{background:none;color:var(--ink);border-bottom-color:var(--accent)}
+.site[data-bp="story"] .cat-tabs button{border:2px solid var(--p-deep);border-radius:0;text-transform:uppercase;letter-spacing:.06em;font-weight:800;font-size:12px;box-shadow:3px 3px 0 0 var(--p-deep)}
+.site[data-bp="story"] .cat-tabs button[data-on]{background:var(--p-deep);border-color:var(--p-deep);color:#fff}
 `;

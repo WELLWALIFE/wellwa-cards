@@ -35,7 +35,7 @@ import { useAssociate } from "@/lib/associate";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { dropStaleLocal } from "@/lib/local-reset";
-import { normalizeFacts, vcardDraftKey, vcardFormKey, type CardFacts, type FactsResponse } from "@/lib/card-facts";
+import { normalizeFacts, vcardDraftKey, vcardFormKey, UPI_RE, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { COMPANY_FACT_KEYS, FactsFields, pickFacts, PRODUCT_FACT_KEYS, type FactsPatch } from "@/components/poster/facts-fields";
 /** Every fact the business screens ask (the highlights moved here from the Products page, 6 Oct 2026). */
 const SCREEN_FACT_KEYS = [...COMPANY_FACT_KEYS, ...PRODUCT_FACT_KEYS] as const;
@@ -906,6 +906,8 @@ function Onboard() {
     if (here("about") && biz.role !== "personal" && !(biz.about ?? "").trim()) { setErr(T(`Write a line about your ${org.en} — or tap Write with AI.`, `अपने ${place} के बारे में एक लाइन लिखें — या AI से लिखवाएँ दबाएँ।`)); document.getElementById("about")?.scrollIntoView({ behavior: "smooth", block: "center" }); return; }
     const gst = (biz.gstin ?? "").trim().toUpperCase();
     if (here("about") && gst && !GSTIN.test(gst)) { setErr(T("The GST number does not look right (15 characters, e.g. 07ABCDE1234F1Z5). Leave it empty if you don't have one.", "GST number ठीक नहीं लगता (15 अक्षर, जैसे 07ABCDE1234F1Z5)। नहीं है तो खाली छोड़ें।")); return; }
+    // A UPI ID that is typed but wrong is said out loud; the server would drop it and the card would go out with no Pay button.
+    if (here("extras") && facts.payments.some((p) => /upi/i.test(p)) && facts.upi.trim() && !UPI_RE.test(facts.upi.trim())) { setErr(T("The UPI ID does not look right (it looks like name@bank). Fix it, or clear it to add it later.", "UPI ID ठीक नहीं लगती (जैसे name@bank)। ठीक करें, या ख़ाली छोड़कर बाद में जोड़ें।")); return; }
     const peekName = peek.state === "found" && peek.role === "own" ? (peek.data?.name ?? "").trim() : "";
     const nameFromSite: boolean | undefined = !peekName ? undefined : bizName.toLowerCase() === peekName.toLowerCase() ? true : touched.current.has("name") ? false : undefined;
     setBusy("save");

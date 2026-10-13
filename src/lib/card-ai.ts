@@ -66,6 +66,8 @@ export type CardCopy = {
   cta: string;
   hero: { sub: string };
   productLines: Record<string, string>;
+  /** product name → its group ("Barfi", "Sofas"), for the website's category tabs; empty below six products. */
+  productGroups: Record<string, string>;
   seoTitle: string;
   seoDescription: string;
 };
@@ -182,6 +184,7 @@ JSON shape:
  "promise":[""],"steps":[{"name":"","desc":""}],"more":"",
  "titles":{${TITLE_KEYS.map((k) => `"${k}":""`).join(",")}},
  "productLines":{${products.map((p) => `${JSON.stringify(p)}:""`).join(",")}},
+ ${products.length >= 6 ? `"productGroups":{${products.map((p) => `${JSON.stringify(p)}:""`).join(",")}},` : ""}
  "seoTitle":"","seoDescription":""}
 
 RULES
@@ -204,6 +207,7 @@ RULES
 14. cta: a 2-4 word button text in the card language: "Book" wording for a booking business, "Order" wording for shops that sell products, otherwise "Enquire" wording (e.g. "Order on WhatsApp").
 15. titles: fill every key with a short heading in the card language. Meaning in English: ${titleMeaning}.
 16. productLines: for each exact product name, at most 18 words taken from the facts, or "" when nothing is known about it.
+16b. productGroups (only when it is in the JSON shape): for each exact product name, the kind of thing it is as a 1-2 word group in the card language ("Barfi", "Laddu", "Gift boxes"). Reuse the SAME word for similar products; 2-6 groups in all, each holding at least 2 products; a product that fits no group gets "".
 17. seoTitle at most 60 characters; seoDescription at most 155 characters.
 18. Write prices only as the owner gave them, with the ₹ sign.`;
 }
@@ -248,6 +252,12 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
     const line = keep(S(v, 160).replace(/\s+/g, " "));
     if (name && line) productLines[name] = line;
   }
+  const productGroups: Record<string, string> = {};
+  for (const [k, v] of Object.entries(obj(raw.productGroups)).slice(0, 24)) {
+    const name = products.find((p) => p.toLowerCase() === k.trim().toLowerCase());
+    const g = S(v, 28).replace(/\s+/g, " ").replace(/[.:;,]+$/, "");
+    if (name && g && !/\d/.test(g)) productGroups[name] = g;
+  }
   const offer = obj(raw.offer);
   const cta = S(raw.cta, 60).replace(/\s+/g, " ");
   return {
@@ -268,6 +278,7 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
     cta: cta.length <= 32 ? cta : "",
     hero: { sub: keep(words(obj(raw.hero).sub, 200)) },
     productLines,
+    productGroups,
     seoTitle: [words(raw.seoTitle, 60)].filter(backed)[0] ?? "",
     seoDescription: keep(words(raw.seoDescription, 155)),
   };

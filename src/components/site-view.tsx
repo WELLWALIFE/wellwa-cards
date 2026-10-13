@@ -37,6 +37,7 @@ import { WordmarkHero, WORDMARK_CSS } from "@/components/site-wordmark";
 import { ShopHero, SHOP_CSS } from "@/components/site-shop";
 import { CollageHero, COLLAGE_CSS } from "@/components/site-collage";
 import { BODY_CSS } from "@/components/site-bodies";
+import { CAT_TABS_CSS, CategoryTabs, productCats } from "@/components/site-scenes";
 import { BentoAbout, BentoGallery, BentoReviews, BentoServices, ColourBlocks, ColourReviews, LabelWall, BannerAbout, IconTiles, ReviewRow, TileRow, EditorialAbout, MenuServices, NumberedFaq, PullQuote, SceneAbout, SceneRows, SceneStrip, SplitFaq, StaggerGallery, SCENES_CSS } from "@/components/site-scenes";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
@@ -359,7 +360,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : card.site?.style?.hero === "split" ? BODY_CSS.split : ""}${bp === "cinematic" || bp === "wordmark" || bp === "shop" || bp === "collage" || bp === "story" || bp === "bento" ? SCENES_CSS : ""}` }} />
+    <style dangerouslySetInnerHTML={{ __html: `@keyframes site-marquee{from{transform:translateX(0)}to{transform:translateX(-50%)}} .site-marquee{animation:site-marquee 48s linear infinite} .site[data-motion="lively"] .site-marquee{animation-duration:28s} .site[data-motion="none"] *,.site[data-motion="none"] *::before,.site[data-motion="none"] *::after{animation:none!important;transition:none!important} .site[data-motion="none"] [data-reveal]{opacity:1!important;transform:none!important} .site-marquee:hover{animation-play-state:paused} .site[data-look]{${design.vars};font-family:var(--font-text,var(--look-body));color:var(--ink)} .site[data-look] h1,.site[data-look] h2,.site[data-look] h3{font-family:var(--font-display,var(--look-head))} .site[data-look] h1,.site[data-look] h2{font-weight:var(--display-w,var(--head-w))} .site[data-look] .rounded-2xl{border-radius:var(--r-card)} .site[data-look] .rounded-xl{border-radius:var(--r-ctl)} .site[data-look] .rounded-3xl{border-radius:var(--r-tile)}${VIEW_CSS}${SMART_CSS}${HERO_CSS}${bp === "bento" ? BENTO_CSS : bp === "cinematic" ? CINEMATIC_CSS : bp === "story" ? POSTER_CSS : bp === "wordmark" ? WORDMARK_CSS : bp === "shop" ? SHOP_CSS : bp === "collage" ? COLLAGE_CSS : ""}${bp ? BODY_CSS[bp] ?? "" : card.site?.style?.hero === "split" ? BODY_CSS.split : ""}${bp === "cinematic" || bp === "wordmark" || bp === "shop" || bp === "collage" || bp === "story" || bp === "bento" ? SCENES_CSS : ""}${CAT_TABS_CSS}` }} />
     <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-look={look.key} data-motion={motion} data-home={isHome ? "" : undefined} data-bp={bp ?? (card.site?.style?.hero === "split" ? "split" : undefined)} data-body={card.site?.style?.body} style={{ background: "var(--surface)" }}>
 
       {/* ---- announcement bar ---- */}
@@ -1568,6 +1569,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
   const hi = card.language === "hi";
   const [zoom, setZoom] = useState<Zoom>(null);
   const [showAll, setShowAll] = useState(false);
+  const [cat, setCat] = useState("");
   const hasWa = links.some((l) => l.type === "whatsapp");
   const bp = useContext(BlueprintCtx);
   const lightbox = zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
@@ -1605,7 +1607,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       }
       return (
         <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeFor("product", hi)}>
-          <ProductGrid items={block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={block.id.startsWith("prodmore-") ? "grid" : undefined} openProduct={openProduct} />
+          {productCats(block.items).length >= 2 && <CategoryTabs cats={productCats(block.items)} value={cat} onChange={setCat} all={hi ? "सभी" : t("All")} t={t} />}
+          <ProductGrid items={cat ? block.items.filter((x) => x.category === cat) : block.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} hrefFor={hrefFor} go={go} layout={block.id.startsWith("prodmore-") ? "grid" : undefined} openProduct={openProduct} />
           {lightbox}
         </Section>
       );

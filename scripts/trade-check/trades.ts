@@ -14,7 +14,7 @@ import { FONT_PAIRS, SITE_PALETTES } from "@/lib/site-style";
 import type { CardCopy } from "@/lib/card-ai";
 import type { Card, CardBlock } from "@/lib/types";
 
-const emptyCopy = (): CardCopy => ({ jobTitle: "", tagline: "", about: "", color: "", highlights: [], services: [], offer: null, hours: [], faq: [], contactNote: "", promise: [], steps: [], more: "", titles: {}, cta: "", hero: { sub: "" }, productLines: {}, seoTitle: "", seoDescription: "" });
+const emptyCopy = (): CardCopy => ({ jobTitle: "", tagline: "", about: "", color: "", highlights: [], services: [], offer: null, hours: [], faq: [], contactNote: "", promise: [], steps: [], more: "", titles: {}, cta: "", hero: { sub: "" }, productLines: {}, productGroups: {}, seoTitle: "", seoDescription: "" });
 const products = (n: number): SavedProduct[] => Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `Item ${i + 1}`, brand: "", price: `${199 + i * 50}`, mrp: "", photo: `https://x.supabase.co/storage/v1/object/public/media/u/p${i}.jpg`, images: [], offer: "", benefits: ["Good quality", "Fair price"] }));
 
 /** DUMP_DIR=<folder>: also writes each trade's English card (with sample photos, reviews and an about text, as a
