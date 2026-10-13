@@ -150,4 +150,18 @@ const BENTO = `
 .site[data-bp="bento"] main .sec-h2{font-size:clamp(1.75rem,6vw,2.5rem);letter-spacing:-.02em}
 .site[data-bp="bento"] main .icon-box{border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent)}
 `;
-export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK, shop: PHOTOS + SHOP, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER, cinematic: PHOTOS + CINEMATIC_DARK, bento: PHOTOS + BENTO };
+/** "Why choose us" drawn differently per look: the one section that was a boxed 3+2 grid in every one of them
+ *  (live check, 13 Oct 2026: "almost the same as before"). */
+const WHY = `
+.site[data-bp="wordmark"] main .hl-grid{display:block!important;border-top:1px solid var(--line);counter-reset:why}
+.site[data-bp="wordmark"] main .hl-grid>div{border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:16px 0!important;counter-increment:why}
+.site[data-bp="wordmark"] main .hl-grid>div::before{content:counter(why,decimal-leading-zero);font-family:var(--font-display,var(--look-head));font-size:1.4rem;color:var(--accent);min-width:2.2em}
+.site[data-bp="wordmark"] main .hl-grid>div>span:first-child{display:none}
+.site[data-bp="cinematic"] main .hl-grid{display:flex!important;flex-wrap:wrap;gap:0!important}
+.site[data-bp="cinematic"] main .hl-grid>div{flex:1 1 200px;border:0!important;border-left:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:8px 20px!important}
+.site[data-bp="shop"] main .hl-grid{display:flex!important;flex-wrap:wrap;gap:10px!important}
+.site[data-bp="shop"] main .hl-grid>div{border-radius:999px!important;padding:8px 16px!important;width:auto!important}
+.site[data-bp="story"] main .hl-grid{display:block!important}
+.site[data-bp="story"] main .hl-grid>div{margin-bottom:10px;border-width:2px!important}
+`;
+export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY, shop: PHOTOS + SHOP + WHY, collage: PHOTOS + COLLAGE, story: PHOTOS + POSTER + WHY, cinematic: PHOTOS + CINEMATIC_DARK + WHY, bento: PHOTOS + BENTO };

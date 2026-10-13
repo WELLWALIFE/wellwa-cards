@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { findTemplate } from "@/lib/template-catalog";
 import { BLUEPRINT_KEYS } from "@/lib/site-style";
+import { BLUEPRINTS } from "@/lib/site-blueprints";
 import type { SiteStyle } from "@/lib/types";
 import { SiteView } from "@/components/site-view";
 import { PlanProvider } from "@/lib/plan";
@@ -26,7 +27,7 @@ export default async function TemplateSitePreview({ params, searchParams }: { pa
     site: {
       ...(tpl.data.site ?? {}),
       enabled: true,
-      ...(forced ? { style: { ...(tpl.data.site?.style ?? {}), blueprint: forced, heroVariant: undefined } } : {}),
+      ...(forced ? { style: { ...(tpl.data.site?.style ?? {}), ...(BLUEPRINTS.find((b) => b.key === forced)?.defaults ?? {}), blueprint: forced } } : {}),
       hero: tpl.data.site?.hero ?? { headline: tpl.data.company || tpl.data.name, sub: tpl.data.tagline || "", imageUrl: tpl.data.coverUrl },
     },
   };
