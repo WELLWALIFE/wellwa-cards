@@ -28,12 +28,12 @@ export const BLUEPRINTS: Blueprint[] = [
   },
   {
     key: "cinematic", name: "Full photo", hi: "फुल फ़ोटो", blurb: "Full-screen photo, scene by scene", blurbHi: "पूरी screen की photo, scene दर scene",
-    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover", layouts: { about: "statement", services: "list", products: "showcase", faq: "accordion", reviews: "quote", gallery: "masonry" } },
+    defaults: { hero: "photo", radius: "soft", motion: "calm", pattern: "none", heroVariant: "cover", layouts: { about: "photo-right", services: "list", products: "showcase", faq: "accordion", reviews: "quote", gallery: "masonry" } },
     fits: ["hotel", "restaurant", "gym", "jewellery", "car", "events", "wedding", "salon", "interior", "furniture", "architect", "photography"],
   },
   {
     key: "story", name: "Colour poster", hi: "रंगीन पोस्टर", blurb: "A bold colour block, big type, the photo as a card", blurbHi: "रंग का bold block, बड़ा type, photo एक card में",
-    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster", layouts: { about: "columns", services: "cards", products: "dense", faq: "open", reviews: "pair", gallery: "mosaic" } },
+    defaults: { radius: "round", motion: "lively", pattern: "none", heroVariant: "poster", layouts: { about: "photo-left", services: "cards", products: "dense", faq: "open", reviews: "pair", gallery: "mosaic" } },
     fits: ["cafe", "bakery", "sweets", "garments", "boutique", "beauty", "fitness", "tiffin", "home-food", "handicraft", "gifts", "florist"],
   },
   // The three structures added after the Oct 2026 market review (docs/website-looks-v3.md): what the best bakery,

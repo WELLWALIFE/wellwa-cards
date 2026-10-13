@@ -11,8 +11,8 @@ const WORDMARK = `
 .site[data-bp="wordmark"] main .sec-h2{font-size:clamp(2.25rem,8vw,4.5rem);line-height:.95;letter-spacing:-.03em;max-width:14ch}
 .site[data-bp="wordmark"] main .sec-h2:lang(hi){letter-spacing:0;line-height:1.15}
 .site[data-bp="wordmark"] main .lede{font-size:1.125rem}
-.site[data-bp="wordmark"] main section[data-reveal]:nth-of-type(3n+2){background:var(--p-soft)!important}
-.site[data-bp="wordmark"] main section[data-reveal]:nth-of-type(3n){background:var(--paper)!important}
+.site[data-bp="wordmark"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+2){background:var(--p-soft)!important}
+.site[data-bp="wordmark"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n){background:var(--paper)!important}
 .site[data-bp="wordmark"] main .s-card{border:0;box-shadow:none;background:transparent;border-radius:0}
 .site[data-bp="wordmark"] main .s-card .p-img{aspect-ratio:1;border-radius:var(--r-img);background:var(--paper-2)}
 .site[data-bp="wordmark"] main .s-card>.p-5{padding-left:0;padding-right:0}
@@ -77,7 +77,7 @@ const COLLAGE = `
 .site[data-bp="collage"] main .p-wa{border-radius:999px}
 .site[data-bp="collage"] main .rev-q{font-size:1.05rem;line-height:1.55}
 .site[data-bp="collage"] main figure{border:1px solid var(--line);border-radius:var(--r-tile);padding:var(--s4);background:var(--surface)}
-.site[data-bp="collage"] main section[data-reveal]:nth-of-type(2n){background:var(--paper-2)!important}
+.site[data-bp="collage"] main section[data-reveal]:not(.hero-dark):nth-of-type(2n){background:var(--paper-2)!important}
 `;
 
 /** The Poster body (Nham / Axiom): heavy uppercase headings, one section as a full accent band, photos with a hard
@@ -86,9 +86,9 @@ const POSTER = `
 .site[data-bp="story"] main .sec-h2{text-transform:uppercase;font-size:clamp(2rem,8vw,3.5rem);line-height:.95;letter-spacing:-.02em;max-width:14ch}
 .site[data-bp="story"] main .sec-h2:lang(hi){text-transform:none;letter-spacing:0;line-height:1.15}
 .site[data-bp="story"] main .kicker{letter-spacing:.18em}
-.site[data-bp="story"] main section[data-reveal]:nth-of-type(3n+1){background:var(--accent)!important;color:var(--on-accent);--ink:var(--on-accent);--muted:color-mix(in srgb,var(--on-accent) 78%,transparent);--line:color-mix(in srgb,var(--on-accent) 25%,transparent);--surface:color-mix(in srgb,var(--on-accent) 10%,transparent);--paper-2:color-mix(in srgb,var(--on-accent) 8%,transparent)}
-.site[data-bp="story"] main section[data-reveal]:nth-of-type(3n+1) .kicker{color:var(--on-accent);opacity:.8}
-.site[data-bp="story"] main section[data-reveal]:nth-of-type(3n+1) .p-wa{background:var(--on-accent);color:var(--accent)}
+.site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1){background:var(--accent)!important;color:var(--on-accent);--ink:var(--on-accent);--muted:color-mix(in srgb,var(--on-accent) 78%,transparent);--line:color-mix(in srgb,var(--on-accent) 25%,transparent);--surface:color-mix(in srgb,var(--on-accent) 10%,transparent);--paper-2:color-mix(in srgb,var(--on-accent) 8%,transparent)}
+.site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1) .kicker{color:var(--on-accent);opacity:.8}
+.site[data-bp="story"] main section[data-reveal]:not(.hero-dark):nth-of-type(3n+1) .p-wa{background:var(--on-accent);color:var(--accent)}
 .site[data-bp="story"] main .s-card{border:2px solid var(--ink);border-radius:var(--r-img);box-shadow:6px 6px 0 0 var(--ink);background:var(--surface)}
 .site[data-bp="story"] main .s-card .p-img{border-bottom:2px solid var(--ink)}
 .site[data-bp="story"] main .p-name{text-transform:uppercase;letter-spacing:.02em;font-size:1rem}
@@ -137,7 +137,7 @@ const PHOTOS = `
  *  site in a new colour" (review, 13 Oct 2026). */
 const SPLIT = `
 .site[data-bp="split"] main .sec-h2{font-size:clamp(1.9rem,6.5vw,2.75rem);letter-spacing:-.02em}
-.site[data-bp="split"] main section[data-reveal]:nth-of-type(2n){background:var(--p-soft)!important}
+.site[data-bp="split"] main section[data-reveal]:not(.hero-dark):nth-of-type(2n){background:var(--p-soft)!important}
 .site[data-bp="split"] main .s-card{border:1px solid var(--line);box-shadow:none;border-radius:var(--r-tile)}
 .site[data-bp="split"] main .icon-box{border-radius:999px;background:var(--p-soft);color:var(--accent)}
 .site[data-bp="split"] main .p-wa{border-radius:999px}
@@ -146,7 +146,7 @@ const SPLIT = `
 /** The Bento body: tile-shaped cards with a line, sections alternating the soft tint, so the board feeling carries down the page. */
 const BENTO = `
 .site[data-bp="bento"] main .s-card{border:1px solid var(--line);box-shadow:none;border-radius:var(--r-tile)}
-.site[data-bp="bento"] main section[data-reveal]:nth-of-type(2n+1){background:var(--p-soft)!important}
+.site[data-bp="bento"] main section[data-reveal]:not(.hero-dark):nth-of-type(2n+1){background:var(--p-soft)!important}
 .site[data-bp="bento"] main .sec-h2{font-size:clamp(1.75rem,6vw,2.5rem);letter-spacing:-.02em}
 .site[data-bp="bento"] main .icon-box{border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent)}
 `;
