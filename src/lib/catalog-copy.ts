@@ -238,3 +238,34 @@ export function exampleNameFor(categoryKey: string | null | undefined): string {
 export function exampleSiteFor(categoryKey: string | null | undefined): string {
   return `${exampleNameFor(categoryKey).toLowerCase().replace(/&/g, "and").replace(/[^a-z0-9]+/g, "")}.com`;
 }
+
+/** What a product's "category" box suggests, in the trade's own words (owner, 14 Oct 2026: a hardware site was shown
+ *  "Sweets, Namkeen, Gifts"). The same words feed the category tabs on the website. Keyed by the trade (poster-categories.ts). */
+const CATEGORY_EXAMPLES: Record<string, string> = {
+  kirana: "Atta & rice, Dal & pulses, Oil & ghee, Snacks", garments: "Men, Women, Kids, Ethnic wear", jewellery: "Gold, Silver, Diamond, Bridal sets",
+  mobile: "Smartphones, Accessories, TVs, Repair", furniture: "Sofas, Beds, Dining sets, Wardrobes", hardware: "Paints, Taps & sanitary, Tools, Electricals",
+  medical: "Medicines, Baby care, Health devices, Supplements", sweets: "Mithai, Namkeen, Gift boxes, Cakes", "grocery-online": "Fruits & veg, Staples, Dairy, Snacks",
+  gift: "Gifts, Stationery, Toys, Greeting cards", optical: "Eyeglasses, Sunglasses, Lenses, Frames", footwear: "Men, Women, Kids, Sports shoes",
+  restaurant: "Starters, Main course, Breads, Desserts", cafe: "Hot drinks, Cold drinks, Snacks, Desserts", tiffin: "Veg thali, Non-veg thali, Monthly plans, Snacks",
+  catering: "Wedding menu, Party menu, Live counters, Desserts", hotel: "Rooms, Suites, Banquet, Dining",
+  doctor: "Consultation, Tests, Treatments, Packages", hospital: "Departments, Tests, Surgeries, Packages", dentist: "Check-up, Braces, Implants, Cosmetic",
+  ayurveda: "Medicines, Therapies, Diet plans, Panchakarma", pharma: "Tablets, Syrups, Injections, Devices", gym: "Memberships, Personal training, Yoga, Diet plans",
+  salon: "Hair, Skin, Makeup, Bridal", spa: "Massage, Facial, Body care, Packages", water: "Purifiers, Ionizers, Filters, Service plans", wellness: "Supplements, Herbal, Oils, Kits",
+  ca: "Tax filing, GST, Audit, Company setup", lawyer: "Civil, Criminal, Property, Family", insurance: "Life, Health, Motor, Term plans", finance: "Home loan, Business loan, Mutual funds, Personal loan",
+  realestate: "Flats, Plots, Shops, Rentals", builder: "Residential, Commercial, Renovation, Contracts", interior: "Living room, Kitchen, Bedroom, Office",
+  travel: "Domestic tours, International tours, Hotels, Tickets", transport: "Full load, Part load, Local, Packers & movers", auto: "Cars, Bikes, Service, Spare parts",
+  electrician: "Wiring, AC repair, Plumbing, Appliances", photography: "Wedding, Portrait, Product, Events", event: "Weddings, Birthdays, Corporate, Decoration",
+  printing: "Visiting cards, Banners, Brochures, Packaging", it: "Websites, Apps, Software, Digital marketing", security: "Guards, Housekeeping, CCTV, Facility",
+  cleaning: "Home cleaning, Pest control, Sofa cleaning, Office cleaning", tailor: "Suits, Blouses, Alterations, Uniforms", mehndi: "Bridal, Party, Arabic, Makeup",
+  astro: "Kundli, Vastu, Pooja, Gemstones", courier: "Courier, Bill payment, Online forms, Printing",
+  school: "Nursery, Primary, Middle, Senior", playschool: "Playgroup, Nursery, Daycare, Activities", coaching: "Class 10, Class 12, JEE & NEET, Languages",
+  college: "Undergraduate, Postgraduate, Diploma, Short courses", computer: "Basic computer, Tally, Programming, Typing", teacher: "Maths, Science, English, Languages",
+  dance: "Classical, Western, Music, Art", mlm: "Health, Beauty, Home care, Kits", distributor: "Brands, Products, Bulk orders, Schemes", sales: "Products, Plans, Offers, Services",
+  agent: "Services, Plans, Listings, Offers", agri: "Seeds, Fertilizers, Tools, Pesticides", dairy: "Milk, Paneer, Ghee, Curd", manufacturer: "Products, Custom orders, Bulk, Spares",
+  wholesale: "Categories, Brands, Bulk packs, Schemes", textile: "Sarees, Suits, Fabrics, Bridal",
+  political: "Work done, Schemes, Events, Appeals", mla: "Projects, Schemes, Events, Help desk", ngo: "Programs, Donations, Events, Volunteers", samaj: "Events, Services, Members, Donations",
+  temple: "Pooja, Events, Donations, Prasad", club: "Events, Membership, Projects, Services", union: "Services, Events, Membership, Notices", housing: "Notices, Services, Events, Facilities",
+};
+export function categoryExampleFor(categoryKey: string | null | undefined): string {
+  return (categoryKey && CATEGORY_EXAMPLES[categoryKey]) || "Popular, New, Offers, Best sellers";
+}

@@ -20,7 +20,7 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
 import { isThinCard, normalizeFacts, type CardFacts, type FactsResponse } from "@/lib/card-facts";
 import { PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/poster/facts-fields";
-import { catalogCopyFor, tradeNeeds } from "@/lib/catalog-copy";
+import { catalogCopyFor, categoryExampleFor, tradeNeeds } from "@/lib/catalog-copy";
 import { Help } from "@/components/poster/field-help";
 import { SETUP_SCREENS, screenNo } from "@/lib/setup-steps";
 
@@ -464,8 +464,8 @@ export default function ProductsPage() {
                 {specRows.length < 6 && <button type="button" onClick={() => setSpecRows([...specRows, { label: "", value: "" }])} className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {C("Add a specification", "Specification जोड़ें")}</button>}
               </div>
               <input className={inp} placeholder={t.offerLabel} value={draft.offer} onChange={(e) => setDraft({ ...draft, offer: e.target.value })} />
-              <input className={inp} list="product-cats" placeholder={en ? "Category (optional) e.g. Sweets, Namkeen, Gifts" : "Category (optional) जैसे Sweets, Namkeen, Gifts"} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
-              <datalist id="product-cats">{[...new Set((list ?? []).map((p) => p.category).filter(Boolean))].map((c) => <option key={c} value={c} />)}</datalist>
+              <input className={inp} list="product-cats" placeholder={en ? `Category (optional) e.g. ${categoryExampleFor(category).split(", ").slice(0, 3).join(", ")}` : `Category (optional) जैसे ${categoryExampleFor(category).split(", ").slice(0, 3).join(", ")}`} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
+              <datalist id="product-cats">{[...new Set([...(list ?? []).map((p) => p.category), ...categoryExampleFor(category).split(", ")].filter(Boolean))].map((c) => <option key={c} value={c} />)}</datalist>
               {brandAdmin && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={forBrand} onChange={(e) => setForBrand(e.target.checked)} /> {en ? "For the whole team (company product)" : "पूरी team / सभी members के लिए (company product)"}</label>}
             </div>
           </details>
