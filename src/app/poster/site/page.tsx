@@ -191,7 +191,7 @@ export default function WebsitePage() {
                   { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
                   { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
                   // The three designs are the WEBSITE's; the phone card's own look lives under Advanced → Card look & settings.
-                  { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("The three designs, colours", "तीन design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
+                  { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Six designs, colours", "छह design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
                 ] as { k: string; I: typeof Mic; t: string; s: string; href?: string; onClick?: () => void; premium?: boolean; scope: "both" | "site" | "again" }[]).map((x) => {
                   const inner = (
                     <>

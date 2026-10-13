@@ -1102,10 +1102,10 @@ export default function BuildCard() {
               : busy === "publish"
                 ? T("Making it live…", "Live किया जा रहा है…")
                 : checks.length > 0
-                  ? T(`View the three designs, select one, check the ${checks.length} details below — then Save and next.`, `तीनों design देखें, एक चुनें, नीचे ${checks.length} details देख लें — फिर Save and next दबाएँ।`)
+                  ? T(`View the six designs, select one, check the ${checks.length} details below — then Save and next.`, `छह design देखें, एक चुनें, नीचे ${checks.length} details देख लें — फिर Save and next दबाएँ।`)
                   : existing
-                  ? T("View the three designs and select one — your current card stays until you tap Save and next.", "तीनों design देखें और एक चुनें — Save and next दबाने तक पुराना card वैसा ही रहेगा।")
-                  : T("View the three designs and select one — then Save and next.", "तीनों design देखें, एक चुनें — फिर Save and next दबाएँ।")}
+                  ? T("View the six designs and select one — your current card stays until you tap Save and next.", "छह design देखें और एक चुनें — Save and next दबाने तक पुराना card वैसा ही रहेगा।")
+                  : T("View the six designs and select one — then Save and next.", "छह design देखें, एक चुनें — फिर Save and next दबाएँ।")}
           </span>
         </p>
       </div>

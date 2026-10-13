@@ -33,7 +33,7 @@ export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>
     const bp = BLUEPRINTS.find((b) => b.key === key)!;
     const plan = byKey.get(key);
     const style: SiteStyle = plan ? withHeroVariant({ ...plan.style, blueprint: key }, key, category) : derive(d, key, category);
-    return { key, name: bp.name, hi: bp.hi, blurb: plan?.why || bp.blurb, blurbHi: plan?.why || bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}) };
+    return { key, name: bp.name, hi: bp.hi, blurb: bp.blurb, blurbHi: bp.blurbHi, style, ...(plan?.order ? { order: plan.order } : {}), ...(plan?.tiles ? { tiles: plan.tiles } : {}) };
   });
 }
 
