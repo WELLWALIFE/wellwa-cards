@@ -114,7 +114,7 @@ function defaultSections(card: Card, pages: CardPage[]): HomeSection[] {
  *  closing call stay where they are — and an order the owner or a plan set always wins. The Tile board keeps the default. */
 const LOOK_ORDER: Record<string, string[]> = {
   cinematic: ["about", "gallery", "product", "services", "highlights", "testimonials", "faq"],
-  story: ["highlights", "product", "about", "services", "testimonials", "gallery", "faq"],
+  story: ["highlights", "services", "product", "gallery", "about", "testimonials", "faq"],
   wordmark: ["about", "product", "gallery", "services", "testimonials", "highlights", "faq"],
   shop: ["product", "services", "highlights", "testimonials", "gallery", "about", "faq"],
   collage: ["services", "highlights", "about", "gallery", "testimonials", "product", "faq"],
