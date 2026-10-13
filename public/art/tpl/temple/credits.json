@@ -40,5 +40,61 @@
   "url": "https://www.pexels.com/photo/woman-in-traditional-indian-attire-performing-ritual-34429097/",
   "query": "indian woman praying temple folded hands",
   "role": "people"
+ },
+ "shivling-abhishek": {
+  "id": 39237027,
+  "photographer": "\"Beyond India by Shubham Thakur\"",
+  "url": "https://www.pexels.com/photo/close-up-of-shivling-with-floral-offerings-39237027/",
+  "query": "shivling abhishek milk bel patra flowers",
+  "role": "product"
+ },
+ "katha-mandap": {
+  "id": 37116936,
+  "photographer": "Vijay Krishnawat",
+  "url": "https://www.pexels.com/photo/traditional-hindu-ganesh-puja-setup-with-offerings-37116936/",
+  "query": "satyanarayan puja kalash banana leaves coconut",
+  "role": "product"
+ },
+ "navgraha-havan": {
+  "id": 34128369,
+  "photographer": "Sabarinath B",
+  "url": "https://www.pexels.com/photo/traditional-hindu-ritual-by-riverbank-34128369/",
+  "query": "havan kund fire ghee offering hands",
+  "role": "product"
+ },
+ "sanskar-family": {
+  "id": 8819147,
+  "photographer": "Yan Krukau",
+  "url": "https://www.pexels.com/photo/men-at-home-altar-on-diwali-festival-8819147/",
+  "query": "hindu baby naming ceremony family blessing",
+  "role": "product"
+ },
+ "deepdaan-evening": {
+  "id": 18376982,
+  "photographer": "Yogendra  Singh",
+  "url": "https://www.pexels.com/photo/burning-candles-in-rows-on-walls-18376982/",
+  "query": "rows of clay diyas lit temple night",
+  "role": "product"
+ },
+ "laddoo-prasad": {
+  "id": 19151511,
+  "photographer": "Sharath G.",
+  "url": "https://www.pexels.com/photo/box-of-laddus-19151511/",
+  "query": "besan laddoo prasad box marigold",
+  "role": "product"
+ },
+ "brass-bell-garland": {
+  "id": 37584995,
+  "photographer": "Roman Saienko",
+  "url": "https://www.pexels.com/photo/brass-bells-at-a-temple-in-kathmandu-nepal-37584995/",
+  "query": "brass temple bell marigold garland close up",
+  "role": "detail"
+ },
+ "trust-committee": {
+  "id": 39583696,
+  "photographer": "Suhas Hanjar",
+  "url": "https://www.pexels.com/photo/ancient-temple-columns-in-lepakshi-india-39583696/",
+  "query": "indian temple trustees group courtyard",
+  "role": "team"
  }
 }

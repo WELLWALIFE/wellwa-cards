@@ -149,6 +149,8 @@ export function tradeTemplates(trade: string, data: TradeTemplateData): CardTemp
     const photoOf = (p: SampleProduct): string | undefined => {
       let s: string | undefined = have.has(p.photo) && !usedPhoto.has(p.photo) ? p.photo : spare.find((x) => !usedPhoto.has(x));
       if (!s && have.has(p.photo)) s = p.photo;   // nothing spare: the shared photo is better than none
+      // The sample's photo for this product was dropped in photo QA and nothing spare is left: any trade photo beats a letter tile.
+      if (!s) { const all = [...have].filter((x) => !/^(cover|space|team|people)/.test(x)); const pool = all.length ? all : [...have]; s = pool.find((x) => !usedPhoto.has(x)) ?? pool[usedPhoto.size % Math.max(1, pool.length)]; }
       if (s) usedPhoto.add(s);
       return s;
     };

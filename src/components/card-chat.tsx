@@ -163,7 +163,7 @@ export function CardChat({
       {!open && (
         <button
           onClick={() => setOpen(true)}
-          className="fixed bottom-6 right-6 z-40 flex items-center gap-2 rounded-full pl-3 pr-4 py-3 shadow-float hover:-translate-y-0.5 transition-transform motion-reduce:transform-none"
+          className="fixed bottom-[76px] md:bottom-6 right-4 md:right-6 z-40 flex items-center gap-2 rounded-full pl-3 pr-4 py-3 shadow-float hover:-translate-y-0.5 transition-transform motion-reduce:transform-none"
           style={{ background: `linear-gradient(135deg, ${theme}, color-mix(in srgb, ${theme} 80%, #0b1214))`, color: onTheme(theme) }}
         >
           <Bot className="h-5 w-5" />

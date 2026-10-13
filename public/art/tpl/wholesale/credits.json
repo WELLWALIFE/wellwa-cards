@@ -1,0 +1,107 @@
+{
+ "godown-sacks": {
+  "id": 21958122,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/black-and-white-shot-of-bags-of-wheat-21958122/",
+  "query": "wholesale warehouse grain sacks stacked india",
+  "role": "cover"
+ },
+ "mandi-loading": {
+  "id": 40010160,
+  "photographer": "Wasif Mujahid",
+  "url": "https://www.pexels.com/photo/workers-pouring-grains-on-street-in-busy-market-40010160/",
+  "query": "workers loading sacks truck market india",
+  "role": "cover"
+ },
+ "godown-racks": {
+  "id": 4487363,
+  "photographer": "Tiger Lily",
+  "url": "https://www.pexels.com/photo/wares-in-foils-on-pallets-in-warehouse-4487363/",
+  "query": "warehouse shelves cartons packaged goods stacked",
+  "role": "space"
+ },
+ "mandi-shopfront": {
+  "id": 33561774,
+  "photographer": "Soumya sivadutta das",
+  "url": "https://www.pexels.com/photo/street-vendor-stall-in-kolkata-india-33561774/",
+  "query": "indian wholesale grain market shop street",
+  "role": "space"
+ },
+ "counter-billing": {
+  "id": 5466812,
+  "photographer": "olia danilevich",
+  "url": "https://www.pexels.com/photo/a-person-writing-on-white-notebook-5466812/",
+  "query": "shopkeeper writing bill ledger counter india",
+  "role": "people"
+ },
+ "porter-sack": {
+  "id": 34732967,
+  "photographer": "Ajin  K S",
+  "url": "https://www.pexels.com/photo/man-carrying-large-burlap-sack-on-street-34732967/",
+  "query": "man carrying grain sack shoulder market india",
+  "role": "people"
+ },
+ "atta-bags": {
+  "id": 8549214,
+  "photographer": "Janntul  Hasan",
+  "url": "https://www.pexels.com/photo/man-reading-newspaper-inside-a-storeroom-with-stack-of-sacks-8549214/",
+  "query": "wheat flour sacks stacked warehouse",
+  "role": "product"
+ },
+ "rice-sacks": {
+  "id": 7421207,
+  "photographer": "Vie Studio",
+  "url": "https://www.pexels.com/photo/rice-grains-on-a-brown-paper-7421207/",
+  "query": "basmati rice grains open sack",
+  "role": "product"
+ },
+ "dal-pulses": {
+  "id": 40153796,
+  "photographer": "Ali Madad",
+  "url": "https://www.pexels.com/photo/vibrant-asian-market-with-diverse-ingredients-40153796/",
+  "query": "lentils pulses sacks indian market",
+  "role": "product"
+ },
+ "oil-tins": {
+  "id": 38304582,
+  "photographer": "Annie Hatuanh",
+  "url": "https://www.pexels.com/photo/grumpy-bagels-retro-tin-display-in-cafe-38304582/",
+  "query": "cooking oil tins stacked shop",
+  "role": "product"
+ },
+ "sugar-sacks": {
+  "id": 13005168,
+  "photographer": "Srattha Nualsate",
+  "url": "https://www.pexels.com/photo/a-brown-sugar-in-the-white-bowl-13005168/",
+  "query": "white sugar crystals sack closeup",
+  "role": "product"
+ },
+ "spices-sacks": {
+  "id": 15741144,
+  "photographer": "Samar Mourya",
+  "url": "https://www.pexels.com/photo/market-stall-with-grains-and-spices-15741144/",
+  "query": "whole spices cumin sacks indian market",
+  "role": "product"
+ },
+ "fmcg-cartons": {
+  "id": 35285844,
+  "photographer": "Magda Ehlers",
+  "url": "https://www.pexels.com/photo/retro-grocery-store-shelf-with-vintage-items-35285844/",
+  "query": "packaged goods cartons biscuits soap shelves",
+  "role": "product"
+ },
+ "weighing-scale": {
+  "id": 30688216,
+  "photographer": "Denys Gromov",
+  "url": "https://www.pexels.com/photo/rustic-market-storage-with-burlap-bags-30688216/",
+  "query": "weighing scale grain sack warehouse",
+  "role": "detail"
+ },
+ "team-godown": {
+  "id": 31112254,
+  "photographer": "EqualStock IN",
+  "url": "https://www.pexels.com/photo/women-working-in-industrial-warehouse-setting-31112254/",
+  "query": "warehouse staff team group india",
+  "role": "team"
+ }
+}

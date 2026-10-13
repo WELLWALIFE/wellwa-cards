@@ -1,0 +1,107 @@
+{
+ "shopfront": {
+  "id": 4427652,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/woman-in-brown-dress-statue-4427652/",
+  "query": "indian saree shop colourful sarees display",
+  "role": "cover"
+ },
+ "draping": {
+  "id": 8750030,
+  "photographer": "Anastasia  Shuraeva",
+  "url": "https://www.pexels.com/photo/woman-in-brown-and-red-saree-8750030/",
+  "query": "woman draping red silk saree india",
+  "role": "cover"
+ },
+ "interior": {
+  "id": 37184325,
+  "photographer": "Saad Bin  Hasan",
+  "url": "https://www.pexels.com/photo/stacked-denim-jeans-in-retail-store-display-37184325/",
+  "query": "saree showroom shelves stacked silk fabric",
+  "role": "space"
+ },
+ "fabricrolls": {
+  "id": 20531149,
+  "photographer": "Bem Partington",
+  "url": "https://www.pexels.com/photo/storage-of-carpets-20531149/",
+  "query": "textile shop fabric bolts wooden shelves",
+  "role": "space"
+ },
+ "showing": {
+  "id": 16498505,
+  "photographer": "Soubhagya Maharana",
+  "url": "https://www.pexels.com/photo/smiling-man-posing-in-clothes-store-16498505/",
+  "query": "shopkeeper unfolding saree for customer india",
+  "role": "people"
+ },
+ "tailor": {
+  "id": 36883230,
+  "photographer": "Andranik Paradyan",
+  "url": "https://www.pexels.com/photo/close-up-of-a-sewing-machine-needle-in-action-36883230/",
+  "query": "indian tailor sewing machine blouse stitching",
+  "role": "people"
+ },
+ "banarasi": {
+  "id": 35108809,
+  "photographer": "Milton Das",
+  "url": "https://www.pexels.com/photo/elegant-woman-in-traditional-pink-silk-saree-35108809/",
+  "query": "banarasi silk saree gold zari brocade",
+  "role": "product"
+ },
+ "softsilk": {
+  "id": 27575174,
+  "photographer": "Pexels User",
+  "url": "https://www.pexels.com/photo/saree-traditional-wear-27575174/",
+  "query": "kanjivaram silk saree temple border",
+  "role": "product"
+ },
+ "cotton": {
+  "id": 10133275,
+  "photographer": "Viktorya  Sergeeva 🫂",
+  "url": "https://www.pexels.com/photo/denim-textile-in-stacks-10133275/",
+  "query": "handloom cotton sarees folded stack",
+  "role": "product"
+ },
+ "printed": {
+  "id": 38325069,
+  "photographer": "Kacey Inkwell",
+  "url": "https://www.pexels.com/photo/woman-in-floral-saree-amidst-bougainvillea-blossoms-38325069/",
+  "query": "georgette printed floral saree draped",
+  "role": "product"
+ },
+ "suits": {
+  "id": 35228876,
+  "photographer": "Muneeb Malhotra",
+  "url": "https://www.pexels.com/photo/elegant-floral-eastern-dress-in-lahore-setting-35228876/",
+  "query": "unstitched salwar suit fabric dupatta set",
+  "role": "product"
+ },
+ "lehenga": {
+  "id": 12791932,
+  "photographer": "𝖆𝖒𝖆𝖓 𝖆𝖏𝖎𝖒𝖆𝖑 𝕱𝖆𝖘𝖍𝖎𝖔𝖓 𝕾𝖙𝖞𝖑𝖎𝖘𝖙",
+  "url": "https://www.pexels.com/photo/photo-of-a-woman-wearing-a-dress-12791932/",
+  "query": "bridal lehenga red embroidery mannequin",
+  "role": "product"
+ },
+ "bundles": {
+  "id": 27967289,
+  "photographer": "HONG SON",
+  "url": "https://www.pexels.com/photo/a-narrow-alley-with-stacks-of-bricks-and-wood-27967289/",
+  "query": "saree bundles stacked wholesale cloth market",
+  "role": "product"
+ },
+ "zari": {
+  "id": 36369332,
+  "photographer": "wal_ 172619",
+  "url": "https://www.pexels.com/photo/detailed-close-up-of-ornate-blue-fabric-texture-36369332/",
+  "query": "zari border silk dupatta weave closeup",
+  "role": "detail"
+ },
+ "team": {
+  "id": 15385714,
+  "photographer": "Avinav Suryawansh",
+  "url": "https://www.pexels.com/photo/a-man-with-mustache-15385714/",
+  "query": "indian textile shop owner staff portrait",
+  "role": "team"
+ }
+}

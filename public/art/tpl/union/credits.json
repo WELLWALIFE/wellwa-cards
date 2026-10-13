@@ -1,0 +1,107 @@
+{
+ "cover-market-street": {
+  "id": 13369328,
+  "photographer": "Swastik Arora",
+  "url": "https://www.pexels.com/photo/outdoor-textile-market-and-people-on-street-13369328/",
+  "query": "indian bazaar market street shops daytime",
+  "role": "cover"
+ },
+ "cover-general-body": {
+  "id": 15448073,
+  "photographer": "Luis Quintero",
+  "url": "https://www.pexels.com/photo/crowd-on-gathering-in-hall-15448073/",
+  "query": "indian association general meeting hall audience",
+  "role": "cover"
+ },
+ "office-exterior": {
+  "id": 33976900,
+  "photographer": "Mahendra Meena",
+  "url": "https://www.pexels.com/photo/busy-street-market-scene-in-old-delhi-33976900/",
+  "query": "small office building signboard india market",
+  "role": "space"
+ },
+ "office-interior": {
+  "id": 6538588,
+  "photographer": "cottonbro studio",
+  "url": "https://www.pexels.com/photo/a-woman-holding-documents-6538588/",
+  "query": "indian office desk files register committee",
+  "role": "space"
+ },
+ "secretary-helping": {
+  "id": 8441787,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/elderly-man-signing-an-application-form-8441787/",
+  "query": "indian man helping shopkeeper fill form office",
+  "role": "people"
+ },
+ "delegation-memorandum": {
+  "id": 6950018,
+  "photographer": "Werner Pfennig",
+  "url": "https://www.pexels.com/photo/men-sitting-a-table-signing-papers-6950018/",
+  "query": "indian delegation handing memorandum government officer",
+  "role": "people"
+ },
+ "membership-form": {
+  "id": 7841413,
+  "photographer": "RDNE Stock project",
+  "url": "https://www.pexels.com/photo/close-up-shot-of-documents-beside-a-pen-7841413/",
+  "query": "membership form pen passport photo desk",
+  "role": "product"
+ },
+ "member-card": {
+  "id": 12903186,
+  "photographer": "Mizuno K",
+  "url": "https://www.pexels.com/photo/portrait-of-man-in-a-blue-shirt-12903186/",
+  "query": "plastic photo identity card lanyard closeup",
+  "role": "product"
+ },
+ "legal-desk": {
+  "id": 8112113,
+  "photographer": "Pavel Danilyuk",
+  "url": "https://www.pexels.com/photo/professional-lawyer-writing-on-a-notebook-8112113/",
+  "query": "indian lawyer consultation documents office desk",
+  "role": "product"
+ },
+ "insurance-help": {
+  "id": 7736036,
+  "photographer": "Mikhail Nilov",
+  "url": "https://www.pexels.com/photo/people-looking-the-insurance-policy-7736036/",
+  "query": "insurance policy form signing family india",
+  "role": "product"
+ },
+ "help-desk": {
+  "id": 8353764,
+  "photographer": "Kampus Production",
+  "url": "https://www.pexels.com/photo/documents-in-a-binder-on-a-work-desk-8353764/",
+  "query": "computer help desk paperwork gst filing india",
+  "role": "product"
+ },
+ "meeting-hall": {
+  "id": 11318647,
+  "photographer": "Fra 890",
+  "url": "https://www.pexels.com/photo/grayscale-photo-of-empty-seats-11318647/",
+  "query": "community hall rows of chairs stage projector",
+  "role": "product"
+ },
+ "trade-mela": {
+  "id": 35542079,
+  "photographer": "Kuldeep Rajora",
+  "url": "https://www.pexels.com/photo/bustling-night-market-in-delhi-with-ferris-wheel-35542079/",
+  "query": "indian trade fair exhibition stalls crowd evening",
+  "role": "product"
+ },
+ "detail-register-seal": {
+  "id": 7657392,
+  "photographer": "Cup of  Couple",
+  "url": "https://www.pexels.com/photo/wooden-stamps-on-top-of-a-notepad-7657392/",
+  "query": "rubber stamp seal ledger register closeup",
+  "role": "detail"
+ },
+ "team-committee": {
+  "id": 8154923,
+  "photographer": "Cedric Fauntleroy",
+  "url": "https://www.pexels.com/photo/a-women-sitting-on-the-chair-together-8154923/",
+  "query": "indian committee members group photo office",
+  "role": "team"
+ }
+}
