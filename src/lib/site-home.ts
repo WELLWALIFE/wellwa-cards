@@ -135,7 +135,10 @@ function byLook(list: HomeSection[], bp: string | undefined): HomeSection[] {
  *  (`all`: the hidden ones too, for the editor). */
 export function homeSections(card: Card, pages: CardPage[], opts: { all?: boolean } = {}): HomeSection[] {
   const base = defaultSections(card, pages);
-  const order = card.site?.home?.order;
+  // A plan's order can name sections this card does not have ("catalog", "whyUs"); only an order that matches one of the
+  // card's sections is the owner's, anything else leaves the look's own sequence in charge.
+  const saved = card.site?.home?.order;
+  const order = saved && saved.some((k) => base.some((s) => s.key === k)) ? saved : undefined;
   const hidden = new Set(card.site?.home?.hidden ?? []);
   let list = base;
   if (!(order && order.length)) list = byLook(base, card.site?.style?.blueprint);
