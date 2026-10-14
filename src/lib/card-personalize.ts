@@ -214,14 +214,13 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
   // The products have a page of their own, as they did when the card was built with products (owner, 14 Oct 2026): a card
   // written without any gets a "Products" page in the menu the first time products are added, and the block moves there.
   if (!next.pages.some((pg) => pg.slug === "products")) {
-    const home = next.pages[0];
-    const bi = home ? home.blocks.findIndex((b) => b.kind === "product") : -1;
-    if (home && bi >= 0) {
-      const block = home.blocks[bi] as Extract<CardBlock, { kind: "product" }>;
-      if (block.items.length) {
-        home.blocks.splice(bi, 1);
-        next.pages.splice(1, 0, { id: Math.random().toString(36).slice(2, 10), slug: "products", label: next.language === "hi" ? "प्रोडक्ट" : "Products", blocks: [{ ...block, title: block.title || (next.language === "hi" ? "हमारे प्रोडक्ट" : "Products") }] });
-      }
+    // The block may sit on the home page or on the Services page (a trade whose catalogue is services lists its products there).
+    const from = next.pages.find((pg) => !pg.hidden && (pg.slug === "home" || pg.slug === "services" || pg === next.pages[0]) && pg.blocks.some((b) => b.kind === "product" && b.items.length));
+    const bi = from ? from.blocks.findIndex((b) => b.kind === "product" && b.items.length) : -1;
+    if (from && bi >= 0) {
+      const block = from.blocks[bi] as Extract<CardBlock, { kind: "product" }>;
+      from.blocks.splice(bi, 1);
+      next.pages.splice(1, 0, { id: Math.random().toString(36).slice(2, 10), slug: "products", label: next.language === "hi" ? "प्रोडक्ट" : "Products", blocks: [{ ...block, title: block.title || (next.language === "hi" ? "हमारे प्रोडक्ट" : "Products") }] });
     }
   }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
