@@ -14,7 +14,7 @@ export async function GET(request: Request) {
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const [saasRes, trialRes, payRes, cardRes, autoRes] = await Promise.all([
     restAsUser<Saas[]>(me.token, `rpc/my_saas`, { method: "POST", body: "{}" }),
-    restAsUser<{ plan: string; is_trial: boolean; days_left: number; expired: boolean }[]>(me.token, `rpc/my_plan`, { method: "POST", body: "{}" }),
+    restAsUser<{ plan: string; is_trial: boolean; days_left: number; expired: boolean; expires_at?: string | null }[]>(me.token, `rpc/my_plan`, { method: "POST", body: "{}" }),
     restAsUser<{ amount: number; created_at: string; provider_ref: string; plan?: string }[]>(me.token, `subscriptions?select=amount,created_at,provider_ref,plan&order=created_at.desc&limit=12`),
     // Before migration 0057 has run this call fails — then there is simply no card year to show.
     restAsUser<CardYear[]>(me.token, `rpc/my_card`, { method: "POST", body: "{}" }).catch(() => ({ data: null })),
@@ -30,6 +30,8 @@ export async function GET(request: Request) {
     expires_at: saas?.expires_at ?? null,
     days_left: saas?.days_left ?? 0,
     credits: { monthly: saas?.monthly_credits ?? 0, packs: saas?.pack_credits ?? 0, total: (saas?.monthly_credits ?? 0) + (saas?.pack_credits ?? 0) },
+    // A plan given by the admin (or the card plan) lives on the profile, not in the Growth subscription.
+    given: trial && ["pro", "team"].includes(trial.plan) && !trial.expired ? { plan: trial.plan, expires_at: trial.expires_at ?? null } : null,
     trial: trial && trial.is_trial ? { days_left: trial.days_left, expired: trial.expired } : null,
     payments: payRes.data ?? [],
     card: (Array.isArray(cardRes.data) ? cardRes.data[0] : null) ?? null,

@@ -20,7 +20,7 @@ import { ClaimUsername } from "@/components/poster/claim-username";
 type Partner = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; directs: number; walletPaise: number; renewalsDue: number };
 type Account = { username: string | null; referralCode: string | null; cardSlug?: string | null; partner: Partner | null };
 type PlanRes = {
-  tier: SaasTier | null; state: "none" | "active" | "grace" | "expired"; expires_at: string | null; credits?: { total: number };
+  given?: { plan: string; expires_at: string | null } | null; tier: SaasTier | null; state: "none" | "active" | "grace" | "expired"; expires_at: string | null; credits?: { total: number };
   card?: { state: "included" | "active" | "grace" | "paused"; until: string | null; pause_on: string | null; renewed: boolean } | null;
 };
 
@@ -102,7 +102,7 @@ export default function SettingsPage() {
 
   const tier = plan?.tier && plan.state !== "none" && plan.state !== "expired" ? SAAS_PLANS[plan.tier] : null;
   // The V-Card's year on the free plan (Growth includes the card, so nothing to say then).
-  const cy = !tier ? plan?.card ?? null : null;
+  const cy = !tier && !plan?.given ? plan?.card ?? null : null;
   const cardLine = !cy || cy.state === "included" ? null
     : cy.state === "paused" ? { cls: "text-danger font-semibold", text: en ? "V-Card paused — tap to renew" : "V-Card रुका हुआ है — renew करने के लिए tap करें" }
     : cy.state === "grace" ? { cls: "text-amber font-semibold", text: en ? `V-Card year ended — renew by ${day(cy.pause_on)}` : `V-Card का साल पूरा — ${day(cy.pause_on)} तक renew करें` }
@@ -153,10 +153,10 @@ export default function SettingsPage() {
       <Link href="/poster/plan" className="flex items-center justify-between rounded-2xl border border-brand/40 bg-brand-soft/30 p-4">
         <span className="min-w-0">
           <span className="block text-[11px] font-semibold uppercase tracking-wide text-muted">{en ? "Your plan" : "आपका plan"}</span>
-          <span className="block text-base font-bold">{tier ? tier.label : "Free"}</span>
+          <span className="block text-base font-bold">{tier ? tier.label : plan?.given ? (plan.given.plan === "team" ? "Team" : "Pro") : "Free"}</span>
           {cardLine && <span className={`block text-xs ${cardLine.cls}`}>{cardLine.text}</span>}
           <span className="block text-xs text-muted">
-            {tier && plan?.expires_at ? `${en ? "Renews" : "Renew"} ${day(plan.expires_at)}` : en ? "Free · Growth ₹2,999 · Custom Solutions — see plans" : "Free · Growth ₹2,999 · Custom Solutions — plans देखें"}
+            {tier && plan?.expires_at ? `${en ? "Renews" : "Renew"} ${day(plan.expires_at)}` : plan?.given ? (plan.given.expires_at ? `${en ? "Active till" : "चालू"} ${day(plan.given.expires_at)}` : en ? "Active" : "चालू") : en ? "Free · Growth ₹2,999 · Custom Solutions — see plans" : "Free · Growth ₹2,999 · Custom Solutions — plans देखें"}
             {plan?.credits ? ` · ${plan.credits.total} credits` : ""}
           </span>
         </span>
