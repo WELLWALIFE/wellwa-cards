@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
       // Every page refuses to be framed — except /preview/*, which the "Website" tab on /poster/card/build shows
       // in a same-origin iframe (DENY there = "refused to connect").
       // /templates/*/site and /templates/review (the owner's template review board, 12 Oct 2026) frame each other the same way.
-      source: "/((?!preview/|templates/).*)",
+      source: "/((?!preview/|templates/|api/partner-panel).*)",
       headers: [
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "DENY" },
@@ -50,6 +50,16 @@ const nextConfig: NextConfig = {
       ],
     }, {
       source: "/templates/:path*",
+      headers: [
+        { key: "X-Content-Type-Options", value: "nosniff" },
+        { key: "X-Frame-Options", value: "SAMEORIGIN" },
+        { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+        { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+      ],
+    }, {
+      // The Business tab shows the partner panel inside the app (Business → User Panel, Team, Wallet…): this hand-off page and the
+      // panel under /partners may be framed by this same site only.
+      source: "/api/partner-panel",
       headers: [
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },
