@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 import { headers } from "next/headers";
-import { getPublicSupabase } from "@/lib/supabase/public";
+import { getPublicSupabase, fetchCardExpired } from "@/lib/supabase/public";
 import { sampleCards } from "@/lib/sample-data";
 import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
@@ -71,6 +71,14 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       // A card on its own domain is listed in that domain's sitemap, not here (its canonical address is there).
       const elsewhere = new Set(((own ?? []) as { username: string }[]).map((r) => r.username));
       rows = ((data ?? []) as Row[]).filter((r) => r.username && !elsewhere.has(r.username));
+      // Google is for subscribed websites only (owner, 14 Oct 2026): a free or lapsed card is noindex, so it is not listed either.
+      const keep: Row[] = [];
+      for (let i = 0; i < rows.length; i += 40) {
+        const part = rows.slice(i, i + 40);
+        const gone = await Promise.all(part.map((r) => fetchCardExpired(r.username)));
+        part.forEach((r, j) => { if (!gone[j]) keep.push(r); });
+      }
+      rows = keep;
     } catch { /* ignore */ }
   }
   // Only fall back to samples in demo mode — never list deleted cards.
