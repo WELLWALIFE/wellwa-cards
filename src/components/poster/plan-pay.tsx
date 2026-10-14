@@ -10,7 +10,7 @@ import { payPrefill } from "@/lib/pay-prefill";
 type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
 type RzpOptions = {
   key: string; amount: number; currency: string; order_id: string; name: string; description: string;
-  theme: { color: string }; handler: (r: RzpResponse) => void; modal: { ondismiss: () => void };
+  prefill?: { contact?: string; email?: string; name?: string }; theme: { color: string }; handler: (r: RzpResponse) => void; modal: { ondismiss: () => void };
 };
 type RzpCtor = new (o: RzpOptions) => { open: () => void };
 const CHECKOUT_JS = "https://checkout.razorpay.com/v1/checkout.js";
