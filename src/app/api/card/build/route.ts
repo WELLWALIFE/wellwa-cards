@@ -498,6 +498,10 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     steps: tdata.steps.map((x) => `${x.en} — ${x.desc}`),
     faq: tdata.faq.map((x) => x.q),
   } : undefined;
+  // The designer starts first: it needs no research, so it runs beside the research and the writing (a build used to wait for them one after the other).
+  const designT0 = Date.now();
+  const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
+  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
   const research = await within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined, [...(business || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 28_000).catch(() => null);
   const brief: CardBrief = {
     business,
@@ -524,9 +528,6 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // The designer AI (site-designer.ts) plans the look for THIS business — palette, fonts, hero, corners, section
   // order — beside the copy-writer. Not when a reference website sets the look. Never holds the build: slow or
   // down, the trade's default look stands.
-  const designT0 = Date.now();
-  const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
-  const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
   step("writing");
   let copy: CardCopy;
   try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return answer({ error: "The AI did not respond. Please try again." }, 502); }
@@ -637,7 +638,9 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   step("checking");
   let designReview: BuildResponse["designReview"];
   try {
-    const shot = await within(screenshotCard(built, SITE_URL), 40_000);
+    // The look-over by screenshot is off unless asked for: on the server it failed to load the page ("1/10 — Page failed to load") and
+    // only added up to 70 seconds to every build (owner, 14 Oct 2026: "bahut time lag raha hai").
+    const shot = process.env.CARD_DESIGN_REVIEW === "1" ? await within(screenshotCard(built, SITE_URL), 40_000) : null;
     if (shot) {
       // The reviewer and the editor work on a published card's shape; the unsaved card lacks only its ids.
       const asCard = { id: "", username: "", plan: "free", active: true, views: 0, createdAt: "", ...built } as unknown as Card;
