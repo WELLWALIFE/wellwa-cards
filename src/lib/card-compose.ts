@@ -713,7 +713,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
       enabled: true,
       logoUrl,
       hero: {
-        headline,
+        // The AI's own headline for this business when it wrote one (the website checks it is a claim and not the name); else the name, and the
+        // website prints its trade headline — which was the same line on every shop of a trade group.
+        headline: copy.hero?.claim || headline,
         // Only a line the AI wrote FOR the hero; nothing is put in its place. An empty sub makes the website print
         // the trade group's benefit line (site-hero.ts heroModel) — never the tagline or "<Trade> in <City> since
         // <Y>." (docs/premium-look.md §3.1), which read as data, not a reason to stay.

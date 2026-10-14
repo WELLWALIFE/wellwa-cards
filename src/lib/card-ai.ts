@@ -64,7 +64,7 @@ export type CardCopy = {
   more: string;
   titles: Partial<Record<TitleKey, string>>;
   cta: string;
-  hero: { sub: string };
+  hero: { sub: string; claim?: string };
   productLines: Record<string, string>;
   /** product name → its group ("Barfi", "Sofas"), for the website's category tabs; empty below six products. */
   productGroups: Record<string, string>;
@@ -178,7 +178,7 @@ BACKGROUND RESEARCH on a ${trade}${brief.city ? ` in ${brief.city}` : ""} (the p
 ${brief.research}
 ` : ""}
 JSON shape:
-{"jobTitle":"","tagline":"","about":"","hero":{"sub":""},"color":"<one of ${COLORS.join(", ")} that suits the business>",
+{"jobTitle":"","tagline":"","about":"","hero":{"sub":"","claim":""},"color":"<one of ${COLORS.join(", ")} that suits the business>",
  "highlights":[""],"services":[{"name":"","desc":""}],"offer":{"title":"","text":""},
  "hours":[{"day":"","time":""}],"faq":[{"q":"","a":""}],"contactNote":"","cta":"",
  "promise":[""],"steps":[{"name":"","desc":""}],"more":"",
@@ -194,6 +194,7 @@ RULES
 4. jobTitle: at most 5 words — the trade in plain words (e.g. "Sweets & Namkeen"), never a qualification or speciality.
 5. tagline: at most 10 words, no claims.
 6. about: ${brief.research ? "170-240 words in 3-4" : "110-170 words in 2-3"} short paragraphs (separate with a blank line), first person plural ("we"). Paragraph 1: who we are and what we offer, from the facts. Paragraph 2: how we work with customers in this trade — written in general words that are true of any good ${trade} (care, quality, honest advice, timely service)${brief.research ? ", and enriched with what the BACKGROUND RESEARCH says customers of this trade look for and how to choose well" : ""}, with no numbers and no claims. Paragraph 3 (optional): where we are and how to reach us. Never pad with adjectives; every sentence must say something.
+7a. hero.claim: the big headline of the website — 3 to 6 words, a short, specific line of promise or feeling for THIS business and trade, in the same language as the rest. It must NOT be the business name, must not contain a slash or a number, and must not use superlatives (best, No.1, cheapest) or any claim the facts do not support. Make it fresh and different for every business: never write the stock lines "Everything you need, close by", "Good work, done properly", "Fresh every morning", "Quality you can trust" or anything like them.
 7. hero.sub: at most 25 words — what they offer and where, worded differently from "about".
 8. services: 5-7 items. Use the services the owner named (and the ones the website shows); then the usual services of this trade from the TRADE GUIDE that fit, worded for THIS business (the owner can delete any). Never repeat a product name, never a price. desc at most ${brief.research ? 28 : 20} words, explaining what the customer gets${brief.research ? " (the research says what each usual thing of the trade is — use it, in general words)" : ""}. Never a vague item like "Connect with us" or "Explore options" — every item is a real service.
 9. highlights: 0-4 short points, only from the facts.
@@ -276,7 +277,7 @@ function toCopy(raw: Obj, brief: CardBrief): CardCopy {
     more: keep(S(raw.more, 1400)),
     titles,
     cta: cta.length <= 32 ? cta : "",
-    hero: { sub: keep(words(obj(raw.hero).sub, 200)) },
+    hero: { sub: keep(words(obj(raw.hero).sub, 200)), claim: ((c) => (c && c.split(/\s+/).length <= 6 && !/[\/\d]/.test(c) ? c : ""))(keep(words(obj(raw.hero).claim, 60))) },
     productLines,
     productGroups,
     seoTitle: [words(raw.seoTitle, 60)].filter(backed)[0] ?? "",
@@ -358,7 +359,7 @@ export async function writeCard(brief: CardBrief, ref?: Reference | null): Promi
               tagline: out.tagline || more.tagline,
               about: more.about.split(/\s+/).length > out.about.split(/\s+/).length ? more.about : out.about,
               more: out.more || more.more,
-              hero: { sub: out.hero.sub || more.hero.sub },
+              hero: { sub: out.hero.sub || more.hero.sub, claim: out.hero.claim || more.hero.claim },
             };
           } catch { /* the first reply stands */ }
         }
