@@ -19,12 +19,12 @@ export async function POST(request: Request) {
     const name = S(o.name, 60);
     if (!name || names.has(name.toLowerCase())) continue;
     names.add(name.toLowerCase());
-    rows.push({ user_id: me.id, name, photo_url: null, benefits: [], offer: "", category: S(o.category, 30), active: true, brand_id: null, ...(money(o.price) ? { price: money(o.price) } : {}) });
+    rows.push({ user_id: me.id, name, photo_url: null, benefits: [], offer: "", category: S(o.category, 30), active: true, brand_id: null, price: money(o.price) });   // every row carries the same keys (a batch insert needs that)
   }
   if (!rows.length) return NextResponse.json({ added: 0, skipped: true });
   let r = await restAsUser<unknown[]>(me.token, "poster_products", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows) });
   // Before migration 0050 the price column does not exist: save the names rather than nothing.
   if (!r.ok && r.status === 400 && /\bprice\b/i.test(r.text)) r = await restAsUser<unknown[]>(me.token, "poster_products", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows.map(({ price: _p, ...rest }) => (void _p, rest))) });
-  if (!r.ok) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 400 });
+  if (!r.ok) { console.log("[bulk] failed", r.status, r.text.slice(0, 300)); return NextResponse.json({ error: "Could not save. Please try again." }, { status: 400 }); }
   return NextResponse.json({ added: rows.length });
 }
