@@ -2,6 +2,7 @@ import "server-only";
 // One AI photo from a text prompt (Gemini image model), stored in public media storage.
 import sharp from "sharp";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
+import { IMAGE_GUIDE, checkImage } from "@/lib/media/image-check";
 
 const GEMINI = "https://generativelanguage.googleapis.com/v1beta/models";
 // The lite image model everywhere (owner's call, 4 Oct 2026: "sasta hai aur achha bhi"): half the price a picture.
@@ -29,19 +30,43 @@ const SCENES: Record<string, string> = {
 };
 export const NO_TEXT = "ABSOLUTELY NO TEXT, letters, numbers, logos or watermarks anywhere in the image.";
 
-export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9"): Promise<Buffer | null> {
+/** One try at a picture from the image model. */
+async function rawImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5"): Promise<Buffer | null> {
   const key = process.env.GEMINI_API_KEY;
   if (!key) return null;
   try {
     const r = await fetch(`${GEMINI}/${IMG_MODEL}:generateContent`, {
       method: "POST", signal: AbortSignal.timeout(90_000),
       headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt} ${NO_TEXT}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } }),
+      body: JSON.stringify({ contents: [{ parts: [{ text: `${prompt} ${IMAGE_GUIDE} ${NO_TEXT}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } }),
     });
     const d = await r.json().catch(() => null);
     const part = (d?.candidates?.[0]?.content?.parts ?? []).find((x: { inlineData?: { data?: string } }) => x.inlineData?.data);
     return part?.inlineData?.data ? Buffer.from(part.inlineData.data, "base64") : null;
   } catch { return null; }
+}
+
+/** A picture that is right the first time (owner, 14 Oct 2026): the picture rules ride on every prompt; the result is checked, and
+ *  a flawed one is drawn again with the checker's fix note — at most `tries` times, never past ~75 s — keeping the best. The
+ *  owner is charged once, whatever the number of tries. */
+export async function aiImage(prompt: string, ratio: "16:9" | "4:3" | "1:1" | "4:5" = "16:9", opts: { tries?: number; check?: boolean } = {}): Promise<Buffer | null> {
+  const t0 = Date.now();
+  const tries = Math.max(1, opts.tries ?? 3);
+  let best: { img: Buffer; score: number } | null = null;
+  let fix = "";
+  for (let n = 0; n < tries; n++) {
+    const img = await rawImage(fix ? `${prompt} IMPORTANT, avoid these problems seen in an earlier attempt: ${fix}` : prompt, ratio);
+    if (!img) continue;
+    if (opts.check === false || !process.env.GEMINI_API_KEY) return img;
+    const v = await checkImage(img, prompt);
+    if (!v) return best && best.score > 0 ? best.img : img;   // the checker is down: take what was made
+    if (v.pass) return img;
+    console.log(`[image] try ${n + 1}: ${v.score}/10 ${v.problems.join("; ")}`);
+    if (!best || v.score > best.score) best = { img, score: v.score };
+    fix = v.fix || v.problems.join("; ");
+    if (Date.now() - t0 > 75_000) break;
+  }
+  return best?.img ?? null;
 }
 
 /** A picture the website will show is stored as a compact JPEG, at most 1600 px wide: the image model hands back a 1-2 MB PNG,

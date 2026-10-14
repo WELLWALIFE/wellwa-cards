@@ -9,6 +9,7 @@ import { NextResponse } from "next/server";
 import { restAsService, userFromRequest } from "@/lib/poster-server";
 import { SUPA_URL } from "@/lib/admin-guard";
 import { storeImage } from "@/lib/media/ai-image";
+import { IMAGE_GUIDE, checkImage } from "@/lib/media/image-check";
 import { rateLimited } from "@/lib/api-security";
 
 export const maxDuration = 120;
@@ -57,14 +58,29 @@ export async function POST(request: Request) {
     if (!buf || buf.length > 8 * 1024 * 1024) { await refund(); return NextResponse.json({ error: "Could not read the photo. Try a smaller one." }, { status: 400 }); }
     const what = [brand, product].filter(Boolean).join(" ") || "the product";
     const prompt = `Photorealistic professional product photograph of the EXACT product in the reference photo (${what}). Keep it exactly the same product: same shape, colours, parts, labels and printing — do not change, add or remove anything on the product. Only improve the photo: clean soft light-grey to white studio background, soft even lighting, a faint natural shadow, product centred and sharp, filling most of the frame. Do not add any new text, logos, watermarks or props. Keep the product's own labels, logos and printing exactly as they are.`;
-    const r = await fetch(`${GEMINI}/${IMG_MODEL}:generateContent`, {
-      method: "POST", signal: AbortSignal.timeout(90_000),
-      headers: { "x-goog-api-key": process.env.GEMINI_API_KEY ?? "", "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts: [{ inlineData: { mimeType: src.headers.get("content-type") || "image/jpeg", data: buf.toString("base64") } }, { text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } } }),
-    });
-    const d = await r.json().catch(() => null);
-    const part = (d?.candidates?.[0]?.content?.parts ?? []).find((x: { inlineData?: { data?: string } }) => x.inlineData?.data);
-    const out = part?.inlineData?.data ? await storeImage(me.id, "product-studio", Buffer.from(part.inlineData.data, "base64")) : null;
+    // Right the first time (owner, 14 Oct 2026): the result is checked against the original and drawn again, free of charge to the
+    // owner, when the product changed or the picture has flaws — up to three tries, the best one kept.
+    const mime = src.headers.get("content-type") || "image/jpeg";
+    const t0 = Date.now();
+    let best: { img: Buffer; score: number } | null = null;
+    let fix = "";
+    for (let n = 0; n < 3; n++) {
+      const r = await fetch(`${GEMINI}/${IMG_MODEL}:generateContent`, {
+        method: "POST", signal: AbortSignal.timeout(90_000),
+        headers: { "x-goog-api-key": process.env.GEMINI_API_KEY ?? "", "Content-Type": "application/json" },
+        body: JSON.stringify({ contents: [{ parts: [{ inlineData: { mimeType: mime, data: buf.toString("base64") } }, { text: `${prompt} ${IMAGE_GUIDE}${fix ? ` IMPORTANT, avoid these problems seen in an earlier attempt: ${fix}` : ""}` }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } } }),
+      }).catch(() => null);
+      const d = await r?.json().catch(() => null);
+      const part = (d?.candidates?.[0]?.content?.parts ?? []).find((x: { inlineData?: { data?: string } }) => x.inlineData?.data);
+      if (!part?.inlineData?.data) continue;
+      const img = Buffer.from(part.inlineData.data, "base64");
+      const v = await checkImage(img, `A clean studio product photograph of ${what}: same product as the original, soft light background, product centred and sharp.`, buf);
+      if (!v || v.pass) { best = { img, score: 10 }; break; }
+      if (!best || v.score > best.score) best = { img, score: v.score };
+      fix = v.fix || v.problems.join("; ");
+      if (Date.now() - t0 > 80_000) break;
+    }
+    const out = best ? await storeImage(me.id, "product-studio", best.img) : null;
     if (!out) { await refund(); return NextResponse.json({ error: "The AI could not improve this photo. Your original photo is kept." }, { status: 502 }); }
     // Saved on the owner's product (when it is theirs), first in its photos; the older photos stay.
     const saved = productId ? await saveOnProduct(productId, me.id, out).catch(() => false) : false;

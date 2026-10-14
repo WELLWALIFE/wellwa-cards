@@ -2,6 +2,7 @@
 // (lifestyle, alt angle, marketplace white-bg, in-context) from ONE uploaded
 // product photo — no video, no scenes, just fast catalog/social-ready images.
 // Up to 5 labelled reference photos (front, left, right, top, back) keep the product faithful. Cost: 5 credits per photo, 1–4 photos.
+import { IMAGE_GUIDE, checkImage } from "@/lib/media/image-check";
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
@@ -52,7 +53,22 @@ async function fetchRef(url: string, userId: string): Promise<Buffer | null> {
   } catch { return null; }
 }
 
+/** A shot that is right the first time: checked against the product, drawn once more (free to the owner) when flawed; the better one is kept. */
 async function genShot(key: string, prompt: string, refs: { buf: Buffer; view: string }[], ratio: "1:1" | "4:5" | "9:16" | "4:3" = "1:1"): Promise<Buffer | null> {
+  let best: { img: Buffer; score: number } | null = null;
+  let fix = "";
+  for (let n = 0; n < 2; n++) {
+    const img = await genShotOnce(key, `${prompt} ${IMAGE_GUIDE}${fix ? ` IMPORTANT, avoid these problems seen in an earlier attempt: ${fix}` : ""}`, refs, ratio);
+    if (!img) continue;
+    const v = refs[0] ? await checkImage(img, `A product photograph for an Indian business's website. The product must stay exactly as in the reference. ${prompt.slice(0, 300)}`, refs[0].buf) : null;
+    if (!v || v.pass) return img;
+    if (!best || v.score > best.score) best = { img, score: v.score };
+    fix = v.fix || v.problems.join("; ");
+  }
+  return best?.img ?? null;
+}
+
+async function genShotOnce(key: string, prompt: string, refs: { buf: Buffer; view: string }[], ratio: "1:1" | "4:5" | "9:16" | "4:3" = "1:1"): Promise<Buffer | null> {
   try {
     const r = await fetch(`${GEMINI}/${IMG_MODEL}:generateContent`, {
       method: "POST", headers: { "x-goog-api-key": process.env.GEMINI_API_KEY ?? "", "Content-Type": "application/json" },

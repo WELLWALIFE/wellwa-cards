@@ -1,6 +1,7 @@
 // Studio: render a branded banner. Synchronous — sharp takes well under a
 // second — but still debited and journaled like every paid action.
 
+import { aiImage } from "@/lib/media/ai-image";
 import { NextResponse } from "next/server";
 import { requireUser, sameOrigin } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
@@ -61,17 +62,8 @@ export async function POST(request: Request) {
     let bgImage: Buffer | undefined;
     if (aiBg) {
       const prompt = `Photorealistic square advertising background photograph for an Indian small business social-media banner about: "${headline}"${b.subline ? ` (${String(b.subline).slice(0, 80)})` : ""}. Business: ${String(b.brandName ?? "").slice(0, 40)}. Rich cinematic lighting, professional product/lifestyle photography, composition leaves the lower third calm and uncluttered for text, no text, no watermark, no logos.`;
-      const r = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-3.1-flash-lite-image:generateContent", {
-        method: "POST",
-        headers: { "x-goog-api-key": process.env.GEMINI_API_KEY!, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: "1:1" } },
-        }),
-      }).catch(() => null);
-      const d = r ? await r.json().catch(() => null) : null;
-      const part = (d?.candidates?.[0]?.content?.parts ?? []).find((x: { inlineData?: { data: string } }) => x.inlineData);
-      if (part?.inlineData?.data) bgImage = Buffer.from(part.inlineData.data, "base64");
+      // The shared maker: picture rules on the prompt, a check of the result, a free redraw when it is flawed.
+      bgImage = (await aiImage(prompt, "1:1")) ?? undefined;
       // If image gen fails we fall back to the gradient — user still gets a banner.
     }
 
