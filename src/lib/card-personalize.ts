@@ -259,6 +259,15 @@ export async function syncProductsToCard(rows: ProductSync[]) {
     }
   }
   const fresh = own.filter((r) => r.active !== false && !seen.has(key(r.name)));
+  // A card written without any product block (services only) still gets its first product on the website: a block is made.
+  if (fresh.length && !firstBlock) {
+    const host = next.pages.find((pg) => pg.slug === "products") ?? next.pages[0];
+    if (host) {
+      const nb: Extract<CardBlock, { kind: "product" }> = { id: Math.random().toString(36).slice(2, 10), kind: "product", title: "Products", items: [] };
+      host.blocks.push(nb);
+      firstBlock = nb;
+    }
+  }
   if (fresh.length && firstBlock) {
     for (const r of fresh.slice(0, 12)) {
       const imgs = imagesOf(r);
