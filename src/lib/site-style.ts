@@ -382,14 +382,14 @@ export function fontsFor(style: SiteStyle | undefined, look: LookDef, opts: { hi
 
 export type HeroLayout = NonNullable<SiteStyle["hero"]>;
 export const HERO_LAYOUTS: { key: HeroLayout; name: string; hi: string; blurb: string }[] = [
-  { key: "split", name: "Split", hi: "स्प्लिट", blurb: "Words left, your product or logo right" },
-  { key: "photo", name: "Photo", hi: "फ़ोटो", blurb: "Your banner photo across the top" },
-  { key: "stage", name: "Stage", hi: "स्टेज", blurb: "Headline centred, the product below it" },
-  { key: "minimal", name: "Minimal", hi: "मिनिमल", blurb: "Light and calm — dark text on a soft tint" },
-  { key: "grid", name: "Product grid", hi: "प्रोडक्ट ग्रिड", blurb: "Words left, a mosaic of your product photos right" },
-  { key: "person", name: "Portrait", hi: "पोर्ट्रेट", blurb: "Words left, your photo right — doctors, CAs, coaches" },
-  { key: "editorial", name: "Editorial", hi: "एडिटोरियल", blurb: "Your banner full-bleed, the headline low and large, facts in a glass card — hotels, schools, premium" },
-  { key: "marquee", name: "Marquee", hi: "मार्की", blurb: "Headline centred over a slowly moving strip of your photos — shops, food, studios" },
+  { key: "split", name: "Text + picture", hi: "शब्द + picture", blurb: "Words on the left, your product or logo on the right" },
+  { key: "photo", name: "Big photo", hi: "बड़ी photo", blurb: "Your banner photo across the top" },
+  { key: "stage", name: "Centre + product", hi: "बीच में + product", blurb: "Headline in the centre, the product below it" },
+  { key: "minimal", name: "Light & simple", hi: "हल्का और सादा", blurb: "Light and calm, dark words on a soft colour" },
+  { key: "grid", name: "Product mosaic", hi: "Products की collage", blurb: "Words on the left, a collage of your product photos on the right" },
+  { key: "person", name: "Your portrait", hi: "आपकी photo", blurb: "Words on the left, your photo on the right — good for doctors, CAs, coaches" },
+  { key: "editorial", name: "Full photo, big headline", hi: "पूरी photo, बड़ी headline", blurb: "Your banner fills the top with a large headline — good for hotels, schools, premium work" },
+  { key: "marquee", name: "Moving photos", hi: "चलती photos", blurb: "Headline in the centre over a slowly moving strip of your photos — good for shops, food, studios" },
 ];
 export function heroLayoutFor(style: SiteStyle | undefined, has: { image: boolean; cover: boolean }): HeroLayout {
   if (style?.hero) return style.hero;

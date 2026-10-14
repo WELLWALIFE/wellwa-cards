@@ -241,12 +241,12 @@ export default function WebsiteEditPage() {
               <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "Auto" : "Auto"}</button>
               {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
             </div>
-            <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "Auto: प्रोडक्ट फ़ोटो हो तो Split, बैनर हो तो Photo।" : "Auto: Split when there is a product photo, Photo when there is a banner.")}</p>
+            <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "अपने-आप: product की photo हो तो शब्द + picture, banner हो तो बड़ी photo।" : "Automatic: words + picture when you have a product photo, a big photo when you have a banner.")}</p>
           </div>
           <div>
             <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or sharp)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setStyle({ radius: undefined })} className={chip(!style.radius)}>{hi ? "कार्ड जैसा" : "Like the card"}</button>
+              <button type="button" onClick={() => setStyle({ radius: undefined })} className={chip(!style.radius)}>{hi ? "कार्ड जैसा" : "Same as the card"}</button>
               {RADII.map((r) => <button key={r.key} type="button" onClick={() => setStyle({ radius: r.key })} className={chip(style.radius === r.key)}>{hi ? r.hi : r.name}</button>)}
             </div>
           </div>
@@ -265,8 +265,8 @@ export default function WebsiteEditPage() {
       {tab === "hero" && (
         <section className="space-y-4 rounded-xl border border-border p-3">
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "हेडलाइन (बड़ी लाइन)" : "Headline"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
-          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "हेडलाइन के नीचे 1–2 लाइन" : "Sub text (1–2 lines)"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
-          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "WhatsApp बटन का टेक्स्ट" : "WhatsApp button text"}</span><input value={site.hero?.ctaLabel ?? ""} onChange={(e) => setHero({ ctaLabel: e.target.value })} placeholder="WhatsApp" maxLength={30} className={field} /></label>
+          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "हेडलाइन के नीचे 1–2 लाइन" : "A line or two under the headline"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
+          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "WhatsApp बटन का टेक्स्ट" : "Words on the WhatsApp button"}</span><input value={site.hero?.ctaLabel ?? ""} onChange={(e) => setHero({ ctaLabel: e.target.value })} placeholder="WhatsApp" maxLength={30} className={field} /></label>
           <div>
             <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "ऊपर की इमेज (प्रोडक्ट या लोगो)" : "Picture at the top (a product or your logo)"}</p>
             <div className="flex flex-wrap gap-2">
@@ -293,11 +293,11 @@ export default function WebsiteEditPage() {
           {/* News / offers live in ONE place now — Card & Website → News (the notice bar / pop-up, src/lib/notice.ts); the old
               announcement bar here is gone (audit, 7 Oct 2026: two announcement systems). */}
           <div className="rounded-lg border border-border p-3">
-            <p className="text-sm font-semibold">📣 {hi ? "न्यूज़ / ऑफ़र की पट्टी" : "News / offer bar"}</p>
+            <p className="text-sm font-semibold">📣 {hi ? "न्यूज़ / ऑफ़र की पट्टी" : "Offer bar"}</p>
             <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "The offer / holiday / news bar and pop-up are set in one place now:"} <Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "फ़्लोटिंग बटन (वेबसाइट पर)" : "Floating button (on the website)"}</p>
+            <p className="text-sm font-semibold">{hi ? "फ़्लोटिंग बटन (वेबसाइट पर)" : "Round button on the website"}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {([["whatsapp", "WhatsApp"], ["call", hi ? "Call" : "Call"], ["none", hi ? "कोई नहीं" : "None"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => set({ float: k })} className={chip((site.float ?? "whatsapp") === k)}>{l}</button>)}
             </div>
@@ -327,7 +327,7 @@ export default function WebsiteEditPage() {
             {(site.home?.order?.length || site.home?.hidden?.length) ? <button type="button" onClick={() => setHome({ order: undefined, hidden: undefined })} className="mt-2 text-xs font-semibold text-brand-ink">{hi ? "Default order par wapas" : "Back to the default order"}</button> : null}
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (हेडलाइन के नीचे)" : "Numbers that build trust (under the top)"}</p>
+            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (हेडलाइन के नीचे)" : "Numbers that build trust (under the headline)"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "कार्ड के facts से अपने-आप बनते हैं — 3 से कम हों तो पट्टी नहीं दिखती। आप अपने लिख सकते हैं (जो सच हों)।" : "Made from your card's own facts — the strip shows only with 3 or more. You can write your own (true ones only)."}</p>
             <div className="mt-2 grid gap-2">
               {[0, 1, 2, 3].map((i) => (
@@ -344,7 +344,7 @@ export default function WebsiteEditPage() {
 
       {tab === "pages" && (
         <section className="space-y-2 rounded-xl border border-border p-3">
-          <p className="text-sm font-semibold">{hi ? "Website par kaunse pages dikhein" : "Pages shown on the website"}</p>
+          <p className="text-sm font-semibold">{hi ? "वेबसाइट पर कौन से pages दिखें" : "Pages shown on the website"}</p>
           {s.pages.map((p) => {
             const h = new Set(site.hidden ?? []);
             return (
