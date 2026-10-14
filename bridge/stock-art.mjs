@@ -446,12 +446,14 @@ export async function findProductPhoto({ name, trade = "" }) {
     subject = String(j.subject || item).slice(0, 60);
     queries = (Array.isArray(j.queries) ? j.queries : []).map((x) => String(x).slice(0, 60)).filter(Boolean).slice(0, 3);
     if (!queries.length) queries = [subject];
+    // The item alone, plainly shown, is what a product picture should be: a plain-background search comes after the first two.
+    queries = [queries[0], `${subject} product white background`, ...queries.slice(1), `${subject} isolated`].filter(Boolean).slice(0, 4);
   } catch { /* the name itself is searched */ }
   const seen = new Set();
   let fallback = null;
   for (const q of queries) {
     const r = await fetch(`https://api.pexels.com/v1/search?query=${encodeURIComponent(q)}&size=large&per_page=15&locale=en-US`, { headers: { Authorization: PEXELS }, signal: AbortSignal.timeout(20000) }).then((x) => x.json()).catch(() => ({}));
-    const cands = (r.photos ?? []).filter((p) => Math.min(p.width, p.height) >= 1000 && !seen.has(p.id)).slice(0, 10)
+    const cands = (r.photos ?? []).filter((p) => Math.min(p.width, p.height) >= 1000 && !seen.has(p.id)).slice(0, 12)
       .map((p) => ({ id: p.id, url: p.src?.large2x || p.src?.large || p.src?.original, thumb: p.src?.medium, credit: p.photographer || "" }));
     if (!cands.length) continue;
     cands.forEach((c) => seen.add(c.id));
@@ -461,7 +463,7 @@ export async function findProductPhoto({ name, trade = "" }) {
     }
     if (!parts.length) continue;
     parts.push({ text: `These are candidates for the PRODUCT PICTURE of "${item}" (${subject}) on the website of an Indian ${trade || "shop"}.
-Score each 0–10 for FIT: the main, clearly visible subject must BE this kind of item (or the closest ordinary look-alike of it) — 9–10 only when anyone would say "yes, that is a ${subject}"; a different item, a room scene where it is tiny, or a related-but-different thing scores 0–4. Prefer one clear item, plainly shown, bright and tidy.
+Score each 0–10 for FIT: the main, clearly visible subject must BE this kind of item (or the closest ordinary look-alike of it) — 9–10 only when anyone would say "yes, that is a ${subject}" at a glance; the item must fill a good part of the frame — a room, kitchen or street scene where it is small, a different item, or a related-but-different thing scores 0–4. Prefer one clear item, plainly shown, bright and tidy.
 CLEAN true/false: no readable text, logos, watermarks or screens; no face filling the frame; nothing offensive.
 ${QUALITY}
 Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true,"dated":false}]}` });
@@ -469,8 +471,7 @@ Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true,"dated":false}]}` });
     try { scores = ((await gemini(parts)).items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false && p.dated !== true })); } catch { scores = null; }
     if (!scores) continue;
     const best = scores.filter((x) => x.clean && cands[x.n]).sort((a, b) => b.fit - a.fit)[0];
-    if (best && best.fit >= 8) { fallback = { ...cands[best.n], fit: best.fit }; break; }
-    if (best && best.fit >= 7 && (!fallback || best.fit > fallback.fit)) fallback = { ...cands[best.n], fit: best.fit };
+    if (best && best.fit >= 8) { fallback = { ...cands[best.n], fit: best.fit }; break; }   // only a clear match is used: a wrong picture is worse than none
   }
   if (!fallback) return null;
   try {
