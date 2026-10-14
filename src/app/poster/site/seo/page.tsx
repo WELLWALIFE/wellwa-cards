@@ -10,6 +10,7 @@ import { isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
+import { UnlockDialog } from "@/lib/ai-access";
 import { SeoPanel } from "@/components/editor/seo-panel";
 import { SITE_HOST } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
@@ -24,6 +25,7 @@ export default function SiteSeoPage() {
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [pay, setPay] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -55,7 +57,19 @@ export default function SiteSeoPage() {
         <h1 className="flex-1 text-lg font-bold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</h1>
       </div>
       <p className="text-sm text-muted">{T("Tell Google where you are and what you do, so people searching “your trade in your city” find you.", "Google को बताइए आप कहाँ हैं और क्या करते हैं, ताकि “आपका काम + आपका शहर” खोजने वालों को आप मिलें।")}</p>
-      {!loading && plan === "free" && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs text-ink">{T("Google lists your website with Premium. You can fill this in now; it starts working when you upgrade.", "Google पर आपकी website Premium के साथ दिखती है। अभी भर सकते हैं; upgrade करते ही काम शुरू हो जाएगा।")}</p>}
+      {!loading && plan === "free" && (
+        <section className="space-y-2 rounded-2xl border-2 border-brand bg-brand-soft/50 p-4">
+          <p className="font-bold">{T("Be found on Google — with a subscription", "Google पर पाए जाइए — subscription के साथ")}</p>
+          <ul className="space-y-1 text-sm">
+            <li>✓ {T("Customers searching “your trade in your city” find your website", "“आपका काम + आपका शहर” खोजने वाले ग्राहक आपकी website तक पहुँचें")}</li>
+            <li>✓ {T("Your shop, hours, products and FAQ show on Google and Maps searches", "आपकी दुकान, timing, products और FAQ Google में दिखें")}</li>
+            <li>✓ {T("Search words, titles and a page for every product — all done for you", "Search words, titles और हर product का अपना page — सब अपने आप")}</li>
+          </ul>
+          <p className="text-xs text-muted">{T("Fill this in now. Google starts listing your website the day you subscribe.", "अभी भर लीजिए। Subscribe करते ही Google आपकी website को सूची में लेना शुरू कर देता है।")}</p>
+          <button type="button" onClick={() => setPay(true)} className="w-full rounded-xl grad-brand py-3 text-sm font-semibold text-white">{T("Subscribe and show on Google", "Subscribe करें और Google पर दिखें")}</button>
+        </section>
+      )}
+      {pay && <UnlockDialog subscriptionOnly onClose={() => setPay(false)} />}
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {none ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
