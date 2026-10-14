@@ -336,9 +336,10 @@ async function publish(uid: string, card: Card): Promise<boolean> {
   const safe = (c: string | undefined, d = "#6d28d9") => (/^#[0-9a-f]{6}$/i.test(c ?? "") ? (c as string) : d);
   const data: Card = { ...card, themeColor: safe(card.themeColor), avatarColor: safe(card.avatarColor, safe(card.themeColor)) };
   const row = { owner_id: uid, username: card.username, name: data.name, job_title: data.jobTitle, company: data.company, tagline: data.tagline, about: data.about, theme_color: data.themeColor, avatar_url: data.avatarUrl ?? null, cover_url: data.coverUrl ?? null, active: data.active, data };
-  const existing = one(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${uid}&id=eq.${card.id}&select=id`));
+  // One account = one card: a card with a new id still goes onto the account's own card.
+  const existing = one(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${uid}&id=eq.${card.id}&select=id`)) ?? one(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${uid}&order=created_at.desc&limit=1&select=id`));
   const r = existing
-    ? await restAsService(`cards?id=eq.${card.id}&owner_id=eq.${uid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) })
+    ? await restAsService(`cards?id=eq.${existing.id}&owner_id=eq.${uid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) })
     : await restAsService("cards", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ id: card.id, ...row }) });
   if (!r.ok) console.error("[wa-onboard] publish failed", r.status, r.text.slice(0, 200));
   return r.ok;

@@ -275,7 +275,8 @@ export async function publishCard(card: Card): Promise<PublishResult> {
   const { data: mine, error: mineError } = await sb
     .from("cards")
     .select("id, username")
-    .eq("owner_id", auth.user.id);
+    .eq("owner_id", auth.user.id)
+    .order("created_at", { ascending: false });
   // Without the list we cannot tell an update from a new card: stop rather than insert a duplicate.
   if (mineError) return { ok: false, error: isNetworkError(mineError) ? OFFLINE : "Could not reach the server. Please try again." };
   // Colours are stored only as #hex (the public card writes the theme colour into a <style> tag).
@@ -283,7 +284,10 @@ export async function publishCard(card: Card): Promise<PublishResult> {
 
   const existing =
     (mine ?? []).find((r) => r.id === card.id) ??
-    (mine ?? []).find((r) => r.username === username);
+    (mine ?? []).find((r) => r.username === username) ??
+    // One account = one website and one card (owner, 14 Oct 2026): a card that matches none of the account's cards still
+    // lands on the account's own one, never as a second.
+    (mine ?? [])[0];
 
   const row = {
     ...(existing ? { id: existing.id } : {}),
