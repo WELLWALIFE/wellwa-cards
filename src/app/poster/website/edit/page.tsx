@@ -176,9 +176,9 @@ export default function WebsiteEditPage() {
   if (!s.hasCard) return null;
 
   const TABS: { key: Tab; label: string; Icon: typeof Palette }[] = [
-    { key: "look", label: hi ? "Look" : "Look", Icon: Palette },
-    { key: "hero", label: hi ? "Top (hero)" : "Top (hero)", Icon: ImageIcon },
-    { key: "home", label: hi ? "Home sections" : "Home sections", Icon: ListOrdered },
+    { key: "look", label: hi ? "रंग और font" : "Colours & fonts", Icon: Palette },
+    { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
+    { key: "home", label: hi ? "Sections" : "Sections", Icon: ListOrdered },
     { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
   ];
   const PREVIEW_H = 2400;
@@ -212,9 +212,9 @@ export default function WebsiteEditPage() {
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
-          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "तीन डिज़ाइन (Bento · Cinematic · Poster) " : "The three designs (Bento · Cinematic · Poster) are on "}<Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग, फ़ॉन्ट और बारीकियाँ हैं।" : ". Here are its colours, fonts and finer points."}</p>
+          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग, फ़ॉन्ट और बारीकियाँ हैं।" : ". Here are its colours, fonts and finer points."}</p>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><Palette className="h-4 w-4 text-brand" /> {hi ? "Colour palette" : "Colour palette"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Palette className="h-4 w-4 text-brand" /> {hi ? "रंग" : "Colours"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "वेबसाइट के रंग। आपका फ़ोन कार्ड अपने रंग में ही रहेगा।" : "The website's colours. Your phone card keeps its own colour."}</p>
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
               <Swatch p={brand} on={paletteKey === "brand"} onClick={() => setStyle({ palette: "brand" })} label={hi ? "आपका" : "Yours"} />
@@ -229,14 +229,14 @@ export default function WebsiteEditPage() {
             )}
           </div>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "Fonts" : "Fonts"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {FONT_PAIRS.map((f) => <button key={f.key} type="button" onClick={() => setStyle({ font: f.key === "look" ? undefined : f.key })} className={chip((style.font ?? "look") === f.key)} title={f.blurb}>{hi ? f.hi : f.name}</button>)}
             </div>
             <p className="text-[11px] text-muted mt-1">{FONT_PAIRS.find((f) => f.key === (style.font ?? "look"))?.blurb}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "Top (hero) layout" : "Top (hero) layout"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर के हिस्से का layout" : "Layout of the top of the page"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "Auto" : "Auto"}</button>
               {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
@@ -244,7 +244,7 @@ export default function WebsiteEditPage() {
             <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "Auto: प्रोडक्ट फ़ोटो हो तो Split, बैनर हो तो Photo।" : "Auto: Split when there is a product photo, Photo when there is a banner.")}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "Corners" : "Corners"}</p>
+            <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or sharp)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ radius: undefined })} className={chip(!style.radius)}>{hi ? "कार्ड जैसा" : "Like the card"}</button>
               {RADII.map((r) => <button key={r.key} type="button" onClick={() => setStyle({ radius: r.key })} className={chip(style.radius === r.key)}>{hi ? r.hi : r.name}</button>)}
@@ -309,7 +309,7 @@ export default function WebsiteEditPage() {
       {tab === "home" && (
         <section className="space-y-4 rounded-xl border border-border p-3">
           <div>
-            <p className="text-sm font-semibold">{hi ? "होम पेज के सेक्शन" : "Sections on the home page"}</p>
+            <p className="text-sm font-semibold">{hi ? "होम पेज के सेक्शन" : "Sections on the first page"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "ऊपर-नीचे करें या छुपाएँ। टेक्स्ट बदलने के लिए पूरा एडिटर।" : "Reorder or hide. To change the words, use the full editor."}</p>
             <ul className="mt-2 space-y-1.5">
               {sections.map((sec, i) => {
@@ -327,7 +327,7 @@ export default function WebsiteEditPage() {
             {(site.home?.order?.length || site.home?.hidden?.length) ? <button type="button" onClick={() => setHome({ order: undefined, hidden: undefined })} className="mt-2 text-xs font-semibold text-brand-ink">{hi ? "Default order par wapas" : "Back to the default order"}</button> : null}
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (हेडलाइन के नीचे)" : "Trust numbers (under the top)"}</p>
+            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (हेडलाइन के नीचे)" : "Numbers that build trust (under the top)"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "कार्ड के facts से अपने-आप बनते हैं — 3 से कम हों तो पट्टी नहीं दिखती। आप अपने लिख सकते हैं (जो सच हों)।" : "Made from your card's own facts — the strip shows only with 3 or more. You can write your own (true ones only)."}</p>
             <div className="mt-2 grid gap-2">
               {[0, 1, 2, 3].map((i) => (

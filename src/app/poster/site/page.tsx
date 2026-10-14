@@ -213,28 +213,27 @@ export default function WebsitePage() {
                 type Tile = { k: string; I: typeof Camera; t: string; s: string; href?: string; tool?: "notice" | "mode" | "domain"; scope?: "both" | "site" };
                 const groups: { k: string; title: string; tiles: Tile[] }[] = [
                   { k: "words", title: T("1 · Words & photos", "1 · शब्द और photos"), tiles: [
-                    { k: "trade", I: Store, t: T("Business name & type", "Business का नाम और काम"), s: T("Name, what you do, your link", "नाम, काम, आपका link"), href: `/poster/onboard?step=trade&back=${BACK}`, scope: "both" },
-                    { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("The few lines about you", "आपके बारे में कुछ लाइनें"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
-                    { k: "photo", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Every picture on the website", "website की हर picture"), href: `/poster/onboard?step=extras&part=photos&back=${BACK}`, scope: "both" },
-                    { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add, change, prices", "जोड़ें, बदलें, दाम"), href: `/poster/products?back=${BACK}`, scope: "both" },
-                    { k: "highlights", I: Star, t: T("Why choose us", "आपकी खासियत"), s: T("What makes you special", "आपको क्यों चुनें"), href: `/poster/onboard?step=highlights&back=${BACK}`, scope: "both" },
-                    { k: "details", I: ListChecks, t: T("About your trade", "आपके काम के बारे में"), s: T("A few taps about what you offer", "आप क्या देते हैं — कुछ tap"), href: `/poster/onboard?step=details&back=${BACK}`, scope: "both" },
+                    { k: "trade", I: Store, t: T("Business name & type", "Business का नाम और काम"), s: T("Your name, what you do, your link", "आपका नाम, आपका काम, आपका link"), href: `/poster/onboard?step=trade&back=${BACK}`, scope: "both" },
+                    { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("A few lines about you, your logo", "आपके बारे में कुछ लाइनें, आपका logo"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
+                    { k: "details", I: ListChecks, t: T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं"), s: T("Tap what is true for you", "जो आप पर सही है वो दबाएँ"), href: `/poster/onboard?step=details&back=${BACK}`, scope: "both" },
+                    { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add them, change prices, add photos", "जोड़ें, दाम बदलें, photo लगाएँ"), href: `/poster/products?back=${BACK}`, scope: "both" },
+                    { k: "photo", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Every picture on your website", "आपकी website की हर picture"), href: `/poster/onboard?step=extras&part=photos&back=${BACK}`, scope: "both" },
                   ] },
                   { k: "contact", title: T("2 · Contact & place", "2 · संपर्क और जगह"), tiles: [
-                    { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, map, open hours", "शहर, map, समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
-                    { k: "you", I: User, t: T("My name, number & photo", "मेरा नाम, number और photo"), s: T("Changes everywhere at once", "एक साथ हर जगह बदलेगा"), href: `/poster/onboard?step=you&back=${BACK}`, scope: "both" },
-                    { k: "links", I: Wallet, t: T("Payments & social links", "Payment और social links"), s: T("UPI, Instagram, Facebook, Maps", "UPI, Instagram, Facebook, Maps"), href: `/poster/onboard?step=extras&part=links&back=${BACK}`, scope: "both" },
+                    { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, address, map pin, opening hours", "शहर, पता, map pin, खुलने का समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
+                    { k: "you", I: User, t: T("My name, number & photo", "मेरा नाम, number और photo"), s: T("Changes on the card, website and posters", "card, website और poster सब पर बदल जाएगा"), href: `/poster/onboard?step=you&back=${BACK}`, scope: "both" },
+                    { k: "links", I: Wallet, t: T("UPI & social links", "UPI और social links"), s: T("So people can pay you and follow you", "ताकि लोग आपको pay कर सकें और follow कर सकें"), href: `/poster/onboard?step=extras&part=links&back=${BACK}`, scope: "both" },
                   ] },
                   { k: "look", title: T("3 · Look & pages", "3 · Look और pages"), tiles: [
-                    { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Six designs, colours", "छह design, रंग"), href: "/poster/card/build?improve=1", scope: "site" },
-                    { k: "pages", I: LayoutList, t: T("Website pages", "Website के pages"), s: T("Headline, sections, order", "Headline, sections, क्रम"), href: "/poster/website/edit", scope: "site" },
-                    { k: "editor", I: FileText, t: T("Edit text & photos yourself", "शब्द और photos खुद बदलें"), s: T("The full editor", "पूरा editor"), href: `/poster/d/editor?id=${s.cardId}&back=${BACK}`, scope: "both" },
-                    { k: "cardlook", I: Smartphone, t: T("Phone card look", "Phone card का look"), s: T("The card's own design", "card का अपना design"), href: "/poster/card" },
+                    { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Pick one of six looks and your colours", "छह look में से चुनें, और रंग चुनें"), href: "/poster/card/build?improve=1", scope: "site" },
+                    { k: "pages", I: LayoutList, t: T("Headline & sections", "Headline और sections"), s: T("Change the top headline and the order of sections", "ऊपर की headline और sections का क्रम बदलें"), href: "/poster/website/edit", scope: "site" },
+                    { k: "editor", I: FileText, t: T("Full editor", "पूरा editor"), s: T("Change any word or photo by hand", "कोई भी शब्द या photo अपने हाथ से बदलें"), href: `/poster/d/editor?id=${s.cardId}&back=${BACK}`, scope: "both" },
+                    { k: "cardlook", I: Smartphone, t: T("Phone card design", "Phone card का design"), s: T("How your card looks on a phone", "phone पर आपका card कैसा दिखे"), href: "/poster/card" },
                   ] },
                   { k: "settings", title: T("4 · Settings & Google", "4 · Settings और Google"), tiles: [
-                    { k: "notice", I: Megaphone, t: T("Offer & news bar", "Offer और news पट्टी"), s: T("A line at the top of the website", "website के ऊपर एक लाइन"), tool: "notice" },
-                    { k: "mode", I: Settings, t: T("Website mode & pages shown", "Website mode और कौन से pages दिखें"), s: T("Switch on or off", "चालू या बंद"), tool: "mode" },
-                    { k: "domain", I: Globe, t: T("Your own domain", "अपना domain"), s: T("www.yourshop.com", "www.yourshop.com"), tool: "domain" },
+                    { k: "notice", I: Megaphone, t: T("Offer bar", "Offer की पट्टी"), s: T("One line on top, like “10% off this week”", "ऊपर एक लाइन, जैसे “इस हफ़्ते 10% छूट”"), tool: "notice" },
+                    { k: "mode", I: Settings, t: T("Show or hide pages", "Pages दिखाएँ या छुपाएँ"), s: T("Choose what people can see", "चुनें कि लोग क्या देखें"), tool: "mode" },
+                    { k: "domain", I: Globe, t: T("Your own web address", "आपका अपना web address"), s: T("Use www.yourshop.com for your site", "अपनी site के लिए www.yourshop.com लगाएँ"), tool: "domain" },
                   ] },
                 ];
                 const base = "block rounded-2xl border-2 bg-surface p-3 text-left";
@@ -262,8 +261,8 @@ export default function WebsitePage() {
                           {g.k === "settings" && (
                             <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${base} border-border`}>
                               <span className="grid h-10 w-10 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
-                              <span className="mt-2 block text-sm font-bold leading-tight">{T("Show on Google (SEO)", "Google पर दिखें (SEO)")}</span>
-                              <span className="mt-0.5 block text-[11px] leading-tight text-muted">{T("City, areas, search words", "शहर, इलाक़े, search words")}</span>
+                              <span className="mt-2 block text-sm font-bold leading-tight">{T("Show on Google", "Google पर दिखें")}</span>
+                              <span className="mt-0.5 block text-[11px] leading-tight text-muted">{T("Help people find you when they search", "लोग खोजें तो आप मिलें")}</span>
                             </Link>
                           )}
                         </div>
