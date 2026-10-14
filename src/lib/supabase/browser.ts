@@ -25,15 +25,18 @@ function speedUpGetUser(sb: SupabaseClient) {
   const origUpdate = sb.auth.updateUser.bind(sb.auth);
   let kept: { at: number; v: R } | null = null;
   let flying: Promise<R> | null = null;
+  let last: R | null = null;   // the newest good answer, however old
   const forget = () => { kept = null; flying = null; };
   sb.auth.getUser = ((jwt?: string) => {
     if (jwt) return orig(jwt);
     if (kept && Date.now() - kept.at < 20_000) return Promise.resolve(kept.v);
     if (flying) return flying;
-    const mine = orig().then((v) => { if (!v.error && v.data.user && flying === mine) kept = { at: Date.now(), v }; return v; }).finally(() => { if (flying === mine) flying = null; });
+    const mine = orig().then((v) => { if (!v.error && v.data.user) { last = v; if (flying === mine) kept = { at: Date.now(), v }; } return v; }).finally(() => { if (flying === mine) flying = null; });
     flying = mine;
-    return mine;
+    // A call that hangs (a stuck token refresh, another tab holding the auth lock) must not freeze every screen: after 6 s the
+    // last answer we had is used while the real one keeps going.
+    return Promise.race([mine, new Promise<R>((res) => setTimeout(() => { if (last) res(last); }, 6_000))]);
   }) as typeof sb.auth.getUser;
   sb.auth.updateUser = ((...a: Parameters<typeof origUpdate>) => { forget(); return origUpdate(...a).finally(forget); }) as typeof sb.auth.updateUser;
-  sb.auth.onAuthStateChange(() => forget());
+  sb.auth.onAuthStateChange((ev) => { forget(); if (ev === "SIGNED_OUT" || ev === "SIGNED_IN") last = null; });
 }
