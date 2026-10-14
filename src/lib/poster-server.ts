@@ -134,6 +134,8 @@ export type CardMedia = { photos: { url: string; credit: string }[]; clip: { url
 type StockEngine = {
   ensureStockClip: (o: { theme: { kind: string; slug: string; en: string }; category: string; kind: string; dateStr: string }) => Promise<{ file: string } | null>;
   /** Judged stock photos + a 12 s landscape clip for a trade, cached per category (see bridge/stock-art.mjs). */
+  /** One clean, recent stock photo matching a product's name (Pexels, judged), as a JPEG buffer; null when nothing fits. */
+  findProductPhoto: (o: { name: string; trade?: string }) => Promise<{ jpeg: Buffer; credit: string; fit: number } | null>;
   ensureCardMedia: (o: { category: string; label?: string; want?: number; brand?: string; soon?: number; waitMs?: number }) => Promise<CardMedia>;
 };
 let stockEngine: Promise<StockEngine> | null = null;

@@ -2,22 +2,33 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser, stockEngineMod } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
+import { stockPhotoForProduct } from "@/lib/media/product-stock";
+
+export const maxDuration = 120;
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : "").replace(/\s+/g, " ").trim().slice(0, n);
 const money = (v: unknown) => S(v, 30).replace(/^(?:₹|rs\.?|inr)\s*/i, "").trim();
 
 const within = <T,>(p: Promise<T>, ms: number) => Promise.race([p, new Promise<null>((res) => setTimeout(() => res(null), ms))]);
 
-/** A clean photograph of the owner's trade for each new product that has none (owner, 14 Oct 2026: a list of bare names looks
- *  empty). The trade's stock pool is cached, so this is quick; the owner replaces them with their own pictures any time. */
-async function tradePhotos(token: string, uid: string): Promise<string[]> {
+/** The owner's trade, as the stock search should hear it ("Hardware / paint / sanitary"). */
+async function tradeOf(token: string, uid: string): Promise<{ key: string; label: string }> {
+  const prof = (await restAsUser<{ category: string | null; tagline: string | null }[]>(token, `poster_profiles?user_id=eq.${uid}&select=category,tagline&order=is_default.desc&limit=1`).catch(() => ({ data: null }))).data?.[0];
+  return { key: prof?.category ?? "", label: prof?.tagline ?? "" };
+}
+/** The trade's own pool of photos — the fallback for a product no good matching photo was found for. */
+async function poolPhotos(trade: { key: string; label: string }): Promise<string[]> {
   try {
-    const prof = (await restAsUser<{ category: string | null; tagline: string | null }[]>(token, `poster_profiles?user_id=eq.${uid}&select=category,tagline&order=is_default.desc&limit=1`)).data?.[0];
-    if (!prof?.category) return [];
+    if (!trade.key) return [];
     const st = await stockEngineMod();
-    const media = await within(st.ensureCardMedia({ category: prof.category, label: prof.tagline ?? "", soon: 12, waitMs: 8_000 }), 12_000);
+    const media = await within(st.ensureCardMedia({ category: trade.key, label: trade.label, soon: 12, waitMs: 8_000 }), 12_000);
     return (media?.photos ?? []).map((x) => x.url).filter((u) => typeof u === "string" && u.length < 400 && (u.startsWith("/") || u.startsWith("https://")));
   } catch { return []; }
+}
+/** Runs `fn` over the items, `n` at a time. */
+async function pool<T>(items: T[], n: number, fn: (x: T, i: number) => Promise<void>) {
+  let next = 0;
+  await Promise.all(Array.from({ length: Math.min(n, items.length) }, async () => { while (next < items.length) { const i = next++; await fn(items[i], i); } }));
 }
 
 export async function POST(request: Request) {
@@ -36,8 +47,18 @@ export async function POST(request: Request) {
     rows.push({ user_id: me.id, name, photo_url: null, benefits: [], offer: "", category: S(o.category, 30), active: true, brand_id: null, price: money(o.price) });   // every row carries the same keys (a batch insert needs that)
   }
   if (!rows.length) return NextResponse.json({ added: 0, skipped: true });
-  const pics = await tradePhotos(me.token, me.id);
-  rows.forEach((r, i) => { r.photo_url = pics.length ? pics[i % pics.length] : null; });
+  // Each product gets a clean, recent photo that matches its NAME (owner, 14 Oct 2026); the ones nothing fits for get a photo of the
+  // trade instead. Bounded: whatever is not found within the time falls back, so the list is never held up for long.
+  const trade = await tradeOf(me.token, me.id);
+  const deadline = Date.now() + 95_000;
+  await pool(rows, 5, async (r) => {
+    r.photo_url = Date.now() < deadline ? await stockPhotoForProduct(me.id, String(r.name), trade.label || trade.key) : null;
+  });
+  if (rows.some((r) => !r.photo_url)) {
+    const pics = await poolPhotos(trade);
+    if (pics.length) rows.filter((r) => !r.photo_url).forEach((r, i) => { r.photo_url = pics[i % pics.length]; });
+  }
+  rows.forEach((r) => { if (!r.photo_url) r.photo_url = null; });
   let r = await restAsUser<unknown[]>(me.token, "poster_products", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows) });
   // Before migration 0050 the price column does not exist: save the names rather than nothing.
   if (!r.ok && r.status === 400 && /\bprice\b/i.test(r.text)) r = await restAsUser<unknown[]>(me.token, "poster_products", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(rows.map(({ price: _p, ...rest }) => (void _p, rest))) });

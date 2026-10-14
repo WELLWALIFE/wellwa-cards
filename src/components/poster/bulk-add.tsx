@@ -106,6 +106,7 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
           </div>
         </div>
       )}
+      {busy === "save" && <p className="text-xs text-muted">{T("Finding a clean, matching picture for each product… this can take up to a minute. Please keep this page open.", "हर product के लिए साफ़ और मिलती-जुलती picture ढूँढ रहे हैं… एक मिनट तक लग सकता है। यह page खुला रखें।")}</p>}
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
     </section>
   );

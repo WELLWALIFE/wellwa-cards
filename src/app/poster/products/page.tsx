@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ClipboardList, LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
+import { ClipboardList, LoaderCircle, Plus, Search, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
 import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
@@ -285,6 +285,19 @@ export default function ProductsPage() {
       setBusy(false);
     }
   }
+  /** A clean, recent stock photo chosen by the product's name — 1 credit (the popup opens when there are none). */
+  async function findMatch() {
+    if (!draft) return;
+    if (!draft.name.trim()) { setErr(en ? "Write the product name first." : "पहले product का नाम लिखें।"); return; }
+    setBusy(true); setErr("");
+    try {
+      const r = await api<{ url?: string; error?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name } });
+      if (r.status === 402) { setPay(true); return; }
+      if (!r.ok || !r.data.url) { setErr(r.data.error || t.error); return; }
+      const u = r.data.url;
+      setDraft((d) => (d ? { ...d, photo_url: u, photos: [{ url: u, view: "front" as PhotoView, role: "identity" as const }, ...d.photos.filter((x) => x.view !== "front")].slice(0, 6) } : d));
+    } catch { setErr(t.error); } finally { setBusy(false); }
+  }
   async function fillWithAi() {
     if (!draft) return; setBusy(true); setErr("");
     try {
@@ -429,7 +442,7 @@ export default function ProductsPage() {
             </span>
             <div className="flex-1 space-y-1.5">
               <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}<Help k="productPhoto" /></span>
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
                   <Camera className="h-3.5 w-3.5" /> {en ? "Camera" : "कैमरा"}
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
@@ -438,6 +451,7 @@ export default function ProductsPage() {
                   <Images className="h-3.5 w-3.5" /> {en ? "Gallery" : "Gallery"}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
+                <button type="button" onClick={findMatch} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
               </div>
               {draft.photo_url && (
                 <div className="space-y-1">
