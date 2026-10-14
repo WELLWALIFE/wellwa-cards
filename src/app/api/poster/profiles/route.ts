@@ -72,9 +72,12 @@ export async function POST(request: Request) {
   // Only one default per user.
   if (row.is_default) await restAsUser(me.token, `poster_profiles?user_id=eq.${me.id}`, { method: "PATCH", body: JSON.stringify({ is_default: false }) });
   const id = typeof b.id === "string" && /^[0-9a-f-]{36}$/i.test(b.id) ? b.id : null;
-  const r = id
+  let r = id
     ? await restAsUser<PosterProfile[]>(me.token, `poster_profiles?id=eq.${id}&user_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) })
     : await restAsUser<PosterProfile[]>(me.token, "poster_profiles", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
+  // A screen still holding the id of a profile that no longer exists (the account was reset or the profile deleted elsewhere): make it again
+  // instead of failing the save.
+  if (id && r.ok && !r.data?.[0]) r = await restAsUser<PosterProfile[]>(me.token, "poster_profiles", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });
   if (!r.ok || !r.data?.[0]) return NextResponse.json({ error: "Could not save the profile.", detail: r.text.slice(0, 200) }, { status: 400 });
   // Referral (first profile only): both sides get 30 days of Personal.
   if (typeof b.ref === "string" && /^[A-Z0-9]{4,10}$/i.test(b.ref)) await applyReferral(me.id, b.ref.toUpperCase()).catch(() => {});
