@@ -88,7 +88,7 @@ export default function ProductsPage() {
   const [specRows, setSpecRows] = useState<SpecRow[]>([]);
   const [benText, setBenText] = useState("");   // the benefits box exactly as typed; a line written "Label: value" becomes a specification when the product is saved
   const draftKey = draft ? (draft.id ?? "new") : "";
-  // "Make this photo professional": a camera photo made studio-clean by the AI (5 credits, only when tapped; the original is kept).
+  // "Make this photo professional": a camera photo made studio-clean by the AI (1 credit, only when tapped; the original is kept).
   const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
   const [pay, setPay] = useState(false);
   const [tradeLabel, setTradeLabel] = useState("");
@@ -286,12 +286,12 @@ export default function ProductsPage() {
     }
   }
   /** A clean, recent stock photo chosen by the product's name — 1 credit (the popup opens when there are none). */
-  async function findMatch() {
+  async function findMatch(mode: "stock" | "ai" = "stock") {
     if (!draft) return;
     if (!draft.name.trim()) { setErr(en ? "Write the product name first." : "पहले product का नाम लिखें।"); return; }
     setBusy(true); setErr("");
     try {
-      const r = await api<{ url?: string; error?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name } });
+      const r = await api<{ url?: string; error?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name, mode } });
       if (r.status === 402) { setPay(true); return; }
       if (!r.ok || !r.data.url) { setErr(r.data.error || t.error); return; }
       const u = r.data.url;
@@ -444,20 +444,21 @@ export default function ProductsPage() {
               <span className="text-sm font-semibold block">{C("Photo", "फ़ोटो")}<Help k="productPhoto" /></span>
               <div className="flex flex-wrap gap-2">
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
-                  <Camera className="h-3.5 w-3.5" /> {en ? "Camera" : "कैमरा"}
+                  <Camera className="h-3.5 w-3.5" /> {en ? "Take photo" : "photo खींचें"}
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
-                  <Images className="h-3.5 w-3.5" /> {en ? "Gallery" : "Gallery"}
+                  <Images className="h-3.5 w-3.5" /> {en ? "Choose from phone" : "फ़ोन से चुनें"}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
-                <button type="button" onClick={findMatch} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
+                <button type="button" onClick={() => void findMatch("stock")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
+                <button type="button" onClick={() => void findMatch("ai")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" /> {en ? "Make by AI · 1 credit" : "AI से बनाएँ · 1 credit"}</button>
               </div>
               <p className="text-[11px] text-muted">{en ? "Best size: 1200 × 1500 px (tall) or 1200 × 1200 px (square). Any photo works — we fit it. Keep the product in the middle." : "सही size: 1200 × 1500 px (लंबी) या 1200 × 1200 px (चौकोर)। कोई भी photo चलेगी — हम फ़िट कर देंगे। Product बीच में रखें।"}</p>
               {draft.photo_url && (
                 <div className="space-y-1">
                   <button type="button" onClick={studioPhoto} disabled={studio.busy || busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
-                    {studio.busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {studio.busy ? (en ? "Making it professional… about 30 seconds" : "Professional बन रही है… लगभग 30 सेकंड") : (en ? "Make this photo professional with AI · 5 credits" : "AI से photo professional बनाएँ · 5 credits")}
+                    {studio.busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {studio.busy ? (en ? "Making it professional… about 30 seconds" : "Professional बन रही है… लगभग 30 सेकंड") : (en ? "Make this photo perfect with AI · 1 credit" : "AI से इस photo को perfect बनाएँ · 1 credit")}
                   </button>
                   {studio.note === "ok" && <p className="text-[11px] font-semibold text-good">✨ {en ? "Studio photo ready — same product, clean background." : "Studio photo तैयार — वही product, साफ़ background।"} {studio.orig && <button type="button" onClick={useOriginalPhoto} className="underline text-muted">{en ? "Use my original" : "मेरी original रखें"}</button>}</p>}
                   {studio.note && studio.note !== "ok" && <p className="text-[11px] font-semibold text-danger">{studio.note}</p>}

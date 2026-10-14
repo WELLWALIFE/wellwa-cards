@@ -211,6 +211,19 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
       mapBlocks((b) => (b.kind === "gallery" && first ? (first = false, { ...b, images: [...b.images, ...fresh.filter((u) => !b.images.some((i) => i.url === u)).map((u) => ({ url: u, color: next.themeColor, label: "" }))].slice(0, 12) }) : b));
     }
   }
+  // The products have a page of their own, as they did when the card was built with products (owner, 14 Oct 2026): a card
+  // written without any gets a "Products" page in the menu the first time products are added, and the block moves there.
+  if (!next.pages.some((pg) => pg.slug === "products")) {
+    const home = next.pages[0];
+    const bi = home ? home.blocks.findIndex((b) => b.kind === "product") : -1;
+    if (home && bi >= 0) {
+      const block = home.blocks[bi] as Extract<CardBlock, { kind: "product" }>;
+      if (block.items.length) {
+        home.blocks.splice(bi, 1);
+        next.pages.splice(1, 0, { id: Math.random().toString(36).slice(2, 10), slug: "products", label: next.language === "hi" ? "प्रोडक्ट" : "Products", blocks: [{ ...block, title: block.title || (next.language === "hi" ? "हमारे प्रोडक्ट" : "Products") }] });
+      }
+    }
+  }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
 }
 
