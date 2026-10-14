@@ -1524,7 +1524,7 @@ function Onboard() {
           {/* Two edit tiles share this screen: ?part=photos (the pictures) and ?part=links (payments, social, Maps); the set-up shows both. */}
           {head(editing && part === "photos" ? T("Photos & banner", "Photos और banner") : editing && part === "links" ? T("Payments & social links", "Payment और social links") : T("Photos & more", "Photos और बाकी"), editing && part === "photos" ? T("Every picture on your website.", "आपकी website की हर picture।") : editing && part === "links" ? T("How customers pay you, and where to find you online. All optional.", "ग्राहक आपको कैसे payment दें, और आप online कहाँ मिलेंगे। सब optional।") : T("All optional. No photos? Ready pictures of your trade are used; change them any time.", "सब optional। Photos नहीं हैं? आपके काम की तैयार pictures लगेंगी; कभी भी बदल सकते हैं।"))}
           {/* A focused edit shows the photos that are on the website, one by one; the set-up (no website yet) asks for the banner and photos. */}
-          {editing && part !== "links" && <SitePhotos hi={hi} />}
+          {editing && part !== "links" && <SitePhotos hi={hi} cardId={params.get("card") ?? undefined} />}
           {!(editing && part === "photos") && <FactsFields group="company" only={editing ? ["q-pay", "q-social"] : ["q-photos", "q-pay", "q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />}
           {!editing && <div className="space-y-3 rounded-2xl border border-border p-4">
               {/* The website is asked on its own step; here it is only shown, with one way back to change it. */}

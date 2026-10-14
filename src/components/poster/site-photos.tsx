@@ -31,7 +31,7 @@ async function fitTo(file: File, kind: Slot["kind"]): Promise<File> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export function SitePhotos({ hi }: { hi: boolean }) {
+export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [max, setMax] = useState(12);
@@ -51,7 +51,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
 
   const load = useCallback(async () => {
-    const r = await api<Got>("/api/card/photos");
+    const r = await api<Got>(`/api/card/photos${cardId ? `?cardId=${encodeURIComponent(cardId)}` : ""}`);
     if (r.ok) { setSlots(r.data.slots ?? []); setMax(r.data.max ?? 12); setIdeas(r.data.ideas ?? []); } else { setSlots([]); setErr(r.data.error ?? T("Could not load the photos.", "Photos नहीं खुलीं।")); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -64,7 +64,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
     try {
       // `expect` is the picture the owner was looking at: if the numbering moved meanwhile the server says so instead of changing another one.
       const slot = typeof body.slot === "string" ? body.slot : "";
-      const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
+      const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(cardId ? { cardId } : {}), ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
       if (!r.ok) {
         if (r.status === 402) { setPay(true); return; }
         setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"));

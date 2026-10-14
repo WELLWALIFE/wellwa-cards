@@ -217,7 +217,7 @@ export default function WebsitePage() {
                     { k: "about", I: Type, t: T("About & logo", "परिचय और logo"), s: T("A few lines about you, your logo", "आपके बारे में कुछ लाइनें, आपका logo"), href: `/poster/onboard?step=about&back=${BACK}`, scope: "both" },
                     { k: "details", I: ListChecks, t: T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं"), s: T("Tap what is true for you", "जो आप पर सही है वो दबाएँ"), href: `/poster/onboard?step=details&back=${BACK}`, scope: "both" },
                     { k: "products", I: Package, t: T("Products / services", "Products / services"), s: T("Add them, change prices, add photos", "जोड़ें, दाम बदलें, photo लगाएँ"), href: `/poster/products?back=${BACK}`, scope: "both" },
-                    { k: "photo", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Every picture on your website", "आपकी website की हर picture"), href: `/poster/onboard?step=extras&part=photos&back=${BACK}`, scope: "both" },
+                    { k: "photo", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Every picture on your website", "आपकी website की हर picture"), href: `/poster/onboard?step=extras&part=photos${cardId ? `&card=${cardId}` : ""}&back=${BACK}`, scope: "both" },
                   ] },
                   { k: "contact", title: T("2 · Contact & place", "2 · संपर्क और जगह"), tiles: [
                     { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, address, map pin, opening hours", "शहर, पता, map pin, खुलने का समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
