@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import type { PaidPlan } from "@/lib/billing";
 import { usePlan } from "@/lib/plan";
+import { payPrefill } from "@/lib/pay-prefill";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global {
@@ -60,6 +61,7 @@ export function UpgradeButton({
         amount: order.amount,
         currency: "INR",
         order_id: order.orderId,
+        prefill: payPrefill(),
         name: "Shubhora",
         description: `${plan.toUpperCase()} plan`,
         theme: { color: "#0e9e90" },

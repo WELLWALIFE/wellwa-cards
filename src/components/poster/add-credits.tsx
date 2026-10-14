@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { LoaderCircle, Coins } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { payPrefill } from "@/lib/pay-prefill";
 type Rz = { open: () => void };
 export function AddCredits({ need, have, onDone }: { need?: number; have?: number; onDone?: () => void }) {
   const { lang } = useT(); const hi = lang !== "en";
@@ -25,7 +26,7 @@ export function AddCredits({ need, have, onDone }: { need?: number; have?: numbe
     if (!o.ok || !o.data.orderId) { setMsg(o.data.message || o.data.error || "Payment unavailable"); setBusy(null); return; }
     if (!document.querySelector('script[src*="checkout.razorpay.com"]')) { await new Promise<void>((res, rej) => { const s = document.createElement("script"); s.src = "https://checkout.razorpay.com/v1/checkout.js"; s.onload = () => res(); s.onerror = () => rej(new Error("load")); document.body.appendChild(s); }).catch(() => setMsg("Checkout load nahi hua")); }
     const RZ = (window as unknown as { Razorpay?: new (o: Record<string, unknown>) => Rz }).Razorpay; if (!RZ) { setBusy(null); return; }
-    new RZ({ key: o.data.keyId, amount: o.data.amount, currency: o.data.currency, name: "Shubhora", description: `${credits} credits`, order_id: o.data.orderId, theme: { color: "#0e9e90" },
+    new RZ({ key: o.data.keyId, amount: o.data.amount, currency: o.data.currency, prefill: payPrefill(), name: "Shubhora", description: `${credits} credits`, order_id: o.data.orderId, theme: { color: "#0e9e90" },
       handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
         const v = await api<{ ok?: boolean; error?: string }>("/api/poster/pay/credits", { method: "POST", json: { pack: credits, orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature } });
         setBusy(null); setMsg(v.ok ? (hi ? `✅ ${credits} credits जुड़ गए` : `✅ ${credits} credits added`) : (v.data.error || "verify failed")); onDone?.();

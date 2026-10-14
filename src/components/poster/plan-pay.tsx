@@ -5,6 +5,7 @@ import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { payPrefill } from "@/lib/pay-prefill";
 
 type RzpResponse = { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string };
 type RzpOptions = {
@@ -41,7 +42,7 @@ export function PlanPayButton({ plan, label, className = "" }: { plan: "personal
       if (!Razorpay) throw new Error(t.payLoadFail);
       new Razorpay({
         key: o.data.keyId, amount: o.data.amount ?? 0, currency: o.data.currency ?? "INR", order_id: o.data.orderId,
-        name: "Shubhora", description: `${plan === "business" ? "Business" : "Personal"} plan · 1 month`, theme: { color: "#0e9e90" },
+        prefill: payPrefill(), name: "Shubhora", description: `${plan === "business" ? "Business" : "Personal"} plan · 1 month`, theme: { color: "#0e9e90" },
         handler: async (r) => {
           setState("verifying");
           const v = await api<{ ok: boolean; error?: string }>("/api/poster/pay/verify", {

@@ -8,6 +8,7 @@ import { Check, LoaderCircle, RefreshCw } from "lucide-react";
 import { CARD_RENEWAL } from "@/lib/billing";
 import { BRAND } from "@/lib/site-brand";
 import { api } from "@/lib/poster-client";
+import { payPrefill } from "@/lib/pay-prefill";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global { interface Window { Razorpay?: any } }
@@ -39,7 +40,7 @@ export function CardRenewButton({ className, children, en = true, onDone }: {
       }
       new window.Razorpay({
         key: o.data.keyId, amount: o.data.amount, currency: "INR", order_id: o.data.orderId,
-        name: BRAND, description: `${CARD_RENEWAL.label} — 1 year`, theme: { color: "#0e9e90" },
+        prefill: payPrefill(), name: BRAND, description: `${CARD_RENEWAL.label} — 1 year`, theme: { color: "#0e9e90" },
         handler: async (resp: any) => {
           const v = await api<Verified>("/api/billing/verify", { method: "POST", json: resp });
           if (v.ok && v.data.ok) {

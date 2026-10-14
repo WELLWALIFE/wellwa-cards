@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, Sparkles } from "lucide-react";
 import { SAAS_PLANS, rupees, type SaasTier } from "@/lib/billing";
 import { BRAND } from "@/lib/site-brand";
+import { payPrefill } from "@/lib/pay-prefill";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 declare global { interface Window { Razorpay?: any } }
@@ -40,7 +41,7 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
       if (o.demo) { setState("error"); setMsg("Payments are not live on this environment."); return; }
       if (!(await loadScript("https://checkout.razorpay.com/v1/checkout.js")) || !window.Razorpay) { setState("error"); setMsg("Could not load the payment page."); return; }
       new window.Razorpay({
-        key: o.keyId, name: BRAND, theme: { color: "#0e9e90" },
+        prefill: payPrefill(), key: o.keyId, name: BRAND, theme: { color: "#0e9e90" },
         ...(autopay
           ? { subscription_id: o.subscriptionId, description: `${plan.label} — ${rupees(plan.amount)} / month` }
           : { amount: o.amount, currency: "INR", order_id: o.orderId, description: `${plan.label} plan — 1 month` }),
