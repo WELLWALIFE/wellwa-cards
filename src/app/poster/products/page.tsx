@@ -453,6 +453,7 @@ export default function ProductsPage() {
                 </label>
                 <button type="button" onClick={findMatch} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
               </div>
+              <p className="text-[11px] text-muted">{en ? "Best size: 1200 × 1500 px (tall) or 1200 × 1200 px (square). Any photo works — we fit it. Keep the product in the middle." : "सही size: 1200 × 1500 px (लंबी) या 1200 × 1200 px (चौकोर)। कोई भी photo चलेगी — हम फ़िट कर देंगे। Product बीच में रखें।"}</p>
               {draft.photo_url && (
                 <div className="space-y-1">
                   <button type="button" onClick={studioPhoto} disabled={studio.busy || busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
