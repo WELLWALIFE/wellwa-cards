@@ -108,9 +108,15 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const card: Card = seller ? withPage : withoutShubhoraLeaks(withPage);
   // The V-Card's year ended more than 7 days ago with no renewal and no paid plan: "Card renew karein" instead of the
   // card, on every page and view of it (owner's call, 27 Sep 2026). Renewing brings everything back at once.
-  if (await fetchCardPaused(card.username)) {
-    const { brand } = await addresses(card);
-    const joinHandle = brand ? null : await fetchCardOwnerUsername(card.username);
+  // Everything the page needs from the database is asked at once (it used to be asked one after another — about 4 seconds a visit).
+  const pausedP = fetchCardPaused(card.username);
+  const addrP = addresses(card);
+  const expiredP = fetchCardExpired(card.username);
+  const trackingP = fetchCardTracking(card.username);
+  const ownerP = fetchCardOwnerUsername(card.username);
+  if (await pausedP) {
+    const { brand } = await addrP;
+    const joinHandle = brand ? null : await ownerP;
     const business = card.lead === "business" && !!card.company;
     return (
       <CardPaused
@@ -125,16 +131,16 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const product = findProduct(card, slug);
   const page = product ? productPageOf(card, product) : pageOf(card, slug);
 
-  await countCardView(username);
+  void Promise.resolve(countCardView(username)).catch(() => undefined);   // counted, not waited for
 
   const hdrs = await headers();
-  const { brand, home, linkBase } = await addresses(card);
+  const { brand, home, linkBase } = await addrP;
   // Website mode: one link, two looks — phones get the card, desktops the full
   // website; ?view=site|card forces either (used by previews and the footer link).
   const mobile = /Mobi|Android|iPhone|iPad|iPod/i.test(hdrs.get("user-agent") ?? "");
   // Free plan (or lapsed): the card stays online (its first year free, then ₹1,499 a year — see fetchCardPaused above);
   // the full website and the AI chat need the plan.
-  const expired = await fetchCardExpired(card.username);
+  const expired = await expiredP;
   // Free or paid, one link, two looks: phones get the card, computers the website (owner's call, 3 Oct 2026: the
   // free website is a real website — it wears a FREE strip on top and bottom, Premium wears none).
   // The Story look is built for phones (docs/website-looks-v2.md §3.3; owner's call, 5 Oct 2026: "phone par story
@@ -142,8 +148,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   const story = card.site?.style?.blueprint === "story";
   const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && (!mobile || story) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
-  const tracking = await fetchCardTracking(card.username);
-  const joinHandle = brand ? null : await fetchCardOwnerUsername(card.username);
+  const tracking = await trackingP;
+  const joinHandle = brand ? null : await ownerP;
   const tracked = Boolean(tracking && Object.values(tracking).some(Boolean));
   // "Aapko ye V-Card kaisa laga?" strip → the same joining link: Shubhora partner cards only (owner's call, 27 Sep 2026).
   const nudge = !!joinHandle && isShubhoraCard(card);
