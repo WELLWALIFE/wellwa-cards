@@ -6,7 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
+import { ClipboardList, LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, Package, RefreshCw, Sparkles } from "lucide-react";
 import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
@@ -16,6 +16,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { UnlockDialog } from "@/lib/ai-access";
+import { BulkAdd } from "@/components/poster/bulk-add";
 import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
@@ -89,7 +90,11 @@ export default function ProductsPage() {
   const draftKey = draft ? (draft.id ?? "new") : "";
   // "Make this photo professional": a camera photo made studio-clean by the AI (5 credits, only when tapped; the original is kept).
   const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
-  const [pay, setPay] = useState(false);   // not enough credits: the Razorpay popup
+  const [pay, setPay] = useState(false);
+  const [tradeLabel, setTradeLabel] = useState("");
+  const [cityName, setCityName] = useState("");
+  const [bulk, setBulk] = useState(false);       // "Add many at once" is open
+  const [bulkMsg, setBulkMsg] = useState("");   // not enough credits: the Razorpay popup
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
   const draftKeyRef = useRef("");
   useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);   // read after the studio picture arrives, to see whether the same product is still open
@@ -192,7 +197,7 @@ export default function ProductsPage() {
         if (Object.keys(restored).length) { f = { ...f, ...restored }; factsDirty.current = true; setEdits((n) => n + 1); }
         else writeJson(backupKey(me), { ...b, dirty: false });
       }
-      setFacts(f); setHasAbout(!!r.data.setup?.about?.trim()); setCategory(r.data.setup?.category ?? "");
+      setFacts(f); setHasAbout(!!r.data.setup?.about?.trim()); setCategory(r.data.setup?.category ?? ""); setTradeLabel(r.data.setup?.categoryLabel ?? ""); setCityName(r.data.setup?.city ?? "");
     })().catch(() => undefined);
   }, []);
   useEffect(() => {
@@ -247,7 +252,7 @@ export default function ProductsPage() {
   }
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/products"); return; } load(); })(); }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  async function save() {
+  async function save(again = false) {
     if (!draft) return;
     if (draft.mrp?.trim() && !draft.price.trim()) { setErr(en ? "Write the offer price too — the MRP is shown struck out next to it." : "ऑफ़र दाम भी लिखें — MRP उसके साथ कटा हुआ दिखता है।"); return; }
     setBusy(true); setErr("");
@@ -256,7 +261,8 @@ export default function ProductsPage() {
         ...draft, benefits: draft.benefits.split("\n"), ...(brandAdmin ? { for_brand: forBrand } : {}),
       } });
       if (!r.ok) { setErr(r.data.error || t.saveFail); return; }
-      setDraft(null); await load();
+      // "Save and add another" keeps the group and brand, so a run of similar things is quick.
+      setDraft(again ? { ...EMPTY, category: draft.category, brand: draft.brand } : null); await load();
       void liveSync();
     } catch {
       setErr(t.saveFail);
@@ -385,12 +391,17 @@ export default function ProductsPage() {
         </div>
       )}
       {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}
+      {!setupMode && !draft && !bulk && list && list.length > 0 && (
+        <button type="button" onClick={() => { setBulkMsg(""); setBulk(true); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink"><ClipboardList className="h-4 w-4" /> {C("Add many products at once", "बहुत से products एक साथ जोड़ें")}</button>
+      )}
+      {bulkMsg && !bulk && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {bulkMsg}</p>}
+      {!setupMode && bulk && !draft && <BulkAdd en={en} trade={tradeLabel} city={cityName} onClose={() => setBulk(false)} onAdded={async (n) => { setBulk(false); setBulkMsg(n > 0 ? (en ? `${n} products added.` : `${n} products जुड़ गए।`) : (en ? "These were already on your list." : "ये पहले से आपकी लिस्ट में हैं।")); await load(); void liveSync(); }} />}
       {err && !draft && <p className="text-sm text-danger">{err}</p>}
       {/* The truth about the live website (audit, 7 Oct 2026): the AI laid the products out at build time, so a product
           added here reaches the website through Write again — said here, with the button, instead of silently not. */}
       {!setupMode && hasLive && list.length > 0 && !draft && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
-          <span className="min-w-0 flex-1">{C("Changes here go on your card and posters at once. For the website, run Write again once you are done.", "यहाँ के बदलाव card और poster पर तुरंत आते हैं। Website के लिए, काम पूरा होने पर एक बार Write again चलाएँ।")}</span>
+          <span className="min-w-0 flex-1">{C("Changes here go on your card, website and posters at once.", "यहाँ के बदलाव card, website और poster पर तुरंत आ जाते हैं।")}</span>
           <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Update website", "Website update करें")}</Link>
         </div>
       )}
@@ -523,7 +534,8 @@ export default function ProductsPage() {
           {err && <p className="text-sm text-danger">{err}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{C("Cancel", "रहने दें")}</button>
-            <button type="button" onClick={save} disabled={busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
+            {!draft.id && <button type="button" onClick={() => void save(true)} disabled={busy || !draft.name.trim()} className="rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{C("Save & add another", "Save करें और एक और जोड़ें")}</button>}
+            <button type="button" onClick={() => void save()} disabled={busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
           </div>
         </div>
       )}
@@ -546,6 +558,7 @@ export default function ProductsPage() {
             <Package className="mx-auto h-8 w-8 text-brand" />
             <p className="mt-2 text-base font-bold">{C("No products yet", "अभी कोई product नहीं")}</p>
             <p className="mx-auto mt-1 max-w-xs text-sm text-muted">{C("Add your first one: a photo, a name and a price. It shows on your card, website and posters.", "पहला जोड़ें: एक photo, नाम और दाम। ये card, website और poster पर दिखेगा।")}</p>
+            <button type="button" onClick={() => setBulk(true)} className="mt-3 mr-2 inline-flex items-center gap-2 rounded-xl border-2 border-brand px-4 py-3 text-sm font-semibold text-brand-ink"><ClipboardList className="h-4 w-4" /> {C("Add many at once", "बहुत से एक साथ")}</button>
             <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="mt-3 inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>
           </div>
         )}
