@@ -1132,7 +1132,7 @@ function Onboard() {
         {busy === "save" || busy === "next" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : last ? <Check className="h-5 w-5" /> : null} {editing ? T("Save", "Save करें") : last ? T("Save and continue", "Save करके आगे बढ़ें") : T("Next →", "आगे →")}
       </button>
       {editing && <p className="text-center text-[11px] text-muted">{T("Save puts it on your website right away.", "Save करते ही website पर आ जाएगा।")}</p>}
-      {!last && <p className="text-center text-[11px] text-muted">{T("Saved as you go. Come back any time.", "अपने आप save होता है। कभी भी वापस आएँ।")}</p>}
+      {!last && <p className="text-center text-[11px] text-muted">{T("Your answers are saved automatically. You can come back any time.", "आपके जवाब अपने आप save होते हैं। कभी भी वापस आ सकते हैं।")}</p>}
     </div>
     );
   };
@@ -1174,7 +1174,7 @@ function Onboard() {
           {/* Owner's call, 25 Sep 2026: a referral link does not make someone a networker — many take Shubhora for their
               own shop. So everyone gets this choice, answerable in one look. Both is ticked by default (owner's call,
               4 Oct 2026): the person's own business, and a Shubhora page of its own on a hidden link. */}
-          {head(T("What is your website for?", "आपकी website किस काम के लिए है?"), T("Both is already ticked. Change it if you want only one.", "दोनों पहले से चुना है। सिर्फ़ एक चाहिए तो बदल लें।"), "promote")}
+          {head(T("Who is this website for?", "यह website किसके लिए है?"), T("Pick one. Not sure? Keep “Both”.", "एक चुनें। पक्का नहीं है तो “दोनों” रहने दें।"), "promote")}
 
           {([
             { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("My own business or work", "मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
@@ -1208,7 +1208,7 @@ function Onboard() {
         </section>
       ) : step === "site" ? (
         <section className="space-y-4">
-          {head(T("Which website should the AI learn from?", "AI किस website से सीखे?"), T("Your own, a brand's you deal for, or any website of a business like yours. No website at all? Pick Reference website and leave the link empty.", "आपकी अपनी, जिस brand के dealer हैं उसकी, या आपके जैसे किसी business की। कोई website नहीं? Reference website चुनें और link खाली छोड़ें।"), "site")}
+          {head(T("Do you have a website?", "क्या आपकी website है?"), T("If yes, we take your details from it, so you type less. If not, choose the last option — nothing else is needed.", "है तो हम उसी से आपकी जानकारी ले लेंगे, आपको कम लिखना पड़ेगा। नहीं है तो आख़िरी option चुनें — और कुछ नहीं चाहिए।"), "site")}
 
           {/* Three choices, one of them required (owner's call, 7 Oct 2026): "No website" is gone — a reference
               website (any business like theirs) is what someone without a site of their own picks. */}
@@ -1231,14 +1231,14 @@ function Onboard() {
                 {on && c.k !== "none" && (
                   <div className="-mt-1 space-y-2.5 rounded-b-2xl border-2 border-t-0 border-brand/40 bg-surface px-3.5 pb-3.5 pt-4">
                     <label className="block text-sm font-semibold">
-                      {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Brand की website का link") : T("That website's link", "उस website का link")}{c.k === "reference" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}<Help k="siteLink" />
+                      {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Brand की website का link") : T("Example website link", "Example website का link")}{c.k === "reference" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}<Help k="siteLink" />
                       <div className="mt-1 flex items-stretch gap-2">
                         <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookupTyped(); } }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
                           placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`)} className={`${box} min-w-0 flex-1 ${siteErr && site.kind && !pendingSocial ? "border-danger" : ""}`} />
                         <button type="button" onClick={() => void lookupTyped()} disabled={!!finding || site.url.trim().length < 2} aria-label={T("Search", "खोजें")} title={T("Search", "खोजें")}
                           className="grid w-12 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
                       </div>
-                      <span className="mt-1 block text-[11px] font-normal text-muted">{c.k === "reference" ? T("Any website of a business like yours. None in mind? Leave it empty.", "आपके जैसे किसी business की website। कोई नहीं सूझती? खाली छोड़ें।") : T("Type the link or just the name. It is looked up by itself.", "link या सिर्फ़ नाम लिखें। अपने आप खोज लेंगे।")}</span>
+                      <span className="mt-1 block text-[11px] font-normal text-muted">{c.k === "reference" ? T("Any website of a shop like yours. None in mind? Leave it empty.", "आपके जैसी किसी दुकान की website। कोई नहीं सूझती? खाली छोड़ दें।") : T("Type the link or just the name. It is looked up by itself.", "link या सिर्फ़ नाम लिखें। अपने आप खोज लेंगे।")}</span>
                     </label>
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
                     {pendingSocial ? (
@@ -1436,7 +1436,7 @@ function Onboard() {
         </section>
       ) : step === "highlights" ? (
         <section className="space-y-4">
-          {head(T("What makes you special?", "आपकी खासियत क्या है?"), T("Why customers should pick you. This goes on your website.", "Customers आपको क्यों चुनें। यही website पर जाएगा।"))}
+          {head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))}
           <FactsFields group="products" only={["q-special", "q-customers", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
           {nextBar()}
         </section>

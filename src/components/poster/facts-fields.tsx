@@ -177,7 +177,7 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
         {err && <p className="text-sm text-danger">{err}</p>}
       </Sec>
 
-      <Sec id="q-since" title={T("Since when, and how big", "कब से, और कितनी बड़ी team")} hint={T("Type the year; the experience fills by itself.", "साल लिखें; experience अपने आप भर जाएगा।")} help="since">
+      <Sec id="q-since" title={T("Since when, and how big is your team", "कब से काम कर रहे हैं, और team कितनी बड़ी है")} hint={T("Type the year you started. Your years of experience are worked out for you.", "जिस साल शुरू किया वो लिखें। कितने साल का अनुभव है, यह अपने आप भर जाएगा।")} help="since">
         <div className="grid grid-cols-3 gap-2">
           <label className="block text-sm font-semibold">{T("Since (year)", "कब से (साल)")}
             {/* A full year fills the experience from it (owner's call, 7 Oct 2026: "since fill kare to experience auto

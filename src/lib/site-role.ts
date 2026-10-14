@@ -71,15 +71,15 @@ export function isShubhoraHost(url: string): boolean {
 export const SITE_CARDS: { k: SiteKind; e: string; t: string; th: string; s: string; sh: string; takes: string; takesHi: string }[] = [
   {
     k: "own", e: "🏪",
-    t: "My own website", th: "मेरी अपनी website",
-    s: "Name, logo, photos and products come from it", sh: "नाम, logo, photos और products इसी से आएँगे",
+    t: "I have my own website", th: "मेरी अपनी website है",
+    s: "We take your name, logo, photos and products from it — you type less", sh: "आपका नाम, logo, photos और products हम इसी से ले लेंगे — आपको कम लिखना पड़ेगा",
     takes: "Your logo, photos, details and products are read from it. Check them on the next screen.",
     takesHi: "आपका logo, photos, जानकारी और products इसी से पढ़े जाएँगे। अगली screen पर देख लें।",
   },
   {
     k: "dealer", e: "🤝",
-    t: "A brand's website — I am its dealer", th: "Brand की website — मैं dealer हूँ",
-    s: "Only their products come, with MRP. Your name and number stay yours", sh: "सिर्फ़ उनके products आएँगे, MRP के साथ। नाम और number आपका ही रहेगा",
+    t: "I sell a brand's products (I am a dealer)", th: "मैं किसी brand का सामान बेचता हूँ (dealer)",
+    s: "We take only that brand's products and prices. Your name and number stay yours", sh: "हम सिर्फ़ उस brand के products और दाम लेंगे। नाम और number आपका ही रहेगा",
     takes: "Only the products — names, photos, specifications, MRP. Never the brand's logo, shop pictures, phone or address.",
     takesHi: "सिर्फ़ products — नाम, photo, specification, MRP। Brand का logo, दुकान की photo, phone, पता कभी नहीं।",
   },
@@ -88,8 +88,8 @@ export const SITE_CARDS: { k: SiteKind; e: string; t: string; th: string; s: str
     // Owner's call, 7 Oct 2026: the third choice is a "reference website" — any website of a business like theirs,
     // so the AI knows what they sell or do (and takes its look as a hint). The "no website" choice is gone from
     // the set-up: everyone picks one of the three; a reference without a link simply means none.
-    t: "Reference website", th: "Reference website",
-    s: "Any website of a business like yours. The AI learns what you sell or do, and its look", sh: "आपके जैसे किसी business की website। AI समझेगा आप क्या बेचते / करते हैं, और look भी",
+    t: "I have no website — use an example", th: "मेरी website नहीं है — कोई example लें",
+    s: "Optional: give any website of a shop like yours. We use it only as an idea of what to offer and how it should look", sh: "चाहें तो आपके जैसी किसी दुकान की website दें। हम उसे सिर्फ़ idea की तरह लेंगे कि क्या दिखाना है और कैसा दिखे",
     takes: "Only as an idea: what a business like yours offers, and its colours and layout. Never its words, photos, products or name.",
     takesHi: "सिर्फ़ idea के लिए: आपके जैसा business क्या देता है, और उसके रंग / layout। उसके शब्द, photo, products, नाम कभी नहीं।",
   },

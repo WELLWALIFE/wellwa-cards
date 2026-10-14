@@ -1026,7 +1026,7 @@ export default function BuildCard() {
         <div className="grid place-items-center gap-2 text-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
           <p className="text-lg font-bold">{T("Your website is being made", "आपकी website बन रही है")}</p>
-          <p className="text-xs text-muted">{T("Usually 1–2 minutes; the first website of a trade can take 3.", "आम तौर पर 1–2 मिनट; किसी trade की पहली website में 3 लग सकते हैं।")} · {clock}</p>
+          <p className="text-xs text-muted">{T("Usually about a minute. Sometimes it takes up to 3.", "आम तौर पर लगभग 1 मिनट। कभी-कभी 3 मिनट तक लग जाते हैं।")} · {clock}</p>
         </div>
         <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
           {steps.map(([k, label]) => {
@@ -1446,7 +1446,7 @@ export default function BuildCard() {
           <button type="button" onClick={() => router.push("/poster/onboard?step=about")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
-        <p className="text-sm text-muted">{T("Your profile is saved. One tap makes your website and digital card from it.", "आपकी profile save हो गई। एक tap में उससे आपकी website और digital card बन जाएँगे।")}</p>
+        <p className="text-sm text-muted">{T("Your details are saved. Tap once and we make your website and digital card.", "आपकी जानकारी save हो गई। एक बार दबाइए, हम आपकी website और digital card बना देंगे।")}</p>
         {/* Free: one button, no wall (owner's call, 3 Oct 2026: "make step easy, warna wo bana hi nahi payega"). */}
         {/* A Premium owner's build is Premium whatever button is tapped (the server decides by the plan): only that button. */}
         {!access.subscribed && (
@@ -1464,11 +1464,11 @@ export default function BuildCard() {
         </div>
         )}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-          <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Your plan is on", "आपका plan चालू है") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
+          <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Included in your plan", "आपके plan में शामिल") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
-            {li(T("No Shubhora tag, website on Google", "Shubhora का tag नहीं, website Google पर"))}
-            {li(T("AI paints your banner; AI edits — just say what to change", "AI आपका banner बनाता है; AI से बदलाव — बस बोल दो"))}
-            {li(T("WhatsApp AI 24×7, auto-post, your own domain", "WhatsApp AI 24×7, auto-post, अपना domain"))}
+            {li(T("No Shubhora tag, and your website shows on Google", "Shubhora का tag नहीं, और आपकी website Google पर दिखती है"))}
+            {li(T("AI makes your banner photo. To change anything, just tell the AI", "AI आपकी banner photo बनाता है। कुछ बदलना हो तो बस AI को बता दें"))}
+            {li(T("WhatsApp AI replies to customers day and night, posts for you, and you can use your own web address", "WhatsApp AI दिन-रात ग्राहकों को जवाब देता है, आपके लिए post करता है, और आप अपना web address लगा सकते हैं"))}
           </ul>
           {access.subscribed ? (
             <button type="button" onClick={() => { setPlan("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
@@ -1480,9 +1480,9 @@ export default function BuildCard() {
             </button>
           )}
         </div>
-        <button type="button" onClick={() => { setState("form"); window.scrollTo({ top: 0 }); }} className="w-full text-center text-sm font-semibold text-brand-ink underline">{T("Advanced (optional): a website you like, the look, check your details →", "Advanced (optional): पसंद की website, look, details check →")}</button>
+        <button type="button" onClick={() => { setState("form"); window.scrollTo({ top: 0 }); }} className="w-full text-center text-sm font-semibold text-brand-ink underline">{T("More options: use a website you like, choose a look, check your details →", "और options: पसंद की website लें, look चुनें, जानकारी जाँचें →")}</button>
         {err && <p className="text-sm text-danger">{err}</p>}
-        <p className="text-center text-xs text-muted">{T("The AI writes only from your details — no made-up prices or claims.", "AI सिर्फ़ आपकी जानकारी से लिखता है — price या दावे अपने से नहीं बनाता।")}</p>
+        <p className="text-center text-xs text-muted">{T("The AI writes only from what you told us. It does not invent prices or claims.", "AI सिर्फ़ वही लिखता है जो आपने बताया। वह अपनी तरफ़ से दाम या दावे नहीं जोड़ता।")}</p>
         {premiumDialog}
       </div>
     );
