@@ -610,6 +610,36 @@ function Avatar({ card }: { card: Card }) {
 }
 
 /* ============ Block renderer ============ */
+/** A gallery whose photos have headings ("Opening ceremony", "Seminar"): heading chips and a search box over a grid of photos. */
+function AlbumGallery({ block, t }: { block: Extract<CardBlock, { kind: "gallery" }>; t: (s: string) => string }) {
+  const [alb, setAlb] = useState("");
+  const [q, setQ] = useState("");
+  const all = block.images.filter((g) => g.url);
+  const heads = [...new Set(all.map((g) => (g.group ?? "").trim()).filter(Boolean))];
+  const ql = q.trim().toLowerCase();
+  const shown = all.filter((g) => (!alb || g.group === alb) && (!ql || `${g.group ?? ""} ${g.label}`.toLowerCase().includes(ql)));
+  const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-semibold ${on ? "bg-brand text-white" : "bg-surface2 text-muted"}`;
+  return (
+    <section>
+      <BlockTitle>{t(block.title)}</BlockTitle>
+      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Search a heading")} aria-label={t("Search a heading")} className="mb-2 w-full rounded-full border border-border bg-surface px-4 py-2 text-sm" />
+      <div className="mb-3 flex flex-wrap gap-1.5">
+        {["", ...heads].map((g) => <button key={g || "all"} type="button" onClick={() => setAlb(g)} aria-pressed={alb === g} className={chip(alb === g)}>{g ? t(g) : t("All")}</button>)}
+      </div>
+      {shown.length === 0 ? <p className="text-sm text-muted">{t("No photo under that heading.")}</p> : (
+        <div className="grid grid-cols-3 gap-2">
+          {shown.map((img, i) => (
+            <div key={i}>
+              <Pic src={img.url!} alt={img.label || img.group || ""} sizes="(min-width: 640px) 150px, 33vw" className="aspect-square w-full rounded-xl object-cover shadow-card" />
+              {img.group && <p className="mt-1 truncate text-[11px] text-muted">{t(img.group)}</p>}
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function Block({ block, card, theme }: { block: CardBlock; card: Card; theme: string }) {
   const t = useT();
   switch (block.kind) {
@@ -805,6 +835,8 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
       );
 
     case "gallery": {
+      // Photos grouped under headings (owner, 14 Oct 2026): the visitor picks a heading or searches for one.
+      if (block.images.some((g) => g.url && (g.group ?? "").trim())) return <AlbumGallery block={block} t={t} />;
       const imgs = block.images.filter((g) => g.url);
       const gl = imgs.length === block.images.length ? galleryLayout(imgs.length) : "masonry";
       if (gl === "single") {

@@ -1495,14 +1495,18 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
       const imgs = s.images;
       const all = <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>;
       const openAt = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
-      if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}><SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}><LabelWall imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}><BentoGallery imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
-      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}><TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
-      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}><StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
+      // The headings of the gallery (when the photos have them): chips that open the Photos page, where they can be picked and searched.
+      const heads = [...new Set(card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" ? b.images.map((g) => (g.group ?? "").trim()) : [])).filter(Boolean))].slice(0, 6);
+      const headChips = heads.length > 0 ? <div className="mb-5 flex flex-wrap gap-2">{heads.map((h) => <a key={h} href={hrefFor(s.page)} onClick={(e) => { e.preventDefault(); go(s.page); }} className={`rounded-full border px-3 py-1 text-xs font-semibold ${FOCUS}`} style={{ borderColor: "var(--line)" }}>{t(h)}</a>)}</div> : null;
+      if (bp === "cinematic") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<SceneStrip imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<LabelWall imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<BentoGallery imgs={imgs} onOpen={openAt} t={t} />{lightbox}</Section>;
+      if (bp === "shop" || bp === "collage") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<TileRow imgs={imgs} onOpen={openAt} t={t} across={bp === "collage" ? 5 : 4} />{lightbox}</Section>;
+      if (bp === "wordmark") return <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} aside={all} lead={ledeT("gallery")}>{headChips}<StaggerGallery imgs={imgs.slice(0, 6)} onOpen={openAt} t={t} />{lightbox}</Section>;
       return (
         <Section wide index={index} theme={theme} eyebrow={hi ? "गैलरी" : t("Gallery")} title={t(s.title)} lead={ledeT("gallery")}
           aside={<SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} फ़ोटो` : t(`All ${s.total} photos`)}</SeeAll>}>
+          {headChips}
           <div className="grid grid-cols-2 md:grid-cols-4 md:grid-rows-2 gap-3 md:h-[520px]">
             {imgs.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative overflow-hidden rounded-2xl border border-border cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 aspect-square md:aspect-auto" : "aspect-square md:aspect-auto"} ${FOCUS}`}>
