@@ -211,18 +211,6 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
       mapBlocks((b) => (b.kind === "gallery" && first ? (first = false, { ...b, images: [...b.images, ...fresh.filter((u) => !b.images.some((i) => i.url === u)).map((u) => ({ url: u, color: next.themeColor, label: "" }))].slice(0, 12) }) : b));
     }
   }
-  // The products have a page of their own, as they did when the card was built with products (owner, 14 Oct 2026): a card
-  // written without any gets a "Products" page in the menu the first time products are added, and the block moves there.
-  if (!next.pages.some((pg) => pg.slug === "products")) {
-    // The block may sit on the home page or on the Services page (a trade whose catalogue is services lists its products there).
-    const from = next.pages.find((pg) => !pg.hidden && (pg.slug === "home" || pg.slug === "services" || pg === next.pages[0]) && pg.blocks.some((b) => b.kind === "product" && b.items.length));
-    const bi = from ? from.blocks.findIndex((b) => b.kind === "product" && b.items.length) : -1;
-    if (from && bi >= 0) {
-      const block = from.blocks[bi] as Extract<CardBlock, { kind: "product" }>;
-      from.blocks.splice(bi, 1);
-      next.pages.splice(1, 0, { id: Math.random().toString(36).slice(2, 10), slug: "products", label: next.language === "hi" ? "प्रोडक्ट" : "Products", blocks: [{ ...block, title: block.title || (next.language === "hi" ? "हमारे प्रोडक्ट" : "Products") }] });
-    }
-  }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
 }
 
@@ -284,6 +272,18 @@ export async function syncProductsToCard(rows: ProductSync[]) {
     for (const r of fresh.slice(0, 12)) {
       const imgs = imagesOf(r);
       firstBlock.items.push({ name: r.name.trim().slice(0, 60), ...(price(r.price) ? { price: price(r.price) } : {}), ...(price(r.mrp) ? { mrp: price(r.mrp) } : {}), ...(imgs.length ? { images: imgs, imageUrl: imgs[0] } : {}), ...(r.offer?.trim() ? { badge: r.offer.trim().slice(0, 30) } : {}), features: Array.isArray(r.benefits) ? (r.benefits as unknown[]).map((x) => String(x ?? "").trim()).filter(Boolean).slice(0, 6) : [], specs: [] });
+    }
+  }
+  // The products have a page of their own, as they did when the card was built with products (owner, 14 Oct 2026): a card
+  // written without any gets a "Products" page in the menu the first time products are added, and the block moves there.
+  if (!next.pages.some((pg) => pg.slug === "products")) {
+    // The block may sit on the home page or on the Services page (a trade whose catalogue is services lists its products there).
+    const from = next.pages.find((pg) => !pg.hidden && (pg.slug === "home" || pg.slug === "services" || pg === next.pages[0]) && pg.blocks.some((b) => b.kind === "product" && b.items.length));
+    const bi = from ? from.blocks.findIndex((b) => b.kind === "product" && b.items.length) : -1;
+    if (from && bi >= 0) {
+      const block = from.blocks[bi] as Extract<CardBlock, { kind: "product" }>;
+      from.blocks.splice(bi, 1);
+      next.pages.splice(1, 0, { id: Math.random().toString(36).slice(2, 10), slug: "products", label: next.language === "hi" ? "प्रोडक्ट" : "Products", blocks: [{ ...block, title: block.title || (next.language === "hi" ? "हमारे प्रोडक्ट" : "Products") }] });
     }
   }
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
