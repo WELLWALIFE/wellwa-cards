@@ -8,13 +8,12 @@ import { Check, ChevronLeft } from "lucide-react";
 import { useJourney } from "@/lib/journey";
 import { useT } from "@/lib/poster-i18n";
 import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
-import { SETUP_SCREENS, screenNo, type ScreenKey } from "@/lib/setup-steps";
+import { FLOW_SCREENS, SETUP_SCREENS, screenNo, type ScreenKey } from "@/lib/setup-steps";
 
 export type ProfileStepKey = "you" | "business" | "products" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
   { key: "you", en: "You", hi: "आप", href: "/poster/onboard?step=you" },
   { key: "business", en: "Business", hi: "Business", href: "/poster/onboard?step=site" },
-  { key: "products", en: "Products", hi: "Products", href: "/poster/products?setup=1" },
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
 ];
 
@@ -35,7 +34,7 @@ export function ProfileSteps({ current, category, screen, onBack }: { current: P
   };
   const at = PROFILE_STEPS.findIndex((s) => s.key === current);
   const key: ScreenKey = screen ?? (current === "products" ? "products" : current === "make" ? "make" : current === "you" ? "you" : "trade");
-  const n = screenNo(key), total = SETUP_SCREENS.length;
+  const n = screenNo(key), total = FLOW_SCREENS.length;
   const here = SETUP_SCREENS.find((s) => s.key === key);
   const pct = Math.min(100, Math.round(((n - 1) / total) * 100));
   const prev = at > 0 ? PROFILE_STEPS[at - 1] : { href: "/poster/welcome", en: "Back", hi: "पीछे" };

@@ -86,7 +86,7 @@ function Onboard() {
   const params = useSearchParams();
   type StepKey = Exclude<ScreenKey, "products" | "make">;
   /** ?step=business from older links opens the first business screen. */
-  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : (ONBOARD_SCREENS as string[]).includes(v ?? "") ? (v as StepKey) : null);
+  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : ((ONBOARD_SCREENS as string[]).includes(v ?? "") || v === "extras") ? (v as StepKey) : null);
   const [step, setStep] = useState<StepKey>(asStep(params.get("step")) ?? "you");
   // A partner's name is what their KYC says: shown, never edited here.
   const associate = useAssociate();
@@ -888,7 +888,7 @@ function Onboard() {
   function nextStep(): string {
     if (hadLiveCard.current) return "/poster/site";
     if (site.kind === "dealer" || (site.kind === "own" && peek.state === "found" && (peek.data?.products ?? 0) > 0)) return "/poster/card/build?make=1";
-    return "/poster/products?setup=1";
+    return "/poster/card/build?make=1";
   }
 
   /** A tab left open from before a reset (or another phone's save) must not write its old answers back over the
@@ -1511,7 +1511,7 @@ function Onboard() {
           <FactsFields group="company" only={biz.role === "personal" ? ["q-designation"] : ["q-since", "q-designation", "q-qual"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
               {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><Help k="gst" /><input value={biz.gstin ?? ""} onChange={(e) => setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) })} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${field} uppercase tracking-wide`} />
                 <span className="mt-1 block text-xs font-normal text-muted">{(biz.gstin ?? "").length}/15</span></label>}
-          {nextBar()}
+          {nextBar(true)}
         </section>
       ) : (
         <section className="space-y-4">

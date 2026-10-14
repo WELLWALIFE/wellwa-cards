@@ -1058,19 +1058,40 @@ export default function BuildCard() {
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => setState("preview")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         </div>
-        <section className="space-y-4 rounded-2xl border-2 border-good/40 bg-good/10 p-5 text-center">
-          <p className="text-4xl" aria-hidden="true">🎉</p>
-          <h1 className="text-2xl font-bold">{T("Congratulations!", "बधाई हो!")}</h1>
-          <p className="text-base">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
-          <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span></a>
-          <p className="text-xs text-muted">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+        <section className="relative overflow-hidden rounded-3xl p-6 text-center text-white shadow-float grad-brand">
+          <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
+          <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-8 h-44 w-44 rounded-full bg-white/10" />
+          <div className="relative space-y-3">
+            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl" aria-hidden="true">🎉</span>
+            <h1 className="text-3xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
+            <p className="text-base text-white/90">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
+            <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
+            <p className="text-xs text-white/80">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
+              <button type="button" onClick={() => { try { void navigator.clipboard.writeText(`https://${liveLink}`); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Copy link", "Link copy करें")}</button>
+            </div>
+          </div>
         </section>
-        <div className="text-center">
-          <p className="text-sm font-semibold">{T("Edit now, or later?", "अभी edit करें, या बाद में?")}</p>
-          <p className="mt-1 text-xs text-muted">{T("You can edit any time: Create → Card & Website → Edit.", "कभी भी edit कर सकते हैं: Create → Card & Website → Edit।")}</p>
-        </div>
+        <section className="space-y-2.5">
+          <div>
+            <p className="text-base font-bold">{T("Make it yours — now or later", "इसे अपना बनाइए — अभी या बाद में")}</p>
+            <p className="text-xs text-muted">{T("Nothing is needed right now. Add these when you have them — each one goes live as soon as you save.", "अभी कुछ ज़रूरी नहीं। जब ये तैयार हों तब जोड़ें — हर बदलाव save करते ही live हो जाता है।")}</p>
+          </div>
+          {([
+            { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Add your products or services", "अपने products / services जोड़ें"), s: T("Name, price and a clear photo", "नाम, दाम और साफ़ photo") },
+            { href: "/poster/onboard?step=extras&part=photos&back=%2Fposter%2Fsite%3Fedit%3D1", I: Camera, t: T("Add photos and a banner", "Photos और banner जोड़ें"), s: T("Your shop, your work — or let AI make them", "आपकी दुकान, आपका काम — या AI से बनवाएँ") },
+            { href: "/poster/onboard?step=extras&part=links&back=%2Fposter%2Fsite%3Fedit%3D1", I: Smartphone, t: T("Add UPI and social links", "UPI और social links जोड़ें"), s: T("So customers can pay and follow you", "ताकि ग्राहक pay कर सकें और आपको follow करें") },
+          ] as const).map((x) => (
+            <button key={x.href} type="button" onClick={() => router.push(x.href)} className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left shadow-sm transition active:scale-[.99]">
+              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{x.t}</span><span className="block text-xs text-muted">{x.s}</span></span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
+            </button>
+          ))}
+        </section>
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => router.push("/poster/site?edit=1")} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-4 text-base font-semibold"><Pencil className="h-5 w-5" /> {T("Edit now", "अभी edit करें")}</button>
+          <button type="button" onClick={() => router.push("/poster/site?edit=1")} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-4 text-base font-semibold"><Pencil className="h-5 w-5" /> {T("Edit everything", "सब edit करें")}</button>
           <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">{T("Later", "बाद में")} <ChevronRight className="h-5 w-5" /></button>
         </div>
       </div>
@@ -1422,7 +1443,7 @@ export default function BuildCard() {
       <div className="space-y-4 py-2">
         <ProfileSteps current="make" category={setup?.category} />
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => router.push("/poster/onboard?step=about")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
         <p className="text-sm text-muted">{T("Your profile is saved. One tap makes your website and digital card from it.", "आपकी profile save हो गई। एक tap में उससे आपकी website और digital card बन जाएँगे।")}</p>
@@ -1471,7 +1492,7 @@ export default function BuildCard() {
     <div className="space-y-4 py-2">
       <ProfileSteps current="make" category={setup?.category} />
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => router.push("/poster/products?setup=1")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={() => router.push("/poster/onboard?step=about")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="min-w-0 flex-1 text-xl font-bold">{T("How should your website look?", "Website की पसंद")}</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
