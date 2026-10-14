@@ -1158,7 +1158,7 @@ function Onboard() {
       )}
       {editing ? (
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); router.push(back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "Edit")} · {hi ? screenInfo.hi : screenInfo.en}</p>
+        <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); router.push(back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "बदलें")} · {step === "extras" && part === "links" ? T("UPI & social links", "UPI और social links") : step === "extras" && part === "photos" ? T("Photos & banner", "Photos और banner") : step === "details" ? T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं") : hi ? screenInfo.hi : screenInfo.en}</p>
         <button type="button" onClick={() => { clearDraft(); router.push(back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
@@ -1441,7 +1441,6 @@ function Onboard() {
             ? head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))
             : head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
           {!!biz.category && !noDetails() && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
-          {!noDetails() && <h2 className="pt-2 text-lg font-bold">{T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?")}</h2>}
           <FactsFields group="products" only={["q-special", "q-customers", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
           {nextBar()}
         </section>
