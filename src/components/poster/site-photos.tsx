@@ -4,12 +4,12 @@
 // "+ Add" for more (owner, 14 Oct 2026). An owner's own picture is fitted to the size of its place before it is sent, and
 // compressed, so the page stays light. Every tap changes the live website at once (/api/card/photos).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, LoaderCircle, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Camera, LoaderCircle, Plus, Search, Sparkles, Tag, Trash2 } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
 import { UnlockDialog } from "@/lib/ai-access";
 
-type Slot = { id: string; kind: "banner" | "about" | "gallery"; url: string; label: string; size: string; ours: boolean; stock: boolean };
-type Got = { slots?: Slot[]; max?: number; error?: string; needCredits?: number };
+type Slot = { id: string; kind: "banner" | "about" | "gallery"; url: string; label: string; group?: string; size: string; ours: boolean; stock: boolean };
+type Got = { slots?: Slot[]; max?: number; error?: string; needCredits?: number; ideas?: string[] };
 
 /** The slot's width ÷ height, and the width the picture is cut to. */
 const FIT = { banner: { r: 16 / 9, w: 1600 }, about: { r: 4 / 3, w: 1200 }, gallery: { r: 4 / 3, w: 1200 } } as const;
@@ -37,14 +37,22 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const [max, setMax] = useState(12);
   const [busy, setBusy] = useState("");   // "<slot id>:<what>" or "add" / "add-ai"
   const [err, setErr] = useState("");
-  const [pay, setPay] = useState(false);   // not enough credits: the Razorpay popup
+  const [pay, setPay] = useState(false);
+  // Album headings ("Opening ceremony", "Seminar"): the ideas for this trade, the heading a new photo goes under, the heading
+  // being edited on a photo, and the filter / search over the gallery.
+  const [ideas, setIdeas] = useState<string[]>([]);
+  const [newGroup, setNewGroup] = useState("");
+  const [headFor, setHeadFor] = useState("");
+  const [headVal, setHeadVal] = useState("");
+  const [fGroup, setFGroup] = useState("");
+  const [q, setQ] = useState("");   // not enough credits: the Razorpay popup
   const pick = useRef<HTMLInputElement>(null);
   const target = useRef<string>("");       // the slot a chosen file is for ("" = a new gallery photo)
   const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
 
   const load = useCallback(async () => {
     const r = await api<Got>("/api/card/photos");
-    if (r.ok) { setSlots(r.data.slots ?? []); setMax(r.data.max ?? 12); } else { setSlots([]); setErr(r.data.error ?? T("Could not load the photos.", "Photos नहीं खुलीं।")); }
+    if (r.ok) { setSlots(r.data.slots ?? []); setMax(r.data.max ?? 12); setIdeas(r.data.ideas ?? []); } else { setSlots([]); setErr(r.data.error ?? T("Could not load the photos.", "Photos नहीं खुलीं।")); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => { void load(); }, [load]);
@@ -83,7 +91,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
     let url: string | null = null;
     try { url = await uploadImage(fitted, "wide"); } catch { url = null; }
     if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।")); return; }
-    await run(key, slot ? { action: "replace", slot, url } : { action: "add", url });
+    await run(key, slot ? { action: "replace", slot, url } : { action: "add", url, group: newGroup });
   }
   const choose = (slot: string) => { target.current = slot; pick.current?.click(); };
 
@@ -92,6 +100,9 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const banner = slots.find((s) => s.kind === "banner");
   const about = slots.filter((s) => s.kind === "about");
   const gallery = slots.filter((s) => s.kind === "gallery");
+  const groups = [...new Set(gallery.map((x) => (x.group ?? "").trim()).filter(Boolean))];
+  const ql = q.trim().toLowerCase();
+  const shownGallery = gallery.filter((x) => (!fGroup || x.group === fGroup) && (!ql || `${x.group ?? ""} ${x.label}`.toLowerCase().includes(ql)));
   const tag = (s: Slot) => s.ours ? T("Made by AI", "AI से बनी") : s.stock ? T("Sample picture", "नमूना picture") : T("Your photo", "आपकी photo");
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-xs font-semibold disabled:opacity-50";
 
@@ -106,6 +117,18 @@ export function SitePhotos({ hi }: { hi: boolean }) {
           {working && <span className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-semibold text-white"><span className="flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {busy.endsWith(":ai") ? T("Making… about 30 seconds", "बन रही है… लगभग 30 सेकंड") : T("Please wait…", "रुकिए…")}</span></span>}
         </div>
         <div className="space-y-2 p-2.5">
+          {s.kind === "gallery" && (headFor === s.id ? (
+            <div className="space-y-1.5 rounded-lg bg-surface2 p-2">
+              <input value={headVal} onChange={(e) => setHeadVal(e.target.value.slice(0, 40))} placeholder={T("Heading", "Heading")} className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs" autoFocus />
+              <div className="flex flex-wrap gap-1">{[...new Set([...groups, ...ideas])].slice(0, 8).map((g) => <button key={g} type="button" onClick={() => setHeadVal(g)} className="rounded-full border border-border bg-surface px-2 py-0.5 text-[10px]">{g}</button>)}</div>
+              <div className="flex gap-1.5">
+                <button type="button" disabled={!!busy} onClick={() => { void run(`${s.id}:group`, { action: "group", slot: s.id, group: headVal }); setHeadFor(""); }} className="flex-1 rounded-lg grad-brand py-1.5 text-xs font-semibold text-white disabled:opacity-50">{T("Save heading", "Heading save करें")}</button>
+                <button type="button" onClick={() => setHeadFor("")} className="rounded-lg border border-border px-2.5 py-1.5 text-xs">{T("Cancel", "रहने दें")}</button>
+              </div>
+            </div>
+          ) : (
+            <button type="button" disabled={!!busy} onClick={() => { setHeadFor(s.id); setHeadVal(s.group ?? ""); }} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-brand-ink disabled:opacity-50"><Tag className="h-3 w-3 shrink-0" /> <span className="truncate">{s.group ? s.group : T("Add a heading", "Heading जोड़ें")}</span></button>
+          ))}
           <p className="text-sm font-semibold">{s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
           <p className="text-[11px] text-muted">{T("Best size", "सही size")}: {s.size}. {T("Any photo works — we fit it.", "कोई भी photo चलेगी — हम फ़िट कर देंगे।")}</p>
           <div className="grid grid-cols-3 gap-1.5">
@@ -130,11 +153,30 @@ export function SitePhotos({ hi }: { hi: boolean }) {
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
       <section className="space-y-2">
         <h3 className="text-sm font-bold">{T("Gallery", "Gallery")} <span className="font-normal text-muted">({gallery.length}/{max})</span></h3>
-        {gallery.length > 0 && <div className="grid grid-cols-2 gap-2.5">{gallery.map((s) => tile(s))}</div>}
+        <p className="text-xs text-muted">{T("Put photos under a heading, like “Opening ceremony” or “Seminar”. Visitors can pick a heading or search for one.", "photos को heading के नीचे रखें, जैसे “उद्घाटन” या “Seminar”। देखने वाले heading चुन सकते हैं या खोज सकते हैं।")}</p>
+        {(groups.length > 0 || gallery.length > 6) && (
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2"><Search className="h-4 w-4 shrink-0 text-muted" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Search a heading", "Heading खोजें")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>
+            {groups.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                {["", ...groups].map((g) => <button key={g || "all"} type="button" onClick={() => setFGroup(g)} className={`rounded-full px-3 py-1 text-xs font-semibold ${fGroup === g ? "bg-brand text-white" : "bg-surface2 text-muted"}`}>{g || T("All", "सब")}{g ? ` · ${gallery.filter((x) => x.group === g).length}` : ""}</button>)}
+              </div>
+            )}
+          </div>
+        )}
+        {shownGallery.length > 0 && <div className="grid grid-cols-2 gap-2.5">{shownGallery.map((s2) => tile(s2))}</div>}
+        {gallery.length > 0 && shownGallery.length === 0 && <p className="text-xs text-muted">{T("No photo under that heading.", "इस heading के नीचे कोई photo नहीं है।")}</p>}
+        {gallery.length < max && (
+          <div className="space-y-1.5 rounded-xl bg-surface2 p-2.5">
+            <p className="text-xs font-semibold">{T("Heading for the photo you add next (optional)", "अगली जोड़ी जाने वाली photo की heading (optional)")}</p>
+            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value.slice(0, 40))} placeholder={T("e.g. Opening ceremony", "जैसे उद्घाटन समारोह")} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
+            <div className="flex flex-wrap gap-1.5">{[...new Set([...groups, ...ideas])].slice(0, 12).map((g) => <button key={g} type="button" onClick={() => setNewGroup(g)} className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${newGroup === g ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{g}</button>)}</div>
+          </div>
+        )}
         {gallery.length < max && (
           <div className="grid grid-cols-2 gap-2">
             <button type="button" disabled={!!busy} onClick={() => choose("")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-3 text-sm font-semibold disabled:opacity-50">{busy === "add" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Add a photo", "photo जोड़ें")}</button>
-            <button type="button" disabled={!!busy} onClick={() => void run("add-ai", { action: "ai" })} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/50 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50">{busy === "add-ai" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Add one by AI", "AI से एक जोड़ें")}</button>
+            <button type="button" disabled={!!busy} onClick={() => void run("add-ai", { action: "ai", group: newGroup })} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/50 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50">{busy === "add-ai" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Add one by AI", "AI से एक जोड़ें")}</button>
           </div>
         )}
         {gallery.length === 0 && !busy && <p className="text-xs text-muted">{T("No gallery photos yet. Add your first one.", "अभी gallery में कोई photo नहीं है। पहली जोड़िए।")}</p>}

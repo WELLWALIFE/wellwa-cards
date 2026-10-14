@@ -34,6 +34,8 @@ export interface GalleryImage {
   url?: string; // uploaded image (data URL) — falls back to color tile
   color: string; // placeholder tint until an image is uploaded
   label: string;
+  /** The album heading this photo is grouped under ("Opening ceremony", "Seminar"…). */
+  group?: string;
 }
 
 export interface CardImage {

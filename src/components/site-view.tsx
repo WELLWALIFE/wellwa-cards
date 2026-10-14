@@ -1582,6 +1582,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
   const [zoom, setZoom] = useState<Zoom>(null);
   const [showAll, setShowAll] = useState(false);
   const [cat, setCat] = useState("");
+  const [alb, setAlb] = useState("");       // the gallery album (heading) being looked at
+  const [albQ, setAlbQ] = useState("");     // and what was typed to search the headings
   const hasWa = links.some((l) => l.type === "whatsapp");
   const bp = useContext(BlueprintCtx);
   const ledeT = (k: CardBlock["kind"]) => { const l = ledeFor(k, hi); return l ? t(l) : undefined; };
@@ -1652,18 +1654,30 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       );
     }
     case "gallery": {
-      const imgs = block.images.filter((g) => g.url);
+      const allImgs = block.images.filter((g) => g.url);
+      // Photos grouped under headings ("Opening ceremony", "Seminar"): the visitor picks a heading or searches for one.
+      const heads = [...new Set(allImgs.map((g) => (g.group ?? "").trim()).filter(Boolean))];
+      const aq = albQ.trim().toLowerCase();
+      const imgs = allImgs.filter((g) => (!alb || g.group === alb) && (!aq || `${g.group ?? ""} ${g.label}`.toLowerCase().includes(aq)));
+      const bar = heads.length > 0 ? (
+        <div className="mb-6 space-y-3">
+          <input type="search" value={albQ} onChange={(e) => setAlbQ(e.target.value)} placeholder={hi ? "heading खोजें" : t("Search a heading")} aria-label={hi ? "heading खोजें" : "Search a heading"} className="w-full max-w-sm rounded-full border px-4 py-2 text-sm" style={{ borderColor: "var(--line)", background: "var(--paper-2)" }} />
+          <CategoryTabs cats={heads} value={alb} onChange={setAlb} all={hi ? "सब" : t("All")} t={t} />
+          {imgs.length === 0 && <p className="text-sm" style={{ color: "var(--muted)" }}>{hi ? "इस heading के नीचे कोई photo नहीं है।" : t("No photo under that heading.")}</p>}
+        </div>
+      ) : null;
+      if (!imgs.length && heads.length) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)}>{bar}</Section>;
       const shown = showAll ? imgs : imgs.slice(0, 12);
       const gl = preferredLayouts(card.site?.style?.layouts, { gallery: imgs.length }).gallery ?? galleryLayout(imgs.length);
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
       const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
       const sceneVisible = bp === "bento" ? 4 : bp === "story" ? imgs.length - (imgs.length % 3) : bp === "shop" ? imgs.length - (imgs.length % 4) : bp === "collage" ? imgs.length - (imgs.length % 5) : bp === "wordmark" ? (imgs.length >= 6 ? Math.min(12, Math.floor(imgs.length / 3) * 3) : 3) : imgs.length;
       const allBtn = sceneVisible > 0 && sceneVisible < imgs.length ? <div className="mt-6 flex justify-center"><button type="button" onClick={() => open(sceneVisible)} className={`${GHOST} ${FOCUS}`}>{hi ? `सभी ${imgs.length} photos देखें` : t(`See all ${imgs.length} photos`)}</button></div> : null;
-      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><SceneStrip imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
-      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><LabelWall imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
-      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><BentoGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
-      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{allBtn}{lightbox}</Section>;
-      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}><StaggerGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<SceneStrip imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if (bp === "story" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<LabelWall imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if (bp === "bento" && imgs.length >= 4) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<BentoGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
+      if ((bp === "shop" || bp === "collage") && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<TileRow imgs={shown} onOpen={open} t={t} across={bp === "collage" ? 5 : 4} />{allBtn}{lightbox}</Section>;
+      if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<StaggerGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
         const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (
@@ -1678,7 +1692,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           : n === 4 && i === 1 ? "col-span-2 aspect-[2/1] md:aspect-auto"
           : "aspect-square md:aspect-auto";
         return (
-          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>
+          <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}
             {gl === "single" && (
               <button type="button" onClick={() => open(0)} className={`group relative mx-auto block w-full max-w-5xl overflow-hidden rounded-3xl cursor-zoom-in ${FOCUS}`} style={{ background: "var(--paper-2)" }}>
                 <Img src={imgs[0].url!} alt={imgs[0].label} className="mx-auto w-auto max-w-full h-auto max-h-[640px] object-contain" eager sizes="(min-width: 1024px) 1024px, 100vw" />
@@ -1696,7 +1710,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         );
       }
       return (
-        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>
+        <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}
           <div className="columns-2 md:columns-3 lg:columns-4 gap-4 [&>*]:mb-4">
             {shown.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden ${FOCUS}`}>
