@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, LoaderCircle, Plus, Sparkles, Trash2 } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
+import { UnlockDialog } from "@/lib/ai-access";
 
 type Slot = { id: string; kind: "banner" | "about" | "gallery"; url: string; label: string; size: string; ours: boolean; stock: boolean };
 type Got = { slots?: Slot[]; max?: number; error?: string; needCredits?: number };
@@ -36,6 +37,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
   const [max, setMax] = useState(12);
   const [busy, setBusy] = useState("");   // "<slot id>:<what>" or "add" / "add-ai"
   const [err, setErr] = useState("");
+  const [pay, setPay] = useState(false);   // not enough credits: the Razorpay popup
   const pick = useRef<HTMLInputElement>(null);
   const target = useRef<string>("");       // the slot a chosen file is for ("" = a new gallery photo)
   const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
@@ -56,6 +58,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
       const slot = typeof body.slot === "string" ? body.slot : "";
       const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
       if (!r.ok) {
+        if (r.status === 402) { setPay(true); return; }
         setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"));
         if (r.status === 409) void load();
         return;
@@ -119,6 +122,7 @@ export function SitePhotos({ hi }: { hi: boolean }) {
 
   return (
     <div className="space-y-4">
+      {pay && <UnlockDialog onClose={() => setPay(false)} />}
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
       <p className="text-sm text-muted">{T("These are the photos on your website. Change any of them — it goes live as soon as you tap. “Make by AI” makes a new picture for that exact place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदलिए — tap करते ही live हो जाती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
       {err && <p className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-semibold text-danger">{err}</p>}

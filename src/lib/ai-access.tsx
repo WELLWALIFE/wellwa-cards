@@ -41,40 +41,41 @@ export function useAiAccess(): AiAccess {
   return { ...s, refresh };
 }
 
-/** "Unlock AI tools": subscribe, or buy credits and pay as you go. */
-export function UnlockDialog({ reason, onClose, title = "Unlock the AI tools", subscriptionOnly = false }: { reason?: string; onClose: () => void; title?: string; subscriptionOnly?: boolean }) {
+/** The payment popup (owner, 14 Oct 2026: no explaining messages, just Razorpay). Subscribed → credit packs, Razorpay opens
+ *  when one is chosen. Not subscribed → the subscription (Razorpay autopay), with credits as the other choice. `title` and
+ *  `reason` are kept for callers but not shown. */
+export function UnlockDialog({ onClose, subscriptionOnly = false }: { reason?: string; onClose: () => void; title?: string; subscriptionOnly?: boolean }) {
   const a = useAiAccess();
+  const [pick, setPick] = useState<"sub" | "credits">("sub");
+  const done = () => { a.refresh(); onClose(); };
+  const showCredits = !a.associate && !subscriptionOnly && (a.subscribed || pick === "credits");
   return (
     <div className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-black/40 p-3" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-float space-y-4" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-start gap-3">
+        <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl grad-brand text-white"><Sparkles className="h-5 w-5" /></span>
-          <div className="flex-1">
-            <p className="font-semibold">{title}</p>
-            <p className="text-sm text-muted">{reason || "AI photos, AI cards and websites, videos and more."}</p>
-          </div>
+          <p className="flex-1 font-semibold">{showCredits ? "Add credits" : "Subscribe"}</p>
           <button onClick={onClose} aria-label="Close" className="text-muted hover:text-ink"><X className="h-5 w-5" /></button>
         </div>
-        {a.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : (
+        {a.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : showCredits ? (
+          <>
+            <AddCredits onDone={done} />
+            {!a.subscribed && <button type="button" onClick={() => setPick("sub")} className="w-full text-center text-sm font-semibold text-brand-ink">Subscribe instead · {planPrice("growth")}/month</button>}
+          </>
+        ) : (
           <>
             {a.associate ? (
               <a href={PARTNER_ACTIVATE} className="block rounded-xl border-2 border-brand bg-brand-soft p-4">
                 <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
-                <p className="text-sm text-muted mt-0.5">Everything included: website, daily posters, WhatsApp AI, CRM — plus AI credit packs at the lowest price.</p>
               </a>
             ) : (
-              // Razorpay opens here (owner's call, 4 Oct 2026): UPI autopay or card, and the tools unlock at once.
               <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
-                <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
-                <p className="text-sm text-muted mt-0.5">Everything included: website, daily posters, WhatsApp AI, CRM — plus AI credit packs at the lowest price.</p>
-                <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={() => { a.refresh(); onClose(); }}>Pay by UPI / card — Razorpay</SubscribeButton>
+                <p className="font-semibold text-ink">Subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
+                <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={done}>Pay by UPI / card — Razorpay</SubscribeButton>
               </div>
             )}
             {!a.associate && !subscriptionOnly && (
-              <div className="space-y-2">
-                <p className="flex items-center gap-1.5 text-sm font-semibold"><Coins className="h-4 w-4 text-brand" /> Or pay as you go: add credits</p>
-                <AddCredits onDone={() => { a.refresh(); onClose(); }} />
-              </div>
+              <button type="button" onClick={() => setPick("credits")} className="flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-brand-ink"><Coins className="h-4 w-4" /> Or add credits</button>
             )}
           </>
         )}

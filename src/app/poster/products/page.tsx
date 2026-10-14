@@ -15,6 +15,7 @@ import { syncProductsToCard } from "@/lib/card-personalize";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { UnlockDialog } from "@/lib/ai-access";
 import { ProductCheckSheet } from "@/components/poster/product-check-sheet";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { PHOTO_VIEWS, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
@@ -88,6 +89,7 @@ export default function ProductsPage() {
   const draftKey = draft ? (draft.id ?? "new") : "";
   // "Make this photo professional": a camera photo made studio-clean by the AI (5 credits, only when tapped; the original is kept).
   const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
+  const [pay, setPay] = useState(false);   // not enough credits: the Razorpay popup
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
   const draftKeyRef = useRef("");
   useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);   // read after the studio picture arrives, to see whether the same product is still open
@@ -103,7 +105,7 @@ export default function ProductsPage() {
         // The studio picture is the product's FRONT photo from now on (the server picks the main photo from "front"); the original steps back.
         setDraft((d) => (d ? { ...d, photo_url: url, photos: [{ url, view: "front" as PhotoView, role: "identity" as const }, ...d.photos.filter((p) => p.url !== url).map((p) => (p.view === "front" ? { ...p, view: "other" as PhotoView } : p))].slice(0, 6) } : d));
         setStudio({ busy: false, note: "ok", orig: studio.orig ?? was });
-      } else setStudio((x) => ({ ...x, busy: false, note: r.data.error ?? (en ? "Your photo is kept as it is." : "आपकी photo वैसी ही रहेगी।") }));
+      } else if (r.status === 402) { setStudio((x) => ({ ...x, busy: false, note: "" })); setPay(true); } else setStudio((x) => ({ ...x, busy: false, note: r.data.error ?? (en ? "Your photo is kept as it is." : "आपकी photo वैसी ही रहेगी।") }));
     } catch { if (draftKeyRef.current === forKey) setStudio((x) => ({ ...x, busy: false, note: en ? "No internet — please try again." : "Internet नहीं है — दोबारा try करें।" })); }
   }
   function useOriginalPhoto() {
@@ -364,6 +366,7 @@ export default function ProductsPage() {
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
   return (
     <div className="space-y-4">
+      {pay && <UnlockDialog onClose={() => setPay(false)} />}
       {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => router.push("/poster/onboard?step=extras")} />}
       {setupMode ? (
         /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the bar above counts
