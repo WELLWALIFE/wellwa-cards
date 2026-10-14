@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
+import Link from "next/link";
 import { Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
@@ -1447,6 +1448,27 @@ export default function BuildCard() {
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
         <p className="text-sm text-muted">{T("Your details are saved. Tap once and we make your website and digital card.", "आपकी जानकारी save हो गई। एक बार दबाइए, हम आपकी website और digital card बना देंगे।")}</p>
+        {setup && (
+          <section className="rounded-2xl border border-border bg-surface p-3.5">
+            <p className="mb-1.5 text-sm font-bold">{T("Please check your details", "अपनी जानकारी एक बार देख लें")}</p>
+            <ul className="divide-y divide-border">
+              {([
+                { l: T("Name", "नाम"), v: setup.business || setup.person, step: "trade" },
+                { l: T("What you do", "आपका काम"), v: setup.categoryLabel, step: "trade" },
+                { l: T("City", "शहर"), v: setup.city, step: "where" },
+                { l: T("Timings", "समय"), v: facts.hours, step: "where" },
+                { l: T("About you", "परिचय"), v: setup.about ? `${setup.about.slice(0, 60)}${setup.about.length > 60 ? "…" : ""}` : "", step: "about" },
+              ] as const).map((r) => (
+                <li key={r.l} className="flex items-center gap-2 py-2 text-sm">
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${r.v ? "bg-good/15 text-good" : "bg-amber/15 text-amber"}`}>{r.v ? "✓" : "!"}</span>
+                  <span className="w-20 shrink-0 text-muted">{r.l}</span>
+                  <span className="min-w-0 flex-1 truncate font-medium">{r.v || T("Not filled", "भरा नहीं")}</span>
+                  <Link href={`/poster/onboard?step=${r.step}`} className="shrink-0 text-xs font-semibold text-brand-ink underline">{r.v ? T("Change", "बदलें") : T("Add", "भरें")}</Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
         {/* Free: one button, no wall (owner's call, 3 Oct 2026: "make step easy, warna wo bana hi nahi payega"). */}
         {/* A Premium owner's build is Premium whatever button is tapped (the server decides by the plan): only that button. */}
         {!access.subscribed && (

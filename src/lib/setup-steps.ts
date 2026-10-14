@@ -13,7 +13,7 @@ export const SETUP_SCREENS: Screen[] = [
   { key: "trade", chapter: "business", en: "Your business", hi: "आपका business", blurb: "Name and what you do", blurbHi: "नाम और काम" },
   { key: "details", chapter: "business", en: "About your trade", hi: "आपके काम के बारे में", blurb: "A few taps", blurbHi: "कुछ tap" },
   // Highlights were on the Products page before (owner, 6 Oct 2026: "is page ko product page se alag karo") — the Products page is products only.
-  { key: "highlights", chapter: "business", en: "Highlights", hi: "खासियत", blurb: "Why customers pick you", blurbHi: "Customers आपको क्यों चुनें" },
+  { key: "highlights", chapter: "business", en: "Highlights", hi: "खासियत", blurb: "Why customers pick you", blurbHi: "Customers आपको क्यों चुनें", later: true },   // now on the same screen as "About your trade"
   { key: "where", chapter: "business", en: "Where & when", hi: "कहाँ और कब", blurb: "City, map, timings", blurbHi: "शहर, map, समय" },
   { key: "about", chapter: "business", en: "About & logo", hi: "परिचय और logo", blurb: "The AI writes it for you", blurbHi: "AI आपके लिए लिखेगा" },
   { key: "extras", chapter: "business", en: "Photos & more", hi: "Photos और बाकी", blurb: "All optional", blurbHi: "सब optional", later: true },
@@ -26,6 +26,8 @@ export const screenHref = (k: ScreenKey): string => k === "products" || k === "e
 export const isScreenKey = (v: unknown): v is ScreenKey => typeof v === "string" && SETUP_SCREENS.some((s) => s.key === v);
 /** The screens of the set-up walk itself. */
 export const FLOW_SCREENS = SETUP_SCREENS.filter((s) => !s.later);
-export const screenNo = (k: ScreenKey) => Math.max(1, FLOW_SCREENS.findIndex((s) => s.key === k) + 1);
+/** `skipped`: screens left out for this person (e.g. "Who is this for?" is only for partners). */
+export const flowOf = (skipped: ScreenKey[] = []) => FLOW_SCREENS.filter((s) => !skipped.includes(s.key));
+export const screenNo = (k: ScreenKey, skipped: ScreenKey[] = []) => Math.max(1, flowOf(skipped).findIndex((s) => s.key === k) + 1);
 /** The onboarding's own screens, in order (the products and make pages are their own routes). */
 export const ONBOARD_SCREENS = FLOW_SCREENS.filter((s) => s.key !== "make").map((s) => s.key) as Exclude<ScreenKey, "products" | "make">[];

@@ -8,7 +8,7 @@ import { Check, ChevronLeft } from "lucide-react";
 import { useJourney } from "@/lib/journey";
 import { useT } from "@/lib/poster-i18n";
 import { catalogCopyFor, orgWordFor } from "@/lib/catalog-copy";
-import { FLOW_SCREENS, SETUP_SCREENS, screenNo, type ScreenKey } from "@/lib/setup-steps";
+import { flowOf, SETUP_SCREENS, screenNo, type ScreenKey } from "@/lib/setup-steps";
 
 export type ProfileStepKey = "you" | "business" | "products" | "make";
 export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href: string }[] = [
@@ -20,7 +20,7 @@ export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href:
 /** `category`: the trade, so the chapters are called what they are for that trade — Courses for a school, Menu for
  *  a restaurant. `screen`: which screen inside the chapter (the onboarding passes it; the products and make pages
  *  are one screen each). `onBack`: a screen's own back (inside the onboarding) instead of the chapter link. */
-export function ProfileSteps({ current, category, screen, onBack }: { current: ProfileStepKey; category?: string; screen?: ScreenKey; onBack?: () => void }) {
+export function ProfileSteps({ current, category, screen, onBack, skipped }: { current: ProfileStepKey; category?: string; screen?: ScreenKey; onBack?: () => void; skipped?: ScreenKey[] }) {
   const { lang } = useT();
   const hi = lang === "hi";
   const copy = catalogCopyFor(category);
@@ -34,7 +34,7 @@ export function ProfileSteps({ current, category, screen, onBack }: { current: P
   };
   const at = PROFILE_STEPS.findIndex((s) => s.key === current);
   const key: ScreenKey = screen ?? (current === "products" ? "products" : current === "make" ? "make" : current === "you" ? "you" : "trade");
-  const n = screenNo(key), total = FLOW_SCREENS.length;
+  const n = screenNo(key, skipped), total = flowOf(skipped).length;
   const here = SETUP_SCREENS.find((s) => s.key === key);
   const pct = Math.min(100, Math.round(((n - 1) / total) * 100));
   const prev = at > 0 ? PROFILE_STEPS[at - 1] : { href: "/poster/welcome", en: "Back", hi: "पीछे" };

@@ -86,7 +86,7 @@ function Onboard() {
   const params = useSearchParams();
   type StepKey = Exclude<ScreenKey, "products" | "make">;
   /** ?step=business from older links opens the first business screen. */
-  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : ((ONBOARD_SCREENS as string[]).includes(v ?? "") || v === "extras") ? (v as StepKey) : null);
+  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : v === "highlights" ? "details" : ((ONBOARD_SCREENS as string[]).includes(v ?? "") || v === "extras") ? (v as StepKey) : null);
   const [step, setStep] = useState<StepKey>(asStep(params.get("step")) ?? "you");
   // A partner's name is what their KYC says: shown, never edited here.
   const associate = useAssociate();
@@ -1078,6 +1078,8 @@ function Onboard() {
       if (profileRef.current && factsDirty.current) await api("/api/card/facts", { method: "PATCH", json: { facts: pickFacts(facts, factKeys()) } }).catch(() => undefined);
     } catch { /* offline: the draft keeps it; Save writes it all again */ }
   }
+  // "Who is this website for?" is for partners only: everyone else is simply an owner of their own business.
+  const skipped: ScreenKey[] = associate ? [] : ["promote"];
   const at = ONBOARD_SCREENS.indexOf(step);
   const screenInfo = SETUP_SCREENS.find((x) => x.key === step)!;
   /** A trade with no questions of its own (a personal card) has nothing on the Details screen: it is skipped. */
@@ -1085,7 +1087,7 @@ function Onboard() {
   function goBack() {
     setErr(""); setSiteErr("");
     let prev = ONBOARD_SCREENS[Math.max(0, at - 1)];
-    if (prev === "details" && noDetails()) prev = ONBOARD_SCREENS[Math.max(0, at - 2)];
+    if (prev === "promote" && !associate) prev = ONBOARD_SCREENS[Math.max(0, at - 2)];
     if (prev === "you" && youSkipped) { router.push("/poster/welcome"); return; }
     setStep(prev);
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
@@ -1108,7 +1110,11 @@ function Onboard() {
     setBusy("next");
     if (await accountMoved()) { setBusy(""); return; }
     let nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 1)];
-    if (nxt === "details" && noDetails()) nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 2)];
+    if (nxt === "promote" && !associate) {
+      // Not a partner: own business only, no question asked.
+      try { await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false } }); } catch { /* the site step saves it again */ }
+      nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 2)];
+    }
     try { await persistStep(nxt); } finally { setBusy(""); }
     setStep(nxt);
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
@@ -1156,7 +1162,7 @@ function Onboard() {
         <button type="button" onClick={() => { clearDraft(); router.push(back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
-      <ProfileSteps current={screenInfo.chapter === "you" ? "you" : "business"} category={biz.category} screen={step} onBack={step !== "you" ? goBack : undefined} />
+      <ProfileSteps current={screenInfo.chapter === "you" ? "you" : "business"} category={biz.category} screen={step === "highlights" ? "details" : step} skipped={skipped} onBack={step !== "you" ? goBack : undefined} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-muted">{next ? T("Your details are needed for the card", "Card के लिए आपकी जानकारी चाहिए") : "Setup"}</p>
         {next ? (
@@ -1428,15 +1434,14 @@ function Onboard() {
           })()}
           {nextBar()}
         </section>
-      ) : step === "details" ? (
+      ) : step === "details" || step === "highlights" ? (
         <section className="space-y-4">
-          {head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
-          {!!biz.category && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
-          {nextBar()}
-        </section>
-      ) : step === "highlights" ? (
-        <section className="space-y-4">
-          {head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))}
+          {/* One screen for "about your trade" and "why customers choose you" (owner, 14 Oct 2026: fewer steps). A trade with no questions of its own shows only the second part. */}
+          {noDetails()
+            ? head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))
+            : head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
+          {!!biz.category && !noDetails() && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
+          {!noDetails() && <h2 className="pt-2 text-lg font-bold">{T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?")}</h2>}
           <FactsFields group="products" only={["q-special", "q-customers", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
           {nextBar()}
         </section>
@@ -1511,6 +1516,8 @@ function Onboard() {
           <FactsFields group="company" only={biz.role === "personal" ? ["q-designation"] : ["q-since", "q-designation", "q-qual"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
               {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><Help k="gst" /><input value={biz.gstin ?? ""} onChange={(e) => setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) })} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${field} uppercase tracking-wide`} />
                 <span className="mt-1 block text-xs font-normal text-muted">{(biz.gstin ?? "").length}/15</span></label>}
+          {/* Social links are asked here, once, so nobody has to dig for them later; all optional. */}
+          <FactsFields group="company" only={["q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} />
           {nextBar(true)}
         </section>
       ) : (
