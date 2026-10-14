@@ -24,9 +24,9 @@ const WARM = new Set(["saffron", "gold", "cocoa", "crimson", "rose", "ivory"]);
 /** The three, for this card: from the build's plans when it carried them, else derived from the designer's style. */
 export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>, designer: SiteStyle | undefined, plans?: LookPlan[]): Look[] {
   const d: SiteStyle = { ...(designer ?? card.site?.style ?? {}) };
-  const first = d.blueprint ?? "bento";
-  const rest = BLUEPRINTS.map((b) => b.key).filter((k) => k !== first);
-  const want: BlueprintKey[] = [first, ...rest];
+  // The "Colour poster" is the first look and the one a new website opens on (owner, 14 Oct 2026); the designer's own pick follows it.
+  const designerPick = d.blueprint ?? "bento";
+  const want: BlueprintKey[] = ["story", ...[designerPick, ...BLUEPRINTS.map((b) => b.key)].filter((k, i, a) => k !== "story" && a.indexOf(k) === i)];
   const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
   const category = card.seo?.categoryKey;
   return want.map((key) => {

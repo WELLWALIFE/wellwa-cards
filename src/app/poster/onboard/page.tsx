@@ -1515,8 +1515,6 @@ function Onboard() {
           <FactsFields group="company" only={biz.role === "personal" ? ["q-designation"] : ["q-since", "q-designation", "q-qual"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} hasAbout={!!(biz.about ?? "").trim()} />
               {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><Help k="gst" /><input value={biz.gstin ?? ""} onChange={(e) => setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) })} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${field} uppercase tracking-wide`} />
                 <span className="mt-1 block text-xs font-normal text-muted">{(biz.gstin ?? "").length}/15</span></label>}
-          {/* Social links are asked here, once, so nobody has to dig for them later; all optional. */}
-          <FactsFields group="company" only={["q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} />
           {nextBar(true)}
         </section>
       ) : (

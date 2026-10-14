@@ -15,7 +15,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import Link from "next/link";
-import { Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
+import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
+import { Palette, Camera, Check, CheckCircle2, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -180,6 +181,9 @@ export default function BuildCard() {
   const [desk, setDesk] = useState(false);
   /** The "Change…" sheet: adjust this look, edit details, edit card, write again — one place instead of five paths. */
   const [more, setMore] = useState(false);
+  const [viewed, setViewed] = useState<string[]>([]);          // the designs the owner has tapped
+  const [confirmDesign, setConfirmDesign] = useState(false);   // "have you seen the others?" before the first Save and next
+  const [styleSheet, setStyleSheet] = useState(false);          // colours and fonts of the chosen design
 
   const [editLink, setEditLink] = useState(false);
   const [linkVal, setLinkVal] = useState("");
@@ -288,6 +292,7 @@ export default function BuildCard() {
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
     if (!look || !card) return;
+    setViewed((v) => (v.includes(k) ? v : [...v, k]));
     const next = applyLook(card, look);
     setCard(next);
     // A look is the website's: the website preview opens so the change is seen (the phone card does not wear it).
@@ -715,11 +720,14 @@ export default function BuildCard() {
         name = picked ?? fallback ?? `card-${Math.random().toString(36).slice(2, 8)}`;
         if (!name) name = `card-${Math.random().toString(36).slice(2, 8)}`;
       }
-      const full = mergeBuiltCard(live, built, { id: live?.id ?? crypto.randomUUID(), username: name });
+      const full0 = mergeBuiltCard(live, built, { id: live?.id ?? crypto.randomUUID(), username: name });
       const nextChecks = r.data.checks ?? [];
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
       const nextLooks = (r.data.looks ?? []) as LookPlan[];
+      // A first build opens on the Colour poster (owner, 14 Oct 2026); a rewrite keeps the look it was asked for.
+      const storyLook = !v.fresh && built.site ? threeLooks(built, built.site.style, nextLooks.length ? nextLooks : undefined).find((l) => l.key === "story") : undefined;
+      const full = storyLook ? applyLook(full0, storyLook) : full0;
       // The website first (the looks are its), then the card — so the preview opens on the Website tab.
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
       // A new build is never the card that is live, however the screen got there (Write again on a live preview,
@@ -1199,6 +1207,7 @@ export default function BuildCard() {
               );
             })}
           </div>
+          <button type="button" onClick={() => setStyleSheet(true)} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink"><Palette className="h-4 w-4" /> {T("Like this design? Change its colours and fonts", "ये design पसंद है? इसके रंग और अक्षर बदलें")}</button>
           {liveUser && busy === "publish" && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin text-brand" /> {T("Putting this design live…", "ये design live किया जा रहा है…")}</p>}
         </section>
       )}
@@ -1290,12 +1299,53 @@ export default function BuildCard() {
           // first flow it is Next, on to the congratulations.
           <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1&saved=1"); else { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
-          <button type="button" onClick={() => publish()} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+          <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save and next", "Save करके आगे")}
           </button>
         )}
         {liveUser && <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-4 py-3.5 text-base font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
       </div>
+      {confirmDesign && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setConfirmDesign(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md space-y-3 rounded-t-2xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-2xl">
+            <p className="text-lg font-bold">{T("Have you seen the other designs?", "क्या आपने बाक़ी design देखे?")}</p>
+            <p className="text-sm text-muted">{T(`You are choosing “${hi ? (looks.find((l) => l.key === activeLook)?.hi ?? "") : (looks.find((l) => l.key === activeLook)?.name ?? "this design")}”. There are six designs and each one looks very different. Tap each one to see your website in it — it takes a minute.`, `आप “${looks.find((l) => l.key === activeLook)?.hi ?? "ये design"}” चुन रहे हैं। कुल छह design हैं और हर एक बहुत अलग दिखता है। हर एक पर दबाकर अपनी website उसमें देखें — एक मिनट लगता है।`)}</p>
+            <button type="button" onClick={() => { setConfirmDesign(false); looksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }} className="w-full rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("See the other designs", "बाक़ी design देखें")}</button>
+            <button type="button" onClick={() => { setConfirmDesign(false); setViewed(looks.map((l) => l.key)); void publish(); }} className="w-full rounded-xl border border-border py-3 text-base font-semibold">{T("Keep this design", "यही रखें")}</button>
+          </div>
+        </div>
+      )}
+      {styleSheet && card?.site && (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setStyleSheet(false)}>
+          <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[88dvh] w-full max-w-md space-y-4 overflow-y-auto rounded-t-2xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-2xl">
+            <div className="flex items-center justify-between"><p className="text-lg font-bold">{T("Colours and fonts", "रंग और अक्षर")}</p><button type="button" onClick={() => setStyleSheet(false)} className="rounded-lg p-1 text-muted" aria-label={T("Close", "बंद करें")}><X className="h-5 w-5" /></button></div>
+            <div>
+              <p className="text-sm font-semibold">{T("Colour", "रंग")}</p>
+              <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
+                {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => {
+                  const on = (card.site?.style?.palette ?? "") === p.key;
+                  return (
+                    <button key={p.key} type="button" onClick={() => { const next = { ...card, site: { ...card.site!, style: { ...(card.site!.style ?? {}), palette: p.key } } } as Card; setCard(next); liveTap(next); }} className="flex shrink-0 flex-col items-center gap-1.5">
+                      <span className={`grid h-12 w-12 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)] ${on ? "ring-brand" : "ring-transparent"}`} style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>{on && <Check className="h-5 w-5" style={{ color: p.ink }} />}</span>
+                      <span className="text-[11px] text-muted">{hi ? p.hi : p.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{T("Letter style (font)", "अक्षर (font)")}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {FONT_PAIRS.map((f) => {
+                  const on = (card.site?.style?.font ?? "look") === f.key;
+                  return <button key={f.key} type="button" onClick={() => { const next = { ...card, site: { ...card.site!, style: { ...(card.site!.style ?? {}), font: f.key === "look" ? undefined : f.key } } } as Card; setCard(next); liveTap(next); }} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{hi ? f.hi : f.name}</button>;
+                })}
+              </div>
+            </div>
+            <button type="button" onClick={() => setStyleSheet(false)} className="w-full rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("Done — see the website", "हो गया — website देखें")}</button>
+          </div>
+        </div>
+      )}
       {more && (
         <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" onClick={() => setMore(false)}>
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="max-h-[92dvh] w-full max-w-md space-y-3 overflow-y-auto overscroll-contain rounded-t-2xl bg-surface p-4 pb-[max(1rem,env(safe-area-inset-bottom))] shadow-float sm:max-h-[90dvh] sm:rounded-2xl">
@@ -1494,15 +1544,15 @@ export default function BuildCard() {
           </ul>
           {access.subscribed ? (
             <button type="button" onClick={() => { setPlan("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make with Premium", "Premium से बनाओ")}
+              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
             </button>
           ) : (
             <button type="button" onClick={() => setPremiumUnlock(true)} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Go Premium, then make", "Premium लें, फिर बनाओ")}
+              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
             </button>
           )}
         </div>
-        <button type="button" onClick={() => { setState("form"); window.scrollTo({ top: 0 }); }} className="w-full text-center text-sm font-semibold text-brand-ink underline">{T("More options: use a website you like, choose a look, check your details →", "और options: पसंद की website लें, look चुनें, जानकारी जाँचें →")}</button>
+        
         {err && <p className="text-sm text-danger">{err}</p>}
         <p className="text-center text-xs text-muted">{T("The AI writes only from what you told us. It does not invent prices or claims.", "AI सिर्फ़ वही लिखता है जो आपने बताया। वह अपनी तरफ़ से दाम या दावे नहीं जोड़ता।")}</p>
         {premiumDialog}
