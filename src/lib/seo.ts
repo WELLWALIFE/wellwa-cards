@@ -48,15 +48,18 @@ export function seoFacts(card: Card): SeoFacts {
 /** The words people type: "<type> in <city>", "<type> near me", "best <type> in <city>", each area, each service. */
 export function seoKeywords(card: Card): string[] {
   const f = seoFacts(card);
-  const type = f.category.toLowerCase();
+  // "hardware / paint / sanitary" is three trades, and people search each one on its own — never the slashes.
+  const types = [...new Set(f.category.toLowerCase().split(/\s*[\/,&]\s*/).map((x) => x.trim()).filter(Boolean))].slice(0, 3);
+  const type = types[0] ?? "";
   const out: string[] = [f.business];
   // People also search the owner by name ("Rajesh Sharma", "Rajesh Sharma Jaipur", "Rajesh Sharma Sharma Sweets").
   const person = f.person && f.person.toLowerCase() !== f.business.toLowerCase() ? f.person : "";
   if (person) out.push(person, `${person} ${f.business}`, ...(f.city ? [`${person} ${f.city}`] : []), ...(type ? [`${person} ${type}`] : []));
-  if (type) {
-    out.push(`${type} near me`);
-    if (f.city) out.push(`${type} in ${f.city}`, `best ${type} in ${f.city}`, `${f.business} ${f.city}`);
-    for (const a of f.areas) out.push(`${type} in ${a}`);
+  if (f.city) out.push(`${f.business} ${f.city}`);
+  for (const t of types) {
+    out.push(`${t} near me`);
+    if (f.city) out.push(`${t} in ${f.city}`, `best ${t} in ${f.city}`);
+    for (const a of f.areas) out.push(`${t} in ${a}`);
   }
   for (const s of offerings(card).slice(0, 8)) {
     out.push(`${s.toLowerCase()} near me`);
