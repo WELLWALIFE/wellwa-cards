@@ -58,7 +58,7 @@ export function UnlockDialog({ onClose, subscriptionOnly = false }: { reason?: s
       <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-float space-y-4" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-center gap-3">
           <span className="grid h-10 w-10 place-items-center rounded-xl grad-brand text-white"><Sparkles className="h-5 w-5" /></span>
-          <p className="flex-1 font-semibold">{showCredits ? "Add credits" : "Subscribe"}</p>
+          <p className="flex-1 font-semibold">{showCredits ? "Pay with Razorpay" : "Subscribe"}</p>
           <button onClick={onClose} aria-label="Close" className="text-muted hover:text-ink"><X className="h-5 w-5" /></button>
         </div>
         {a.loading || srv === null ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : showCredits ? (

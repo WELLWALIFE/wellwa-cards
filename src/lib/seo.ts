@@ -69,7 +69,8 @@ export function seoKeywords(card: Card): string[] {
 /** Service and product names, for keywords and the catalogue. */
 export function offerings(card: Card): string[] {
   return list([
-    ...find(card, "services").flatMap((b) => b.items.map((i) => i.name)),
+    // A "How we work" steps block is not something a customer searches for.
+    ...find(card, "services").filter((b) => !/how we work|process|steps|कैसे/i.test(b.title ?? "")).flatMap((b) => b.items.map((i) => i.name)).filter((n) => !/^\s*\d+\s*[.)-]/.test(n)),
     ...find(card, "product").flatMap((b) => b.items.map((i) => i.name)),
   ]);
 }
