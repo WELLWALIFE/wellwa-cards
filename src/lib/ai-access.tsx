@@ -7,7 +7,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Coins, LoaderCircle, Sparkles, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { PARTNER_ACTIVATE } from "@/lib/associate";
+import { api } from "@/lib/poster-client";
 import { AddCredits } from "@/components/poster/add-credits";
 import { planPrice } from "@/lib/billing";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -47,8 +47,12 @@ export function useAiAccess(): AiAccess {
 export function UnlockDialog({ onClose, subscriptionOnly = false }: { reason?: string; onClose: () => void; title?: string; subscriptionOnly?: boolean }) {
   const a = useAiAccess();
   const [pick, setPick] = useState<"sub" | "credits">("sub");
+  // The server's word on "subscribed" (it also counts a partner's running subscription, which my_plan does not).
+  const [srv, setSrv] = useState<boolean | null>(null);
+  useEffect(() => { void api<{ subscribed?: boolean }>("/api/poster/pay/credits").then((r) => setSrv(r.ok ? !!r.data.subscribed : false)).catch(() => setSrv(false)); }, []);
+  const subscribed = a.subscribed || srv === true;
   const done = () => { a.refresh(); onClose(); };
-  const showCredits = !a.associate && !subscriptionOnly && (a.subscribed || pick === "credits");
+  const showCredits = !subscriptionOnly && (subscribed || pick === "credits");
   return (
     <div className="fixed inset-0 z-50 grid place-items-end sm:place-items-center bg-black/40 p-3" onClick={onClose}>
       <div className="w-full max-w-md rounded-2xl bg-surface p-5 shadow-float space-y-4" onClick={(e) => e.stopPropagation()}>
@@ -57,24 +61,18 @@ export function UnlockDialog({ onClose, subscriptionOnly = false }: { reason?: s
           <p className="flex-1 font-semibold">{showCredits ? "Add credits" : "Subscribe"}</p>
           <button onClick={onClose} aria-label="Close" className="text-muted hover:text-ink"><X className="h-5 w-5" /></button>
         </div>
-        {a.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : showCredits ? (
+        {a.loading || srv === null ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : showCredits ? (
           <>
             <AddCredits onDone={done} />
-            {!a.subscribed && <button type="button" onClick={() => setPick("sub")} className="w-full text-center text-sm font-semibold text-brand-ink">Subscribe instead · {planPrice("growth")}/month</button>}
+            {!subscribed && <button type="button" onClick={() => setPick("sub")} className="w-full text-center text-sm font-semibold text-brand-ink">Subscribe instead · {planPrice("growth")}/month</button>}
           </>
         ) : (
           <>
-            {a.associate ? (
-              <a href={PARTNER_ACTIVATE} className="block rounded-xl border-2 border-brand bg-brand-soft p-4">
-                <p className="font-semibold text-ink">Activate your subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
-              </a>
-            ) : (
-              <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
-                <p className="font-semibold text-ink">Subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
-                <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={done}>Pay by UPI / card — Razorpay</SubscribeButton>
-              </div>
-            )}
-            {!a.associate && !subscriptionOnly && (
+            <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
+              <p className="font-semibold text-ink">Subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
+              <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={done}>Pay by UPI / card — Razorpay</SubscribeButton>
+            </div>
+            {!subscriptionOnly && (
               <button type="button" onClick={() => setPick("credits")} className="flex w-full items-center justify-center gap-1.5 text-sm font-semibold text-brand-ink"><Coins className="h-4 w-4" /> Or add credits</button>
             )}
           </>
