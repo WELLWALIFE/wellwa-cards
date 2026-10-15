@@ -8,6 +8,7 @@ import { LoaderCircle, ChevronLeft, Sparkles, Download, Share2, ImagePlus, Clapp
 import { api, isLoggedIn, uploadImage, shareFile, downloadPoster, LANGS } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
+import { goBack } from "@/lib/nav-back";
 import { VideoSteps, CostLine } from "@/components/poster/video-steps";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
@@ -56,7 +57,7 @@ export default function ReelMaker() {
 
   async function refresh() { const r = await fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})); setJobs(((r.jobs ?? []) as Job[]).filter((j) => j.input?.tier === "stock")); if (typeof r.credits === "number") setCredits(r.credits); }
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/reel"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/reel"); return; }
     setReady(true); refresh();
     api<{ products?: MyProduct[] }>("/api/poster/products").then((r) => setProducts(r.data.products ?? [])).catch(() => {});
     api<{ profiles?: { name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string }[] }>("/api/poster/profiles").then((r) => { const p = (r.data.profiles ?? []).find((x) => x.is_default) ?? r.data.profiles?.[0]; if (p) setF((x) => ({ ...x, business: x.business || p.tagline || p.name, brandName: x.brandName || p.tagline || p.name, phone: x.phone || p.phone || "", category: x.category || p.category || "" })); }).catch(() => {});
@@ -143,7 +144,7 @@ export default function ReelMaker() {
   const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs ${on ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2"><Link href="/poster/videos" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link><h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Reel Maker</h1>{credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}<span className="rounded-full bg-good/10 px-2.5 py-1 text-xs font-semibold text-good">Free with ready-made clips</span></div>
+      <div className="flex items-center gap-2">{/* The scene screen steps back to the first one (same as its Back button); the first screen goes back to where the owner came from. */}<button type="button" onClick={() => (plan ? setPlan(null) : goBack(router, "/poster/videos"))} className="text-muted"><ChevronLeft className="h-5 w-5" /></button><h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Reel Maker</h1>{credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}<span className="rounded-full bg-good/10 px-2.5 py-1 text-xs font-semibold text-good">Free with ready-made clips</span></div>
       <VideoSteps step={plan ? 3 : 2} hi={false} note={plan ? "scenes, pictures, voice & music — then Make" : "what the reel is about"} />
       <p className="text-xs text-muted">Ready-made video clips, your own photos, or AI scenes with Indian people (1 credit each). It adds an AI voice, words on screen and music. Good for daily Reels and Stories. Want your own product shown in AI scenes? Use <Link href="/poster/video" className="underline">Video ad</Link>.</p>
 

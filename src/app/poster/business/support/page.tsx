@@ -36,13 +36,15 @@ export default function SupportPage() {
   }
 
   const back = open || composing;
+  // An open message or a new one is a step inside this page: "All messages" and the arrow at the top both go back to the list first (the arrow leaves the page only from the list).
+  const toList = () => { setOpen(null); setComposing(false); setErr(""); setDone(""); };
   const c = data?.contact;
   return (
-    <BizShell title="Support">
+    <BizShell title="Support" onBack={back ? toList : undefined}>
       <BizState loading={loading} error={error} onRetry={reload}>
         {data?.disabled ? <p className={`${CARD} text-sm text-muted`}>{en ? "This is switched off right now." : "यह अभी बंद है।"}</p> : data && (
           <>
-            {back && <button type="button" onClick={() => { setOpen(null); setComposing(false); setErr(""); setDone(""); }} className="text-sm font-semibold text-brand">← {en ? "All messages" : "सारे संदेश"}</button>}
+            {back && <button type="button" onClick={toList} className="text-sm font-semibold text-brand">← {en ? "All messages" : "सारे संदेश"}</button>}
 
             {!back && (
               <>

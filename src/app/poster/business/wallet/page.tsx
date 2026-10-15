@@ -1,6 +1,7 @@
 "use client";
 // Business > Wallet. Data from the partner handler `p.wallet` (see shubhora-partner src/server/app-api/wallet.ts for the shapes).
 import { useState } from "react";
+import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND, bizAct, dayOf, rupee, rupeeExact, useBiz, useBizMsg } from "@/components/business/kit";
@@ -102,7 +103,7 @@ export default function WalletPage() {
                 : "हर रात के closing के बाद कमाई जुड़ती है, TDS पहले ही कटा होता है। आप माँगते हैं तो रकम अलग रख दी जाती है। कंपनी जब आपके bank में भेजती है तब वह wallet से जाती है, और आपको bank number (UTR) दिखता है।"}</p>
               {w.state === "paused" && <p className="mt-3 text-sm text-muted">{en ? "Withdrawals are paused right now." : "अभी निकासी बंद है।"}</p>}
               {w.state === "hold" && <p className="mt-3 text-sm text-muted">{en ? "Withdrawals are on hold for this ID. Please contact support." : "इस ID की निकासी रुकी है। Support से बात करें।"}</p>}
-              {w.state === "kyc" && <p className="mt-3 rounded-xl bg-amber-soft p-3 text-sm text-amber">{en ? "Complete your KYC first. You need approved KYC to withdraw." : "पहले अपना KYC पूरा करें। निकासी के लिए KYC मंज़ूर होना ज़रूरी है।"} <a href="/poster/business/kyc" className="font-semibold underline">{en ? "Go to KYC" : "KYC पर जाएँ"}</a></p>}
+              {w.state === "kyc" && <p className="mt-3 rounded-xl bg-amber-soft p-3 text-sm text-amber">{en ? "Complete your KYC first. You need approved KYC to withdraw." : "पहले अपना KYC पूरा करें। निकासी के लिए KYC मंज़ूर होना ज़रूरी है।"} <Link href="/poster/business/kyc" className="font-semibold underline">{en ? "Go to KYC" : "KYC पर जाएँ"}</Link></p>}
               {w.state === "ok" && (
                 <form onSubmit={withdraw} className="mt-3 space-y-2">
                   <label className="block text-sm font-semibold">{en ? "Amount in rupees" : "रकम (रुपये में)"}

@@ -1,16 +1,19 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LoaderCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { LoaderCircle, ChevronLeft } from "lucide-react";
 import { api, isLoggedIn, currentProfileId, type Profile, type Poster } from "@/lib/poster-client";
 import { PosterCard } from "@/components/poster/poster-card";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 
 export default function HistoryPage() {
   const [items, setItems] = useState<Poster[] | null>(null);
   const [open, setOpen] = useState<Poster | null>(null);
   const [name, setName] = useState("");
-  const { t } = useT();
+  const { t, lang } = useT();
+  const router = useRouter();
 
   useEffect(() => {
     (async () => {
@@ -25,7 +28,15 @@ export default function HistoryPage() {
     })();
   }, []);
 
-  if (items === null) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // One Back per screen: an opened poster has its own Back to this list; this arrow leaves the list. The only way in is Me → Old posters.
+  // Drawn while loading too (a slow or offline phone must not be left with no Back: this page is in BackBar's OWN_BACK list).
+  const head = (
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={() => goBack(router, "/poster/more")} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>
+      <h1 className="text-lg font-bold">{t.oldPosters}</h1>
+    </div>
+  );
+  if (items === null) return <div className="space-y-4">{head}<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
   if (open) return (
     <div className="space-y-3">
       <button type="button" onClick={() => setOpen(null)} className="text-sm text-brand-ink">{t.back}</button>
@@ -34,7 +45,7 @@ export default function HistoryPage() {
   );
   return (
     <div className="space-y-4">
-      <h1 className="text-lg font-bold">{t.oldPosters}</h1>
+      {head}
       {items.length === 0 && <p className="text-sm text-muted">{t.noPosters} <Link href="/poster" className="text-brand-ink">{t.makeToday}</Link></p>}
       <div className="grid grid-cols-2 gap-3">
         {items.map((p) => (

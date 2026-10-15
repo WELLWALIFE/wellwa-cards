@@ -48,7 +48,8 @@ export default function Connections() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/connect"); return; }
+      // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace("/login?next=/poster/connect"); return; }
       // WhatsApp AI (the bot on the owner's own number)
       api<{ state?: string; me?: unknown; error?: string; aiActive?: boolean }>("/api/wa/status").then((r) => {
         if (r.status === 402) return setWa("paid");

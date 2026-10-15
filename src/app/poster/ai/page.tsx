@@ -37,7 +37,8 @@ export default function AiTrainingPage() {
     } catch { setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।")); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/ai"); return; } void load(); })(); }, [router, load]);
+  // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ai"); return; } void load(); })(); }, [router, load]);
 
   const sec = (n: number, title: string, sub: string) => (
     <div className="mb-2"><h2 className="text-base font-bold">{n}. {title}</h2><p className="text-xs text-muted">{sub}</p></div>

@@ -47,7 +47,7 @@ export default function ForgotPage() {
                 <a href={`${SUPPORT}${encodeURIComponent(`Shubhora password reset — ${ident}`)}`} className="mt-4 inline-block text-sm font-medium text-brand-ink">WhatsApp support</a>
               </>
             )}
-            <p className="mt-6 text-sm"><Link href="/login" className="font-medium text-brand-ink">Back to log in</Link></p>
+            <p className="mt-6 text-sm"><Link href="/login" replace className="font-medium text-brand-ink">Back to log in</Link></p>
           </div>
         ) : (
           <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-6">
@@ -62,7 +62,7 @@ export default function ForgotPage() {
             <button type="submit" disabled={busy} className="mt-4 w-full inline-flex items-center justify-center gap-1.5 rounded-lg grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Send reset link <ArrowRight className="h-4 w-4" />
             </button>
-            <p className="mt-4 text-center text-sm"><Link href="/login" className="font-medium text-brand-ink">Back to log in</Link></p>
+            <p className="mt-4 text-center text-sm"><Link href="/login" replace className="font-medium text-brand-ink">Back to log in</Link></p>
           </form>
         )}
       </div>

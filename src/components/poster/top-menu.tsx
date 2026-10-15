@@ -48,7 +48,7 @@ export function TopMenu() {
   async function logout() {
     try { await getBrowserSupabase()?.auth.signOut(); } catch { /* already out */ }
     await endPartnerSession();
-    router.push("/login");
+    router.replace("/login");
   }
 
   const home = p === "/poster";

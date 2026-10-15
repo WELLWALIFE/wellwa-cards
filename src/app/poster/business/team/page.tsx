@@ -32,7 +32,8 @@ export default function TeamPage() {
   const [found, setFound] = useState<TeamNode | null>(null);
 
   return (
-    <BizShell title={en ? "My team" : "मेरी team"} right={data && !data.disabled ? <ExcelButton url={data.exportUrls?.team} /> : null}>
+    // A person found by search is a step inside this page (the same one "Show my whole tree" leaves): the arrow closes it first.
+    <BizShell title={en ? "My team" : "मेरी team"} right={data && !data.disabled ? <ExcelButton url={data.exportUrls?.team} /> : null} onBack={view === "tree" && found ? () => setFound(null) : undefined}>
       <BizState loading={loading} error={error} onRetry={reload}>
         {data?.disabled ? (
           <p className={`${CARD} text-sm text-muted`}>{en ? "This page is not open right now." : "यह page अभी बंद है।"}</p>

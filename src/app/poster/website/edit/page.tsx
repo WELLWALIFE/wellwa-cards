@@ -10,6 +10,7 @@ import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, Chevron
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
@@ -65,7 +66,8 @@ export default function WebsiteEditPage() {
       if (r.data.hasCard && r.data.card) { setCard(r.data.card); setDirty(false); }
     } catch { setErr("No internet — tap to try again"); }
   }, []);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/website/edit"); return; } load(); })(); }, [router, load]);
+  // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/website/edit"); return; } load(); })(); }, [router, load]);
 
   // The live preview: the working copy goes to localStorage, the iframe (the real website renderer) re-reads it.
   useEffect(() => {
@@ -186,7 +188,8 @@ export default function WebsiteEditPage() {
   return (
     <div className="space-y-4 pb-28">
       <div className="flex items-center gap-2">
-        <Link href="/poster/website" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
+        <button type="button" onClick={() => goBack(router, "/poster/site?edit=1")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>
         <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>
       </div>

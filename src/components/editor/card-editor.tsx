@@ -458,7 +458,7 @@ export function CardEditor({ id }: { id: string }) {
                 } else {
                   // First time live: the card page with the link, QR and share buttons (owner's call, 24 Sep 2026).
                   setPub({ state: "done", msg: `${L("Saved! Your card is live", "Save हो गया! Card live है")} — ${cardHost(saved.username)}` });
-                  setTimeout(() => router.push("/poster/card?published=1"), 700);
+                  setTimeout(() => router.replace("/poster/card?published=1"), 700);
                 }
               } else {
                 setPub({ state: "error", msg: res.error });

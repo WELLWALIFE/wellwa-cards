@@ -5,6 +5,8 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Check, ChevronLeft, Sparkles, AlertTriangle } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
+import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 import { SAAS_PLANS, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { packsFor } from "@/lib/media/ad-pricing";
@@ -87,6 +89,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
 
 function MyPlan() {
   const router = useRouter();
+  const { lang } = useT();
   const params = useSearchParams();
   const welcome = params.get("welcome") === "1";
   // From the paused card's "Card renew karein" button or a reminder: open on the V-Card box.
@@ -101,11 +104,17 @@ function MyPlan() {
     setR(res.data);
     api<{ packs?: { credits: number; paise: number }[] }>("/api/poster/pay/credits").then((x) => { if (x.ok && x.data.packs?.length) setPacks(x.data.packs); }).catch(() => {});
   }, []);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push(`/login?next=${encodeURIComponent(renew ? "/poster/plan?renew=card" : "/poster/plan")}`); return; } load(); })(); }, [router, load, renew]);
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(renew ? "/poster/plan?renew=card" : "/poster/plan")}`); return; } load(); })(); }, [router, load, renew]);
   useEffect(() => { if (renew && r?.card) document.getElementById("vcard")?.scrollIntoView({ behavior: "smooth", block: "center" }); }, [renew, r?.card]);
 
-  if (err) return <div className="py-16 text-center text-sm text-danger">{err}</div>;
-  if (!r) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // This page is opened from many places (the paywalls, Me, Home, Connections, Social, Business, reminders): Back = the screen the owner was just on;
+  // opened fresh (a reminder, a renew link), Me. The loading and error screens carry the way out too: a page that is slow or failed to load must not be a dead end.
+  // In the sign-up "Choose your plan" run (welcome=1) there is no Back (it would land on the finished sign-up form): the way on is Skip.
+  const backBtn = <button type="button" onClick={() => goBack(router, "/poster/more")} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>;
+  const skipBtn = <Link href="/poster/onboard?skip=1" className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">Skip for now →</Link>;
+  const exitRow = <div className="flex items-center gap-2">{welcome ? <div className="ml-auto">{skipBtn}</div> : backBtn}</div>;
+  if (err) return <div className="space-y-4">{exitRow}<div className="py-16 text-center text-sm text-danger">{err}</div></div>;
+  if (!r) return <div className="space-y-4">{exitRow}<div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
   const on = r.tier ? SAAS_PLANS[r.tier] : null;
   const banner = r.state === "grace"
     ? { cls: "border-amber/50 bg-amber/10 text-amber", text: `Your plan ended on ${d(r.expires_at)}. Everything still works for a few more days. Renew so that nothing stops.` }
@@ -118,10 +127,11 @@ function MyPlan() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Not in the sign-up "Choose your plan" run: Back there would land on the finished sign-up form; Skip / Start free go on. */}
+        {!welcome && backBtn}
         <h1 className="flex-1 text-lg font-bold">{welcome ? "Choose your plan" : "My plan"}</h1>
         {/* Skip (owner's call, 23 Sep 2026): straight into the app on the free plan; details can be filled any time from Setup. */}
-        {welcome && <Link href="/poster/onboard?skip=1" className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">Skip for now →</Link>}
+        {welcome && skipBtn}
       </div>
       {welcome && (
         <div className="space-y-2">

@@ -10,31 +10,35 @@ import { goBack } from "@/lib/nav-back";
 
 /** The five tabs of the bottom menu (and "Me") — their own home, no back row. */
 const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings))?\/?$/;
-/** Full-screen steps, and pages that already have their own back arrow in their heading. */
-const OWN_BACK = /^\/poster\/(start|onboard|brand|explainer|plan|products|reel|website|guide|d\/|text-video|card\/build|business\/|site$|site\?|site\/)/;
+/** Pages that draw their own back arrow in their heading (a page listed here MUST have one in every state, or it has no Back at all;
+ *  a page with an arrow that is missing here gets two), and full-screen steps with none: start, welcome (the first screens after
+ *  sign-up — Back would land on the finished sign-up form). Pages left out get the row from here: ai, card, card/edit, card/looks,
+ *  connect, setup, share, social, video (its own Back / Next at the bottom step the wizard; this row leaves the page). */
+const OWN_BACK = /^\/poster\/(start|welcome|onboard|brand|ads|calendar|learn|report|testimonials|photos|photoshoot|profiles|history|videos|explainer|plan|products|reel|website|guide|d|text-video|card\/build|business|site)(\/|$)/;
 
-/** Where "Back" goes when there is no earlier screen in this tab. */
+/** Where "Back" goes when there is no earlier screen in this tab (only for the pages that get this row). */
 function parentOf(p: string): string {
   if (p.startsWith("/poster/card/")) return "/poster/card";
-  if (/^\/poster\/(card|video|calendar|testimonials|photoshoot|social|report|ai)/.test(p)) return "/poster/create";
-  if (/^\/poster\/(profiles|setup|connect)/.test(p)) return "/poster/more";
-  if (p.startsWith("/poster/learn")) return "/poster/leads";
-  if (p.startsWith("/poster/share")) return "/poster";
+  if (p === "/poster/video") return "/poster/videos";
+  if (/^\/poster\/(card|social|ai)(\/|$)/.test(p)) return "/poster/create";
+  if (/^\/poster\/(setup|connect)(\/|$)/.test(p)) return "/poster/more";
   return "/poster";
+}
+
+/** The round "← Back" button. Also used by a tab root that was opened from another screen (Leads → WhatsApp, from Connections). */
+export function BackPill({ fallback, className = "mb-3 -ml-1" }: { fallback: string; className?: string }) {
+  const router = useRouter();
+  const { lang } = useT();
+  return (
+    <button type="button" onClick={() => goBack(router, fallback)}
+      className={`${className} inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink shadow-sm active:scale-95`}>
+      <ChevronLeft className="h-4 w-4" /> {lang === "en" ? "Back" : "पीछे"}
+    </button>
+  );
 }
 
 export function BackBar() {
   const p = usePathname() || "";
-  const router = useRouter();
-  const { lang } = useT();
   if (TAB_ROOTS.test(p) || OWN_BACK.test(p)) return null;
-
-  const back = () => goBack(router, parentOf(p));
-
-  return (
-    <button type="button" onClick={back}
-      className="mb-3 -ml-1 inline-flex items-center gap-1 rounded-full border border-border bg-surface px-3 py-1.5 text-sm font-semibold text-ink shadow-sm active:scale-95">
-      <ChevronLeft className="h-4 w-4" /> {lang === "en" ? "Back" : "पीछे"}
-    </button>
-  );
+  return <BackPill fallback={parentOf(p)} />;
 }

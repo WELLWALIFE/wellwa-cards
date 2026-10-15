@@ -44,7 +44,8 @@ function SocialTabInner() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/social"); return; }
+      // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/social${window.location.search}`)}`); return; }
       const s = sp.get("social");
       if (s === "error") { const r = sp.get("reason") ?? ""; setMsg(r === "noinstagram" ? t.igNone : r === "nopages" ? t.fbNone : t.connectFail(r)); }
       invalidateSocialAccounts(); load();

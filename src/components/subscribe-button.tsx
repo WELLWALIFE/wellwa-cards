@@ -28,7 +28,7 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
 
   const finished = (text: string) => {
     setState("done"); setMsg(text);
-    if (onDone) onDone(); else setTimeout(() => router.push("/poster"), 1800);
+    if (onDone) onDone(); else setTimeout(() => router.replace("/poster"), 1800);
   };
 
   async function start() {

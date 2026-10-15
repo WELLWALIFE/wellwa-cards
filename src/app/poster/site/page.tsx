@@ -16,6 +16,7 @@ import { fetchMyCardsStrict } from "@/lib/cloud";
 import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
+import { canGoBackInApp, goBack } from "@/lib/nav-back";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -48,24 +49,50 @@ export default function WebsitePage() {
       setPanel(edit ? "edit" : q.get("share") === "1" ? "share" : q.get("edit") === "1" ? "edit" : null);
     } catch { /* ignore */ }
   }
-  const pushedEdit = useRef(false);   // this page itself added the Edit entry to the history
-  function openEdit(on: boolean) {
-    // Back out of an Edit this page opened = the browser's own Back (so Back and the arrow never bounce between the two screens).
-    if (!on && pushedEdit.current) { pushedEdit.current = false; window.history.back(); return; }
-    window.history.pushState(null, "", on ? "/poster/site?edit=1" : "/poster/site");
-    pushedEdit.current = on;
+  function onEditAddress() {
+    try { const q = new URLSearchParams(window.location.search); return q.get("edit") === "1" && q.get("share") !== "1"; } catch { return false; }
+  }
+  /** "Edit card & website" moves to the Edit address without a reload. That entry is marked (`siteDoor`): this page's first screen is the
+   *  entry right below it, so the browser's Back and the arrow are the same move (they never bounce between the two screens). */
+  function openEdit() {
+    window.history.pushState({ siteDoor: 1 }, "", "/poster/site?edit=1");
+    fromAddress();
+    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+  }
+  const viaDoor = () => { try { return !!(window.history.state as { siteDoor?: number } | null)?.siteDoor; } catch { return false; } };
+  /** Arrived from a focused edit's Save (…?edit=1&saved=1): the entry just below this one is the Edit that edit was opened from. */
+  const savedArrival = useRef(false);
+  const skipEdit = useRef(false);
+  /** Back from the Edit address = the screen the owner was just on (R1). Opened by this page's own Edit button, that is the first screen.
+   *  Otherwise the app's own Back; after a focused edit's Save that lands on the very same Edit (the edit page replaced itself), so it
+   *  goes one step further. With no earlier screen at all (a link opened fresh) the first screen takes the Edit's place — replaced, not
+   *  pushed, so Back from there cannot return to the Edit. */
+  function leaveEdit() {
+    if (viaDoor()) { window.history.back(); return; }
+    if (canGoBackInApp()) {
+      skipEdit.current = savedArrival.current; savedArrival.current = false;
+      if (skipEdit.current) setTimeout(() => { skipEdit.current = false; }, 1500);
+      router.back();
+      return;
+    }
+    window.history.replaceState(null, "", "/poster/site");
     fromAddress();
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
   }
   useEffect(() => {
-    window.addEventListener("popstate", fromAddress);
-    return () => window.removeEventListener("popstate", fromAddress);
+    const onPop = () => {
+      fromAddress();
+      if (skipEdit.current) { skipEdit.current = false; if (onEditAddress()) leaveEdit(); }
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
     try {
       const q = new URLSearchParams(window.location.search);
       fromAddress();
-      if (q.has("saved")) { setSaved(true); setTimeout(() => setSaved(false), 8000); }
+      if (q.has("saved")) { setSaved(true); savedArrival.current = true; setTimeout(() => setSaved(false), 8000); }
       // The one-time flags leave the address, so a reload or Back does not replay them.
       if (q.has("saved") || q.has("published")) { q.delete("saved"); q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
     } catch { /* ignore */ }
@@ -101,15 +128,16 @@ export default function WebsitePage() {
       setErr("No internet — tap to try again");
     }
   }, []);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/site"); return; } load(); })(); }, [router, load]);
+  // Replace, not push: Back from the login page must not land here again and bounce straight back to it. The address (Edit / Share) comes back as it was.
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/site${window.location.search}`)}`); return; } load(); })(); }, [router, load]);
 
   async function patch(p: { enabled?: boolean; hidden?: string[] }) {
     try { await api("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } }); } catch { setMsg("No internet — please try again."); return; }
     load(cardId);
   }
-  /** Back = the Create tab this page hangs off — always, so it never loops back into a form just saved. */
-  // Back from the Edit page goes to this page's first screen (link, Share, Edit); from there it leaves.
-  function back() { if (editOnly) openEdit(false); else router.push("/poster/create"); }
+  /** Back = the screen the owner was just on (lib/nav-back); only when there is none, the Create tab this page hangs off. The Edit address is
+   *  the first screen's child: its Back is leaveEdit. A focused edit's Save replaces its own form, so Back never lands on a finished one. */
+  function back() { if (editOnly) leaveEdit(); else goBack(router, "/poster/create"); }
 
   if (!s) return err ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -170,7 +198,7 @@ export default function WebsitePage() {
           {/* ---- 2. two doors: Share, Edit ---- */}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
-            <button type="button" onClick={() => openEdit(true)} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
+            <button type="button" onClick={openEdit} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
           {/* SEO is its own door under Share and Edit (owner, 14 Oct 2026): how the website shows on Google. */}

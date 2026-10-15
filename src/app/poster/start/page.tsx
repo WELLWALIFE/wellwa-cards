@@ -23,13 +23,16 @@ export default function StartPage() {
 
   async function submit() {
     setErr("");
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/start"); return; }
+    // replace: this form is only a hand-off to the login and the login returns here; a pushed form stays in the history under the finished
+    // set-up, and Back from the set-up list would land on this (by then empty) form and make a second profile. The draft is kept, so nothing is lost.
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/start"); return; }
     setBusy(true);
     const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: { ...draft, is_default: true, ref: takeRef() ?? undefined } });
     setBusy(false);
     if (!r.ok || !r.data.profile) { setErr(r.data.error || t.saveFail); return; }
     clearDraft(); clearRef(); setCurrentProfileId(r.data.profile.id);
-    router.push("/poster/setup");
+    // replace: the profile is made, so Back from the set-up list must not land on this (now empty) form and make a second one.
+    router.replace("/poster/setup");
   }
 
   return (

@@ -9,16 +9,21 @@
 // poster layout) counts history.pushState (a forward move) up and popstate (Back / Forward) down.
 import { useEffect } from "react";
 
+const KEY = "nav-moves";
 let moves = 0;
 let installed = false;
 
-/** Called once from the poster layout (NavTracker). Safe to call again. */
+const save = () => { try { sessionStorage.setItem(KEY, String(moves)); } catch { /* private mode: the count then lives for this page only */ } };
+
+/** Called once from the poster layout (NavTracker) and from the Finish-setup bar. Safe to call again. */
 export function installNavTracker() {
   if (installed || typeof window === "undefined") return;
   installed = true;
+  // The count survives a reload and a full page load inside the app (the browser keeps its history, so must we).
+  try { moves = Math.max(0, Number(sessionStorage.getItem(KEY)) || 0); } catch { moves = 0; }
   const push = window.history.pushState.bind(window.history);
-  window.history.pushState = (...a: Parameters<History["pushState"]>) => { moves += 1; return push(...a); };
-  window.addEventListener("popstate", () => { moves = Math.max(0, moves - 1); });
+  window.history.pushState = (...a: Parameters<History["pushState"]>) => { moves += 1; save(); return push(...a); };
+  window.addEventListener("popstate", () => { moves = Math.max(0, moves - 1); save(); });
 }
 
 /** Is there an earlier screen of THIS app to go back to? */
@@ -28,11 +33,14 @@ export function canGoBackInApp(): boolean {
   try { return window.history.length > 1 && !!document.referrer && new URL(document.referrer).origin === window.location.origin; } catch { return false; }
 }
 
-type Nav = { back: () => void; push: (href: string) => void };
+type Nav = { back: () => void; push: (href: string) => void; replace?: (href: string) => void };
 
-/** Back: the previous screen when there is one inside the app, else `fallback` (the page's natural parent). */
+/** Back: the previous screen when there is one inside the app, else `fallback` (the page's natural parent).
+ *  The fallback REPLACES this screen: pushing it would make the parent's own Back come straight back here, and the two would bounce. */
 export function goBack(router: Nav, fallback: string) {
-  if (canGoBackInApp()) router.back(); else router.push(fallback);
+  if (canGoBackInApp()) router.back();
+  else if (router.replace) router.replace(fallback);
+  else router.push(fallback);
 }
 
 /** Mounts the move counter. */

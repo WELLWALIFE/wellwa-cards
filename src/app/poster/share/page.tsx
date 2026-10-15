@@ -9,7 +9,8 @@ import { ShareLinks } from "@/components/poster/share-links";
 export default function SharePage() {
   const router = useRouter();
   const { lang } = useT(); const en = lang === "en";
-  useEffect(() => { isLoggedIn().then((ok) => { if (!ok) router.push("/login?next=/poster/share"); }); }, [router]);
+  // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+  useEffect(() => { isLoggedIn().then((ok) => { if (!ok) router.replace("/login?next=/poster/share"); }); }, [router]);
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{en ? "Share my links" : "मेरे links share करें"}</h1>

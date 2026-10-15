@@ -191,7 +191,7 @@ function SignupInner() {
       await fetch("/api/welcome", { method: "POST", headers: auth }).catch(() => {});
       try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
       // Congratulations, then the profile (owner's call, 2 Oct 2026): the plan is chosen at "Make", not before.
-      router.push("/poster/welcome");
+      router.replace("/poster/welcome");
     } else {
       setBusy(false);
       setCheckEmail(true); // email confirmation is enabled on the project

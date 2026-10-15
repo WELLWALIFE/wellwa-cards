@@ -3,15 +3,18 @@
 // and how long it takes, and the credit balance on top — so nobody is surprised at the Make button.
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Camera, Clapperboard, Wand2, Film, Coins, Sparkles, UserRound } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 import { VideoSteps } from "@/components/poster/video-steps";
 import { adCredits, AD_LENGTHS, REALISTIC_MAX_LENGTH, EXPLAINER_MAX_MIN, EXPLAINER_CREDITS_PER_MIN } from "@/lib/media/ad-pricing";
 
 type Kind = { href: string; I: typeof Camera; t: string; s: string; get: string; len: string; cost: string; time: string; tag: "FREE" | "AI" | ""; best: string };
 
 export default function VideoHub() {
+  const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
   const [credits, setCredits] = useState<number | null>(null);
   useEffect(() => { fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((r) => { if (typeof r.credits === "number") setCredits(r.credits); }).catch(() => {}); }, []);
@@ -43,7 +46,8 @@ export default function VideoHub() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/create" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Back = the screen the owner was just on (the Create tab's Video door, or any video page that points here); opened fresh, the Create tab. */}
+        <button type="button" onClick={() => goBack(router, "/poster/create")} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">Video</h1>
         <Link href="/poster/video?credits=1" className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs font-semibold"><Coins className="h-3.5 w-3.5 text-brand" /> {credits === null ? "…" : `${credits} credits`}</Link>
       </div>

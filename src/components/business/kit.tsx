@@ -2,9 +2,10 @@
 // Shared pieces of the Business screens (Team, Income, Wallet…): the data hook, the page shell with its Back, the small formatters,
 // the Hindi for the partner service's messages, and the "Download Excel" / "View invoice" links.
 import { useCallback, useEffect, useRef, useState } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { ChevronLeft, FileSpreadsheet, FileText, LoaderCircle } from "lucide-react";
 import { api, authHeaders, isLoggedIn } from "@/lib/poster-client";
+import { goBack } from "@/lib/nav-back";
 import { useT } from "@/lib/poster-i18n";
 
 export const rupee = (paise: number | null | undefined) => `₹${Math.round((paise ?? 0) / 100).toLocaleString("en-IN")}`;
@@ -159,7 +160,8 @@ export function useBiz<T>(page: string, fields: Record<string, unknown> = {}) {
     const mine = ++seq.current;
     setLoading(true); setError("");
     try {
-      if (!(await isLoggedIn())) { window.location.href = `/login?next=${encodeURIComponent(location.pathname)}`; return; }
+      // replace, not href: this page must not stay in the history, or Back from the login would land here and bounce to the login again.
+      if (!(await isLoggedIn())) { window.location.replace(`/login?next=${encodeURIComponent(location.pathname)}`); return; }
       const r = await api<T & { error?: string }>(`/api/business/${page}`, { method: "POST", json: JSON.parse(key) });
       if (mine !== seq.current) return;
       if (!r.ok) setError((r.data as { error?: string })?.error ?? "Could not open this page. Please try again.");
@@ -199,11 +201,16 @@ export async function bizUpload(file: File, kind: string): Promise<{ id?: string
 
 /* ---------- screens ---------- */
 
-export function BizShell({ title, children, right }: { title: string; children: React.ReactNode; right?: React.ReactNode }) {
+/** The page frame with its Back arrow. Back = the screen the owner was just on (Wallet → KYC → Back is Wallet, not the menu); only with no earlier
+ *  screen in the app (a link opened fresh) does it go to `parent` (default: the Business menu; a page that hangs under another says so).
+ *  `onBack`: a step INSIDE the page (an open message, a found person) — Back closes that step first, the page's own Back comes after. */
+export function BizShell({ title, children, right, parent = "/poster/business", onBack }: { title: string; children: React.ReactNode; right?: React.ReactNode; parent?: string; onBack?: () => void }) {
+  const router = useRouter();
+  const { lang } = useT();
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/business" aria-label="Back" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        <button type="button" onClick={() => (onBack ? onBack() : goBack(router, parent))} aria-label={lang === "en" ? "Back" : "पीछे"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{title}</h1>
         {right}
       </div>

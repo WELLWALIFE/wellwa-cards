@@ -27,7 +27,8 @@ export default function WelcomeLetterPage() {
   ] : [];
 
   return (
-    <BizShell title={en ? "Welcome letter" : "Welcome letter (स्वागत पत्र)"}>
+    // Opened from Profile only: with no earlier screen in the app (a link opened fresh), Back goes up to Profile.
+    <BizShell title={en ? "Welcome letter" : "Welcome letter (स्वागत पत्र)"} parent="/poster/business/profile">
       <BizState loading={loading} error={error} onRetry={reload}>
         {d && (
           <>

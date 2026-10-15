@@ -22,7 +22,7 @@ export const SETUP_SCREENS: Screen[] = [
 ];
 /** The page each screen is on — "Finish setup" returns to exactly the one the owner left (owner's call, 7 Oct 2026:
  *  "beech me kahin bhi drop kare to complete setup par wahi page khule"). The account remembers it as `setup_pos`. */
-export const screenHref = (k: ScreenKey): string => k === "products" || k === "extras" ? "/poster/card/build?make=1" : k === "make" ? "/poster/card/build?make=1" : `/poster/onboard?step=${k}`;
+export const screenHref = (k: ScreenKey): string => k === "products" || k === "extras" || k === "make" ? "/poster/card/build?make=1" : `/poster/onboard?step=${k}`;
 export const isScreenKey = (v: unknown): v is ScreenKey => typeof v === "string" && SETUP_SCREENS.some((s) => s.key === v);
 /** The screens of the set-up walk itself. */
 export const FLOW_SCREENS = SETUP_SCREENS.filter((s) => !s.later);
@@ -44,3 +44,7 @@ export const screenNo = (k: ScreenKey, skipped: ScreenKey[] = []) => {
 };
 /** The onboarding's own screens, in order (the products and make pages are their own routes). */
 export const ONBOARD_SCREENS = FLOW_SCREENS.filter((s) => s.key !== "make").map((s) => s.key) as Exclude<ScreenKey, "products" | "make">[];
+/** The last screen of the walk: "Back" from Make (and Products) returns here when the app has no earlier screen to go back to. */
+export const LAST_ONBOARD_SCREEN = ONBOARD_SCREENS[ONBOARD_SCREENS.length - 1];
+/** The page the set-up opens from: "Back" from its first screen goes here when the app has no earlier screen to go back to. */
+export const SETUP_HOME = "/poster/welcome";

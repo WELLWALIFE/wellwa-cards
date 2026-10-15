@@ -5,12 +5,12 @@
 import { AiPageGate } from "@/lib/ai-access";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { LoaderCircle, Camera, Images, ChevronLeft, Sparkles, Download, Share2 } from "lucide-react";
 import { api, isLoggedIn, uploadImage, shareFile, downloadPoster } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 
 type MyProduct = { id: string; name: string; photo_url: string | null; photos?: { url: string; role?: string }[] };
 const SHOTS: Record<string, [string, string, string][]> = {
@@ -20,6 +20,10 @@ const SHOTS: Record<string, [string, string, string][]> = {
   social: [["flatlay", "From above", "ऊपर से"], ["story", "Tall, for Status or Story", "लंबी, Status या Story के लिए"], ["feed", "For a Feed post", "Feed post के लिए"], ["minimal", "Clean and simple", "साफ़ और सादी"]],
 };
 const PER_PHOTO = 5;
+// The finished photos are kept for a short while when the owner goes on to "Make a video ad with these photos", so Back from there
+// lands on the same photos (not an empty form after 5 credits a photo). It is read once, and only if it is fresh.
+const SNAP_KEY = "akp-photoshoot-snap";
+const SNAP_MINUTES = 30;
 type Shot = { key: string; label: string; url: string };
 
 function PhotoshootPageInner() {
@@ -46,8 +50,15 @@ function PhotoshootPageInner() {
   const [busyAction, setBusyAction] = useState("");
 
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/photoshoot"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/photoshoot"); return; }
     setReady(true);
+    try {
+      const snap = JSON.parse(sessionStorage.getItem(SNAP_KEY) || "null"); sessionStorage.removeItem(SNAP_KEY);
+      if (snap && Array.isArray(snap.shots) && snap.shots.length && Date.now() - Number(snap.at) < SNAP_MINUTES * 60_000) {
+        setProduct(String(snap.product ?? "")); setCategory(String(snap.category ?? "")); if (snap.preset in SHOTS) setPreset(snap.preset);
+        setSlots(snap.slots && typeof snap.slots === "object" ? snap.slots : {}); setShots(snap.shots);
+      }
+    } catch { /* a convenience only */ }
     fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((j) => typeof j.credits === "number" && setCredits(j.credits)).catch(() => {});
     api<{ products?: MyProduct[] }>("/api/poster/products").then((r) => setProducts(r.data.products ?? [])).catch(() => {});
   })(); }, [router]);
@@ -73,7 +84,7 @@ function PhotoshootPageInner() {
   }
   const fileName = (url: string) => (url.split("/").pop() || "photoshoot.png").split("?")[0]; // unique per photo — a fixed name made every download overwrite the last one
   async function share(url: string) { setBusyAction(url); await shareFile(url, product, fileName(url), "image/png"); setBusyAction(""); }
-  function useInAd() { try { sessionStorage.setItem("akp-ad-seed", JSON.stringify({ product, category, photos: [...refs, ...(shots ?? []).map((x) => x.url)].slice(0, 5) })); } catch { /* ignore */ } router.push("/poster/video"); }
+  function useInAd() { try { sessionStorage.setItem("akp-ad-seed", JSON.stringify({ product, category, photos: [...refs, ...(shots ?? []).map((x) => x.url)].slice(0, 5) })); sessionStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), product, category, preset, slots, shots })); } catch { /* ignore */ } router.push("/poster/video"); }
   async function download(url: string) { setBusyAction(url + "dl"); await downloadPoster(url, fileName(url)); setBusyAction(""); }
 
   if (!ready) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -82,7 +93,8 @@ function PhotoshootPageInner() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/create" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Back = the screen the owner was just on (the Brand door on Create); opened fresh, that same door. */}
+        <button type="button" onClick={() => goBack(router, "/poster/create?door=brand")} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">📸 {hi ? "Product Photoshoot" : "Product Photoshoot"}</h1>
       </div>
       <Guide hi="अपने product की photo डालें — AI उससे 4 अच्छी photos बनाएगा, जो आप अपने catalog या social media पर लगा सकते हैं। नीचे चुनें कि कैसी photos चाहिए।" en="Add a photo of your product. AI makes 4 good photos from it that you can use in your catalog or on social media. Pick the kind of photos you want below." />

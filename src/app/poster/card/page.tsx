@@ -71,7 +71,8 @@ export default function CardTab() {
   const load = useCallback(async () => {
     setFailed(false);
     try {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/card"); return; }
+      // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/card${window.location.search}`)}`); return; }
       const cards = await fetchMyCardsStrict();
       api<{ hasCard: boolean; customDomain?: string }>("/api/site/status").then((r) => { if (r.ok && r.data.hasCard) setDomain(r.data.customDomain || ""); }).catch(() => {});
       // With several cards, the one made on "Make your V-Card" is the owner's own (the others may be for clients).
@@ -90,7 +91,12 @@ export default function CardTab() {
   }, [router]);
 
   useEffect(() => {
-    try { setPublished(new URLSearchParams(window.location.search).get("published") === "1"); } catch { /* ignore */ }
+    // The one-time flag leaves the address (like Card & Website's ?published / ?saved), so a reload or Back to this entry does not replay the greeting.
+    try {
+      const q = new URLSearchParams(window.location.search);
+      if (q.get("published") === "1") setPublished(true);
+      if (q.has("published")) { q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
+    } catch { /* ignore */ }
     load();
   }, [load]);
 

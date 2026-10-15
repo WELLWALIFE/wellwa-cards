@@ -1,9 +1,10 @@
 "use client";
 // Create — four doors, not fourteen links. Each door opens its choices on the next step (only where a choice exists).
-import { useState } from "react";
+import { Suspense } from "react";
 import Link from "next/link";
-import { Bot, Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { LoaderCircle, Bot, Sparkles, Clapperboard, Palette, CreditCard, ChevronRight, ChevronLeft, CalendarDays, MessageSquareQuote, Camera, Wand2, Film, Share2, Gift, Link2, Megaphone } from "lucide-react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { goBack } from "@/lib/nav-back";
 import { Guide } from "@/components/poster/guide";
 import { useT } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
@@ -11,12 +12,18 @@ import { usePlan } from "@/lib/plan";
 type Item = { href: string; I: typeof Sparkles; t: string; s: string; tag?: string; paid?: boolean };
 type Door = { key: string; I: typeof Sparkles; t: string; s: string; items: Item[]; /** open this page instead of listing the items */ href?: string };
 
-export default function CreateHub() {
+// The open door lives in the address (/poster/create?door=brand), not in state: Back from a page opened inside a door
+// (Product photoshoot, My products, Customer reviews...) must land on THAT door, not on the six-door list.
+// The list opens a door with &from=hub. Photoshoot / Brand / Plan also push the bare door as their Back fallback (a link, a reload):
+// there the previous screen is the very page that sent the owner here, so the door's own Back must not return to it.
+function CreateHubInner() {
   const { lang } = useT(); const hi = lang !== "en";
   const { plan } = usePlan();
   const router = useRouter();
   const free = plan === "free";
-  const [open, setOpen] = useState<string | null>(null);
+  const params = useSearchParams();
+  const open = params.get("door");
+  const fromList = params.get("from") === "hub";
 
   const doors: Door[] = [
     { key: "poster", I: Sparkles, t: hi ? "Poster & Status" : "Poster & Status", s: hi ? "रोज़ का poster और 15 सेकंड का video status — free" : "A new poster every day and a 15-second video for Status — free", items: [
@@ -43,11 +50,12 @@ export default function CreateHub() {
     { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "एक link — computer पर website, phone पर card · share करें, बदलें, Premium" : "One link: a website on computers, a card on phones. Share it, change it, go Premium", items: [] },
   ];
 
-  const door = doors.find((d) => d.key === open);
+  // Only a door that lists its own choices can be open; one that opens a page (Video, Ads, AI Training, Card) never is.
+  const door = doors.find((d) => d.key === open && !d.href);
 
   if (door) return (
     <div className="space-y-3">
-      <button type="button" onClick={() => setOpen(null)} className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> {hi ? "बनाएँ" : "Create"}</button>
+      <button type="button" onClick={() => (fromList ? goBack(router, "/poster/create") : router.replace("/poster/create"))} className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> {hi ? "बनाएँ" : "Create"}</button>
       <h1 className="text-lg font-bold">{door.t}</h1>
       {door.items.map((x) => (
         <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -68,7 +76,7 @@ export default function CreateHub() {
       <Guide hi="छह चीज़ें बना सकते हैं — poster, video, ads, brand, AI training, card। रोज़ का poster अपने-आप बन जाता है। बाकी जब चाहें बनाएँ।" en="You can make six things: poster, video, ads, brand, AI training and card. Your daily poster makes itself. Make the rest whenever you like." />
       <div className="grid grid-cols-2 gap-3">
         {doors.map((d) => (
-          <button key={d.key} type="button" onClick={() => (d.href ? router.push(d.href) : setOpen(d.key))} className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-surface p-4 text-left">
+          <button key={d.key} type="button" onClick={() => router.push(d.href ?? `/poster/create?door=${d.key}&from=hub`)} className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-surface p-4 text-left">
             <span className="h-11 w-11 rounded-full bg-brand-soft text-brand grid place-items-center"><d.I className="h-6 w-6" /></span>
             <span className="text-base font-bold leading-tight">{d.t}</span>
             <span className="text-[11px] leading-snug text-muted">{d.s}</span>
@@ -86,4 +94,8 @@ export default function CreateHub() {
       </Link>
     </div>
   );
+}
+
+export default function CreateHub() {
+  return <Suspense fallback={<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><CreateHubInner /></Suspense>;
 }

@@ -13,6 +13,7 @@ import { usePlan } from "@/lib/plan";
 import { UnlockDialog } from "@/lib/ai-access";
 import { SeoPanel } from "@/components/editor/seo-panel";
 import { SITE_HOST } from "@/lib/site-url";
+import { goBack } from "@/lib/nav-back";
 import type { Card } from "@/lib/types";
 
 export default function SiteSeoPage() {
@@ -29,7 +30,8 @@ export default function SiteSeoPage() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/site/seo"); return; }
+      // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/site/seo${window.location.search}`)}`); return; }
       try {
         const cs = await fetchMyCardsStrict();
         // The card the hub showed (?card=), else the newest.
@@ -53,7 +55,8 @@ export default function SiteSeoPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.push("/poster/site"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        {/* Back = the screen the owner was just on (Card & Website, first screen or Edit); opened fresh, Card & Website. */}
+        <button type="button" onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Show on Google", "Google पर दिखें")}</h1>
       </div>
       <p className="text-sm text-muted">{T("Tell Google where you are and what you do. Then people who search for your work in your city can find you.", "Google को बताइए आप कहाँ हैं और क्या काम करते हैं, ताकि आपके शहर में आपका काम खोजने वाले आपको ढूँढ सकें।")}</p>

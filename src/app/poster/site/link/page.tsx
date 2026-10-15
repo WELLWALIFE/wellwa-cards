@@ -12,6 +12,7 @@ import { checkUsername, cleanUsername, fetchCardDomain, fetchMyCardsStrict, publ
 import { linkOptions, setLinkPref } from "@/lib/link-pref";
 import { useT } from "@/lib/poster-i18n";
 import { SITE_HOST } from "@/lib/site-url";
+import { goBack } from "@/lib/nav-back";
 import { DomainConnect } from "@/components/domain-connect";
 import type { Card } from "@/lib/types";
 
@@ -36,7 +37,8 @@ export default function WebAddressPage() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/site/link"); return; }
+      // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/site/link${window.location.search}`)}`); return; }
       try {
         const cs = await fetchMyCardsStrict();
         const mine = cs[0];                           // one account = one website and one card
@@ -95,7 +97,8 @@ export default function WebAddressPage() {
   return (
     <div className="space-y-4 py-2">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.push("/poster/site"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        {/* Back = the screen the owner was just on (the finished-website screen, or Card & Website); opened fresh, Card & Website. */}
+        <button type="button" onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Your web address", "आपका web address")}</h1>
       </div>
 

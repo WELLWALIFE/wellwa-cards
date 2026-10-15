@@ -15,6 +15,7 @@ import { VOICE_OPTIONS } from "@/lib/media/voices";
 import { adCredits, AD_LENGTHS, REALISTIC_MAX_LENGTH } from "@/lib/media/ad-pricing";
 import { AddCredits } from "@/components/poster/add-credits";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 import { VideoSteps } from "@/components/poster/video-steps";
 
 type Job = { id: string; kind: string; status: string; output_url: string | null; error: string | null; created_at: string; cost?: number; pipeline?: number; progress?: { text?: string } | null; input?: Record<string, unknown> & { outputs?: Record<string, string>; product?: string; formats?: string[]; tier?: string } };
@@ -94,12 +95,15 @@ function VideoTabInner() {
   const [stopping, setStopping] = useState("");
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
   const [fileMsg, setFileMsg] = useState<Record<string, string>>({});
+  // ---- Back from "Your videos" (step 5) goes to the step the owner was on before it ----
+  const workStep = useRef(0);
+  useEffect(() => { if (step !== 5) workStep.current = step; }, [step]);
   // ---- draft ----
   const [draftOffer, setDraftOffer] = useState<{ f: typeof f; plan: Plan | null; photos: string[]; step: number; dropped: number } | null>(null);
   const [draftOn, setDraftOn] = useState(true);
   async function refresh() { const r = await fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})); setJobs((r.jobs ?? []).filter((j: Job) => j.kind === "ad" && j.input?.tier !== "stock")); if (typeof r.credits === "number") setCredits(r.credits); }
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/video"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/video"); return; }
     setReady(true); refresh(); newIdem();
     const params = new URLSearchParams(window.location.search);
     if (params.get("credits") === "1") setShowPacks(true); // /poster/plan sends people here to buy
@@ -664,14 +668,19 @@ function VideoTabInner() {
         </div>
       )}
 
-      {/* Every step has a Back and a Next — step 0's Back leaves the screen, and Next needs a script first. */}
+      {/* Every step has a Back and a Next. Back = the step before; step 0's Back leaves the screen for the one the owner came from
+          (the Video hub, Customer reviews, Photoshoot...). A review video was opened straight on Look, so there Back is the Reviews
+          screen. Next needs a script first. */}
       {step <= 3 && !submitted && (
         <div className="flex gap-2">
-          <button type="button" onClick={() => (step === 0 ? router.push("/poster/videos") : setStep(step - 1))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
+          <button type="button" onClick={() => (step === 0 ? goBack(router, "/poster/videos") : step === 2 && f.tier === "testimonial" && testimonialData ? goBack(router, "/poster/testimonials") : setStep(step - 1))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
           <button type="button" disabled={step === 0 && !plan} onClick={() => setStep(step + 1)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white min-h-[44px] disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
         </div>
       )}
       {step === 4 && !submitted && <button type="button" onClick={() => setStep(3)} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>}
+      {/* "Your videos": after a video was made, Back leaves for the previous screen (never the Make form: that would pay again);
+          otherwise it returns to the step the owner was on. */}
+      {step === 5 && <button type="button" onClick={() => (submitted ? goBack(router, "/poster/videos") : setStep(workStep.current))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>}
       {step !== 5 && jobs.length > 0 && <button type="button" onClick={() => setStep(5)} className="text-sm text-brand-ink">{hi ? "मेरी videos देखें →" : "See my videos →"}</button>}
     </div>
   );

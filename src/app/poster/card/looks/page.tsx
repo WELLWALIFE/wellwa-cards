@@ -28,7 +28,8 @@ export default function LooksGallery() {
   const [msg, setMsg] = useState("");
 
   const load = useCallback(async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/card/looks"); return; }
+    // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/card/looks"); return; }
     const cards = await fetchMyCardsStrict().catch(() => [] as Card[]);
     let primaryId = "";
     if (cards.length > 1) { const fr = await api<Partial<FactsResponse>>("/api/card/facts").catch(() => null); primaryId = fr?.ok ? fr.data.facts?.primaryCardId ?? "" : ""; }

@@ -33,7 +33,7 @@ export function DemoReset() {
       // This phone's own leftovers: drafts, form backups, the hidden setup bar, the introducer. Anything a screen still
       // writes after this is dropped again by the next page (the account carries a new "cleared" stamp: lib/local-reset.ts).
       try { localStorage.clear(); sessionStorage.clear(); } catch { /* ignore */ }
-      window.location.href = "/poster/welcome";
+      window.location.replace("/poster/welcome");
     } catch { alert(T("No internet — try again.", "Internet नहीं है — दोबारा try करें।")); setBusy(false); }
   }
   return (

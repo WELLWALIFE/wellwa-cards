@@ -2,11 +2,12 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, Plus, Star, Trash2, Pencil } from "lucide-react";
+import { LoaderCircle, Plus, Star, Trash2, Pencil, ChevronLeft } from "lucide-react";
 import { api, isLoggedIn, setCurrentProfileId, PERSONAS, type Profile } from "@/lib/poster-client";
 import { ProfileForm, emptyDraft, fromProfile, type ProfileDraft } from "@/components/poster/profile-form";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 
 
 // One household, many profiles: papa's shop, mummy's boutique, the kids.
@@ -16,10 +17,11 @@ export default function ProfilesPage() {
   const [editing, setEditing] = useState<ProfileDraft | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const { t } = useT();
+  const { t, lang } = useT();
 
   async function load() {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/profiles"); return; }
+    // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/profiles"); return; }
     const r = await api<{ profiles: Profile[] }>("/api/poster/profiles");
     setList(r.data.profiles ?? []);
   }
@@ -43,7 +45,10 @@ export default function ProfilesPage() {
     await api(`/api/poster/profiles?id=${p.id}`, { method: "DELETE" }); load();
   }
 
-  if (list === null) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // One Back per screen: the edit form has its own Back to this list; this arrow leaves the list for the screen the owner was just on (Me, or the logo page's "View profiles").
+  // Drawn while loading too (a slow or offline phone must not be left with no Back: this page is in BackBar's OWN_BACK list).
+  const backBtn = <button type="button" onClick={() => goBack(router, "/poster/more")} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>;
+  if (list === null) return <div className="space-y-4"><div className="flex items-center gap-2">{backBtn}<h1 className="text-lg font-bold">{t.profiles}</h1></div><div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
 
   if (editing) return (
     <div className="space-y-4">
@@ -57,7 +62,10 @@ export default function ProfilesPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-lg font-bold">{t.profiles}</h1>
+        <div className="flex items-center gap-2">
+          {backBtn}
+          <h1 className="text-lg font-bold">{t.profiles}</h1>
+        </div>
         <button type="button" onClick={() => setEditing(emptyDraft("personal"))} disabled={list.length >= 5}
           className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-50">
           <Plus className="h-4 w-4" /> {t.add}

@@ -44,7 +44,7 @@ export function UserMenu() {
         {(user.email[0] ?? "W").toUpperCase()}
       </div>
       <button
-        onClick={async () => { await signOut(); setUser(null); router.push("/login"); }}
+        onClick={async () => { await signOut(); setUser(null); router.replace("/login"); }}
         className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted hover:text-ink hover:bg-surface2"
         title="Sign out" aria-label="Sign out">
         <LogOut className="h-4 w-4" />

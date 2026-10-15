@@ -3,12 +3,12 @@
 // festivals), review day by day, edit or skip; the daily engine follows it.
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X } from "lucide-react";
 import { STYLE_LIST } from "@/lib/poster-categories";
 import { api, isLoggedIn, currentProfileId, type Profile } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 
 
 type Day = { date: string; festival: string | null };
@@ -38,10 +38,11 @@ export default function CalendarPage() {
 
   const load = useCallback(async (p: Profile, m: string) => { const r = await api<{ days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[] }>(`/api/poster/calendar?profile=${p.id}&month=${m}`); if (r.ok) setData(r.data); }, []);
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/calendar"); return; }
+    // replace, not push: Back from the login / set-up screen must not land here and bounce straight back to it.
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/calendar"); return; }
     const r = await api<{ profiles: Profile[] }>("/api/poster/profiles"); const list = r.data.profiles ?? [];
     const p = list.find((x) => x.id === currentProfileId()) ?? list.find((x) => x.is_default) ?? list[0];
-    if (!p) { router.push("/poster/onboard"); return; } setProfile(p); load(p, month);
+    if (!p) { router.replace("/poster/onboard"); return; } setProfile(p); load(p, month);
   })(); }, [router, load, month]);
 
   async function generate() { if (!profile) return; setBusy(true); await api("/api/poster/calendar", { method: "POST", json: { action: "generate", profile: profile.id, month, mix } }); setBusy(false); load(profile, month); }
@@ -68,16 +69,19 @@ export default function CalendarPage() {
   async function removeOffer(id: string) { if (!profile || !confirm(hi ? "यह ऑफ़र हटा दें?" : "Remove this offer?")) return; await api("/api/poster/calendar", { method: "POST", json: { action: "offer", delete: id } }); load(profile, month); }
   function shift(n: number) { const [y, m] = month.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); setData(null); }
 
-  if (!data) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // Opened from the Create tab's Poster door and from the Home quick links: Back = the screen the owner was just on; opened fresh, that door. The arrow
+  // is drawn while the month loads too, so a slow or failed load is never a screen without a Back.
+  const head = <div className="flex items-center gap-2"><button type="button" onClick={() => goBack(router, "/poster/create?door=poster")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button><h1 className="text-lg font-bold flex-1">📅 {hi ? "महीने का plan" : "Plan for the month"}</h1></div>;
+  if (!data) return <div className="space-y-4">{head}<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
   const byDate = Object.fromEntries(data.entries.map((e) => [e.for_date, e]));
   const label = new Date(month + "-01T00:00:00").toLocaleString(hi ? "hi-IN" : "en-IN", { month: "long", year: "numeric" });
   const planned = data.entries.length, done = data.entries.filter((e) => e.status === "done").length;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2"><Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link><h1 className="text-lg font-bold flex-1">📅 {hi ? "महीने का plan" : "Plan for the month"}</h1></div>
+      {head}
       <Guide hi="Slider से तय करें कि हफ़्ते में कितने product, ऑफ़र और शुभकामना के poster बनें — फिर 'इस महीने का plan बनाओ' दबाएँ। किसी भी दिन पर दबाकर उसे बदल सकते हैं।" en="Move the sliders to choose how many product, offer and greeting posters you want each week. Then tap 'Plan this month'. Tap any day to change it." />
       <div className="flex items-center justify-between rounded-xl border border-border px-3 py-2">
-        <button type="button" onClick={() => shift(-1)}><ChevronLeft className="h-5 w-5" /></button><span className="font-semibold">{label}</span><button type="button" onClick={() => shift(1)}><ChevronRight className="h-5 w-5" /></button>
+        <button type="button" onClick={() => shift(-1)} aria-label={hi ? "पिछला महीना" : "Previous month"}><ChevronLeft className="h-5 w-5" /></button><span className="font-semibold">{label}</span><button type="button" onClick={() => shift(1)} aria-label={hi ? "अगला महीना" : "Next month"}><ChevronRight className="h-5 w-5" /></button>
       </div>
       <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-2">
         <p className="text-sm font-semibold">{hi ? "7 दिन में कौन-से poster बनें" : "Which posters in 7 days"}</p>

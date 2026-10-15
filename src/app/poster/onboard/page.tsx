@@ -43,7 +43,8 @@ const SCREEN_FACT_KEYS = [...COMPANY_FACT_KEYS, ...PRODUCT_FACT_KEYS] as const;
 import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeEmail, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
-import { ONBOARD_SCREENS, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
+import { ONBOARD_SCREENS, SETUP_HOME, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
+import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { tradeQuestionsFor } from "@/lib/trade-questions";
 import { Help, type HelpKey } from "@/components/poster/field-help";
 
@@ -123,17 +124,62 @@ function Onboard() {
   const wanted = params.get("step");
   const part = params.get("part");   // an edit tile that shares a screen: "photos" or "links"
   // ?next=/poster/card/build — the card (or another tool) needs these details first: no skip, and "Save" returns there.
-  const next = (params.get("next") ?? "").startsWith("/") ? params.get("next")! : "";
+  // An in-app path only, like ?back= below (never //other-site, never /\other-site).
+  const SAFE_PATH = /^\/(?![/\\])[^\s]*$/;
+  const next = SAFE_PATH.test(params.get("next") ?? "") ? params.get("next")! : "";
   // ?skip=1 — the plan page's Skip: create the minimal profile and open the app without showing the form.
   const autoSkip = params.get("skip") === "1";
   // ?back=/poster/more — an EDIT of name / mobile / photo (Me → "Edit name / mobile"): only "About you", a Save
   // button, and straight back there afterwards (owner's call, 26 Sep 2026). With ?step=about|where|extras and a back
   // (Card & Website → Edit, 7 Oct 2026) the same: that one screen, Save, and back — the live website follows.
-  const back = /^\/(?!\/)[^\s]*$/.test(params.get("back") ?? "") ? params.get("back")! : "";   // an in-app path only (never //other-site)
+  const back = SAFE_PATH.test(params.get("back") ?? "") ? params.get("back")! : "";
   const editing = !!back;
   /** What the set-up had when it opened: a focused edit writes onto the live card only what CHANGED here. */
   const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[] }>({ about: "", hours: "", address: "", banner: "", photos: [] });
-  useEffect(() => { const w = asStep(wanted); if (w) setStep(w); }, [wanted]); // eslint-disable-line react-hooks/exhaustive-deps
+  const stepRef = useRef(step);
+  stepRef.current = step;
+  // Every screen of the walk has an address of its own (…?step=trade), one history entry each (owner, 15 Oct 2026: "back matlab previous
+  // page"): the browser's Back, the Back arrow and "Previous" all land on the screen the owner was just on, and a reload stays on it.
+  // `window.history` (not router.push): no round trip to the server per screen; Next keeps useSearchParams in step with it.
+  function stepUrl(to: StepKey): string {
+    const q = new URLSearchParams(window.location.search);   // ?back= ?next= ?part= ?card= travel along
+    q.set("step", to);
+    return `${window.location.pathname}?${q.toString()}`;
+  }
+  function writeStepUrl(to: StepKey, how: "push" | "replace") {
+    try {
+      const shown = new URLSearchParams(window.location.search).get("step");
+      if (how === "push") {
+        // The screen being left gets its own address first (the walk may have been opened at /poster/onboard with no ?step=), or Back could not return to it.
+        if (shown !== stepRef.current) window.history.replaceState(null, "", stepUrl(stepRef.current));
+        window.history.pushState(null, "", stepUrl(to));
+      } else if (shown !== to) window.history.replaceState(null, "", stepUrl(to));
+    } catch { /* the screen itself has changed either way */ }
+  }
+  /** Opens a screen of the walk. "replace": a hand-off the owner must not Back into (the first screen skipped for them, "Who is this website for?" for a non-partner). */
+  function go(to: StepKey, how: "push" | "replace" = "push") {
+    const same = to === stepRef.current;
+    setStep(to);
+    if (!same) { try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
+    if (same && how === "push") return;   // already on it: no second copy of it in the history
+    writeStepUrl(to, how);
+  }
+  const onPage = useRef(true);
+  useEffect(() => { onPage.current = true; return () => { onPage.current = false; }; }, []);
+  /** Is the owner still on screen `s`? A save that lands after they pressed Back, tapped a step chip or left the page must not push them
+   *  forward again (owner, 15 Oct 2026: "back kahi ka kahi lekar jaata hai") — every move made after an `await` asks this first. The address
+   *  bar changes the instant Back is pressed and the screen state follows a moment later, so both are asked. */
+  function stillOn(s: StepKey): boolean {
+    if (!onPage.current || stepRef.current !== s) return false;
+    try { const shown = asStep(new URLSearchParams(window.location.search).get("step")); return !shown || shown === s; } catch { return true; }
+  }
+  useEffect(() => {
+    const w = asStep(wanted);
+    if (!w) return;
+    // An address change this page did not make itself (the browser's Back / Forward, a step chip): the old screen's message goes with it.
+    if (w !== stepRef.current) { setErr(""); setSiteErr(""); }
+    setStep(w);
+  }, [wanted]); // eslint-disable-line react-hooks/exhaustive-deps
   const [loading, setLoading] = useState(true);
   const [loadErr, setLoadErr] = useState("");
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -282,7 +328,7 @@ function Onboard() {
     setLoadErr(""); setLoading(true);
     try {
       // Back to the very screen asked for (?step=…&back=…) after the login, not the first one.
-      if (!(await isLoggedIn())) { router.push(`/login?next=${encodeURIComponent(`/poster/onboard${window.location.search}`)}`); return; }
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/onboard${window.location.search}`)}`); return; }
       const sb = getBrowserSupabase();
       if (!sb) throw new Error("no session");
       const [{ data }, prof, fr, cards] = await Promise.all([
@@ -569,9 +615,10 @@ function Onboard() {
       } catch {
         setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।")); return;
       } finally { setBusy(""); }
-      if (back) { router.push(`${back}${back.includes("?") ? "&" : "?"}saved=${partnerMissed ? "details-np" : "details"}`); return; }
-      setStep(after);
-      try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+      if (!stillOn("you")) return;   // Back / Cancel was pressed while it saved: they stay where they went
+      // Replace, not push: Back from the page it returns to must not land on this finished edit form again.
+      if (back) { router.replace(`${back}${back.includes("?") ? "&" : "?"}saved=${partnerMissed ? "details-np" : "details"}`); return; }
+      go(after);
       return;
     }
     try {
@@ -581,8 +628,8 @@ function Onboard() {
       } });
       await bumpServerBase();
     } catch { /* offline: the full save on the next screen writes it again */ } finally { setBusy(""); }
-    setStep(after);
-    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+    if (!stillOn("you")) return;
+    go(after);
   }
 
   /** "Promote Shubhora" (owner's call, 24 Sep 2026): most partners sell Shubhora itself, so no business form —
@@ -628,11 +675,12 @@ function Onboard() {
           seoTitle: data.seoTitle ?? "", seoDescription: data.seoDescription ?? "",
           seo: { ...(data.seo ?? {}), ...(existingCard?.seo?.googleVerify ? { googleVerify: existingCard.seo.googleVerify } : {}) } } as Parameters<typeof publishCard>[0];
         const r = await publishCard(card);
-        if (r.ok) { router.push(`/poster/d/editor?id=${card.id}`); return; }
+        // Replace: the Shubhora card now exists — Back from the editor must not land on this question to be answered (and published) again.
+        if (r.ok) { router.replace(`/poster/d/editor?id=${card.id}`); return; }
         setErr(hi ? "Card publish नहीं हो पाया — editor खोलकर Publish दबाएँ।" : (r.error || "Could not publish the card — open the editor and press Publish."));
       }
       // no username yet (or publish failed): the editor with the template, publish by hand
-      router.push(existingCard ? `/poster/d/editor?id=${existingCard.id}&template=vcard-reseller` : "/poster/d/editor?id=new&template=vcard-reseller");
+      router.replace(existingCard ? `/poster/d/editor?id=${existingCard.id}&template=vcard-reseller` : "/poster/d/editor?id=new&template=vcard-reseller");
     } catch {
       setErr(T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"));
     } finally { setBusy(""); }
@@ -656,7 +704,8 @@ function Onboard() {
       const up = await sb?.auth.updateUser({ data: { also_shubhora: true, setup_pos: "site" } });
       if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
       await bumpServerBase();
-      setStep("site");
+      if (!stillOn("promote")) return;   // Back was pressed while it saved: the answer is kept, they are not pulled forward again
+      go("site");
     } catch {
       setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
     } finally { setBusy(""); }
@@ -670,7 +719,8 @@ function Onboard() {
       const up = await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false, setup_pos: "site" } });
       if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
       await bumpServerBase();
-      setStep("site");
+      if (!stillOn("promote")) return;
+      go("site");
     } catch {
       setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
     } finally { setBusy(""); }
@@ -849,6 +899,9 @@ function Onboard() {
 
   /** "Change" on Photos & more opens the website screen; its Next comes back here instead of walking on to Your business. */
   const returnTo = useRef<StepKey | null>(null);
+  // Only meaningful while the website screen is open: leaving it any other way (Back, a step chip) forgets where it was opened from, or the
+  // next visit to this screen by the normal walk would jump to Photos & more.
+  useEffect(() => { if (step !== "site") returnTo.current = null; }, [step]);
   /** Leaves the website screen: the answer and the screen about to open go to the server (like every other Next). */
   async function leaveWebsite() {
     const run = ++siteRun.current;   // a newer leave ("Carry on without a website" while this waits on a slow connection) takes over from this one
@@ -859,9 +912,12 @@ function Onboard() {
       await keepGoing(track(persistStep(to)));
     } finally { if (siteRun.current === run) setBusy(""); }
     if (siteRun.current !== run) return;
+    if (!stillOn("site")) return;   // the owner went somewhere else (Back, a step chip, another page) while it saved
+    const opener = returnTo.current;
     returnTo.current = null;
-    setStep(to);
-    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+    // Opened from Photos & more → Change: that screen is the one just before this, so go back to it (no second copy of it in the history).
+    if (opener && canGoBackInApp()) { setStep(opener); router.back(); return; }
+    go(to, opener ? "replace" : "push");
   }
   async function nextFromWebsite() {
     setSiteErr("");
@@ -963,6 +1019,10 @@ function Onboard() {
    *  back to any step later from Setup — the floating "Finish setup" sheet keeps the unfinished steps in view. */
   async function skipForNow() {
     setBusy("skip"); setErr("");
+    // The plan / welcome page's "Skip" opens this address (?skip=1) and the app opens straight away: that address must not stay behind
+    // it, or Back from the home screen would run the skip again and bounce on.
+    const from = stepRef.current;
+    const leave = () => { if (!stillOn(from)) return; if (autoSkip) router.replace("/poster"); else router.push("/poster"); };   // not if they pressed Back meanwhile
     try {
       await keepGoing(accountStep.current, 10_000);   // the partner ID may be on its way (see nextFromYou)
       if (await accountMoved()) return;
@@ -998,9 +1058,9 @@ function Onboard() {
       // The website answer survives the skip (the facts route needs the profile that now exists).
       await saveSiteFacts().catch(() => undefined);
       clearDraft();
-      router.push("/poster");
+      leave();
     } catch {
-      router.push("/poster");
+      leave();
     } finally { setBusy(""); }
   }
 
@@ -1045,7 +1105,10 @@ function Onboard() {
     // Not before the first look at the account is over: it may be the one that gives a new partner their ID.
     if (skippedYou.current || loading || wanted || autoSkip || username === undefined || !accountReady) return;
     skippedYou.current = true;
-    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10 && youDone) { setYouSkipped(true); setStep(partnerRef.current === "yes" ? "promote" : "site"); }
+    // "About you" is not shown: its address is replaced by the next screen's (Back from there leaves the walk, it cannot stop on a screen never seen).
+    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10 && youDone) { setYouSkipped(true); go(partnerRef.current === "yes" ? "promote" : "site", "replace"); }
+    // Opened at /poster/onboard with no ?step=: the screen shown gets its address now, so the browser's Back can come back to it.
+    else writeStepUrl(step, "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, username, accountReady]);
 
@@ -1053,7 +1116,8 @@ function Onboard() {
   // set-up there before the question became partners-only) goes on to the website question instead of asking a shop owner about Shubhora.
   useEffect(() => {
     // After the first look at the account (a partner ID it is about to write must not send a partner on past the question).
-    if (!loading && accountReady && step === "promote" && !associate) setStep("site");
+    if (!loading && accountReady && step === "promote" && !associate) go("site", "replace");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, accountReady, step, associate]);
 
   // The About screen promises "the AI writes them": it does so the moment the screen opens empty (the name box's
@@ -1120,19 +1184,20 @@ function Onboard() {
   /** One save for both steps: the poster profile + the account details. */
   async function save() {
     setErr("");
+    const from = step;
     const phone = you.phone.replace(/\D/g, "").slice(-10);
     // A focused edit (?back=) checks only the fields on the open screen; the rest of the account stays as it is.
     const here = (k: StepKey) => !editing || step === k;
-    if (!editing && you.name.trim().length < 2) { setStep("you"); setErr(T("Write your name.", "अपना नाम लिखें।")); return; }
-    if (!editing && phone.length !== 10) { setStep("you"); setErr(T("Write your 10-digit mobile number.", "10 अंकों का mobile number लिखें।")); return; }
+    if (!editing && you.name.trim().length < 2) { go("you"); setErr(T("Write your name.", "अपना नाम लिखें।")); return; }
+    if (!editing && phone.length !== 10) { go("you"); setErr(T("Write your 10-digit mobile number.", "10 अंकों का mobile number लिखें।")); return; }
     const phone2Digits = you.phone2.replace(/\D/g, "");
-    if (phone2Digits && phone2Digits.slice(-10).length !== 10 && (!editing || step === "you")) { setStep("you"); setErr(T("The second number needs 10 digits — or clear it.", "दूसरा number 10 अंकों का चाहिए — या उसे ख़ाली छोड़ें।")); return; }
+    if (phone2Digits && phone2Digits.slice(-10).length !== 10 && (!editing || step === "you")) { go("you"); setErr(T("The second number needs 10 digits — or clear it.", "दूसरा number 10 अंकों का चाहिए — या उसे ख़ाली छोड़ें।")); return; }
     const isBiz = biz.role === "business";
     const bizName = (biz.name ?? "").trim();   // any role may carry a company / brand; required only for a business
     const city = (biz.city ?? "").trim();
     // A missing answer that lives on another screen takes the owner THERE: the Save button sits on the last screen, and
     // "Choose what you do." under it, with nothing to choose from, was a dead end.
-    const fail = (to: StepKey, msg: string) => { if (!editing && step !== to) { setStep(to); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } setErr(msg); };
+    const fail = (to: StepKey, msg: string) => { if (!editing) go(to); setErr(msg); };
     // What you do decides the card, the website and the posters, so it is never left empty.
     if (here("trade") && !(biz.category ?? "").trim()) { fail("trade", T("Choose what you do.", "अपना काम चुनें।")); return; }
     if (here("trade") && biz.category === "other" && !(biz.trade ?? "").trim()) { fail("trade", T("Write your trade in a few words, e.g. drone repair.", "अपना काम दो-तीन शब्दों में लिखें, जैसे drone repair।")); return; }
@@ -1216,11 +1281,12 @@ function Onboard() {
         ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos } }),
       }).catch(() => undefined);
       clearDraft();
+      if (!stillOn(from)) return;   // Back / Cancel was pressed while it saved: it is saved, and they stay where they went
       // A different website (or a different role for it) on an account that already has a live card: that card
       // is built again from the new site — ?again=1 throws the old preview away; publishing still asks first.
       if (siteChanged && hadLiveCard.current) { router.push("/poster/card/build?again=1&site=new"); return; }
-      // A focused edit (Card & Website → Edit): saved, on the website, back where it came from.
-      if (back) { router.push(`${back}${back.includes("?") ? "&" : "?"}saved=1`); return; }
+      // A focused edit (Card & Website → Edit): saved, on the website, back where it came from. Replace: Back from there must not land on this finished edit form.
+      if (back) { router.replace(`${back}${back.includes("?") ? "&" : "?"}saved=1`); return; }
       router.push(siteChanged && to.startsWith("/poster/card/build") ? `${to}${to.includes("?") ? "&" : "?"}site=new` : to);
     } catch {
       setErr(T("Could not save your business details. Please try again.", "Business की जानकारी save नहीं हुई। दोबारा try करें।"));
@@ -1313,22 +1379,22 @@ function Onboard() {
   const screenInfo = SETUP_SCREENS.find((x) => x.key === step)!;
   /** A trade with no questions of its own (a personal card) has nothing on the Details screen: it is skipped. */
   const noDetails = () => !!biz.category && tradeQuestionsFor(biz.category).length === 0;
-  function goBack() {
+  /** Back: the screen the owner was just on — the walk keeps one history entry per screen, so after "Next" that is the screen before it, and
+   *  after "Change" on the Make screen it is the Make screen. Only with no earlier screen in the app (a link opened fresh, a reload) does it go
+   *  to the walk's own previous screen, and from the first one to the page the set-up opens from. */
+  function stepBack() {
     setErr(""); setSiteErr("");
     // The website question opened from "Photos & more → Change" goes back to where it was opened from, not to the start of the walk.
-    if (step === "site" && returnTo.current) {
-      const to = returnTo.current; returnTo.current = null;
-      setStep(to);
-      try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
-      return;
-    }
+    const opener = step === "site" ? returnTo.current : null;
+    returnTo.current = null;
+    if (canGoBackInApp()) { router.back(); return; }
     // A screen outside the walk (Photos & more) sits after the last walk screen — its Back used to jump to "About you".
     const here = at >= 0 ? at : ONBOARD_SCREENS.length;
-    let prev = ONBOARD_SCREENS[Math.max(0, here - 1)];
-    if (prev === "promote" && !associate) prev = ONBOARD_SCREENS[Math.max(0, here - 2)];
-    if (prev === "you" && youSkipped) { router.push("/poster/welcome"); return; }
-    setStep(prev);
-    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+    let prev: StepKey | null = opener ?? (here > 0 ? ONBOARD_SCREENS[here - 1] : null);
+    if (!opener && prev === "promote" && !associate) prev = here > 1 ? ONBOARD_SCREENS[here - 2] : null;
+    // The first screen the owner saw ("About you" was skipped for them): there is nothing before it in the walk.
+    if (!prev || (prev === "you" && youSkipped)) { router.push(SETUP_HOME); return; }
+    go(prev, "replace");
   }
   /** Next from the business screens: this screen's checks, its write-through, then the next screen. */
   async function goNext() {
@@ -1354,8 +1420,8 @@ function Onboard() {
       nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 2)];
     }
     try { await keepGoing(track(persistStep(nxt))); } finally { setBusy(""); }
-    setStep(nxt);
-    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
+    if (!stillOn(step)) return;   // Back was pressed while it saved: what they typed is kept, they are not pushed on to the next screen again
+    go(nxt);
   }
   /** The screen's header: the number, the title, what it is for. */
   /** The screen's header: the title and what it is for (the bar above already counts "Step N of 11"). */
@@ -1396,11 +1462,11 @@ function Onboard() {
       )}
       {editing ? (
       <div className="flex items-center justify-between gap-3">
-        <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); router.push(back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "बदलें")} · {step === "extras" && part === "links" ? T("UPI & social links", "UPI और social links") : step === "extras" && part === "photos" ? T("Photos & banner", "Photos और banner") : step === "details" ? T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं") : hi ? screenInfo.hi : screenInfo.en}</p>
-        <button type="button" onClick={() => { clearDraft(); router.push(back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
+        <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); goBack(router, back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "बदलें")} · {step === "extras" && part === "links" ? T("UPI & social links", "UPI और social links") : step === "extras" && part === "photos" ? T("Photos & banner", "Photos और banner") : step === "details" ? T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं") : hi ? screenInfo.hi : screenInfo.en}</p>
+        <button type="button" onClick={() => { clearDraft(); goBack(router, back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
       ) : <>
-      <ProfileSteps current={screenInfo.chapter === "you" ? "you" : "business"} category={biz.category} screen={step === "highlights" ? "details" : step} skipped={skipped} onBack={step !== "you" ? goBack : undefined} />
+      <ProfileSteps current={screenInfo.chapter === "you" ? "you" : "business"} category={biz.category} screen={step === "highlights" ? "details" : step} skipped={skipped} onBack={step !== "you" ? stepBack : undefined} />
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-muted">{next ? T("Your details are needed for the card", "Card के लिए आपकी जानकारी चाहिए") : T("Setup", "सेटअप")}</p>
         {next ? (
@@ -1780,11 +1846,11 @@ function Onboard() {
                   : ownSiteUrl()
                   ? <span className="min-w-0 truncate text-muted">{hostOf(ownSiteUrl())} · {T("my own", "मेरी अपनी")}</span>
                   : <span className="text-muted">{T("none", "नहीं है")}</span>}
-                <button type="button" onClick={() => { setSiteErr(""); returnTo.current = "extras"; setStep("site"); }} className="font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>
+                <button type="button" onClick={() => { setSiteErr(""); returnTo.current = "extras"; go("site"); }} className="font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>
               </div>
           </div>}
           {editing && part === "photos"
-            ? <button type="button" onClick={() => { clearDraft(); router.push(back); }} className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white">{T("Done", "हो गया")}</button>
+            ? <button type="button" onClick={() => { clearDraft(); goBack(router, back); }} className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white">{T("Done", "हो गया")}</button>
             : nextBar(true)}
         </section>
       )}

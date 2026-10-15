@@ -25,6 +25,7 @@ import { PRODUCT_FACT_KEYS, pickFacts, type FactsPatch } from "@/components/post
 import { catalogCopyFor, categoryExampleFor, tradeNeeds } from "@/lib/catalog-copy";
 import { Help } from "@/components/poster/field-help";
 import { SETUP_SCREENS, screenNo } from "@/lib/setup-steps";
+import { goBack } from "@/lib/nav-back";
 
 
 type Product = { id: string; name: string; brand_id?: string | null; photo_url: string | null; benefits: string[]; offer: string; active: boolean; category?: string; price?: string; mrp?: string | null; brand?: string; photos?: ProductPhoto[]; facts_confirmed_at?: string | null };
@@ -75,11 +76,13 @@ export default function ProductsPage() {
   const [setupMode, setSetupMode] = useState(false);
   // (The set-up's last Save already wrote setup_pos "products"; writing it here again on every open moved the account's
   // version under a set-up screen still being typed on and dropped its draft.)
-  /** ?back=… — opened from Card & Website → Edit: the arrow returns there. */
+  /** ?back=… — opened from Card & Website → Edit: where the arrow goes when the app has no earlier screen (opened fresh); with one, the arrow is Back. */
   const [backTo, setBackTo] = useState("");
   /** A live card exists: products added here reach the website only through Write again (the AI lays them out). */
   const [hasLive, setHasLive] = useState(false);
-  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (/^\/(?!\/)[^\s]*$/.test(b)) setBackTo(b); } catch { /* ignore */ } }, []);
+  /** …and its website is switched on (the builder's own "live" test): then `?make=1` opens the finished screen, not Make. */
+  const [siteLive, setSiteLive] = useState(false);
+  useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (/^\/(?![/\\])[^\s]*$/.test(b)) setBackTo(b); } catch { /* ignore */ } }, []);
   const [brandAdmin, setBrandAdmin] = useState<string | null>(null);
   const [forBrand, setForBrand] = useState(false);
   const [draft, setDraft] = useState<Draft | null>(null);
@@ -278,12 +281,13 @@ export default function ProductsPage() {
       const r = await api<{ products?: Product[]; brand_admin_of?: string | null; error?: string }>("/api/poster/products");
       if (!r.ok) { setErr(r.data?.error || t.error); return; }
       setList(r.data.products ?? []); setBrandAdmin(r.data.brand_admin_of ?? null);
-      fetchMyCardsStrict().then((cs) => setHasLive(cs.some((c) => c.active !== false && !isThinCard(c)))).catch(() => undefined);
+      fetchMyCardsStrict().then((cs) => { setHasLive(cs.some((c) => c.active !== false && !isThinCard(c))); setSiteLive(cs.some((c) => c.active !== false && !!c.site?.enabled && !isThinCard(c))); }).catch(() => undefined);
     } catch {
       setErr(t.error);
     }
   }
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/products"); return; } load(); })(); }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/products${window.location.search}`)}`); return; } load(); })(); }, [router]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function save(again = false) {
     if (!draft) return;
@@ -464,6 +468,14 @@ export default function ProductsPage() {
    *  meanwhile (a form saved while the pictures land would send "no photo" and wipe them; Cancel on a paid search would lose the credit's picture). */
   const locked = fill.busy;
   const working = busy || studio.busy;
+  /** The header arrow. An open product form or "add many" box has its own Cancel / Close, so the arrow closes that first (the way Cancel does,
+   *  and not while a photo or a paid picture is on its way); otherwise Back = the screen the owner was just on (lib/nav-back). Opened fresh:
+   *  the ?back= it came with (Card & Website → Edit), else the Create tab this list hangs off. */
+  function goUp(parent: string) {
+    if (draft) { if (!working) setDraft(null); return; }
+    if (bulk) { setBulk(false); return; }
+    goBack(router, backTo || parent);
+  }
   const fillBtn = (
     <button type="button" onClick={() => void fillPhotos()} disabled={fill.busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
       {fill.busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} {fill.busy ? C("Finding pictures…", "Pictures ढूँढ रहे हैं…") : C("Add pictures to products without one", "बिना photo वाले products में picture लगाएँ")}
@@ -472,7 +484,7 @@ export default function ProductsPage() {
   return (
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
-      {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => router.push(backTo || "/poster/onboard?step=about")} />}
+      {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => goUp("/poster/onboard?step=about")} />}
       {setupMode ? (
         /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the bar above counts
            the step and holds Back; here the title, one line on what to do, one big Add button, the way on at the bottom. */
@@ -484,7 +496,7 @@ export default function ProductsPage() {
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <Link href={backTo || "/poster/setup"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
+          <button type="button" onClick={() => goUp("/poster/create")} className="text-muted" aria-label={C("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
           {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
@@ -745,7 +757,8 @@ export default function ProductsPage() {
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">
           <button type="button" onClick={continueToSite} disabled={going} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {going ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}
-            {list.length > 0 ? C("Next → make my website", "आगे → मेरी website बनाएँ") : C(`Skip for now → make my website`, `अभी छोड़ें → website बनाएँ`)}
+            {/* /poster/card/build?make=1 on an account whose website is already live opens the finished screen, never a second build — so then it is not "make". */}
+            {siteLive ? C("Done → my website", "हो गया → मेरी website") : list.length > 0 ? C("Next → make my website", "आगे → मेरी website बनाएँ") : C(`Skip for now → make my website`, `अभी छोड़ें → website बनाएँ`)}
           </button>
           {list.length === 0 && <p className="mt-1.5 text-center text-[11px] text-muted">{C(`Add ${copy.short.toLowerCase()} any time later.`, `${copy.shortHi} बाद में कभी भी जोड़ें।`)}</p>}
         </div>

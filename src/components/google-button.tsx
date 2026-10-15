@@ -76,7 +76,7 @@ export function GoogleButton({ label = "Continue with Google", divider = true }:
           const { error } = await sb.auth.signInWithIdToken({ provider: "google", token: resp.credential, nonce: raw });
           if (error) { setBusy(false); setErr(error.message); return; }
           // Same landing as the redirect flow: welcome for new accounts, then setup or the app.
-          router.push("/auth/start");
+          router.replace("/auth/start");
         },
       });
       box.current.replaceChildren();                // render once, even if the effect runs again

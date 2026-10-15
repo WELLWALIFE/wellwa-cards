@@ -55,7 +55,7 @@ export default function LoginPage() {
       if (!r.ok || !j.access_token || !j.refresh_token) { setError(j.error || "Could not log in. Please try again."); setBusy(false); return; }
       const { error } = await sb.auth.setSession({ access_token: j.access_token, refresh_token: j.refresh_token });
       if (error) { setError(error.message); setBusy(false); return; }
-      go(nextPath());
+      go(nextPath(), true);
     } catch {
       setError("No internet connection. Please try again.");
       setBusy(false);

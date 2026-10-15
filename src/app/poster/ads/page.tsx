@@ -10,6 +10,7 @@ import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 import { usePlan } from "@/lib/plan";
 import { AD_BUDGET, GOALS, roughResults } from "@/lib/ads-shared";
 import type { AdGoal, AdTargeting, AdAccountInfo, CampaignRow, CampaignLive } from "@/lib/ads-server";
@@ -64,7 +65,7 @@ export default function AdsPage() {
   const loadMine = useCallback(async () => { try { const r = await api<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string }>("/api/ads/campaigns"); if (r.ok) setMine(r.data); } catch { /* offline */ } }, []);
 
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/ads"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ads"); return; }
     loadAccounts(); loadMine();
     const pr = await api<{ profiles?: Profile[] }>("/api/poster/profiles").catch(() => null);
     const list = pr?.data.profiles ?? [];
@@ -137,6 +138,15 @@ export default function AdsPage() {
     finally { setBusy(""); }
   }
   function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setErr(""); setOffer(""); }
+  // Back, everywhere on this page (the arrow at the top and the Back button at the bottom do the same): My ads -> the New ad tab;
+  // a later step -> the step before; the first step, the finished screen and the "connect Facebook" screens -> the screen the owner
+  // came from (the Create tab when the page was opened fresh). The finished screen never goes back to the form: that would make a second ad.
+  function back() {
+    const wizard = !!acc && acc.connected && acc.permission === "ok" && acc.accounts.length > 0;
+    if (wizard && tab === "mine") { setTab("new"); return; }
+    if (wizard && !done && step > 0) { setStep(step - 1); return; }
+    goBack(router, "/poster/create");
+  }
 
   const paid = planLoading || plan !== "free";
   const rough = roughResults(daily, days, goal);
@@ -150,10 +160,10 @@ export default function AdsPage() {
   if (!acc) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const header = (
     <div className="flex items-center gap-2">
-      <Link href="/poster/create" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+      <button type="button" onClick={back} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
       <h1 className="text-lg font-bold flex-1">{hi ? "Facebook / Instagram ads" : "Facebook / Instagram ads"}</h1>
       <div className="flex rounded-full border border-border p-0.5 text-xs font-semibold">
-        {(["new", "mine"] as Tab[]).map((k) => <button key={k} type="button" onClick={() => { setTab(k); if (k === "mine") loadMine(); }} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "new" ? (hi ? "नई ad" : "New ad") : (hi ? "मेरी ads" : "My ads")}</button>)}
+        {(["new", "mine"] as Tab[]).map((k) => <button key={k} type="button" onClick={() => { if (k === "new" && done) reset(); setTab(k); if (k === "mine") loadMine(); }} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "new" ? (hi ? "नई ad" : "New ad") : (hi ? "मेरी ads" : "My ads")}</button>)}
       </div>
     </div>
   );
@@ -397,12 +407,12 @@ export default function AdsPage() {
       <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         {step < 4 ? (
           <div className="flex gap-2">
-            <button type="button" onClick={() => (step === 0 ? router.push("/poster/create") : setStep(step - 1))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
+            <button type="button" onClick={back} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
             <button type="button" disabled={!canNext} onClick={() => { setStep(step + 1); if (step === 3 && !copy.primaryText) writeWords(); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
           </div>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={() => setStep(3)} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => setStep(3)} aria-label={hi ? "पीछे" : "Back"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
             <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(false)} className="flex-1 rounded-xl border border-brand px-3 py-3 text-sm font-semibold text-brand-ink disabled:opacity-40">{busy === "create" ? "…" : (hi ? "सेव करें, शुरू न करें" : "Save, do not start")}</button>
             <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(true)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy === "create" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {hi ? "अभी शुरू करें" : "Start now"}</button>
           </div>

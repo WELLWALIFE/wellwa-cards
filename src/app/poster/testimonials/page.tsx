@@ -8,6 +8,7 @@ import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, MessageCircle,
 import { api, isLoggedIn, uploadImage, type Profile } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 
 type Testimonial = { id: string; customer_name: string; text: string; rating: number; city: string; photo_url: string | null; approved: boolean };
 type Draft = { id?: string; customer_name: string; text: string; rating: number; city: string; photo_url: string | null };
@@ -54,7 +55,8 @@ export default function TestimonialsPage() {
 
   async function load() { const r = await api<{ testimonials: Testimonial[] }>("/api/poster/testimonials"); setList(r.data.testimonials ?? []); }
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/testimonials"); return; }
+    // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/testimonials"); return; }
     try { setGoogle(localStorage.getItem(GOOGLE_KEY) ?? ""); } catch { /* ignore */ }
     const p = await api<{ profiles: Profile[] }>("/api/poster/profiles"); const list = p.data.profiles ?? [];
     const d = list.find((x) => x.is_default) ?? list[0]; if (d) setBiz(d.tagline || d.name || "");
@@ -105,7 +107,9 @@ export default function TestimonialsPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* An open add / edit form closes first (it has its own ✕); otherwise Back = the screen the owner was just on (the Create tab, the
+            finished-website screen, the card's checklist); opened fresh, the Create tab. */}
+        <button type="button" onClick={() => (draft ? setDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">💬 {s.title}</h1>
         {!draft && <button type="button" onClick={() => setDraft({ customer_name: "", text: "", rating: 5, city: "", photo_url: null })} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {s.add}</button>}
       </div>

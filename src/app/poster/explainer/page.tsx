@@ -8,6 +8,7 @@ import { ChevronLeft, Clapperboard, Download, ImagePlus, LoaderCircle, Mic, Penc
 import { api, isLoggedIn, uploadImage, shareFile, downloadPoster, LANGS, uploadAudio } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
+import { goBack } from "@/lib/nav-back";
 import { VideoSteps, CostLine } from "@/components/poster/video-steps";
 import { EXPLAINER_MAX_MIN, explainerCredits, explainerMinutes } from "@/lib/media/ad-pricing";
 import { EXPLAINER_CREDITS_PER_MIN } from "@/lib/media/ad-pricing";
@@ -85,7 +86,7 @@ export default function LongVideo() {
     if (typeof r.credits === "number") setCredits(r.credits);
   }
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/explainer"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/explainer"); return; }
     setReady(true); refresh();
     api<{ profiles?: BrandProfile[] }>("/api/poster/profiles")
       .then((r) => { const list = r.data.profiles ?? []; setProfiles(list); setBrandId((list.find((p) => p.is_default) ?? list[0])?.id ?? ""); })
@@ -182,7 +183,7 @@ export default function LongVideo() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/videos" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        <button type="button" onClick={() => goBack(router, "/poster/videos")} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Long video</h1>
         {credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}
       </div>

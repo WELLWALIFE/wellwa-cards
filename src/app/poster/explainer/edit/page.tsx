@@ -3,13 +3,13 @@
 // another picture from the film, or just the words), the heading, the camera move, the subtitles; rewrite a
 // paragraph (the AI says it again, or only the subtitles change); replace a paragraph of your own recording.
 // Apply, and only the scenes you touched are made again — the video keeps playing until the new cut is ready.
-import { Suspense, useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import { ChevronLeft, ImagePlus, Images, LoaderCircle, Mic, Pencil, Sparkles, Type, X } from "lucide-react";
 import { api, isLoggedIn, uploadAudio, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
+import { goBack } from "@/lib/nav-back";
 
 type Para = { p: number; text: string; start: number; end: number };
 type Shot = { i: number; unit: number; para: number; start: number; sec: number; text: string; heading: string; kind: string; picture: string | null; frame: string; subject: string; moment: string; move: string | null; tight: boolean; captions: boolean };
@@ -40,6 +40,12 @@ function EditorInner() {
   const [err, setErr] = useState("");
   const [needCredits, setNeedCredits] = useState<number | null>(null);
   const [applied, setApplied] = useState(false);
+  // This editor opens from TWO places (Long video, and Videos from your words), so every Back here is goBack, never a fixed page.
+  const toList = () => goBack(router, "/poster/explainer");
+  // After "Remake with my changes" the owner is sent back to the list they came from. Left alone, a Back pressed inside those
+  // 1.8 seconds would be followed by a second automatic move, so the timer is cancelled when the screen closes.
+  const leaveTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (leaveTimer.current) window.clearTimeout(leaveTimer.current); }, []);
 
   async function load() {
     const r = await api<Data & { error?: string }>(`/api/media/explainer/edit?id=${encodeURIComponent(id)}`);
@@ -47,7 +53,7 @@ function EditorInner() {
     setData(r.data);
   }
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push(`/login?next=${encodeURIComponent(`/poster/explainer/edit?id=${id}`)}`); return; }
+    if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/explainer/edit?id=${id}`)}`); return; }
     if (!/^[0-9a-f-]{36}$/i.test(id)) { setLoadErr("Which video? Open the editor from Your videos."); return; }
     load();
   })(); // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -124,7 +130,7 @@ function EditorInner() {
         return;
       }
       setApplied(true);
-      setTimeout(() => router.push("/poster/explainer"), 1800);
+      leaveTimer.current = window.setTimeout(toList, 1800);
     } finally { setBusy(""); }
   }
 
@@ -134,7 +140,7 @@ function EditorInner() {
 
   if (loadErr) return (
     <div className="space-y-3">
-      <Link href="/poster/explainer" className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> Your videos</Link>
+      <button type="button" onClick={toList} className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> Your videos</button>
       <p className="text-sm text-danger">{loadErr}</p>
     </div>
   );
@@ -143,7 +149,7 @@ function EditorInner() {
   return (
     <div className="space-y-4 pb-44">
       <div className="flex items-center gap-2">
-        <Link href="/poster/explainer" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        <button type="button" onClick={toList} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Pencil className="h-5 w-5 text-brand" /> Edit video</h1>
         <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{data.credits} credits</span>
       </div>
@@ -152,7 +158,7 @@ function EditorInner() {
         <div className="space-y-2 rounded-xl border border-border p-3">
           <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> {data.job.progress?.text || "Working on your video…"}</p>
           <p className="text-xs text-muted">{data.job.editing ? "Your changes are being made. Only the scenes you changed are made again. The old video stays until the new one is ready." : "This video is still being made. Come back when it is done."}</p>
-          <Link href="/poster/explainer" className="inline-block text-xs font-semibold text-brand-ink">Back to Your videos</Link>
+          <button type="button" onClick={toList} className="inline-block text-xs font-semibold text-brand-ink">Back to Your videos</button>
         </div>
       )}
 

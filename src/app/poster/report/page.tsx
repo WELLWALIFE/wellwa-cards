@@ -1,10 +1,10 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Share2, BarChart3 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 import { Guide } from "@/components/poster/guide";
 
 type R = { days: number; posters: number; posts: { facebook: number; instagram: number; whatsapp: number }; reach: number | null; leads: number; leadsHot: number; videos: number; learned: number; calendarPlanned: number };
@@ -12,11 +12,12 @@ export default function ReportPage() {
   const router = useRouter(); const { lang } = useT(); const hi = lang !== "en";
   const [days, setDays] = useState(30);
   const [d, setD] = useState<{ report: R; text: string } | null>(null);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/report"); return; } setD(null); const r = await api<{ report: R; text: string }>(`/api/poster/report?days=${days}`); if (r.ok) setD(r.data); })(); }, [router, days]);
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/report"); return; } setD(null); const r = await api<{ report: R; text: string }>(`/api/poster/report?days=${days}`); if (r.ok) setD(r.data); })(); }, [router, days]);
   const tile = (l: string, v: string | number, sub?: string) => <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold">{v}</p><p className="text-xs text-muted">{l}{sub ? ` · ${sub}` : ""}</p></div>;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2"><Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link><h1 className="text-lg font-bold flex-1 flex items-center gap-1.5"><BarChart3 className="h-5 w-5 text-brand" /> {hi ? "Marketing report" : "Marketing report"}</h1></div>
+      {/* One way in (the Report button on Social): Back = the screen the owner was just on; opened fresh by address, Social. */}
+      <div className="flex items-center gap-2"><button type="button" onClick={() => goBack(router, "/poster/social")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button><h1 className="text-lg font-bold flex-1 flex items-center gap-1.5"><BarChart3 className="h-5 w-5 text-brand" /> {hi ? "Marketing report" : "Marketing report"}</h1></div>
       <Guide hi="आपकी marketing का हिसाब — कितने poster, post, reach, leads। हर महीने की 1 तारीख को WhatsApp पर भी आता है।" en="Your marketing scorecard — posters, posts, reach, leads. Also sent to WhatsApp on the 1st of every month." />
       <div className="flex gap-2">{[7, 30, 90].map((n) => <button key={n} type="button" onClick={() => setDays(n)} className={`rounded-full border px-3 py-1.5 text-sm ${days === n ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`}>{n} {hi ? "दिन" : "days"}</button>)}</div>
       {!d ? <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div> : (

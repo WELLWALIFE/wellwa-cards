@@ -11,6 +11,7 @@ import { ChevronLeft, Clapperboard, Download, Film, ImagePlus, LoaderCircle, Mic
 import { api, isLoggedIn, uploadImage, shareFile, downloadPoster, LANGS, uploadAudio, type Profile } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
+import { goBack } from "@/lib/nav-back";
 import { VideoSteps, CostLine } from "@/components/poster/video-steps";
 import { AD_LENGTHS, REALISTIC_MAX_LENGTH, adCredits, EXPLAINER_MAX_MIN, explainerCredits, explainerMinutes } from "@/lib/media/ad-pricing";
 
@@ -118,7 +119,7 @@ export default function TextToVideo() {
   }
 
   useEffect(() => { (async () => {
-    if (!(await isLoggedIn())) { router.push("/login?next=/poster/text-video"); return; }
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/text-video"); return; }
     setReady(true); refresh();
     api<{ profiles?: Profile[] }>("/api/poster/profiles").then((r) => {
       const list = r.data.profiles ?? [];
@@ -251,7 +252,7 @@ export default function TextToVideo() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => (kind ? setKind(null) : router.push("/poster/videos"))} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={() => (kind ? setKind(null) : goBack(router, "/poster/videos"))} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Wand2 className="h-5 w-5 text-brand" /> Video from your words</h1>
         {credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}
       </div>

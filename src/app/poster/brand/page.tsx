@@ -7,6 +7,7 @@ import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Check } from "lucide-react";
 import { api, isLoggedIn, type Profile } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 
 type Style = "modern" | "classic" | "playful" | "premium";
 type Kit = { options: string[]; variants?: { icon: string; wide: string; stacked: string; dark: string }[]; charged?: number; taglines: string[]; voice: string; palette: { name: string; hex: string }[]; keywords: string[]; partial?: boolean; error?: string };
@@ -32,7 +33,8 @@ export default function BrandKitPage() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/brand"); return; }
+      // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace("/login?next=/poster/brand"); return; }
       const r = await api<{ profiles: Profile[] }>("/api/poster/profiles");
       const list = r.data.profiles ?? [];
       setProfiles(list);
@@ -63,7 +65,10 @@ export default function BrandKitPage() {
     setDone(true);
   }
 
-  if (profiles === null) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // Opened by address only (the logo studio is parked): Back = the screen the owner was just on; opened fresh, the Brand door of Create.
+  // Drawn while loading too (this page is in BackBar's OWN_BACK list, so a slow or offline phone would have no Back at all).
+  const backBtn = <button type="button" onClick={() => goBack(router, "/poster/create?door=brand")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>;
+  if (profiles === null) return <div className="space-y-4"><div className="flex items-center gap-2">{backBtn}<h1 className="text-lg font-bold flex-1">Brand Kit</h1></div><div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
   const selectedProfile = profiles.find((p) => p.id === profileId) ?? profiles.find((p) => p.is_default) ?? profiles[0];
   const hasExistingLogo = !!selectedProfile?.logo_url;
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
@@ -75,7 +80,7 @@ export default function BrandKitPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {backBtn}
         <h1 className="text-lg font-bold flex-1">{hi ? "Brand Kit" : "Brand Kit"}</h1>
       </div>
       <p className="text-xs text-muted">{hi ? "4 अच्छे logo (एक निशान + आपका नाम साफ़ अक्षरों में), नाम के नीचे की छोटी लाइनें, रंग, और आपके business की बोली — पहला set free, अगला 2 credits का। पसंद का logo चुनें और अपनी profile पर लगाएँ।" : "4 good logos (a small picture plus your name in clear letters), short lines for under your name, colours, and a style for how your business talks. The first set is free. Each set after that is 2 credits. Pick a logo and put it on your profile."}</p>

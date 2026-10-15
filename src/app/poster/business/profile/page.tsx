@@ -69,7 +69,7 @@ export default function ProfilePage() {
               <Row k={en ? "Placed under" : "इनके नीचे"} v={data.placedUnder ? `${data.placedUnder.code} · ${data.placedUnder.leg === "left" ? (en ? "Left side" : "Left side") : (en ? "Right side" : "Right side")}` : "—"} />
               <Row k={en ? "Joined" : "जुड़े"} v={dayOf(data.joined) || "—"} />
               <Row k={en ? "Subscription till" : "Subscription कब तक"} v={dayOf(data.subValidUntil) || "—"} />
-              <p className="pt-2 text-xs text-muted">{en ? "To change name or mobile, " : "नाम या मोबाइल बदलने के लिए "}<Link href="/poster/onboard?step=you" className="font-semibold text-brand">{en ? "open your account details" : "अपनी account details खोलें"}</Link>.</p>
+              <p className="pt-2 text-xs text-muted">{en ? "To change name or mobile, " : "नाम या मोबाइल बदलने के लिए "}<Link href="/poster/onboard?step=you&back=/poster/business/profile" className="font-semibold text-brand">{en ? "open your account details" : "अपनी account details खोलें"}</Link>.</p>
             </div>
 
             {data.photoEnabled && (

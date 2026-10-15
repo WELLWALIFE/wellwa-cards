@@ -3,19 +3,22 @@
 // playground — we showed stock). The list comes from the trade and what is already uploaded; each line has a
 // camera; an upload lands in the card facts (banner, work photos) or on the product, and "Put them on my
 // website" swaps them into the live card in place of stock or AI pictures, without touching a word.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Camera, Check, ChevronLeft, Images, LoaderCircle, RefreshCw } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { goBack } from "@/lib/nav-back";
 import { normalizeFacts, type CardFacts, type FactsResponse, type SavedProduct } from "@/lib/card-facts";
 import { photoWishlist, applyOwnPhotos, type Wish } from "@/lib/photo-wishlist";
 import type { Card } from "@/lib/types";
 
 export default function PhotosPage() {
+  const router = useRouter();
   const { lang } = useT();
   const hi = lang === "hi";
   const T = (en: string, h: string) => (hi ? h : en);
@@ -28,6 +31,28 @@ export default function PhotosPage() {
   const [done, setDone] = useState<Record<string, string>>({});   // wish key → uploaded url
   const [applied, setApplied] = useState("");
   const [dirty, setDirty] = useState(false);
+  // A focused edit's Save (the logo or the portrait) replaces itself with /poster/photos?twins=N&saved=…, so the entry right under this one is
+  // this same page again. `twins` (it rides along in ?back=) counts those stacked copies. Back from one lands on the copy below it — the screen
+  // the owner is already looking at — so Back, the arrow or the browser's own, keeps going until it is past all of them.
+  const [twins, setTwins] = useState(0);
+  const twinsNow = useRef(0);
+  useEffect(() => {
+    const read = () => {
+      const q = new URLSearchParams(window.location.search);
+      const n = parseInt(q.get("twins") ?? "", 10);
+      return q.has("saved") && Number.isFinite(n) ? Math.max(0, Math.min(n, 9)) : 0;   // only a Save makes a copy: a Cancel that fell back to this address did not
+    };
+    twinsNow.current = read(); setTwins(twinsNow.current);
+    // The page stays mounted when only the address changes, so a step between two copies arrives here as a popstate, not as a new visit.
+    const onPop = () => {
+      if (window.location.pathname !== "/poster/photos") return;
+      const was = twinsNow.current, now = read();
+      twinsNow.current = now; setTwins(now);
+      if (now < was) { if (now > 0) router.back(); else goBack(router, "/poster/site"); }   // landed on a copy of the page just left: one more step
+    };
+    window.addEventListener("popstate", onPop);
+    return () => window.removeEventListener("popstate", onPop);
+  }, [router]);
 
   const load = useCallback(async () => {
     setErr("");
@@ -95,7 +120,8 @@ export default function PhotosPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        <Link href="/poster/site" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
+        {/* Opened from the photo nudge on Card & Website → Edit or on the card page: Back = the screen the owner was just on; opened fresh, Card & Website. */}
+        <button type="button" onClick={() => { if (twins > 0) router.back(); else goBack(router, "/poster/site"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{T("Photos your website needs", "आपकी website को ये photos चाहिए")}</h1>
       </div>
       <Guide en="Real photos beat stock every time. Take these with your phone in daylight; we put each one in the right place." hi="असली photos stock से हमेशा बेहतर हैं। दिन की रोशनी में phone से लें; हर एक को सही जगह हम लगा देंगे।" />
@@ -105,7 +131,10 @@ export default function PhotosPage() {
       <div className="space-y-2">
         {wishes.map((w) => {
           const ok = !!done[w.key];
-          const linkTo = w.slot === "portrait" ? "/poster/onboard?step=you" : w.slot === "logo" ? "/poster/onboard?step=site" : null;
+          // The portrait and the logo are added on set-up screens: ?back= makes each a focused edit (Save, then straight back here — not on into the set-up walk).
+          // Its Save comes back as one more copy of this page in the history: ?twins= tells that copy how many are stacked (see above).
+          const edit = (step: string) => `/poster/onboard?step=${step}&back=${encodeURIComponent(`/poster/photos?twins=${twins + 1}`)}`;
+          const linkTo = w.slot === "portrait" ? edit("you") : w.slot === "logo" ? edit("about") : null;
           return (
             <div key={w.key} className={`flex items-center gap-3 rounded-xl border p-3 ${ok ? "border-good/40 bg-good/10" : "border-border"}`}>
               <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${ok ? "bg-good text-white" : "bg-surface2 text-muted"}`}>{ok ? <Check className="h-5 w-5" /> : busy === w.key ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}</span>

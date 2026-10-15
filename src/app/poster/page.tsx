@@ -14,12 +14,6 @@ import { useJourney } from "@/lib/journey";
 
 import { useT } from "@/lib/poster-i18n";
 
-/** The free set-up steps' names in Hindi (journey.ts keeps the English ones) — for the "Next:" line under "Finish setup". */
-const STEP_HI: Record<string, string> = {
-  you: "आपके बारे में", business: "आपका business", products: "Products या services",
-  card: "आपका V-Card", website: "आपकी website", poster: "रोज़ के posters",
-};
-
 type TodayResp = { poster?: Poster; date?: string; theme?: { hi: string; en: string; greet: string }; quota?: Quota; style?: string; error?: string; message?: string; overrides?: { title?: string; custom?: string; accent?: string } | null; card_url?: string; join_url?: string };
 
 /** What goes with a shared poster: the day's written caption (about the product / plan), always with the owner's
@@ -227,10 +221,11 @@ export default function TodayPage() {
       )}
 
       {/* The same count as the floating setup sheet (the free steps): two different totals on one screen read as a bug. */}
-      {journey.nextFree && (
+      {/* "Next:" names the step the screen it opens belongs to: the exact set-up screen the owner left, else the list of steps. */}
+      {journey.continueTo && (
         <Link href={journey.resumeHref ?? "/poster/setup"} className="block rounded-xl border border-brand bg-brand-soft/50 p-3">
           <p className="text-sm font-semibold">{lang === "en" ? "Finish setup" : "Setup पूरा करें"} · {journey.freeDone}/{journey.freeTotal}</p>
-          <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {lang === "en" ? journey.nextFree.title : STEP_HI[journey.nextFree.key] ?? journey.nextFree.title} →</p>
+          <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {lang === "en" ? journey.continueTo.title : journey.continueTo.titleHi} →</p>
         </Link>
       )}
       {today?.error !== "plan" && (day === "tomorrow"

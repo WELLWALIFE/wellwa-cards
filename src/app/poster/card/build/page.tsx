@@ -30,6 +30,8 @@ import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
+import { goBack } from "@/lib/nav-back";
+import { LAST_ONBOARD_SCREEN, screenHref } from "@/lib/setup-steps";
 import { getLinkPref } from "@/lib/link-pref";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
@@ -67,6 +69,19 @@ const emptyRow = (): Row => ({ name: "", brand: "", price: "", photo: "" });
 const draftKey = vcardDraftKey;
 const formKey = vcardFormKey;
 const PREVIEW_KEY = "vcard-preview";
+/** Where Make's Back falls back to when the app has no earlier screen (a link opened fresh, a reload): the set-up walk's last screen. */
+const WALK_END = screenHref(LAST_ONBOARD_SCREEN);
+/** The same test the load pass uses: a website that is made, switched on and live. Nothing may lead such an owner back to "Make". */
+const isLiveSite = (c: Card | null): c is Card => !!c && c.active !== false && !!c.site?.enabled && !isThinCard(c);
+/** Set (per tab) when Make's "Change" / "Add" opens onboard's one-screen edit: its Save comes back as a REPLACE of that screen by Make?saved=…,
+ *  which leaves two entries of the Make screen in the history. */
+const EDIT_MARK = "vcard-make-edit";
+function setEditMark(on: boolean) {
+  try { if (on) sessionStorage.setItem(EDIT_MARK, "1"); else sessionStorage.removeItem(EDIT_MARK); } catch { /* private mode */ }
+}
+function hasEditMark(): boolean {
+  try { return sessionStorage.getItem(EDIT_MARK) === "1"; } catch { return false; }
+}
 
 /* Storage is never trusted: private mode, a full disk or a WebView with cookies off all throw. */
 function readJson<T>(key: string): T | null {
@@ -328,6 +343,10 @@ export default function BuildCard() {
   /** The preview tabs: the finished flow scrolls here when moving from the website to the card. */
   const previewRef = useRef<HTMLDivElement>(null);
   const autoRef = useRef(false);
+  /** The owner reached "Make" through the questions form (its Save and continue): Make's Back returns to the form. */
+  const cameFromForm = useRef(false);
+  /** The finished screen was reached from the design screen in this visit (publish, or Next on a live site): only then is the design screen "the one just before". */
+  const doneFromPreview = useRef(false);
   /** The build is the server's (card-jobs.ts): this screen only follows it, and stops asking once it is gone. */
   const mounted = useRef(true);
   useEffect(() => { mounted.current = true; return () => { mounted.current = false; }; }, []);
@@ -347,9 +366,19 @@ export default function BuildCard() {
   /* ---------------- load ---------------- */
 
   const load = useCallback(async () => {
+    // Just saved on onboard's one-screen edit that Make's "Change" / "Add" opened (?saved=…): that Save REPLACED the edit screen, so the entry before
+    // this one is the Make screen the owner tapped from. Step back onto it (it loads afresh and shows the new answer) instead of keeping a second copy
+    // of Make in the history — otherwise the first Back from here would land on the same screen and look dead, once per edit.
+    try {
+      const fromMake = hasEditMark();
+      setEditMark(false);
+      if (fromMake && new URL(window.location.href).searchParams.has("saved") && window.history.length > 1) { router.back(); return; }
+    } catch { /* ignore */ }
     setState("loading"); setErr("");
     try {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/card/build"); return; }
+      // Replace, not push: Back from the login page must not land here again and bounce straight back to it. The address comes back as it
+      // was (?make=1 …) — a bare /poster/card/build would build the card at once instead of opening the Make screen.
+      if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/card/build${window.location.search}`)}`); return; }
       const who = await getBrowserSupabase()?.auth.getUser();
       const me = who?.data.user?.id ?? "";
       setUid(me);
@@ -364,13 +393,18 @@ export default function BuildCard() {
       // ?improve=1 — "Improve your website" / "Change the look" from Card & Website (owner's call, 4 Oct 2026: Write
       // again any time): the LIVE card opens in the preview as it is, nothing is built; the five looks are there and
       // a look chosen goes live at once. &ask=1 opens "What should change?" straight away.
-      let improve = false, ask = false;
+      let improve = false, ask = false, rewrite = false;
       try {
         const u = new URL(window.location.href);
         again = u.searchParams.get("again") === "1";
         improve = u.searchParams.get("improve") === "1";
+        // &rewrite=1 is put on the address by this page while a rewrite waits for "Make it live" (see below): a reload or the browser's Back
+        // reopens THAT rewrite, a fresh tap on "Website design" (a bare ?improve=1) opens the live website.
+        rewrite = u.searchParams.get("rewrite") === "1";
         ask = u.searchParams.get("ask") === "1";
-        if (improve || ask) { u.searchParams.delete("improve"); u.searchParams.delete("ask"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
+        // ?ask=1 is one-shot (a reload must not reopen the sheet). ?improve=1 STAYS in the address: Back from the editor or a reload
+        // reopens this same screen on the live card, not the questions form a bare /poster/card/build would show.
+        if (ask) { u.searchParams.delete("ask"); window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`); }
         flow = u.searchParams.get("flow") === "1";
         makeNow = u.searchParams.get("make") === "1" || flow;
         // ?site=new — the set-up just saved a different website (or role): the site's words lead this build.
@@ -388,7 +422,7 @@ export default function BuildCard() {
       // Skipped the setup? The card is made FROM those details — collect them first, then come straight back here.
       const s = server.setup;
       const nameOk = !!(s?.person || s?.business);
-      if (!live && (!nameOk || !s?.phone || !s?.category)) { router.replace("/poster/onboard?next=/poster/card/build"); return; }
+      if (!live && (!nameOk || !s?.phone || !s?.category)) { router.replace(`/poster/onboard?next=${encodeURIComponent(`/poster/card/build${window.location.search}`)}`); return; }
       setBrandProducts(!!server.brandProducts);
 
       // A draft from an earlier build: show that preview again instead of building a second time — but only
@@ -435,7 +469,10 @@ export default function BuildCard() {
         if (bj?.ok && bj.data.job && !(bj.data as JobView).claimed) void followBanner(bj.data as JobView, live.id);
       }
 
-      if (improve && live) {
+      // ?improve=1 now stays in the address, so a reload must not throw away a rewrite that is waiting for "Make it live" (its credits are
+      // spent and its job is claimed): on an address marked &rewrite=1 such a draft (it was never live) wins over the live card and is shown
+      // with the improve exits. A fresh tap on "Website design" is not marked, so an old unsent rewrite never hides the live website.
+      if (improve && live && !(rewrite && draft && !draft.liveUser)) {
         // A card made before websites had one: a seed site, so the three looks can be drawn and worn (owner's call, 5 Oct 2026).
         const withSite = live.site ? live : { ...live, site: { enabled: true } };
         const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = withSite; void _i; void _u; void _p; void _a; void _v; void _c;
@@ -448,6 +485,7 @@ export default function BuildCard() {
       if (draft) {
         setCard(draft.card); setBuilt(draft.built ?? null); setLiveSig(draft.liveSig); setLiveUser(draft.liveUser ?? "");
         setChecks(draft.checks ?? []); setMissing(draft.missing ?? []); setOff(draft.off ?? []); setPlans(draft.looks);
+        setImproveMode(improve && !!live);
         // "Finish setup" and the Make pill arrive with ?make=1: a website already built waits on its preview, never
         // behind "Make my free website" again (which would build a second time).
         setState("preview");
@@ -456,7 +494,7 @@ export default function BuildCard() {
       // ?make=1 on an account whose website is already made and live (a reload, the "Make" step, the browser's Back): the
       // finished screen, never "Make my website" again — that would be a second build (owner, 15 Oct 2026: "website ban
       // chuki thi, wapas aane par dobara process karna padega — galat hai"). Making it again is only ?again=1 or "Write again".
-      if (makeNow && !again && !siteNew.current && live && live.active !== false && live.site?.enabled && !isThinCard(live)) {
+      if (makeNow && !again && !siteNew.current && isLiveSite(live)) {
         const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
         setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
         setTab("site"); setState("done");
@@ -502,6 +540,31 @@ export default function BuildCard() {
     if (state !== "preview" || !card || !uid) return;
     writeJson(draftKey(uid), { card, built, liveSig, checks, missing, off, savedAt: Date.now(), ...(plans ? { looks: plans } : {}), ...(liveUser ? { liveUser } : {}) } satisfies Draft);
   }, [state, card, built, liveSig, checks, missing, off, uid, plans, liveUser]);
+
+  /* A built website on screen always has an address that reopens it. A bare /poster/card/build (the auto-build, ?again=1 and ?site=new
+     arrive that way) would open the questions form on a live website after Back from the editor or a reload — and from there it is two
+     taps to a second build. ?make=1 reopens the saved preview, or the finished screen once the site is live. Replace: no history entry. */
+  useEffect(() => {
+    if (state !== "preview" && state !== "done") return;
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get("make") === "1" || u.searchParams.get("improve") === "1") return;
+      u.searchParams.set("make", "1");
+      window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+    } catch { /* ignore */ }
+  }, [state]);
+
+  /* A rewrite waiting for "Make it live" inside the improve flow marks its own address (&rewrite=1). The mark belongs to this history entry, so a
+     reload and the browser's Back reopen the rewrite, while a new tap on "Website design" (a fresh ?improve=1) opens the live website. Replace: no history entry. */
+  useEffect(() => {
+    if (state !== "preview" || !improveMode || liveUser) return;
+    try {
+      const u = new URL(window.location.href);
+      if (u.searchParams.get("improve") !== "1" || u.searchParams.get("rewrite") === "1") return;
+      u.searchParams.set("rewrite", "1");
+      window.history.replaceState(null, "", `${u.pathname}${u.search}${u.hash}`);
+    } catch { /* ignore */ }
+  }, [state, improveMode, liveUser]);
 
   const username = card?.username ?? "";
   useEffect(() => {
@@ -618,12 +681,13 @@ export default function BuildCard() {
 
   /** How many times "Write again" was pressed on this preview: each try differs from the last. */
   const freshRound = useRef(0);
-  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string; imageNote?: string; wordsNote?: string; photoCount?: number; photoMode?: "add" | "replace"; replaceUrls?: string[] }) {
+  async function build(over?: { facts?: CardFacts; rows?: Row[]; existing?: Card | null; uid?: string; back?: "form" | "preview" | "make"; fresh?: boolean; wants?: WriteAgainWant[]; note?: string; imageNote?: string; wordsNote?: string; photoCount?: number; photoMode?: "add" | "replace"; replaceUrls?: string[] }) {
     const f = over?.facts ?? facts;
     const rs = over?.rows ?? rows;
     const live = over && "existing" in over ? over.existing ?? null : existing;
     const me = over?.uid ?? uid;
-    const back = over?.back ?? (state === "preview" ? "preview" : "form");
+    // A failed build returns to the screen it was asked from: the Make screen (with its message) is not swapped for the questions form.
+    const back = over?.back ?? (state === "preview" ? "preview" : state === "make" ? "make" : "form");
     setErr(""); setNotice(""); setElapsed(0); setStage("details"); setState("building");
     try {
       const products: BuildRow[] = rs
@@ -946,7 +1010,7 @@ export default function BuildCard() {
       setLiveUser(r.username || out.username);
       // A quiet publish (a look, in the background) leaves the tabs and the bar as the owner has them: it used to pull
       // the Card tab back to the Website and flip the bar's button under their finger.
-      if (!opts?.quiet) { if (uid) dropKey(draftKey(uid)); setTab("site"); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
+      if (!opts?.quiet) { if (uid) dropKey(draftKey(uid)); setTab("site"); doneFromPreview.current = true; setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
@@ -968,6 +1032,41 @@ export default function BuildCard() {
     // The editor takes over from here: this saved preview must never come back later and undo what is done there.
     if (uid) { dropKey(draftKey(uid)); dropKey(formKey(uid)); }
     router.push(existing ? `/poster/d/editor?id=${existing.id}&seed=1` : "/poster/d/editor?seed=1");
+  }
+
+  /* ---------------- Back ---------------- */
+
+  // ONE rule (owner, 15 Oct 2026: "back matlab previous page"): Back is the screen the owner was just on (lib/nav-back). Inside this one
+  // address the screens are steps — the questions form, Make, the design screen, the finished screen — and Back is the step before. A
+  // website that is already live never goes back to the questions or to Make: that is how it used to be built a second time.
+  // The browser's own Back / Android back leaves this page (the steps are not history entries: two entries on one address would need two
+  // taps to leave after every reload, or return to Make on a live site) — it lands on the screen before this page.
+  const toTop = () => { try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
+  /** Make → the questions form when the owner came through it, else the screen before Make (the set-up's last screen when the app has no earlier one). */
+  function backFromMake() {
+    if (cameFromForm.current) { cameFromForm.current = false; setState("form"); toTop(); return; }
+    goBack(router, WALK_END);
+  }
+  /** The questions form → the website it was opened from ("Edit details"), else the screen before it. */
+  function backFromForm() {
+    if (card) { setState("preview"); toTop(); return; }
+    goBack(router, WALK_END);
+  }
+  /** The design screen → Make, only before anything is live. */
+  function backFromPreview() {
+    if (busy === "publish") return;                                        // going live: the finished screen follows by itself
+    // Opened from Card & Website, Products, the AI page or the banner notification (?improve=1): back to where it was opened from.
+    if (improveMode) { goBack(router, "/poster/site?edit=1"); return; }
+    // Live: never Make (it would offer to build it again). Make is in-page state, not a history entry, so Back lands on the screen before this page.
+    if (liveUser) { goBack(router, "/poster"); return; }
+    // A new build of a website that is already live (?again=1, a new website at set-up): back to where it was asked for, never to Make.
+    if (isLiveSite(existing)) { goBack(router, "/poster/site"); return; }
+    setState("make"); toTop();
+  }
+  /** The finished screen → the design screen when the owner came from it; opened straight (the dock, Home, a reload) it is the screen before this page. */
+  function backFromDone() {
+    if (doneFromPreview.current) { doneFromPreview.current = false; setState("preview"); toTop(); return; }
+    goBack(router, "/poster/site");
   }
 
   /* ---------------- screens ---------------- */
@@ -1031,7 +1130,7 @@ export default function BuildCard() {
     return (
       <div className="space-y-4 py-2">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => setState("preview")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={backFromDone} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         </div>
         <section className="relative overflow-hidden rounded-3xl p-6 text-center text-white shadow-float grad-brand">
           <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
@@ -1088,7 +1187,7 @@ export default function BuildCard() {
           then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1"); else if (liveUser) router.push("/poster"); else setState("make"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={backFromPreview} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
         </div>
         {(liveUser || busy === "publish") && <p className="flex items-start gap-1.5 text-xs text-muted">
@@ -1239,9 +1338,9 @@ export default function BuildCard() {
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${viewed.length === 0 && !designOpen ? "bg-white text-amber" : "bg-brand text-white"}`}>{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
             </button>
         {liveUser ? (
-          // Already live (a design tapped goes live by itself): from Card & Website this is Done, back there; in the
-          // first flow it is Next, on to the congratulations.
-          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
+          // Already live (a design tapped goes live by itself): from Card & Website this is Done, on to the saved Card & Website
+          // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
+          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
@@ -1439,11 +1538,17 @@ export default function BuildCard() {
     const li = (text: string) => <li className="flex items-start gap-2 text-sm"><span className="text-good">✓</span><span>{text}</span></li>;
     return (
       <div className="space-y-4 py-2">
-        <ProfileSteps current="make" category={setup?.category} />
+        <ProfileSteps current="make" category={setup?.category} onBack={backFromMake} />
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => router.push("/poster/onboard?step=about")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={backFromMake} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
+        {/* Came back from a built preview: it is still saved on this phone — go on to it instead of building a second time. */}
+        {card && (
+          <button type="button" onClick={() => { setState("preview"); toTop(); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
+            <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
+          </button>
+        )}
         <p className="text-sm text-muted">{T("Your details are saved. Tap once and we make your website and digital card.", "आपकी जानकारी save हो गई। एक बार दबाइए, हम आपकी website और digital card बना देंगे।")}</p>
         {setup && (
           <section className="rounded-2xl border border-border bg-surface p-3.5">
@@ -1460,7 +1565,8 @@ export default function BuildCard() {
                   <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${r.v ? "bg-good/15 text-good" : "bg-amber/15 text-amber"}`}>{r.v ? "✓" : "!"}</span>
                   <span className="w-20 shrink-0 text-muted">{r.l}</span>
                   <span className="min-w-0 flex-1 truncate font-medium">{r.v || T("Not filled", "भरा नहीं")}</span>
-                  <Link href={`/poster/onboard?step=${r.step}`} className="shrink-0 text-xs font-semibold text-brand-ink underline">{r.v ? T("Change", "बदलें") : T("Add", "भरें")}</Link>
+                  {/* ?back= : that one screen, Save, and straight back to Make — not the whole walk again (onboard's focused-edit mode). */}
+                  <Link href={`/poster/onboard?step=${r.step}&back=${encodeURIComponent("/poster/card/build?make=1")}`} onClick={() => setEditMark(true)} className="shrink-0 text-xs font-semibold text-brand-ink underline">{r.v ? T("Change", "बदलें") : T("Add", "भरें")}</Link>
                 </li>
               ))}
             </ul>
@@ -1509,9 +1615,9 @@ export default function BuildCard() {
 
   return (
     <div className="space-y-4 py-2">
-      <ProfileSteps current="make" category={setup?.category} />
+      <ProfileSteps current="make" category={setup?.category} onBack={backFromForm} />
       <div className="flex items-center gap-2">
-        <button type="button" onClick={() => router.push("/poster/onboard?step=about")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={backFromForm} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="min-w-0 flex-1 text-xl font-bold">{T("How should your website look?", "Website की पसंद")}</h1>
       </div>
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
@@ -1617,7 +1723,7 @@ export default function BuildCard() {
 
 
       {err && <p className="text-sm text-danger">{err}</p>}
-      <button type="button" id="make" onClick={async () => { await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+      <button type="button" id="make" onClick={async () => { await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); cameFromForm.current = true; setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
         <Check className="h-5 w-5" /> {T("Save and continue →", "Save करके आगे बढ़ें →")}
       </button>
       <p className="text-center text-xs text-muted">{T("Next: choose Free or Premium, then make it.", "आगे: Free या Premium चुनें, फिर बनाएँ।")}</p>

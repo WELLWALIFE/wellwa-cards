@@ -10,6 +10,8 @@ import { CrmInbox } from "@/components/crm/crm";
 import WhatsappPage from "@/app/(dashboard)/whatsapp/page";
 import { isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { canGoBackInApp } from "@/lib/nav-back";
+import { BackPill } from "@/components/poster/back-bar";
 import LearnPage from "@/app/poster/learn/page";
 import { Guide } from "@/components/poster/guide";
 import { Bookings } from "@/components/poster/bookings";
@@ -29,10 +31,16 @@ function LeadsTab() {
   // query changes on an already open page (seen live, 2 Oct 2026: ?tab=wa showed the CRM).
   const wantedTab = useSearchParams().get("tab");
   useEffect(() => { if (wantedTab === "wa" || wantedTab === "learn" || wantedTab === "leads" || wantedTab === "bookings" || wantedTab === "phone") setTab(wantedTab); }, [wantedTab]);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.push("/login?next=/poster/leads"); return; } setReady(true); })(); }, [router]);
+  // Leads is a bottom tab, so it has no Back row. But Connections → WhatsApp opens it at ?tab=wa from another screen: then Back must be there
+  // (the phone app has no browser Back). The bottom Leads tab opens it with no ?tab=, and a push-notification link opens it fresh (no earlier screen): no Back row.
+  const [cameFrom, setCameFrom] = useState(false);
+  useEffect(() => { setCameFrom(!!wantedTab && canGoBackInApp()); }, [wantedTab]);
+  // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/leads${window.location.search}`)}`); return; } setReady(true); })(); }, [router]);
   if (!ready) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
     <div className="space-y-3">
+      {cameFrom && <BackPill fallback="/poster/connect" className="-ml-1" />}
       <div className="inline-flex rounded-full border border-border bg-surface p-0.5 text-sm font-semibold">
         {(["leads", "bookings", "phone", "wa", "learn"] as const).map((k) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "leads" ? (t.tabMore === "मेरा" ? "ग्राहक" : "Customers") : k === "bookings" ? (t.tabMore === "मेरा" ? "बुकिंग" : "Bookings") : k === "phone" ? (t.tabMore === "मेरा" ? "फ़ोन" : "Phone") : k === "wa" ? t.waTab : (t.tabMore === "मेरा" ? "Bot सिखाएँ" : "Teach bot")}</button>

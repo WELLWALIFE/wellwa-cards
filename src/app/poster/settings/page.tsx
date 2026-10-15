@@ -57,7 +57,8 @@ export default function SettingsPage() {
 
   useEffect(() => {
     (async () => {
-      if (!(await isLoggedIn())) { router.push("/login?next=/poster/settings"); return; }
+      // replace, not push: Back from the login screen must not land here and bounce straight back to it.
+      if (!(await isLoggedIn())) { router.replace("/login?next=/poster/settings"); return; }
       const sb = getBrowserSupabase();
       const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };
       const md = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
@@ -82,7 +83,8 @@ export default function SettingsPage() {
     // One logout: the app session and the Business section's (partner panel) session on this browser.
     try { await getBrowserSupabase()?.auth.signOut(); } catch { /* already out */ }
     await endPartnerSession();
-    router.push("/login");
+    // replace: after logging out, Back must not return into the signed-in Me screen.
+    router.replace("/login");
   }
 
   // One link to share. With a card: the card (its last button brings people in under this account).
