@@ -109,6 +109,7 @@ export default function ProductsPage() {
   function newDraft(keep?: Pick<Draft, "category" | "brand">) { setNewSeq((n) => n + 1); setDraft({ ...EMPTY, ...keep }); }
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
   const draftKeyRef = useRef("");
+  useEffect(() => { setPhotoErr(""); }, [draftKey]);   // a photo message belongs to the product it was shown for
   useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);
   /** What a failed call to a picture or AI route says. The server's text is English: in Hindi the line for its `code` is used (else for
    *  its status). `what` only changes the "already running" line. A gateway that gives up sends no JSON, so there is no text then. */
@@ -160,6 +161,8 @@ export default function ProductsPage() {
   const [checking, setChecking] = useState<Product | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  /** A photo button's own error: shown right under the photo buttons (the page error sits far below, by Save — owner, 15 Oct 2026: "error saath me hi dikhana chahiye"). */
+  const [photoErr, setPhotoErr] = useState("");
   // Step 3 of the profile (owner's flow, 2 Oct 2026): with the products, what makes you special, who buys, the
   // offer and your work in your words — saved to the card facts on "Continue".
   const [facts, setFacts] = useState<CardFacts | null>(null);
@@ -311,14 +314,14 @@ export default function ProductsPage() {
     }
   }
   async function pick(file: File | null) {
-    if (!file || !draft) return; if (draft.photos.length >= 6) { setErr("Up to 6 photos."); return; }
+    if (!file || !draft) return; if (draft.photos.length >= 6) { setPhotoErr(en ? "Up to 6 photos." : "ज़्यादा से ज़्यादा 6 photos।"); return; }
     const forKey = draftKey;
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setPhotoErr("");
     try {
       const small = await compressToFile(file, "product.jpg");
       const u = await uploadImage(small, "product");
       if (draftKeyRef.current !== forKey) return;   // this product was closed (or another opened) while the photo went up: it must not land on another one
-      if (!u) { setErr("Could not upload the photo. Please try again."); return; }
+      if (!u) { setPhotoErr(en ? "Could not upload the photo. Please try again." : "Photo upload नहीं हुई। दोबारा try करें।"); return; }
       // Added to the product AS IT IS NOW (not as it was when the photo was chosen): what was typed meanwhile, and a photo that arrived meanwhile, stay.
       setDraft((d) => {
         if (!d || d.photos.length >= 6) return d;
@@ -326,7 +329,7 @@ export default function ProductsPage() {
         return { ...d, photo_url: d.photo_url ?? u, photos: [...d.photos, { url: u, view, role: "identity" }] };
       });
     } catch {
-      setErr("Could not upload the photo. Please try again.");
+      setPhotoErr(en ? "Could not upload the photo. Please try again." : "Photo upload नहीं हुई। दोबारा try करें।");
     } finally {
       setBusy(false);
     }
@@ -334,17 +337,21 @@ export default function ProductsPage() {
   /** A clean, recent stock photo chosen by the product's name — 1 credit (the popup opens when there are none). */
   async function findMatch(mode: "stock" | "ai" = "stock") {
     if (!draft) return;
-    if (!draft.name.trim()) { setErr(en ? "Write the product name first." : "पहले product का नाम लिखें।"); return; }
+    if (!draft.name.trim()) {
+      setPhotoErr(en ? "Write the product name first — the picture is found by the name." : "पहले product का नाम लिखें — picture नाम से ढूँढी जाती है।");
+      document.getElementById("product-name")?.focus();
+      return;
+    }
     const forKey = draftKey;
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setPhotoErr("");
     try {
       const r = await api<{ url?: string; error?: string; code?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name, mode } });
       if (r.status === 402) { setPay(true); return; }
       if (draftKeyRef.current !== forKey) return;   // the owner moved to another product meanwhile: the picture must not land on that one
-      if (!r.ok || !r.data.url) { setErr(replyText(r.status, r.data.code, r.data.error, "find")); return; }
+      if (!r.ok || !r.data.url) { setPhotoErr(replyText(r.status, r.data.code, r.data.error, "find")); return; }
       const u = r.data.url;
       setDraft((d) => (d ? { ...d, photo_url: u, photos: [{ url: u, view: "front" as PhotoView, role: "identity" as const }, ...d.photos.filter((x) => x.view !== "front")].slice(0, 6) } : d));
-    } catch { setErr(t.error); } finally { setBusy(false); }
+    } catch { setPhotoErr(t.error); } finally { setBusy(false); }
   }
   async function fillWithAi() {
     if (!draft) return;
@@ -569,6 +576,7 @@ export default function ProductsPage() {
                 <button type="button" onClick={() => void findMatch("ai")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" /> {en ? "Make by AI · 1 credit" : "AI से बनाएँ · 1 credit"}</button>
               </div>
               <p className="text-[11px] text-muted">{en ? "Best size: 1200 × 1500 px (tall) or 1200 × 1200 px (square). Any photo works — we fit it. Keep the product in the middle." : "सही size: 1200 × 1500 px (लंबी) या 1200 × 1200 px (चौकोर)। कोई भी photo चलेगी — हम फ़िट कर देंगे। Product बीच में रखें।"}</p>
+              {photoErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
               {draft.photo_url && (
                 <div className="space-y-1">
                   <button type="button" onClick={studioPhoto} disabled={studio.busy || busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand bg-brand-soft px-2.5 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
@@ -583,7 +591,7 @@ export default function ProductsPage() {
           </div>
           <label className="block space-y-1">
             <span className="block text-xs font-semibold">{C("Name", "नाम")} <span className="text-danger">*</span></span>
-            <input className={inp} placeholder={C(copy.name, copy.nameHi)} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+            <input id="product-name" className={inp} placeholder={C(copy.name, copy.nameHi)} value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
           </label>
           {/* Two prices: the offer price (what the customer pays) and, if there is a discount, the MRP. */}
           <div className={`grid gap-2 ${copy.mrp ? "grid-cols-2" : "grid-cols-1"}`}>
