@@ -7,7 +7,7 @@ import { ChevronRight, Handshake } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
-type Partner = { code: string; status: "red" | "green"; team: number; teamToday?: number; walletPaise: number; renewalsDue: number };
+type Partner = { code: string; status: "red" | "green"; team: number; teamToday?: number; walletPaise: number | null; renewalsDue: number };
 type Account = { username: string | null; partner: Partner | null };
 
 export function BusinessStrip() {

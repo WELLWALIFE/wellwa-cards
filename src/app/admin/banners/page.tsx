@@ -27,7 +27,6 @@ export default function BannersAdmin() {
   const [today, setToday] = useState("");
   const [busy, setBusy] = useState<string>("");
   const [msg, setMsg] = useState<{ date: string; text: string; ok: boolean } | null>(null);
-  const [bust, setBust] = useState(0);
 
   const load = useCallback(async () => {
     const r = await fetch("/api/admin/banners", { headers: await adminHeaders(), cache: "no-store" });
@@ -41,7 +40,6 @@ export default function BannersAdmin() {
     const j = await r.json().catch(() => ({}));
     setBusy("");
     setMsg({ date, ok: !!j.ok, text: j.ok ? "Generated." : (j.error || "Failed.") });
-    setBust(Date.now());
     load();
   }
 
@@ -65,8 +63,9 @@ export default function BannersAdmin() {
           <div key={d.date} className="rounded-2xl border border-border bg-surface overflow-hidden">
             <div className="aspect-video bg-surface2 grid place-items-center">
               {d.banner ? (
+                // The made-at time is the cache-buster: a regenerated banner has a new time, so the new picture shows (also after a reload).
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={`${d.banner}?t=${bust}`} alt={d.occasion?.title} className="w-full h-full object-cover" />
+                <img src={`${d.banner}?t=${encodeURIComponent(d.generatedAt ?? "")}`} alt={d.occasion?.title} className="w-full h-full object-cover" />
               ) : (
                 <span className="text-xs text-faint">Not generated yet</span>
               )}

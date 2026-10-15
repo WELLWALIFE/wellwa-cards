@@ -7,7 +7,7 @@
 import { useEffect } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { endPartnerSession } from "@/lib/logout";
-import { dropStaleLocal, PER_ACCOUNT_KEYS as PER_ACCOUNT } from "@/lib/local-reset";
+import { dropStaleLocal, onLocalReset, PER_ACCOUNT_KEYS as PER_ACCOUNT } from "@/lib/local-reset";
 
 const LAST_USER = "shubhora.uid";
 
@@ -33,7 +33,12 @@ export function AccountGuard() {
     // asks the server, because the session kept here does not learn of an admin's change on its own.
     sb.auth.getUser().then(({ data }) => dropStaleLocal(data.user)).catch(() => undefined);
     const { data } = sb.auth.onAuthStateChange((_e, s) => { switched(s?.user.id ?? null); dropStaleLocal(s?.user); });
-    return () => data.subscription.unsubscribe();
+    // "Reset demo" was pressed in ANOTHER tab of this phone: whatever this tab shows (and any draft it is about to write) belongs to the
+    // account as it was before. It opens again on the fresh one; there its own copies are dropped by dropStaleLocal above. The tab that
+    // pressed the button opens the welcome page itself. (The set-up screen also hears this, to stop writing its draft first.)
+    let reloading = false;
+    const unReset = onLocalReset((ownTab) => { if (ownTab || reloading) return; reloading = true; window.location.reload(); });
+    return () => { data.subscription.unsubscribe(); unReset(); };
   }, []);
   return null;
 }

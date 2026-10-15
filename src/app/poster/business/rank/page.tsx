@@ -21,7 +21,7 @@ export default function RankPage() {
   return (
     <BizShell title="Rank">
       <BizState loading={loading} error={error} onRetry={reload}>
-        {data?.disabled && <p className={`${CARD} text-center text-sm text-muted`}>{en ? "Ranks are not switched on right now." : "Ranks अभी चालू नहीं हैं।"}</p>}
+        {data?.disabled && <p className={`${CARD} text-center text-sm text-muted`}>{en ? "This page is not open right now." : "यह page अभी बंद है।"}</p>}
         {data && !data.disabled && (() => {
           const nx = data.next;
           const pct = nx ? Math.min(100, Math.round((Math.min(data.pairs, nx.renewalPairs) / Math.max(1, nx.renewalPairs)) * 100)) : 100;

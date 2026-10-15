@@ -30,7 +30,7 @@ export default function AppPage() {
               <div className="rounded-xl border border-border bg-surface p-4"><Zap className="h-5 w-5 text-brand" /><p className="mt-2 font-semibold">One tap</p><p className="mt-1 text-muted">No download, no “unknown apps” warning.</p></div>
               <div className="rounded-xl border border-border bg-surface p-4"><RefreshCw className="h-5 w-5 text-brand" /><p className="mt-2 font-semibold">Always latest</p><p className="mt-1 text-muted">Updates by itself — never install again.</p></div>
               <div className="rounded-xl border border-border bg-surface p-4"><Bell className="h-5 w-5 text-brand" /><p className="mt-2 font-semibold">Lead alerts</p><p className="mt-1 text-muted">A notification when a customer reaches out.</p></div>
-              <div className="rounded-xl border border-border bg-surface p-4"><ShieldCheck className="h-5 w-5 text-brand" /><p className="mt-2 font-semibold">Same account</p><p className="mt-1 text-muted">Card, posters, CRM and the User Panel.</p></div>
+              <div className="rounded-xl border border-border bg-surface p-4"><ShieldCheck className="h-5 w-5 text-brand" /><p className="mt-2 font-semibold">Same account</p><p className="mt-1 text-muted">Card, posters, your customers and Business.</p></div>
             </div>
           </div>
           <div className="rounded-3xl border border-border bg-surface p-6 shadow-card">

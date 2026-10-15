@@ -25,8 +25,9 @@ function failLine(raw: string | null | undefined): string {
   return `Something went wrong. ${MONEY_BACK}`;
 }
 type MyProduct = { id: string; name: string; photo_url: string | null; category?: string; photos?: { url: string; role?: string }[] };
-const TYPES = [["tip", "Tip / fact", "Useful tip people save and share"], ["benefit", "Benefit", "One clear benefit of what you sell"], ["offer", "Offer", "Your offer, with urgency"], ["review", "Customer story", "A happy-customer story"], ["festival", "Festival", "Greeting that connects to your business"], ["story", "Story", "A short relatable story"]] as const;
+const TYPES = [["tip", "Tip / fact", "A useful tip people like to save and share"], ["benefit", "Why it is good", "One clear reason to buy what you sell"], ["offer", "Offer", "Your offer, and why to buy today"], ["review", "Customer story", "A happy-customer story"], ["festival", "Festival", "A festival wish that mentions your business"], ["story", "Story", "A short story from daily life"]] as const;
 const MUSIC = ["", "calm-ambient", "upbeat-corporate", "inspiring-motivational", "energetic-promo", "indian-sitar", "festive-diwali"];
+const MUSIC_NAMES: Record<string, string> = { "calm-ambient": "Calm", "upbeat-corporate": "Lively", "inspiring-motivational": "Inspiring", "energetic-promo": "Full of energy", "indian-sitar": "Indian sitar", "festive-diwali": "Festive" };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 // A dropped mobile connection makes fetch() REJECT. Without this catch the await below
 // never returns, setBusy("") never runs, and the button spins for ever on the one screen
@@ -63,14 +64,14 @@ export default function ReelMaker() {
   useEffect(() => { if (!jobs.some((j) => j.status === "queued" || j.status === "running")) return; const t = setInterval(refresh, 5000); return () => clearInterval(t); }, [jobs]);
 
   function pickProduct(id: string) { const p = products.find((x) => x.id === id); setF((x) => ({ ...x, product_id: id, business: p?.name ?? x.business, category: p?.category || x.category })); if (p) setGallery((g) => [...new Set([...(p.photos ?? []).filter((x) => x.role !== "context").map((x) => x.url), ...(p.photo_url ? [p.photo_url] : []), ...g])].slice(0, 8)); }
-  async function addImage(file: File | null) { if (!file) return; setBusy("img"); const u = await uploadImage(await compressToFile(file, "reel.jpg"), "product"); setBusy(""); if (u) setGallery((g) => [u, ...g].slice(0, 8)); else setErr("Upload failed."); }
+  async function addImage(file: File | null) { if (!file) return; setBusy("img"); const u = await uploadImage(await compressToFile(file, "reel.jpg"), "product"); setBusy(""); if (u) setGallery((g) => [u, ...g].slice(0, 8)); else setErr("Could not add the photo. Please try again."); }
   /** Scenes that will certainly be AI-generated (1 credit each) — the floor of what a create costs. */
   const aiScenes = () => (plan?.scenes ?? []).filter((x) => !x.image && x.source === "ai").length || 1;
   async function makePlan() {
     setBusy("plan"); setErr("");
     try {
       const r = await post({ action: "plan", ...f });
-      if (!r.ok) { setErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not write the script.")); return; }
+      if (!r.ok) { setErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not write the words. Please try again.")); return; }
       setPlan(r.data.plan as Plan);
     } finally { setBusy(""); }
   }
@@ -80,7 +81,7 @@ export default function ReelMaker() {
     try {
       const r = await post({ action: "create", ...f, title: plan.title, scenes: plan.scenes, cta: plan.cta, caption: plan.caption });
       if (!r.ok) {
-        setErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not start."));
+        setErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not start. Please try again."));
         // 402 must never be a dead end: show the packs right here, like the Video ad screen.
         if (r.status === 402) setNeedCredits(Math.max(1, Number(r.data.cost) || aiScenes()));
         return;
@@ -95,7 +96,7 @@ export default function ReelMaker() {
   function editJob(j: Job) {
     const inp = j.input ?? {};
     const scenes = (inp.scenes ?? []).map((x) => ({ text: x.text ?? "", caption_text: x.caption_text ?? "", search: x.search ?? "", image: x.image ?? "", search_alt: x.search_alt, text_en: x.text_en, ai_prompt: x.ai_prompt, source: x.source ?? (x.image ? "image" : "auto") }));
-    if (!scenes.length) { setRowMsg((m) => ({ ...m, [j.id]: "This reel's script is not on file — write a new one above." })); return; }
+    if (!scenes.length) { setRowMsg((m) => ({ ...m, [j.id]: "We do not have this reel's words saved. Please write a new reel above." })); return; }
     setF((x) => ({ ...x, business: inp.product || x.business, topic: inp.topic ?? x.topic, lang: inp.lang || x.lang, length: Number(inp.length) || x.length, voiceStyle: inp.voiceStyle || x.voiceStyle, music: inp.music ?? x.music }));
     setGallery((g) => [...new Set([...scenes.map((s) => s.image).filter(Boolean), ...g])].slice(0, 8));
     setPlan({ title: inp.product || "Reel", scenes, cta: inp.cta ?? "", caption: inp.caption ?? "" });
@@ -142,16 +143,16 @@ export default function ReelMaker() {
   const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-xs ${on ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`;
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2"><Link href="/poster/videos" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link><h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Reel Maker</h1>{credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}<span className="rounded-full bg-good/10 px-2.5 py-1 text-xs font-semibold text-good">Free with stock clips</span></div>
+      <div className="flex items-center gap-2"><Link href="/poster/videos" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link><h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Reel Maker</h1>{credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}<span className="rounded-full bg-good/10 px-2.5 py-1 text-xs font-semibold text-good">Free with ready-made clips</span></div>
       <VideoSteps step={plan ? 3 : 2} hi={false} note={plan ? "scenes, pictures, voice & music — then Make" : "what the reel is about"} />
-      <p className="text-xs text-muted">Real stock video clips, your own photos, or AI-made scenes with Indian people (1 credit each) + AI voice, captions and music. Perfect for daily Reels and Stories. Want your product shown in AI-made scenes? Use <Link href="/poster/video" className="underline">Video ad</Link>.</p>
+      <p className="text-xs text-muted">Ready-made video clips, your own photos, or AI scenes with Indian people (1 credit each). It adds an AI voice, words on screen and music. Good for daily Reels and Stories. Want your own product shown in AI scenes? Use <Link href="/poster/video" className="underline">Video ad</Link>.</p>
 
       {!plan && (
         <div className="space-y-3 rounded-xl border border-border p-3">
           <div><p className="mb-1 text-xs font-semibold text-muted">What kind of reel?</p><div className="grid grid-cols-2 gap-2">{TYPES.map(([k, l, d]) => <button key={k} type="button" aria-label={l} onClick={() => setF({ ...f, type: k })} className={`rounded-xl border-2 p-2 text-left ${f.type === k ? "border-brand bg-brand-soft" : "border-border"}`}><span className="block text-sm font-semibold">{l}</span><span className="block text-[11px] leading-tight text-muted">{d}</span></button>)}</div></div>
           {products.length > 0 && <select value={f.product_id} onChange={(e) => pickProduct(e.target.value)} className={inp}><option value="">About my business in general</option>{products.map((p) => <option key={p.id} value={p.id}>About: {p.name}</option>)}</select>}
           <input className={inp} placeholder="Business or product name" value={f.business} onChange={(e) => setF({ ...f, business: e.target.value })} />
-          <textarea className={inp} rows={2} placeholder="Topic (optional) — e.g. 5 signs you are not drinking enough water" value={f.topic} onChange={(e) => setF({ ...f, topic: e.target.value })} />
+          <textarea className={inp} rows={2} placeholder="What is it about? (optional) — e.g. 5 signs you are not drinking enough water" value={f.topic} onChange={(e) => setF({ ...f, topic: e.target.value })} />
           {f.type === "offer" && <input className={inp} placeholder="Your offer, exactly as it should be said" value={f.offer} onChange={(e) => setF({ ...f, offer: e.target.value })} />}
           <div><p className="mb-1 text-xs font-semibold text-muted">Language</p><div className="flex flex-wrap gap-1.5">{LANGS.map((l) => <button key={l.key} type="button" onClick={() => setF({ ...f, lang: l.key })} className={chip(f.lang === l.key)}>{l.label}</button>)}</div></div>
           <div className="flex flex-wrap items-center gap-1.5"><span className="text-xs font-semibold text-muted">Length</span>{[10, 15, 20, 30].map((s) => <button key={s} type="button" onClick={() => setF({ ...f, length: s })} className={chip(f.length === s)}>{s} s</button>)}</div>
@@ -164,8 +165,8 @@ export default function ReelMaker() {
         <div className="space-y-3 rounded-xl border border-border p-3">
           <input className={`${inp} font-semibold`} value={plan.title} onChange={(e) => setPlan({ ...plan, title: e.target.value })} />
           <div>
-            <p className="mb-2 rounded-lg bg-surface2 p-2 text-[11px] text-muted"><b>Auto</b> looks for a fitting royalty-free clip for every scene. If all scenes get one, the reel is free. If not, all open scenes become AI scenes (1 credit each) so the reel keeps one look. Unused credits are returned.</p>
-            <p className="mb-1 text-xs font-semibold text-muted">Your images (optional) — tap one under a scene to use it instead of a stock clip</p>
+            <p className="mb-2 rounded-lg bg-surface2 p-2 text-[11px] text-muted"><b>Auto</b> looks for a free clip that fits each scene. If every scene gets one, the reel is free. If not, the open scenes are made by AI (1 credit each), so the whole reel looks the same. Credits we do not use are returned.</p>
+            <p className="mb-1 text-xs font-semibold text-muted">Your photos (optional) — tap one under a scene to use it instead of a ready-made clip</p>
             <div className="flex gap-2 overflow-x-auto pb-1">
               <label className="grid h-16 w-16 shrink-0 cursor-pointer place-items-center rounded-lg border border-dashed border-border bg-surface2">{busy === "img" ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" /> : <ImagePlus className="h-5 w-5 text-muted" />}<input type="file" accept="image/*" className="hidden" onChange={(e) => addImage(e.target.files?.[0] ?? null)} /></label>
               {gallery.map((u) => /* eslint-disable-next-line @next/next/no-img-element */ <img key={u} src={u} alt="" className="h-16 w-16 shrink-0 rounded-lg border border-border object-cover" />)}
@@ -175,25 +176,25 @@ export default function ReelMaker() {
             <div key={i} className="space-y-1.5 rounded-xl border border-border p-2.5">
               <p className="text-xs font-semibold text-muted">Scene {i + 1}</p>
               <textarea className={inp} rows={2} value={s.text} onChange={(e) => setScene(i, { text: e.target.value })} />
-              <input className={inp} value={s.caption_text} placeholder="On-screen keyword (2-5 words)" onChange={(e) => setScene(i, { caption_text: e.target.value })} />
+              <input className={inp} value={s.caption_text} placeholder="Words to show on screen (2 to 5 words)" onChange={(e) => setScene(i, { caption_text: e.target.value })} />
               <div className="flex items-center gap-1.5 overflow-x-auto">
                 <button type="button" onClick={() => setScene(i, { image: "", source: "auto" })} className={chip(!s.image && (s.source ?? "auto") === "auto")}>⚡ Auto (best)</button>
-                <button type="button" onClick={() => setScene(i, { image: "", source: "stock" })} className={chip(!s.image && s.source === "stock")}>🎞 Stock clip</button>
+                <button type="button" onClick={() => setScene(i, { image: "", source: "stock" })} className={chip(!s.image && s.source === "stock")}>🎞 Ready-made clip</button>
                 <button type="button" onClick={() => setScene(i, { image: "", source: "ai" })} className={chip(!s.image && s.source === "ai")}>✨ AI scene · 1 credit</button>
                 {gallery.map((u) => <button key={u} type="button" onClick={() => setScene(i, { image: u, source: "image" })} className={`h-10 w-10 shrink-0 overflow-hidden rounded-md border-2 ${s.image === u ? "border-brand" : "border-transparent"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={u} alt="" className="h-full w-full object-cover" /></button>)}
               </div>
               {!s.image && s.source === "ai" && <textarea className={`${inp} text-xs`} rows={2} value={s.ai_prompt ?? ""} placeholder="Describe the picture in English, e.g. an Indian mother giving her daughter a glass of water at the breakfast table" onChange={(e) => setScene(i, { ai_prompt: e.target.value })} />}
-              {!s.image && s.source !== "ai" && <input className={`${inp} text-xs`} value={s.search} placeholder="Stock video search (English), e.g. woman drinking water" onChange={(e) => setScene(i, { search: e.target.value })} />}
+              {!s.image && s.source !== "ai" && <input className={`${inp} text-xs`} value={s.search} placeholder="Words to find a clip (English), e.g. woman drinking water" onChange={(e) => setScene(i, { search: e.target.value })} />}
             </div>
           ))}
           <label className="block"><span className="text-xs font-semibold text-muted">Closing line</span><input className={inp} value={plan.cta} onChange={(e) => setPlan({ ...plan, cta: e.target.value })} /></label>
           <div className="grid grid-cols-2 gap-2">
             <label className="block"><span className="text-xs font-semibold text-muted">Voice</span><select className={inp} value={f.voiceStyle} onChange={(e) => setF({ ...f, voiceStyle: e.target.value })}><option value="warmf">Female · warm</option><option value="warm">Male · warm</option><option value="clear">Male · clear</option><option value="youthful">Female · youthful</option></select></label>
-            <label className="block"><span className="text-xs font-semibold text-muted">Music</span><select className={inp} value={f.music} onChange={(e) => setF({ ...f, music: e.target.value })}>{MUSIC.map((m) => <option key={m} value={m}>{m ? m.replace(/-/g, " ") : "No music"}</option>)}</select></label>
+            <label className="block"><span className="text-xs font-semibold text-muted">Music</span><select className={inp} value={f.music} onChange={(e) => setF({ ...f, music: e.target.value })}>{MUSIC.map((m) => <option key={m} value={m}>{m ? MUSIC_NAMES[m] ?? m.replace(/-/g, " ") : "No music"}</option>)}</select></label>
           </div>
           {err && <p className="text-sm text-danger">{err}</p>}
           {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
-          {(() => { const n = plan.scenes.filter((x) => !x.image && x.source === "ai").length; const a = plan.scenes.filter((x) => !x.image && (x.source ?? "auto") === "auto").length; return <CostLine hi={false} cost={n} balance={credits} free={!n && !a} range={n || a ? `${n}${a ? `–${n + a}` : ""} credits (AI scenes only — stock clips are free)` : undefined} />; })()}
+          {(() => { const n = plan.scenes.filter((x) => !x.image && x.source === "ai").length; const a = plan.scenes.filter((x) => !x.image && (x.source ?? "auto") === "auto").length; return <CostLine hi={false} cost={n} balance={credits} free={!n && !a} range={n || a ? `${n}${a ? `–${n + a}` : ""} credits (only AI scenes cost credits — ready-made clips are free)` : undefined} />; })()}
           <div className="flex gap-2"><button type="button" onClick={() => setPlan(null)} className="rounded-xl border border-border px-4 py-3 text-sm">Back</button><button type="button" onClick={create} disabled={busy === "create"} className="grad-brand inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-3 text-base font-semibold text-white disabled:opacity-60">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {(() => { const n = plan.scenes.filter((x) => !x.image && x.source === "ai").length; const a = plan.scenes.filter((x) => !x.image && (x.source ?? "auto") === "auto").length; return n || a ? `Make my reel · ${n}${a ? `–${n + a}` : ""} credits` : "Make my reel (free)"; })()}</button></div>
         </div>
       )}

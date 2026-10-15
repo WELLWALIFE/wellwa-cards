@@ -38,7 +38,7 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
       if (o.error === "sign in required") { router.push(`/signup?next=/pricing&plan=${tier}`); return; }
       if (o.error) throw new Error(o.error);
       if (o.already) { finished(`You are on ${plan.label}.`); return; }
-      if (o.demo) { setState("error"); setMsg("Payments are not live on this environment."); return; }
+      if (o.demo) { setState("error"); setMsg("Payment is not switched on yet."); return; }
       if (!(await loadScript("https://checkout.razorpay.com/v1/checkout.js")) || !window.Razorpay) { setState("error"); setMsg("Could not load the payment page."); return; }
       new window.Razorpay({
         prefill: payPrefill(), key: o.keyId, name: BRAND, theme: { color: "#0e9e90" },
@@ -48,12 +48,12 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
         handler: async (resp: any) => {
           const v = await post(autopay ? "/api/billing/autopay/verify" : "/api/billing/verify", resp);
           if (v.ok) finished(`You are on ${plan.label}.`);
-          else { setState("error"); setMsg("We could not confirm the payment. If money was deducted, contact support with the payment id."); }
+          else { setState("error"); setMsg("We could not confirm your payment. If money was taken from your account, please tell support and share the payment id."); }
         },
         modal: { ondismiss: () => setState("idle") },
       }).open();
       setState("idle");
-    } catch (e) { setState("error"); setMsg(e instanceof Error ? e.message : "Something went wrong."); }
+    } catch (e) { setState("error"); setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again."); }
   }
 
   // Partners pay here too: every debit is reported to the partner panel, so it counts for the team.

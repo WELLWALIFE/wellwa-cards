@@ -20,16 +20,16 @@ type Res = {
 };
 const INCLUDED: Record<SaasTier, string[]> = {
   // Starter stands on its own list (no posters, social or AI pictures); Growth and Pro add theirs to COMMON.
-  starter: ["AI salesman on the website: answers, suggests, takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders", "Automatic follow-ups on every enquiry", "Festival wishes and offers to your customers", "Google review request after every sale", "Monday report", "Edit by saying it; no Shubhora tag"],
+  starter: ["AI salesman on your website: it answers questions, suggests items, and takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders", "Follow-up messages go out by themselves for every enquiry", "Festival wishes and offers to your customers", "A message asking for a Google review after every sale", "A report every Monday", "Change your website just by saying what you want; no Shubhora tag"],
   // No repeats of the common lines below (the list said "website" and "daily poster" twice).
-  growth: ["1 business profile", "WhatsApp AI replies — fair use up to 1,000 a month", "8 free ad storyboards a month"],
-  pro: ["3 business profiles or brands", "10,000 AI replies a month", "5 CRM team members", "Priority rendering and support"],
+  growth: ["1 business profile", "WhatsApp AI replies — up to 1,000 a month (fair use)", "8 free ad storyboards a month (scene pictures you check before the video is made)"],
+  pro: ["3 business profiles or brands", "10,000 AI replies a month", "5 team members who can use your customer list", "Your videos and pictures are made first, and you get help first"],
 };
 const COMMON = [
-  "Digital card + full website on your own domain",
-  "Daily poster + status video, auto-posted to WhatsApp Status",
+  "Digital card + full website on your own web address",
+  "Daily poster + Status video, posted to WhatsApp Status for you",
   "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram",
-  "WhatsApp AI assistant + lead CRM",
+  "WhatsApp AI assistant + a list of all your customers",
   "Google Business posts and review replies",
   "AI Ad Studio and Reel Maker",
 ];
@@ -45,7 +45,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
       <div id="vcard" className="rounded-2xl border border-good/40 bg-good/5 p-4">
         <p className="text-xs font-semibold uppercase tracking-wide text-muted">Digital V-Card</p>
         <p className="mt-0.5 flex items-center gap-1.5 font-bold"><Check className="h-4 w-4 text-good" /> Included in {planLabel ?? "your plan"}</p>
-        <p className="mt-0.5 text-xs text-muted">No separate V-Card charge while your plan is active.</p>
+        <p className="mt-0.5 text-xs text-muted">No extra V-Card charge while your plan is running.</p>
       </div>
     );
   }
@@ -53,9 +53,9 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
     return (
       <div id="vcard" className={`rounded-2xl border-2 border-danger/50 bg-danger/5 p-4 ${highlight ? "ring-2 ring-danger/40" : ""}`}>
         <p className="text-xs font-semibold uppercase tracking-wide text-danger">Digital V-Card · paused</p>
-        <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. Visitors now see “Card renew karein” on your link. Renew and it comes back at once — all your details, photos and leads are safe.</p>
+        <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. People who open your link now see “Card renew karein”. Renew and it comes back right away. Your details, photos and customers are safe.</p>
         {renewBtn}
-        <p className="mt-1.5 text-[11px] text-faint">{price} incl. GST · or choose Growth below — the V-Card is included in it.</p>
+        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Growth below, which includes the V-Card.</p>
       </div>
     );
   }
@@ -63,9 +63,9 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
     return (
       <div id="vcard" className={`rounded-2xl border-2 border-amber/50 bg-amber/10 p-4 ${highlight ? "ring-2 ring-amber/40" : ""}`}>
         <p className="text-xs font-semibold uppercase tracking-wide text-amber">Digital V-Card · renew now</p>
-        <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. It keeps working till {d(card.pause_on)}; after that your link shows “Card renew karein” until you renew.</p>
+        <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. It keeps working till {d(card.pause_on)}. After that your link shows “Card renew karein” until you renew.</p>
         {renewBtn}
-        <p className="mt-1.5 text-[11px] text-faint">{price} incl. GST · or choose Growth below — the V-Card is included in it.</p>
+        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Growth below, which includes the V-Card.</p>
       </div>
     );
   }
@@ -80,7 +80,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
         {card.days_left !== null && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${due ? "bg-amber/10 text-amber" : "bg-good/10 text-good"}`}>{card.days_left} day{card.days_left === 1 ? "" : "s"} left</span>}
       </div>
       {due || highlight ? renewBtn : null}
-      <p className="mt-1.5 text-[11px] text-faint">Then {price} incl. GST · included in Growth.</p>
+      <p className="mt-1.5 text-[11px] text-faint">After that it is {price}, GST included. Growth includes it.</p>
     </div>
   );
 }
@@ -97,7 +97,7 @@ function MyPlan() {
 
   const load = useCallback(async () => {
     const res = await api<Res & { error?: string }>("/api/poster/plan");
-    if (!res.ok) { setErr(res.data.error || "Could not load your plan."); return; }
+    if (!res.ok) { setErr(res.data.error || "We could not open your plan. Please try again."); return; }
     setR(res.data);
     api<{ packs?: { credits: number; paise: number }[] }>("/api/poster/pay/credits").then((x) => { if (x.ok && x.data.packs?.length) setPacks(x.data.packs); }).catch(() => {});
   }, []);
@@ -108,11 +108,11 @@ function MyPlan() {
   if (!r) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const on = r.tier ? SAAS_PLANS[r.tier] : null;
   const banner = r.state === "grace"
-    ? { cls: "border-amber/50 bg-amber/10 text-amber", text: `Your plan ended on ${d(r.expires_at)}. Everything keeps working for a few more days — renew to avoid a break.` }
+    ? { cls: "border-amber/50 bg-amber/10 text-amber", text: `Your plan ended on ${d(r.expires_at)}. Everything still works for a few more days. Renew so that nothing stops.` }
     : r.state === "expired"
-    ? { cls: "border-danger/50 bg-danger/5 text-danger", text: "Your plan has ended. Automatic posting, the WhatsApp assistant and new AI videos are paused. Your card, website and data are safe." }
+    ? { cls: "border-danger/50 bg-danger/5 text-danger", text: "Your plan has ended. Auto-posting, the WhatsApp assistant and new AI videos are paused. Your card, website and data are safe." }
     : r.trial && !r.trial.expired
-    ? { cls: "border-brand/50 bg-brand-soft/40 text-brand-ink", text: `Free trial — ${r.trial.days_left} day${r.trial.days_left === 1 ? "" : "s"} left. Subscribe any time; the trial is not charged.` }
+    ? { cls: "border-brand/50 bg-brand-soft/40 text-brand-ink", text: `Free trial: ${r.trial.days_left} day${r.trial.days_left === 1 ? "" : "s"} left. You can subscribe any time. The trial costs nothing.` }
     : null;
 
   return (
@@ -125,10 +125,10 @@ function MyPlan() {
       </div>
       {welcome && (
         <div className="space-y-2">
-          <p className="text-sm text-muted">Your account is ready. Start free — upgrade any time.</p>
+          <p className="text-sm text-muted">Your account is ready. Start free. You can take a paid plan later.</p>
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2"><p className="font-bold">1. Free</p><p className="text-sm"><span className="mr-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span><b className="text-lg text-good">FREE</b></p></div>
-            <p className="mt-1 text-xs text-muted">Website + digital card on your link · daily poster · leads in the CRM · free for 1 year. Google, AI banner and edits, auto-post, WhatsApp AI and your own domain come with Growth.</p>
+            <p className="mt-1 text-xs text-muted">Website + digital card on your link · daily poster · your customers saved in a list · free for 1 year. Showing on Google, AI banner and changes, auto-posting, WhatsApp AI and your own web address come with Growth.</p>
             <p className="mt-1 text-[11px] font-semibold text-good">{FREE_PLAN_TRUST}</p>
             <p className="mt-0.5 text-[10px] text-faint">{FREE_PLAN_TERM}</p>
             <Link href="/poster/onboard" className="mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink">Start free</Link>
@@ -143,7 +143,7 @@ function MyPlan() {
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-muted">Current plan</p>
               <p className="text-lg font-bold">{on.label}</p>
-              <p className="text-sm text-muted">{rupees(on.amount)} a month · renews {d(r.expires_at)}</p>
+              <p className="text-sm text-muted">{rupees(on.amount)} a month · active till {d(r.expires_at)}</p>
             </div>
             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${r.state === "active" ? "bg-good/10 text-good" : "bg-amber/10 text-amber"}`}>{r.state === "active" ? `${r.days_left} days left` : "Renew now"}</span>
           </div>
@@ -154,9 +154,9 @@ function MyPlan() {
 
       {!welcome && <div className="grid grid-cols-2 gap-2">
         <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.monthly}</p><p className="text-xs text-muted">Bonus credits this month</p></div>
-        <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.packs}</p><p className="text-xs text-muted">Bought credits (never expire)</p></div>
+        <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.packs}</p><p className="text-xs text-muted">Credits you bought (never expire)</p></div>
       </div>}
-      {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)} and do not carry forward. Spending always uses bonus credits first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Video ad →</Link></p>}
+      {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)}. Unused ones do not carry over. Bonus credits are always used first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Video ad →</Link></p>}
 
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
       <div className="space-y-3">
@@ -167,7 +167,7 @@ function MyPlan() {
             <div key={tier} className={`rounded-2xl border p-4 ${current ? "border-good/50 bg-good/5" : tier === "growth" ? "border-brand/60" : "border-border"}`}>
               <div className="flex items-baseline justify-between gap-2">
                 <p className="font-bold">{welcome ? `${i + 2}. ` : ""}{p.label}{tier === "starter" && !current ? <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span> : null}{tier === "growth" && !current ? <span className="ml-2 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most chosen</span> : null}</p>
-                <p className="text-sm"><b className="text-lg">{rupees(p.amount)}</b> <span className="text-muted">/ month incl. GST</span></p>
+                <p className="text-sm"><b className="text-lg">{rupees(p.amount)}</b> <span className="text-muted">/ month, GST included</span></p>
               </div>
               <p className="text-xs text-muted">{p.tagline} · {rupees(p.base)} + {GST_PCT}% GST</p>
               <ul className="mt-2 space-y-1">
@@ -199,7 +199,7 @@ function MyPlan() {
         {/* The price list MUST be the one this owner will be charged, so it comes from the same
             GET /api/poster/pay/credits the Buy box uses (the server decides who counts as a
             subscriber — a trial of the suite does too). Until it answers, the local guess. */}
-        <p className="mt-1 text-xs text-muted">Packs never expire and are used after your bonus credits run out: {(packs ?? packsFor(!!on && r.state !== "expired")).map((c) => `${c.credits} for ${rupees(c.paise)}`).join(" · ")}.</p>
+        <p className="mt-1 text-xs text-muted">Packs never expire. They are used after your bonus credits run out: {(packs ?? packsFor(!!on && r.state !== "expired")).map((c) => `${c.credits} for ${rupees(c.paise)}`).join(" · ")}.</p>
         {/* ?credits=1 opens the packs straight away — the old link landed on step 5 where they only appear if the balance is already too low. */}
         <Link href="/poster/video?credits=1" className="mt-2 inline-flex items-center gap-1.5 rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink"><Sparkles className="h-4 w-4" /> Buy credits</Link>
       </div>
@@ -212,7 +212,7 @@ function MyPlan() {
               <span>{d(p.created_at)}</span><span className="text-muted">{p.plan === "card" ? "V-Card · 1 year" : "Plan"}</span><span className="tabular-nums">{rupees(p.amount)}</span><span className="mono text-faint">{p.provider_ref.slice(-8)}</span>
             </div>
           ))}
-          <p className="mt-2 text-[11px] text-faint">Billed by Wellwa Life India Pvt Ltd. GST invoice on request.</p>
+          <p className="mt-2 text-[11px] text-faint">Billed by Wellwa Life India Pvt Ltd. Ask us for a GST invoice if you need one.</p>
         </div>
       )}
     </div>

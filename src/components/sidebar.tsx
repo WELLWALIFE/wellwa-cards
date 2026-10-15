@@ -24,7 +24,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useEffect } from "react";
 import { usePlan, PLAN_FEATURES, type Feature } from "@/lib/plan";
 import { Lock, Network } from "lucide-react";
-import { PARTNER_PANEL, useAssociate } from "@/lib/associate";
+import { useAssociate } from "@/lib/associate";
 
 const OWNER_EMAILS = ["wellwalife@gmail.com", "licuretech@gmail.com"];
 
@@ -123,12 +123,12 @@ export function Sidebar() {
       </nav>
       <div className="p-3 border-t border-border space-y-2">
         {associate && (
-        <a href={PARTNER_PANEL}
+        <Link href="/poster/business"
           className="flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-semibold text-brand-ink bg-brand-soft hover:opacity-90 transition-opacity">
           <Network className="h-[18px] w-[18px]" />
-          <span className="flex-1">Partner panel</span>
+          <span className="flex-1">Business</span>
           <span className="mono text-[10px]">{associate}</span>
-        </a>
+        </Link>
         )}
         {isPartner && (
         <Link href="/partner"

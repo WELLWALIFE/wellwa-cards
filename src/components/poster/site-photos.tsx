@@ -147,7 +147,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
-      <p className="text-sm text-muted">{T("These are the photos on your website. Change any of them — it goes live as soon as you tap. “Make by AI” makes a new picture for that exact place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदलिए — tap करते ही live हो जाती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
+      <p className="text-sm text-muted">{T("These are the photos on your website. You can change any of them. It shows on your website as soon as you tap. “Make by AI” makes a new picture for that place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदल सकते हैं। tap करते ही website पर दिखने लगती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
       {err && <p className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-semibold text-danger">{err}</p>}
       {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}

@@ -69,7 +69,7 @@ export default function SetupPage() {
 
       <PushSetting />
       <Link href="/poster" className="block text-center rounded-2xl border border-border px-4 py-3.5 text-sm font-semibold">{allDone ? "Go to today's poster" : "Later — go to my home"}</Link>
-      {locked && <UnlockDialog title={locked.title} subscriptionOnly reason={`${locked.sub}. This runs your business on autopilot and is part of the subscription.`} onClose={() => setLocked(null)} />}
+      {locked && <UnlockDialog title={locked.title} subscriptionOnly reason={`${locked.sub}. This does the work for you by itself, and it comes with the subscription.`} onClose={() => setLocked(null)} />}
     </div>
   );
 }

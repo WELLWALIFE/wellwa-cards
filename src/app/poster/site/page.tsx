@@ -135,8 +135,8 @@ export default function WebsitePage() {
 
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
-          <p className="text-sm text-muted">{T("Build your website first — your card comes from it.", "पहले अपनी website बनाएँ — card उसी से बन जाता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Build my website →", "Website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (
         <>
@@ -159,7 +159,7 @@ export default function WebsitePage() {
             <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
               {s.site?.enabled
                 ? <>{T("One link, one set of details. On a computer it opens as your website, on a phone as your card. Edit once — both change.", "एक link, एक ही जानकारी। Computer पर website खुलती है, phone पर card। एक बार edit करो — दोनों बदलेंगे।")}</>
-                : <>{T("Website mode is off: this link opens the card everywhere. Turn it on under Edit → Advanced.", "Website mode बंद है: ये link हर जगह card खोलता है। Edit → Advanced से चालू करें।")}</>}
+                : <>{T("The website is off: this link opens the card everywhere. Turn it on under Edit → Show or hide pages.", "Website बंद है: ये link हर जगह card खोलता है। Edit → Pages दिखाएँ या छुपाएँ में जाकर चालू करें।")}</>}
             </p>
             <div className="grid grid-cols-2 gap-2">
               <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>
@@ -176,7 +176,7 @@ export default function WebsitePage() {
           {/* SEO is its own door under Share and Edit (owner, 14 Oct 2026): how the website shows on Google. */}
           <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-surface p-3.5 text-left">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("City, areas and search words, with a preview of how it looks on Google", "शहर, इलाक़े और search words, Google पर कैसा दिखेगा उसकी झलक के साथ")}</span></span>
+            <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("Show on Google", "Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("Your city, areas and search words. See how it looks on Google.", "आपका शहर, इलाक़े और search words। देखें Google पर कैसा दिखेगा।")}</span></span>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
           </Link>
           </>}
@@ -222,11 +222,11 @@ export default function WebsitePage() {
                   { k: "contact", title: T("2 · Contact & place", "2 · संपर्क और जगह"), tiles: [
                     { k: "where", I: Clock, t: T("Timings & address", "समय और पता"), s: T("City, address, map pin, opening hours", "शहर, पता, map pin, खुलने का समय"), href: `/poster/onboard?step=where&back=${BACK}`, scope: "both" },
                     { k: "you", I: User, t: T("My name, number & photo", "मेरा नाम, number और photo"), s: T("Changes on the card, website and posters", "card, website और poster सब पर बदल जाएगा"), href: `/poster/onboard?step=you&back=${BACK}`, scope: "both" },
-                    { k: "links", I: Wallet, t: T("UPI & social links", "UPI और social links"), s: T("So people can pay you and follow you", "ताकि लोग आपको pay कर सकें और follow कर सकें"), href: `/poster/onboard?step=extras&part=links&back=${BACK}`, scope: "both" },
+                    { k: "links", I: Wallet, t: T("UPI & social media", "UPI और social media"), s: T("So people can pay you and follow you", "ताकि लोग आपको pay कर सकें और follow कर सकें"), href: `/poster/onboard?step=extras&part=links&back=${BACK}`, scope: "both" },
                   ] },
                   { k: "look", title: T("3 · Look & pages", "3 · Look और pages"), tiles: [
                     { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Pick one of six looks and your colours", "छह look में से चुनें, और रंग चुनें"), href: "/poster/card/build?improve=1", scope: "site" },
-                    { k: "pages", I: LayoutList, t: T("Headline & sections", "Headline और sections"), s: T("Change the top headline and the order of sections", "ऊपर की headline और sections का क्रम बदलें"), href: "/poster/website/edit", scope: "site" },
+                    { k: "pages", I: LayoutList, t: T("Big line & sections", "ऊपर की लाइन और हिस्से"), s: T("Change the big line at the top and the order of the sections", "ऊपर की बड़ी लाइन और हिस्सों का क्रम बदलें"), href: "/poster/website/edit", scope: "site" },
                     { k: "editor", I: FileText, t: T("Full editor", "पूरा editor"), s: T("Change any word or photo by hand", "कोई भी शब्द या photo अपने हाथ से बदलें"), href: `/poster/d/editor?id=${s.cardId}&back=${BACK}`, scope: "both" },
                     { k: "cardlook", I: Smartphone, t: T("Phone card design", "Phone card का design"), s: T("How your card looks on a phone", "phone पर आपका card कैसा दिखे"), href: "/poster/card" },
                   ] },
@@ -270,13 +270,13 @@ export default function WebsitePage() {
                         {g.k === "settings" && openTool === "mode" && (
                           <div className="space-y-3 rounded-2xl border border-border p-3">
                             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
-                              <span><span className="block text-sm font-medium">{T("Website mode", "Website mode")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
+                              <span><span className="block text-sm font-medium">{T("Website on computers", "Computer पर website")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
                               <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
                             </label>
                             <p className="text-sm font-semibold">{T("Pages shown on the website", "Website पर कौन से pages दिखें")}</p>
                             {s.pages.map((p) => (
                               <label key={p.slug} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "sections")}</span></span>
+                                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "हिस्से")}</span></span>
                                 <input type="checkbox" className="h-5 w-5" checked={!hidden.has(p.slug)} onChange={(e) => { const h = new Set(hidden); if (e.target.checked) h.delete(p.slug); else h.add(p.slug); patch({ hidden: [...h] }); }} />
                               </label>
                             ))}
@@ -286,7 +286,7 @@ export default function WebsitePage() {
                           <div className="rounded-2xl border border-border p-3">
                             {domainOk || s.customDomain
                               ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
-                              : <p className="text-sm text-muted">{T("Your own domain (www.yourshop.com) comes with Growth.", "अपना domain (www.yourshop.com) Growth के साथ आता है।")}</p>}
+                              : <p className="text-sm text-muted">{T("Your own web address (www.yourshop.com) comes with Growth.", "अपना web address (www.yourshop.com) Growth के साथ आता है।")}</p>}
                           </div>
                         )}
                         {g.k === "settings" && !paid && (

@@ -30,7 +30,7 @@ import { SETUP_SCREENS, screenNo } from "@/lib/setup-steps";
 type Product = { id: string; name: string; brand_id?: string | null; photo_url: string | null; benefits: string[]; offer: string; active: boolean; category?: string; price?: string; mrp?: string | null; brand?: string; photos?: ProductPhoto[]; facts_confirmed_at?: string | null };
 type Draft = { id?: string; name: string; photo_url: string | null; benefits: string; offer: string; category: string; price: string; mrp?: string; brand: string; photos: ProductPhoto[] };
 
-/** A specification is one benefit line written "Label: value" (no new column: the poster and the website both read the same lines). */
+/** A detail (size, material…) is one benefit line written "Label: value" (no new column: the poster and the website both read the same lines). */
 const SPEC_RE = /^([^:\n]{1,24}):\s*(\S.{0,54})$/;
 type SpecRow = { label: string; value: string };
 const specsOf = (text: string): SpecRow[] => text.split("\n").map((l) => l.trim()).flatMap((l) => { const m = l.match(SPEC_RE); return m ? [{ label: m[1].trim(), value: m[2].trim() }] : []; });
@@ -87,7 +87,10 @@ export default function ProductsPage() {
   // "Label: value" lines whenever a product opens, and go back into those lines on every keystroke.
   const [specRows, setSpecRows] = useState<SpecRow[]>([]);
   const [benText, setBenText] = useState("");   // the benefits box exactly as typed; a line written "Label: value" becomes a specification when the product is saved
-  const draftKey = draft ? (draft.id ?? "new") : "";
+  // Every new-product form gets a number of its own (newDraft): "Save & add another" opens a new form under the same "new" name, and the
+  // studio note, the specification rows and a picture still on its way must not carry over from the product just saved.
+  const [newSeq, setNewSeq] = useState(0);
+  const draftKey = draft ? (draft.id ?? `new${newSeq}`) : "";
   // "Make this photo professional": a camera photo made studio-clean by the AI (1 credit, only when tapped; the original is kept).
   const [studio, setStudio] = useState<{ busy: boolean; note: string; orig: string | null }>({ busy: false, note: "", orig: null });
   const [pay, setPay] = useState(false);
@@ -95,9 +98,39 @@ export default function ProductsPage() {
   const [cityName, setCityName] = useState("");
   const [bulk, setBulk] = useState(false);       // "Add many at once" is open
   const [bulkMsg, setBulkMsg] = useState("");   // not enough credits: the Razorpay popup
+  /** "Add pictures to products without one": the free name-matched stock photos for every active product that has none. */
+  const [fill, setFill] = useState<{ busy: boolean; msg: string; tone: "good" | "amber" | "bad" }>({ busy: false, msg: "", tone: "good" });
+  const [unmatched, setUnmatched] = useState<string[]>([]);   // products the last try found no clear picture for (not offered again until the page is opened anew)
+  const [noPicId, setNoPicId] = useState("");                // the product just saved without a picture (the note under the form is about it)
+  /** A new, empty product form (the group and brand can be kept for a run of similar things). */
+  function newDraft(keep?: Pick<Draft, "category" | "brand">) { setNewSeq((n) => n + 1); setDraft({ ...EMPTY, ...keep }); }
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
   const draftKeyRef = useRef("");
-  useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);   // read after the studio picture arrives, to see whether the same product is still open
+  useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);
+  /** What a failed call to a picture or AI route says. The server's text is English: in Hindi the line for its `code` is used (else for
+   *  its status). `what` only changes the "already running" line. A gateway that gives up sends no JSON, so there is no text then. */
+  function replyText(status: number, code: string | undefined, text: string | undefined, what: "fill" | "find" | "other" = "other", fallback = t.error): string {
+    if (en) return text || fallback;
+    const by: Record<string, string> = {
+      busy: what === "fill" ? "Pictures पहले से लग रही हैं। थोड़ा रुकें।" : what === "find" ? "एक picture अभी ढूँढी जा रही है। थोड़ा रुकें।" : "पिछला काम अभी चल रहा है। थोड़ा रुकें।",
+      crowded: "अभी बहुत लोग pictures लगा रहे हैं। एक मिनट बाद दोबारा try करें।",
+      limit: "एक घंटे में बहुत बार try हो गया। थोड़ा रुकें।",
+      read: "आपके products पढ़े नहीं जा सके। दोबारा try करें।",
+      nomatch: "सही picture नहीं बन पाई। कोई credit नहीं कटा — दोबारा try करें या अपनी photo जोड़ें।",
+      slow: "Picture ढूँढने में बहुत समय लग गया। कोई credit नहीं कटा। दोबारा try करें।",
+      trouble: "कुछ गड़बड़ हुई। कोई credit नहीं कटा। दोबारा try करें।",
+      start: "अभी शुरू नहीं हो सका। कोई credit नहीं कटा। दोबारा try करें।",
+      name: "पहले product का नाम लिखें।",
+      big: "यह बहुत बड़ा है। दोबारा try करें।",
+      login: "दोबारा log in करें।",
+    };
+    if (code && by[code]) return by[code];
+    if (status === 401) return by.login;
+    if (status === 409) return by.busy;
+    if (status === 413) return by.big;
+    if (status === 429) return by.limit;
+    return fallback;
+  }   // read after the studio picture arrives, to see whether the same product is still open
   async function studioPhoto() {
     if (!draft?.photo_url || studio.busy) return;
     const was = draft.photo_url, forKey = draftKey;
@@ -260,9 +293,12 @@ export default function ProductsPage() {
       const r = await api<{ product?: Product; error?: string }>("/api/poster/products", { method: "POST", json: {
         ...draft, benefits: draft.benefits.split("\n"), ...(brandAdmin ? { for_brand: forBrand } : {}),
       } });
-      if (!r.ok) { setErr(r.data.error || t.saveFail); return; }
+      if (!r.ok) { setErr(replyText(r.status, (r.data as { code?: string }).code, r.data.error, "other", t.saveFail)); return; }
+      // A new product saved with no picture: the note under the form offers the fix (never spends credits by itself).
+      setNoPicId(!draft.id && !draft.photo_url && !draft.photos.length && r.data.product?.id ? r.data.product.id : "");
       // "Save and add another" keeps the group and brand, so a run of similar things is quick.
-      setDraft(again ? { ...EMPTY, category: draft.category, brand: draft.brand } : null); await load();
+      if (again) newDraft({ category: draft.category, brand: draft.brand }); else setDraft(null);
+      await load();
       void liveSync();
     } catch {
       setErr(t.saveFail);
@@ -272,13 +308,19 @@ export default function ProductsPage() {
   }
   async function pick(file: File | null) {
     if (!file || !draft) return; if (draft.photos.length >= 6) { setErr("Up to 6 photos."); return; }
+    const forKey = draftKey;
     setBusy(true); setErr("");
     try {
       const small = await compressToFile(file, "product.jpg");
       const u = await uploadImage(small, "product");
+      if (draftKeyRef.current !== forKey) return;   // this product was closed (or another opened) while the photo went up: it must not land on another one
       if (!u) { setErr("Could not upload the photo. Please try again."); return; }
-      const view: PhotoView = draft.photos.length === 0 ? "front" : "other";
-      setDraft({ ...draft, photo_url: draft.photo_url ?? u, photos: [...draft.photos, { url: u, view, role: "identity" }] });
+      // Added to the product AS IT IS NOW (not as it was when the photo was chosen): what was typed meanwhile, and a photo that arrived meanwhile, stay.
+      setDraft((d) => {
+        if (!d || d.photos.length >= 6) return d;
+        const view: PhotoView = d.photos.length === 0 ? "front" : "other";
+        return { ...d, photo_url: d.photo_url ?? u, photos: [...d.photos, { url: u, view, role: "identity" }] };
+      });
     } catch {
       setErr("Could not upload the photo. Please try again.");
     } finally {
@@ -289,23 +331,29 @@ export default function ProductsPage() {
   async function findMatch(mode: "stock" | "ai" = "stock") {
     if (!draft) return;
     if (!draft.name.trim()) { setErr(en ? "Write the product name first." : "पहले product का नाम लिखें।"); return; }
+    const forKey = draftKey;
     setBusy(true); setErr("");
     try {
-      const r = await api<{ url?: string; error?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name, mode } });
+      const r = await api<{ url?: string; error?: string; code?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name, mode } });
       if (r.status === 402) { setPay(true); return; }
-      if (!r.ok || !r.data.url) { setErr(r.data.error || t.error); return; }
+      if (draftKeyRef.current !== forKey) return;   // the owner moved to another product meanwhile: the picture must not land on that one
+      if (!r.ok || !r.data.url) { setErr(replyText(r.status, r.data.code, r.data.error, "find")); return; }
       const u = r.data.url;
       setDraft((d) => (d ? { ...d, photo_url: u, photos: [{ url: u, view: "front" as PhotoView, role: "identity" as const }, ...d.photos.filter((x) => x.view !== "front")].slice(0, 6) } : d));
     } catch { setErr(t.error); } finally { setBusy(false); }
   }
   async function fillWithAi() {
-    if (!draft) return; setBusy(true); setErr("");
+    if (!draft) return;
+    const forKey = draftKey;
+    setBusy(true); setErr("");
     try {
       const r = await api<{ name?: string; benefits?: string[]; offer?: string; error?: string }>("/api/poster/products/ai", { method: "POST", json: { name: draft.name, photo_url: draft.photo_url, lang: en ? "en" : "hi" } });
-      if (!r.ok) { setErr(r.data.error || t.error); return; }
+      if (draftKeyRef.current !== forKey) return;   // another product is open now
+      if (!r.ok) { setErr(replyText(r.status, undefined, r.data.error)); return; }
       const aiLines = (r.data.benefits ?? []).map((x) => String(x).trim()).filter(Boolean).slice(0, 6).join("\n");
       setBenText(aiLines);   // the AI's lines replace the benefits box; the specification rows stay
-      setDraft({ ...draft, name: draft.name || r.data.name || "", benefits: joinBenefits(aiLines, specRows), offer: draft.offer || r.data.offer || "" });
+      // Written onto the product as it is now: a picture that arrived while the AI was thinking (studio photo, upload) is kept.
+      setDraft((d) => (d ? { ...d, name: d.name || r.data.name || "", benefits: joinBenefits(aiLines, specRows), offer: d.offer || r.data.offer || "" } : d));
     } catch {
       setErr(t.error);
     } finally {
@@ -324,6 +372,10 @@ export default function ProductsPage() {
   ];
   const hasShubhora = (list ?? []).some((p) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? ""));
   const offCount = (list ?? []).filter((p) => p.active === false).length;
+  // Products on the card with no photo at all (the same ones the server fills), minus those the last try found nothing clear for.
+  const noPhoto = (list ?? []).filter((p) => p.active !== false && !p.photo_url && !p.photos?.length);
+  const fillable = noPhoto.filter((p) => !unmatched.includes(p.id));
+  const noPicProduct = noPicId ? fillable.find((p) => p.id === noPicId) : undefined;
   const isShubhoraPlan = (p: Product) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? "") || /shubhora/i.test(p.category ?? "");
   const mixedWithShubhora = (list ?? []).some((p) => p.active !== false && isShubhoraPlan(p)) && (list ?? []).some((p) => p.active !== false && !isShubhoraPlan(p));
   async function hideShubhora() {
@@ -347,6 +399,31 @@ export default function ProductsPage() {
       const rows = r.ok ? (r.data.products ?? []) : [];
       if (rows.length) await syncProductsToCard(rows);
     } catch { /* the Products page saved; the website follows next time */ }
+  }
+  /** "Add pictures to products without one": free, name-matched stock photos for up to 15 products a tap (the server never touches a
+   *  product that has a photo). Then the list is read again and what changed goes onto the live website like any other save.
+   *  While it runs (up to about 2 minutes) nothing that edits a product can be opened, so a form saved meanwhile cannot wipe a picture just added. */
+  async function fillPhotos() {
+    if (fill.busy) return;
+    setFill({ busy: true, msg: "", tone: "good" });
+    try {
+      const r = await api<{ filled?: number; skipped?: number; left?: number; failed?: number; skippedIds?: string[]; error?: string; code?: string }>("/api/poster/products/fill-photos", { method: "POST", json: {} });
+      if (!r.ok) { setFill({ busy: false, msg: replyText(r.status, r.data.code, r.data.error, "fill"), tone: "bad" }); return; }
+      const f = r.data.filled ?? 0, s = r.data.skipped ?? 0, l = r.data.left ?? 0, ff = Math.min(l, r.data.failed ?? 0), wait = l - ff;
+      setUnmatched(r.data.skippedIds ?? []);
+      await load(); void liveSync();
+      const parts: string[] = [];
+      if (f > 0) parts.push(en ? `${f} ${f === 1 ? "product has" : "products have"} a picture now.` : `${f} ${f === 1 ? "product" : "products"} में picture लग गई।`);
+      if (s > 0) parts.push(f > 0
+        ? (en ? `${s} could not be matched — add ${s === 1 ? "that photo" : "those photos"} yourself.` : `${s} के लिए सही picture नहीं मिली — ${s === 1 ? "उसकी" : "उनकी"} photo खुद जोड़ें।`)
+        : (en ? `No clear matching picture was found for ${s} ${s === 1 ? "product" : "products"}. Add the photo yourself (tap Edit), or use “Find a picture” inside the product.` : `${s} ${s === 1 ? "product" : "products"} के लिए सही picture नहीं मिली। Photo खुद जोड़ें (बदलें दबाएँ), या product के अंदर “Picture खोजें” दबाएँ।`));
+      if (wait > 0) parts.push(en ? `${wait} more ${wait === 1 ? "is" : "are"} waiting — tap the button again.` : `${wait} और बाक़ी ${wait === 1 ? "है" : "हैं"} — बटन फिर दबाएँ।`);
+      // Running out of time or a service having a bad moment is not "no match": those products are tried again at the next tap.
+      if (ff > 0) parts.push(en ? `${ff} ${ff === 1 ? "product" : "products"} could not be done this time. Please try again in a little while.` : `${ff} ${ff === 1 ? "product इस बार नहीं हो पाया" : "products इस बार नहीं हो पाए"}। थोड़ी देर बाद फिर try करें।`);
+      if (!parts.length) parts.push(en ? "Every product already has a picture." : "हर product में पहले से picture है।");
+      // Green with a tick only when something was done (or nothing was needed); amber when the tap added no picture.
+      setFill({ busy: false, msg: parts.join(" "), tone: f === 0 && (s > 0 || l > 0) ? "amber" : "good" });
+    } catch { setFill({ busy: false, msg: en ? "No internet — please try again." : "Internet नहीं है — दोबारा try करें।", tone: "bad" }); }
   }
   /** "Make my Shubhora seller card" asks first (owner's call, 7 Oct 2026: a tap used to build it at once, which was
    *  wrong): the sheet says what will happen, and only "Yes, make it" runs it. */
@@ -383,10 +460,19 @@ export default function ProductsPage() {
     </div>
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
+  /** Pictures are being added to the list, or a paid picture is on its way for the open form: nothing that opens or closes a product works
+   *  meanwhile (a form saved while the pictures land would send "no photo" and wipe them; Cancel on a paid search would lose the credit's picture). */
+  const locked = fill.busy;
+  const working = busy || studio.busy;
+  const fillBtn = (
+    <button type="button" onClick={() => void fillPhotos()} disabled={fill.busy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+      {fill.busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} {fill.busy ? C("Finding pictures…", "Pictures ढूँढ रहे हैं…") : C("Add pictures to products without one", "बिना photo वाले products में picture लगाएँ")}
+    </button>
+  );
   return (
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
-      {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => router.push("/poster/onboard?step=extras")} />}
+      {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => router.push(backTo || "/poster/onboard?step=about")} />}
       {setupMode ? (
         /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the bar above counts
            the step and holds Back; here the title, one line on what to do, one big Add button, the way on at the bottom. */
@@ -400,15 +486,23 @@ export default function ProductsPage() {
         <div className="flex items-center gap-2">
           <Link href={backTo || "/poster/setup"} className="text-muted" aria-label="Back"><ChevronLeft className="h-5 w-5" /></Link>
           <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
-          {!draft && <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
+          {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
       )}
       {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}
       {!setupMode && !draft && !bulk && list && list.length > 0 && (
-        <button type="button" onClick={() => { setBulkMsg(""); setBulk(true); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink"><ClipboardList className="h-4 w-4" /> {C("Add many products at once", "बहुत से products एक साथ जोड़ें")}</button>
+        <button type="button" disabled={locked} onClick={() => { setBulkMsg(""); setBulk(true); }} className="flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60"><ClipboardList className="h-4 w-4" /> {C("Add many products at once", "बहुत से products एक साथ जोड़ें")}</button>
       )}
       {bulkMsg && !bulk && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {bulkMsg}</p>}
-      {!setupMode && bulk && !draft && <BulkAdd en={en} trade={tradeLabel} city={cityName} onClose={() => setBulk(false)} onAdded={async (n) => { setBulk(false); setBulkMsg(n > 0 ? (en ? `${n} products added.` : `${n} products जुड़ गए।`) : (en ? "These were already on your list." : "ये पहले से आपकी लिस्ट में हैं।")); await load(); void liveSync(); }} />}
+      {!setupMode && bulk && !draft && <BulkAdd en={en} trade={tradeLabel} city={cityName} onClose={() => setBulk(false)} onAdded={async (n, withPicture) => {
+        setBulk(false);
+        // Pictures are looked up for each product while it is added; the ones nothing fitted for are said here, and the button below fills them later.
+        const noPic = withPicture === undefined ? 0 : Math.max(0, n - withPicture);
+        setBulkMsg(n > 0
+          ? (en ? `${n} ${n === 1 ? "product" : "products"} added.${noPic ? ` ${noPic} ${noPic > 1 ? "have" : "has"} no picture yet — tap “Add pictures to products without one” to add ${noPic > 1 ? "them" : "it"} free.` : ""}` : `${n} ${n === 1 ? "product जुड़ गया" : "products जुड़ गए"}।${noPic ? ` ${noPic} में अभी picture नहीं है — free में लगाने के लिए “बिना photo वाले products में picture लगाएँ” दबाएँ।` : ""}`)
+          : (en ? "These were already on your list." : "ये पहले से आपकी लिस्ट में हैं।"));
+        await load(); void liveSync();
+      }} />}
       {err && !draft && <p className="text-sm text-danger">{err}</p>}
       {/* The truth about the live website (audit, 7 Oct 2026): the AI laid the products out at build time, so a product
           added here reaches the website through Write again — said here, with the button, instead of silently not. */}
@@ -419,7 +513,7 @@ export default function ProductsPage() {
         </div>
       )}
       {setupMode && !draft && (
-        <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand-soft/40 py-4 text-base font-semibold text-brand-ink">
+        <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-brand/50 bg-brand-soft/40 py-4 text-base font-semibold text-brand-ink disabled:opacity-60">
           <Plus className="h-5 w-5" /> {C(copy.add, copy.addHi)}
         </button>
       )}
@@ -432,6 +526,14 @@ export default function ProductsPage() {
             {needs.items.map((x) => <li key={x} className="flex gap-1.5"><span className="text-brand">•</span><span>{x}</span></li>)}
           </ul>
         </details>
+      )}
+      {/* Products with no photo: one free tap finds a clean picture that matches each name (up to 15 a tap). Shown beside the list, not while
+          a form is open (the note under the form says the same then). */}
+      {!draft && !bulk && fillable.length > 0 && !noPicProduct && (
+        <div className="space-y-1.5 rounded-xl border border-brand/50 bg-brand-soft/40 p-3">
+          <p className="text-xs text-muted">{en ? `${fillable.length} ${fillable.length === 1 ? "product has" : "products have"} no photo. Adding pictures is free.` : `${fillable.length} ${fillable.length === 1 ? "product" : "products"} में photo नहीं है। Picture लगाना free है।`}</p>
+          {fillBtn}
+        </div>
       )}
       {draft && (
         <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
@@ -526,11 +628,11 @@ export default function ProductsPage() {
               <label className="block space-y-1">
                 <span className="block text-xs font-semibold">{C("Benefits / offer lines", "खूबियाँ / ऑफ़र की लाइनें")}</span>
                 <textarea className={`${inp} w-full leading-relaxed`} rows={4} placeholder={C(copy.lines, copy.linesHi)} value={benText} onChange={(e) => { setBenText(e.target.value); setDraft({ ...draft, benefits: joinBenefits(e.target.value, specRows) }); }} />
-                <span className="block text-[11px] text-muted">{C("A line written like “Size: 20 litre” becomes a specification.", "“Size: 20 litre” जैसी लाइन specification बन जाती है।")}</span>
+                <span className="block text-[11px] text-muted">{C("A line written like “Size: 20 litre” becomes a detail.", "“Size: 20 litre” जैसी लाइन detail बन जाती है।")}</span>
               </label>
-              {/* Specifications: size, material, finish, warranty… — a small table on the product's page of the website. */}
+              {/* Details: size, material, finish, warranty… — a small table on the product's page of the website (the site calls it "Details"). */}
               <div className="space-y-1.5">
-                <span className="block text-xs font-semibold">{C("Specifications", "Specifications")} <span className="font-normal text-muted">({C("optional · size, material, finish…", "optional · size, material, finish…")})</span></span>
+                <span className="block text-xs font-semibold">{C("Details", "Details")} <span className="font-normal text-muted">({C("optional · size, material, finish…", "optional · size, material, finish…")})</span></span>
                 {specRows.map((r, k) => (
                   <div key={k} className="flex items-center gap-1.5">
                     <input className={`${inp} min-w-0 flex-1`} placeholder={C("e.g. Size", "जैसे Size")} value={r.label} maxLength={24} onChange={(e) => { const rows = specRows.map((x, n) => (n === k ? { ...x, label: e.target.value } : x)); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(benText, rows) }); }} />
@@ -538,7 +640,7 @@ export default function ProductsPage() {
                     <button type="button" aria-label={C("Remove", "हटाएँ")} onClick={() => { const rows = specRows.filter((_, n) => n !== k); setSpecRows(rows); setDraft({ ...draft, benefits: joinBenefits(benText, rows) }); }} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 ))}
-                {specRows.length < 6 && <button type="button" onClick={() => setSpecRows([...specRows, { label: "", value: "" }])} className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {C("Add a specification", "Specification जोड़ें")}</button>}
+                {specRows.length < 6 && <button type="button" onClick={() => setSpecRows([...specRows, { label: "", value: "" }])} className="inline-flex items-center gap-1 rounded-lg border border-dashed border-border px-3 py-2 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {C("Add a detail", "Detail जोड़ें")}</button>}
               </div>
               <input className={inp} placeholder={t.offerLabel} value={draft.offer} onChange={(e) => setDraft({ ...draft, offer: e.target.value })} />
               <input className={inp} list="product-cats" placeholder={en ? `Category (optional) e.g. ${categoryExampleFor(category).split(", ").slice(0, 3).join(", ")}` : `Category (optional) जैसे ${categoryExampleFor(category).split(", ").slice(0, 3).join(", ")}`} value={draft.category} onChange={(e) => setDraft({ ...draft, category: e.target.value })} />
@@ -549,11 +651,23 @@ export default function ProductsPage() {
 
           {err && <p className="text-sm text-danger">{err}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{C("Cancel", "रहने दें")}</button>
-            {!draft.id && <button type="button" onClick={() => void save(true)} disabled={busy || !draft.name.trim()} className="rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{C("Save & add another", "Save करें और एक और जोड़ें")}</button>}
-            <button type="button" onClick={() => void save()} disabled={busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
+            <button type="button" onClick={() => setDraft(null)} disabled={working} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{C("Cancel", "रहने दें")}</button>
+            {!draft.id && <button type="button" onClick={() => void save(true)} disabled={busy || studio.busy || !draft.name.trim()} className="rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{C("Save & add another", "Save करें और एक और जोड़ें")}</button>}
+            <button type="button" onClick={() => void save()} disabled={busy || studio.busy || !draft.name.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{t.save}</button>
           </div>
         </div>
+      )}
+      {/* Just saved without a picture: the same one-tap fix, right here (a picture can also be found for 1 credit — never spent without a tap). */}
+      {noPicProduct && !bulk && !draft && (
+        <div className="space-y-2 rounded-xl border border-amber/40 bg-amber/10 p-3">
+          <p className="text-xs">{en ? `“${noPicProduct.name}” has no picture yet. You can find one for 1 credit (tap Edit on it, then “Find a picture”), or add pictures free to all products without one:` : `“${noPicProduct.name}” में अभी picture नहीं है। 1 credit में खोज सकते हैं (उस पर बदलें दबाएँ, फिर “Picture खोजें”), या बिना picture वाले सभी products में free picture लगाएँ:`}</p>
+          {fillBtn}
+        </div>
+      )}
+      {(fill.busy || fill.msg) && (
+        <p role="status" className={`rounded-xl border px-3 py-2 text-sm font-semibold ${fill.busy ? "border-border bg-surface2 text-muted" : fill.tone === "bad" ? "border-danger/40 bg-danger/10 text-danger" : fill.tone === "amber" ? "border-amber/40 bg-amber/10 text-ink" : "border-good/40 bg-good/10 text-good"}`}>
+          {fill.busy ? C("Finding a clean, matching picture for each product… this can take up to 2 minutes. Please keep this page open.", "हर product के लिए साफ़ और मिलती-जुलती picture ढूँढ रहे हैं… दो मिनट तक लग सकता है। यह page खुला रखें।") : `${fill.tone === "good" ? "✓ " : ""}${fill.msg}`}
+        </p>
       )}
       {/* A seller who later adds their own range ends up with both on one card. One tap keeps the plans off it. */}
       {mixedWithShubhora && (
@@ -566,7 +680,7 @@ export default function ProductsPage() {
       {offCount > 0 && (
         <p className="rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{en
           ? `${offCount} product${offCount > 1 ? "s" : ""} hidden — they stay here but do not go on your card, website or posters.`
-          : `${offCount} product छिपे हैं — यहाँ रहेंगे, पर card, website और poster पर नहीं जाएँगे।`}</p>
+          : `${offCount} product ${offCount === 1 ? "छिपा है" : "छिपे हैं"} — यहाँ ${offCount === 1 ? "रहेगा" : "रहेंगे"}, पर card, website और poster पर नहीं ${offCount === 1 ? "जाएगा" : "जाएँगे"}।`}</p>
       )}
       <div className="space-y-2">
         {list.length === 0 && !draft && !setupMode && (
@@ -574,8 +688,8 @@ export default function ProductsPage() {
             <Package className="mx-auto h-8 w-8 text-brand" />
             <p className="mt-2 text-base font-bold">{C("No products yet", "अभी कोई product नहीं")}</p>
             <p className="mx-auto mt-1 max-w-xs text-sm text-muted">{C("Add your first one: a photo, a name and a price. It shows on your card, website and posters.", "पहला जोड़ें: एक photo, नाम और दाम। ये card, website और poster पर दिखेगा।")}</p>
-            <button type="button" onClick={() => setBulk(true)} className="mt-3 mr-2 inline-flex items-center gap-2 rounded-xl border-2 border-brand px-4 py-3 text-sm font-semibold text-brand-ink"><ClipboardList className="h-4 w-4" /> {C("Add many at once", "बहुत से एक साथ")}</button>
-            <button type="button" onClick={() => { setForBrand(false); setDraft({ ...EMPTY }); }} className="mt-3 inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>
+            <button type="button" disabled={locked} onClick={() => setBulk(true)} className="mt-3 mr-2 inline-flex items-center gap-2 rounded-xl border-2 border-brand px-4 py-3 text-sm font-semibold text-brand-ink disabled:opacity-60"><ClipboardList className="h-4 w-4" /> {C("Add many at once", "बहुत से एक साथ")}</button>
+            <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="mt-3 inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>
           </div>
         )}
         {list.map((p) => (
@@ -586,8 +700,8 @@ export default function ProductsPage() {
               {/* ₹ only before a number ("₹On request" / "₹FREE" read wrong); no internal counts like "0 lines". */}
               <p className="text-xs text-muted truncate">{p.price ? <b className="text-ink">{rs(p.price)}</b> : null}{mrpShown(p.price, p.mrp) ? <> <s>{rs(p.mrp ?? "")}</s></> : null}{p.price && (p.brand || p.category) ? " · " : ""}{[p.brand, p.category].filter(Boolean).join(" · ")}</p>
             </div>
-            {!setupMode && <button type="button" onClick={() => setChecking(p)} className={`rounded-full border px-2 py-1 text-[11px] font-semibold ${p.facts_confirmed_at ? "border-good/40 bg-good/10 text-good" : "border-lead/50 bg-lead/10 text-lead"}`}>{p.facts_confirmed_at ? "✓ Product check" : "Product check"}</button>}
-            <button type="button" onClick={() => { setForBrand(!!brandAdmin && p.brand_id === brandAdmin); setDraft({ id: p.id, name: p.name, photo_url: p.photo_url, benefits: (p.benefits ?? []).join("\n"), offer: p.offer ?? "", category: p.category ?? "", price: p.price ?? "", mrp: p.mrp ?? "", brand: p.brand ?? "", photos: p.photos?.length ? p.photos : p.photo_url ? [{ url: p.photo_url, view: "front", role: "identity" }] : [] }); }} className="p-2 text-muted text-xs">Edit</button>
+            {!setupMode && <button type="button" disabled={locked} onClick={() => setChecking(p)} className={`rounded-full border px-2 py-1 text-[11px] font-semibold disabled:opacity-60 ${p.facts_confirmed_at ? "border-good/40 bg-good/10 text-good" : "border-lead/50 bg-lead/10 text-lead"}`}>{p.facts_confirmed_at ? "✓ Product check" : "Product check"}</button>}
+            <button type="button" disabled={locked || working} onClick={() => { setForBrand(!!brandAdmin && p.brand_id === brandAdmin); setDraft({ id: p.id, name: p.name, photo_url: p.photo_url, benefits: (p.benefits ?? []).join("\n"), offer: p.offer ?? "", category: p.category ?? "", price: p.price ?? "", mrp: p.mrp ?? "", brand: p.brand ?? "", photos: p.photos?.length ? p.photos : p.photo_url ? [{ url: p.photo_url, view: "front", role: "identity" }] : [] }); }} className="p-2 text-muted text-xs disabled:opacity-50">{C("Edit", "बदलें")}</button>
             {/* One tap decides whether this product is on the card at all — the Shubhora plans and an old
                 range do not have to be deleted to be kept off it. */}
             <button type="button" onClick={() => toggle(p)} title={p.active === false ? (en ? "Show on my card" : "Card पर दिखाओ") : (en ? "Hide from my card" : "Card से हटाओ")}
@@ -602,7 +716,7 @@ export default function ProductsPage() {
           <details className="rounded-xl border border-border p-3">
             <summary className="cursor-pointer text-sm font-semibold">{en ? "No products of your own? Sell the V-Card itself." : "Apna koi product nahi? V-Card hi sell karo."}</summary>
             <p className="mt-0.5 text-xs text-muted">{en ? "Adds the 3 Shubhora plans (Free, Growth ₹2,999, Custom Solutions) as your products for posters, and opens the ready-made Shubhora seller card — banner, logo, plans, demo videos and the business plan. Put your name and number on it and publish." : "Shubhora ke 3 plan (Free, Growth ₹2,999, Custom Solutions) poster ke liye product ban jaayenge, aur Shubhora ka bana-banaya seller card khulega — banner, logo, plans, demo video, business plan. Apna naam-number daal ke publish kar do."}</p>
-            <button type="button" onClick={() => setAskShubhora(true)} disabled={busy} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => setAskShubhora(true)} disabled={busy || locked} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {en ? "Make my Shubhora seller card" : "Shubhora seller card banao"}
             </button>
             {err && <p className="mt-2 text-sm text-danger">{err}</p>}

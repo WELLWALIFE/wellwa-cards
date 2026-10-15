@@ -19,9 +19,9 @@ export const SAAS_PLANS: Record<SaasTier, { base: number; amount: number; credit
 };
 /** What each plan adds on top of the shared feature list (shown on Pricing and in Settings). */
 export const SAAS_EXTRA: Record<SaasTier, string[]> = {
-  starter: ["AI salesman on your website: answers, suggests, takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with customer and owner reminders", "Automatic follow-ups on every enquiry", "Festival wishes and offers to all your customers from your WhatsApp", "Google review request after every sale", "Monday report of views, enquiries and orders", "Edit the website by saying it; no Shubhora tag"],
-  growth: ["No Shubhora tag; your website on Google", "AI-painted banner and pictures; edit by saying it", "Daily poster + status video with voice, auto-posted", "WhatsApp AI replies (fair use up to 1,000 a month)", "Your own domain", "1 business profile", "8 free ad storyboards a month"],
-  pro: ["Dedicated account manager", "More business profiles or brands", "10,000+ AI replies a month", "CRM seats for your team", "Priority rendering and support", "Monthly SEO and performance report"],
+  starter: ["AI salesman on your website: it answers questions, suggests items, and takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders for customers and for you", "Follow-up messages go out by themselves for every enquiry", "Festival wishes and offers to all your customers from your WhatsApp", "A message asking for a Google review after every sale", "A report every Monday of views, enquiries and orders", "Change your website just by saying what you want; no Shubhora tag"],
+  growth: ["No Shubhora tag; your website shows on Google", "Banner and pictures made by AI; change your website just by saying what you want", "Daily poster + Status video with voice, posted for you", "WhatsApp AI replies, up to 1,000 a month (fair use)", "Your own web address", "1 business profile", "8 free ad storyboards a month (scene pictures you check before the video is made)"],
+  pro: ["A manager from Shubhora just for you", "More business profiles or brands", "10,000+ AI replies a month", "Your team members can use your customer list", "Your videos and pictures are made first, and you get help first", "A monthly report on how you show on Google and how your business is doing"],
 };
 
 /** The free card is shown as "Worth ₹1,499 — FREE" (owner's call, 25 Sep 2026): what the card is worth, given free.
@@ -30,8 +30,8 @@ export const SAAS_EXTRA: Record<SaasTier, string[]> = {
  *  misleading under the consumer rules. The trust line says that nothing is hidden; FREE_PLAN_TERM is the small print
  *  wherever the free plan is priced (pricing, refund and plan pages). The AI salesman mentions the renewal only when asked. */
 export const FREE_PLAN_WORTH = 149900;
-export const FREE_PLAN_TRUST = "No card details · No hidden charge";
-export const FREE_PLAN_TERM = "1 year free, then ₹1,499 a year · included in Growth";
+export const FREE_PLAN_TRUST = "No card details needed · No hidden charge";
+export const FREE_PLAN_TERM = "Free for 1 year, then ₹1,499 a year · Growth includes it";
 /** The V-Card after its free year (owner's call, 27 Sep 2026): ₹1,499 incl. GST for one more year. When the year ends the
  *  card keeps working `graceDays` more days, then its link shows "Card renew karein" until it is renewed (nothing is
  *  deleted). Not partner business: no BV — /api/billing/verify never reports it to the partner panel. */
@@ -42,17 +42,17 @@ export const CARD_RENEWAL = { amount: 149900, label: "V-Card renewal", years: 1,
 export const PRO_CUSTOM = {
   label: "Custom Solutions",
   price: "On request",
-  tagline: "Need more than Growth? We build any software, customization and automation for your business.",
+  tagline: "Need more than Growth? We build the software you need, set Shubhora up your way, and make daily work run by itself.",
   cta: "Contact us",
   waText: "Hi Shubhora, I need custom software / customization / automation for my business. Please call me.",
   items: [
-    "Dedicated account manager",
-    "Custom software, apps and websites — built for you",
-    "Shubhora customized to the way your business works",
-    "Automation of daily work — WhatsApp, leads, follow-ups, billing, reports",
-    "Custom CRM / ERP, dashboards and team logins",
-    "AI assistants and chatbots trained on your business",
-    "Integrations — payment gateway, Tally, Google Sheets, your existing tools",
+    "A manager from Shubhora just for you",
+    "Software, apps and websites built for you",
+    "Shubhora set up the way your business works",
+    "Daily work done by itself — WhatsApp, customers, follow-ups, billing, reports",
+    "Your own customer and business software, screens that show your numbers, and logins for your team",
+    "AI assistants and chat bots taught about your business",
+    "Works with your other tools — online payments, Tally, Google Sheets and what you already use",
     "More brands and branches on one account",
   ],
 };
@@ -62,10 +62,10 @@ export const planPrice = (t: SaasTier) => rupees(SAAS_PLANS[t].amount);
 /** What the free plan gives — free for the first year (FREE_PLAN_TERM says what comes after). */
 export const FREE_PLAN = [
   "Website + digital card on one link — the website on computers, the card on phones",
-  "Built by AI in 5 minutes from your details; three designs, your trade's own look and pages",
+  "Made by AI in 5 minutes from your details; three designs, with a look and pages that suit your kind of work",
   "A poster every morning with your name and number",
-  "Leads from your card and website, saved in the CRM",
-  "Share on WhatsApp, QR code, save-contact",
+  "People who contact you from your card and website are saved in a customer list",
+  "Share on WhatsApp or with a QR code; people can save your contact",
 ];
 
 export const PLAN_PRICE: Record<PaidPlan, { amount: number; label: string }> = {

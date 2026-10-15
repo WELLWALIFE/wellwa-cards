@@ -3,7 +3,7 @@
 // Who may use the paid AI tools, and what they see.
 //   active   = subscription running, or credits in hand (pay-as-you-go)
 //   inactive = nothing of those: credit prices stay hidden and every AI button opens the unlock popup
-//              ("Activate your subscription" or "Add credits"; associates activate in the partner panel).
+//              (a subscription or "Add credits"; partners pay with Razorpay here like everyone else).
 import { useCallback, useEffect, useState } from "react";
 import { Coins, LoaderCircle, Sparkles, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -69,7 +69,7 @@ export function UnlockDialog({ onClose, subscriptionOnly = false }: { reason?: s
         ) : (
           <>
             <div className="rounded-xl border-2 border-brand bg-brand-soft p-4">
-              <p className="font-semibold text-ink">Subscription <span className="font-normal text-muted">· {planPrice("growth")}/month incl. GST</span></p>
+              <p className="font-semibold text-ink">Subscription <span className="font-normal text-muted">· {planPrice("growth")}/month, GST included</span></p>
               <SubscribeButton tier="growth" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60" onDone={done}>Pay by UPI / card — Razorpay</SubscribeButton>
             </div>
             {!subscriptionOnly && (

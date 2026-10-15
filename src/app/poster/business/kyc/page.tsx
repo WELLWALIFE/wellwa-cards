@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { CircleCheck, Clock, TriangleAlert } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, bizAct, dayOf, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, bizAct, dayOf, useBiz, useBizMsg } from "@/components/business/kit";
 import { KycPhoto } from "@/components/business/kyc-photo";
 
 type FileRef = { id: string; url: string | null } | null;
@@ -19,6 +19,7 @@ const INPUT = "ed-input";
 
 export default function KycPage() {
   const { lang } = useT(); const en = lang === "en";
+  const tr = useBizMsg();
   const { data, error, loading, reload } = useBiz<Kyc>("kyc");
   const [f, setF] = useState<F>(EMPTY);
   const [ids, setIds] = useState({ pan_file: "", bank_file: "", aadhaar_front_file: "", aadhaar_back_file: "" });
@@ -38,7 +39,7 @@ export default function KycPage() {
     const r = await bizAct<{ ok?: string }>("kyc", { op: "submit", ...f, ...ids });
     setBusy(false);
     if (r.ok) { setMsg({ ok: true, text: en ? "KYC sent. We will check it soon." : "KYC भेज दिया। हम जल्दी देखेंगे।" }); setF((p) => ({ ...p, pan: "", account_no: "", account_no2: "", aadhaar: "" })); void reload(); }
-    else setMsg({ ok: false, text: r.error ?? "" });
+    else setMsg({ ok: false, text: tr(r.error) });
   }
 
   const fld = (label: string, k: keyof F, props: React.InputHTMLAttributes<HTMLInputElement> = {}) => (

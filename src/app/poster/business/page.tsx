@@ -1,20 +1,21 @@
 "use client";
-// Business — the partner side of the one Shubhora account, inside the app. The numbers come from the partner panel;
-// every detail page (team tree, wallet, income, KYC…) opens the panel itself with this same login (no second password).
+// Business — the partner side of the one Shubhora account, inside the app. The numbers come from the partner service;
+// every detail page (team tree, wallet, income, KYC…) is a screen of the app itself (/poster/business/<page>), with this same login.
 import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Award, BadgeIndianRupee, CalendarClock, Check, ChevronRight, Copy, Download, FileCheck2, Handshake, Headphones, LoaderCircle, Network, Share2, UserRound, Wallet,
+  Award, BadgeIndianRupee, CalendarClock, Check, Copy, Download, FileCheck2, Handshake, Headphones, LoaderCircle, Network, Share2, UserRound, Wallet,
 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { ClaimUsername } from "@/components/poster/claim-username";
+import { INCOME_KIND as KIND, dayShort as day, rupee } from "@/components/business/kit";
 
 type Team = { left: number; right: number; leftGreen: number; rightGreen: number; directs: number; directsGreen: number };
 type Partner = {
   code: string; username: string | null; status: "red" | "green"; blocked: boolean; subValidUntil: string | null; sponsor: string | null;
-  team: Team; walletPaise: number; pendingWithdrawPaise: number;
+  team: Team; walletPaise: number | null; pendingWithdrawPaise: number | null; // null = this member's balance is hidden (Admin switch)
   income: { totalPaise: number; lastPaise: number; lastClosing: string | null };
   subscription: { state: "none" | "active" | "due soon" | "lapsed"; validTill: string | null; daysLeft: number | null };
   kyc: string | null; rank: { current: string | null; next: string | null }; renewalsDue: number;
@@ -24,12 +25,9 @@ type Partner = {
 };
 type Res = { username: string | null; cardSlug: string | null; link: string | null; cardLink: string | null; partner: Partner | null; linked: boolean; error?: string };
 
-const rupee = (paise: number) => `₹${Math.round(paise / 100).toLocaleString("en-IN")}`;
-const day = (s: string | null | undefined) => (s ? new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "");
-/** The panel's page, framed inside the app (owner's call, 2 Oct 2026: nothing leaves the app). */
+const money = (paise: number | null) => (paise === null ? "••••" : rupee(paise));
 /** Every Business page is a screen of the app itself now (owner, 14 Oct 2026: nothing framed). */
 const PAGE = (name: string) => `/poster/business/${name}`;
-const KIND: Record<string, string> = { direct: "Direct sale", match_new: "Pair (new)", match_renewal: "Pair (renewal)", sponsor: "Sponsor", rank_reward: "Rank reward" };
 
 export default function BusinessPage() {
   return <Suspense fallback={<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><BusinessInner /></Suspense>;
@@ -96,7 +94,7 @@ function BusinessInner() {
           <>
             <p className="mt-1 text-xs text-white/70">{p.sponsor ? `${en ? "Introduced by" : "Introducer"} ${p.sponsor}` : en ? "Your Business account" : "आपका Business account"}</p>
             <div className="mt-3 grid grid-cols-3 gap-2">
-              {[[String(p.team.left + p.team.right), en ? "Team" : "Team", `L ${p.team.left} · R ${p.team.right}`], [rupee(p.walletPaise), "Wallet", p.pendingWithdrawPaise ? `${rupee(p.pendingWithdrawPaise)} ${en ? "on the way" : "आ रहा"}` : en ? "available" : "उपलब्ध"], [rupee(p.income.totalPaise), en ? "Income" : "कमाई", p.income.lastClosing ? `${en ? "last" : "पिछली"} ${rupee(p.income.lastPaise)}` : en ? "total" : "कुल"]].map(([v, l, h]) => (
+              {[[String(p.team.left + p.team.right), en ? "Team" : "Team", `L ${p.team.left} · R ${p.team.right}`], [money(p.walletPaise), "Wallet", p.walletPaise === null ? (en ? "hidden" : "छिपा है") : p.pendingWithdrawPaise ? `${rupee(p.pendingWithdrawPaise)} ${en ? "on the way" : "आ रहा"}` : en ? "available" : "उपलब्ध"], [rupee(p.income.totalPaise), en ? "Income" : "कमाई", p.income.lastClosing ? `${en ? "last" : "पिछली"} ${rupee(p.income.lastPaise)}` : en ? "total" : "कुल"]].map(([v, l, h]) => (
                 <div key={l} className="rounded-xl bg-white/10 p-2.5"><p className="text-lg font-bold leading-tight">{v}</p><p className="text-[11px] text-white/70">{l}</p><p className="text-[10px] text-white/50">{h}</p></div>
               ))}
             </div>
@@ -106,7 +104,7 @@ function BusinessInner() {
                 <div className="mt-3 rounded-xl bg-white/10 p-3 text-xs text-white/85">
                   <p className="font-semibold text-white">{n > 0
                     ? (en ? `${n} ${n === 1 ? "person is" : "people are"} in your team — your income is ₹0 because your ID is Red.` : `आपकी team में ${n} ${n === 1 ? "व्यक्ति" : "लोग"} — कमाई ₹0, क्योंकि आपकी ID Red है।`)
-                    : (en ? "Your ID is Red — income starts the day it turns Green." : "आपकी ID Red है — Green होते ही कमाई शुरू।")}</p>
+                    : (en ? "Your ID is Red — earnings are open only when it is Green." : "आपकी ID Red है — कमाई तभी चालू होती है जब ID Green हो।")}</p>
                   <p className="mt-1">{en ? "Green = a Growth ₹2,999 subscription. Every joining under you then counts, from the first one." : "Green = Growth ₹2,999 subscription। फिर आपके नीचे की हर joining गिनी जाएगी, पहली से ही।"}</p>
                   <Link href="/poster/plan" className="mt-2 inline-block rounded-lg bg-white px-3 py-1.5 font-semibold text-[#12144a]">{en ? "Turn Green" : "Green करें"}</Link>
                 </div>); })()}
@@ -127,7 +125,7 @@ function BusinessInner() {
           <p className="text-sm font-semibold">{en ? "My referral link" : "मेरा referral link"}</p>
           <p className="truncate rounded-lg bg-surface2 px-3 py-2 text-sm font-medium">{res.link.replace(/^https?:\/\//, "")}</p>
           <div className="flex gap-2">
-            <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हुआ") : (en ? "Copy" : "Copy")}</button>
+            <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हो गया") : "Copy"}</button>
             <button type="button" onClick={share} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {en ? "Share" : "Share करें"}</button>
           </div>
           <p className="text-[11px] text-muted">{en ? `Whoever creates a Shubhora account from this link joins your team — placed automatically on the side with fewer IDs. Sponsor is always you, shown as ${res.username ?? "your username"}. Your digital card carries the same button at the bottom.` : `इस link से जो Shubhora account बनाएगा, वो आपकी team में आएगा — कम ID वाली side में अपने-आप। Sponsor हमेशा आप, नाम की जगह ${res.username ?? "आपका username"}। आपके digital card के नीचे भी यही button है।`}</p>
@@ -135,7 +133,7 @@ function BusinessInner() {
         </section>
       )}
 
-      {/* Everything else opens the panel page with this same login */}
+      {/* Every other page is a screen of the app (same login) */}
       {p && (
         <section className="space-y-2">
           <p className="text-sm font-semibold">{en ? "Business menu" : "Business menu"}</p>
@@ -167,7 +165,7 @@ function BusinessInner() {
               <p className="text-sm font-semibold">{en ? "Latest in your team" : "Team में नए"}</p>
               <ul className="mt-2 divide-y divide-border text-sm">
                 {p.recentTeam.map((t) => (
-                  <li key={`${t.handle}-${t.joined}`} className="flex items-center justify-between py-1.5"><span className="font-semibold">{t.handle}</span><span className="text-xs text-muted">{t.side === "L" ? "Left" : "Right"} · {t.status === "green" ? "Green" : "Red"} · {day(t.joined)}</span></li>
+                  <li key={`${t.handle}-${t.joined}`} className="flex items-center justify-between py-1.5"><span className="font-semibold">{t.handle}</span><span className="text-xs text-muted">{t.side === "L" ? "Left side" : "Right side"} · {t.status === "green" ? "Green" : "Red"} · {day(t.joined)}</span></li>
                 ))}
               </ul>
             </div>
@@ -177,7 +175,7 @@ function BusinessInner() {
               <p className="text-sm font-semibold">{en ? "Latest income" : "ताज़ा कमाई"}</p>
               <ul className="mt-2 divide-y divide-border text-sm">
                 {p.recentIncome.map((i, k) => (
-                  <li key={k} className="flex items-center justify-between py-1.5"><span>{KIND[i.kind] ?? i.kind}</span><span className="font-semibold">{rupee(i.paise)} <span className="text-xs font-normal text-muted">· {day(i.day)}</span></span></li>
+                  <li key={k} className="flex items-center justify-between py-1.5"><span>{KIND[i.kind] ? KIND[i.kind][en ? 0 : 1] : i.kind}</span><span className="font-semibold">{rupee(i.paise)} <span className="text-xs font-normal text-muted">· {day(i.day)}</span></span></li>
                 ))}
               </ul>
             </div>

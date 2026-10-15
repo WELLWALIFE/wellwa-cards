@@ -52,13 +52,23 @@ export function Sec({ id, title, hint, help, children }: { id?: string; title: s
 // eslint-disable-next-line @next/next/no-img-element
 const Img = (p: { src: string; className?: string }) => <img src={p.src} alt="" className={p.className} />;
 
-export const DESIGNATIONS = ["Owner", "Proprietor", "Founder", "Director", "Partner", "Manager", "Dr.", "Advocate", "CA", "Consultant"];
+/** A shop or company is run by an owner, a partner, a manager… ; "Dr.", "Advocate", "CA" are a person's own title, so they are offered
+ *  only to a professional or a personal card (owner, 14 Oct 2026: a sweet shop was asked "Dr. / Advocate / CA"). */
+const BUSINESS_ROLES = ["Owner", "Proprietor", "Founder", "Director", "Partner", "Manager"];
+export const DESIGNATIONS = [...BUSINESS_ROLES, "Dr.", "Advocate", "CA", "Consultant"];
+/** How the card leads (the set-up's four choices). */
+export type CardRole = "business" | "professional" | "agent" | "personal";
+/** The role chips for this kind of card. A role saved earlier from the full list is still shown (and can be un-ticked). */
+export function designationsFor(role: CardRole | undefined, saved: string): string[] {
+  const base = role === "business" ? BUSINESS_ROLES : role === "agent" ? [...BUSINESS_ROLES, "Consultant"] : DESIGNATIONS;
+  return saved && DESIGNATIONS.includes(saved) && !base.includes(saved) ? [...base, saved] : base;
+}
 export const SPECIAL_CHIPS = ["💰 Fair prices", "⭐ Best quality", "🚚 Fast delivery", "🧑‍🔧 Expert team", "✂️ Custom orders", "🤝 Trusted by many customers"];
 export const CUSTOMER_CHIPS = ["👪 Families", "🏪 Shops", "🏢 Offices", "🎓 Students", "👵 Senior citizens", "🙋 Everyone"];
 export const PAYMENT_CHIPS = ["💵 Cash", "📱 UPI", "💳 Card", "🧾 EMI"];
 const HOURS_CHIPS = ["Mon–Sat 10 AM – 8 PM", "All days 9 AM – 9 PM", "Mon–Fri 10 AM – 6 PM"];
 
-export function FactsFields({ group, facts, setF, hi, professional, hasAbout, category, only }: {
+export function FactsFields({ group, facts, setF, hi, professional, role, hasAbout, category, only }: {
   group: FactsGroup;
   /** Show only these questions (q-… ids) — the set-up spreads the group over several screens. */
   only?: readonly string[];
@@ -69,6 +79,8 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   hi: boolean;
   /** A professional (doctor, CA, lawyer…) is asked for the degree / registration. */
   professional?: boolean;
+  /** How the card leads — decides which role chips are offered. Unset (the form has not loaded the set-up yet) = all of them, as before, never only the shop roles. */
+  role?: CardRole;
   /** The set-up already has an "About" → "your work in your words" is not asked again. */
   hasAbout?: boolean;
 }) {
@@ -87,7 +99,19 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
     const list = facts[key];
     setF({ [key]: list.includes(v) ? list.filter((x) => x !== v) : [...list, v] } as FactsPatch);
   };
+  // Not told how the card leads: a professional is one; anyone else is offered every role (designationsFor), not just the shop ones.
+  const kind: CardRole | undefined = role ?? (professional ? "professional" : undefined);
   const upiOn = facts.payments.some((p) => /upi/i.test(p));
+  /** The UPI box shows its red line only after the owner has left it once, not while the ID is still being typed. */
+  const [upiSeen, setUpiSeen] = useState(false);
+  const upiBad = !!facts.upi && !UPI_RE.test(facts.upi);
+  /** Taking UPI off takes the ID off too — the card shows "UPI" from the ID alone, so an unticked chip with an ID left behind
+   *  could never be switched off. */
+  const togglePay = (c: string) => {
+    if (!/upi/i.test(c)) { toggle("payments", c); return; }
+    if (upiOn) setF({ payments: facts.payments.filter((p) => !/upi/i.test(p)), upi: "" });
+    else setF({ payments: [...facts.payments, c] });
+  };
   const OFFLINE = T("No internet — please try again.", "internet नहीं है — दोबारा try करें।");
   const FAILED = T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।");
 
@@ -140,9 +164,9 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
   return (
     <OnlyCtx.Provider value={only}>
       {crop && <ImageCropper src={crop} aspect={3} outWidth={1500} format="jpeg" onApply={banner} onCancel={() => setCrop("")} />}
-      <Sec id="q-designation" title={T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={T("Shown under your name, e.g. Rajesh Sharma · Owner.", "आपके नाम के नीचे, जैसे Rajesh Sharma · Owner।")} help="designation">
+      <Sec id="q-designation" title={kind === "personal" ? T("Your role or job", "आपका पद या काम") : T(`Your role in the ${place}`, `${place} में आपका पद`)} hint={kind === "professional" || kind === "personal" ? T("Shown under your name, e.g. Rajesh Sharma · Consultant.", "आपके नाम के नीचे, जैसे Rajesh Sharma · Consultant।") : T("Shown under your name, e.g. Rajesh Sharma · Owner.", "आपके नाम के नीचे, जैसे Rajesh Sharma · Owner।")} help="designation">
         <div className="flex flex-wrap gap-1.5">
-          {DESIGNATIONS.map((d) => <button key={d} type="button" onClick={() => setF({ designation: facts.designation === d ? "" : d })} className={chipCls(facts.designation === d)}>{d}</button>)}
+          {designationsFor(kind, facts.designation).map((d) => <button key={d} type="button" onClick={() => setF({ designation: facts.designation === d ? "" : d })} className={chipCls(facts.designation === d)}>{d}</button>)}
         </div>
         <input value={facts.designation} onChange={(e) => setF({ designation: e.target.value.slice(0, 60) })} placeholder={T("Or type it — e.g. Senior Consultant", "या लिखें — जैसे Senior Consultant")} className={field} />
       </Sec>
@@ -208,14 +232,20 @@ export function FactsFields({ group, facts, setF, hi, professional, hasAbout, ca
 
       <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")} hint={T("No bank details are asked.", "Bank details नहीं पूछी जातीं।")} help="payments">
         <div className="flex flex-wrap gap-2">
-          {PAYMENT_CHIPS.map((c) => <button key={c} type="button" onClick={() => toggle("payments", c)} className={chipCls(facts.payments.includes(c))}>{c}</button>)}
+          {PAYMENT_CHIPS.map((c) => <button key={c} type="button" onClick={() => togglePay(c)} className={chipCls(/upi/i.test(c) ? upiOn : facts.payments.includes(c))}>{c}</button>)}
         </div>
-        {upiOn && (
-          <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")}
-            <input value={facts.upi} onChange={(e) => setF({ upi: e.target.value.trim() })} autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
-            {!!facts.upi && !UPI_RE.test(facts.upi) && <span className="mt-1 block text-xs font-semibold text-danger">{T("This does not look like a UPI ID. It looks like name@bank — e.g. sharmasweets@okhdfcbank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank, जैसे sharmasweets@okhdfcbank")}</span>}
-          </label>
-        )}
+        {/* Always on the screen (owner, 14 Oct 2026: "Add your UPI ID" led here, but the box showed only after UPI was ticked, so
+            the tap seemed to do nothing). A good ID ticks UPI by itself; no ID is fine — nothing here blocks Save. */}
+        <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")} <span className="font-normal text-muted">({T("optional", "ज़रूरी नहीं")})</span>
+          <input value={facts.upi} onChange={(e) => { const v = e.target.value.replace(/\s/g, ""); setF({ upi: v, ...(UPI_RE.test(v) && !upiOn ? { payments: [...facts.payments, PAYMENT_CHIPS[1]] } : {}) }); }} onBlur={() => setUpiSeen(true)}
+            inputMode="email" autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
+          {upiBad && upiSeen
+            ? <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-danger">
+                <span>{T("This does not look like a UPI ID. It looks like name@bank — e.g. sharmasweets@okhdfcbank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank, जैसे sharmasweets@okhdfcbank")}</span>
+                <button type="button" onClick={() => setF({ upi: "" })} className="underline">{T("No UPI ID — clear it", "UPI ID नहीं है — हटाएँ")}</button>
+              </span>
+            : <span className="mt-1 block text-xs font-normal text-muted">{upiOn && !facts.upi ? T("Add it so customers can pay you from your card. Not now? Leave it empty — add it later.", "डालें तो ग्राहक आपके card से सीधे pay कर सकेंगे। अभी नहीं है? खाली छोड़ें — बाद में जोड़ें।") : T("Looks like name@bank. Leave it empty if you have none.", "name@bank जैसी होती है। नहीं है तो खाली छोड़ें।")}</span>}
+        </label>
       </Sec>
 
       {professional && (

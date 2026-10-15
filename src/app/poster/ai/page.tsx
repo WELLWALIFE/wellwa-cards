@@ -57,8 +57,8 @@ export default function AiTrainingPage() {
 
       {!status.hasCard || !card ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-          <p className="text-sm text-muted">{T("Build your website first — the AI learns from it.", "पहले अपनी website बनाएँ — AI उसी से सीखता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Build my website →", "Website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your website first — the AI learns from it.", "पहले अपनी website बनाएँ — AI उसी से सीखता है।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (
         <>
@@ -68,7 +68,7 @@ export default function AiTrainingPage() {
           </section>
 
           <section>
-            {sec(2, T("Change your website by talking", "बोलकर website बदलें"), T("Say what to change in your own words; you see the changes before they go live.", "अपने शब्दों में बताइए क्या बदलना है; live होने से पहले बदलाव दिखते हैं।"))}
+            {sec(2, T("Change your website by talking", "बोलकर website बदलें"), T("Say what you want to change, in your own words. You see the changes before they go on your website.", "अपने शब्दों में बताइए क्या बदलना है। Website पर लगने से पहले आपको बदलाव दिखते हैं।"))}
             <CardChatEdit card={card} locked={!paid} url={status.url ?? ""} onChanged={(c) => { setCard(c); void load(); }} />
           </section>
 
@@ -89,7 +89,7 @@ export default function AiTrainingPage() {
               <ChevronRight className="h-5 w-5 text-muted" />
             </Link>
           </section>
-          <p className="flex items-center gap-1.5 text-[11px] text-muted"><Mic className="h-3.5 w-3.5" /> {T("Tip: the mic in step 2 types what you say.", "टिप: चरण 2 का mic आपकी बात लिख देता है।")}</p>
+          <p className="flex items-center gap-1.5 text-[11px] text-muted"><Mic className="h-3.5 w-3.5" /> {T("Tip: the mic in step 2 types what you say.", "टिप: दूसरे हिस्से का mic आपकी बोली हुई बात लिख देता है।")}</p>
         </>
       )}
     </div>

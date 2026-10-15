@@ -31,7 +31,7 @@ export async function POST(request: Request) {
   let reference = null;
   if (typeof b.reference === "string" && b.reference.trim()) {
     reference = await readReference(b.reference.slice(0, 300));
-    if (!reference) return NextResponse.json({ error: "We could not open that reference website. Check the link, or leave it empty." }, { status: 400 });
+    if (!reference) return NextResponse.json({ error: "We could not open that website. Check the link, or leave it empty." }, { status: 400 });
   }
 
   const ref = `card-ai:${uid}:${Date.now()}`;

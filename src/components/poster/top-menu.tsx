@@ -76,12 +76,12 @@ export function TopMenu() {
           <div className="border-b border-border px-3 py-2.5">
             <p className="truncate text-sm font-semibold">{me.name}</p>
           </div>
-          <Link href="/poster/settings" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><UserRound className="h-4 w-4 text-muted" /> {en ? "Me · account" : "Me · account"}</Link>
+          <Link href="/poster/settings" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><UserRound className="h-4 w-4 text-muted" /> {en ? "Me · account" : "मेरा account"}</Link>
           <Link href="/poster/business" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Handshake className="h-4 w-4 text-muted" /> Business</Link>
-          <Link href="/poster/connect" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Link2 className="h-4 w-4 text-muted" /> {en ? "Connections" : "Connections (WhatsApp, FB…)"}</Link>
+          <Link href="/poster/connect" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Link2 className="h-4 w-4 text-muted" /> {en ? "Connections" : "Connections (WhatsApp, Facebook)"}</Link>
           <Link href="/poster/share" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Share2 className="h-4 w-4 text-muted" /> {en ? "Share my links" : "मेरे links share करें"}</Link>
           <div className="flex items-center justify-between px-3 py-2.5 text-sm"><span className="inline-flex items-center gap-2.5"><Languages className="h-4 w-4 text-muted" /> {en ? "Language" : "भाषा"}</span><LangToggle /></div>
-          <button type="button" onClick={logout} className="flex w-full items-center gap-2.5 border-t border-border px-3 py-2.5 text-left text-sm text-danger"><LogOut className="h-4 w-4" /> {en ? "Log out" : "Log out"}</button>
+          <button type="button" onClick={logout} className="flex w-full items-center gap-2.5 border-t border-border px-3 py-2.5 text-left text-sm text-danger"><LogOut className="h-4 w-4" /> {en ? "Log out" : "लॉग आउट"}</button>
         </div>
       )}
       </div>

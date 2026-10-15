@@ -10,16 +10,16 @@ const kindLabel: Record<CardBlock["kind"], string> = {
   table: "Price list / table",
   form: "Form (enquiry / booking)",
   about: "About / text",
-  highlights: "Highlights",
+  highlights: "Key points",
   services: "Services",
   product: "Products",
   gallery: "Gallery",
-  image: "Image / photos",
+  image: "Photos",
   carousel: "Slider (arrows)",
   video: "Video",
   pdf: "PDF / file",
-  testimonials: "Testimonials",
-  faq: "FAQ",
+  testimonials: "Customer reviews",
+  faq: "Common questions",
   hours: "Business hours",
   appointment: "Appointment",
   location: "Location",
@@ -27,7 +27,7 @@ const kindLabel: Record<CardBlock["kind"], string> = {
   contact: "Contact form",
   cta: "Button (link)",
   compare: "Us vs them (comparison)",
-  showcase: "Showcase (picture tiles)",
+  showcase: "Picture tiles",
 };
 
 export function BlockEditor({
@@ -46,14 +46,14 @@ export function BlockEditor({
     <div className="rounded-xl border border-border bg-surface">
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-surface2/50 rounded-t-xl">
         {dragHandleProps && (
-          <span {...dragHandleProps} className="cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder">
+          <span {...dragHandleProps} className="cursor-grab active:cursor-grabbing shrink-0" title="Drag to move">
             <GripVertical className="h-4 w-4 text-faint" />
           </span>
         )}
         <span className="flex-1 text-xs font-semibold text-muted">{kindLabel[block.kind]}</span>
         <button onClick={onMoveUp} disabled={!canUp} className="ed-icon" aria-label="Move up"><ChevronUp className="h-4 w-4" /></button>
         <button onClick={onMoveDown} disabled={!canDown} className="ed-icon" aria-label="Move down"><ChevronDown className="h-4 w-4" /></button>
-        <button onClick={onRemove} className="ed-icon hover:text-danger" aria-label="Delete block"><Trash2 className="h-4 w-4" /></button>
+        <button onClick={onRemove} className="ed-icon hover:text-danger" aria-label="Delete this section"><Trash2 className="h-4 w-4" /></button>
       </div>
 
       <div className="p-3 space-y-3">
@@ -81,7 +81,7 @@ export function BlockEditor({
         )}
 
         {block.kind === "highlights" && (
-          <ListRows values={block.items} placeholder="Highlight"
+          <ListRows values={block.items} placeholder="One key point"
             onChange={(items) => onChange({ ...block, items })} />
         )}
 
@@ -141,7 +141,7 @@ export function BlockEditor({
                         );
                       })}
                     </div>
-                    <p className="text-[10px] text-faint mt-1">The first photo is the main shot. Visitors can tap any photo to zoom.</p>
+                    <p className="text-[10px] text-faint mt-1">The first photo is the main one. Visitors can tap a photo to see it bigger.</p>
                   </div>
 
                   <input className="ed-input" value={p.name} placeholder="Product name"
@@ -159,7 +159,7 @@ export function BlockEditor({
                         onChange={(e) => setP({ price: e.target.value })} />
                     </label>
                     <label className="block">
-                      <span className="text-[11px] text-muted">Badge</span>
+                      <span className="text-[11px] text-muted">Tag</span>
                       <input className="ed-input" value={p.badge ?? ""} placeholder="Bestseller"
                         onChange={(e) => setP({ badge: e.target.value })} />
                     </label>
@@ -170,30 +170,30 @@ export function BlockEditor({
 
                   {/* Features */}
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-medium text-muted">Features</span>
+                    <span className="text-[11px] font-medium text-muted">Good points</span>
                     {p.features.map((f, fi) => (
                       <div key={fi} className="flex gap-2">
-                        <input className="ed-input" value={f} placeholder="Key feature / benefit"
+                        <input className="ed-input" value={f} placeholder="One good point about it"
                           onChange={(e) => { const features = p.features.slice(); features[fi] = e.target.value; setP({ features }); }} />
                         <button className="ed-icon hover:text-danger shrink-0" onClick={() => setP({ features: p.features.filter((_, x) => x !== fi) })}><X className="h-4 w-4" /></button>
                       </div>
                     ))}
-                    <button className="ed-add" onClick={() => setP({ features: [...p.features, ""] })}><Plus className="h-3.5 w-3.5" /> Add feature</button>
+                    <button className="ed-add" onClick={() => setP({ features: [...p.features, ""] })}><Plus className="h-3.5 w-3.5" /> Add point</button>
                   </div>
 
                   {/* Specifications */}
                   <div className="space-y-1.5">
-                    <span className="text-[11px] font-medium text-muted">Specifications</span>
+                    <span className="text-[11px] font-medium text-muted">Details (size, warranty…)</span>
                     {p.specs.map((s, si) => (
                       <div key={si} className="flex gap-2">
-                        <input className="ed-input" value={s.label} placeholder="Label (e.g. Warranty)"
+                        <input className="ed-input" value={s.label} placeholder="Name (e.g. Warranty)"
                           onChange={(e) => { const specs = p.specs.slice(); specs[si] = { ...s, label: e.target.value }; setP({ specs }); }} />
                         <input className="ed-input" value={s.value} placeholder="Value (e.g. 5 years)"
                           onChange={(e) => { const specs = p.specs.slice(); specs[si] = { ...s, value: e.target.value }; setP({ specs }); }} />
                         <button className="ed-icon hover:text-danger shrink-0" onClick={() => setP({ specs: p.specs.filter((_, x) => x !== si) })}><X className="h-4 w-4" /></button>
                       </div>
                     ))}
-                    <button className="ed-add" onClick={() => setP({ specs: [...p.specs, { label: "", value: "" }] })}><Plus className="h-3.5 w-3.5" /> Add spec</button>
+                    <button className="ed-add" onClick={() => setP({ specs: [...p.specs, { label: "", value: "" }] })}><Plus className="h-3.5 w-3.5" /> Add detail</button>
                   </div>
 
                   <label className="block">
@@ -217,7 +217,7 @@ export function BlockEditor({
                 <ImageUpload shape="tile" value={img.url}
                   onChange={(url) => { const images = block.images.slice(); images[i] = { ...img, url }; onChange({ ...block, images }); }} />
                 <div className="flex-1 space-y-2">
-                  <input className="ed-input" value={img.label} placeholder="Label"
+                  <input className="ed-input" value={img.label} placeholder="Name"
                     onChange={(e) => { const images = block.images.slice(); images[i] = { ...img, label: e.target.value }; onChange({ ...block, images }); }} />
                   <button className="text-xs text-danger" onClick={() => onChange({ ...block, images: block.images.filter((_, x) => x !== i) })}>Remove</button>
                 </div>
@@ -236,7 +236,7 @@ export function BlockEditor({
                 <ImageUpload shape="cover" value={img.url}
                   onChange={(url) => { const images = block.images.slice(); if (url) images[i] = { ...img, url }; onChange({ ...block, images }); }} />
                 <div className="flex gap-2">
-                  <input className="ed-input" value={img.caption ?? ""} placeholder="Caption (optional)"
+                  <input className="ed-input" value={img.caption ?? ""} placeholder="Words under the photo (optional)"
                     onChange={(e) => { const images = block.images.slice(); images[i] = { ...img, caption: e.target.value }; onChange({ ...block, images }); }} />
                   <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, images: block.images.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
                 </div>
@@ -250,13 +250,13 @@ export function BlockEditor({
 
         {block.kind === "carousel" && (
           <div className="space-y-2">
-            <p className="text-xs text-muted">Visitors see one photo at a time with left/right arrows, starting on the middle one.</p>
+            <p className="text-xs text-muted">Visitors see one photo at a time and move with the left and right arrows. It starts on the middle photo.</p>
             {block.images.map((img, i) => (
               <div key={i} className="rounded-lg border border-border p-2 space-y-2">
                 <ImageUpload shape="cover" value={img.url}
                   onChange={(url) => { const images = block.images.slice(); if (url) images[i] = { ...img, url }; onChange({ ...block, images }); }} />
                 <div className="flex gap-2">
-                  <input className="ed-input" value={img.caption ?? ""} placeholder="Caption (optional)"
+                  <input className="ed-input" value={img.caption ?? ""} placeholder="Words under the photo (optional)"
                     onChange={(e) => { const images = block.images.slice(); images[i] = { ...img, caption: e.target.value }; onChange({ ...block, images }); }} />
                   <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, images: block.images.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
                 </div>
@@ -270,15 +270,15 @@ export function BlockEditor({
 
         {block.kind === "video" && (
           <>
-            <input className="ed-input" value={block.url} placeholder="YouTube / Facebook / Vimeo / .mp4 link"
+            <input className="ed-input" value={block.url} placeholder="Video link (YouTube, Facebook, Vimeo or .mp4)"
               onChange={(e) => onChange({ ...block, url: e.target.value })} />
-            <input className="ed-input" value={block.caption} placeholder="Caption (optional)"
+            <input className="ed-input" value={block.caption} placeholder="Words under the video (optional)"
               onChange={(e) => onChange({ ...block, caption: e.target.value })} />
             <div>
-              <p className="text-[13px] font-medium mb-1 text-muted">Video cover / poster (optional)</p>
+              <p className="text-[13px] font-medium mb-1 text-muted">Video cover photo (optional)</p>
               <ImageUpload shape="cover" value={block.posterUrl}
                 onChange={(posterUrl) => onChange({ ...block, posterUrl })} />
-              <p className="text-[10px] text-faint mt-1">Shown before an uploaded MP4 starts. Replace it with a clear product or presenter frame.</p>
+              <p className="text-[10px] text-faint mt-1">Shown before your video starts. Use a clear photo of your product or of you.</p>
             </div>
           </>
         )}
@@ -292,7 +292,7 @@ export function BlockEditor({
               onChange={(fileUrl, name) => onChange({ ...block, fileUrl, fileLabel: name ?? block.fileLabel })}
             />
             <div>
-              <p className="text-[13px] font-medium mb-1 text-muted">Preview image (optional) — shown above the file, 16:9</p>
+              <p className="text-[13px] font-medium mb-1 text-muted">Cover photo (optional) — shown above the file</p>
               <ImageUpload shape="cover" value={block.posterUrl}
                 onChange={(url) => onChange({ ...block, posterUrl: url })} />
             </div>
@@ -317,7 +317,7 @@ export function BlockEditor({
               </div>
             ))}
             <button className="ed-add" onClick={() => onChange({ ...block, items: [...block.items, { name: "", text: "", rating: 5 }] })}>
-              <Plus className="h-3.5 w-3.5" /> Add testimonial
+              <Plus className="h-3.5 w-3.5" /> Add a review
             </button>
           </div>
         )}
@@ -360,7 +360,7 @@ export function BlockEditor({
 
         {block.kind === "appointment" && (
           <>
-            <input className="ed-input" value={block.url} placeholder="Booking link (Calendly / Google Calendar / any URL)"
+            <input className="ed-input" value={block.url} placeholder="Booking link (Calendly, Google Calendar or any link)"
               onChange={(e) => onChange({ ...block, url: e.target.value })} />
             <input className="ed-input" value={block.note} placeholder="Note (e.g. Free 15-min demo call)"
               onChange={(e) => onChange({ ...block, note: e.target.value })} />
@@ -387,8 +387,8 @@ export function BlockEditor({
 
         {block.kind === "contact" && (
           <>
-            <p className="text-xs text-muted">A contact form (name, phone, email, message). Every submission lands in your Leads and pings you on WhatsApp.</p>
-            <input className="ed-input" value={block.note ?? ""} placeholder="Note shown under the Send button (optional), e.g. Connect with your relationship manager"
+            <p className="text-xs text-muted">A contact form (name, phone, email, message). Every message goes to your Customers list, and you also get it on WhatsApp.</p>
+            <input className="ed-input" value={block.note ?? ""} placeholder="Small note under the Send button (optional)"
               onChange={(e) => onChange({ ...block, note: e.target.value })} />
           </>
         )}
@@ -399,15 +399,15 @@ export function BlockEditor({
               onChange={(e) => onChange({ ...block, body: e.target.value })} />
             <input className="ed-input" value={block.joinLabel} placeholder="Button text (e.g. See all products)"
               onChange={(e) => onChange({ ...block, joinLabel: e.target.value })} />
-            <input className="ed-input" value={block.joinUrl} placeholder="Opens — a web address (https://…) or a page of your card (#products)"
+            <input className="ed-input" value={block.joinUrl} placeholder="Opens: a web address (https://…) or a page of your card (#products)"
               onChange={(e) => onChange({ ...block, joinUrl: e.target.value })} />
             {/* A button to a page of the card (#products) has nothing to do with referrals — the referral code only
                 shows for an outside web address (e.g. a company's join form). */}
             {/^https?:\/\//i.test(block.joinUrl) ? (
               <>
-                <input className="ed-input" value={block.referralCode} placeholder="Referral code (optional — added to the link)"
+                <input className="ed-input" value={block.referralCode} placeholder="Referral code (optional, added to the link)"
                   onChange={(e) => onChange({ ...block, referralCode: e.target.value })} />
-                <p className="text-xs text-muted">Visitors see a &quot;{block.joinLabel || "Join Now"}&quot; button that opens this web address{block.referralCode ? " with your referral code attached, plus a copyable link" : ""}.</p>
+                <p className="text-xs text-muted">Visitors see a &quot;{block.joinLabel || "Join Now"}&quot; button that opens this web address{block.referralCode ? " with your referral code added, and a link they can copy" : ""}.</p>
               </>
             ) : (
               <p className="text-xs text-muted">Visitors see a &quot;{block.joinLabel || "Open"}&quot; button that opens {block.joinUrl?.startsWith("#") ? <>the <b>{block.joinUrl.slice(1)}</b> page of your card</> : "the address above"}.</p>
@@ -417,7 +417,7 @@ export function BlockEditor({
 
         {block.kind === "showcase" && (
           <div className="space-y-2">
-            <p className="text-xs text-muted">Wide picture tiles — a name and one line under each. Add a link and the tile opens it.</p>
+            <p className="text-xs text-muted">Wide picture tiles with a name and one line under each. Add a link and the tile opens it when tapped.</p>
             {block.items.map((it, i) => {
               const setI = (patch: Partial<typeof it>) => { const items = block.items.slice(); items[i] = { ...it, ...patch }; onChange({ ...block, items }); };
               return (
@@ -427,7 +427,7 @@ export function BlockEditor({
                     <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, items: block.items.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
                   </div>
                   <input className="ed-input" value={it.sub ?? ""} placeholder="One line under it (optional)" onChange={(e) => setI({ sub: e.target.value })} />
-                  <input className="ed-input" value={it.imageUrl} placeholder="Picture URL (wide, e.g. 1600×600)" onChange={(e) => setI({ imageUrl: e.target.value.trim() })} />
+                  <input className="ed-input" value={it.imageUrl} placeholder="Picture link (a wide photo)" onChange={(e) => setI({ imageUrl: e.target.value.trim() })} />
                   <input className="ed-input" value={it.url ?? ""} placeholder="Opens this link when tapped (optional)" onChange={(e) => setI({ url: e.target.value.trim() })} />
                 </div>
               );
@@ -441,9 +441,9 @@ export function BlockEditor({
         {block.kind === "compare" && (
           <div className="space-y-2">
             <div className="flex gap-2">
-              <input className="ed-input" value={block.leftLabel} placeholder="Left column (you), e.g. Wellwa Aura"
+              <input className="ed-input" value={block.leftLabel} placeholder="Your side, e.g. Wellwa Aura"
                 onChange={(e) => onChange({ ...block, leftLabel: e.target.value })} />
-              <input className="ed-input" value={block.rightLabel} placeholder="Right column, e.g. Competitor"
+              <input className="ed-input" value={block.rightLabel} placeholder="Other side, e.g. Other brand"
                 onChange={(e) => onChange({ ...block, rightLabel: e.target.value })} />
             </div>
             {block.rows.map((r, i) => {
@@ -451,7 +451,7 @@ export function BlockEditor({
               return (
                 <div key={i} className="rounded-lg border border-border p-2 space-y-2">
                   <div className="flex gap-2">
-                    <input className="ed-input" value={r.feature} placeholder="Feature, e.g. Plate size" onChange={(e) => setR({ feature: e.target.value })} />
+                    <input className="ed-input" value={r.feature} placeholder="What you compare, e.g. Plate size" onChange={(e) => setR({ feature: e.target.value })} />
                     <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, rows: block.rows.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
                   </div>
                   <div className="flex gap-2">
@@ -459,7 +459,7 @@ export function BlockEditor({
                     <button type="button" title="Tick or cross on your side" className={`ed-icon shrink-0 ${r.leftOk === false ? "text-danger" : "text-good"}`} onClick={() => setR({ leftOk: r.leftOk === false ? undefined : false })}>{r.leftOk === false ? "✗" : "✓"}</button>
                   </div>
                   <div className="flex gap-2">
-                    <input className="ed-input" value={r.right} placeholder="Competitor" onChange={(e) => setR({ right: e.target.value })} />
+                    <input className="ed-input" value={r.right} placeholder="Other brand" onChange={(e) => setR({ right: e.target.value })} />
                     <button type="button" title="Tick or cross on their side" className={`ed-icon shrink-0 ${r.rightOk ? "text-good" : "text-danger"}`} onClick={() => setR({ rightOk: r.rightOk ? undefined : true })}>{r.rightOk ? "✓" : "✗"}</button>
                   </div>
                 </div>
@@ -472,10 +472,10 @@ export function BlockEditor({
         )}
         {block.kind === "table" && (
           <div className="space-y-2">
-            <input className="ed-input" value={block.columns.join(" | ")} placeholder="Columns, separated by | — e.g. Class | Fee per month | Includes"
+            <input className="ed-input" value={block.columns.join(" | ")} placeholder="Column names, with | between them. e.g. Class | Fee per month | Includes"
               onChange={(e) => onChange({ ...block, columns: e.target.value.split("|").map((x) => x.trim()) })} />
             <textarea className="ed-input min-h-[120px] font-mono text-xs" value={block.rows.map((r) => r.join(" | ")).join("\n")}
-              placeholder={"One row per line, cells separated by | — e.g.\nNursery–UKG | ₹1,200 | books, activities\nClass 1–5 | ₹1,500 | books, transport"}
+              placeholder={"One row per line, with | between the boxes. e.g.\nNursery–UKG | ₹1,200 | books, activities\nClass 1–5 | ₹1,500 | books, transport"}
               onChange={(e) => onChange({ ...block, rows: e.target.value.split("\n").map((l) => l.split("|").map((x) => x.trim())).filter((r) => r.some(Boolean)) })} />
             <div className="flex gap-2">
               <input className="ed-input" value={block.note ?? ""} placeholder="Note under the table (optional)" onChange={(e) => onChange({ ...block, note: e.target.value })} />
@@ -492,18 +492,18 @@ export function BlockEditor({
               return (
                 <div key={f.key} className="rounded-lg border border-border p-2 space-y-2">
                   <div className="flex gap-2">
-                    <input className="ed-input" value={f.label} placeholder="Field label, e.g. Child's name" onChange={(e) => setF({ label: e.target.value })} />
+                    <input className="ed-input" value={f.label} placeholder="Question to ask, e.g. Child's name" onChange={(e) => setF({ label: e.target.value })} />
                     <select className="ed-input !w-auto" value={f.type} onChange={(e) => setF({ type: e.target.value as typeof f.type })}>
-                      {(["text", "phone", "email", "select", "date", "textarea"] as const).map((k) => <option key={k} value={k}>{k}</option>)}
+                      {(["text", "phone", "email", "select", "date", "textarea"] as const).map((k) => <option key={k} value={k}>{FIELD_TYPE_NAMES[k]}</option>)}
                     </select>
-                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={!!f.required} onChange={(e) => setF({ required: e.target.checked })} /> req.</label>
+                    <label className="flex items-center gap-1 text-xs"><input type="checkbox" checked={!!f.required} onChange={(e) => setF({ required: e.target.checked })} /> Must fill</label>
                     <button className="ed-icon hover:text-danger shrink-0" onClick={() => onChange({ ...block, fields: block.fields.filter((_, x) => x !== i) })}><X className="h-4 w-4" /></button>
                   </div>
-                  {f.type === "select" && <input className="ed-input" value={(f.options ?? []).join(", ")} placeholder="Choices, separated by commas" onChange={(e) => setF({ options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />}
+                  {f.type === "select" && <input className="ed-input" value={(f.options ?? []).join(", ")} placeholder="Choices (put a comma between them)" onChange={(e) => setF({ options: e.target.value.split(",").map((x) => x.trim()).filter(Boolean) })} />}
                 </div>
               );
             })}
-            <button className="ed-add" onClick={() => onChange({ ...block, fields: [...block.fields, { key: `f${Date.now().toString(36)}`, label: "", type: "text" }] })}><Plus className="h-3.5 w-3.5" /> Add field</button>
+            <button className="ed-add" onClick={() => onChange({ ...block, fields: [...block.fields, { key: `f${Date.now().toString(36)}`, label: "", type: "text" }] })}><Plus className="h-3.5 w-3.5" /> Add question</button>
             <div className="flex gap-2">
               <input className="ed-input" value={block.button ?? ""} placeholder="Button text, e.g. Send enquiry" onChange={(e) => onChange({ ...block, button: e.target.value })} />
               <input className="ed-input" value={block.note ?? ""} placeholder="Note under the button (optional)" onChange={(e) => onChange({ ...block, note: e.target.value })} />
@@ -514,6 +514,9 @@ export function BlockEditor({
     </div>
   );
 }
+
+/** What each kind of form box is called for the owner (the stored value stays text/phone/…). */
+const FIELD_TYPE_NAMES = { text: "Short text", phone: "Phone", email: "Email", select: "Choose one", date: "Date", textarea: "Long text" } as const;
 
 const MAX_PDF_BYTES = 2_500_000; // ~2.5MB — localStorage-safe until Supabase storage arrives
 
@@ -527,7 +530,7 @@ function PdfUpload({ fileUrl, onChange }: {
   function pick(file?: File) {
     if (!file) return;
     if (file.size > MAX_PDF_BYTES) {
-      setErr("File is too big (max 2.5 MB for now). Cloud storage arrives with Supabase.");
+      setErr("This file is too big. Please use a file under 2.5 MB.");
       return;
     }
     setErr("");
@@ -541,11 +544,11 @@ function PdfUpload({ fileUrl, onChange }: {
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => input.current?.click()}
           className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-surface2">
-          <Upload className="h-3.5 w-3.5" /> {fileUrl ? "Replace PDF" : "Upload PDF"}
+          <Upload className="h-3.5 w-3.5" /> {fileUrl ? "Change PDF" : "Add PDF"}
         </button>
         {fileUrl && (
           <>
-            <span className="inline-flex items-center gap-1 text-xs text-good"><FileText className="h-3.5 w-3.5" /> Attached</span>
+            <span className="inline-flex items-center gap-1 text-xs text-good"><FileText className="h-3.5 w-3.5" /> Added</span>
             <button type="button" onClick={() => onChange(undefined)} className="text-xs text-danger hover:underline">Remove</button>
           </>
         )}
@@ -568,7 +571,7 @@ function ListRows({ values, placeholder, onChange }: { values: string[]; placeho
         </div>
       ))}
       <button className="ed-add" onClick={() => onChange([...values, ""])}>
-        <Plus className="h-3.5 w-3.5" /> Add item
+        <Plus className="h-3.5 w-3.5" /> Add one more
       </button>
     </div>
   );

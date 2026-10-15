@@ -754,7 +754,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   }
   if (!facts.bannerUrl) want.push("banner");
   if (!facts.hours) want.push("hours");
-  if (!facts.upi) want.push("upi");
+  // Only when UPI is ticked and its ID is missing. An owner who un-ticked UPI (or never ticked it) takes none, and was asked for an ID
+  // again on every rebuild; the payment question itself (and the card checklist) is where they can still add it.
+  if (!facts.upi && facts.payments.some((p) => /upi/i.test(p))) want.push("upi");
   if (!mapUrl) want.push("map");
   if (stats.count < 3) want.push("reviews");
   if (setup.persona === "professional" && !facts.qualification) want.push("qualification");

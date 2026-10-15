@@ -63,7 +63,7 @@ export default function ProfilesPage() {
           <Plus className="h-4 w-4" /> {t.add}
         </button>
       </div>
-      <Guide hi="Profile = poster पर कौन-सा नाम, फ़ोटो, नंबर आएगा। परिवार/दुकान के लिए अलग-अलग profile बना सकते हैं।" en="Profile = which name, photo and number go on the poster. Make separate profiles for family/shop." />
+      <Guide hi="Profile से तय होता है कि poster पर कौन-सा नाम, फ़ोटो और नंबर आएगा। घर के हर सदस्य या हर दुकान के लिए अलग profile बना सकते हैं।" en="A profile decides which name, photo and number show on your poster. You can make a separate profile for each family member or shop." />
       <Link href="/poster/products" className="block rounded-xl border border-brand bg-brand-soft/40 p-3 text-sm font-semibold text-brand-ink">📦 {t.productsTitle} →</Link>
       <div className="space-y-2">
         {list.map((p) => {

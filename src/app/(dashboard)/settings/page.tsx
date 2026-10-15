@@ -124,7 +124,7 @@ export default function SettingsPage() {
         <h2 className="font-semibold mb-1 flex items-center gap-2"><CreditCard className="h-4 w-4 text-muted" /> Your plan</h2>
         <p className="text-sm text-muted mb-4">
           {(expired || current === "free") && associate
-            ? <>You are on the <b className="text-ink">free plan</b>. Activate your subscription in the partner panel to unlock everything.</>
+            ? <>You are on the <b className="text-ink">free plan</b>. Choose a plan below and pay with Razorpay to unlock everything.</>
             : expired || current === "free"
             ? <>You are on the <b className="text-ink">free plan</b> — your digital V-Card is free for its first year. Subscribe for the website, daily posters, WhatsApp AI and auto-posting.</>
             : isTrial

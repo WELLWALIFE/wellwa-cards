@@ -5,14 +5,18 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { partnerCall, partnerLinked } from "@/lib/partner-link";
 
-export const PAGES = ["team", "grow", "income", "rank", "wallet", "subscription", "support", "downloads", "profile", "kyc"] as const;
+export const PAGES = ["team", "grow", "income", "rank", "wallet", "subscription", "support", "downloads", "profile", "kyc", "welcome-letter"] as const;
 
 async function run(request: Request, page: string, fields: Record<string, unknown>) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (!(PAGES as readonly string[]).includes(page)) return NextResponse.json({ error: "Unknown page." }, { status: 404 });
   if (!partnerLinked()) return NextResponse.json({ error: "The Business section is not available right now." }, { status: 503 });
-  const r = await partnerCall<Record<string, unknown>>(`p.${page}`, { ...fields, suiteUserId: me.id }, 20_000);
+  // `action`, `ts` and `suiteUserId` belong to the signed call, never to the person: partnerCall puts the fields after `action`, so a field
+  // named "action" would replace `p.<page>` and reach the partner service's admin actions (member list, staff logins…).
+  const own = { ...fields };
+  for (const k of ["action", "ts", "suiteUserId"]) delete own[k];
+  const r = await partnerCall<Record<string, unknown>>(`p.${page}`, { ...own, suiteUserId: me.id }, 20_000);
   if (!r.ok && r.status === 0) return NextResponse.json({ error: "The Business section did not answer. Please try again." }, { status: 503 });
   return NextResponse.json(r.data, { status: r.status || 502 });
 }

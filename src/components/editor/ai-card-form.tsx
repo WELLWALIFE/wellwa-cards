@@ -26,12 +26,12 @@ export function AiCardForm({ onReady }: { onReady: (t: CardTemplateDef) => void 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr("");
     if (balance !== null && balance < cost) { setUnlock(true); return; }
-    if (!confirm(`Create your card with AI for ${cost} credits? Every new AI card uses credits again.`)) return;
+    if (!confirm(`Make your card with AI for ${cost} credits? Each new AI card uses credits again.`)) return;
     setBusy(true);
     const r = await fetch("/api/card/ai", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f }) });
     const j = await r.json().catch(() => ({}));
     setBusy(false);
-    if (!r.ok || !j.card) { setErr(j.error || "The AI could not create the card."); return; }
+    if (!r.ok || !j.card) { setErr(j.error || "The AI could not make the card. Please try again."); return; }
     onReady({ key: "ai", name: "AI card", category: f.category, description: "", emoji: "✨", data: j.card as TemplateCard });
   }
 
@@ -39,7 +39,7 @@ export function AiCardForm({ onReady }: { onReady: (t: CardTemplateDef) => void 
     return (
       <>
       <button type="button" onClick={() => (access.active ? setOpen(true) : setUnlock(true))} className="w-full rounded-2xl border-2 border-brand/40 bg-brand-soft p-5 text-left hover:border-brand">
-        <span className="flex items-center gap-2 font-semibold text-ink"><Sparkles className="h-5 w-5 text-brand" /> Create with AI</span>
+        <span className="flex items-center gap-2 font-semibold text-ink"><Sparkles className="h-5 w-5 text-brand" /> Make with AI</span>
         <span className="mt-1 block text-sm text-muted">Tell us about your business in your own words. The AI writes the whole card.{access.active ? ` From ${CARD_TEXT_CREDITS} credits.` : ""}</span>
       </button>
       {unlock && <UnlockDialog reason="Tell the AI about your business and it writes your whole card." onClose={() => { setUnlock(false); access.refresh(); }} />}
@@ -49,7 +49,7 @@ export function AiCardForm({ onReady }: { onReady: (t: CardTemplateDef) => void 
 
   return (
     <form onSubmit={submit} className="rounded-2xl border-2 border-brand/40 bg-surface p-5 space-y-3 text-left">
-      <p className="flex items-center gap-2 font-semibold"><Sparkles className="h-5 w-5 text-brand" /> Create your card with AI</p>
+      <p className="flex items-center gap-2 font-semibold"><Sparkles className="h-5 w-5 text-brand" /> Make your card with AI</p>
       <div className="grid sm:grid-cols-2 gap-3">
         <label className="block text-xs font-semibold text-muted">Business name *<input required value={f.business} onChange={set("business")} placeholder="e.g. Sharma Sweets" className={input} /></label>
         <label className="block text-xs font-semibold text-muted">What you do *<input required value={f.category} onChange={set("category")} placeholder="e.g. Sweet shop, Dentist, Interior designer" className={input} /></label>
@@ -60,11 +60,11 @@ export function AiCardForm({ onReady }: { onReady: (t: CardTemplateDef) => void 
       </div>
       <label className="block text-xs font-semibold text-muted">About your business * <span className="font-normal">— the AI uses only what you write here</span>
         <textarea required minLength={30} rows={5} value={f.details} onChange={set("details")} className={input}
-          placeholder="What you sell or do, your main products/services and prices, timings, how long you have been in business, what makes you different, any current offer…" />
+          placeholder="What you sell or do, your main products/services and prices, timings, how long you have been in business, what is special about you, any offer running now…" />
       </label>
-      <label className="block text-xs font-semibold text-muted">Reference website (optional)
-        <input value={f.reference} onChange={set("reference")} inputMode="url" placeholder="A website whose style you like" className={input} />
-        <span className="block font-normal mt-1">The AI follows its style, never copies its text.</span>
+      <label className="block text-xs font-semibold text-muted">A website you like (optional)
+        <input value={f.reference} onChange={set("reference")} inputMode="url" placeholder="Link of a website you like" className={input} />
+        <span className="block font-normal mt-1">The AI copies only the look, never the words.</span>
       </label>
       <div className="flex flex-wrap items-end gap-4">
         <label className="block text-xs font-semibold text-muted">Language
@@ -81,7 +81,7 @@ export function AiCardForm({ onReady }: { onReady: (t: CardTemplateDef) => void 
       {err && <p className="text-sm text-danger">{err}</p>}
       <div className="flex gap-2">
         <button disabled={busy} className="flex-1 inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-          {busy ? <><LoaderCircle className="h-4 w-4 animate-spin" /> The AI is writing your card…</> : <><Sparkles className="h-4 w-4" /> Create with AI · {cost} credits</>}
+          {busy ? <><LoaderCircle className="h-4 w-4 animate-spin" /> The AI is writing your card…</> : <><Sparkles className="h-4 w-4" /> Make with AI · {cost} credits</>}
         </button>
         <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-border px-4 text-sm">Cancel</button>
       </div>

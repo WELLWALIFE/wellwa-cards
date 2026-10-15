@@ -28,6 +28,19 @@ export const isScreenKey = (v: unknown): v is ScreenKey => typeof v === "string"
 export const FLOW_SCREENS = SETUP_SCREENS.filter((s) => !s.later);
 /** `skipped`: screens left out for this person (e.g. "Who is this for?" is only for partners). */
 export const flowOf = (skipped: ScreenKey[] = []) => FLOW_SCREENS.filter((s) => !skipped.includes(s.key));
-export const screenNo = (k: ScreenKey, skipped: ScreenKey[] = []) => Math.max(1, flowOf(skipped).findIndex((s) => s.key === k) + 1);
+/** "Step N" of a screen. A screen that is not part of the walk (Highlights, Photos & more, Products: `later`) used to count as
+ *  step 1 and the bar fell back to the start; it now sits at the last walk screen before it. */
+export const screenNo = (k: ScreenKey, skipped: ScreenKey[] = []) => {
+  const flow = flowOf(skipped);
+  const own = flow.findIndex((s) => s.key === k);
+  if (own >= 0) return own + 1;
+  let n = 1;
+  for (const s of SETUP_SCREENS) {
+    if (s.key === k) break;
+    const i = flow.findIndex((f) => f.key === s.key);
+    if (i >= 0) n = i + 1;
+  }
+  return n;
+};
 /** The onboarding's own screens, in order (the products and make pages are their own routes). */
 export const ONBOARD_SCREENS = FLOW_SCREENS.filter((s) => s.key !== "make").map((s) => s.key) as Exclude<ScreenKey, "products" | "make">[];

@@ -13,7 +13,7 @@ export default function SharePage() {
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{en ? "Share my links" : "मेरे links share करें"}</h1>
-      <p className="text-sm text-muted">{en ? "Your card link is for customers. Partners also get Left / Right links to build a team." : "Card का link customers के लिए है। Partners के लिए team बनाने के Left / Right link भी हैं।"}</p>
+      <p className="text-sm text-muted">{en ? "Your card link is for your customers. To build a team, partners also get a Left link and a Right link." : "Card का link आपके customers के लिए है। Team बनाने के लिए partners को Left और Right link भी मिलते हैं।"}</p>
       <ShareLinks />
     </div>
   );

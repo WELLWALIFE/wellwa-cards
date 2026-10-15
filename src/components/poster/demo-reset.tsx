@@ -5,8 +5,12 @@
 import { useEffect, useState } from "react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { api } from "@/lib/poster-client";
+import { useT } from "@/lib/poster-i18n";
+import { announceLocalReset } from "@/lib/local-reset";
 
 export function DemoReset() {
+  const { lang } = useT();
+  const T = (en: string, hi: string) => (lang === "hi" ? hi : en);
   const [demo, setDemo] = useState(false);
   const [busy, setBusy] = useState(false);
   useEffect(() => {
@@ -14,21 +18,29 @@ export function DemoReset() {
   }, []);
   if (!demo) return null;
   async function reset() {
-    if (!confirm("Reset the demo account?\n\nEverything made in it is deleted — card, website, products, connections, leads. The login stays. The app opens fresh, at the congratulations page.")) return;
+    if (!confirm(T(
+      "Reset the demo account?\n\nEverything made in it is deleted — card, website, products, connections, leads. The login stays. The app opens fresh, at the congratulations page.",
+      "Demo account reset करें?\n\nइसमें बना सब कुछ मिट जाएगा — card, website, products, connections, leads। Login रहेगा। App नए सिरे से, बधाई वाले page पर खुलेगा।",
+    ))) return;
     setBusy(true);
     try {
       const r = await api<{ ok?: boolean; error?: string }>("/api/demo/reset", { method: "POST", json: {} });
-      if (!r.ok && r.status !== 207) { alert(r.data.error || "Could not reset. Try again."); setBusy(false); return; }
-      // This phone's own leftovers: drafts, form backups, the hidden setup bar, the introducer.
+      if (!r.ok && r.status !== 207) { alert(r.data.error || T("Could not reset. Try again.", "Reset नहीं हो पाया। दोबारा try करें।")); setBusy(false); return; }
+      if (r.status === 207) alert(T("Most of it was cleared, but a few parts could not be. If old things still show, press Reset again.", "ज़्यादातर साफ़ हो गया, पर कुछ हिस्से नहीं हो पाए। पुरानी चीज़ें दिखें तो Reset फिर दबाएँ।"));
+      // A set-up screen that is open stops writing its draft first (its page-hide save put the OLD answers back right after
+      // the clear below), and every other tab of this phone reloads.
+      announceLocalReset();
+      // This phone's own leftovers: drafts, form backups, the hidden setup bar, the introducer. Anything a screen still
+      // writes after this is dropped again by the next page (the account carries a new "cleared" stamp: lib/local-reset.ts).
       try { localStorage.clear(); sessionStorage.clear(); } catch { /* ignore */ }
       window.location.href = "/poster/welcome";
-    } catch { alert("No internet — try again."); setBusy(false); }
+    } catch { alert(T("No internet — try again.", "Internet नहीं है — दोबारा try करें।")); setBusy(false); }
   }
   return (
-    <button type="button" onClick={reset} disabled={busy} title="Demo account — wipe everything and start fresh"
+    <button type="button" onClick={reset} disabled={busy} title={T("Demo account — wipe everything and start fresh", "Demo account — सब मिटाकर नए सिरे से शुरू करें")}
       className="fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#b91c1c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
       style={{ top: "calc(8px + env(safe-area-inset-top))", left: "max(8px, calc(50% - 14rem + 8px))" }}>
-      {busy ? "Resetting…" : "🧹 Reset demo"}
+      {busy ? T("Resetting…", "Reset हो रहा है…") : T("🧹 Reset demo", "🧹 Demo reset")}
     </button>
   );
 }

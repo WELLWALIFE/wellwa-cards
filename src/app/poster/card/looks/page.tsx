@@ -47,9 +47,9 @@ export default function LooksGallery() {
     setBusy(true); setMsg("");
     const r = await publishCard({ ...card, template: look.key, themeColor: color || card.themeColor, avatarColor: color || card.avatarColor });
     setBusy(false);
-    if (!r.ok) { setMsg(r.error || (hi ? "Save nahi hua" : "Could not save")); return; }
+    if (!r.ok) { setMsg(r.error || (hi ? "Save नहीं हुआ" : "Could not save")); return; }
     setCard({ ...card, template: look.key, themeColor: color || card.themeColor, avatarColor: color || card.avatarColor });
-    setMsg(hi ? `${look.name} look lag gaya — aapka card ab aisa dikhega.` : `${look.name} applied — your card looks like this now.`);
+    setMsg(hi ? `${look.name} look लग गया — आपका card अब ऐसा दिखेगा।` : `${look.name} look is on — your card looks like this now.`);
   }
 
   if (!card || !preview) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -63,7 +63,7 @@ export default function LooksGallery() {
     <div className="space-y-3 pb-24">
       <div>
         <h1 className="text-lg font-bold flex items-center gap-2"><Palette className="h-5 w-5 text-brand" /> {hi ? "आपका card, 12 looks में" : "Your card in 12 looks"}</h1>
-        <p className="text-sm text-muted">{hi ? "ऊपर look और रंग tap करें — नीचे card तुरंत बदल जाता है। पसंद आए तो “यही look लगाएँ” दबाएँ।" : "Tap a look and a colour above — the card below changes at once. Like it? Tap “Use this look”."}</p>
+        <p className="text-sm text-muted">{hi ? "ऊपर कोई look और रंग दबाएँ — नीचे card तुरंत बदल जाता है। पसंद आए तो “यही look लगाएँ” दबाएँ।" : "Tap a look and a colour above. The card below changes at once. Like it? Tap “Use this look”."}</p>
       </div>
       {msg && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm text-ink">{msg}</p>}
 
@@ -89,7 +89,7 @@ export default function LooksGallery() {
               className={`h-7 w-7 shrink-0 rounded-full transition-transform ${(color || card.themeColor) === s ? "ring-2 ring-offset-2 ring-offset-bg scale-110" : ""}`} style={{ background: s, boxShadow: (color || card.themeColor) === s ? `0 0 0 2px ${s}` : "none" }} />
           ))}
           <label className="shrink-0 inline-flex items-center gap-1 text-xs text-muted">
-            <input type="color" value={color || card.themeColor} onChange={(e) => setColor(e.target.value)} className="h-7 w-7 rounded-full border border-border bg-transparent p-0" aria-label="Custom colour" />
+            <input type="color" value={color || card.themeColor} onChange={(e) => setColor(e.target.value)} className="h-7 w-7 rounded-full border border-border bg-transparent p-0" aria-label="Pick your own colour" />
           </label>
         </div>
         <p className="text-xs"><b>{sel.name}</b>{hi && sel.hi ? ` · ${sel.hi}` : ""} <span className="text-muted">— {sel.blurb}</span></p>
@@ -104,7 +104,7 @@ export default function LooksGallery() {
           {busy ? (hi ? "लग रहा है…" : "Applying…") : isOn ? (hi ? "यही look लगा है ✓" : "This look is on ✓") : (hi ? `यही look लगाएँ — ${sel.name}` : `Use this look — ${sel.name}`)}
         </button>
       </div>
-      <CardLink href={`${SITE_URL}/c/${card.username}`} title={hi ? "मेरा कार्ड" : "My card"} className="inline-flex items-center gap-1.5 text-sm text-brand-ink"><ExternalLink className="h-4 w-4" /> {hi ? "Live card खोलें" : "Open the live card"}</CardLink>
+      <CardLink href={`${SITE_URL}/c/${card.username}`} title={hi ? "मेरा कार्ड" : "My card"} className="inline-flex items-center gap-1.5 text-sm text-brand-ink"><ExternalLink className="h-4 w-4" /> {hi ? "मेरा card खोलें" : "Open my card"}</CardLink>
     </div>
   );
 }

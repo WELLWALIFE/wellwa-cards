@@ -107,7 +107,7 @@ export function EditProfile({ id, headers, onClose, onSaved }: { id: string; hea
             <section className="space-y-2 rounded-xl border border-border p-3 text-sm">
               <p className="text-xs font-bold uppercase tracking-wide text-faint">Also update</p>
               <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={syncPartner} onChange={(e) => setSyncPartner(e.target.checked)} disabled={!data.partner} />
-                <span>Partner ID {data.partner ? <b className="mono">{data.partner.code}</b> : <span className="text-faint">(none)</span>} — name, username, mobile, email, DOB, gender <span className="block text-[11px] text-muted">So the User Panel, Staff Admin and the tree show the same details. Recorded in the activity log.</span></span></label>
+                <span>Partner ID {data.partner ? <b className="mono">{data.partner.code}</b> : <span className="text-faint">(none)</span>} — name, username, mobile, email, DOB, gender <span className="block text-[11px] text-muted">So Business, Staff Admin and the tree show the same details. Recorded in the activity log.</span></span></label>
               <label className="flex items-start gap-2"><input type="checkbox" className="mt-0.5" checked={syncPoster} onChange={(e) => setSyncPoster(e.target.checked)} disabled={!data.posterProfile} />
                 <span>Poster profile {data.posterProfile ? <b>{data.posterProfile.name}</b> : <span className="text-faint">(none)</span>} — the name and number printed on daily posters</span></label>
               <p className="text-[11px] text-faint">The card itself (its text and link) is edited in the card editor — use “Login as” to open it.</p>

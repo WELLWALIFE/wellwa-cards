@@ -6,7 +6,7 @@
 import Link from "next/link";
 import { Coins } from "lucide-react";
 
-export const VIDEO_STEPS = { en: ["Type", "Words", "Look & voice", "Make"], hi: ["Type", "Shabd", "Look & awaaz", "Banayein"] } as const;
+export const VIDEO_STEPS = { en: ["Kind", "Words", "Look and voice", "Make"], hi: ["किस्म", "शब्द", "Look और आवाज़", "बनाएँ"] } as const;
 
 export function VideoSteps({ step, hi = true, note }: { step: 1 | 2 | 3 | 4; hi?: boolean; note?: string }) {
   const labels = hi ? VIDEO_STEPS.hi : VIDEO_STEPS.en;
@@ -33,9 +33,9 @@ export function CostLine({ cost, balance, hi = true, free, range }: { cost: numb
   return (
     <p className={`flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs ${short ? "text-danger" : "text-muted"}`}>
       <Coins className="h-3.5 w-3.5" />
-      <span>{free ? (hi ? "Ye video free hai" : "This video is free") : `${hi ? "Ye video" : "This video"}: ${range || `${cost} credits`}`}</span>
-      {balance !== null && <span>· {hi ? "Aapke paas" : "You have"} <b>{balance}</b></span>}
-      {short && <Link href="/poster/video?credits=1" className="font-semibold underline">{hi ? "Credits lein" : "Add credits"}</Link>}
+      <span>{free ? (hi ? "यह video free है" : "This video is free") : `${hi ? "यह video" : "This video"}: ${range || `${cost} credits`}`}</span>
+      {balance !== null && <span>· {hi ? "आपके पास" : "You have"} <b>{balance}</b></span>}
+      {short && <Link href="/poster/video?credits=1" className="font-semibold underline">{hi ? "Credits लें" : "Add credits"}</Link>}
     </p>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-// Put the website on the owner's own domain with as little work as possible:
-// type the domain → we detect who hosts its DNS and show that company's exact steps and records (with copy buttons
+// Put the website on the owner's own web address (domain) with as little work as possible:
+// type the web address → we detect who hosts its DNS and show that company's exact steps and records (with copy buttons
 // and a direct link) → we keep checking DNS and, the moment it points here, fit the security certificate and switch
 // the site live. The owner can close the page: a background job finishes it and sends a notification.
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -30,8 +30,8 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   const [copied, setCopied] = useState("");
   const [next, setNext] = useState(20);
   const verifyAt = useRef(0);
-  // Your own domain is Premium (owner's call, 4 Oct 2026: "free user domain apna nahi laga sakta"): on a free or
-  // lapsed account the Connect button opens the Premium sheet instead, and the server refuses too (402). Where
+  // Your own web address is Growth's (owner's call, 4 Oct 2026: "free user domain apna nahi laga sakta"): on a free or
+  // lapsed account the Connect button opens the upgrade sheet instead, and the server refuses too (402). Where
   // no plan provider is mounted the plan stays "loading", so nothing is locked here and the server decides alone.
   const { plan, loading: planLoading, expired } = usePlan();
   const locked = !planLoading && (plan === "free" || expired);
@@ -83,7 +83,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
     if (!r.ok) {
       // The server's own plan check: the sheet, not an error line.
       if (r.j.plan === true) { setUpsell(true); return; }
-      setErr(String(r.j.error ?? "Could not add that domain.")); return;
+      setErr(String(r.j.error ?? "Could not add that web address.")); return;
     }
     const s = r.j as unknown as Status;
     setStatus(s); setLive([]); setInput(s.domain); onChange?.(s.domain); setNext(20);
@@ -98,7 +98,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   }
 
   const copy = (v: string) => { navigator.clipboard?.writeText(v).then(() => { setCopied(v); setTimeout(() => setCopied(""), 1500); }).catch(() => {}); };
-  const shareText = status ? `Please connect my domain ${status.domain} to my Shubhora website. In the DNS settings (${status.provider.name}) add:\n${status.records.map((r) => `${r.type}  ${r.name}  →  ${r.value}`).join("\n")}\nDelete any other A record for @. Thanks!` : "";
+  const shareText = status ? `Please connect my web address (domain) ${status.domain} to my Shubhora website. In the DNS settings (${status.provider.name}) add:\n${status.records.map((r) => `${r.type}  ${r.name}  →  ${r.value}`).join("\n")}\nDelete any other A record for @. Thanks!` : "";
 
   if (!status) {
     return (
@@ -107,14 +107,14 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
           <input value={input} onChange={(e) => setInput(e.target.value.trim().toLowerCase())} placeholder="yourbusiness.com" inputMode="url"
             className="flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm" />
           <button type="button" onClick={connect} disabled={(!input && !locked) || !!busy} className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${locked ? "bg-[#12144a] text-[#ffd54a]" : "grad-brand text-white"}`}>
-            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {locked ? "Premium" : "Connect"}
+            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {locked ? "Growth" : "Connect"}
           </button>
         </div>
         <p className="text-[11px] text-muted">{locked
-          ? "Your own domain (yourbusiness.com) comes with Premium. Your free Shubhora link keeps working as it is."
-          : "Already own a domain? Type it here. We show the exact steps for your domain company, then finish everything else ourselves — including the free security certificate (https)."}</p>
+          ? "Your own web address (yourbusiness.com) comes with Growth. Your free Shubhora link keeps working as it is."
+          : "Already own a web address (domain)? Type it here. We show the exact steps for the company you bought it from, then do everything else ourselves, including the free security certificate (https)."}</p>
         {err && <p className="text-xs text-danger">{err}</p>}
-        {upsell && <PremiumSheet feature="Your own domain" onClose={() => setUpsell(false)} />}
+        {upsell && <PremiumSheet feature="Your own web address" onClose={() => setUpsell(false)} />}
       </div>
     );
   }
@@ -138,7 +138,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
         <button type="button" onClick={remove} className="text-muted hover:text-danger" aria-label="Disconnect"><X className="h-4 w-4" /></button>
       </div>
       <div className="rounded-xl border border-border bg-surface2/50 p-3 space-y-2">
-        <p className="text-xs font-semibold">Your domain is with <b>{status.provider.name}</b>. Do this once:</p>
+        <p className="text-xs font-semibold">Your web address is with <b>{status.provider.name}</b>. Do this once:</p>
         <ol className="list-decimal pl-5 space-y-1 text-xs text-muted">{status.provider.steps.map((s) => <li key={s}>{s}</li>)}</ol>
         {status.provider.dnsUrl && (
           <a href={status.provider.dnsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold">
@@ -163,7 +163,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
       </div>
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted">
         {busy === "verify"
-          ? <span className="inline-flex items-center gap-1.5 text-brand-ink font-semibold"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> DNS is right — fitting the security certificate…</span>
+          ? <span className="inline-flex items-center gap-1.5 text-brand-ink font-semibold"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> All set — adding the security certificate…</span>
           : <span className="inline-flex items-center gap-1.5"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> Checking automatically · next check in {next}s</span>}
         <button type="button" onClick={() => { setNext(20); refresh(status.domain).then((s) => { if (s?.ready) verify(s.domain); }); }} className="inline-flex items-center gap-1 font-semibold text-brand-ink"><RefreshCw className="h-3.5 w-3.5" /> Check now</button>
         <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-ink"><MessageCircle className="h-3.5 w-3.5" /> Send these steps on WhatsApp</a>

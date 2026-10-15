@@ -121,7 +121,7 @@ export function TrustRow({ trust, hours, hi, className = "" }: { trust: HeroMode
   const open = live ? { state: live.state, until: hi ? live.noteHi : live.note } : trust.open;
   const items: React.ReactNode[] = [];
   if (trust.rating) items.push(<span key="r" className="hero-trust-item"><Icon name="star" size={13} fill className="hero-star" /> {trust.rating.v.toFixed(1)} <span className="hero-trust-n">({trust.rating.n})</span></span>);
-  if (trust.since) items.push(<span key="s" className="hero-trust-item">{hi ? `${trust.since} से` : `Est. ${trust.since}`}</span>);
+  if (trust.since) items.push(<span key="s" className="hero-trust-item">{hi ? `${trust.since} से` : `Since ${trust.since}`}</span>);
   if (open) items.push(<span key="o" className="hero-trust-item" data-state={open.state}><i aria-hidden="true" className="open-dot" />{open.state === "open" ? (hi ? "खुला" : "Open") : (hi ? "बंद" : "Closed")} · {open.until}</span>);
   if (!items.length) return null;
   return <p className={`trust-row ${className}`} aria-live={hours ? "polite" : undefined}>{items.slice(0, 3)}</p>;

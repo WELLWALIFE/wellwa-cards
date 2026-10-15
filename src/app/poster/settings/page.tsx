@@ -17,7 +17,7 @@ import { SAAS_PLANS, type SaasTier } from "@/lib/billing";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { ClaimUsername } from "@/components/poster/claim-username";
 
-type Partner = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; directs: number; walletPaise: number; renewalsDue: number };
+type Partner = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; directs: number; walletPaise: number | null; renewalsDue: number };
 type Account = { username: string | null; referralCode: string | null; cardSlug?: string | null; partner: Partner | null };
 type PlanRes = {
   given?: { plan: string; expires_at: string | null } | null; tier: SaasTier | null; state: "none" | "active" | "grace" | "expired"; expires_at: string | null; credits?: { total: number };
@@ -104,8 +104,8 @@ export default function SettingsPage() {
   // The V-Card's year on the free plan (Growth includes the card, so nothing to say then).
   const cy = !tier && !plan?.given ? plan?.card ?? null : null;
   const cardLine = !cy || cy.state === "included" ? null
-    : cy.state === "paused" ? { cls: "text-danger font-semibold", text: en ? "V-Card paused — tap to renew" : "V-Card रुका हुआ है — renew करने के लिए tap करें" }
-    : cy.state === "grace" ? { cls: "text-amber font-semibold", text: en ? `V-Card year ended — renew by ${day(cy.pause_on)}` : `V-Card का साल पूरा — ${day(cy.pause_on)} तक renew करें` }
+    : cy.state === "paused" ? { cls: "text-danger font-semibold", text: en ? "V-Card is paused — tap to renew" : "V-Card रुका हुआ है — renew करने के लिए दबाएँ" }
+    : cy.state === "grace" ? { cls: "text-amber font-semibold", text: en ? `V-Card year is over — renew by ${day(cy.pause_on)}` : `V-Card का साल पूरा हो गया — ${day(cy.pause_on)} तक renew करें` }
     : cy.until ? { cls: "", text: en ? `V-Card ${cy.renewed ? "active" : "free"} till ${dayY(cy.until)}` : `V-Card ${dayY(cy.until)} तक ${cy.renewed ? "चालू" : "free"}` }
     : null;
   const partner = acct?.partner ?? null;
@@ -117,7 +117,7 @@ export default function SettingsPage() {
       {/* Who you are: name, username, one link. */}
       <section className="rounded-2xl border border-border bg-surface p-4 space-y-3">
         {saved === "all" && <p className="rounded-xl bg-good/10 px-3 py-2 text-xs font-semibold text-good">✅ {en ? "Saved — your V-Card, posters, login and partner ID now show the new details." : "Save हो गया — V-Card, poster, login और partner ID में नई जानकारी आ गई।"}</p>}
-        {saved === "np" && <p className="rounded-xl bg-good/10 px-3 py-2 text-xs font-semibold text-good">✅ {en ? "Saved on your V-Card, posters and login. The partner ID could not be updated — please tell support on WhatsApp." : "V-Card, poster और login में Save हो गया। Partner ID में नहीं बदला — WhatsApp पर support को बताएँ।"}</p>}
+        {saved === "np" && <p className="rounded-xl bg-amber/10 px-3 py-2 text-xs font-semibold text-amber">{en ? "Your partner ID could not be changed. Please message support on WhatsApp. Your V-Card, posters and login have the new details." : "आपकी partner ID नहीं बदल पाई। कृपया WhatsApp पर support को message करें। V-Card, poster और login में नई जानकारी आ गई है।"}</p>}
         <div className="flex items-center gap-3">
           {me?.photo
             // eslint-disable-next-line @next/next/no-img-element
@@ -129,21 +129,21 @@ export default function SettingsPage() {
               ? <p className="truncate text-sm text-muted"><span className="font-semibold tracking-wide text-ink">{acct.username}</span>{hasCard ? ` · ${SITE_HOST}${path}` : ""}</p>
               : acct === null
                 ? <p className="mt-1 h-3.5 w-40 animate-pulse rounded bg-surface2" aria-label="Loading" />
-                : <p className="text-sm text-muted">{en ? "No username yet" : "Username अभी नहीं"}</p>}
+                : <p className="text-sm text-muted">{en ? "No username yet" : "अभी कोई username नहीं है"}</p>}
           </div>
         </div>
         {/* One place to change the name / mobile / photo — Save there updates the card, posters, login and partner ID. */}
         <Link href="/poster/onboard?step=you&back=/poster/more" className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-brand-ink">
-          ✏️ {en ? "Edit name / mobile" : "नाम / मोबाइल बदलें"}
+          ✏️ {en ? "Change name / mobile" : "नाम / मोबाइल बदलें"}
         </Link>
         {acct?.username ? (
           <>
             {hasCard && <div className="flex gap-2">
-              <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हुआ") : (en ? "Copy link" : "Link copy")}</button>
+              <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हो गया") : (en ? "Copy link" : "Link copy करें")}</button>
               <button type="button" onClick={share} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {en ? "Share my card" : "Card share करें"}</button>
             </div>}
             {hasCard
-              ? <p className="text-[11px] text-muted">{en ? "Your card link. Your referral link is on the Business tab." : "आपके card का link। Referral link Business tab पर है।"}</p>
+              ? <p className="text-[11px] text-muted">{en ? "This is your card link. The link to invite others is in the Business tab." : "यह आपके card का link है। दूसरों को जोड़ने का link Business tab में है।"}</p>
               : <Link href="/poster/card/build" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{en ? "Create your digital card" : "अपना digital card बनाएँ"} <ChevronRight className="h-3.5 w-3.5" /></Link>}
           </>
         ) : acct ? <ClaimUsername onDone={loadAccount} /> : <p className="text-xs text-muted inline-flex items-center gap-1.5"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> …</p>}
@@ -156,7 +156,7 @@ export default function SettingsPage() {
           <span className="block text-base font-bold">{tier ? tier.label : plan?.given ? (plan.given.plan === "team" ? "Team" : "Pro") : "Free"}</span>
           {cardLine && <span className={`block text-xs ${cardLine.cls}`}>{cardLine.text}</span>}
           <span className="block text-xs text-muted">
-            {tier && plan?.expires_at ? `${en ? "Renews" : "Renew"} ${day(plan.expires_at)}` : plan?.given ? (plan.given.expires_at ? `${en ? "Active till" : "चालू"} ${day(plan.given.expires_at)}` : en ? "Active" : "चालू") : en ? "Free · Growth ₹2,999 · Custom Solutions — see plans" : "Free · Growth ₹2,999 · Custom Solutions — plans देखें"}
+            {tier && plan?.expires_at ? (en ? `Active till ${day(plan.expires_at)} — then renew` : `${day(plan.expires_at)} तक चालू — फिर renew करें`) : plan?.given ? (plan.given.expires_at ? (en ? `Active till ${day(plan.given.expires_at)}` : `${day(plan.given.expires_at)} तक चालू`) : en ? "Active" : "चालू") : en ? "Free · Growth ₹2,999 · Custom Solutions — see plans" : "Free · Growth ₹2,999 · Custom Solutions — plans देखें"}
             {plan?.credits ? ` · ${plan.credits.total} credits` : ""}
           </span>
         </span>
@@ -171,7 +171,7 @@ export default function SettingsPage() {
       <Link href="/poster/share" className="flex items-center justify-between rounded-2xl bg-[#25D366]/10 border border-[#25D366]/40 p-4">
         <span className="min-w-0">
           <span className="flex items-center gap-2 text-base font-bold"><Share2 className="h-4 w-4 text-good" /> {en ? "Share my links" : "मेरे links share करें"}</span>
-          <span className="block text-xs text-muted">{en ? "Card · Left join link · Right join link — WhatsApp, copy, QR" : "Card · Left join link · Right join link — WhatsApp, copy, QR"}</span>
+          <span className="block text-xs text-muted">{en ? "Your card link, Left join link and Right join link — send on WhatsApp, copy, or show a QR" : "आपका card link, Left join link और Right join link — WhatsApp पर भेजें, copy करें या QR दिखाएँ"}</span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
       </Link>
@@ -180,7 +180,7 @@ export default function SettingsPage() {
       <Link href="/poster/connect" className="flex items-center justify-between rounded-2xl border border-border bg-surface p-4">
         <span className="min-w-0">
           <span className="flex items-center gap-2 text-base font-bold"><Link2 className="h-4 w-4 text-brand" /> {en ? "Connections" : "Connections — सब जोड़ें"}</span>
-          <span className="block text-xs text-muted">WhatsApp AI · Facebook · Instagram · Google · {en ? "own domain" : "अपना domain"}</span>
+          <span className="block text-xs text-muted">WhatsApp AI · Facebook · Instagram · Google · {en ? "your own web address" : "अपना web address"}</span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
       </Link>
@@ -195,34 +195,34 @@ export default function SettingsPage() {
         </div>
         {partner ? (
           <div className="mt-3 grid grid-cols-3 gap-2">
-            {[[String(partner.team), "Team"], [rupee(partner.walletPaise), "Wallet"], [String(partner.renewalsDue), "Renewals due"]].map(([v, l]) => (
+            {[[String(partner.team), "Team"], [partner.walletPaise == null ? "••••" : rupee(partner.walletPaise), "Wallet"], [String(partner.renewalsDue), "Renewals due"]].map(([v, l]) => (
               <div key={l} className="rounded-xl bg-white/10 p-2.5"><p className="text-lg font-bold leading-tight">{v}</p><p className="text-[11px] text-white/70">{l}</p></div>
             ))}
           </div>
         ) : (
-          <p className="mt-2 text-xs text-white/75">{acct?.username ? (en ? "Your partner ID, team and earnings — tap to open." : "आपकी partner ID, team और कमाई — खोलने के लिए tap करें।") : (en ? "Choose your username above to switch it on." : "ऊपर username चुनते ही चालू हो जाएगा।")}</p>
+          <p className="mt-2 text-xs text-white/75">{acct?.username ? (en ? "See your partner ID, team and earnings." : "अपनी partner ID, team और कमाई देखें।") : (en ? "Pick your username above and this turns on." : "ऊपर username चुनते ही यह चालू हो जाएगा।")}</p>
         )}
-        {partner && partner.status === "red" && <p className="mt-2 text-[11px] text-white/70">{en ? "Earnings switch on with Growth." : "Growth लेते ही कमाई चालू।"}</p>}
+        {partner && partner.status === "red" && <p className="mt-2 text-[11px] text-white/70">{en ? "Earnings are available only with Growth." : "कमाई Growth plan के साथ ही चालू होती है।"}</p>}
       </Link>
 
       <AddCredits />
 
       <section className="space-y-2 text-sm">
         <p className="text-sm font-semibold">{en ? "My business" : "मेरा business"}</p>
-        <Link href="/poster/profiles" className="block rounded-xl border border-border p-3">👤 {t.profilesLang} <span className="block text-[11px] text-muted">{en ? "Name, photo, number, poster type & language" : "नाम, फ़ोटो, नंबर, poster का type और भाषा"}</span></Link>
+        <Link href="/poster/profiles" className="block rounded-xl border border-border p-3">👤 {t.profilesLang} <span className="block text-[11px] text-muted">{en ? "Name, photo, number, kind of poster and language" : "नाम, फ़ोटो, नंबर, poster की किस्म और भाषा"}</span></Link>
         <Link href="/poster/products" className="block rounded-xl border border-border p-3">📦 {t.productsTitle} <span className="block text-[11px] text-muted">{en ? "Products shown on your daily posters" : "जो product रोज़ के poster पर आएँगे"}</span></Link>
-        <Link href="/poster/social" className="block rounded-xl border border-border p-3">📣 {en ? "Social posting" : "Social posting"} <span className="block text-[11px] text-muted">{en ? "Facebook, Instagram, WhatsApp Status — auto-posting and report" : "Facebook, Instagram, WhatsApp Status — auto-posting और report"}</span></Link>
-        <Link href="/poster/setup" className="block rounded-xl border border-border p-3">✅ Setup checklist <span className="block text-[11px] text-muted">{en ? "See what's left to switch on" : "देखें क्या-क्या चालू होना बाकी है"}</span></Link>
+        <Link href="/poster/social" className="block rounded-xl border border-border p-3">📣 {en ? "Posting on social media" : "Social media पर post करना"} <span className="block text-[11px] text-muted">{en ? "Facebook, Instagram, WhatsApp Status — posts go out by themselves, and you can see how they did" : "Facebook, Instagram, WhatsApp Status — post अपने-आप जाते हैं, और कैसा चला यह भी देख सकते हैं"}</span></Link>
+        <Link href="/poster/setup" className="block rounded-xl border border-border p-3">✅ {en ? "Setup checklist" : "Setup की list"} <span className="block text-[11px] text-muted">{en ? "See what is still left to do" : "देखें अभी क्या-क्या करना बाकी है"}</span></Link>
         <Link href="/poster/history" className="block rounded-xl border border-border p-3">🖼️ {t.oldPosters}</Link>
       </section>
 
       <section className="space-y-2 text-sm">
         <p className="text-sm font-semibold">{en ? "Help" : "मदद"}</p>
         <Link href="/poster/guide/facebook" className="block rounded-xl border border-border p-3">📘 {en ? "How to create a Facebook Page" : "Facebook Page कैसे बनाएँ"}</Link>
-        <Link href="/poster/guide/instagram" className="block rounded-xl border border-border p-3">📸 {en ? "Instagram professional + link to Page" : "Instagram Professional + Page से जोड़ें"}</Link>
+        <Link href="/poster/guide/instagram" className="block rounded-xl border border-border p-3">📸 {en ? "Switch Instagram to a professional account and link it to your Page" : "Instagram को professional account बनाएँ और Page से जोड़ें"}</Link>
         <Link href="/poster/guide/whatsapp" className="block rounded-xl border border-border p-3">💬 {en ? "How to turn on WhatsApp AI" : "WhatsApp AI कैसे चालू करें"}</Link>
         <a href="https://wa.me/917665669888?text=Shubhora%20help" className="block rounded-xl border border-border p-3">🆘 {en ? "Talk to support on WhatsApp" : "Support से WhatsApp पर बात करें"}</a>
-        <Link href="/dashboard" className="block rounded-xl border border-border p-3 text-muted">🖥️ {en ? "Advanced (desktop dashboard)" : "Advanced (computer dashboard)"}</Link>
+        <Link href="/dashboard" className="block rounded-xl border border-border p-3 text-muted">🖥️ {en ? "More tools (for a computer)" : "और tools (computer के लिए)"}</Link>
         <div className="flex items-center justify-between rounded-xl border border-border p-3"><span className="font-semibold">{t.uiLang}</span><LangToggle /></div>
         <button type="button" onClick={logout} className="w-full text-left rounded-xl border border-border p-3 inline-flex items-center gap-2 text-danger"><LogOut className="h-4 w-4" /> {t.logout} {me?.email ? <span className="text-faint text-xs">({me.email.includes("@phone.") ? "mobile" : me.email})</span> : null}</button>
       </section>

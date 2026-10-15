@@ -1,5 +1,5 @@
 "use client";
-// Customer testimonials: list + add/edit (→ "💬 Testimonial" posters), and
+// Customer testimonials: list + add/edit (→ "💬 Review" posters), and
 // "ask for a review" WhatsApp links (plain review request + Google review link).
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -15,23 +15,23 @@ const GOOGLE_KEY = "akp-google-review";
 
 const S = {
   hi: {
-    title: "ग्राहकों की राय", hint: "ग्राहक की review जोड़ें — calendar में 💬 Testimonial वाले दिन उसका सुंदर poster बनेगा।",
-    add: "जोड़ें", name: "ग्राहक का नाम", text: "Review (छोटी, 2–3 लाइन)", city: "शहर", photo: "ग्राहक की फ़ोटो (optional)", rating: "Rating",
-    save: "सेव करें", saveFail: "Save नहीं हुआ।", edit: "Edit", remove: (n: string) => `"${n}" की review हटा दें?`, none: "अभी कोई review नहीं।",
-    askTitle: "Review माँगें", askHint: "ग्राहक का WhatsApp नंबर डालें — एक tap में review माँगने का message खुलेगा।",
-    phone: "ग्राहक का मोबाइल नंबर", askBtn: "WhatsApp पर review माँगें", googleLabel: "Google review link (optional)", googlePh: "https://g.page/r/…",
-    googleBtn: "Google review link भेजें", googleHint: "Google Maps → अपना business → 'Get more reviews' से link copy करें। यह link इस phone पर save रहती है।",
+    title: "ग्राहकों की राय", hint: "ग्राहक की review जोड़ें। Calendar में 💬 ग्राहक राय वाले दिन उसका सुंदर poster बन जाएगा।",
+    add: "जोड़ें", name: "ग्राहक का नाम", text: "Review (छोटी, 2–3 लाइन)", city: "शहर", photo: "ग्राहक की फ़ोटो (अगर हो)", rating: "Rating",
+    save: "सेव करें", saveFail: "Save नहीं हुआ।", edit: "बदलें", remove: (n: string) => `"${n}" की review हटा दें?`, none: "अभी कोई review नहीं।",
+    askTitle: "Review माँगें", askHint: "ग्राहक का WhatsApp नंबर डालें। एक बार दबाते ही review माँगने का message खुल जाएगा।",
+    phone: "ग्राहक का मोबाइल नंबर", askBtn: "WhatsApp पर review माँगें", googleLabel: "Google review link (अगर हो)", googlePh: "https://g.page/r/…",
+    googleBtn: "Google review link भेजें", googleHint: "Link Google Maps से copy करें: अपना business खोलें, फिर 'Get more reviews' दबाएँ। यह link इस phone में save रहता है।",
     badPhone: "10 अंकों का सही नंबर डालें।",
     waiting: "आपकी मंज़ूरी का इंतज़ार", waitingHint: "ये reviews आपकी website से आई हैं। जो आप मंज़ूर करेंगे वही card और website पर दिखेगी।",
     approve: "Card पर दिखाएँ", approved: "Card पर दिख रही है",
   },
   en: {
-    title: "Customer reviews", hint: "Add a customer's review — on 💬 Testimonial days in the calendar it becomes a beautiful poster.",
-    add: "Add", name: "Customer name", text: "Review (short, 2–3 lines)", city: "City", photo: "Customer photo (optional)", rating: "Rating",
+    title: "Customer reviews", hint: "Add a customer's review. On 💬 Review days in the calendar, it becomes a nice poster.",
+    add: "Add", name: "Customer name", text: "Review (short, 2–3 lines)", city: "City", photo: "Customer photo (if you have one)", rating: "Rating",
     save: "Save", saveFail: "Could not save.", edit: "Edit", remove: (n: string) => `Delete "${n}"'s review?`, none: "No reviews yet.",
-    askTitle: "Ask for a review", askHint: "Enter the customer's WhatsApp number — a ready message asking for a review opens in one tap.",
-    phone: "Customer mobile number", askBtn: "Ask for review on WhatsApp", googleLabel: "Google review link (optional)", googlePh: "https://g.page/r/…",
-    googleBtn: "Send Google review link", googleHint: "Google Maps → your business → 'Get more reviews' to copy the link. Saved on this phone.",
+    askTitle: "Ask for a review", askHint: "Enter the customer's WhatsApp number. A message asking for a review opens with one tap.",
+    phone: "Customer mobile number", askBtn: "Ask for review on WhatsApp", googleLabel: "Google review link (if you have one)", googlePh: "https://g.page/r/…",
+    googleBtn: "Send Google review link", googleHint: "Copy the link from Google Maps: open your business, then tap 'Get more reviews'. The link stays saved on this phone.",
     badPhone: "Enter a valid 10-digit number.",
     waiting: "Waiting for your approval", waitingHint: "These came from your website. Only the ones you approve go on your card and website.",
     approve: "Show on my card", approved: "Showing on your card",
@@ -124,7 +124,7 @@ export default function TestimonialsPage() {
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
                 <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
-                  <Images className="h-3.5 w-3.5" /> Gallery
+                  <Images className="h-3.5 w-3.5" /> {lang === "en" ? "Gallery" : "गैलरी"}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
@@ -167,7 +167,7 @@ export default function TestimonialsPage() {
               {stars(t.rating)}
               <p className="text-xs text-muted line-clamp-2">{t.text}</p>
             </div>
-            <Link href={`/poster/video?testimonial=${t.id}`} className="p-2 text-brand-ink" title={lang === "en" ? "Make a video from this review" : "Is review se video banao"}><Clapperboard className="h-4 w-4" /></Link>
+            <Link href={`/poster/video?testimonial=${t.id}`} className="p-2 text-brand-ink" title={lang === "en" ? "Make a video from this review" : "इस review से video बनाएँ"}><Clapperboard className="h-4 w-4" /></Link>
             <button type="button" onClick={() => setDraft({ id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url })} className="p-2 text-muted text-xs">{s.edit}</button>
             <button type="button" onClick={() => remove(t)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
           </div>

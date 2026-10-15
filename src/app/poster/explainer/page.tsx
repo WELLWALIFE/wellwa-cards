@@ -219,7 +219,7 @@ export default function LongVideo() {
             <button type="button" onClick={() => setCaptions(true)} className={chip(captions)}>On — words appear as they are spoken</button>
             <button type="button" onClick={() => setCaptions(false)} className={chip(!captions)}>Off</button>
           </div>
-          <p className="mt-1 text-[11px] text-muted">Every video is made the same professional way: a matching AI picture for each point, your own photos where they fit, a slow camera move on every shot and soft cuts timed to the voice.</p>
+          <p className="mt-1 text-[11px] text-muted">Every video is made the same careful way: an AI picture that matches each point, your own photos where they fit, a slow camera move on each picture, and smooth changes that follow the voice.</p>
         </div>
 
         <div><p className="mb-1 text-xs font-semibold text-muted">Language of the voice</p><div className="flex flex-wrap gap-1.5">{LANGS.map((l) => <button key={l.key} type="button" onClick={() => setLang(l.key)} className={chip(lang === l.key)}>{l.label}</button>)}</div></div>
@@ -240,8 +240,8 @@ export default function LongVideo() {
             <input type="file" accept="audio/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; addVoice(f ?? null); }} />
           </label>
           <p className="mt-1 text-[11px] text-muted">{ownVoice
-            ? "Your recording is the narration — its length is the length of the video. No text needed: we write down what you said and cut the pictures to it."
-            : "Recorded it yourself, or made it somewhere else? Upload it and we put the slides, photos and music around it."}</p>
+            ? "Your recording is the voice of the video, so the video is as long as your recording. You do not need to type anything. We write down what you said and match the pictures to it."
+            : "Did you record it yourself, or make it somewhere else? Add it here. We put pictures, photos and music with it."}</p>
         </div>
         <div><p className="mb-1 text-xs font-semibold text-muted">Music</p><div className="flex flex-wrap gap-1.5">{MUSIC.map(([k, l]) => <button key={k || "none"} type="button" onClick={() => setMusic(k)} className={chip(music === k)}>{l}</button>)}</div></div>
         <div><p className="mb-1 text-xs font-semibold text-muted">Shape</p><div className="flex flex-wrap gap-1.5">
@@ -267,7 +267,7 @@ export default function LongVideo() {
               </label>
             )}
           </div>
-          <p className="mt-1 text-[11px] text-muted">No photos? The video still works — every slide shows your words on a clean branded background.</p>
+          <p className="mt-1 text-[11px] text-muted">No photos? That is fine. Each slide shows your words on a clean background with your name.</p>
         </div>
 
         {err && <p className="text-sm text-danger">{err}</p>}

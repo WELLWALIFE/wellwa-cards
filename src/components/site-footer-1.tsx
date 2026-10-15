@@ -13,7 +13,7 @@ const cols = [
     links: [
       ["AI software & agents", "/solutions/ai-software"],
       ["Business automation", "/solutions/business-automation"],
-      ["CRM & dashboards", "/solutions/crm-software"],
+      ["Customer management (CRM)", "/solutions/crm-software"],
       ["WhatsApp automation", "/solutions/whatsapp-automation"],
       ["Web & app development", "/solutions/web-mobile-apps"],
       ["Social media management", "/solutions/social-media-management"],

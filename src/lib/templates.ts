@@ -1171,12 +1171,12 @@ const vcardReseller: CardTemplateDef = {
                 features: [
                   "Everything in Free",
                   "Full website on the same link",
-                  "AI assistant on your card and your WhatsApp (fair use up to 1,000 replies a month)",
+                  "AI assistant on your card and your WhatsApp: up to 1,000 replies a month (fair use)",
                   "Daily poster + status video, made every morning",
                   "Auto-posting to Facebook, Instagram and WhatsApp Status",
                   "Follow-up reminders and lead export",
                   "All AI tools: photoshoot, ads, reels, brand kit",
-                  "8 free ad storyboards a month",
+                  "8 free ad storyboards a month (scene pictures you check before the video is made)",
                 ],
                 specs: [
                   { label: "Price", value: "₹2,999 a month, GST included" },

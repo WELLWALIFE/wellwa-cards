@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
+import { rateLimited } from "@/lib/api-security";
 import { CATEGORIES } from "@/lib/poster-categories";
 import { normalizeFacts, blockingFields, categoryKeyFor, seedFor, roleOf, UNWANTED_IN_POSITIVE, type ProductFacts, type ProductPhoto, type PhotoView } from "@/lib/media/product-facts";
 
@@ -44,6 +45,8 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const me = await userFromRequest(request); if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (!process.env.GEMINI_API_KEY) return NextResponse.json({ error: "AI is not configured." }, { status: 503 });
   const { id } = await ctx.params; if (!UUID.test(id)) return NextResponse.json({ error: "Bad product id." }, { status: 400 });
+  // Each draft reads up to 6 photos with a paid model: plenty for real use, a stop for a page that loops.
+  if (rateLimited(`product-facts-draft:${me.id}`, 40, 60 * 60_000)) return NextResponse.json({ error: "Too many tries in an hour. Please wait a little." }, { status: 429 });
   const p = await load(me.token, me.id, id); if (!p) return NextResponse.json({ error: "Product not found." }, { status: 404 });
   const b = await request.json().catch(() => ({}));
   const notes = String(b.notes ?? "").trim().slice(0, 400);

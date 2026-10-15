@@ -122,11 +122,11 @@ export function ImageCropper({
         <div className="mt-3 flex justify-center gap-1 p-1 rounded-lg border border-border bg-surface2/50 w-fit mx-auto">
           <button onClick={() => setPreset("fit")}
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${zoom <= 1.001 ? "bg-surface shadow-card" : "text-muted hover:text-ink"}`}>
-            <Maximize2 className="h-3.5 w-3.5" /> Whole image
+            <Maximize2 className="h-3.5 w-3.5" /> Whole photo
           </button>
           <button onClick={() => setPreset("fill")}
             className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-md text-xs font-medium transition-colors ${Math.abs(zoom - fillZoom) < 0.01 ? "bg-surface shadow-card" : "text-muted hover:text-ink"}`}>
-            <Crop className="h-3.5 w-3.5" /> Fill frame
+            <Crop className="h-3.5 w-3.5" /> Fill the box
           </button>
         </div>
 
@@ -139,11 +139,11 @@ export function ImageCropper({
         <div className="mt-4 flex gap-2">
           <button onClick={onCancel} className="flex-1 rounded-lg border border-border px-3 py-2 text-sm font-medium hover:bg-surface2">Cancel</button>
           <button onClick={apply} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white">
-            <Check className="h-4 w-4" /> Apply
+            <Check className="h-4 w-4" /> Done
           </button>
         </div>
         <p className="mt-2 text-[11px] text-faint text-center">
-          Opens with the whole image · drag to reposition · zoom in only if you want to crop
+          Shows the whole photo. Drag to move it. Zoom in only if you want to cut off the edges.
         </p>
       </div>
     </div>

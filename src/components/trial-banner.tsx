@@ -6,25 +6,30 @@
 // quiet line for the first stretch, a warning in the last few days, and a firm
 // (but not alarming) notice once it has lapsed.
 
+import { useState } from "react";
 import Link from "next/link";
 import { Clock, AlertCircle, Sparkles } from "lucide-react";
 import { usePlan } from "@/lib/plan";
-import { PARTNER_ACTIVATE, useAssociate } from "@/lib/associate";
+import { useAssociate } from "@/lib/associate";
+import { UnlockDialog } from "@/lib/ai-access";
 
 export function TrialBanner() {
-  const { loading, isTrial, expired, daysLeft } = usePlan();
+  const { loading, isTrial, expired, daysLeft, refresh } = usePlan();
   const associate = useAssociate();
+  const [paying, setPaying] = useState(false);
   if (loading) return null;
 
-  // Associates pay through their partner panel (so their team gets the volume), never here.
+  // Partners pay here too, in the app, with Razorpay (owner's call, 14 Oct 2026) — the same pay popup as everyone else,
+  // so they never leave the app. Every debit is reported to the partner panel, so it still counts for their team.
   if (associate && expired) {
     return (
       <div className="mb-5 rounded-xl border border-brand/30 bg-brand-soft p-4">
         <p className="font-medium text-sm">You are on the free plan.</p>
-        <p className="text-sm text-muted mt-1">Activate or renew your subscription in the partner panel to unlock daily posters, social posting, WhatsApp AI, the CRM and AI credits.</p>
-        <a href={PARTNER_ACTIVATE} className="mt-3 inline-flex items-center gap-1.5 rounded-lg grad-brand px-3.5 py-2 text-sm font-medium text-white">
-          <Sparkles className="h-4 w-4" /> Activate in partner panel
-        </a>
+        <p className="text-sm text-muted mt-1">Subscribe to get daily posters, social posting, WhatsApp AI, the CRM and AI credits. You pay here with Razorpay (UPI or card).</p>
+        <button type="button" onClick={() => setPaying(true)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg grad-brand px-3.5 py-2 text-sm font-medium text-white">
+          <Sparkles className="h-4 w-4" /> Subscribe now
+        </button>
+        {paying && <UnlockDialog subscriptionOnly onClose={() => { setPaying(false); void refresh(); }} />}
       </div>
     );
   }

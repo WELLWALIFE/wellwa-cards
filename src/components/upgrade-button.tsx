@@ -49,12 +49,12 @@ export function UpgradeButton({
       // Local development only; production never activates plans in demo mode.
       if (order.demo) {
         setState("error");
-        setMsg("Demo checkout does not activate a paid plan.");
+        setMsg("This is a test payment page. It does not start a paid plan.");
         return;
       }
 
       const ok = await loadScript("https://checkout.razorpay.com/v1/checkout.js");
-      if (!ok || !window.Razorpay) { setState("error"); setMsg("Could not load payment gateway."); return; }
+      if (!ok || !window.Razorpay) { setState("error"); setMsg("Could not open the payment page."); return; }
 
       const rzp = new window.Razorpay({
         key: order.keyId,
@@ -77,7 +77,7 @@ export function UpgradeButton({
             await refresh(); // unlock gated features now, no reload needed
           } else {
             setState("error");
-            setMsg("Payment verification failed. If money was deducted, contact support.");
+            setMsg("We could not confirm your payment. If money was taken from your account, please tell support.");
           }
         },
         modal: { ondismiss: () => setState("idle") },
@@ -86,7 +86,7 @@ export function UpgradeButton({
       setState("idle"); // checkout modal is open; result comes via handler
     } catch (e) {
       setState("error");
-      setMsg(e instanceof Error ? e.message : "Something went wrong.");
+      setMsg(e instanceof Error ? e.message : "Something went wrong. Please try again.");
     }
   }
 

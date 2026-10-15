@@ -58,7 +58,7 @@ export function ImageUpload({
 
       <div className="flex flex-wrap gap-1.5 sm:flex-col">
         <button type="button" onClick={() => input.current?.click()} className="inline-flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium hover:bg-surface2">
-          <Upload className="h-3.5 w-3.5" /> {value ? "Replace" : "Upload"}
+          <Upload className="h-3.5 w-3.5" /> {value ? "Change" : "Add photo"}
         </button>
         {value && (
           <button type="button" onClick={() => onChange(undefined)} className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-medium text-danger hover:bg-surface2">

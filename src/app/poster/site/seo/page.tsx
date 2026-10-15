@@ -54,18 +54,18 @@ export default function SiteSeoPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => (window.history.length > 1 ? router.back() : router.push("/poster/site"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="flex-1 text-lg font-bold">{T("SEO · show on Google", "SEO · Google पर दिखें")}</h1>
+        <h1 className="flex-1 text-lg font-bold">{T("Show on Google", "Google पर दिखें")}</h1>
       </div>
-      <p className="text-sm text-muted">{T("Tell Google where you are and what you do, so people searching “your trade in your city” find you.", "Google को बताइए आप कहाँ हैं और क्या करते हैं, ताकि “आपका काम + आपका शहर” खोजने वालों को आप मिलें।")}</p>
+      <p className="text-sm text-muted">{T("Tell Google where you are and what you do. Then people who search for your work in your city can find you.", "Google को बताइए आप कहाँ हैं और क्या काम करते हैं, ताकि आपके शहर में आपका काम खोजने वाले आपको ढूँढ सकें।")}</p>
       {!loading && plan === "free" && (
         <section className="space-y-2 rounded-2xl border-2 border-brand bg-brand-soft/50 p-4">
-          <p className="font-bold">{T("Be found on Google — with a subscription", "Google पर पाए जाइए — subscription के साथ")}</p>
+          <p className="font-bold">{T("Be found on Google — with a subscription", "Google पर लोग आपको ढूँढ पाएँगे — subscription के साथ")}</p>
           <ul className="space-y-1 text-sm">
-            <li>✓ {T("Customers searching “your trade in your city” find your website", "“आपका काम + आपका शहर” खोजने वाले ग्राहक आपकी website तक पहुँचें")}</li>
-            <li>✓ {T("Your shop, hours, products and FAQ show on Google and Maps searches", "आपकी दुकान, timing, products और FAQ Google में दिखें")}</li>
-            <li>✓ {T("Search words, titles and a page for every product — all done for you", "Search words, titles और हर product का अपना page — सब अपने आप")}</li>
+            <li>✓ {T("Customers who search for your work in your city can find your website", "आपके शहर में आपका काम खोजने वाले ग्राहक आपकी website तक पहुँचें")}</li>
+            <li>✓ {T("Your shop, timings, products and common questions show up on Google and Maps", "आपकी दुकान, timing, products और आम सवाल Google और Maps में दिखें")}</li>
+            <li>✓ {T("Search words, page titles and a page for every product — all done for you", "खोज के शब्द, titles और हर product का अपना page — सब अपने आप")}</li>
           </ul>
-          <p className="text-xs text-muted">{T("Fill this in now. Google starts listing your website the day you subscribe.", "अभी भर लीजिए। Subscribe करते ही Google आपकी website को सूची में लेना शुरू कर देता है।")}</p>
+          <p className="text-xs text-muted">{T("Fill this in now. From the day you subscribe, Google can start showing your website.", "अभी भर लीजिए। Subscribe करने के दिन से Google आपकी website दिखाना शुरू कर सकता है।")}</p>
           <button type="button" onClick={() => setPay(true)} className="w-full rounded-xl grad-brand py-3 text-sm font-semibold text-white">{T("Subscribe and show on Google", "Subscribe करें और Google पर दिखें")}</button>
         </section>
       )}
@@ -73,8 +73,8 @@ export default function SiteSeoPage() {
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {none ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-          <p className="text-sm text-muted">{T("Build your website first.", "पहले अपनी website बनाएँ।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Build my website →", "Website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your website first.", "पहले अपनी website बनाएँ।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : !card ? (
         <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>

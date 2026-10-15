@@ -49,7 +49,7 @@ export default function BrandKitPage() {
     setBusy(true); setErr(""); setKit(null); setLogo(""); setTagline(""); setDone(false);
     const r = await api<Kit>("/api/poster/brand-kit", { method: "POST", json: { business, category, city, style, colors_hint: colors, lang, tagline: tagline || undefined } });
     setBusy(false);
-    if (!r.ok) { setErr(r.data.error || (hi ? "कुछ गड़बड़ हुई। दोबारा try करें।" : "Something went wrong. Please try again.")); return; }
+    if (!r.ok) { setErr(r.data.error || (hi ? "कुछ गड़बड़ हो गई। फिर से कोशिश करें।" : "Something went wrong. Please try again.")); return; }
     setKit(r.data);
     if (r.data.options?.[0]) setLogo(r.data.options[0]);
   }
@@ -59,7 +59,7 @@ export default function BrandKitPage() {
     setApplying(true); setErr("");
     const r = await api<{ ok?: boolean; error?: string }>("/api/poster/brand-kit/apply", { method: "POST", json: { logo_url: logo, tagline: tagline || undefined, profile_id: profileId || undefined } });
     setApplying(false);
-    if (!r.ok) { setErr(r.data.error || (hi ? "Apply नहीं हुआ।" : "Could not apply.")); return; }
+    if (!r.ok) { setErr(r.data.error || (hi ? "Logo नहीं लग पाया। फिर से कोशिश करें।" : "Could not put the logo on your profile. Please try again.")); return; }
     setDone(true);
   }
 
@@ -69,7 +69,7 @@ export default function BrandKitPage() {
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
   const STYLES: { key: Style; hi: string; en: string }[] = [
     { key: "modern", hi: "मॉडर्न", en: "Modern" }, { key: "classic", hi: "क्लासिक", en: "Classic" },
-    { key: "playful", hi: "प्लेफ़ुल", en: "Playful" }, { key: "premium", hi: "प्रीमियम", en: "Premium" },
+    { key: "playful", hi: "मज़ेदार", en: "Fun" }, { key: "premium", hi: "प्रीमियम", en: "Premium" },
   ];
 
   return (
@@ -78,7 +78,7 @@ export default function BrandKitPage() {
         <Link href="/poster/more" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-lg font-bold flex-1">{hi ? "Brand Kit" : "Brand Kit"}</h1>
       </div>
-      <p className="text-xs text-muted">{hi ? "4 professional logo (symbol + aapka naam saaf font me), taglines, rang aur brand voice — pehla set free, agla 2 credits. Pasand ka logo chunein aur profile par lagayein." : "4 professional logos (symbol + your name in a clean font), taglines, colours and a brand voice — first set free, next ones 2 credits. Pick one and apply it to your profile."}</p>
+      <p className="text-xs text-muted">{hi ? "4 अच्छे logo (एक निशान + आपका नाम साफ़ अक्षरों में), नाम के नीचे की छोटी लाइनें, रंग, और आपके business की बोली — पहला set free, अगला 2 credits का। पसंद का logo चुनें और अपनी profile पर लगाएँ।" : "4 good logos (a small picture plus your name in clear letters), short lines for under your name, colours, and a style for how your business talks. The first set is free. Each set after that is 2 credits. Pick a logo and put it on your profile."}</p>
 
       <div className="rounded-xl border border-border p-3 space-y-3">
         {profiles.length > 1 && (
@@ -89,10 +89,10 @@ export default function BrandKitPage() {
         <label className="block text-sm">
           <span className="font-semibold">{hi ? "बिज़नेस का नाम" : "Business name"}</span>
           <input className={`${inp} mt-1`} placeholder={hi ? "जैसे: Sharma Electronics" : "e.g. Sharma Electronics"} value={business} onChange={(e) => setBusiness(e.target.value)} maxLength={60} />
-          <span className="text-xs text-muted">{hi ? "Naam jaise likhenge waise hi logo par aayega — Hindi ya English, spelling kabhi galat nahi." : "The name appears on the logo exactly as you type it — Hindi or English, never misspelt."}</span>
+          <span className="text-xs text-muted">{hi ? "नाम जैसा लिखेंगे, logo पर वैसा ही आएगा — Hindi या English, spelling कभी गलत नहीं होगी।" : "Your name will be on the logo exactly as you type it, in Hindi or English. It will never be spelt wrong."}</span>
         </label>
         <label className="block text-sm">
-          <span className="font-semibold">{hi ? "काम / category" : "Category"}</span>
+          <span className="font-semibold">{hi ? "आपका काम" : "What you do"}</span>
           <input className={`${inp} mt-1`} placeholder={hi ? "जैसे: मोबाइल की दुकान, tiffin service, CA" : "e.g. mobile shop, tiffin service, CA"} value={category} onChange={(e) => setCategory(e.target.value)} maxLength={60} />
         </label>
         <label className="block text-sm">
@@ -108,18 +108,18 @@ export default function BrandKitPage() {
           </div>
         </div>
         <label className="block text-sm">
-          <span className="font-semibold">{hi ? "पसंद के रंग" : "Colour preference"} <span className="text-muted font-normal">(optional)</span></span>
+          <span className="font-semibold">{hi ? "पसंद के रंग" : "Colours you like"} <span className="text-muted font-normal">{hi ? "(ज़रूरी नहीं)" : "(optional)"}</span></span>
           <input className={`${inp} mt-1`} placeholder={hi ? "जैसे: नीला और सुनहरा" : "e.g. blue and gold"} value={colors} onChange={(e) => setColors(e.target.value)} maxLength={80} />
         </label>
         <button type="button" onClick={generate} disabled={busy || !business.trim()} className="w-full rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-          {busy ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "बन रहा है… (~30 सेकंड)" : "Generating… (~30 s)"}</span> : hi ? "✨ Brand Kit बनाओ (₹0 अभी)" : "✨ Make my Brand Kit (₹0 for now)"}
+          {busy ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "बन रहा है… (लगभग 30 सेकंड)" : "Making… (about 30 seconds)"}</span> : hi ? "✨ Brand Kit बनाओ (₹0 अभी)" : "✨ Make my Brand Kit (₹0 for now)"}
         </button>
         {err && !kit && <p className="text-sm text-danger">{err}</p>}
       </div>
 
       {kit && (
         <div className="space-y-4">
-          {kit.partial && <p className="text-xs text-muted">{hi ? "कुछ हिस्से नहीं बन पाए — बाकी नीचे हैं। दोबारा try कर सकते हैं।" : "Some parts could not be generated — the rest is below. You can try again."}</p>}
+          {kit.partial && <p className="text-xs text-muted">{hi ? "कुछ हिस्से नहीं बन पाए — बाकी नीचे हैं। आप फिर से कोशिश कर सकते हैं।" : "Some parts could not be made. The rest are below. You can try again."}</p>}
 
           {kit.options.length > 0 && (
             <div>
@@ -135,7 +135,7 @@ export default function BrandKitPage() {
               </div>
               {(() => { const v = kit.variants?.find((x) => x.stacked === logo); return v ? (
                 <div className="mt-2 grid grid-cols-3 gap-2">
-                  {[[v.wide, hi ? "Wide" : "Wide"], [v.dark, hi ? "Dark" : "Dark"], [v.icon, hi ? "Sirf symbol" : "Symbol only"]].filter(([u]) => u).map(([u, l]) => (
+                  {[[v.wide, hi ? "चौड़ा" : "Wide"], [v.dark, hi ? "गहरे रंग पर" : "On dark colour"], [v.icon, hi ? "सिर्फ़ निशान" : "Symbol only"]].filter(([u]) => u).map(([u, l]) => (
                     <a key={u} href={u} target="_blank" rel="noreferrer" className="rounded-lg border border-border bg-white p-1 text-center">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={u} alt={l} className={`mx-auto h-14 w-full object-contain ${u === v.dark ? "rounded bg-[#12144a]" : ""}`} />
@@ -149,19 +149,19 @@ export default function BrandKitPage() {
 
           {kit.taglines.length > 0 && (
             <div>
-              <p className="text-sm font-semibold mb-2">{hi ? "Tagline चुनें" : "Pick a tagline"} <span className="text-muted font-normal">(optional)</span></p>
+              <p className="text-sm font-semibold mb-2">{hi ? "नाम के नीचे की छोटी लाइन चुनें" : "Pick a short line for under your name"} <span className="text-muted font-normal">{hi ? "(ज़रूरी नहीं)" : "(optional)"}</span></p>
               <div className="space-y-1.5">
                 {kit.taglines.map((tl) => (
                   <button key={tl} type="button" onClick={() => setTagline(tagline === tl ? "" : tl)} className={`w-full text-left rounded-xl border px-3 py-2 text-sm ${tagline === tl ? "border-brand bg-brand-soft/40" : "border-border"}`}>{tl}</button>
                 ))}
               </div>
-              <p className="text-xs text-muted mt-1">{hi ? "Tagline सिर्फ़ तब लगेगी जब profile में पहले से tagline खाली हो।" : "The tagline is applied only if the profile's tagline is empty."}</p>
+              <p className="text-xs text-muted mt-1">{hi ? "यह लाइन तभी लगेगी जब profile में पहले से कोई लाइन न हो।" : "This line is used only if your profile does not have one yet."}</p>
             </div>
           )}
 
           {kit.palette.length > 0 && (
             <div>
-              <p className="text-sm font-semibold mb-2">{hi ? "रंग" : "Palette"}</p>
+              <p className="text-sm font-semibold mb-2">{hi ? "रंग" : "Colours"}</p>
               <div className="grid grid-cols-4 gap-2">
                 {kit.palette.map((c) => (
                   <div key={c.name} className="rounded-xl border border-border overflow-hidden">
@@ -175,14 +175,14 @@ export default function BrandKitPage() {
 
           {kit.voice && (
             <div className="rounded-xl border border-border p-3">
-              <p className="text-sm font-semibold mb-1">{hi ? "Brand voice" : "Brand voice"}</p>
+              <p className="text-sm font-semibold mb-1">{hi ? "आपके business की बोली" : "How your business talks"}</p>
               <p className="text-sm whitespace-pre-line">{kit.voice}</p>
             </div>
           )}
 
           {kit.keywords.length > 0 && (
             <div>
-              <p className="text-sm font-semibold mb-2">{hi ? "Local SEO keywords" : "Local SEO keywords"}</p>
+              <p className="text-sm font-semibold mb-2">{hi ? "आपके इलाके में लोग जो शब्द खोजते हैं" : "Words people search for near you"}</p>
               <div className="flex flex-wrap gap-1.5">
                 {kit.keywords.map((k) => <span key={k} className="rounded-full border border-border px-2.5 py-1 text-xs text-muted">{k}</span>)}
               </div>
@@ -191,16 +191,16 @@ export default function BrandKitPage() {
 
           {done ? (
             <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 text-sm">
-              <p className="font-semibold">✅ {hi ? "Logo profile पर लग गया!" : "Logo applied to your profile!"}</p>
+              <p className="font-semibold">✅ {hi ? "Logo आपकी profile पर लग गया!" : "Your logo is now on your profile!"}</p>
               <p className="text-muted mt-1">{hi ? "कल सुबह के poster से यह logo दिखेगा।" : "It will show on your posters from tomorrow morning."}</p>
               <Link href="/poster/profiles" className="inline-block mt-2 rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white">{hi ? "प्रोफ़ाइल देखें →" : "View profiles →"}</Link>
             </div>
           ) : kit.options.length > 0 ? (
             <div className="space-y-2">
-              {hasExistingLogo && <p className="text-xs text-amber-600 dark:text-amber-400">{hi ? "⚠️ इस profile में पहले से एक logo लगा है — Apply करने पर वह इस नए logo से बदल जाएगा।" : "⚠️ This profile already has a logo — applying will replace it with this new one."}</p>}
+              {hasExistingLogo && <p className="text-xs text-amber-600 dark:text-amber-400">{hi ? "⚠️ इस profile में पहले से एक logo लगा है — यह लगाने पर पुराना logo बदल जाएगा।" : "⚠️ This profile already has a logo. Using this one will replace it."}</p>}
               {err && <p className="text-sm text-danger">{err}</p>}
               <button type="button" onClick={apply} disabled={applying || !logo} className="w-full rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {applying ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "लग रहा है…" : "Applying…"}</span> : hi ? "Profile पर लगाओ (Apply)" : "Apply to profile"}
+                {applying ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "लग रहा है…" : "Putting it on…"}</span> : hi ? "Profile पर लगाओ" : "Use on my profile"}
               </button>
             </div>
           ) : null}

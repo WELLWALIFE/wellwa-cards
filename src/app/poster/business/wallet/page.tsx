@@ -3,11 +3,13 @@
 import { useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, bizAct, dayOf, rupee, rupeeExact, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND, bizAct, dayOf, rupee, rupeeExact, useBiz, useBizMsg } from "@/components/business/kit";
 
 type Wd = { id: number; amountPaise: number | null; status: "requested" | "approved" | "paid" | "rejected"; utr: string | null; rejectReason: string | null; requestedAt: string };
-type Led = { id: number; entry: string; label: string; note: string; amountPaise: number | null; at: string };
+// label / note are the partner service's own English; kind, from, closing and text (when sent) let this page write its own Hindi / English line.
+type Led = { id: number; entry: string; label: string; note: string; kind?: string | null; from?: string | null; closing?: string | null; text?: string | null; amountPaise: number | null; at: string };
 type View = {
+  disabled?: boolean; exportUrls?: { wallet?: string | null };
   show: boolean; balancePaise: number | null; pendingPaise: number | null;
   totals: { incomePaise: number; tdsPaise: number; withdrawnPaise: number } | null;
   withdraw: { state: "ok" | "paused" | "hold" | "kyc"; minPaise: number };
@@ -21,8 +23,30 @@ const STATUS: Record<Wd["status"], [string, string, string]> = {
   rejected: ["Rejected", "मना किया", "bg-danger/10 text-danger"],
 };
 
+const ENTRY: Record<string, [string, string]> = {
+  income: ["Income", "कमाई"], tds: ["TDS (tax cut)", "TDS (टैक्स कटा)"], admin_charge: ["Admin charge", "Admin charge"], withdrawal: ["Withdrawal", "निकासी"],
+  withdrawal_reversal: ["Withdrawal returned", "निकासी वापस आई"], manual_credit: ["Added by the company", "कंपनी ने जोड़ा"], manual_debit: ["Taken by the company", "कंपनी ने काटा"],
+  clawback: ["Taken back after a refund", "Refund के बाद वापस लिया"],
+};
+const entryLabel = (l: Led, en: boolean) => (ENTRY[l.entry] ? ENTRY[l.entry][en ? 0 : 1] : l.label);
+/** The small grey line under an entry, in the reader's language (a day is written as a day, never as 2026-10-12). */
+function entryNote(l: Led, en: boolean): string {
+  if (l.kind === undefined && l.from === undefined && l.closing === undefined && l.text === undefined) return l.note; // an older partner build: as it was sent
+  const parts: string[] = [];
+  if (l.kind) parts.push(INCOME_KIND[l.kind] ? INCOME_KIND[l.kind][en ? 0 : 1] : l.kind);
+  if (l.from) parts.push(en ? `from ${l.from}` : `${l.from} से`);
+  if (l.closing) parts.push(en ? `closing ${dayOf(l.closing)}` : `${dayOf(l.closing)} की closing`);
+  if (l.text) {
+    const bank = l.text.match(/^Paid to bank, UTR (.+)$/);
+    const refund = l.text.match(/^Refund of payment #(\d+)$/);
+    parts.push(en ? l.text : bank ? `बैंक में भेजा गया, UTR ${bank[1]}` : refund ? `Payment #${refund[1]} का refund` : l.text);
+  }
+  return parts.join(" · ");
+}
+
 export default function WalletPage() {
   const { lang } = useT(); const en = lang === "en";
+  const tr = useBizMsg();
   const { data, error, loading, reload } = useBiz<View>("wallet");
   const [more, setMore] = useState<Led[]>([]);
   const [next, setNext] = useState<number | null | undefined>(undefined); // undefined = use data.next
@@ -39,7 +63,7 @@ export default function WalletPage() {
     const r = await bizAct<{ ledger?: Led[]; next?: number | null }>("wallet", { op: "view", before: cursor });
     setBusy(false);
     if (r.ok) { setMore((m) => [...m, ...(r.data.ledger ?? [])]); setNext(r.data.next ?? null); }
-    else setMsg({ ok: false, text: r.error ?? "" });
+    else setMsg({ ok: false, text: tr(r.error) });
   }
 
   async function withdraw(e: React.FormEvent) {
@@ -48,21 +72,21 @@ export default function WalletPage() {
     setBusy(true); setMsg(null);
     const r = await bizAct<{ message?: string }>("wallet", { op: "withdraw", amount });
     setBusy(false);
-    if (r.ok) { setMsg({ ok: true, text: r.data.message ?? "OK" }); setAmount(""); setMore([]); setNext(undefined); reload(); }
-    else setMsg({ ok: false, text: r.error ?? "" });
+    if (r.ok) { setMsg({ ok: true, text: tr(r.data.message ?? "OK") }); setAmount(""); setMore([]); setNext(undefined); reload(); }
+    else setMsg({ ok: false, text: tr(r.error) });
   }
 
   const v = data;
   const w = v?.withdraw;
   return (
-    <BizShell title={en ? "Wallet" : "Wallet (बटुआ)"}>
+    <BizShell title={en ? "Wallet" : "Wallet (बटुआ)"} right={v && !v.disabled ? <ExcelButton url={v.exportUrls?.wallet} /> : null}>
       <BizState loading={loading} error={error} onRetry={reload}>
-        {v && w && (
+        {v?.disabled ? <p className={`${CARD} text-sm text-muted`}>{en ? "This page is not open right now." : "यह page अभी बंद है।"}</p> : v && w && (
           <>
             <section className="rounded-2xl bg-[#12144a] p-4 text-white">
               <p className="text-xs opacity-75">{en ? "You can withdraw" : "आप निकाल सकते हैं"}</p>
               <p className="mt-1 text-3xl font-extrabold">{money(v.balancePaise)}</p>
-              {!v.show && <p className="mt-1 text-xs opacity-75">{en ? "Your balance is hidden. You can show it in your profile." : "आपका balance छिपा है। Profile में दिखा सकते हैं।"}</p>}
+              {!v.show && <p className="mt-1 text-xs opacity-75">{en ? "Your balance is hidden by the company. Ask Support if you want it shown." : "आपका balance कंपनी ने छिपा रखा है। दिखवाना हो तो Support से बात करें।"}</p>}
               <div className="mt-3 grid grid-cols-2 gap-2 text-center text-xs">
                 <div className="rounded-xl bg-white/10 p-2"><p className="opacity-75">{en ? "Waiting to be paid" : "भुगतान का इंतज़ार"}</p><p className="font-bold">{money(v.pendingPaise)}</p></div>
                 <div className="rounded-xl bg-white/10 p-2"><p className="opacity-75">{en ? "Total earned" : "कुल कमाई"}</p><p className="font-bold">{v.totals ? rupee(v.totals.incomePaise) : "••••"}</p></div>
@@ -82,9 +106,9 @@ export default function WalletPage() {
               {w.state === "ok" && (
                 <form onSubmit={withdraw} className="mt-3 space-y-2">
                   <label className="block text-sm font-semibold">{en ? "Amount in rupees" : "रकम (रुपये में)"}
-                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" required placeholder="500" className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-base" />
+                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" required placeholder="500" className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-base" />
                   </label>
-                  <p className="text-xs text-muted">{en ? `Minimum ${rupee(w.minPaise)}. It is paid to your KYC bank account.` : `कम से कम ${rupee(w.minPaise)}। रकम आपके KYC वाले bank खाते में जाएगी।`}</p>
+                  <p className="text-xs text-muted">{en ? `Minimum ${rupee(w.minPaise)}. It is paid to your KYC bank account.` : `${rupee(w.minPaise)} से कम नहीं निकाल सकते। रकम आपके KYC वाले bank खाते में जाएगी।`}</p>
                   <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60">
                     {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{en ? "Request withdrawal" : "निकासी माँगें"}
                   </button>
@@ -118,8 +142,8 @@ export default function WalletPage() {
                   {[...v.ledger, ...more].map((l) => (
                     <li key={l.id} className="flex items-start justify-between gap-3 py-2.5 text-sm">
                       <div className="min-w-0">
-                        <p className="font-semibold">{l.label}</p>
-                        {l.note && <p className="text-xs text-muted">{l.note}</p>}
+                        <p className="font-semibold">{entryLabel(l, en)}</p>
+                        {entryNote(l, en) && <p className="text-xs text-muted">{entryNote(l, en)}</p>}
                         <p className="text-xs text-muted">{dayOf(l.at)}</p>
                       </div>
                       <p className={`shrink-0 font-bold ${l.amountPaise === null ? "" : l.amountPaise < 0 ? "text-danger" : "text-good"}`}>

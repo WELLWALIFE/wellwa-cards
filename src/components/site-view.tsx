@@ -37,7 +37,7 @@ import { WordmarkHero, WORDMARK_CSS } from "@/components/site-wordmark";
 import { ShopHero, SHOP_CSS } from "@/components/site-shop";
 import { CollageHero, COLLAGE_CSS } from "@/components/site-collage";
 import { BODY_CSS } from "@/components/site-bodies";
-import { CAT_TABS_CSS, CategoryTabs, productCats } from "@/components/site-scenes";
+import { CAT_TABS_CSS, CategoryTabs, echoes, productCats } from "@/components/site-scenes";
 import { BentoAbout, BentoGallery, BentoReviews, BentoServices, ColourBlocks, ColourReviews, LabelWall, BannerAbout, IconTiles, ReviewRow, TileRow, EditorialAbout, MenuServices, NumberedFaq, PullQuote, SceneAbout, SceneRows, SceneStrip, SplitFaq, StaggerGallery, SCENES_CSS } from "@/components/site-scenes";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
@@ -267,8 +267,26 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
     return () => window.removeEventListener("scroll", on);
   }, []);
   const bento = bp ? bentoFacts(card) : null;
-  // Cinematic: the photos not already on the hero, as the bands between the scenes.
-  const bands = bp === "cinematic" ? strip.filter((u) => u !== card.coverUrl).slice(0, 3) : [];
+  // Cinematic: the photos not already on the hero, as the bands between the scenes. A band must not repeat what the home page
+  // already shows (the first four tiles, the gallery's first five photos, the About photo — 15 Oct 2026: the three bands were the
+  // first three product photos, each sitting right above its own tile), so the photos the home page does not show come first.
+  const bands = bp === "cinematic" ? (() => {
+    const visible = card.pages.filter((p) => !p.hidden);
+    const use: Record<string, number> = {};
+    const bump = (u?: string) => { if (u) use[u] = (use[u] ?? 0) + 1; };
+    for (const sec of homeSections(card, visible)) {
+      if (sec.kind === "featured") sec.items.forEach((it) => bump(it.images?.[0] ?? it.imageUrl));
+      else if (sec.kind === "gallery") sec.images.forEach((i) => bump(i.url));
+      else if (sec.kind === "block") {
+        const b = sec.block;
+        if (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel") b.images.forEach((i) => bump(i.url));
+        else if (b.kind === "about") bump(b.imageUrl);
+        else if (b.kind === "product") b.items.forEach((it) => bump(it.images?.[0] ?? it.imageUrl));
+      }
+    }
+    const gallery = visible.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel" ? b.images.map((i) => i.url ?? "") : [])).filter(Boolean);
+    return [...new Set([...strip, ...gallery])].filter((u) => u !== card.coverUrl).sort((a, b) => (use[a] ?? 0) - (use[b] ?? 0)).slice(0, 3);
+  })() : [];
   const sinceOf = bp ? sinceYear([...card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? ""]) : null;
   // Announcement bar: shown until its date (IST day), closable for the visit.
   const bar = card.site?.bar;
@@ -316,8 +334,12 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   useLayoutEffect(() => {
     const el = annRef.current; const root = el?.parentElement; if (!el || !root) { return; }
     const set = () => root.style.setProperty("--ann-h", `${el.offsetHeight}px`);
+    // The strip re-wraps when the web font arrives (two lines become three): watch its size, not only the window's, or the
+    // header floating under it ends up over its text (optical "Full photo", 15 Oct 2026 sweep).
     set(); window.addEventListener("resize", set);
-    return () => window.removeEventListener("resize", set);
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(set) : null;
+    ro?.observe(el);
+    return () => { window.removeEventListener("resize", set); ro?.disconnect(); };
   }, [offerNow?.text]);
   const waHref = (text?: string) => wa ? `https://wa.me/${wa.value.replace(/\D/g, "")}?text=${encodeURIComponent(text ?? waOpen)}` : "#";
   const pageBlocks = (page?.blocks ?? []).filter((b) => !isEmpty(b));
@@ -382,7 +404,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {offerNow && (
         <div ref={annRef} className="site-ann" role="note">
           <span>{t(offerNow.title ? `${offerNow.title}: ${offerNow.text}` : offerNow.text)}</span>
-          {wa && <a href={waHref(offerNow.title || offerNow.text)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-strip")}>{hiLang ? "WhatsApp पर पाइए" : t("Claim on WhatsApp")}</a>}
+          {wa && <a href={waHref(offerNow.title || offerNow.text)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-strip")}>{hiLang ? "यह ऑफ़र WhatsApp पर पाएँ" : t("Get this offer on WhatsApp")}</a>}
         </div>
       )}
 
@@ -435,11 +457,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       {/* The owner's notice — news, an offer, a closure — under the header (src/lib/notice.ts). */}
       <NoticeBar card={card} hi={hiNow} />
 
-      <main className="relative flex-1 pb-14 md:pb-0">
+      <main className="relative flex-1">
         {isHome && bp === "wordmark" ? (
           <WordmarkHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "shop" ? (
-          <ShopHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento}
+          <ShopHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento && offerNow ? { ...bento, offer: undefined } : bento}
             onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); } }} />
         ) : isHome && bp === "collage" ? (
           <CollageHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento} />
@@ -511,11 +533,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           <section className="mx-auto max-w-6xl px-5 md:px-6 py-10 md:py-14" data-reveal>
             <div className="bulk-banner">
               <div>
-                <p className={cls.kicker}>{hiLang ? "बड़े और ख़ास ऑर्डर" : t("Bulk & custom orders")}</p>
+                <p className={cls.kicker}>{hiLang ? bigWords(card.seo?.categoryKey ?? "").hi : t(bigWords(card.seo?.categoryKey ?? "").en)}</p>
                 <h2 className="sec-h2 mt-3">{hiLang ? "कुछ बड़ा सोच रहे हैं?" : t("Planning something bigger?")}</h2>
                 <p className="lede">{hiLang ? "बताइए क्या चाहिए और कब तक। हम WhatsApp पर भाव बता देंगे।" : t("Tell us what you need and by when. We reply on WhatsApp with a quote.")}</p>
               </div>
-              <a href={waHref(hiLang ? "नमस्ते, मुझे बड़े / ख़ास ऑर्डर का भाव चाहिए।" : "Hello, I would like a quote for a bulk / custom order.")} target="_blank" rel="noreferrer" className={`btn-primary hero-cta ${FOCUS}`} onClick={() => trackClick(card.username, "site-bulk-quote")}>
+              <a href={waHref(hiLang ? bigWords(card.seo?.categoryKey ?? "").askHi : bigWords(card.seo?.categoryKey ?? "").ask)} target="_blank" rel="noreferrer" className={`btn-primary hero-cta ${FOCUS}`} onClick={() => trackClick(card.username, "site-bulk-quote")}>
                 <Icon name="whatsapp" /><span>{hiLang ? "भाव पूछिए" : t("Request a quote")}</span>
               </a>
             </div>
@@ -583,9 +605,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
             {card.gstin?.trim() && <p className="mt-2 text-xs mono" style={{ color: "var(--hero-muted)" }}>GSTIN {card.gstin.trim()}</p>}
             {/* One link, one QR — the same address the phone card carries. */}
             <div className="mt-6 flex items-center gap-4">
-              <Img src={qr} alt="QR code" className="h-20 w-20 rounded-xl bg-white p-1.5" />
+              {qr && <Img src={qr} alt="QR code" className="h-20 w-20 rounded-xl bg-white p-1.5" />}
               <div className="space-y-2">
-                <p className="text-xs" style={{ color: "var(--hero-muted)" }}>{t("Scan to open this site on your phone")}</p>
+                {qr && <p className="text-xs" style={{ color: "var(--hero-muted)" }}>{t("Scan to open this site on your phone")}</p>}
                 {shareUrl && <p className="text-xs mono break-all" style={{ color: "var(--hero-muted)" }}>{shareUrl.replace(/^https?:\/\//, "")}</p>}
                 <div className="flex flex-wrap gap-2">
                   <a href={`/c/${card.username}/vcf`} onClick={() => trackClick(card.username, "vcard")} className={`${GHOST} btn-xs ${FOCUS}`}><Download className="h-3.5 w-3.5" /> {t("Save contact")}</a>
@@ -614,7 +636,9 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           </div>
         </div>
         <div style={{ borderTop: "1px solid var(--hero-line)" }}>
-          <div className="mx-auto max-w-6xl px-5 md:px-6 py-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--hero-muted)" }}>
+          {/* The room under the last line is for the sticky action bar on phones; it sat under <main> before, which left a
+              strip of page colour between a dark closing band and the same-coloured footer (15 Oct 2026 sweep). */}
+          <div className="mx-auto max-w-6xl px-5 md:px-6 pt-4 pb-[4.5rem] md:pb-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--hero-muted)" }}>
             <span>© {new Date().getFullYear()} {t(hm.name)}</span>
             <span className="mono">{brand ? (brand.hideBranding ? "" : `Powered by ${brand.name}`) : "Powered by Shubhora"}</span>
           </div>
@@ -825,6 +849,17 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
 function catalogWord(card: Pick<Card, "seo">, hi: boolean): string {
   return catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en");
 }
+/** "All 8 services" / "सभी 8 सेवाएँ". The "work" word is a sentence ("What I do"), which read "All 8 what i do". */
+function seeAllCatalog(card: Pick<Card, "seo">, total: number, hi: boolean, title = ""): string {
+  // "What I do" and "Our work" are phrases, not nouns: "All 8 our work" read as a mistake over a builder's packages (15 Oct 2026 sweep).
+  // The section's own one-word name stands in ("Our Properties" → "All 8 properties"); else "items".
+  const word = recipeFor(card.seo?.categoryKey ?? "").catalog;
+  if (word === "work" || word === "projects") {
+    const noun = title.trim().replace(/^our\s+/i, "");
+    return hi ? `सभी ${total} काम` : `All ${total} ${/^[A-Za-z]+$/.test(noun) ? noun.toLowerCase() : "items"}`;
+  }
+  return hi ? `सभी ${total} ${catalogWord(card, true)}` : `All ${total} ${catalogWord(card, false).toLowerCase()}`;
+}
 /** The small caption above a section title, per block kind (skipped when it would repeat the title). */
 /** The offer the owner set (an "offer" block with text, not past its date), for the strip above the header: the leading
  *  shop sites carry theirs there ("Flat ₹100 off · free delivery"), not only in a band half way down the page. */
@@ -840,6 +875,14 @@ function liveOffer(card: Card): { title: string; text: string } | null {
   return null;
 }
 /** Trades that take big or custom orders: they get the "Planning something bigger?" banner (Haldiram's "Planning bulk gifting?"). */
+/** The caption and the WhatsApp opening of the "Planning something bigger?" banner: a builder or an event planner takes bigger
+ *  projects, not "bulk orders" (15 Oct 2026 sweep: builder sites carried "Bulk & custom orders"). */
+const PROJECT_TRADES = new Set(["builder", "interior", "photography", "event", "wedding"]);
+function bigWords(cat: string): { en: string; hi: string; ask: string; askHi: string } {
+  return PROJECT_TRADES.has(cat)
+    ? { en: "Bigger projects", hi: "बड़े प्रोजेक्ट", ask: "Hello, I would like a quote for a bigger project.", askHi: "नमस्ते, मुझे एक बड़े प्रोजेक्ट का भाव चाहिए।" }
+    : { en: "Bulk & custom orders", hi: "बड़े और ख़ास ऑर्डर", ask: "Hello, I would like a quote for a bulk / custom order.", askHi: "नमस्ते, मुझे बड़े / ख़ास ऑर्डर का भाव चाहिए।" };
+}
 const BULK_TRADES = new Set(["sweets", "catering", "garments", "textile", "furniture", "interior", "printing", "gift", "event", "wedding", "florist", "tailor", "builder", "manufacturer", "wholesale", "hardware", "tiffin", "cafe", "restaurant", "photography", "jewellery"]);
 
 /** One quiet line under a section's heading, the way the leading sites set one under "Ready made hampers" (review, 14
@@ -862,6 +905,8 @@ function eyebrowFor(kind: CardBlock["kind"], title: string, hi: boolean, catalog
   };
   const e = map[kind]?.[hi ? 1 : 0];
   if (!e) return undefined;
+  // "WHY US" belongs over a "why" heading only; over "What residents get" it is a second, wrong heading.
+  if (kind === "highlights" && !/^(why|क्यों|हमें क्यों)/i.test(title.trim())) return undefined;
   const a = title.trim().toLowerCase(), b = e.toLowerCase();
   return a === b || a.startsWith(b) || (a.length < 22 && b.includes(a)) ? undefined : e;
 }
@@ -1160,7 +1205,8 @@ function AboutBody({ block, hi, index = 0 }: { block: Extract<CardBlock, { kind:
   const prefs = useContext(LayoutCtx);
   const t = useT();
   const layout = preferredLayouts(prefs, { aboutImage: !!block.imageUrl }).about ?? aboutLayout(block, index);
-  const eyebrow = <p className={cls.kicker}>{hi ? "परिचय" : t("About")}</p>;
+  // "ABOUT" over "About us" says the same word twice: the caption is left out when the title already starts with it.
+  const eyebrow = echoes(hi ? "परिचय" : t("About"), t(block.title)) ? null : <p className={cls.kicker}>{hi ? "परिचय" : t("About")}</p>;
   // A short text with no photo: one centred statement, large — not a thin paragraph lost in a wide box.
   if (layout === "statement") {
     return (
@@ -1419,7 +1465,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
               {descOf(p) && <p className="text-muted text-[14px] leading-relaxed line-clamp-2">{t(descOf(p))}</p>}
               {specs.length > 0 && (
                 <details className="mt-1 group/specs">
-                  <summary className={`cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[13px] font-medium inline-flex items-center gap-1 rounded text-muted ${FOCUS}`}>{t("Specifications")} <Icon name="chevron-down" className="transition-transform group-open/specs:rotate-180" /></summary>
+                  <summary className={`cursor-pointer list-none [&::-webkit-details-marker]:hidden text-[13px] font-medium inline-flex items-center gap-1 rounded text-muted ${FOCUS}`}>{t("Details")} <Icon name="chevron-down" className="transition-transform group-open/specs:rotate-180" /></summary>
                   <dl className="mt-3 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-sm">{specs.map((sp, j) => <div key={j} className="contents"><dt className="text-muted">{t(sp.label)}</dt><dd className="font-medium">{t(sp.value)}</dd></div>)}</dl>
                 </details>
               )}
@@ -1486,7 +1532,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
     case "featured":
       return (
         <Section wide index={index} theme={theme} eyebrow={t(catalogWord(card, hi))} title={t(s.title)} lead={ledeT("product")}
-          aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? `सभी ${s.total} ${catalogWord(card, true)}` : t(`All ${s.total} ${catalogWord(card, false).toLowerCase()}`)}</SeeAll> : undefined}>
+          aside={s.total > s.items.length ? <SeeAll href={hrefFor(s.page)} go={go} slug={s.page}>{hi ? seeAllCatalog(card, s.total, true) : t(seeAllCatalog(card, s.total, false, s.title))}</SeeAll> : undefined}>
           <ProductGrid items={s.items} card={card} theme={theme} ink={ink} waHref={waHref} hasWa={hasWa} onZoom={setZoom} cols={s.items.length === 4 ? 4 : 3} hrefFor={hrefFor} go={go} layout={s.items.length <= 2 ? "showcase" : "grid"} openProduct={openProduct} />
           {lightbox}
         </Section>
@@ -1769,13 +1815,14 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           <div className="hero-dark relative overflow-hidden rounded-3xl p-8 md:p-12 grid md:grid-cols-[1fr_auto] gap-6 items-center">
             <i aria-hidden="true" className="hero-grain" />
             <div className="relative">
-              <p className={cls.kicker}>{t(block.title)}</p>
+              {/* The offer's name can run to two lines: the kicker's line-height of 1 packed them into the sentence below. */}
+              <p className={cls.kicker} style={{ lineHeight: 1.4 }}>{t(block.title)}</p>
               <p className="sec-h2 mt-3">{t(block.text)}</p>
               {block.expires && <p className="mt-3 text-sm" style={{ color: "var(--hero-muted)" }}>{t("Valid till")} {block.expires}</p>}
             </div>
             <div className="relative flex flex-col items-start gap-3">
               {block.code && <OfferCode code={block.code} />}
-              {hasWa && <a href={waHref(`Hi, I'd like to claim: ${block.text}${block.code ? ` (code ${block.code})` : ""}`)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-whatsapp")} className={`${BTN} ${FOCUS}`}><Icon name="whatsapp" /> {t("Claim on WhatsApp")}</a>}
+              {hasWa && <a href={waHref(`Hi, I would like this offer: ${block.text}${block.code ? ` (code ${block.code})` : ""}`)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-whatsapp")} className={`${BTN} ${FOCUS}`}><Icon name="whatsapp" /> {hi ? "WhatsApp पर पाइए" : t("Get this offer on WhatsApp")}</a>}
             </div>
           </div>
         </Section>
@@ -1870,7 +1917,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
         <Section wide index={index} theme={theme}>
           <div className={`${cls.card} p-8 md:p-12 grid md:grid-cols-[1.2fr_1fr] gap-10 items-center`}>
             <div>
-              <p className={`${cls.kicker} inline-flex items-center gap-1.5`}><CalendarClock className="h-4 w-4" /> {t("Book a demo")}</p>
+              {/* `.kicker` is display:block and beats the utility classes, so the icon stacked above the words: flex by style. */}
+              <p className={cls.kicker} style={{ display: "flex", alignItems: "center", gap: 6 }}><CalendarClock className="h-4 w-4" /> {t("Book a time")}</p>
               <h2 className="sec-h2 mt-3">{t(block.title)}</h2>
               {block.note && <p className="mt-3 text-[17px] text-muted leading-relaxed max-w-lg">{t(block.note)}</p>}
             </div>
@@ -1888,7 +1936,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
               <span className={cls.iconBox}><FileText className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1">
                 <span className="block font-semibold truncate">{block.fileLabel}</span>
-                <span className="block text-sm text-muted mt-0.5">{block.fileUrl ? t(block.hint || "Download PDF") : "File attaches after upload"}</span>
+                <span className="block text-sm text-muted mt-0.5">{block.fileUrl ? t(block.hint || "Download PDF") : "File coming soon"}</span>
               </span>
               {block.fileUrl && <Download className="h-5 w-5 text-muted shrink-0" />}
             </div>

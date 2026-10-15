@@ -59,13 +59,13 @@ export default function CardTab() {
     if (!card || refreshing) return;
     setRefreshing(true); setNote("");
     const r = await api<{ ok?: boolean; card?: Card; error?: string }>("/api/card/build", { method: "POST", json: { refresh: true, current: card } });
-    if (!r.ok || !r.data.card) { setRefreshing(false); setNote(r.data.error || "Could not refresh right now. Please try again."); return; }
+    if (!r.ok || !r.data.card) { setRefreshing(false); setNote(r.data.error || (lang === "hi" ? "अभी नए हिस्से नहीं जुड़ पाए। कृपया दोबारा कोशिश करें।" : "Could not add the new sections right now. Please try again.")); return; }
     const merged = { ...r.data.card, id: card.id, username: card.username } as Card;
     const p = await publishCard(merged);
     setRefreshing(false);
-    if (!p.ok) { setNote(p.error || "Could not save."); return; }
+    if (!p.ok) { setNote(p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.")); return; }
     setCard(merged);
-    setNote("Done — new sections added. Open the card to see it; edit anything in the editor.");
+    setNote(lang === "hi" ? "हो गया — नए हिस्से जुड़ गए। Card खोलकर देखें। कुछ भी बदलना हो तो 'Card बदलें' से बदल सकते हैं।" : "Done. New sections are added. Open your card to see them. You can change anything with Edit card.");
   }
 
   const load = useCallback(async () => {
@@ -117,7 +117,7 @@ export default function CardTab() {
       const own = await loadOwnDetails().catch(() => null);
       const next = toBothFromShubhora(card, { photo: own?.photo });
       const p = await publishCard(next);
-      if (!p.ok) { setShBusy(""); setNote(p.error || "Could not save. Please try again."); return; }
+      if (!p.ok) { setShBusy(""); setNote(p.error || (lang === "hi" ? "Save नहीं हुआ। कृपया दोबारा कोशिश करें।" : "Could not save. Please try again.")); return; }
       // The seller set-up wrote https://shubhora.com as this account's website; their own business must not
       // start with our site as its own. Then the set-up's website step, so their real site (if any) is asked.
       try {
@@ -127,7 +127,7 @@ export default function CardTab() {
       } catch { /* the build route ignores a shubhora.com website anyway */ }
       router.push("/poster/onboard?step=site&next=/poster/card/build");
     } catch {
-      setShBusy(""); setNote(lang === "hi" ? "Internet की दिक्कत — फिर से कोशिश करें।" : "Network issue — please try again.");
+      setShBusy(""); setNote(lang === "hi" ? "Internet नहीं है — दोबारा कोशिश करें।" : "No internet — please try again.");
     }
   }
 
@@ -139,7 +139,7 @@ export default function CardTab() {
     const next = (on ? withShubhoraPage(card) : withoutShubhoraPage(card)) as Card;
     const p = await publishCard(next);
     setShBusy("");
-    if (!p.ok) { setNote(p.error || "Could not save."); return; }
+    if (!p.ok) { setNote(p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.")); return; }
     setCard(next);
     setNote(on
       ? (lang === "hi" ? "Shubhora page जुड़ गया — नीचे उसका अलग link है। आपके अपने card पर ये नहीं दिखेगा।" : "Shubhora page added — its own link is below. It will not show on your own card.")
@@ -148,9 +148,9 @@ export default function CardTab() {
 
   if (failed) return (
     <div className="py-20 grid place-items-center gap-3 text-center">
-      <p className="font-semibold">No internet — tap to try again</p>
+      <p className="font-semibold">{lang === "hi" ? "Internet नहीं है — दोबारा कोशिश करने के लिए दबाएँ" : "No internet — tap to try again"}</p>
       <button type="button" onClick={load} className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white">
-        <RefreshCw className="h-5 w-5" /> Try again
+        <RefreshCw className="h-5 w-5" /> {lang === "hi" ? "दोबारा कोशिश करें" : "Try again"}
       </button>
     </div>
   );
@@ -161,13 +161,13 @@ export default function CardTab() {
     <div className="space-y-4 py-2">
       {published && (
         <div className="rounded-2xl border-2 border-good/40 bg-good/10 p-4 space-y-3">
-          <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 className="h-6 w-6 text-good" /> {lang === "hi" ? "आपका digital card live है" : "Your digital card is live"}</p>
-          <p className="text-sm text-muted">{lang === "hi" ? "एक ही link: computer पर website, phone पर card। Share करें, या Card & Website से edit करें।" : "One link: the website on a computer, your card on a phone. Share it, or edit it from Card & Website."}</p>
+          <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 className="h-6 w-6 text-good" /> {lang === "hi" ? "आपका digital card अब online है" : "Your digital card is online now"}</p>
+          <p className="text-sm text-muted">{lang === "hi" ? "एक ही link: computer पर website, phone पर card। Share करें, या Card & Website से बदलें।" : "One link: people see your website on a computer and your card on a phone. Share it, or change it from Card & Website."}</p>
           <Link href="/poster/site" className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-base font-semibold">
-            <Globe className="h-5 w-5" /> See your website preview
+            <Globe className="h-5 w-5" /> {lang === "hi" ? "अपनी website देखें" : "See your website"}
           </Link>
           <Link href="/poster" className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-base font-semibold text-white">
-            Next: your daily poster →
+            {lang === "hi" ? "आगे: आपका रोज़ का poster →" : "Next: your daily poster →"}
           </Link>
         </div>
       )}
@@ -175,7 +175,7 @@ export default function CardTab() {
       <h1 className="text-lg font-bold">{t.cardTitle}</h1>
       <PhotoNudge />
       <CardChatEdit card={card} onChanged={() => load()} locked={!planLoading && plan === "free"} />
-      <Guide hi="ये link हर जगह share करें — bio, WhatsApp, visiting card पर QR। जो भी खोलेगा, उसकी lead आपको मिलेगी।" en="Share this link everywhere — bio, WhatsApp, QR on your visiting card. Whoever opens it becomes your lead." />
+      <Guide hi="ये link हर जगह share करें — social media profile, WhatsApp, visiting card पर QR। जो भी इसके ज़रिए आपसे संपर्क करेगा, वह आपके customers में जुड़ जाएगा।" en="Share this link everywhere — your social media profile, WhatsApp, a QR on your visiting card. People who contact you through it are saved as your customers." />
       <div className="rounded-2xl border border-border overflow-hidden">
         <div className="grad-brand p-4 text-white flex items-center gap-3">
           {card.avatarUrl ? <Img src={card.avatarUrl} alt="" className={`h-14 w-14 border-2 border-white/60 ${card.avatarShape === "square" ? "rounded-xl bg-white object-contain" : "rounded-full object-cover"}`} /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white/25 text-lg font-bold">{initials(card.lead === "business" && card.company ? card.company : card.name)}</div>}
@@ -197,7 +197,7 @@ export default function CardTab() {
             <button type="button" onClick={shareSite} className="inline-flex items-center justify-center gap-2 rounded-xl border-2 border-[#25D366] px-3 py-3 text-base font-semibold text-[#128C7E]"><Share2 className="h-5 w-5" /> {lang === "hi" ? "Website share करें" : "Share website"}</button>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <Link href={`/poster/d/editor?id=${card.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-base font-semibold text-white"><Pencil className="h-4 w-4" /> {lang === "hi" ? "Card edit करें" : "Edit card"}</Link>
+            <Link href={`/poster/d/editor?id=${card.id}`} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-base font-semibold text-white"><Pencil className="h-4 w-4" /> {lang === "hi" ? "Card बदलें" : "Edit card"}</Link>
             <CardLink href={url} title={lang === "hi" ? "मेरा कार्ड" : "My card"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-3 text-base font-medium"><ExternalLink className="h-4 w-4" /> {lang === "hi" ? "Card देखें" : "See card"}</CardLink>
           </div>
           <details className="group rounded-xl border border-border">
@@ -221,7 +221,7 @@ export default function CardTab() {
                 </button>
               )}
               {/* Selling ONLY Shubhora: the ready-made seller card replaces this card's pages on the SAME link. */}
-              <Link href={`/poster/d/editor?id=${card.id}&template=vcard-reseller`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted">{lang === "hi" ? "सिर्फ़ Shubhora बेचना है? पूरा card seller card बना दें (आपका business हट जाएगा)" : "Only selling Shubhora? Replace the whole card with the seller card (your own business comes off)"}</Link>
+              <Link href={`/poster/d/editor?id=${card.id}&template=vcard-reseller`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted">{lang === "hi" ? "सिर्फ़ Shubhora बेचना है? पूरे card को seller card बना दें (आपके business की जानकारी card से हट जाएगी)" : "Only selling Shubhora? Change the whole card into the seller card (your own business details will be removed from it)"}</Link>
             </div>
           </details>
         </div>
@@ -284,7 +284,7 @@ export default function CardTab() {
       )}
       {/* Own domain — free for the card too (yourbusiness.com opens this card). */}
       <details className="rounded-2xl border border-border p-4" open={domainOpen} onToggle={(e) => setDomainOpen((e.target as HTMLDetailsElement).open)}>
-        <summary className="cursor-pointer text-sm font-semibold inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> {domain ? `Your domain: ${domain}` : (lang === "hi" ? "अपना domain जोड़ें (yourbusiness.com)" : "Use your own domain (yourbusiness.com)")}</summary>
+        <summary className="cursor-pointer text-sm font-semibold inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> {domain ? (lang === "hi" ? `आपका web address: ${domain}` : `Your web address: ${domain}`) : (lang === "hi" ? "अपना web address जोड़ें (yourbusiness.com)" : "Use your own web address (yourbusiness.com)")}</summary>
         <div id="domain" className="pt-3 scroll-mt-20"><DomainConnect cardId={card.id} username={card.username} initialDomain={domain || undefined} onChange={setDomain} /></div>
       </details>
     </div>

@@ -2,9 +2,11 @@
 // Business › Downloads — the company's plans, posters and training files. Links are signed by the partner service (valid for an hour).
 import { Download, FileText } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, safeHref, useBiz } from "@/components/business/kit";
 
 type Item = { title: string; description: string; category: string; mime: string; image: boolean; sizeBytes: number; url: string | null; downloadUrl: string | null };
+
+const size = (b: number) => (b >= 1_048_576 ? `${(b / 1_048_576).toFixed(1)} MB` : `${Math.max(1, Math.round(b / 1024))} KB`);
 
 export default function DownloadsPage() {
   const { lang } = useT(); const en = lang === "en";
@@ -29,13 +31,13 @@ export default function DownloadsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">{i.title}</p>
                       {i.description && <p className="text-xs text-muted line-clamp-2">{i.description}</p>}
-                      <p className="text-[11px] text-muted">{Math.max(1, Math.round(i.sizeBytes / 1024))} KB</p>
+                      <p className="text-[11px] text-muted">{size(i.sizeBytes)}</p>
                     </div>
-                    {i.downloadUrl && (
-                      <a href={i.downloadUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white">
+                    {safeHref(i.downloadUrl) ? (
+                      <a href={safeHref(i.downloadUrl)!} target="_blank" rel="noopener noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl grad-brand px-3 py-2 text-xs font-semibold text-white">
                         <Download className="h-4 w-4" />{en ? "Download" : "Download"}
                       </a>
-                    )}
+                    ) : <span className="shrink-0 text-[11px] text-muted">{en ? "Link not ready" : "Link अभी तैयार नहीं"}</span>}
                   </div>
                 ))}
               </section>

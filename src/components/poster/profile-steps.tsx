@@ -16,6 +16,14 @@ export const PROFILE_STEPS: { key: ProfileStepKey; en: string; hi: string; href:
   { key: "business", en: "Business", hi: "Business", href: "/poster/onboard?step=site" },
   { key: "make", en: "Make", hi: "बनाएँ", href: "/poster/card/build?make=1" },
 ];
+/** Where "Back" goes from a chapter when the page has no back of its own: the LAST screen of the chapter before (the chips above
+ *  open a chapter at its first screen, which for Make was the website question — four screens too far back). */
+const BACK_HREF: Record<ProfileStepKey, string> = {
+  you: "/poster/welcome",
+  business: "/poster/onboard?step=you",
+  products: "/poster/onboard?step=about",
+  make: "/poster/onboard?step=about",
+};
 
 /** `category`: the trade, so the chapters are called what they are for that trade — Courses for a school, Menu for
  *  a restaurant. `screen`: which screen inside the chapter (the onboarding passes it; the products and make pages
@@ -37,7 +45,8 @@ export function ProfileSteps({ current, category, screen, onBack, skipped }: { c
   const n = screenNo(key, skipped), total = flowOf(skipped).length;
   const here = SETUP_SCREENS.find((s) => s.key === key);
   const pct = Math.min(100, Math.round(((n - 1) / total) * 100));
-  const prev = at > 0 ? PROFILE_STEPS[at - 1] : { href: "/poster/welcome", en: "Back", hi: "पीछे" };
+  const prevChapter = at > 0 ? PROFILE_STEPS[at - 1] : null;
+  const prev = prevChapter ? { ...prevChapter, href: BACK_HREF[current] } : { href: BACK_HREF[current], en: "Back", hi: "पीछे" };
   const backCls = "inline-flex items-center gap-0.5 text-xs font-semibold text-muted hover:text-ink";
   return (
     <div className="space-y-2">

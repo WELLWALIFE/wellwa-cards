@@ -54,7 +54,7 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
       <div>
         <p className="text-sm font-semibold mb-1">{lang === "en" ? "Your business / work" : "आपका काम / व्यवसाय"}</p>
         <CategoryPicker value={draft.category ?? ""} lang={lang === "en" ? "en" : "hi"} className="!mt-0 !py-2.5 !rounded-lg !text-sm"
-          placeholder={lang === "en" ? "Choose a category (sets look & wording)" : "श्रेणी चुनें (लुक और शब्द अपने-आप सेट)"}
+          placeholder={lang === "en" ? "Choose your work (the look and words are set for you)" : "अपना काम चुनें (लुक और शब्द अपने-आप लग जाएँगे)"}
           onChange={(k) => { const c = categoryOf(k); onChange(c ? { ...draft, category: c.key, persona: c.persona, style: draft.id ? (draft.style ?? c.style) : c.style, layout: { ...(draft.layout ?? {}), accent: c.accent }, party: c.persona === "community" ? (draft.party ?? emptyParty()) : draft.party } : { ...draft, category: "" }); }} />
       </div>
       {showPersona && (
@@ -162,10 +162,10 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
               className={`rounded-full border px-3 py-1.5 text-sm ${chosenStyle(draft) === st.key ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`}>{st.emoji} {lang === "en" ? st.en : st.hi}</button>
           ))}
         </div>
-        <p className="text-[11px] text-muted mt-1">{lang === "en" ? "Signature: your photo or a real photo of your trade, the day's line, your five highlights and a WhatsApp button — one design for WhatsApp, Facebook, Instagram and Google." : "सिग्नेचर: आपकी या आपके काम की असली फ़ोटो, दिन की लाइन, आपकी 5 ख़ास बातें और WhatsApp बटन — एक ही डिज़ाइन WhatsApp, Facebook, Instagram और Google के लिए।"}</p>
+        <p className="text-[11px] text-muted mt-1">{lang === "en" ? "Signature: your photo or a real photo of your work, the day's line, your five key points and a WhatsApp button. One design for WhatsApp, Facebook, Instagram and Google." : "सिग्नेचर: आपकी या आपके काम की असली फ़ोटो, दिन की लाइन, आपकी 5 ख़ास बातें और WhatsApp बटन — एक ही डिज़ाइन WhatsApp, Facebook, Instagram और Google के लिए।"}</p>
       </div>
       <div>
-        <p className="text-sm font-semibold mb-1">{lang === "en" ? "Your 5 highlights" : "आपकी 5 ख़ास बातें"} <span className="text-faint font-normal text-xs">{lang === "en" ? "(Signature poster)" : "(सिग्नेचर पोस्टर)"}</span></p>
+        <p className="text-sm font-semibold mb-1">{lang === "en" ? "Your 5 key points" : "आपकी 5 ख़ास बातें"} <span className="text-faint font-normal text-xs">{lang === "en" ? "(Signature poster)" : "(सिग्नेचर पोस्टर)"}</span></p>
         <textarea rows={4} value={(draft.layout?.usps ?? []).join("\n")}
           onChange={(e) => onChange({ ...draft, layout: { ...(draft.layout ?? {}), usps: e.target.value.split("\n").slice(0, 5) } })}
           placeholder={lang === "en" ? "Home Delivery | nearby\nUPI / Cash | accepted\nTrusted | for years" : "होम डिलीवरी | पास के इलाक़े\nUPI / Cash | सब चलता है\nभरोसा | सालों का"}
@@ -173,9 +173,9 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
         <p className="text-[11px] text-muted mt-1">{lang === "en" ? "One per line: heading | small line. Leave empty and we write them for your trade." : "एक लाइन में एक: शीर्षक | छोटी लाइन। खाली छोड़ें तो आपके काम के हिसाब से हम लिख देंगे।"}</p>
       </div>
       <div>
-        <p className="text-sm font-semibold mb-1">{lang === "en" ? "Poster art scene" : "पोस्टर का आर्ट (माहौल)"} <span className="text-faint font-normal text-xs">{lang === "en" ? "(Personal/Business plan)" : "(Personal/Business plan)"}</span></p>
+        <p className="text-sm font-semibold mb-1">{lang === "en" ? "Picture style on the poster" : "पोस्टर की picture का माहौल"} <span className="text-faint font-normal text-xs">{lang === "en" ? "(Personal/Business plan)" : "(Personal/Business plan)"}</span></p>
         <select value={draft.layout?.artGroup ?? "auto"} onChange={(e) => onChange({ ...draft, layout: { ...(draft.layout ?? {}), artGroup: e.target.value === "auto" ? undefined : e.target.value } })} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand">
-          <option value="auto">{lang === "en" ? "Auto (from your category)" : "ऑटो (आपकी श्रेणी से)"}</option>
+          <option value="auto">{lang === "en" ? "Automatic (from your work)" : "अपने-आप (आपके काम से)"}</option>
           {[["Retail", "Shop / bazaar", "दुकान / बाज़ार"], ["Food", "Food / kitchen", "खाना / रसोई"], ["Health", "Health / wellness", "सेहत / वेलनेस"], ["Services", "Office / city", "ऑफ़िस / शहर"], ["Education", "Education", "शिक्षा"], ["Sales", "Growth / partnership", "ग्रोथ / पार्टनरशिप"], ["Industry", "Farm / factory", "खेत / फ़ैक्टरी"], ["Community", "Rally / community", "रैली / समाज"], ["Personal", "General (shared art)", "सामान्य (साझा आर्ट)"]].map(([k, en, hi]) => <option key={k} value={k}>{lang === "en" ? en : hi}</option>)}
         </select>
         <p className="text-[11px] text-muted mt-1">{lang === "en" ? "Same festival, but the scene matches your trade — a doctor gets a clean wellness look, a kirana gets a bazaar look." : "त्योहार वही, पर माहौल आपके काम जैसा — डॉक्टर को वेलनेस लुक, किराना को बाज़ार लुक।"}</p>
@@ -216,7 +216,7 @@ function PartySection({ party, onChange, lang }: { party: Party; onChange: (p: P
   const setColor = (i: number, v: string) => { const colors = [...(party.colors ?? [])]; colors[i] = v; onChange({ ...party, colors }); };
   return (
     <div className="rounded-xl border border-border p-3 space-y-3">
-      <p className="text-sm font-semibold">🚩 {en ? "Party / organisation branding" : "पार्टी / संगठन की ब्रांडिंग"}</p>
+      <p className="text-sm font-semibold">🚩 {en ? "Your party or group's look" : "पार्टी / संगठन की पहचान"}</p>
       <p className="text-xs text-muted">{en ? "Symbol top-left, up to 3 leaders top-right, party colours and slogan on every poster." : "हर पोस्टर पर: चिह्न ऊपर-बाएँ, 3 नेता ऊपर-दाएँ, पार्टी के रंग और नारा।"}</p>
       <input value={party.name} onChange={(e) => onChange({ ...party, name: e.target.value })} placeholder={en ? "Party / organisation name" : "पार्टी / संगठन का नाम"} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
       <input value={party.slogan} onChange={(e) => onChange({ ...party, slogan: e.target.value })} placeholder={en ? "Slogan (optional)" : "नारा (optional), जैसे: सबका साथ, सबका विकास"} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
@@ -224,8 +224,8 @@ function PartySection({ party, onChange, lang }: { party: Party; onChange: (p: P
         <span className="h-14 w-14 rounded-lg bg-surface2 border border-border grid place-items-center overflow-hidden">{party.symbol_url ? <img src={party.symbol_url} alt="" className="h-full w-full object-contain p-1" /> : up === "symbol" ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" /> : <span className="text-xs text-muted">🚩</span>}</span>
         <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer"><Images className="h-3.5 w-3.5" /> {en ? "Symbol / logo" : "चिह्न / लोगो"}<input type="file" accept="image/*" className="hidden" onChange={(e) => pickImg("symbol", e.target.files?.[0] ?? null)} /></label>
         <div className="ml-auto flex items-center gap-1.5 text-xs text-muted">{en ? "Colours" : "रंग"}
-          <input type="color" value={party.colors?.[0] ?? "#ff9933"} onChange={(e) => setColor(0, e.target.value)} className="h-7 w-9 rounded border border-border bg-surface p-0.5" title={en ? "Accent" : "मुख्य रंग"} />
-          <input type="color" value={party.colors?.[1] ?? "#1f2937"} onChange={(e) => setColor(1, e.target.value)} className="h-7 w-9 rounded border border-border bg-surface p-0.5" title={en ? "Band" : "पट्टी का रंग"} />
+          <input type="color" value={party.colors?.[0] ?? "#ff9933"} onChange={(e) => setColor(0, e.target.value)} className="h-7 w-9 rounded border border-border bg-surface p-0.5" title={en ? "Main colour" : "मुख्य रंग"} />
+          <input type="color" value={party.colors?.[1] ?? "#1f2937"} onChange={(e) => setColor(1, e.target.value)} className="h-7 w-9 rounded border border-border bg-surface p-0.5" title={en ? "Bar colour" : "पट्टी का रंग"} />
         </div>
       </div>
       <div>

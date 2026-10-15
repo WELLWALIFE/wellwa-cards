@@ -15,6 +15,8 @@ type T = (s: string) => string;
 type Photo = { url?: string; label: string };
 const paras = (s?: string | null) => (s ?? "").split(/\n+/).map((x) => x.trim()).filter(Boolean);
 const clean = (s: string) => s.replace(/^\d+[.)]\s*/, "");
+/** The small caption over a heading is left out when it only says the heading's first word again ("ABOUT" over "About us"). */
+export const echoes = (eyebrow: string, title: string) => { const a = eyebrow.trim().toLowerCase(), b = title.trim().toLowerCase(); return !a || a === b || b.startsWith(`${a} `) || a.startsWith(`${b} `); };
 
 /* ---------- Full photo ---------- */
 
@@ -26,7 +28,7 @@ export function SceneAbout({ title, body, image, eyebrow, t }: { title: string; 
       <Img src={image} alt="" className="scene-bg" sizes="100vw" />
       <i aria-hidden="true" className="scene-scrim" />
       <div className="scene-copy">
-        <p className="scene-kicker">{eyebrow}</p>
+        {!echoes(eyebrow, t(title)) && <p className="scene-kicker">{eyebrow}</p>}
         <h2 className="scene-h">{t(title)}</h2>
         <div className="scene-body">{ps.map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
@@ -130,7 +132,7 @@ export function EditorialAbout({ title, body, image, eyebrow, t }: { title: stri
   return (
     <div className={`ed-about ${image ? "has-img" : ""}`}>
       <div className="ed-about-text">
-        <p className="kicker">{eyebrow}</p>
+        {!echoes(eyebrow, t(title)) && <p className="kicker">{eyebrow}</p>}
         <h2 className="ed-about-title">{t(title)}</h2>
         {lead && <p className="ed-lead">{t(lead)}</p>}
         {rest.length > 0 && <div className="ed-rest">{rest.map((x, i) => <p key={i}>{t(x)}</p>)}</div>}
@@ -242,7 +244,7 @@ export function BannerAbout({ title, body, image, eyebrow, flip, t }: { title: s
     <div className={`banner-about ${flip ? "flip" : ""}`}>
       <div className="banner-ph"><Img src={image} alt="" className="banner-img" sizes="(min-width:900px) 50vw, 100vw" /></div>
       <div className="banner-words">
-        <p className="kicker">{eyebrow}</p>
+        {!echoes(eyebrow, t(title)) && <p className="kicker">{eyebrow}</p>}
         <h2 className="banner-h">{t(title)}</h2>
         <div className="banner-body">{ps.map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
@@ -353,7 +355,7 @@ export function BentoAbout({ title, body, image, eyebrow, t }: { title: string; 
   return (
     <div className={`bento-ab ${image ? "has-img" : ""}`}>
       <div className="bento-ab-words">
-        <small>{eyebrow}</small>
+        {!echoes(eyebrow, t(title)) && <small>{eyebrow}</small>}
         <h2>{t(title)}</h2>
         <div>{ps.map((x, i) => <p key={i}>{t(x)}</p>)}</div>
       </div>
@@ -507,12 +509,17 @@ export const SCENES_CSS = `
 .site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)::-webkit-scrollbar{display:none}
 .site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)>*{flex:0 0 clamp(170px,46vw,250px);scroll-snap-align:start}
 @media (min-width:1024px){.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img){margin:0;padding:0 0 6px}.site[data-bp="shop"] main .grid.sm\\:grid-cols-2:has(.p-img)>*{flex-basis:calc(25% - 11px)}}
+/* The swipe row previews the home page; the Products page lists every product, so there they sit in a grid — two across on a phone, four on a computer (the "Collection" page of a shop was one row to swipe, 15 Oct 2026 sweep). */
+.site[data-bp="shop"]:not([data-home]) main .grid.sm\\:grid-cols-2:has(.p-img){display:grid;overflow:visible;margin:0;padding:0;gap:14px}
+.site[data-bp="shop"]:not([data-home]) main .grid.sm\\:grid-cols-2:has(.p-img)>*{flex:none}
 /* The collage's products: caption under a tall photo, five across, no description. */
 .site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s4) var(--s3)}
 .site[data-bp="collage"] main .s-card{border:0;box-shadow:none;background:transparent;border-radius:0}
 .site[data-bp="collage"] main .s-card .p-img{aspect-ratio:4/5;border-radius:var(--r-card)}
 .site[data-bp="collage"] main .s-card>.p-5{padding:10px 0 0}
 .site[data-bp="collage"] main .s-card .line-clamp-2,.site[data-bp="collage"] main .s-card details{display:none}
+/* Two across on a phone, a tile is ~170px wide: a long name beside a price ("₹1,799 / sq ft") ran to four lines. Name over price, as the shop does. */
+@media (max-width:767px){.site[data-bp="collage"] main .s-card .flex.items-start.justify-between{flex-direction:column;gap:2px}.site[data-bp="collage"] main .s-card .p-price{text-align:left}}
 @media (min-width:900px){.site[data-bp="collage"] main .grid.sm\\:grid-cols-2:has(.p-img){grid-template-columns:repeat(4,minmax(0,1fr))}}
 
 .site[data-bp="story"] .col-blocks{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -531,7 +538,9 @@ export const SCENES_CSS = `
 .site[data-bp="story"] .label-it[data-c="0"] .label-bar{background:var(--p-foot);color:var(--p-foot-ink)}
 .site[data-bp="story"] .label-it[data-c="1"] .label-bar{background:var(--p-soft);color:var(--p-foot)}
 .site[data-bp="story"] .label-it[data-c="2"] .label-bar{background:#fff;color:var(--p-foot)}
-@media (min-width:768px){.site[data-bp="story"] .label-wall{grid-template-columns:repeat(3,1fr);gap:16px}.site[data-bp="story"] .label-it{aspect-ratio:4/5}}
+/* Three photos in two columns left a hole beside the last: an odd one out takes the whole row on a phone (15 Oct 2026 sweep). */
+.site[data-bp="story"] .label-it:last-child:nth-child(odd){grid-column:1/-1;aspect-ratio:2/1}
+@media (min-width:768px){.site[data-bp="story"] .label-wall{grid-template-columns:repeat(3,1fr);gap:16px}.site[data-bp="story"] .label-it{aspect-ratio:4/5}.site[data-bp="story"] .label-it:last-child:nth-child(odd){grid-column:auto;aspect-ratio:4/5}}
 .site[data-bp="story"] .col-revs{display:grid;gap:14px}
 .site[data-bp="story"] .col-revs figure{margin:0;padding:22px;border:2px solid var(--p-foot);box-shadow:6px 6px 0 0 var(--p-foot);display:flex;flex-direction:column;gap:10px}
 .site[data-bp="story"] .col-revs figure[data-c="0"]{background:var(--p-foot);color:var(--p-foot-ink)}
@@ -548,7 +557,7 @@ export const SCENES_CSS = `
 .site[data-bp="bento"] .bento-sv small{font-size:12px;letter-spacing:.14em;opacity:.7}
 .site[data-bp="bento"] .bento-sv h3{margin:auto 0 0;font-size:1.05rem;line-height:1.2;font-weight:700;padding-right:30px}
 .site[data-bp="bento"] .bento-sv li.lead h3{font-size:clamp(1.4rem,4vw,2rem)}
-.site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-right:32px}  /* clear of the round arrow in the corner */
 .site[data-bp="bento"] .bento-sv li.lead p{color:inherit;opacity:.85}
 .site[data-bp="bento"] .bento-sv li.ask{padding:0;border-style:dashed;background:transparent}
 .site[data-bp="bento"] .bento-sv li.ask a{display:flex;flex-direction:column;gap:6px;height:100%;min-height:132px;padding:18px;color:inherit;text-decoration:none}

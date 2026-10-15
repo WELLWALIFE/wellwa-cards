@@ -35,13 +35,13 @@ function LeadsTab() {
     <div className="space-y-3">
       <div className="inline-flex rounded-full border border-border bg-surface p-0.5 text-sm font-semibold">
         {(["leads", "bookings", "phone", "wa", "learn"] as const).map((k) => (
-          <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "leads" ? "CRM" : k === "bookings" ? (t.tabMore === "मेरा" ? "बुकिंग" : "Bookings") : k === "phone" ? (t.tabMore === "मेरा" ? "फ़ोन" : "Phone") : k === "wa" ? t.waTab : (t.tabMore === "मेरा" ? "Bot सिखाएँ" : "Teach bot")}</button>
+          <button key={k} type="button" onClick={() => setTab(k)} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "leads" ? (t.tabMore === "मेरा" ? "ग्राहक" : "Customers") : k === "bookings" ? (t.tabMore === "मेरा" ? "बुकिंग" : "Bookings") : k === "phone" ? (t.tabMore === "मेरा" ? "फ़ोन" : "Phone") : k === "wa" ? t.waTab : (t.tabMore === "मेरा" ? "Bot सिखाएँ" : "Teach bot")}</button>
         ))}
       </div>
-      {tab === "leads" && <Guide hi="हर customer की WhatsApp chat, stage, tags और follow-up यहाँ। Hot वाले customers को पहले call करें; AI आपके लिए reply लिख देता है।" en="Every customer's WhatsApp chat, stage, tags and follow-ups live here. Call the hot ones first — the AI writes the reply for you." />}
+      {tab === "leads" && <Guide hi="हर customer की WhatsApp chat और follow-up यहाँ हैं। जो जल्दी खरीदना चाहते हैं, उन्हें पहले call करें। Reply AI लिख देता है।" en="Every customer's WhatsApp chat and follow-ups are here. Call the ones who are ready to buy first. The AI writes the replies for you." />}
       {tab === "wa" && <Link href="/poster/connect" className="block text-xs font-semibold text-brand-ink">🔗 {t.tabMore === "मेरा" ? "सारे connections (Facebook, Instagram, Google) →" : "All connections (Facebook, Instagram, Google) →"}</Link>}
       {tab === "wa" && <ConnectConsent kind="whatsapp" />}
-      {tab === "wa" && <Guide hi="इसी phone पर code से WhatsApp link करें (दूसरे phone की ज़रूरत नहीं) — फिर bot 24×7 जवाब देगा। आप खुद जवाब दें तो bot 15 मिनट चुप रहता है।" en="Link your WhatsApp with a code on this same phone (no second phone needed) — then the bot answers 24×7. If you reply yourself the bot stays quiet for 15 minutes." />}
+      {tab === "wa" && <Guide hi="इसी phone पर code से WhatsApp link करें। दूसरे phone की ज़रूरत नहीं। फिर bot दिन-रात जवाब देगा। आप खुद जवाब दें तो bot 15 मिनट चुप रहता है।" en="Link your WhatsApp with a code on this same phone. No second phone is needed. Then the bot answers any time, day or night. If you reply yourself, the bot stays quiet for 15 minutes." />}
       {tab === "learn" && <LearnPage />}
       <div className="poster-embed" onClickCapture={(e: MouseEvent<HTMLDivElement>) => { const a = (e.target as HTMLElement).closest("a"); const to = a && a.target !== "_blank" ? appPath(a.getAttribute("href") ?? "") : null; if (to) { e.preventDefault(); router.push(to); } }}>{tab === "wa" ? <WhatsappPage /> : null}</div>
       {tab === "leads" && <CustomerTools />}

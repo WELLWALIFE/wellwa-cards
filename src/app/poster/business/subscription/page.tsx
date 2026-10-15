@@ -1,15 +1,16 @@
 "use client";
 // Business > Subscription (+ the panel's "activate": send proof of a manual payment). Data from partner handler `p.subscription`
-// (shapes: shubhora-partner src/server/app-api/subscription.ts). Invoices have no JSON/PDF alternative on the panel, so only the invoice number is shown.
-import { useState } from "react";
+// (shapes: shubhora-partner src/server/app-api/subscription.ts). Every invoice has a signed link (invoiceUrl) that opens exactly that invoice in a new tab.
+import { useRef, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, bizAct, bizUpload, dayOf, rupee, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, InvoiceLink, bizAct, bizUpload, dayOf, rupee, useBiz, useBizMsg } from "@/components/business/kit";
 
-type Hist = { id: number; kind: string; paidOn: string; from: string; to: string; delayDays: number | null; totalPaise: number; invoice: string | null; status: string };
-type Req = { id: number; sentAt: string; paidOn: string; forHandle: string; kind: string; method: string; reference: string; amountPaise: number; status: "pending" | "approved" | "rejected"; rejectReason: string | null; invoice: string | null; hasFile: boolean };
+type Hist = { id: number; kind: string; paidOn: string; from: string; to: string; delayDays: number | null; totalPaise: number; invoice: string | null; invoiceUrl: string | null; status: string };
+type Req = { id: number; sentAt: string; paidOn: string; forHandle: string; kind: string; method: string; reference: string; amountPaise: number; status: "pending" | "approved" | "rejected"; rejectReason: string | null; invoice: string | null; invoiceUrl: string | null; hasFile: boolean };
 type View = {
+  disabled?: boolean;
   id: { handle: string; status: "red" | "green" };
   subscription: { state: "none" | "active" | "due soon" | "lapsed"; validTill: string | null; daysLeft: number | null; activatedOn: string | null; lastRenewal: { paidOn: string; delayDays: number | null } | null; renewalsCount: number; lateCount: number };
   history: Hist[];
@@ -27,10 +28,13 @@ const RSTATUS: Record<Req["status"], [string, string, string]> = {
   rejected: ["Rejected", "नामंज़ूर", "bg-danger/10 text-danger"],
 };
 const today = () => new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10); // IST date, like the panel
+// "1 day", "2 days" — one is never "1 days".
+const days = (n: number) => `${n} ${n === 1 ? "day" : "days"}`;
 const field = "mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-base";
 
 export default function SubscriptionPage() {
   const { lang } = useT(); const en = lang === "en";
+  const tr = useBizMsg();
   const { data: v, error, loading, reload } = useBiz<View>("subscription");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -41,6 +45,7 @@ export default function SubscriptionPage() {
   const [amount, setAmount] = useState("");
   const [note, setNote] = useState("");
   const [file, setFile] = useState<File | null>(null);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   async function send(e: React.FormEvent) {
     e.preventDefault();
@@ -49,7 +54,7 @@ export default function SubscriptionPage() {
     let fileId = "";
     if (file) {
       const up = await bizUpload(file, "payment");
-      if (!up.id) { setBusy(false); setMsg({ ok: false, text: up.error ?? "" }); return; }
+      if (!up.id) { setBusy(false); setMsg({ ok: false, text: tr(up.error) }); return; }
       fileId = up.id;
     }
     const r = await bizAct<{ message?: string }>("subscription", {
@@ -57,8 +62,8 @@ export default function SubscriptionPage() {
       amount: amount || String(v.price.totalPaise / 100), file: fileId, note,
     });
     setBusy(false);
-    if (r.ok) { setMsg({ ok: true, text: r.data.message ?? "OK" }); setReference(""); setNote(""); setFile(null); reload(); }
-    else setMsg({ ok: false, text: r.error ?? "" });
+    if (r.ok) { setMsg({ ok: true, text: tr(r.data.message ?? "OK") }); setReference(""); setNote(""); setAmount(""); setFile(null); if (fileInput.current) fileInput.current.value = ""; reload(); }
+    else setMsg({ ok: false, text: tr(r.error) });
   }
 
   const s = v?.subscription;
@@ -67,12 +72,12 @@ export default function SubscriptionPage() {
   return (
     <BizShell title={en ? "Subscription" : "Subscription (सदस्यता)"}>
       <BizState loading={loading} error={error} onRetry={reload}>
-        {v && s && (
+        {v?.disabled ? <p className={`${CARD} text-sm text-muted`}>{en ? "This page is not open right now." : "यह page अभी बंद है।"}</p> : v && s && (
           <>
             <section className="rounded-2xl bg-[#12144a] p-4 text-white">
               <p className="text-xs opacity-75">{en ? "Valid till" : "इस तारीख तक चालू"}</p>
               <p className="mt-1 text-2xl font-extrabold">{s.validTill ? dayOf(s.validTill) : en ? "Not started yet" : "अभी शुरू नहीं हुई"}</p>
-              {s.daysLeft !== null && <p className="text-sm opacity-90">{s.daysLeft >= 0 ? (en ? `${s.daysLeft} days left` : `${s.daysLeft} दिन बाकी`) : (en ? `Ended ${-s.daysLeft} days ago` : `${-s.daysLeft} दिन पहले खत्म हुई`)}</p>}
+              {s.daysLeft !== null && <p className="text-sm opacity-90">{s.daysLeft > 0 ? (en ? `${days(s.daysLeft)} left` : `${s.daysLeft} दिन बाकी`) : s.daysLeft === 0 ? (en ? "Ends today" : "आज खत्म हो रही है") : (en ? `Ended ${days(-s.daysLeft)} ago` : `${-s.daysLeft} दिन पहले खत्म हुई`)}</p>}
               <div className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
                 <div className="rounded-xl bg-white/10 p-2"><p className="opacity-75">{en ? "Started" : "शुरू"}</p><p className="font-bold">{s.activatedOn ? dayOf(s.activatedOn) : "—"}</p></div>
                 <div className="rounded-xl bg-white/10 p-2"><p className="opacity-75">{en ? "Renewals" : "Renewal"}</p><p className="font-bold">{s.renewalsCount}</p></div>
@@ -84,7 +89,7 @@ export default function SubscriptionPage() {
               <p className={`rounded-xl p-3 text-sm font-medium ${s.state === "lapsed" ? "bg-danger/10 text-danger" : "bg-amber-soft text-amber"}`}>
                 {s.state === "lapsed"
                   ? (en ? "Your subscription has ended. Renew to earn renewal income again." : "आपकी subscription खत्म हो गई है। Renewal की कमाई फिर पाने के लिए renew करें।")
-                  : (en ? `It ends in ${s.daysLeft} days. Renew early. The new month starts after this one ends, so you lose nothing.` : `यह ${s.daysLeft} दिन में खत्म होगी। जल्दी renew करें। नया महीना इसके बाद शुरू होता है, कुछ नहीं जाता।`)}
+                  : (en ? `${s.daysLeft === 0 ? "It ends today" : `It ends in ${days(s.daysLeft ?? 0)}`}. Renew early. The new month starts after this one ends, so you lose nothing.` : `${s.daysLeft === 0 ? "यह आज खत्म हो रही है" : `यह ${s.daysLeft} दिन में खत्म होगी`}। जल्दी renew करें। नया महीना इसके बाद शुरू होता है, कुछ नहीं जाता।`)}
               </p>
             )}
 
@@ -140,14 +145,14 @@ export default function SubscriptionPage() {
                 </label>
                 <div className="grid grid-cols-2 gap-3">
                   <label className="block text-sm font-semibold">{en ? "Amount paid (₹)" : "भरी रकम (₹)"}
-                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="numeric" placeholder={String(v.price.totalPaise / 100)} className={field} />
+                    <input value={amount} onChange={(e) => setAmount(e.target.value)} inputMode="decimal" placeholder={String(v.price.totalPaise / 100)} className={field} />
                   </label>
                   <label className="block text-sm font-semibold">{en ? "Date paid" : "भरने की तारीख"}
                     <input type="date" value={paidOn} max={today()} onChange={(e) => setPaidOn(e.target.value)} required className={field} />
                   </label>
                 </div>
                 <label className="block text-sm font-semibold">{en ? "Screenshot of the payment" : "Payment का screenshot"}{method === "cash" ? (en ? " (optional)" : " (ज़रूरी नहीं)") : ""}
-                  <input type="file" accept="image/*,application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-sm" />
+                  <input ref={fileInput} type="file" accept="image/*,application/pdf" required={method !== "cash"} onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="mt-1 block w-full text-sm" />
                   <span className="mt-1 block text-xs font-normal text-muted">{en ? "A photo that shows the amount and the UTR." : "ऐसी photo जिसमें रकम और UTR दिखे।"}</span>
                 </label>
                 <label className="block text-sm font-semibold">{en ? "Note (optional)" : "Note (ज़रूरी नहीं)"}
@@ -170,7 +175,7 @@ export default function SubscriptionPage() {
                         <p className="font-semibold">{rupee(r.amountPaise)} · <span className="font-mono">{r.forHandle}</span></p>
                         <p className="text-xs text-muted">{dayOf(r.sentAt)} · {r.method.toUpperCase()} · <span className="font-mono">{r.reference}</span></p>
                         {r.rejectReason && <p className="text-xs text-danger">{r.rejectReason}</p>}
-                        {r.invoice && <p className="text-xs text-muted">{en ? "Invoice" : "Invoice"} {r.invoice}</p>}
+                        {r.invoice && <p className="text-xs text-muted">{en ? "Invoice" : "Invoice"} {r.invoice} <InvoiceLink url={r.invoiceUrl} /></p>}
                       </div>
                       <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-bold ${RSTATUS[r.status]?.[2] ?? ""}`}>{RSTATUS[r.status] ? RSTATUS[r.status][en ? 0 : 1] : r.status}</span>
                     </li>
@@ -193,15 +198,15 @@ export default function SubscriptionPage() {
                       <p className="text-xs">
                         {h.status !== "paid" ? <span className="font-semibold text-danger">{en ? "Refunded" : "वापस किया गया"}</span>
                           : h.delayDays === null ? null
-                          : h.delayDays > 0 ? <span className="font-semibold text-danger">{en ? `${h.delayDays} days late` : `${h.delayDays} दिन देर से`}</span>
-                          : <span className="text-good">{h.delayDays < 0 ? (en ? `${-h.delayDays} days early` : `${-h.delayDays} दिन पहले`) : (en ? "On time" : "समय पर")}</span>}
-                        {h.invoice ? <span className="text-muted"> · {en ? "Invoice" : "Invoice"} {h.invoice}</span> : null}
+                          : h.delayDays > 0 ? <span className="font-semibold text-danger">{en ? `${days(h.delayDays)} late` : `${h.delayDays} दिन देर से`}</span>
+                          : <span className="text-good">{h.delayDays < 0 ? (en ? `${days(-h.delayDays)} early` : `${-h.delayDays} दिन पहले`) : (en ? "On time" : "समय पर")}</span>}
+                        {h.invoice ? <span className="text-muted"> · {en ? "Invoice" : "Invoice"} {h.invoice} <InvoiceLink url={h.invoiceUrl} /></span> : null}
                       </p>
                     </li>
                   ))}
                 </ul>
               )}
-              <p className="mt-2 text-xs text-muted">{en ? "Your GST invoice is kept by the company. Ask support if you need a copy." : "आपका GST invoice कंपनी के पास रहता है। कॉपी चाहिए तो support से माँगें।"}</p>
+              {v.history.some((h) => h.invoiceUrl) && <p className="mt-2 text-xs text-muted">{en ? "Tap “View invoice” to open the invoice. You can print it or save it as a PDF there." : "“Invoice देखें” दबाकर invoice खोलें। वहाँ से print या PDF save कर सकते हैं।"}</p>}
               <p className={`mt-1 text-xs ${tone}`}>{s.state === "none" ? "" : s.state === "active" ? (en ? "Subscription is active." : "Subscription चालू है।") : ""}</p>
             </section>
           </>

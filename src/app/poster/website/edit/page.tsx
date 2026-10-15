@@ -169,16 +169,16 @@ export default function WebsiteEditPage() {
     </div>
   ) : s && !s.hasCard ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
-      <p className="text-sm text-muted">Create your card first — the website is built from it.</p>
-      <Link href="/poster/card" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">Create card →</Link>
+      <p className="text-sm text-muted">{hi ? "पहले अपनी website बनाएँ। card उसी से बन जाता है।" : "Make your website first. Your card is made from it."}</p>
+      <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "मेरी website बनाएँ →" : "Make my website →"}</Link>
     </div>
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (!s.hasCard) return null;
 
   const TABS: { key: Tab; label: string; Icon: typeof Palette }[] = [
-    { key: "look", label: hi ? "रंग और font" : "Colours & fonts", Icon: Palette },
+    { key: "look", label: hi ? "रंग और अक्षर" : "Colours & letters", Icon: Palette },
     { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
-    { key: "home", label: hi ? "Sections" : "Sections", Icon: ListOrdered },
+    { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
     { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
   ];
   const PREVIEW_H = 2400;
@@ -188,7 +188,7 @@ export default function WebsiteEditPage() {
       <div className="flex items-center gap-2">
         <Link href="/poster/website" className="text-muted"><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>
-        <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "Open live"} <ExternalLink className="h-3.5 w-3.5" /></a>
+        <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>
       </div>
       {s.cards.length > 1 && (
         <select value={s.cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
@@ -202,7 +202,7 @@ export default function WebsiteEditPage() {
           <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: PREVIEW_H, border: 0, transform: `scale(${scale})` }} />
         </div>
       </div>
-      <p className="text-[11px] text-muted -mt-2">{hi ? "यह preview कंप्यूटर पर दिखने वाली वेबसाइट है — स्क्रॉल करके पूरा देखें। Save करने पर ही लाइव होती है।" : "This is the website as computers see it — scroll inside to see it all. Changes go live only when you save."}</p>
+      <p className="text-[11px] text-muted -mt-2">{hi ? "यह कंप्यूटर पर आपकी वेबसाइट का रूप है। अंदर स्क्रॉल करके पूरा देखें। Save दबाने के बाद ही बदलाव दिखेंगे।" : "This is how your website looks on a computer. Scroll inside to see it all. Your changes show on your website only after you tap Save."}</p>
 
       {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
 
@@ -212,7 +212,7 @@ export default function WebsiteEditPage() {
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
-          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग, फ़ॉन्ट और बारीकियाँ हैं।" : ". Here are its colours, fonts and finer points."}</p>
+          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग और अक्षर बदलें।" : ". Here you change its colours and letters."}</p>
           <div>
             <p className="text-sm font-semibold flex items-center gap-1.5"><Palette className="h-4 w-4 text-brand" /> {hi ? "रंग" : "Colours"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "वेबसाइट के रंग। आपका फ़ोन कार्ड अपने रंग में ही रहेगा।" : "The website's colours. Your phone card keeps its own colour."}</p>
@@ -224,7 +224,7 @@ export default function WebsiteEditPage() {
               <label className="mt-1 inline-flex items-center gap-2 text-xs text-muted">
                 <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => setStyle({ color: e.target.value })} className="h-7 w-10 rounded border border-border bg-surface p-0.5" />
                 {hi ? "वेबसाइट का रंग (कार्ड से अलग रख सकते हैं)" : "Website colour (can differ from the card)"}
-                {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">reset</button>}
+                {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">{hi ? "कार्ड जैसा" : "Same as the card"}</button>}
               </label>
             )}
           </div>
@@ -236,15 +236,15 @@ export default function WebsiteEditPage() {
             <p className="text-[11px] text-muted mt-1">{FONT_PAIRS.find((f) => f.key === (style.font ?? "look"))?.blurb}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर के हिस्से का layout" : "Layout of the top of the page"}</p>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
-              <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "Auto" : "Auto"}</button>
+              <button type="button" onClick={() => setStyle({ hero: undefined })} className={chip(!style.hero)}>{hi ? "अपने-आप" : "Automatic"}</button>
               {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => setStyle({ hero: h.key })} className={chip(style.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
             </div>
             <p className="text-[11px] text-muted mt-1">{style.hero ? HERO_LAYOUTS.find((h) => h.key === style.hero)?.blurb : (hi ? "अपने-आप: product की photo हो तो शब्द + picture, banner हो तो बड़ी photo।" : "Automatic: words + picture when you have a product photo, a big photo when you have a banner.")}</p>
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or sharp)"}</p>
+            <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={() => setStyle({ radius: undefined })} className={chip(!style.radius)}>{hi ? "कार्ड जैसा" : "Same as the card"}</button>
               {RADII.map((r) => <button key={r.key} type="button" onClick={() => setStyle({ radius: r.key })} className={chip(style.radius === r.key)}>{hi ? r.hi : r.name}</button>)}
@@ -252,56 +252,56 @@ export default function WebsiteEditPage() {
           </div>
           <div className="rounded-lg bg-surface2 p-3">
             <p className="text-sm font-semibold flex items-center gap-1.5"><Link2 className="h-4 w-4 text-brand" /> {hi ? "किसी वेबसाइट जैसा लुक" : "Copy the look of a website you like"}</p>
-            <p className="text-[11px] text-muted mt-0.5">{hi ? "उस वेबसाइट के रंग, फ़ॉन्ट और लेआउट कॉपी होंगे — टेक्स्ट, फ़ोटो या प्रोडक्ट नहीं। फ़्री।" : "Only its colours, fonts and layout are copied — never its words, photos or products. Free."}</p>
+            <p className="text-[11px] text-muted mt-0.5">{hi ? "सिर्फ़ उसके रंग, अक्षर और सजावट कॉपी होंगे — शब्द, photo या product नहीं। फ़्री।" : "Only its colours, letters and arrangement are copied. Never its words, photos or products. Free."}</p>
             <div className="mt-2 flex gap-2">
               <input value={refUrl} onChange={(e) => setRefUrl(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="e.g. somebrand.com" className={`${field} mt-0 flex-1`} />
               <button type="button" onClick={copyLook} disabled={busy === "ref" || !refUrl.trim()} className="rounded-lg grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "ref" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "Copy" : "Copy look")}</button>
             </div>
-            {site.reference?.url && <p className="text-[11px] text-muted mt-1.5">{hi ? "अभी का लुक इस वेबसाइट से:" : "Current look follows:"} {site.reference.url.replace(/^https?:\/\//, "")}</p>}
+            {site.reference?.url && <p className="text-[11px] text-muted mt-1.5">{hi ? "अभी का लुक इस वेबसाइट से:" : "Your look is copied from:"} {site.reference.url.replace(/^https?:\/\//, "")}</p>}
           </div>
         </section>
       )}
 
       {tab === "hero" && (
         <section className="space-y-4 rounded-xl border border-border p-3">
-          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "हेडलाइन (बड़ी लाइन)" : "Headline"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
-          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "हेडलाइन के नीचे 1–2 लाइन" : "A line or two under the headline"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
+          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
+          <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "बड़ी लाइन के नीचे 1–2 लाइन" : "One or two lines under the big line"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "WhatsApp बटन का टेक्स्ट" : "Words on the WhatsApp button"}</span><input value={site.hero?.ctaLabel ?? ""} onChange={(e) => setHero({ ctaLabel: e.target.value })} placeholder="WhatsApp" maxLength={30} className={field} /></label>
           <div>
             <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "ऊपर की इमेज (प्रोडक्ट या लोगो)" : "Picture at the top (a product or your logo)"}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => setHero({ imageUrl: "" })} className={`h-16 w-16 rounded-xl border-2 grid place-items-center text-[11px] ${site.hero?.imageUrl === "" ? "border-brand bg-brand-soft" : "border-border"}`}>none</button>
+              <button type="button" onClick={() => setHero({ imageUrl: "" })} className={`h-16 w-16 rounded-xl border-2 grid place-items-center text-[11px] ${site.hero?.imageUrl === "" ? "border-brand bg-brand-soft" : "border-border"}`}>{hi ? "कोई नहीं" : "None"}</button>
               {s.images.map((im) => <button key={im.url} type="button" title={im.label} onClick={() => setHero({ imageUrl: im.url })} className={`h-16 w-16 rounded-xl border-2 overflow-hidden bg-white ${site.hero?.imageUrl === im.url ? "border-brand" : "border-border"}`}><Thumb src={im.url} alt={im.label} /></button>)}
               {site.hero?.imageUrl && !s.images.some((im) => im.url === site.hero?.imageUrl) && <span className="h-16 w-16 rounded-xl border-2 border-brand overflow-hidden bg-white"><Thumb src={site.hero.imageUrl} alt="" /></span>}
-              <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "hero" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "+ upload"}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "hero")} /></label>
+              <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "hero" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "+ जोड़ें" : "+ Add")}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "hero")} /></label>
             </div>
             <button type="button" onClick={aiHeroPhoto} disabled={busy === "aiphoto"} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
               {busy === "aiphoto" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Make a new AI photo<CreditPrice credits={SITE_PHOTO_CREDITS} />
             </button>
-            <p className="text-[11px] text-muted mt-1">{hi ? "कुछ न चुनें तो पहले प्रोडक्ट की फ़ोटो आ जाती है। अपना पोर्ट्रेट यहाँ न लगाएँ।" : "Leave it and the first product photo is used. Don't put your portrait here."}</p>
+            <p className="text-[11px] text-muted mt-1">{hi ? "कुछ न चुनें तो पहले product की photo लग जाती है। अपनी खुद की फ़ोटो यहाँ न लगाएँ।" : "If you choose nothing, your first product photo is used. Do not put a photo of your own face here."}</p>
           </div>
           <div>
-            <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "वेबसाइट लोगो (हेडर और फ़ुटर)" : "Website logo (header and footer)"}</p>
+            <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "वेबसाइट लोगो (ऊपर और नीचे दिखेगा)" : "Website logo (shown at the top and bottom)"}</p>
             <div className="flex flex-wrap gap-2">
               <button type="button" onClick={() => set({ logoUrl: "" })} className={`h-16 w-16 rounded-xl border-2 grid place-items-center text-[11px] ${!site.logoUrl ? "border-brand bg-brand-soft" : "border-border"}`}>{hi ? "कार्ड फ़ोटो" : "card photo"}</button>
               {s.images.filter((im) => im.label === "Logo").map((im) => <button key={im.url} type="button" onClick={() => set({ logoUrl: im.url })} className={`h-16 w-16 rounded-xl border-2 overflow-hidden bg-white ${site.logoUrl === im.url ? "border-brand" : "border-border"}`}><Thumb src={im.url} alt="Logo" /></button>)}
               {site.logoUrl && !s.images.some((im) => im.url === site.logoUrl) && <span className="h-16 w-16 rounded-xl border-2 border-brand overflow-hidden bg-white"><Thumb src={site.logoUrl} alt="" /></span>}
-              <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "logo" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "+ upload"}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "logo")} /></label>
+              <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "logo" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "+ जोड़ें" : "+ Add")}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "logo")} /></label>
             </div>
           </div>
-          <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5"><span className="text-sm font-medium">{hi ? "हेडलाइन के नीचे मेरी फ़ोटो + नाम" : "My photo + name under the headline"}</span><input type="checkbox" className="h-5 w-5" checked={!site.hideProfile} onChange={(e) => set({ hideProfile: !e.target.checked })} /></label>
+          <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5"><span className="text-sm font-medium">{hi ? "बड़ी लाइन के नीचे मेरी फ़ोटो + नाम" : "My photo + name under the big line"}</span><input type="checkbox" className="h-5 w-5" checked={!site.hideProfile} onChange={(e) => set({ hideProfile: !e.target.checked })} /></label>
           {/* News / offers live in ONE place now — Card & Website → News (the notice bar / pop-up, src/lib/notice.ts); the old
               announcement bar here is gone (audit, 7 Oct 2026: two announcement systems). */}
           <div className="rounded-lg border border-border p-3">
             <p className="text-sm font-semibold">📣 {hi ? "न्यूज़ / ऑफ़र की पट्टी" : "Offer bar"}</p>
-            <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "The offer / holiday / news bar and pop-up are set in one place now:"} <Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
+            <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "Offer, holiday and news bars and pop-ups are now set in one place:"} <Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "फ़्लोटिंग बटन (वेबसाइट पर)" : "Round button on the website"}</p>
+            <p className="text-sm font-semibold">{hi ? "गोल बटन (वेबसाइट पर)" : "Round button on the website"}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
               {([["whatsapp", "WhatsApp"], ["call", hi ? "Call" : "Call"], ["none", hi ? "कोई नहीं" : "None"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => set({ float: k })} className={chip((site.float ?? "whatsapp") === k)}>{l}</button>)}
             </div>
-            <p className="text-[11px] text-muted">{hi ? "कंप्यूटर पर नीचे-बाएँ गोल बटन; फ़ोन पर नीचे Call · WhatsApp · Directions की पट्टी हमेशा रहती है।" : "A round button bottom-left on computers; phones always get the Call · WhatsApp · Directions bar at the bottom."}</p>
+            <p className="text-[11px] text-muted">{hi ? "कंप्यूटर पर यह गोल बटन नीचे-बाएँ रहता है। फ़ोन पर नीचे Call · WhatsApp · Directions की पट्टी हमेशा रहती है।" : "On a computer the round button sits at the bottom left. On a phone, a Call · WhatsApp · Directions bar is always at the bottom."}</p>
           </div>
         </section>
       )}
@@ -309,8 +309,8 @@ export default function WebsiteEditPage() {
       {tab === "home" && (
         <section className="space-y-4 rounded-xl border border-border p-3">
           <div>
-            <p className="text-sm font-semibold">{hi ? "होम पेज के सेक्शन" : "Sections on the first page"}</p>
-            <p className="text-[11px] text-muted mt-0.5">{hi ? "ऊपर-नीचे करें या छुपाएँ। टेक्स्ट बदलने के लिए पूरा एडिटर।" : "Reorder or hide. To change the words, use the full editor."}</p>
+            <p className="text-sm font-semibold">{hi ? "पहले पेज के हिस्से" : "Sections of the first page"}</p>
+            <p className="text-[11px] text-muted mt-0.5">{hi ? "ऊपर-नीचे करें या छुपाएँ। शब्द बदलने के लिए पूरा editor खोलें।" : "Move up or down, or hide. To change the words, open the full editor."}</p>
             <ul className="mt-2 space-y-1.5">
               {sections.map((sec, i) => {
                 const off = hiddenSections.has(sec.key);
@@ -324,11 +324,11 @@ export default function WebsiteEditPage() {
                 );
               })}
             </ul>
-            {(site.home?.order?.length || site.home?.hidden?.length) ? <button type="button" onClick={() => setHome({ order: undefined, hidden: undefined })} className="mt-2 text-xs font-semibold text-brand-ink">{hi ? "Default order par wapas" : "Back to the default order"}</button> : null}
+            {(site.home?.order?.length || site.home?.hidden?.length) ? <button type="button" onClick={() => setHome({ order: undefined, hidden: undefined })} className="mt-2 text-xs font-semibold text-brand-ink">{hi ? "पहले वाले क्रम पर वापस" : "Back to the original order"}</button> : null}
           </div>
           <div>
-            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (हेडलाइन के नीचे)" : "Numbers that build trust (under the headline)"}</p>
-            <p className="text-[11px] text-muted mt-0.5">{hi ? "कार्ड के facts से अपने-आप बनते हैं — 3 से कम हों तो पट्टी नहीं दिखती। आप अपने लिख सकते हैं (जो सच हों)।" : "Made from your card's own facts — the strip shows only with 3 or more. You can write your own (true ones only)."}</p>
+            <p className="text-sm font-semibold">{hi ? "भरोसे के नंबर (बड़ी लाइन के नीचे)" : "Numbers that make people trust you (under the big line)"}</p>
+            <p className="text-[11px] text-muted mt-0.5">{hi ? "कार्ड की जानकारी से अपने-आप बनते हैं। 3 से कम हों तो पट्टी नहीं दिखती। आप अपने भी लिख सकते हैं, पर सच ही लिखें।" : "Made from the details on your card. The strip shows only if there are 3 or more. You can write your own, but only true ones."}</p>
             <div className="mt-2 grid gap-2">
               {[0, 1, 2, 3].map((i) => (
                 <div key={i} className="grid grid-cols-[1fr_2fr] gap-2">
@@ -349,7 +349,7 @@ export default function WebsiteEditPage() {
             const h = new Set(site.hidden ?? []);
             return (
               <label key={p.slug} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} sections</span></span>
+                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {hi ? "हिस्से" : "sections"}</span></span>
                 <input type="checkbox" className="h-5 w-5" checked={!h.has(p.slug)} onChange={(e) => { if (e.target.checked) h.delete(p.slug); else h.add(p.slug); set({ hidden: [...h] }); }} />
               </label>
             );
@@ -367,11 +367,11 @@ export default function WebsiteEditPage() {
       {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor) ---- */}
       <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         <div className="flex items-center gap-3">
-          <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "बदलाव अभी सेव नहीं हुए" : "Unsaved changes") : (hi ? "सब सेव है" : "All saved")}</p>
-          <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save karein" : "Save")}</button>
+          <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "बदलाव अभी सेव नहीं हुए" : "Changes not saved yet") : (hi ? "सब सेव है" : "All saved")}</p>
+          <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
         </div>
       </div>
-      {unlock && <UnlockDialog reason="Make professional AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
+      {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
 }

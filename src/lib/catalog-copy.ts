@@ -52,7 +52,7 @@ const PRODUCTS: CatalogCopy = {
   name: "Product name", nameHi: "प्रोडक्ट का नाम",
   price: "Offer price ₹", priceHi: "ऑफ़र दाम ₹", priceEg: "e.g. 900 per kg", priceEgHi: "जैसे 900 per kg",
   mrp: true, brand: true,
-  lines: "Benefit / offer lines (a different one each day)", linesHi: "खूबियाँ / ऑफ़र लाइनें (हर लाइन अलग दिन)",
+  lines: "Good points or offers (one per line, a different one each day)", linesHi: "खूबियाँ या ऑफ़र (हर लाइन अलग दिन के लिए)",
   guide: "Add a clear photo, name and price. It shows on your V-Card, website and daily posters.", guideHi: "साफ़ फ़ोटो, नाम और ₹ दाम डालें। यही आपके V-Card, website और रोज़ के poster पर दिखेगा।",
   empty: "No products yet. Add your first one — it shows on your V-Card, website and posters.", emptyHi: "अभी कोई product नहीं है। पहला जोड़ें — यह आपके V-Card, website और poster पर दिखेगा।",
   specialQ: "What makes you special?", specialQHi: "आपकी खास बात क्या है?",

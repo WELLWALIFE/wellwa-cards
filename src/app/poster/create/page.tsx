@@ -19,35 +19,35 @@ export default function CreateHub() {
   const [open, setOpen] = useState<string | null>(null);
 
   const doors: Door[] = [
-    { key: "poster", I: Sparkles, t: hi ? "Poster & Status" : "Poster & Status", s: hi ? "Roz ka poster aur 15-sec video status — free" : "Daily poster and 15-sec video status — free", items: [
-      { href: "/poster", I: Sparkles, t: hi ? "Aaj ka poster" : "Today's poster", s: hi ? "Roz apne-aap banta hai — dekhein, WhatsApp/Status par bhejein" : "Made automatically every day — view, send to WhatsApp / Status", tag: "FREE" },
-      { href: "/poster/calendar", I: CalendarDays, t: hi ? "Mahine ka plan" : "Monthly plan", s: hi ? "Poore mahine ke posts ek baar me tay karein" : "Decide the whole month's posts in one go" },
-      { href: "/poster/testimonials", I: MessageSquareQuote, t: hi ? "Customer reviews" : "Customer reviews", s: hi ? "Reviews maangein, poster banayein" : "Ask for reviews, turn them into posters" },
-      { href: "/poster/social", I: Share2, t: hi ? "Social par auto-post" : "Auto-post to social", s: hi ? "Facebook, Instagram, Status — subah 4 baje apne-aap" : "Facebook, Instagram, Status — automatically at 4 AM", paid: true },
+    { key: "poster", I: Sparkles, t: hi ? "Poster & Status" : "Poster & Status", s: hi ? "रोज़ का poster और 15 सेकंड का video status — free" : "A new poster every day and a 15-second video for Status — free", items: [
+      { href: "/poster", I: Sparkles, t: hi ? "आज का poster" : "Today's poster", s: hi ? "रोज़ अपने-आप बनता है — देखें, WhatsApp या Status पर भेजें" : "Made for you every day. Look at it and send it on WhatsApp or Status", tag: "FREE" },
+      { href: "/poster/calendar", I: CalendarDays, t: hi ? "महीने का plan" : "Plan for the month", s: hi ? "पूरे महीने के posts एक साथ तय करें" : "Choose the posts for the whole month at once" },
+      { href: "/poster/testimonials", I: MessageSquareQuote, t: hi ? "ग्राहकों के reviews" : "Customer reviews", s: hi ? "Reviews माँगें और उनसे poster बनाएँ" : "Ask customers for reviews and make posters from them" },
+      { href: "/poster/social", I: Share2, t: hi ? "अपने-आप post" : "Post by itself", s: hi ? "Facebook, Instagram, Status — रोज़ सुबह 4 बजे अपने-आप" : "Facebook, Instagram, Status — every morning at 4 AM, by itself", paid: true },
     ] },
     // The Video door opens the hub (/poster/videos): every kind with its length, credits and time, then the same 4 steps.
-    { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel free · Video ad 20–120 credits · apne shabdon se · 5–10 min ka video" : "Reel free · Video ad 20–120 credits · your own words · 5–10 min video", href: "/poster/videos", items: [
-      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "Stock clips + aapki photos + AI voice — free" : "Stock clips + your photos + AI voice — free", tag: "FREE" },
-      { href: "/poster/video", I: Clapperboard, t: hi ? "Video ad" : "Video ad", s: hi ? "AI script likhega · 20–120 credits" : "AI writes the script · 20–120 credits", tag: "AI" },
-      { href: "/poster/text-video", I: Wand2, t: hi ? "Apne shabdon se" : "From your own words", s: hi ? "10 sec se 10 min · 20 credits se" : "10 seconds to 10 minutes · from 20 credits" },
-      { href: "/poster/explainer", I: Film, t: hi ? "Lamba video (5–10 min)" : "Long video (5–10 min)", s: hi ? "10 credits/min (min 20)" : "10 credits a minute (at least 20)" },
+    { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel free · Video ad 20–120 credits · अपने शब्दों से · 5–10 मिनट का video" : "Reel free · Video ad 20–120 credits · from your own words · long video 5–10 minutes", href: "/poster/videos", items: [
+      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "तैयार clips + आपकी photos + AI आवाज़ — free" : "Ready-made clips, your photos and an AI voice — free", tag: "FREE" },
+      { href: "/poster/video", I: Clapperboard, t: hi ? "Video ad" : "Video ad", s: hi ? "AI शब्द लिखेगा, आप बदल सकते हैं · 20–120 credits" : "AI writes the words, you can change them · 20–120 credits", tag: "AI" },
+      { href: "/poster/text-video", I: Wand2, t: hi ? "अपने शब्दों से" : "From your own words", s: hi ? "10 सेकंड से 10 मिनट तक · 20 credits से" : "10 seconds to 10 minutes · from 20 credits" },
+      { href: "/poster/explainer", I: Film, t: hi ? "लंबा video (5–10 मिनट)" : "Long video (5–10 minutes)", s: hi ? "1 मिनट के 10 credits (कम से कम 20)" : "10 credits a minute (at least 20)" },
     ] },
-    { key: "ads", I: Megaphone, t: hi ? "Ads" : "Ads", s: hi ? "Facebook / Instagram par paid ad — 5 steps, aapke ad account se" : "Paid Facebook / Instagram ads — 5 steps, from your own ad account", href: "/poster/ads", items: [] },
+    { key: "ads", I: Megaphone, t: hi ? "Ads" : "Ads", s: hi ? "Facebook / Instagram पर ad — 5 आसान कदम, आपके अपने ad account से" : "Ads on Facebook and Instagram — 5 easy steps, paid from your own ad account", href: "/poster/ads", items: [] },
     // The logo studio (/poster/brand) is parked — owner's call, 22 Sep 2026: the results were not good enough to show. The page still works by URL.
-    { key: "brand", I: Palette, t: "Brand", s: hi ? "Product photos aur mere products" : "Product photos and my products", items: [
-      { href: "/poster/photoshoot", I: Camera, t: "Product photoshoot", s: hi ? "1 photo se 4 professional shots" : "1 photo → 4 professional shots", tag: "AI" },
-      { href: "/poster/products", I: Gift, t: hi ? "Mere products" : "My products", s: hi ? "Jo posters aur website par dikhenge" : "What your posters and website show" },
+    { key: "brand", I: Palette, t: "Brand", s: hi ? "Product की photos और मेरे products" : "Product photos and my products", items: [
+      { href: "/poster/photoshoot", I: Camera, t: "Product photoshoot", s: hi ? "1 photo से 4 अच्छी photos" : "1 photo becomes 4 good photos", tag: "AI" },
+      { href: "/poster/products", I: Gift, t: hi ? "मेरे products" : "My products", s: hi ? "जो posters और website पर दिखेंगे" : "What shows on your posters and website" },
     ] },
     // AI Training: everything that teaches or drives the AI, in one place (owner, 14 Oct 2026).
-    { key: "ai", I: Bot, t: "AI Training", s: hi ? "AI bot ko sikhayein: apni website, files, WhatsApp AI jawab, bolkar website badlein" : "Teach your AI: your website, files, WhatsApp AI replies, change your website by talking", href: "/poster/ai", items: [] },
-    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "Ek link — computer par website, phone par card · share, edit, Premium" : "One link — website on computers, card on phones · share, edit, Premium", items: [] },
+    { key: "ai", I: Bot, t: "AI Training", s: hi ? "AI को सिखाएँ: अपनी website, files, WhatsApp के जवाब, और बोलकर website बदलें" : "Teach your AI about your business: website, files, WhatsApp replies. Change your website by speaking", href: "/poster/ai", items: [] },
+    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "एक link — computer पर website, phone पर card · share करें, बदलें, Premium" : "One link: a website on computers, a card on phones. Share it, change it, go Premium", items: [] },
   ];
 
   const door = doors.find((d) => d.key === open);
 
   if (door) return (
     <div className="space-y-3">
-      <button type="button" onClick={() => setOpen(null)} className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> {hi ? "Create" : "Create"}</button>
+      <button type="button" onClick={() => setOpen(null)} className="inline-flex items-center gap-1 text-sm text-muted"><ChevronLeft className="h-4 w-4" /> {hi ? "बनाएँ" : "Create"}</button>
       <h1 className="text-lg font-bold">{door.t}</h1>
       {door.items.map((x) => (
         <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-border p-3">
@@ -65,7 +65,7 @@ export default function CreateHub() {
   return (
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{hi ? "बनाएँ" : "Create"}</h1>
-      <Guide hi="छह दरवाज़े — poster, video, ads, brand, AI training, card। रोज़ का poster अपने-आप बनता है; बाकी जब चाहें।" en="Six doors — poster, video, ads, brand, AI training, card. The daily poster makes itself; the rest whenever you like." />
+      <Guide hi="छह चीज़ें बना सकते हैं — poster, video, ads, brand, AI training, card। रोज़ का poster अपने-आप बन जाता है। बाकी जब चाहें बनाएँ।" en="You can make six things: poster, video, ads, brand, AI training and card. Your daily poster makes itself. Make the rest whenever you like." />
       <div className="grid grid-cols-2 gap-3">
         {doors.map((d) => (
           <button key={d.key} type="button" onClick={() => (d.href ? router.push(d.href) : setOpen(d.key))} className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-surface p-4 text-left">
@@ -80,7 +80,7 @@ export default function CreateHub() {
         <span className="h-11 w-11 shrink-0 rounded-full bg-brand-soft text-brand grid place-items-center"><Link2 className="h-6 w-6" /></span>
         <span className="min-w-0 flex-1">
           <span className="block text-base font-bold leading-tight">{hi ? "Connections" : "Connections"}</span>
-          <span className="block text-[11px] leading-snug text-muted">{hi ? "WhatsApp AI, Facebook, Instagram, Google, apna domain — sab yahan jodein" : "WhatsApp AI, Facebook, Instagram, Google, own domain — connect them all here"}</span>
+          <span className="block text-[11px] leading-snug text-muted">{hi ? "WhatsApp AI, Facebook, Instagram, Google, अपना web address — सब यहाँ जोड़ें" : "WhatsApp AI, Facebook, Instagram, Google and your own web address — connect them all here"}</span>
         </span>
         <ChevronRight className="h-5 w-5 text-muted" />
       </Link>

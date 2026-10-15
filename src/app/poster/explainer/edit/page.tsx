@@ -22,8 +22,8 @@ type PicEdit = { mode: "regen"; frame: string; subject: string; moment: string }
 type SceneEdit = { heading?: string; move?: string; captions?: boolean; picture?: PicEdit };
 type ParaEdit = { text?: string; revoice?: boolean; voiceUrl?: string; voiceName?: string };
 
-const MOVES: [string, string][] = [["", "Auto"], ["push", "Push in"], ["pull", "Pull out"], ["push-left", "Push in, left"], ["push-right", "Push in, right"], ["pan-right", "Pan right"], ["pan-left", "Pan left"], ["tilt-down", "Tilt down"]];
-const FRAMES: [string, string][] = [["object", "A thing, close up"], ["hands", "Hands doing it"], ["screen", "A phone or laptop (screen unreadable)"], ["place", "The place itself"], ["pair", "Two things side by side"], ["person", "One person, at work"]];
+const MOVES: [string, string][] = [["", "Auto"], ["push", "Move closer"], ["pull", "Move back"], ["push-left", "Closer, to the left"], ["push-right", "Closer, to the right"], ["pan-right", "Slide right"], ["pan-left", "Slide left"], ["tilt-down", "Slide down"]];
+const FRAMES: [string, string][] = [["object", "A thing, close up"], ["hands", "Hands doing it"], ["screen", "A phone or laptop (screen not readable)"], ["place", "The place itself"], ["pair", "Two things side by side"], ["person", "One person, at work"]];
 const mmss = (s: number) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
 const OFFLINE = "No internet — please try again.";
 
@@ -119,7 +119,7 @@ function EditorInner() {
         .then(async (x) => ({ ok: x.ok, status: x.status, data: (await x.json().catch(() => ({}))) as { error?: string; cost?: number; credits?: number } }))
         .catch(() => ({ ok: false, status: 0, data: {} as { error?: string; cost?: number } }));
       if (!r.ok) {
-        setErr(r.data.error || (r.status === 0 ? OFFLINE : "Could not apply the changes."));
+        setErr(r.data.error || (r.status === 0 ? OFFLINE : "Could not make the changes. Please try again."));
         if (r.status === 402) setNeedCredits(Number(r.data.cost) || summary.credits);
         return;
       }
@@ -151,21 +151,21 @@ function EditorInner() {
       {data.job.busy && (
         <div className="space-y-2 rounded-xl border border-border p-3">
           <p className="flex items-center gap-2 text-sm text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> {data.job.progress?.text || "Working on your video…"}</p>
-          <p className="text-xs text-muted">{data.job.editing ? "Your changes are being applied. Only the scenes you touched are made again; the old video stays until the new one is ready." : "This video is still being made. Come back when it is done."}</p>
+          <p className="text-xs text-muted">{data.job.editing ? "Your changes are being made. Only the scenes you changed are made again. The old video stays until the new one is ready." : "This video is still being made. Come back when it is done."}</p>
           <Link href="/poster/explainer" className="inline-block text-xs font-semibold text-brand-ink">Back to Your videos</Link>
         </div>
       )}
 
       {!data.job.busy && !data.editable && (
         <div className="space-y-2 rounded-xl border border-border p-3">
-          <p className="text-sm">This video was made before the editor existed, so its scenes are not on file.</p>
+          <p className="text-sm">This video was made before the editor was added, so we do not have its scenes saved.</p>
           <p className="text-xs text-muted">Videos made from now on can be edited scene by scene. To edit this one, make it again.</p>
         </div>
       )}
 
       {!data.job.busy && data.editable && m && (
         <>
-          {data.job.lastEditError && <p className="rounded-lg border border-border bg-surface2 px-3 py-2 text-xs text-danger">Last edit could not be applied — {data.job.lastEditError} The video is as it was.</p>}
+          {data.job.lastEditError && <p className="rounded-lg border border-border bg-surface2 px-3 py-2 text-xs text-danger">Your last change did not work — {data.job.lastEditError} The video is as it was.</p>}
           {data.job.output_url && <video src={data.job.output_url} controls playsInline className="w-full rounded-lg bg-black" />}
           <p className="text-xs text-muted">{mmss(m.total)} · {m.paragraphs.length} paragraphs · {m.shots.length} scenes · {voice === "own" ? "your own recording" : voice === "ai" ? "AI voice" : "no voice"}{data.job.edits ? ` · edited ${data.job.edits}×` : ""}</p>
 
@@ -191,7 +191,7 @@ function EditorInner() {
                     {textChanged ? (
                       <label className="inline-flex cursor-pointer items-center gap-1.5">
                         <input type="checkbox" checked={pe.revoice !== false} onChange={(e) => setPara(para.p, { revoice: e.target.checked })} />
-                        Say the new words with the AI voice ({data.prices.voice} credit) — unticked: subtitles only, the old voice stays
+                        Say the new words in the AI voice ({data.prices.voice} credit). If you untick this, only the words on screen change and the old voice stays.
                       </label>
                     ) : (
                       <button type="button" onClick={() => setPara(para.p, { revoice: !pe.revoice })} className={chip(!!pe.revoice)}><Mic className="mr-1 inline h-3.5 w-3.5" />{pe.revoice ? `Will be spoken again (${data.prices.voice} credit)` : `Say it again (${data.prices.voice} credit)`}</button>
@@ -227,11 +227,11 @@ function EditorInner() {
                             <span className="absolute bottom-0.5 left-0.5 rounded bg-black/60 px-1 text-[10px] text-white">{mmss(s.start)}</span>
                           </div>
                           <div className="min-w-0 flex-1">
-                            <p className="text-xs font-semibold">Scene {s.i + 1} <span className="font-normal text-muted">· {s.sec.toFixed(0)}s{s.kind === "reframe" ? " · same picture, closer" : s.kind === "stand-in" ? " · borrowed picture" : s.kind === "photo" ? " · your photo" : s.kind === "card" ? " · words" : ""}</span></p>
+                            <p className="text-xs font-semibold">Scene {s.i + 1} <span className="font-normal text-muted">· {s.sec.toFixed(0)}s{s.kind === "reframe" ? " · same picture, closer" : s.kind === "stand-in" ? " · picture from another scene" : s.kind === "photo" ? " · your photo" : s.kind === "card" ? " · words" : ""}</span></p>
                             <p className="line-clamp-2 text-[11px] text-muted">{s.text}</p>
                           </div>
                         </div>
-                        <input className={inp} value={e.heading ?? s.heading ?? ""} onChange={(ev) => setScene(s.i, { heading: ev.target.value.slice(0, 60) })} placeholder="Heading on this scene (empty = none)" maxLength={60} />
+                        <input className={inp} value={e.heading ?? s.heading ?? ""} onChange={(ev) => setScene(s.i, { heading: ev.target.value.slice(0, 60) })} placeholder="Heading on this scene (leave empty for none)" maxLength={60} />
                         <div className="flex flex-wrap gap-1.5">
                           <button type="button" onClick={() => setOpen((o) => ({ ...o, [s.i]: isOpen ? null : "pic" }))} className={`${small} inline-flex items-center gap-1`}><Images className="h-3.5 w-3.5" /> {pic ? "Picture changed" : "Change picture"}</button>
                           <select className="rounded-lg border border-border bg-surface px-2 py-1.5 text-xs" value={e.move ?? s.move ?? ""} onChange={(ev) => setScene(s.i, { move: ev.target.value })} aria-label="Camera move">
@@ -252,7 +252,7 @@ function EditorInner() {
                               </select>
                               <input className={inp} placeholder="What is in the picture (e.g. a shopkeeper's counter with a card machine)" value={pic?.mode === "regen" ? pic.subject : ""} onFocus={() => { if (pic?.mode !== "regen") setScene(s.i, { picture: { mode: "regen", frame: s.frame || "object", subject: s.subject || "", moment: s.moment || "" } }); }} onChange={(ev) => setScene(s.i, { picture: { mode: "regen", frame: pic?.mode === "regen" ? pic.frame : s.frame || "object", subject: ev.target.value.slice(0, 240), moment: pic?.mode === "regen" ? pic.moment : s.moment || "" } })} maxLength={240} />
                               <input className={inp} placeholder="What is happening (optional)" value={pic?.mode === "regen" ? pic.moment : ""} onFocus={() => { if (pic?.mode !== "regen") setScene(s.i, { picture: { mode: "regen", frame: s.frame || "object", subject: s.subject || "", moment: s.moment || "" } }); }} onChange={(ev) => setScene(s.i, { picture: { mode: "regen", frame: pic?.mode === "regen" ? pic.frame : s.frame || "object", subject: pic?.mode === "regen" ? pic.subject : s.subject || "", moment: ev.target.value.slice(0, 240) } })} maxLength={240} />
-                              {s.subject && pic?.mode !== "regen" && <p className="text-[11px] text-muted">Current order: {s.subject}{s.moment ? ` — ${s.moment}` : ""}</p>}
+                              {s.subject && pic?.mode !== "regen" && <p className="text-[11px] text-muted">Current picture: {s.subject}{s.moment ? ` — ${s.moment}` : ""}</p>}
                             </div>
                             <div className="flex flex-wrap gap-1.5">
                               <label className={`${small} inline-flex cursor-pointer items-center gap-1`}>
@@ -296,7 +296,7 @@ function EditorInner() {
               </div>
               <button type="button" onClick={apply} disabled={!summary.changes || !!busy || applied}
                 className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
-                {busy === "apply" ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Starting…</> : applied ? "Applying — see Your videos" : <><Sparkles className="h-4 w-4" /> Apply &amp; remake</>}
+                {busy === "apply" ? <><LoaderCircle className="h-4 w-4 animate-spin" /> Starting…</> : applied ? "Remaking — see Your videos" : <><Sparkles className="h-4 w-4" /> Remake with my changes</>}
               </button>
             </div>
           </div>

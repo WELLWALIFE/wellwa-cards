@@ -45,8 +45,8 @@ export function TemplatePicker({
       <div className="text-center">
         <h1 className="text-2xl font-semibold tracking-tight">Step 1 · Choose a design</h1>
         <p className="text-muted mt-1.5 max-w-lg mx-auto">
-          Pick a free design closest to your work — it opens with your name, photo, number and business already
-          filled in. Step 2: edit anything you like, then publish. Or let the AI write the whole card.
+          Pick a free design that is close to your work. It opens with your name, photo, number and business
+          already filled in. Step 2: change anything you like, then save. Or let the AI write the whole card.
         </p>
       </div>
 
@@ -58,7 +58,7 @@ export function TemplatePicker({
           <div className="min-w-0 flex-1 basis-[70%] sm:basis-auto">
             <p className="text-sm font-semibold">You have an unfinished card</p>
             <p className="text-xs text-muted truncate">
-              {draft.name || "Untitled"}{draft.jobTitle ? ` — ${draft.jobTitle}` : ""} · not published yet
+              {draft.name || "Untitled"}{draft.jobTitle ? ` — ${draft.jobTitle}` : ""} · not live yet
             </p>
           </div>
           <button onClick={onResumeDraft}
@@ -138,14 +138,14 @@ export function TemplatePicker({
                       <Eye className="h-3 w-3" /> Preview
                     </a>
                     <span className="inline-flex items-center gap-1 text-sm font-medium" style={{ color: accent }}>
-                      Use <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      Use this <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
                 </div>
               </div>
             );
           })}
-          {shown.length === 0 && <p className="col-span-full text-center text-muted py-8">No templates match &ldquo;{q}&rdquo;.</p>}
+          {shown.length === 0 && <p className="col-span-full text-center text-muted py-8">No designs found for &ldquo;{q}&rdquo;.</p>}
         </div>
       )}
 

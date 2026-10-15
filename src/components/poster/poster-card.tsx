@@ -10,7 +10,7 @@ import { useT } from "@/lib/poster-i18n";
 
 /** The AI voice on the status video (owner's call, 29 Sep 2026: voice on, 10–15 s, length follows the line); mirrors bridge/poster-video.mjs VOICE_ENABLED. */
 const VOICE = true;
-const MUSIC = [{ key: "soft", hi: "सॉफ्ट", en: "Soft" }, { key: "festive", hi: "फ़ेस्टिव", en: "Festive" }, { key: "calm", hi: "शांत", en: "Calm" }, { key: "upbeat", hi: "अपबीट", en: "Upbeat" }, { key: "inspiring", hi: "प्रेरक", en: "Inspiring" }, { key: "none", hi: "बिना म्यूज़िक", en: "No music" }];
+const MUSIC = [{ key: "soft", hi: "हल्का", en: "Soft" }, { key: "festive", hi: "त्योहार वाला", en: "Festive" }, { key: "calm", hi: "शांत", en: "Calm" }, { key: "upbeat", hi: "जोशीला", en: "Lively" }, { key: "inspiring", hi: "हौसला बढ़ाने वाला", en: "Inspiring" }, { key: "none", hi: "बिना म्यूज़िक", en: "No music" }];
 
 export function PosterCard({ poster, date, caption, profile, style, onStyle, restyling, onEdited, plan, dayOverrides }: {
   poster: Poster; date: string; caption: string; profile?: Profile | null; style?: string; onStyle?: (s: string) => void; restyling?: boolean; onEdited?: () => void | Promise<void>; plan?: string; dayOverrides?: { title?: string; custom?: string; accent?: string } | null;
@@ -63,7 +63,7 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
   async function makeVideo(music = video.music) {
     setVideo((v) => ({ ...v, open: true, busy: true, err: "", music }));
     const r = await api<{ video_url?: string; error?: string; message?: string }>("/api/poster/video", { method: "POST", json: { poster_id: poster.id, music, voice: { on: video.voiceOn, gender: video.gender, text: video.script, lang: video.lang } } });
-    setVideo((v) => ({ ...v, busy: false, url: r.ok ? r.data.video_url ?? "" : v.url, err: r.ok ? "" : (r.data.message || r.data.error || "Failed") }));
+    setVideo((v) => ({ ...v, busy: false, url: r.ok ? r.data.video_url ?? "" : v.url, err: r.ok ? "" : (r.data.message || r.data.error || (en ? "Could not make the video. Please try again." : "वीडियो नहीं बन पाया। फिर से कोशिश करें।")) }));
   }
   // The finished video is fetched in the background the moment it exists, so a tap on Share hands the FILE to
   // WhatsApp (voice + music included) instead of a link — see shareFile.
@@ -124,18 +124,18 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
                 : video.url ? <video src={`${video.url}?v=${date}-${video.music}-${video.voiceOn ? 1 : 0}`} className="h-full w-full" controls autoPlay playsInline loop /> : <div className="grid h-full place-items-center px-6 text-center text-sm text-white/70">{video.err || (en ? "Choose music & voice, then tap Make video" : "म्यूज़िक और आवाज़ चुनें, फिर 'वीडियो बनाएँ' दबाएँ")}</div>}
             </div>
             {VOICE && <div className="mt-3 rounded-xl border border-border p-2.5 text-xs">
-              <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={video.voiceOn} disabled={plan === "free"} onChange={(e) => setVideo((v) => ({ ...v, voiceOn: e.target.checked }))} /><Mic className="h-3.5 w-3.5 text-brand" /> {en ? "Voice greeting (AI, premium voice)" : "आवाज़ में शुभकामना (AI, premium voice)"}{plan === "free" && <span className="rounded-full bg-[#12144a] px-1.5 text-[10px] text-white">Growth</span>}</label>
+              <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={video.voiceOn} disabled={plan === "free"} onChange={(e) => setVideo((v) => ({ ...v, voiceOn: e.target.checked }))} /><Mic className="h-3.5 w-3.5 text-brand" /> {en ? "Voice wish (AI voice)" : "आवाज़ में शुभकामना (AI की आवाज़)"}{plan === "free" && <span className="rounded-full bg-[#12144a] px-1.5 text-[10px] text-white">Growth</span>}</label>
               {video.voiceOn && (
                 <div className="mt-2 space-y-2">
                   <div className="flex flex-wrap gap-1">{LANGS.map((l) => <button key={l.key} type="button" disabled={video.scriptBusy} onClick={() => freshScript(video.withName, video.withPhone, l.key)} className={`rounded-full border px-2 py-0.5 ${video.lang === l.key ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border text-muted"}`}>{l.label}</button>)}</div>
-                  <div className="flex flex-wrap gap-1.5">{([["female", en ? "Female · Aoede" : "महिला · Aoede"], ["female2", en ? "Female · Kore" : "महिला · Kore"], ["male", en ? "Male · Charon" : "पुरुष · Charon"], ["male2", en ? "Male · Algieba" : "पुरुष · Algieba"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => setVideo((v) => ({ ...v, gender: k }))} className={`rounded-full border px-2 py-0.5 ${video.gender === k ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border text-muted"}`}>{l}</button>)}</div>
+                  <div className="flex flex-wrap gap-1.5">{([["female", en ? "Woman 1" : "महिला 1"], ["female2", en ? "Woman 2" : "महिला 2"], ["male", en ? "Man 1" : "पुरुष 1"], ["male2", en ? "Man 2" : "पुरुष 2"]] as const).map(([k, l]) => <button key={k} type="button" onClick={() => setVideo((v) => ({ ...v, gender: k }))} className={`rounded-full border px-2 py-0.5 ${video.gender === k ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border text-muted"}`}>{l}</button>)}</div>
                   <textarea value={video.script} onChange={(e) => setVideo((v) => ({ ...v, script: e.target.value }))} rows={3} placeholder={video.scriptBusy ? (en ? "Writing…" : "लिख रहे हैं…") : (en ? "What the voice says" : "आवाज़ क्या बोलेगी")} className="w-full rounded-lg border border-border bg-surface px-2.5 py-2 text-sm" />
                   <div className="flex flex-wrap items-center gap-2">
-                    <label className="inline-flex items-center gap-1"><input type="checkbox" checked={video.withName} onChange={(e) => freshScript(e.target.checked, video.withPhone)} /> {en ? "say my name" : "मेरा नाम बोले"}</label>
-                    <label className="inline-flex items-center gap-1"><input type="checkbox" checked={video.withPhone} onChange={(e) => freshScript(video.withName, e.target.checked)} /> {en ? "say phone" : "फ़ोन बोले"}</label>
-                    <button type="button" disabled={video.scriptBusy} onClick={() => freshScript()} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-muted"><RefreshCw className={`h-3 w-3 ${video.scriptBusy ? "animate-spin" : ""}`} /> {en ? "New script" : "नया script"}</button>
+                    <label className="inline-flex items-center gap-1"><input type="checkbox" checked={video.withName} onChange={(e) => freshScript(e.target.checked, video.withPhone)} /> {en ? "Say my name" : "मेरा नाम बोले"}</label>
+                    <label className="inline-flex items-center gap-1"><input type="checkbox" checked={video.withPhone} onChange={(e) => freshScript(video.withName, e.target.checked)} /> {en ? "Say my phone number" : "फ़ोन नंबर बोले"}</label>
+                    <button type="button" disabled={video.scriptBusy} onClick={() => freshScript()} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-muted"><RefreshCw className={`h-3 w-3 ${video.scriptBusy ? "animate-spin" : ""}`} /> {en ? "New words" : "नए शब्द"}</button>
                   </div>
-                  <p className="text-[11px] text-faint">{en ? "Default: wish + your brand name only (viewers already know you). Music ducks under the voice." : "डिफ़ॉल्ट: शुभकामना + सिर्फ़ ब्रांड का नाम (देखने वाले आपको जानते हैं)। आवाज़ के नीचे म्यूज़िक अपने-आप धीमा।"}</p>
+                  <p className="text-[11px] text-faint">{en ? "Usually: a wish and your business name only (people who see it already know you). The music gets softer when the voice speaks." : "आम तौर पर: शुभकामना और सिर्फ़ आपके business का नाम (देखने वाले आपको जानते हैं)। आवाज़ बोलते समय म्यूज़िक अपने-आप धीमा हो जाता है।"}</p>
                 </div>
               )}
             </div>}

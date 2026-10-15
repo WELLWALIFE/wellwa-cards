@@ -69,6 +69,8 @@ const BY_KEY: Record<string, Recipe> = {
   manufacturer: { ...SHOP, cta: "enquire" }, wholesale: { ...SHOP, cta: "enquire" }, agri: SHOP, dairy: SHOP, textile: SHOP,
   // personal
   influencer: { ...PERSON, catalog: "work", cta: "enquire" }, other: SERVICE,
+  // a residents' society lists its facilities and charges, not "What I do" (15 Oct 2026 sweep)
+  housing: { ...PERSON, catalog: "services" },
 };
 
 /** The recipe for a trade: by key, else by its group, else a plain service business. */

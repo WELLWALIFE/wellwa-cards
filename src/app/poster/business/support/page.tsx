@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { ChevronRight, Plus } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, bizAct, dayOf, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, bizAct, dayOf, useBiz, useBizMsg } from "@/components/business/kit";
 import { KycPhoto } from "@/components/business/kyc-photo";
 
 type Msg = { fromAdmin: boolean; body: string; at: string; attachmentUrl: string | null };
@@ -14,8 +14,11 @@ type Res = {
   contact: { grievanceName: string; grievanceEmail: string; grievancePhone: string; supportPhone: string; supportEmail: string };
 };
 
+const STATUS: Record<string, [string, string]> = { open: ["Open", "खुला"], answered: ["Answered", "जवाब आ गया"], closed: ["Closed", "बंद"] };
+
 export default function SupportPage() {
   const { lang } = useT(); const en = lang === "en";
+  const tr = useBizMsg();
   const [open, setOpen] = useState<number | null>(null);
   const [composing, setComposing] = useState(false);
   const { data, error, loading, reload } = useBiz<Res>("support", open ? { ticket: open } : {});
@@ -26,7 +29,7 @@ export default function SupportPage() {
     e.preventDefault(); setBusy(true); setErr(""); setDone("");
     const r = await bizAct<{ ticket?: number }>("support", open ? { op: "reply", ticket: open, body: text, file } : { op: "new_ticket", subject, body: text, file });
     setBusy(false);
-    if (!r.ok) { setErr(r.error ?? ""); return; }
+    if (!r.ok) { setErr(tr(r.error)); return; }
     setDone(en ? "Sent. Our team will reply here." : "भेज दिया। हमारी team यहीं जवाब देगी।");
     setText(""); setSubject(""); setFile("");
     if (!open && r.data.ticket) { setComposing(false); setOpen(r.data.ticket); } else void reload();
@@ -48,7 +51,7 @@ export default function SupportPage() {
                 {data.tickets.length === 0 && <p className={`${CARD} text-center text-sm text-muted`}>{en ? "No messages yet." : "अभी कोई संदेश नहीं।"}</p>}
                 {data.tickets.map((t) => (
                   <button key={t.id} type="button" onClick={() => { setOpen(t.id); setDone(""); }} className={`${CARD} flex w-full items-center gap-2 text-left`}>
-                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{t.subject}</p><p className="text-xs text-muted">#{t.id} · {dayOf(t.updatedAt)} · <span className="capitalize">{t.status}</span></p></div>
+                    <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{t.subject}</p><p className="text-xs text-muted">#{t.id} · {dayOf(t.updatedAt)} · {STATUS[t.status] ? STATUS[t.status][en ? 0 : 1] : t.status}</p></div>
                     <ChevronRight className="h-4 w-4 text-muted" />
                   </button>
                 ))}

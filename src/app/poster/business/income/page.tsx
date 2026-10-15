@@ -1,22 +1,23 @@
 "use client";
 // Income — totals, per-kind breakdown, statement and pair/carry details. Data: /api/business/income (partner handler app-api/income.ts).
 import { useCallback, useEffect, useState } from "react";
+import { LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, bizAct, dayOf, rupee, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND as KIND, bizAct, dayOf, rupee, useBiz } from "@/components/business/kit";
 
 type Totals = Record<string, { total: number; last: number }>;
 type Row = { kind: string; paise: number; held: boolean; day: string; from: string | null };
 type Line = { day: string; bin: "new" | "renewal"; openL: number; openR: number; inL: number; inR: number; pairs: number; paidPairs: number; flushedPairs: number; closeL: number; closeR: number; paise: number; reason: string | null };
 type View = { carryL: number; carryR: number; totalL: number; totalR: number; firstPair: boolean; pairs: number; todayL: number; todayR: number };
-type Res = { totals: Totals; grandTotal: number; lastTotal: number; lastClosing: string | null; t: string; offset: number; limit: number; more: boolean; rows?: Row[]; lines?: Line[]; binary?: { new: View; renewal: View } };
+type Res = {
+  disabled?: boolean; totals: Totals; grandTotal: number; heldPaise?: number; lostPaise?: number; lastTotal: number; lastClosing: string | null; t: string; offset: number; limit: number; more: boolean;
+  rows?: Row[]; lines?: Line[]; binary?: { new: View; renewal: View }; exportUrls?: { income?: string | null };
+};
 
 const KINDS = ["direct", "match_new", "match_renewal", "sponsor", "rank_reward"] as const;
-const KIND: Record<string, [string, string]> = {
-  direct: ["Direct sale", "सीधी बिक्री"], match_new: ["Pair (new)", "Pair (नया)"], match_renewal: ["Pair (renewal)", "Pair (renewal)"], sponsor: ["Sponsor", "Sponsor"], rank_reward: ["Rank reward", "Rank reward"],
-};
 const WHAT: Record<string, [string, string]> = {
   direct: ["Someone you introduced buys a plan. You get a bonus at once.", "आपके बुलाए व्यक्ति ने plan लिया। आपको तुरंत bonus मिलता है।"],
-  match_new: ["One new person on your left and one on your right make a pair. Each pair pays you.", "बायीं और दायीं side पर एक-एक नया व्यक्ति मिलकर एक pair बनाता है। हर pair का पैसा मिलता है।"],
+  match_new: ["One new person on your Left side and one on your Right side make a pair. Each pair pays you.", "Left side और Right side पर एक-एक नया व्यक्ति मिलकर एक pair बनाता है। हर pair का पैसा मिलता है।"],
   match_renewal: ["Same pair idea, but when people in your team renew their plan.", "वही pair, पर तब जब आपकी team के लोग plan renew करते हैं।"],
   sponsor: ["A small bonus from the sales of the people you introduced.", "आपके बुलाए लोगों की बिक्री पर छोटा bonus।"],
   rank_reward: ["A reward you get when you reach a new rank.", "नया rank मिलने पर इनाम।"],
@@ -46,15 +47,17 @@ export default function IncomePage() {
   }, [t, rows.length, lines.length]);
 
   return (
-    <BizShell title={en ? "Income" : "कमाई"}>
+    <BizShell title={en ? "Income" : "कमाई"} right={data && !data.disabled ? <ExcelButton url={data.exportUrls?.income} /> : null}>
       <BizState loading={loading && !data} error={error} onRetry={reload}>
-        {data && (
+        {data?.disabled ? <p className={`${CARD} text-sm text-muted`}>{en ? "This page is not open right now." : "यह page अभी बंद है।"}</p> : data && (
           <>
             <section className="rounded-2xl bg-[#12144a] p-4 text-white">
               <p className="text-xs text-white/70">{en ? "Total earned" : "कुल कमाई"}</p>
               <p className="text-3xl font-bold">{rupee(data.grandTotal)}</p>
               <p className="mt-1 text-xs text-white/70">{data.lastClosing ? `${en ? "Last closing" : "पिछली closing"} ${dayOf(data.lastClosing)}: ${rupee(data.lastTotal)}` : en ? "No closing yet." : "अभी कोई closing नहीं हुई।"}</p>
               <p className="mt-2 text-[11px] text-white/60">{en ? "Worked out every day at closing. Amounts are before TDS." : "हर दिन closing पर बनती है। रकम TDS से पहले की है।"}</p>
+              {!!data.heldPaise && <p className="mt-1 text-[11px] text-white/80">{en ? `${rupee(data.heldPaise)} of this is on hold. It reaches your wallet only when the hold is lifted.` : `इसमें से ${rupee(data.heldPaise)} रुका हुआ है। रोक हटने पर ही यह wallet में आएगा।`}</p>}
+              {!!data.lostPaise && <p className="mt-1 text-[11px] text-white/80">{en ? `${rupee(data.lostPaise)} of this was lost because the plan was not renewed in time.` : `इसमें से ${rupee(data.lostPaise)} चला गया, क्योंकि plan समय पर renew नहीं हुआ।`}</p>}
             </section>
 
             <section className={`${CARD} space-y-3`}>
@@ -74,7 +77,7 @@ export default function IncomePage() {
               ))}
             </div>
 
-            {t === "closings" ? (
+            {loading ? <div className="py-8 grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div> : t === "closings" ? (
               <>
                 {data.binary && (["new", "renewal"] as const).map((b) => (
                   <section key={b} className={`${CARD} space-y-1`}>
@@ -112,7 +115,7 @@ export default function IncomePage() {
                 </ul>
               </section>
             )}
-            {more && <button type="button" disabled={busy} onClick={loadMore} className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold disabled:opacity-60">{busy ? "…" : en ? "Show more" : "और दिखाएँ"}</button>}
+            {more && !loading && <button type="button" disabled={busy} onClick={loadMore} className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold disabled:opacity-60">{busy ? "…" : en ? "Show more" : "और दिखाएँ"}</button>}
           </>
         )}
       </BizState>

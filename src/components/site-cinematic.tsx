@@ -178,7 +178,8 @@ export const CINEMATIC_CSS = `
 .site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){top:var(--ann-h,0px)}
 /* Inner pages keep the header; on the home it lies transparent over the cover until scrolled (review, 13 Oct 2026: no nav). */
 .site[data-bp="cinematic"]:not([data-home]) header.site-head{position:sticky;transform:none}
-.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){transform:none;background:transparent!important;border-color:transparent!important;backdrop-filter:none;color:#fff;--ink:#fff;--muted:rgba(255,255,255,.75);--border:rgba(255,255,255,.3)}
+/* A soft shade under the white name and menu: over a bright photo (a white dress, a pale wall) they vanished (15 Oct 2026 sweep). */
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){transform:none;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0))!important;border-color:transparent!important;backdrop-filter:none;color:#fff;--ink:#fff;--muted:rgba(255,255,255,.75);--border:rgba(255,255,255,.3)}
 .site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) a,.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) button{color:#fff}
 .site[data-bp="cinematic"] main section h2{font-size:var(--t-h2);line-height:1.05;letter-spacing:-.015em}
 .site[data-bp="cinematic"] .site-rail{display:flex;gap:1.25rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 1.25rem 1rem;margin:0 -1.25rem;scrollbar-width:none}

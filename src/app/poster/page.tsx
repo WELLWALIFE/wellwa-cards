@@ -14,6 +14,12 @@ import { useJourney } from "@/lib/journey";
 
 import { useT } from "@/lib/poster-i18n";
 
+/** The free set-up steps' names in Hindi (journey.ts keeps the English ones) — for the "Next:" line under "Finish setup". */
+const STEP_HI: Record<string, string> = {
+  you: "आपके बारे में", business: "आपका business", products: "Products या services",
+  card: "आपका V-Card", website: "आपकी website", poster: "रोज़ के posters",
+};
+
 type TodayResp = { poster?: Poster; date?: string; theme?: { hi: string; en: string; greet: string }; quota?: Quota; style?: string; error?: string; message?: string; overrides?: { title?: string; custom?: string; accent?: string } | null; card_url?: string; join_url?: string };
 
 /** What goes with a shared poster: the day's written caption (about the product / plan), always with the owner's
@@ -123,7 +129,8 @@ export default function TodayPage() {
           <li className="flex gap-2"><span>✅</span><span>{t.f2}</span></li>
           <li className="flex gap-2"><span>✅</span><span>{t.f3}</span></li>
         </ul>
-        <Link href="/poster/onboard" className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
+        {/* Someone not signed in has no account yet: Sign up first (it opens the Welcome screen and the set-up). Log in is the line below. */}
+        <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
           {phase === "welcome" ? t.startFree : t.makeProfile}
         </Link>
         {phase === "welcome" && (
@@ -146,7 +153,7 @@ export default function TodayPage() {
       {/* One tap to change the card (owner's call, 25 Sep 2026 — it used to be Home → My V-Card → Edit). */}
       <Link href="/poster/site" className="flex items-center gap-2 rounded-xl border-2 border-brand/40 bg-brand-soft/50 px-3 py-2.5 text-sm">
         <Pencil className="h-4 w-4 shrink-0 text-brand" />
-        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Card & Website — share, edit" : "Card & Website — share, edit"}</span>
+        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Card & Website — share, edit" : "Card और Website — share करें, बदलें"}</span>
         <span className="text-xs font-semibold text-brand-ink">→</span>
       </Link>
       {/* Premium, visible from the first day (owner's call, 3 Oct 2026: "subscription ka button kahin nahi tha"). */}
@@ -197,11 +204,11 @@ export default function TodayPage() {
 
       {today?.error === "plan" && (
         <div className="rounded-2xl border border-brand/40 bg-brand-soft p-4">
-          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {lang === "en" ? "Daily posters are part of Growth" : "Roz ka poster Growth plan me hai"}</p>
-          <p className="text-sm text-ink mt-1">{lang === "en" ? "Your free plan includes the digital V-Card and its leads. Upgrade to get a fresh poster and status video every morning, auto-posted to WhatsApp Status, Facebook and Instagram." : "Free plan me digital V-Card aur uske leads hain. Upgrade karo — roz subah naya poster aur status video, WhatsApp Status, Facebook, Instagram par apne-aap."}</p>
+          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {lang === "en" ? "Daily posters are part of Growth" : "रोज़ का poster Growth plan में मिलता है"}</p>
+          <p className="text-sm text-ink mt-1">{lang === "en" ? "Your free plan includes the digital V-Card and its leads. Upgrade to get a fresh poster and status video every morning, auto-posted to WhatsApp Status, Facebook and Instagram." : "Free plan में digital V-Card और उसके leads मिलते हैं। Upgrade करें — हर सुबह नया poster और status video, WhatsApp Status, Facebook और Instagram पर अपने-आप।"}</p>
           <div className="mt-3 flex gap-2">
-            <Link href="/poster/plan" className="inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{lang === "en" ? "Upgrade — see plans" : "Upgrade karo — plans dekho"}</Link>
-            <Link href="/poster/site" className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold">{lang === "en" ? "My V-Card" : "Mera V-Card"}</Link>
+            <Link href="/poster/plan" className="inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{lang === "en" ? "Upgrade — see plans" : "Upgrade करें — plans देखें"}</Link>
+            <Link href="/poster/site" className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold">{lang === "en" ? "Card & Website" : "Card और Website"}</Link>
           </div>
         </div>
       )}
@@ -209,7 +216,7 @@ export default function TodayPage() {
         <div className="rounded-2xl border border-border bg-brand-soft p-4">
           <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {t.quotaTitle}</p>
           <p className="text-sm text-ink mt-1">{t.quotaSub}</p>
-          <Link href="/poster/settings" className="mt-3 inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{t.seePlans}</Link>
+          <Link href="/poster/plan" className="mt-3 inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{t.seePlans}</Link>
         </div>
       )}
       {err && (
@@ -223,7 +230,7 @@ export default function TodayPage() {
       {journey.nextFree && (
         <Link href={journey.resumeHref ?? "/poster/setup"} className="block rounded-xl border border-brand bg-brand-soft/50 p-3">
           <p className="text-sm font-semibold">{lang === "en" ? "Finish setup" : "Setup पूरा करें"} · {journey.freeDone}/{journey.freeTotal}</p>
-          <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {journey.nextFree.title} →</p>
+          <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {lang === "en" ? journey.nextFree.title : STEP_HI[journey.nextFree.key] ?? journey.nextFree.title} →</p>
         </Link>
       )}
       {today?.error !== "plan" && (day === "tomorrow"

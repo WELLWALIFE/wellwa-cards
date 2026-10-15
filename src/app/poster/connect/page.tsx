@@ -75,7 +75,7 @@ export default function Connections() {
   async function disconnect(r: Row) {
     if (!r.off || !confirm(r.off.ask)) return;
     setBusy(r.key); setMsg("");
-    try { await r.off.run(); setMsg(en ? `${r.title} disconnected.` : `${r.title} हटा दिया गया।`); reload(); }
+    try { await r.off.run(); setMsg(r.key === "domain" ? (en ? "Your web address was removed." : "आपका web address हटा दिया गया।") : (en ? `${r.title} disconnected.` : `${r.title} हटा दिया गया।`)); reload(); }
     catch { setMsg(en ? "Could not disconnect — no internet? Try again." : "हटा नहीं पाए — internet देखकर फिर कोशिश करें।"); }
     finally { setBusy(""); }
   }
@@ -106,34 +106,34 @@ export default function Connections() {
       <label className={`flex items-center gap-2.5 text-sm ${waLinked ? "" : "opacity-60"}`}>
         <input type="checkbox" className="h-4 w-4" checked={statusOn} disabled={!waLinked || waBusy === "status" || social === null} onChange={(e) => setStatus(e.target.checked)} />
         <Radio className="h-4 w-4 shrink-0 text-[#25D366]" />
-        <span className="min-w-0"><span className="block font-medium">{en ? "Daily Status auto-post" : "रोज़ Status पर auto-post"}</span><span className="block text-[11px] text-muted">{en ? "AI poster + voice video on your Status every morning — 14 days free on the free plan." : "रोज़ सुबह AI poster + voice video आपके Status पर — free plan में 14 दिन फ़्री।"}</span></span>
+        <span className="min-w-0"><span className="block font-medium">{en ? "Post to Status every day" : "रोज़ Status पर अपने-आप post"}</span><span className="block text-[11px] text-muted">{en ? "An AI poster and a video with voice go on your Status every morning. Free for 14 days on the free plan." : "रोज़ सुबह आपके Status पर AI poster और आवाज़ वाला video जाता है। Free plan में 14 दिन फ़्री।"}</span></span>
       </label>
       <label className={`flex items-center gap-2.5 text-sm ${waLinked ? "" : "opacity-60"}`}>
         <input type="checkbox" className="h-4 w-4" checked={wa === "on" && !!waAi} disabled={!waLinked || waBusy === "ai" || (wa === "on" && waAi === null)} onChange={(e) => setAi(e.target.checked)} />
         <MessageCircle className="h-4 w-4 shrink-0 text-[#25D366]" />
-        <span className="min-w-0"><span className="block font-medium">{en ? "AI auto-reply (chat bot)" : "AI auto-reply (chat bot)"}{wa === "paid" && <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Growth plan</span>}</span><span className="block text-[11px] text-muted">{en ? "Answers customers 24×7 from your number; every chat saved as a lead." : "आपके number से customers को 24×7 जवाब; हर chat lead में save।"}</span></span>
+        <span className="min-w-0"><span className="block font-medium">{en ? "AI auto-reply (chat bot)" : "AI auto-reply (chat bot)"}{wa === "paid" && <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Growth plan</span>}</span><span className="block text-[11px] text-muted">{en ? "Answers your customers any time, day or night, from your number. Everyone who chats is added to your customers." : "आपके number से customers को दिन-रात जवाब देता है। जो भी chat करता है, वह आपके customers में जुड़ जाता है।"}</span></span>
       </label>
     </div>
   );
   const rows: { group: string; items: Row[] }[] = [
     { group: "WhatsApp", items: [
-      { key: "wa", icon: <MessageCircle className="h-6 w-6 text-[#25D366]" />, title: "WhatsApp", what: en ? "Link once with a code on this phone (or a QR). Status and the AI bot both run on this one link." : "इसी phone पर एक code से एक बार link करें (या QR)। Status और AI bot दोनों इसी एक link पर चलते हैं।", href: "/poster/leads?tab=wa", state: wa, detail: waNum ? `+91 ${waNum}` : undefined, extra: waSwitches,
-        off: { ask: en ? "Unlink WhatsApp from Shubhora? Status posting and the AI stop, and new messages will not be saved as leads. You can link again any time with a code." : "WhatsApp को Shubhora से हटाएँ? Status post और AI बंद हो जाएँगे, नए message leads में save नहीं होंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await api("/api/wa/logout", { method: "POST" }); } } },
+      { key: "wa", icon: <MessageCircle className="h-6 w-6 text-[#25D366]" />, title: "WhatsApp", what: en ? "Link it once with a code on this phone (or a QR). Status posts and the AI bot both work through this one link." : "इसी phone पर एक code (या QR) से एक बार link करें। Status और AI bot दोनों इसी एक link से चलते हैं।", href: "/poster/leads?tab=wa", state: wa, detail: waNum ? `+91 ${waNum}` : undefined, extra: waSwitches,
+        off: { ask: en ? "Disconnect WhatsApp? Status posts and the AI will stop, and new messages will not be saved as customers. You can link it again any time with a code." : "WhatsApp हटाएँ? Status post और AI बंद हो जाएँगे, नए message customers में नहीं जुड़ेंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await api("/api/wa/logout", { method: "POST" }); } } },
     ] },
     { group: "Social media", items: [
-      { key: "fb", icon: <ProviderIcon provider="facebook" className="h-6 w-6" />, title: "Facebook Page", what: en ? "Auto-post posters and videos to your Page." : "Poster और video आपके Page पर अपने-आप।", href: "/poster/social?tab=facebook", state: sState("facebook"), detail: fb?.name,
-        off: { ask: en ? `Disconnect Facebook Page${fb?.name ? ` "${fb.name}"` : ""}? Auto-posting to Facebook stops and ads cannot be made until you connect it again. Nothing on Facebook itself is deleted.` : `Facebook Page${fb?.name ? ` "${fb.name}"` : ""} हटाएँ? Facebook पर auto-post और ads बंद हो जाएँगी, दोबारा जोड़ने तक। Facebook पर कुछ delete नहीं होता।`, run: async () => dropSocial(fb) } },
-      { key: "ig", icon: <ProviderIcon provider="instagram" className="h-6 w-6" />, title: "Instagram", what: en ? "Needs a professional account linked to your Facebook Page." : "Professional account चाहिए, Facebook Page से जुड़ा हुआ।", href: "/poster/social?tab=instagram", state: sState("instagram"), detail: ig?.username ? `@${ig.username}` : undefined,
-        off: { ask: en ? `Disconnect Instagram${ig?.username ? ` @${ig.username}` : ""}? Auto-posting to Instagram stops until you connect it again.` : `Instagram${ig?.username ? ` @${ig.username}` : ""} हटाएँ? Instagram पर auto-post बंद हो जाएगा, दोबारा जोड़ने तक।`, run: async () => dropSocial(ig) } },
+      { key: "fb", icon: <ProviderIcon provider="facebook" className="h-6 w-6" />, title: "Facebook Page", what: en ? "Your posters and videos are posted to your Page by themselves." : "आपके Page पर poster और video अपने-आप post होते हैं।", href: "/poster/social?tab=facebook", state: sState("facebook"), detail: fb?.name,
+        off: { ask: en ? `Disconnect Facebook Page${fb?.name ? ` "${fb.name}"` : ""}? Posting to Facebook and making ads will stop until you connect it again. Nothing is deleted on Facebook.` : `Facebook Page${fb?.name ? ` "${fb.name}"` : ""} हटाएँ? Facebook पर auto-post और ads बंद हो जाएँगी, दोबारा जोड़ने तक। Facebook पर कुछ delete नहीं होता।`, run: async () => dropSocial(fb) } },
+      { key: "ig", icon: <ProviderIcon provider="instagram" className="h-6 w-6" />, title: "Instagram", what: en ? "You need an Instagram professional account that is linked to your Facebook Page." : "Facebook Page से जुड़ा Instagram professional account चाहिए।", href: "/poster/social?tab=instagram", state: sState("instagram"), detail: ig?.username ? `@${ig.username}` : undefined,
+        off: { ask: en ? `Disconnect Instagram${ig?.username ? ` @${ig.username}` : ""}? Posting to Instagram will stop until you connect it again.` : `Instagram${ig?.username ? ` @${ig.username}` : ""} हटाएँ? Instagram पर auto-post बंद हो जाएगा, दोबारा जोड़ने तक।`, run: async () => dropSocial(ig) } },
     ] },
     { group: "Google", items: [
-      { key: "google", icon: <Globe className="h-6 w-6 text-[#4285F4]" />, title: "Google Business Profile", what: en ? "Your shop on Google Maps & Search — posts, hours, insights." : "Google Maps और Search पर आपकी दुकान — posts, समय, insights।", href: "/poster/social?tab=google", state: google.state, detail: google.name || undefined,
-        off: { ask: en ? `Disconnect Google Business Profile${google.name ? ` "${google.name}"` : ""}? Google posts and the reviews inbox stop working here. Your Google listing itself stays as it is.` : `Google Business Profile${google.name ? ` "${google.name}"` : ""} हटाएँ? यहाँ से Google posts और reviews inbox बंद हो जाएँगे। Google पर आपकी listing वैसी ही रहेगी।`, run: async () => { await api("/api/google/status", { method: "DELETE" }); } } },
+      { key: "google", icon: <Globe className="h-6 w-6 text-[#4285F4]" />, title: "Google Business Profile", what: en ? "Your shop on Google Maps and Search — posts, timings and how many people see you." : "Google Maps और Search पर आपकी दुकान — posts, समय और कितने लोगों ने देखा।", href: "/poster/social?tab=google", state: google.state, detail: google.name || undefined,
+        off: { ask: en ? `Disconnect Google Business Profile${google.name ? ` "${google.name}"` : ""}? You will not be able to post to Google or see your reviews here. Your shop on Google stays as it is.` : `Google Business Profile${google.name ? ` "${google.name}"` : ""} हटाएँ? यहाँ से Google पर post करना और reviews देखना बंद हो जाएगा। Google पर आपकी दुकान वैसी ही रहेगी।`, run: async () => { await api("/api/google/status", { method: "DELETE" }); } } },
       { key: "reviews", icon: <Star className="h-6 w-6 text-[#FBBC05]" />, title: en ? "Google reviews" : "Google reviews", what: en ? "See and answer reviews; ask happy customers for one." : "Reviews देखें, जवाब दें, खुश customers से review माँगें।", href: "/poster/social?tab=reviews", state: google.state === "loading" ? "loading" : google.state },
     ] },
     { group: en ? "Your address" : "आपका address", items: [
-      { key: "domain", icon: <Link2 className="h-6 w-6 text-brand" />, title: en ? "Own domain (e.g. yourshop.com)" : "अपना domain (जैसे yourshop.com)", what: en ? "Open your card and website on your own web address." : "Card और website आपके अपने web address पर।", href: "/poster/card#domain", state: domain.state, detail: domain.name || undefined,
-        off: { ask: en ? `Remove ${domain.name} from your card and website? It will open on shubhora.com again; you can add the domain back any time.` : `${domain.name} को card और website से हटाएँ? वे फिर shubhora.com पर खुलेंगे; domain कभी भी दोबारा जोड़ सकते हैं।`, run: async () => { await api(`/api/domains?domain=${encodeURIComponent(domain.name)}`, { method: "DELETE" }); } } },
+      { key: "domain", icon: <Link2 className="h-6 w-6 text-brand" />, title: en ? "Your own web address" : "अपना web address", what: en ? "Your card and website open on your own address, like yourshop.com." : "आपका card और website आपके अपने address पर खुलेंगे, जैसे yourshop.com।", href: "/poster/card#domain", state: domain.state, detail: domain.name || undefined,
+        off: { ask: en ? `Remove ${domain.name} from your card and website? They will open on shubhora.com again. You can add it back any time.` : `${domain.name} को card और website से हटाएँ? वे फिर shubhora.com पर खुलेंगे। इसे कभी भी दोबारा जोड़ सकते हैं।`, run: async () => { await api(`/api/domains?domain=${encodeURIComponent(domain.name)}`, { method: "DELETE" }); } } },
     ] },
   ];
   const all = rows.flatMap((g) => g.items);
@@ -144,7 +144,7 @@ export default function Connections() {
     <div className="space-y-4">
       <div>
         <h1 className="text-lg font-bold">{en ? "Connections" : "Connections — सब जोड़ें"}</h1>
-        <p className="text-sm text-muted">{en ? "WhatsApp, Facebook, Instagram, Google and your domain — all in one place." : "WhatsApp, Facebook, Instagram, Google और आपका domain — सब एक जगह।"}</p>
+        <p className="text-sm text-muted">{en ? "WhatsApp, Facebook, Instagram, Google and your web address — all in one place." : "WhatsApp, Facebook, Instagram, Google और आपका web address — सब एक जगह।"}</p>
       </div>
       <div className="rounded-2xl border border-border bg-surface p-3">
         <div className="flex items-center justify-between text-sm"><span className="font-semibold">{en ? "Connected" : "जुड़े हुए"}</span><span className="text-muted">{loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : `${done} / ${all.length}`}</span></div>
@@ -170,7 +170,7 @@ export default function Connections() {
                 {connected && r.off && (
                   <div className="flex items-center justify-end border-t border-border px-3 py-1.5">
                     <button type="button" onClick={() => disconnect(r)} disabled={busy === r.key} className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-semibold text-muted hover:text-danger disabled:opacity-60">
-                      {busy === r.key ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />} {en ? "Disconnect" : "Disconnect करें"}
+                      {busy === r.key ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Unplug className="h-3.5 w-3.5" />} {en ? "Disconnect" : "हटाएँ"}
                     </button>
                   </div>
                 )}

@@ -30,7 +30,7 @@ export function SocialPostButton({ posterId }: { posterId: string; caption?: str
     const already = posted[a.provider];
     if (already) {
       const when = new Date(already).toLocaleString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
-      const ask = `This poster was already posted on ${when}. Post it again?`;
+      const ask = hi ? `यह poster ${when} को पहले ही post हो चुका है। फिर से post करें?` : `This poster was already posted on ${when}. Post it again?`;
       if (!window.confirm(ask)) return;
     }
     setState((s) => ({ ...s, [a.provider]: "busy" }));
@@ -42,7 +42,7 @@ export function SocialPostButton({ posterId }: { posterId: string; caption?: str
   }
 
   const providerLabel = (p: Provider) => p === "facebook" ? "Facebook" : p === "instagram" ? "Instagram" : (hi ? "WhatsApp Status" : "WhatsApp Status");
-  const actionLabel = (p: Provider) => p === "whatsapp" ? (hi ? "Status पर लगाओ" : "Put on Status") : (hi ? "Post करो" : "Post");
+  const actionLabel = (p: Provider) => p === "whatsapp" ? (hi ? "WhatsApp Status पर लगाएँ" : "Put on WhatsApp Status") : (hi ? `${providerLabel(p)} पर post करें` : `Post on ${providerLabel(p)}`);
   const color = (p: Provider) => p === "facebook" ? "bg-[#1877F2]" : p === "instagram" ? "bg-[#d6249f]" : "bg-[#128C7E]";
 
   return (
@@ -62,14 +62,14 @@ export function SocialPostButton({ posterId }: { posterId: string; caption?: str
           <div key={p}>
             <button type="button" onClick={() => post(a)} disabled={s === "busy"} className={`w-full inline-flex items-center justify-center gap-2 rounded-xl ${color(p)} px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-80`}>
               {s === "busy" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : s === "done" ? <Check className="h-4 w-4" /> : <ProviderIcon provider={p} className="h-4 w-4" />}
-              {s === "done" ? (hi ? "Post हो गया ✓" : "Posted ✓") : posted[p] ? `${providerLabel(p)} — ${hi ? "फिर से post करें" : "post again"}` : `${providerLabel(p)} पर ${actionLabel(p)}`}
+              {s === "done" ? (hi ? "Post हो गया ✓" : "Posted ✓") : posted[p] ? `${providerLabel(p)} — ${hi ? "फिर से post करें" : "post again"}` : actionLabel(p)}
             </button>
             {posted[p] && s !== "busy" && s !== "done" && <p className="text-[11px] text-good mt-1 flex items-center gap-1"><Check className="h-3 w-3" /> {hi ? "पहले से post हो चुका है" : "Already posted"}</p>}
             {s && s !== "busy" && s !== "done" && <p className="text-[11px] text-danger mt-1">{s}</p>}
           </div>
         );
       })}
-      <p className="text-[11px] text-muted text-center">{hi ? "Caption AI अपने-आप लिखता है (product, नंबर, hashtags)।" : "The caption is written automatically by AI (product, number, hashtags)."}</p>
+      <p className="text-[11px] text-muted text-center">{hi ? "Post के शब्द AI अपने-आप लिख देता है (product, नंबर, hashtags)।" : "The AI writes the words for the post by itself (product, number, hashtags)."}</p>
     </div>
   );
 }

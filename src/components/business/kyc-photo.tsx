@@ -5,12 +5,13 @@ import { useRef, useState } from "react";
 import { Camera, FileText, LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { compressToFile } from "@/lib/image-utils";
-import { bizUpload } from "./kit";
+import { bizUpload, useBizMsg } from "./kit";
 
 export function KycPhoto({ kind, label, id, currentUrl, onChange, pdf = false, maxDim = 1600 }: {
   kind: string; label: string; id: string; currentUrl?: string | null; onChange: (id: string) => void; pdf?: boolean; maxDim?: number;
 }) {
   const { lang } = useT(); const en = lang === "en";
+  const tr = useBizMsg();
   const ref = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
@@ -23,7 +24,7 @@ export function KycPhoto({ kind, label, id, currentUrl, onChange, pdf = false, m
       const isPdf = f.type === "application/pdf";
       const send = isPdf ? f : await compressToFile(f, f.name.replace(/\.\w+$/, "") + ".jpg", maxDim, 0.8);
       const r = await bizUpload(send, kind);
-      if (!r.id) { setErr(r.error ?? (en ? "The file could not be sent." : "फ़ाइल नहीं जा पाई।")); return; }
+      if (!r.id) { setErr(r.error ? tr(r.error) : en ? "The file could not be sent." : "फ़ाइल नहीं जा पाई।"); return; }
       setLocal({ url: URL.createObjectURL(send), isPdf });
       onChange(r.id);
     } finally { setBusy(false); if (ref.current) ref.current.value = ""; }

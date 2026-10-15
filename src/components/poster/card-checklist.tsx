@@ -46,7 +46,7 @@ export function CardChecklist({ card, hi }: { card: Card; hi: boolean }) {
         <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-surface2">
           <div className="h-full rounded-full grad-brand transition-all" style={{ width: `${pct}%` }} />
         </div>
-        <p className="mt-1.5 text-xs text-muted">{hi ? "पूरा card = ज़्यादा भरोसा, ज़्यादा customers। हर काम एक tap का है।" : "A complete card earns more trust and more enquiries. Each one is a single tap."}</p>
+        <p className="mt-1.5 text-xs text-muted">{hi ? "पूरा card होने से लोग ज़्यादा भरोसा करते हैं और ज़्यादा customers आते हैं। हर काम बस एक बार दबाने का है।" : "A full card earns more trust and brings more enquiries. Each step takes one tap."}</p>
       </div>
       <div className="space-y-1.5">
         {todo.map((i) => (

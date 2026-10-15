@@ -19,10 +19,10 @@ type Job = { id: string; kind?: string; status: string; output_url: string | nul
 type MyProduct = { id: string; name: string; photo_url: string | null; photos?: { url: string; role?: string }[] };
 
 const KINDS: { k: Kind; I: typeof Film; t: string; s: string; len: string }[] = [
-  { k: "long", I: Clapperboard, t: "Long video", s: "A professional explainer from your words: matching AI pictures, your photos, voice, subtitles and music.", len: `Up to ${EXPLAINER_MAX_MIN} minutes · 10 credits a minute (at least 20)` },
-  { k: "template", I: Film, t: "Short ad", s: "Your photos with the words on screen and a voice over them. Fast and cheapest.", len: "10 to 60 seconds · 20 to 120 credits" },
-  { k: "realistic", I: Sparkles, t: "Realistic AI video", s: "Film-like scenes made by AI around your product.", len: `10 to ${REALISTIC_MAX_LENGTH} seconds · 20 to ${adCredits(REALISTIC_MAX_LENGTH)} credits` },
-  { k: "presenter", I: UserRound, t: "Presenter", s: "A photo of a person turned into someone speaking your words to camera.", len: "10 to 60 seconds · 20 to 120 credits" },
+  { k: "long", I: Clapperboard, t: "Long video", s: "A long video made from your words. It gets matching AI pictures, your photos, a voice, words on screen and music.", len: `Up to ${EXPLAINER_MAX_MIN} minutes · 10 credits a minute (at least 20)` },
+  { k: "template", I: Film, t: "Short ad", s: "Your photos with words on screen and a voice. The fastest and cheapest.", len: "10 to 60 seconds · 20 to 120 credits" },
+  { k: "realistic", I: Sparkles, t: "Realistic AI video", s: "Scenes like a film, made by AI around your product.", len: `10 to ${REALISTIC_MAX_LENGTH} seconds · 20 to ${adCredits(REALISTIC_MAX_LENGTH)} credits` },
+  { k: "presenter", I: UserRound, t: "Presenter", s: "A photo of a person who speaks your words, looking at the camera.", len: "10 to 60 seconds · 20 to 120 credits" },
 ];
 const MUSIC = [["", "No music"], ["calm-ambient", "Calm"], ["inspiring-motivational", "Inspiring"], ["upbeat-corporate", "Upbeat"], ["indian-sitar", "Indian"], ["festive-diwali", "Festive"]] as const;
 const VOICES = [["warm", "Warm (man)"], ["warmf", "Warm (woman)"], ["bright", "Bright"], ["calm", "Calm"]] as const;
@@ -252,7 +252,7 @@ export default function TextToVideo() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => (kind ? setKind(null) : router.push("/poster/videos"))} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Wand2 className="h-5 w-5 text-brand" /> Text to video</h1>
+        <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Wand2 className="h-5 w-5 text-brand" /> Video from your words</h1>
         {credits !== null && <span className="rounded-full bg-surface2 px-2.5 py-1 text-xs font-semibold text-muted">{credits} credits</span>}
       </div>
       <VideoSteps step={!kind ? 1 : !tooShort && !tooLong ? 3 : 2} hi={false} note={!kind ? "short ad, realistic, presenter or long" : !tooShort && !tooLong ? "pictures, voice & music — then Make" : "write what the video should say"} />
@@ -307,7 +307,7 @@ export default function TextToVideo() {
                   : <> · fits about {fits} words in {seconds}s</>)}
               </span>
               <span className={tooLong ? "font-semibold text-danger" : "text-muted"}>
-                {tooLong ? (long ? `Longer than ${EXPLAINER_MAX_MIN} minutes — please shorten it` : "Too long for this length — shorten it, or tap Improve to trim it") : `${cost} credits`}
+                {tooLong ? (long ? `Longer than ${EXPLAINER_MAX_MIN} minutes — please shorten it` : "Too long for this length. Make it shorter, or tap 'Improve my words'.") : `${cost} credits`}
               </span>
             </div>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -334,7 +334,7 @@ export default function TextToVideo() {
               <button type="button" onClick={() => setCaptions(true)} className={chip(captions)}>On — words appear as they are spoken</button>
               <button type="button" onClick={() => setCaptions(false)} className={chip(!captions)}>Off</button>
             </div>
-            <p className="mt-1 text-[11px] text-muted">Every video is made the same professional way: a matching AI picture for each point, your own photos where they fit, a slow camera move on every shot and soft cuts timed to the voice.</p>
+            <p className="mt-1 text-[11px] text-muted">Every video is made the same careful way: an AI picture that matches each point, your own photos where they fit, a slow camera move on each picture, and smooth changes that follow the voice.</p>
           </div>)}
 
         <div><p className="mb-1 text-xs font-semibold text-muted">Language of the voice</p><div className="flex flex-wrap gap-1.5">{LANGS.map((l) => <button key={l.key} type="button" onClick={() => setLang(l.key)} className={chip(lang === l.key)}>{l.label}</button>)}</div></div>
@@ -355,8 +355,8 @@ export default function TextToVideo() {
             <input type="file" accept="audio/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; addVoice(f ?? null); }} />
           </label>}
           {long && <p className="mt-1 text-[11px] text-muted">{ownVoice
-            ? "Your recording is the narration — its length is the length of the video. No text needed: we write down what you said and cut the pictures to it."
-            : "Recorded it yourself, or made it somewhere else? Upload it and we put the slides, photos and music around it."}</p>}
+            ? "Your recording is the voice of the video, so the video is as long as your recording. You do not need to type anything. We write down what you said and match the pictures to it."
+            : "Did you record it yourself, or make it somewhere else? Add it here. We put pictures, photos and music with it."}</p>}
         </div>
           <div><p className="mb-1 text-xs font-semibold text-muted">Music</p><div className="flex flex-wrap gap-1.5">{MUSIC.map(([k, l]) => <button key={k || "none"} type="button" onClick={() => setMusic(k)} className={chip(music === k)}>{l}</button>)}</div></div>
           <div><p className="mb-1 text-xs font-semibold text-muted">Shape</p><div className="flex flex-wrap gap-1.5">
@@ -381,7 +381,7 @@ export default function TextToVideo() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(f ?? null, "presenter"); }} />
                 </label>
               </div>
-              <p className="mt-1 text-[11px] text-muted">A clear, front-facing photo works best — face filling most of the frame.</p>
+              <p className="mt-1 text-[11px] text-muted">A clear photo looking straight at the camera works best, with the face big in the photo.</p>
             </div>
           )}
 
@@ -402,7 +402,7 @@ export default function TextToVideo() {
                 </label>
               )}
             </div>
-            <p className="mt-1 text-[11px] text-muted">{long ? "No photos? The video still works — every slide shows your words on a clean branded background." : "Your product photos from Products are already here. Remove any you do not want."}</p>
+            <p className="mt-1 text-[11px] text-muted">{long ? "No photos? That is fine. Each slide shows your words on a clean background with your name." : "Your product photos from Products are already here. Remove any you do not want."}</p>
           </div>
 
           {err && <p className="text-sm text-danger">{err}</p>}
@@ -463,7 +463,7 @@ export default function TextToVideo() {
       )}
 
       <p className="text-center text-xs text-muted">
-        Want the AI to write the script for you instead? <Link href="/poster/video" className="font-semibold text-brand-ink">Video ad →</Link>
+        Want the AI to write the words for you? Try <Link href="/poster/video" className="font-semibold text-brand-ink">Video ad →</Link>
       </p>
     </div>
   );

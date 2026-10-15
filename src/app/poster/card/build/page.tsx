@@ -1663,7 +1663,7 @@ export default function BuildCard() {
       </Sec>
 
           {!!setup?.category && <TradeQuestions category={setup.category} facts={facts} setF={setF} hi={hi} tradeLabel={setup.categoryLabel} />}
-          <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={setup?.persona === "professional"} hasAbout={!!setup?.about} />
+          <FactsFields group="company" facts={facts} setF={setF} hi={hi} professional={setup?.persona === "professional"} role={setup?.role} hasAbout={!!setup?.about} />
           <FactsFields group="products" facts={facts} setF={setF} hi={hi} hasAbout={!!setup?.about} category={setup?.category} />
         </div>
       </details>

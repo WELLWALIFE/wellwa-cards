@@ -66,7 +66,7 @@ const LINK_NAMES: Partial<Record<LinkType, string>> = {
 
 const blockKinds: { kind: CardBlock["kind"]; label: string; icon: typeof Type }[] = [
   { kind: "about", label: "Text", icon: Type },
-  { kind: "highlights", label: "Highlights", icon: ListChecks },
+  { kind: "highlights", label: "Key points", icon: ListChecks },
   { kind: "services", label: "Services", icon: LayoutGrid },
   { kind: "product", label: "Products", icon: Package },
   { kind: "gallery", label: "Gallery", icon: ImageIcon },
@@ -74,8 +74,8 @@ const blockKinds: { kind: CardBlock["kind"]; label: string; icon: typeof Type }[
   { kind: "carousel", label: "Slider (arrows)", icon: ImageIcon },
   { kind: "video", label: "Video", icon: Video },
   { kind: "pdf", label: "PDF", icon: FileText },
-  { kind: "testimonials", label: "Testimonials", icon: Star },
-  { kind: "faq", label: "FAQ", icon: HelpCircle },
+  { kind: "testimonials", label: "Customer reviews", icon: Star },
+  { kind: "faq", label: "Common questions", icon: HelpCircle },
   { kind: "hours", label: "Business hours", icon: Clock },
   { kind: "appointment", label: "Appointment", icon: CalendarClock },
   { kind: "location", label: "Location", icon: MapPin },
@@ -83,7 +83,7 @@ const blockKinds: { kind: CardBlock["kind"]; label: string; icon: typeof Type }[
   { kind: "contact", label: "Contact", icon: MessageSquare },
   { kind: "cta", label: "Join now / referral link", icon: UserPlus },
   { kind: "compare", label: "Us vs them (comparison)", icon: ListChecks },
-  { kind: "showcase", label: "Showcase (picture tiles with links)", icon: LayoutGrid },
+  { kind: "showcase", label: "Picture tiles (with links)", icon: LayoutGrid },
   { kind: "table", label: "Price list / fee table", icon: ListChecks },
   { kind: "form", label: "Form (enquiry / admission / booking)", icon: MessageSquare },
 ];
@@ -92,7 +92,7 @@ function newBlock(kind: CardBlock["kind"]): CardBlock {
   const id = uid();
   switch (kind) {
     case "about": return { id, kind, title: "About", body: "" };
-    case "highlights": return { id, kind, title: "Highlights", items: [""] };
+    case "highlights": return { id, kind, title: "Why choose us", items: [""] };
     case "services": return { id, kind, title: "Services", items: [{ name: "", desc: "" }] };
     case "product": return {
       id, kind, title: "Products",
@@ -104,7 +104,7 @@ function newBlock(kind: CardBlock["kind"]): CardBlock {
     case "video": return { id, kind, title: "Video", url: "", caption: "" };
     case "pdf": return { id, kind, title: "File", fileLabel: "Brochure.pdf" };
     case "testimonials": return { id, kind, title: "What customers say", items: [{ name: "", text: "", rating: 5 }] };
-    case "faq": return { id, kind, title: "FAQ", items: [{ q: "", a: "" }] };
+    case "faq": return { id, kind, title: "Common questions", items: [{ q: "", a: "" }] };
     case "hours": return {
       id, kind, title: "Business hours",
       rows: [
@@ -112,12 +112,12 @@ function newBlock(kind: CardBlock["kind"]): CardBlock {
         { day: "Sunday", time: "Closed" },
       ],
     };
-    case "appointment": return { id, kind, title: "Book a demo", url: "", note: "Free 15-min call" };
+    case "appointment": return { id, kind, title: "Book a time", url: "", note: "Free 15-min call" };
     case "location": return { id, kind, title: "Visit us", address: "" };
     case "offer": return { id, kind, title: "Special offer", text: "", code: "", expires: "" };
     case "contact": return { id, kind, title: "Get in touch" };
     case "cta": return { id, kind, title: "Join now", body: "", joinUrl: "", joinLabel: "Join Now", referralCode: "" };
-    case "compare": return { id, kind, title: "How we compare", leftLabel: "Us", rightLabel: "Competitor", rows: [{ feature: "", left: "", right: "" }] };
+    case "compare": return { id, kind, title: "How we compare", leftLabel: "Us", rightLabel: "Other brand", rows: [{ feature: "", left: "", right: "" }] };
     case "showcase": return { id, kind, title: "Our work", items: [{ imageUrl: "", label: "", sub: "", url: "" }] };
     case "table": return { id, kind, title: "Price list", columns: ["Item", "Price"], rows: [["", ""]], highlight: 1 };
     case "form": return { id, kind, title: "Enquiry", fields: [{ key: "name", label: "Your name", type: "text", required: true }, { key: "phone", label: "Mobile / WhatsApp", type: "phone", required: true }, { key: "message", label: "Your message", type: "textarea" }], button: "Send" };
@@ -251,7 +251,7 @@ export function CardEditor({ id }: { id: string }) {
   }, [id]);
 
   function applyTemplate(tpl: CardTemplateDef, silent = false) {
-    if (id !== "new" && !silent && !confirm("Use this design? Your card's pages are replaced by the design's pages, filled with your details. Publish only when you are happy.")) return;
+    if (id !== "new" && !silent && !confirm("Use this design? Your card's pages will be replaced by this design's pages, filled with your details. Tap Save only when you are happy.")) return;
     const data = tpl.key === "ai" ? tpl.data : personalize(tpl.data, own, { keepSamples: !!tpl.brand || !!tpl.keepContent, identityOnly: !!tpl.keepContent });
     setCard((c) => ({
       ...c,
@@ -426,7 +426,7 @@ export function CardEditor({ id }: { id: string }) {
   /** The one Save: publishes the card (first time = it goes live) and opens the card page with its link and QR. */
   async function save() {
               if (!isCloudConfigured()) {
-                setPub({ state: "error", msg: "Cloud not configured yet — edits stay in this browser." });
+                setPub({ state: "error", msg: "Saving is not set up yet. Your changes stay on this device only." });
                 return;
               }
               setPub({ state: "busy" });
@@ -542,10 +542,10 @@ export function CardEditor({ id }: { id: string }) {
           <h1 className="text-lg font-semibold">{loadErr === "offline" ? L("Your card did not load", "आपका card load नहीं हुआ") : L("Card not found", "Card नहीं मिला")}</h1>
           <p className="text-sm text-muted">{loadErr === "offline"
             ? L("Check the internet and try again. Nothing on your card has changed.", "Internet check करके फिर से कोशिश करें। आपके card में कुछ नहीं बदला।")
-            : L("This card is not on your account. Open your own card from My V-Card.", "ये card आपके account में नहीं है। My V-Card से अपना card खोलें।")}</p>
+            : L("This card is not on your account. Open your own card from Card & Website.", "ये card आपके account में नहीं है। Card & Website से अपना card खोलें।")}</p>
           {loadErr === "offline"
             ? <button type="button" onClick={() => { setLoaded(false); setAttempt((n) => n + 1); }} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white">{L("Try again", "फिर से कोशिश करें")}</button>
-            : <Link href="/poster/card" className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white">{L("My V-Card", "मेरा V-Card")}</Link>}
+            : <Link href="/poster/site" className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-5 py-3 text-base font-semibold text-white">Card & Website</Link>}
         </div>
       </div>
     );
@@ -619,7 +619,7 @@ export function CardEditor({ id }: { id: string }) {
           {localSaveError ? <b className="text-danger">{L("Phone storage is full — tap Save now.", "Phone की storage भर गई — अभी Save दबाएँ।")}</b>
             : status === "live" ? <><b className="text-good">{L("Your card is live", "आपका card live है")}</b><span className="block text-xs text-muted">{L("All changes are saved.", "सारे बदलाव save हैं।")}</span></>
             : status === "changed" ? <><b>{L("Changes not saved", "बदलाव save नहीं हुए")}</b><span className="block text-xs text-muted">{L("Tap Save to update your card.", "Card update करने के लिए Save दबाएँ।")}</span></>
-            : status === "draft" ? <><b>{L("Not published yet", "अभी publish नहीं हुआ")}</b><span className="block text-xs text-muted">{L("Tap Save to make your card live.", "Card live करने के लिए Save दबाएँ।")}</span></>
+            : status === "draft" ? <><b>{L("Not live yet", "अभी live नहीं है")}</b><span className="block text-xs text-muted">{L("Tap Save to make your card live.", "Card live करने के लिए Save दबाएँ।")}</span></>
             : <><b>{L("Card is switched off", "Card बंद है")}</b><span className="block text-xs text-muted">{L("Turn it on in More → Card active.", "और → Card active से चालू करें।")}</span></>}
         </p>
         <button type="button" onClick={save} disabled={pub.state === "busy" || (status === "live" && !localSaveError)}
@@ -697,16 +697,16 @@ export function CardEditor({ id }: { id: string }) {
                     <p className="text-[11px] text-muted mt-1">{L("Logo? Choose Square.", "Logo है? Square चुनें।")}</p>
                   </div>
                   <div>
-                    <span className="text-[13px] font-medium mb-1 block text-muted">{L("Banner / cover", "ऊपर की बड़ी photo (banner)")}</span>
+                    <span className="text-[13px] font-medium mb-1 block text-muted">{L("Big photo at the top", "ऊपर की बड़ी photo")}</span>
                     <ImageUpload shape="cover" value={card.coverUrl} onChange={(url) => patch({ coverUrl: url })} />
                   </div>
                 </div>
                 <Field label={L("Full name", "पूरा नाम")}><input className="ed-input" value={card.name} onChange={(e) => patch({ name: e.target.value })} /></Field>
                 <div className="grid @xl:grid-cols-2 gap-3">
-                  <Field label={L("Job title", "पद / काम")}><input className="ed-input" value={card.jobTitle} onChange={(e) => patch({ jobTitle: e.target.value })} /></Field>
-                  <Field label={L("Company", "Business / company")}><input className="ed-input" value={card.company} onChange={(e) => patch({ company: e.target.value })} /></Field>
+                  <Field label={L("Your work (job title)", "आपका काम")}><input className="ed-input" value={card.jobTitle} onChange={(e) => patch({ jobTitle: e.target.value })} /></Field>
+                  <Field label={L("Business name", "Business का नाम")}><input className="ed-input" value={card.company} onChange={(e) => patch({ company: e.target.value })} /></Field>
                 </div>
-                <Field label={<span className="flex items-center gap-1.5">{L("Tagline", "एक line (tagline)")} <Sparkles className="h-3.5 w-3.5 text-ai" /><span className="text-ai text-[11px] mono">AI writer</span></span>}>
+                <Field label={<span className="flex items-center gap-1.5">{L("One line about you", "आपके बारे में एक line")} <Sparkles className="h-3.5 w-3.5 text-ai" /><span className="text-ai text-[11px] mono">AI writer</span></span>}>
                   <AiTextarea
                     value={card.tagline}
                     onChange={(v) => patch({ tagline: v })}
@@ -715,7 +715,7 @@ export function CardEditor({ id }: { id: string }) {
                     company={card.company}
                     minH="min-h-11"
                     rows={1}
-                    placeholder="One punchy line about what you do"
+                    placeholder="One short line about what you do"
                   />
                 </Field>
               </Panel>
@@ -760,7 +760,7 @@ export function CardEditor({ id }: { id: string }) {
                 </div>
               </Panel>
 
-              <Panel title={L("Theme color", "Card का रंग")}>
+              <Panel title={L("Card colour", "Card का रंग")}>
                 <div className="flex flex-wrap gap-2 items-center">
                   {swatches.map((s) => (
                     <button key={s} onClick={() => patch({ themeColor: s, avatarColor: s })}
@@ -768,16 +768,16 @@ export function CardEditor({ id }: { id: string }) {
                       style={{ background: s, boxShadow: card.themeColor === s ? `0 0 0 2px ${s}` : "none" }} aria-label={s} />
                   ))}
                   <label className="flex items-center gap-2 text-sm text-muted ml-1">
-                    Custom
+                    Pick your own
                     <input type="color" value={card.themeColor} onChange={(e) => patch({ themeColor: e.target.value, avatarColor: e.target.value })}
                       className="h-8 w-8 rounded-lg border border-border bg-transparent" />
                   </label>
                 </div>
               </Panel>
 
-              <Panel title="Options">
+              <Panel title="More choices">
                 <Toggle checked={!!card.verified} onChange={(v) => patch({ verified: v })}
-                  icon={<ShieldCheck className="h-4 w-4 text-brand" />} label="Verified badge" hint="Show a verified check next to your name." />
+                  icon={<ShieldCheck className="h-4 w-4 text-brand" />} label="Verified tick" hint="Show a tick mark next to your name." />
               </Panel>
 
               {/* Phone: the card right under the looks, so each tap on a look or a colour shows at once (owner's call,
@@ -801,7 +801,7 @@ export function CardEditor({ id }: { id: string }) {
                   <div key={l.id} id={`ed-link-${l.id}`} {...linksDnd.drop(i)}
                     className={`rounded-lg border p-2.5 space-y-2 ${linksDnd.over === i ? "border-brand border-dashed" : "border-border"}`}>
                     <div className="flex gap-2 items-center">
-                      <span {...linksDnd.handle(i)} className="cursor-grab active:cursor-grabbing shrink-0" title="Drag to reorder">
+                      <span {...linksDnd.handle(i)} className="cursor-grab active:cursor-grabbing shrink-0" title="Drag to move">
                         <GripVertical className="h-4 w-4 text-faint" />
                       </span>
                       <select className="ed-input !w-32" value={l.type}
@@ -828,7 +828,7 @@ export function CardEditor({ id }: { id: string }) {
                     )}
                   </div>
                 ))}
-                {card.links.length === 0 && <p className="text-sm text-faint">No links yet.</p>}
+                {card.links.length === 0 && <p className="text-sm text-faint">No buttons yet.</p>}
               </div>
             </Panel>
           )}
@@ -836,7 +836,7 @@ export function CardEditor({ id }: { id: string }) {
           {/* ---- SETTINGS ---- */}
           {tab === "settings" && (
             <div className="space-y-6">
-              <Panel title={L("Card link & domain", "Card का link और domain")}>
+              <Panel title={L("Card link & web address", "Card का link और web address")}>
                 <LinkField
                   value={card.username}
                   cardId={card.id}
@@ -848,14 +848,14 @@ export function CardEditor({ id }: { id: string }) {
                 />
                 {brand?.baseDomain ? (
                   <p className="text-xs text-faint">
-                    Your card lives at <span className="mono">{publicHost}</span> — it goes live on Publish, nothing else to set up.
+                    Your card is at <span className="mono">{publicHost}</span>. It goes live when you tap Save. Nothing else to do.
                   </p>
                 ) : (
                   <DomainField card={card} onChange={(customDomain) => patch({ customDomain })} />
                 )}
               </Panel>
 
-              <Panel title={L("Google search (SEO)", "Google search (SEO)")}>
+              <Panel title={L("Show on Google", "Google पर दिखें")}>
                 <SeoPanel card={card} onChange={patch} address={publicHost} />
               </Panel>
 
@@ -886,8 +886,8 @@ export function CardEditor({ id }: { id: string }) {
                     <option value="gu">ગુજરાતી (Gujarati)</option>
                   </select>
                 </Field>
-                <Toggle checked={!!card.locked} onChange={(v) => patch({ locked: v })} label="Card lock" hint="Require a password to view this card." />
-                <Toggle checked={card.active} onChange={(v) => patch({ active: v })} label="Card active" hint="Turn off to take the card offline." />
+                <Toggle checked={!!card.locked} onChange={(v) => patch({ locked: v })} label="Card lock" hint="People need a password to see this card." />
+                <Toggle checked={card.active} onChange={(v) => patch({ active: v })} label="Card active" hint="Turn off to hide the card from everyone." />
                 {/* A "both" card: the owner's own business and Shubhora, kept apart. The Shubhora page normally
                     stays off the tab row, so their own customers never land on it — it has its own link. */}
                 {hasShubhoraPage(card) && (
@@ -1079,7 +1079,7 @@ function LinkField({ value, cardId, personName, businessName, liveValue, host, o
   }
 
   return (
-    <Field label={<span>Your card link <span className="font-normal text-faint">— select any one</span></span>}>
+    <Field label={<span>Your card link <span className="font-normal text-faint">— pick any one</span></span>}>
       {opts.name && opts.business && (
         <div className="mb-2 grid grid-cols-2 gap-2">
           {([["business", opts.business!, "Business name"], ["name", opts.name!, "Your name"]] as const).map(([k, slug, label]) => {
@@ -1115,10 +1115,10 @@ function LinkField({ value, cardId, personName, businessName, liveValue, host, o
         <p className={`text-xs flex-1 ${bad ? "text-danger" : ok ? "text-good" : "text-faint"}`}>
           {bad ? check.reason
             : isDefaultUsername(value) && nameSlug(personName ?? "")
-            ? `On Save this becomes “${nameSlug(personName ?? "")}” automatically (from your name) — or type your own link here.`
+            ? `When you tap Save, this becomes “${nameSlug(personName ?? "")}” (from your name). Or type your own link here.`
             : ok && liveValue && value === liveValue ? `${url} is your live link.`
-            : ok ? `${url} is free — tap Save to use it.`
-            : "Letters, numbers and hyphens. Change it any time; the old link stops working."}
+            : ok ? `${url} is free. Tap Save to use it.`
+            : "Use letters, numbers and hyphens (-). You can change it any time, but the old link will stop working."}
         </p>
         <button type="button" onClick={copy}
           className="shrink-0 inline-flex items-center gap-1 text-xs font-medium text-muted hover:text-ink">
@@ -1145,7 +1145,7 @@ function DomainField({ card, onChange }: { card: Card; onChange: (v: string) => 
     fetchCardDomain(card.id).then((d) => { setInitial(d?.domain ?? (card.customDomain || undefined)); setReady(true); }).catch(() => setReady(true));
   }, [card.id, card.customDomain]);
   return (
-    <Field label="Your own domain">
+    <Field label="Your own web address">
       {ready ? <DomainConnect cardId={card.id} username={card.username} initialDomain={initial} onChange={onChange} /> : <LoaderCircle className="h-4 w-4 animate-spin text-muted" />}
     </Field>
   );

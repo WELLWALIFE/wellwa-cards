@@ -7,8 +7,11 @@ import { makeVariants } from "./template-variants";
 import data from "./trade-templates/data.json";
 
 export const TRADE_TEMPLATES: CardTemplateDef[] = allTradeTemplates(data as unknown as TradeTemplateData);
-/** The restaurant / salon pilot of 12 Oct 2026 (hand-made; superseded by the generated ones as they land). */
-const PILOT = makeVariants(BUILT_IN_TEMPLATES).map((t) => ({ ...t, draft: true }));
+/** The restaurant / salon pilot of 12 Oct 2026 (hand-made; superseded by the generated ones as they land). A pilot variant whose
+ *  key a generated template now carries is dropped: `salon-studio-collage` existed twice and findTemplate() served the pilot's,
+ *  so the released design could never be opened or applied by its key (15 Oct 2026 sweep). */
+const TRADE_KEYS = new Set(TRADE_TEMPLATES.map((t) => t.key));
+const PILOT = makeVariants(BUILT_IN_TEMPLATES).filter((t) => !TRADE_KEYS.has(t.key)).map((t) => ({ ...t, draft: true }));
 /** A trade with its own five released designs no longer lists the older hand-written template of that trade beside them:
  *  those carry the first design's drawn pictures, and a sixth card of the old look is what made the new ones read as
  *  "the same as before" (owner, 14 Oct 2026). Brand templates and the blank one stay. The old key still works for a

@@ -979,7 +979,7 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
               </span>
               <span className="min-w-0 flex-1">
                 <span className="block text-sm font-medium truncate">{block.fileLabel}</span>
-                <span className="block text-xs text-muted">{block.fileUrl ? t(block.hint || "Tap to download") : "File attaches after upload"}</span>
+                <span className="block text-xs text-muted">{block.fileUrl ? t(block.hint || "Tap to download") : "File coming soon"}</span>
               </span>
               <Download className="h-4 w-4 text-muted shrink-0" />
             </span>
@@ -1705,8 +1705,8 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
             <span className="mx-auto grid h-12 w-12 place-items-center rounded-full text-white" style={{ background: theme }}>
               <Check className="h-6 w-6" />
             </span>
-            <p className="mt-3 font-semibold">You&apos;re in! 🎉</p>
-            <p className="mt-1 text-sm text-muted">We&apos;ll share your offer on WhatsApp or email shortly.</p>
+            <p className="mt-3 font-semibold">Thank you! 🎉</p>
+            <p className="mt-1 text-sm text-muted">We will send your offer on WhatsApp or email soon.</p>
           </div>
         ) : (
           <form onSubmit={submit} className="space-y-3">
@@ -1777,13 +1777,13 @@ export function AppointmentBlock({ block, username, theme }: {
                   <Check className="h-6 w-6" />
                 </span>
                 <p className="mt-3 font-semibold">Request sent! 🎉</p>
-                <p className="mt-1 text-sm text-muted">We&apos;ll confirm your slot on WhatsApp shortly.</p>
+                <p className="mt-1 text-sm text-muted">We will confirm your time on WhatsApp soon.</p>
                 <button onClick={() => setOpen(false)} className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface2">Close</button>
               </div>
             ) : (
               <form onSubmit={submit} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Book a free demo</h3>
+                  <h3 className="font-semibold">Book a time</h3>
                   <button type="button" onClick={() => setOpen(false)} className="text-muted hover:text-ink"><X className="h-4 w-4" /></button>
                 </div>
                 <input required placeholder="Your name" className="apt-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
@@ -1796,7 +1796,7 @@ export function AppointmentBlock({ block, username, theme }: {
                   </select>
                 </div>
                 <button type="submit" disabled={state === "busy"} className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ background: theme }}>
-                  {state === "busy" ? "Sending…" : "Request slot"}
+                  {state === "busy" ? "Sending…" : "Send request"}
                 </button>
                 <style>{`.apt-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:.6rem .8rem;font-size:.875rem;outline:none;color:var(--ink)}.apt-input:focus{border-color:${theme}}`}</style>
               </form>

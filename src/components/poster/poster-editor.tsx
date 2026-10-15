@@ -35,13 +35,13 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
     if (which === "day") {
       const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "day", profile: profile.id, for_date: date, overrides: { title: dTitle.trim(), custom: dCustom.trim(), accent: dAccent } } });
       setBusy(false);
-      if (!r.ok) { setErr(r.data.error || "Could not save."); return; }
+      if (!r.ok) { setErr(r.data.error || (en ? "Could not save. Please try again." : "Save नहीं हुआ। फिर से कोशिश करें।")); return; }
       onSaved();
       return;
     }
     const r = await api<{ profile?: Profile; error?: string }>("/api/poster/profiles", { method: "POST", json: { ...profile, name, tagline, phone, lang: plang, layout: l } });
     setBusy(false);
-    if (!r.ok) { setErr(r.data.error || "Could not save."); return; }
+    if (!r.ok) { setErr(r.data.error || (en ? "Could not save. Please try again." : "Save नहीं हुआ। फिर से कोशिश करें।")); return; }
     onSaved();
   }
   const colourRow = (value: string, onPick: (c: string) => void, usual: string) => (
@@ -53,7 +53,7 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
       </div>
     </div>
   );
-  const shows = [["showName", en ? "My name" : "मेरा नाम"], ["showLine", en ? "Designation" : "पद / टैगलाइन"], ["showPhone", en ? "Phone" : "फ़ोन"], ["showPhoto", en ? "My photo" : "मेरी फ़ोटो"]] as const;
+  const shows = [["showName", en ? "My name" : "मेरा नाम"], ["showLine", en ? "Short line under my name" : "नाम के नीचे की छोटी लाइन"], ["showPhone", en ? "Phone" : "फ़ोन"], ["showPhoto", en ? "My photo" : "मेरी फ़ोटो"]] as const;
   const settings = (
     <div className="space-y-3">
       <div className="grid grid-cols-2 gap-2">
@@ -88,12 +88,12 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
         <div className="mb-3 flex items-center justify-between"><h3 className="text-base font-bold">✏️ {en ? "Edit poster" : "पोस्टर बदलें"}</h3><button type="button" onClick={onClose} className="rounded-lg p-1 text-muted" aria-label="Close"><X className="h-5 w-5" /></button></div>
         {canDay && (
           <div className="space-y-3">
-            <p className="text-xs text-muted">{en ? "Only today's poster changes. Tomorrow goes back to your usual poster." : "सिर्फ़ आज का पोस्टर बदलेगा। कल का पोस्टर पहले जैसा रहेगा।"}</p>
-            <Row label={en ? "Heading" : "शीर्षक"}><input value={dTitle} onChange={(e) => setDTitle(e.target.value.slice(0, 60))} placeholder={en ? "e.g. Grand Opening Offer" : "जैसे: ग्रैंड ओपनिंग ऑफ़र"} className={inputCls} /></Row>
+            <p className="text-xs text-muted">{en ? "Only this poster changes. Other days go back to your usual poster." : "सिर्फ़ यही पोस्टर बदलेगा। बाक़ी दिन पहले जैसे रहेंगे।"}</p>
+            <Row label={en ? "Heading" : "हेडिंग"}><input value={dTitle} onChange={(e) => setDTitle(e.target.value.slice(0, 60))} placeholder={en ? "e.g. Grand Opening Offer" : "जैसे: ग्रैंड ओपनिंग ऑफ़र"} className={inputCls} /></Row>
             <Row label={en ? "One more line (offer, timing)" : "एक और लाइन (ऑफ़र, समय)"}><input value={dCustom} onChange={(e) => setDCustom(e.target.value.slice(0, 60))} placeholder={en ? "e.g. Flat 20% off today" : "जैसे: आज 20% छूट"} className={inputCls} /></Row>
             {colourRow(dAccent, setDAccent, "")}
             {err && <p className="text-xs text-danger">{err}</p>}
-            <button type="button" disabled={busy} onClick={() => save("day")} className="grad-brand w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : en ? "Apply" : "लागू करें"}</button>
+            <button type="button" disabled={busy} onClick={() => save("day")} className="grad-brand w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : en ? "Change this poster" : "यह poster बदलें"}</button>
             <details className="rounded-xl border border-border p-3">
               <summary className="cursor-pointer text-sm font-semibold">{en ? "More settings (every poster)" : "और सेटिंग (हर पोस्टर के लिए)"}</summary>
               <div className="mt-3">{settings}</div>

@@ -77,7 +77,7 @@ function SocialTabInner() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between"><h1 className="text-lg font-bold">{t.socialTitle2}</h1><Link href="/poster/report" className="text-xs rounded-full border border-border px-2.5 py-1 font-semibold">📊 Report</Link></div>
+      <div className="flex items-center justify-between"><h1 className="text-lg font-bold">{t.socialTitle2}</h1><Link href="/poster/report" className="text-xs rounded-full border border-border px-2.5 py-1 font-semibold">📊 {en ? "Report" : "रिपोर्ट"}</Link></div>
       <Guide hi="एक बार अपना Facebook Page / Instagram / WhatsApp जोड़ दें — फिर रोज़ का poster सुबह 4 बजे अपने-आप post होगा।" en="Connect your Facebook Page / Instagram / WhatsApp once — then the daily poster posts itself at 4 AM." />
       <div className="grid grid-cols-5 rounded-xl border border-border p-1 bg-surface text-xs font-semibold">
         {TABS.map((k) => (
@@ -96,13 +96,13 @@ function SocialTabInner() {
           <p className="text-sm font-semibold">{t.waStatusTab}</p>
           <p className="text-xs text-muted">{t.waStatusHint}</p>
           {trial?.free && (trial.active
-            ? <p className="rounded-lg bg-good/10 px-3 py-2 text-xs font-semibold text-good">{en ? `Free for 14 days on the free plan${trial.until ? ` — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left` : ""}: the AI poster + voice video on your Status every morning.` : `Free plan में भी 14 दिन फ़्री${trial.until ? ` — ${trial.days_left} दिन बाकी` : ""}: रोज़ सुबह AI poster + voice video आपके Status पर।`}</p>
+            ? <p className="rounded-lg bg-good/10 px-3 py-2 text-xs font-semibold text-good">{en ? `Free for 14 days on the free plan${trial.until ? ` — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left` : ""}. Every morning, an AI poster and a voice video go on your Status.` : `Free plan में भी 14 दिन फ़्री${trial.until ? ` — ${trial.days_left} दिन बाकी` : ""}। रोज़ सुबह AI का poster और आवाज़ वाली video आपके Status पर लगेगी।`}</p>
             : <Link href="/poster/plan" className="block rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs font-semibold">{en ? "Your 14 free days of WhatsApp Status are over — continue with the Growth plan →" : "आपके 14 फ़्री दिन पूरे हुए — रोज़ का Status जारी रखने के लिए Growth plan लें →"}</Link>)}
           <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
             <span className="text-sm font-medium">{t.waStatusOn}</span>
             <input type="checkbox" className="h-5 w-5" checked={!!mine.find((a) => a.auto_post)} onChange={async (e) => { await api("/api/social/accounts", { method: "PATCH", json: { action: "wa_enable", value: e.target.checked } }); invalidateSocialAccounts(); load(); }} />
           </label>
-          <Link href="/poster/d/whatsapp" className="block text-sm text-brand-ink">WhatsApp AI connect / status →</Link>
+          <Link href="/poster/d/whatsapp" className="block text-sm text-brand-ink">{en ? "Connect WhatsApp AI / see how it is doing →" : "WhatsApp AI जोड़ें / हाल देखें →"}</Link>
         </section>
       )}
       {(tab === "facebook" || tab === "instagram") && (list === null ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : (
@@ -129,7 +129,7 @@ function SocialTabInner() {
                   <p className="text-[11px] text-muted">{active.provider === "instagram" ? `@${active.username}` : t.fbPage}{active.status === "reconnect" ? ` · ${t.reconnect}` : ""}</p>
                 </div>
                 <button type="button" onClick={connect} className="text-xs text-brand-ink font-medium">{t.changeAcct}</button>
-                <button type="button" onClick={() => remove(active.id)} className="text-muted p-1" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => remove(active.id)} className="text-muted p-1" aria-label={en ? "Remove" : "हटाएँ"}><Trash2 className="h-4 w-4" /></button>
               </div>
               <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
                 <span><span className="text-sm font-medium block">{t.autoPost}</span><span className="text-[11px] text-muted">{t.autoPostHint}</span></span>
@@ -138,13 +138,13 @@ function SocialTabInner() {
               {active.provider !== "whatsapp" && (
                 <div className="space-y-1.5 rounded-lg border border-brand/40 bg-brand-soft/30 p-3">
                   <label className="flex items-center justify-between">
-                    <span><span className="block text-sm font-semibold">Weekly content plan</span><span className="text-[11px] text-muted">Business posts only — greetings stay on WhatsApp Status</span></span>
+                    <span><span className="block text-sm font-semibold">{en ? "Weekly posting plan" : "हफ़्ते का posting plan"}</span><span className="text-[11px] text-muted">{en ? "Only business posts here. Greetings go on WhatsApp Status." : "यहाँ सिर्फ़ business के posts। शुभकामनाएँ WhatsApp Status पर जाएँगी।"}</span></span>
                     <input type="checkbox" className="h-5 w-5 accent-[var(--brand)]" checked={active.plan_on !== false} onChange={async (e) => { await api("/api/social/accounts", { method: "PATCH", json: { id: active.id, action: "plan_on", value: e.target.checked } }); invalidateSocialAccounts(); load(); }} />
                   </label>
                   <ul className="space-y-0.5 text-[11px] text-muted">
-                    <li>• <b>Every day</b> — Story: your product poster as a short video with music</li>
-                    <li>• <b>Mon, Wed, Fri, Sun</b> — post: product poster with caption and your offer</li>
-                    <li>• <b>Tue, Thu, Sat</b> — Reel: your own ad if you made one this week, otherwise a photo reel</li>
+                    <li>• <b>{en ? "Every day" : "रोज़"}</b> — {en ? "Story: your product poster as a short video with music" : "Story: आपके product का poster, music के साथ छोटी video बनकर"}</li>
+                    <li>• <b>{en ? "Mon, Wed, Fri, Sun" : "सोम, बुध, शुक्र, रवि"}</b> — {en ? "Post: your product poster with a few lines of text and your offer" : "Post: आपके product का poster, कुछ शब्दों और आपके ऑफ़र के साथ"}</li>
+                    <li>• <b>{en ? "Tue, Thu, Sat" : "मंगल, गुरु, शनि"}</b> — {en ? "Reel: your own video ad if you made one this week, or else a reel of your photos" : "Reel: इस हफ़्ते बनाई आपकी अपनी video ad, नहीं तो आपकी photos की reel"}</li>
                   </ul>
                 </div>
               )}
@@ -153,7 +153,7 @@ function SocialTabInner() {
               </button>
               {active.provider === "facebook" && (
                 <div className="rounded-lg border border-border p-3 space-y-2">
-                  <button type="button" onClick={() => setBoost({ ...boost, open: !boost.open })} className="w-full text-left text-sm font-semibold">🚀 {t.tabMore === "और" ? "Boost — Facebook/Instagram पर paid ad (PAUSED बनेगा, आप Start करें)" : "Boost — paid FB/IG ad (created PAUSED, you press Start)"}</button>
+                  <button type="button" onClick={() => setBoost({ ...boost, open: !boost.open })} className="w-full text-left text-sm font-semibold">🚀 {t.tabMore === "और" ? "Boost — Facebook / Instagram पर ad चलवाएँ (पहले बनेगी पर चलेगी नहीं, आप Start दबाएँ)" : "Boost — pay to show this on Facebook / Instagram (it is made but does not run until you press Start)"}</button>
                   {boost.open && (
                     <div className="space-y-2 text-sm">
                       <label className="flex items-center justify-between">₹/{t.tabMore === "और" ? "दिन" : "day"}<input type="number" min={100} max={5000} value={boost.daily} onChange={(e) => setBoost({ ...boost, daily: Number(e.target.value) })} className="w-24 rounded-lg border border-border px-2 py-1 text-right" /></label>
@@ -164,8 +164,8 @@ function SocialTabInner() {
                         const td = p ? await api<{ poster?: Poster }>(`/api/poster/today?profile=${p.id}`) : null;
                         if (!td?.data.poster) { setBoost({ ...boost, msg: t.error }); setBusy(""); return; }
                         const r = await api<{ ok?: boolean; managerUrl?: string; error?: string }>("/api/social/boost", { method: "POST", json: { poster_id: td.data.poster.id, daily_rupees: boost.daily, days: boost.days } });
-                        setBoost({ ...boost, msg: r.ok ? (t.tabMore === "और" ? "✅ Ad PAUSED बन गया — Ads Manager में Start करें" : "✅ Ad created PAUSED — start it in Ads Manager") : (r.data.error ?? t.error), url: r.data.managerUrl }); setBusy("");
-                      }} className="w-full rounded-lg bg-[#1877F2] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy === "boost" ? "…" : (t.tabMore === "और" ? "PAUSED ad बनाओ (₹0 अभी)" : "Create PAUSED ad (₹0 now)")}</button>
+                        setBoost({ ...boost, msg: r.ok ? (t.tabMore === "और" ? "✅ Ad बन गई, अभी चल नहीं रही — Ads Manager में Start दबाएँ" : "✅ Ad made, but not running yet. Press Start in Ads Manager.") : (r.data.error ?? t.error), url: r.data.managerUrl }); setBusy("");
+                      }} className="w-full rounded-lg bg-[#1877F2] px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy === "boost" ? "…" : (t.tabMore === "और" ? "Ad बनाओ — अभी शुरू नहीं होगी (₹0 अभी)" : "Make the ad (it will not start yet, ₹0 now)")}</button>
                       {boost.msg && <p className="text-xs">{boost.msg} {boost.url && <a href={boost.url} target="_blank" rel="noreferrer" className="text-brand-ink underline">Ads Manager →</a>}</p>}
                     </div>
                   )}
@@ -181,7 +181,7 @@ function SocialTabInner() {
                 {busy === "connect" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {tab === "facebook" ? t.connectFb : t.connectIg}
               </button>
               {!configured && <p className="text-[11px] text-faint">{t.socialSoon}</p>}
-              <Link href={`/poster/guide/${tab}`} className="block text-xs text-brand-ink">{tab === "facebook" ? (t.fbTab + " Page " + (t.tabMore === "और" ? "कैसे बनाएँ?" : "— how to create?")) : (t.tabMore === "और" ? "Instagram Professional कैसे करें?" : "How to make Instagram professional?")} →</Link>
+              <Link href={`/poster/guide/${tab}`} className="block text-xs text-brand-ink">{tab === "facebook" ? (t.fbTab + " Page " + (t.tabMore === "और" ? "कैसे बनाएँ?" : "— how to make one?")) : (t.tabMore === "और" ? "Instagram को Professional account कैसे बनाएँ?" : "How to switch Instagram to a Professional account?")} →</Link>
             </section>
           )}
           {msg && <p className="text-sm text-ink rounded-lg bg-surface2 px-3 py-2">{msg}</p>}

@@ -38,7 +38,7 @@ export function useJourney(refreshKey?: string) {
       const s: Step[] = [
         // Once done, "About you" is where name / mobile / photo are changed: Save there updates every place and comes back here.
         { key: "you", title: "About you", sub: "Your name, mobile and photo", href: (meta.display_name || meta.full_name) && profile?.phone ? "/poster/onboard?step=you&back=/poster/setup" : "/poster/onboard?step=you", premium: false, done: !!((meta.display_name || meta.full_name) && profile?.phone) },
-        { key: "business", title: "Your business", sub: "Have a website? Its link fills name, logo and products; else just trade, name and city", href: "/poster/onboard?step=site", premium: false, done: !!(meta.business?.category || meta.business?.name) },
+        { key: "business", title: "Your business", sub: "Have a website? Its link fills in your name, logo and products. If not, just tell us your kind of work, name and city", href: "/poster/onboard?step=site", premium: false, done: !!(meta.business?.category || meta.business?.name) },
         { key: "products", title: "Products or services", sub: "Photos and prices — shown on your V-Card, website and posters", href: cards.some((c) => !isThinCard(c)) ? "/poster/products" : screenHref("products"), premium: false, done: (products?.data.products?.length ?? 0) > 0 },
         // Done only when a real card exists — not an untouched "Your Name" draft or an empty one-tap card.
         { key: "card", title: "Your V-Card", sub: "Your digital visiting card — the AI makes it from your details", href: "/poster/site", premium: false, done: cards.some((c) => !isThinCard(c)) },
@@ -46,7 +46,7 @@ export function useJourney(refreshKey?: string) {
         { key: "website", title: "Your website", sub: "Turns on with your V-Card — have a look", href: "/poster/site", premium: false, done: cards.some((c) => !!c.site?.enabled) },
         { key: "poster", title: "Daily posters", sub: "A new poster with your name every morning", href: "/poster", premium: false, done: !!profile },
         { key: "social", title: "Auto-post to Facebook & Instagram", sub: "Your posters post themselves", href: "/poster/social", premium: true, done: !!(soc?.data.accounts ?? []).find((a) => a.provider === "facebook" && a.is_active) },
-        { key: "whatsapp", title: "WhatsApp AI assistant", sub: "Answers customers 24×7 and saves every lead", href: "/poster/leads", premium: true, done: wa?.state === "connected" },
+        { key: "whatsapp", title: "WhatsApp AI assistant", sub: "Answers your customers day and night and saves their details", href: "/poster/leads", premium: true, done: wa?.state === "connected" },
       ];
       setSteps(s);
       setResumeHref(isScreenKey(meta.setup_pos) && !cards.some((c) => !isThinCard(c)) ? screenHref(meta.setup_pos) : null);

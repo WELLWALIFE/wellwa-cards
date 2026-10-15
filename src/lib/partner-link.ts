@@ -6,12 +6,13 @@ import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 const URL_ = () => process.env.PARTNER_LINK_IN_URL || "http://127.0.0.1:3002/partners/api/link-in";
 export const partnerLinked = () => !!process.env.LINK_SECRET;
 
-export type PartnerSummary = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; teamToday?: number; directs: number; walletPaise: number; renewalsDue: number };
+export type PartnerSummary = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; teamToday?: number; directs: number; walletPaise: number | null; renewalsDue: number };
 
 export async function partnerCall<T = Record<string, unknown>>(action: string, body: Record<string, unknown>, timeoutMs = 8000): Promise<{ ok: boolean; status: number; data: T & { error?: string } }> {
   const secret = process.env.LINK_SECRET ?? "";
   if (!secret) return { ok: false, status: 503, data: { error: "partner panel not linked" } as T & { error?: string } };
-  const raw = JSON.stringify({ action, ...body, ts: Date.now() });
+  // `action` and `ts` come last on purpose: a caller that spreads user-supplied fields into `body` can never replace them.
+  const raw = JSON.stringify({ ...body, action, ts: Date.now() });
   const sig = crypto.createHmac("sha256", secret).update(raw).digest("hex");
   try {
     const r = await fetch(URL_(), { method: "POST", headers: { "content-type": "application/json", "x-link-signature": sig }, body: raw, cache: "no-store", signal: AbortSignal.timeout(timeoutMs) });

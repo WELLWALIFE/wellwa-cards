@@ -8,6 +8,8 @@ import { rateLimited } from "@/lib/api-security";
 import { geminiComplete } from "@/lib/gemini";
 
 export const maxDuration = 60;
+const MAX_BODY = 50_000;               // bytes: a pasted list is at most 6000 characters
+const MAX_PHOTO = 15 * 1024 * 1024;    // bytes of a price-list photo that is read
 type Item = { name: string; price: string; category: string };
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim().slice(0, n);
 const money = (v: unknown) => S(v, 30).replace(/^(?:₹|rs\.?|inr)\s*/i, "").trim();
@@ -24,8 +26,9 @@ export async function POST(request: Request) {
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const key = process.env.GEMINI_API_KEY;
   if (!key) return NextResponse.json({ error: "This is not available right now. Please add them one by one." }, { status: 503 });
+  if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return NextResponse.json({ error: "That list is too long. Please add a shorter one." }, { status: 413 });
   if (rateLimited(`product-import:${me.id}`, 20, 60 * 60_000)) return NextResponse.json({ error: "Too many tries in an hour. Please wait a little." }, { status: 429 });
-  const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const b = ((await request.json().catch(() => null)) ?? {}) as Record<string, unknown>;
   const mode = b.mode === "photo" ? "photo" : b.mode === "suggest" ? "suggest" : "text";
   try {
     let prompt = "", parts: Record<string, unknown>[] = [];
@@ -38,7 +41,11 @@ export async function POST(request: Request) {
       if (!isOwnMedia(url, me.id)) return NextResponse.json({ error: "That photo could not be used. Please upload it again." }, { status: 400 });
       const r = await fetch(url, { signal: AbortSignal.timeout(15_000) });
       if (!r.ok) return NextResponse.json({ error: "The photo could not be opened. Please upload it again." }, { status: 400 });
-      const small = await sharp(Buffer.from(await r.arrayBuffer()), { failOn: "none" }).rotate().resize({ width: 1600, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
+      // A price-list photo is a few MB at most (the page shrinks it before it goes up): anything much bigger is not read.
+      if (Number(r.headers.get("content-length") || 0) > MAX_PHOTO) return NextResponse.json({ error: "That photo is too big. Please take it again, a little smaller." }, { status: 413 });
+      const raw = Buffer.from(await r.arrayBuffer());
+      if (raw.length > MAX_PHOTO) return NextResponse.json({ error: "That photo is too big. Please take it again, a little smaller." }, { status: 413 });
+      const small = await sharp(raw, { failOn: "none", limitInputPixels: 80_000_000 }).rotate().resize({ width: 1600, withoutEnlargement: true }).jpeg({ quality: 82 }).toBuffer();
       parts = [{ inlineData: { mimeType: "image/jpeg", data: small.toString("base64") } }];
       prompt = `This is a photo of a price list, menu, rate card or catalogue of an Indian shop. Read every item on it. ${RULES}`;
     } else {

@@ -34,7 +34,7 @@ export function CardRenewButton({ className, children, en = true, onDone }: {
       const o = await api<Order>("/api/billing/order", { method: "POST", json: { plan: "card" } });
       if (o.status === 401) { router.push(`/login?next=${encodeURIComponent("/poster/plan?renew=card")}`); return; }
       if (!o.ok || o.data.error) throw new Error(o.data.error || (en ? "Could not start the payment." : "Payment शुरू नहीं हुआ।"));
-      if (o.data.demo) { setState("error"); setMsg("Payments are not live on this environment."); return; }
+      if (o.data.demo) { setState("error"); setMsg(en ? "Payment is not switched on yet." : "Payment अभी चालू नहीं है।"); return; }
       if (!(await loadScript("https://checkout.razorpay.com/v1/checkout.js")) || !window.Razorpay) {
         setState("error"); setMsg(en ? "Could not load the payment page." : "Payment page नहीं खुला।"); return;
       }
@@ -52,13 +52,13 @@ export function CardRenewButton({ className, children, en = true, onDone }: {
             onDone?.(until);
           } else {
             setState("error");
-            setMsg(en ? "We could not confirm the payment. If money was deducted, contact support with the payment id." : "Payment confirm नहीं हुआ। पैसे कटे हों तो payment id के साथ support को बताएँ।");
+            setMsg(en ? "We could not confirm your payment. If money was taken from your account, please tell support and share the payment id." : "Payment confirm नहीं हुआ। पैसे कटे हों तो payment id के साथ support को बताएँ।");
           }
         },
         modal: { ondismiss: () => setState("idle") },
       }).open();
       setState("idle");
-    } catch (e) { setState("error"); setMsg(e instanceof Error ? e.message : "Something went wrong."); }
+    } catch (e) { setState("error"); setMsg(e instanceof Error ? e.message : (en ? "Something went wrong. Please try again." : "कुछ गड़बड़ हुई। फिर से कोशिश करें।")); }
   }
 
   if (state === "done") return <p className="inline-flex items-center gap-1.5 text-sm font-semibold text-good"><Check className="h-4 w-4 shrink-0" /> {msg}</p>;

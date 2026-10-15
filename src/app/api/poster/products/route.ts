@@ -2,6 +2,8 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser, restAsService } from "@/lib/poster-server";
 import { isOwnMedia } from "@/lib/card-inputs";
+import { rateLimited } from "@/lib/api-security";
+const MAX_BODY = 100_000;   // bytes: a product (name, lines, up to 6 photo addresses) is a few KB
 const UUID = /^[0-9a-f-]{36}$/i;
 const VIEWS = ["in_use", "front", "three_quarter", "back", "output_closeup", "installed", "packaging", "generated", "other"];
 /**
@@ -38,6 +40,9 @@ const money = (v: unknown) => String(v ?? "").trim().replace(/^(?:₹|rs\.?|inr)
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
+  if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return NextResponse.json({ error: "That is too big to save." }, { status: 413 });
+  // Generous (a switch, a price, a photo and "Save and add another" all come through here), only to stop a page that loops.
+  if (rateLimited(`product-save:${me.id}`, 600, 60 * 60_000)) return NextResponse.json({ error: "Too many saves in an hour. Please wait a little." }, { status: 429 });
   const raw = await request.json().catch(() => ({}));
   const b: Record<string, unknown> = raw && typeof raw === "object" && !Array.isArray(raw) ? raw : {};
   const has = (k: string) => Object.prototype.hasOwnProperty.call(b, k) && b[k] !== undefined;

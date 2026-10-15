@@ -18,7 +18,24 @@ const SOCIAL: { re: RegExp; key: "instagram" | "facebook" | "youtube"; label: st
   { re: /(^|\.)(facebook\.com|fb\.com|fb\.me)$/i, key: "facebook", label: "Facebook" },
   { re: /(^|\.)(youtube\.com|youtu\.be)$/i, key: "youtube", label: "YouTube" },
 ];
-const MAPS = /(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl)$/i;
+const MAPS = /(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+
+/** Does the text look like an email address ("name@gmail.com")? An email is not a website, and must never be looked up as a name. */
+export const looksLikeEmail = (raw: string): boolean => /\S+@\S+/.test(raw ?? "");
+
+const COUNT = (s: string, ch: string) => s.split(ch).length - 1;
+/** The link without what the sentence around it added: quotes and brackets that wrapped it, a full stop or comma after it. A closing bracket
+ *  that has its own opening one inside the link belongs to the link (wikipedia.org/wiki/Foo_(bar)) and stays. */
+function trimAround(found: string): string {
+  let s = found.replace(/^[(\[{<"'‘“]+/, "");
+  for (;;) {
+    const c = s.slice(-1);
+    if (!c || !/[.,;:!?)\]}>"'’”]/.test(c)) return s;
+    const open = c === ")" ? "(" : c === "]" ? "[" : c === "}" ? "{" : "";
+    if (open && COUNT(s, open) >= COUNT(s, c)) return s;   // balanced: part of the address
+    s = s.slice(0, -1);
+  }
+}
 
 /** "sharmasweets.com", "https://sharmasweets.com/", "Check my site: www.sharmasweets.com 🙏" → https://sharmasweets.com.
  *  "" when nothing in it looks like an address. */
@@ -26,11 +43,15 @@ export function cleanSiteUrl(raw: string): string {
   const s = (raw ?? "").trim();
   if (!s) return "";
   // Text pasted from WhatsApp around the link: keep the one token that has a dot and no spaces.
-  const token = s.split(/\s+/).find((t) => /^[a-z]+:\/\/\S+$/i.test(t) || (/\./.test(t) && !/^[\d.+-]+$/.test(t))) ?? s;
+  const found = s.split(/\s+/).find((t) => /^[a-z]+:\/\/\S+$/i.test(t) || (/\./.test(t) && !/^[\d.+-]+$/.test(t))) ?? s;
+  // A full stop, comma or bracket that ended the sentence is not part of the address ("see sharmasweets.com." was "not a website").
+  const token = trimAround(found);
   const withScheme = /^[a-z]+:\/\//i.test(token) ? token : `https://${token}`;
   try {
     const u = new URL(withScheme);
     if (!/^https?:$/.test(u.protocol) || !u.hostname.includes(".")) return "";
+    // "name@gmail.com" typed as the website would read as the site gmail.com with a user name: an email is not a website.
+    if (u.username || u.password) return "";
     u.hash = "";
     let out = u.toString();
     if (u.pathname === "/" && !u.search) out = out.replace(/\/$/, "");

@@ -5,9 +5,9 @@ import type { AdGoal, AdTargeting } from "@/lib/ads-server";
 export const AD_BUDGET = { minDaily: 100, maxDaily: 10000, defaultDaily: 200, maxDays: 30 } as const;
 
 export const GOALS: { key: AdGoal; en: string; hi: string; sub: string; subHi: string }[] = [
-  { key: "whatsapp", en: "WhatsApp messages", hi: "WhatsApp message", sub: "The button opens a WhatsApp chat with you — best for shops, services, agents", subHi: "Button se seedha aapka WhatsApp khulega — dukaan, service, agent ke liye sabse achha" },
-  { key: "calls", en: "Phone calls", hi: "Phone call", sub: "The button calls your number — for urgent services (doctor, repair, taxi)", subHi: "Button se call lagega — turant wali services ke liye (doctor, repair, taxi)" },
-  { key: "website", en: "Website / card visits", hi: "Website / card visit", sub: "The button opens your card or website — products, prices, photos", subHi: "Button se aapka card / website khulega — products, daam, photos" },
+  { key: "whatsapp", en: "WhatsApp messages", hi: "WhatsApp message", sub: "The button opens a WhatsApp chat with you — best for shops, services, agents", subHi: "बटन दबाने पर सीधे आपका WhatsApp खुलेगा — दुकान, service, agent के लिए सबसे अच्छा" },
+  { key: "calls", en: "Phone calls", hi: "Phone call", sub: "The button calls your number — for urgent services (doctor, repair, taxi)", subHi: "बटन दबाने पर आपके नंबर पर call लगेगी — जल्दी वाली services के लिए (doctor, repair, taxi)" },
+  { key: "website", en: "Website / card visits", hi: "Website / card visit", sub: "The button opens your card or website — products, prices, photos", subHi: "बटन दबाने पर आपका card या website खुलेगा — products, दाम, photos" },
 ];
 
 /** Only known keys, bounded values. */

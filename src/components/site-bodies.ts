@@ -24,17 +24,19 @@ const WORDMARK = `
 .site[data-bp="wordmark"] main .ledger{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 .site[data-bp="wordmark"] main .ledger li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--s4);align-items:center;padding:var(--s4) 0;border-bottom:1px solid var(--line)}
 .site[data-bp="wordmark"] main .ledger-th{width:64px;height:64px;border-radius:var(--r-img);overflow:hidden;background:var(--paper-2)}
-.site[data-bp="wordmark"] main .ledger-row{display:flex;align-items:baseline;gap:var(--s3);min-width:0}
+.site[data-bp="wordmark"] main .ledger-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px var(--s3);min-width:0}
 .site[data-bp="wordmark"] main .ledger-name{font-family:var(--font-display,var(--look-head));font-size:1.2rem;line-height:1.2;letter-spacing:-.01em;color:var(--ink);text-decoration:none;min-width:0}
 .site[data-bp="wordmark"] main .ledger-dots{flex:1 1 16px;min-width:16px;border-bottom:2px dotted var(--line);transform:translateY(-.3em)}
-.site[data-bp="wordmark"] main .ledger-price{font-family:var(--font-display,var(--look-head));font-size:1.2rem;white-space:nowrap;color:var(--ink)}
-.site[data-bp="wordmark"] main .ledger-price s{margin-left:.4em;font-size:.75em;color:var(--muted)}
+.site[data-bp="wordmark"] main .ledger-price{font-family:var(--font-display,var(--look-head));font-size:1.2rem;color:var(--ink);max-width:100%}
+.site[data-bp="wordmark"] main .ledger-price s{display:inline-block;white-space:nowrap;margin-left:.4em;font-size:.75em;color:var(--muted)}
 .site[data-bp="wordmark"] main .ledger-sub{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);margin-top:4px;font-size:13px;color:var(--muted)}
 .site[data-bp="wordmark"] main .ledger-desc{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;flex:1 1 200px;min-width:0}
 .site[data-bp="wordmark"] main .ledger-badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
 .site[data-bp="wordmark"] main .ledger-wa{display:inline-flex;align-items:center;gap:.3em;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap}
 @media (min-width:1024px){.site[data-bp="wordmark"] main .ledger{columns:2;column-gap:var(--s8)}.site[data-bp="wordmark"] main .ledger li{break-inside:avoid;grid-template-columns:72px minmax(0,1fr)}.site[data-bp="wordmark"] main .ledger-th{width:72px;height:72px}}
 @media (min-width:1024px){.site[data-bp="wordmark"] main .sec-h2{font-size:clamp(3rem,5vw,5rem)}}
+/* The offer's sentence shares the heading class but is a sentence of up to 150 characters: at heading size it filled a screen. */
+.site[data-bp="wordmark"] main p.sec-h2{font-size:clamp(1.5rem,5.2vw,2.5rem);line-height:1.12;letter-spacing:-.015em;max-width:none}
 `;
 
 /** The Shop body (Haldiram's / Chaayos / Urban Company): tight headings with the kicker as a tab, products two across on
@@ -98,6 +100,8 @@ const POSTER = `
 .site[data-bp="story"] main .rev-q{font-weight:600;font-size:1.25rem;line-height:1.35}
 .site[data-bp="story"] main .icon-box{border-radius:0;border:2px solid var(--ink);background:transparent;color:var(--ink)}
 @media (min-width:1024px){.site[data-bp="story"] main .sec-h2{font-size:clamp(2.75rem,4.5vw,4.5rem)}}
+/* The offer's sentence (a <p> with the heading class): set in sentence case at a size a long offer can be read at. */
+.site[data-bp="story"] main p.sec-h2{text-transform:none;font-size:clamp(1.5rem,5.5vw,2.5rem);line-height:1.1;max-width:none}
 `;
 
 /** The Cinematic body with `style.body = "dark"` (Dishoom / Behrouz): every section on the ink field, light type, the
@@ -120,6 +124,9 @@ const CINEMATIC_DARK = `
 .site[data-bp="cinematic"][data-body="dark"] main .gtk{border-color:var(--line)}
 .site[data-bp="cinematic"][data-body="dark"] main .icon-box{background:var(--p-soft);color:var(--gold,var(--accent))}
 .site[data-bp="cinematic"][data-body="dark"] main .rev-q{color:var(--hero-text)}
+/* The badge and the "% off" on a product photo sit on a white pill: the gold the dark page gives every kicker was light on white, an empty-looking pill (15 Oct 2026 sweep). */
+.site[data-bp="cinematic"][data-body="dark"] main .p-img .kicker{color:#1a1a1a}
+.site[data-bp="cinematic"][data-body="dark"] main .p-img .num{color:#1a1a1a!important}   /* the "% off" carries an inline accent colour */
 `;
 
 /** On every blueprint a product PHOTOGRAPH fills its frame (cover), instead of floating inside it with padding like a
