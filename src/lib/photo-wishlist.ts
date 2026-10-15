@@ -122,6 +122,30 @@ function ownSet(facts: CardFacts, products: SavedProduct[], card: Card): Set<str
 }
 const isOwn = (set: Set<string>, u?: string | null) => !!u && set.has(u.split("?")[0]);
 
+/** The pictures the live website shows NOW that are not the owner's own (stock or AI): the banner, and the about / gallery / image-block
+ *  pictures in page order. "Photos your website needs" shows them beside each line, so the owner can see what a photo would replace
+ *  before deciding to take one. */
+export function stockPicsOf(card: Card | null, facts: CardFacts, products: SavedProduct[]): { banner: string | null; photos: string[] } {
+  if (!card) return { banner: null, photos: [] };
+  const own = ownSet(facts, products, card);
+  const seen = new Set<string>();
+  const photos: string[] = [];
+  const add = (u?: string | null) => {
+    if (!u || isOwn(own, u)) return;
+    const k = u.split("?")[0];
+    if (seen.has(k) || k === (card.coverUrl ?? "").split("?")[0]) return;
+    seen.add(k); photos.push(u);
+  };
+  for (const p of card.pages) {
+    if (p.hidden) continue;
+    for (const b of p.blocks) {
+      if (b.kind === "about") add(b.imageUrl);
+      else if (b.kind === "gallery" || b.kind === "image" || b.kind === "carousel") b.images.forEach((i) => add(i.url));
+    }
+  }
+  return { banner: card.coverUrl && !isOwn(own, card.coverUrl) ? card.coverUrl : null, photos };
+}
+
 /** The owner's uploads put into the live card where a stock or AI picture stood: the banner → cover and hero,
  *  the work photos → gallery and about, a product's photo → its card. Words are never touched. Returns the new
  *  card and what changed; `changed` 0 = nothing to do. */

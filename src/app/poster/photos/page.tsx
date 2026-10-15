@@ -14,7 +14,7 @@ import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { goBack } from "@/lib/nav-back";
 import { normalizeFacts, type CardFacts, type FactsResponse, type SavedProduct } from "@/lib/card-facts";
-import { photoWishlist, applyOwnPhotos, type Wish } from "@/lib/photo-wishlist";
+import { photoWishlist, applyOwnPhotos, stockPicsOf, type Wish } from "@/lib/photo-wishlist";
 import type { Card } from "@/lib/types";
 
 export default function PhotosPage() {
@@ -69,6 +69,9 @@ export default function PhotosPage() {
   useEffect(() => { void load(); }, [load]);
 
   const wishes: Wish[] = facts ? photoWishlist({ category, facts, products, card, lang }) : [];
+  // What the website shows now in each place (stock / AI), so a photo can be judged before it is taken: the thumbnail on the left of each line.
+  const stock = facts ? stockPicsOf(card, facts, products) : { banner: null, photos: [] as string[] };
+  const [zoom, setZoom] = useState<string | null>(null);
   const pending = wishes.filter((w) => !done[w.key] && w.slot !== "portrait" && w.slot !== "logo");
 
   async function upload(w: Wish, file: File | null) {
@@ -133,15 +136,24 @@ export default function PhotosPage() {
       <Guide en="Real photos beat stock every time. Take these with your phone in daylight; we put each one in the right place." hi="असली photos stock से हमेशा बेहतर हैं। दिन की रोशनी में phone से लें; हर एक को सही जगह हम लगा देंगे।" />
       {!wishes.length && <p className="rounded-xl bg-surface2 px-3 py-3 text-sm">{T("Your website has every photo it needs. Add more any time from the company step.", "आपकी website के सारे photos पूरे हैं। और जोड़ने हों तो company step से।")}</p>}
       <div className="space-y-2">
-        {wishes.map((w) => {
+        {wishes.map((w, wi) => {
           const ok = !!done[w.key];
+          const nowPic = w.slot === "banner" ? stock.banner : w.slot === "photo" ? stock.photos[wishes.slice(0, wi).filter((x) => x.slot === "photo").length] ?? null : null;
           // The portrait and the logo are added on set-up screens: ?back= makes each a focused edit (Save, then straight back here — not on into the set-up walk).
           // Its Save comes back as one more copy of this page in the history: ?twins= tells that copy how many are stacked (see above).
           const edit = (step: string) => `/poster/onboard?step=${step}&back=${encodeURIComponent(`/poster/photos?twins=${twins + 1}`)}`;
           const linkTo = w.slot === "portrait" ? edit("you") : w.slot === "logo" ? edit("about") : null;
           return (
             <div key={w.key} className={`flex items-center gap-3 rounded-xl border p-3 ${ok ? "border-good/40 bg-good/10" : "border-border"}`}>
-              <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${ok ? "bg-good text-white" : "bg-surface2 text-muted"}`}>{ok ? <Check className="h-5 w-5" /> : busy === w.key ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}</span>
+              {nowPic && !ok && busy !== w.key ? (
+                <button type="button" onClick={() => setZoom(nowPic)} aria-label={T("See the picture on your website now", "आपकी website पर अभी की picture देखें")} className="relative h-16 w-16 shrink-0 overflow-hidden rounded-lg border border-border bg-surface2">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={nowPic} alt="" className="h-full w-full object-cover" />
+                  <span className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5 text-center text-[9px] font-semibold leading-tight text-white">{T("Stock", "Stock")}</span>
+                </button>
+              ) : (
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-lg ${ok ? "bg-good text-white" : "bg-surface2 text-muted"}`}>{ok ? <Check className="h-5 w-5" /> : busy === w.key ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Camera className="h-5 w-5" />}</span>
+              )}
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-snug">{hi ? w.hi : w.en}</p>
                 <p className="text-[11px] text-muted">{hi ? w.whyHi : w.why}</p>
@@ -159,6 +171,16 @@ export default function PhotosPage() {
           );
         })}
       </div>
+      {zoom && (
+        <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/70 p-4" onClick={() => setZoom(null)}>
+          <div onClick={(e) => e.stopPropagation()} className="w-full max-w-md space-y-2 rounded-2xl bg-surface p-3 shadow-float">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={zoom} alt="" className="max-h-[60dvh] w-full rounded-xl object-contain" />
+            <p className="text-center text-xs text-muted">{T("This stock picture is on your website now. Take your own photo to replace it.", "ये stock picture अभी आपकी website पर है। इसे बदलने के लिए अपनी photo लें।")}</p>
+            <button type="button" onClick={() => setZoom(null)} className="w-full rounded-xl border border-border py-2.5 text-sm font-semibold">{T("Close", "बंद करें")}</button>
+          </div>
+        </div>
+      )}
       {card && (
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">
           {applyErr && <p role="alert" className="mb-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{applyErr}</p>}
