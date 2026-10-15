@@ -317,6 +317,12 @@ export async function publishCard(card: Card): Promise<PublishResult> {
     return { ok: false, error: isNetworkError(error) ? OFFLINE : error.message };
   }
 
+  // The link was renamed: a connected domain of this card follows it (card_domains keeps the username for the lookup on
+  // every request), or the owner's own domain would open "not found" after the change. Best effort.
+  if (existing && existing.username !== username) {
+    try { await sb.from("card_domains").update({ username }).eq("card_id", existing.id); } catch { /* the link itself is saved */ }
+  }
+
   // White-label member? Stamp the card with their brand so <user>.<brand>
   // answers (belt to migration 0022's trigger). Best effort — a miss here
   // never fails the publish.

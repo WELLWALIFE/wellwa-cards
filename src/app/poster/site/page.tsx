@@ -70,17 +70,6 @@ export default function WebsitePage() {
       if (q.has("saved") || q.has("published")) { q.delete("saved"); q.delete("published"); window.history.replaceState(null, "", `${window.location.pathname}${q.toString() ? `?${q}` : ""}`); }
     } catch { /* ignore */ }
   }, []);
-  // ?tool=domain (from the congratulations page, "Put it on your own domain"): the web-address box opens by itself and scrolls into view.
-  const toolOpened = useRef(false);
-  useEffect(() => {
-    if (toolOpened.current || !s?.hasCard) return;
-    try {
-      if (new URLSearchParams(window.location.search).get("tool") !== "domain") return;
-      toolOpened.current = true;
-      setOpenTool("domain");
-      setTimeout(() => document.getElementById("tool-domain")?.scrollIntoView({ behavior: "smooth", block: "center" }), 250);
-    } catch { /* ignore */ }
-  }, [s]);
   /** Where a focused edit comes back to: this page, the Edit door open. */
   const BACK = encodeURIComponent("/poster/site?edit=1");
   const { plan, loading: planLoading } = usePlan();
@@ -294,7 +283,7 @@ export default function WebsitePage() {
                           </div>
                         )}
                         {g.k === "settings" && openTool === "domain" && (
-                          <div id="tool-domain" className="rounded-2xl border border-border p-3">
+                          <div className="rounded-2xl border border-border p-3">
                             {domainOk || s.customDomain
                               ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
                               : <p className="text-sm text-muted">{T("Your own web address (www.yourshop.com) comes with Growth.", "अपना web address (www.yourshop.com) Growth के साथ आता है।")}</p>}

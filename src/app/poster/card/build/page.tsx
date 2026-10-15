@@ -21,7 +21,7 @@ import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fie
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
-import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE, type UsernameCheck } from "@/lib/cloud";
+import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
 import { applyLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
@@ -30,7 +30,7 @@ import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
-import { getLinkPref, linkOptions, setLinkPref } from "@/lib/link-pref";
+import { getLinkPref } from "@/lib/link-pref";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
@@ -186,9 +186,6 @@ export default function BuildCard() {
   const [styleSheet, setStyleSheet] = useState(false);
   const [designOpen, setDesignOpen] = useState(false);          // the six designs, opened from the bottom bar          // colours and fonts of the chosen design
 
-  const [editLink, setEditLink] = useState(false);
-  const [linkVal, setLinkVal] = useState("");
-  const [linkCheck, setLinkCheck] = useState<UsernameCheck>({ state: "idle" });
 
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -324,8 +321,6 @@ export default function BuildCard() {
   const [banner, setBanner] = useState<BannerState>({ state: "idle" });
   const madeByUs = (u?: string) => !!u && /\/ref-\d+(-\d+)?\.(png|jpe?g|webp)(\?|$)/i.test(u);
   const ownBanner = !!facts.bannerUrl && !madeByUs(facts.bannerUrl);
-  // The two ready links for this card — your name / business name — for one-tap switching on the preview.
-  const [linkOpts, setLinkOpts] = useState<{ name: string | null; business: string | null }>({ name: null, business: null });
 
   /** "Check your details" — the company / product answers, folded; a "Make it better" chip opens it. */
   const reviewRef = useRef<HTMLDetailsElement>(null);
@@ -458,6 +453,15 @@ export default function BuildCard() {
         setState("preview");
         return;
       }
+      // ?make=1 on an account whose website is already made and live (a reload, the "Make" step, the browser's Back): the
+      // finished screen, never "Make my website" again — that would be a second build (owner, 15 Oct 2026: "website ban
+      // chuki thi, wapas aane par dobara process karna padega — galat hai"). Making it again is only ?again=1 or "Write again".
+      if (makeNow && !again && !siteNew.current && live && live.active !== false && live.site?.enabled && !isThinCard(live)) {
+        const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
+        setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
+        setTab("site"); setState("done");
+        return;
+      }
       if (makeNow) { setState("make"); return; }
       // The owner's rule: reaching the V-Card with nothing real yet makes the card at once. The form
       // below stays as the "Make it better" path; the draft it saves stops any second build.
@@ -500,14 +504,6 @@ export default function BuildCard() {
   }, [state, card, built, liveSig, checks, missing, off, uid, plans, liveUser]);
 
   const username = card?.username ?? "";
-  // Your-name / business-name links for the preview's one-tap switch (each checked free for THIS card).
-  useEffect(() => {
-    if (state !== "preview" || !card?.id || !built) return;
-    let alive = true;
-    linkOptions(built.name || "", built.company || "", card.id).then((o) => { if (alive) setLinkOpts(o); }).catch(() => undefined);
-    return () => { alive = false; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [state, card?.id, built?.name, built?.company]);
   useEffect(() => {
     if (!username) return;
     QRCode.toDataURL(`${SITE_URL}/c/${username}`, { width: 320, margin: 1 }).then(setQr).catch(() => setQr(""));
@@ -519,18 +515,6 @@ export default function BuildCard() {
     const t = setInterval(() => setElapsed((e) => e + 1), 1000);
     return () => clearInterval(t);
   }, [state]);
-
-  /* the link the owner is typing */
-  useEffect(() => {
-    if (!editLink) return;
-    const v = cleanUsername(linkVal);
-    if (v.length < 3) { setLinkCheck({ state: "bad", reason: T("At least 3 characters.", "कम से कम 3 अक्षर।") }); return; }
-    setLinkCheck({ state: "checking" });
-    const t = setTimeout(async () => {
-      try { setLinkCheck(await checkUsername(v, existing?.id)); } catch { setLinkCheck({ state: "idle" }); }
-    }, 400);
-    return () => clearTimeout(t);
-  }, [linkVal, editLink, existing?.id, T]);
 
   // A card with no blueprint of its own (built before the looks, or by a build the designer skipped) is shown wearing the
   // first look, which is the one the picker marks (owner, 6 Oct 2026: the "Bento" tick showed a plain cover).
@@ -553,7 +537,6 @@ export default function BuildCard() {
   const againCost = writeAgainCredits(againWants, `${againNote}${imageNote}${wordsNote}`, photosAsked);
   /** A link that is taken or too short: it can neither be saved nor published (offline = "idle", where
    *  publishing itself is the judge). */
-  const linkBad = linkCheck.state === "bad" || linkCheck.state === "checking";
 
   /* the website preview: the real desktop renderer in an iframe, scaled down to the phone's width */
   const previewFrame = useRef<HTMLIFrameElement>(null);
@@ -963,7 +946,7 @@ export default function BuildCard() {
       setLiveUser(r.username || out.username);
       // A quiet publish (a look, in the background) leaves the tabs and the bar as the owner has them: it used to pull
       // the Card tab back to the Website and flip the bar's button under their finger.
-      if (!opts?.quiet) { setTab("site"); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
+      if (!opts?.quiet) { if (uid) dropKey(draftKey(uid)); setTab("site"); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
     } catch {
       setErr(T(OFFLINE, "internet नहीं है — दोबारा try करें।"));
     } finally {
@@ -1060,12 +1043,12 @@ export default function BuildCard() {
             <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
             <p className="text-xs text-white/80">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
             {/* After the site is final (owner, 15 Oct 2026): the own web address first, in plain words; changing the end of this link is the small line below it. */}
-            <button type="button" onClick={() => router.push("/poster/site?edit=1&tool=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
+            <button type="button" onClick={() => router.push("/poster/site/link?open=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
               <Globe className="h-5 w-5 shrink-0" />
               <span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-tight">{T("Put it on your own domain", "अपने domain पर चलाएँ")}</span><span className="block text-xs text-white/80">{T("Open it at www.yourshop.com", "www.yourshop.com पर खुले")}</span></span>
               <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
             </button>
-            <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); setState("preview"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
+            <button type="button" onClick={() => router.push("/poster/site/link")} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
               <button type="button" onClick={() => { try { void navigator.clipboard.writeText(`https://${liveLink}`); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Copy link", "Link copy करें")}</button>
@@ -1105,18 +1088,16 @@ export default function BuildCard() {
           then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1"); else setState("make"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1"); else if (liveUser) router.push("/poster"); else setState("make"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
         </div>
         {(liveUser || busy === "publish") && <p className="flex items-start gap-1.5 text-xs text-muted">
           {liveUser ? <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-good" /> : busy === "publish" ? <LoaderCircle className="mt-px h-3.5 w-3.5 shrink-0 animate-spin text-brand" /> : <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0 text-amber" />}
           <span>
             {liveUser
-              ? username !== liveUser
-                ? T("Live on the old link — tap Save the new link.", "पुराने link पर live है — नया link save करें।")
-                : isStory
-                  ? T("Live. One link — it opens as the website on phones too.", "Live। एक ही link — phone पर भी website ही खुलती है।")
-                  : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
+              ? isStory
+                ? T("Live. One link — it opens as the website on phones too.", "Live। एक ही link — phone पर भी website ही खुलती है।")
+                : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
               : busy === "publish"
                 ? T("Making it live…", "Live किया जा रहा है…")
                 : checks.length > 0
@@ -1127,33 +1108,6 @@ export default function BuildCard() {
           </span>
         </p>}
       </div>
-      {editLink && (
-        <div className="space-y-2 rounded-2xl border border-border bg-surface p-3.5">
-          {/* One tap: the link from the business name or from your name (owner's call, 25 Sep 2026). */}
-          {linkOpts.name && linkOpts.business && (
-            <div className="grid grid-cols-2 gap-2">
-              {([["business", linkOpts.business!, T("Business name", "Business का नाम")], ["name", linkOpts.name!, T("Your name", "आपका नाम")]] as const).map(([k, slug, label]) => {
-                const on = cleanUsername(linkVal) === slug;
-                return (
-                  <button key={k} type="button" onClick={() => { setLinkVal(slug); void setLinkPref(k); }}
-                    className={`rounded-xl border-2 px-2.5 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
-                    <span className="flex items-center gap-1 text-[11px] text-muted">{on && <Check className="h-3 w-3 text-brand" />}{label}</span>
-                    <span className="block truncate text-xs font-semibold">/c/{slug}</span>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <input value={linkVal} onChange={(e) => setLinkVal(e.target.value)} autoCapitalize="none" spellCheck={false} placeholder="your-name" className={`${box} w-full`} />
-          {linkCheck.state === "checking" && <p className="text-xs text-muted">{T("Checking…", "देख रहे हैं…")}</p>}
-          {linkCheck.state === "ok" && <p className="text-xs font-semibold text-good">✓ {SITE_HOST}/c/{cleanUsername(linkVal)} {T("is free", "खाली है")}</p>}
-          {linkCheck.state === "bad" && <p className="text-xs font-semibold text-danger">{linkCheck.reason}</p>}
-          <div className="flex gap-2">
-            <button type="button" disabled={linkBad} onClick={() => { setCard((c) => (c ? { ...c, username: cleanUsername(linkVal) } : c)); setEditLink(false); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{T("Save link", "link save करें")}</button>
-            <button type="button" onClick={() => setEditLink(false)} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("Cancel", "रहने दें")}</button>
-          </div>
-        </div>
-      )}
       {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
         <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your Premium banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका Premium banner बनाएगा (करीब 1 मिनट)।")}</p>
@@ -1284,13 +1238,13 @@ export default function BuildCard() {
               <Palette className="h-4 w-4" /> {viewed.length === 0 && !designOpen ? T("See 6 designs", "6 design देखें") : T("Designs", "Designs")}
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${viewed.length === 0 && !designOpen ? "bg-white text-amber" : "bg-brand text-white"}`}>{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
             </button>
-        {liveUser && username === liveUser ? (
+        {liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, back there; in the
           // first flow it is Next, on to the congratulations.
-          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1&saved=1"); else { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
+          <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
-          <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy || (editLink && linkBad)} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {liveUser ? T("Save the new link", "नया link save करें") : T("Save and next", "Save करके आगे")}
+          <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
           </button>
         )}
         {liveUser && <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
