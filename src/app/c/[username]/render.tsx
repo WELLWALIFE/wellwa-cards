@@ -1,11 +1,11 @@
 // The public card / website, shared by /c/<user> (home) and /c/<user>/<page> (every other page).
 // Each page has its own address, title, description and structured data, so search engines index all of it.
 // Canonical address: the owner's own domain when connected, else the white-label address, else Shubhora.
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
 import { getCardByUsername } from "@/lib/sample-data";
-import { fetchCloudCard, countCardView, getPublicSupabase, fetchCardExpired, fetchCardPaused, fetchCardTracking, fetchCardDomain, fetchCardOwnerUsername } from "@/lib/supabase/public";
+import { fetchCloudCard, countCardView, getPublicSupabase, fetchCardExpired, fetchCardPaused, fetchCardTracking, fetchCardDomain, fetchCardOwnerUsername, findCardByLooseLink } from "@/lib/supabase/public";
 import { CardPaused } from "@/components/card-paused";
 import { CardPixels, PixelNotice } from "@/components/card-pixels";
 import { CardAppBar } from "@/components/card-app-bar";
@@ -48,7 +48,12 @@ const urlFor = (home: string, card: Card, page: CardPage | null) => (page && pag
 
 export async function cardMetadata(username: string, slug?: string | null): Promise<Metadata> {
   const card = await loadCard(username);
-  if (!card) return { title: "Card not found" };
+  if (!card) {
+    // A guessed link opens the one card it clearly means (also for the WhatsApp preview, which follows the redirect).
+    const alt = await findCardByLooseLink(username);
+    if (alt) redirect(`/c/${alt}${slug ? `/${slug}` : ""}`);
+    return { title: "Card not found" };
+  }
   // Paused (its year ended and was not renewed): kept out of search results until it is renewed.
   if (await fetchCardPaused(card.username)) {
     return { title: { absolute: `${card.lead === "business" && card.company ? card.company : card.name} — card paused` }, robots: { index: false, follow: false } };
@@ -96,7 +101,11 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
 
 export async function CardPageView({ username, slug, viewParam }: { username: string; slug?: string | null; viewParam?: string }) {
   const stored = await loadCard(username);
-  if (!stored) notFound();
+  if (!stored) {
+    const alt = await findCardByLooseLink(username);
+    if (alt) redirect(`/c/${alt}${slug ? `/${slug}` : ""}`);
+    notFound();
+  }
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });

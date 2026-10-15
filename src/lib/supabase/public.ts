@@ -10,6 +10,26 @@ export function getPublicSupabase(): SupabaseClient | null {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
+/** A link that was typed or guessed from the name ("/c/national-academy-school") when the card's real link is longer or slightly different
+ *  ("national-academy-sr-sec-school-b"): the ONE live card whose link contains every word of it, in the same order. Two or more matches
+ *  (or none) = null, so a guess never lands on the wrong business. */
+export const findCardByLooseLink = cache(async (username: string): Promise<string | null> => {
+  const tokens = username.toLowerCase().split("-").filter(Boolean);
+  if (tokens.length < 2 || username.length < 6 || !/^[a-z0-9-]+$/.test(username)) return null;
+  const sb = getPublicSupabase();
+  if (!sb) return null;
+  try {
+    const { data } = await sb.from("cards").select("username, active").ilike("username", `${tokens[0]}%`).limit(60);
+    const hit = (data ?? []).filter((r: { username: string; active: boolean | null }) => {
+      if (r.active === false || r.username === username) return false;
+      const parts = r.username.toLowerCase().split("-");
+      let at = 0;
+      return tokens.every((t) => { const i = parts.indexOf(t, at); if (i < 0) return false; at = i + 1; return true; });
+    });
+    return hit.length === 1 ? (hit[0] as { username: string }).username : null;
+  } catch { return null; }
+});
+
 /** Cloud-published card by username; null if none. Deduped per request. */
 export const fetchCloudCard = cache(async (username: string): Promise<Card | null> => {
   const sb = getPublicSupabase();
