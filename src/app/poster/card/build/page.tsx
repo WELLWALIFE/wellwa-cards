@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
-import { Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X } from "lucide-react";
+import { Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -1092,7 +1092,9 @@ export default function BuildCard() {
           {([
             { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Add your products or services", "अपने products / services जोड़ें"), s: T("Name, price and a clear photo", "नाम, दाम और साफ़ photo") },
             { href: "/poster/onboard?step=extras&part=photos&back=%2Fposter%2Fsite%3Fedit%3D1", I: Camera, t: T("Add photos and a banner", "Photos और banner जोड़ें"), s: T("Your shop, your work — or let AI make them", "आपकी दुकान, आपका काम — या AI से बनवाएँ") },
+            { href: "/poster/onboard?step=where&back=%2Fposter%2Fsite%3Fedit%3D1", I: MapPin, t: T("Pin your shop on the map", "अपनी दुकान map पर लगाएँ"), s: T("So people find your shop faster", "ताकि लोग आपकी दुकान जल्दी ढूँढ लें") },
             { href: "/poster/onboard?step=extras&part=links&back=%2Fposter%2Fsite%3Fedit%3D1", I: Smartphone, t: T("Add UPI and social links", "UPI और social links जोड़ें"), s: T("So customers can pay and follow you", "ताकि ग्राहक pay कर सकें और आपको follow करें") },
+            { href: "/poster/testimonials", I: Star, t: T("Ask 3 customers for a review", "3 ग्राहकों से राय माँगें"), s: T("Real words build trust", "असली शब्द भरोसा बनाते हैं") },
           ] as const).map((x) => (
             <button key={x.href} type="button" onClick={() => router.push(x.href)} className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left shadow-sm transition active:scale-[.99]">
               <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
@@ -1206,12 +1208,12 @@ export default function BuildCard() {
       )}
 
       {/* Everything that used to sit above the fold: the designer's line, the notice, "Please check", "Make it better". */}
-      {(designNote || notice || checks.length > 0 || missing.length > 0) && (
+      {(designNote || notice || checks.length > 0) && (
         <details open={checks.length > 0 && !liveUser} className="rounded-2xl border border-border bg-surface2/40">
           {/* Open on its own while there are details to check and the card is not live yet: finish() holds the first
               go-live back for exactly this pause, which a closed fold took away (the maker's specs went live unread). */}
           <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
-            <span>{T("Details", "Details")} <span className="text-xs font-normal text-muted">{checks.length > 0 ? T(`· ${checks.length} to check`, `· ${checks.length} देखने हैं`) : missing.length > 0 ? T("· make it better", "· और अच्छा बनाएँ") : ""}</span></span>
+            <span>{T("Details", "Details")} <span className="text-xs font-normal text-muted">{checks.length > 0 ? T(`· ${checks.length} to check`, `· ${checks.length} देखने हैं`) : ""}</span></span>
             <span className="text-xs font-semibold text-brand-ink">{T("Open", "खोलें")}</span>
           </summary>
           <div className="space-y-3 border-t border-border p-3">
@@ -1232,14 +1234,6 @@ export default function BuildCard() {
                     </span>
                   </label>
                 ))}
-              </div>
-            )}
-            {missing.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-[15px] font-semibold">{T("Make it better", "और अच्छा बनाएँ")}</p>
-                <div className="flex flex-wrap gap-2">
-                  {missing.map((m) => <button key={m.key} type="button" onClick={() => goto(m.key)} className="rounded-full border-2 border-border bg-surface px-3.5 py-2 text-sm font-medium">{m.label}</button>)}
-                </div>
               </div>
             )}
           </div>
