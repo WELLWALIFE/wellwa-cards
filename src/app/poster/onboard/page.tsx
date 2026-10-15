@@ -1073,15 +1073,16 @@ function Onboard() {
     };
     const failed = (e: GeolocationPositionError) => {
       setBusy("");
-      setPinErr(e.code === 1 ? T(LOCATION_BLOCKED.en, LOCATION_BLOCKED.hi) : T(LOCATION_NOFIX.en, LOCATION_NOFIX.hi));
+      setPinErr((e.code === 1 ? T(LOCATION_BLOCKED.en, LOCATION_BLOCKED.hi) : T(LOCATION_NOFIX.en, LOCATION_NOFIX.hi)) + ` (${e.code === 1 ? "blocked" : e.code === 2 ? "no position" : "timed out"})`);
       setMapPaste((m) => ({ ...m, open: true }));
     };
     // The GPS first (exact, what a shop pin needs). A computer, or a phone indoors, often gives no GPS fix: then the network position
     // (Wi-Fi / mobile tower) is taken instead of failing. Only "blocked" stops here.
+    // A laptop's first fix can take 10-20 s (it worked at 15 s before): the first try waits 25 s.
     navigator.geolocation.getCurrentPosition(got, (e) => {
       if (e.code === 1) { failed(e); return; }
-      navigator.geolocation.getCurrentPosition(got, failed, { enableHighAccuracy: false, timeout: 15000, maximumAge: 5 * 60_000 });
-    }, { enableHighAccuracy: true, timeout: 10000 });
+      navigator.geolocation.getCurrentPosition(got, failed, { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60_000 });
+    }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 60_000 });
   }
 
   /** "Skip for now" (owner's call, 23 Sep 2026): whatever is filled is kept, nothing is required, and the app opens.
