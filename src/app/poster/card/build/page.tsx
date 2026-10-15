@@ -37,7 +37,7 @@ import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import {
   isThinCard, mergeBuiltCard, normalizeFacts, vcardDraftKey, vcardFormKey,
   type BuildRequest, type BuildResponse, type BuildRow, type CardFacts, type FactsResponse, type WriteAgainWant, writeAgainCredits,
-  type Missing, type MissingKey, type SetupInfo, type WebCheck,
+  type Missing, type SetupInfo, type WebCheck,
 } from "@/lib/card-facts";
 import { SITE_CARDS, cleanSiteUrl, looksLikeSite, socialDetour } from "@/lib/site-role";
 import { useT } from "@/lib/poster-i18n";
