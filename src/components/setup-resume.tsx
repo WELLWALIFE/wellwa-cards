@@ -28,6 +28,8 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   // The website editor has its own Save bar in the same place (30 Sep 2026).
   // The Business screens (/poster/business and every page under it): the bar sat over their buttons and lists (14 Oct 2026).
   const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
+  // The Home screen of a brand-new account has its own one big button ("Make my website"): a second "Continue" bar made two buttons for one job.
+  if (path === "/poster" && freeDone === 0) return null;
   if (hidden || !nextFree || onSetupScreens) return null;
   const close = () => { setHidden(true); try { sessionStorage.setItem(KEY, "1"); } catch { /* private mode */ } };
   const pct = Math.round((freeDone / freeTotal) * 100);
