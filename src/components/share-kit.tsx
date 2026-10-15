@@ -14,6 +14,7 @@ export function ShareKit({ card }: { card: Card }) {
   const [url, setUrl] = useState(`${SITE}/c/${card.username}`);
   const [qr, setQr] = useState("");
   const [copied, setCopied] = useState(false);
+  const [err, setErr] = useState(""); // shown under the buttons, cleared on the next tap
   const [busy, setBusy] = useState<"" | "qr" | "poster">("");
   const posterRef = useRef<HTMLCanvasElement | null>(null);
 
@@ -33,12 +34,12 @@ export function ShareKit({ card }: { card: Card }) {
   };
 
   async function downloadQr() {
-    setBusy("qr");
+    setBusy("qr"); setErr("");
     try {
       // 1024px with a quiet zone — safe for print
       const hi = await QRCode.toDataURL(url, { width: 1024, margin: 2, color: { dark: card.themeColor, light: "#ffffff" } });
       download(hi, `${card.username}-qr.png`);
-    } finally { setBusy(""); }
+    } catch { setErr("Could not make the QR image. Please try again."); } finally { setBusy(""); }
   }
 
   /** A printable A-series poster: name, role, QR and the link. */
@@ -96,19 +97,21 @@ export function ShareKit({ card }: { card: Card }) {
   }, [card, url]);
 
   async function downloadPoster() {
-    setBusy("poster");
+    setBusy("poster"); setErr("");
     try {
       const data = await buildPoster();
       if (data) download(data, `${card.username}-poster.png`);
-    } finally { setBusy(""); }
+      else setErr("Could not build the poster on this device. Please try again.");
+    } catch { setErr("Could not build the poster. Please try again."); } finally { setBusy(""); }
   }
 
   async function copyLink() {
+    setErr("");
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch { /* ignore */ }
+    } catch { setCopied(false); setErr("Could not copy the link. Select it above and copy it by hand."); }
   }
 
   const waText = encodeURIComponent(`${card.name} — ${card.jobTitle}${card.company ? `, ${card.company}` : ""}\n${url}?src=whatsapp`);
@@ -149,6 +152,7 @@ export function ShareKit({ card }: { card: Card }) {
             </button>
           </div>
 
+          {err && <p role="alert" className="text-xs text-danger">{err}</p>}
           <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noopener noreferrer"
             className="flex items-center justify-center gap-1.5 rounded-lg px-3 py-2.5 text-sm font-semibold text-white"
             style={{ background: "var(--good)" }}>

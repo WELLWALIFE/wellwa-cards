@@ -46,6 +46,7 @@ import { useT } from "@/lib/poster-i18n";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
 import { LookTweaks } from "@/components/poster/look-tweaks";
+import { AdvancedEntry } from "@/components/poster/advanced-entry";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -1249,6 +1250,8 @@ export default function BuildCard() {
           </div>
         </section>
         {bannerBlock}
+        {/* The Rs 5,999 segment (owner, 15-16 Oct 2026): offered once the basic site is final, before the to-do list. */}
+        <AdvancedEntry cardId={existing?.id} fetchState />
         <section className="space-y-2.5">
           <div>
             <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>

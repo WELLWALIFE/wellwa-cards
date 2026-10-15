@@ -31,9 +31,11 @@ function Row({ it, en }: { it: Item; en: boolean }) {
   const Icon = ICONS[it.key];
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState("");
-  async function copy() { try { await navigator.clipboard.writeText(it.url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* blocked */ } }
-  async function more() { try { if (navigator.share) { await navigator.share({ text: it.text, url: it.url }); return; } } catch { return; } copy(); }
-  async function showQr() { if (qr) { setQr(""); return; } setQr(await QRCode.toDataURL(it.url, { width: 520, margin: 1 })); }
+  const [err, setErr] = useState(""); // shown right under the buttons, cleared on the next tap
+  const copyFail = en ? "Could not copy — press and hold the link above to copy it." : "Copy नहीं हो पाया — ऊपर का link दबाकर रखें और copy करें।";
+  async function copy() { setErr(""); try { await navigator.clipboard.writeText(it.url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { setCopied(false); setErr(copyFail); } }
+  async function more() { setErr(""); try { if (navigator.share) { await navigator.share({ text: it.text, url: it.url }); return; } } catch (e) { if ((e as { name?: string })?.name === "AbortError") return; setErr(en ? "Could not open the share menu. Try WhatsApp or Copy instead." : "Share menu नहीं खुला। WhatsApp या Copy से भेजें।"); return; } copy(); }
+  async function showQr() { setErr(""); if (qr) { setQr(""); return; } try { setQr(await QRCode.toDataURL(it.url, { width: 520, margin: 1 })); } catch { setErr(en ? "Could not make the QR code. Please try again." : "QR code नहीं बन पाया। दोबारा try करें।"); } }
   return (
     <div className="rounded-2xl border border-border bg-surface p-3 space-y-2.5">
       <div className="flex items-start gap-2.5">
@@ -59,6 +61,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
           <QrCode className="h-4 w-4" /> QR
         </button>
       </div>
+      {err && <p role="alert" className="text-xs text-danger">{err}</p>}
       <button type="button" onClick={more} className="w-full text-center text-[11px] font-semibold text-brand-ink">{en ? "More apps (Facebook, Instagram, SMS…) →" : "और apps (Facebook, Instagram, SMS…) →"}</button>
       {qr && (
         <div className="rounded-xl border border-border p-3 text-center space-y-2">
@@ -103,6 +106,12 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
     const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
     items.push({ key: "R", emoji: "➡️", title: en ? "Join link — RIGHT team" : "Join link — RIGHT team", sub: en ? "Whoever joins with this goes to your right side" : "इस link से जो जुड़ेगा वो आपकी right side में जाएगा", url: join("R"), text: msg(join("R")) });
   }
+  if (res === null) return (
+    <div className="space-y-2 py-3 text-center">
+      <p role="alert" className="text-sm text-danger">{en ? "Could not load your links. Check your internet and try again." : "आपके links नहीं आ पाए। Internet देखें और दोबारा try करें।"}</p>
+      <button type="button" onClick={() => { setRes(undefined); }} className="rounded-xl border border-border px-4 py-2 text-sm font-semibold">{en ? "Try again" : "दोबारा try करें"}</button>
+    </div>
+  );
   if (!items.length) return <p className="text-sm text-muted">{en ? "Make your card and choose a username first — your links appear here." : "पहले card बनाएँ और username चुनें — आपके links यहाँ आएँगे।"}</p>;
 
   const current = items.find((i) => i.key === tab) ?? items.find((i) => i.key === "card") ?? items[0];

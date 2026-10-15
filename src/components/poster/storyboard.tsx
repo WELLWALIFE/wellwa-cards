@@ -51,7 +51,8 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
   const [after, setAfter] = useState<{ music: string; redo: number; note: string } | null>(null);
   const [playing, setPlaying] = useState(-1); const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const load = useCallback(async () => { const r = await fetch(`/api/media/jobs?id=${jobId}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null); if (r?.job) { setJob(r.job); setScenes(r.scenes ?? []); if (typeof r.credits === "number") setCredits(r.credits); } }, [jobId]);
+  const [loadErr, setLoadErr] = useState("");
+  const load = useCallback(async () => { const r = await fetch(`/api/media/jobs?id=${jobId}`, { cache: "no-store" }).then((x) => x.json()).catch(() => null); if (r?.job) { setLoadErr(""); setJob(r.job); setScenes(r.scenes ?? []); if (typeof r.credits === "number") setCredits(r.credits); } else setLoadErr(r?.error || "Could not open this storyboard. Check your internet and try again."); }, [jobId]);
   useEffect(() => { const t0 = setTimeout(() => void load(), 0); const t = setInterval(() => void load(), 4000); return () => { clearTimeout(t0); clearInterval(t); if (timer.current) clearTimeout(timer.current); }; }, [load]);
 
   async function act(action: string, body: unknown = {}) {
@@ -62,7 +63,12 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
   // silent animatic: the stills in order, each held for the length of its spoken line
   function playAnimatic() { if (playing >= 0) { setPlaying(-1); if (timer.current) clearTimeout(timer.current); return; } const step = (k: number) => { if (k >= scenes.length) { setPlaying(-1); return; } setPlaying(k); timer.current = setTimeout(() => step(k + 1), Math.max(2400, ((scenes[k].line?.sec ?? 3) + 0.3) * 1000)); }; step(0); }
 
-  if (!job) return <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  if (!job) return loadErr ? (
+    <div className="space-y-3 py-10 text-center">
+      <p role="alert" className="text-sm text-danger">{loadErr}</p>
+      <div className="flex justify-center gap-2"><button type="button" onClick={() => { setLoadErr(""); void load(); }} className="grad-brand rounded-xl px-4 py-2 text-sm font-semibold text-white">Try again</button><button type="button" onClick={onClose} className="rounded-xl border border-border px-4 py-2 text-sm">Close</button></div>
+    </div>
+  ) : <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const sc = job.input.script?.scenes ?? [];
   const working = job.status === "queued" || job.status === "running";
   const review = job.status === "review" && job.stage !== "render_failed";

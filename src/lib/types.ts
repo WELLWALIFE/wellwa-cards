@@ -1,6 +1,8 @@
 // ===== Core domain types for the digital card platform =====
 // These mirror the database schema in supabase/migrations/0001_init.sql
 
+import type { AdvancedSpec } from "./site-advanced";
+
 export type Plan = "free" | "pro" | "team";
 
 // Visual template for the public card header/layout.
@@ -304,6 +306,9 @@ export interface Card {
     bar?: { text: string; link?: string; until?: string };
     /** The floating button on the website (bottom-left on desktop, the sticky bar on phones); default WhatsApp. */
     float?: "whatsapp" | "call" | "none";
+    /** The ADVANCED website (the Rs 5,999 segment, src/lib/site-advanced.ts): a per-business layout spec. When present and
+     *  valid the public site draws it (src/components/site-adv) instead of a blueprint; the basic design stays stored. */
+    advanced?: AdvancedSpec;
   };
   /** A notice — news, an offer, a closure — on the website and card (src/lib/notice.ts); `pastNotices` to re-use. */
   notice?: CardNotice;

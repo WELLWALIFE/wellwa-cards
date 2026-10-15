@@ -1638,7 +1638,8 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
   const sessionKey = `ne-popup-shown:${u}`;  // once per visit
   const [show, setShow] = useState(false);
   const [f, setF] = useState({ name: "", phone: "", email: "" });
-  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [err, setErr] = useState("");
   const firstPage = useRef(active);
   const engaged = useRef(false);
 
@@ -1687,9 +1688,10 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setState("busy");
+    setState("busy"); setErr("");
     const { submitLead } = await import("@/lib/cloud");
-    await submitLead(u, { ...f, message: `🎁 Welcome popup — ${cfg?.title ?? "offer"}`, source: "popup" });
+    const res = await submitLead(u, { ...f, message: `🎁 Welcome popup — ${cfg?.title ?? "offer"}`, source: "popup" }).catch(() => ({ ok: false, error: undefined as string | undefined }));
+    if (!res.ok && res.error !== "demo") { setErr(res.error ?? "Something went wrong. Please try again."); setState("error"); return; }
     setState("done");
     try { localStorage.setItem(doneKey, "1"); } catch { /* ignore */ }
   }
@@ -1718,6 +1720,7 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
             <input required placeholder="First name" className="wp-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
             <input required placeholder="Mobile number" className="wp-input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
             <input required type="email" placeholder="Email address" className="wp-input" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} />
+            {state === "error" && <p role="alert" className="text-xs text-danger">{err}</p>}
             <button type="submit" disabled={state === "busy"}
               className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" style={{ background: theme }}>
               {state === "busy" ? "Sending…" : cfg.ctaLabel}
@@ -1738,16 +1741,18 @@ export function AppointmentBlock({ block, username, theme }: {
   const t = useT();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ name: "", phone: "", date: "", time: "" });
-  const [state, setState] = useState<"idle" | "busy" | "done">("idle");
+  const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
+  const [err, setErr] = useState("");
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setState("busy");
+    setState("busy"); setErr("");
     const { submitLead } = await import("@/lib/cloud");
-    await submitLead(username, {
+    const res = await submitLead(username, {
       name: f.name, phone: f.phone, email: "",
       message: `📅 Demo/appointment request — ${f.date} ${f.time}`.trim(),
-    });
+    }).catch(() => ({ ok: false, error: undefined as string | undefined }));
+    if (!res.ok && res.error !== "demo") { setErr(res.error ?? "Something went wrong. Try WhatsApp instead."); setState("error"); return; }
     setState("done");
   }
 
@@ -1795,7 +1800,8 @@ export function AppointmentBlock({ block, username, theme }: {
                     {["Morning", "Afternoon", "Evening"].map((t) => <option key={t} value={t}>{t}</option>)}
                   </select>
                 </div>
-                <button type="submit" disabled={state === "busy"} className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white" style={{ background: theme }}>
+                {state === "error" && <p role="alert" className="text-xs text-danger">{err}</p>}
+                <button type="submit" disabled={state === "busy"} className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" style={{ background: theme }}>
                   {state === "busy" ? "Sending…" : "Send request"}
                 </button>
                 <style>{`.apt-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:.6rem .8rem;font-size:.875rem;outline:none;color:var(--ink)}.apt-input:focus{border-color:${theme}}`}</style>

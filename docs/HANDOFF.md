@@ -57,6 +57,20 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
 3. "Owner-style training" of the bot — owner said do this LAST ("training baad me").
 4. Offered, not decided: "AI से बात करो" WebRTC voice button on the card (voice without Exotel).
 
+## Advanced website (Rs 5,999)
+Owner's new segment (15-16 Oct 2026): an AI review of the finished site, redesigned with a layout different for every business.
+- Flags (server env, both default off; documented in `src/lib/advanced-access.ts`): `ADVANCED_SITE_OPEN=1` = reviewers use it
+  free; `ADVANCED_SITE_SELL=1` = the Rs 5,999 order may be created. Without SELL the order POST answers 503 `advanced_closed`
+  (owner flips it after reviewing the feature; never charge for something half-built).
+- Files: `src/lib/advanced-access.ts` (price, `isAdvancedAllowed`, `grantAdvanced`), `src/app/api/poster/pay/advanced/route.ts`
+  (GET status; POST {} order; POST {orderId,paymentId,signature} verify). Feature files: `src/app/api/card/advanced/`,
+  `src/components/site-adv/`, `src/lib/site-advanced*.ts`.
+- Flow: order amount fixed server side (599900 paise, notes user_id + product `advanced-site`) → Razorpay checkout → verify HMAC,
+  re-fetch the order, check user/amount/product, then auth `user_metadata.advanced_site = {paid, paymentId, at, triesLeft:3}`.
+  Idempotent: an already-paid account is not re-granted. A zero-delta `credit_ledger` row (reason `advanced-site`, ref paymentId) is the audit.
+- Unverified: no live Razorpay run (order, signature, metadata write via admin PUT merge); `triesLeft` is set but decrementing is
+  the redesign route's job; no client checkout UI for this product yet; ledger insert untested against RLS/constraints.
+
 ## Rules for commits
 - Branch `claude/dreamy-faraday-0864zl` only. Clear messages. No model names in code or commits.
 - Keep comments in the codebase's voice (why, dated owner decisions), no hype.

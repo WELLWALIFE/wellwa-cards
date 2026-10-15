@@ -4,7 +4,7 @@
 // with a near-complete card so they only change a few details.
 
 import { authHeaders } from "@/lib/auth-headers";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { LoaderCircle, ArrowRight, Search, Eye, Pencil, RotateCcw } from "lucide-react";
 import type { CardTemplateDef } from "@/lib/templates";
@@ -26,14 +26,19 @@ export function TemplatePicker({
   const [rows, setRows] = useState<CardTemplateDef[] | null>(null);
   const [mine, setMine] = useState<Card[]>([]);
   const [q, setQ] = useState("");
+  const [loadErr, setLoadErr] = useState(""); // shown in place of the design list, with Try again
 
-  useEffect(() => {
+  const loadRows = useCallback(() => {
+    setLoadErr(""); setRows(null);
     authHeaders().then((headers) => fetch("/api/templates", { headers }))
-      .then((r) => r.json())
-      .then((d) => setRows(d.templates ?? []))
-      .catch(() => setRows([]));
-    fetchMyCards().then(setMine).catch(() => {});
+      .then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok || !Array.isArray(d.templates)) throw new Error(d.error || ""); return d; })
+      .then((d) => setRows(d.templates))
+      .catch((e: Error) => { setRows([]); setLoadErr(e.message || "Could not load the designs. Check your internet and try again."); });
   }, []);
+  useEffect(() => {
+    loadRows();
+    fetchMyCards().then(setMine).catch(() => {});
+  }, [loadRows]);
 
   const s = q.trim().toLowerCase();
   const shown = (rows ?? []).filter((t) =>
@@ -103,6 +108,11 @@ export function TemplatePicker({
 
       {rows === null ? (
         <div className="py-20 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
+      ) : loadErr ? (
+        <div className="mt-6 text-center space-y-3 py-8">
+          <p role="alert" className="text-sm text-danger">{loadErr}</p>
+          <button type="button" onClick={loadRows} className="rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">Try again</button>
+        </div>
       ) : (
         <div className="mt-6 grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {shown.map((t) => {

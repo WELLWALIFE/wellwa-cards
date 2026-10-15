@@ -26,6 +26,7 @@ export default function LooksGallery() {
   const [color, setColor] = useState<string>("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
+  const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
     // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
@@ -45,10 +46,10 @@ export default function LooksGallery() {
 
   async function apply(look: LookDef) {
     if (!card || busy) return;
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setErr("");
     const r = await publishCard({ ...card, template: look.key, themeColor: color || card.themeColor, avatarColor: color || card.avatarColor });
     setBusy(false);
-    if (!r.ok) { setMsg(r.error || (hi ? "Save नहीं हुआ" : "Could not save")); return; }
+    if (!r.ok) { setErr(r.error || (hi ? "Save नहीं हुआ" : "Could not save")); return; }
     setCard({ ...card, template: look.key, themeColor: color || card.themeColor, avatarColor: color || card.avatarColor });
     setMsg(hi ? `${look.name} look लग गया — आपका card अब ऐसा दिखेगा।` : `${look.name} look is on — your card looks like this now.`);
   }
@@ -73,7 +74,7 @@ export default function LooksGallery() {
           {LOOKS.map((l) => {
             const on = sel.key === l.key;
             return (
-              <button key={l.key} type="button" onClick={() => setPick(l.key)} className={`shrink-0 w-[4.6rem] overflow-hidden rounded-xl border text-left ${on ? "border-brand ring-2 ring-brand" : "border-border bg-surface"}`}>
+              <button key={l.key} type="button" onClick={() => { setPick(l.key); setErr(""); }} className={`shrink-0 w-[4.6rem] overflow-hidden rounded-xl border text-left ${on ? "border-brand ring-2 ring-brand" : "border-border bg-surface"}`}>
                 <div className="h-8" style={{ background: l.cover(color || card.themeColor) }} />
                 <div className="flex items-center gap-1 px-1.5 py-1">
                   <span className="truncate text-[11px] font-semibold">{l.name}</span>
@@ -86,11 +87,11 @@ export default function LooksGallery() {
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar py-0.5">
           <span className="shrink-0 text-xs text-muted">{hi ? "रंग" : "Colour"}</span>
           {Array.from(new Set([card.themeColor, ...SWATCHES])).map((s) => (
-            <button key={s} type="button" onClick={() => setColor(s)} aria-label={s}
+            <button key={s} type="button" onClick={() => { setColor(s); setErr(""); }} aria-label={s}
               className={`h-7 w-7 shrink-0 rounded-full transition-transform ${(color || card.themeColor) === s ? "ring-2 ring-offset-2 ring-offset-bg scale-110" : ""}`} style={{ background: s, boxShadow: (color || card.themeColor) === s ? `0 0 0 2px ${s}` : "none" }} />
           ))}
           <label className="shrink-0 inline-flex items-center gap-1 text-xs text-muted">
-            <input type="color" value={color || card.themeColor} onChange={(e) => setColor(e.target.value)} className="h-7 w-7 rounded-full border border-border bg-transparent p-0" aria-label="Pick your own colour" />
+            <input type="color" value={color || card.themeColor} onChange={(e) => { setColor(e.target.value); setErr(""); }} className="h-7 w-7 rounded-full border border-border bg-transparent p-0" aria-label="Pick your own colour" />
           </label>
         </div>
         <p className="text-xs"><b>{sel.name}</b>{hi && sel.hi ? ` · ${sel.hi}` : ""} <span className="text-muted">— {sel.blurb}</span></p>
@@ -101,6 +102,7 @@ export default function LooksGallery() {
       </div>
 
       <div className="fixed inset-x-0 bottom-16 z-40 mx-auto max-w-md px-4">
+        {err && <p role="alert" className="mb-2 rounded-xl border border-danger/40 bg-surface px-3 py-2 text-sm text-danger">{err}</p>}
         <button type="button" disabled={busy || isOn} onClick={() => apply(sel)} className="w-full rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-float disabled:opacity-70">
           {busy ? (hi ? "लग रहा है…" : "Applying…") : isOn ? (hi ? "यही look लगा है ✓" : "This look is on ✓") : (hi ? `यही look लगाएँ — ${sel.name}` : `Use this look — ${sel.name}`)}
         </button>

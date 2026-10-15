@@ -298,8 +298,16 @@ function SignupInner() {
               <span>I am 18 or older and I accept the <a href="/terms" target="_blank" className="font-semibold text-brand-ink underline">Terms</a>, <a href="/privacy" target="_blank" className="font-semibold text-brand-ink underline">Privacy Policy</a> and the <a href="/partners/legal/agreement" target="_blank" className="font-semibold text-brand-ink underline">Partner Agreement</a>.</span>
             </label>
 
-            {error && <p className="text-sm text-danger">{error}</p>}
+            {error && <p role="alert" className="text-sm text-danger">{error}</p>}
 
+            {sb && !busy && (check.state === "checking" || !agree || taken.mobile || taken.email) && (
+              <p className="text-xs text-muted">
+                {taken.mobile ? "Create is off: this mobile number already has an account. Log in instead, or use another number."
+                  : taken.email ? "Create is off: this email already has an account. Log in instead, or use another email."
+                  : check.state === "checking" ? "Create is off for a moment: checking that your username is free…"
+                  : "Create is off: tick the box above to accept the Terms, Privacy Policy and Partner Agreement."}
+              </p>
+            )}
             {sb ? (
               <button type="submit" disabled={busy || check.state === "checking" || !agree || !!taken.mobile || !!taken.email}
                 className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">

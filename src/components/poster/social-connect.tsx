@@ -22,12 +22,13 @@ function Avatar({ src }: { src: string }) {
   return <img src={src} alt="" className="h-7 w-7 rounded-full object-cover" />;
 }
 
-let cache: { at: number; configured: boolean; accounts: SocialAccount[] } | null = null;
+let cache: { at: number; configured: boolean; accounts: SocialAccount[]; ok?: boolean } | null = null;
 export async function fetchSocialAccounts(force = false) {
   if (!force && cache && Date.now() - cache.at < 60_000) return cache;
   const r = await api<{ configured?: boolean; accounts?: SocialAccount[] }>("/api/social/accounts");
-  cache = { at: Date.now(), configured: !!r.data.configured, accounts: r.data.accounts ?? [] };
-  return cache;
+  const fresh = { at: Date.now(), configured: !!r.data.configured, accounts: r.data.accounts ?? [], ok: r.ok };
+  if (r.ok) cache = fresh;
+  return fresh;
 }
 export function invalidateSocialAccounts() { cache = null; }
 
@@ -42,12 +43,16 @@ export function SocialConnect({ returnTo = "/poster/settings" }: { returnTo?: st
   const [configured, setConfigured] = useState(true);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const { t } = useT();
+  const { t, lang } = useT(); const hi = lang !== "en";
+  const [rowErr, setRowErr] = useState<{ id: string; text: string } | null>(null); // remove — inside that account row
+  const [listErr, setListErr] = useState(""); // refresh — under the list
 
   const load = useCallback(async (force = false) => {
+    setListErr("");
     const c = await fetchSocialAccounts(force);
+    if (c.ok === false) { setListErr(hi ? "Accounts की list नहीं आ पाई। Internet देखकर दोबारा दबाएँ।" : "Could not load your accounts. Check your internet and tap refresh again."); setList((l) => l ?? []); return; }
     setList(c.accounts); setConfigured(c.configured);
-  }, []);
+  }, [hi]);
   useEffect(() => {
     const q = new URLSearchParams(window.location.search);
     const s = q.get("social");
@@ -63,7 +68,9 @@ export function SocialConnect({ returnTo = "/poster/settings" }: { returnTo?: st
   }
   async function remove(id: string) {
     if (!confirm(t.removeAcct)) return;
-    await api("/api/social/accounts", { method: "DELETE", json: { id } });
+    setRowErr(null);
+    const r = await api("/api/social/accounts", { method: "DELETE", json: { id } });
+    if (!r.ok) { setRowErr({ id, text: hi ? "Account हट नहीं पाया। दोबारा try करें।" : "Could not remove this account. Please try again." }); return; }
     invalidateSocialAccounts(); load(true);
   }
 
@@ -77,17 +84,19 @@ export function SocialConnect({ returnTo = "/poster/settings" }: { returnTo?: st
       {list === null ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" /> : list.length > 0 && (
         <ul className="space-y-1.5">
           {list.map((a) => (
-            <li key={a.id} className="flex items-center gap-2 rounded-lg bg-surface2 px-2.5 py-2">
+            <li key={a.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-surface2 px-2.5 py-2">
               {a.picture ? <Avatar src={a.picture} /> : <ProviderIcon provider={a.provider} className="h-7 w-7" />}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium truncate flex items-center gap-1.5"><ProviderIcon provider={a.provider} className="h-3.5 w-3.5" /> {a.name}</p>
                 <p className="text-[11px] text-muted truncate">{a.provider === "instagram" ? `@${a.username}` : t.fbPage}{a.status === "reconnect" ? ` · ${t.reconnect}` : ""}</p>
               </div>
               <button type="button" onClick={() => remove(a.id)} className="text-muted p-1" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
+              {rowErr?.id === a.id && <p role="alert" className="basis-full text-xs text-danger">{rowErr.text}</p>}
             </li>
           ))}
         </ul>
       )}
+      {listErr && <p role="alert" className="text-xs text-danger">{listErr}</p>}
       <ConnectConsent kind="facebook" />
       <button type="button" onClick={connect} disabled={busy || !configured}
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#1877F2] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">

@@ -38,7 +38,11 @@ export function usePush() {
       const { key } = await fetch("/api/push/key").then((r) => r.json());
       if (!key) throw new Error("Notifications are not available yet. Please try later.");
       const perm = await Notification.requestPermission();
-      if (perm !== "granted") { setState(perm === "denied" ? "blocked" : "off"); return; }
+      if (perm !== "granted") {
+        setState(perm === "denied" ? "blocked" : "off");
+        setError(perm === "denied" ? "Notifications are blocked for this site. Allow them in your browser's site settings, then try again." : "You did not allow notifications, so they are still off. Tap again and choose Allow.");
+        return;
+      }
       const reg = await navigator.serviceWorker.register("/sw.js", { scope: "/" });
       await navigator.serviceWorker.ready;
       const sub = (await reg.pushManager.getSubscription()) ?? await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToBytes(key) });
@@ -73,7 +77,7 @@ export function PushInvite() {
   const { state, busy, error, enable } = usePush();
   const [hidden, setHidden] = useState(true);
   useEffect(() => { try { setHidden(localStorage.getItem(DISMISS_KEY) === "1"); } catch { setHidden(false); } }, []);
-  if (hidden || (state !== "off" && state !== "ios-install")) return null;
+  if (hidden || (state !== "off" && state !== "ios-install" && !(state === "blocked" && error))) return null;
   const dismiss = () => { setHidden(true); try { localStorage.setItem(DISMISS_KEY, "1"); } catch { /* ignore */ } };
   return (
     <div className="mb-5 flex flex-wrap items-center gap-3 rounded-xl border border-brand/30 bg-brand-soft px-4 py-3">
@@ -82,7 +86,7 @@ export function PushInvite() {
         {state === "ios-install"
           ? <>To get alerts on iPhone, tap <b>Share → Add to Home Screen</b>, open Shubhora from there and turn on notifications.</>
           : <>Get an alert the moment a new lead comes in, plus follow-up reminders and a morning summary.</>}
-        {error && <span className="block text-danger text-xs mt-1">{error}</span>}
+        {error && <span role="alert" className="block text-danger text-xs mt-1">{error}</span>}
       </p>
       {state === "off" && (
         <button onClick={enable} disabled={busy} className="inline-flex items-center gap-1.5 rounded-lg bg-brand px-3.5 py-2 text-sm font-semibold text-white disabled:opacity-60">
@@ -112,7 +116,7 @@ export function PushSetting() {
       <div className="flex-1 min-w-[200px]">
         <p className="text-sm font-semibold">Notifications on this device</p>
         <p className="text-xs text-muted mt-0.5">{text[state]}</p>
-        {error && <p className="text-xs text-danger mt-1">{error}</p>}
+        {error && !(state === "blocked") && <p role="alert" className="text-xs text-danger mt-1">{error}</p>}
       </div>
       {(state === "on" || state === "off") && (
         <button role="switch" aria-checked={on} onClick={on ? disable : enable} disabled={busy}

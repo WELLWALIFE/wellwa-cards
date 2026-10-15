@@ -17,6 +17,7 @@ import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
+import { AdvancedEntry } from "@/components/poster/advanced-entry";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -223,6 +224,9 @@ export default function WebsitePage() {
             <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("Show on Google", "Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("Your city, areas and search words. See how it looks on Google.", "आपका शहर, इलाक़े और search words। देखें Google पर कैसा दिखेगा।")}</span></span>
             <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
           </Link>
+
+          {/* The Rs 5,999 advanced website (owner, 15-16 Oct 2026): its own door; once one exists it shows the state and the way back to the basic site. */}
+          <AdvancedEntry key={cardId} cardId={cardId} fetchState />
           </>}
 
           {panel === "share" && !editOnly && (

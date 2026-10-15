@@ -24,6 +24,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
   const [err, setErr] = useState("");
   const [fMsg, setFMsg] = useState("");
   const [fErr, setFErr] = useState("");
+  const [rowErr, setRowErr] = useState<{ url: string; text: string } | null>(null); // rename / remove — inside that file's row
   useEffect(() => { setUrl(strip(card.botSite ?? "")); }, [card.botSite]);
   const set = !!card.botSite?.trim();
 
@@ -63,9 +64,9 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
   const pdfRef = useRef<HTMLInputElement>(null);
   const [fileBusy, setFileBusy] = useState(false);
   const [labels, setLabels] = useState<Record<string, string>>({});
-  async function saveFiles(next: BotFile[]) {
+  async function saveFiles(next: BotFile[], rowUrl?: string) {
     const p = await publishCard({ ...card, botFiles: next.length ? next : undefined });
-    if (!p.ok) { setFErr(p.error); return false; }
+    if (!p.ok) { const text = p.error || T("सेव नहीं हुआ — फिर try करें।", "Could not save — try again."); if (rowUrl) setRowErr({ url: rowUrl, text }); else setFErr(text); return false; }
     onChanged?.({ ...card, botFiles: next.length ? next : undefined });
     return true;
   }
@@ -92,14 +93,14 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
   }
   async function renameFile(url: string) {
     const label = (labels[url] ?? "").trim().slice(0, 60);
-    if (!label) return;
-    setFErr(""); setFMsg("");
-    await saveFiles(files.map((f) => (f.url === url ? { ...f, label } : f)));
+    setFErr(""); setFMsg(""); setRowErr(null);
+    if (!label) { setLabels((l) => { const n = { ...l }; delete n[url]; return n; }); setRowErr({ url, text: T("नाम खाली नहीं हो सकता।", "The name cannot be empty.") }); return; }
+    await saveFiles(files.map((f) => (f.url === url ? { ...f, label } : f)), url);
   }
   async function removeFile(url: string) {
     if (!confirm(T("यह फ़ाइल हटा दें?", "Remove this file?"))) return;
-    setFErr(""); setFMsg("");
-    await saveFiles(files.filter((f) => f.url !== url));
+    setFErr(""); setFMsg(""); setRowErr(null);
+    await saveFiles(files.filter((f) => f.url !== url), url);
   }
 
   return (
@@ -129,13 +130,14 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
         {files.length > 0 && (
           <ul className="mt-2 space-y-1.5">
             {files.map((f) => (
-              <li key={f.url} className="flex items-center gap-2 rounded-xl border border-border bg-bg p-1.5">
+              <li key={f.url} className="flex flex-wrap items-center gap-2 rounded-xl border border-border bg-bg p-1.5">
                 {f.kind === "image"
                   // eslint-disable-next-line @next/next/no-img-element
                   ? <img src={f.url} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />
                   : <span className="grid h-10 w-10 shrink-0 place-items-center rounded-lg bg-surface2 text-muted">{f.kind === "link" ? (/youtu/i.test(f.url) ? <PlaySquare className="h-5 w-5" /> : <Link2 className="h-5 w-5" />) : <FileText className="h-5 w-5" />}</span>}
                 <input value={labels[f.url] ?? f.label} onChange={(e) => setLabels({ ...labels, [f.url]: e.target.value })} onBlur={() => { if ((labels[f.url] ?? f.label) !== f.label) void renameFile(f.url); }} maxLength={60} className="min-w-0 flex-1 bg-transparent px-1 text-sm outline-none" placeholder={T("फ़ाइल का नाम, जैसे AlkaFresh 1101 specifications", "File name, e.g. AlkaFresh 1101 specifications")} />
                 <button type="button" onClick={() => removeFile(f.url)} className="p-1.5 text-muted hover:text-danger" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
+                {rowErr?.url === f.url && <p role="alert" className="basis-full px-1 text-xs font-medium text-danger">{rowErr.text}</p>}
               </li>
             ))}
           </ul>

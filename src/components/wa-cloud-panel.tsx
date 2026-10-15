@@ -20,14 +20,17 @@ export function WaCloudPanel() {
   const [tab, setTab] = useState<"connect" | "templates" | "broadcast" | "tick">("connect");
   const [acc, setAcc] = useState<Account | null | undefined>(undefined);
   const [hook, setHook] = useState({ url: "", verify: "" });
+  const [loadErr, setLoadErr] = useState(""); // could not read the saved connection — shown on top of the panel with Try again
   const load = useCallback(async () => {
     const r = await api<{ account: Account | null; webhook_url: string; verify_token: string; error?: string }>("/api/wa-cloud/account");
-    if (r.ok) { setAcc(r.data.account); setHook({ url: r.data.webhook_url, verify: r.data.verify_token }); } else setAcc(null);
+    if (r.ok) { setLoadErr(""); setAcc(r.data.account); setHook({ url: r.data.webhook_url, verify: r.data.verify_token }); }
+    else { setLoadErr(r.data?.error || "Could not load your WhatsApp Business connection. Check your internet and try again."); setAcc((a) => a ?? null); }
   }, []);
   useEffect(() => { load(); }, [load]);
   if (acc === undefined) return <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
     <div className="space-y-4">
+      {loadErr && <div role="alert" className="flex flex-wrap items-center gap-2 rounded-xl border border-danger/40 bg-danger/5 px-3 py-2 text-xs text-danger"><span className="flex-1">{loadErr}</span><button type="button" onClick={() => { setLoadErr(""); load(); }} className="rounded-lg border border-border bg-surface px-2.5 py-1 font-semibold text-ink">Try again</button></div>}
       <div className="inline-flex flex-wrap rounded-full border border-border bg-surface p-0.5 text-xs font-semibold">
         {([["connect", "Connect", Plug], ["templates", "Templates", FileText], ["broadcast", "Broadcast", Megaphone], ["tick", "Green tick", BadgeCheck]] as const).map(([k, l, I]) => (
           <button key={k} type="button" onClick={() => setTab(k)} className={`inline-flex items-center gap-1 rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}><I className="h-3.5 w-3.5" />{l}</button>
@@ -100,6 +103,7 @@ function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: st
   const [msg, setMsg] = useState("");
   const [test, setTest] = useState({ to: "", text: "", out: "" });
   const [edit, setEdit] = useState(!acc);
+  const [ctlErr, setCtlErr] = useState(""); // ON/OFF switches and Disconnect — under those controls
   async function save() {
     setBusy(true); setMsg("");
     const body: Record<string, unknown> = { phone_number_id: f.phone_number_id, waba_id: f.waba_id };
@@ -108,8 +112,19 @@ function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: st
     setBusy(false); setMsg(r.ok ? "Connected ✓ — now register the webhook below (one time)." : r.data.error || "Could not connect.");
     if (r.ok) { setEdit(false); setF({ ...f, access_token: "", app_secret: "" }); onChange(); }
   }
-  async function toggle(k: "enabled" | "ai_enabled", v: boolean) { await api("/api/wa-cloud/account", { method: "PATCH", json: { [k]: v } }); onChange(); }
-  async function disconnect() { if (!confirm("Disconnect the Cloud API number? Replies and broadcasts will stop.")) return; await api("/api/wa-cloud/account", { method: "DELETE" }); onChange(); setEdit(true); }
+  async function toggle(k: "enabled" | "ai_enabled", v: boolean) {
+    setCtlErr("");
+    const r = await api<{ error?: string }>("/api/wa-cloud/account", { method: "PATCH", json: { [k]: v } });
+    if (!r.ok) setCtlErr(r.data?.error || "Could not change this setting. Please try again.");
+    onChange();
+  }
+  async function disconnect() {
+    if (!confirm("Disconnect the Cloud API number? Replies and broadcasts will stop.")) return;
+    setCtlErr("");
+    const r = await api<{ error?: string }>("/api/wa-cloud/account", { method: "DELETE" });
+    if (!r.ok) { setCtlErr(r.data?.error || "Could not disconnect. Please try again."); return; }
+    onChange(); setEdit(true);
+  }
   async function sendTest(template?: boolean) {
     setBusy(true); setTest({ ...test, out: "" });
     const r = await api<{ ok: boolean; error?: string }>("/api/wa-cloud/account", { method: "POST", json: template ? { to: test.to, template: "hello_world", lang: "en_US" } : { to: test.to, text: test.text } });
@@ -136,6 +151,7 @@ function Connect({ acc, hook, onChange }: { acc: Account | null; hook: { url: st
               <button type="button" onClick={() => setEdit(true)} className="ml-auto rounded-lg border border-border px-2 py-1 text-xs text-muted">Edit</button>
               <button type="button" onClick={disconnect} className="rounded-lg border border-border px-2 py-1 text-xs text-danger">Disconnect</button>
             </div>
+            {ctlErr && <p role="alert" className="text-xs text-danger">{ctlErr}</p>}
           </div>
         ) : (
           <div className="space-y-2 text-sm">
@@ -182,16 +198,24 @@ function Templates({ acc }: { acc: Account }) {
   const [creating, setCreating] = useState(false);
   const [f, setF] = useState({ name: "", category: "MARKETING", language: "en", header_text: "", body: "", footer: "", buttons: [] as { type: string; text: string; url?: string }[], examples: "" });
   const [busy, setBusy] = useState(false);
+  const [createErr, setCreateErr] = useState(""); // submit for approval — above its button
+  const [rowErr, setRowErr] = useState<{ name: string; text: string } | null>(null); // delete — inside that template's card
   const load = useCallback(async () => { const r = await api<{ templates: Tpl[]; error?: string }>("/api/wa-cloud/templates"); if (r.ok) { setTpls(r.data.templates); setErr(""); } else { setTpls([]); setErr(r.data.error || "Could not load."); } }, []);
   useEffect(() => { load(); }, [load]);
   async function create() {
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setCreateErr("");
     const r = await api<{ ok: boolean; status?: string; error?: string }>("/api/wa-cloud/templates", { method: "POST", json: { ...f, examples: f.examples.split("|").map((s) => s.trim()).filter(Boolean) } });
     setBusy(false);
-    if (!r.ok) { setErr(r.data.error || "Meta rejected the template."); return; }
+    if (!r.ok) { setCreateErr(r.data.error || "Meta rejected the template."); return; }
     setCreating(false); setF({ name: "", category: "MARKETING", language: "en", header_text: "", body: "", footer: "", buttons: [], examples: "" }); load();
   }
-  async function remove(name: string) { if (!confirm(`Delete template "${name}" in Meta?`)) return; await api(`/api/wa-cloud/templates?name=${encodeURIComponent(name)}`, { method: "DELETE" }); load(); }
+  async function remove(name: string) {
+    if (!confirm(`Delete template "${name}" in Meta?`)) return;
+    setRowErr(null);
+    const r = await api<{ error?: string }>(`/api/wa-cloud/templates?name=${encodeURIComponent(name)}`, { method: "DELETE" });
+    if (!r.ok) { setRowErr({ name, text: r.data?.error || "Could not delete this template. Please try again." }); return; }
+    load();
+  }
   const vars = (f.body.match(/\{\{\d+\}\}/g) ?? []).length;
   return (
     <div className="space-y-3">
@@ -222,7 +246,9 @@ function Templates({ acc }: { acc: Account }) {
             ))}
             {f.buttons.length < 3 && <button type="button" onClick={() => setF({ ...f, buttons: [...f.buttons, { type: "QUICK_REPLY", text: "" }] })} className="rounded-lg border border-dashed border-border px-2 py-1 text-xs text-muted">+ Button</button>}
           </div>
-          <div className="flex gap-2"><button type="button" onClick={() => setCreating(false)} className="rounded-xl border border-border px-3 py-2 text-xs text-muted">Cancel</button><button type="button" disabled={busy || !f.name || !f.body} onClick={create} className="grad-brand flex-1 rounded-xl py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Submitting to Meta…" : "Submit for approval"}</button></div>
+          {createErr && <p role="alert" className="text-xs text-danger">{createErr}</p>}
+          {(!f.name || !f.body) && !busy && <p className="text-[11px] text-muted">To submit: add the template name and the message text.</p>}
+          <div className="flex gap-2"><button type="button" onClick={() => { setCreating(false); setCreateErr(""); }} className="rounded-xl border border-border px-3 py-2 text-xs text-muted">Cancel</button><button type="button" disabled={busy || !f.name || !f.body} onClick={create} className="grad-brand flex-1 rounded-xl py-2 text-sm font-semibold text-white disabled:opacity-50">{busy ? "Submitting to Meta…" : "Submit for approval"}</button></div>
         </div>
       ) : (
         <div className="flex gap-2"><button type="button" disabled={!acc.waba_id} onClick={() => setCreating(true)} className="grad-brand inline-flex items-center gap-1 rounded-xl px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"><Plus className="h-4 w-4" /> New template</button><button type="button" onClick={load} className="rounded-xl border border-border px-3 py-2 text-xs text-muted" aria-label="Refresh"><RefreshCw className="h-4 w-4" /></button></div>
@@ -233,6 +259,7 @@ function Templates({ acc }: { acc: Account }) {
             <div key={t.id} className="rounded-xl border border-border bg-surface p-3 text-sm">
               <div className="flex items-center gap-2"><b className="truncate text-ink">{t.name}</b><span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${STATUS_CLS[t.status] ?? "bg-surface2 text-muted"}`}>{t.status}</span><span className="text-[10px] text-faint">{t.language} · {t.category}</span><button type="button" onClick={() => remove(t.name)} className="ml-auto p-1 text-muted" aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></button></div>
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{bodyOf(t)}</p>
+              {rowErr?.name === t.name && <p role="alert" className="mt-1 text-[11px] text-danger">{rowErr.text}</p>}
               {t.rejected_reason && t.rejected_reason !== "NONE" && <p className="mt-1 text-[11px] text-danger">Rejected: {t.rejected_reason}</p>}
             </div>
           ))}
@@ -251,7 +278,9 @@ function Broadcast({ acc }: { acc: Account }) {
   const [count, setCount] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const load = useCallback(async () => { const r = await api<{ broadcasts: Bc[] }>("/api/wa-cloud/broadcast"); setList(r.ok ? r.data.broadcasts : []); }, []);
+  const [listErr, setListErr] = useState("");
+  const [cancelErr, setCancelErr] = useState<{ id: string; text: string } | null>(null); // Cancel campaign — inside that campaign's card
+  const load = useCallback(async () => { const r = await api<{ broadcasts: Bc[] }>("/api/wa-cloud/broadcast"); if (r.ok) { setListErr(""); setList(r.data.broadcasts); } else { setListErr("Could not load your campaigns. Check your internet and try again."); setList((l) => l ?? []); } }, []);
   useEffect(() => { load(); (async () => { const r = await api<{ templates: Tpl[] }>("/api/wa-cloud/templates"); if (r.ok) setTpls(r.data.templates.filter((t) => t.status === "APPROVED")); })(); }, [load]);
   useEffect(() => { const t = setInterval(load, 15000); return () => clearInterval(t); }, [load]);
   const tpl = useMemo(() => tpls.find((t) => `${t.name}|${t.language}` === f.template), [tpls, f.template]);
@@ -265,7 +294,12 @@ function Broadcast({ acc }: { acc: Account }) {
     const r = await api<{ ok: boolean; total: number; error?: string }>("/api/wa-cloud/broadcast", { method: "POST", json: { name: f.name || tpl.name, template_name: tpl.name, template_lang: tpl.language, params: f.params, header_image: hasImageHeader ? f.header_image : "", audience: { all: f.all, stages: f.stages, tags: f.tags.split(",").map((s) => s.trim()).filter(Boolean) }, scheduled_at: f.scheduled_at ? new Date(f.scheduled_at).toISOString() : undefined } });
     setBusy(false); setMsg(r.ok ? `Queued for ${r.data.total} customers — sending starts within a minute.` : r.data.error || "Failed."); if (r.ok) { setF({ ...f, name: "" }); load(); }
   }
-  async function cancel(id: string) { await api("/api/wa-cloud/broadcast", { method: "PATCH", json: { id, action: "cancel" } }); load(); }
+  async function cancel(id: string) {
+    setCancelErr(null);
+    const r = await api<{ error?: string }>("/api/wa-cloud/broadcast", { method: "PATCH", json: { id, action: "cancel" } });
+    if (!r.ok) { setCancelErr({ id, text: r.data?.error || "Could not cancel this campaign. Please try again." }); return; }
+    load();
+  }
   return (
     <div className="space-y-4">
       <p className="text-xs text-muted">Send an <b>approved template</b> to many leads at once. Meta charges per marketing conversation (~₹0.8) and limits new numbers to <b>{tierLabel(acc.messaging_limit)}</b>; customers who reply STOP are skipped automatically.</p>
@@ -299,11 +333,13 @@ function Broadcast({ acc }: { acc: Account }) {
       </section>
       <section className="space-y-2">
         <h3 className="text-sm font-semibold">Campaigns</h3>
+        {listErr && <p role="alert" className="text-xs text-danger">{listErr} <button type="button" onClick={load} className="font-semibold underline">Try again</button></p>}
         {list === null ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : list.length === 0 ? <p className="text-xs text-faint">No campaigns yet.</p> : list.map((b) => {
           const pct = b.total ? Math.round(((b.sent + b.failed) / b.total) * 100) : 0;
           return (
             <div key={b.id} className="rounded-xl border border-border bg-surface p-3 text-sm">
               <div className="flex items-center gap-2"><b className="truncate text-ink">{b.name}</b><span className="text-[10px] text-faint">{b.template_name}</span><span className={`ml-auto rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${b.status === "done" ? "bg-good/15 text-good" : b.status === "sending" ? "bg-ai/10 text-ai" : b.status === "scheduled" ? "bg-lead/15 text-lead" : "bg-surface2 text-muted"}`}>{b.status}</span>{["scheduled", "sending"].includes(b.status) && <button type="button" onClick={() => cancel(b.id)} className="text-[11px] text-danger">Cancel</button>}</div>
+              {cancelErr?.id === b.id && <p role="alert" className="mt-1 text-[11px] text-danger">{cancelErr.text}</p>}
               <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-surface2"><div className="h-full bg-brand" style={{ width: `${pct}%` }} /></div>
               <div className="mt-1 flex flex-wrap gap-3 text-[11px] text-muted"><span>Total <b className="text-ink">{b.total}</b></span><span>Sent <b className="text-ink">{b.sent}</b></span><span>Delivered <b className="text-ink">{b.delivered}</b></span><span>Read <b className="text-good">{b.read}</b></span><span>Failed <b className={b.failed ? "text-danger" : "text-ink"}>{b.failed}</b></span>{b.scheduled_at && b.status === "scheduled" && <span>⏰ {new Date(b.scheduled_at).toLocaleString("en-IN", { timeZone: "Asia/Kolkata" })}</span>}</div>
             </div>
@@ -317,7 +353,14 @@ function Broadcast({ acc }: { acc: Account }) {
 /* ---------------- green tick ---------------- */
 function GreenTick({ acc, onRefresh }: { acc: Account | null; onRefresh: () => void }) {
   const [busy, setBusy] = useState(false);
-  async function refresh() { setBusy(true); await api("/api/wa-cloud/account", { method: "PATCH", json: { refresh: true } }); setBusy(false); onRefresh(); }
+  const [err, setErr] = useState("");
+  async function refresh() {
+    setBusy(true); setErr("");
+    const r = await api<{ error?: string }>("/api/wa-cloud/account", { method: "PATCH", json: { refresh: true } });
+    setBusy(false);
+    if (!r.ok) { setErr(r.data?.error || "Could not re-check with Meta. Please try again."); return; }
+    onRefresh();
+  }
   const steps = [
     { t: "Business verification in Meta Business Manager", d: "Business settings → Security centre → Start verification. Needs GST / company registration / utility bill with the business name and address. 2-10 days.", ok: !!acc?.verified_name },
     { t: "Display name approved", d: "Your WhatsApp display name must match the verified business. Check WhatsApp Manager → Phone numbers.", ok: acc?.verified_name ? true : false },
@@ -329,6 +372,7 @@ function GreenTick({ acc, onRefresh }: { acc: Account | null; onRefresh: () => v
     <div className="space-y-3">
       <div className="rounded-2xl border border-border bg-surface p-4 text-sm shadow-card">
         <div className="flex items-center gap-2"><BadgeCheck className={`h-5 w-5 ${acc?.official ? "text-good" : "text-faint"}`} /><b className="text-ink">{acc?.official ? "Green tick active ✓" : "Green tick not yet"}</b>{acc && <button type="button" disabled={busy} onClick={refresh} className="ml-auto inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-xs text-muted"><RefreshCw className={`h-3.5 w-3.5 ${busy ? "animate-spin" : ""}`} /> Re-check</button>}</div>
+        {err && <p role="alert" className="mt-1 text-xs text-danger">{err}</p>}
         {acc && <p className="mt-1 text-xs text-muted">{acc.display_phone} · name: <b>{acc.verified_name || "—"}</b> · quality: <b>{acc.quality_rating || "—"}</b> · limit: <b>{tierLabel(acc.messaging_limit)}</b></p>}
         {!acc && <p className="mt-1 text-xs text-muted">Connect your Cloud API number first. The green tick (Official Business Account) is only possible on the official API, not on the QR/mobile connection.</p>}
       </div>

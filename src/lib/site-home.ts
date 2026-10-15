@@ -27,6 +27,11 @@ export function isEmptyBlock(b: CardBlock): boolean {
   if ("rows" in b && Array.isArray(b.rows) && b.rows.length === 0) return true;
   if ((b.kind === "image" || b.kind === "carousel" || b.kind === "gallery") && !b.images.some((i) => i.url)) return true;
   if (b.kind === "video" && !b.url) return true;
+  // Placeholder-only rows must not open a section on their own: a FAQ with no answers, reviews with no words, timings with no times.
+  if (b.kind === "faq" && !b.items.some((x) => (x.q ?? "").trim() && (x.a ?? "").trim())) return true;
+  if (b.kind === "testimonials" && !b.items.some((x) => (x.text ?? "").trim())) return true;
+  if (b.kind === "hours" && !b.rows.some((r) => (r.day ?? "").trim() && (r.time ?? "").trim())) return true;
+  if ((b.kind === "product" || b.kind === "services") && !b.items.some((x) => (x.name ?? "").trim())) return true;
   if (b.kind === "form" && !b.fields.some((f) => f.label)) return true;
   if (b.kind === "table" && !b.rows.some((r) => r.some(Boolean))) return true;
   if (b.kind === "about" && !(b.body ?? "").trim() && !b.imageUrl) return true;
@@ -230,6 +235,10 @@ export function trustFacts(card: Card): TrustFact[] {
   const areas = card.seo?.areas?.filter(Boolean) ?? [];
   if (areas.length >= 3 && !areas.some((a) => /all india|online|worldwide/i.test(a))) out.push({ value: `${areas.length}`, label: h ? `${card.seo?.city ? card.seo.city + " में " : ""}इलाके` : `areas${card.seo?.city ? ` in ${card.seo.city}` : ""}` });
   else if (areas.some((a) => /all india/i.test(a))) out.push({ value: h ? "पूरे भारत" : "All India", label: h ? "में सेवा" : "delivery & service" });
+  // Said by the owner's own highlights / services: home delivery, and UPI when a UPI link is on the card.
+  const said = [...blocks.flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.tagline ?? ""].join(" ");
+  if (/home delivery|free delivery|doorstep|डिलीवरी/i.test(said)) out.push({ value: h ? "होम डिलीवरी" : "Home delivery", label: h ? "आपके दरवाज़े तक" : "to your doorstep" });
+  if ((card.links ?? []).some((l) => l.type === "upi" && (l.value ?? "").trim())) out.push({ value: "UPI", label: h ? "से पेमेंट लें" : "payments accepted" });
   if (card.gstin?.trim()) out.push({ value: "GST", label: h ? "रजिस्टर्ड बिज़नेस" : "registered business" });
   if (card.verified) out.push({ value: "✓", label: h ? "वेरिफ़ाइड" : "verified" });
   return out.length >= 3 ? out.slice(0, 4) : [];

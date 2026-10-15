@@ -15,7 +15,16 @@ export function PhoneCalls() {
   const T = (h: string, e: string) => (hi ? h : e);
   const [data, setData] = useState<{ line: Line | null; calls: Call[]; ready: boolean } | null>(null);
   const [open, setOpen] = useState<string | null>(null);
-  useEffect(() => { api<{ line: Line | null; calls: Call[]; ready: boolean }>("/api/phone").then((r) => setData(r.ok ? r.data : { line: null, calls: [], ready: false })); }, []);
+  const [loadErr, setLoadErr] = useState("");
+  const load = () => { setLoadErr(""); api<{ line: Line | null; calls: Call[]; ready: boolean }>("/api/phone").then((r) => { if (r.ok) setData(r.data); else setLoadErr(T("कॉल की list नहीं आ पाई। Internet देखकर दोबारा try करें।", "Could not load your calls. Check your internet and try again.")); }).catch(() => setLoadErr(T("कॉल की list नहीं आ पाई। Internet देखकर दोबारा try करें।", "Could not load your calls. Check your internet and try again."))); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => { load(); }, []);
+  if (!data && loadErr) return (
+    <div className="space-y-3 py-8 text-center">
+      <p role="alert" className="text-sm text-danger">{loadErr}</p>
+      <button type="button" onClick={load} className="rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white">{T("दोबारा try करें", "Try again")}</button>
+    </div>
+  );
   if (!data) return <div className="py-10 grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div>;
   const pretty = (d: string) => { const n = d.replace(/\D/g, ""); return n.length >= 10 ? `+${n.slice(0, -10)} ${n.slice(-10, -5)} ${n.slice(-5)}` : d; };
   const badge = (i: string) => i === "booking" ? T("बुकिंग", "booking") : i === "order" ? T("ऑर्डर", "order") : i === "callback" ? T("कॉल बैक", "call back") : i === "enquiry" ? T("पूछताछ", "enquiry") : T("कॉल", "call");

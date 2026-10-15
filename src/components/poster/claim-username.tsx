@@ -5,7 +5,7 @@ import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { authHeaders } from "@/lib/poster-client";
 import { cleanAccountUsername, looksLikePartnerId, usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY, USERNAME_HINT } from "@/lib/username";
 
-type Check = { state: "idle" | "checking" | "ok" | "bad"; reason?: string };
+type Check = { state: "idle" | "checking" | "ok" | "bad" | "error"; reason?: string };
 
 /** Accounts from before usernames (and Google sign-ups): pick the one name once, checked live. */
 export function ClaimUsername({ onDone }: { onDone: () => Promise<unknown> }) {
@@ -31,12 +31,12 @@ export function ClaimUsername({ onDone }: { onDone: () => Promise<unknown> }) {
     setCheck({ state: "checking" });
     timer.current = setTimeout(async () => {
       const { data, error } = (await sb?.rpc("account_username_available", { p_username: c })) ?? { data: null, error: null };
-      if (error) { setCheck({ state: "idle" }); return; }
+      if (error) { setCheck({ state: "error", reason: "Could not check if this name is free. Check your internet, then tap Check again." }); return; }
       setCheck(data === true ? { state: "ok" } : { state: "bad", reason: "Taken — try another" });
     }, 350);
   }
   async function save() {
-    if (!usernameOk(u) || check.state === "bad") { setErr("Choose an available username."); return; }
+    if (!usernameOk(u) || check.state === "bad" || check.state === "error") { setErr("Choose an available username."); return; }
     if (needDetails) {
       const a = age(dob);
       if (a === null) { setErr("Enter your date of birth."); return; }
@@ -61,7 +61,7 @@ export function ClaimUsername({ onDone }: { onDone: () => Promise<unknown> }) {
         <input value={u} onChange={(e) => onChange(e.target.value)} placeholder="e.g. Yadav_Aura" autoCapitalize="none" autoCorrect="off" spellCheck={false} maxLength={20} className="w-0 min-w-0 flex-1 bg-transparent px-3 py-2.5 text-sm font-semibold outline-none" />
         <span className="pr-3">{check.state === "checking" ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" /> : check.state === "ok" ? <Check className="h-4 w-4 text-good" /> : check.state === "bad" ? <X className="h-4 w-4 text-danger" /> : null}</span>
       </span>
-      <p className={`text-[11px] ${check.state === "ok" ? "text-good font-semibold" : check.state === "bad" ? "text-danger" : "text-muted"}`}>{check.state === "ok" ? "Available" : check.state === "bad" ? check.reason : "Letters, numbers and _ · 4 to 20 characters"}</p>
+      <p className={`text-[11px] ${check.state === "ok" ? "text-good font-semibold" : check.state === "bad" || check.state === "error" ? "text-danger" : "text-muted"}`}>{check.state === "ok" ? "Available" : check.state === "bad" || check.state === "error" ? check.reason : check.state === "checking" ? "Checking if this name is free…" : "Letters, numbers and _ · 4 to 20 characters"}{check.state === "error" && <> <button type="button" onClick={() => onChange(u)} className="font-semibold underline">Check again</button></>}</p>
       {needDetails && (
         <>
           <div className="grid grid-cols-2 gap-2">
@@ -71,7 +71,7 @@ export function ClaimUsername({ onDone }: { onDone: () => Promise<unknown> }) {
           <label className="flex items-start gap-2 text-[11px] text-muted"><input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0" /><span>I am 18 or older and I accept the <a href="/terms" target="_blank" className="font-semibold text-brand-ink underline">Terms</a>, <a href="/privacy" target="_blank" className="font-semibold text-brand-ink underline">Privacy Policy</a> and the <a href="/partners/legal/agreement" target="_blank" className="font-semibold text-brand-ink underline">Partner Agreement</a>.</span></label>
         </>
       )}
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {err && <p role="alert" className="text-xs text-danger">{err}</p>}
       <button type="button" onClick={save} disabled={busy || check.state !== "ok"} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} Save username</button>
     </div>
   );

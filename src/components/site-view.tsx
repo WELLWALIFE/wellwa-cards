@@ -9,7 +9,7 @@
 // photos, reviews, FAQ and the map that live on the other pages, each linking to its page. The design — palette,
 // fonts, hero layout, corners — comes from card.site.style (src/lib/site-style.ts), with the card's colour and
 // look as the fallback, so a website that never chose a style still wears its brand colour.
-import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { INTRODUCER_KEY } from "@/lib/username";
 import { X, Download, Check, ChevronDown, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
@@ -42,6 +42,8 @@ import { BentoAbout, BentoGallery, BentoReviews, BentoServices, ColourBlocks, Co
 import type { BlueprintKey } from "@/lib/site-blueprints";
 import { aboutLayout, faqLayout, galleryLayout, productsLayout, reviewsLayout, servicesLayout, preferredLayouts, type ProductsLayout } from "@/lib/site-layout";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
+import { AdvancedSite } from "@/components/site-adv";
+import { activeAdvanced } from "@/lib/site-advanced";
 
 /** The designer's section layouts (card.site.style.layouts), read by the section components below. */
 const LayoutCtx = createContext<SiteLayouts | undefined>(undefined);
@@ -372,6 +374,11 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const digitsOf = (v: string) => (v ?? "").replace(/\D/g, "").slice(-10);
   const sameNumber = !!wa && !!phone && digitsOf(wa.value) === digitsOf(phone.value);
   const footLinks = sameNumber ? links.filter((l) => l.type !== "phone") : links;
+  // The footer's "Visit us": the address and the timings the card already states (a real footer carries both — 15 Oct 2026 review).
+  const footBlocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
+  const footAddress = (footBlocks.find((b): b is Extract<CardBlock, { kind: "location" }> => b.kind === "location" && !!(b.address ?? "").trim())?.address ?? "").trim();
+  const footHours = footBlocks.find((b): b is Extract<CardBlock, { kind: "hours" }> => b.kind === "hours" && b.rows.some((r) => r.day && r.time))?.rows.filter((r) => r.day && r.time).slice(0, 7) ?? [];
+  const footBlurb = (card.tagline ?? "").trim() || (card.about ?? "").trim().replace(/\s+/g, " ").slice(0, 180);
   const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
   const fontHref = design.fonts.href;
   // The blueprints' small line above the name: the hero model's kicker ("Jeweller · Rewari"), never the slug.
@@ -381,6 +388,14 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // when the card has a short one (Owner, Founder, Dr., Advocate…); a trade label like "Sweets / bakery" is not a
   // person, so then it is simply "us".
   const ctaTalk = "Talk to us today";
+
+  // The ADVANCED website (Rs 5,999, src/lib/site-advanced.ts): a valid card.site.advanced spec draws its own per-business layout
+  // in place of the blueprint on the home page. Another page (a product's own page) keeps this view, and `go` leads back.
+  // Memoised: a new spec object each render would restart the advanced page's reveal observers every time this view re-renders.
+  const adv = useMemo(() => (isHome ? activeAdvanced(card.site, card.username) : null), [isHome, card.site, card.username]);
+  // The advanced view keeps its own language state and saves it; before a product page (this view) opens, take that choice up (else it opens in English).
+  const adoptSavedLang = () => { try { const s = localStorage.getItem("ne-card-lang"); if (s && s !== L.lang) L.setLang(s); } catch { /* private mode */ } };
+  if (adv) return <AdvancedSite card={card} spec={adv} qr={qr} brand={brand} shareUrl={shareUrl} free={free} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} initialLang={initialLang} goto={(slug) => { adoptSavedLang(); go(slug); }} hrefFor={hrefFor} />;
 
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>
@@ -601,7 +616,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
         <div className="mx-auto max-w-6xl px-5 md:px-6 pt-14 pb-10 grid md:grid-cols-[1.3fr_1fr_1fr] gap-10 text-sm">
           <div>
             {logo ? <Img src={logo} alt="" className="h-10 w-auto max-w-[180px] object-contain mb-4 rounded-lg bg-white/90 p-1" w={180} /> : <Wordmark name={t(hm.name)} trade={t(trade)} lang={L.lang} className="text-[19px]" />}
-            {card.tagline && <p className="mt-4 max-w-md leading-relaxed" style={{ color: "var(--hero-muted)" }}>{t(card.tagline)}</p>}
+            {footBlurb && <p className="mt-4 max-w-md leading-relaxed" style={{ color: "var(--hero-muted)" }}>{t(footBlurb)}</p>}
             {card.gstin?.trim() && <p className="mt-2 text-xs mono" style={{ color: "var(--hero-muted)" }}>GSTIN {card.gstin.trim()}</p>}
             {/* One link, one QR — the same address the phone card carries. */}
             <div className="mt-6 flex items-center gap-4">
@@ -633,6 +648,15 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               ))}
             </ul>
             {localLine(card) && <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--hero-muted)" }}>{localLine(card)}</p>}
+            {(footAddress || footHours.length > 0) && (
+              <div className="mt-6">
+                <p className="kicker">{hiNow ? "हमसे मिलें" : t("Visit us")}</p>
+                {footAddress && <p className="mt-3 leading-relaxed opacity-85">{t(footAddress)}</p>}
+                {footHours.length > 0 && (
+                  <table className="mt-3 w-full text-xs opacity-85"><tbody>{footHours.map((r, i) => <tr key={i}><td className="py-0.5 pr-3">{t(r.day)}</td><td className="py-0.5 text-right tabular-nums">{t(r.time)}</td></tr>)}</tbody></table>
+                )}
+              </div>
+            )}
           </div>
         </div>
         <div style={{ borderTop: "1px solid var(--hero-line)" }}>
@@ -976,7 +1000,10 @@ function ReviewInvite({ username, business, hi }: { username: string; business: 
             <input value={city} onChange={(e) => setCity(e.target.value)} maxLength={40} placeholder={L("Your city (optional)", "आपका शहर (optional)")} className={field} />
           </div>
           <input value={trap} onChange={(e) => setTrap(e.target.value)} tabIndex={-1} autoComplete="off" aria-hidden="true" className="hidden" />
-          {err && <p className="text-sm text-danger">{err}</p>}
+          {err && <p role="alert" className="text-sm text-danger">{err}</p>}
+          {!err && !busy && (!name.trim() || text.trim().length < 10) && (
+            <p className="text-sm text-muted">{!name.trim() && text.trim().length < 10 ? L("To send: write at least 10 letters and add your name.", "भेजने के लिए: कम से कम 10 अक्षर लिखें और अपना नाम डालें।") : text.trim().length < 10 ? L("Write at least 10 letters about your visit to send.", "भेजने के लिए अपने अनुभव के बारे में कम से कम 10 अक्षर लिखें।") : L("Add your name to send.", "भेजने के लिए अपना नाम डालें।")}</p>
+          )}
           <div className="flex flex-wrap gap-3">
             <button type="button" onClick={send} disabled={busy || !name.trim() || text.trim().length < 10} className={`${BTN} disabled:opacity-60 ${FOCUS}`}>
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{L("Send", "भेजें")}

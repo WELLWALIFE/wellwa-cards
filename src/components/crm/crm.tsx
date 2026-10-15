@@ -295,6 +295,9 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"" | "send" | "ai" | "refresh">("");
   const [err, setErr] = useState("");
+  const [hdrErr, setHdrErr] = useState(""); // stage chips / assignee / tags — shown right under them
+  const [aiErr, setAiErr] = useState("");  // AI insight buttons — shown inside the insight box
+  const [profErr, setProfErr] = useState(""); // Lead details Save — shown above its button
   const [sheet, setSheet] = useState<"" | "profile">("");
   const [aiOpen, setAiOpen] = useState(true);
   const [attach, setAttach] = useState<{ url: string; kind: "image" | "pdf"; name: string } | null>(null);
@@ -313,9 +316,11 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
   useEffect(() => { const t = setInterval(() => load(true), 8000); return () => clearInterval(t); }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs?.length]);
 
-  const update = useCallback(async (patch: Record<string, unknown>) => {
+  const update = useCallback(async (patch: Record<string, unknown>, where: "hdr" | "profile" = "hdr") => {
+    const setE = where === "profile" ? setProfErr : setHdrErr;
+    setE("");
     const r = await api<{ lead: Lead; error?: string }>("/api/crm/lead", { method: "PATCH", json: { id, as: ctx.as ?? undefined, ...patch } });
-    if (!r.ok) { setErr(r.data.error || "Could not save."); return null; }
+    if (!r.ok) { setE(r.data.error || "Could not save. Please try again."); return null; }
     setLead(r.data.lead); onLead(r.data.lead); load(true); return r.data.lead;
   }, [id, onLead, load, ctx.as]);
 
@@ -339,16 +344,17 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
     setMsgs((m) => [...(m ?? []), { id: `tmp-${Date.now()}`, direction: "out", sender: "owner", kind: "text", text: r.data.text, sent_at: new Date().toISOString() }]);
     setTimeout(() => load(true), 1500);
   }
-  async function suggest(hint?: string) {
-    if (busy) return; setBusy("ai"); setErr("");
+  async function suggest(hint?: string, from?: "ai") {
+    if (busy) return; setBusy("ai"); setErr(""); setAiErr("");
     const r = await api<{ text: string; error?: string }>("/api/crm/ai", { method: "POST", json: { lead_id: id, as: ctx.as ?? undefined, action: "suggest", hint } });
     setBusy("");
-    if (!r.ok) { setErr(r.data.error || "AI is busy."); return; }
+    if (!r.ok) { (from === "ai" ? setAiErr : setErr)(r.data.error || "AI is busy. Please try again."); return; }
     setText(r.data.text); taRef.current?.focus();
   }
   async function refreshAi() {
-    if (busy) return; setBusy("refresh");
-    await api("/api/crm/ai", { method: "POST", json: { lead_id: id, as: ctx.as ?? undefined, action: "refresh" } });
+    if (busy) return; setBusy("refresh"); setAiErr("");
+    const r = await api<{ error?: string }>("/api/crm/ai", { method: "POST", json: { lead_id: id, as: ctx.as ?? undefined, action: "refresh" } });
+    if (!r.ok) setAiErr(r.data.error || "Could not refresh the insight. Please try again.");
     await load(true); setBusy("");
   }
 
@@ -388,6 +394,7 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
         ))}
         {l?.next_follow_up && !["converted", "lost"].includes(l.status) && <span className={`ml-auto inline-flex shrink-0 items-center gap-1 ${isOverdue(l.next_follow_up) ? "text-danger" : "text-lead"}`}><CalendarClock className="h-3 w-3" />{when(l.next_follow_up)}</span>}
       </div>
+      {hdrErr && <p role="alert" className="border-b border-border px-3 py-1 text-[11px] text-danger">{hdrErr}</p>}
       {ctx.role !== "agent" && ctx.agents.length > 0 && l && (
         <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-[11px] text-muted">
           <Users className="h-3.5 w-3.5" /> Assigned to
@@ -411,9 +418,10 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
               {l.ai_next && <p><b>Next:</b> {l.ai_next}</p>}
               {suggestedTags.length > 0 && <div className="flex flex-wrap gap-1">{suggestedTags.map((t) => <button key={t} type="button" onClick={() => update({ tags: [...(l.tags ?? []), t] })} className="rounded-full border border-dashed border-ai/40 px-1.5 py-0.5 text-[10px] text-ai">+ #{t}</button>)}</div>}
               <div className="flex gap-1.5 pt-0.5">
-                <button type="button" disabled={!!busy} onClick={() => suggest()} className="inline-flex items-center gap-1 rounded-lg bg-ai px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60">{busy === "ai" ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Write reply for me</button>
+                <button type="button" disabled={!!busy} onClick={() => suggest(undefined, "ai")} className="inline-flex items-center gap-1 rounded-lg bg-ai px-2 py-1 text-[11px] font-semibold text-white disabled:opacity-60">{busy === "ai" ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />} Write reply for me</button>
                 <button type="button" disabled={!!busy} onClick={refreshAi} className="inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] text-muted" aria-label="Refresh insight"><RefreshCw className={`h-3 w-3 ${busy === "refresh" ? "animate-spin" : ""}`} /></button>
               </div>
+              {aiErr && <p role="alert" className="text-[11px] text-danger">{aiErr}</p>}
             </div>
           )}
         </div>
@@ -481,7 +489,7 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
       </div>
 
       {pay && l && <PaySheet ctx={ctx} lead={l} onClose={() => setPay(false)} onUse={(t) => { setText(t); setPay(false); taRef.current?.focus(); }} />}
-      {sheet === "profile" && l && <Profile lead={l} events={events} onClose={() => setSheet("")} onSave={async (p) => { const r = await update(p); if (r) setSheet(""); }} />}
+      {sheet === "profile" && l && <Profile lead={l} events={events} error={profErr} onClose={() => { setSheet(""); setProfErr(""); }} onSave={async (p) => { const r = await update(p, "profile"); if (r) setSheet(""); }} />}
       {tplOpen && <Templates ctx={ctx} onClose={() => { closeTpl(); load(true); }} onPick={(t) => { setText(t.body); closeTpl(); taRef.current?.focus(); }} />}
     </div>
   );
@@ -505,7 +513,7 @@ const quickDates = (): { l: string; v: string }[] => {
   return [{ l: "Today 6 pm", v: iso(at(0, 18)) }, { l: "Tomorrow 11 am", v: iso(at(1, 11)) }, { l: "In 3 days", v: iso(at(3, 11)) }, { l: "Next week", v: iso(at(7, 11)) }];
 };
 
-function Profile({ lead, events, onClose, onSave }: { lead: Lead; events: Ev[]; onClose: () => void; onSave: (p: Record<string, unknown>) => Promise<void> }) {
+function Profile({ lead, events, error, onClose, onSave }: { lead: Lead; events: Ev[]; error?: string; onClose: () => void; onSave: (p: Record<string, unknown>) => Promise<void> }) {
   const [f, setF] = useState({ name: lead.name, city: lead.city, status: stage(lead.status).key as string, tags: lead.tags ?? [], notes: lead.notes, value: lead.value_paise ? String(lead.value_paise / 100) : "", lost_reason: lead.lost_reason, next: lead.next_follow_up ? new Date(new Date(lead.next_follow_up).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "", note: "" });
   const [tag, setTag] = useState("");
   const [saving, setSaving] = useState(false);
@@ -541,6 +549,7 @@ function Profile({ lead, events, onClose, onSave }: { lead: Lead; events: Ev[]; 
         <div className="flex flex-wrap gap-1.5">{quickDates().map((d) => <button key={d.l} type="button" onClick={() => setF({ ...f, next: d.v })} className="rounded-full border border-border px-2 py-0.5 text-[11px] text-muted">{d.l}</button>)}{f.next && <button type="button" onClick={() => setF({ ...f, next: "" })} className="rounded-full px-2 py-0.5 text-[11px] text-danger">Clear</button>}</div>
         <label className="block text-xs text-muted">Notes<textarea value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} rows={3} placeholder="Anything to remember about this customer" className={inputCls} /></label>
         <label className="block text-xs text-muted">Add to timeline<input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="e.g. Called, demo fixed for Sunday" className={inputCls} /></label>
+        {error && <p role="alert" className="text-xs text-danger">{error}</p>}
         <button type="button" disabled={saving} onClick={save} className="grad-brand w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60">{saving ? "Saving…" : "Save"}</button>
 
         <div className="pt-2">
@@ -593,15 +602,32 @@ function Templates({ ctx, onClose, onPick }: { ctx: Ctx; onClose: () => void; on
   const [tpls, setTpls] = useState<Tpl[] | null>(null);
   const [edit, setEdit] = useState<Partial<Tpl> | null>(null);
   const [busy, setBusy] = useState(false);
+  const [saveErr, setSaveErr] = useState("");               // edit form — above its Save button
+  const [rowErr, setRowErr] = useState<{ id: string; text: string } | null>(null); // delete — inside that reply's row
+  const [listErr, setListErr] = useState("");               // "Add 5 ready-made replies" — under that button
   const canEdit = ctx.role === "owner";
   const load = useCallback(async () => { const r = await api<{ templates: Tpl[] }>(`/api/crm/templates?x=1${q_as(ctx)}`); setTpls(r.ok ? r.data.templates : []); }, [ctx]);
   useEffect(() => { load(); }, [load]);
   async function save() {
-    if (!edit?.name || !edit?.body) return; setBusy(true);
-    await api("/api/crm/templates", { method: "POST", json: edit }); setBusy(false); setEdit(null); load();
+    if (!edit?.name || !edit?.body) { setSaveErr("Please fill in the name and the message."); return; }
+    setBusy(true); setSaveErr("");
+    const r = await api<{ error?: string }>("/api/crm/templates", { method: "POST", json: edit }); setBusy(false);
+    if (!r.ok) { setSaveErr(r.data.error || "Could not save this quick reply. Please try again."); return; }
+    setEdit(null); load();
   }
-  async function remove(id: string) { await api(`/api/crm/templates?id=${id}`, { method: "DELETE" }); load(); }
-  async function addStarters() { setBusy(true); for (const t of STARTER) await api("/api/crm/templates", { method: "POST", json: t }); setBusy(false); load(); }
+  async function remove(id: string) {
+    setRowErr(null);
+    const r = await api<{ error?: string }>(`/api/crm/templates?id=${id}`, { method: "DELETE" });
+    if (!r.ok) { setRowErr({ id, text: r.data.error || "Could not delete. Please try again." }); return; }
+    load();
+  }
+  async function addStarters() {
+    setBusy(true); setListErr("");
+    let failed = false;
+    for (const t of STARTER) { const r = await api("/api/crm/templates", { method: "POST", json: t }); if (!r.ok) failed = true; }
+    setBusy(false); if (failed) setListErr("Some ready-made replies could not be added. Please try again.");
+    load();
+  }
   return (
     <Sheet title="Quick replies" onClose={onClose}>
       {edit ? (
@@ -610,21 +636,24 @@ function Templates({ ctx, onClose, onPick }: { ctx: Ctx; onClose: () => void; on
           <input value={edit.shortcut ?? ""} onChange={(e) => setEdit({ ...edit, shortcut: e.target.value })} placeholder="Shortcut (type /price in chat)" className={inputCls} />
           <textarea value={edit.body ?? ""} onChange={(e) => setEdit({ ...edit, body: e.target.value })} rows={5} placeholder="Message… use {name} {business} {card} {phone}" className={inputCls} />
           <p className="text-[11px] text-faint">{"{name}"} = customer&apos;s first name, {"{business}"} = your business, {"{card}"} = your card link.</p>
-          <div className="flex gap-2"><button type="button" onClick={() => setEdit(null)} className="flex-1 rounded-xl border border-border py-2">Cancel</button><button type="button" disabled={busy} onClick={save} className="grad-brand flex-1 rounded-xl py-2 font-semibold text-white">Save</button></div>
+          {saveErr && <p role="alert" className="text-xs text-danger">{saveErr}</p>}
+          <div className="flex gap-2"><button type="button" onClick={() => { setEdit(null); setSaveErr(""); }} className="flex-1 rounded-xl border border-border py-2">Cancel</button><button type="button" disabled={busy} onClick={save} className="grad-brand flex-1 rounded-xl py-2 font-semibold text-white">Save</button></div>
         </div>
       ) : tpls === null ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : (
         <div className="space-y-2">
           {tpls.length === 0 && canEdit && <button type="button" disabled={busy} onClick={addStarters} className="w-full rounded-xl border border-dashed border-brand/50 bg-brand-soft/40 p-3 text-sm text-brand-ink">{busy ? "Adding…" : "✨ Add 5 ready-made replies (Intro, Price, Demo, Follow-up, Thanks)"}</button>}
+          {listErr && <p role="alert" className="text-xs text-danger">{listErr}</p>}
           {tpls.map((t) => (
             <div key={t.id} className="rounded-xl border border-border p-2.5 text-sm">
               <div className="flex items-center gap-2"><b className="text-ink">{t.name}</b>{t.shortcut && <span className="text-xs text-brand">/{t.shortcut}</span>}<span className="ml-auto text-[10px] text-faint">{t.uses} used</span>
-                {canEdit && <><button type="button" onClick={() => setEdit(t)} className="p-1 text-muted" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></button>
+                {canEdit && <><button type="button" onClick={() => { setEdit(t); setSaveErr(""); }} className="p-1 text-muted" aria-label="Edit"><Pencil className="h-3.5 w-3.5" /></button>
                 <button type="button" onClick={() => remove(t.id)} className="p-1 text-muted" aria-label="Delete"><Trash2 className="h-3.5 w-3.5" /></button></>}</div>
               <p className="mt-1 whitespace-pre-wrap text-xs text-muted">{t.body}</p>
+              {rowErr?.id === t.id && <p role="alert" className="mt-1 text-xs text-danger">{rowErr.text}</p>}
               {onPick && <button type="button" onClick={() => onPick(t)} className="mt-1.5 rounded-lg bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink">Use this</button>}
             </div>
           ))}
-          {canEdit && <button type="button" onClick={() => setEdit({ name: "", shortcut: "", body: "" })} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm text-muted"><Plus className="h-4 w-4" /> New quick reply</button>}
+          {canEdit && <button type="button" onClick={() => { setEdit({ name: "", shortcut: "", body: "" }); setSaveErr(""); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm text-muted"><Plus className="h-4 w-4" /> New quick reply</button>}
         </div>
       )}
     </Sheet>
@@ -706,6 +735,7 @@ function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () => void;
   const [code, setCode] = useState("");
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [rowErr, setRowErr] = useState<{ id: string; text: string } | null>(null); // agent row buttons — inside that row
   const load = useCallback(async () => { const r = await api<{ agents: AgentFull[] }>("/api/crm/team"); setAgents(r.ok ? r.data.agents : []); }, []);
   useEffect(() => { load(); }, [load]);
   async function add() {
@@ -714,8 +744,24 @@ function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () => void;
     setBusy(false); if (!r.ok) { setMsg(r.data.error || "Could not add."); return; }
     setF({ name: "", phone: "", role: "agent" }); load(); onChanged();
   }
-  async function patch(id: string, p: Record<string, unknown>) { await api("/api/crm/team", { method: "PATCH", json: { id, ...p } }); load(); onChanged(); }
-  async function remove(id: string) { if (!confirm("Remove this agent from your team?")) return; await api(`/api/crm/team?id=${id}`, { method: "DELETE" }); load(); onChanged(); }
+  async function patch(id: string, p: Record<string, unknown>) {
+    setRowErr(null);
+    const r = await api<{ error?: string }>("/api/crm/team", { method: "PATCH", json: { id, ...p } });
+    if (!r.ok) { setRowErr({ id, text: r.data.error || "Could not update this agent. Please try again." }); return; }
+    load(); onChanged();
+  }
+  async function remove(id: string) {
+    if (!confirm("Remove this agent from your team?")) return;
+    setRowErr(null);
+    const r = await api<{ error?: string }>(`/api/crm/team?id=${id}`, { method: "DELETE" });
+    if (!r.ok) { setRowErr({ id, text: r.data.error || "Could not remove this agent. Please try again." }); return; }
+    load(); onChanged();
+  }
+  function copyCode(id: string, c: string) {
+    setRowErr(null);
+    if (!navigator.clipboard?.writeText) { setRowErr({ id, text: `Could not copy. The code is ${c}.` }); return; }
+    navigator.clipboard.writeText(c).catch(() => setRowErr({ id, text: `Could not copy. The code is ${c}.` }));
+  }
   async function join() {
     if (!code.trim()) return; setBusy(true); setMsg("");
     const r = await api<{ ok: boolean; error?: string }>("/api/crm/team", { method: "POST", json: { join: code } });
@@ -741,10 +787,11 @@ function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () => void;
                   <button type="button" onClick={() => patch(a.id, { active: !a.active })} className="rounded-lg border border-border px-2 py-1 text-[11px] text-muted">{a.active ? "Pause" : "Resume"}</button>
                   <button type="button" onClick={() => remove(a.id)} className="p-1 text-muted" aria-label="Remove"><Trash2 className="h-4 w-4" /></button>
                 </div>
+                {rowErr?.id === a.id && <p role="alert" className="mt-1.5 text-xs text-danger">{rowErr.text}</p>}
                 {!a.agent_user_id && (
                   <div className="mt-2 flex items-center gap-2 rounded-lg bg-surface2/60 px-2 py-1.5 text-xs">
                     <span className="text-muted">Join code</span><b className="tracking-widest text-ink">{a.join_code}</b>
-                    <button type="button" onClick={() => navigator.clipboard?.writeText(a.join_code)} className="p-1 text-muted" aria-label="Copy"><Copy className="h-3.5 w-3.5" /></button>
+                    <button type="button" onClick={() => copyCode(a.id, a.join_code)} className="p-1 text-muted" aria-label="Copy"><Copy className="h-3.5 w-3.5" /></button>
                     <button type="button" onClick={() => shareInvite(a)} className="ml-auto rounded-lg bg-good/15 px-2 py-1 font-semibold text-good">Send on WhatsApp</button>
                   </div>
                 )}
@@ -966,11 +1013,18 @@ function IntegrationsSheet({ onClose }: { onClose: () => void }) {
   const [f, setF] = useState({ outbound_url: "", outbound_secret: "", outbound_events: [] as string[], active: false });
   const [msg, setMsg] = useState("");
   const [busy, setBusy] = useState(false);
+  const [regenErr, setRegenErr] = useState("");
   const load = useCallback(async () => { const r = await api<Integ & { error?: string }>("/api/crm/integrations"); if (!r.ok) { setMsg(r.data.error || "Could not load."); return; } setIt(r.data); setF({ outbound_url: r.data.outbound_url, outbound_secret: r.data.outbound_secret, outbound_events: r.data.outbound_events, active: r.data.active }); }, []);
   useEffect(() => { load(); }, [load]);
   async function save() { setBusy(true); setMsg(""); const r = await api<{ ok: boolean; error?: string }>("/api/crm/integrations", { method: "PUT", json: f }); setBusy(false); setMsg(r.ok ? "Saved." : r.data.error || "Could not save."); load(); }
   async function test() { setBusy(true); const r = await api<{ ok: boolean; note?: string; error?: string }>("/api/crm/integrations", { method: "POST", json: { test: true } }); setBusy(false); setMsg(r.ok ? r.data.note || "Test queued." : r.data.error || "Failed."); setTimeout(load, 65000); }
-  async function regen() { if (!confirm("Old incoming URL will stop working. Continue?")) return; await api("/api/crm/integrations", { method: "PUT", json: { regenerate: true } }); load(); }
+  async function regen() {
+    if (!confirm("Old incoming URL will stop working. Continue?")) return;
+    setRegenErr("");
+    const r = await api<{ error?: string }>("/api/crm/integrations", { method: "PUT", json: { regenerate: true } });
+    if (!r.ok) { setRegenErr(r.data.error || "Could not make a new URL. The old one still works. Please try again."); return; }
+    load();
+  }
   const copy = (t: string) => { navigator.clipboard?.writeText(t); setMsg("Copied."); };
   const ex = it ? `curl -X POST "${it.inbound_url}" -H "Content-Type: application/json" -d '{"name":"Rajesh","phone":"9876543210","message":"Wants demo","source":"website","city":"Delhi"}'` : "";
   return (
@@ -987,6 +1041,7 @@ function IntegrationsSheet({ onClose }: { onClose: () => void }) {
               <pre className="overflow-x-auto rounded-xl bg-ink p-2.5 text-[11px] text-bg">{ex}</pre>
               <p className="text-[11px] text-faint">Zapier: Action “Webhooks by Zapier → POST”, Payload type JSON, map name / phone / message. Make: HTTP → Make a request.</p>
               <button type="button" onClick={regen} className="text-xs text-danger">Regenerate URL (revoke old)</button>
+              {regenErr && <p role="alert" className="text-xs text-danger">{regenErr}</p>}
             </div>
           )}
           {tab === "out" && (
