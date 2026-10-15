@@ -15,10 +15,11 @@ const BLOCKED = /(^|\.)(neuraledge\.me|shubhora\.com|localhost)$/i;
 export function cleanDomain(raw: unknown): string {
   return String(raw ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "").replace(/:\d+$/, "").replace(/\.$/, "");
 }
-export function validDomain(d: string, platformHost: string): string | null {
+export function validDomain(d: string, _platformHost?: string): string | null {
   if (!d) return "Enter a domain, e.g. yourbusiness.com";
   if (d.length > 253) return "That domain is too long.";
-  if (BLOCKED.test(d)) return `Pick a domain you own — ${platformHost} links are already free.`;
+  // The platform's own addresses (this app is served on them) can never be a customer's: say so, instead of "links are already free".
+  if (BLOCKED.test(d)) return `${d.replace(/^www\./, "")} is Shubhora's own address, so it cannot be used. Type a domain you bought for your own business, like yourshop.com.`;
   if (!/^(?=.{1,253}$)([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?\.)+[a-z]{2,}$/.test(d)) return "That doesn't look like a valid domain name.";
   return null;
 }
