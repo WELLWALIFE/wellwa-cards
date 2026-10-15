@@ -76,6 +76,10 @@ const aboutIsStale = (b: { name?: string; category?: string; trade?: string; abo
 /** Mobile sign-ups get a made-up address like 919812345678@phone.shubhora.com — they have no real email. */
 const IS_PHONE_EMAIL = /@phone\./i;
 const LOCATION_OFF = { en: "Location is off. Turn it on, or paste your Google Maps link on Photos & more.", hi: "Location बंद है। चालू करें, या Photos & more पर Google Maps link paste करें।" };
+/** Why the phone / browser gave no position (owner, 15 Oct 2026: "pin it on the map shayad kaam nahi kar raha" — every failure said "Location is off"). */
+const LOCATION_BLOCKED = { en: "Location is blocked for this website. Tap the lock icon next to the address, choose Location → Allow, then tap the button again. Or paste a Google Maps link below.", hi: "इस website के लिए Location बंद (block) है। Address के पास lock icon दबाएँ, Location → Allow चुनें, फिर बटन दोबारा दबाएँ। या नीचे Google Maps link paste करें।" };
+const LOCATION_NOFIX = { en: "Could not find your location. Check that Location (GPS) is on, stand near a window or outside, and try again. Or paste a Google Maps link below.", hi: "आपकी location नहीं मिली। देखें कि Location (GPS) चालू है, खिड़की के पास या बाहर खड़े हों, और फिर दबाएँ। या नीचे Google Maps link paste करें।" };
+const looksLikeMapLink = (v: string) => /^https?:\/\/(?:[\w-]+\.)*(?:google\.[a-z.]+\/maps|maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl\/maps|g\.page|share\.google)\S*$/i.test(v.trim());
 /** The website step's answer. kind "" = nothing chosen yet; the step insists on one, so a link never exists
  *  without a role (a pasted link silently treated as "own" would import a stranger's name and products). */
 type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
@@ -983,35 +987,58 @@ function Onboard() {
     else if (!url && explicit && !pendingSocial && site.url.trim().length >= 2) setSiteErr(notFoundMsg(site.url.trim()));
   }
 
+  /** The "paste a Google Maps link" box under the pin button: opens by itself when the GPS gives nothing. */
+  /** Shown right under the pin button (the screen's own error line sits far below it, by Next). */
+  const [pinErr, setPinErr] = useState("");
+  const [mapPaste, setMapPaste] = useState<{ open: boolean; value: string; bad: boolean }>({ open: false, value: "", bad: false });
+  function pasteMapLink(raw: string) {
+    const v = raw.trim();
+    setMapPaste({ open: true, value: raw, bad: false });
+    if (!v) return;
+    if (!looksLikeMapLink(v)) { setMapPaste({ open: true, value: raw, bad: true }); return; }
+    setErr(""); setPinErr("");
+    setBiz((b) => ({ ...b, map: v }));
+    if (!facts.social.google) setF({ social: { ...facts.social, google: v } });
+    setMapPaste({ open: false, value: "", bad: false });
+  }
+
   /** 📍 Uses the phone's GPS where the owner is standing — an exact map pin, no typing. */
   function pinShop() {
-    setErr("");
-    if (typeof navigator === "undefined" || !navigator.geolocation) { setErr(T(LOCATION_OFF.en, LOCATION_OFF.hi)); return; }
+    setPinErr("");
+    if (typeof navigator === "undefined" || !navigator.geolocation) { setPinErr(T(LOCATION_NOFIX.en, LOCATION_NOFIX.hi)); setMapPaste((m) => ({ ...m, open: true })); return; }
     setBusy("pin");
-    navigator.geolocation.getCurrentPosition(
-      async (p) => {
-        const { latitude: lat, longitude: lng } = p.coords;
-        const pin = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
-        setBiz((b) => ({ ...b, map: pin }));
-        // The pin is the Google Maps link: the "Google Maps link" box on Photos & more shows it instead of asking again.
-        // A new pin (re-pin) replaces the old one everywhere; a first pin only fills an empty Google Maps box.
-        const repin = !!(biz.map ?? "").trim();
-        if (repin || !facts.social.google) setF({ social: { ...facts.social, google: pin } });
-        // The pin also knows the city and the locality: the owner does not type what the phone already knows.
-        try {
-          const r = await fetch(`/api/geo/city?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`);
-          const g = (await r.json()) as { ok?: boolean; city?: string; area?: string };
-          if (g.ok) setBiz((b) => ({
-            ...b,
-            ...(g.city && !touched.current.has("city") && !(b.city ?? "").trim() ? { city: g.city } : {}),
-            ...(g.area && !touched.current.has("address") && !(b.address ?? "").trim() ? { address: g.area } : {}),
-          }));
-        } catch { /* the pin alone is still worth having */ }
-        setBusy("");
-      },
-      () => { setBusy(""); setErr(T(LOCATION_OFF.en, LOCATION_OFF.hi)); },
-      { enableHighAccuracy: true, timeout: 15000 },
-    );
+    const got = async (p: GeolocationPosition) => {
+      const { latitude: lat, longitude: lng } = p.coords;
+      const pin = `https://maps.google.com/?q=${lat.toFixed(6)},${lng.toFixed(6)}`;
+      setBiz((b) => ({ ...b, map: pin }));
+      setMapPaste({ open: false, value: "", bad: false }); setPinErr("");
+      // The pin is the Google Maps link: the "Google Maps link" box on Photos & more shows it instead of asking again.
+      // A new pin (re-pin) replaces the old one everywhere; a first pin only fills an empty Google Maps box.
+      const repin = !!(biz.map ?? "").trim();
+      if (repin || !facts.social.google) setF({ social: { ...facts.social, google: pin } });
+      setBusy("");
+      // The pin also knows the city and the locality: the owner does not type what the phone already knows.
+      try {
+        const r = await fetch(`/api/geo/city?lat=${lat.toFixed(6)}&lng=${lng.toFixed(6)}`);
+        const g = (await r.json()) as { ok?: boolean; city?: string; area?: string };
+        if (g.ok) setBiz((b) => ({
+          ...b,
+          ...(g.city && !touched.current.has("city") && !(b.city ?? "").trim() ? { city: g.city } : {}),
+          ...(g.area && !touched.current.has("address") && !(b.address ?? "").trim() ? { address: g.area } : {}),
+        }));
+      } catch { /* the pin alone is still worth having */ }
+    };
+    const failed = (e: GeolocationPositionError) => {
+      setBusy("");
+      setPinErr(e.code === 1 ? T(LOCATION_BLOCKED.en, LOCATION_BLOCKED.hi) : T(LOCATION_NOFIX.en, LOCATION_NOFIX.hi));
+      setMapPaste((m) => ({ ...m, open: true }));
+    };
+    // The GPS first (exact, what a shop pin needs). A computer, or a phone indoors, often gives no GPS fix: then the network position
+    // (Wi-Fi / mobile tower) is taken instead of failing. Only "blocked" stops here.
+    navigator.geolocation.getCurrentPosition(got, (e) => {
+      if (e.code === 1) { failed(e); return; }
+      navigator.geolocation.getCurrentPosition(got, failed, { enableHighAccuracy: false, timeout: 15000, maximumAge: 5 * 60_000 });
+    }, { enableHighAccuracy: true, timeout: 10000 });
   }
 
   /** "Skip for now" (owner's call, 23 Sep 2026): whatever is filled is kept, nothing is required, and the app opens.
@@ -1781,6 +1808,15 @@ function Onboard() {
                   <Help k="map" />
                 </div>
               )}
+              {!biz.map && pinErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{pinErr}</p>}
+              {!biz.map && (mapPaste.open ? (
+                <div className="space-y-1">
+                  <input value={mapPaste.value} onChange={(e) => pasteMapLink(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={T("Paste your Google Maps link", "अपना Google Maps link paste करें")} className={`${box} w-full`} />
+                  <p className={`text-xs ${mapPaste.bad ? "font-semibold text-danger" : "text-muted"}`}>{mapPaste.bad ? T("That is not a Google Maps link. Open your shop in Google Maps → Share → Copy link.", "ये Google Maps link नहीं है। Google Maps में अपनी दुकान खोलें → Share → Copy link।") : T("Google Maps → your shop → Share → Copy link.", "Google Maps → आपकी दुकान → Share → Copy link।")}</p>
+                </div>
+              ) : (
+                <button type="button" onClick={() => setMapPaste((m) => ({ ...m, open: true }))} className="text-xs font-semibold text-brand-ink underline underline-offset-2">{T("Or paste a Google Maps link", "या Google Maps link paste करें")}</button>
+              ))}
           </div>
           <div className="space-y-4">
               {biz.role !== "personal" && (
