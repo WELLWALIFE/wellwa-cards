@@ -19,8 +19,11 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
   const T = (h: string, e: string) => (hi ? h : e);
   const [url, setUrl] = useState(strip(card.botSite ?? ""));
   const [busy, setBusy] = useState<"" | "read" | "clear">("");
+  // Website (Set / Read again / Remove) messages sit under the website row; file messages sit under the file buttons.
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  const [fMsg, setFMsg] = useState("");
+  const [fErr, setFErr] = useState("");
   useEffect(() => { setUrl(strip(card.botSite ?? "")); }, [card.botSite]);
   const set = !!card.botSite?.trim();
 
@@ -62,38 +65,40 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
   const [labels, setLabels] = useState<Record<string, string>>({});
   async function saveFiles(next: BotFile[]) {
     const p = await publishCard({ ...card, botFiles: next.length ? next : undefined });
-    if (!p.ok) { setErr(p.error); return false; }
+    if (!p.ok) { setFErr(p.error); return false; }
     onChanged?.({ ...card, botFiles: next.length ? next : undefined });
     return true;
   }
   async function addFile(f: File | null, kind: "image" | "pdf") {
     if (!f) return;
-    setFileBusy(true); setErr(""); setMsg("");
+    setFileBusy(true); setFErr(""); setFMsg("");
     try {
       const url = kind === "pdf" ? await uploadPdf(f) : await uploadImage(f, "wide");
-      if (!url) { setErr(T("अपलोड नहीं हुआ — फिर try करें।", "Upload failed — try again.")); return; }
+      if (!url) { setFErr(T("अपलोड नहीं हुआ — फिर try करें।", "Upload failed — try again.")); return; }
       const label = f.name.replace(/\.[a-z0-9]+$/i, "").replace(/[-_]+/g, " ").trim().slice(0, 60) || (kind === "pdf" ? "Brochure" : "Photo");
-      if (await saveFiles([...files, { label, url, kind }].slice(0, 12))) setMsg(T("✅ फ़ाइल जुड़ गई — नाम ठीक कर लें ताकि बॉट सही फ़ाइल चुने।", "✅ File added — fix its name so the bot picks the right one."));
+      if (await saveFiles([...files, { label, url, kind }].slice(0, 12))) setFMsg(T("✅ फ़ाइल जुड़ गई — नाम ठीक कर लें ताकि बॉट सही फ़ाइल चुने।", "✅ File added — fix its name so the bot picks the right one."));
     } finally { setFileBusy(false); if (imgRef.current) imgRef.current.value = ""; if (pdfRef.current) pdfRef.current.value = ""; }
   }
   /** A demo video on YouTube (or any page): the bot shares the link when a customer talks about a demo. */
   async function addLink() {
     const raw = (prompt(T("वीडियो / पेज का लिंक (जैसे YouTube demo video):", "Link of the video / page (e.g. YouTube demo video):")) ?? "").trim();
+    setFErr(""); setFMsg("");
     if (!raw) return;
     const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
-    try { new URL(url); } catch { setErr(T("लिंक सही नहीं है।", "That link is not valid.")); return; }
-    if (files.some((f) => f.url === url)) return;
-    setErr(""); setMsg("");
+    try { new URL(url); } catch { setFErr(T("लिंक सही नहीं है।", "That link is not valid.")); return; }
+    if (files.some((f) => f.url === url)) { setFErr(T("यह लिंक पहले से जुड़ा है।", "That link is already added.")); return; }
     const isVideo = /youtu\.be|youtube\.com|vimeo\.com|instagram\.com\/reel|facebook\.com.*video/i.test(url);
-    if (await saveFiles([...files, { label: isVideo ? "Demo video" : "Link", url, kind: "link" as const }].slice(0, 12))) setMsg(T("✅ लिंक जुड़ गया — ग्राहक demo की बात करे तो बॉट यही भेजेगा। नाम में \"demo\" रहने दें।", "✅ Link added — when a customer talks about a demo the bot shares it. Keep \"demo\" in its name."));
+    if (await saveFiles([...files, { label: isVideo ? "Demo video" : "Link", url, kind: "link" as const }].slice(0, 12))) setFMsg(T("✅ लिंक जुड़ गया — ग्राहक demo की बात करे तो बॉट यही भेजेगा। नाम में \"demo\" रहने दें।", "✅ Link added — when a customer talks about a demo the bot shares it. Keep \"demo\" in its name."));
   }
   async function renameFile(url: string) {
     const label = (labels[url] ?? "").trim().slice(0, 60);
     if (!label) return;
+    setFErr(""); setFMsg("");
     await saveFiles(files.map((f) => (f.url === url ? { ...f, label } : f)));
   }
   async function removeFile(url: string) {
     if (!confirm(T("यह फ़ाइल हटा दें?", "Remove this file?"))) return;
+    setFErr(""); setFMsg("");
     await saveFiles(files.filter((f) => f.url !== url));
   }
 
@@ -116,6 +121,8 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
           <button type="button" onClick={clear} disabled={!!busy} className="ml-auto text-xs font-semibold text-muted underline">{busy === "clear" ? "…" : T("हटाएँ, कार्ड का लिंक दें", "Remove, send card link")}</button>
         </p>
       )}
+      {msg && <p className="mt-2 text-xs font-medium text-good">{msg}</p>}
+      {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
       <div className="mt-4 border-t border-border pt-3">
         <p className="text-sm font-semibold leading-tight">{T("बॉट जो फ़ाइलें भेज सके", "Files the bot can send")}</p>
         <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। YouTube demo video का लिंक जोड़ें तो ग्राहक demo की बात करते ही बॉट वो भेज देगा। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Add a YouTube demo video link and the bot shares it whenever a customer talks about a demo. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
@@ -140,9 +147,9 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
           <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "image")} />
           <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "pdf")} />
         </div>
+        {fMsg && <p className="mt-2 text-xs font-medium text-good">{fMsg}</p>}
+        {fErr && <p className="mt-2 text-xs font-medium text-danger">{fErr}</p>}
       </div>
-      {msg && <p className="mt-2 text-xs font-medium text-good">{msg}</p>}
-      {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
     </section>
   );
 }

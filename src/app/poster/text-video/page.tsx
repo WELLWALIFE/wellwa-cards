@@ -86,7 +86,15 @@ export default function TextToVideo() {
   const [presenterPhoto, setPresenterPhoto] = useState("");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [brandId, setBrandId] = useState("");
-  const [busy, setBusy] = useState(""); const [err, setErr] = useState("");
+  const [busy, setBusy] = useState("");
+  // Every message sits next to the control that caused it: makeErr right above "Make my video", improveErr under the Improve button,
+  // voiceErr under the recording link, photoErr under the photo strip, presenterErr under the presenter photo. Job rows keep their own line.
+  const [makeErr, setMakeErr] = useState(""); const [improveErr, setImproveErr] = useState(""); const [voiceErr, setVoiceErr] = useState("");
+  const [photoErr, setPhotoErr] = useState(""); const [presenterErr, setPresenterErr] = useState("");
+  // textErr: why "Make my video" did nothing for want of (or too many) words — shown right under the words box, not down at the button.
+  const [textErr, setTextErr] = useState("");
+  const textErrRef = useRef<HTMLParagraphElement | null>(null);
+  const presenterBoxRef = useRef<HTMLDivElement | null>(null);
   const [undoText, setUndoText] = useState("");
   const [needCredits, setNeedCredits] = useState<number | null>(null);
   const [credits, setCredits] = useState<number | null>(null);
@@ -97,7 +105,10 @@ export default function TextToVideo() {
   const [stopping, setStopping] = useState("");
   const [deleting, setDeleting] = useState("");
   const [retrying, setRetrying] = useState("");
-  const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
+  const [rowMsg, setRowMsg] = useState<Record<string, { t: string; ok: boolean }>>({});
+  const [rowNeed, setRowNeed] = useState<{ id: string; cost: number | null } | null>(null);   // credit packs under the job row whose "Try again" was refused
+  const setRow = (id: string, t: string, ok = false) => setRowMsg((m) => ({ ...m, [id]: { t, ok } }));
+  const clearRow = (id: string) => { setRowMsg((m) => { const n = { ...m }; delete n[id]; return n; }); setRowNeed((x) => (x?.id === id ? null : x)); };
   const idem = useRef("");
 
   const brand = useMemo(() => profiles.find((p) => p.id === brandId) ?? null, [profiles, brandId]);
@@ -139,22 +150,24 @@ export default function TextToVideo() {
 
   async function addPhoto(file: File | null, as: "slide" | "presenter") {
     if (!file) return;
-    setBusy("img"); setErr("");
-    const u = await uploadImage(await compressToFile(file, "slide.jpg", 1600, 0.86), "product");
+    const setE = as === "presenter" ? setPresenterErr : setPhotoErr;
+    setBusy("img"); setE("");
+    let u: string | null = null;
+    try { u = await uploadImage(await compressToFile(file, "slide.jpg", 1600, 0.86), "product"); } catch { u = null; }
     setBusy("");
-    if (!u) { setErr("Could not upload the photo. Please try again."); return; }
-    if (as === "presenter") setPresenterPhoto(u); else setPhotos((g) => [...g, u].slice(0, 12));
+    if (!u) { setE("Could not upload the photo. Please try again."); return; }
+    if (as === "presenter") setPresenterPhoto(u); else setPhotos((g) => [...g, u!].slice(0, 12));
   }
 
   async function improve() {
-    setBusy("ai"); setErr("");
+    setBusy("ai"); setImproveErr("");
     try {
       const r = await fetch("/api/media/refine", {
         method: "POST", headers: { "content-type": "application/json" },
         body: JSON.stringify({ text, lang, business: brand?.name ?? "", seconds: long ? 0 : seconds }),
       }).then(async (x) => ({ ok: x.ok, data: (await x.json().catch(() => ({}))) as { text?: string; error?: string } }))
         .catch(() => ({ ok: false, data: { error: OFFLINE } as { text?: string; error?: string } }));
-      if (!r.ok || !r.data.text) { setErr(r.data.error || "The AI could not improve this."); return; }
+      if (!r.ok || !r.data.text) { setImproveErr(r.data.error || "The AI could not improve this."); return; }
       setUndoText(text);
       setText(r.data.text);
     } finally { setBusy(""); }
@@ -162,17 +175,34 @@ export default function TextToVideo() {
 
   async function addVoice(file: File | null) {
     if (!file) return;
-    setBusy("voice"); setErr("");
-    const r = await uploadAudio(file);
+    setBusy("voice"); setVoiceErr("");
+    let r: { url?: string | null; error?: string } = {};
+    try { r = await uploadAudio(file); } catch { r = { error: OFFLINE }; }
     setBusy("");
-    if (!r.url) { setErr(r.error || "Could not upload that recording."); return; }
+    if (!r.url) { setVoiceErr(r.error || "Could not upload that recording."); return; }
+    setTextErr(""); setMakeErr("");
     setOwnVoice(r.url); setOwnVoiceName(file.name.replace(/\.[^.]+$/, "").slice(0, 48));
     setOwnSeconds(await audioSeconds(file));
   }
 
   async function make() {
     if (!kind) return;
-    setBusy("make"); setErr(""); setNeedCredits(null);
+    // The button is never silently dead: say what is missing right next to the field to fix (words box / presenter photo) and bring it on screen.
+    const missing = tooShort ? (long ? "Write at least 25 words first, or add your own recording." : "Write at least 8 words first.")
+      : tooLong ? (long ? `The words are longer than ${EXPLAINER_MAX_MIN} minutes. Please shorten them.` : "The words are too long for this length. Make them shorter, or pick a longer video.")
+      : kind === "presenter" && !presenterPhoto ? "Add the photo of the person who will speak first." : "";
+    if (missing) {
+      setMakeErr("");
+      if (tooShort || tooLong) {
+        setTextErr(missing); setPresenterErr("");
+        setTimeout(() => textErrRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 30);
+      } else {
+        setTextErr(""); setPresenterErr(missing);
+        setTimeout(() => presenterBoxRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 30);
+      }
+      return;
+    }
+    setBusy("make"); setMakeErr(""); setTextErr(""); setPresenterErr(""); setNeedCredits(null);
     try {
       const common = { lang, voiceStyle, music, brandName: brand?.name ?? "", phone: brand?.phone ?? "", logoUrl: brand?.logo_url ?? "", accent: brand?.layout?.accent ?? "" };
       const [url, body] = long
@@ -193,7 +223,7 @@ export default function TextToVideo() {
         .then(async (x) => ({ ok: x.ok, status: x.status, data: (await x.json().catch(() => ({}))) as Record<string, unknown> }))
         .catch(() => ({ ok: false, status: 0, data: {} as Record<string, unknown> }));
       if (!r.ok) {
-        setErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not start the video."));
+        setMakeErr(String(r.data.error ?? "") || (r.status === 0 ? OFFLINE : "Could not start the video."));
         if (r.status === 402) setNeedCredits(Math.max(20, Number(r.data.cost) || cost));
         return;
       }
@@ -206,40 +236,40 @@ export default function TextToVideo() {
   // Same video, same job, no second charge: the worker still has the recordings and slides it finished last time,
   // so this carries on rather than starting the script over.
   async function retryJob(j: Job) {
-    setRetrying(j.id); setErr("");
+    setRetrying(j.id); clearRow(j.id);
     try {
       const r = await fetch("/api/media/jobs", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ id: j.id }) });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setRowMsg((m) => ({ ...m, [j.id]: d.error || "Could not start it again." })); if (r.status === 402) setNeedCredits(Number(d.cost) || null); return; }
-      setRowMsg((m) => ({ ...m, [j.id]: "" }));
+      // A refused retry (402) shows its credit packs right under THIS video, not in the Make form far above.
+      if (!r.ok) { setRow(j.id, d.error || "Could not start it again."); if (r.status === 402) setRowNeed({ id: j.id, cost: Number(d.cost) || null }); return; }
       refresh();
-    } catch { setRowMsg((m) => ({ ...m, [j.id]: OFFLINE })); }
+    } catch { setRow(j.id, OFFLINE); }
     finally { setRetrying(""); }
   }
 
   async function stopJob(j: Job) {
     if (!window.confirm("Stop this video? The credits we have not used yet come back to you.")) return;
-    setStopping(j.id);
+    setStopping(j.id); clearRow(j.id);
     try {
       const r = await fetch(`/api/media/jobs?id=${j.id}`, { method: "DELETE" });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setRowMsg((m) => ({ ...m, [j.id]: d.error || "Could not stop it. Please try again." })); return; }
+      if (!r.ok) { setRow(j.id, d.error || "Could not stop it. Please try again."); return; }
       const refunded = typeof d.refunded === "number" ? d.refunded : null;
-      setRowMsg((m) => ({ ...m, [j.id]: refunded && refunded > 0 ? `Stopped — ${refunded} credits returned.` : "Stopped. Any credits we did not use have been returned." }));
+      setRow(j.id, refunded && refunded > 0 ? `Stopped — ${refunded} credits returned.` : "Stopped. Any credits we did not use have been returned.", true);
       refresh();
-    } catch { setRowMsg((m) => ({ ...m, [j.id]: "Could not stop it. Please try again." })); }
+    } catch { setRow(j.id, "Could not stop it. Please try again."); }
     finally { setStopping(""); }
   }
   // Gone for good: the video file and the row. Asked for, and confirmed, because there is no undo.
   async function deleteJob(j: Job) {
     if (!window.confirm("Delete this video? This cannot be undone.")) return;
-    setDeleting(j.id);
+    setDeleting(j.id); clearRow(j.id);
     try {
       const r = await fetch(`/api/media/jobs?id=${j.id}`, { method: "DELETE" });
       const d = await r.json().catch(() => ({}));
-      if (!r.ok) { setRowMsg((m) => ({ ...m, [j.id]: d.error || "Could not delete it. Please try again." })); return; }
+      if (!r.ok) { setRow(j.id, d.error || "Could not delete it. Please try again."); return; }
       setJobs((list) => list.filter((x) => x.id !== j.id));
-    } catch { setRowMsg((m) => ({ ...m, [j.id]: "Could not delete it. Please try again." })); }
+    } catch { setRow(j.id, "Could not delete it. Please try again."); }
     finally { setDeleting(""); }
   }
 
@@ -261,7 +291,7 @@ export default function TextToVideo() {
       {!kind && (<>
         <p className="text-xs text-muted">You write the words, we make the video. Pick what kind of video you want.</p>
         {KINDS.map((x) => (
-          <button key={x.k} type="button" onClick={() => { setKind(x.k); setErr(""); }} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left">
+          <button key={x.k} type="button" onClick={() => { setKind(x.k); setMakeErr(""); setTextErr(""); setImproveErr(""); setVoiceErr(""); setPhotoErr(""); setPresenterErr(""); }} className="flex w-full items-center gap-3 rounded-xl border border-border p-3 text-left">
             <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
             <span className="min-w-0 flex-1">
               <span className="block text-sm font-semibold">{x.t}</span>
@@ -293,7 +323,7 @@ export default function TextToVideo() {
           <input className={inp} placeholder={long ? "Title on the first slide (optional)" : "What is this video about? e.g. Kangen water ionizer"} value={long ? title : topic} onChange={(e) => (long ? setTitle(e.target.value) : setTopic(e.target.value))} maxLength={70} />
 
           <div>
-            <textarea className={`${inp} min-h-48 leading-relaxed`} value={text} onChange={(e) => setText(e.target.value.slice(0, 9000))}
+            <textarea className={`${inp} min-h-48 leading-relaxed`} value={text} onChange={(e) => { setText(e.target.value.slice(0, 9000)); setTextErr(""); }}
               placeholder={long
                 ? (ownVoice
                   ? "Optional — we listen to your recording and write the words down ourselves.\n\nPaste the text here only if you want the exact spellings of names and brands in the subtitles."
@@ -311,6 +341,7 @@ export default function TextToVideo() {
                 {tooLong ? (long ? `Longer than ${EXPLAINER_MAX_MIN} minutes — please shorten it` : "Too long for this length. Make it shorter, or tap 'Improve my words'.") : `${cost} credits`}
               </span>
             </div>
+            {textErr && (tooShort || tooLong) && <p ref={textErrRef} className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{textErr}</p>}
             <div className="mt-2 flex flex-wrap gap-2">
               <button type="button" onClick={improve} disabled={!!busy || text.trim().length < 40}
                 className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold disabled:opacity-40">
@@ -318,13 +349,14 @@ export default function TextToVideo() {
               </button>
               {undoText && <button type="button" onClick={() => { setText(undoText); setUndoText(""); }} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">Undo</button>}
             </div>
+            {improveErr && <p className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{improveErr}</p>}
             <p className="mt-1 text-[11px] text-muted">The AI only cleans up what you wrote — your facts, your price, your language stay yours.</p>
           </div>
 
           {!long && (
             <div><p className="mb-1 text-xs font-semibold text-muted">How long</p><div className="flex flex-wrap gap-1.5">
               {AD_LENGTHS.filter((s) => kind !== "realistic" || s <= REALISTIC_MAX_LENGTH).map((s) => (
-                <button key={s} type="button" onClick={() => setSeconds(s)} className={chip(seconds === s)}>{s}s · {adCredits(s)}</button>
+                <button key={s} type="button" onClick={() => { setSeconds(s); setTextErr(""); }} className={chip(seconds === s)}>{s}s · {adCredits(s)}</button>
               ))}
             </div></div>
           )}
@@ -345,7 +377,7 @@ export default function TextToVideo() {
             <div className="flex items-center gap-2 rounded-lg border border-brand bg-brand-soft px-3 py-2 text-xs">
               <Mic className="h-4 w-4 shrink-0 text-brand" />
               <span className="min-w-0 flex-1 truncate font-semibold text-brand-ink">{ownVoiceName || "Your own recording"}</span>
-              <button type="button" onClick={() => { setOwnVoice(""); setOwnVoiceName(""); setOwnSeconds(0); }} className="shrink-0 text-muted" aria-label="Remove"><X className="h-4 w-4" /></button>
+              <button type="button" onClick={() => { setOwnVoice(""); setOwnVoiceName(""); setOwnSeconds(0); setTextErr(""); }} className="shrink-0 text-muted" aria-label="Remove"><X className="h-4 w-4" /></button>
             </div>
           ) : (
             <div className="flex flex-wrap gap-1.5">{VOICES.map(([k, l]) => <button key={k} type="button" onClick={() => setVoiceStyle(k)} className={chip(voiceStyle === k)}>{l}</button>)}</div>
@@ -355,6 +387,7 @@ export default function TextToVideo() {
             {ownVoice ? "Use a different recording" : "Or use my own recording (mp3)"}
             <input type="file" accept="audio/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; addVoice(f ?? null); }} />
           </label>}
+          {voiceErr && <p className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{voiceErr}</p>}
           {long && <p className="mt-1 text-[11px] text-muted">{ownVoice
             ? "Your recording is the voice of the video, so the video is as long as your recording. You do not need to type anything. We write down what you said and match the pictures to it."
             : "Did you record it yourself, or make it somewhere else? Add it here. We put pictures, photos and music with it."}</p>}
@@ -367,14 +400,14 @@ export default function TextToVideo() {
           {long && <p className="mt-1 text-[11px] text-muted">The pictures are made in this shape, so pick it before you start.</p>}</div>
 
           {kind === "presenter" && (
-            <div>
+            <div ref={presenterBoxRef}>
               <p className="mb-1 text-xs font-semibold text-muted">Photo of the person who will speak</p>
               <div className="flex items-center gap-2">
                 {presenterPhoto && (
                   <span className="relative h-16 w-16 overflow-hidden rounded-lg border border-border">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={presenterPhoto} alt="" className="h-full w-full object-cover" />
-                    <button type="button" onClick={() => setPresenterPhoto("")} className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white" aria-label="Remove"><X className="h-3 w-3" /></button>
+                    <button type="button" onClick={() => { setPresenterPhoto(""); setPresenterErr(""); }} className="absolute right-0.5 top-0.5 rounded-full bg-black/60 p-0.5 text-white" aria-label="Remove"><X className="h-3 w-3" /></button>
                   </span>
                 )}
                 <label className="grid h-16 w-16 cursor-pointer place-items-center rounded-lg border-2 border-dashed border-border text-muted">
@@ -382,6 +415,7 @@ export default function TextToVideo() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; addPhoto(f ?? null, "presenter"); }} />
                 </label>
               </div>
+              {presenterErr && <p className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{presenterErr}</p>}
               <p className="mt-1 text-[11px] text-muted">A clear photo looking straight at the camera works best, with the face big in the photo.</p>
             </div>
           )}
@@ -403,13 +437,14 @@ export default function TextToVideo() {
                 </label>
               )}
             </div>
+            {photoErr && <p className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
             <p className="mt-1 text-[11px] text-muted">{long ? "No photos? That is fine. Each slide shows your words on a clean background with your name." : "Your product photos from Products are already here. Remove any you do not want."}</p>
           </div>
 
-          {err && <p className="text-sm text-danger">{err}</p>}
-          {needCredits !== null && <AddCredits onDone={() => { setNeedCredits(null); refresh(); }} />}
+          {makeErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{makeErr}</p>}
+          {needCredits !== null && <AddCredits onDone={() => { setNeedCredits(null); setMakeErr(""); refresh(); }} />}
           <CostLine hi={false} cost={cost} balance={credits} range={`${cost} credits${long ? " (10 a minute, at least 20)" : ` (${seconds} sec · 2 credits a second, at least 20)`}`} />
-          <button type="button" onClick={make} disabled={!!busy || tooLong || tooShort || (kind === "presenter" && !presenterPhoto)}
+          <button type="button" onClick={make} disabled={!!busy}
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy === "make" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> Starting…</> : <><Sparkles className="h-5 w-5" /> Make my video · {cost} credits</>}
           </button>
@@ -450,14 +485,16 @@ export default function TextToVideo() {
                 <div className="space-y-2">
                   <video src={j.output_url} controls playsInline preload={jobIdx === 0 ? "auto" : "metadata"} className="w-full rounded-lg bg-black" />
                   <div className="grid grid-cols-3 gap-2">
-                    <button type="button" onClick={async () => { setRowMsg((m) => ({ ...m, [j.id]: "Opening share…" })); const r = await shareFile(j.output_url!, j.input?.title || j.input?.product || "My video", "video.mp4", "video/mp4"); setRowMsg((m) => ({ ...m, [j.id]: r === "shared" ? "Shared — pick WhatsApp in the sheet that opened." : r === "downloaded" ? "Saved to your Downloads folder." : "" })); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> Share</button>
-                    <button type="button" onClick={async () => { setRowMsg((m) => ({ ...m, [j.id]: "Downloading — check your Downloads folder…" })); await downloadPoster(j.output_url!, "video.mp4"); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border py-2.5 text-sm font-semibold"><Download className="h-4 w-4" /> Save</button>
+                    <button type="button" onClick={async () => { clearRow(j.id); setRow(j.id, "Opening share…", true); const r = await shareFile(j.output_url!, j.input?.title || j.input?.product || "My video", "video.mp4", "video/mp4"); if (r === "shared") setRow(j.id, "Shared — pick WhatsApp in the sheet that opened.", true); else if (r === "downloaded") setRow(j.id, "Saved to your Downloads folder.", true); else setRow(j.id, "Not shared. Tap Share to try again, or tap Save.", true); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-[#25D366] py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> Share</button>
+                    <button type="button" onClick={async () => { clearRow(j.id); setRow(j.id, "Downloading — check your Downloads folder…", true); const ok = await downloadPoster(j.output_url!, "video.mp4"); if (ok) setRow(j.id, "Saved — check your Downloads folder.", true); else setRow(j.id, "Could not save — try again."); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border py-2.5 text-sm font-semibold"><Download className="h-4 w-4" /> Save</button>
                     <button type="button" onClick={() => deleteJob(j)} disabled={deleting === j.id} className="inline-flex items-center justify-center gap-1.5 rounded-lg border border-border py-2.5 text-sm font-semibold text-danger disabled:opacity-60"><Trash2 className="h-4 w-4" /> {deleting === j.id ? "…" : "Delete"}</button>
                   </div>
+                  {rowMsg[j.id] && <p className={`text-xs ${rowMsg[j.id].ok ? "text-muted" : "font-semibold text-danger"}`}>{rowMsg[j.id].t}</p>}
                   {j.kind === "explainer" && <Link href={`/poster/explainer/edit?id=${j.id}`} className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-brand bg-brand-soft py-2.5 text-sm font-semibold text-brand-ink"><Pencil className="h-4 w-4" /> Edit — change a picture, heading or words</Link>}
                 </div>
               )}
-              {rowMsg[j.id] && <p className="text-xs text-muted">{rowMsg[j.id]}</p>}
+              {j.status !== "done" && rowMsg[j.id] && <p className={`text-xs ${rowMsg[j.id].ok ? "text-muted" : "font-semibold text-danger"}`}>{rowMsg[j.id].t}</p>}
+              {rowNeed?.id === j.id && <AddCredits need={rowNeed.cost ?? undefined} have={credits ?? 0} onDone={() => { clearRow(j.id); refresh(); }} />}
             </div>
           ))}
         </div>

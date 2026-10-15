@@ -109,7 +109,11 @@ export default function ProductsPage() {
   function newDraft(keep?: Pick<Draft, "category" | "brand">) { setNewSeq((n) => n + 1); setDraft({ ...EMPTY, ...keep }); }
   useEffect(() => { setStudio({ busy: false, note: "", orig: null }); }, [draftKey]);
   const draftKeyRef = useRef("");
-  useEffect(() => { setPhotoErr(""); }, [draftKey]);   // a photo message belongs to the product it was shown for
+  // A message belongs to the product it was shown for: another product opened (or the form closed) → no stale error, note or "added" line is left behind.
+  useEffect(() => {
+    setPhotoErr(""); setAiErr(""); setPriceErr(""); setErr(""); setRowErr(null);
+    if (draftKey) { setBulkMsg(""); setFill((f) => (f.busy || !f.msg ? f : { busy: false, msg: "", tone: "good" })); }
+  }, [draftKey]);
   useEffect(() => { draftKeyRef.current = draftKey; }, [draftKey]);
   /** What a failed call to a picture or AI route says. The server's text is English: in Hindi the line for its `code` is used (else for
    *  its status). `what` only changes the "already running" line. A gateway that gives up sends no JSON, so there is no text then. */
@@ -163,6 +167,11 @@ export default function ProductsPage() {
   const [err, setErr] = useState("");
   /** A photo button's own error: shown right under the photo buttons (the page error sits far below, by Save — owner, 15 Oct 2026: "error saath me hi dikhana chahiye"). */
   const [photoErr, setPhotoErr] = useState("");
+  /** Each of these belongs to ONE control and is shown right under it (E1): the AI-fill button, the price fields, one product's row (hide / show / delete), the Shubhora buttons. */
+  const [aiErr, setAiErr] = useState("");
+  const [priceErr, setPriceErr] = useState("");
+  const [rowErr, setRowErr] = useState<{ id: string; msg: string } | null>(null);
+  const [shubErr, setShubErr] = useState("");
   // Step 3 of the profile (owner's flow, 2 Oct 2026): with the products, what makes you special, who buys, the
   // offer and your work in your words — saved to the card facts on "Continue".
   const [facts, setFacts] = useState<CardFacts | null>(null);
@@ -294,8 +303,13 @@ export default function ProductsPage() {
 
   async function save(again = false) {
     if (!draft) return;
-    if (draft.mrp?.trim() && !draft.price.trim()) { setErr(en ? "Write the offer price too — the MRP is shown struck out next to it." : "ऑफ़र दाम भी लिखें — MRP उसके साथ कटा हुआ दिखता है।"); return; }
-    setBusy(true); setErr("");
+    if (draft.mrp?.trim() && !draft.price.trim()) {
+      // Shown under the price fields themselves (the form is long: the field is focused so it is on screen).
+      setPriceErr(en ? "Write the offer price too — the MRP is shown struck out next to it." : "ऑफ़र दाम भी लिखें — MRP उसके साथ कटा हुआ दिखता है।");
+      document.getElementById("product-price")?.focus();
+      return;
+    }
+    setBusy(true); setErr(""); setPriceErr("");
     try {
       const r = await api<{ product?: Product; error?: string }>("/api/poster/products", { method: "POST", json: {
         ...draft, benefits: draft.benefits.split("\n"), ...(brandAdmin ? { for_brand: forBrand } : {}),
@@ -316,7 +330,7 @@ export default function ProductsPage() {
   async function pick(file: File | null) {
     if (!file || !draft) return; if (draft.photos.length >= 6) { setPhotoErr(en ? "Up to 6 photos." : "ज़्यादा से ज़्यादा 6 photos।"); return; }
     const forKey = draftKey;
-    setBusy(true); setErr(""); setPhotoErr("");
+    setBusy(true); setErr(""); setPhotoErr(""); setStudio((x) => (x.note && x.note !== "ok" ? { ...x, note: "" } : x));
     try {
       const small = await compressToFile(file, "product.jpg");
       const u = await uploadImage(small, "product");
@@ -343,7 +357,7 @@ export default function ProductsPage() {
       return;
     }
     const forKey = draftKey;
-    setBusy(true); setErr(""); setPhotoErr("");
+    setBusy(true); setErr(""); setPhotoErr(""); setStudio((x) => (x.note && x.note !== "ok" ? { ...x, note: "" } : x));
     try {
       const r = await api<{ url?: string; error?: string; code?: string }>("/api/poster/products/stock-photo", { method: "POST", json: { name: draft.name, mode } });
       if (r.status === 402) { setPay(true); return; }
@@ -356,17 +370,17 @@ export default function ProductsPage() {
   async function fillWithAi() {
     if (!draft) return;
     const forKey = draftKey;
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setAiErr("");
     try {
       const r = await api<{ name?: string; benefits?: string[]; offer?: string; error?: string }>("/api/poster/products/ai", { method: "POST", json: { name: draft.name, photo_url: draft.photo_url, lang: en ? "en" : "hi" } });
       if (draftKeyRef.current !== forKey) return;   // another product is open now
-      if (!r.ok) { setErr(replyText(r.status, undefined, r.data.error)); return; }
+      if (!r.ok) { setAiErr(replyText(r.status, undefined, r.data.error)); return; }   // under the AI button, not down by Save
       const aiLines = (r.data.benefits ?? []).map((x) => String(x).trim()).filter(Boolean).slice(0, 6).join("\n");
       setBenText(aiLines);   // the AI's lines replace the benefits box; the specification rows stay
       // Written onto the product as it is now: a picture that arrived while the AI was thinking (studio photo, upload) is kept.
       setDraft((d) => (d ? { ...d, name: d.name || r.data.name || "", benefits: joinBenefits(aiLines, specRows), offer: d.offer || r.data.offer || "" } : d));
     } catch {
-      setErr(t.error);
+      if (draftKeyRef.current === forKey) setAiErr(t.error);
     } finally {
       setBusy(false);
     }
@@ -390,16 +404,23 @@ export default function ProductsPage() {
   const isShubhoraPlan = (p: Product) => /shubhora/i.test(p.name) || /shubhora/i.test(p.brand ?? "") || /shubhora/i.test(p.category ?? "");
   const mixedWithShubhora = (list ?? []).some((p) => p.active !== false && isShubhoraPlan(p)) && (list ?? []).some((p) => p.active !== false && !isShubhoraPlan(p));
   async function hideShubhora() {
-    for (const p of (list ?? []).filter((x) => x.active !== false && isShubhoraPlan(x))) {
-      await api("/api/poster/products", { method: "POST", json: { id: p.id, active: false } });
-    }
+    setShubErr("");
+    try {
+      for (const p of (list ?? []).filter((x) => x.active !== false && isShubhoraPlan(x))) {
+        const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: false } });
+        if (!r.ok) { setShubErr(r.data?.error || t.saveFail); break; }
+      }
+    } catch { setShubErr(t.error); }
     load();
   }
   /** Keep the row, keep it off the card: the build only takes active products. */
   async function toggle(p: Product) {
+    setRowErr(null);
     setList((cur) => (cur ?? []).map((x) => (x.id === p.id ? { ...x, active: p.active === false } : x)));
-    const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: p.active === false } });
-    if (!r.ok) { setErr(r.data.error || t.saveFail); load(); } else void liveSync();
+    try {
+      const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { id: p.id, active: p.active === false } });
+      if (!r.ok) { setRowErr({ id: p.id, msg: r.data?.error || t.saveFail }); load(); } else void liveSync();   // the message sits under this product's row
+    } catch { setRowErr({ id: p.id, msg: t.error }); load(); }
   }
   /** What was just saved here goes onto the live website too (audit, 7 Oct 2026) — a changed price, a new photo,
    *  a product switched off — without "Write again". Best effort, after the save. */
@@ -441,22 +462,26 @@ export default function ProductsPage() {
   const [askShubhora, setAskShubhora] = useState(false);
   async function promoteShubhora() {
     setAskShubhora(false);
-    setBusy(true); setErr("");
+    setBusy(true); setShubErr("");
     try {
       for (const d of SHUBHORA) {
         const r = await api<{ error?: string }>("/api/poster/products", { method: "POST", json: { ...d, benefits: d.benefits.split("\n") } });
-        if (!r.ok) { setErr(r.data.error || t.saveFail); return; }
+        if (!r.ok) { setShubErr(r.data?.error || t.saveFail); setBusy(false); return; }   // shown under the "Make my Shubhora seller card" button; the button works again
       }
       // …then the ready-made Shubhora seller card (banner, logo, plans, demo videos, business plan) in the editor — as a
       // card of its own when the owner already has a real card of their business, which stays exactly as it is.
       const cards = await fetchMyCardsStrict().catch(() => []);
       const own = cards.find((c) => c.active !== false && !isThinCard(c));
       router.push(own || !cards[0] ? "/poster/d/editor?id=new&template=vcard-reseller" : `/poster/d/editor?id=${cards[0].id}&template=vcard-reseller`);
-    } catch { setErr(t.saveFail); setBusy(false); }
+    } catch { setShubErr(t.saveFail); setBusy(false); }
   }
   async function remove(p: Product) {
     if (!confirm(`Delete "${p.name}"?`)) return;
-    try { await api(`/api/poster/products?id=${p.id}`, { method: "DELETE" }); } catch { setErr(t.error); return; }
+    setRowErr(null);
+    try {
+      const r = await api<{ error?: string }>(`/api/poster/products?id=${p.id}`, { method: "DELETE" });
+      if (!r.ok) { setRowErr({ id: p.id, msg: r.data?.error || t.error }); load(); return; }   // a refused delete says so under this product's row (it used to look like nothing happened); the list still refreshes (a stale row, e.g. already deleted elsewhere, goes away)
+    } catch { setRowErr({ id: p.id, msg: t.error }); load(); return; }
     load();
     // Deleted → off the website: sync with the row marked off (it is no longer in the list).
     if (hasLive) void syncProductsToCard([{ name: p.name, active: false }]);
@@ -597,15 +622,16 @@ export default function ProductsPage() {
           <div className={`grid gap-2 ${copy.mrp ? "grid-cols-2" : "grid-cols-1"}`}>
             <label className="block space-y-1">
               <span className="block text-xs font-semibold">{C(copy.price, copy.priceHi)}<Help k="price" /></span>
-              <input className={inp} inputMode="decimal" placeholder={C(copy.priceEg, copy.priceEgHi)} value={draft.price} onChange={(e) => setDraft({ ...draft, price: e.target.value })} />
+              <input id="product-price" className={inp} inputMode="decimal" placeholder={C(copy.priceEg, copy.priceEgHi)} value={draft.price} onChange={(e) => { setPriceErr(""); setDraft({ ...draft, price: e.target.value }); }} />
             </label>
             {copy.mrp && (
               <label className="block space-y-1">
                 <span className="block text-xs font-semibold">MRP ₹ <span className="font-normal text-muted">(optional)</span></span>
-                <input className={inp} inputMode="decimal" placeholder={en ? "e.g. 1,100" : "जैसे 1,100"} value={draft.mrp ?? ""} onChange={(e) => setDraft({ ...draft, mrp: e.target.value })} />
+                <input className={inp} inputMode="decimal" placeholder={en ? "e.g. 1,100" : "जैसे 1,100"} value={draft.mrp ?? ""} onChange={(e) => { setPriceErr(""); setDraft({ ...draft, mrp: e.target.value }); }} />
               </label>
             )}
           </div>
+          {priceErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{priceErr}</p>}
           {mrpShown(draft.price, draft.mrp) && (() => {
             const off = Math.round(((amount(draft.mrp) - amount(draft.price)) / amount(draft.mrp)) * 100);
             return (
@@ -645,6 +671,9 @@ export default function ProductsPage() {
               )}
               <button type="button" disabled={busy || (!draft.name && !draft.photo_url)} onClick={fillWithAi}
                 className="w-full rounded-lg border border-brand bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink disabled:opacity-50">✨ {en ? "Fill benefits/offer with AI (from the photo)" : "AI से खूबियाँ/ऑफ़र भरो (photo देखकर)"}</button>
+              {/* Why it did nothing / why it failed, right under the button (E1, E3). */}
+              {aiErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{aiErr}</p>}
+              {!aiErr && !busy && !draft.name && !draft.photo_url && <p className="text-[11px] text-muted">{en ? "Write the name or add a photo first — the AI reads them." : "पहले नाम लिखें या photo जोड़ें — AI उन्हें पढ़ता है।"}</p>}
               <label className="block space-y-1">
                 <span className="block text-xs font-semibold">{C("Benefits / offer lines", "खूबियाँ / ऑफ़र की लाइनें")}</span>
                 <textarea className={`${inp} w-full leading-relaxed`} rows={4} placeholder={C(copy.lines, copy.linesHi)} value={benText} onChange={(e) => { setBenText(e.target.value); setDraft({ ...draft, benefits: joinBenefits(e.target.value, specRows) }); }} />
@@ -670,6 +699,7 @@ export default function ProductsPage() {
           </details>
 
           {err && <p className="text-sm text-danger">{err}</p>}
+          {!draft.name.trim() && !working && <p className="text-xs text-muted">{C("Write the name to save.", "Save करने के लिए नाम लिखें।")}</p>}
           <div className="flex gap-2">
             <button type="button" onClick={() => setDraft(null)} disabled={working} className="rounded-xl border border-border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">{C("Cancel", "रहने दें")}</button>
             {!draft.id && <button type="button" onClick={() => void save(true)} disabled={busy || studio.busy || !draft.name.trim()} className="rounded-xl border border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{C("Save & add another", "Save करें और एक और जोड़ें")}</button>}
@@ -684,7 +714,7 @@ export default function ProductsPage() {
           {fillBtn}
         </div>
       )}
-      {(fill.busy || fill.msg) && (
+      {(fill.busy || fill.msg) && !bulk && (
         <p role="status" className={`rounded-xl border px-3 py-2 text-sm font-semibold ${fill.busy ? "border-border bg-surface2 text-muted" : fill.tone === "bad" ? "border-danger/40 bg-danger/10 text-danger" : fill.tone === "amber" ? "border-amber/40 bg-amber/10 text-ink" : "border-good/40 bg-good/10 text-good"}`}>
           {fill.busy ? C("Finding a clean, matching picture for each product… this can take up to 2 minutes. Please keep this page open.", "हर product के लिए साफ़ और मिलती-जुलती picture ढूँढ रहे हैं… दो मिनट तक लग सकता है। यह page खुला रखें।") : `${fill.tone === "good" ? "✓ " : ""}${fill.msg}`}
         </p>
@@ -695,6 +725,7 @@ export default function ProductsPage() {
           <p className="text-sm font-semibold">{en ? "Shubhora's plans are on your card next to your own products." : "आपके अपने products के साथ Shubhora के plan भी card पर हैं।"}</p>
           <p className="mt-0.5 text-xs text-muted">{en ? "Selling Shubhora too? Leave them. Otherwise hide them — they stay here for later." : "Shubhora भी बेचते हैं? रहने दें। वरना छिपा दें — यहीं रखे रहेंगे।"}</p>
           <button type="button" onClick={hideShubhora} className="mt-2 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{en ? "Hide the Shubhora plans" : "Shubhora के plan छिपाएँ"}</button>
+          {shubErr && <p role="alert" className="mt-2 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{shubErr}</p>}
         </div>
       )}
       {offCount > 0 && (
@@ -713,7 +744,8 @@ export default function ProductsPage() {
           </div>
         )}
         {list.map((p) => (
-          <div key={p.id} className={`flex items-center gap-3 rounded-xl border p-3 ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border"}`}>
+          <div key={p.id}>
+          <div className={`flex items-center gap-3 rounded-xl border p-3 ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border"}`}>
             <div className="h-14 w-14 rounded-lg bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{p.name}</p>
@@ -730,6 +762,8 @@ export default function ProductsPage() {
             </button>
             <button type="button" onClick={() => remove(p)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
           </div>
+          {rowErr?.id === p.id && <p role="alert" className="mt-1 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{rowErr.msg}</p>}
+          </div>
         ))}
         {/* Setup journey: the person just chose "my own business" — selling Shubhora is not offered here. */}
         {!draft && !hasShubhora && !setupMode && (
@@ -739,7 +773,7 @@ export default function ProductsPage() {
             <button type="button" onClick={() => setAskShubhora(true)} disabled={busy || locked} className="mt-2 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
               {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {en ? "Make my Shubhora seller card" : "Shubhora seller card banao"}
             </button>
-            {err && <p className="mt-2 text-sm text-danger">{err}</p>}
+            {shubErr && <p role="alert" className="mt-2 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{shubErr}</p>}
           </details>
         )}
         {askShubhora && (

@@ -42,7 +42,8 @@ export default function Connections() {
   const [domain, setDomain] = useState<{ state: State; name: string }>({ state: "loading", name: "" });
 
   const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
+  // The message of the last action, shown INSIDE the row that was tapped (at = the row's key; the WhatsApp switches use "wa").
+  const [msg, setMsg] = useState<{ at: string; text: string; bad: boolean } | null>(null);
   const [tick, setTick] = useState(0);
   const reload = () => { invalidateSocialAccounts(); setSocial(null); setWa("loading"); setGoogle({ state: "loading", name: "" }); setDomain({ state: "loading", name: "" }); setTick((t) => t + 1); };
 
@@ -75,12 +76,14 @@ export default function Connections() {
 
   async function disconnect(r: Row) {
     if (!r.off || !confirm(r.off.ask)) return;
-    setBusy(r.key); setMsg("");
-    try { await r.off.run(); setMsg(r.key === "domain" ? (en ? "Your web address was removed." : "आपका web address हटा दिया गया।") : (en ? `${r.title} disconnected.` : `${r.title} हटा दिया गया।`)); reload(); }
-    catch { setMsg(en ? "Could not disconnect — no internet? Try again." : "हटा नहीं पाए — internet देखकर फिर कोशिश करें।"); }
+    setBusy(r.key); setMsg(null);
+    try { await r.off.run(); setMsg({ at: r.key, bad: false, text: r.key === "domain" ? (en ? "Your web address was removed." : "आपका web address हटा दिया गया।") : (en ? `${r.title} disconnected.` : `${r.title} हटा दिया गया।`) }); reload(); }
+    catch { setMsg({ at: r.key, bad: true, text: en ? "Could not disconnect — no internet? Try again." : "हटा नहीं पाए — internet देखकर फिर कोशिश करें।" }); }
     finally { setBusy(""); }
   }
-  const dropSocial = async (a: SocialAccount | undefined) => { if (a?.id) await api("/api/social/accounts", { method: "DELETE", json: { id: a.id } }); };
+  // A refused call is a failed disconnect: it must not be reported as "disconnected".
+  const must = async (p: Promise<{ ok: boolean }>) => { if (!(await p).ok) throw new Error("failed"); };
+  const dropSocial = async (a: SocialAccount | undefined) => { if (a?.id) await must(api("/api/social/accounts", { method: "DELETE", json: { id: a.id } })); };
 
   const acct = (p: SocialAccount["provider"]) => (social ?? []).find((a) => a.provider === p && (a.is_active ?? true)) ?? (social ?? []).find((a) => a.provider === p);
   const sState = (p: SocialAccount["provider"]): State => { if (social === null) return "loading"; const a = acct(p); return !a ? "off" : a.status === "reconnect" ? "fix" : "on"; };
@@ -89,16 +92,21 @@ export default function Connections() {
   const waLinked = wa === "on" || wa === "paid";
   const statusOn = !!st?.auto_post;
   const setStatus = async (on: boolean) => {
-    setWaBusy("status"); setMsg("");
-    try { await api("/api/social/accounts", { method: "PATCH", json: { action: "wa_enable", value: on } }); invalidateSocialAccounts(); setSocial(null); fetchSocialAccounts(true).then((c) => setSocial(c.accounts)).catch(() => setSocial([])); }
-    catch { setMsg(en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।"); }
+    setWaBusy("status"); setMsg(null);
+    try { await must(api("/api/social/accounts", { method: "PATCH", json: { action: "wa_enable", value: on } })); invalidateSocialAccounts(); setSocial(null); fetchSocialAccounts(true).then((c) => setSocial(c.accounts)).catch(() => setSocial([])); }
+    catch { setMsg({ at: "wa", bad: true, text: en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।" }); }
     finally { setWaBusy(""); }
   };
   const setAi = async (on: boolean) => {
     if (wa === "paid") { router.push("/poster/plan"); return; }
-    setWaBusy("ai"); setMsg("");
-    try { const r = await api<{ enabled?: boolean }>("/api/wa/config", { method: "POST", json: { enabled: on } }); if (r.status === 402) { router.push("/poster/plan"); return; } setWaAi(r.ok ? !!r.data.enabled : waAi); }
-    catch { setMsg(en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।"); }
+    setWaBusy("ai"); setMsg(null);
+    try {
+      const r = await api<{ enabled?: boolean }>("/api/wa/config", { method: "POST", json: { enabled: on } });
+      if (r.status === 402) { router.push("/poster/plan"); return; }
+      if (!r.ok) throw new Error("failed");
+      setWaAi(!!r.data.enabled);
+    }
+    catch { setMsg({ at: "wa", bad: true, text: en ? "Could not save — no internet? Try again." : "Save नहीं हुआ — internet देखकर फिर कोशिश करें।" }); }
     finally { setWaBusy(""); }
   };
   const waSwitches = (
@@ -119,7 +127,7 @@ export default function Connections() {
   const rows: { group: string; items: Row[] }[] = [
     { group: "WhatsApp", items: [
       { key: "wa", icon: <MessageCircle className="h-6 w-6 text-[#25D366]" />, title: "WhatsApp", what: en ? "Link it once with a code on this phone (or a QR). Status posts and the AI bot both work through this one link." : "इसी phone पर एक code (या QR) से एक बार link करें। Status और AI bot दोनों इसी एक link से चलते हैं।", href: "/poster/leads?tab=wa", state: wa, detail: waNum ? `+91 ${waNum}` : undefined, extra: waSwitches,
-        off: { ask: en ? "Disconnect WhatsApp? Status posts and the AI will stop, and new messages will not be saved as customers. You can link it again any time with a code." : "WhatsApp हटाएँ? Status post और AI बंद हो जाएँगे, नए message customers में नहीं जुड़ेंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await api("/api/wa/logout", { method: "POST" }); } } },
+        off: { ask: en ? "Disconnect WhatsApp? Status posts and the AI will stop, and new messages will not be saved as customers. You can link it again any time with a code." : "WhatsApp हटाएँ? Status post और AI बंद हो जाएँगे, नए message customers में नहीं जुड़ेंगे। कभी भी code से दोबारा जोड़ सकते हैं।", run: async () => { await must(api("/api/wa/logout", { method: "POST" })); } } },
     ] },
     { group: "Social media", items: [
       { key: "fb", icon: <ProviderIcon provider="facebook" className="h-6 w-6" />, title: "Facebook Page", what: en ? "Your posters and videos are posted to your Page by themselves." : "आपके Page पर poster और video अपने-आप post होते हैं।", href: "/poster/social?tab=facebook", state: sState("facebook"), detail: fb?.name,
@@ -129,12 +137,12 @@ export default function Connections() {
     ] },
     { group: "Google", items: [
       { key: "google", icon: <Globe className="h-6 w-6 text-[#4285F4]" />, title: "Google Business Profile", what: en ? "Your shop on Google Maps and Search — posts, timings and how many people see you." : "Google Maps और Search पर आपकी दुकान — posts, समय और कितने लोगों ने देखा।", href: "/poster/social?tab=google", state: google.state, detail: google.name || undefined,
-        off: { ask: en ? `Disconnect Google Business Profile${google.name ? ` "${google.name}"` : ""}? You will not be able to post to Google or see your reviews here. Your shop on Google stays as it is.` : `Google Business Profile${google.name ? ` "${google.name}"` : ""} हटाएँ? यहाँ से Google पर post करना और reviews देखना बंद हो जाएगा। Google पर आपकी दुकान वैसी ही रहेगी।`, run: async () => { await api("/api/google/status", { method: "DELETE" }); } } },
+        off: { ask: en ? `Disconnect Google Business Profile${google.name ? ` "${google.name}"` : ""}? You will not be able to post to Google or see your reviews here. Your shop on Google stays as it is.` : `Google Business Profile${google.name ? ` "${google.name}"` : ""} हटाएँ? यहाँ से Google पर post करना और reviews देखना बंद हो जाएगा। Google पर आपकी दुकान वैसी ही रहेगी।`, run: async () => { await must(api("/api/google/status", { method: "DELETE" })); } } },
       { key: "reviews", icon: <Star className="h-6 w-6 text-[#FBBC05]" />, title: en ? "Google reviews" : "Google reviews", what: en ? "See and answer reviews; ask happy customers for one." : "Reviews देखें, जवाब दें, खुश customers से review माँगें।", href: "/poster/social?tab=reviews", state: google.state === "loading" ? "loading" : google.state },
     ] },
     { group: en ? "Your address" : "आपका address", items: [
       { key: "domain", icon: <Link2 className="h-6 w-6 text-brand" />, title: en ? "Your own web address" : "अपना web address", what: en ? "Your card and website open on your own address, like yourshop.com." : "आपका card और website आपके अपने address पर खुलेंगे, जैसे yourshop.com।", href: "/poster/card#domain", state: domain.state, detail: domain.name || undefined,
-        off: { ask: en ? `Remove ${domain.name} from your card and website? They will open on shubhora.com again. You can add it back any time.` : `${domain.name} को card और website से हटाएँ? वे फिर shubhora.com पर खुलेंगे। इसे कभी भी दोबारा जोड़ सकते हैं।`, run: async () => { await api(`/api/domains?domain=${encodeURIComponent(domain.name)}`, { method: "DELETE" }); } } },
+        off: { ask: en ? `Remove ${domain.name} from your card and website? They will open on shubhora.com again. You can add it back any time.` : `${domain.name} को card और website से हटाएँ? वे फिर shubhora.com पर खुलेंगे। इसे कभी भी दोबारा जोड़ सकते हैं।`, run: async () => { await must(api(`/api/domains?domain=${encodeURIComponent(domain.name)}`, { method: "DELETE" })); } } },
     ] },
   ];
   const all = rows.flatMap((g) => g.items);
@@ -175,12 +183,12 @@ export default function Connections() {
                     </button>
                   </div>
                 )}
+                {msg?.at === r.key && <p role="status" className={`mx-3 mb-3 rounded-lg border px-3 py-2 text-sm ${msg.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-border bg-surface2"}`}>{msg.text}</p>}
               </div>
             );
           })}
         </section>
       ))}
-      {msg && <p className="rounded-lg bg-surface2 px-3 py-2 text-sm">{msg}</p>}
       {wa === "paid" && <Link href="/poster/plan" className="block rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs">{en ? "Your WhatsApp is linked. The AI auto-reply comes with the Growth plan — see plans →" : "आपका WhatsApp जुड़ गया है। AI auto-reply Growth plan में है — plans देखें →"}</Link>}
       <p className="text-center text-[11px] text-faint">{en ? "You can always come back here: Me → Connections, or the menu at the top right." : "यहाँ कभी भी आ सकते हैं: Me → Connections, या ऊपर दाएँ menu से।"}</p>
     </div>

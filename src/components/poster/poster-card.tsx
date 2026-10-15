@@ -17,6 +17,8 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
 }) {
   const [state, setState] = useState<"" | "sharing" | "shared" | "downloaded" | "saving" | "saved" | "failed">("");
   const [editing, setEditing] = useState(false);
+  // Which of the two buttons ("share" / "save") the last failure belongs to: its message is shown under that button only.
+  const [failAt, setFailAt] = useState<"" | "share" | "save">("");
   const [video, setVideo] = useState<{ open: boolean; url: string; music: string; busy: boolean; err: string; sharing: boolean; voiceOn: boolean; gender: string; script: string; scriptBusy: boolean; withName: boolean; withPhone: boolean; loaded: boolean; lang: string }>({ open: false, url: poster.video_url ?? "", music: poster.music || "soft", busy: false, err: "", sharing: false, voiceOn: false, gender: "female", script: "", scriptBusy: false, withName: false, withPhone: false, loaded: false, lang: "hi" });
   const { t, lang } = useT(); const en = lang === "en";
   const [bump, setBump] = useState(0);
@@ -28,8 +30,10 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
   async function share() {
     if (video.url) {
       setState("sharing");
+      setFailAt("");
       const r = await shareVideo();
       if (r !== "failed") api("/api/poster/share", { method: "POST", json: { id: poster.id } }).catch(() => {});
+      if (r === "failed") setFailAt("share");
       setState(r === "shared" ? "shared" : r === "downloaded" ? "downloaded" : "failed");
       setTimeout(() => setState(""), 2500);
       return;
@@ -37,15 +41,17 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
     await shareImage();
   }
   async function shareImage() {
-    setState("sharing");
+    setState("sharing"); setFailAt("");
     const r = await sharePoster(src, caption);
     if (r !== "failed") api("/api/poster/share", { method: "POST", json: { id: poster.id } }).catch(() => {});
+    if (r === "failed") setFailAt("share");
     setState(r === "shared" ? "shared" : r === "downloaded" ? "downloaded" : "failed");
     setTimeout(() => setState(""), 2500);
   }
   async function save() {
-    setState("saving");
+    setState("saving"); setFailAt("");
     const ok = await downloadPoster(src, `shubhora-${date}.jpg`);
+    if (!ok) setFailAt("save");
     setState(ok ? "saved" : "failed"); setTimeout(() => setState(""), 2500);
   }
   async function openVideo() {
@@ -79,7 +85,7 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
     setVideo((v) => ({ ...v, sharing: true }));
     const ready = videoBlob.current?.url === video.url ? videoBlob.current.blob : null;
     const r = await shareFile(`${video.url}?v=${date}`, caption, `shubhora-${date}.mp4`, "video/mp4", ready);
-    setVideo((v) => ({ ...v, sharing: false, err: r === "downloaded" ? (en ? "Video saved — post it to Status from your gallery." : "वीडियो सेव हो गया — गैलरी से Status पर लगाएँ।") : v.err }));
+    setVideo((v) => ({ ...v, sharing: false, err: r === "downloaded" ? (en ? "Video saved — post it to Status from your gallery." : "वीडियो सेव हो गया — गैलरी से Status पर लगाएँ।") : r === "failed" ? (en ? "Could not share the video. Please try again." : "वीडियो भेज नहीं पाए। फिर से कोशिश करें।") : "" }));
     return r;
   }
 
@@ -102,8 +108,9 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
 
       <button type="button" onClick={share} disabled={state === "sharing"} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3.5 text-base font-semibold text-white disabled:opacity-70">
         {state === "sharing" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : state === "shared" ? <Check className="h-5 w-5" /> : <Share2 className="h-5 w-5" />}
-        {state === "shared" ? t.sent : state === "downloaded" ? t.downloaded : state === "failed" ? "❌" : video.url ? (en ? "Share on WhatsApp — video with voice" : "WhatsApp पर भेजें — आवाज़ वाला वीडियो") : t.shareWa}
+        {state === "shared" ? t.sent : state === "downloaded" ? t.downloaded : state === "failed" && failAt === "share" ? "❌" : video.url ? (en ? "Share on WhatsApp — video with voice" : "WhatsApp पर भेजें — आवाज़ वाला वीडियो") : t.shareWa}
       </button>
+      {state === "failed" && failAt === "share" && <p role="alert" className="-mt-1 text-center text-xs font-semibold text-danger">{en ? "Could not share. Please try again." : "भेज नहीं पाए। फिर से कोशिश करें।"}</p>}
       {video.url && <button type="button" onClick={shareImage} disabled={state === "sharing"} className="-mt-1 w-full text-center text-xs font-semibold text-muted underline">{en ? "Share the picture only" : "सिर्फ़ तस्वीर भेजें"}</button>}
       <div className="grid grid-cols-2 gap-2">
         <button type="button" onClick={openVideo} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2.5 text-sm font-semibold text-ink">
@@ -114,6 +121,7 @@ export function PosterCard({ poster, date, caption, profile, style, onStyle, res
       <button type="button" onClick={save} disabled={state === "saving"} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium disabled:opacity-60">
         {state === "saving" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : state === "saved" ? <Check className="h-4 w-4 text-good" /> : <Download className="h-4 w-4" />} {state === "saved" ? t.downloaded : t.download}
       </button>
+      {state === "failed" && failAt === "save" && <p role="alert" className="-mt-1 text-center text-xs font-semibold text-danger">{en ? "Could not save the picture. Please try again." : "तस्वीर सेव नहीं हुई। फिर से कोशिश करें।"}</p>}
 
       {video.open && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 md:items-center" onClick={() => setVideo((v) => ({ ...v, open: false }))}>

@@ -27,6 +27,7 @@ export function KycPhoto({ kind, label, id, currentUrl, onChange, pdf = false, m
       if (!r.id) { setErr(r.error ? tr(r.error) : en ? "The file could not be sent." : "फ़ाइल नहीं जा पाई।"); return; }
       setLocal({ url: URL.createObjectURL(send), isPdf });
       onChange(r.id);
+    } catch { setErr(en ? "This photo could not be read. Please choose another one." : "यह फ़ोटो पढ़ी नहीं जा सकी। दूसरी फ़ोटो चुनें।");
     } finally { setBusy(false); if (ref.current) ref.current.value = ""; }
   }
 
@@ -42,7 +43,7 @@ export function KycPhoto({ kind, label, id, currentUrl, onChange, pdf = false, m
           : <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><FileText className="h-5 w-5" /></span>}
         <div className="min-w-0 flex-1 text-xs">
           <p className={id ? "font-semibold text-good" : "text-muted"}>{id ? (en ? "Photo added" : "फ़ोटो जुड़ गई") : (en ? "No photo yet" : "अभी फ़ोटो नहीं")}</p>
-          {err && <p className="text-danger">{err}</p>}
+          {err && <p className="font-semibold text-danger" role="status">{err}</p>}
         </div>
         <button type="button" disabled={busy} onClick={() => ref.current?.click()} className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-xs font-semibold disabled:opacity-60">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />}{id ? (en ? "Change" : "बदलें") : (en ? "Add" : "जोड़ें")}

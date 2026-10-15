@@ -47,7 +47,11 @@ export default function WebsiteEditPage() {
   const [card, setCard] = useState<Card | null>(null);
   const [tab, setTab] = useState<Tab>("look");
   const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
+  // ONE message at a time, tagged with the control it belongs to and shown right under that control (never a line at the top of the
+  // page): "save" = in the Save bar, "ref" = under Copy look, "hero" / "logo" = under that picture row, "ai" = under the AI-photo button.
+  const [note, setNote] = useState<{ k: "save" | "ref" | "hero" | "logo" | "ai"; text: string; bad: boolean } | null>(null);
+  const say = (k: "save" | "ref" | "hero" | "logo" | "ai", text: string, bad = true) => setNote({ k, text, bad });
+  const line = (k: "save" | "ref" | "hero" | "logo" | "ai", cls = "") => note?.k === k ? <p role={note.bad ? "alert" : "status"} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${note.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-good/40 bg-good/10 text-good"} ${cls}`}>{note.text}</p> : null;
   const [err, setErr] = useState("");
   const [dirty, setDirty] = useState(false);
   const [refUrl, setRefUrl] = useState("");
@@ -82,7 +86,7 @@ export default function WebsiteEditPage() {
 
   const site = card?.site ?? { enabled: true };
   const style: SiteStyle = site.style ?? {};
-  const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
+  const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
   const setStyle = (patch: Partial<SiteStyle>) => set({ style: { ...style, ...patch } });
   const setHero = (patch: Partial<Hero>) => set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch } });
   const setHome = (patch: Partial<NonNullable<Card["site"]>["home"] & object>) => set({ home: { ...(site.home ?? {}), ...patch } });
@@ -113,7 +117,7 @@ export default function WebsiteEditPage() {
 
   async function save() {
     if (!card || !s?.hasCard) return;
-    setBusy("save"); setMsg("");
+    setBusy("save"); setNote(null);
     try {
       const r = await api<{ ok?: boolean; error?: string }>("/api/site/status", { method: "PATCH", json: {
         card_id: s.cardId,
@@ -126,41 +130,42 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
       } });
-      if (!r.ok) { setMsg(r.data.error ?? "Could not save."); return; }
-      setDirty(false); setMsg(hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.");
-    } catch { setMsg("No internet — please try again."); }
+      if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
+      setDirty(false); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
+    } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
   async function copyLook() {
     if (!s?.hasCard || !refUrl.trim()) return;
-    setBusy("ref"); setMsg("");
+    setBusy("ref"); setNote(null);
     try {
       const r = await api<{ ok?: boolean; site?: Card["site"]; error?: string }>("/api/site/status", { method: "PATCH", json: { card_id: s.cardId, reference: refUrl.trim() } });
-      if (!r.ok || !r.data.site) { setMsg(r.data.error ?? "Could not read that website."); return; }
+      if (!r.ok || !r.data.site) { say("ref", r.data.error ?? (hi ? "वो website पढ़ी नहीं जा सकी।" : "Could not read that website.")); return; }
       if (card) setCard({ ...card, site: { ...(card.site ?? { enabled: true }), style: r.data.site.style, reference: r.data.site.reference } });
-      setMsg(hi ? "✅ उस वेबसाइट का लुक कॉपी हो गया — नीचे preview देखें।" : "✅ Copied that website's look — see the preview.");
-    } catch { setMsg("No internet — please try again."); }
+      say("ref", hi ? "✅ उस वेबसाइट का लुक कॉपी हो गया — ऊपर preview देखें।" : "✅ Copied that website's look — see the preview above.", false);
+    } catch { say("ref", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
   async function upload(file: File | null, kind: "hero" | "logo") {
-    if (!file) return; setBusy(kind);
+    if (!file) return; setBusy(kind); setNote(null);
+    const failed = hi ? "Photo upload नहीं हुई। दोबारा try करें।" : "Could not upload the photo. Please try again.";
     try {
       const u = await uploadImage(await compressToFile(file, `${kind}.png`, kind === "hero" ? 1400 : 800, kind === "hero" ? 0.9 : 1, "png"), "logo");
-      if (!u) { setMsg("Could not upload the photo. Please try again."); return; }
+      if (!u) { say(kind, failed); return; }
       if (kind === "hero") setHero({ imageUrl: u }); else set({ logoUrl: u });
-    } catch { setMsg("Could not upload the photo. Please try again."); }
+    } catch { say(kind, failed); }
     finally { setBusy(""); }
   }
   async function aiHeroPhoto() {
     if (!s?.hasCard) return;
     if (!access.active) { setUnlock(true); return; }
     if (!confirm(`Make a new AI photo for the top of your website for ${SITE_PHOTO_CREDITS} credits?`)) return;
-    setBusy("aiphoto"); setMsg("");
+    setBusy("aiphoto"); setNote(null);
     try {
       const r = await api<{ ok?: boolean; url?: string; error?: string }>("/api/site/photo", { method: "POST", json: { card_id: s.cardId, slot: "hero" } });
-      if (!r.ok || !r.data.url) { setMsg(r.data.error ?? "Could not make the photo."); return; }
-      setHero({ imageUrl: r.data.url }); setMsg("✅ New AI photo added to the top of your website.");
-    } catch { setMsg("No internet — please try again."); }
+      if (!r.ok || !r.data.url) { say("ai", r.data.error ?? (hi ? "Photo नहीं बन पाई। दोबारा try करें।" : "Could not make the photo.")); return; }
+      setHero({ imageUrl: r.data.url }); say("ai", hi ? "✅ वेबसाइट के ऊपर नई AI photo लग गई।" : "✅ New AI photo added to the top of your website.", false);
+    } catch { say("ai", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
 
@@ -194,9 +199,12 @@ export default function WebsiteEditPage() {
         <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>
       </div>
       {s.cards.length > 1 && (
-        <select value={s.cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
-          {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}
-        </select>
+        <div className="space-y-1.5">
+          <select value={s.cardId} onChange={(e) => { setNote(null); void load(e.target.value); }} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
+            {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}
+          </select>
+          {err && <p className="text-xs font-semibold text-danger">{err.startsWith("No internet") ? (hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again.") : err}</p>}
+        </div>
       )}
 
       {/* ---- live preview (the real website renderer, scaled to fit) ---- */}
@@ -207,10 +215,8 @@ export default function WebsiteEditPage() {
       </div>
       <p className="text-[11px] text-muted -mt-2">{hi ? "यह कंप्यूटर पर आपकी वेबसाइट का रूप है। अंदर स्क्रॉल करके पूरा देखें। Save दबाने के बाद ही बदलाव दिखेंगे।" : "This is how your website looks on a computer. Scroll inside to see it all. Your changes show on your website only after you tap Save."}</p>
 
-      {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
-
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => setTab(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
+        {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => { setNote((n) => (n?.k === "save" ? n : null)); setTab(key); }} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
       </div>
 
       {tab === "look" && (
@@ -260,6 +266,7 @@ export default function WebsiteEditPage() {
               <input value={refUrl} onChange={(e) => setRefUrl(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="e.g. somebrand.com" className={`${field} mt-0 flex-1`} />
               <button type="button" onClick={copyLook} disabled={busy === "ref" || !refUrl.trim()} className="rounded-lg grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "ref" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "Copy" : "Copy look")}</button>
             </div>
+            {line("ref", "mt-2")}
             {site.reference?.url && <p className="text-[11px] text-muted mt-1.5">{hi ? "अभी का लुक इस वेबसाइट से:" : "Your look is copied from:"} {site.reference.url.replace(/^https?:\/\//, "")}</p>}
           </div>
         </section>
@@ -278,9 +285,11 @@ export default function WebsiteEditPage() {
               {site.hero?.imageUrl && !s.images.some((im) => im.url === site.hero?.imageUrl) && <span className="h-16 w-16 rounded-xl border-2 border-brand overflow-hidden bg-white"><Thumb src={site.hero.imageUrl} alt="" /></span>}
               <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "hero" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "+ जोड़ें" : "+ Add")}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "hero")} /></label>
             </div>
+            {line("hero", "mt-2")}
             <button type="button" onClick={aiHeroPhoto} disabled={busy === "aiphoto"} className="mt-2 inline-flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 text-xs font-semibold text-brand-ink disabled:opacity-60">
               {busy === "aiphoto" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} Make a new AI photo<CreditPrice credits={SITE_PHOTO_CREDITS} />
             </button>
+            {line("ai", "mt-2")}
             <p className="text-[11px] text-muted mt-1">{hi ? "कुछ न चुनें तो पहले product की photo लग जाती है। अपनी खुद की फ़ोटो यहाँ न लगाएँ।" : "If you choose nothing, your first product photo is used. Do not put a photo of your own face here."}</p>
           </div>
           <div>
@@ -291,6 +300,7 @@ export default function WebsiteEditPage() {
               {site.logoUrl && !s.images.some((im) => im.url === site.logoUrl) && <span className="h-16 w-16 rounded-xl border-2 border-brand overflow-hidden bg-white"><Thumb src={site.logoUrl} alt="" /></span>}
               <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "logo" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "+ जोड़ें" : "+ Add")}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "logo")} /></label>
             </div>
+            {line("logo", "mt-2")}
           </div>
           <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5"><span className="text-sm font-medium">{hi ? "बड़ी लाइन के नीचे मेरी फ़ोटो + नाम" : "My photo + name under the big line"}</span><input type="checkbox" className="h-5 w-5" checked={!site.hideProfile} onChange={(e) => set({ hideProfile: !e.target.checked })} /></label>
           {/* News / offers live in ONE place now — Card & Website → News (the notice bar / pop-up, src/lib/notice.ts); the old
@@ -369,6 +379,7 @@ export default function WebsiteEditPage() {
 
       {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor) ---- */}
       <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+        {line("save", "mb-2")}
         <div className="flex items-center gap-3">
           <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "बदलाव अभी सेव नहीं हुए" : "Changes not saved yet") : (hi ? "सब सेव है" : "All saved")}</p>
           <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>

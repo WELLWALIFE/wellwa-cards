@@ -186,6 +186,9 @@ export function CardEditor({ id }: { id: string }) {
   const [loadErr, setLoadErr] = useState<"" | "offline" | "missing">("");
   const [attempt, setAttempt] = useState(0);
   const [pub, setPub] = useState<{ state: "idle" | "busy" | "done" | "error"; msg?: string }>({ state: "idle" });
+  // Which Save was tapped (the one under the status box at the top, or the one in the phone bar): a failed Save is
+  // told beside THAT button only, not twice.
+  const [saveFrom, setSaveFrom] = useState<"top" | "bar">("top");
   // Draft or live? (owner's call, 25 Sep 2026: people could not tell.) `liveBase` is the fingerprint of the card as it
   // is live right now — null while it has never been published. Anything different on screen = "changes not live yet".
   const [liveBase, setLiveBase] = useState<string | null>(null);
@@ -426,7 +429,7 @@ export function CardEditor({ id }: { id: string }) {
   /** The one Save: publishes the card (first time = it goes live) and opens the card page with its link and QR. */
   async function save() {
               if (!isCloudConfigured()) {
-                setPub({ state: "error", msg: "Saving is not set up yet. Your changes stay on this device only." });
+                setPub({ state: "error", msg: L("Saving is not set up yet. Your changes stay on this device only.", "Save अभी चालू नहीं है। आपके बदलाव इसी फ़ोन में रहेंगे।") });
                 return;
               }
               setPub({ state: "busy" });
@@ -478,6 +481,8 @@ export function CardEditor({ id }: { id: string }) {
   const current = useMemo(() => fingerprint(card), [card]);
   const status: "draft" | "live" | "changed" | "off" = !card.active ? "off" : liveBase === null ? "draft" : current === liveBase ? "live" : "changed";
   useEffect(() => { if (pub.state === "done" && status !== "live") setPub({ state: "idle" }); }, [status, pub.state]);
+  // A failed Save's message belongs to that attempt: editing the card again retires it (the status box still says "not saved").
+  useEffect(() => { setPub((p) => (p.state === "error" ? { state: "idle" } : p)); }, [current]);
 
   /* ---------- jump to a part of the card: ✏️ on the preview, or ?focus=… from the card checklist ---------- */
   function flash(elId: string) {
@@ -622,15 +627,15 @@ export function CardEditor({ id }: { id: string }) {
             : status === "draft" ? <><b>{L("Not live yet", "अभी live नहीं है")}</b><span className="block text-xs text-muted">{L("Tap Save to make your card live.", "Card live करने के लिए Save दबाएँ।")}</span></>
             : <><b>{L("Card is switched off", "Card बंद है")}</b><span className="block text-xs text-muted">{L("Turn it on in More → Card active.", "और → Card active से चालू करें।")}</span></>}
         </p>
-        <button type="button" onClick={save} disabled={pub.state === "busy" || (status === "live" && !localSaveError)}
+        <button type="button" onClick={() => { setSaveFrom("top"); void save(); }} disabled={pub.state === "busy" || (status === "live" && !localSaveError)}
           className={`shrink-0 inline-flex items-center gap-1.5 rounded-xl px-5 py-3 text-base font-bold shadow-card disabled:shadow-none ${status === "live" && !localSaveError ? "bg-surface text-good border border-good/40" : "grad-brand text-white"} disabled:opacity-90`}>
           {pub.state === "busy" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : status === "live" ? <Check className="h-5 w-5" /> : <Cloud className="h-5 w-5" />}
           {pub.state === "busy" ? L("Saving…", "Save हो रहा है…") : status === "live" && !localSaveError ? L("Saved", "Saved") : L("Save", "Save")}
         </button>
       </div>
 
-      {pub.msg && (
-        <p className={`text-sm font-semibold ${pub.state === "error" ? "text-danger" : "text-good"}`}>
+      {pub.msg && !(pub.state === "error" && saveFrom === "bar" && view !== "preview") && (
+        <p role={pub.state === "error" ? "alert" : undefined} className={`text-sm font-semibold ${pub.state === "error" ? "text-danger" : "text-good"}`}>
           {pub.msg}
         </p>
       )}
@@ -928,6 +933,8 @@ export function CardEditor({ id }: { id: string }) {
       {/* Phone width: a solid bar just above the bottom tabs (owner's review, 28 Sep 2026 — the floating pill used to sit
           on top of the text people were typing). Save when needed, and the way in and out of the preview. */}
       <div className="@3xl:hidden fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 backdrop-blur">
+        {/* A failed Save from this bar is told right here, not only in the line at the top of the page (out of sight when scrolled down). */}
+        {view !== "preview" && pub.state === "error" && pub.msg && saveFrom === "bar" && <p role="alert" className="mx-auto max-w-md px-3 pt-2 text-xs font-semibold text-danger">{pub.msg}</p>}
         <div className="mx-auto flex max-w-md items-center gap-2 px-3 py-2">
           {view === "preview" ? (
             <button type="button" onClick={() => { setView("edit"); try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch { /* ignore */ } }}
@@ -937,7 +944,7 @@ export function CardEditor({ id }: { id: string }) {
           ) : (
             <>
               {(status === "changed" || status === "draft" || localSaveError) && (
-                <button type="button" onClick={save} disabled={pub.state === "busy"}
+                <button type="button" onClick={() => { setSaveFrom("bar"); void save(); }} disabled={pub.state === "busy"}
                   className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-bold text-white disabled:opacity-70">
                   {pub.state === "busy" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />} {pub.state === "busy" ? L("Saving…", "Save हो रहा है…") : L("Save", "Save")}
                 </button>
@@ -1043,6 +1050,11 @@ function LinkField({ value, cardId, personName, businessName, liveValue, host, o
 }) {
   const [check, setCheck] = useState<UsernameCheck>({ state: "idle" });
   const [copied, setCopied] = useState(false);
+  const [copyFailed, setCopyFailed] = useState(false);
+  // Same language rule as the editor: Hindi only inside the Shubhora app, the desktop dashboard stays English.
+  const linkLang = useT().lang;
+  const linkPath = usePathname();
+  const copyFailText = linkLang === "hi" && !!linkPath?.startsWith("/poster") ? "copy नहीं हुआ — link चुनकर copy करें" : "Could not copy — select the link";
   // One tap: the link from your name or from the business name (owner's call, 25 Sep 2026) — each checked free.
   const [opts, setOpts] = useState<{ name: string | null; business: string | null }>({ name: null, business: null });
   useEffect(() => {
@@ -1072,10 +1084,11 @@ function LinkField({ value, cardId, personName, businessName, liveValue, host, o
 
   async function copy() {
     try {
+      setCopyFailed(false);
       await navigator.clipboard.writeText(`https://${url}`);
       setCopied(true);
       setTimeout(() => setCopied(false), 1600);
-    } catch { /* clipboard blocked — the link is still visible above */ }
+    } catch { setCopyFailed(true); setTimeout(() => setCopyFailed(false), 2500); } // clipboard blocked — say so beside the button
   }
 
   return (
@@ -1126,6 +1139,7 @@ function LinkField({ value, cardId, personName, businessName, liveValue, host, o
           {copied ? "Copied" : "Copy"}
         </button>
       </div>
+      {copyFailed && <p role="alert" className="mt-1 text-xs font-semibold text-danger">{copyFailText}</p>}
     </Field>
   );
 }

@@ -27,10 +27,12 @@ const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.
 const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`;
 const abs = (u: string) => (u.startsWith("http") ? u : `${typeof window !== "undefined" ? window.location.origin : ""}${u}`);
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
+const errBox = "rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger";
 
 export default function AdsPage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
+  const hiRef = useRef(hi); useEffect(() => { hiRef.current = hi; }, [hi]);
   const { plan, loading: planLoading } = usePlan();
   const [tab, setTab] = useState<Tab>("new");
   const [acc, setAcc] = useState<Accounts | null>(null);
@@ -53,16 +55,32 @@ export default function AdsPage() {
   const [offer, setOffer] = useState("");
   const [est, setEst] = useState<{ daily: number; monthlyLow: number; monthlyHigh: number } | null>(null);
   const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+  // Each message sits beside the control that caused it: upErr under the photo picker, copyErr under the "write the words" buttons,
+  // createErr right above the Save / Start buttons, stErr under that ad's Start / Pause, chkMsg under "Check again", acctErr under the ad-account bar.
+  const [upErr, setUpErr] = useState("");
+  const [copyErr, setCopyErr] = useState("");
+  const [createErr, setCreateErr] = useState("");
+  const [stErr, setStErr] = useState<{ id: string; text: string } | null>(null);
+  const [chkMsg, setChkMsg] = useState("");
+  const [mineErr, setMineErr] = useState("");
+  const [acctErr, setAcctErr] = useState("");
+  const createErrRef = useRef<HTMLParagraphElement | null>(null);
   const [done, setDone] = useState<{ managerUrl: string; status: string; id?: string } | null>(null);
   const [q, setQ] = useState(""); const [hits, setHits] = useState<{ key: string; name: string; region: string; type: string }[]>([]);
   const [iq, setIq] = useState(""); const [ihits, setIhits] = useState<{ id: string; name: string; size: number }[]>([]);
   const [mine, setMine] = useState<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string } | null>(null);
   const cityTimer = useRef<number | null>(null);
 
-  const loadAccounts = useCallback(async () => { try { const r = await api<Accounts>("/api/ads/accounts"); if (r.ok) setAcc(r.data); } catch { /* offline */ } }, []);
-  const loadMine = useCallback(async () => { try { const r = await api<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string }>("/api/ads/campaigns"); if (r.ok) setMine(r.data); } catch { /* offline */ } }, []);
+  const loadAccounts = useCallback(async () => {
+    setChkMsg("");
+    try { const r = await api<Accounts>("/api/ads/accounts"); if (r.ok) setAcc(r.data); else setChkMsg(hiRef.current ? "अभी देख नहीं पाए। थोड़ी देर बाद फिर कोशिश करें।" : "Could not check just now. Please try again in a little while."); }
+    catch { setChkMsg(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+  }, []);
+  const loadMine = useCallback(async () => {
+    setMineErr("");
+    try { const r = await api<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string }>("/api/ads/campaigns"); if (r.ok) setMine(r.data); else setMineErr(hiRef.current ? "आपकी ads नहीं खुल पाईं। फिर से कोशिश करें।" : "Could not open your ads. Please try again."); }
+    catch { setMineErr(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+  }, []);
 
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ads"); return; }
@@ -101,50 +119,59 @@ export default function AdsPage() {
 
   async function writeWords() {
     if (!profile) return;
-    setBusy("copy"); setErr("");
+    setBusy("copy"); setCopyErr("");
     try {
       const r = await api<{ copy?: { primaryText: string; headline: string; description: string }; link?: string; phone?: string; error?: string }>("/api/ads/copy", { method: "POST", json: { profile_id: profile.id, goal, product_id: productId || undefined, offer } });
-      if (!r.ok || !r.data.copy) { setErr(r.data.error ?? (hi ? "शब्द नहीं लिख पाए। फिर से कोशिश करें।" : "Could not write the words. Please try again.")); return; }
+      if (!r.ok || !r.data.copy) { setCopyErr(r.data.error ?? (hi ? "शब्द नहीं लिख पाए। फिर से कोशिश करें।" : "Could not write the words. Please try again.")); return; }
       setCopy(r.data.copy); if (r.data.link) setLink(r.data.link); if (r.data.phone && !phone) setPhone(r.data.phone);
-    } catch { setErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+    } catch { setCopyErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
     finally { setBusy(""); }
   }
   async function upload(file: File | null) {
-    if (!file) return; setBusy("up");
-    try { const u = await uploadImage(await compressToFile(file, "ad.jpg", 1600, 0.9), "wide"); if (u) setCreative({ kind: "image", url: u, label: hi ? "आपकी photo" : "Your photo" }); else setErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again."); }
-    catch { setErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again."); }
+    if (!file) return; setBusy("up"); setUpErr("");
+    try { const u = await uploadImage(await compressToFile(file, "ad.jpg", 1600, 0.9), "wide"); if (u) setCreative({ kind: "image", url: u, label: hi ? "आपकी photo" : "Your photo" }); else setUpErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again."); }
+    catch { setUpErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again."); }
     finally { setBusy(""); }
   }
   async function create(startNow: boolean) {
     if (!creative) return;
     const total = daily * days;
     if (startNow && !confirm(hi ? `Ad अभी शुरू हो जाएगी। Facebook आपके ad account से रोज़ ${inr(daily)} तक लेगा, ${days} दिन में ज़्यादा से ज़्यादा ${inr(total)}। शुरू करें?` : `The ad will start now. Facebook will take up to ${inr(daily)} a day from your ad account, at most ${inr(total)} in ${days} days. Start?`)) return;
-    setBusy("create"); setErr(""); setMsg("");
+    setBusy("create"); setCreateErr(""); setStErr(null);
+    // the error lands right above the Save / Start buttons; the preview above them is long, so bring it into view
+    const fail = (t: string) => { setCreateErr(t); window.setTimeout(() => createErrRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
     try {
       const r = await api<{ ok?: boolean; managerUrl?: string; status?: string; row?: { id: string }; error?: string }>("/api/ads/create", { method: "POST", json: {
         name: copy.headline, goal, creative: { kind: creative.kind, url: abs(creative.url), thumbUrl: creative.thumbUrl ? abs(creative.thumbUrl) : undefined },
         primary_text: copy.primaryText, headline: copy.headline, description: copy.description, link, phone, daily_rupees: daily, days, targeting, placements, start_now: startNow,
       } });
-      if (!r.ok) { setErr(r.data.error ?? (hi ? "Ad नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the ad. Please try again.")); return; }
+      if (!r.ok) { fail(r.data.error ?? (hi ? "Ad नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the ad. Please try again.")); return; }
       setDone({ managerUrl: r.data.managerUrl ?? "", status: r.data.status ?? "PAUSED", id: r.data.row?.id });
       loadMine();
-    } catch { setErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+    } catch { fail(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
     finally { setBusy(""); }
   }
-  async function setStatus(id: string, status: "ACTIVE" | "PAUSED") {
-    setBusy(`st-${id}`);
-    try { const r = await api<{ ok?: boolean; error?: string }>("/api/ads/status", { method: "POST", json: { id, status } }); if (!r.ok) setMsg(r.data.error ?? (hi ? "बदल नहीं पाए। फिर से कोशिश करें।" : "Could not change it. Please try again.")); else loadMine(); }
-    catch { setMsg(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+  // true when Facebook accepted the change; on a failure the reason shows right under THAT ad's Start / Pause button (stErr).
+  async function setStatus(id: string, status: "ACTIVE" | "PAUSED"): Promise<boolean> {
+    setBusy(`st-${id}`); setStErr(null);
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/ads/status", { method: "POST", json: { id, status } });
+      if (!r.ok) { setStErr({ id, text: r.data.error ?? (hi ? "बदल नहीं पाए। फिर से कोशिश करें।" : "Could not change it. Please try again.") }); return false; }
+      loadMine(); return true;
+    } catch { setStErr({ id, text: hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again." }); return false; }
     finally { setBusy(""); }
   }
-  function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setErr(""); setOffer(""); }
+  function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setUpErr(""); setCopyErr(""); setCreateErr(""); setStErr(null); setOffer(""); }
+  // Moving between steps: a message about one step's action must not show under another step's buttons.
+  function goStep(n: number) { setStep(n); setUpErr(""); setCopyErr(""); setCreateErr(""); }
+  function pickCreative(c: Creative, pid?: string) { setCreative(c); setUpErr(""); if (pid !== undefined) setProductId(pid); }
   // Back, everywhere on this page (the arrow at the top and the Back button at the bottom do the same): My ads -> the New ad tab;
   // a later step -> the step before; the first step, the finished screen and the "connect Facebook" screens -> the screen the owner
   // came from (the Create tab when the page was opened fresh). The finished screen never goes back to the form: that would make a second ad.
   function back() {
     const wizard = !!acc && acc.connected && acc.permission === "ok" && acc.accounts.length > 0;
     if (wizard && tab === "mine") { setTab("new"); return; }
-    if (wizard && !done && step > 0) { setStep(step - 1); return; }
+    if (wizard && !done && step > 0) { goStep(step - 1); return; }
     goBack(router, "/poster/create");
   }
 
@@ -154,10 +181,19 @@ export default function AdsPage() {
   const selectedAcct = acc?.accounts.find((a) => a.id === acc.selected);
   const audienceLine = useMemo(() => `${targeting.cities.length ? targeting.cities.map((c) => `${c.name}${c.type === "region" ? "" : ` +${c.radius} km`}`).join(", ") : (hi ? "पूरा भारत" : "All India")} · ${targeting.ageMin}–${targeting.ageMax} · ${targeting.gender === "all" ? (hi ? "सब" : "everyone") : hi ? (targeting.gender === "men" ? "पुरुष" : "महिला") : targeting.gender}${targeting.interests.length ? ` · ${targeting.interests.map((i) => i.name).join(", ")}` : ""}`, [targeting, hi]);
   const canNext = [!!creative, true, true, daily >= AD_BUDGET.minDaily && days >= 1, !!copy.primaryText.trim() && !!copy.headline.trim()][step];
+  // Why Next / Save / Start is off — said right above those buttons, never a button that is just dead.
+  const whyNot = canNext ? "" : [
+    hi ? "आगे जाने के लिए ऊपर से कोई poster, product photo या video चुनें, या अपनी photo डालें।" : "To go on, pick a poster, product photo or video above, or add your own photo.",
+    "", "",
+    daily < AD_BUDGET.minDaily
+      ? (hi ? `रोज़ का खर्च कम से कम ${inr(AD_BUDGET.minDaily)} रखें।` : `Spend at least ${inr(AD_BUDGET.minDaily)} a day.`)
+      : (hi ? "कम से कम 1 दिन चुनें।" : "Pick at least 1 day."),
+    // while the AI is already writing the words, there is nothing for the owner to fix yet
+    busy === "copy" ? "" : (hi ? "ad का text और हेडिंग दोनों भरें — या ऊपर 'AI से शब्द लिखवाएँ' दबाएँ।" : "Fill in both the ad text and the heading, or tap 'Write the words with AI' above."),
+  ][step];
   const STEPS = hi ? ["Photo या video", "आप क्या चाहते हैं", "कौन देखे", "खर्च", "शब्द और जाँच"] : ["Photo or video", "What you want", "Who sees it", "Spending", "Words and check"];
 
   /* ---------- gates ---------- */
-  if (!acc) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const header = (
     <div className="flex items-center gap-2">
       <button type="button" onClick={back} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
@@ -167,6 +203,10 @@ export default function AdsPage() {
       </div>
     </div>
   );
+  // The first load failed: say so right here with a way to try again, never an endless spinner.
+  if (!acc) return chkMsg
+    ? <div className="space-y-4">{header}<section className="rounded-2xl border border-border p-4 space-y-2 text-center"><p className="text-sm font-semibold text-danger">{chkMsg}</p><button type="button" onClick={loadAccounts} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Try again"}</button></section></div>
+    : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (!acc.connected || acc.permission !== "ok") return (
     <div className="space-y-4">
       {header}
@@ -179,6 +219,7 @@ export default function AdsPage() {
           : <p className="text-sm text-danger">{acc.error || (hi ? "Facebook से जवाब नहीं आया।" : "Facebook did not answer.")}</p>}
         <Link href="/poster/connect" className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">{hi ? "Connections खोलें" : "Open Connections"} <ChevronRight className="h-4 w-4" /></Link>
         <button type="button" onClick={loadAccounts} className="ml-2 inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Check again"}</button>
+        {chkMsg && <p className="text-sm font-semibold text-danger">{chkMsg}</p>}
       </section>
       <Guide hi="Ads का पैसा Facebook सीधे आपके ad account (card या UPI) से लेता है — Shubhora के credits नहीं लगते। यहाँ आप ad बनाते हैं, रोज़ का खर्च और दिन तय करते हैं, और Start या Pause करते हैं।" en="Facebook takes the ad money straight from your ad account (card or UPI). No Shubhora credits are used. Here you make the ad, choose how much to spend each day and for how many days, and start or pause it." />
     </div>
@@ -193,6 +234,7 @@ export default function AdsPage() {
           <a href="https://business.facebook.com/adsmanager" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">Ads Manager <ExternalLink className="h-4 w-4" /></a>
           <button type="button" onClick={loadAccounts} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Check again"}</button>
         </div>
+        {chkMsg && <p className="text-sm font-semibold text-danger">{chkMsg}</p>}
       </section>
     </div>
   );
@@ -201,8 +243,9 @@ export default function AdsPage() {
   if (tab === "mine") return (
     <div className="space-y-4">
       {header}
-      {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
-      {!mine ? <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
+      {!mine ? (mineErr
+          ? <section className="rounded-2xl border border-border p-4 space-y-2 text-center"><p className="text-sm font-semibold text-danger">{mineErr}</p><button type="button" onClick={loadMine} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Try again"}</button></section>
+          : <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>)
         : !mine.campaigns.length ? <section className="rounded-2xl border border-border p-6 text-center space-y-2"><p className="font-semibold">{hi ? "अभी कोई ad नहीं है" : "No ads yet"}</p><p className="text-sm text-muted">{hi ? "पहली ad 5 आसान कदम में बनाएँ।" : "Make your first ad in 5 easy steps."}</p><button type="button" onClick={() => setTab("new")} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "नई ad" : "New ad"}</button></section>
         : (
           <div className="space-y-3">
@@ -231,6 +274,7 @@ export default function AdsPage() {
                       : <button type="button" disabled={busy === `st-${c.id}`} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr(c.daily_paise / 100)} तक लेगा।` : `Start this ad? Facebook will take up to ${inr(c.daily_paise / 100)} a day.`)) setStatus(c.id, "ACTIVE"); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Play className="h-4 w-4" /> {hi ? "शुरू करें" : "Start"}</button>}
                     <a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${c.ad_account.replace("act_", "")}&selected_campaign_ids=${c.campaign_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">Ads Manager <ExternalLink className="h-3.5 w-3.5" /></a>
                   </div>
+                  {stErr?.id === c.id && <p className={errBox}>{stErr.text}</p>}
                 </section>
               );
             })}
@@ -251,39 +295,40 @@ export default function AdsPage() {
           ? (hi ? "Facebook पहले इसे जाँचेगा (आम तौर पर 24 घंटे में), फिर ad दिखनी शुरू होगी। 'मेरी ads' में खर्च और नतीजे देखें।" : "Facebook will check it first (usually within 24 hours). Then it starts showing. See what you spent and the results in 'My ads'.")
           : (hi ? "अभी कोई पैसा नहीं लगेगा। जब चाहें, 'मेरी ads' में Start दबाएँ।" : "Nothing is charged yet. Tap Start under 'My ads' whenever you are ready.")}</p>
         <div className="flex flex-wrap justify-center gap-2">
-          {done.status !== "ACTIVE" && done.id && <button type="button" disabled={busy.startsWith("st-")} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr(daily)} तक लेगा, ${days} दिन।` : `Start now? Facebook will take up to ${inr(daily)} a day for ${days} days.`)) setStatus(done.id!, "ACTIVE").then(() => setDone({ ...done, status: "ACTIVE" })); }} className="inline-flex items-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white"><Play className="h-4 w-4" /> {hi ? "अभी शुरू करें" : "Start now"}</button>}
+          {done.status !== "ACTIVE" && done.id && <button type="button" disabled={busy.startsWith("st-")} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr(daily)} तक लेगा, ${days} दिन।` : `Start now? Facebook will take up to ${inr(daily)} a day for ${days} days.`)) setStatus(done.id!, "ACTIVE").then((ok) => { if (ok) setDone({ ...done, status: "ACTIVE" }); }); }} className="inline-flex items-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white"><Play className="h-4 w-4" /> {hi ? "अभी शुरू करें" : "Start now"}</button>}
           <button type="button" onClick={() => { setTab("mine"); reset(); }} className="rounded-xl border border-border px-4 py-3 text-sm font-semibold">{hi ? "मेरी ads" : "My ads"}</button>
           <button type="button" onClick={reset} className="rounded-xl border border-border px-4 py-3 text-sm font-semibold">{hi ? "एक और ad" : "Another ad"}</button>
         </div>
-        {msg && <p className="text-sm text-danger">{msg}</p>}
+        {stErr && stErr.id === done.id && <p className={errBox}>{stErr.text}</p>}
       </section>
     </div>
   );
 
   /* ---------- the wizard ---------- */
   return (
-    <div className="space-y-4 pb-28">
+    <div className={`space-y-4 ${whyNot ? "pb-40" : "pb-28"}`}>
       {header}
       {!paid && <p className="rounded-lg bg-[#12144a] px-3 py-2 text-xs text-white">{hi ? "Ads बनाना Growth plan में आता है — पहली ad free में आज़माएँ। Facebook का ad खर्च आपके अपने ad account से ही कटता है।" : "Making ads comes with the Growth plan. Try your first ad free. The ad money is always taken from your own ad account."}</p>}
       <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs">
         {acc.picture ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand"><Megaphone className="h-4 w-4" /></span>}
         <span className="min-w-0 flex-1 truncate"><b>{acc.page}</b> · {selectedAcct ? `${selectedAcct.name}${selectedAcct.ok ? "" : (hi ? " (बंद है / payment बाकी)" : " (switched off / payment due)")}` : ""}</span>
-        {acc.accounts.length > 1 && <select value={acc.selected} onChange={async (e) => { const v = e.target.value; await api("/api/ads/accounts", { method: "POST", json: { ad_account: v } }); setAcc({ ...acc, selected: v }); }} className="max-w-[40%] rounded-lg border border-border bg-surface px-2 py-1 text-xs">{acc.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>}
+        {acc.accounts.length > 1 && <select value={acc.selected} onChange={async (e) => { const v = e.target.value; setAcctErr(""); try { const r = await api("/api/ads/accounts", { method: "POST", json: { ad_account: v } }); if (!r.ok) { setAcctErr(hi ? "यह ad account नहीं बदल पाए। फिर से कोशिश करें।" : "Could not switch the ad account. Please try again."); return; } setAcc({ ...acc, selected: v }); } catch { setAcctErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); } }} className="max-w-[40%] rounded-lg border border-border bg-surface px-2 py-1 text-xs">{acc.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>}
       </div>
+      {acctErr && <p className={errBox}>{acctErr}</p>}
       {selectedAcct && !selectedAcct.ok && <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {hi ? "यह ad account अभी चालू नहीं है (पैसे देने का तरीका या जाँच बाकी है)। Ads Manager में ठीक करें, वरना ad नहीं चलेगी।" : "This ad account is not active yet (a way to pay or a check is still pending). Fix it in Ads Manager, or the ad will not run."}</p>}
 
       {/* steps */}
-      <div className="grid grid-cols-5 gap-1">{STEPS.map((t, i) => <button key={t} type="button" disabled={i > step && !canNext} onClick={() => i <= step && setStep(i)} className={`h-9 rounded-lg text-xs font-bold ${i === step ? "grad-brand text-white" : i < step ? "bg-brand-soft text-brand-ink" : "bg-surface2 text-muted"}`}>{i + 1}</button>)}</div>
+      <div className="grid grid-cols-5 gap-1">{STEPS.map((t, i) => <button key={t} type="button" disabled={i > step} onClick={() => i <= step && goStep(i)} className={`h-9 rounded-lg text-xs font-bold ${i === step ? "grad-brand text-white" : i < step ? "bg-brand-soft text-brand-ink" : "bg-surface2 text-muted"}`}>{i + 1}</button>)}</div>
       <p className="text-sm font-semibold">{step + 1}/5 · {STEPS[step]}</p>
-      {err && <p className="text-sm text-danger">{err}</p>}
 
       {step === 0 && (
         <section className="space-y-4">
           <Guide hi="वही poster या video चुनें जो आप लोगों को दिखाना चाहते हैं। Product की अपनी photo या कोई नई photo भी चलेगी।" en="Pick the poster or video you want people to see. A product photo or a new photo also works." />
-          {posters.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरे posters" : "My posters"}</p><div className="flex gap-2 overflow-x-auto pb-1">{posters.map((p) => <button key={p.id} type="button" onClick={() => setCreative({ kind: "image", url: p.url, label: p.title })} className={`h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border-2 ${creative?.url === p.url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.url} alt={p.title} className="h-full w-full object-cover" /></button>)}</div></div>}
-          {products.some((p) => p.photo_url) && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Product की photos" : "Product photos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{products.filter((p) => p.photo_url).map((p) => <button key={p.id} type="button" onClick={() => { setCreative({ kind: "image", url: p.photo_url!, label: p.name }); setProductId(p.id); }} className={`h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${creative?.url === p.photo_url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.photo_url!} alt={p.name} className="h-full w-full object-contain" /></button>)}</div></div>}
-          {videos.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी videos" : "My videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{videos.map((j) => <button key={j.id} type="button" onClick={() => setCreative({ kind: "video", url: j.output_url!, thumbUrl: profile?.logo_url ?? undefined, label: j.input?.title || j.input?.product || "Video" })} className={`flex h-24 w-32 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 bg-black/90 px-2 text-center text-white ${creative?.url === j.output_url ? "border-brand" : "border-border"}`}><Film className="h-6 w-6" /><span className="line-clamp-2 text-[11px]">{j.input?.title || j.input?.product || new Date(j.created_at).toLocaleDateString("en-IN")}</span></button>)}</div></div>}
-          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "up" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5 text-brand" />} {hi ? "अपनी photo डालें (1080×1080 या 1080×1350 सबसे अच्छी)" : "Add your own photo (1080×1080 or 1080×1350 is best)"}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null)} /></label>
+          {posters.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरे posters" : "My posters"}</p><div className="flex gap-2 overflow-x-auto pb-1">{posters.map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.url, label: p.title })} className={`h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border-2 ${creative?.url === p.url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.url} alt={p.title} className="h-full w-full object-cover" /></button>)}</div></div>}
+          {products.some((p) => p.photo_url) && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Product की photos" : "Product photos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{products.filter((p) => p.photo_url).map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.photo_url!, label: p.name }, p.id)} className={`h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${creative?.url === p.photo_url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.photo_url!} alt={p.name} className="h-full w-full object-contain" /></button>)}</div></div>}
+          {videos.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी videos" : "My videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{videos.map((j) => <button key={j.id} type="button" onClick={() => pickCreative({ kind: "video", url: j.output_url!, thumbUrl: profile?.logo_url ?? undefined, label: j.input?.title || j.input?.product || "Video" })} className={`flex h-24 w-32 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 bg-black/90 px-2 text-center text-white ${creative?.url === j.output_url ? "border-brand" : "border-border"}`}><Film className="h-6 w-6" /><span className="line-clamp-2 text-[11px]">{j.input?.title || j.input?.product || new Date(j.created_at).toLocaleDateString("en-IN")}</span></button>)}</div></div>}
+          <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "up" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5 text-brand" />} {hi ? "अपनी photo डालें (1080×1080 या 1080×1350 सबसे अच्छी)" : "Add your own photo (1080×1080 or 1080×1350 is best)"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; upload(f); }} /></label>
+          {upErr && <p className={errBox}>{upErr}</p>}
           {creative && <p className="flex items-center gap-2 text-sm"><Check className="h-4 w-4 text-good" /> {creative.kind === "video" ? <Film className="h-4 w-4" /> : <ImageIcon className="h-4 w-4" />} {creative.label}</p>}
           {!posters.length && !products.length && !videos.length && <p className="text-xs text-muted">{hi ? "अभी कोई poster या video नहीं है — पहले Home पर आज का poster बनाएँ, या ऊपर photo डालें।" : "You have no poster or video yet. Make today's poster on Home first, or add a photo above."}</p>}
         </section>
@@ -377,6 +422,7 @@ export default function AdsPage() {
         <section className="space-y-4">
           <Guide hi="AI आपकी दी हुई जानकारी से ad के शब्द लिखता है — पढ़कर अपनी भाषा में ठीक कर लें। नीचे वैसा ही दिखेगा जैसा Facebook पर दिखेगा।" en="The AI writes the ad's words from the details you gave. Read them and change them into your own words. Below is how the ad will look on Facebook." />
           {!copy.primaryText && !busy && <button type="button" onClick={writeWords} className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {hi ? "AI से शब्द लिखवाएँ" : "Write the words with AI"}</button>}
+          {!copy.primaryText && copyErr && <p className={errBox}>{copyErr}</p>}
           {busy === "copy" && <p className="inline-flex items-center gap-2 text-sm text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "लिख रहा है…" : "Writing…"}</p>}
           {(copy.primaryText || copy.headline) && (
             <>
@@ -385,7 +431,8 @@ export default function AdsPage() {
                 <label className="block text-sm font-semibold">{hi ? "हेडिंग" : "Heading"}<input value={copy.headline} onChange={(e) => setCopy({ ...copy, headline: e.target.value })} maxLength={40} className={field} /></label>
                 <label className="block text-sm font-semibold">{hi ? "छोटी लाइन" : "Short line"}<input value={copy.description} onChange={(e) => setCopy({ ...copy, description: e.target.value })} maxLength={30} className={field} /></label>
               </div>
-              <button type="button" onClick={writeWords} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से लिखवाएँ" : "Write again"}</button>
+              <button type="button" onClick={writeWords} disabled={busy === "copy"} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink disabled:opacity-60"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से लिखवाएँ" : "Write again"}</button>
+              {copyErr && <p className={errBox}>{copyErr}</p>}
               {/* the ad as Facebook shows it */}
               <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-border bg-white text-[#050505] shadow-card">
                 <div className="flex items-center gap-2 px-3 pt-3">{acc.picture ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-9 w-9 rounded-full" /> : <span className="h-9 w-9 rounded-full bg-gray-200" />}<div className="leading-tight"><p className="text-sm font-semibold">{acc.page}</p><p className="text-[11px] text-gray-500">Sponsored · 🌐</p></div></div>
@@ -400,19 +447,21 @@ export default function AdsPage() {
               </div>
             </>
           )}
+          {createErr && <p ref={createErrRef} className={errBox}>{createErr}</p>}
         </section>
       )}
 
       {/* footer buttons */}
       <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+        {whyNot && <p className="mb-2 text-xs font-semibold text-danger">{whyNot}</p>}
         {step < 4 ? (
           <div className="flex gap-2">
             <button type="button" onClick={back} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
-            <button type="button" disabled={!canNext} onClick={() => { setStep(step + 1); if (step === 3 && !copy.primaryText) writeWords(); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
+            <button type="button" disabled={!canNext} onClick={() => { goStep(step + 1); if (step === 3 && !copy.primaryText) writeWords(); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
           </div>
         ) : (
           <div className="flex gap-2">
-            <button type="button" onClick={() => setStep(3)} aria-label={hi ? "पीछे" : "Back"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => goStep(3)} aria-label={hi ? "पीछे" : "Back"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
             <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(false)} className="flex-1 rounded-xl border border-brand px-3 py-3 text-sm font-semibold text-brand-ink disabled:opacity-40">{busy === "create" ? "…" : (hi ? "सेव करें, शुरू न करें" : "Save, do not start")}</button>
             <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(true)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy === "create" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {hi ? "अभी शुरू करें" : "Start now"}</button>
           </div>

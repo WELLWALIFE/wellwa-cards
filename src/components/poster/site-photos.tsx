@@ -36,7 +36,12 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [max, setMax] = useState(12);
   const [busy, setBusy] = useState("");   // "<slot id>:<what>" or "add" / "add-ai"
-  const [err, setErr] = useState("");
+  // A message belongs to ONE place (E1): `at` is the tile it came from (a slot id), "add" (the two Add buttons of the gallery) or "top" (the page failed to load).
+  // It is shown under that tile's buttons, brought into view, and cleared the moment anything is tried again.
+  const [err, setErrState] = useState<{ at: string; msg: string } | null>(null);
+  const setErr = (msg: string, at = "top") => setErrState(msg ? { at, msg } : null);
+  const errRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => { if (err) errRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, [err]);
   const [pay, setPay] = useState(false);
   // Album headings ("Opening ceremony", "Seminar"): the ideas for this trade, the heading a new photo goes under, the heading
   // being edited on a photo, and the filter / search over the gallery.
@@ -60,6 +65,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   async function run(key: string, body: Record<string, unknown>) {
     if (lock.current) return;
     lock.current = true;
+    const at = key === "add" || key === "add-ai" ? "add" : key.slice(0, key.lastIndexOf(":"));   // the tile (or the Add buttons) that was tapped
     setBusy(key); setErr("");
     try {
       // `expect` is the picture the owner was looking at: if the numbering moved meanwhile the server says so instead of changing another one.
@@ -67,13 +73,13 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
       const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(cardId ? { cardId } : {}), ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
       if (!r.ok) {
         if (r.status === 402) { setPay(true); return; }
-        setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"));
+        setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"), at);
         if (r.status === 409) void load();
         return;
       }
       if (r.data.slots) setSlots(r.data.slots);
     } catch {
-      setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
+      setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"), at);
     } finally {
       lock.current = false;
       setBusy("");
@@ -84,13 +90,15 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
     if (!file) return;
     const kind: Slot["kind"] = slot === "banner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     const key = slot ? `${slot}:replace` : "add";
+    const at = slot || "add";
     if (lock.current) return;
+    setErr("");
     let fitted: File;
-    try { fitted = await fitTo(file, kind); } catch { setErr(T("That file is not a photo.", "ये file photo नहीं है।")); return; }
+    try { fitted = await fitTo(file, kind); } catch { setErr(T("That file is not a photo.", "ये file photo नहीं है।"), at); return; }
     setBusy(key); setErr("");
     let url: string | null = null;
     try { url = await uploadImage(fitted, "wide"); } catch { url = null; }
-    if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।")); return; }
+    if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।"), at); return; }
     await run(key, slot ? { action: "replace", slot, url } : { action: "add", url, group: newGroup });
   }
   const choose = (slot: string) => { target.current = slot; pick.current?.click(); };
@@ -105,6 +113,12 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   const shownGallery = gallery.filter((x) => (!fGroup || x.group === fGroup) && (!ql || `${x.group ?? ""} ${x.label}`.toLowerCase().includes(ql)));
   const tag = (s: Slot) => s.ours ? T("Made by AI", "AI से बनी") : s.stock ? T("Sample picture", "नमूना picture") : T("Your photo", "आपकी photo");
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-xs font-semibold disabled:opacity-50";
+
+  // Where the message is shown: under its tile / the Add buttons; if that tile is not on screen any more (renumbered after a refresh, filtered out), at the top instead — never nowhere.
+  const onScreen = (id: string) => id === "add" ? gallery.length < max : [banner?.id, ...about.map((x) => x.id), ...shownGallery.map((x) => x.id)].includes(id);
+  const errHere = (id: string) => err && (err.at === id || (err.at !== "top" && id === "top" && !onScreen(err.at))) ? (
+    <p ref={errRef} role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{err.msg}</p>
+  ) : null;
 
   const tile = (s: Slot) => {
     const working = busy.startsWith(`${s.id}:`);
@@ -138,6 +152,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
               ? <span />
               : <button type="button" className={`${btn} text-danger`} disabled={!!busy} onClick={() => { if (window.confirm(T("Take this photo off the website?", "इस photo को website से हटाएँ?"))) void run(`${s.id}:remove`, { action: "remove", slot: s.id }); }}><Trash2 className="h-3.5 w-3.5" /> {T("Remove", "हटाएँ")}</button>}
           </div>
+          {errHere(s.id)}
         </div>
       </div>
     );
@@ -148,7 +163,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
       <p className="text-sm text-muted">{T("These are the photos on your website. You can change any of them. It shows on your website as soon as you tap. “Make by AI” makes a new picture for that place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदल सकते हैं। tap करते ही website पर दिखने लगती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
-      {err && <p className="rounded-xl border border-danger/30 bg-danger/5 px-3 py-2 text-sm font-semibold text-danger">{err}</p>}
+      {errHere("top")}
       {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
       <section className="space-y-2">
@@ -179,6 +194,8 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
             <button type="button" disabled={!!busy} onClick={() => void run("add-ai", { action: "ai", group: newGroup })} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/50 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50">{busy === "add-ai" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Add one by AI", "AI से एक जोड़ें")}</button>
           </div>
         )}
+        {gallery.length < max && errHere("add")}
+        {gallery.length >= max && <p className="text-xs text-muted">{T(`The gallery is full (${max} photos). Remove one to add another.`, `Gallery भर गई है (${max} photos)। नई जोड़ने के लिए कोई एक हटाएँ।`)}</p>}
         {gallery.length === 0 && !busy && <p className="text-xs text-muted">{T("No gallery photos yet. Add your first one.", "अभी gallery में कोई photo नहीं है। पहली जोड़िए।")}</p>}
       </section>
     </div>

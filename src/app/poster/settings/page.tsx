@@ -46,13 +46,20 @@ export default function SettingsPage() {
   }, []);
   const [plan, setPlan] = useState<PlanRes | null>(null);
   const [copied, setCopied] = useState(false);
+  // A failed copy / account load says so right where the buttons are (never a silent no-op).
+  const [copyErr, setCopyErr] = useState("");
+  const [acctErr, setAcctErr] = useState(false);
   const { t, lang } = useT();
   const en = lang === "en";
 
   const loadAccount = useCallback(async () => {
-    const r = await api<Account>("/api/account");
-    if (r.ok) setAcct(r.data);
-    return r.ok ? r.data : null;
+    setAcctErr(false);
+    try {
+      const r = await api<Account>("/api/account");
+      if (r.ok) { setAcct(r.data); return r.data; }
+    } catch { /* offline: say so below */ }
+    setAcctErr(true);
+    return null;
   }, []);
 
   useEffect(() => {
@@ -94,7 +101,9 @@ export default function SettingsPage() {
   const path = hasCard ? `/c/${acct?.cardSlug}` : "";
   const link = path ? `${SITE_URL}${path}` : "";
   async function copy() {
-    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+    setCopyErr("");
+    try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+    catch { setCopyErr(en ? "Could not copy the link. Please try again." : "Link copy नहीं हो पाया। फिर से कोशिश करें।"); }
   }
   async function share() {
     const text = `${me?.name || "Shubhora"} — ${link}`;
@@ -130,7 +139,7 @@ export default function SettingsPage() {
             {acct?.username
               ? <p className="truncate text-sm text-muted"><span className="font-semibold tracking-wide text-ink">{acct.username}</span>{hasCard ? ` · ${SITE_HOST}${path}` : ""}</p>
               : acct === null
-                ? <p className="mt-1 h-3.5 w-40 animate-pulse rounded bg-surface2" aria-label="Loading" />
+                ? (acctErr ? null : <p className="mt-1 h-3.5 w-40 animate-pulse rounded bg-surface2" aria-label="Loading" />)
                 : <p className="text-sm text-muted">{en ? "No username yet" : "अभी कोई username नहीं है"}</p>}
           </div>
         </div>
@@ -144,11 +153,14 @@ export default function SettingsPage() {
               <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हो गया") : (en ? "Copy link" : "Link copy करें")}</button>
               <button type="button" onClick={share} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {en ? "Share my card" : "Card share करें"}</button>
             </div>}
+            {copyErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{copyErr}</p>}
             {hasCard
               ? <p className="text-[11px] text-muted">{en ? "This is your card link. The link to invite others is in the Business tab." : "यह आपके card का link है। दूसरों को जोड़ने का link Business tab में है।"}</p>
               : <Link href="/poster/card/build" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{en ? "Create your digital card" : "अपना digital card बनाएँ"} <ChevronRight className="h-3.5 w-3.5" /></Link>}
           </>
-        ) : acct ? <ClaimUsername onDone={loadAccount} /> : <p className="text-xs text-muted inline-flex items-center gap-1.5"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> …</p>}
+        ) : acct ? <ClaimUsername onDone={loadAccount} /> : acctErr
+          ? <div className="flex items-center justify-between gap-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2"><p role="alert" className="text-xs font-semibold text-danger">{en ? "Could not load your account. Check your internet." : "आपका account load नहीं हुआ। Internet देखें।"}</p><button type="button" onClick={() => void loadAccount()} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold">{en ? "Try again" : "फिर से"}</button></div>
+          : <p className="text-xs text-muted inline-flex items-center gap-1.5"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> …</p>}
       </section>
 
       {/* Plan */}

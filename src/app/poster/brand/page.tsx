@@ -31,38 +31,47 @@ export default function BrandKitPage() {
   const [tagline, setTagline] = useState("");
   const [done, setDone] = useState(false);
 
+  const noNet = hi ? "अभी internet नहीं है। Connection देखकर फिर कोशिश करें।" : "No internet right now. Check your connection and try again.";
+
   useEffect(() => {
     (async () => {
       // replace, not push: Back from the login screen must not land here and bounce straight back to it.
       if (!(await isLoggedIn())) { router.replace("/login?next=/poster/brand"); return; }
-      const r = await api<{ profiles: Profile[] }>("/api/poster/profiles");
-      const list = r.data.profiles ?? [];
-      setProfiles(list);
-      const def = list.find((p) => p.is_default) ?? list[0];
-      if (def) {
-        setProfileId(def.id);
-        setBusiness((def.tagline || def.name || "").trim());
-        setCity(def.city ?? "");
+      try {
+        const r = await api<{ profiles: Profile[] }>("/api/poster/profiles");
+        const list = r.data.profiles ?? [];
+        setProfiles(list);
+        const def = list.find((p) => p.is_default) ?? list[0];
+        if (def) {
+          setProfileId(def.id);
+          setBusiness((def.tagline || def.name || "").trim());
+          setCity(def.city ?? "");
+        }
+      } catch {
+        // Offline: open the form empty (the owner can still type the name) instead of a spinner that never ends.
+        setProfiles((l) => l ?? []);
       }
     })();
   }, [router]);
 
   async function generate() {
     setBusy(true); setErr(""); setKit(null); setLogo(""); setTagline(""); setDone(false);
-    const r = await api<Kit>("/api/poster/brand-kit", { method: "POST", json: { business, category, city, style, colors_hint: colors, lang, tagline: tagline || undefined } });
-    setBusy(false);
-    if (!r.ok) { setErr(r.data.error || (hi ? "कुछ गड़बड़ हो गई। फिर से कोशिश करें।" : "Something went wrong. Please try again.")); return; }
-    setKit(r.data);
-    if (r.data.options?.[0]) setLogo(r.data.options[0]);
+    try {
+      const r = await api<Kit>("/api/poster/brand-kit", { method: "POST", json: { business, category, city, style, colors_hint: colors, lang, tagline: tagline || undefined } });
+      if (!r.ok) { setErr(r.data.error || (hi ? "कुछ गड़बड़ हो गई। फिर से कोशिश करें।" : "Something went wrong. Please try again.")); return; }
+      setKit(r.data);
+      if (r.data.options?.[0]) setLogo(r.data.options[0]);
+    } catch { setErr(noNet); } finally { setBusy(false); }
   }
 
   async function apply() {
     if (!logo) return;
     setApplying(true); setErr("");
-    const r = await api<{ ok?: boolean; error?: string }>("/api/poster/brand-kit/apply", { method: "POST", json: { logo_url: logo, tagline: tagline || undefined, profile_id: profileId || undefined } });
-    setApplying(false);
-    if (!r.ok) { setErr(r.data.error || (hi ? "Logo नहीं लग पाया। फिर से कोशिश करें।" : "Could not put the logo on your profile. Please try again.")); return; }
-    setDone(true);
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/poster/brand-kit/apply", { method: "POST", json: { logo_url: logo, tagline: tagline || undefined, profile_id: profileId || undefined } });
+      if (!r.ok) { setErr(r.data.error || (hi ? "Logo नहीं लग पाया। फिर से कोशिश करें।" : "Could not put the logo on your profile. Please try again.")); return; }
+      setDone(true);
+    } catch { setErr(noNet); } finally { setApplying(false); }
   }
 
   // Opened by address only (the logo studio is parked): Back = the screen the owner was just on; opened fresh, the Brand door of Create.
@@ -119,7 +128,9 @@ export default function BrandKitPage() {
         <button type="button" onClick={generate} disabled={busy || !business.trim()} className="w-full rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
           {busy ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "बन रहा है… (लगभग 30 सेकंड)" : "Making… (about 30 seconds)"}</span> : hi ? "✨ Brand Kit बनाओ (₹0 अभी)" : "✨ Make my Brand Kit (₹0 for now)"}
         </button>
-        {err && !kit && <p className="text-sm text-danger">{err}</p>}
+        {/* Why the button is dimmed (E3), then what went wrong when it ran — both right under it. */}
+        {!business.trim() && !busy && <p className="text-xs font-semibold text-danger">{hi ? "पहले बिज़नेस का नाम लिखें।" : "Write your business name first."}</p>}
+        {err && !kit && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
       </div>
 
       {kit && (
@@ -131,7 +142,7 @@ export default function BrandKitPage() {
               <p className="text-sm font-semibold mb-2">{hi ? "Logo चुनें" : "Pick a logo"}</p>
               <div className="grid grid-cols-2 gap-2">
                 {kit.options.map((u, i) => (
-                  <button key={u} type="button" onClick={() => setLogo(u)} className={`relative aspect-square rounded-xl border-2 bg-white overflow-hidden ${logo === u ? "border-brand" : "border-border"}`}>
+                  <button key={u} type="button" onClick={() => { setLogo(u); setErr(""); }} className={`relative aspect-square rounded-xl border-2 bg-white overflow-hidden ${logo === u ? "border-brand" : "border-border"}`}>
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={u} alt={`Logo ${i + 1}`} className="h-full w-full object-contain" />
                     {logo === u && <span className="absolute top-1 right-1 h-5 w-5 rounded-full grad-brand text-white grid place-items-center"><Check className="h-3 w-3" /></span>}
@@ -203,10 +214,10 @@ export default function BrandKitPage() {
           ) : kit.options.length > 0 ? (
             <div className="space-y-2">
               {hasExistingLogo && <p className="text-xs text-amber-600 dark:text-amber-400">{hi ? "⚠️ इस profile में पहले से एक logo लगा है — यह लगाने पर पुराना logo बदल जाएगा।" : "⚠️ This profile already has a logo. Using this one will replace it."}</p>}
-              {err && <p className="text-sm text-danger">{err}</p>}
               <button type="button" onClick={apply} disabled={applying || !logo} className="w-full rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
                 {applying ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {hi ? "लग रहा है…" : "Putting it on…"}</span> : hi ? "Profile पर लगाओ" : "Use on my profile"}
               </button>
+              {err && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{err}</p>}
             </div>
           ) : null}
         </div>

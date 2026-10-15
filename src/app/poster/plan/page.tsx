@@ -99,7 +99,8 @@ function MyPlan() {
   const [packs, setPacks] = useState<{ credits: number; paise: number }[] | null>(null);
 
   const load = useCallback(async () => {
-    const res = await api<Res & { error?: string }>("/api/poster/plan");
+    let res: Awaited<ReturnType<typeof api<Res & { error?: string }>>>;
+    try { res = await api<Res & { error?: string }>("/api/poster/plan"); } catch { setErr("No internet right now. Check your connection and try again."); return; }
     if (!res.ok) { setErr(res.data.error || "We could not open your plan. Please try again."); return; }
     setR(res.data);
     api<{ packs?: { credits: number; paise: number }[] }>("/api/poster/pay/credits").then((x) => { if (x.ok && x.data.packs?.length) setPacks(x.data.packs); }).catch(() => {});
@@ -113,7 +114,7 @@ function MyPlan() {
   const backBtn = <button type="button" onClick={() => goBack(router, "/poster/more")} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>;
   const skipBtn = <Link href="/poster/onboard?skip=1" className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">Skip for now →</Link>;
   const exitRow = <div className="flex items-center gap-2">{welcome ? <div className="ml-auto">{skipBtn}</div> : backBtn}</div>;
-  if (err) return <div className="space-y-4">{exitRow}<div className="py-16 text-center text-sm text-danger">{err}</div></div>;
+  if (err) return <div className="space-y-4">{exitRow}<div className="py-16 text-center space-y-3"><p className="text-sm text-danger">{err}</p><button type="button" onClick={() => { setErr(""); void load(); }} className="grad-brand rounded-xl px-5 py-2.5 text-sm font-semibold text-white">Try again</button></div></div>;
   if (!r) return <div className="space-y-4">{exitRow}<div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div></div>;
   const on = r.tier ? SAAS_PLANS[r.tier] : null;
   const banner = r.state === "grace"

@@ -31,7 +31,15 @@ export default function CalendarPage() {
   const [offerForm, setOfferForm] = useState<{ open: boolean; text: string; starts: string; ends: string; scope: "all" | "products" | "category"; product_ids: string[]; categories: string[] }>({ open: false, text: "", starts: "", ends: "", scope: "all", product_ids: [], categories: [] });
   const [preview, setPreview] = useState<{ date: string; url?: string; title?: string; style?: string; err?: string }[] | null>(null);
   const [previewing, setPreviewing] = useState(false);
-  const [offerMsg, setOfferMsg] = useState("");
+  const [offerMsg, setOfferMsg] = useState("");          // a server / network failure of Save offer
+  const [offerChecked, setOfferChecked] = useState(false); // Save offer was tapped with something missing: the reason is shown live and goes away once fixed
+  // Each message sits beside the control that caused it: genMsg under "Plan this month", dayErr under that day's choices, overErr
+  // inside the day sheet next to Save, offerMsg above "Save offer", listMsg under the offers list (Remove), previewErr under "See posters".
+  const [genMsg, setGenMsg] = useState("");
+  const [dayErr, setDayErr] = useState<{ date: string; msg: string } | null>(null);
+  const [overErr, setOverErr] = useState("");
+  const [listMsg, setListMsg] = useState("");
+  const [previewErr, setPreviewErr] = useState("");
   const [mix, setMix] = useState({ product: 4, greeting: 2, offer: 1, testimonial: 0 });
   const [busy, setBusy] = useState(false);
   const [edit, setEdit] = useState<string | null>(null);
@@ -45,28 +53,70 @@ export default function CalendarPage() {
     if (!p) { router.replace("/poster/onboard"); return; } setProfile(p); load(p, month);
   })(); }, [router, load, month]);
 
-  async function generate() { if (!profile) return; setBusy(true); await api("/api/poster/calendar", { method: "POST", json: { action: "generate", profile: profile.id, month, mix } }); setBusy(false); load(profile, month); }
-  async function setDay(date: string, kind: string, product_id: string | null) { if (!profile) return; await api("/api/poster/calendar", { method: "POST", json: { action: "set", profile: profile.id, for_date: date, kind, product_id } }); setEdit(null); load(profile, month); }
-  async function saveOver() { if (!profile || !over) return; const e = byDate[over.date]; await api("/api/poster/calendar", { method: "POST", json: { action: "set", profile: profile.id, for_date: over.date, kind: e?.kind ?? "auto", product_id: e?.product_id ?? null, note: e?.note ?? "", overrides: over.o } }); setOver(null); load(profile, month); }
+  const NET = hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again.";
+  async function generate() {
+    if (!profile) return; setBusy(true); setGenMsg("");
+    try {
+      const r = await api<{ error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "generate", profile: profile.id, month, mix } });
+      if (!r.ok) { setGenMsg(r.data.error || (hi ? "Plan नहीं बन पाया। फिर से कोशिश करें।" : "Could not make the plan. Please try again.")); return; }
+      load(profile, month);
+    } catch { setGenMsg(NET); }
+    finally { setBusy(false); }
+  }
+  async function setDay(date: string, kind: string, product_id: string | null) {
+    if (!profile) return; setDayErr(null);
+    try {
+      const r = await api<{ error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "set", profile: profile.id, for_date: date, kind, product_id } });
+      if (!r.ok) { setDayErr({ date, msg: r.data.error || (hi ? "यह दिन बदल नहीं पाए। फिर से कोशिश करें।" : "Could not change this day. Please try again.") }); return; }
+    } catch { setDayErr({ date, msg: NET }); return; }
+    setEdit(null); load(profile, month);
+  }
+  async function saveOver() {
+    if (!profile || !over) return; setOverErr(""); const e = byDate[over.date];
+    try {
+      const r = await api<{ error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "set", profile: profile.id, for_date: over.date, kind: e?.kind ?? "auto", product_id: e?.product_id ?? null, note: e?.note ?? "", overrides: over.o } });
+      if (!r.ok) { setOverErr(r.data.error || (hi ? "Save नहीं हुआ। फिर से कोशिश करें।" : "Could not save. Please try again.")); return; }
+    } catch { setOverErr(NET); return; }
+    setOver(null); load(profile, month);
+  }
+  const offerMissing = () => !offerForm.text.trim() ? (hi ? "पहले ऑफ़र के शब्द लिखें।" : "Write the offer words first.")
+      : !offerForm.starts || !offerForm.ends ? (hi ? "शुरू और आख़िरी तारीख़ चुनें।" : "Pick the start and the end date.")
+      : offerForm.scope === "products" && !offerForm.product_ids.length ? (hi ? "कम से कम एक product चुनें।" : "Pick at least one product.")
+      : offerForm.scope === "category" && !offerForm.categories.length ? (hi ? "कम से कम एक category चुनें।" : "Pick at least one category.") : "";
   async function saveOffer() {
-    if (!profile) return; setOfferMsg("");
-    const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "offer", offer: { text: offerForm.text, starts: offerForm.starts, ends: offerForm.ends, scope: offerForm.scope, product_ids: offerForm.product_ids, categories: offerForm.categories } } });
-    if (!r.ok) { setOfferMsg(r.data.error || (hi ? "Save नहीं हुआ। फिर से कोशिश करें।" : "Could not save. Please try again.")); return; }
+    if (!profile) return;
+    // The button is never silently dead: say what is missing right above it (live, so it goes away once the owner fixes it).
+    if (offerMissing()) { setOfferChecked(true); setOfferMsg(""); return; }
+    setOfferChecked(false);
+    setOfferMsg("");
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "offer", offer: { text: offerForm.text, starts: offerForm.starts, ends: offerForm.ends, scope: offerForm.scope, product_ids: offerForm.product_ids, categories: offerForm.categories } } });
+      if (!r.ok) { setOfferMsg(r.data.error || (hi ? "Save नहीं हुआ। फिर से कोशिश करें।" : "Could not save. Please try again.")); return; }
+    } catch { setOfferMsg(NET); return; }
     setOfferForm({ open: false, text: "", starts: "", ends: "", scope: "all", product_ids: [], categories: [] }); load(profile, month);
   }
   async function previewWeek() {
-    if (!profile) return; setPreviewing(true);
+    if (!profile) return; setPreviewing(true); setPreviewErr("");
     const days: string[] = []; for (let i = 0; i < 7; i++) days.push(new Date(new Date(today + "T00:00:00Z").getTime() + i * 86400000).toISOString().slice(0, 10));
     const out: NonNullable<typeof preview> = days.map((date) => ({ date })); setPreview([...out]);
     for (let i = 0; i < days.length; i++) {
       const e = byDate[days[i]]; if (e?.kind === "skip") { out[i] = { date: days[i], err: "skip" }; setPreview([...out]); continue; }
-      const r = await api<{ poster?: { url: string; title: string; style?: string }; error?: string; message?: string }>(`/api/poster/today?profile=${profile.id}&date=${days[i]}&preview=1`);
+      let r: Awaited<ReturnType<typeof api<{ poster?: { url: string; title: string; style?: string }; error?: string; message?: string }>>>;
+      try { r = await api<{ poster?: { url: string; title: string; style?: string }; error?: string; message?: string }>(`/api/poster/today?profile=${profile.id}&date=${days[i]}&preview=1`); }
+      catch { setPreviewErr(NET); setPreviewing(false); return; }
       out[i] = r.ok && r.data.poster ? { date: days[i], url: r.data.poster.url, title: r.data.poster.title, style: r.data.poster.style } : { date: days[i], err: r.data.message || r.data.error || "failed" };
       setPreview([...out]);
     }
     setPreviewing(false);
   }
-  async function removeOffer(id: string) { if (!profile || !confirm(hi ? "यह ऑफ़र हटा दें?" : "Remove this offer?")) return; await api("/api/poster/calendar", { method: "POST", json: { action: "offer", delete: id } }); load(profile, month); }
+  async function removeOffer(id: string) {
+    if (!profile || !confirm(hi ? "यह ऑफ़र हटा दें?" : "Remove this offer?")) return; setListMsg("");
+    try {
+      const r = await api<{ error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "offer", delete: id } });
+      if (!r.ok) { setListMsg(r.data.error || (hi ? "ऑफ़र हटा नहीं पाए। फिर से कोशिश करें।" : "Could not remove the offer. Please try again.")); return; }
+    } catch { setListMsg(NET); return; }
+    load(profile, month);
+  }
   function shift(n: number) { const [y, m] = month.split("-").map(Number); const d = new Date(y, m - 1 + n, 1); setMonth(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`); setData(null); }
 
   // Opened from the Create tab's Poster door and from the Home quick links: Back = the screen the owner was just on; opened fresh, that door. The arrow
@@ -90,10 +140,12 @@ export default function CalendarPage() {
         ))}
         <p className="text-[11px] text-muted">{hi ? `बाकी ${Math.max(0, 7 - mix.product - mix.offer - mix.testimonial - mix.greeting)} दिन खाली रहेंगे। त्योहार वाले दिन त्योहार का poster अपने-आप बनेगा।` : `The other ${Math.max(0, 7 - mix.product - mix.offer - mix.testimonial - mix.greeting)} days stay empty. On festival days, a festival poster is made by itself.`}</p>
         <button type="button" onClick={generate} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {planned ? (hi ? "फिर से plan बनाओ" : "Plan the month again") : (hi ? "इस महीने का plan बनाओ" : "Plan this month")}</button>
+        {genMsg && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{genMsg}</p>}
         {planned > 0 && <p className="text-xs text-muted">{planned} {hi ? "दिन तय हैं" : "days planned"} · {done} {hi ? "post हो चुके" : "posted"}</p>}
       </div>
       <div className="rounded-xl border border-border p-3 space-y-2">
         <div className="flex items-center gap-2"><p className="text-sm font-semibold flex-1">{hi ? "अगले 7 दिन के poster देखें" : "Look at the next 7 days"}</p><button type="button" disabled={previewing} onClick={previewWeek} className="rounded-lg border border-border px-2.5 py-1 text-xs disabled:opacity-60">{previewing ? (hi ? "बन रहे हैं…" : "Making…") : preview ? (hi ? "फिर से" : "Refresh") : (hi ? "देखें" : "See posters")}</button></div>
+        {previewErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{previewErr}</p>}
         <p className="text-[11px] text-muted">{hi ? "भेजने से पहले असली poster देखें, जैसे वे सुबह 4 बजे post होंगे। यह free plan में नहीं है।" : "See the real posters before they go out, just as they will be posted at 4 AM. This is not on the free plan."}</p>
         {preview && (
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-1 [scrollbar-width:thin]">
@@ -109,7 +161,7 @@ export default function CalendarPage() {
         )}
       </div>
       <div className="rounded-xl border border-border p-3 space-y-2">
-        <div className="flex items-center gap-2"><Tag className="h-4 w-4 text-brand" /><p className="text-sm font-semibold flex-1">{hi ? "आपके ऑफ़र (आपके शब्दों में, poster और आवाज़ में)" : "Your offers (in your words, on posters and in the voice)"}</p><button type="button" onClick={() => setOfferForm({ ...offerForm, open: !offerForm.open })} className="rounded-lg border border-border px-2.5 py-1 text-xs">{offerForm.open ? (hi ? "बंद करें" : "Close") : (hi ? "+ ऑफ़र जोड़ें" : "+ Add offer")}</button></div>
+        <div className="flex items-center gap-2"><Tag className="h-4 w-4 text-brand" /><p className="text-sm font-semibold flex-1">{hi ? "आपके ऑफ़र (आपके शब्दों में, poster और आवाज़ में)" : "Your offers (in your words, on posters and in the voice)"}</p><button type="button" onClick={() => { setOfferMsg(""); setOfferChecked(false); setOfferForm({ ...offerForm, open: !offerForm.open }); }} className="rounded-lg border border-border px-2.5 py-1 text-xs">{offerForm.open ? (hi ? "बंद करें" : "Close") : (hi ? "+ ऑफ़र जोड़ें" : "+ Add offer")}</button></div>
         <p className="text-[11px] text-muted">{hi ? "जो आप लिखेंगे, वही दिखेगा। हम अपनी तरफ़ से कोई ऑफ़र नहीं बनाते। यह सब products पर चलेगा या सिर्फ़ उन पर जो आप चुनें, आपकी चुनी तारीखों में।" : "We show exactly what you type. We never make up an offer. It works for all products or only the ones you pick, on the dates you choose."}</p>
         {offerForm.open && (
           <div className="space-y-2 rounded-lg bg-surface2/60 p-2.5 text-sm">
@@ -123,13 +175,14 @@ export default function CalendarPage() {
               {offerForm.scope === "category" && !data.products.some((p) => p.category) && <span className="text-faint">{hi ? "पहले Products page पर अपने products में category भरें।" : "First add a category to your products on the Products page."}</span>}
               {offerForm.scope === "products" && data.products.map((p) => <button key={p.id} type="button" onClick={() => setOfferForm({ ...offerForm, product_ids: offerForm.product_ids.includes(p.id) ? offerForm.product_ids.filter((x) => x !== p.id) : [...offerForm.product_ids, p.id] })} className={`rounded-full border px-2.5 py-1 ${offerForm.product_ids.includes(p.id) ? "border-brand bg-brand-soft" : "border-border"}`}>📦 {p.name}</button>)}
             </div>
-            {offerMsg && <p className="text-xs text-danger">{offerMsg}</p>}
-            <button type="button" disabled={!offerForm.text.trim() || !offerForm.starts || !offerForm.ends || (offerForm.scope === "products" && !offerForm.product_ids.length) || (offerForm.scope === "category" && !offerForm.categories.length)} onClick={saveOffer} className="w-full rounded-xl grad-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{hi ? "ऑफ़र save करें" : "Save offer"}</button>
+            {(offerChecked ? offerMissing() : offerMsg) && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{offerChecked ? offerMissing() : offerMsg}</p>}
+            <button type="button" onClick={saveOffer} className="w-full rounded-xl grad-brand py-2 text-sm font-semibold text-white disabled:opacity-50">{hi ? "ऑफ़र save करें" : "Save offer"}</button>
           </div>
         )}
         {(data.offers ?? []).length === 0 ? <p className="text-xs text-faint">{hi ? "अभी कोई ऑफ़र नहीं है।" : "No offers yet."}</p> : (data.offers ?? []).map((o) => (
           <div key={o.id} className="flex items-center gap-2 text-xs"><span className="flex-1 truncate"><b className="text-ink">{o.text}</b> <span className="text-muted">· {o.starts} → {o.ends} · {o.scope === "all" ? (hi ? "सब" : "all") : o.scope === "category" ? `category: ${(o.categories ?? []).join(", ")}` : hi ? `${o.product_ids.length} product` : `${o.product_ids.length} product${o.product_ids.length === 1 ? "" : "s"}`}</span></span><button type="button" onClick={() => removeOffer(o.id)} className="p-1 text-muted" aria-label={hi ? "हटाएँ" : "Remove"}><Trash2 className="h-3.5 w-3.5" /></button></div>
         ))}
+        {listMsg && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{listMsg}</p>}
       </div>
       {over && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center" onClick={() => setOver(null)}>
@@ -141,6 +194,7 @@ export default function CalendarPage() {
               <div><p className="mb-1 text-xs font-semibold text-muted">{hi ? "Status video में आवाज़" : "Voice in the Status video"}</p><div className="flex gap-1.5">{[["", hi ? "सामान्य" : "Usual"], ["on", hi ? "चालू" : "On"], ["off", hi ? "बंद" : "Off"]].map(([k, l]) => <button key={k} type="button" onClick={() => setOver({ ...over, o: { ...over.o, voice: (k || undefined) as Over["voice"] } })} className={`rounded-full border px-2.5 py-1 text-xs ${(over.o.voice ?? "") === k ? "border-brand bg-brand-soft font-semibold" : "border-border"}`}>{l}</button>)}</div></div>
               <div><p className="mb-1 text-xs font-semibold text-muted">Music</p><div className="flex flex-wrap gap-1.5">{[["", "Usual"], ...MUSIC].map(([k, l]) => <button key={k} type="button" onClick={() => setOver({ ...over, o: { ...over.o, music: k || undefined } })} className={`rounded-full border px-2.5 py-1 text-xs ${(over.o.music ?? "") === k ? "border-brand bg-brand-soft font-semibold" : "border-border"}`}>{hi ? MUSIC_HI[k] : l}</button>)}</div></div>
               <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "इस दिन के poster पर एक और लाइन (आपके शब्दों में)" : "One more line on this day's poster (your words)"}</span><input value={over.o.custom ?? ""} onChange={(e) => setOver({ ...over, o: { ...over.o, custom: e.target.value || undefined } })} maxLength={60} placeholder={hi ? "जैसे: दुकान आज रात 10 बजे तक खुली है" : "e.g. Shop open till 10 pm today"} className="mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2" /></label>
+              {overErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{overErr}</p>}
               <button type="button" onClick={saveOver} className="w-full rounded-xl grad-brand py-2.5 text-sm font-semibold text-white">{hi ? "Save करें" : "Save"}</button>
             </div>
           </div>
@@ -152,7 +206,7 @@ export default function CalendarPage() {
           const dt = new Date(d.date + "T00:00:00"); const isToday = d.date === today;
           return (
             <div key={d.date} className={`rounded-xl border p-2.5 ${isToday ? "border-brand" : "border-border"} ${e?.status === "done" ? "bg-surface2" : ""}`}>
-              <button type="button" onClick={() => setEdit(edit === d.date ? null : d.date)} className="w-full flex items-center gap-2 text-left">
+              <button type="button" onClick={() => { setDayErr(null); setEdit(edit === d.date ? null : d.date); }} className="w-full flex items-center gap-2 text-left">
                 <span className="w-12 text-center"><span className="block text-sm font-bold">{dt.getDate()}</span><span className="block text-[10px] text-muted">{dt.toLocaleString(hi ? "hi-IN" : "en-IN", { weekday: "short" })}</span></span>
                 <span className="text-lg">{KIND[kind]?.[0]}</span>
                 <span className="flex-1 min-w-0"><span className="block text-sm font-medium truncate">{d.festival ?? prod?.name ?? (hi ? KIND_HI[kind] : KIND[kind]?.[1])}</span><span className="block text-[11px] text-muted truncate">{d.festival ? (hi ? "त्योहार" : "Festival") : (hi ? KIND_HI[kind] : KIND[kind]?.[1])}{e?.note ? ` · ${e.note}` : ""}{e?.overrides?.style ? ` · ${e.overrides.style}` : ""}{e?.overrides?.voice ? (hi ? ` · आवाज़ ${e.overrides.voice === "on" ? "चालू" : "बंद"}` : ` · voice ${e.overrides.voice}`) : ""}{e?.overrides?.custom ? ` · "${e.overrides.custom}"` : ""}</span></span>
@@ -162,7 +216,8 @@ export default function CalendarPage() {
                 <div className="mt-2 flex flex-wrap gap-1.5">
                   {Object.entries(KIND).filter(([k]) => k !== "festival").map(([k, [ic, l]]) => <button key={k} type="button" onClick={() => setDay(d.date, k, null)} className={`rounded-full border px-2.5 py-1 text-xs ${kind === k ? "border-brand bg-brand-soft" : "border-border"}`}>{ic} {hi ? KIND_HI[k] : l}</button>)}
                   {data.products.map((p) => <button key={p.id} type="button" onClick={() => setDay(d.date, "product", p.id)} className={`rounded-full border px-2.5 py-1 text-xs ${e?.product_id === p.id ? "border-brand bg-brand-soft" : "border-border"}`}>📦 {p.name}</button>)}
-                  <button type="button" onClick={() => setOver({ date: d.date, o: { ...(e?.overrides ?? {}) } })} className="rounded-full border border-dashed border-brand px-2.5 py-1 text-xs text-brand-ink">{hi ? "🎨 Style / आवाज़ / ऑफ़र की लाइन" : "🎨 Style, voice or offer line"}</button>
+                  <button type="button" onClick={() => { setOverErr(""); setOver({ date: d.date, o: { ...(e?.overrides ?? {}) } }); }} className="rounded-full border border-dashed border-brand px-2.5 py-1 text-xs text-brand-ink">{hi ? "🎨 Style / आवाज़ / ऑफ़र की लाइन" : "🎨 Style, voice or offer line"}</button>
+                  {dayErr?.date === d.date && <p className="w-full rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{dayErr.msg}</p>}
                 </div>
               )}
             </div>

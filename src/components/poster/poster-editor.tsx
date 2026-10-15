@@ -27,11 +27,12 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
   const [plang, setPlang] = useState(profile.lang);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  const [errFor, setErrFor] = useState<"day" | "all">("day"); // which of the two Save buttons the message belongs to
   const set = (p: Partial<Layout>) => setL({ ...l, ...p });
   const toggle = (k: keyof Layout) => setL({ ...l, [k]: l[k] ? undefined : true });
 
   async function save(which: "day" | "all") {
-    setBusy(true); setErr("");
+    setBusy(true); setErr(""); setErrFor(which);
     if (which === "day") {
       const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "day", profile: profile.id, for_date: date, overrides: { title: dTitle.trim(), custom: dCustom.trim(), accent: dAccent } } });
       setBusy(false);
@@ -78,7 +79,7 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
         <label className="flex items-center gap-2"><input type="checkbox" checked={!!l.varyStyle} onChange={() => set({ varyStyle: l.varyStyle ? undefined : true })} /> <span><b>{en ? "A different style every day" : "रोज़ अलग स्टाइल"}</b></span></label>
         <label className="flex items-center gap-2"><input type="checkbox" checked={l.autoStatusVideo !== false} onChange={() => set({ autoStatusVideo: l.autoStatusVideo === false ? undefined : false })} /> <span><b>{en ? "Status video every morning" : "रोज़ सुबह स्टेटस वीडियो"}</b></span></label>
       </div>
-      {err && <p className="text-xs text-danger">{err}</p>}
+      {err && errFor === "all" && <p className="text-xs text-danger">{err}</p>}
       <button type="button" disabled={busy} onClick={() => save("all")} className="w-full rounded-xl border border-brand py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">{busy ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : en ? "Save for every poster" : "हर पोस्टर के लिए save करें"}</button>
     </div>
   );
@@ -92,7 +93,7 @@ export function PosterEditor({ profile, onClose, onSaved, date, dayOverrides }: 
             <Row label={en ? "Heading" : "हेडिंग"}><input value={dTitle} onChange={(e) => setDTitle(e.target.value.slice(0, 60))} placeholder={en ? "e.g. Grand Opening Offer" : "जैसे: ग्रैंड ओपनिंग ऑफ़र"} className={inputCls} /></Row>
             <Row label={en ? "One more line (offer, timing)" : "एक और लाइन (ऑफ़र, समय)"}><input value={dCustom} onChange={(e) => setDCustom(e.target.value.slice(0, 60))} placeholder={en ? "e.g. Flat 20% off today" : "जैसे: आज 20% छूट"} className={inputCls} /></Row>
             {colourRow(dAccent, setDAccent, "")}
-            {err && <p className="text-xs text-danger">{err}</p>}
+            {err && errFor === "day" && <p className="text-xs text-danger">{err}</p>}
             <button type="button" disabled={busy} onClick={() => save("day")} className="grad-brand w-full rounded-xl py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : en ? "Change this poster" : "यह poster बदलें"}</button>
             <details className="rounded-xl border border-border p-3">
               <summary className="cursor-pointer text-sm font-semibold">{en ? "More settings (every poster)" : "और सेटिंग (हर पोस्टर के लिए)"}</summary>

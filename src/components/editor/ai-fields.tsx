@@ -134,8 +134,11 @@ export function TrainAiPanel({
   onSite?: (v: string) => void;
 }) {
   const [busy, setBusy] = useState(false);
+  // PDF messages sit right under the "Add PDF" row; website messages sit under the website box (each next to its own button).
   const [status, setStatus] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  const [siteStatus, setSiteStatus] = useState<string | null>(null);
+  const [siteErr, setSiteErr] = useState<string | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const [siteDraft, setSiteDraft] = useState(site);
 
@@ -143,11 +146,11 @@ export function TrainAiPanel({
   async function readSite() {
     const raw = siteDraft.trim();
     if (!raw) return;
-    setErr(null); setStatus("Reading the website…"); setBusy(true);
+    setSiteErr(null); setErr(null); setStatus(null); setSiteStatus("Reading the website…"); setBusy(true);
     try {
       const res = await fetch("/api/ai/train", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: raw }) });
       const data = await res.json();
-      if (!data.knowledge) { setErr(data.error || "Could not read the website."); return; }
+      if (!data.knowledge) { setSiteStatus(null); setSiteErr(data.error || "Could not read the website."); return; }
       const url = String(data.url || raw);
       const header = `--- From my website: ${url.replace(/^https?:\/\//, "")} ---`;
       // An earlier read of the website is replaced, hand-written notes and PDFs stay.
@@ -155,14 +158,15 @@ export function TrainAiPanel({
       onKnowledge((kept ? kept + "\n\n" : "") + header + "\n" + String(data.knowledge).trim());
       onSite?.(url);
       setSiteDraft(url);
-      setStatus("Website read ✓. The bot will now answer from it and send this link. Tap Save to keep it.");
-    } catch { setErr("Could not read the website. Try again or paste its text below."); }
+      setSiteStatus("Website read ✓. The bot will now answer from it and send this link. Tap Save to keep it.");
+    } catch { setSiteStatus(null); setSiteErr("Could not read the website. Try again or paste its text below."); }
     finally { setBusy(false); }
   }
 
   async function onPdf(file: File) {
     setErr(null);
     setStatus(null);
+    setSiteErr(null); setSiteStatus(null);
     if (file.type !== "application/pdf") {
       setErr("Please choose a PDF file.");
       return;
@@ -212,6 +216,8 @@ export function TrainAiPanel({
           <input className="ed-input mt-0 flex-1" value={siteDraft} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="e.g. alkafresh.in" onChange={(e) => { setSiteDraft(e.target.value); if (!e.target.value.trim()) onSite?.(""); }} />
           <button type="button" onClick={readSite} disabled={busy || !siteDraft.trim()} className="rounded-md bg-ai px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy ? "…" : "Read website"}</button>
         </div>
+        {siteStatus && <p className="mt-1 text-[11px] text-emerald-600">{siteStatus}</p>}
+        {siteErr && <p className="mt-1 text-[11px] text-red-500">{siteErr}</p>}
         <p className="mt-1 text-[11px] text-muted">{site ? <>Website added: <b>{site.replace(/^https?:\/\//, "")}</b>. Tap Save to keep it. Read it again if you change your website. Empty the box to use the card&apos;s link again.</> : "If you leave this empty, the bot sends your Shubhora card link."}</p>
       </div>
 
@@ -245,6 +251,8 @@ export function TrainAiPanel({
             onChange={(e) => e.target.files?.[0] && onPdf(e.target.files[0])}
           />
         </div>
+        {status && <p className="mb-1 text-[11px] text-emerald-600">{status}</p>}
+        {err && <p className="mb-1 text-[11px] text-red-500">{err}</p>}
         <textarea
           className="ed-input min-h-40 resize-y"
           value={knowledge}
@@ -253,8 +261,6 @@ export function TrainAiPanel({
           }
           onChange={(e) => onKnowledge(e.target.value)}
         />
-        {status && <p className="text-[11px] text-emerald-600 mt-1">{status}</p>}
-        {err && <p className="text-[11px] text-red-500 mt-1">{err}</p>}
       </div>
     </div>
   );

@@ -21,7 +21,10 @@ export function ReviewsPanel() {
   const [gAuto, setGAuto] = useState(false);
   const [drafts, setDrafts] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
+  // A failure is told under the control that was tapped (E1): an item's own buttons, the reconnect buttons, or the auto-reply switches.
+  const [itemErr, setItemErr] = useState<{ k: string; msg: string } | null>(null);
+  const [needsErr, setNeedsErr] = useState("");
+  const [togErr, setTogErr] = useState("");
   const [onlyOpen, setOnlyOpen] = useState(true);
   const [loadErr, setLoadErr] = useState("");
 
@@ -34,21 +37,31 @@ export function ReviewsPanel() {
 
   const key = (it: Item) => `${it.provider}:${it.id}`;
   async function draft(it: Item) {
-    setBusy(key(it)); setMsg("");
+    setBusy(key(it)); setItemErr(null);
     const r = await api<{ reply?: string; error?: string }>("/api/social/reviews/draft", { method: "POST", json: { provider: it.provider, kind: it.kind, author: it.author, text: it.text, rating: it.rating } });
-    setBusy(""); if (!r.ok) { setMsg(r.data.error ?? "AI failed"); return; }
+    setBusy(""); if (!r.ok) { setItemErr({ k: key(it), msg: r.data.error ?? "AI failed" }); return; }
     setDrafts((d) => ({ ...d, [key(it)]: r.data.reply ?? "" }));
   }
   async function send(it: Item, ignore = false) {
-    setBusy(key(it) + "s"); setMsg("");
+    setBusy(key(it) + "s"); setItemErr(null);
     const r = await api<{ ok?: boolean; error?: string; needs_permission?: string }>("/api/social/reviews", { method: "POST", json: { provider: it.provider, item_id: it.id, kind: it.kind, text: drafts[key(it)] ?? "", author: it.author, item_text: it.text, rating: it.rating, ignore } });
     setBusy("");
-    if (!r.ok) { setMsg(r.data.needs_permission ? (`Reconnect ${it.provider} to allow replies (new permission: ${r.data.needs_permission})`) : (r.data.error ?? "Failed")); return; }
+    if (!r.ok) { setItemErr({ k: key(it), msg: r.data.needs_permission ? (`Reconnect ${it.provider} to allow replies (new permission: ${r.data.needs_permission})`) : (r.data.error ?? "Failed") }); return; }
     setDrafts((d) => { const c = { ...d }; delete c[key(it)]; return c; }); load();
   }
-  async function toggleAuto(id: string, v: boolean) { await api("/api/social/accounts", { method: "PATCH", json: { id, action: "auto_reply", value: v } }); invalidateSocialAccounts(); load(); }
-  async function toggleGoogleAuto(v: boolean) { await api("/api/google/status", { method: "PATCH", json: { auto_reply: v } }); setGAuto(v); }
-  async function reconnect(p: "facebook" | "instagram") { const e = await startConnect("/poster/social?tab=reviews", "Could not connect.", p); if (e) setMsg(e); }
+  async function toggleAuto(id: string, v: boolean) {
+    setTogErr("");
+    const r = await api<{ error?: string }>("/api/social/accounts", { method: "PATCH", json: { id, action: "auto_reply", value: v } });
+    if (!r.ok) setTogErr(r.data?.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save that. Please try again."));
+    invalidateSocialAccounts(); load();
+  }
+  async function toggleGoogleAuto(v: boolean) {
+    setTogErr("");
+    const r = await api<{ error?: string }>("/api/google/status", { method: "PATCH", json: { auto_reply: v } });
+    if (!r.ok) { setTogErr(r.data?.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save that. Please try again.")); return; }
+    setGAuto(v);
+  }
+  async function reconnect(p: "facebook" | "instagram") { setNeedsErr(""); const e = await startConnect("/poster/social?tab=reviews", "Could not connect.", p); if (e) setNeedsErr(e); }
 
   if (!data) return loadErr
     ? <p className="text-sm text-danger rounded-lg bg-surface2 px-3 py-2">{loadErr}</p>
@@ -79,6 +92,7 @@ export function ReviewsPanel() {
               <input type="checkbox" className="h-5 w-5" checked={gAuto} onChange={(e) => toggleGoogleAuto(e.target.checked)} />
             </label>
           )}
+          {togErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{togErr}</p>}
           <p className="text-[11px] text-muted">{"When on: the AI writes and posts replies to new comments/reviews; for 1–3★ reviews it apologises and invites them to WhatsApp."}</p>
         </section>
       )}
@@ -88,10 +102,10 @@ export function ReviewsPanel() {
           <p className="font-semibold">⚠️ {"Some things need a reconnect (new permissions):"}</p>
           <ul className="text-xs list-disc pl-5">{data.needs.map((n, i) => <li key={i}>{n.provider}: {n.why} <span className="text-muted">({n.permission})</span></li>)}</ul>
           <div className="flex gap-2">{[...new Set(data.needs.map((n) => n.provider))].map((p) => <button key={p} type="button" onClick={() => reconnect(p)} className="rounded-lg bg-[#1877F2] px-3 py-1.5 text-xs font-semibold text-white"><RefreshCw className="inline h-3.5 w-3.5 mr-1" />{p === "facebook" ? "Facebook" : "Instagram"} {"reconnect"}</button>)}</div>
+          {needsErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{needsErr}</p>}
         </section>
       )}
       {data.errors.length > 0 && <p className="text-xs text-danger">{data.errors.join(" · ")}</p>}
-      {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
 
       {connectedAny && (
         <div className="flex items-center justify-between">
@@ -124,6 +138,7 @@ export function ReviewsPanel() {
                   <button type="button" onClick={() => draft(it)} disabled={busy === k} className="rounded-lg border border-border px-3 py-2 text-xs font-semibold">{busy === k ? "…" : (hi ? "dusra" : "another")}</button>
                   <button type="button" onClick={() => send(it)} disabled={busy === k + "s" || !d.trim() || (it.provider === "facebook" && it.kind === "review")} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg grad-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-60">{busy === k + "s" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />} {hi ? "Bhejo" : "Send"}</button>
                 </div>
+                {itemErr?.k === k && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{itemErr.msg}</p>}
                 {it.provider === "facebook" && it.kind === "review" && <p className="text-[11px] text-muted">{"Facebook Page reviews can only be answered on Facebook — copy this text and paste it there."}</p>}
               </div>
             ) : (
@@ -133,6 +148,7 @@ export function ReviewsPanel() {
                 <button type="button" onClick={() => send(it, true)} className="rounded-lg border border-border px-3 py-2 text-xs text-muted">{hi ? "ignore" : "ignore"}</button>
               </div>
             )}
+            {it.replied === null && d === undefined && itemErr?.k === k && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{itemErr.msg}</p>}
           </div>
         );
       })}

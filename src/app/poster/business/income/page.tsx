@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { LoaderCircle } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
-import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND as KIND, bizAct, dayOf, rupee, useBiz } from "@/components/business/kit";
+import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND as KIND, bizAct, dayOf, rupee, useBiz, useBizMsg } from "@/components/business/kit";
 
 type Totals = Record<string, { total: number; last: number }>;
 type Row = { kind: string; paise: number; held: boolean; day: string; from: string | null };
@@ -36,15 +36,18 @@ export default function IncomePage() {
   const [lines, setLines] = useState<Line[]>([]);
   const [more, setMore] = useState(false);
   const [busy, setBusy] = useState(false);
+  const [moreErr, setMoreErr] = useState(""); // "Show more" failed: shown right under that button
+  const tr = useBizMsg();
   const tx = (p: [string, string]) => (en ? p[0] : p[1]);
 
-  useEffect(() => { if (data) { setRows(data.rows ?? []); setLines(data.lines ?? []); setMore(data.more); } }, [data]);
+  useEffect(() => { if (data) { setRows(data.rows ?? []); setLines(data.lines ?? []); setMore(data.more); setMoreErr(""); } }, [data]);
   const loadMore = useCallback(async () => {
-    setBusy(true);
+    setBusy(true); setMoreErr("");
     const r = await bizAct<Res>("income", { t, offset: rows.length || lines.length });
     setBusy(false);
     if (r.ok) { setRows((x) => [...x, ...(r.data.rows ?? [])]); setLines((x) => [...x, ...(r.data.lines ?? [])]); setMore(r.data.more); }
-  }, [t, rows.length, lines.length]);
+    else setMoreErr(tr(r.error));
+  }, [t, rows.length, lines.length, tr]);
 
   return (
     <BizShell title={en ? "Income" : "कमाई"} right={data && !data.disabled ? <ExcelButton url={data.exportUrls?.income} /> : null}>
@@ -116,6 +119,7 @@ export default function IncomePage() {
               </section>
             )}
             {more && !loading && <button type="button" disabled={busy} onClick={loadMore} className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold disabled:opacity-60">{busy ? "…" : en ? "Show more" : "और दिखाएँ"}</button>}
+            {moreErr && !loading && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="status">{moreErr}</p>}
           </>
         )}
       </BizState>

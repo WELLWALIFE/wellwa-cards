@@ -45,6 +45,9 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
   const [plainOk, setPlainOk] = useState(false);
   const [withPics, setWithPics] = useState(true);   // the save now running looks for pictures (false: "Add without pictures")
   const pick = useRef<HTMLInputElement>(null);
+  const errRef = useRef<HTMLParagraphElement>(null);
+  // The message sits right under the buttons of this box; on a small phone the box can be taller than the screen, so it is brought into view.
+  useEffect(() => { if (err) errRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }, [err]);
   useEffect(() => {
     if (busy !== "save") return;
     const t0 = Date.now();
@@ -119,6 +122,7 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
               <p className="text-xs text-muted">{T("One item on each line. Write the price after the name if you like. Example: Kaju Katli 800 / kg", "हर लाइन में एक चीज़। चाहें तो नाम के बाद दाम लिखें। जैसे: काजू कतली 800 / किलो")}</p>
               <textarea value={text} onChange={(e) => setText(e.target.value)} rows={7} placeholder={"Kaju Katli 800\nMotichoor Laddu 400\nSamosa 15"} className="w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-base" />
               <button type="button" disabled={!!busy || text.trim().length < 2} onClick={() => void read({ mode: "text", text })} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3 text-sm font-semibold text-white disabled:opacity-50">{busy === "read" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} {T("Read my list", "मेरी लिस्ट पढ़ें")}</button>
+              {!busy && text.trim().length < 2 && <p className="text-[11px] text-muted">{T("Write at least one item above, then tap this.", "ऊपर कम से कम एक चीज़ लिखें, फिर यह दबाएँ।")}</p>}
             </div>
           )}
           {mode === "photo" && (
@@ -153,6 +157,7 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
             <button type="button" onClick={() => { setItems(null); setErr(""); }} className="rounded-xl border border-border bg-surface px-4 py-3 text-sm font-semibold">{T("Back", "पीछे")}</button>
             <button type="button" disabled={!!busy || !on} onClick={() => void add()} className="inline-flex flex-1 items-center justify-center gap-2 rounded-xl grad-brand py-3 text-sm font-semibold text-white disabled:opacity-50">{busy === "save" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : null} {busy === "save" ? T(`Adding ${count(saveN)}…`, saveN === 1 ? "1 product जुड़ रहा है…" : `${saveN} products जुड़ रहे हैं…`) : T(`Add ${count(on)}`, `${on} ${on === 1 ? "product" : "products"} जोड़ें`)}</button>
           </div>
+          {!busy && !on && <p className="text-xs text-muted">{T("Tick at least one product to add.", "जोड़ने के लिए कम से कम एक product चुनें।")}</p>}
         </div>
       )}
       {busy === "save" && (() => {
@@ -175,7 +180,7 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
           </div>
         );
       })()}
-      {err && <p className="text-sm font-semibold text-danger">{err}</p>}
+      {err && <p ref={errRef} role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-sm font-semibold text-danger">{err}</p>}
       {err && plainOk && !busy && (
         <div className="space-y-1.5">
           <p className="text-xs text-muted">{T("You can add the products now without pictures. Pictures can be added free later.", "आप products अभी बिना picture के जोड़ सकते हैं। Picture बाद में free लग जाएँगी।")}</p>

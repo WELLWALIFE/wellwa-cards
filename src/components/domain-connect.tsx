@@ -27,6 +27,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   const [live, setLive] = useState<string[]>([]);
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
+  const [rmErr, setRmErr] = useState(""); // Disconnect failed: shown right under the Disconnect control
   const [copied, setCopied] = useState("");
   const [next, setNext] = useState(20);
   const verifyAt = useRef(0);
@@ -48,6 +49,8 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
   useEffect(() => { if (initialDomain) refresh(initialDomain); }, [initialDomain, refresh]);
 
   const isLive = !!status && live.includes(status.domain);
+  // A failed Disconnect belongs to the screen it was tapped on: when the address goes live (or another is added) it is retired.
+  useEffect(() => { setRmErr(""); }, [isLive, status?.domain]);
 
   const verify = useCallback(async (domain: string) => {
     verifyAt.current = Date.now();
@@ -77,7 +80,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
 
   async function connect() {
     if (locked) { setUpsell(true); return; }
-    setBusy("connect"); setErr("");
+    setBusy("connect"); setErr(""); setRmErr("");
     const r = await call("POST", "/api/domains", { domain: input, cardId, username });
     setBusy("");
     if (!r.ok) {
@@ -92,8 +95,9 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
 
   async function remove() {
     if (!status || !confirm(`Disconnect ${status.domain}? Your ${username} link keeps working.`)) return;
-    setBusy("remove");
-    await call("DELETE", `/api/domains?domain=${encodeURIComponent(status.domain)}`);
+    setBusy("remove"); setRmErr("");
+    const d = await call("DELETE", `/api/domains?domain=${encodeURIComponent(status.domain)}`);
+    if (!d.ok) { setBusy(""); setRmErr("Could not disconnect. Please try again."); return; }
     setBusy(""); setStatus(null); setLive([]); setInput(""); onChange?.("");
   }
 
@@ -126,6 +130,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
         {live.map((h) => <a key={h} href={`https://${h}`} target="_blank" rel="noreferrer" className="flex items-center gap-1.5 text-sm text-brand-ink font-medium">https://{h} <ExternalLink className="h-3.5 w-3.5" /></a>)}
         {status.records.slice(1).some((r) => !live.includes(r.host)) && <p className="text-[11px] text-muted">www.{status.domain} will join automatically once its record is added.</p>}
         <button type="button" onClick={remove} disabled={busy === "remove"} className="inline-flex items-center gap-1 text-xs text-muted hover:text-danger"><Trash2 className="h-3.5 w-3.5" /> Disconnect</button>
+        {rmErr && <p className="text-xs text-danger">{rmErr}</p>}
       </div>
     );
   }
@@ -137,6 +142,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
         <p className="flex-1 text-sm font-semibold">{status.domain}</p>
         <button type="button" onClick={remove} className="text-muted hover:text-danger" aria-label="Disconnect"><X className="h-4 w-4" /></button>
       </div>
+      {rmErr && <p className="text-xs text-danger">{rmErr}</p>}
       <div className="rounded-xl border border-border bg-surface2/50 p-3 space-y-2">
         <p className="text-xs font-semibold">Your web address is with <b>{status.provider.name}</b>. Do this once:</p>
         <ol className="list-decimal pl-5 space-y-1 text-xs text-muted">{status.provider.steps.map((s) => <li key={s}>{s}</li>)}</ol>
@@ -165,7 +171,7 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
         {busy === "verify"
           ? <span className="inline-flex items-center gap-1.5 text-brand-ink font-semibold"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> All set — adding the security certificate…</span>
           : <span className="inline-flex items-center gap-1.5"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> Checking automatically · next check in {next}s</span>}
-        <button type="button" onClick={() => { setNext(20); refresh(status.domain).then((s) => { if (s?.ready) verify(s.domain); }); }} className="inline-flex items-center gap-1 font-semibold text-brand-ink"><RefreshCw className="h-3.5 w-3.5" /> Check now</button>
+        <button type="button" onClick={() => { setNext(20); setErr(""); refresh(status.domain).then((s) => { if (!s) setErr("Could not check right now. Please try again."); else if (s.ready) verify(s.domain); }); }} className="inline-flex items-center gap-1 font-semibold text-brand-ink"><RefreshCw className="h-3.5 w-3.5" /> Check now</button>
         <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 font-semibold text-brand-ink"><MessageCircle className="h-3.5 w-3.5" /> Send these steps on WhatsApp</a>
       </div>
       {err && <p className="text-xs text-amber">{err}</p>}

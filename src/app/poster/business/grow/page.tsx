@@ -40,8 +40,10 @@ export default function GrowPage() {
 
 function LinkCard({ label, url, qr, text, en }: { label: string; url: string; qr?: string | null; text: string; en: boolean }) {
   const [copied, setCopied] = useState(false);
-  async function copy() { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  const [copyErr, setCopyErr] = useState(false); // the phone refused the copy: say so right under the buttons
+  async function copy() { setCopyErr(false); try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyErr(true); } }
   async function share() {
+    setCopyErr(false);
     try { if (navigator.share) { await navigator.share({ text, url }); return; } } catch { /* cancelled */ }
     void copy();
   }
@@ -67,6 +69,7 @@ function LinkCard({ label, url, qr, text, en }: { label: string; url: string; qr
         </a>
         <button type="button" onClick={share} aria-label={en ? "Share" : "Share करें"} className="grid w-11 place-items-center rounded-xl grad-brand text-white"><Share2 className="h-4 w-4" /></button>
       </div>
+      {copyErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="status">{en ? "Could not copy. Press and hold the link above to copy it." : "Copy नहीं हो पाया। ऊपर का link दबाकर रखें और खुद copy करें।"}</p>}
     </section>
   );
 }

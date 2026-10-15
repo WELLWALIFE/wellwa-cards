@@ -2,7 +2,7 @@
 // The owner's bookings (owner's call, 8 Oct 2026): what the AI salesman booked on the website and WhatsApp, plus
 // anything the owner adds by hand — grouped by day, with Done / Cancel, a one-tap WhatsApp reminder and a small form.
 // Reminders go out by themselves (/api/cron/booking-reminders); this is where the owner sees and changes them.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { CalendarPlus, Check, LoaderCircle, MessageCircle, Phone, Trash2, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
@@ -18,7 +18,10 @@ export function Bookings({ business }: { business?: string }) {
   const hi = lang === "hi";
   const T = (h: string, e: string) => (hi ? h : e);
   const [list, setList] = useState<Booking[] | null>(null);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(""); // loading the list: shown at the top
+  const [formErr, setFormErr] = useState(""); // the add form: shown right above its Save button
+  const [rowErr, setRowErr] = useState<{ id: string; msg: string } | null>(null); // Done / Cancel / Delete: shown inside that booking
+  const nameRef = useRef<HTMLInputElement | null>(null);
   const [adding, setAdding] = useState(false);
   const [form, setForm] = useState<Form>(blank);
   const [busy, setBusy] = useState("");
@@ -33,23 +36,27 @@ export function Bookings({ business }: { business?: string }) {
   useEffect(() => { void load(); }, [load]);
 
   async function save() {
-    if (!form.name.trim()) { setErr(T("ग्राहक का नाम लिखें।", "Enter the customer's name.")); return; }
-    setBusy("save");
+    if (!form.name.trim()) { setFormErr(T("ग्राहक का नाम लिखें।", "Enter the customer's name.")); nameRef.current?.focus(); return; }
+    setFormErr(""); setBusy("save");
     const r = await api<{ booking?: Booking; error?: string }>("/api/bookings", { method: "POST", json: { name: form.name, phone: form.phone, service: form.service, at: `${form.date}T${form.time}`, note: form.note } });
     setBusy("");
-    if (!r.ok) { setErr(r.data.error || T("सेव नहीं हुआ।", "Could not save.")); return; }
+    if (!r.ok) { setFormErr(r.data.error || T("सेव नहीं हुआ।", "Could not save.")); return; }
     setErr(""); setAdding(false); setForm(blank()); void load();
   }
   async function setStatus(b: Booking, status: Booking["status"]) {
-    setBusy(b.id);
-    await api("/api/bookings", { method: "PATCH", json: { id: b.id, status } });
-    setBusy(""); void load();
+    setBusy(b.id); setRowErr(null);
+    const r = await api<{ error?: string }>("/api/bookings", { method: "PATCH", json: { id: b.id, status } });
+    setBusy("");
+    if (!r.ok) { setRowErr({ id: b.id, msg: r.data?.error || T("बदलाव नहीं हुआ। फिर try करें।", "Could not change it. Please try again.") }); return; }
+    void load();
   }
   async function remove(b: Booking) {
     if (!confirm(T("यह बुकिंग हटा दें?", "Delete this booking?"))) return;
-    setBusy(b.id);
-    await api(`/api/bookings?id=${b.id}`, { method: "DELETE" });
-    setBusy(""); void load();
+    setBusy(b.id); setRowErr(null);
+    const r = await api<{ error?: string }>(`/api/bookings?id=${b.id}`, { method: "DELETE" });
+    setBusy("");
+    if (!r.ok) { setRowErr({ id: b.id, msg: r.data?.error || T("हटी नहीं। फिर try करें।", "Could not delete it. Please try again.") }); return; }
+    void load();
   }
 
   const upcoming = (list ?? []).filter((b) => (!now || new Date(b.starts_at).getTime() >= now - 3600_000) && b.status === "booked");
@@ -67,20 +74,21 @@ export function Bookings({ business }: { business?: string }) {
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-muted">{T("वेबसाइट चैट और WhatsApp से AI जो बुक करता है वो यहाँ आता है। ग्राहक को 1 दिन और 2 घंटे पहले, आपको 2 घंटे पहले रिमाइंडर जाता है।", "Bookings the AI takes on the website chat and WhatsApp land here. The customer is reminded a day and 2 hours before, you 2 hours before.")}</p>
-        <button type="button" onClick={() => { setAdding((v) => !v); setErr(""); }} className="shrink-0 inline-flex items-center gap-1.5 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white"><CalendarPlus className="h-3.5 w-3.5" /> {T("नई बुकिंग", "Add booking")}</button>
+        <button type="button" onClick={() => { setAdding((v) => !v); setErr(""); setFormErr(""); }} className="shrink-0 inline-flex items-center gap-1.5 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white"><CalendarPlus className="h-3.5 w-3.5" /> {T("नई बुकिंग", "Add booking")}</button>
       </div>
       {err && <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{err}</p>}
 
       {adding && (
         <div className="rounded-2xl border border-border bg-surface p-3 space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <input className={`${field} col-span-2`} placeholder={T("ग्राहक का नाम", "Customer name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
+            <input ref={nameRef} className={`${field} col-span-2`} placeholder={T("ग्राहक का नाम", "Customer name")} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
             <input className={field} inputMode="tel" placeholder={T("मोबाइल", "Mobile")} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
             <input className={field} placeholder={T("सर्विस / काम", "Service")} value={form.service} onChange={(e) => setForm({ ...form, service: e.target.value })} />
             <input className={field} type="date" min={todayIST()} value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             <input className={field} type="time" value={form.time} onChange={(e) => setForm({ ...form, time: e.target.value })} />
             <input className={`${field} col-span-2`} placeholder={T("नोट (ज़रूरी नहीं)", "Note (optional)")} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })} />
           </div>
+          {formErr && <p className="rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{formErr}</p>}
           <div className="flex justify-end gap-2">
             <button type="button" onClick={() => setAdding(false)} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted">{T("रद्द", "Cancel")}</button>
             <button type="button" onClick={save} disabled={busy === "save"} className="rounded-full grad-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : T("सेव करें", "Save")}</button>
@@ -117,6 +125,7 @@ export function Bookings({ business }: { business?: string }) {
                   <button type="button" disabled={busy === b.id} onClick={() => setStatus(b, "done")} className={`${chip} text-good`}><Check className="h-3.5 w-3.5" /> {T("हो गया", "Done")}</button>
                   <button type="button" disabled={busy === b.id} onClick={() => setStatus(b, "cancelled")} className={`${chip} text-muted`}><X className="h-3.5 w-3.5" /> {T("रद्द", "Cancel")}</button>
                 </div>
+                {rowErr?.id === b.id && <p className="mt-2 rounded-lg bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{rowErr.msg}</p>}
               </div>
             );
           })}

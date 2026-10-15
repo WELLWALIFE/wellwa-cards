@@ -154,7 +154,7 @@ function MemberList() {
           <button key={k} type="button" onClick={() => { setRows([]); setHasMore(false); setTab(k); }} className={`flex-1 rounded-xl border py-2 text-sm font-semibold ${tab === k ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`}>{l}</button>
         ))}
       </div>
-      {err && <p className="text-sm font-semibold text-danger">{tr(err)}</p>}
+      {err && rows.length === 0 && <p className="text-sm font-semibold text-danger">{tr(err)}</p>}
       {!busy && !err && rows.length === 0 && <p className={`${CARD} text-center text-sm text-muted`}>{en ? "Nobody here yet." : "यहाँ अभी कोई नहीं।"}</p>}
       {rows.length > 0 && (
         <div className="divide-y divide-border rounded-2xl border border-border bg-surface">
@@ -173,6 +173,8 @@ function MemberList() {
       {hasMore && !busy && (
         <button type="button" onClick={() => load(tab, rows.length)} className="w-full rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold">{en ? "Show more" : "और दिखाएँ"}</button>
       )}
+      {/* "Show more" failed: the message sits right under that button, not above the list */}
+      {err && rows.length > 0 && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="status">{tr(err)}</p>}
     </section>
   );
 }

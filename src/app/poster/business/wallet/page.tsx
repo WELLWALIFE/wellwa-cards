@@ -54,23 +54,24 @@ export default function WalletPage() {
   const [busy, setBusy] = useState(false);
   const [amount, setAmount] = useState("");
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [moreErr, setMoreErr] = useState(""); // "Show older" failed: shown under that button, not in the withdraw card
 
   const cursor = next === undefined ? data?.next ?? null : next;
   const money = (v: number | null) => (v === null ? "••••" : rupeeExact(v));
 
   async function loadMore() {
     if (cursor === null) return;
-    setBusy(true);
+    setBusy(true); setMoreErr("");
     const r = await bizAct<{ ledger?: Led[]; next?: number | null }>("wallet", { op: "view", before: cursor });
     setBusy(false);
     if (r.ok) { setMore((m) => [...m, ...(r.data.ledger ?? [])]); setNext(r.data.next ?? null); }
-    else setMsg({ ok: false, text: tr(r.error) });
+    else setMoreErr(tr(r.error));
   }
 
   async function withdraw(e: React.FormEvent) {
     e.preventDefault();
     if (busy) return;
-    setBusy(true); setMsg(null);
+    setBusy(true); setMsg(null); setMoreErr("");
     const r = await bizAct<{ message?: string }>("wallet", { op: "withdraw", amount });
     setBusy(false);
     if (r.ok) { setMsg({ ok: true, text: tr(r.data.message ?? "OK") }); setAmount(""); setMore([]); setNext(undefined); reload(); }
@@ -159,6 +160,7 @@ export default function WalletPage() {
                   {busy ? <LoaderCircle className="mx-auto h-4 w-4 animate-spin" /> : en ? "Show older" : "और पुराने दिखाएँ"}
                 </button>
               )}
+              {moreErr && <p className="mt-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="status">{moreErr}</p>}
             </section>
           </>
         )}

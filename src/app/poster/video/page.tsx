@@ -69,7 +69,16 @@ function VideoTabInner() {
   const [chosen, setChosen] = useState<V2Script | null>(null);
   const [tracks, setTracks] = useState<{ key: string; name: string; url: string }[]>([]);
   const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
+  // Messages sit next to the control that caused them: planErr under the "write the words" buttons (step 0 or 1),
+  // genErr right above the Make button, and one small line each for the hooks, the photos and the voice / music samples.
+  const [planErr, setPlanErr] = useState<{ at: number; msg: string } | null>(null);
+  const [genErr, setGenErr] = useState("");
+  const [hookErr, setHookErr] = useState("");
+  const [photoErr, setPhotoErr] = useState("");
+  const [presenterErr, setPresenterErr] = useState("");
+  const [sampleErr, setSampleErr] = useState<{ key: string; msg: string } | null>(null);
+  const [nameErr, setNameErr] = useState("");   // "Write the product name first" — right under the name field (step 0), not at the button far below
+  const productRef = useRef<HTMLInputElement | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [credits, setCredits] = useState<number | null>(null);
   const audio = useRef<HTMLAudioElement | null>(null);
@@ -94,7 +103,7 @@ function VideoTabInner() {
   // ---- per-job / per-file feedback ----
   const [stopping, setStopping] = useState("");
   const [rowMsg, setRowMsg] = useState<Record<string, string>>({});
-  const [fileMsg, setFileMsg] = useState<Record<string, string>>({});
+  const [fileMsg, setFileMsg] = useState<Record<string, { t: string; ok: boolean; neutral?: boolean }>>({});
   // ---- Back from "Your videos" (step 5) goes to the step the owner was on before it ----
   const workStep = useRef(0);
   useEffect(() => { if (step !== 5) workStep.current = step; }, [step]);
@@ -141,6 +150,7 @@ function VideoTabInner() {
   })(); }, [router]);
   function fillFromProduct(id: string) {
     const pr = products.find((x) => x.id === id); if (!pr) return;
+    setNameErr(""); setPlanErr((e) => (e?.at === 0 ? null : e));
     const en = pr.benefits.filter((b) => /^[A-Za-z0-9 %+\-&'.]+$/.test(b) && b.trim().split(/\s+/).length <= 3);
     setF((x) => ({ ...x, product: pr.name, offer: x.offer || pr.offer || "", features: (en.length ? en : pr.benefits).slice(0, 6).join("\n") }));
     if (pr.photo_url) setPhotos((p) => p.includes(pr.photo_url!) ? p : [pr.photo_url!, ...p].slice(0, 5));
@@ -191,29 +201,39 @@ function VideoTabInner() {
   const [compressing, setCompressing] = useState(false);
   async function pick(files: FileList | null) {
     if (!files) return;
-    const list = Array.from(files).slice(0, 5 - photos.length);
+    const all = Array.from(files);
+    const list = all.slice(0, 5 - photos.length);
+    setPhotoErr(all.length > list.length ? (hi ? "सिर्फ़ 5 फ़ोटो लग सकती हैं — बाकी छोड़ दी गईं।" : "Only 5 photos fit. The rest were left out.") : "");
     setCompressing(true);
-    for (const file of list) {
-      const url = await compressImageFile(file); // shrink before it ever sits in state — a raw phone photo is several MB
-      setPhotos((p) => p.length < 5 ? [...p, url] : p);
-    }
-    setCompressing(false);
+    try {
+      for (const file of list) {
+        const url = await compressImageFile(file); // shrink before it ever sits in state — a raw phone photo is several MB
+        setPhotos((p) => p.length < 5 ? [...p, url] : p);
+      }
+    } catch { setPhotoErr(hi ? "फ़ोटो नहीं लग पाई। दूसरी फ़ोटो चुनें या फिर कोशिश करें।" : "Could not add the photo. Pick another one or try again."); }
+    finally { setCompressing(false); }
   }
   const [presenterUploading, setPresenterUploading] = useState(false);
   async function pickPresenter(file: File | null) {
     if (!file) return;
-    setPresenterUploading(true);
-    const url = await compressImageFile(file);
-    setF((x) => ({ ...x, presenterPhoto: url }));
-    setPresenterUploading(false);
+    setPresenterUploading(true); setPresenterErr("");
+    try {
+      const url = await compressImageFile(file);
+      setF((x) => ({ ...x, presenterPhoto: url }));
+    } catch { setPresenterErr(hi ? "फ़ोटो नहीं लग पाई। दूसरी फ़ोटो चुनें या फिर कोशिश करें।" : "Could not add the photo. Pick another one or try again."); }
+    finally { setPresenterUploading(false); }
   }
   const [hookOptions, setHookOptions] = useState<string[]>([]);
   const [hookBusy, setHookBusy] = useState(false);
   async function tryHooks() {
-    if (!plan) return; setHookBusy(true); setHookOptions([]);
-    const r = await fetch("/api/media/ad-hook", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product: f.product, category: f.category, tone: f.tone, lang: f.lang, currentHook: plan.scenes[0]?.text || "" }) });
-    const j = await r.json(); setHookBusy(false);
-    if (r.ok) setHookOptions(j.hooks ?? []);
+    if (!plan) return; setHookBusy(true); setHookOptions([]); setHookErr("");
+    const fail = hi ? "नई शुरुआत नहीं मिल पाई। फिर से कोशिश करें।" : "Could not get new starts. Please try again.";
+    try {
+      const r = await fetch("/api/media/ad-hook", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ product: f.product, category: f.category, tone: f.tone, lang: f.lang, currentHook: plan.scenes[0]?.text || "" }) });
+      const j = await r.json().catch(() => ({}));
+      if (r.ok) setHookOptions(j.hooks ?? []); else setHookErr(j.error || fail);
+    } catch { setHookErr(fail); }
+    finally { setHookBusy(false); }
   }
   function pickHook(h: string) {
     if (!plan) return;
@@ -221,17 +241,30 @@ function VideoTabInner() {
     setPlan({ ...plan, scenes: sc }); setHookOptions([]);
   }
   function playSample(url: string, key: string) {
+    setSampleErr(null);
     if (playing === key) { audio.current?.pause(); setPlaying(""); return; }
     if (!audio.current) audio.current = new Audio();
-    audio.current.src = url; audio.current.play().catch(() => {}); setPlaying(key);
+    audio.current.src = url; audio.current.play().catch((e) => { if (e?.name === "AbortError") return; setPlaying((p) => (p === key ? "" : p)); setSampleErr({ key, msg: hi ? "यह sample अभी चल नहीं पाया। फिर से दबाएँ।" : "This sample could not play. Tap it again." }); }); setPlaying(key);
     audio.current.onended = () => setPlaying("");
   }
 
   async function makePlan() {
-    setPlanBusy(true); setErr("");
-    const r = await fetch("/api/media/ad-plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, product_id: productId || undefined, features: f.features.split("\n").map((x) => x.trim()).filter(Boolean) }) });
-    const j = await r.json(); setPlanBusy(false);
-    if (!r.ok) { setErr(j.error || (hi ? "AI शब्द नहीं लिख पाया। फिर से कोशिश करें।" : "The AI could not write the words. Please try again.")); return; }
+    // No product name: say so right under the name field (the message and the field stay on screen together; the button is never silently dead).
+    if (f.product.trim().length < 2) {
+      const msg = hi ? "पहले प्रोडक्ट का नाम लिखें।" : "Write the product name first.";
+      if (step === 0) { setNameErr(msg); setPlanErr(null); productRef.current?.focus(); productRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); }
+      else setPlanErr({ at: step, msg });
+      return;
+    }
+    setPlanBusy(true); setPlanErr(null); setNameErr("");
+    const failMsg = hi ? "AI शब्द नहीं लिख पाया। फिर से कोशिश करें।" : "The AI could not write the words. Please try again.";
+    let r: Response; let j: Record<string, unknown>;
+    try {
+      r = await fetch("/api/media/ad-plan", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ ...f, product_id: productId || undefined, features: f.features.split("\n").map((x) => x.trim()).filter(Boolean) }) });
+      j = await r.json().catch(() => ({}));
+    } catch { setPlanBusy(false); setPlanErr({ at: step, msg: hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again." }); return; }
+    setPlanBusy(false);
+    if (!r.ok) { setPlanErr({ at: step, msg: String(j.error || "") || failMsg }); return; }
     // Only the server knows whether the free storyboard pipeline is switched on (AD_PIPELINE_V2 + a worker that can run it).
     // Until it says so we must not promise a free storyboard — the other branch charges the full price immediately.
     setStoryboardFree(j.storyboard === true);
@@ -245,7 +278,7 @@ function VideoTabInner() {
     if (!plan || busy || submitted) return;
     const free = storyboardFree && f.tier === "realistic" && !!productId;
     if (!window.confirm(free ? (hi ? "आपका storyboard बनाएँ? यह free है — credits तभी लगेंगे जब आप Animate दबाएँगे।" : "Make your storyboard? It is free. Credits are used only when you tap Animate.") : (hi ? `यह video बनाएँ? ${f.length} सेकंड · ${total} credits।` : `Make this video? ${f.length} seconds · ${total} credits.`))) return;
-    setBusy(true); setErr(""); setNeedCredits(null);
+    setBusy(true); setGenErr(""); setNeedCredits(null);
     if (!idem.current) newIdem();
     try {
       const urls: string[] = [];
@@ -263,7 +296,7 @@ function VideoTabInner() {
       const r = await fetch("/api/media/ad", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
       const j = await r.json();
       if (!r.ok) {
-        setErr(j.error || (hi ? "Video नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the video. Please try again."));
+        setGenErr(j.error || (hi ? "Video नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the video. Please try again."));
         if (r.status === 402) setNeedCredits(Math.max(1, Number(j.cost) || total)); // always give them a way to buy
         if (j.need === "product_check") setChecking(true);
         return;
@@ -277,36 +310,36 @@ function VideoTabInner() {
       // fetch() rejects on a dropped mobile connection, and r.json() throws on a 502 HTML page
       // from the proxy. Without this the spinner just stopped and nothing was said — on the one
       // screen where the owner cannot tell whether they have been charged.
-      setErr(hi ? "Server तक नहीं पहुँच पाए। Internet देखकर दोबारा दबाएँ — दो बार पैसे नहीं कटेंगे।" : "We could not reach the server. Check your internet and tap again — you will not be charged twice.");
+      setGenErr(hi ? "Server तक नहीं पहुँच पाए। Internet देखकर दोबारा दबाएँ — दो बार पैसे नहीं कटेंगे।" : "We could not reach the server. Check your internet and tap again — you will not be charged twice.");
     } finally { setBusy(false); }
   }
 
-  function startFresh() { setOptions([]); setChosen(null); setPhotos([]); setF(emptyForm()); setPlan(null); setErr(""); setTestimonialData(null); setHookOptions([]); setStep(0); setSubmitted(false); setNeedCredits(null); setStoryboardFree(false); setDraftOn(true); newIdem(); clearVideoDraft(); }
+  function startFresh() { setOptions([]); setChosen(null); setPhotos([]); setF(emptyForm()); setPlan(null); setPlanErr(null); setNameErr(""); setGenErr(""); setHookErr(""); setPhotoErr(""); setPresenterErr(""); setSampleErr(null); setTestimonialData(null); setHookOptions([]); setStep(0); setSubmitted(false); setNeedCredits(null); setStoryboardFree(false); setDraftOn(true); newIdem(); clearVideoDraft(); }
   function editJob(j: Job) {
     const inp = j.input ?? {};
     setF({ ...emptyForm(), ...(inp as Record<string, unknown>) } as typeof f);
     setPhotos(Array.isArray(inp.photos) ? (inp.photos as string[]) : []);
     const scenes = Array.isArray(inp.scenes) ? (inp.scenes as Scene[]) : [];
     setPlan({ headline: String(inp.headline ?? ""), scenes: scenes.length ? scenes : [{ text: "", caption_text: "", visual: "", motion: "" }], cta: String(inp.cta ?? ""), caption: String(inp.caption ?? ""), features: Array.isArray(inp.features) ? (inp.features as string[]) : [], template: String(inp.template ?? "bold"), music: String(inp.music ?? "") });
-    setErr(""); setStep(1); setSubmitted(false); setNeedCredits(null); setDraftOn(true); newIdem();
+    setPlanErr(null); setGenErr(""); setHookErr(""); setStep(1); setSubmitted(false); setNeedCredits(null); setDraftOn(true); newIdem();
   }
   async function share(url: string, name: string) {
-    setBusyAction(url);
+    setBusyAction(url); setFileMsg((m) => { const n = { ...m }; delete n[url]; return n; });
     const r = await shareFile(url, plan?.caption ?? f.product, name, "video/mp4");
-    setFileMsg((m) => ({ ...m, [url]: r === "shared" ? (hi ? "भेज दी" : "Sent") : r === "downloaded" ? (hi ? "फ़ोन में save हो गई" : "Saved to your phone") : (hi ? "Share नहीं हुआ — Download दबाएँ" : "Could not share — tap Download") }));
+    setFileMsg((m) => ({ ...m, [url]: r === "shared" ? { t: hi ? "भेज दी" : "Sent", ok: true } : r === "downloaded" ? { t: hi ? "फ़ोन में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Share नहीं हुआ। फिर से Share दबाएँ, या Download दबाएँ।" : "Not shared. Tap Share to try again, or tap Download.", ok: false, neutral: true } }));
     setBusyAction("");
   }
   async function download(url: string, name: string) {
-    setBusyAction(url + "dl");
+    setBusyAction(url + "dl"); setFileMsg((m) => { const n = { ...m }; delete n[url]; return n; });
     const ok = await downloadPoster(url, name);
-    setFileMsg((m) => ({ ...m, [url]: ok ? (hi ? "फ़ोन में save हो गई" : "Saved to your phone") : (hi ? "Save नहीं हुई — फिर कोशिश करें" : "Could not save — try again") }));
+    setFileMsg((m) => ({ ...m, [url]: ok ? { t: hi ? "फ़ोन में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Save नहीं हुई — फिर कोशिश करें" : "Could not save — try again", ok: false } }));
     setBusyAction("");
   }
   // The only way out on a phone. /api/media/jobs DELETE already exists; until now nothing in this shell called it.
   async function stopJob(j: Job) {
     const cost = Number(j.cost ?? 0);
     if (!window.confirm(hi ? "यह video रोक दें? जो credits इस्तेमाल नहीं हुए, वे वापस मिल जाएँगे।" : "Stop this video? The credits we have not used yet come back to you.")) return;
-    setStopping(j.id);
+    setStopping(j.id); setRowMsg((m) => { const n = { ...m }; delete n[j.id]; return n; });
     try {
       const r = await fetch(`/api/media/jobs?id=${j.id}`, { method: "DELETE" });
       const d = await r.json().catch(() => ({}));
@@ -408,8 +441,10 @@ function VideoTabInner() {
               )}
               {compressing && <span className="h-20 w-20 rounded-xl bg-surface2 border border-dashed border-border grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></span>}
             </div>
+            {photoErr && <p className="mt-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{photoErr}</p>}
           </div>
-          <input className={inp} placeholder={hi ? "प्रोडक्ट का नाम *" : "Product name *"} value={f.product} onChange={(e) => setF({ ...f, product: e.target.value })} />
+          <input ref={productRef} className={inp} placeholder={hi ? "प्रोडक्ट का नाम *" : "Product name *"} value={f.product} onChange={(e) => { setF({ ...f, product: e.target.value }); setNameErr(""); if (planErr?.at === 0) setPlanErr(null); }} />
+          {nameErr && f.product.trim().length < 2 && <p className="-mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{nameErr}</p>}
           <input className={inp} placeholder={hi ? "Category (जैसे water ionizer, saree, coaching)" : "Category (e.g. water ionizer, saree, coaching)"} value={f.category} onChange={(e) => setF({ ...f, category: e.target.value })} />
           <input className={inp} placeholder={hi ? "Brand / दुकान का नाम" : "Brand / shop name"} value={f.brandName} onChange={(e) => setF({ ...f, brandName: e.target.value })} />
           <div><p className="text-xs font-semibold text-muted mb-1">{hi ? "Video का मक़सद" : "Goal"}</p><div className="flex flex-wrap gap-2">{[["leads", hi ? "WhatsApp पर customers" : "WhatsApp customers"], ["offer", hi ? "ऑफ़र बेचना" : "Promote an offer"], ["awareness", hi ? "पहचान बनाना" : "Get known"], ["festival", hi ? "त्योहार + product" : "Festival + product"], ["transformation", hi ? "पहले → बाद (बदलाव)" : "Before → After"]].map(([k, l]) => <button key={k} type="button" onClick={() => setF({ ...f, goal: k })} className={chip(f.goal === k)}>{l}</button>)}</div></div>
@@ -437,8 +472,8 @@ function VideoTabInner() {
           <input className={inp} placeholder={hi ? "ऑफ़र (ज़रूरी नहीं, जैसे: ₹5000 छूट + free installation)" : "Offer (optional)"} value={f.offer} onChange={(e) => setF({ ...f, offer: e.target.value })} />
           <input className={inp} type="tel" placeholder={hi ? "Call / WhatsApp नंबर (ज़रूरी नहीं)" : "Call / WhatsApp number (optional)"} value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
           <textarea className={inp} rows={2} placeholder={hi ? "कुछ और जो AI को पता होना चाहिए (ज़रूरी नहीं)" : "Anything else the AI should know (optional)"} value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} />
-          {err && <p className="text-sm text-danger">{err}</p>}
-          <button type="button" onClick={makePlan} disabled={planBusy || f.product.trim().length < 2} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-50">{planBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {hi ? "AI से शब्द लिखवाओ (free)" : "Let AI write the words (free)"}</button>
+          {planErr?.at === 0 && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{planErr.msg}</p>}
+          <button type="button" onClick={makePlan} disabled={planBusy} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-50">{planBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {hi ? "AI से शब्द लिखवाओ (free)" : "Let AI write the words (free)"}</button>
         </div>
       )}
 
@@ -481,6 +516,7 @@ function VideoTabInner() {
               <p className="text-xs font-semibold text-muted">{hi ? "पहली line पसंद नहीं आई? दूसरी तरह से शुरू करके देखें" : "Do not like the first line? Try a different way to start."}</p>
               <button type="button" onClick={tryHooks} disabled={hookBusy} className="inline-flex items-center gap-1 rounded-full border border-border px-2.5 py-1 text-xs font-semibold shrink-0">{hookBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : "🎯"} {hi ? "3 नई शुरुआत" : "3 new starts"}</button>
             </div>
+            {hookErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{hookErr}</p>}
             {hookOptions.length > 0 && (
               <div className="space-y-1.5">
                 {hookOptions.map((h) => <button key={h} type="button" onClick={() => pickHook(h)} className="w-full text-left rounded-lg border border-border px-3 py-2 text-sm hover:border-brand">{h}</button>)}
@@ -488,6 +524,7 @@ function VideoTabInner() {
             )}
           </div>
           {/* Back and Next live in the one nav row at the bottom of every step — only "Write again" is special to this step. */}
+          {planErr?.at === 1 && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{planErr.msg}</p>}
           <button type="button" onClick={makePlan} disabled={planBusy} className="w-full inline-flex items-center justify-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]">{planBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} {hi ? "फिर से लिखवाओ" : "Write again"}</button>
         </div>
       )}
@@ -527,6 +564,7 @@ function VideoTabInner() {
                 )}
                 {presenterUploading && <span className="h-20 w-20 rounded-xl bg-surface border border-dashed border-border grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></span>}
               </div>
+              {presenterErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{presenterErr}</p>}
             </div>
           )}
           <div className="grid grid-cols-3 gap-2">{TPL.map((t) => (
@@ -547,10 +585,12 @@ function VideoTabInner() {
                   <p className="text-xs font-semibold text-muted mb-1.5">{gl}</p>
                   <div className="space-y-1.5">
                     {list.map((v) => (
-                      <div key={v.key} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${f.voiceStyle === v.key ? "border-brand bg-brand-soft" : "border-border"}`}>
+                      <div key={v.key} className="space-y-0.5"><div className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 ${f.voiceStyle === v.key ? "border-brand bg-brand-soft" : "border-border"}`}>
                         <button type="button" onClick={() => playSample(`/voices/${v.key}.mp3`, v.key)} className="h-8 w-8 rounded-full grad-brand text-white grid place-items-center shrink-0">{playing === v.key ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}</button>
                         <button type="button" onClick={() => setF({ ...f, voiceStyle: v.key })} className="flex-1 text-left min-w-0"><span className="block text-sm font-semibold">{v.label}</span><span className="block text-[11px] text-muted truncate">{v.note}</span></button>
                         {f.voiceStyle === v.key && <Check className="h-4 w-4 text-good shrink-0" />}
+                      </div>
+                      {sampleErr?.key === v.key && <p className="text-[11px] font-semibold text-danger">{sampleErr.msg}</p>}
                       </div>
                     ))}
                   </div>
@@ -561,10 +601,12 @@ function VideoTabInner() {
           <p className="text-xs font-semibold text-muted">Music</p>
           <button type="button" onClick={() => setF({ ...f, music: "" })} className={`w-full text-left rounded-lg border px-3 py-2.5 text-sm ${!f.music ? "border-brand bg-brand-soft" : "border-border"}`}>{hi ? "बिना music" : "No music"}</button>
           {tracks.map((t) => (
-            <div key={t.key} className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${f.music === t.key ? "border-brand bg-brand-soft" : "border-border"}`}>
+            <div key={t.key} className="space-y-0.5"><div className={`flex items-center gap-2 rounded-lg border px-3 py-2 ${f.music === t.key ? "border-brand bg-brand-soft" : "border-border"}`}>
               <button type="button" onClick={() => playSample(t.url, t.key)} className="h-8 w-8 rounded-full grad-brand text-white grid place-items-center">{playing === t.key ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}</button>
               <button type="button" onClick={() => setF({ ...f, music: t.key })} className="flex-1 text-left text-sm font-medium">{t.name}</button>
               {f.music === t.key && <Check className="h-4 w-4 text-good" />}
+            </div>
+            {sampleErr?.key === t.key && <p className="text-[11px] font-semibold text-danger">{sampleErr.msg}</p>}
             </div>
           ))}
         </div>
@@ -619,8 +661,9 @@ function VideoTabInner() {
                 : !p.facts_confirmed_at ? <button type="button" onClick={() => setChecking(true)} className="rounded-lg border border-lead/60 bg-lead/10 px-3 py-1.5 text-xs font-semibold text-lead">{hi ? `पहले “${p.name}” के बारे में 3 छोटे सवालों के जवाब दें →` : `First answer 3 quick questions about “${p.name}” →`}</button>
                 : <p className="text-xs text-good">{hi ? `✓ “${p.name}” का Product check हो गया` : `✓ Product check done for “${p.name}”`} · <button type="button" onClick={() => setChecking(true)} className="underline">{hi ? "देखें / बदलें" : "view / change"}</button></p>}
             </div>); })()}
-          {err && <p className="text-sm text-danger">{err}</p>}
-          {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
+          {genErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{genErr}</p>}
+          {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setGenErr(""); refresh(); }} />}
+          {!f.formats.length && <p className="text-sm text-danger">{hi ? "कम से कम एक साइज़ चुनें।" : "Pick at least one size."}</p>}
           <button type="button" onClick={generate} disabled={busy || submitted || !f.formats.length || !plan || (f.tier === "realistic" && realisticOff) || (f.tier === "presenter" && !f.presenterPhoto) || (credits !== null && credits < total && !(storyboardFree && f.tier === "realistic" && !!productId))} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {storyboardFree && f.tier === "realistic" && productId ? (hi ? "मेरा Storyboard बनाओ (free)" : "Make my storyboard (free)") : submitted ? (hi ? "बन चुकी है" : "Already made") : hi ? `Video बनाओ · ${total} credits` : `Make my video · ${total} credits`}</button>
         </div>
       )}
@@ -656,7 +699,7 @@ function VideoTabInner() {
                         <button type="button" onClick={() => share(u, `shubhora-${k}.mp4`)} disabled={busyAction === u} className="inline-flex items-center gap-1 rounded-lg bg-[#25D366] px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busyAction === u ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />} {hi ? "Share" : "Share"}</button>
                         <button type="button" onClick={() => download(u, `shubhora-${k}.mp4`)} disabled={busyAction === u + "dl"} className="inline-flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-60">{busyAction === u + "dl" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}</button>
                       </div>
-                      {fileMsg[u] && <p className="text-[11px] text-good">{fileMsg[u]}</p>}
+                      {fileMsg[u] && <p className={`text-[11px] ${fileMsg[u].ok ? "text-good" : fileMsg[u].neutral ? "text-muted" : "font-semibold text-danger"}`}>{fileMsg[u].t}</p>}
                     </div>
                   ))}
                   <button type="button" onClick={() => editJob(j)} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs font-semibold"><Pencil className="h-3.5 w-3.5" /> {hi ? "बदलकर दोबारा बनाओ (credits फिर लगेंगे)" : "Change and make again (uses credits again)"}</button>
@@ -671,13 +714,14 @@ function VideoTabInner() {
       {/* Every step has a Back and a Next. Back = the step before; step 0's Back leaves the screen for the one the owner came from
           (the Video hub, Customer reviews, Photoshoot...). A review video was opened straight on Look, so there Back is the Reviews
           screen. Next needs a script first. */}
+      {step === 0 && !plan && !submitted && <p className="text-xs text-muted">{hi ? "आगे जाने के लिए पहले ऊपर “AI से शब्द लिखवाओ” दबाएँ।" : "To go on, first tap “Let AI write the words” above."}</p>}
       {step <= 3 && !submitted && (
         <div className="flex gap-2">
           <button type="button" onClick={() => (step === 0 ? goBack(router, "/poster/videos") : step === 2 && f.tier === "testimonial" && testimonialData ? goBack(router, "/poster/testimonials") : setStep(step - 1))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
           <button type="button" disabled={step === 0 && !plan} onClick={() => setStep(step + 1)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white min-h-[44px] disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
         </div>
       )}
-      {step === 4 && !submitted && <button type="button" onClick={() => setStep(3)} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>}
+      {step === 4 && !submitted && <button type="button" onClick={() => { setGenErr(""); setNeedCredits(null); setStep(3); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>}
       {/* "Your videos": after a video was made, Back leaves for the previous screen (never the Make form: that would pay again);
           otherwise it returns to the step the owner was on. */}
       {step === 5 && <button type="button" onClick={() => (submitted ? goBack(router, "/poster/videos") : setStep(workStep.current))} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold min-h-[44px]"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>}

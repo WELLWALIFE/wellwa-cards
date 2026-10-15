@@ -32,7 +32,10 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
   const T = (en: string, h: string) => (hi ? h : en);
   const [text, setText] = useState("");
   const [busy, setBusy] = useState<"ask" | "apply" | "undo" | "">("");
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState(""); // "Go" (ask the AI): shown right under the box and its Go button
+  const [applyErr, setApplyErr] = useState(""); // "Apply and go live": shown inside the change list, under that button
+  const [undoErr, setUndoErr] = useState(""); // "Undo": shown right under the Undo button
+  const [speakErr, setSpeakErr] = useState(""); // the mic: shown right under the box
   const [plan, setPlan] = useState<{ next: Card; notes: string[]; summary: string } | null>(null);
   const [done, setDone] = useState("");
   const [canUndo, setCanUndo] = useState(false);
@@ -55,14 +58,15 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
   function speak() {
     if (locked) { setSheet(true); return; }
     if (listening) { rec.current?.stop(); return; }
-    const Ctor = speechCtor(); if (!Ctor) return;
+    setSpeakErr(""); setErr("");
+    const Ctor = speechCtor(); if (!Ctor) { setSpeakErr(T("Speaking does not work in this browser. Please type it.", "इस browser में बोलना नहीं चलता। टाइप करें।")); return; }
     const r = new Ctor();
     r.lang = hi ? "hi-IN" : "en-IN"; r.interimResults = false; r.maxAlternatives = 1;
     r.onresult = (e) => { const t = e.results[0]?.[0]?.transcript?.trim(); if (t) setText((cur) => (cur.trim() ? `${cur.trim()} ${t}` : t)); };
     r.onend = () => setListening(false);
-    r.onerror = () => setListening(false);
+    r.onerror = () => { setListening(false); setSpeakErr(T("Could not hear you. Allow the microphone and try again, or type it.", "सुन नहीं पाए। microphone की इजाज़त दें और दोबारा try करें, या टाइप करें।")); };
     rec.current = r; setListening(true);
-    try { r.start(); } catch { setListening(false); }
+    try { r.start(); } catch { setListening(false); setSpeakErr(T("Could not start the microphone. Please type it.", "microphone शुरू नहीं हुआ। टाइप करें।")); }
   }
 
   const EXAMPLES = hi
@@ -71,8 +75,9 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
 
   async function ask() {
     if (locked) { setSheet(true); return; }
-    const q = text.trim(); if (!q) return;
-    setBusy("ask"); setErr(""); setPlan(null); setDone("");
+    const q = text.trim();
+    if (!q) { setErr(T("Write what to change first.", "पहले लिखें क्या बदलना है।")); setSpeakErr(""); box.current?.focus(); return; }
+    setBusy("ask"); setErr(""); setSpeakErr(""); setApplyErr(""); setUndoErr(""); setPlan(null); setDone("");
     try {
       const r = await api<{ ops?: EditOp[]; summary?: string; error?: string }>("/api/card/edit", { method: "POST", json: { card, instruction: q, lang } });
       if (!r.ok) { setErr(r.data?.error || T("The AI did not respond. Please try again.", "AI ने जवाब नहीं दिया। दोबारा try करें।")); return; }
@@ -85,28 +90,29 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
   }
   async function apply() {
     if (!plan) return;
-    setBusy("apply"); setErr("");
+    setBusy("apply"); setErr(""); setApplyErr("");
     try {
       const r = await publishCard(plan.next);
-      if (!r.ok) { setErr(r.error); return; }
+      if (!r.ok) { setApplyErr(r.error); return; }
       try { localStorage.setItem(undoKey(card.id), JSON.stringify({ before: card, after: sig(plan.next) })); setCanUndo(true); } catch { /* ignore */ }
       setDone(T("Changed and live.", "बदल गया, live है।"));
       setPlan(null); setText("");
       onChanged?.(plan.next);
-    } catch { setErr(T("Could not publish. Please try again.", "publish नहीं हुआ। दोबारा try करें।")); }
+    } catch { setApplyErr(T("Could not publish. Please try again.", "publish नहीं हुआ। दोबारा try करें।")); }
     finally { setBusy(""); }
   }
   async function undo() {
-    setBusy("undo"); setErr("");
+    setBusy("undo"); setErr(""); setUndoErr("");
     try {
-      const raw = localStorage.getItem(undoKey(card.id)); if (!raw) return;
-      const prev = (JSON.parse(raw) as { before?: Card }).before; if (!prev) return;
+      const gone = T("There is nothing to undo any more.", "अब वापस लेने को कुछ नहीं बचा।");
+      const raw = localStorage.getItem(undoKey(card.id)); if (!raw) { setUndoErr(gone); return; }
+      const prev = (JSON.parse(raw) as { before?: Card }).before; if (!prev) { setUndoErr(gone); return; }
       const r = await publishCard(prev);
-      if (!r.ok) { setErr(r.error); return; }
+      if (!r.ok) { setUndoErr(r.error); return; }
       localStorage.removeItem(undoKey(card.id)); setCanUndo(false);
       setDone(T("Previous version is back.", "पिछला version वापस आ गया।"));
       onChanged?.(prev);
-    } catch { setErr(T("Could not undo.", "undo नहीं हुआ।")); }
+    } catch { setUndoErr(T("Could not undo.", "undo नहीं हुआ।")); }
     finally { setBusy(""); }
   }
 
@@ -119,18 +125,20 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
         {EXAMPLES.map((e) => <button key={e} type="button" onClick={() => setText(e)} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px]">{e}</button>)}
       </div>
       <div className="flex gap-2">
-        <textarea ref={box} id="ai-edit-box" value={text} onChange={(e) => setText(e.target.value)} rows={2} placeholder={listening ? T("Listening… say what to change", "सुन रहे हैं… बोलें क्या बदलना है") : T("e.g. remove the offer section, and write CBSE in the about", "जैसे offer section हटा दो, और about में CBSE लिखो")} className={`w-full rounded-xl border bg-surface px-3 py-2 text-sm outline-none focus:border-brand ${listening ? "border-brand" : "border-border"}`} />
+        <textarea ref={box} id="ai-edit-box" value={text} onChange={(e) => { setText(e.target.value); if (err) setErr(""); }} rows={2} placeholder={listening ? T("Listening… say what to change", "सुन रहे हैं… बोलें क्या बदलना है") : T("e.g. remove the offer section, and write CBSE in the about", "जैसे offer section हटा दो, और about में CBSE लिखो")} className={`w-full rounded-xl border bg-surface px-3 py-2 text-sm outline-none focus:border-brand ${listening ? "border-brand" : "border-border"}`} />
         <div className="flex shrink-0 flex-col justify-end gap-1.5">
           {canSpeak && <button type="button" onClick={speak} disabled={!!busy} aria-label={listening ? T("Stop", "रोकें") : T("Speak", "बोलें")} aria-pressed={listening} className={`inline-flex items-center justify-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold ${listening ? "border-danger bg-danger/10 text-danger" : "border-brand/40 bg-surface text-brand-ink"}`}>{listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {listening ? T("Stop", "रोकें") : T("Speak", "बोलें")}</button>}
-          <button type="button" onClick={() => void ask()} disabled={!!busy || (!locked && !text.trim())} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "ask" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Go", "करो")}</button>
+          <button type="button" onClick={() => void ask()} disabled={!!busy} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "ask" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Go", "करो")}</button>
         </div>
       </div>
       {err && <p className="text-sm text-danger">{err}</p>}
+      {speakErr && <p className="text-sm text-danger">{speakErr}</p>}
       {done && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm">
           <span className="font-semibold text-good">✓ {done}</span>
           {url && <a href={`${url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold"><Globe className="h-3.5 w-3.5 text-brand" /> {T("Open website", "Website खोलें")}</a>}
           {canUndo && <button type="button" onClick={() => void undo()} disabled={!!busy} className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold"><Undo2 className="h-3.5 w-3.5" /> {T("Undo", "वापस लो")}</button>}
+          {undoErr && <p className="w-full text-sm text-danger">{undoErr}</p>}
         </div>
       )}
       {plan && (
@@ -139,12 +147,14 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
           <ul className="space-y-1 text-sm">{plan.notes.map((n, i) => <li key={i} className="flex gap-1.5"><span className="text-brand">•</span><span>{n}</span></li>)}</ul>
           {plan.summary && <p className="text-xs text-muted">{plan.summary}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setPlan(null)} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm"><X className="h-4 w-4" /> {T("No", "नहीं")}</button>
+            <button type="button" onClick={() => { setPlan(null); setApplyErr(""); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm"><X className="h-4 w-4" /> {T("No", "नहीं")}</button>
             <button type="button" onClick={() => void apply()} disabled={busy === "apply"} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2 text-sm font-semibold text-white disabled:opacity-60">{busy === "apply" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {T("Apply and go live", "लगाओ, live करो")}</button>
           </div>
+          {applyErr && <p className="text-sm text-danger">{applyErr}</p>}
         </div>
       )}
       {canUndo && !plan && !done && <button type="button" onClick={() => void undo()} disabled={!!busy} className="inline-flex items-center gap-1.5 text-xs font-semibold text-muted"><Undo2 className="h-3.5 w-3.5" /> {T("Undo the AI change", "AI का बदलाव वापस लो")}</button>}
+      {!done && undoErr && <p className="text-sm text-danger">{undoErr}</p>}
     </section>
   );
 }

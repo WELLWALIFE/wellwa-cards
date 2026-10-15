@@ -75,9 +75,9 @@ export default function ProfilePage() {
             {data.photoEnabled && (
               <div className={`${CARD} space-y-3`}>
                 <p className="font-bold">{en ? "Profile photo" : "प्रोफ़ाइल फ़ोटो"}</p>
-                <KycPhoto kind="photo" maxDim={600} label={en ? "Photo" : "फ़ोटो"} id={photoId ?? (data.photoUrl ? "current" : "")} currentUrl={data.photoUrl} onChange={setPhotoId} />
+                <KycPhoto kind="photo" maxDim={600} label={en ? "Photo" : "फ़ोटो"} id={photoId ?? (data.photoUrl ? "current" : "")} currentUrl={data.photoUrl} onChange={(id) => { setPhotoId(id); ph.setMsg(null); }} />
                 <Msg m={ph.msg} />
-                <button type="button" disabled={ph.busy || photoId === null} onClick={() => void ph.run({ op: "set_photo", file: photoId }, reload)} className={BTN}>{en ? "Save photo" : "फ़ोटो सेव करें"}</button>
+                <button type="button" disabled={ph.busy} onClick={() => { if (photoId === null) { ph.setMsg({ ok: false, text: en ? "Choose a photo first, then tap Save." : "पहले फ़ोटो चुनें, फिर सेव करें।" }); return; } void ph.run({ op: "set_photo", file: photoId }, reload); }} className={BTN}>{en ? "Save photo" : "फ़ोटो सेव करें"}</button>
               </div>
             )}
 
@@ -86,7 +86,7 @@ export default function ProfilePage() {
               {data.linked
                 ? <p className="text-sm text-muted">{en ? "Your Shubhora login email: " : "आपका Shubhora login ईमेल: "}<b className="text-ink">{data.suiteEmail}</b></p>
                 : <form onSubmit={(e) => { e.preventDefault(); void em.run({ op: "set_email", email }, reload); }} className="space-y-3">
-                    <input type="email" required className="ed-input" placeholder={data.email ?? "name@email.com"} value={email} onChange={(e) => setEmail(e.target.value)} />
+                    <input type="email" required className="ed-input" placeholder={data.email ?? "name@email.com"} value={email} onChange={(e) => { setEmail(e.target.value); em.setMsg(null); }} />
                     <Msg m={em.msg} />
                     <button type="submit" disabled={em.busy} className={BTN}>{en ? "Save" : "सेव करें"}</button>
                   </form>}

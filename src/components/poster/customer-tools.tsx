@@ -24,21 +24,24 @@ export function CustomerTools() {
   const [open, setOpen] = useState(false);
   const [text, setText] = useState("");
   const [msg, setMsg] = useState("");
+  const [sendErr, setSendErr] = useState(""); // "Send to everyone" failed: shown right under its Send button
   const [busy, setBusy] = useState(false);
+  const [togErr, setTogErr] = useState<{ k: string; msg: string } | null>(null); // a switch that did not save: shown under its own row
 
   useEffect(() => { api<Info>("/api/crm/customers").then((r) => { if (r.ok) setInfo(r.data); }); }, []);
   async function toggle(k: "festival_wishes" | "review_ask") {
     if (!info) return;
+    setTogErr(null);
     const next = { ...info.prefs, [k]: !info.prefs[k] };
     setInfo({ ...info, prefs: next });
     const r = await api<{ prefs?: Info["prefs"]; error?: string }>("/api/crm/customers", { method: "PATCH", json: { [k]: next[k] } });
-    if (!r.ok) { setMsg(r.data.error || T("सेव नहीं हुआ।", "Could not save.")); setInfo({ ...info }); }
+    if (!r.ok) { setTogErr({ k, msg: r.data.error || T("सेव नहीं हुआ।", "Could not save.") }); setInfo({ ...info }); }
   }
   async function send() {
-    setBusy(true); setMsg("");
+    setBusy(true); setMsg(""); setSendErr(""); setTogErr(null);
     const r = await api<{ ok?: boolean; planned?: number; error?: string }>("/api/crm/customers", { method: "POST", json: { text } });
     setBusy(false);
-    if (!r.ok) { setMsg(r.data.error || T("भेज नहीं पाया।", "Could not send.")); return; }
+    if (!r.ok) { setSendErr(r.data.error || T("भेज नहीं पाया।", "Could not send.")); return; }
     setMsg(T(`✅ ${r.data.planned} ग्राहकों को जा रहा है — धीरे-धीरे, आपके नंबर से।`, `✅ Going to ${r.data.planned} customers — paced, from your number.`));
     setText(""); setOpen(false);
   }
@@ -52,10 +55,12 @@ export function CustomerTools() {
         <div className="flex items-center gap-2 min-w-0"><Gift className="h-4 w-4 text-brand-ink shrink-0" /><div className="min-w-0"><p className="font-semibold leading-tight">{T("त्योहार की शुभकामनाएँ अपने-आप", "Festival wishes, automatic")}</p><p className="text-[11px] text-muted truncate">{fest ? T(`अगला: ${fest.hi}, ${festWhen} · ${info.customers} ग्राहकों को आपके नाम से`, `Next: ${fest.en}, ${festWhen} · to ${info.customers} customers in your name`) : T(`${info.customers} ग्राहकों को आपके नाम से`, `to ${info.customers} customers in your name`)}</p></div></div>
         <Switch on={info.prefs.festival_wishes} onClick={() => toggle("festival_wishes")} />
       </div>
+      {togErr?.k === "festival_wishes" && <p className="pb-2 text-xs font-medium text-danger">{togErr.msg}</p>}
       <div className={`${row} border-t border-border`}>
         <div className="flex items-center gap-2 min-w-0"><Star className="h-4 w-4 text-brand-ink shrink-0" /><div className="min-w-0"><p className="font-semibold leading-tight">{T("बिकने के बाद Google रिव्यू माँगो", "Ask for a Google review after a sale")}</p><p className="text-[11px] text-muted truncate">{T("बुकिंग 'हो गया' या lead converted होते ही धन्यवाद + रिव्यू लिंक", "Thank-you + review link when a booking is done or a lead converts")}</p></div></div>
         <Switch on={info.prefs.review_ask} onClick={() => toggle("review_ask")} />
       </div>
+      {togErr?.k === "review_ask" && <p className="pb-2 text-xs font-medium text-danger">{togErr.msg}</p>}
       <div className={`${row} border-t border-border`}>
         <div className="flex items-center gap-2 min-w-0"><Megaphone className="h-4 w-4 text-brand-ink shrink-0" /><div className="min-w-0"><p className="font-semibold leading-tight">{T("सबको ऑफ़र भेजो", "Send an offer to everyone")}</p><p className="text-[11px] text-muted truncate">{T("एक मैसेज, सारे ग्राहक, आपके नंबर से · दिन में 3 बार तक", "One message, every customer, from your number · up to 3 a day")}</p></div></div>
         <button type="button" onClick={() => setOpen((v) => !v)} className="shrink-0 rounded-full border border-border px-3 py-1 text-xs font-semibold">{open ? T("बंद", "Close") : T("लिखें", "Write")}</button>
@@ -64,9 +69,10 @@ export function CustomerTools() {
         <div className="pb-3 space-y-2">
           <textarea value={text} onChange={(e) => setText(e.target.value)} rows={4} maxLength={900} className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-brand" placeholder={T("नमस्ते {name} जी 🙏 इस हफ़्ते 20% छूट — कोड DIWALI20। आज ही ऑर्डर करें: ", "Hi {name} 🙏 20% off this week — code DIWALI20. Order today: ")} />
           <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-muted">{info.linked ? T("{name} की जगह ग्राहक का नाम आएगा।", "{name} becomes the customer's first name.") : T("पहले WhatsApp लिंक करें (WhatsApp टैब)।", "Link your WhatsApp first (WhatsApp tab).")}</p>
+            <p className="text-[11px] text-muted">{info.linked ? (text.trim().length < 10 ? T("भेजने के लिए कम से कम 10 अक्षर लिखें।", "Write at least 10 characters to send.") : T("{name} की जगह ग्राहक का नाम आएगा।", "{name} becomes the customer's first name.")) : T("पहले WhatsApp लिंक करें (WhatsApp टैब)।", "Link your WhatsApp first (WhatsApp tab).")}</p>
             <button type="button" disabled={busy || !info.linked || text.trim().length < 10} onClick={send} className="rounded-full grad-brand px-4 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{busy ? "…" : T(`${info.customers} को भेजें`, `Send to ${info.customers}`)}</button>
           </div>
+          {sendErr && <p className="text-xs font-medium text-danger">{sendErr}</p>}
         </div>
       )}
       {msg && <p className="pb-2 text-xs font-medium text-brand-ink">{msg}</p>}

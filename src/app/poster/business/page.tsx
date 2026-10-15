@@ -40,6 +40,7 @@ function BusinessInner() {
   const [res, setRes] = useState<Res | null>(null);
   const [state, setState] = useState<"loading" | "out" | "ready" | "error">("loading");
   const [copied, setCopied] = useState(false);
+  const [copyErr, setCopyErr] = useState(false); // the phone refused the copy: say so under the Copy / Share buttons, not nothing
 
   const load = useCallback(async () => {
     const r = await api<Res>("/api/partner/dashboard");
@@ -47,9 +48,10 @@ function BusinessInner() {
   }, []);
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { setState("out"); return; } load(); })(); }, [load]);
 
-  async function copy() { if (!res?.link) return; try { await navigator.clipboard.writeText(res.link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  async function copy() { if (!res?.link) return; setCopyErr(false); try { await navigator.clipboard.writeText(res.link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyErr(true); } }
   async function share() {
     if (!res?.link) return;
+    setCopyErr(false);
     const text = en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${res.link}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${res.link}`;
     try { if (navigator.share) { await navigator.share({ text, url: res.link }); return; } } catch { /* cancelled */ }
     copy();
@@ -128,6 +130,7 @@ function BusinessInner() {
             <button type="button" onClick={copy} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border py-2.5 text-sm font-semibold">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />} {copied ? (en ? "Copied" : "Copy हो गया") : "Copy"}</button>
             <button type="button" onClick={share} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {en ? "Share" : "Share करें"}</button>
           </div>
+          {copyErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger" role="status">{en ? "Could not copy. Press and hold the link above to copy it." : "Copy नहीं हो पाया। ऊपर का link दबाकर रखें और खुद copy करें।"}</p>}
           <p className="text-[11px] text-muted">{en ? `Whoever creates a Shubhora account from this link joins your team — placed automatically on the side with fewer IDs. Sponsor is always you, shown as ${res.username ?? "your username"}. Your digital card carries the same button at the bottom.` : `इस link से जो Shubhora account बनाएगा, वो आपकी team में आएगा — कम ID वाली side में अपने-आप। Sponsor हमेशा आप, नाम की जगह ${res.username ?? "आपका username"}। आपके digital card के नीचे भी यही button है।`}</p>
           {res.cardLink && <p className="text-[11px] text-faint">{en ? "Your card" : "आपका card"}: {res.cardLink.replace(/^https?:\/\//, "")} — <Link href="/poster/card" className="font-semibold text-brand-ink">{en ? "open" : "खोलें"}</Link></p>}
         </section>

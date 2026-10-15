@@ -33,6 +33,7 @@ export default function WebAddressPage() {
   const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
   const [copied, setCopied] = useState(false);
+  const [copyFail, setCopyFail] = useState(false);
   const domainRef = useRef<HTMLElement | null>(null);
 
   useEffect(() => {
@@ -91,7 +92,8 @@ export default function WebAddressPage() {
     setMsg(T("Done. Your website and card now open at the new link.", "हो गया। आपकी website और card अब नए link पर खुलेंगे।"));
   }
   async function copy() {
-    try { await navigator.clipboard.writeText(`https://${liveAddress}`); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ }
+    setCopyFail(false);
+    try { await navigator.clipboard.writeText(`https://${liveAddress}`); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail(true); }
   }
 
   return (
@@ -119,6 +121,7 @@ export default function WebAddressPage() {
               <button type="button" onClick={copy} aria-label={T("Copy link", "Link copy करें")} className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />}</button>
               <a href={`https://${liveAddress}`} target="_blank" rel="noreferrer" aria-label={T("Open", "खोलें")} className="grid h-8 w-8 place-items-center rounded-lg border border-border text-muted"><ExternalLink className="h-4 w-4" /></a>
             </div>
+            {copyFail && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link above to copy it by hand.", "Copy नहीं हुआ। ऊपर का link दबाकर रखें और हाथ से copy करें।")}</p>}
           </section>
 
           <section className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -134,7 +137,7 @@ export default function WebAddressPage() {
                 {([["business", opts.business, T("From business name", "Business के नाम से")], ["name", opts.name, T("From your name", "आपके नाम से")]] as const).map(([k, slug, label]) => {
                   const on = typed === slug;
                   return (
-                    <button key={k} type="button" onClick={() => { setVal(slug); setMsg(""); void setLinkPref(k); }} className={`rounded-xl border-2 px-2.5 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
+                    <button key={k} type="button" onClick={() => { setVal(slug); setMsg(""); setErr(""); void setLinkPref(k); }} className={`rounded-xl border-2 px-2.5 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
                       <span className="flex items-center gap-1 text-[11px] text-muted">{on && <Check className="h-3 w-3 text-brand" />}{label}</span>
                       <span className="block truncate text-xs font-semibold">/c/{slug}</span>
                     </button>

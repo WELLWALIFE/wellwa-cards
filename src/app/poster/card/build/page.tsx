@@ -52,7 +52,7 @@ const field = `mt-1 w-full ${box}`;
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_ROWS = 6;
 
-type Row = { id?: string; name: string; brand: string; price: string; photo: string; studio?: boolean; original?: string; busy?: boolean; note?: string };
+type Row = { id?: string; name: string; brand: string; price: string; photo: string; studio?: boolean; original?: string; busy?: boolean; note?: string; /** the note is a problem (shown in the error colour), not progress or success */ bad?: boolean };
 /** A finished preview kept on this phone. `built` is the card the server wrote (before it was merged into the
  *  live card) and `liveSig` says which live card it was merged into, so a preview is never published on top of
  *  a card that has changed since. */
@@ -204,6 +204,23 @@ export default function BuildCard() {
 
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
+  /** The one on-screen error line (the preview's bar, the Make cards, the form's Save): scrolled into view when it appears, so it is never off-screen. */
+  const errRef = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!err) return;
+    const t = setTimeout(() => { try { errRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); } catch { /* ignore */ } }, 80);
+    return () => clearTimeout(t);
+  }, [err, state]);
+  /** Which Make button was tapped: its message shows under THAT button, not at the bottom of the screen. */
+  const [makeFrom, setMakeFrom] = useState<"" | "free" | "premium">("");
+  /** "Help me write" failures, shown under the button that was tapped (inside the Write again sheet, which sits above the page's own error line). */
+  const [helpErr, setHelpErr] = useState<{ kind: "image" | "words"; msg: string } | null>(null);
+  /** A problem with an action in the "Change…" sheet, shown inside the sheet. */
+  const [moreMsg, setMoreMsg] = useState("");
+  /** Keep / Another / Back to stock: a failed "Back to stock photo" says so inside the banner box. */
+  const [bannerMsg, setBannerMsg] = useState("");
+  /** "Copy link" on the finished screen: copied, or why not. */
+  const [copied, setCopied] = useState<"" | "ok" | "fail">("");
   const [notice, setNotice] = useState("");
   const [removed, setRemoved] = useState("");
   const [unlock, setUnlock] = useState(false);
@@ -237,14 +254,14 @@ export default function BuildCard() {
   async function helpWrite(kind: "image" | "words") {
     const raw = (kind === "image" ? imageNote : wordsNote).trim();
     if (!raw || helping) return;
-    setHelping(kind);
+    setHelping(kind); setHelpErr(null);
     try {
       const r = await fetch("/api/ai/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         task: kind === "image" ? "image-wish" : "words-wish", input: raw, company: shown?.company || shown?.name || "", role: setup?.categoryLabel ?? "",
       }) }).then((x) => x.json()).catch(() => ({}));
       const text = String(r?.text ?? "").trim();
       if (text) { if (kind === "image") setImageNote(text.slice(0, 600)); else setWordsNote(text.slice(0, 400)); }
-      else setErr(r?.error || T("The AI could not write it now — your own words will be used.", "AI अभी नहीं लिख पाया — आपके शब्द ही जाएँगे।"));
+      else setHelpErr({ kind, msg: r?.error || T("The AI could not write it now — your own words will be used.", "AI अभी नहीं लिख पाया — आपके शब्द ही जाएँगे।") });
     } finally { setHelping(""); }
   }
   const WANTS: { k: Want; t: string; th: string; s: string; sh: string }[] = [
@@ -256,8 +273,9 @@ export default function BuildCard() {
   ];
   // One credit per thing asked (owner's call, 4 Oct 2026); the total shows on the button before anything is spent.
   function writeAgain() {
-    if (busy) return;
+    if (busy) return; // the "Change…" sheet keeps itself open and says why when it is busy
     if (!access.subscribed) { setPremiumUnlock(true); return; }
+    setHelpErr(null);
     setAgainAsk(true);
   }
   // Three looks for the website on screen (site-looks.ts, docs/website-looks-v2.md): three blueprints — a tile board,
@@ -305,6 +323,7 @@ export default function BuildCard() {
   function pickLook(k: LookKey) {
     const look = looks.find((l) => l.key === k);
     if (!look || !card) return;
+    setErr("");
     setViewed((v) => (v.includes(k) ? v : [...v, k]));
     const next = applyLook(card, look);
     setCard(next);
@@ -447,7 +466,7 @@ export default function BuildCard() {
       // Products the owner took OFF the V-Card stay off it (they are still on their Products page).
       const mine = server.brandProducts ? [] : (server.products ?? []).filter((pr) => !next.hidden.includes(pr.name.trim().toLowerCase()));
       const fromSaved: Row[] = mine.slice(0, MAX_ROWS).map((p) => ({ id: p.id, name: p.name, brand: p.brand, price: p.price, photo: p.photo, original: p.photo }));
-      const backupRows = backup && Array.isArray(backup.rows) ? backup.rows.slice(0, MAX_ROWS).map((r) => ({ ...r, busy: false })) : null;
+      const backupRows = backup && Array.isArray(backup.rows) ? backup.rows.slice(0, MAX_ROWS).map((r) => ({ ...r, busy: false, note: "", bad: false })) : null;
       const startRows = backupRows?.length ? backupRows : fromSaved.length ? fromSaved : [emptyRow(), emptyRow(), emptyRow()];
       setRows(startRows);
 
@@ -625,13 +644,13 @@ export default function BuildCard() {
   /* ---------------- photos ---------------- */
 
   async function productPhoto(i: number, f: File) {
-    patchRow(i, { busy: true, note: "" });
+    patchRow(i, { busy: true, note: "", bad: false });
     try {
       const url = await uploadImage(await compressToFile(f, "product.jpg", 1600, 0.88), "product");
-      if (!url) { patchRow(i, { busy: false, note: T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।") }); return; }
+      if (!url) { patchRow(i, { busy: false, bad: true, note: T("Could not upload the photo. Please try again.", "Photo upload नहीं हो पाई। दोबारा try करें।") }); return; }
       patchRow(i, { photo: url, original: url, studio: false, busy: false });
     } catch {
-      patchRow(i, { busy: false, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
+      patchRow(i, { busy: false, bad: true, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
     }
   }
 
@@ -639,16 +658,16 @@ export default function BuildCard() {
     const row = rows[i];
     if (!row?.photo) return;
     if (!access.active || access.balance < 5) { setUnlock(true); return; }
-    patchRow(i, { busy: true, note: T("Making it look professional… (about 20 seconds)", "Photo professional बनाई जा रही है… (करीब 20 second)") });
+    patchRow(i, { busy: true, bad: false, note: T("Making it look professional… (about 20 seconds)", "Photo professional बनाई जा रही है… (करीब 20 second)") });
     try {
       const r = await api<{ url?: string; error?: string }>("/api/card/product-photo", {
         method: "POST",
         json: { photo_url: row.photo, product: row.name, brand: row.brand, allowPaid: true, product_id: row.id },
       });
-      if (r.ok && r.data.url) patchRow(i, { original: row.photo, photo: r.data.url, studio: true, busy: false, note: T("✨ Studio photo ready", "✨ Studio photo तैयार") });
-      else { patchRow(i, { busy: false, note: r.data.error ?? T("Your photo is kept as it is.", "आपकी photo वैसी ही रहेगी।") }); if (r.status === 402) setUnlock(true); }
+      if (r.ok && r.data.url) patchRow(i, { original: row.photo, photo: r.data.url, studio: true, busy: false, bad: false, note: T("✨ Studio photo ready", "✨ Studio photo तैयार") });
+      else { patchRow(i, { busy: false, bad: true, note: r.data.error ?? T("Your photo is kept as it is.", "आपकी photo वैसी ही रहेगी।") }); if (r.status === 402) setUnlock(true); }
     } catch {
-      patchRow(i, { busy: false, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
+      patchRow(i, { busy: false, bad: true, note: T(OFFLINE, "internet नहीं है — दोबारा try करें।") });
     } finally {
       access.refresh();
     }
@@ -856,6 +875,7 @@ export default function BuildCard() {
   /** Starts (or joins) the banner job and follows it to the end. `again`: one more, a credit a picture. */
   async function startBanner(cardId: string, again = false) {
     if (!access.subscribed) { setPremiumUnlock(true); return; }
+    setBannerMsg("");
     setBanner({ state: "running", elapsed: 0 });
     const r = await api<JobView & { error?: string; charged?: number; own?: boolean; needCredits?: number; plan?: boolean }>("/api/card/banner", { method: "POST", json: { cardId, ...(again ? { again: true, count: 1 } : {}) } }).catch(() => null);
     if (!r || !r.ok || !r.data?.job) {
@@ -879,11 +899,15 @@ export default function BuildCard() {
     if (v.state === "done" && res.ok) { await refreshLive(cardId); setBanner({ state: "done", job: v.job, charged, prev: !!res.prev }); if (charged) access.refresh(); }
     else { setBanner({ state: "failed", job: v.job, error: res.error || T("The banner could not be made now.", "Banner अभी नहीं बन पाया।") }); void api("/api/card/banner", { method: "POST", json: { claim: v.job } }).catch(() => undefined); }
   }
-  async function bannerKeep() { if (banner.job) void api("/api/card/banner", { method: "POST", json: { claim: banner.job } }).catch(() => undefined); setBanner({ state: "idle" }); }
+  async function bannerKeep() { setBannerMsg(""); if (banner.job) void api("/api/card/banner", { method: "POST", json: { claim: banner.job } }).catch(() => undefined); setBanner({ state: "idle" }); }
   async function bannerRevert(cardId: string) {
-    if (!banner.job) return;
-    setBusy("banner");
-    try { const r = await api<{ ok?: boolean }>("/api/card/banner", { method: "POST", json: { revert: banner.job } }); if (r.ok) { await refreshLive(cardId); setBanner({ state: "idle" }); } }
+    if (!banner.job) { setBannerMsg(T("The old photo cannot be put back now.", "पुरानी photo अभी वापस नहीं लग सकती।")); return; }
+    setBusy("banner"); setBannerMsg("");
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/card/banner", { method: "POST", json: { revert: banner.job } });
+      if (r.ok) { await refreshLive(cardId); setBanner({ state: "idle" }); }
+      else setBannerMsg(r.data?.error || T("Could not put the old photo back. Please try again.", "पुरानी photo वापस नहीं लग पाई। दोबारा try करें।"));
+    } catch { setBannerMsg(T(OFFLINE, "internet नहीं है — दोबारा try करें।")); }
     finally { setBusy(""); }
   }
 
@@ -1044,11 +1068,13 @@ export default function BuildCard() {
   const toTop = () => { try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
   /** Make → the questions form when the owner came through it, else the screen before Make (the set-up's last screen when the app has no earlier one). */
   function backFromMake() {
+    setErr(""); setMakeFrom("");                                            // a message belongs to the step it came from, not the next one
     if (cameFromForm.current) { cameFromForm.current = false; setState("form"); toTop(); return; }
     goBack(router, WALK_END);
   }
   /** The questions form → the website it was opened from ("Edit details"), else the screen before it. */
   function backFromForm() {
+    setErr(""); setMakeFrom("");
     if (card) { setState("preview"); toTop(); return; }
     goBack(router, WALK_END);
   }
@@ -1061,10 +1087,12 @@ export default function BuildCard() {
     if (liveUser) { goBack(router, "/poster"); return; }
     // A new build of a website that is already live (?again=1, a new website at set-up): back to where it was asked for, never to Make.
     if (isLiveSite(existing)) { goBack(router, "/poster/site"); return; }
+    setErr(""); setMakeFrom("");
     setState("make"); toTop();
   }
   /** The finished screen → the design screen when the owner came from it; opened straight (the dock, Home, a reload) it is the screen before this page. */
   function backFromDone() {
+    setErr(""); setMakeFrom("");
     if (doneFromPreview.current) { doneFromPreview.current = false; setState("preview"); toTop(); return; }
     goBack(router, "/poster/site");
   }
@@ -1123,6 +1151,26 @@ export default function BuildCard() {
   /** The Premium sheet: asked for from the Make screen, the preview (Write again, the banner) and finish() alike. */
   const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
 
+  /** The Premium banner's state (painting / failed / made: Keep, Another, Back to stock) — on the design screen AND on the finished screen,
+   *  because a publish moves the owner to the finished screen while the banner is still being painted. Its message sits in its own box. */
+  const bannerBlock = (
+    <>
+      {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your Premium banner…", "आपका Premium banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
+      {banner.state === "failed" && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{banner.error} <button type="button" onClick={() => existing && startBanner(existing.id)} className="ml-2 font-semibold underline">{T("Try again", "दोबारा")}</button></p>}
+      {banner.state === "done" && existing && (
+        <div className="space-y-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm">
+          <p><b className="text-good">✨ {T("Your Premium banner is on the website.", "आपकी website पर Premium banner लग गया।")}</b> <span className="text-xs text-muted">{T("See it on the Website tab.", "Website tab में देखें।")}</span></p>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={bannerKeep} className="rounded-lg grad-brand px-3.5 py-2 text-sm font-semibold text-white">{T("Keep it", "रखो")}</button>
+            <button type="button" disabled={busy === "banner"} onClick={() => startBanner(existing.id, true)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold disabled:opacity-60">{T("Make another", "दूसरा बनाओ")} <CreditPrice credits={1} /></button>
+            {banner.prev && <button type="button" disabled={busy === "banner"} onClick={() => bannerRevert(existing.id)} className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold disabled:opacity-60">{busy === "banner" && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}{T("Back to stock photo", "Stock photo वापस")}</button>}
+          </div>
+          {bannerMsg && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-medium text-danger">{bannerMsg}</p>}
+        </div>
+      )}
+    </>
+  );
+
   // The finished flow (owner, 7 Oct 2026): Save and next → "Congratulations, your website and e-card are live" →
   // Edit now (Create → Card & Website → Edit) or Later (home).
   if (state === "done" && shown) {
@@ -1150,10 +1198,12 @@ export default function BuildCard() {
             <button type="button" onClick={() => router.push("/poster/site/link")} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
-              <button type="button" onClick={() => { try { void navigator.clipboard.writeText(`https://${liveLink}`); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Copy link", "Link copy करें")}</button>
+              <button type="button" onClick={async () => { setCopied(""); try { await navigator.clipboard.writeText(`https://${liveLink}`); setCopied("ok"); setTimeout(() => setCopied(""), 2500); } catch { setCopied("fail"); } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{copied === "ok" ? <><Check className="h-4 w-4" /> {T("Copied", "Copy हो गया")}</> : T("Copy link", "Link copy करें")}</button>
             </div>
+            {copied === "fail" && <p className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy — touch and hold the link above, then copy it.", "Copy नहीं हो पाया — ऊपर के link को देर तक दबाकर copy करें।")}</p>}
           </div>
         </section>
+        {bannerBlock}
         <section className="space-y-2.5">
           <div>
             <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>
@@ -1211,18 +1261,7 @@ export default function BuildCard() {
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
         <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your Premium banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका Premium banner बनाएगा (करीब 1 मिनट)।")}</p>
       )}
-      {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your Premium banner…", "आपका Premium banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
-      {banner.state === "failed" && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm">{banner.error} <button type="button" onClick={() => existing && startBanner(existing.id)} className="ml-2 font-semibold underline">{T("Try again", "दोबारा")}</button></p>}
-      {banner.state === "done" && existing && (
-        <div className="space-y-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm">
-          <p><b className="text-good">✨ {T("Your Premium banner is on the website.", "आपकी website पर Premium banner लग गया।")}</b> <span className="text-xs text-muted">{T("See it on the Website tab.", "Website tab में देखें।")}</span></p>
-          <div className="flex flex-wrap gap-2">
-            <button type="button" onClick={bannerKeep} className="rounded-lg grad-brand px-3.5 py-2 text-sm font-semibold text-white">{T("Keep it", "रखो")}</button>
-            <button type="button" disabled={busy === "banner"} onClick={() => startBanner(existing.id, true)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{T("Make another", "दूसरा बनाओ")} <CreditPrice credits={1} /></button>
-            {banner.prev && <button type="button" disabled={busy === "banner"} onClick={() => bannerRevert(existing.id)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold">{T("Back to stock photo", "Stock photo वापस")}</button>}
-          </div>
-        </div>
-      )}
+      {bannerBlock}
       {/* The preview fills the screen; Website | Card, Computer view and the six designs live in the bottom bar (owner, 15 Oct 2026). */}
       <div ref={previewRef} className="scroll-mt-16" />
       {tab === "phone" ? (
@@ -1281,10 +1320,11 @@ export default function BuildCard() {
         </details>
       )}
 
-      {err && <p className="text-sm text-danger">{err}</p>}
       {/* The bottom bar (owner, 15 Oct 2026: "website upar, baaki sab buttons Save and next wale bar me, bottom se khulne wala"): Website | Card,
           Computer view, the six designs (opens upward, the website above stays visible and changes as you tap) and Save and next. */}
       <div className="sticky bottom-20 z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-float">
+        {/* The error sits INSIDE the bar, right above Save and next / the designs it belongs to — the page behind is long, so a line in the page flow was often off-screen. */}
+        {err && <p ref={errRef} role="alert" className="border-b border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
         {designOpen && looks.length > 0 && shown.site && (
           <div className="max-h-[58dvh] space-y-3 overflow-y-auto border-b border-border p-3">
             <div className="flex items-start gap-2.5">
@@ -1346,7 +1386,7 @@ export default function BuildCard() {
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
           </button>
         )}
-        {liveUser && <button type="button" onClick={() => setMore(true)} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
+        {liveUser && <button type="button" onClick={() => { setMoreMsg(""); setMore(true); }} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
 
           </div>
         </div>
@@ -1403,7 +1443,7 @@ export default function BuildCard() {
                 no credit. On a live site the change goes live by itself, like a look. */}
             {shown.site && <LookTweaks card={card!} hi={hi} premium={access.subscribed} onChange={(next) => { setCard(next); setTab("site"); liveTap(next); }} />}
             <div className="divide-y divide-border rounded-xl border border-border bg-surface">
-              <button type="button" onClick={() => { setMore(false); setState("form"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+              <button type="button" onClick={() => { setMore(false); setErr(""); setMakeFrom(""); setState("form"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <ChevronLeft className="h-5 w-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit details", "जानकारी बदलें")}</b><span className="block text-xs text-muted">{T("Back to the questions — website, look, products", "सवालों पर वापस — website, look, products")}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
@@ -1413,12 +1453,13 @@ export default function BuildCard() {
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Edit card", "Card edit करें")}</b><span className="block text-xs text-muted">{T("The editor: words, photos, pages", "Editor: शब्द, photos, pages")}</span></span>
                 <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
               </button>
-              <button type="button" onClick={() => { setMore(false); writeAgain(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+              <button type="button" onClick={() => { if (busy) { setMoreMsg(T("Please wait — your website is being saved. Then try again.", "ज़रा रुकिए — आपकी website save हो रही है। फिर दोबारा दबाइए।")); return; } setMoreMsg(""); setMore(false); writeAgain(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <Sparkles className="h-5 w-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Write again", "दोबारा लिखवाएँ")}</b><span className="block text-xs text-muted">{T("The AI writes it afresh — say what should change", "AI दोबारा लिखता है — बताएँ क्या बदले")}</span></span>
                 {access.loading ? null : access.subscribed ? <span className="shrink-0 text-[11px] text-muted">{T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}
               </button>
             </div>
+            {moreMsg && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{moreMsg}</p>}
           </div>
         </div>
       )}
@@ -1495,7 +1536,8 @@ export default function BuildCard() {
                     {helping === "image" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("Help me write", "AI से लिखवाएँ")}
                   </button>
                 </div>
-                <textarea id="image-note" value={imageNote} onChange={(e) => setImageNote(e.target.value.slice(0, 600))} rows={3} placeholder={T("In your words — e.g. our shop from outside in the evening, lights on, two customers at the counter", "अपने शब्दों में — जैसे शाम को हमारी दुकान बाहर से, lights जली हुई, counter पर दो ग्राहक")} className={`${field} text-sm`} />
+                {helpErr?.kind === "image" && <p role="alert" className="mt-1 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-medium text-danger">{helpErr.msg}</p>}
+                <textarea id="image-note" value={imageNote} onChange={(e) => { setImageNote(e.target.value.slice(0, 600)); setHelpErr(null); }} rows={3} placeholder={T("In your words — e.g. our shop from outside in the evening, lights on, two customers at the counter", "अपने शब्दों में — जैसे शाम को हमारी दुकान बाहर से, lights जली हुई, counter पर दो ग्राहक")} className={`${field} text-sm`} />
                 <p className="mt-1 text-[11px] text-muted">{T("Write a few words, then tap Help me write — the AI turns them into a full picture brief you can edit.", "थोड़े शब्द लिखें, फिर AI से लिखवाएँ दबाएँ — AI पूरा picture brief बना देगा, जिसे आप बदल भी सकते हैं।")}</p>
               </div>
             )}
@@ -1507,7 +1549,9 @@ export default function BuildCard() {
                     {helping === "words" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("Help me write", "AI से लिखवाएँ")}
                   </button>
                 </div>
-                <textarea id="words-note" value={wordsNote} onChange={(e) => setWordsNote(e.target.value.slice(0, 400))} rows={3} placeholder={T("e.g. shorter headline, mention 20 years of experience, friendlier tone, keep the prices", "जैसे छोटा headline, 20 साल का अनुभव बताओ, दोस्ताना लहजा, दाम वही रहें")} className={`${field} text-sm`} />
+                {helpErr?.kind === "words" && <p role="alert" className="mt-1 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-medium text-danger">{helpErr.msg}</p>}
+                <textarea id="words-note" value={wordsNote} onChange={(e) => { setWordsNote(e.target.value.slice(0, 400)); setHelpErr(null); }} rows={3} placeholder={T("e.g. shorter headline, mention 20 years of experience, friendlier tone, keep the prices", "जैसे छोटा headline, 20 साल का अनुभव बताओ, दोस्ताना लहजा, दाम वही रहें")} className={`${field} text-sm`} />
+                <p className="mt-1 text-[11px] text-muted">{T("Write a few words, then tap Help me write — the AI turns them into a full instruction you can edit.", "थोड़े शब्द लिखें, फिर AI से लिखवाएँ दबाएँ — AI पूरा निर्देश बना देगा, जिसे आप बदल भी सकते हैं।")}</p>
               </div>
             )}
             <input value={againNote} onChange={(e) => setAgainNote(e.target.value.slice(0, 200))} placeholder={T("Anything else? e.g. lighter colours, bigger photos", "कुछ और? जैसे हल्के रंग, बड़ी photos")} className={`${field} mt-3`} />
@@ -1515,6 +1559,11 @@ export default function BuildCard() {
             <div className="sticky bottom-0 -mx-4 mt-3 border-t border-border bg-surface px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-2">
             <p className="flex items-center justify-between text-sm"><span className="text-muted">{T("Total", "कुल")}</span><b>{againCost} {againCost === 1 ? T("credit", "credit") : T("credits", "credits")}</b></p>
             {!access.loading && access.balance < againCost && <p className="mt-1 text-xs text-danger">{T(`You have ${access.balance} credits — add some to continue.`, `आपके पास ${access.balance} credit हैं — आगे के लिए credit डालें।`)}</p>}
+            {(!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim())
+              ? <p className="mt-1 text-xs font-medium text-danger">{T("Tick at least one thing above, or write a line below.", "ऊपर कम से कम एक चीज़ चुनें, या नीचे एक line लिखें।")}</p>
+              : (againWants.includes("photos") && photoMode === "replace" && !replaceUrls.length)
+                ? <p className="mt-1 text-xs font-medium text-danger">{T("Tap the photos you want to change (or choose Add to the gallery).", "जो photos बदलनी हैं उन पर tap करें (या Gallery में जोड़ें चुनें)।")}</p>
+                : null}
             <button type="button" disabled={(!againWants.length && !againNote.trim() && !imageNote.trim() && !wordsNote.trim()) || (againWants.includes("photos") && photoMode === "replace" && !replaceUrls.length)} onClick={() => { setAgainAsk(false); if (access.balance < againCost) { setAgainUnlock(true); return; } void build({ fresh: true, wants: againWants, note: againNote, imageNote, wordsNote, photoCount: photosAsked, photoMode, replaceUrls: photoMode === "replace" ? replaceUrls : [] }); }}
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
@@ -1545,9 +1594,12 @@ export default function BuildCard() {
         </div>
         {/* Came back from a built preview: it is still saved on this phone — go on to it instead of building a second time. */}
         {card && (
-          <button type="button" onClick={() => { setState("preview"); toTop(); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
+          <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setState("preview"); toTop(); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
             <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
           </button>
+        )}
+        {!finding && found && !found.url && facts.website === found.q && (
+          <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-sm">{T(`No website was found for “${found.q}”, so it is used as typed. To use a website, go back and paste its link.`, `“${found.q}” की website नहीं मिली, इसलिए उसे वैसे ही रखा गया है। website लगानी हो तो वापस जाकर उसका link डालें।`)}</p>
         )}
         <p className="text-sm text-muted">{T("Your details are saved. Tap once and we make your website and digital card.", "आपकी जानकारी save हो गई। एक बार दबाइए, हम आपकी website और digital card बना देंगे।")}</p>
         {setup && (
@@ -1582,9 +1634,10 @@ export default function BuildCard() {
             {li(T("Your trade's own look and pages", "आपके काम का अपना look और pages"))}
             {li(T("Daily poster, leads in your CRM", "रोज़ का poster, leads आपके CRM में"))}
           </ul>
-          <button type="button" onClick={() => { setPlan("standard"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+          <button type="button" onClick={() => { setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
             <Sparkles className="h-5 w-5" /> {T("Make my free website", "मेरी free website बनाओ")}
           </button>
+          {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
           <p className="text-center text-[11px] text-muted">{T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
         </div>
         )}
@@ -1596,17 +1649,16 @@ export default function BuildCard() {
             {li(T("WhatsApp AI replies to customers day and night, posts for you, and you can use your own web address", "WhatsApp AI दिन-रात ग्राहकों को जवाब देता है, आपके लिए post करता है, और आप अपना web address लगा सकते हैं"))}
           </ul>
           {access.subscribed ? (
-            <button type="button" onClick={() => { setPlan("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
+            <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
             </button>
           ) : (
-            <button type="button" onClick={() => setPremiumUnlock(true)} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5 text-[#ffd54a]" /> {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
+            <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setPremiumUnlock(true); }} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
             </button>
           )}
+          {err && (access.subscribed || makeFrom !== "free") && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
         </div>
-        
-        {err && <p className="text-sm text-danger">{err}</p>}
         <p className="text-center text-xs text-muted">{T("The AI writes only from what you told us. It does not invent prices or claims.", "AI सिर्फ़ वही लिखता है जो आपने बताया। वह अपनी तरफ़ से दाम या दावे नहीं जोड़ता।")}</p>
         {premiumDialog}
       </div>
@@ -1623,7 +1675,7 @@ export default function BuildCard() {
       {/* A "Make it better" chip brings the owner here from a finished V-Card: this takes them back to it
           without paying for another build. */}
       {card && (
-        <button type="button" onClick={() => setState("preview")} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
+        <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setState("preview"); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
           <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
         </button>
       )}
@@ -1689,15 +1741,16 @@ export default function BuildCard() {
                 )}
               </div>
               <button type="button" onClick={() => {
-                if (r.id) { if (r.name.trim()) setF({ hidden: [...facts.hidden, r.name.trim().toLowerCase()] }); setRemoved(T("Removed from your V-Card (still on your Products page)", "V-Card से हटा दिया (आपके Products page पर रहेगा)")); }
+                setRemoved(r.id ? T("Removed from your V-Card (still on your Products page)", "V-Card से हटा दिया (आपके Products page पर रहेगा)") : "");
+                if (r.id && r.name.trim()) setF({ hidden: [...facts.hidden, r.name.trim().toLowerCase()] });
                 setRows(rows.filter((_, k) => k !== i)); setEdits((n) => n + 1);
               }} className="shrink-0 rounded-lg border border-border p-2 text-muted" aria-label={T("Remove this product", "ये product हटाएँ")}><X className="h-4 w-4" /></button>
             </div>
             {r.note && (
-              <p className="text-xs text-muted">
+              <p className={`text-xs ${r.bad ? "font-medium text-danger" : "text-muted"}`}>
                 {r.note}
                 {r.studio && r.original && r.original !== r.photo && (
-                  <button type="button" onClick={() => patchRow(i, { photo: r.original ?? "", studio: false, note: "" })} className="ml-1.5 font-semibold text-brand-ink underline">{T("Use original", "पुरानी photo रखें")}</button>
+                  <button type="button" onClick={() => patchRow(i, { photo: r.original ?? "", studio: false, note: "", bad: false })} className="ml-1.5 font-semibold text-brand-ink underline">{T("Use original", "पुरानी photo रखें")}</button>
                 )}
               </p>
             )}
@@ -1708,11 +1761,12 @@ export default function BuildCard() {
             </div>
           </div>
         ))}
-        {removed && <p className="text-xs text-muted">{removed}</p>}
+        {removed && <p className="text-xs font-medium text-good">{removed}</p>}
         {brandProducts && <p className="text-xs text-muted">{T("✓ Your company’s products are shown on your V-Card.", "✓ आपकी company के products आपके V-Card पर दिख रहे हैं।")}</p>}
         {rows.length < MAX_ROWS && (
-          <button type="button" onClick={() => { setRows([...rows, emptyRow()]); setEdits((n) => n + 1); }} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink"><Plus className="h-4 w-4" /> {T("Add one more", "एक और जोड़ें")}</button>
+          <button type="button" onClick={() => { setRemoved(""); setRows([...rows, emptyRow()]); setEdits((n) => n + 1); }} className="inline-flex items-center gap-1 text-sm font-semibold text-brand-ink"><Plus className="h-4 w-4" /> {T("Add one more", "एक और जोड़ें")}</button>
         )}
+        {rows.length >= MAX_ROWS && <p className="text-xs text-muted">{T(`Up to ${MAX_ROWS} here. Add the rest on your Products page.`, `यहाँ ${MAX_ROWS} तक। बाक़ी Products page पर जोड़ें।`)}</p>}
       </Sec>
 
           {!!setup?.category && <TradeQuestions category={setup.category} facts={facts} setF={setF} hi={hi} tradeLabel={setup.categoryLabel} />}
@@ -1722,9 +1776,9 @@ export default function BuildCard() {
       </details>
 
 
-      {err && <p className="text-sm text-danger">{err}</p>}
-      <button type="button" id="make" onClick={async () => { await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); cameFromForm.current = true; setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-        <Check className="h-5 w-5" /> {T("Save and continue →", "Save करके आगे बढ़ें →")}
+      {err && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
+      <button type="button" id="make" onClick={async () => { setErr(""); setMakeFrom(""); await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); cameFromForm.current = true; setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
+        {finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {finding ? T("Looking up your website…", "आपकी website खोजी जा रही है…") : T("Save and continue →", "Save करके आगे बढ़ें →")}
       </button>
       <p className="text-center text-xs text-muted">{T("Next: choose Free or Premium, then make it.", "आगे: Free या Premium चुनें, फिर बनाएँ।")}</p>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}

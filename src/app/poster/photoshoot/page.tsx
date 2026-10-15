@@ -3,13 +3,14 @@
 // shots out (lifestyle, angle, marketplace white-bg, in-context). No video —
 // just fast, ready-to-post images from a single phone photo.
 import { AiPageGate } from "@/lib/ai-access";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, Camera, Images, ChevronLeft, Sparkles, Download, Share2 } from "lucide-react";
 import { api, isLoggedIn, uploadImage, shareFile, downloadPoster } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
+import { AddCredits } from "@/components/poster/add-credits";
 import { goBack } from "@/lib/nav-back";
 
 type MyProduct = { id: string; name: string; photo_url: string | null; photos?: { url: string; role?: string }[] };
@@ -45,7 +46,15 @@ function PhotoshootPageInner() {
   const shotName = (key: string, fallback: string) => { for (const list of Object.values(SHOTS)) { const m = list.find((x) => x[0] === key); if (m) return hi ? m[2] : m[1]; } return fallback; };
   const chosen = SHOTS[preset].map(([k]) => k).filter((k) => !off.includes(k));
   const [busy, setBusy] = useState(false);
+  // Messages sit beside the control that caused them: slotErr under the five photo slots (also "add the front photo first"),
+  // nameErr under the name field, err (and the credit packs) right above "Make photos" (server errors, "pick a photo"), shotMsg under that photo's Share / Download buttons.
   const [err, setErr] = useState("");
+  const [slotErr, setSlotErr] = useState("");
+  const [nameErr, setNameErr] = useState("");   // "Write the product name first" — right under the name field
+  const [needCredits, setNeedCredits] = useState<number | null>(null);
+  const [shotMsg, setShotMsg] = useState<Record<string, { t: string; ok: boolean; neutral?: boolean }>>({});
+  const slotsRef = useRef<HTMLDivElement | null>(null);
+  const nameRef = useRef<HTMLInputElement | null>(null);
   const [shots, setShots] = useState<Shot[] | null>(null);
   const [busyAction, setBusyAction] = useState("");
 
@@ -65,27 +74,51 @@ function PhotoshootPageInner() {
 
   function fillFromProduct(id: string) {
     const p = products.find((x) => x.id === id); if (!p) return;
+    setNameErr(""); setSlotErr(""); setErr("");
     setProduct(p.name); const all = (p.photos ?? []).filter((x) => x.role !== "context").map((x) => x.url); const list = (all.length ? all : p.photo_url ? [p.photo_url] : []).slice(0, 5); const byView: Record<string, string> = {}; const vmap: Record<string, string> = { front: "front", three_quarter: "right", back: "back" }; const free = ["front", "left", "right", "top", "back"]; (p.photos ?? []).forEach((x) => { const v = vmap[(x as { view?: string }).view ?? ""]; if (v && !byView[v] && list.includes(x.url)) byView[v] = x.url; }); list.forEach((u) => { if (!Object.values(byView).includes(u)) { const k = free.find((f) => !byView[f]); if (k) byView[k] = u; } }); setSlots(byView);
   }
   async function pick(file: File | null, view: string) {
-    if (!file) return; setSlotBusy(view); setErr("");
-    const small = await compressToFile(file, "photoshoot.jpg");
-    const u = await uploadImage(small, "product");
+    if (!file) return; setSlotBusy(view); setSlotErr("");
+    let u: string | null = null;
+    try { u = await uploadImage(await compressToFile(file, "photoshoot.jpg"), "product"); } catch { u = null; }
     setSlotBusy("");
-    if (u) setSlots((x) => ({ ...x, [view]: u })); else setErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again.");
+    if (u) { setSlots((x) => ({ ...x, [view]: u! })); setSlotErr(""); } else setSlotErr(hi ? "Photo नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the photo. Please try again.");
   }
   async function generate() {
-    setBusy(true); setErr(""); setShots(null);
-    const r = await api<{ photos?: Shot[]; error?: string }>("/api/poster/photoshoot", { method: "POST", json: { photo_urls: SLOTS.filter(([k]) => slots[k]).map(([k]) => slots[k]), views: SLOTS.filter(([k]) => slots[k]).map(([k]) => k), product, category, preset, shots: chosen } });
+    // The button is never silently dead: say what is missing right under the field that needs it, and bring that field and its message on screen.
+    setErr("");
+    if (!slots.front) { setNameErr(""); setSlotErr(hi ? "पहले सामने की photo डालें।" : "Add the front photo first."); slotsRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+    if (product.trim().length < 2) { setSlotErr(""); setNameErr(hi ? "पहले product का नाम लिखें।" : "Write the product name first."); nameRef.current?.focus(); nameRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }); return; }
+    setNameErr(""); setSlotErr("");
+    if (!chosen.length) { setErr(hi ? "कम से कम एक photo चुनें।" : "Pick at least one photo to make."); return; }
+    setBusy(true); setErr(""); setNeedCredits(null); setShots(null); setShotMsg({});
+    let r: { ok: boolean; status: number; data: { photos?: Shot[]; error?: string; cost?: number } };
+    try { r = await api<{ photos?: Shot[]; error?: string; cost?: number }>("/api/poster/photoshoot", { method: "POST", json: { photo_urls: SLOTS.filter(([k]) => slots[k]).map(([k]) => slots[k]), views: SLOTS.filter(([k]) => slots[k]).map(([k]) => k), product, category, preset, shots: chosen } }); }
+    catch { setBusy(false); setErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); return; }
     fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((j) => typeof j.credits === "number" && setCredits(j.credits)).catch(() => {});
     setBusy(false);
-    if (!r.ok) { setErr(r.data.error || (hi ? "कुछ गड़बड़ हो गई। फिर से कोशिश करें।" : "Something went wrong. Please try again.")); return; }
+    if (!r.ok) {
+      setErr(r.data.error || (hi ? "कुछ गड़बड़ हो गई। फिर से कोशिश करें।" : "Something went wrong. Please try again."));
+      if (r.status === 402) setNeedCredits(Math.max(1, Number(r.data.cost) || chosen.length * PER_PHOTO)); // a refused order always shows the packs right here
+      return;
+    }
     setShots(r.data.photos ?? []);
   }
   const fileName = (url: string) => (url.split("/").pop() || "photoshoot.png").split("?")[0]; // unique per photo — a fixed name made every download overwrite the last one
-  async function share(url: string) { setBusyAction(url); await shareFile(url, product, fileName(url), "image/png"); setBusyAction(""); }
+  const clearShotMsg = (url: string) => setShotMsg((m) => { const n = { ...m }; delete n[url]; return n; });
+  async function share(url: string) {
+    setBusyAction(url); clearShotMsg(url);
+    const r = await shareFile(url, product, fileName(url), "image/png");
+    setShotMsg((m) => ({ ...m, [url]: r === "shared" ? { t: hi ? "भेज दी" : "Sent", ok: true } : r === "downloaded" ? { t: hi ? "फ़ोन में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Share नहीं हुआ। फिर से Share दबाएँ, या Download दबाएँ।" : "Not shared. Tap Share to try again, or tap Download.", ok: false, neutral: true } }));
+    setBusyAction("");
+  }
   function useInAd() { try { sessionStorage.setItem("akp-ad-seed", JSON.stringify({ product, category, photos: [...refs, ...(shots ?? []).map((x) => x.url)].slice(0, 5) })); sessionStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), product, category, preset, slots, shots })); } catch { /* ignore */ } router.push("/poster/video"); }
-  async function download(url: string) { setBusyAction(url + "dl"); await downloadPoster(url, fileName(url)); setBusyAction(""); }
+  async function download(url: string) {
+    setBusyAction(url + "dl"); clearShotMsg(url);
+    const ok = await downloadPoster(url, fileName(url));
+    setShotMsg((m) => ({ ...m, [url]: ok ? { t: hi ? "फ़ोन में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Save नहीं हुई — फिर कोशिश करें" : "Could not save — try again", ok: false } }));
+    setBusyAction("");
+  }
 
   if (!ready) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const inp = "w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
@@ -112,7 +145,7 @@ function PhotoshootPageInner() {
         <div>
           <p className="text-sm font-semibold mb-1">{hi ? "Product की photos" : "Product photos"} ({refs.length}/5)</p>
           <p className="text-xs text-muted mb-1.5">{hi ? "सामने की photo ज़रूरी है। बाकी तरफ़ों की photos भी डालें। AI जितनी ज़्यादा तरफ़ें देखेगा, आपका product उतना सही बनाएगा।" : "The front photo is a must. Add the other sides too. The more sides the AI sees, the better it matches your product."}</p>
-          <div className="grid grid-cols-5 gap-1.5">
+          <div ref={slotsRef} className="grid grid-cols-5 gap-1.5">
             {SLOTS.map(([k, label]) => (
               <div key={k} className="space-y-1 text-center">
                 {slots[k] ? (
@@ -124,8 +157,10 @@ function PhotoshootPageInner() {
               </div>
             ))}
           </div>
+          {slotErr && <p className="mt-2 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{slotErr}</p>}
         </div>
-        <input className={inp} placeholder={hi ? "Product का नाम *" : "Product name *"} value={product} onChange={(e) => setProduct(e.target.value)} />
+        <input ref={nameRef} className={inp} placeholder={hi ? "Product का नाम *" : "Product name *"} value={product} onChange={(e) => { setProduct(e.target.value); setNameErr(""); }} />
+        {nameErr && product.trim().length < 2 && <p className="-mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{nameErr}</p>}
         <input className={inp} placeholder={hi ? "Category (ज़रूरी नहीं)" : "Category (optional)"} value={category} onChange={(e) => setCategory(e.target.value)} />
         <div>
           <p className="text-xs font-semibold text-muted mb-1">{hi ? "कैसी photos चाहिए?" : "What kind of photos?"}</p>
@@ -139,8 +174,9 @@ function PhotoshootPageInner() {
           <p className="text-xs font-semibold text-muted mb-1">{hi ? `कौन-सी photos? (हर एक के ${PER_PHOTO} credits)` : `Which photos? (${PER_PHOTO} credits each)`}</p>
           <div className="flex flex-wrap gap-1.5">{SHOTS[preset].map(([k, le, lh]) => { const on = !off.includes(k); const l = hi ? lh : le; return <button key={k} type="button" onClick={() => setOff(on ? [...off, k] : off.filter((x) => x !== k))} className={`rounded-full border px-3 py-1.5 text-xs ${on ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border text-muted"}`}>{on ? "✓ " : ""}{l}</button>; })}</div>
         </div>
-        {err && <p className="text-sm text-danger">{err}</p>}
-        <button type="button" onClick={generate} disabled={busy || !slots.front || product.trim().length < 2 || !chosen.length} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-50">
+        {err && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{err}</p>}
+        {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((j) => typeof j.credits === "number" && setCredits(j.credits)).catch(() => {}); }} />}
+        <button type="button" onClick={generate} disabled={busy} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-50">
           {busy ? <span className="inline-flex items-center gap-2"><LoaderCircle className="h-5 w-5 animate-spin" /> {hi ? "बन रहा है… (लगभग 30 सेकंड)" : "Making… (about 30 seconds)"}</span> : <><Sparkles className="h-5 w-5" /> {hi ? `${chosen.length} photo बनाएँ · ${chosen.length * PER_PHOTO} credits${credits !== null ? ` (आपके पास ${credits})` : ""}` : `Make ${chosen.length} photo${chosen.length === 1 ? "" : "s"} · ${chosen.length * PER_PHOTO} credits${credits !== null ? ` (you have ${credits})` : ""}`}</>}
         </button>
       </div>
@@ -159,6 +195,7 @@ function PhotoshootPageInner() {
                   <button type="button" onClick={() => share(s.url)} disabled={busyAction === s.url} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-[#25D366] px-2 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">{busyAction === s.url ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />} Share</button>
                   <button type="button" onClick={() => download(s.url)} disabled={busyAction === s.url + "dl"} className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-60">{busyAction === s.url + "dl" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}</button>
                 </div>
+                {shotMsg[s.url] && <p className={`text-[11px] ${shotMsg[s.url].ok ? "text-good" : shotMsg[s.url].neutral ? "text-muted" : "font-semibold text-danger"}`}>{shotMsg[s.url].t}</p>}
               </div>
             </div>
           ))}

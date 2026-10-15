@@ -27,6 +27,8 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
   // A profile that already has its number keeps it: the mobile is the account's own and is not edited here (owner, 14 Oct 2026).
   const [phoneLocked] = useState(() => !!draft.id && draft.phone.replace(/\D/g, "").length >= 10);
   const [uploading, setUploading] = useState<"" | "photo" | "logo">("");
+  // A photo / logo that did not go up: told right under that photo's buttons (not in a pop-up).
+  const [upErr, setUpErr] = useState<{ kind: "photo" | "logo"; msg: string } | null>(null);
   const { t, lang } = useT();
   const hint = t.personas[persona.key][2];
 
@@ -34,15 +36,16 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
   const [crop, setCrop] = useState<{ kind: "photo" | "logo"; src: string } | null>(null);
   async function pick(kind: "photo" | "logo", file: File | null) {
     if (!file) return;
-    try { setCrop({ kind, src: await shrinkForCrop(file, kind === "logo" ? 1600 : 2000) }); } catch { /* an undecodable file: the picker simply stays as it was */ }
+    setUpErr(null);
+    try { setCrop({ kind, src: await shrinkForCrop(file, kind === "logo" ? 1600 : 2000) }); } catch { setUpErr({ kind, msg: lang === "en" ? "This picture could not be opened. Please choose another one." : "यह picture खुली नहीं। कोई दूसरी चुनें।" }); }
   }
   async function upload(kind: "photo" | "logo", dataUrl: string) {
-    setCrop(null); setUploading(kind);
+    setCrop(null); setUploading(kind); setUpErr(null);
     // Logos keep transparency (PNG); face photos are JPEG — the cropper already made them small.
     const url = await uploadImage(dataUrlToFile(dataUrl, kind === "logo" ? "logo.png" : "photo.jpg"), kind);
     setUploading("");
     if (url) onChange({ ...draft, [kind === "photo" ? "photo_url" : "logo_url"]: url });
-    else alert(t.uploadFail);
+    else setUpErr({ kind, msg: t.uploadFail });
   }
 
   return (
@@ -93,6 +96,7 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
               <input type="file" accept="image/*" className="hidden" onChange={(e) => pick("photo", e.target.files?.[0] ?? null)} />
             </label>
           </div>
+          {upErr?.kind === "photo" && <p role="alert" className="mt-1.5 text-xs font-medium text-danger">{upErr.msg}</p>}
         </div>
       </div>
 
@@ -133,6 +137,7 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
                 <input type="file" accept="image/*" className="hidden" onChange={(e) => pick("logo", e.target.files?.[0] ?? null)} />
               </label>
             </div>
+            {upErr?.kind === "logo" && <p role="alert" className="mt-1 text-xs font-medium text-danger">{upErr.msg}</p>}
             <p className="text-xs text-muted">{t.logoHint}</p>
           </div>
         </div>
@@ -196,6 +201,7 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
         className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white disabled:opacity-60">
         {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : null}{submitLabel}
       </button>
+      {!busy && !draft.name.trim() && <p className="-mt-3 text-center text-xs text-muted">{lang === "en" ? "Write your name above to continue." : "आगे बढ़ने के लिए ऊपर अपना नाम लिखें।"}</p>}
     </form>
   );
 }
@@ -204,12 +210,17 @@ export function ProfileForm({ draft, onChange, onSubmit, busy, submitLabel, show
 function PartySection({ party, onChange, lang }: { party: Party; onChange: (p: Party) => void; lang: string }) {
   const en = lang === "en";
   const [up, setUp] = useState("");
+  const [upErr, setUpErr] = useState<{ at: "symbol" | "leaders"; msg: string } | null>(null); // a picture that did not go up: under its own row
   async function pickImg(kind: "symbol" | `leader${number}`, file: File | null) {
-    if (!file) return; setUp(kind);
-    const small = kind === "symbol" ? await compressToFile(file, "symbol.png", 800, 1, "png") : await compressToFile(file, "leader.jpg", 600);
-    const url = await uploadImage(small, kind === "symbol" ? "logo" : "photo");
+    if (!file) return; setUp(kind); setUpErr(null);
+    const at = kind === "symbol" ? "symbol" : "leaders";
+    let url: string | null = null;
+    try {
+      const small = kind === "symbol" ? await compressToFile(file, "symbol.png", 800, 1, "png") : await compressToFile(file, "leader.jpg", 600);
+      url = await uploadImage(small, kind === "symbol" ? "logo" : "photo");
+    } catch { url = null; }
     setUp("");
-    if (!url) return;
+    if (!url) { setUpErr({ at, msg: en ? "The picture could not be uploaded. Please try again." : "Picture upload नहीं हुई। दोबारा try करें।" }); return; }
     if (kind === "symbol") onChange({ ...party, symbol_url: url });
     else { const i = Number(kind.slice(6)); const leaders = [...party.leaders]; leaders[i] = { ...(leaders[i] ?? { name: "" }), photo_url: url }; onChange({ ...party, leaders }); }
   }
@@ -228,6 +239,7 @@ function PartySection({ party, onChange, lang }: { party: Party; onChange: (p: P
           <input type="color" value={party.colors?.[1] ?? "#1f2937"} onChange={(e) => setColor(1, e.target.value)} className="h-7 w-9 rounded border border-border bg-surface p-0.5" title={en ? "Bar colour" : "पट्टी का रंग"} />
         </div>
       </div>
+      {upErr?.at === "symbol" && <p role="alert" className="text-xs font-medium text-danger">{upErr.msg}</p>}
       <div>
         <p className="text-xs font-semibold text-muted mb-1">{en ? "Leaders (up to 3)" : "नेता / पदाधिकारी (3 तक)"}</p>
         <div className="flex gap-2">
@@ -245,6 +257,7 @@ function PartySection({ party, onChange, lang }: { party: Party; onChange: (p: P
             );
           })}
         </div>
+        {upErr?.at === "leaders" && <p role="alert" className="mt-1.5 text-xs font-medium text-danger">{upErr.msg}</p>}
       </div>
     </div>
   );

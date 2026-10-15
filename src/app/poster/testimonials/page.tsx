@@ -1,7 +1,7 @@
 "use client";
 // Customer testimonials: list + add/edit (→ "💬 Review" posters), and
 // "ask for a review" WhatsApp links (plain review request + Google review link).
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, Plus, Trash2, Camera, Images, ChevronLeft, MessageCircle, Star, Clapperboard } from "lucide-react";
@@ -23,6 +23,8 @@ const S = {
     phone: "ग्राहक का मोबाइल नंबर", askBtn: "WhatsApp पर review माँगें", googleLabel: "Google review link (अगर हो)", googlePh: "https://g.page/r/…",
     googleBtn: "Google review link भेजें", googleHint: "Link Google Maps से copy करें: अपना business खोलें, फिर 'Get more reviews' दबाएँ। यह link इस phone में save रहता है।",
     badPhone: "10 अंकों का सही नंबर डालें।",
+    needName: "पहले ग्राहक का नाम लिखें।", needText: "पहले review लिखें।", noGoogle: "पहले ऊपर Google review link डालें।",
+    photoFail: "वो फ़ोटो upload नहीं हुई। दोबारा कोशिश करें।", rowFail: "Save नहीं हुआ। दोबारा कोशिश करें।", delFail: "हटाया नहीं जा सका। दोबारा कोशिश करें।",
     waiting: "आपकी मंज़ूरी का इंतज़ार", waitingHint: "ये reviews आपकी website से आई हैं। जो आप मंज़ूर करेंगे वही card और website पर दिखेगी।",
     approve: "Card पर दिखाएँ", approved: "Card पर दिख रही है",
   },
@@ -34,6 +36,8 @@ const S = {
     phone: "Customer mobile number", askBtn: "Ask for review on WhatsApp", googleLabel: "Google review link (if you have one)", googlePh: "https://g.page/r/…",
     googleBtn: "Send Google review link", googleHint: "Copy the link from Google Maps: open your business, then tap 'Get more reviews'. The link stays saved on this phone.",
     badPhone: "Enter a valid 10-digit number.",
+    needName: "Write the customer's name first.", needText: "Write the review first.", noGoogle: "Paste your Google review link above first.",
+    photoFail: "Could not upload that photo. Please try again.", rowFail: "Could not save. Please try again.", delFail: "Could not delete. Please try again.",
     waiting: "Waiting for your approval", waitingHint: "These came from your website. Only the ones you approve go on your card and website.",
     approve: "Show on my card", approved: "Showing on your card",
   },
@@ -51,7 +55,16 @@ export default function TestimonialsPage() {
   const [err, setErr] = useState("");
   const [phone, setPhone] = useState("");
   const [google, setGoogle] = useState("");
-  const [phoneErr, setPhoneErr] = useState("");
+  const [phoneErr, setPhoneErr] = useState("");      // under the phone box, above "Ask for review on WhatsApp"
+  const [googleErr, setGoogleErr] = useState("");     // under "Send Google review link"
+  const [photoErr, setPhotoErr] = useState("");       // under the customer-photo buttons
+  const [rowErr, setRowErr] = useState<{ id: string; text: string } | null>(null);   // under the review that was approved / deleted
+  const nameRef = useRef<HTMLInputElement>(null);
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const googleRef = useRef<HTMLInputElement>(null);
+  const formRef = useRef<HTMLDivElement>(null);
+  /** Open / close the add-edit form; whatever it was saying about the last try goes with it. */
+  function openDraft(d: Draft | null) { setErr(""); setPhotoErr(""); setDraft(d); }
 
   async function load() { const r = await api<{ testimonials: Testimonial[] }>("/api/poster/testimonials"); setList(r.data.testimonials ?? []); }
   useEffect(() => { (async () => {
@@ -64,33 +77,61 @@ export default function TestimonialsPage() {
   })(); }, [router]);
 
   async function save() {
-    if (!draft) return; setBusy(true); setErr("");
+    if (!draft) return;
+    // Nothing to save yet: say what is missing right above the button and put the cursor in that box (was a silent, greyed-out button).
+    if (!draft.customer_name.trim()) { setErr(s.needName); nameRef.current?.focus(); return; }
+    if (!draft.text.trim()) { setErr(s.needText); textRef.current?.focus(); return; }
+    setBusy(true); setErr("");
     const r = await api<{ testimonial?: Testimonial; error?: string }>("/api/poster/testimonials", { method: "POST", json: draft });
     setBusy(false);
     if (!r.ok) { setErr(r.data.error || s.saveFail); return; }
-    setDraft(null); load();
+    openDraft(null); load();
   }
-  async function pick(file: File | null) { if (!file || !draft) return; setBusy(true); const small = await compressToFile(file, "testimonial.jpg"); const u = await uploadImage(small, "photo"); setBusy(false); if (u) setDraft({ ...draft, photo_url: u }); }
+  async function pick(file: File | null) {
+    if (!file || !draft) return;
+    setBusy(true); setPhotoErr("");
+    try {
+      const small = await compressToFile(file, "testimonial.jpg"); const u = await uploadImage(small, "photo");
+      if (u) setDraft({ ...draft, photo_url: u }); else setPhotoErr(s.photoFail);
+    } catch { setPhotoErr(s.photoFail); }
+    finally { setBusy(false); }
+  }
   /** A review a visitor left on the website goes on the card only once the owner says so. */
   async function approve(t: Testimonial) {
-    await api("/api/poster/testimonials", { method: "POST", json: { id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url, approved: true } });
+    setRowErr(null);
+    try {
+      const r = await api("/api/poster/testimonials", { method: "POST", json: { id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url, approved: true } });
+      if (!r.ok) { setRowErr({ id: t.id, text: s.rowFail }); return; }
+    } catch { setRowErr({ id: t.id, text: s.rowFail }); return; }
     load();
   }
-  async function remove(t: Testimonial) { if (!confirm(s.remove(t.customer_name))) return; await api(`/api/poster/testimonials?id=${t.id}`, { method: "DELETE" }); load(); }
+  async function remove(t: Testimonial) {
+    if (!confirm(s.remove(t.customer_name))) return;
+    setRowErr(null);
+    try {
+      const r = await api(`/api/poster/testimonials?id=${t.id}`, { method: "DELETE" });
+      if (!r.ok) { setRowErr({ id: t.id, text: s.delFail }); return; }
+    } catch { setRowErr({ id: t.id, text: s.delFail }); return; }
+    load();
+  }
   function saveGoogle(v: string) { setGoogle(v); try { if (v) localStorage.setItem(GOOGLE_KEY, v); else localStorage.removeItem(GOOGLE_KEY); } catch { /* ignore */ } }
-  function cleanPhone(): string | null {
+  /** The number, or null — and the "bad number" line goes under the button that was tapped (`say`). */
+  function cleanPhone(say: (m: string) => void): string | null {
     const p = phone.replace(/\D/g, "").replace(/^0+/, "").replace(/^91(?=\d{10}$)/, "");
-    if (!/^[6-9]\d{9}$/.test(p)) { setPhoneErr(s.badPhone); return null; }
-    setPhoneErr(""); return p;
+    if (!/^[6-9]\d{9}$/.test(p)) { say(s.badPhone); return null; }
+    say(""); return p;
   }
   function askReview() {
-    const p = cleanPhone(); if (!p) return;
+    setGoogleErr("");
+    const p = cleanPhone(setPhoneErr); if (!p) return;
     const who = biz ? `${biz} ` : "";
     const msg = `नमस्ते 🙏\n${who}से जुड़ने के लिए धन्यवाद! क्या आप हमारे बारे में 2 लाइन की छोटी सी review और 1 से 5 तक rating ⭐ भेज सकते हैं? आपकी राय हमारे लिए बहुत मायने रखती है।\nधन्यवाद!`;
     window.open(waLink(p, msg), "_blank");
   }
   function sendGoogle() {
-    const p = cleanPhone(); if (!p || !google) return;
+    setPhoneErr("");
+    if (!google) { setGoogleErr(s.noGoogle); googleRef.current?.focus(); return; }   // was a dead, greyed-out button
+    const p = cleanPhone(setGoogleErr); if (!p) return;
     const who = biz ? `${biz} ` : "";
     const msg = `नमस्ते 🙏\n${who}पर भरोसा करने के लिए धन्यवाद! अगर आपको हमारी सेवा पसंद आई हो तो कृपया Google पर 5 ⭐ review दें — बस 1 मिनट लगेगा:\n${google}\nधन्यवाद!`;
     window.open(waLink(p, msg), "_blank");
@@ -109,13 +150,13 @@ export default function TestimonialsPage() {
       <div className="flex items-center gap-2">
         {/* An open add / edit form closes first (it has its own ✕); otherwise Back = the screen the owner was just on (the Create tab, the
             finished-website screen, the card's checklist); opened fresh, the Create tab. */}
-        <button type="button" onClick={() => (draft ? setDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={() => (draft ? openDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">💬 {s.title}</h1>
-        {!draft && <button type="button" onClick={() => setDraft({ customer_name: "", text: "", rating: 5, city: "", photo_url: null })} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {s.add}</button>}
+        {!draft && <button type="button" onClick={() => openDraft({ customer_name: "", text: "", rating: 5, city: "", photo_url: null })} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {s.add}</button>}
       </div>
       <p className="text-xs text-muted">{s.hint}</p>
       {draft && (
-        <div className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
+        <div ref={formRef} className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
           <div className="flex items-center gap-3">
             <span className="h-20 w-20 rounded-full bg-surface border border-border grid place-items-center overflow-hidden shrink-0">
               {draft.photo_url ? <img src={draft.photo_url} alt="" className="h-full w-full object-cover" /> : busy ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : <Camera className="h-6 w-6 text-muted" />}
@@ -132,16 +173,17 @@ export default function TestimonialsPage() {
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
+              {photoErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
             </div>
           </div>
-          <input className={inp} placeholder={s.name} value={draft.customer_name} onChange={(e) => setDraft({ ...draft, customer_name: e.target.value })} />
+          <input ref={nameRef} className={inp} placeholder={s.name} value={draft.customer_name} onChange={(e) => { setErr(""); setDraft({ ...draft, customer_name: e.target.value }); }} />
           <input className={inp} placeholder={s.city} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-          <textarea className={inp} rows={4} maxLength={300} placeholder={s.text} value={draft.text} onChange={(e) => setDraft({ ...draft, text: e.target.value })} />
+          <textarea ref={textRef} className={inp} rows={4} maxLength={300} placeholder={s.text} value={draft.text} onChange={(e) => { setErr(""); setDraft({ ...draft, text: e.target.value }); }} />
           <div className="flex items-center gap-3 text-sm"><span>{s.rating}</span>{stars(draft.rating, (v) => setDraft({ ...draft, rating: v }))}<span className="text-xs text-muted">{draft.text.length}/300</span></div>
-          {err && <p className="text-sm text-danger">{err}</p>}
+          {err && <p role="alert" className="text-sm font-semibold text-danger">{err}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => setDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">✕</button>
-            <button type="button" onClick={save} disabled={busy || !draft.customer_name.trim() || !draft.text.trim()} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{s.save}</button>
+            <button type="button" onClick={() => openDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">✕</button>
+            <button type="button" onClick={save} disabled={busy} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{s.save}</button>
           </div>
         </div>
       )}
@@ -158,6 +200,7 @@ export default function TestimonialsPage() {
                 <button type="button" onClick={() => approve(t)} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">✓ {s.approve}</button>
                 <button type="button" onClick={() => remove(t)} className="rounded-xl border border-border px-4 py-2.5 text-sm"><Trash2 className="h-4 w-4" /></button>
               </div>
+              {rowErr?.id === t.id && <p role="alert" className="text-sm font-semibold text-danger">{rowErr.text}</p>}
             </div>
           ))}
         </div>
@@ -170,9 +213,10 @@ export default function TestimonialsPage() {
               <p className="text-sm font-semibold truncate">{t.customer_name}{t.city ? <span className="text-muted font-normal"> · {t.city}</span> : null}</p>
               {stars(t.rating)}
               <p className="text-xs text-muted line-clamp-2">{t.text}</p>
+              {rowErr?.id === t.id && <p role="alert" className="mt-1 text-xs font-semibold text-danger">{rowErr.text}</p>}
             </div>
             <Link href={`/poster/video?testimonial=${t.id}`} className="p-2 text-brand-ink" title={lang === "en" ? "Make a video from this review" : "इस review से video बनाएँ"}><Clapperboard className="h-4 w-4" /></Link>
-            <button type="button" onClick={() => setDraft({ id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url })} className="p-2 text-muted text-xs">{s.edit}</button>
+            <button type="button" onClick={() => { openDraft({ id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url }); setTimeout(() => formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); }} className="p-2 text-muted text-xs">{s.edit}</button>
             <button type="button" onClick={() => remove(t)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
           </div>
         ))}
@@ -182,15 +226,16 @@ export default function TestimonialsPage() {
       <div className="rounded-xl border border-border p-3 space-y-3">
         <h2 className="text-base font-bold">⭐ {s.askTitle}</h2>
         <p className="text-xs text-muted">{s.askHint}</p>
-        <input className={inp} inputMode="tel" placeholder={s.phone} value={phone} onChange={(e) => setPhone(e.target.value)} />
-        {phoneErr && <p className="text-sm text-danger">{phoneErr}</p>}
+        <input className={inp} inputMode="tel" placeholder={s.phone} value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneErr(""); setGoogleErr(""); }} />
+        {phoneErr && <p role="alert" className="text-sm font-semibold text-danger">{phoneErr}</p>}
         <button type="button" onClick={askReview} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> {s.askBtn}</button>
         <label className="block space-y-1">
           <span className="text-sm font-semibold">{s.googleLabel}</span>
-          <input className={inp} inputMode="url" placeholder={s.googlePh} value={google} onChange={(e) => saveGoogle(e.target.value.trim())} />
+          <input ref={googleRef} className={inp} inputMode="url" placeholder={s.googlePh} value={google} onChange={(e) => { setGoogleErr(""); saveGoogle(e.target.value.trim()); }} />
           <span className="block text-[11px] text-muted">{s.googleHint}</span>
         </label>
-        <button type="button" onClick={sendGoogle} disabled={!google} className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-brand bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50"><MessageCircle className="h-4 w-4" /> {s.googleBtn}</button>
+        {googleErr && <p role="alert" className="text-sm font-semibold text-danger">{googleErr}</p>}
+        <button type="button" onClick={sendGoogle} className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border border-brand bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink ${google ? "" : "opacity-60"}`}><MessageCircle className="h-4 w-4" /> {s.googleBtn}</button>
       </div>
     </div>
   );

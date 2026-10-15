@@ -12,7 +12,19 @@ export default function ReportPage() {
   const router = useRouter(); const { lang } = useT(); const hi = lang !== "en";
   const [days, setDays] = useState(30);
   const [d, setD] = useState<{ report: R; text: string } | null>(null);
-  useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/report"); return; } setD(null); const r = await api<{ report: R; text: string }>(`/api/poster/report?days=${days}`); if (r.ok) setD(r.data); })(); }, [router, days]);
+  // A report that fails to load says so (with a retry) where the numbers would be — never an endless spinner; a blocked Share says so under the Share button.
+  const [err, setErr] = useState("");
+  const [shareErr, setShareErr] = useState("");
+  const [tick, setTick] = useState(0);
+  useEffect(() => { (async () => {
+    if (!(await isLoggedIn())) { router.replace("/login?next=/poster/report"); return; }
+    setD(null); setErr(""); setShareErr("");
+    try {
+      const r = await api<{ report: R; text: string }>(`/api/poster/report?days=${days}`);
+      if (r.ok) setD(r.data); else setErr(hi ? "Report नहीं खुली। फिर से कोशिश करें।" : "Could not open the report. Please try again.");
+    } catch { setErr(hi ? "अभी internet नहीं है। Connection देखकर फिर कोशिश करें।" : "No internet right now. Check your connection and try again."); }
+  })(); // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, days, tick]);
   const tile = (l: string, v: string | number, sub?: string) => <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold">{v}</p><p className="text-xs text-muted">{l}{sub ? ` · ${sub}` : ""}</p></div>;
   return (
     <div className="space-y-4">
@@ -20,7 +32,9 @@ export default function ReportPage() {
       <div className="flex items-center gap-2"><button type="button" onClick={() => goBack(router, "/poster/social")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button><h1 className="text-lg font-bold flex-1 flex items-center gap-1.5"><BarChart3 className="h-5 w-5 text-brand" /> {hi ? "Marketing report" : "Marketing report"}</h1></div>
       <Guide hi="आपकी marketing का हिसाब — कितने poster, post, reach, leads। हर महीने की 1 तारीख को WhatsApp पर भी आता है।" en="Your marketing scorecard — posters, posts, reach, leads. Also sent to WhatsApp on the 1st of every month." />
       <div className="flex gap-2">{[7, 30, 90].map((n) => <button key={n} type="button" onClick={() => setDays(n)} className={`rounded-full border px-3 py-1.5 text-sm ${days === n ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`}>{n} {hi ? "दिन" : "days"}</button>)}</div>
-      {!d ? <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div> : (
+      {!d ? (err
+        ? <div className="py-12 text-center space-y-3"><p className="text-sm text-danger">{err}</p><button type="button" onClick={() => setTick((n) => n + 1)} className="rounded-xl grad-brand px-5 py-2.5 text-sm font-semibold text-white">{hi ? "फिर से कोशिश करें" : "Try again"}</button></div>
+        : <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>) : (
         <>
           <div className="grid grid-cols-2 gap-2">
             {tile(hi ? "Posters बने" : "Posters made", d.report.posters)}
@@ -31,7 +45,8 @@ export default function ReportPage() {
             {tile(hi ? "Bot ने सीखा" : "Bot learned", d.report.learned)}
           </div>
           <p className="text-xs text-muted">{hi ? `आगे ${d.report.calendarPlanned} दिन planned हैं। हर महीने की 1 तारीख को ये report आपके WhatsApp पर भी आएगी।` : `${d.report.calendarPlanned} days planned ahead. This report is also sent to your WhatsApp on the 1st of every month.`}</p>
-          <button type="button" onClick={() => { const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }; if (nav.share) nav.share({ text: d.text }).catch(() => {}); else window.open(`https://wa.me/?text=${encodeURIComponent(d.text)}`, "_blank"); }} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {hi ? "Report share करें" : "Share report"}</button>
+          <button type="button" onClick={() => { setShareErr(""); const nav = navigator as Navigator & { share?: (d: ShareData) => Promise<void> }; if (nav.share) nav.share({ text: d.text }).catch(() => {}); else if (!window.open(`https://wa.me/?text=${encodeURIComponent(d.text)}`, "_blank")) setShareErr(hi ? "WhatsApp नहीं खुला — browser ने window रोकी है। Pop-up की अनुमति देकर फिर दबाएँ।" : "WhatsApp did not open — the browser blocked the window. Allow pop-ups and tap again."); }} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-3 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {hi ? "Report share करें" : "Share report"}</button>
+          {shareErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{shareErr}</p>}
         </>
       )}
     </div>

@@ -16,6 +16,7 @@ export function ProductCheckSheet({ productId, productName, langs, onClose, onCo
   const [blocking, setBlocking] = useState<string[]>([]);
   const [busy, setBusy] = useState<"" | "load" | "draft" | "save">("load");
   const [err, setErr] = useState("");
+  const [errAt, setErrAt] = useState<"draft" | "save">("draft"); // which button the message belongs to: Read my photos / Save & Confirm
   const [notes, setNotes] = useState("");
   const [partOk, setPartOk] = useState<null | boolean>(null);
   const [newChip, setNewChip] = useState("");
@@ -23,12 +24,12 @@ export function ProductCheckSheet({ productId, productName, langs, onClose, onCo
   const [done, setDone] = useState(false);
 
   const take = (d: Res) => { setFacts(d.facts); setPhotos(d.photos ?? []); setBlocking(d.blocking ?? []); };
-  const load = useCallback(async () => { setBusy("load"); const r = await api<Res>(`/api/poster/products/${productId}/facts`); setBusy(""); if (r.ok) { take(r.data); if (r.data.facts?.confirmed_by_owner) setPartOk(true); } else setErr(r.data.error || "Could not open this. Please try again."); }, [productId]);
+  const load = useCallback(async () => { setBusy("load"); setErrAt("draft"); const r = await api<Res>(`/api/poster/products/${productId}/facts`); setBusy(""); if (r.ok) { take(r.data); if (r.data.facts?.confirmed_by_owner) setPartOk(true); } else setErr(r.data.error || "Could not open this. Please try again."); }, [productId]);
   useEffect(() => { const t = setTimeout(() => void load(), 0); return () => clearTimeout(t); }, [load]);
 
-  async function draft() { setBusy("draft"); setErr(""); const r = await api<Res>(`/api/poster/products/${productId}/facts`, { method: "POST", json: { notes } }); setBusy(""); if (r.ok) { take(r.data); setPartOk(null); } else setErr(r.data.error || "Could not read your photos. Please try again."); }
+  async function draft() { setBusy("draft"); setErr(""); setErrAt("draft"); const r = await api<Res>(`/api/poster/products/${productId}/facts`, { method: "POST", json: { notes } }); setBusy(""); if (r.ok) { take(r.data); setPartOk(null); } else setErr(r.data.error || "Could not read your photos. Please try again."); }
   async function save(confirm: boolean) {
-    if (!facts) return; setBusy("save"); setErr("");
+    if (!facts) return; setBusy("save"); setErr(""); setErrAt("save");
     const verified = confirm ? ["output", "stage_positive", "appearance", "must_not_show", ...facts.unverified] : [];
     const r = await api<Res>(`/api/poster/products/${productId}/facts`, { method: "PUT", json: { facts, confirm, verified, langs: langs?.length ? langs : ["hinglish"] } });
     setBusy("");
@@ -58,6 +59,7 @@ export function ProductCheckSheet({ productId, productName, langs, onClose, onCo
             <textarea className={inp} rows={2} placeholder="Anything the AI should know? (optional) e.g. water comes out of the hose on top" value={notes} onChange={(e) => setNotes(e.target.value)} />
             <button type="button" onClick={draft} disabled={busy === "draft" || !photos.length} className="grad-brand w-full rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "draft" ? "Reading your photos… (about 20 seconds)" : "Read my photos"}</button>
             {!photos.length && <p className="text-xs text-danger">Add at least one product photo first. Two or more is best.</p>}
+            {err && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
           </div>
         )}
 
@@ -127,12 +129,13 @@ export function ProductCheckSheet({ productId, productName, langs, onClose, onCo
                     <label key={l} className="block"><span className="mb-1 block font-semibold text-muted">How to say the name ({l})</span><input className={inp} value={Object.entries(m).map(([k, v]) => `${k}=${v}`).join(", ")} onChange={(e) => set({ pronunciations: { ...facts.pronunciations, [l]: Object.fromEntries(e.target.value.split(",").map((x) => x.split("=").map((y) => y.trim())).filter((x) => x[0] && x[1])) } })} /></label>
                   ))}
                   <button type="button" onClick={draft} disabled={busy === "draft"} className="rounded-lg border border-border px-3 py-1.5 text-xs">{busy === "draft" ? "Reading…" : "Read my photos again"}</button>
+                  {err && errAt === "draft" && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
                 </div>
               )}
             </section>
 
-            {err && <p className="text-xs text-danger">{err}</p>}
-            {!canConfirm && <p className="text-[11px] text-muted">{needsPoint && !pointSet ? "Tap the spot on the photo (question 1). " : ""}{facts.output && partOk === null ? "Answer Yes or No (question 2). " : ""}</p>}
+            {err && errAt === "save" && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
+            {!canConfirm && <p className="text-[11px] text-muted">{needsPoint && !pointSet ? "Tap the spot on the photo (question 1). " : ""}{facts.output && partOk === null ? "Answer Yes or No (question 2). " : ""}{facts.must_not_show.length === 0 ? "Add at least one thing the video must never show. " : ""}{!facts.appearance || !facts.stage_positive || (facts.output && !facts.output.action_positive) ? "Fill in the empty boxes under “Show more details”. " : ""}</p>}
             <div className="flex gap-2">
               <button type="button" onClick={() => save(false)} disabled={busy === "save"} className="rounded-xl border border-border px-4 py-2.5 text-sm">Save for later</button>
               <button type="button" onClick={() => save(true)} disabled={busy === "save" || !canConfirm} className="grad-brand flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy === "save" ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : "Confirm"}</button>

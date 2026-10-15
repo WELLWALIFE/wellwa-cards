@@ -26,7 +26,9 @@ export default function PhotosPage() {
   const [category, setCategory] = useState("");
   const [products, setProducts] = useState<SavedProduct[]>([]);
   const [card, setCard] = useState<Card | null>(null);
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState("");                                  // the page could not load (shown with its Try again)
+  const [upErr, setUpErr] = useState<{ key: string; text: string } | null>(null);   // a failed upload: under that photo's own line
+  const [applyErr, setApplyErr] = useState("");                             // "Put them on my website" failed / nothing to put: right above that button
   const [busy, setBusy] = useState("");
   const [done, setDone] = useState<Record<string, string>>({});   // wish key → uploaded url
   const [applied, setApplied] = useState("");
@@ -71,19 +73,21 @@ export default function PhotosPage() {
 
   async function upload(w: Wish, file: File | null) {
     if (!file || !facts) return;
-    setBusy(w.key); setErr("");
+    setBusy(w.key); setUpErr(null); setApplyErr(""); setApplied("");
     try {
       if (w.slot === "banner") {
         const url = await uploadImage(await compressToFile(file, "banner.jpg", 1800, 0.86), "wide");
         if (!url) throw new Error("upload");
         const next = { ...facts, bannerUrl: url };
-        await api("/api/card/facts", { method: "PATCH", json: { facts: { bannerUrl: url } } });
+        const sv = await api("/api/card/facts", { method: "PATCH", json: { facts: { bannerUrl: url } } });
+        if (!sv.ok) throw new Error("save");
         setFacts(next);
       } else if (w.slot === "photo") {
         const url = await uploadImage(await compressToFile(file, "photo.jpg", 1600, 0.85), "wide");
         if (!url) throw new Error("upload");
         const photos = [...facts.photos, url].slice(0, 12);
-        await api("/api/card/facts", { method: "PATCH", json: { facts: { photos } } });
+        const sv = await api("/api/card/facts", { method: "PATCH", json: { facts: { photos } } });
+        if (!sv.ok) throw new Error("save");
         setFacts({ ...facts, photos });
       } else if (w.slot === "product") {
         const url = await uploadImage(await compressToFile(file, "product.jpg", 1400, 0.86), "product");
@@ -94,13 +98,15 @@ export default function PhotosPage() {
       }
       setDone((d) => ({ ...d, [w.key]: "ok" }));
       setDirty(true);
-    } catch { setErr(T("Could not upload that photo. Please try again.", "वो photo upload नहीं हुई। दोबारा try करें।")); }
+    } catch { setUpErr({ key: w.key, text: T("Could not upload that photo. Please try again.", "वो photo upload नहीं हुई। दोबारा try करें।") }); }
     finally { setBusy(""); }
   }
 
   async function apply() {
     if (!card || !facts) return;
-    setBusy("apply"); setErr(""); setApplied("");
+    // Nothing of their own yet: say so right above the button (it used to be a dead, greyed-out button).
+    if (!dirty && !facts.bannerUrl && !facts.photos.length) { setUpErr(null); setApplied(""); setApplyErr(T("Add at least one photo above first, then tap this.", "पहले ऊपर से कम से कम एक photo जोड़ें, फिर ये दबाएँ।")); return; }
+    setBusy("apply"); setUpErr(null); setApplyErr(""); setApplied("");
     try {
       const { card: next, changed } = applyOwnPhotos(card, facts, products);
       if (!changed.length) { setApplied(T("Your website already shows these photos.", "आपकी website पर ये photos पहले से हैं।")); setDirty(false); return; }
@@ -108,7 +114,7 @@ export default function PhotosPage() {
       if (!r.ok) throw new Error(r.error);
       setCard(next); setDirty(false);
       setApplied(T(`Done — updated: ${changed.join(", ")}. Open your website to see.`, `हो गया — बदला: ${changed.join(", ")}। website खोल कर देखें।`));
-    } catch { setErr(T("Could not update the website. Please try again.", "website update नहीं हुई। दोबारा try करें।")); }
+    } catch { setApplyErr(T("Could not update the website. Please try again.", "website update नहीं हुई। दोबारा try करें।")); }
     finally { setBusy(""); }
   }
 
@@ -125,8 +131,6 @@ export default function PhotosPage() {
         <h1 className="text-lg font-bold flex-1">{T("Photos your website needs", "आपकी website को ये photos चाहिए")}</h1>
       </div>
       <Guide en="Real photos beat stock every time. Take these with your phone in daylight; we put each one in the right place." hi="असली photos stock से हमेशा बेहतर हैं। दिन की रोशनी में phone से लें; हर एक को सही जगह हम लगा देंगे।" />
-      {err && <p className="text-sm text-danger">{err}</p>}
-      {applied && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">{applied}</p>}
       {!wishes.length && <p className="rounded-xl bg-surface2 px-3 py-3 text-sm">{T("Your website has every photo it needs. Add more any time from the company step.", "आपकी website के सारे photos पूरे हैं। और जोड़ने हों तो company step से।")}</p>}
       <div className="space-y-2">
         {wishes.map((w) => {
@@ -141,6 +145,7 @@ export default function PhotosPage() {
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold leading-snug">{hi ? w.hi : w.en}</p>
                 <p className="text-[11px] text-muted">{hi ? w.whyHi : w.why}</p>
+                {upErr?.key === w.key && <p role="alert" className="mt-1 rounded-lg border border-danger/40 bg-danger/10 px-2 py-1.5 text-xs font-semibold text-danger">{upErr.text}</p>}
               </div>
               {!ok && (linkTo ? (
                 <Link href={linkTo} className={btn}>{T("Add", "जोड़ें")} →</Link>
@@ -156,7 +161,9 @@ export default function PhotosPage() {
       </div>
       {card && (
         <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-3 shadow-float">
-          <button type="button" onClick={() => void apply()} disabled={busy === "apply" || (!dirty && !facts.bannerUrl && !facts.photos.length)} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+          {applyErr && <p role="alert" className="mb-2 rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{applyErr}</p>}
+          {applied && <p role="status" className="mb-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">{applied}</p>}
+          <button type="button" onClick={() => void apply()} disabled={busy === "apply"} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy === "apply" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Put them on my website", "website पर लगाओ")}
           </button>
           <p className="mt-1.5 text-center text-[11px] text-muted">{pending.length ? T(`${pending.length} still to add — you can apply now and add the rest later.`, `${pending.length} बाकी हैं — अभी लगा सकते हैं, बाक़ी बाद में।`) : T("Stock pictures are replaced by yours; nothing else changes.", "stock की जगह आपकी photos लगेंगी; बाक़ी कुछ नहीं बदलता।")}</p>

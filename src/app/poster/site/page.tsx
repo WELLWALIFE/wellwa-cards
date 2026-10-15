@@ -22,14 +22,18 @@ type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: str
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
 
 type Panel = "share" | "edit" | null;
+const NO_NET = "No internet — tap to try again";
 
 export default function WebsitePage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
   const [s, setS] = useState<Status | null>(null);
   const [cardId, setCardId] = useState<string>("");
-  const [msg, setMsg] = useState("");
   const [err, setErr] = useState("");
+  /** A save that failed in "Show or hide pages": shown under the very switch that was tapped (key "enabled" or "page:<slug>"). */
+  const [rowErr, setRowErr] = useState<{ key: string; text: string } | null>(null);
+  /** A copy that the phone refused: shown under the Copy button that was tapped (the link row at the top, or the Share panel). */
+  const [copyFail, setCopyFail] = useState<"top" | "share" | null>(null);
   const [panel, setPanel] = useState<Panel>(null);
   // Opened with Edit (?edit=1): only the edit tiles, starting at "What do you want to change?" — no link, share or open buttons
   // above them (owner, 14 Oct 2026).
@@ -111,29 +115,37 @@ export default function WebsitePage() {
   const [copied, setCopied] = useState(false);
   /** The one address shown, copied, shared and opened: the owner's own domain when connected, else the Shubhora link. */
   const link = s?.hasCard ? (s.customDomain ? `https://${s.customDomain}` : s.url) : "";
-  async function copy() { if (!s || !s.hasCard) return; try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  async function copy(where: "top" | "share") { if (!s || !s.hasCard) return; setCopyFail(null); try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail(where); } }
   function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${link}` : `Hello! Here is my digital card — contact, products and more in one tap: ${link}`)}`, "_blank", "noopener"); }
   function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${link}?view=site` : `See our website — products, services and all about us: ${link}?view=site`)}`, "_blank", "noopener"); }
 
   // api() resolves on ANY status, so a 401 (expired login) or a server error must be caught here — without
   // this check the screen keeps spinning for ever with nothing to tap.
-  const load = useCallback(async (id?: string) => {
-    setErr("");
+  const load = useCallback(async (id?: string, quiet?: boolean): Promise<boolean> => {
+    if (!quiet) setErr("");
     try {
       const r = await api<Status & { error?: string }>(`/api/site/status${id ? `?card=${id}` : ""}`);
-      if (!r.ok) { setErr(r.data?.error || "No internet — tap to try again"); return; }
+      if (!r.ok) { if (!quiet) setErr(r.data?.error || NO_NET); return false; }
       setS(r.data);
       if (r.data.hasCard) setCardId(r.data.cardId);
+      return true;
     } catch {
-      setErr("No internet — tap to try again");
+      if (!quiet) setErr(NO_NET);
+      return false;
     }
   }, []);
   // Replace, not push: Back from the login page must not land here again and bounce straight back to it. The address (Edit / Share) comes back as it was.
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/site${window.location.search}`)}`); return; } load(); })(); }, [router, load]);
 
-  async function patch(p: { enabled?: boolean; hidden?: string[] }) {
-    try { await api("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } }); } catch { setMsg("No internet — please try again."); return; }
-    load(cardId);
+  /** `key` says which switch was tapped, so a failure shows right under that switch (not at the top of the page). */
+  async function patch(p: { enabled?: boolean; hidden?: string[] }, key: string) {
+    setRowErr(null);
+    const bad = (why?: string) => setRowErr({ key, text: why || (hi ? "Save नहीं हुआ — internet देखकर दोबारा try करें।" : "Could not save. Check the internet and try again.") });
+    try {
+      const r = await api<{ error?: string }>("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } });
+      if (!r.ok) { bad(r.data?.error); return; }
+    } catch { bad(); return; }
+    if (!(await load(cardId, true))) bad();
   }
   /** Back = the screen the owner was just on (lib/nav-back); only when there is none, the Create tab this page hangs off. The Edit address is
    *  the first screen's child: its Back is leaveEdit. A focused edit's Save replaces its own form, so Back never lands on a finished one. */
@@ -158,8 +170,6 @@ export default function WebsitePage() {
         <button type="button" onClick={back} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{T("Card & Website", "Card & Website")}</h1>
       </div>
-      {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
-      {err && <p className="text-sm font-semibold text-danger">{err}</p>}
 
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
@@ -169,18 +179,24 @@ export default function WebsitePage() {
       ) : (
         <>
           {s.cards.length > 1 && (
-            <select value={cardId} onChange={(e) => load(e.target.value)} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
-              {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}
-            </select>
+            <div className="space-y-1.5">
+              <select value={cardId} onChange={(e) => { setRowErr(null); void load(e.target.value); }} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
+                {s.cards.map((c) => <option key={c.id} value={c.id}>{c.name} — /c/{c.username}</option>)}
+              </select>
+              {err && <p className="text-xs font-semibold text-danger">{err === NO_NET ? T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।") : err}</p>}
+            </div>
           )}
 
           {!editOnly && <>
           {/* ---- 1. the link ---- */}
           <section className="space-y-3 rounded-2xl border border-border p-3">
+            <div className="space-y-1.5">
             <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2.5">
               <Globe className="h-4 w-4 shrink-0 text-brand" />
               <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
-              <button type="button" onClick={() => void copy()} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-4 w-4 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-4 w-4" /> {T("Copy", "Copy")}</>}</button>
+              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-4 w-4 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-4 w-4" /> {T("Copy", "Copy")}</>}</button>
+            </div>
+            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link above to copy it by hand.", "Copy नहीं हुआ। ऊपर का link दबाकर रखें और हाथ से copy करें।")}</p>}
             </div>
             {/* The one thing people got wrong here (owner, 7 Oct 2026: "Edit dabane par kya edit hoga, card ya website?"):
                 one link, one set of details — the website and the card are the same thing in two shapes. Said once, here. */}
@@ -197,7 +213,7 @@ export default function WebsitePage() {
 
           {/* ---- 2. two doors: Share, Edit ---- */}
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => setPanel(panel === "share" ? null : "share")} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
+            <button type="button" onClick={() => { setCopyFail(null); setPanel(panel === "share" ? null : "share"); }} aria-expanded={panel === "share"} className={door("share")}><Share2 className="h-6 w-6" /> {T("Share", "Share करें")}<span className={doorSub}>{T("card or website", "card या website")}</span></button>
             <button type="button" onClick={openEdit} className={door("edit")}><Pencil className="h-6 w-6" /> {T("Edit card & website", "Card और website edit करें")}<span className={doorSub}>{T("both, together", "दोनों, एक साथ")}</span></button>
           </div>
 
@@ -218,9 +234,10 @@ export default function WebsitePage() {
               <button type="button" onClick={shareSite} className="flex w-full items-center gap-3 rounded-xl border-2 border-[#25D366] px-4 py-3.5 text-left text-[#128C7E]">
                 <Globe className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><b className="block text-sm">{T("Share my website", "मेरी website share करें")}</b><span className="block text-xs text-muted">{T("The full website — pages, products, about", "पूरी website — pages, products, परिचय")}</span></span><ChevronRight className="h-4 w-4 shrink-0" />
               </button>
-              <button type="button" onClick={() => void copy()} className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
+              <button type="button" onClick={() => void copy("share")} className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
                 <Copy className="h-5 w-5 shrink-0 text-muted" /><span className="min-w-0 flex-1 text-sm font-semibold">{copied ? T("Link copied ✓", "Link copy हुआ ✓") : T("Copy the link", "Link copy करें")}</span>
               </button>
+              {copyFail === "share" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link at the top of this page to copy it by hand.", "Copy नहीं हुआ। इस page के ऊपर वाला link दबाकर रखें और हाथ से copy करें।")}</p>}
               <Link href="/poster/share" className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
                 <Share2 className="h-5 w-5 shrink-0 text-muted" /><span className="min-w-0 flex-1 text-sm font-semibold">{T("QR code and more ways to share", "QR code और share के और तरीके")}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted" />
               </Link>
@@ -277,7 +294,7 @@ export default function WebsitePage() {
                   );
                   return x.href
                     ? <Link key={x.k} href={x.href} className={`${base} border-border`}>{inner}</Link>
-                    : <button key={x.k} type="button" onClick={() => setOpenTool(on ? null : x.tool ?? null)} aria-expanded={!!on} className={`${base} ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>{inner}</button>;
+                    : <button key={x.k} type="button" onClick={() => { setRowErr(null); setOpenTool(on ? null : x.tool ?? null); }} aria-expanded={!!on} className={`${base} ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>{inner}</button>;
                 };
                 return (
                   <>
@@ -299,14 +316,18 @@ export default function WebsitePage() {
                           <div className="space-y-3 rounded-2xl border border-border p-3">
                             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
                               <span><span className="block text-sm font-medium">{T("Website on computers", "Computer पर website")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
-                              <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked })} />
+                              <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked }, "enabled")} />
                             </label>
+                            {rowErr?.key === "enabled" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{rowErr.text}</p>}
                             <p className="text-sm font-semibold">{T("Pages shown on the website", "Website पर कौन से pages दिखें")}</p>
                             {s.pages.map((p) => (
-                              <label key={p.slug} className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
-                                <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "हिस्से")}</span></span>
-                                <input type="checkbox" className="h-5 w-5" checked={!hidden.has(p.slug)} onChange={(e) => { const h = new Set(hidden); if (e.target.checked) h.delete(p.slug); else h.add(p.slug); patch({ hidden: [...h] }); }} />
-                              </label>
+                              <div key={p.slug} className="space-y-1.5">
+                                <label className="flex items-center justify-between rounded-lg border border-border px-3 py-2">
+                                  <span className="text-sm">{p.label} <span className="text-[11px] text-muted">· {p.blocks} {T("sections", "हिस्से")}</span></span>
+                                  <input type="checkbox" className="h-5 w-5" checked={!hidden.has(p.slug)} onChange={(e) => { const h = new Set(hidden); if (e.target.checked) h.delete(p.slug); else h.add(p.slug); patch({ hidden: [...h] }, `page:${p.slug}`); }} />
+                                </label>
+                                {rowErr?.key === `page:${p.slug}` && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{rowErr.text}</p>}
+                              </div>
                             ))}
                           </div>
                         )}

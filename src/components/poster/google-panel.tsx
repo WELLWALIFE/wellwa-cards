@@ -18,7 +18,13 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
   const { lang } = useT(); const hi = lang !== "en";
   const [s, setS] = useState<Status | null>(null);
   const [busy, setBusy] = useState("");
-  const [msg, setMsg] = useState("");
+  // A message belongs to ONE control (E1): `at` says which one, and it is shown right under it.
+  //   top = the result of coming back from Google, connect / connect-own / reconnect = under that button, head = refresh / disconnect /
+  //   location, toggles = the two switches, post = the Post / Write row, custom = the Post to Google button of the update form.
+  const [note, setNote] = useState<{ at: string; text: string } | null>(null);
+  const setMsg = (text: string, at = "top") => setNote(text ? { at, text } : null);
+  const T = (en: string, h: string) => (hi ? h : en);
+  const here = (at: string) => (note?.at === at ? <p role="alert" className={`rounded-lg px-3 py-2 text-xs font-semibold ${note.text.startsWith("✅") ? "bg-good/10 text-good" : "border border-danger/40 bg-danger/10 text-danger"}`}>{note.text}</p> : null);
   const [adv, setAdv] = useState(false);
   const [own, setOwn] = useState({ client_id: "", client_secret: "" });
   const [custom, setCustom] = useState({ open: false, text: "", image_url: "", cta: "CALL" as "CALL" | "LEARN_MORE" | "BOOK", url: "" });
@@ -28,34 +34,45 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
     load();
     try {
       const q = new URLSearchParams(window.location.search);
-      if (q.get("google") === "ok") setMsg(q.get("pick") ? ("✅ Connected — pick your location below.") : ("✅ Google Business connected."));
-      if (q.get("google") === "error") setMsg(("⚠️ Could not connect: ") + (q.get("reason") ?? ""));
+      if (q.get("google") === "ok") setNote({ at: "top", text: q.get("pick") ? ("✅ Connected — pick your location below.") : ("✅ Google Business connected.") });
+      if (q.get("google") === "error") setNote({ at: "top", text: ("⚠️ Could not connect: ") + (q.get("reason") ?? "") });
     } catch { /* ignore */ }
   }, [load, hi]);
 
-  async function connect(withOwn = false) {
+  async function connect(withOwn = false, at = "connect") {
     setBusy("connect"); setMsg("");
     const r = await api<{ url?: string; error?: string }>("/api/google/connect", { method: "POST", json: { return_to: "/poster/social?tab=google", ...(withOwn ? own : {}) } });
     setBusy("");
-    if (!r.ok || !r.data.url) { setMsg(r.data.error ?? "Failed"); return; }
+    if (!r.ok || !r.data.url) { setMsg(r.data.error ?? T("Could not connect. Please try again.", "Connect नहीं हुआ। दोबारा try करें।"), at); return; }
     window.location.href = r.data.url;
   }
-  async function patch(p: Record<string, unknown>) { setBusy("patch"); await api("/api/google/status", { method: "PATCH", json: p }); await load(); setBusy(""); }
-  async function disconnect() { if (!confirm("Disconnect Google Business?")) return; await api("/api/google/status", { method: "DELETE" }); load(); }
+  async function patch(p: Record<string, unknown>, at = "head") {
+    setBusy("patch"); setMsg("");
+    const r = await api<{ error?: string }>("/api/google/status", { method: "PATCH", json: p });
+    if (!r.ok) setMsg(r.data?.error ?? T("Could not save that. Please try again.", "सेव नहीं हुआ। दोबारा try करें।"), at);
+    await load(); setBusy("");
+  }
+  async function disconnect() {
+    if (!confirm("Disconnect Google Business?")) return;
+    setMsg("");
+    const r = await api<{ error?: string }>("/api/google/status", { method: "DELETE" });
+    if (!r.ok) { setMsg(r.data?.error ?? T("Could not disconnect. Please try again.", "Disconnect नहीं हुआ। दोबारा try करें।"), "head"); return; }
+    load();
+  }
   async function postNow() {
     setBusy("post"); setMsg("");
     const pr = await api<{ profiles: Profile[] }>("/api/poster/profiles");
     const list = pr.data.profiles ?? []; const p = list.find((x) => x.id === currentProfileId()) ?? list.find((x) => x.is_default) ?? list[0];
-    if (!p) { setMsg("Create a profile first."); setBusy(""); return; }
+    if (!p) { setMsg("Create a profile first.", "post"); setBusy(""); return; }
     const td = await api<{ poster?: Poster; message?: string }>(`/api/poster/today?profile=${p.id}`);
-    if (!td.data.poster) { setMsg(td.data.message ?? "Poster not ready"); setBusy(""); return; }
+    if (!td.data.poster) { setMsg(td.data.message ?? "Poster not ready", "post"); setBusy(""); return; }
     const r = await api<{ ok?: boolean; error?: string }>("/api/google/post", { method: "POST", json: { poster_id: td.data.poster.id } });
-    setMsg(r.ok ? ("✅ Posted to Google.") : (r.data.error ?? "Failed")); setBusy("");
+    setMsg(r.ok ? ("✅ Posted to Google.") : (r.data.error ?? "Failed"), "post"); setBusy("");
   }
   async function postCustom() {
     setBusy("custom"); setMsg("");
     const r = await api<{ ok?: boolean; error?: string }>("/api/google/post", { method: "POST", json: { text: custom.text, image_url: custom.image_url || undefined, cta: custom.cta, url: custom.url || undefined } });
-    setMsg(r.ok ? ("✅ Update is live on Google.") : (r.data.error ?? "Failed")); setBusy("");
+    setMsg(r.ok ? ("✅ Update is live on Google.") : (r.data.error ?? "Failed"), r.ok ? "post" : "custom"); setBusy("");
     if (r.ok) setCustom({ open: false, text: "", image_url: "", cta: "CALL", url: "" });
   }
 
@@ -65,7 +82,7 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
   return (
     <div className="space-y-3">
       <Guide hi="Google Business Profile = your shop on Google Search and Maps. Once connected: the daily poster goes up as a Google update, the AI answers your Google reviews, and views / calls / directions show right here." en="Google Business Profile = your shop on Google Search and Maps. Once connected: the daily poster goes up as a Google update, the AI answers your Google reviews, and views / calls / directions show right here." />
-      {msg && <p className="text-sm rounded-lg bg-surface2 px-3 py-2">{msg}</p>}
+      {here("top")}
 
       {!s.connected ? (
         <section className="rounded-xl border border-border p-4 space-y-3">
@@ -76,6 +93,7 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
             <button type="button" onClick={() => connect(false)} disabled={busy === "connect" || !s.configured} className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-[#4285F4] px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
               {busy === "connect" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {"Connect Google Business"}
             </button>
+            {here("connect")}
             <p className="text-[11px] text-faint">{"Log in with the Google account that owns your Business Profile. One click, no API keys."}</p>
             {!s.configured && <p className="rounded-lg bg-lead/10 px-3 py-2 text-[11px] text-lead">{"The platform's Google setup is pending (admin adds the Google Cloud client). Until then you can use your own client under Advanced."}</p>}
             <a href="https://business.google.com/" target="_blank" rel="noreferrer" className="block text-xs text-brand-ink">{"How to create a Google Business Profile (free)"} ↗</a>
@@ -86,7 +104,8 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
               <p className="text-muted">{hi ? "Google Cloud → APIs & Services → Credentials → OAuth client (Web). Redirect URI:" : "Google Cloud → APIs & Services → Credentials → OAuth client (Web). Redirect URI:"} <code className="text-ink">{s.redirect_uri}</code>. {"Enable the Business Profile APIs and get access approval too."}</p>
               <input value={own.client_id} onChange={(e) => setOwn({ ...own, client_id: e.target.value })} placeholder="Client ID (….apps.googleusercontent.com)" className={inputCls + " mono text-xs"} />
               <input value={own.client_secret} onChange={(e) => setOwn({ ...own, client_secret: e.target.value })} placeholder="Client secret" type="password" className={inputCls + " mono text-xs"} />
-              <button type="button" disabled={busy === "connect" || !own.client_id || !own.client_secret} onClick={() => connect(true)} className="w-full rounded-xl border border-border py-2 text-xs font-semibold text-ink disabled:opacity-50">{"Connect with my client"}</button>
+              <button type="button" disabled={busy === "connect" || !own.client_id || !own.client_secret} onClick={() => connect(true, "connect-own")} className="w-full rounded-xl border border-border py-2 text-xs font-semibold text-ink disabled:opacity-50">{"Connect with my client"}</button>
+              {here("connect-own")}
             </div>
           </details>
         </section>
@@ -112,6 +131,7 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
                 <span className="relative flex-1"><select value={s.location_name} onChange={(e) => patch({ location_name: e.target.value })} className="w-full appearance-none rounded-lg border border-border bg-surface px-2 py-1.5 pr-7 text-xs text-ink">{s.locations.map((l) => <option key={l.name} value={l.name}>{l.title}{l.address ? ` — ${l.address}` : ""}</option>)}</select><ChevronDown className="pointer-events-none absolute right-2 top-2 h-3.5 w-3.5" /></span>
               </label>
             )}
+            {here("head")}
             {s.last_error && <p className="rounded-lg bg-danger/10 px-2 py-1 text-[11px] text-danger">{s.last_error}</p>}
           </section>
 
@@ -129,27 +149,33 @@ export function GooglePanel({ onReviews }: { onReviews?: () => void }) {
           <section className="rounded-xl border border-border p-3 space-y-3">
             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
               <span><span className="text-sm font-medium block">{hi ? "Roz subah auto-post" : "Auto-post every morning (4 AM)"}</span><span className="text-[11px] text-muted">{"Today's poster goes up as a Google update (4 AM)."}</span></span>
-              <input type="checkbox" className="h-5 w-5" checked={s.auto_post} onChange={(e) => patch({ auto_post: e.target.checked })} />
+              <input type="checkbox" className="h-5 w-5" checked={s.auto_post} onChange={(e) => patch({ auto_post: e.target.checked }, "toggles")} />
             </label>
             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
               <span><span className="text-sm font-medium block">{hi ? "Reviews ka AI auto-reply" : "AI auto-reply to reviews"}</span><span className="text-[11px] text-muted">{"The AI answers new Google reviews by itself (every 30 min)."}</span></span>
-              <input type="checkbox" className="h-5 w-5" checked={s.auto_reply} onChange={(e) => patch({ auto_reply: e.target.checked })} />
+              <input type="checkbox" className="h-5 w-5" checked={s.auto_reply} onChange={(e) => patch({ auto_reply: e.target.checked }, "toggles")} />
             </label>
+            {here("toggles")}
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={postNow} disabled={busy === "post" || s.status !== "ok"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "post" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />} {"Post today's poster"}</button>
               <button type="button" onClick={() => setCustom({ ...custom, open: !custom.open })} disabled={s.status !== "ok"} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold text-ink disabled:opacity-60">{hi ? "Apna update likhein" : "Write an update"}</button>
             </div>
+            {s.status !== "ok" && <p className="text-[11px] text-muted">{T("Posting is paused until Google is reconnected — tap Reconnect below.", "Google फिर से जोड़ने तक posting बंद है — नीचे Reconnect दबाएँ।")}</p>}
+            {here("post")}
             {custom.open && (
               <div className="space-y-2 rounded-lg border border-dashed border-border p-2.5">
                 <textarea value={custom.text} onChange={(e) => setCustom({ ...custom, text: e.target.value })} rows={3} placeholder={hi ? "Offer, naya product, chhutti ka notice…" : "Offer, new product, holiday notice…"} className={inputCls} />
                 <input value={custom.image_url} onChange={(e) => setCustom({ ...custom, image_url: e.target.value })} placeholder="Image URL (https, optional)" className={inputCls} />
                 <div className="flex gap-2"><select value={custom.cta} onChange={(e) => setCustom({ ...custom, cta: e.target.value as typeof custom.cta })} className="rounded-xl border border-border bg-surface px-2 text-xs"><option value="CALL">Call button</option><option value="LEARN_MORE">Learn more (link)</option><option value="BOOK">Book (link)</option></select>{custom.cta !== "CALL" && <input value={custom.url} onChange={(e) => setCustom({ ...custom, url: e.target.value })} placeholder="https://…" className={inputCls} />}</div>
                 <button type="button" disabled={busy === "custom" || !custom.text.trim()} onClick={postCustom} className="w-full rounded-xl grad-brand py-2 text-sm font-semibold text-white disabled:opacity-60">{busy === "custom" ? "Posting…" : "Post to Google"}</button>
+                {here("custom")}
               </div>
             )}
-            {s.status === "reconnect" && <button type="button" onClick={() => connect(false)} className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{"Reconnect"}</button>}
+            {s.status === "reconnect" && <button type="button" onClick={() => connect(false, "reconnect")} className="w-full rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{"Reconnect"}</button>}
+            {s.status === "reconnect" && here("reconnect")}
             <button type="button" onClick={onReviews} className="block w-full text-left text-sm text-brand-ink">{"See & answer Google reviews →"}</button>
-            {s.own_client && <button type="button" onClick={() => { if (confirm("Forget your own OAuth client? (platform client will be used)")) patch({ forget_client: true }); }} className="text-[11px] text-faint">{"Forget my own OAuth client"}</button>}
+            {s.own_client && <button type="button" onClick={() => { if (confirm("Forget your own OAuth client? (platform client will be used)")) patch({ forget_client: true }, "forget"); }} className="text-[11px] text-faint">{"Forget my own OAuth client"}</button>}
+            {here("forget")}
           </section>
         </>
       )}

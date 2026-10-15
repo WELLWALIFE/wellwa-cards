@@ -37,7 +37,12 @@ function EditorInner() {
   const [scenes, setScenes] = useState<Record<number, SceneEdit>>({});
   const [open, setOpen] = useState<Record<number, "pic" | null>>({});
   const [busy, setBusy] = useState("");
-  const [err, setErr] = useState("");
+  // Messages sit beside the control that caused them: sceneErr under that scene's picture panel, paraErr under that paragraph's
+  // recording button, applyErr (and the credit packs) directly above the bottom "Remake" bar.
+  const [applyErr, setApplyErr] = useState("");
+  const [sceneErr, setSceneErr] = useState<Record<number, string>>({});
+  const [paraErr, setParaErr] = useState<Record<number, string>>({});
+  const applyErrRef = useRef<HTMLParagraphElement | null>(null);
   const [needCredits, setNeedCredits] = useState<number | null>(null);
   const [applied, setApplied] = useState(false);
   // This editor opens from TWO places (Long video, and Videos from your words), so every Back here is goBack, never a fixed page.
@@ -93,25 +98,27 @@ function EditorInner() {
 
   async function sceneUpload(i: number, file: File | null) {
     if (!file) return;
-    setBusy(`pic-${i}`); setErr("");
-    const u = await uploadImage(await compressToFile(file, "scene.jpg", 1920, 0.88), "wide");
+    setBusy(`pic-${i}`); setSceneErr((e) => ({ ...e, [i]: "" }));
+    let u: string | null = null;
+    try { u = await uploadImage(await compressToFile(file, "scene.jpg", 1920, 0.88), "wide"); } catch { u = null; }
     setBusy("");
-    if (!u) { setErr("Could not upload the photo. Please try again."); return; }
+    if (!u) { setSceneErr((e) => ({ ...e, [i]: "Could not upload the photo. Please try again." })); return; }
     setScene(i, { picture: { mode: "own", url: u, name: file.name } });
     setOpen((o) => ({ ...o, [i]: null }));
   }
   async function paraUpload(p: number, file: File | null) {
     if (!file) return;
-    setBusy(`voice-${p}`); setErr("");
-    const r = await uploadAudio(file);
+    setBusy(`voice-${p}`); setParaErr((e) => ({ ...e, [p]: "" }));
+    let r: { url?: string; error?: string } = {};
+    try { r = await uploadAudio(file); } catch { r = { error: OFFLINE }; }
     setBusy("");
-    if (!r.url) { setErr(r.error || "Could not upload that recording."); return; }
+    if (!r.url) { setParaErr((e) => ({ ...e, [p]: r.error || "Could not upload that recording." })); return; }
     setPara(p, { voiceUrl: r.url, voiceName: file.name.replace(/\.[^.]+$/, "").slice(0, 40) });
   }
 
   async function apply() {
     if (!m || !summary.changes) return;
-    setBusy("apply"); setErr(""); setNeedCredits(null);
+    setBusy("apply"); setApplyErr(""); setNeedCredits(null);
     try {
       const body = {
         id,
@@ -125,8 +132,10 @@ function EditorInner() {
         .then(async (x) => ({ ok: x.ok, status: x.status, data: (await x.json().catch(() => ({}))) as { error?: string; cost?: number; credits?: number } }))
         .catch(() => ({ ok: false, status: 0, data: {} as { error?: string; cost?: number } }));
       if (!r.ok) {
-        setErr(r.data.error || (r.status === 0 ? OFFLINE : "Could not make the changes. Please try again."));
+        setApplyErr(r.data.error || (r.status === 0 ? OFFLINE : "Could not make the changes. Please try again."));
         if (r.status === 402) setNeedCredits(Number(r.data.cost) || summary.credits);
+        // the list can be long: bring the message (and the credit packs under it) into view, right above the Remake bar
+        window.setTimeout(() => applyErrRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60);
         return;
       }
       setApplied(true);
@@ -217,6 +226,7 @@ function EditorInner() {
                     )}
                   </div>
                 )}
+                {paraErr[para.p] && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{paraErr[para.p]}</p>}
 
                 <div className="grid gap-2 sm:grid-cols-2">
                   {shots.map((s) => {
@@ -267,6 +277,7 @@ function EditorInner() {
                               </label>
                               <button type="button" onClick={() => { setScene(s.i, { picture: { mode: "card" } }); setOpen((o) => ({ ...o, [s.i]: null })); }} className={`${small} inline-flex items-center gap-1`}><Type className="h-3.5 w-3.5" /> Just the words</button>
                             </div>
+                            {sceneErr[s.i] && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{sceneErr[s.i]}</p>}
                             {data.pictures.length > 0 && (
                               <div>
                                 <p className="mb-1 text-[11px] font-semibold text-muted">Or another picture from this video</p>
@@ -290,8 +301,8 @@ function EditorInner() {
             );
           })}
 
-          {err && <p className="text-sm text-danger">{err}</p>}
-          {needCredits !== null && <AddCredits onDone={() => { setNeedCredits(null); load(); }} />}
+          {applyErr && <p ref={applyErrRef} className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{applyErr}</p>}
+          {needCredits !== null && <AddCredits onDone={() => { setNeedCredits(null); setApplyErr(""); load(); }} />}
 
           {/* Above the app's bottom navigation, not over it. */}
           <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 p-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>

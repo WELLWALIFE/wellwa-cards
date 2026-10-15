@@ -32,6 +32,13 @@ const SITE = SITE_URL;
 const Img = (p: { src: string; alt: string; className?: string }) => <img src={p.src} alt={p.alt} className={p.className} />;
 
 
+/** One message that belongs to the button right above it: red box for a problem, green for done. */
+type Note = { text: string; bad: boolean } | null;
+function NoteLine({ n }: { n: Note }) {
+  if (!n) return null;
+  return <p role={n.bad ? "alert" : "status"} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${n.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-good/40 bg-good/10 text-good"}`}>{n.text}</p>;
+}
+
 export default function CardTab() {
   const router = useRouter();
   const { t, lang } = useT();
@@ -43,9 +50,15 @@ export default function CardTab() {
   const [copied, setCopied] = useState(false);
   const [qr, setQr] = useState("");
   const [refreshing, setRefreshing] = useState(false);
-  const [note, setNote] = useState("");
+  // Every message sits under the button that caused it (never one shared line): the refresh button, the Shubhora page buttons
+  // (add: under "Add a Shubhora page"; added / remove failed: inside the Shubhora box; removed: where the box was), "Add my business".
+  const [refreshNote, setRefreshNote] = useState<Note>(null);
+  const [shNote, setShNote] = useState<{ at: "add" | "box" | "gone"; n: NonNullable<Note> } | null>(null);
+  const [ownNote, setOwnNote] = useState<Note>(null);
+  const clearNotes = () => { setRefreshNote(null); setShNote(null); setOwnNote(null); };
   const [shBusy, setShBusy] = useState("");
   const [shCopied, setShCopied] = useState(false);
+  const [copyFail, setCopyFail] = useState<"" | "card" | "sh">("");
   // Connections → "Own domain" opens this page at #domain: the domain box opens by itself and scrolls into view.
   const [domainOpen, setDomainOpen] = useState(false);
   useEffect(() => {
@@ -57,15 +70,15 @@ export default function CardTab() {
   // banner) — never replaces a word the owner wrote. Same AI build as "Make my V-Card", merged in.
   async function refreshContent() {
     if (!card || refreshing) return;
-    setRefreshing(true); setNote("");
+    setRefreshing(true); clearNotes();
     const r = await api<{ ok?: boolean; card?: Card; error?: string }>("/api/card/build", { method: "POST", json: { refresh: true, current: card } });
-    if (!r.ok || !r.data.card) { setRefreshing(false); setNote(r.data.error || (lang === "hi" ? "अभी नए हिस्से नहीं जुड़ पाए। कृपया दोबारा कोशिश करें।" : "Could not add the new sections right now. Please try again.")); return; }
+    if (!r.ok || !r.data.card) { setRefreshing(false); setRefreshNote({ bad: true, text: r.data.error || (lang === "hi" ? "अभी नए हिस्से नहीं जुड़ पाए। कृपया दोबारा कोशिश करें।" : "Could not add the new sections right now. Please try again.") }); return; }
     const merged = { ...r.data.card, id: card.id, username: card.username } as Card;
     const p = await publishCard(merged);
     setRefreshing(false);
-    if (!p.ok) { setNote(p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.")); return; }
+    if (!p.ok) { setRefreshNote({ bad: true, text: p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.") }); return; }
     setCard(merged);
-    setNote(lang === "hi" ? "हो गया — नए हिस्से जुड़ गए। Card खोलकर देखें। कुछ भी बदलना हो तो 'Card बदलें' से बदल सकते हैं।" : "Done. New sections are added. Open your card to see them. You can change anything with Edit card.");
+    setRefreshNote({ bad: false, text: lang === "hi" ? "हो गया — नए हिस्से जुड़ गए। Card खोलकर देखें। कुछ भी बदलना हो तो 'Card बदलें' से बदल सकते हैं।" : "Done. New sections are added. Open your card to see them. You can change anything with Edit card." });
   }
 
   const load = useCallback(async () => {
@@ -103,7 +116,7 @@ export default function CardTab() {
   const url = card ? `${SITE}/c/${card.username}` : "";
   useEffect(() => { if (url) QRCode.toDataURL(url, { width: 480, margin: 1, color: { dark: "#0b1220", light: "#ffffff" } }).then(setQr).catch(() => setQr("")); }, [url]);
 
-  async function copy() { try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { /* ignore */ } }
+  async function copy() { setCopyFail(""); try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail("card"); } }
   function shareWa() { window.open(`https://wa.me/?text=${encodeURIComponent(t.shareText(card?.company || card?.name || "", url))}`, "_blank"); }
   // The website: the same link with ?view=site opens the full website on a phone too (owner's call, 2 Oct 2026).
   const siteUrl = url ? `${url}?view=site` : "";
@@ -111,19 +124,19 @@ export default function CardTab() {
 
   // The Shubhora side of a card whose owner also runs their own business: a second link off the same card.
   const shUrl = card ? `${url}/${SHUBHORA_PAGE_SLUG}` : "";
-  async function copySh() { try { await navigator.clipboard.writeText(shUrl); setShCopied(true); setTimeout(() => setShCopied(false), 2000); } catch { /* ignore */ } }
+  async function copySh() { setCopyFail(""); try { await navigator.clipboard.writeText(shUrl); setShCopied(true); setTimeout(() => setShCopied(false), 2000); } catch { setCopyFail("sh"); } }
 
   /** A partner whose WHOLE card is Shubhora, who also wants their own business on it. Their Shubhora
    *  content moves to its own page and link (nothing is lost), the seller template's identity comes off,
    *  and they go straight to the business form and the AI builder to make their own card. */
   async function addOwnBusiness() {
     if (!card || shBusy) return;
-    setShBusy("migrate"); setNote("");
+    setShBusy("migrate"); clearNotes();
     try {
       const own = await loadOwnDetails().catch(() => null);
       const next = toBothFromShubhora(card, { photo: own?.photo });
       const p = await publishCard(next);
-      if (!p.ok) { setShBusy(""); setNote(p.error || (lang === "hi" ? "Save नहीं हुआ। कृपया दोबारा कोशिश करें।" : "Could not save. Please try again.")); return; }
+      if (!p.ok) { setShBusy(""); setOwnNote({ bad: true, text: p.error || (lang === "hi" ? "Save नहीं हुआ। कृपया दोबारा कोशिश करें।" : "Could not save. Please try again.") }); return; }
       // The seller set-up wrote https://shubhora.com as this account's website; their own business must not
       // start with our site as its own. Then the set-up's website step, so their real site (if any) is asked.
       try {
@@ -133,7 +146,7 @@ export default function CardTab() {
       } catch { /* the build route ignores a shubhora.com website anyway */ }
       router.push("/poster/onboard?step=site&next=/poster/card/build");
     } catch {
-      setShBusy(""); setNote(lang === "hi" ? "Internet नहीं है — दोबारा कोशिश करें।" : "No internet — please try again.");
+      setShBusy(""); setOwnNote({ bad: true, text: lang === "hi" ? "Internet नहीं है — दोबारा कोशिश करें।" : "No internet — please try again." });
     }
   }
 
@@ -141,15 +154,17 @@ export default function CardTab() {
    *  touched either way — only this one page is added to or removed from the card. */
   async function setShubhoraPage(on: boolean) {
     if (!card || shBusy) return;
-    setShBusy(on ? "add" : "remove"); setNote("");
+    setShBusy(on ? "add" : "remove"); clearNotes();
     const next = (on ? withShubhoraPage(card) : withoutShubhoraPage(card)) as Card;
     const p = await publishCard(next);
     setShBusy("");
-    if (!p.ok) { setNote(p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.")); return; }
+    // A failed add stays under the "Add a Shubhora page" button; a failed remove inside the Shubhora box.
+    if (!p.ok) { setShNote({ at: on ? "add" : "box", n: { bad: true, text: p.error || (lang === "hi" ? "Save नहीं हुआ।" : "Could not save.") } }); return; }
     setCard(next);
-    setNote(on
-      ? (lang === "hi" ? "Shubhora page जुड़ गया — नीचे उसका अलग link है। आपके अपने card पर ये नहीं दिखेगा।" : "Shubhora page added — its own link is below. It will not show on your own card.")
-      : (lang === "hi" ? "Shubhora page हटा दिया।" : "Shubhora page removed."));
+    // Added: the Shubhora box appears, so the message goes in it. Removed: the box is gone, so the message takes its place.
+    setShNote(on
+      ? { at: "box", n: { bad: false, text: lang === "hi" ? "Shubhora page जुड़ गया — नीचे उसका अलग link है। आपके अपने card पर ये नहीं दिखेगा।" : "Shubhora page added — its own link is below. It will not show on your own card." } }
+      : { at: "gone", n: { bad: false, text: lang === "hi" ? "Shubhora page हटा दिया।" : "Shubhora page removed." } });
   }
 
   if (failed) return (
@@ -196,6 +211,7 @@ export default function CardTab() {
             <code className="text-xs flex-1 truncate">{url.replace("https://", "")}</code>
             <button type="button" onClick={copy} className="text-muted" aria-label="Copy link">{copied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />}</button>
           </div>
+          {copyFail === "card" && <NoteLine n={{ bad: true, text: lang === "hi" ? "Copy नहीं हुआ। ऊपर का link दबाकर रखें और हाथ से copy करें।" : "Could not copy. Press and hold the link above to copy it by hand." }} />}
           {/* Three things up front (owner's call, 25 Sep 2026 — seven buttons in a row was too much): share it,
               change it, see it. Everything else waits under "More options". */}
           <div className="grid grid-cols-2 gap-2">
@@ -215,7 +231,7 @@ export default function CardTab() {
               <button type="button" onClick={refreshContent} disabled={refreshing} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium disabled:opacity-60">
                 {refreshing ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4 text-brand" />} {refreshing ? (lang === "hi" ? "AI लिख रहा है… (30 second)" : "Writing new sections… (about 30 seconds)") : (lang === "hi" ? "AI से और text और हिस्से जोड़ें" : "Add more text & sections with AI")}
               </button>
-              {note && <p className="text-xs text-muted px-1">{note}</p>}
+              <NoteLine n={refreshNote} />
               {/* again=1: this asks for a NEW card, so any saved preview from an earlier visit is dropped first. */}
               <Link href="/poster/card/build?again=1" className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium"><Sparkles className="h-4 w-4 text-brand" /> {lang === "hi" ? "AI से पूरा card फिर से बनाएँ" : "Make my V-Card again with AI"}</Link>
               {/* Doing BOTH — their own business and Shubhora: the Shubhora page is ADDED on its own separate
@@ -226,6 +242,7 @@ export default function CardTab() {
                   {shBusy === "add" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span>📇</span>} {lang === "hi" ? "Shubhora page जोड़ें (अलग link, आपका card वैसा ही रहेगा)" : "Add a Shubhora page (its own link; your card stays as it is)"}
                 </button>
               )}
+              {!hasShubhoraPage(card) && shNote?.at === "add" && <NoteLine n={shNote.n} />}
               {/* Selling ONLY Shubhora: the ready-made seller card replaces this card's pages on the SAME link. */}
               <Link href={`/poster/d/editor?id=${card.id}&template=vcard-reseller`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-medium text-muted">{lang === "hi" ? "सिर्फ़ Shubhora बेचना है? पूरे card को seller card बना दें (आपके business की जानकारी card से हट जाएगी)" : "Only selling Shubhora? Change the whole card into the seller card (your own business details will be removed from it)"}</Link>
             </div>
@@ -246,6 +263,7 @@ export default function CardTab() {
             className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-60">
             {shBusy === "migrate" ? <><LoaderCircle className="h-4 w-4 animate-spin" /> {lang === "hi" ? "तैयार कर रहे हैं…" : "Setting it up…"}</> : <>{lang === "hi" ? "अपना business जोड़ें" : "Add my business"} →</>}
           </button>
+          <NoteLine n={ownNote} />
           <p className="text-[11px] text-muted">{lang === "hi" ? "अगली screen पर अपने business की जानकारी भरनी होगी, फिर AI आपका card बना देगा।" : "The next screen asks about your business, then the AI builds your card."}</p>
         </div>
       )}
@@ -267,6 +285,7 @@ export default function CardTab() {
             <code className="text-xs flex-1 truncate">{shUrl.replace("https://", "")}</code>
             <button type="button" onClick={copySh} className="text-muted" aria-label="Copy Shubhora link">{shCopied ? <Check className="h-4 w-4 text-good" /> : <Copy className="h-4 w-4" />}</button>
           </div>
+          {copyFail === "sh" && <NoteLine n={{ bad: true, text: lang === "hi" ? "Copy नहीं हुआ। ऊपर का link दबाकर रखें और हाथ से copy करें।" : "Could not copy. Press and hold the link above to copy it by hand." }} />}
           <div className="grid grid-cols-2 gap-2">
             <button type="button" onClick={() => window.open(`https://wa.me/?text=${encodeURIComponent(shUrl)}`, "_blank")}
               className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] px-3 py-2.5 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> {lang === "hi" ? "Share करें" : "Share"}</button>
@@ -276,9 +295,11 @@ export default function CardTab() {
             className="text-xs font-semibold text-muted underline disabled:opacity-60">
             {shBusy === "remove" ? (lang === "hi" ? "हट रहा है…" : "Removing…") : (lang === "hi" ? "Shubhora page हटाएँ" : "Remove the Shubhora page")}
           </button>
+          {shNote?.at === "box" && <NoteLine n={shNote.n} />}
         </div>
       )}
-      {note && <p className="px-1 text-xs text-muted">{note}</p>}
+      {/* "Removed": the Shubhora box is gone — the confirmation stays in the spot where it was. */}
+      {!hasShubhoraPage(card) && shNote?.at === "gone" && <NoteLine n={shNote.n} />}
       <CardChecklist card={card} hi={lang === "hi"} />
       {qr && (
         <div className="rounded-2xl border border-border p-4 text-center">

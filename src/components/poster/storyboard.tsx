@@ -78,7 +78,7 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
 
       {job.status === "done" && job.output_url && (
         <div className="space-y-2"><video src={job.output_url} controls playsInline className="mx-auto max-h-[70dvh] rounded-xl bg-black" /><p className="text-center text-xs text-muted">{job.input.duration_sec ? `${job.input.duration_sec} s · ` : ""}All formats are in “Your videos”.</p>{err && <p className="text-xs text-danger">{err}</p>}
-          <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => setAfter({ music: "", redo: -1, note: "" })} className="rounded-xl border border-border py-2 text-sm font-semibold">Change music / captions · free</button><button type="button" onClick={() => setAfter({ music: "", redo: 0, note: "" })} className="rounded-xl border border-border py-2 text-sm font-semibold">Redo one scene</button></div>
+          <div className="grid grid-cols-2 gap-2"><button type="button" onClick={() => { setErr(""); setAfter({ music: "", redo: -1, note: "" }); }} className="rounded-xl border border-border py-2 text-sm font-semibold">Change music / captions · free</button><button type="button" onClick={() => { setErr(""); setAfter({ music: "", redo: 0, note: "" }); }} className="rounded-xl border border-border py-2 text-sm font-semibold">Redo one scene</button></div>
           <button type="button" onClick={onClose} className="grad-brand w-full rounded-xl py-2.5 text-sm font-semibold text-white">Done</button></div>
       )}
       {job.status === "failed" && (
@@ -108,8 +108,8 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
                   {s.status === "safe_shot" && <p className="text-lead">We could not draw this scene correctly, so it shows your product standing on its own.</p>}
                   {s.status === "needs_owner" && <p className="text-danger">We could not get this picture right. Try “Change picture” with a short note, or use the safe product shot.</p>}
                   {(s.notes ?? []).slice(0, 2).map((n, k) => <p key={k} className="text-lead">Note: {n}</p>)}
-                  {review && <button type="button" onClick={() => setLineEdit({ i: s.i, text: s.line?.text_final ?? sc[s.i]?.text ?? "" })} className="mr-1 mt-1 inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold"><Pencil className="h-3 w-3" /> Edit line</button>}
-                  {review && s.preview_url && <button type="button" onClick={() => { setSheet(s); setNote(""); }} className="mt-1 inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold"><RefreshCw className="h-3 w-3" /> Change picture{s.redraws >= 1 ? " · 1 credit" : " · free"}</button>}
+                  {review && <button type="button" onClick={() => { setErr(""); setLineEdit({ i: s.i, text: s.line?.text_final ?? sc[s.i]?.text ?? "" }); }} className="mr-1 mt-1 inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold"><Pencil className="h-3 w-3" /> Edit line</button>}
+                  {review && s.preview_url && <button type="button" onClick={() => { setErr(""); setSheet(s); setNote(""); }} className="mt-1 inline-flex items-center gap-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold"><RefreshCw className="h-3 w-3" /> Change picture{s.redraws >= 1 ? " · 1 credit" : " · free"}</button>}
                 </div>
               </div>); })}
           </div>
@@ -122,7 +122,9 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
           <p className="text-sm">Video length about <b>{total.toFixed(0)} s</b> · Animate: <b>{animateCost} credits</b>{credits !== null ? ` (you have ${credits})` : ""}</p>
           <p className="text-xs text-muted">Each picture becomes a 5-second moving clip with your voice-over, captions, music and a closing card. Credits are charged only now.</p>
           {hasSafe && <label className="flex items-start gap-2 text-xs"><input type="checkbox" checked={ack} onChange={(e) => setAck(e.target.checked)} className="mt-0.5" /> I understand one scene will show the product standing, not working.</label>}
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && !sheet && !lineEdit && !after && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
+          {!allOk && <p className="text-[11px] text-muted">Animate opens when every picture shows “Checked”. Pictures still being drawn, or marked “Needs your choice”, must be done first.</p>}
+          {allOk && hasSafe && !ack && <p className="text-[11px] text-muted">Tick the box above to continue.</p>}
           <div className="flex gap-2">
             <button type="button" onClick={() => confirm("Discard this storyboard? Nothing is charged.") && act("discard")} disabled={!!busy} className="rounded-xl border border-border px-3 py-2.5 text-sm">Discard</button>
             <button type="button" onClick={() => act("approve", { ack_no_in_use: ack })} disabled={!!busy || !allOk || (hasSafe && !ack)} className="grad-brand flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-50">{busy === "approve" ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin" /> : job.cost > 0 ? "Animate the new scene (already paid)" : `Animate · ${animateCost} credits`}</button>
@@ -132,7 +134,7 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
       {renderFailed && (
         <div className="space-y-2 rounded-xl border border-danger/40 bg-danger/5 p-3 text-sm">
           <p><b>The video could not be finished.</b> Your credits are safe. Retry is free and reuses the clips already made.</p>
-          {err && <p className="text-xs text-danger">{err}</p>}
+          {err && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
           <div className="flex gap-2"><button type="button" onClick={() => confirm("Discard and get a full refund?") && act("discard")} disabled={!!busy} className="rounded-xl border border-border px-3 py-2.5 text-sm">Discard · full refund</button><button type="button" onClick={() => act("retry-render")} disabled={!!busy} className="grad-brand flex-1 rounded-xl py-2.5 text-sm font-semibold text-white">Retry render (free)</button></div>
         </div>
       )}
@@ -178,7 +180,8 @@ export function Storyboard({ jobId, animateCost, onClose, onNeedCredits }: { job
               <button type="button" disabled={!!busy} onClick={async () => { if (await act("redraw", { scene: sheet.i, mode: note.trim() ? "change" : "redraw", note })) setSheet(null); }} className="grad-brand rounded-xl py-2.5 text-sm font-semibold text-white">{note.trim() ? "Redraw with this note" : "Draw it again"}</button>
               <button type="button" disabled={!!busy} onClick={async () => { if (await act("redraw", { scene: sheet.i, mode: "safe" })) setSheet(null); }} className="rounded-xl border border-border py-2.5 text-sm">Use a safe product shot instead</button>
               <label className="inline-flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm"><ImagePlus className="h-4 w-4" /> Use my own photo (free)
-                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setBusy("upload"); const u = await uploadImage(await compressToFile(file, "scene.jpg"), "product"); setBusy(""); if (!u) { setErr("Upload failed."); return; } if (await act("redraw", { scene: sheet.i, mode: "own_photo", photo_url: u })) setSheet(null); }} /></label>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const file = e.target.files?.[0]; if (!file) return; setBusy("upload"); setErr(""); const u = await uploadImage(await compressToFile(file, "scene.jpg"), "product"); setBusy(""); if (!u) { setErr("Upload failed."); return; } if (await act("redraw", { scene: sheet.i, mode: "own_photo", photo_url: u })) setSheet(null); }} /></label>
+              {err && <p role="alert" className="text-xs font-semibold text-danger">{err}</p>}
               <button type="button" onClick={() => setSheet(null)} className="py-1 text-xs text-muted">Cancel</button>
             </div>
           </div>

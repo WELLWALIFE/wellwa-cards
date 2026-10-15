@@ -25,7 +25,8 @@ export default function SiteSeoPage() {
   const [none, setNone] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
-  const [err, setErr] = useState("");
+  const [err, setErr] = useState("");          // the page could not load — shown at the top
+  const [saveErr, setSaveErr] = useState("");  // Save failed — shown directly above the Save button
   const [pay, setPay] = useState(false);
 
   useEffect(() => {
@@ -45,10 +46,10 @@ export default function SiteSeoPage() {
 
   async function save() {
     if (!card) return;
-    setBusy(true); setErr(""); setMsg("");
+    setBusy(true); setSaveErr(""); setMsg("");
     const r = await publishCard(card);
     setBusy(false);
-    if (!r.ok) { setErr(r.error || T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
+    if (!r.ok) { setSaveErr(r.error || T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
     setMsg(T("Saved. It is on your website now.", "Save हो गया। Website पर आ गया है।"));
   }
 
@@ -83,7 +84,8 @@ export default function SiteSeoPage() {
         <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
       ) : (
         <>
-          <SeoPanel card={card} onChange={(p) => { setMsg(""); setCard((c) => (c ? { ...c, ...p } : c)); }} address={`${SITE_HOST}/c/${card.username}`} />
+          <SeoPanel card={card} onChange={(p) => { setMsg(""); setSaveErr(""); setCard((c) => (c ? { ...c, ...p } : c)); }} address={`${SITE_HOST}/c/${card.username}`} />
+          {saveErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{saveErr}</p>}
           {msg && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {msg}</p>}
           <button type="button" onClick={save} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save", "Save करें")}

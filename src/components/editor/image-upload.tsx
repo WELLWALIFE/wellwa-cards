@@ -26,15 +26,18 @@ export function ImageUpload({
   const input = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const [raw, setRaw] = useState<string | null>(null);
+  const [err, setErr] = useState(""); // the picture could not be opened: told right under the buttons
   const c = cfg[shape];
 
   async function pick(file?: File) {
     if (!file) return;
-    setBusy(true);
+    setBusy(true); setErr("");
     try {
       // light pre-cap for a snappy cropper; final compression happens on crop-apply
       const url = await fileToDataUrl(file, 1600, 0.92);
       setRaw(url);
+    } catch {
+      setErr("This picture could not be opened. Please choose another one.");
     } finally {
       setBusy(false);
     }
@@ -66,6 +69,7 @@ export function ImageUpload({
           </button>
         )}
       </div>
+      {err && <p role="alert" className="basis-full text-xs text-danger">{err}</p>}
 
       <input ref={input} type="file" accept="image/*" className="hidden"
         onChange={(e) => { pick(e.target.files?.[0]); e.currentTarget.value = ""; }} />
