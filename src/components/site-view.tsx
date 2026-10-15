@@ -639,7 +639,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
           {/* The room under the last line is for the sticky action bar on phones; it sat under <main> before, which left a
               strip of page colour between a dark closing band and the same-coloured footer (15 Oct 2026 sweep). */}
           <div className="mx-auto max-w-6xl px-5 md:px-6 pt-4 pb-[4.5rem] md:pb-4 flex flex-wrap items-center justify-between gap-2 text-xs" style={{ color: "var(--hero-muted)" }}>
-            <span>© {new Date().getFullYear()} {t(hm.name)}</span>
+            <span>© {new Date().getFullYear()} {t(hm.name)}. {hiNow ? "सर्वाधिकार सुरक्षित।" : "All rights reserved."}</span>
             <span className="mono">{brand ? (brand.hideBranding ? "" : `Powered by ${brand.name}`) : "Powered by Shubhora"}</span>
           </div>
         </div>
