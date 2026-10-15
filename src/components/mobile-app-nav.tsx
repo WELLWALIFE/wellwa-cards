@@ -4,6 +4,7 @@
 // app's own five tabs plus a Back button, so nobody is stuck (owner's call, 24 Sep 2026).
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { goBack } from "@/lib/nav-back";
 import { Home, PlusCircle, Users, Handshake, UserCircle, ChevronLeft } from "lucide-react";
 
 const TABS = [
@@ -16,11 +17,7 @@ const TABS = [
 
 export function MobileBackButton() {
   const router = useRouter();
-  function back() {
-    let inApp = false;
-    try { inApp = window.history.length > 1 && !!document.referrer && new URL(document.referrer).origin === window.location.origin; } catch { /* none */ }
-    if (inApp) router.back(); else router.push("/poster");
-  }
+  const back = () => goBack(router, "/poster");
   return (
     <button type="button" onClick={back} aria-label="Back"
       className="md:hidden inline-flex items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-1.5 text-sm font-semibold">

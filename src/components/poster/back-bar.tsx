@@ -6,6 +6,7 @@
 import { usePathname, useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
+import { goBack } from "@/lib/nav-back";
 
 /** The five tabs of the bottom menu (and "Me") — their own home, no back row. */
 const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings))?\/?$/;
@@ -28,11 +29,7 @@ export function BackBar() {
   const { lang } = useT();
   if (TAB_ROOTS.test(p) || OWN_BACK.test(p)) return null;
 
-  function back() {
-    let inApp = false;
-    try { inApp = window.history.length > 1 && !!document.referrer && new URL(document.referrer).origin === window.location.origin; } catch { /* no referrer */ }
-    if (inApp) router.back(); else router.push(parentOf(p));
-  }
+  const back = () => goBack(router, parentOf(p));
 
   return (
     <button type="button" onClick={back}

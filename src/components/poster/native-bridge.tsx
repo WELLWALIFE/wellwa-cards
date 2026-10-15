@@ -1,6 +1,7 @@
 "use client";
 import { useEffect } from "react";
 import { usePathname, useRouter } from "next/navigation";
+import { goBack } from "@/lib/nav-back";
 import { api, isLoggedIn } from "@/lib/poster-client";
 
 // When the page runs inside the Capacitor WebView (the Android app), wire the
@@ -76,8 +77,7 @@ export function NativeBridge() {
     P.StatusBar?.setStyle?.({ style: "DARK" }).catch(() => {});
     const sub = P.App?.addListener?.("backButton", () => {
       if (window.location.pathname === "/poster" || window.location.pathname === "/poster/") P.App?.exitApp?.();
-      else if (window.history.length > 1) router.back();
-      else router.push("/poster");
+      else goBack(router, "/poster");
     });
     return () => { (sub as Sub)?.remove?.(); };
   }, [router, pathname]);

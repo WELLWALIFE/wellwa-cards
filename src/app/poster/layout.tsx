@@ -3,6 +3,7 @@ import { PosterNav } from "@/components/poster/nav";
 import { NativeBridge } from "@/components/poster/native-bridge";
 import { TopMenu } from "@/components/poster/top-menu";
 import { BackBar } from "@/components/poster/back-bar";
+import { NavTracker } from "@/components/poster/nav-tracker";
 import { SetupResume } from "@/components/setup-resume";
 import { HelpDock } from "@/components/poster/help-dock";
 import { DemoReset } from "@/components/poster/demo-reset";
@@ -36,6 +37,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           {/* The demo account's own Reset pill (only on an account Super Admin marked as demo). */}
           <DemoReset />
           <NativeBridge />
+          <NavTracker />
         </div>
       </UiLangProvider>
       </PlanProvider>
