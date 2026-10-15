@@ -4,6 +4,7 @@ import { NativeBridge } from "@/components/poster/native-bridge";
 import { TopMenu } from "@/components/poster/top-menu";
 import { BackBar } from "@/components/poster/back-bar";
 import { NavTracker } from "@/components/poster/nav-tracker";
+import { UpdateWatcher } from "@/components/update-watcher";
 import { SetupResume } from "@/components/setup-resume";
 import { HelpDock } from "@/components/poster/help-dock";
 import { DemoReset } from "@/components/poster/demo-reset";
@@ -38,6 +39,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           <DemoReset />
           <NativeBridge />
           <NavTracker />
+          <UpdateWatcher />
         </div>
       </UiLangProvider>
       </PlanProvider>

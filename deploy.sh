@@ -19,7 +19,8 @@ APP="/opt/neuraledge/app"
 SSH="ssh -i $KEY -o IdentitiesOnly=yes -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
 
 echo "→ building production release locally…"
-NEXT_PUBLIC_SITE_URL="$SITE_URL" npm run build
+# NEXT_PUBLIC_DEPLOY_ID: this release's stamp — a browser tab left open from an older release sees it differ (api/health) and offers the refresh.
+NEXT_PUBLIC_DEPLOY_ID="$(date +%s)" NEXT_PUBLIC_SITE_URL="$SITE_URL" npm run build
 
 echo "→ uploading source (env + runtime state preserved)…"
 # Only what the server runs goes up: not the Mac's own work folders (work/ = old Wellwa deck and video files,
