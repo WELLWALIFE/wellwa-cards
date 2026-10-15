@@ -1059,8 +1059,13 @@ export default function BuildCard() {
             <p className="text-base text-white/90">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
             <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
             <p className="text-xs text-white/80">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
-            {/* The link can be changed once the site is final (owner, 15 Oct 2026): it used to sit on the design screen, where it only confused. */}
-            <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); setState("preview"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="text-xs font-semibold text-white underline underline-offset-2">{T("Change this link", "यह link बदलें")}</button>
+            {/* After the site is final (owner, 15 Oct 2026): the own web address first, in plain words; changing the end of this link is the small line below it. */}
+            <button type="button" onClick={() => router.push("/poster/site?edit=1&tool=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
+              <Globe className="h-5 w-5 shrink-0" />
+              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-tight">{T("Put it on your own domain", "अपने domain पर चलाएँ")}</span><span className="block text-xs text-white/80">{T("Open it at www.yourshop.com", "www.yourshop.com पर खुले")}</span></span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
+            </button>
+            <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); setState("preview"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
               <button type="button" onClick={() => { try { void navigator.clipboard.writeText(`https://${liveLink}`); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Copy link", "Link copy करें")}</button>
@@ -1069,8 +1074,8 @@ export default function BuildCard() {
         </section>
         <section className="space-y-2.5">
           <div>
-            <p className="text-base font-bold">{T("Make it yours — now or later", "इसे अपना बनाइए — अभी या बाद में")}</p>
-            <p className="text-xs text-muted">{T("Nothing is needed right now. Add these when you have them — each one goes live as soon as you save.", "अभी कुछ ज़रूरी नहीं। जब ये तैयार हों तब जोड़ें — हर बदलाव save करते ही live हो जाता है।")}</p>
+            <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>
+            <p className="text-xs text-muted">{T("Your website is live. Add these to make it better — each change shows on your website as soon as you save. You can do it now or later.", "आपकी website live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव website पर दिख जाता है। अभी करें या बाद में।")}</p>
           </div>
           {([
             { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Add your products or services", "अपने products / services जोड़ें"), s: T("Name, price and a clear photo", "नाम, दाम और साफ़ photo") },
