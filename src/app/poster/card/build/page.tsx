@@ -1374,7 +1374,7 @@ export default function BuildCard() {
           <div className={`grid gap-2 ${liveUser ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[auto_1fr]"}`}>
             <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen}
               className={`relative inline-flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-bold transition ${designOpen ? "border-brand bg-brand-soft text-brand-ink" : viewed.length === 0 ? "design-glow border-amber bg-amber text-white shadow-card" : "border-brand/60 text-brand-ink"}`}>
-              <Palette className="h-4 w-4" /> {viewed.length === 0 && !designOpen ? T("See 6 designs", "6 design देखें") : T("Designs", "Designs")}
+              <Palette className="h-4 w-4" /> {T("More designs", "और design")}
               <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${viewed.length === 0 && !designOpen ? "bg-white text-amber" : "bg-brand text-white"}`}>{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
             </button>
         {liveUser ? (

@@ -1078,11 +1078,19 @@ function Onboard() {
     };
     // The GPS first (exact, what a shop pin needs). A computer, or a phone indoors, often gives no GPS fix: then the network position
     // (Wi-Fi / mobile tower) is taken instead of failing. Only "blocked" stops here.
-    // A laptop's first fix can take 10-20 s (it worked at 15 s before): the first try waits 25 s.
-    navigator.geolocation.getCurrentPosition(got, (e) => {
-      if (e.code === 1) { failed(e); return; }
-      navigator.geolocation.getCurrentPosition(got, failed, { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60_000 });
-    }, { enableHighAccuracy: true, timeout: 25000, maximumAge: 60_000 });
+    // watchPosition, not getCurrentPosition: a laptop (macOS) often answers "no position yet" at once and finds one a few seconds later;
+    // a watch keeps trying and the first fix wins. Only "blocked" stops it. After 25 s the network position is the last try.
+    let settled = false;
+    const finish = (fn: () => void) => { if (settled) return; settled = true; fn(); };
+    const id = navigator.geolocation.watchPosition(
+      (p) => finish(() => { navigator.geolocation.clearWatch(id); clearTimeout(timer); void got(p); }),
+      (e) => { if (e.code === 1) finish(() => { navigator.geolocation.clearWatch(id); clearTimeout(timer); failed(e); }); },
+      { enableHighAccuracy: true, maximumAge: 60_000 },
+    );
+    const timer = setTimeout(() => finish(() => {
+      navigator.geolocation.clearWatch(id);
+      navigator.geolocation.getCurrentPosition((p) => void got(p), failed, { enableHighAccuracy: false, timeout: 12000, maximumAge: 10 * 60_000 });
+    }), 25000);
   }
 
   /** "Skip for now" (owner's call, 23 Sep 2026): whatever is filled is kept, nothing is required, and the app opens.
