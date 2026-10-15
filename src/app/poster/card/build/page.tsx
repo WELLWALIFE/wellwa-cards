@@ -300,7 +300,7 @@ export default function BuildCard() {
     liveTap(next);
     // The design is picked: keep the six tabs at the top of the screen with the website right under them, so the page
     // can be seen change while choosing (owner, 13 Oct 2026).
-    setTimeout(() => looksRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+    setTimeout(() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
   }
   /** The website in this look, full size in a new tab: the live link once live, else the preview of this phone. */
   function openLookInTab(k: LookKey) {
@@ -1076,6 +1076,8 @@ export default function BuildCard() {
             <p className="text-base text-white/90">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
             <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
             <p className="text-xs text-white/80">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+            {/* The link can be changed once the site is final (owner, 15 Oct 2026): it used to sit on the design screen, where it only confused. */}
+            <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); setState("preview"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }} className="text-xs font-semibold text-white underline underline-offset-2">{T("Change this link", "यह link बदलें")}</button>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
               <button type="button" onClick={() => { try { void navigator.clipboard.writeText(`https://${liveLink}`); } catch { /* ignore */ } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Copy link", "Link copy करें")}</button>
@@ -1115,10 +1117,6 @@ export default function BuildCard() {
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { if (improveMode) router.push("/poster/site?edit=1"); else setState("make"); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
-        </div>
-        <div className="flex items-center gap-2 text-sm">
-          <p className="min-w-0 flex-1 truncate"><span className="text-muted">{T("Link: ", "Link: ")}</span><b>{SITE_HOST}/c/{username}</b></p>
-          {!editLink && <button type="button" onClick={() => { setLinkVal(username); setLinkCheck({ state: "idle" }); setEditLink(true); }} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("Change", "बदलें")}</button>}
         </div>
         <p className="flex items-start gap-1.5 text-xs text-muted">
           {liveUser ? <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-good" /> : busy === "publish" ? <LoaderCircle className="mt-px h-3.5 w-3.5 shrink-0 animate-spin text-brand" /> : <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0 text-amber" />}
@@ -1182,36 +1180,6 @@ export default function BuildCard() {
           </div>
         </div>
       )}
-      {/* 2. The three looks (docs/website-looks-v2.md): three blueprints on the same content, the designer's pick first.
-          A 3-column grid — the old horizontal strip showed one chip on a 360 px phone and sat eighth on the page. */}
-      {looks.length > 0 && shown.site && (
-        <section ref={looksRef} className="scroll-mt-16">
-          <p className="text-sm font-semibold">{T("View and select one", "देखें और एक चुनें")}</p>
-          <p className="text-xs text-muted">{T("Tap a design to see it below. Then save.", "Design दबाएँ, नीचे देखें। फिर save करें।")}</p>
-          <div className="mt-2 grid grid-cols-3 gap-2">
-            {looks.map((l) => {
-              const on = activeLook === l.key;
-              const p = paletteFor({ themeColor: shown.themeColor, site: { enabled: true, style: l.style } });
-              return (
-                <div key={l.key} className="relative min-w-0">
-                <button type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
-                  className={`w-full min-w-0 rounded-xl border-2 p-1.5 text-left ${on ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                  <span className="grid aspect-[16/10] w-full place-items-center rounded-lg" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}><LookGlyph k={l.key} ink={p.ink} /></span>
-                  <span className="mt-1.5 flex items-center gap-1 text-sm font-bold">{on && <Check className="h-3.5 w-3.5 shrink-0 text-brand" />}<span className="truncate">{hi ? l.hi : l.name}</span></span>
-                  <span className="block truncate text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
-                </button>
-                {/* Every one of the six designs opens as a full website in a new tab, not only the chosen one. */}
-                <button type="button" onClick={() => openLookInTab(l.key)} aria-label={T("Open this design in a new tab", "यह design नए tab में खोलें")}
-                  className="absolute right-2.5 top-2.5 grid h-7 w-7 place-items-center rounded-full bg-white/90 text-brand shadow"><ExternalLink className="h-3.5 w-3.5" /></button>
-                </div>
-              );
-            })}
-          </div>
-          <button type="button" onClick={() => setStyleSheet(true)} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink"><Palette className="h-4 w-4" /> {T("Like this design? Change its colours and fonts", "ये design पसंद है? इसके रंग और अक्षर बदलें")}</button>
-          {liveUser && busy === "publish" && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin text-brand" /> {T("Putting this design live…", "ये design live किया जा रहा है…")}</p>}
-        </section>
-      )}
-
       {/* 3. The preview: Website | Card, in that order always. */}
       <div ref={previewRef} className="grid scroll-mt-20 grid-cols-2 gap-2 rounded-xl bg-surface2 p-1">
         {([["site", T("Website", "Website"), Globe], ["phone", T("Card", "Card"), Smartphone]] as const).map(([k, l, I]) => (
@@ -1246,6 +1214,44 @@ export default function BuildCard() {
             </div>
           )}
         </div>
+      )}
+
+      {/* The six designs, under the preview (owner, 15 Oct 2026: "upar website dikhao, niche 6 tab, select one design from six"). */}
+      {looks.length > 0 && shown.site && (
+        <section ref={looksRef} className="scroll-mt-16 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+          <div className="flex items-start gap-2.5">
+            <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-white">6</span>
+            <div className="min-w-0">
+              <p className="text-base font-bold leading-tight">{T("Select one design from six", "छह में से एक design चुनें")}</p>
+              <p className="text-xs text-muted">{T("Tap a design — your website above changes at once.", "किसी design पर दबाइए — ऊपर आपकी website तुरंत बदल जाएगी।")}</p>
+            </div>
+          </div>
+          <div className="mt-3 grid grid-cols-3 gap-2">
+            {looks.map((l, idx) => {
+              const on = activeLook === l.key;
+              const p = paletteFor({ themeColor: shown.themeColor, site: { enabled: true, style: l.style } });
+              return (
+                <div key={l.key} className="relative min-w-0">
+                <button type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
+                  className={`w-full min-w-0 rounded-2xl border-2 p-1.5 text-left transition ${on ? "border-brand bg-brand-soft shadow-card" : "border-border bg-surface"}`}>
+                  <span className="relative grid aspect-[16/11] w-full place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>
+                    <LookGlyph k={l.key} ink={p.ink} />
+                    <span className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink">{idx + 1}</span>
+                    {on && <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-brand-ink"><Check className="h-3 w-3" />{T("Selected", "चुना")}</span>}
+                  </span>
+                  <span className="mt-1.5 block truncate text-[13px] font-bold">{hi ? l.hi : l.name}</span>
+                  <span className="block truncate text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
+                </button>
+                {/* Every one of the six designs opens as a full website in a new tab, not only the chosen one. */}
+                <button type="button" onClick={() => openLookInTab(l.key)} aria-label={T("Open this design in a new tab", "यह design नए tab में खोलें")}
+                  className="absolute right-2.5 top-2.5 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-brand shadow"><ExternalLink className="h-3 w-3" /></button>
+                </div>
+              );
+            })}
+          </div>
+          <button type="button" onClick={() => setStyleSheet(true)} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-brand/50 bg-brand-soft/40 py-2.5 text-sm font-semibold text-brand-ink"><Palette className="h-4 w-4" /> {T("Like this design? Change its colours and fonts", "ये design पसंद है? इसके रंग और अक्षर बदलें")}</button>
+          {liveUser && busy === "publish" && <p className="mt-1.5 flex items-center gap-1.5 text-xs text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin text-brand" /> {T("Putting this design live…", "ये design live किया जा रहा है…")}</p>}
+        </section>
       )}
 
       {/* Everything that used to sit above the fold: the designer's line, the notice, "Please check", "Make it better". */}
