@@ -987,23 +987,6 @@ export default function BuildCard() {
     router.push(existing ? `/poster/d/editor?id=${existing.id}&seed=1` : "/poster/d/editor?seed=1");
   }
 
-  /** A "Make it better" chip: back to the form, at the exact question. */
-  function goto(key: MissingKey) {
-    if (key === "reviews") { router.push("/poster/testimonials"); return; }
-    const id = key === "banner" ? "q-photos"
-      : key === "hours" ? "q-hours"
-      : key === "upi" ? "q-pay"
-      : key === "map" ? "q-map"
-      : key === "qualification" ? "q-qual"
-      : key === "ownPhotos" ? "q-photos"
-      : "q-products";
-    setState("form");
-    setTimeout(() => {
-      if (reviewRef.current) reviewRef.current.open = true;
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 60);
-  }
-
   /* ---------------- screens ---------------- */
 
   if (state === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -1291,9 +1274,10 @@ export default function BuildCard() {
             {liveUser && <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /> {T("Live", "Live")}</a>}
           </div>
           <div className={`grid gap-2 ${liveUser ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[auto_1fr]"}`}>
-            <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen} className={`relative inline-flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-bold ${designOpen ? "border-brand bg-brand-soft text-brand-ink" : "border-brand/60 text-brand-ink"}`}>
-              <Palette className="h-4 w-4" /> {T("Designs", "Designs")} <span className="rounded-full bg-brand px-1.5 py-0.5 text-[10px] font-bold text-white">{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
-              {viewed.length === 0 && !designOpen && <span className="absolute -right-1 -top-1 h-3 w-3 animate-pulse rounded-full bg-amber" aria-hidden="true" />}
+            <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen}
+              className={`relative inline-flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-bold transition ${designOpen ? "border-brand bg-brand-soft text-brand-ink" : viewed.length === 0 ? "design-glow border-amber bg-amber text-white shadow-card" : "border-brand/60 text-brand-ink"}`}>
+              <Palette className="h-4 w-4" /> {viewed.length === 0 && !designOpen ? T("See 6 designs", "6 design देखें") : T("Designs", "Designs")}
+              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${viewed.length === 0 && !designOpen ? "bg-white text-amber" : "bg-brand text-white"}`}>{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
             </button>
         {liveUser && username === liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, back there; in the
