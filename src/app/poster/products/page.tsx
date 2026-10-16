@@ -424,6 +424,9 @@ export default function ProductsPage() {
   }
   /** What was just saved here goes onto the live website too (audit, 7 Oct 2026) — a changed price, a new photo,
    *  a product switched off — without "Write again". Best effort, after the save. */
+  // Once per visit, when the list is first read: whatever the website is missing (products that landed on a hidden page before, a failed earlier sync) is put right.
+  const healed = useRef(false);
+  useEffect(() => { if (!healed.current && hasLive && list && list.length) { healed.current = true; void liveSync(); } }, [hasLive, list]); // eslint-disable-line react-hooks/exhaustive-deps
   async function liveSync() {
     if (!hasLive) return;
     try {

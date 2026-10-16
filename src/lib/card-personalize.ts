@@ -2,6 +2,7 @@
 
 // A template is a design with sample content. When the owner picks one, their own details from the setup (name,
 // photo, business, phone, city, address, "about") replace the sample ones, so the first thing they see is their card.
+import { SHUBHORA_PAGE_SLUG } from "@/lib/shubhora-page";
 import { api, type Profile } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
@@ -246,7 +247,15 @@ export async function syncProductsToCard(rows: ProductSync[]) {
     for (let i = 0; i < pg.blocks.length; i++) {
       const b = pg.blocks[i];
       if (b.kind !== "product") continue;
-      if (!firstBlock || pg.slug === "products") firstBlock = firstBlock && pg.slug !== "products" ? firstBlock : b;
+      // The hidden Shubhora page holds Shubhora's own plans only: owner products that an earlier sync put there are taken off it (they were never shown),
+      // and nothing of the owner's is matched or added on it.
+      if (pg.hidden || pg.slug === SHUBHORA_PAGE_SLUG) {
+        if (pg.slug === SHUBHORA_PAGE_SLUG) b.items = b.items.filter((it) => !byName.has(key(it.name)));
+        continue;
+      }
+      // New products go on a page the visitor can see: never on the hidden Shubhora page (it carries Shubhora's own plans) or any other hidden page
+      // (owner, 16 Oct 2026: 12 bulk-added products "did not come on the site" - they had landed on that hidden page).
+      if (!pg.hidden && pg.slug !== SHUBHORA_PAGE_SLUG && (!firstBlock || pg.slug === "products")) firstBlock = firstBlock && pg.slug !== "products" ? firstBlock : b;
       b.items = b.items.flatMap((it) => {
         const r = byName.get(key(it.name));
         if (!r) return [it];                       // not from the Products page (the AI's own or a service) — untouched
