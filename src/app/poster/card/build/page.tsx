@@ -1502,7 +1502,7 @@ export default function BuildCard() {
               <button type="button" onClick={() => { if (busy) { setMoreMsg(T("Please wait — your website is being saved. Then try again.", "ज़रा रुकिए — आपकी website save हो रही है। फिर दोबारा दबाइए।")); return; } setMoreMsg(""); setMore(false); writeAgain(); }} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
                 <Sparkles className="h-5 w-5 shrink-0 text-muted" />
                 <span className="min-w-0 flex-1"><b className="block text-sm">{T("Write again", "दोबारा लिखवाएँ")}</b><span className="block text-xs text-muted">{T("The AI writes it afresh — say what should change", "AI दोबारा लिखता है — बताएँ क्या बदले")}</span></span>
-                {access.loading ? null : access.subscribed ? <span className="shrink-0 text-[11px] text-muted">{T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Premium</span>}
+                {access.loading ? null : access.subscribed ? <span className="shrink-0 text-[11px] text-muted">{T("from 1 credit", "1 credit से")}</span> : <span className="inline-flex shrink-0 items-center gap-0.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] font-bold text-[#ffd54a]">🔒 Standard</span>}
               </button>
             </div>
             {moreMsg && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{moreMsg}</p>}
