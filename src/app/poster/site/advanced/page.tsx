@@ -121,6 +121,8 @@ export default function AdvancedSitePage() {
   const [price, setPrice] = useState(PRICE_FALLBACK);
   /** The server's switch for taking the payment (ADVANCED_SITE_SELL): off while the feature is under review, nobody is asked to pay. */
   const [selling, setSelling] = useState(true);
+  /** On a running Growth plan the price is only the difference (Rs 5,999 - Rs 2,999). */
+  const [growth, setGrowth] = useState(false);
   const [serverLeft, setServerLeft] = useState<number | null>(null);
   const [used, setUsed] = useState(0);
 
@@ -167,7 +169,7 @@ export default function AdvancedSitePage() {
     const reason = (pay?.ok ? pay.data.reason : undefined) ?? engine?.access?.reason ?? null;
     // Neither route answered (offline): keep what the screen knew. Guessing "not allowed" would put the Pay button in front of someone who has paid.
     if (typeof known === "boolean") { setAllowed(known); setClosedReason(known ? null : reason); }
-    if (pay?.ok) { setSelling(pay.data.selling !== false); setPrice(rupees(pay.data.price)); setServerLeft(typeof pay.data.triesLeft === "number" ? pay.data.triesLeft : null); }
+    if (pay?.ok) { setSelling(pay.data.selling !== false); setPrice(rupees(pay.data.price)); setGrowth(!!(pay.data as { growth?: boolean }).growth); setServerLeft(typeof pay.data.triesLeft === "number" ? pay.data.triesLeft : null); }
     if (engine?.current !== undefined) setCur(engine.current);
   }, []);
 
@@ -592,7 +594,7 @@ export default function AdvancedSitePage() {
               <p className="text-sm font-bold">{T("Upgrade to the advanced website", "Advanced website में upgrade करें")}</p>
               <p className="text-2xl font-extrabold">{priceText}</p>
             </div>
-            <p className="text-xs text-muted">{T("Free and ₹2,999 plans upgrade here. Anyone on the ₹5,999 plan already has this.", "Free और ₹2,999 वाले यहाँ से upgrade करें। ₹5,999 वाले के पास यह पहले से है।")}</p>
+            <p className="text-xs text-muted">{growth ? T("You are on Growth (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Growth (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Free and ₹2,999 plans upgrade here. Anyone on the ₹5,999 plan already has this.", "Free और ₹2,999 वाले यहाँ से upgrade करें। ₹5,999 वाले के पास यह पहले से है।")}</p>
             <p className="text-xs text-muted">{T(`One payment. You can look at up to ${TRY_LIMIT} layouts and keep the one you like — or keep your basic site.`, `एक बार का payment। ${TRY_LIMIT} layouts तक देखकर जो पसंद आए रखें — या अपनी basic site रखें।`)}</p>
             {pending ? (
               <>

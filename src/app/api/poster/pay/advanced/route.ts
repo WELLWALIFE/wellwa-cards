@@ -4,7 +4,7 @@
 import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
-import { ADVANCED_PRICE_RUPEES, ADVANCED_PRICE_PAISE, isAdvancedAllowed, readAdvancedMeta, grantAdvanced } from "@/lib/advanced-access";
+import { ADVANCED_PRICE_PAISE, ADVANCED_UPGRADE_PAISE, advancedPriceFor, isAdvancedAllowed, readAdvancedMeta, grantAdvanced } from "@/lib/advanced-access";
 const KEY = process.env.RAZORPAY_KEY_ID ?? "", SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
 const PRODUCT = "advanced-site";
 
@@ -12,8 +12,9 @@ export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const a = await isAdvancedAllowed(me.id);
+  const pr = await advancedPriceFor(me.token);
   const triesLeft = a.allowed ? (await readAdvancedMeta(me.id))?.triesLeft : undefined;
-  return NextResponse.json({ allowed: a.allowed, reason: a.reason ?? null, price: ADVANCED_PRICE_RUPEES, triesLeft, openForReview: process.env.ADVANCED_SITE_OPEN === "1", selling: process.env.ADVANCED_SITE_SELL === "1" });
+  return NextResponse.json({ allowed: a.allowed, reason: a.reason ?? null, price: pr.rupees, growth: pr.growth, triesLeft, openForReview: process.env.ADVANCED_SITE_OPEN === "1", selling: process.env.ADVANCED_SITE_SELL === "1" });
 }
 
 export async function POST(request: Request) {
@@ -30,12 +31,13 @@ export async function POST(request: Request) {
     // lookup failed: do not open a second order for someone who may have paid already
     if (have === undefined) return NextResponse.json({ error: "Please try again in a moment." }, { status: 503 });
     if (have?.paid === true) return NextResponse.json({ error: "already_paid" }, { status: 409 });
-    // amount is fixed here on the server; nothing the client sends is used
-    const r = await fetch("https://api.razorpay.com/v1/orders", { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ amount: ADVANCED_PRICE_PAISE, currency: "INR", receipt: `adv-${me.id.slice(0, 8)}-${Date.now()}`, notes: { user_id: me.id, product: PRODUCT } }) }).catch(() => null);
+    // amount is fixed here on the server (the difference for a running Growth plan); nothing the client sends is used
+    const pr = await advancedPriceFor(me.token);
+    const r = await fetch("https://api.razorpay.com/v1/orders", { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ amount: pr.paise, currency: "INR", receipt: `adv-${me.id.slice(0, 8)}-${Date.now()}`, notes: { user_id: me.id, product: PRODUCT, ...(pr.growth ? { growth: "1" } : {}) } }) }).catch(() => null);
     const j = await r?.json().catch(() => null);
     if (!r || !j) return NextResponse.json({ error: "Could not reach the payment service. Please try again." }, { status: 502 });
     if (!r.ok) return NextResponse.json({ error: j.error?.description ?? "order failed" }, { status: 502 });
-    return NextResponse.json({ orderId: j.id, amount: j.amount, currency: j.currency, keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || KEY, price: ADVANCED_PRICE_RUPEES });
+    return NextResponse.json({ orderId: j.id, amount: j.amount, currency: j.currency, keyId: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || KEY, price: pr.rupees, growth: pr.growth });
   }
   const { orderId, paymentId, signature } = b;
   if (typeof orderId !== "string" || typeof paymentId !== "string") return NextResponse.json({ error: "bad request" }, { status: 400 });
@@ -44,7 +46,7 @@ export async function POST(request: Request) {
   const or = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, { headers: { Authorization: auth } }).catch(() => null);
   if (!or) return NextResponse.json({ error: "Could not reach the payment service. Please try again." }, { status: 502 });
   const o = or.ok ? await or.json().catch(() => null) : null;
-  if (!o || o.notes?.user_id !== me.id || o.notes?.product !== PRODUCT || Number(o.amount) !== ADVANCED_PRICE_PAISE || o.currency !== "INR") return NextResponse.json({ error: "order mismatch" }, { status: 400 });
+  if (!o || o.notes?.user_id !== me.id || o.notes?.product !== PRODUCT || ![ADVANCED_PRICE_PAISE, ADVANCED_UPGRADE_PAISE].includes(Number(o.amount)) || (Number(o.amount) === ADVANCED_UPGRADE_PAISE && o.notes?.growth !== "1") || o.currency !== "INR") return NextResponse.json({ error: "order mismatch" }, { status: 400 });
   // idempotent: the same paymentId (or an account already paid) never re-grants or resets the tries
   const meta = await readAdvancedMeta(me.id);
   if (meta === undefined) return NextResponse.json({ error: "Please try again in a moment." }, { status: 503 });

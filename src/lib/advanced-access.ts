@@ -1,3 +1,4 @@
+import { restAsUser } from "@/lib/poster-server";
 import "server-only";
 // Who may use the ADVANCED website (the Rs 5,999 segment, owner 15-16 Oct 2026). Two gates, both server side:
 //   1. the flag - ADVANCED_SITE_OPEN=1 in the server's .env.local opens it for everybody (the owner's testing, a launch
@@ -17,6 +18,20 @@ import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 
 export const ADVANCED_PRICE_RUPEES = 5999;
 export const ADVANCED_PRICE_PAISE = ADVANCED_PRICE_RUPEES * 100;
+/** Growth is Rs 2,999: someone on a running Growth (or Pro) plan pays only the difference (owner, 16 Oct 2026). */
+export const GROWTH_PLAN_RUPEES = 2999;
+export const ADVANCED_UPGRADE_RUPEES = ADVANCED_PRICE_RUPEES - GROWTH_PLAN_RUPEES;   // 3,000
+export const ADVANCED_UPGRADE_PAISE = ADVANCED_UPGRADE_RUPEES * 100;
+
+/** What THIS account pays: the difference when a Growth/Pro plan is running, else the full price. Decided here on the server. */
+export async function advancedPriceFor(token: string): Promise<{ rupees: number; paise: number; growth: boolean }> {
+  try {
+    const r = await restAsUser<{ tier: string; state: string }[]>(token, "rpc/my_saas", { method: "POST", body: "{}" });
+    const row = r.data?.[0];
+    if (row && (row.tier === "growth" || row.tier === "pro") && (row.state === "active" || row.state === "grace")) return { rupees: ADVANCED_UPGRADE_RUPEES, paise: ADVANCED_UPGRADE_PAISE, growth: true };
+  } catch { /* the full price stands */ }
+  return { rupees: ADVANCED_PRICE_RUPEES, paise: ADVANCED_PRICE_PAISE, growth: false };
+}
 /** Redesign tries a paying customer starts with (owner: not unlimited, each try costs AI). */
 export const ADVANCED_TRIES = 3;
 
