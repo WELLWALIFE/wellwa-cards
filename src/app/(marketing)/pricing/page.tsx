@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, PREMIUM_ITEMS, GST_PCT, rupees, SAAS_EXTRA, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { CREDIT_PACKS, PAYG_PACKS } from "@/lib/media/ad-pricing";
 import { WELCOME_CREDITS } from "@/lib/site-pricing";
@@ -13,19 +13,30 @@ export const metadata: Metadata = pageMeta("/pricing", {
   description: "One subscription for your website, daily posters, social posting, WhatsApp CRM and AI videos. Start with a digital V-Card free for 1 year.",
 });
 
-const INCLUDED = [
-  "Website + digital card on one link, built by AI in 5 minutes",
-  "A new poster and a status video with voice every morning, posted to WhatsApp Status for you",
-  "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram",
-  "WhatsApp AI assistant that answers customers and captures leads",
-  "Lead CRM with pipeline, reminders and broadcasts",
-  "Google Business posts and automatic review replies",
-  "AI Ad Studio and Reel Maker",
-  "Works in 12 Indian languages",
+// The plan lists are the owner's own words (16 Oct 2026): nothing added.
+const FREE_CARD = [
+  "Digital business card on one link",
+  "Made by AI in 5 minutes from your details",
+  "Share on WhatsApp or with a QR code",
+  "People can contact you directly from your card",
 ];
-const EXTRA = SAAS_EXTRA;
-// Free is the digital card only (owner, 16 Oct 2026); the website starts with Standard.
-const FREE_CARD = ["Digital business card on one link", "Made by AI in 5 minutes from your details", "Share on WhatsApp or with a QR code; people can save your contact", "People who contact you from your card are saved in a customer list"];
+const STANDARD_ITEMS = [
+  "Digital business card on one link",
+  "Standard website (up to 5 pages)",
+  "With a sub-domain address",
+  "Daily poster on Facebook, Instagram and WhatsApp Status",
+  "WhatsApp AI assistant that answers customers and filters leads",
+  "Works in 12 Indian languages",
+  "WhatsApp AI replies, up to 1,000 a month (fair use)",
+  "Google Business posts and review replies",
+  "AI Ad Studio and Reel Maker",
+];
+const PREMIUM_LIST = [
+  "Everything in Standard",
+  "Premium website, multiple pages",
+  "Google SEO: every page and product on Google, with schema and a sitemap",
+  "Try up to 3 layouts and keep the one you like",
+];
 
 export default function PricingPage() {
   return (
@@ -40,7 +51,6 @@ export default function PricingPage() {
         <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Free</h2>
-            <p className="text-sm text-muted">Your business online</p>
             <span className="mt-4 self-start rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span>
             <div className="mt-2 flex items-baseline gap-2">
               <span className="text-3xl font-semibold tracking-tight text-good">FREE</span>
@@ -57,19 +67,18 @@ export default function PricingPage() {
             <Link href="/signup" className="mt-6 inline-flex w-full items-center justify-center rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-surface2">Start free</Link>
           </div>
           {(["growth"] as const).map((tier) => {
-            const p = SAAS_PLANS[tier]; const hot = tier === "growth";
+            const p = SAAS_PLANS[tier]; const hot = false;
             return (
               <div key={tier} className={`flex flex-col rounded-2xl border bg-surface p-6 ${hot ? "border-brand ring-1 ring-brand" : "border-border"}`}>
                 {hot && <span className="mono mb-3 self-start rounded bg-brand px-2 py-0.5 text-[10px] font-bold uppercase text-white">Most popular</span>}
                 <h2 className="text-lg font-semibold">{p.label}</h2>
-                <p className="text-sm text-muted">{p.tagline}</p>
                 <div className="mt-4 flex items-baseline gap-1">
                   <span className="text-3xl font-semibold tracking-tight tabular-nums">{rupees(p.amount)}</span>
                   <span className="text-sm text-muted">/ month</span>
                 </div>
                 <p className="mt-1 text-xs text-faint">Includes {GST_PCT}% GST ({rupees(p.base)} + GST)</p>
                 <ul className="mt-5 flex-1 space-y-2.5">
-                  {([...INCLUDED, ...EXTRA[tier]]).map((f) => (
+                  {STANDARD_ITEMS.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
                   ))}
                 </ul>
@@ -80,40 +89,32 @@ export default function PricingPage() {
               </div>
             );
           })}
-          {/* Premium (owner, 16 Oct 2026): Rs 5,999 the first month, then Rs 2,999 a month. */}
-          <div className="flex flex-col rounded-2xl border border-brand bg-surface p-6">
-            <span className="mono mb-3 self-start rounded bg-ink px-2 py-0.5 text-[10px] font-bold uppercase text-white">Premium</span>
+          {/* Premium (owner, 16 Oct 2026): Rs 5,999 the first month only, then Rs 2,999 a month. It is shown as two steps so nobody reads 5,999 as a monthly price. */}
+          <div className="flex flex-col rounded-2xl border border-brand bg-surface p-6 ring-1 ring-brand">
+            <span className="mono mb-3 self-start rounded bg-brand px-2 py-0.5 text-[10px] font-bold uppercase text-white">Most popular</span>
             <h2 className="text-lg font-semibold">{PREMIUM.label}</h2>
-            <p className="text-sm text-muted">{PREMIUM.tagline}</p>
-            <div className="mt-4 flex items-baseline gap-1">
+            <div className="mt-4 flex items-baseline gap-2">
               <span className="text-3xl font-semibold tracking-tight tabular-nums">{rupees(PREMIUM_FIRST_PAISE)}</span>
-              <span className="text-sm text-muted">first month</span>
+              <span className="text-sm font-semibold text-brand-ink">first month only</span>
             </div>
-            <p className="mt-1 text-xs text-faint">then {rupees(SAAS_PLANS.growth.amount)} a month · includes {GST_PCT}% GST · on Standard, pay only the {rupees(PREMIUM_FIRST_PAISE - SAAS_PLANS.growth.amount)} difference</p>
+            <p className="mt-2 rounded-lg bg-surface2 px-3 py-2 text-sm"><span className="text-muted">From the 2nd month:</span> <b className="tabular-nums">{rupees(SAAS_PLANS.growth.amount)}</b> <span className="text-muted">/ month</span></p>
+            <p className="mt-1 text-xs text-faint">Includes {GST_PCT}% GST</p>
             <ul className="mt-5 flex-1 space-y-2.5">
-              {PREMIUM_ITEMS.map((f) => (
+              {PREMIUM_LIST.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
               ))}
             </ul>
-            <SubscribeButton tier="growth" premium className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
+            <SubscribeButton tier="growth" premium className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-brand px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
               Get Premium
             </SubscribeButton>
           </div>
-          {/* Pro: custom price (owner's call, 25 Sep 2026) — talk to us, a dedicated manager sets it up. */}
+          {/* Custom Solutions (owner, 16 Oct 2026): every kind of software and automation, price on request. */}
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">{PRO_CUSTOM.label}</h2>
-            <p className="text-sm text-muted">{PRO_CUSTOM.tagline}</p>
-            <div className="mt-4 flex items-baseline gap-1">
+            <div className="mt-4">
               <span className="text-3xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span>
-              <span className="text-sm text-muted">quote for your need</span>
             </div>
-            <p className="mt-1 text-xs text-faint">Anything beyond Standard — tell us what you need</p>
-            <p className="mt-4 rounded-lg bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-brand-ink">We make all kinds of software</p>
-            <ul className="mt-5 flex-1 space-y-2.5">
-              {PRO_CUSTOM.items.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
-              ))}
-            </ul>
+            <p className="mt-4 flex-1 text-sm">We build every kind of software and automation for your business.</p>
             <div className="mt-6"><TalkToUs /></div>
           </div>
         </div>

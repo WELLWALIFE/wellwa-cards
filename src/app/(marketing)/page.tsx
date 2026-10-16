@@ -12,7 +12,7 @@ import {
   Smartphone, Sparkles, Star, UserRoundPlus, Workflow,
 } from "lucide-react";
 import { SERVICES } from "@/lib/services";
-import { SAAS_PLANS, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
   "ai-software": Bot,
@@ -101,7 +101,6 @@ function Toast({ icon: Icon, color, title, sub, className }: { icon: typeof Bot;
 
 export default function Home() {
   const growth = SAAS_PLANS.growth;
-  const starter = SAAS_PLANS.starter;
   return (
     <div>
       {/* ---------------- Hero ---------------- */}
@@ -283,7 +282,7 @@ export default function Home() {
           <div>
             <p className="text-sm font-semibold text-brand-ink">Simple pricing</p>
             <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Costs less than one part&#8209;time hire.</h2>
-            <p className="mt-4 text-lg text-muted leading-relaxed">Start free. Add the AI salesman for {rupees(starter.amount)} a month, or take Growth and replace the designer, the social media manager and the person who answers WhatsApp. Upgrade whenever you are ready.</p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">Start free with your digital card. Take Standard for your website, daily posters and WhatsApp AI, or Premium for the multi-page website and Google SEO.</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold hover:bg-surface2">Compare plans</Link>
@@ -292,29 +291,29 @@ export default function Home() {
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">Free</h3>
-              <p className="mt-1 text-sm text-muted">Website + digital card, free for 1 year</p>
+              <p className="mt-1 text-sm text-muted">Digital business card, free for 1 year</p>
               <p className="mt-4"><span className="rounded-full bg-amber-500/15 px-2.5 py-1 text-xs font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span></p>
               <p className="mt-2"><span className="text-4xl font-semibold tracking-tight text-good">FREE</span></p>
               <p className="mt-1 text-xs text-faint">{FREE_PLAN_TRUST}</p>
               <p className="mt-0.5 text-[11px] text-faint">{FREE_PLAN_TERM}</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{starter.label}</h3><span className="rounded-full bg-brand-soft px-2.5 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span></div>
-              <p className="mt-1 text-sm text-muted">{starter.tagline}</p>
-              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(starter.amount)}</span><span className="text-sm text-muted"> / month</span></p>
-              <p className="mt-1 text-xs text-faint">Orders, bookings, follow-ups, reminders, review requests, weekly report · incl. {GST_PCT}% GST</p>
-            </div>
-            <div className="rounded-2xl border border-brand ring-1 ring-brand shadow-float bg-surface p-6">
-              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">{growth.label}</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>
-              <p className="mt-1 text-sm text-muted">{growth.tagline}</p>
+              <h3 className="font-semibold text-lg">{growth.label}</h3>
+              <p className="mt-1 text-sm text-muted">Standard website (up to 5 pages)</p>
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(growth.amount)}</span><span className="text-sm text-muted"> / month</span></p>
               <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST</p>
             </div>
+            <div className="rounded-2xl border border-brand ring-1 ring-brand shadow-float bg-surface p-6">
+              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Premium</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>
+              <p className="mt-1 text-sm text-muted">Premium website and Google SEO</p>
+              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(PREMIUM_FIRST_PAISE)}</span><span className="text-sm text-muted"> first month only</span></p>
+              <p className="mt-1 text-xs text-faint">Then {rupees(growth.amount)} / month · incl. {GST_PCT}% GST</p>
+            </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">{PRO_CUSTOM.label}</h3>
-              <p className="mt-1 text-sm text-muted">{PRO_CUSTOM.tagline}</p>
+              <p className="mt-1 text-sm text-muted">Every kind of software and automation</p>
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span></p>
-              <p className="mt-1 text-xs text-faint">Any software, customization or automation · <Link href="/pricing" className="underline">contact us</Link></p>
+              <p className="mt-1 text-xs text-faint"><Link href="/pricing" className="underline">Contact us</Link></p>
             </div>
           </div>
         </div>
