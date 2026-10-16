@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, PREMIUM_ITEMS, GST_PCT, rupees, SAAS_EXTRA, FREE_PLAN, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, PREMIUM_ITEMS, GST_PCT, rupees, SAAS_EXTRA, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { CREDIT_PACKS, PAYG_PACKS } from "@/lib/media/ad-pricing";
 import { WELCOME_CREDITS } from "@/lib/site-pricing";
@@ -24,6 +24,8 @@ const INCLUDED = [
   "Works in 12 Indian languages",
 ];
 const EXTRA = SAAS_EXTRA;
+// Free is the digital card only (owner, 16 Oct 2026); the website starts with Standard.
+const FREE_CARD = ["Digital business card on one link", "Made by AI in 5 minutes from your details", "Share on WhatsApp or with a QR code; people can save your contact", "People who contact you from your card are saved in a customer list"];
 
 export default function PricingPage() {
   return (
@@ -31,11 +33,11 @@ export default function PricingPage() {
       <section className="mx-auto max-w-6xl px-5 pb-10 pt-16 text-center">
         <span className="mono text-xs uppercase tracking-wide text-faint">Pricing</span>
         <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight md:text-5xl">One subscription. Your whole online presence.</h1>
-        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Start free — your website and digital card are free for 1 year, no card details needed; upgrade any time.</p>
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Start free with your digital card — free for 1 year, no card details needed; upgrade any time.</p>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-6">
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Free</h2>
             <p className="text-sm text-muted">Your business online</p>
@@ -48,13 +50,13 @@ export default function PricingPage() {
             <p className="mt-0.5 text-[11px] text-faint">{FREE_PLAN_TERM}</p>
             {WELCOME_CREDITS > 0 && <p className="mt-4 rounded-lg bg-surface2 px-3 py-2 text-sm font-semibold">{WELCOME_CREDITS} free AI credits to start</p>}
             <ul className="mt-5 flex-1 space-y-2.5">
-              {FREE_PLAN.map((f) => (
+              {FREE_CARD.map((f) => (
                 <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
               ))}
             </ul>
             <Link href="/signup" className="mt-6 inline-flex w-full items-center justify-center rounded-lg border border-border px-4 py-2.5 text-sm font-semibold hover:bg-surface2">Start free</Link>
           </div>
-          {(["starter", "growth"] as const).map((tier) => {
+          {(["growth"] as const).map((tier) => {
             const p = SAAS_PLANS[tier]; const hot = tier === "growth";
             return (
               <div key={tier} className={`flex flex-col rounded-2xl border bg-surface p-6 ${hot ? "border-brand ring-1 ring-brand" : "border-border"}`}>
@@ -67,7 +69,7 @@ export default function PricingPage() {
                 </div>
                 <p className="mt-1 text-xs text-faint">Includes {GST_PCT}% GST ({rupees(p.base)} + GST)</p>
                 <ul className="mt-5 flex-1 space-y-2.5">
-                  {(tier === "starter" ? EXTRA.starter : [...INCLUDED, ...EXTRA[tier]]).map((f) => (
+                  {([...INCLUDED, ...EXTRA[tier]]).map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
                   ))}
                 </ul>
@@ -105,7 +107,7 @@ export default function PricingPage() {
               <span className="text-3xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span>
               <span className="text-sm text-muted">quote for your need</span>
             </div>
-            <p className="mt-1 text-xs text-faint">Anything beyond Growth — tell us what you need</p>
+            <p className="mt-1 text-xs text-faint">Anything beyond Standard — tell us what you need</p>
             <p className="mt-4 rounded-lg bg-brand-soft/50 px-3 py-2 text-sm font-semibold text-brand-ink">We make all kinds of software</p>
             <ul className="mt-5 flex-1 space-y-2.5">
               {PRO_CUSTOM.items.map((f) => (
@@ -129,7 +131,7 @@ export default function PricingPage() {
           <p className="mt-4 text-sm text-muted">Subscriber credit packs never expire: {CREDIT_PACKS.map((c) => `${c.credits} for ${rupees(c.paise)}`).join(" · ")}.</p>
           <p className="mt-2 text-sm text-muted">No subscription? Use the AI tools pay-as-you-go: {PAYG_PACKS.map((c) => `${c.credits} credits for ${rupees(c.paise)}`).join(" · ")}. {WELCOME_CREDITS > 0 ? ` New accounts get ${WELCOME_CREDITS} free credits to try them.` : ""}</p>
         </div>
-        <p className="mt-8 text-center text-xs text-faint">Prices in Indian rupees, including {GST_PCT}% GST. The free website and card are free for their first year, then ₹1,499 a year (included in Growth). Custom Solutions are quoted per requirement. Cancel any time; the plan runs to the end of the paid month. See our <Link href="/refund" className="underline">refund policy</Link> and <Link href="/terms" className="underline">terms</Link>.</p>
+        <p className="mt-8 text-center text-xs text-faint">Prices in Indian rupees, including {GST_PCT}% GST. The free digital card is free for its first year, then ₹1,499 a year (included in Standard). Custom Solutions are quoted per requirement. Cancel any time; the plan runs to the end of the paid month. See our <Link href="/refund" className="underline">refund policy</Link> and <Link href="/terms" className="underline">terms</Link>.</p>
       </section>
     </div>
   );

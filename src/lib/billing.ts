@@ -37,7 +37,7 @@ export const SAAS_EXTRA: Record<SaasTier, string[]> = {
  *  wherever the free plan is priced (pricing, refund and plan pages). The AI salesman mentions the renewal only when asked. */
 export const FREE_PLAN_WORTH = 149900;
 export const FREE_PLAN_TRUST = "No card details needed · No hidden charge";
-export const FREE_PLAN_TERM = "Free for 1 year, then ₹1,499 a year · Growth includes it";
+export const FREE_PLAN_TERM = "Free for 1 year, then ₹1,499 a year · Standard includes it";
 /** The V-Card after its free year (owner's call, 27 Sep 2026): ₹1,499 incl. GST for one more year. When the year ends the
  *  card keeps working `graceDays` more days, then its link shows "Card renew karein" until it is renewed (nothing is
  *  deleted). Not partner business: no BV — /api/billing/verify never reports it to the partner panel. */
