@@ -14,6 +14,7 @@ import type { HeroModel } from "@/lib/site-hero";
 import { Icon, type IconName } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
+import { HEROART_CSS } from "@/components/site-heroart";
 
 const reduced = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
 
@@ -77,7 +78,8 @@ export function CountUp({ value, className, style }: { value: string; className?
       // Zero only now, the moment it is seen: the number was real until this frame and is real again in 1.1 s.
       const t0 = performance.now(), dur = 1100;
       const step = (now: number) => {
-        const p = Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - p, 3);
+        // 2026-10-16: the frame's timestamp can precede t0 by a few ms; unclamped, the first frame read "-0.0★".
+        const p = Math.max(0, Math.min(1, (now - t0) / dur)), e = 1 - Math.pow(1 - p, 3);
         const n = target * e;
         const num = decimals ? n.toFixed(decimals) : (grouped ? Math.round(n).toLocaleString("en-IN") : String(Math.round(n)));
         setShown(`${m[1]}${num}${m[4]}`);
@@ -229,7 +231,7 @@ export function HeroPhoto({ photo, clip, clipOn = "always", crop = "cover", prio
   const kb = kenBurns && !still && !clip && !photo?.bright;
   return (
     <div className={`hero-ph-wrap hero-ph-in ${className}`} style={lqip ? { backgroundImage: `url(${lqip})` } : undefined}
-      data-bright={photo?.bright ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
+      data-bright={photo?.bright ? "" : undefined} data-stock={photo?.src.startsWith("/api/stock/banners/") ? "" : undefined} data-bar={photo && /^\/api\/stock\/banners\/(restaurant|student)\.jpg/.test(photo.src) ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
       {photo && <Pic src={photo.src} alt={alt} className={`hero-ph ${kb ? "hero-kb" : ""}`} style={{ objectPosition: photo.focus }}
         priority={priority} eager={!lazy && !priority} sizes={sizes ?? heroSizes(crop)} aria-hidden={alt ? undefined : true} />}
       {clip && <HeroClip url={clip.url} poster={clip.poster} />}
@@ -324,8 +326,27 @@ export const HERO_CSS = `
 .site .hero-trust-n{opacity:.7}.site .hero-star{color:var(--star)}
 .site [data-state=closed] .open-dot{background:var(--muted)}
 .site .hero-ctas{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
-.site .hero-cta[data-kind=whatsapp] svg{color:var(--wa)}
+.site .btn-ghost.hero-cta[data-kind=whatsapp] svg{color:var(--wa)}
+/* The primary's icon takes the button's own ink: WhatsApp green on a brown or navy fill failed contrast (16 Oct 2026 review). */
 .site .hero-dark .hero-cta[data-kind=whatsapp] svg{color:inherit}
+.site .hero-ctas .btn-primary.hero-cta{box-shadow:0 10px 24px -12px color-mix(in srgb,var(--accent) 80%,transparent);transition:transform .15s ease,box-shadow .2s ease,filter .15s ease}
+.site .hero-ctas:not(.board-ctas) .btn-primary.hero-cta{min-height:52px;padding:0 var(--s6);font-size:16px}
+.site .hero-dark .hero-ctas .btn-primary.hero-cta{box-shadow:0 10px 28px -14px rgb(0 0 0/.55)}
+.site .hero-ctas:not(.board-ctas) .btn-ghost.hero-cta{min-height:52px}
+@media (hover:hover){.site .hero-ctas .btn-primary.hero-cta:hover{transform:translateY(-1px)}}
+/* Phone: the two buttons are one equal-width stack, the filled one first (the old pair was two different widths). The bento board keeps its own row. */
+@media (max-width:560px){
+.site .hero-ctas:not(.board-ctas){width:100%;gap:var(--s3)}
+.site .hero-ctas:not(.board-ctas) .btn-primary.hero-cta,.site .hero-ctas:not(.board-ctas) .btn-ghost.hero-cta{flex:1 1 100%;width:100%}
+}
+@keyframes hero-rise{from{clip-path:inset(0 0 82% 0);transform:translateY(.38em)}to{clip-path:inset(-.3em -.1em -.3em -.1em);transform:none}}
+/* The headline rises out of a mask (16 Oct 2026): one move on the whole element, so Devanagari conjuncts are never split, and with 'backwards'
+   fill nothing is left clipped afterwards. The text is in the HTML at once (the first frame already shows its top), so the LCP is not held back. */
+@media (prefers-reduced-motion:no-preference){
+.site:not([data-motion=none]) .hero-stagger>.display,.site:not([data-motion=none]) .hero-stagger>.mark-name{animation:hero-rise .85s cubic-bezier(.2,.7,.2,1) backwards;animation-delay:calc(var(--i,0)*50ms + 40ms)}
+}
+@keyframes hero-settle{from{transform:scale(1.06)}to{transform:none}}
+.site .hero-ph-in .hero-ph:not(.hero-kb){animation:hero-settle 1.3s cubic-bezier(.2,.7,.2,1) both}
 .site .hero-wordmark{display:inline-flex;flex-direction:column;line-height:1.1;font-family:var(--font-display,var(--look-head));font-weight:var(--display-w,var(--head-w,500));font-size:15px;letter-spacing:.06em;color:inherit}
 .site .hero-wordmark small{font:500 11px/1.3 var(--font-text,var(--look-body));font-variant:small-caps;letter-spacing:.08em;color:var(--muted)}
 .site .hero-wordmark:lang(hi),.site .hero-wordmark:lang(hi) small{letter-spacing:0;font-variant:normal}
@@ -334,6 +355,14 @@ export const HERO_CSS = `
 .site .hero-ph-wrap[data-clip=always] .hero-clip{display:block}
 .site .hero-ph-wrap[data-bright] .hero-ph{filter:saturate(.92)}
 .site .hero-ph-wrap[data-bright] .hero-scrim{--scrim-bot:color-mix(in srgb,var(--hero-ink) 90%,transparent)}
+/* The trade banners carry a pale fade along the top and the left third (made for the poster look). On a full-bleed cover the top 15% is cropped off by a
+   slight zoom from the bottom (the individual scale property, so the settle animation's transform is untouched) and, on a desktop, a deeper shade takes the left. */
+.site .hero-ph-wrap[data-stock] .hero-ph{scale:1.28;transform-origin:72% 100%}
+/* restaurant.jpg and student.jpg were exported with a black strip along the bottom (97 and 69 of 600 px): zoom from the top so it falls outside the frame
+   until the pictures are re-exported (QA sweep, 16 Oct 2026). */
+.site .hero-ph-wrap[data-bar] .hero-ph{scale:1.2;transform-origin:72% 0}
+.site .board-photo[data-banner] .hero-ph-wrap[data-bar] .hero-ph{transform:none;scale:1.2;transform-origin:72% 0}
+@media (min-width:1024px){.site .hero-ph-wrap[data-bright] .hero-scrim::after{background:linear-gradient(to right,color-mix(in srgb,var(--hero-ink) 94%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 70%,transparent) 36%,transparent 72%)}}
 @media (min-width:768px){
 .site .hero-ph-wrap[data-clip=desktop] .hero-clip{display:block}
 .site .hero-kb{animation:hero-kb 36s cubic-bezier(.25,.1,.25,1) both}
@@ -343,6 +372,8 @@ export const HERO_CSS = `
 .site .hero-ph-wrap[data-side=right] .hero-scrim::after{background:linear-gradient(to left,var(--scrim-mid),transparent 60%)}
 .site .hero-ph-wrap[data-side=center] .hero-scrim::after{display:none}
 }
-@media (prefers-reduced-motion: reduce){.site .hero-kb{animation:none}.site .hero-stagger>*{animation-name:hero-fade}}
-.site[data-motion=none] .hero-kb,.site[data-motion=none] .hero-stagger>*,.site[data-motion=none] .hero-ph-in{animation:none}
+@media (prefers-reduced-motion: reduce){.site .hero-kb,.site .hero-ph-in .hero-ph:not(.hero-kb){animation:none}.site .hero-stagger>*{animation-name:hero-fade!important}}
+.site[data-motion=none] .hero-kb,.site[data-motion=none] .hero-stagger>*,.site[data-motion=none] .hero-ph-in,.site[data-motion=none] .hero-ph-in .hero-ph{animation:none}
+${HEROART_CSS}
+.site .hero-dark .hero-star{color:#f2c14e}
 `;

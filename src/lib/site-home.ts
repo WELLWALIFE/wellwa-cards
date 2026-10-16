@@ -6,6 +6,7 @@
 // Section keys are stable (a block's id, or a fixed word for a pulled preview), so the owner can reorder and
 // hide them in the website editor (`card.site.home`). Pure module: the renderer and the editor both use it.
 import type { Card, CardBlock, CardPage, FaqItem, GalleryImage, ProductItem, SiteHome, TestimonialItem } from "./types";
+import { recipeFor, type HomeKind } from "./site-recipes";
 
 type Location = Extract<CardBlock, { kind: "location" }>;
 type Hours = Extract<CardBlock, { kind: "hours" }>;
@@ -30,11 +31,20 @@ export function isEmptyBlock(b: CardBlock): boolean {
   // Placeholder-only rows must not open a section on their own: a FAQ with no answers, reviews with no words, timings with no times.
   if (b.kind === "faq" && !b.items.some((x) => (x.q ?? "").trim() && (x.a ?? "").trim())) return true;
   if (b.kind === "testimonials" && !b.items.some((x) => (x.text ?? "").trim())) return true;
-  if (b.kind === "hours" && !b.rows.some((r) => (r.day ?? "").trim() && (r.time ?? "").trim())) return true;
+  // (a row may carry its hours inside the day — "Mon–Sat 10am–8pm" with `time` empty — which is a real row; 16 Oct 2026.)
+  if (b.kind === "hours" && !b.rows.some((r) => (r.day ?? "").trim() && ((r.time ?? "").trim() || /\d/.test(r.day)))) return true;
   if ((b.kind === "product" || b.kind === "services") && !b.items.some((x) => (x.name ?? "").trim())) return true;
   if (b.kind === "form" && !b.fields.some((f) => f.label)) return true;
   if (b.kind === "table" && !b.rows.some((r) => r.some(Boolean))) return true;
   if (b.kind === "about" && !(b.body ?? "").trim() && !b.imageUrl) return true;
+  // Whole sections that would be an empty frame: an offer with no words, a list of blank highlights, a "file coming soon" PDF,
+  // a showcase / comparison with nothing in its rows, a call-to-action with neither words nor a link (16 Oct 2026, empty-state pass).
+  if (b.kind === "offer" && !(b.text ?? "").trim()) return true;
+  if (b.kind === "highlights" && !b.items.some((x) => (x ?? "").trim())) return true;
+  if (b.kind === "pdf" && !(b.fileUrl ?? "").trim()) return true;
+  if (b.kind === "showcase" && !b.items.some((x) => x.imageUrl || (x.label ?? "").trim())) return true;
+  if (b.kind === "compare" && !b.rows.some((r) => (r.feature ?? "").trim())) return true;
+  if (b.kind === "cta" && !(b.title ?? "").trim() && !(b.body ?? "").trim() && !(b.joinUrl ?? "").trim()) return true;
   if (b.kind === "location" && !(b.address ?? "").trim() && !mapOk(b.mapUrl)) return true;
   return false;
 }
@@ -124,8 +134,23 @@ const LOOK_ORDER: Record<string, string[]> = {
   shop: ["product", "services", "highlights", "testimonials", "gallery", "about", "faq"],
   collage: ["services", "highlights", "about", "gallery", "testimonials", "product", "faq"],
 };
-function byLook(list: HomeSection[], bp: string | undefined): HomeSection[] {
-  const rank = bp ? LOOK_ORDER[bp] : undefined;
+/** What each trade's page opens its body with, from its recipe (site-recipes.ts `home`): a shop its catalogue, a clinic its doctor and
+ *  treatments, a school its courses and why-us, a builder its work (16 Oct 2026: "sweets: catalogue first; school: results + admissions").
+ *  The first two content kinds the recipe names move to the front of the look's own sequence; the rest keeps the look's order. */
+const RECIPE_KIND: Partial<Record<HomeKind, string>> = { catalog: "product", services: "services", steps: "services", whyUs: "highlights", about: "about", photos: "gallery", reviews: "testimonials" };
+function tradeLead(card: Pick<Card, "seo">): string[] {
+  const key = card.seo?.categoryKey;
+  if (!key) return [];
+  const out: string[] = [];
+  const recipe = recipeFor(key);
+  for (const h of recipe.home) { const k = RECIPE_KIND[h]; if (k && !out.includes(k)) out.push(k); if (out.length === 2) break; }
+  // A clinic's treatments, a school's classes, a café's menu are product blocks too: they sit with the services, not after the booking form.
+  if (!out.includes("product") && recipe.catalog !== "projects" && recipe.catalog !== "work") out.push("product");
+  return out;
+}
+function byLook(list: HomeSection[], bp: string | undefined, lead: string[] = []): HomeSection[] {
+  const base = bp ? LOOK_ORDER[bp] : undefined;
+  const rank = base ? [...lead, ...base.filter((k) => !lead.includes(k))] : lead.length ? lead : undefined;
   if (!rank) return list;
   const kindOf = (s: HomeSection) => (s.kind === "block" ? s.block.kind : s.kind === "featured" ? "product" : s.kind === "reviews" ? "testimonials" : s.kind);
   const at = (s: HomeSection) => rank.indexOf(kindOf(s));
@@ -137,7 +162,14 @@ function byLook(list: HomeSection[], bp: string | undefined): HomeSection[] {
   const sorted = slots.map((i) => ({ u: units[i], i })).sort((a, b) => at(a.u[0]) - at(b.u[0]) || a.i - b.i).map((x) => x.u);
   const out = [...units];
   slots.forEach((slot, n) => { out[slot] = sorted[n]; });
-  return out.flat();
+  if (!lead.length) return out.flat();
+  // The trade's own opening: its lead sections come to the front (after an opening video), whatever slot the look had them in —
+  // a clinic's treatments sat after the reviews because the Tile board has no order of its own. "How it works" (numbered services) is not "services".
+  const lk = (u: HomeSection[]) => { const h = u[0]; return h.kind === "block" && h.block.kind === "services" && /^\d+[.)]\s/.test(h.block.items[0]?.name ?? "") ? "steps" : kindOf(h); };
+  const from = out.length && lk(out[0]) === "video" ? 1 : 0;
+  const picked = lead.flatMap((k) => out.filter((u, i) => i >= from && lk(u) === k));
+  const rest = out.filter((u, i) => i < from || !picked.includes(u));
+  return [...rest.slice(0, from), ...picked, ...rest.slice(from)].flat();
 }
 
 /** The home sections in the order the website shows them, after the owner's own order and hidden list
@@ -150,7 +182,7 @@ export function homeSections(card: Card, pages: CardPage[], opts: { all?: boolea
   const order = saved && saved.some((k) => base.some((s) => s.key === k)) ? saved : undefined;
   const hidden = new Set(card.site?.home?.hidden ?? []);
   let list = base;
-  if (!(order && order.length)) list = byLook(base, card.site?.style?.blueprint);
+  if (!(order && order.length)) list = byLook(base, card.site?.style?.blueprint, tradeLead(card));
   if (order && order.length) {
     const rank = new Map(order.map((k, i) => [k, i]));
     // Sections the owner never saw (added later) keep their default place among the ordered ones.
@@ -205,18 +237,33 @@ export function sinceYear(texts: string[]): number | null {
   return null;
 }
 
+/** The word for what a trade's customers are and what its list holds, for the numbers (16 Oct 2026: a clinic showed "customer reviews" and a
+ *  restaurant "8+ products"). The catalogue word comes from the trade's recipe. */
+const REVIEWER: [RegExp, string, string][] = [
+  [/^(doctor|dentist|hospital|ayurveda)$/, "patient reviews", "मरीज़ों के रिव्यू"],
+  [/^(school|playschool|coaching|college|computer|teacher|dance)$/, "parent & student reviews", "अभिभावक व छात्र रिव्यू"],
+  [/^(hotel|restaurant|cafe|catering|tiffin)$/, "guest reviews", "मेहमानों के रिव्यू"],
+  [/^(travel)$/, "traveller reviews", "यात्रियों के रिव्यू"],
+  [/^(housing)$/, "resident reviews", "निवासियों के रिव्यू"],
+  [/^(ca|lawyer|insurance|finance|it|interior|builder|realestate|photography|event|security|cleaning|courier|transport|astro|manufacturer|printing)$/, "client reviews", "क्लाइंट रिव्यू"],
+];
+const ITEM_KEY: Record<string, [string, string]> = { hotel: ["rooms", "कमरे"], school: ["classes", "कक्षाएँ"], playschool: ["programmes", "प्रोग्राम"] };
+const ITEM_WORD: Record<string, [string, string]> = { menu: ["dishes", "व्यंजन"], plans: ["plans", "प्लान"], courses: ["courses", "कोर्स"], treatments: ["treatments", "उपचार"], projects: ["projects", "प्रोजेक्ट"], services: ["services", "सेवाएँ"], work: ["items", "आइटम"] };
+
 /** Three or four short facts for the strip under the hero — only what the card itself says: reviews it shows,
  *  products it lists, a year the owner wrote, timings, GST, verification. Nothing is invented. */
-export function trustFacts(card: Card): TrustFact[] {
+export function trustFacts(card: Card, lang?: string): TrustFact[] {
   const own = card.site?.home?.stats?.filter((s) => s.value.trim() && s.label.trim());
   if (own && own.length) return own.slice(0, 4);
-  const h = hi(card);
+  // `lang` is the VISITOR's language: an English card read in Hindi (the language switch) shows its numbers in Hindi too (16 Oct 2026).
+  const h = lang ? lang === "hi" : hi(card);
   const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
   const out: TrustFact[] = [];
   const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim());
   if (reviews.length >= 3) {
     const avg = reviews.reduce((s, x) => s + (Number(x.rating) || 0), 0) / reviews.length;
-    out.push({ value: `${(Math.round(avg * 10) / 10).toFixed(1)}★`, label: h ? `${reviews.length} ग्राहक रिव्यू` : `${reviews.length} customer reviews` });
+    const who = REVIEWER.find(([re]) => re.test(card.seo?.categoryKey ?? ""));
+    out.push({ value: `${(Math.round(avg * 10) / 10).toFixed(1)}★`, label: h ? `${reviews.length} ${who ? who[2] : "ग्राहक रिव्यू"}` : `${reviews.length} ${who ? who[1] : "customer reviews"}` });
   }
   const year = sinceYear([...blocks.flatMap((b) => (b.kind === "highlights" ? b.items : [])), card.about ?? "", card.tagline ?? "", card.botKnowledge ?? ""]);
   if (year) {
@@ -224,7 +271,10 @@ export function trustFacts(card: Card): TrustFact[] {
     out.push({ value: h ? `${year} से` : `Since ${year}`, label: yrs >= 2 ? (h ? `${yrs} साल का भरोसा` : `${yrs} years of trust`) : (h ? "भरोसेमंद" : "trusted business") });
   }
   const products = blocks.flatMap((b) => (b.kind === "product" ? b.items : [])).filter((p) => (p.name ?? "").trim());
-  if (products.length >= 3) out.push({ value: `${products.length}+`, label: h ? "प्रोडक्ट" : "products" });
+  const catKey = card.seo?.categoryKey ?? "";
+  // "plans" is a gym's or an insurer's word; a pharma rep's or a network marketer's list is products. A hotel lists rooms, a school classes.
+  const itemWord = ITEM_KEY[catKey] ?? (recipeFor(catKey).catalog === "plans" && !/^(gym|travel|insurance)$/.test(catKey) ? undefined : ITEM_WORD[recipeFor(catKey).catalog]);
+  if (products.length >= 3) out.push({ value: `${products.length}+`, label: itemWord ? itemWord[h ? 1 : 0] : h ? "प्रोडक्ट" : "products" });
   const services = blocks.flatMap((b) => (b.kind === "services" && !/^1\. /.test(b.items[0]?.name ?? "") ? b.items : [])).filter((s) => (s.name ?? "").trim());
   if (products.length < 3 && services.length >= 3) out.push({ value: `${services.length}`, label: h ? "सेवाएँ" : "services" });
   const hours = blocks.find((b): b is Hours => b.kind === "hours" && b.rows.length > 0);

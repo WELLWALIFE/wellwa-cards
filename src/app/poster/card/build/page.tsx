@@ -24,7 +24,7 @@ import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
-import { applyLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
+import { applyLook, openingLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
 import { paletteFor } from "@/lib/site-style";
 import { SITE_HOST, SITE_URL } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
@@ -791,8 +791,9 @@ export default function BuildCard() {
       const nextMissing = r.data.missing ?? [];
       const sig = cardSig(live);
       const nextLooks = (r.data.looks ?? []) as LookPlan[];
-      // A first build opens on the Colour poster (owner, 14 Oct 2026); a rewrite keeps the look it was asked for.
-      const storyLook = !v.fresh && built.site ? threeLooks(built, built.site.style, nextLooks.length ? nextLooks : undefined).find((l) => l.key === "story") : undefined;
+      // A first build opens on the Colour poster (owner, 14 Oct 2026) — or, for a trade a poster does not suit, the trade's own first blueprint
+      // (site-looks.ts openingLook); a rewrite keeps the look it was asked for.
+      const storyLook = !v.fresh && built.site ? openingLook(threeLooks(built, built.site.style, nextLooks.length ? nextLooks : undefined), built.seo?.categoryKey) : undefined;
       const full = storyLook ? applyLook(full0, storyLook) : full0;
       // The website first (the looks are its), then the card — so the preview opens on the Website tab.
       setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);

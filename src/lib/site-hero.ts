@@ -10,7 +10,8 @@ import { HERO_VARIANTS, type Card, type CardBlock, type HeroVariant, type HoursR
 import { categoryOf } from "@/lib/poster-categories";
 import { openNow } from "@/lib/open-now";
 import { sinceYear } from "@/lib/site-home";
-import { tradeMood } from "@/lib/trade-moods";
+import { isStockCta, nameSeed, tradeCta, tradeMood } from "@/lib/trade-moods";
+import { ctaLabel as recipeCtaLabel, recipeFor } from "@/lib/site-recipes";
 import type { BlueprintKey } from "@/lib/site-blueprints";
 
 export type { HeroVariant };
@@ -84,12 +85,13 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   const style = site?.style as (NonNullable<Card["site"]>["style"] & StyleExtra) | undefined;
   const catKey = card.seo?.categoryKey ?? "";
   const cat = categoryOf(catKey);
-  const mood = tradeMood(catKey);
   const city = (card.seo?.city ?? "").trim();
   const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
 
   /* ---- name, honorific, kicker ---- */
   const rawName = (card.lead === "business" ? card.company || card.name : card.name) || card.company || "";
+  // The trade's words, one of its variants by the business name: two kirana stores in a city do not open on the same line (16 Oct 2026).
+  const mood = tradeMood(catKey, nameSeed(sanitiseName(rawName)));
   const base = sanitiseName(rawName);
   const hon = honorific(card, hi);
   const name = hon && !/^(dr\.?|doctor|डॉ\.?|डॉक्टर)\s/i.test(base) ? `${hon} ${base}` : base;
@@ -125,16 +127,25 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   const bookingSlug = card.pages.find((p) => !p.hidden && p.blocks.some((b) => b.kind === "appointment"))?.slug ?? (blocks.some((b) => b.kind === "contact") ? "contact" : "");
   const call = phone ? { label: `${hi ? "कॉल" : "Call"} ${fmtPhone(phone.value)}`, href: `tel:${phone.value.trim()}`, kind: "call" as const } : null;
   const book = bookingSlug ? { label: hi ? "बुक करें" : "Book a visit", href: `#${bookingSlug}`, kind: "book" as const } : null;
+  // The stored label is the composer's stock wording ("Book an appointment" over a hotel, "Order on WhatsApp" over a school): the trade's
+  // own words replace it, in the visitor's language. A line the AI or the owner wrote stays as written (16 Oct 2026).
+  const stored = (hero?.ctaLabel ?? "").trim();
+  const waLabel = isStockCta(stored)
+    ? tradeCta(catKey, lang) ?? (catKey ? (recipeFor(catKey).cta === "book" ? (hi ? "WhatsApp पर बुक करें" : "Book on WhatsApp") : recipeCtaLabel(recipeFor(catKey).cta, hi ? "hi" : "en")) : stored || (hi ? "WhatsApp करें" : "WhatsApp us"))
+    : stored;
   const primary: HeroModel["primary"] = wa
-    ? { label: (hero?.ctaLabel ?? "").trim() || (hi ? "WhatsApp करें" : "WhatsApp us"), href: waHref(card, wa.value), kind: "whatsapp" }
+    ? { label: waLabel, href: waHref(card, wa.value), kind: "whatsapp" }
     : call ?? book ?? { label: hi ? "संपर्क करें" : "Contact us", href: "#contact", kind: "book" };
   const secondary = primary.kind !== "call" && call ? call : primary.kind !== "book" && book ? book : undefined;
 
   /* ---- picture, clip, logo ---- */
   const bp = style?.blueprint;
   const src = heroPhotoSrc(card.coverUrl);
+  // The trade banners fade to white on their left third (see defaultFocus): under white words and a white menu they are a bright picture, so the
+  // heavier scrim and the calmer colour apply to them without the owner's flag (16 Oct 2026: the cinematic cover opened on a washed-out grey band).
+  const bright = !!hero?.bright || !!src?.startsWith("/api/stock/banners/");
   const photo: HeroModel["photo"] | undefined = src
-    ? { src, focus: bpFocus(hero?.focus || defaultFocus(src), bp), ...(hero?.lqip ? { lqip: hero.lqip } : {}), bright: !!hero?.bright, dark: !hero?.bright }
+    ? { src, focus: bpFocus(hero?.focus || defaultFocus(src), bp), ...(hero?.lqip ? { lqip: hero.lqip } : {}), bright: bright, dark: !bright }
     : undefined;
   const logo = (site?.logoUrl ?? "").trim();
   const ownLogo = logo && !logo.startsWith("/api/monogram/") ? logo : undefined;
@@ -231,6 +242,14 @@ export function tradeLabel(card: Pick<Card, "seo" | "jobTitle" | "lead" | "compa
 }
 /** Where the category's label is a shop, not a trade ("Jewellery" → "Jeweller"). */
 const KICKER_WORD: Record<string, { en: string; hi: string }> = {
+  // (16 Oct 2026: the label's first word alone read "Auto", "Personal", "IT" over a business with no other trade word.)
+  auto: { en: "Auto care", hi: "ऑटो केयर" },
+  kirana: { en: "Kirana store", hi: "किराना स्टोर" },
+  personal: { en: "Profile", hi: "प्रोफ़ाइल" },
+  it: { en: "IT & software", hi: "IT व सॉफ़्टवेयर" },
+  dance: { en: "Dance classes", hi: "डांस क्लास" },
+  computer: { en: "Computer institute", hi: "कंप्यूटर संस्थान" },
+  political: { en: "Public service", hi: "जनसेवा" },
   jewellery: { en: "Jeweller", hi: "ज्वेलर" },
   sweets: { en: "Sweets & bakery", hi: "मिठाई व बेकरी" },
   garments: { en: "Clothing", hi: "कपड़े" },
@@ -265,12 +284,16 @@ const waHref = (card: Card, value: string) => `https://wa.me/${value.replace(/\D
 const norm = (s: string) => stripEmoji(s).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
 
+/** Lines every trade's AI copy drifts into — a welcome, a "trusted partner", "best in town", "one-stop solution" — say nothing about THIS business; the
+ *  trade's own line (trade-moods.ts) takes their place (16 Oct 2026, trade-logic pass). */
+const STOCK_CLAIM = /^\s*(?:welcome\b|your (?:trusted|one[- ]stop|ultimate|perfect|complete)\b|best\b.{0,24}\b(?:town|city|area|india)\b|quality (?:you can trust|is our|and (?:service|trust))|excellence\b|where (?:quality|passion|tradition|dreams)\b|(?:leading|premier|top|no\.? ?1)\b|we (?:provide|offer|are|deliver)\b|serving you\b|स्वागत|आपका (?:भरोसेमंद|विश्वसनीय|अपना भरोसेमंद)|बेहतरीन सेवाएँ|नंबर\s?1|वन[- ]स्टॉप)/i;
+const STOCK_SUB = /^\s*(?:welcome\b|your (?:trusted|one[- ]stop|ultimate)\b|स्वागत|वन[- ]स्टॉप)/i;
 /** The AI's headline when it is a claim: ≤ 6 words, no slash, not the name again (the composer writes the name into
  *  hero.headline, which is what the old heroes printed) and not name-SHAPED — "Sharma Jewellers", "Test Clinic":
  *  take the trade's own words out and at most one word is left. */
 function aiHeadline(raw: string | undefined, names: (string | undefined)[], labels: string[]): string | null {
   const h = stripEmoji(raw ?? "");
-  if (!h || h.includes("/") || words(h) > 6) return null;
+  if (!h || h.includes("/") || words(h) > 6 || STOCK_CLAIM.test(h)) return null;
   const key = norm(h);
   if (names.some((n) => n && (norm(n) === key || norm(nameParts(n).name) === key))) return null;
   const tradeWords = new Set(labels.flatMap((l) => norm(l).split(" ")).filter((w) => w.length > 2));
@@ -280,7 +303,7 @@ function aiHeadline(raw: string | undefined, names: (string | undefined)[], labe
 
 function aiSub(raw: string | undefined, labels: string[]): string | null {
   const s = stripEmoji(raw ?? "");
-  if (!s || Array.from(s).length > 90 || isAutoSub(s, labels)) return null;
+  if (!s || Array.from(s).length > 90 || isAutoSub(s, labels) || STOCK_SUB.test(s)) return null;
   return s;
 }
 

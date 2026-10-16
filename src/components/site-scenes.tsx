@@ -10,6 +10,7 @@
 import { useEffect, useRef, type ReactNode } from "react";
 import { Pic as Img } from "@/components/pic";
 import type { TestimonialItem } from "@/lib/types";
+import { ReviewBy } from "@/components/site-proof";
 
 type T = (s: string) => string;
 type Photo = { url?: string; label: string };
@@ -83,7 +84,8 @@ export function SplitFaq({ eyebrow, title, items, aside, t }: { eyebrow: string;
   return (
     <div className="split-faq">
       <div className="split-faq-head">
-        <p className="scene-kicker">{eyebrow}</p>
+        {/* On paper, not over a photo: the white scene-kicker was invisible here (16 Oct 2026). */}
+        <p className="kicker">{eyebrow}</p>
         <h2 className="sec-h2 mt-3">{t(title)}</h2>
         {aside && <div className="mt-6">{aside}</div>}
       </div>
@@ -260,7 +262,7 @@ export function ReviewRow({ items, t }: { items: TestimonialItem[]; t: T }) {
         <figure key={i}>
           <span className="rev-star" aria-label={`${Math.round(Number(x.rating) || 5)} / 5`}>{"★".repeat(Math.max(1, Math.min(5, Math.round(Number(x.rating) || 5))))}</span>
           <blockquote>{t(x.text)}</blockquote>
-          <figcaption>{x.name}</figcaption>
+          <figcaption><ReviewBy name={x.name} /></figcaption>
         </figure>
       ))}
     </div>
@@ -307,7 +309,7 @@ export function ColourReviews({ items, t }: { items: TestimonialItem[]; t: T }) 
         <figure key={i} data-c={i % 3}>
           <span aria-hidden="true">“</span>
           <blockquote>{t(x.text)}</blockquote>
-          <figcaption>{x.name}</figcaption>
+          <figcaption><ReviewBy name={x.name} /></figcaption>
         </figure>
       ))}
     </div>
@@ -372,7 +374,7 @@ export function BentoReviews({ items, t }: { items: TestimonialItem[]; t: T }) {
         <figure key={i} className={i === 0 ? "lead" : ""}>
           <span className="bento-stars">{"★".repeat(Math.max(1, Math.min(5, Math.round(Number(x.rating) || 5))))}</span>
           <blockquote>{t(x.text)}</blockquote>
-          <figcaption>{x.name}</figcaption>
+          <figcaption><ReviewBy name={x.name} /></figcaption>
         </figure>
       ))}
     </div>
@@ -429,6 +431,8 @@ export const SCENES_CSS = `
 @media (min-width:900px){.site[data-bp="cinematic"] .split-faq{grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:var(--s8)}.site[data-bp="cinematic"] .split-faq-head{position:sticky;top:96px;align-self:start}}
 .site[data-bp="cinematic"] .scene-rows{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
 .site[data-bp="cinematic"] .scene-rows li{display:grid;grid-template-columns:auto 1fr;gap:4px 20px;padding:26px 0;border-bottom:1px solid var(--line);align-items:baseline}
+/* 2026-10-16: the dark "Why choose us" band rendered as the 13px facilities line, five to a row with the words wrapping in 100px columns; a proper two-to-three column list at body size reads as a promise. */
+.site[data-bp="cinematic"] .hero-dark .gtk{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,230px),1fr));gap:14px 32px;padding:0;border:0;font-size:15px;line-height:1.4;color:var(--hero-text)}
 .site[data-bp="cinematic"] .scene-n{grid-row:1/3;font-size:12px;letter-spacing:.18em;color:var(--accent)}
 .site[data-bp="cinematic"] .scene-rows h3{margin:0;font-family:var(--font-display,var(--look-head));font-size:clamp(1.4rem,4vw,2.2rem);line-height:1.1;font-weight:400}
 .site[data-bp="cinematic"] .scene-rows p{margin:0;color:var(--muted);line-height:1.55;max-width:60ch}
@@ -485,7 +489,7 @@ export const SCENES_CSS = `
 .site[data-bp="shop"] .icon-tiles li,.site[data-bp="collage"] .icon-tiles li{display:flex;flex-direction:column;gap:6px;padding:16px;border-radius:var(--r-card);background:var(--surface);border:1px solid var(--line)}
 .site[data-bp="shop"] .icon-tiles i,.site[data-bp="collage"] .icon-tiles i{display:grid;place-items:center;width:44px;height:44px;border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent);font-style:normal;font-size:13px;font-weight:700;letter-spacing:.06em}
 .site[data-bp="shop"] .icon-tiles h3,.site[data-bp="collage"] .icon-tiles h3{margin:6px 0 0;font-size:15px;font-weight:600;line-height:1.25}
-.site[data-bp="shop"] .icon-tiles p,.site[data-bp="collage"] .icon-tiles p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="shop"] .icon-tiles p,.site[data-bp="collage"] .icon-tiles p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
 .site[data-bp="shop"] .icon-tiles i{border-radius:999px}
 @media (min-width:900px){.site[data-bp="shop"] .icon-tiles{grid-template-columns:repeat(4,1fr)}.site[data-bp="collage"] .icon-tiles{grid-template-columns:repeat(4,1fr);gap:16px}.site[data-bp="collage"] .icon-tiles li{padding:22px}}
 .site[data-bp="shop"] .banner-about,.site[data-bp="collage"] .banner-about{display:grid;overflow:hidden;border-radius:var(--r-tile);background:var(--p-soft)}
@@ -529,7 +533,9 @@ export const SCENES_CSS = `
 .site[data-bp="story"] .col-blocks li[data-c="2"]{background:#fff;color:var(--p-foot)}
 .site[data-bp="story"] .col-blocks span{font-family:var(--font-display,var(--look-head));font-size:2.2rem;line-height:1;opacity:.9}
 .site[data-bp="story"] .col-blocks h3{margin:auto 0 0;text-transform:uppercase;letter-spacing:.03em;font-size:1rem;line-height:1.2;font-weight:800}
-.site[data-bp="story"] .col-blocks p{margin:0;font-size:13px;line-height:1.4;opacity:.85;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.site[data-bp="story"] .col-blocks p{margin:0;font-size:13px;line-height:1.4;opacity:.85;display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden}
+/* 2026-10-16: on a phone the tiles are ~160px wide, so two lines cut a service description mid-sentence; six show it whole. Wide tiles need fewer. */
+@media (min-width:900px){.site[data-bp="shop"] .icon-tiles p,.site[data-bp="collage"] .icon-tiles p,.site[data-bp="story"] .col-blocks p,.site[data-bp="bento"] .bento-sv p{-webkit-line-clamp:3}}
 @media (min-width:900px){.site[data-bp="story"] .col-blocks{grid-template-columns:repeat(4,1fr);gap:16px}}
 .site[data-bp="story"] .label-wall{display:grid;grid-template-columns:1fr 1fr;gap:12px}
 .site[data-bp="story"] .label-it{position:relative;display:block;aspect-ratio:3/4;overflow:hidden;border:2px solid var(--p-foot);padding:0;background:var(--paper-2);cursor:zoom-in}
@@ -557,7 +563,7 @@ export const SCENES_CSS = `
 .site[data-bp="bento"] .bento-sv small{font-size:12px;letter-spacing:.14em;opacity:.7}
 .site[data-bp="bento"] .bento-sv h3{margin:auto 0 0;font-size:1.05rem;line-height:1.2;font-weight:700;padding-right:30px}
 .site[data-bp="bento"] .bento-sv li.lead h3{font-size:clamp(1.4rem,4vw,2rem)}
-.site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;padding-right:32px}  /* clear of the round arrow in the corner */
+.site[data-bp="bento"] .bento-sv p{margin:0;font-size:13px;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:6;-webkit-box-orient:vertical;overflow:hidden;padding-right:32px}  /* clear of the round arrow in the corner */
 .site[data-bp="bento"] .bento-sv li.lead p{color:inherit;opacity:.85}
 .site[data-bp="bento"] .bento-sv li.ask{padding:0;border-style:dashed;background:transparent}
 .site[data-bp="bento"] .bento-sv li.ask a{display:flex;flex-direction:column;gap:6px;height:100%;min-height:132px;padding:18px;color:inherit;text-decoration:none}

@@ -1422,6 +1422,10 @@ export function ImageLightbox({
 }: {
   images: string[]; index: number; onIndex: (i: number) => void; onClose: () => void; alt: string;
 }) {
+  const closeRef = useRef<HTMLButtonElement>(null);
+  const drag = useRef<{ x: number; y: number } | null>(null);
+  const many = images.length > 1;
+  const go = (d: number) => onIndex((index + d + images.length) % images.length);
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
@@ -1433,6 +1437,13 @@ export function ImageLightbox({
     document.body.style.overflow = "hidden";
     return () => { document.removeEventListener("keydown", onKey); document.body.style.overflow = prev; };
   }, [index, images.length, onClose, onIndex]);
+  // Keyboard users land on the close button, and go back to the photo they opened it from (16 Oct 2026, proof pass).
+  useEffect(() => {
+    const from = document.activeElement as HTMLElement | null;
+    closeRef.current?.focus();
+    return () => { try { from?.focus?.(); } catch { /* ignore */ } };
+  }, []);
+  const arrow = "absolute top-1/2 -translate-y-1/2 grid h-12 w-12 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white";
 
   // Portal to <body> — same transformed-ancestor trap as the appointment dialog.
   return createPortal(
@@ -1441,31 +1452,53 @@ export function ImageLightbox({
       onClick={onClose}
       role="dialog"
       aria-modal="true"
+      aria-label={alt || "Photos"}
     >
       <button
+        ref={closeRef}
         onClick={onClose}
         aria-label="Close"
-        className="absolute top-4 right-4 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors"
+        className="absolute top-4 right-4 z-10 grid h-11 w-11 place-items-center rounded-full bg-white/15 text-white hover:bg-white/25 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white"
       >
         <X className="h-6 w-6" />
       </button>
+      {many && <span className="absolute top-5 left-5 rounded-full bg-white/15 px-3 py-1 text-sm font-medium tabular-nums text-white" aria-live="polite">{index + 1} / {images.length}</span>}
 
-      <Pic
-        src={images[index]}
-        alt={alt}
-        eager sizes="100vw"
-        className="max-h-[80vh] max-w-full object-contain rounded-xl"
-        onClick={(e) => e.stopPropagation()}
-      />
+      {/* Swipe on a phone: a sideways drag of 50px or more moves one photo. */}
+      <div
+        className="relative flex w-full flex-1 min-h-0 items-center justify-center touch-pan-y"
+        onPointerDown={(e) => { drag.current = { x: e.clientX, y: e.clientY }; }}
+        onPointerUp={(e) => {
+          const d = drag.current; drag.current = null;
+          if (!d || !many) return;
+          const dx = e.clientX - d.x;
+          if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - d.y) * 1.5) go(dx < 0 ? 1 : -1);
+        }}
+      >
+        <Pic
+          src={images[index]}
+          alt={alt}
+          eager sizes="100vw"
+          className="max-h-[78vh] max-w-full object-contain rounded-xl select-none"
+          onClick={(e) => e.stopPropagation()}
+        />
+        {many && (
+          <>
+            <button type="button" aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); go(-1); }} className={`${arrow} left-0 md:left-4 max-md:hidden`}><ChevronLeft className="h-6 w-6" /></button>
+            <button type="button" aria-label="Next photo" onClick={(e) => { e.stopPropagation(); go(1); }} className={`${arrow} right-0 md:right-4 max-md:hidden`}><ChevronRight className="h-6 w-6" /></button>
+          </>
+        )}
+      </div>
 
-      {images.length > 1 && (
-        <div className="mt-4 flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+      {many && (
+        <div className="mt-4 flex max-w-full items-center gap-2 overflow-x-auto px-1 pb-1" onClick={(e) => e.stopPropagation()}>
           {images.map((g, i) => (
             <button
               key={i}
               onClick={() => onIndex(i)}
-              className={`h-14 w-14 rounded-lg overflow-hidden border-2 bg-white/10 ${i === index ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
+              className={`h-14 w-14 shrink-0 rounded-lg overflow-hidden border-2 bg-white/10 ${i === index ? "border-white" : "border-transparent opacity-60 hover:opacity-100"}`}
               aria-label={`Photo ${i + 1}`}
+              aria-current={i === index ? "true" : undefined}
             >
               <Pic src={g} alt="" w={56} className="h-full w-full object-contain p-0.5" />
             </button>

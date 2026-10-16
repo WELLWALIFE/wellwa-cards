@@ -7,6 +7,7 @@ import { heroModel } from "@/lib/site-hero";
 import { tradeMood } from "@/lib/trade-moods";
 import type { Card } from "@/lib/types";
 import { CtaPair, Display, HeroPhoto, Kicker, Sub, TrustRow } from "@/components/site-smart";
+import { HeroArt, artKind } from "@/components/site-heroart";
 
 export function PosterHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t: (s: string) => string; onBook?: (slug: string) => void }) {
   const lang = hi ? "hi" : "en";
@@ -15,6 +16,7 @@ export function PosterHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t
   const photo = m.photo && m.variant !== "poster-ink" ? m.photo : undefined;
   return (
     <section className="poster hero-dark" data-field={luxe ? "ink" : "accent"} data-photo={photo ? "" : undefined} aria-label={m.name}>
+      {!photo && <HeroArt kind={artKind(card.seo?.categoryKey)} tone={luxe ? "gold" : "light"} />}
       <div className="poster-in">
         <div className="poster-copy hero-stagger" lang={lang}>
           <Kicker lang={lang}>{m.kicker}</Kicker>
@@ -39,8 +41,12 @@ export const POSTER_CSS = `
 .site .poster[data-field=ink] .kicker{color:var(--gold,var(--accent))}
 .site .poster .kicker{color:var(--hero-text);opacity:.8}
 .site .poster .trust-row{color:var(--hero-text);opacity:.85}
-.site .poster .display{--t-display:clamp(2.75rem,12vw,3.5rem);max-width:12ch}
+.site .poster .display{--t-display:clamp(2.75rem,12vw,3.5rem);max-width:16ch}
 .site .poster .hero-sub{max-width:34ch;opacity:.9;margin-top:var(--s4,16px)}
+.site .poster .display{margin-top:var(--s3,12px)}
+/* No photo: the drawn art sits behind the words and must not widen the page. */
+.site .poster:not([data-photo]){overflow:hidden}
+.site .poster-in{position:relative;z-index:1}
 .site .poster-ctas{margin-top:var(--s5,24px)}
 .site .poster-trust{margin-top:var(--s5,24px);padding-bottom:var(--s6,32px)}
 /* the photo card hangs over the bottom edge of the colour block into the page below */
@@ -54,10 +60,12 @@ export const POSTER_CSS = `
   .site .poster{padding:0 var(--gutter,64px)}
   .site .poster-in{max-width:var(--content,1120px);margin:0 auto;display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:64px;align-items:center;min-height:64vh}
   .site .poster-copy{padding:96px 0 80px}
-  .site .poster .display{--t-display:clamp(4rem,5.6vw,5.5rem);max-width:12ch}
-  .site .poster-card{margin:0;transform:translateY(96px)}
+  .site .poster .display{--t-display:clamp(3.75rem,5vw,5rem);max-width:15ch}
+  /* The card is bottom-aligned in the block and hangs a fixed 72 px below it; the gap under it is that hang plus 40 px (it was centred and
+     pushed 96 px, which hung it only ~20 px and left ~90 px of empty paper under the colour block - 16 Oct 2026). */
+  .site .poster-card{margin:0;align-self:end;transform:translateY(72px)}
   .site .poster[data-photo]{margin-bottom:112px}
-  .site .poster-ph{aspect-ratio:5/4;box-shadow:16px 16px 0 0 var(--paper),0 32px 64px -32px rgb(0 0 0/.5)}
+  .site .poster-ph{aspect-ratio:1;box-shadow:16px 16px 0 0 var(--paper),0 32px 64px -32px rgb(0 0 0/.5)}
   .site .poster-trust{padding-bottom:0}
 }
 .site .poster .hero-stagger>*{animation-name:hero-in}

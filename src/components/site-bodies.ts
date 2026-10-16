@@ -25,15 +25,19 @@ const WORDMARK = `
 .site[data-bp="wordmark"] main .ledger li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:var(--s4);align-items:center;padding:var(--s4) 0;border-bottom:1px solid var(--line)}
 .site[data-bp="wordmark"] main .ledger-th{width:64px;height:64px;border-radius:var(--r-img);overflow:hidden;background:var(--paper-2)}
 .site[data-bp="wordmark"] main .ledger-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:2px var(--s3);min-width:0}
-.site[data-bp="wordmark"] main .ledger-name{font-family:var(--font-display,var(--look-head));font-size:1.2rem;line-height:1.2;letter-spacing:-.01em;color:var(--ink);text-decoration:none;min-width:0}
+.site[data-bp="wordmark"] main .ledger-name{position:relative;font-family:var(--font-display,var(--look-head));font-size:1.2rem;line-height:1.2;letter-spacing:-.01em;color:var(--ink);text-decoration:none;min-width:0}
 .site[data-bp="wordmark"] main .ledger-dots{flex:1 1 16px;min-width:16px;border-bottom:2px dotted var(--line);transform:translateY(-.3em)}
 .site[data-bp="wordmark"] main .ledger-price{font-family:var(--font-display,var(--look-head));font-size:1.2rem;color:var(--ink);max-width:100%}
 .site[data-bp="wordmark"] main .ledger-price s{display:inline-block;white-space:nowrap;margin-left:.4em;font-size:.75em;color:var(--muted)}
 .site[data-bp="wordmark"] main .ledger-sub{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s2) var(--s3);margin-top:4px;font-size:13px;color:var(--muted)}
 .site[data-bp="wordmark"] main .ledger-desc{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;flex:1 1 200px;min-width:0}
 .site[data-bp="wordmark"] main .ledger-badge{font-size:10px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;color:var(--accent)}
-.site[data-bp="wordmark"] main .ledger-wa{display:inline-flex;align-items:center;gap:.3em;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap}
+.site[data-bp="wordmark"] main .ledger-wa{display:inline-flex;align-items:center;gap:.3em;font-weight:600;color:var(--accent);text-decoration:none;white-space:nowrap;position:relative}
+.site[data-bp="wordmark"] main .ledger-wa::after,.site[data-bp="wordmark"] main .ledger-name::after{content:"";position:absolute;inset:-12px -8px}
 @media (min-width:1024px){.site[data-bp="wordmark"] main .ledger{columns:2;column-gap:var(--s8)}.site[data-bp="wordmark"] main .ledger li{break-inside:avoid;grid-template-columns:72px minmax(0,1fr)}.site[data-bp="wordmark"] main .ledger-th{width:72px;height:72px}}
+/* No product has a picture (a clinic's treatments): no empty 64px column in front of every row (QA pass, 16 Oct 2026). */
+.site[data-bp="wordmark"] main .ledger.ledger-nopic li{grid-template-columns:minmax(0,1fr)}
+.site[data-bp="wordmark"] main .ledger.ledger-nopic .ledger-th{display:none}
 @media (min-width:1024px){.site[data-bp="wordmark"] main .sec-h2{font-size:clamp(3rem,5vw,5rem)}}
 /* The offer's sentence shares the heading class but is a sentence of up to 150 characters: at heading size it filled a screen. */
 .site[data-bp="wordmark"] main p.sec-h2{font-size:clamp(1.5rem,5.2vw,2.5rem);line-height:1.12;letter-spacing:-.015em;max-width:none}
@@ -90,6 +94,7 @@ const POSTER = `
 .site[data-bp="story"] main .kicker{letter-spacing:.18em}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark)[data-m3="2"]{background:var(--accent)!important;color:var(--on-accent);--ink:var(--on-accent);--muted:color-mix(in srgb,var(--on-accent) 78%,transparent);--line:color-mix(in srgb,var(--on-accent) 25%,transparent);--surface:color-mix(in srgb,var(--on-accent) 10%,transparent);--paper-2:color-mix(in srgb,var(--on-accent) 8%,transparent)}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark)[data-m3="2"] .kicker{color:var(--on-accent);opacity:.8}
+.site[data-bp="story"] main section[data-reveal]:not(.hero-dark)[data-m3="2"] .stars{color:var(--on-accent)}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark)[data-m3="2"] ol li>span.num{background:var(--on-accent)!important;color:var(--accent)!important}
 .site[data-bp="story"] main section[data-reveal]:not(.hero-dark)[data-m3="2"] .p-wa{background:var(--on-accent);color:var(--accent)}
 .site[data-bp="story"] main .s-card{border:2px solid var(--ink);border-radius:var(--r-img);box-shadow:6px 6px 0 0 var(--ink);background:var(--surface)}
@@ -165,12 +170,15 @@ const WHY = `
 .site[data-bp="wordmark"] main .hl-grid>div{border:0!important;border-bottom:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:16px 0!important;counter-increment:why}
 .site[data-bp="wordmark"] main .hl-grid>div::before{content:counter(why,decimal-leading-zero);font-family:var(--font-display,var(--look-head));font-size:1.4rem;color:var(--accent);min-width:2.2em}
 .site[data-bp="wordmark"] main .hl-grid>div>span:first-child{display:none}
+.site[data-bp="wordmark"] main .hl-grid .text-\\[15px\\]{font-size:1rem}
+/* Two columns on a desktop: six short lines in one narrow column left two thirds of the dark band empty (QA sweep, 16 Oct 2026). */
+@media (min-width:900px){.site[data-bp="wordmark"] main .hl-grid{display:grid!important;grid-template-columns:1fr 1fr;column-gap:56px}.site[data-bp="wordmark"] main .hl-grid>div{align-items:center}}
 .site[data-bp="cinematic"] main .hl-grid{display:flex!important;flex-wrap:wrap;gap:0!important}
 .site[data-bp="cinematic"] main .hl-grid>div{flex:1 1 200px;border:0!important;border-left:1px solid var(--line)!important;border-radius:0!important;box-shadow:none!important;background:transparent!important;padding:8px 20px!important}
 .site[data-bp="shop"] main .hl-grid{display:flex!important;flex-wrap:wrap;gap:10px!important}
 .site[data-bp="shop"] main .hl-grid>div{border-radius:999px!important;padding:8px 16px!important;width:auto!important}
-.site[data-bp="story"] main .hl-grid{display:block!important}
-.site[data-bp="story"] main .hl-grid>div{margin-bottom:10px;border-width:2px!important}
+.site[data-bp="story"] main .hl-grid{display:grid!important;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:10px!important}
+.site[data-bp="story"] main .hl-grid>div{border-width:2px!important}
 `;
 /** The sections' own composition per look — the heading's place, the FAQ, the About picture and the gallery frames —
  *  so below the hero the six looks are six pages and not one page in six colours (live check, 14 Oct 2026: the
@@ -178,6 +186,12 @@ const WHY = `
 const SECTIONS = `
 .site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
 .site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
+/* A centred heading with a "See all" link: the pair was centred together, so the title sat left of the page's middle (QA sweep, 16 Oct 2026; the shop look has its own rule below).
+   From 1024 px the link goes to the row's right edge and the title keeps the page's centre. */
+@media (min-width:1024px){
+.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}
+.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(:first-child){position:absolute;right:0;bottom:.4rem}
+}
 .site[data-bp="cinematic"] main .faq summary{text-transform:uppercase;letter-spacing:.08em;font-size:.9rem}
 .site[data-bp="cinematic"] main img.rounded-3xl,.site[data-bp="cinematic"] main .group{border-radius:0}
 .site[data-bp="cinematic"] main .columns-2,.site[data-bp="cinematic"] main .grid.grid-cols-2.gap-3{gap:2px}
@@ -191,7 +205,11 @@ const SECTIONS = `
 .site[data-bp="wordmark"] main .group{border-radius:0}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
+/* The centred title is centred on the page, not on "title + its See-all link" (it sat 35-100px left of centre on a laptop): the link leaves the flow at the right edge (QA pass, 16 Oct 2026). */
+@media (min-width:768px){.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(.max-w-2xl){position:absolute;right:0;bottom:4px}}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .sec-h2::after{content:"";display:block;width:48px;height:4px;border-radius:4px;background:var(--accent);margin:12px auto 0}
+/* A left-aligned heading (About beside its story) keeps its accent bar under its first letter, not centred under a block it does not fill (QA sweep, 16 Oct 2026). */
+.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .grid>div>.sec-h2::after{margin-left:0}
 .site[data-bp="shop"] main .faq{border:0}
 .site[data-bp="shop"] main .faq details{border:1px solid var(--line);border-radius:var(--r-card);margin-bottom:10px;padding:0 16px;background:var(--surface)}
 .site[data-bp="shop"] main img.rounded-3xl{border-radius:var(--r-card)}

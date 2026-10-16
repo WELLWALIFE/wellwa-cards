@@ -40,7 +40,9 @@ function fromHsl(h: number, s: number, l: number): string {
   return toHex((r + m) * 255, (g + m) * 255, (b + m) * 255);
 }
 /** Ink that stays readable on a solid fill of `hex`. */
-export const inkOn = (hex: string) => (luminance(hex) > 0.42 ? "#101427" : "#ffffff");
+// Whichever of white and the ink gives the higher contrast: the old 0.42 luminance cut put white on mid-tones (teal, orange, sky)
+// at 3.0-3.6:1, under AA for button text (16 Oct 2026 contrast audit). The two meet at a luminance of about .2.
+export const inkOn = (hex: string) => (luminance(hex) > 0.2 ? "#101427" : "#ffffff");
 /** A colour dark enough to carry white text (light brand colours are stepped down). */
 function readable(hex: string): string {
   let h = hex6(hex) ?? "#0e9e90";
@@ -100,14 +102,25 @@ export type OklchOpts = {
   /** The hero photo is bright at the bottom: the scrim deepens to .90. */
   bright?: boolean;
 };
+/** How much of its hue the paper carries (1 = full). A tinted paper under a red or magenta brand reads pink — soft and
+ *  feminine on a gym, a garage or a hardware shop (16 Oct 2026 look review: crimson sites were pink pages) — so across
+ *  that arc the tint is cut to a fifth (a half for magenta); every other hue keeps it. */
+export function paperCast(h: number): number {
+  h = ((h % 360) + 360) % 360;
+  if (h >= 340 || h <= 32) return 0.2;
+  if (h >= 305) return 0.5;
+  return 1;
+}
 /** The colour tokens of docs/premium-look.md §2.3 for one hue, as CSS declarations for the `.site` root. */
 export function oklchVars(h: number, tone: Tone, opts: OklchOpts = {}): string {
   h = ((h % 360) + 360) % 360;
   // Gold is a line, never a fill: for hues around gold the accent stays quiet.
   const C = Math.min(opts.c ?? 0.13, h >= 70 && h <= 100 ? 0.09 : 0.13);
   const dark = tone === "dark";
-  const paper: [number, number, number] = opts.luxe ? [0.96, 0.015, 85] : dark ? [0.18, 0.02, h] : [0.97, 0.012, h];
-  const paper2: [number, number, number] = opts.luxe ? [0.93, 0.02, 85] : dark ? [0.22, 0.025, h] : [0.94, 0.018, h];
+  const cast = paperCast(h);
+  const paper: [number, number, number] = opts.luxe ? [0.96, 0.015, 85] : dark ? [0.18, 0.02, h] : [0.97, 0.012 * cast, h];
+  const paper2: [number, number, number] = opts.luxe ? [0.93, 0.02, 85] : dark ? [0.22, 0.025, h] : [0.94, 0.02 * cast, h];
+  const paper3: [number, number, number] = opts.luxe ? [0.9, 0.025, 85] : dark ? [0.26, 0.03, h] : [0.9, 0.028 * cast, h];
   const lightInk: [number, number, number] = opts.luxe ? [0.24, 0.03, 60] : [0.22, 0.025, h];
   const ink: [number, number, number] = dark ? [0.95, 0.01, h] : lightInk;
   const accent: [number, number, number] = [dark ? 0.72 : 0.48, C, h];
@@ -126,6 +139,14 @@ export function oklchVars(h: number, tone: Tone, opts: OklchOpts = {}): string {
     // WhatsApp's green on the WhatsApp control only; `--wa-dark` for that control on a dark hero of a light page.
     `--wa:${dark ? "#25d366" : "#1faa5c"}`, `--wa-dark:#25d366`,
     tok("scrim-bot", 0.15, 0.02, h, opts.bright ? 0.9 : 0.82), tok("scrim-mid", 0.15, 0.02, h, 0.45), `--scrim-top:transparent`,
+    // 16 Oct 2026 (design-system pass): a third paper step for insets and zebra rows, a pressed accent, two more elevations,
+    // the two glows of the dark band's mesh, and one focus ring colour — so a section never invents its own.
+    tok("paper-3", ...paper3),
+    tok("accent-deep", dark ? 0.8 : 0.38, C, h),
+    tok("glow-a", 0.55, Math.min(C * 1.15, 0.15), h, 0.34), tok("glow-b", 0.62, C, (h + 42) % 360, 0.2),
+    tok("ring", dark ? 0.78 : 0.55, Math.min(C * 1.2, 0.16), h, 0.55),
+    `--e-2:0 2px 4px ${hex8(shadowInk, 0.06)},0 14px 32px ${hex8(shadowInk, 0.1)}`,
+    `--e-3:0 8px 16px ${hex8(shadowInk, 0.08)},0 28px 56px ${hex8(shadowInk, 0.16)}`,
     `--star:var(--accent)`,
     opts.luxe ? tok("gold", 0.72, 0.09, 85) : `--gold:var(--accent)`,
     // Elevation shadow (ink at 6 %): `.s-card` on the cinematic blueprint, floating sheets, the sticky bar.
@@ -170,6 +191,11 @@ export const SITE_PALETTES: SitePalette[] = [
   P("saffron", "Saffron", "केसरिया", "#431407", "#ea580c", "#f59e0b", "#fff4b8"),
   P("gold", "Gold", "गोल्ड", "#2a1204", "#b45309", "#d97706", "#fde68a"),
   P("cocoa", "Cocoa", "कोको", "#1f1209", "#7c4a1e", "#b45309", "#f5d9b8"),
+  // Three calmer, earthier palettes (16 Oct 2026): the first fifteen are all saturated hues; ayurveda, spa, boutiques and
+  // food brands asked for something quieter than "emerald" or "rose".
+  P("sage", "Sage", "सेज", "#17261f", "#3f7a62", "#7fb59a", "#d3ebdf"),
+  P("plum", "Plum", "प्लम", "#2a0f2e", "#86307f", "#c0558f", "#f6d6ee"),
+  P("clay", "Clay", "क्ले", "#37190e", "#b04a28", "#df8650", "#ffdcc0"),
   P("steel", "Steel", "स्टील", "#0f172a", "#334155", "#2563eb", "#cbd5e1"),
   P("noir", "Noir", "नॉयर", "#0a0a0a", "#1f1f1f", "#3f3f46", "#d4af37", { mark: "#9a7b1c" }),
   P("ivory", "Ivory", "आइवरी", "#f6efe4", "#b45309", "#e2b07a", "#7c2d12", { ink: "#2f261d", foot: "#2f261d", tone: "light" }),
@@ -456,7 +482,8 @@ export function siteDesign(card: Pick<Card, "themeColor" | "site" | "template"> 
     `--p-ink:${palette.ink}`, `--p-on:${on}`, `--p-mark:${mark}`, `--p-foot:${foot}`, `--p-foot-ink:${inkOn(foot)}`, `--tc:${palette.mid}`,
     // 7% was invisible: every section read as one long white page. 12% is a tint a visitor notices without
     // the page turning into stripes.
-    `--p-soft:color-mix(in srgb, ${palette.mid} 12%, var(--surface))`,
+    // The red-magenta arc (see paperCast) takes the neutral third paper for the band: 12% of crimson over paper is a pink band.
+    paperCast(palette.h) < 1 ? `--p-soft:var(--paper-3)` : `--p-soft:color-mix(in srgb, ${palette.mid} 12%, var(--surface))`,
     `--r:${radius}`,
   ].join(";");
   return { palette, fonts, radius, heroInk: palette.ink, on, foot, vars };

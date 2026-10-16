@@ -59,7 +59,8 @@ function productThumbs(card: Card): { item: ProductItem; img: string }[] {
   const out: { item: ProductItem; img: string }[] = [];
   for (const p of card.pages.filter((pg) => !pg.hidden).flatMap((pg) => pg.blocks).flatMap((b) => (b.kind === "product" ? b.items : []))) {
     const img = (p.images?.[0] ?? p.imageUrl ?? "").trim();
-    if (img && (p.name ?? "").trim()) out.push({ item: p, img });
+    // A product that sits in two blocks (home and products page) is one thumbnail, not two.
+    if (img && (p.name ?? "").trim() && !out.some((o) => (o.item.name ?? "").trim().toLowerCase() === (p.name ?? "").trim().toLowerCase())) out.push({ item: p, img });
     if (out.length === 4) break;
   }
   return out;
@@ -225,13 +226,16 @@ export function bentoFacts(card: Card): { rating?: { avg: number; count: number 
  *  backdrop-filter, blur or gradient anywhere. */
 export const BENTO_CSS = `
 .site .board{position:relative;background:var(--paper)}
-.site .board-wrap{margin:0 auto;max-width:var(--content);padding:var(--s4) var(--gutter) var(--s6)}
+/* max-width counts the gutters (as the other five looks do): with --content alone the board sat 56px inside every section below it on a laptop (QA pass, 16 Oct 2026) */
+.site .board-wrap{margin:0 auto;max-width:calc(var(--content) + 2*var(--gutter));padding:var(--s4) var(--gutter) var(--s6)}
 .site .board-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;gap:var(--s3)}
 .site .board-tile{border-radius:var(--r-tile);overflow:hidden}
 .site .board-brand{grid-column:1 / -1;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s2) 0 var(--s3);--t-display:44px}
 .site .board-brand .display{max-width:16ch}
 .site .board-brand .display[data-len=long]{--t-display:40px;max-width:20ch}
 .site .board-brand .kicker{margin:0}
+/* The button row comes before the proof chips (WhatsApp first, 16 Oct 2026). */
+.site .board-brand>.board-ctas{order:2}.site .board-brand>.trust-row{order:3}
 .site .board-rule{display:block;width:48px;height:1px;background:var(--gold);margin:calc(var(--s1) * -1) 0 var(--s1)}
 .site .board .hero-sub{margin:0;max-width:34ch;font-size:var(--t-sub);line-height:1.45;text-wrap:pretty;color:var(--muted)}
 .site .board .hero-sub:lang(hi){line-height:1.6}
@@ -246,8 +250,10 @@ export const BENTO_CSS = `
 .site .board-cta.btn-primary>span{overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
 .site .board-cta.btn-ghost{flex:0 0 auto;padding:0 var(--s4)}
 .site .board-cta-arrow{margin-left:auto}
+/* 360 px: the arrow and the wide padding went first, so "Order on WhatsApp" is never cut to "Order on Wha…". */
+@media (max-width:400px){.site .board-cta-arrow{display:none}.site .board-cta.btn-primary{padding:0 var(--s4);justify-content:center}.site .board-cta.btn-ghost{padding:0 var(--s3)}}
 .site .board-cta-long{display:none}
-.site .board .hero-cta[data-kind=whatsapp] svg:first-child{color:var(--wa)}
+.site .board .btn-ghost.hero-cta[data-kind=whatsapp] svg:first-child{color:var(--wa)}
 .site .board-brand.hero-dark{padding:var(--s4);border-radius:var(--r-tile)}
 .site .board-brand.hero-dark .board-cta.btn-primary{padding:0 var(--s4)}
 .site .board-brand.hero-dark .board-cta-arrow{display:none}

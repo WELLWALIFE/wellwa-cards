@@ -12,6 +12,8 @@ import type { Card, TestimonialItem } from "@/lib/types";
 import { heroModel, ownUpload } from "@/lib/site-hero";
 import { Kicker, Display, Sub, TrustRow, CtaPair, HeroPhoto } from "@/components/site-smart";
 import { Icon } from "@/components/site-icons";
+import { HeroArt, artKind } from "@/components/site-heroart";
+import { tradeMood } from "@/lib/trade-moods";
 import { Pic as Img } from "@/components/pic";
 
 /** The owner's own product shot for the no-photo hero's still-life (never a stock, sample or AI picture). */
@@ -43,6 +45,7 @@ export function CinematicHero({ card, hi, t, clip, textSide }: {
     <section className={`cin-hero hero-dark ${ink ? "cin-ink" : "cin-cover"}`} data-side={side} aria-label={m.name}>
       {!ink && <HeroPhoto photo={m.photo} clip={clipM} clipOn="desktop" crop="cover" priority scrim side={side} grain={!!m.photo?.dark} kenBurns className="cin-ph" />}
       {ink && <i aria-hidden="true" className="hero-grain" />}
+      {ink && <HeroArt kind={artKind(card.seo?.categoryKey)} tone={tradeMood(card.seo?.categoryKey).luxe ? "gold" : "light"} />}
       <div className="cin-body">
         <div className="cin-col hero-stagger">
           <Kicker lang={lang}>{t(m.kicker)}</Kicker>
@@ -79,8 +82,21 @@ export function ParallaxBand({ src, alt = "", caption }: { src: string; alt?: st
     place(); window.addEventListener("scroll", on, { passive: true }); window.addEventListener("resize", on);
     return () => { window.removeEventListener("scroll", on); window.removeEventListener("resize", on); cancelAnimationFrame(raf); };
   }, []);
+  // 2026-10-16: a portrait or boxed product shot cropped to a 1440x520 band showed a meaningless slice (the buttons of a
+  // purifier). Once the photo's size is known, one much narrower than the band is shown whole over a blurred copy of itself.
+  const [contain, setContain] = useState(false);
+  useEffect(() => {
+    const el = ref.current; const img = el?.querySelector("img"); if (!el || !img) return;
+    const check = () => {
+      if (!img.naturalWidth || !img.naturalHeight) return;
+      const box = el.clientWidth / (el.clientHeight * 1.24);
+      setContain(img.naturalWidth / img.naturalHeight < box * 0.6);
+    };
+    check(); img.addEventListener("load", check); window.addEventListener("resize", check);
+    return () => { img.removeEventListener("load", check); window.removeEventListener("resize", check); };
+  }, [src]);
   return (
-    <div ref={ref} className="cin-band" aria-hidden={!alt}>
+    <div ref={ref} className="cin-band" aria-hidden={!alt} data-fit={contain ? "contain" : undefined} style={contain ? ({ "--band-src": `url("${src}")` } as React.CSSProperties) : undefined}>
       <Img src={src} alt={alt} className="cin-band-img" sizes="100vw" />
       {caption && <p className="cin-cap">{caption}</p>}
     </div>
@@ -106,7 +122,7 @@ export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: st
       <p className="cin-quote-stars" aria-label={`${stars} / 5`}>{Array.from({ length: 5 }).map((_, k) => <Icon key={k} name="star" size={14} fill={k < stars} className={k < stars ? "" : "cin-star-off"} />)}</p>
       <blockquote className="cin-quote-text" style={{ opacity: fade ? 1 : 0 }}>“{t(r.text)}”</blockquote>
       <figcaption className="cin-quote-name">{r.name}</figcaption>
-      {items.length > 1 && <div className="cin-quote-dots">{items.map((_, k) => <button key={k} type="button" aria-label={`Review ${k + 1}`} aria-pressed={k === i} onClick={() => { window.clearTimeout(pending.current); setI(k); setFade(true); }} />)}</div>}
+      {items.length > 1 && <div className="cin-quote-dots">{items.map((_, k) => <button key={k} type="button" aria-label={`${k + 1} / ${items.length}`} aria-pressed={k === i} onClick={() => { window.clearTimeout(pending.current); setI(k); setFade(true); }} />)}</div>}
     </figure>
   );
 }
@@ -116,6 +132,8 @@ export function QuoteRotator({ items, t }: { items: TestimonialItem[]; t: (s: st
 export const CINEMATIC_CSS = `
 .site[data-bp="cinematic"] .cin-hero{position:relative;display:flex;align-items:flex-end;min-height:100svh;overflow:hidden;background:var(--hero-ink);color:var(--hero-text)}
 .site .cin-hero .hero-ph-wrap{position:absolute;inset:0}
+/* A shade under the menu on the cover itself, so a white bar of text never lands on a pale part of the picture. */
+.site .cin-cover::before{content:"";position:absolute;left:0;right:0;top:0;height:160px;z-index:1;pointer-events:none;background:linear-gradient(to bottom,rgb(0 0 0/.5),transparent)}
 .site .cin-hero>.hero-grain{display:none}
 .site .cin-body{position:relative;z-index:1;width:100%;max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:var(--s9) var(--gutter) calc(var(--s5) + env(safe-area-inset-bottom,0px))}
 .site .cin-col{display:flex;flex-direction:column;align-items:flex-start;max-width:var(--hero-col)}
@@ -130,6 +148,9 @@ export const CINEMATIC_CSS = `
 .site .cin-hero[data-side="center"] .cin-rule{margin-left:auto;margin-right:auto}
 .site .cin-hero .hero-ctas{row-gap:var(--s4)}
 .site .cin-hero .btn-link{color:var(--hero-text)}
+/* On a photo the small line above the headline must read: the muted hero tone vanished on mid-grey pictures (16 Oct 2026 review). */
+.site .cin-hero .kicker{color:var(--hero-text);opacity:.88;text-shadow:0 1px 12px rgb(0 0 0/.35)}
+.site .cin-hero.cin-ink .kicker{color:var(--gold,var(--hero-text));text-shadow:none}
 /* The cover's phone headline (§3.4: 52 px, two lines): a notch over the shared scale, long claims still step down. */
 @media (max-width:1023px){
 .site .cin-hero .display{--t-display:clamp(2.75rem,13vw,3.25rem)}
@@ -160,6 +181,8 @@ export const CINEMATIC_CSS = `
 .site .cin-band{position:relative;height:46vh;min-height:260px;overflow:hidden;isolation:isolate;contain:paint}
 @media (min-width:768px){.site .cin-band{height:58vh}}
 .site .cin-band-img{position:absolute;left:0;top:-12%;width:100%;height:124%;object-fit:cover}
+.site .cin-band[data-fit="contain"]::before{content:"";position:absolute;inset:-40px;z-index:-1;background:var(--band-src) center/cover;filter:blur(32px) saturate(1.1);opacity:.9}
+.site .cin-band[data-fit="contain"] .cin-band-img{object-fit:contain}
 .site .cin-cap{position:absolute;left:var(--gutter);bottom:var(--s5);margin:0;padding:var(--s2) var(--s3);font-size:var(--t-meta);font-weight:500;color:var(--hero-text);background:var(--scrim-bot);border-radius:var(--r-img)}
 .site .cin-quote{margin:0 auto;max-width:720px;text-align:center}
 .site .cin-quote-rule{display:block;width:48px;height:1px;margin:0 auto var(--s5);background:var(--accent)}
@@ -171,16 +194,23 @@ export const CINEMATIC_CSS = `
 .site .cin-quote-name{margin-top:var(--s4);font-size:var(--t-meta);font-weight:500;color:var(--muted)}
 .site .cin-quote-dots{display:flex;justify-content:center;gap:var(--s2);margin-top:var(--s5)}
 .site .cin-quote-dots button{width:20px;height:2px;padding:0;border:0;background:currentColor;opacity:.3;transition:opacity .2s ease}
+/* A 2 px line is not a tap target: the button keeps its look and its hit area grows to 36 px high (QA sweep, 16 Oct 2026). */
+.site .cin-quote-dots button{position:relative}.site .cin-quote-dots button::before{content:"";position:absolute;inset:-17px -4px}
 .site .cin-quote-dots button[aria-pressed="true"]{opacity:1}
 /* The nav shows only once the hero is scrolled; section headings and the product rail. */
 .site[data-bp="cinematic"] header.site-head{position:fixed;left:0;right:0;top:0;transform:translateY(-100%);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
 .site[data-bp="cinematic"] header.site-head.scrolled{transform:none}
 .site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){top:var(--ann-h,0px)}
+/* The phone menu is open over the cover: the bar stays on screen (solid, see HEAD_CSS) instead of sliding away. */
+.site[data-bp="cinematic"] header.site-head.menu-open{transform:none}
 /* Inner pages keep the header; on the home it lies transparent over the cover until scrolled (review, 13 Oct 2026: no nav). */
 .site[data-bp="cinematic"]:not([data-home]) header.site-head{position:sticky;transform:none}
 /* A soft shade under the white name and menu: over a bright photo (a white dress, a pale wall) they vanished (15 Oct 2026 sweep). */
-.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled){transform:none;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0))!important;border-color:transparent!important;backdrop-filter:none;color:#fff;--ink:#fff;--muted:rgba(255,255,255,.75);--border:rgba(255,255,255,.3)}
-.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) a,.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled) button{color:#fff}
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled):not(.menu-open){transform:none;background:linear-gradient(to bottom,rgba(0,0,0,.5),rgba(0,0,0,0))!important;border-color:transparent!important;backdrop-filter:none;color:#fff;--ink:#fff;--muted:rgba(255,255,255,.75);--border:rgba(255,255,255,.3)}
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled):not(.menu-open) a,.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled):not(.menu-open) button{color:#fff}
+/* The language pill is a paper chip: on the transparent bar it turned white-on-white and vanished (16 Oct 2026). */
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled):not(.menu-open) [aria-label="Change language"]{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.38);backdrop-filter:blur(6px)}
+.site[data-bp="cinematic"][data-home] header.site-head:not(.scrolled):not(.menu-open) .site-head-wa{background:#fff;color:#111}
 .site[data-bp="cinematic"] main section h2{font-size:var(--t-h2);line-height:1.05;letter-spacing:-.015em}
 .site[data-bp="cinematic"] .site-rail{display:flex;gap:1.25rem;overflow-x:auto;scroll-snap-type:x mandatory;padding:0 1.25rem 1rem;margin:0 -1.25rem;scrollbar-width:none}
 @media (min-width:768px){.site[data-bp="cinematic"] .site-rail{padding:0 1.5rem 1rem;margin:0 -1.5rem}}

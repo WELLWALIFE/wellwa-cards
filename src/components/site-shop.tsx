@@ -11,6 +11,7 @@ import { CtaPair, Display, HeroPhoto, Kicker, Sub, TrustRow } from "@/components
 import { Icon, type IconName } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
+import { HeroArt, artKind } from "@/components/site-heroart";
 
 type Facts = ReturnType<typeof bentoFacts>;
 type Chip = { key: string; label: string; icon?: IconName; img?: string; href?: string; external?: boolean; onClick?: () => void };
@@ -18,9 +19,12 @@ type Chip = { key: string; label: string; icon?: IconName; img?: string; href?: 
 /** The first eight products that have a picture and a name. */
 function productChips(card: Card): { item: ProductItem; img: string }[] {
   const out: { item: ProductItem; img: string }[] = [];
+  // The home page and the products page both carry the product block: a product is one chip, not two (QA sweep, 16 Oct 2026).
+  const seen = new Set<string>();
   for (const p of card.pages.filter((pg) => !pg.hidden).flatMap((pg) => pg.blocks).flatMap((b) => (b.kind === "product" ? b.items : []))) {
     const img = (p.images?.[0] ?? p.imageUrl ?? "").trim();
-    if (img && (p.name ?? "").trim()) out.push({ item: p, img });
+    const key = (p.name ?? "").trim().toLowerCase();
+    if (img && key && !seen.has(key)) { seen.add(key); out.push({ item: p, img }); }
     if (out.length === 8) break;
   }
   return out;
@@ -62,6 +66,7 @@ export function ShopHero({ card, hi, t, onBook, facts, onProduct }: {
           </div>
         )}
         <div className={`shelf-promo ${ink ? "hero-dark shelf-promo-ink" : ""}`}>
+          {ink && <HeroArt kind={artKind(card.seo?.categoryKey)} />}
           <div className="shelf-words hero-stagger">
             <Kicker lang={lang}>{t(m.kicker)}</Kicker>
             <Display lang={lang}>{t(m.headline)}</Display>
@@ -92,6 +97,7 @@ export const SHOP_CSS = `
 .site .shelf-promo-ink{background:linear-gradient(135deg,var(--p-deep),var(--p-mid));color:var(--hero-text)}
 .site .shelf-ph{position:relative;aspect-ratio:16/10;overflow:hidden;order:-1}
 .site .shelf-ph .hero-ph-wrap,.site .shelf-ph-pic{position:absolute;inset:0;width:100%;height:100%}
+.site .shelf-promo-ink .shelf-words{position:relative;z-index:1}
 .site .shelf-words{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s5)}
 .site .shelf-words .display{--t-display:clamp(1.9rem,8vw,2.5rem)}
 .site .shelf-words .hero-ctas{margin-top:var(--s2)}

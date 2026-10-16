@@ -10,7 +10,7 @@
 import type { Card, SiteStyle } from "@/lib/types";
 import { BLUEPRINTS, type BlueprintKey, type TileKey } from "@/lib/site-blueprints";
 import { HERO_VARIANTS_BY_BP } from "@/lib/site-hero";
-import { tradeMood } from "@/lib/trade-moods";
+import { goodBlueprints, rankBlueprints, tradeMood } from "@/lib/trade-moods";
 
 export type LookKey = BlueprintKey;
 export type Look = { key: LookKey; name: string; hi: string; blurb: string; blurbHi: string; style: SiteStyle; order?: string[]; tiles?: TileKey[] };
@@ -25,10 +25,12 @@ const WARM = new Set(["saffron", "gold", "cocoa", "crimson", "rose", "ivory"]);
 export function threeLooks(card: Pick<Card, "site"> & Partial<Pick<Card, "seo">>, designer: SiteStyle | undefined, plans?: LookPlan[]): Look[] {
   const d: SiteStyle = { ...(designer ?? card.site?.style ?? {}) };
   // The "Colour poster" is the first look and the one a new website opens on (owner, 14 Oct 2026); the designer's own pick follows it.
-  const designerPick = d.blueprint ?? "bento";
-  const want: BlueprintKey[] = ["story", ...[designerPick, ...BLUEPRINTS.map((b) => b.key)].filter((k, i, a) => k !== "story" && a.indexOf(k) === i)];
-  const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
   const category = card.seo?.categoryKey;
+  // After the poster and the designer's pick, the rest in the order they suit THIS trade (trade-moods.ts rankBlueprints) — a wholesaler's
+  // next looks are the order shop and the big name, a clinic's the photo collage and the board; they used to follow the list's own order (16 Oct 2026).
+  const designerPick = d.blueprint ?? rankBlueprints(category).find((k) => k !== "story") ?? "bento";
+  const want: BlueprintKey[] = ["story", ...[designerPick, ...rankBlueprints(category)].filter((k, i, a) => k !== "story" && a.indexOf(k) === i)];
+  const byKey = new Map((plans ?? []).map((p) => [p.blueprint, p]));
   return want.map((key) => {
     const bp = BLUEPRINTS.find((b) => b.key === key)!;
     const plan = byKey.get(key);
@@ -66,4 +68,22 @@ export function applyLook<T extends Pick<Card, "site">>(card: T, look: Look): T 
   const hero = card.site.hero ? { ...card.site.hero, ...(look.tiles ? { tiles: look.tiles } : {}) } : card.site.hero;
   const home = look.order ? { ...(card.site.home ?? {}), order: look.order } : card.site.home;
   return { ...card, site: { ...card.site, style: { ...look.style }, ...(hero ? { hero } : {}), ...(home ? { home } : {}) } };
+}
+
+/** The looks worth putting a customer on without asking (the WhatsApp onboarding picks one by their number): the trade's own three blueprints,
+ *  and the designer's pick; never "any of six" — a lawyer on the Order shop, a wholesaler on the Photo collage. */
+export function fitLooks(looks: Look[], category: string | undefined): Look[] {
+  const good = new Set<string>(goodBlueprints(category));
+  const fit = looks.filter((l, i) => good.has(l.key) || i === 1);
+  return fit.length ? fit : looks;
+}
+
+/** The look a NEW website opens on. The Colour poster is the owner's choice for a first build (14 Oct 2026) and stays so for every trade a poster
+ *  suits — it is one of the trade's two best blueprints; for a trade it does not (a wholesaler's catalogue, a clinic's quick actions, a lawyer's
+ *  name), the trade's own first blueprint opens instead (16 Oct 2026). Never applied to a rewrite: that keeps the look it was asked for. */
+export function openingLook(looks: Look[], category: string | undefined): Look | undefined {
+  const [first, second] = goodBlueprints(category);
+  const story = looks.find((l) => l.key === "story");
+  if (story && (first === "story" || second === "story")) return story;
+  return looks.find((l) => l.key === first) ?? story ?? looks[0];
 }

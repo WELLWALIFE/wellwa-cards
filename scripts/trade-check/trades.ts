@@ -10,7 +10,8 @@ import { textAudit, applyThinText } from "@/lib/card-text";
 import { recipeFor, tradeDataFor, isGeneric } from "@/lib/site-recipes";
 import { homeSections, isEmptyBlock } from "@/lib/site-home";
 import { EMPTY_FACTS, type SetupInfo, type SavedProduct } from "@/lib/card-facts";
-import { FONT_PAIRS, SITE_PALETTES } from "@/lib/site-style";
+import { FONT_PAIRS, FONT_ALIASES, SITE_PALETTES } from "@/lib/site-style";
+import { tradeMood, rankBlueprints, tradeCta } from "@/lib/trade-moods";
 import type { CardCopy } from "@/lib/card-ai";
 import type { Card, CardBlock } from "@/lib/types";
 
@@ -90,7 +91,7 @@ for (const c of CATEGORIES) {
         if (n === 0 && kinds("product").length) problems.push("product block with no products");
         const st = out.site?.style ?? {};
         style = `${st.font ?? "-"}/${st.palette ?? "-"}/${st.radius ?? "-"}/${st.hero ?? "-"}`;
-        if (st.font && !FONT_PAIRS.some((f) => f.key === st.font)) problems.push(`unknown font ${st.font}`);
+        if (st.font && !FONT_PAIRS.some((f) => f.key === (FONT_ALIASES[st.font!] ?? st.font))) problems.push(`unknown font ${st.font}`);
         if (st.palette && !SITE_PALETTES.some((p) => p.key === st.palette)) problems.push(`unknown palette ${st.palette}`);
         if (!out.site?.enabled) problems.push("website not enabled");
         // Two pages with the same name in the menu ("Treatments · Treatments"), or two home sections in a row with
@@ -107,6 +108,25 @@ for (const c of CATEGORIES) {
     }
   }
 }
+// Trade intelligence (16 Oct 2026): every trade has three distinct blueprints and six ranked, its own hero line, and a line that fits the hero.
+const headlines = new Map<string, string[]>();
+const fitRows: string[] = [];
+for (const c of CATEGORIES) {
+  const m = tradeMood(c.key);
+  const ranked = rankBlueprints(c.key);
+  const extra: string[] = [];
+  if (new Set(m.blueprints).size !== 3) extra.push("blueprints not three distinct");
+  if (new Set(ranked).size !== 6) extra.push("ranking is not all six");
+  for (const lang of ["en", "hi"] as const) {
+    const h = m.headline[lang], b = m.benefit[lang];
+    if (h.split(/\s+/).length > (lang === "hi" ? 7 : 6)) extra.push(`headline too long (${lang}): ${h}`);
+    if (Array.from(b).length > 70) extra.push(`benefit over 70 chars (${lang}): ${b}`);
+    if (lang === "hi" && /[A-Za-z]{4,}/.test(h + b.replace(/\b(WhatsApp|GST|AC|BIS|22K|IT)\b/g, ""))) extra.push(`latin letters in hindi line: ${h} | ${b}`);
+  }
+  headlines.set(m.headline.en, [...(headlines.get(m.headline.en) ?? []), c.key]);
+  fitRows.push(`${c.key.padEnd(15)} ${ranked.slice(0, 3).join(">").padEnd(26)} cta: ${tradeCta(c.key, "en") ?? "(recipe)"}`);
+  if (extra.length) rows.push({ key: c.key, lang: "-", prods: 0, problems: extra.map((x) => `trade-logic: ${x}`), sections: "", style: "" });
+}
 const bad = rows.filter((r) => r.problems.length);
 console.log(`trades: ${CATEGORIES.length}  runs: ${rows.length}  clean: ${rows.length - bad.length}  with problems: ${bad.length}  crashes: ${crashes}\n`);
 const byProblem = new Map<string, string[]>();
@@ -116,4 +136,8 @@ console.log("\n--- details (first 40) ---");
 for (const r of bad.slice(0, 40)) console.log(`${r.key}/${r.lang}/${r.prods}: ${r.problems.join(" | ")}`);
 console.log("\n--- home section order per trade (en, with products) ---");
 for (const r of rows.filter((r) => r.lang === "en" && r.prods === 4)) console.log(`${r.key.padEnd(16)} ${r.style.padEnd(28)} ${r.sections}`);
+console.log("\n--- hero headline shared by several trades (en) ---");
+for (const [h, ks] of headlines) if (ks.length > 2) console.log(`${String(ks.length).padStart(3)}  ${h}  <- ${ks.join(",")}`);
+console.log("\n--- blueprints and button per trade ---");
+for (const r of fitRows) console.log(r);
 process.exitCode = crashes ? 1 : 0;

@@ -11,6 +11,7 @@ import { CtaPair, HeroPhoto, Kicker, OpenNowChip, Sub, TrustRow } from "@/compon
 import { Icon } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
+import { HeroArt, artKind } from "@/components/site-heroart";
 
 export function WordmarkHero({ card, hi, t, onBook }: { card: Card; hi: boolean; t: (s: string) => string; onBook?: (slug: string) => void }) {
   const lang = hi ? "hi" : "en";
@@ -28,6 +29,7 @@ export function WordmarkHero({ card, hi, t, onBook }: { card: Card; hi: boolean;
   const sizes = "(min-width:1024px) 25vw, 50vw";
   return (
     <section className={`mark ${ink ? "hero-dark mark-ink" : ""}`} data-variant={ink ? "mark-ink" : "mark"} lang={lang} aria-label={m.name}>
+      {ink && <HeroArt kind={artKind(card.seo?.categoryKey)} />}
       <div className="mark-top hero-stagger">
         <Kicker lang={lang}>{t(m.kicker)}</Kicker>
         <h1 className="mark-name" lang={lang} data-len={len > 14 ? "long" : len > 9 ? "mid" : undefined}>{name}</h1>
@@ -68,7 +70,8 @@ export function WordmarkHero({ card, hi, t, onBook }: { card: Card; hi: boolean;
 
 export const WORDMARK_CSS = `
 .site .mark{position:relative;background:var(--paper);color:var(--ink);padding:calc(var(--s7) + env(safe-area-inset-top,0px)) 0 var(--s4)}
-.site .mark-ink{background:var(--hero-ink);color:var(--hero-text);padding-bottom:var(--s8)}
+.site .mark-ink{background:var(--hero-ink);color:var(--hero-text);padding-bottom:var(--s8);overflow:hidden}
+.site .mark-ink .mark-top{position:relative;z-index:1}
 .site .mark-top{max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:0 var(--gutter)}
 .site .mark-name{margin:var(--s3) 0 0;font-family:var(--font-display,var(--look-head));font-weight:var(--display-w,var(--head-w,700));font-size:clamp(3.25rem,17vw,5.5rem);line-height:.92;letter-spacing:-.035em;text-wrap:balance;overflow-wrap:anywhere}
 .site .mark-name[data-len=mid]{font-size:clamp(2.75rem,14vw,4.5rem)}

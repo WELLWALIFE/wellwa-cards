@@ -25,7 +25,7 @@ import { phoneEmail } from "@/lib/phone";
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { mergeBuiltCard, type BuildResponse } from "@/lib/card-facts";
-import { threeLooks, applyLook, type Look, type LookPlan } from "@/lib/site-looks";
+import { threeLooks, applyLook, fitLooks, type Look, type LookPlan } from "@/lib/site-looks";
 import { applyEdits } from "@/lib/card-edits";
 import { editOpsFor, type EditLang } from "@/lib/card-edit-ai";
 import { screenshotCard } from "@/lib/render-page";
@@ -387,7 +387,9 @@ async function buildFor(token: string, row: Row): Promise<BuildResponse | null> 
 /** The three looks for this card, one of them chosen by the number — neighbours in the same trade get different websites. */
 function dressed(card: Card, plans: BuildResponse["looks"], phone: string, idx?: number): { card: Card; looks: Look[]; idx: number } {
   const looks = threeLooks(card, card.site?.style, plans as LookPlan[] | undefined);
-  const i = idx != null && looks[idx] ? idx : looks.length ? hash(phone) % looks.length : 0;
+  // A new customer lands on one of the looks that suit their trade, not on any of the six (16 Oct 2026); a saved choice stands.
+  const fit = fitLooks(looks, card.seo?.categoryKey);
+  const i = idx != null && looks[idx] ? idx : looks.length ? Math.max(0, looks.indexOf(fit[hash(phone) % fit.length])) : 0;
   return { card: looks[i] ? applyLook(card, looks[i]) : card, looks, idx: i };
 }
 function looksMenu(looks: Look[], idx: number, lang: Lang): string {

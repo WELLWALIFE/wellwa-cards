@@ -14,7 +14,7 @@ export function preferredLayouts(prefs: SiteLayouts | undefined, have: { aboutIm
   const out: SiteLayouts = {};
   if (prefs.about && (have.aboutImage ? prefs.about === "photo-left" || prefs.about === "photo-right" : prefs.about === "statement" || prefs.about === "columns")) out.about = prefs.about;
   if (prefs.services && have.services !== undefined && (prefs.services !== "rows" || have.services <= 3)) out.services = prefs.services;
-  if (prefs.products && have.products !== undefined && (prefs.products === "grid" || (prefs.products === "showcase" && have.products <= 4) || (prefs.products === "dense" && have.products >= 6))) out.products = prefs.products;
+  if (prefs.products && have.products !== undefined && (prefs.products === "grid" || (prefs.products === "showcase" && have.products <= 3) || (prefs.products === "dense" && have.products >= 6))) out.products = prefs.products;
   if (prefs.faq && have.faq !== undefined && (prefs.faq === "accordion" || have.faq <= 5)) out.faq = prefs.faq;
   if (prefs.reviews && have.reviews !== undefined && (prefs.reviews === "cards" ? have.reviews >= 3 : prefs.reviews === "pair" ? have.reviews === 2 : have.reviews >= 1)) out.reviews = prefs.reviews;
   if (prefs.gallery && have.gallery !== undefined && have.gallery >= 4) out.gallery = prefs.gallery;

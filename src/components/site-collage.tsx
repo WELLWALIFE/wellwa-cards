@@ -28,7 +28,8 @@ export function CollageHero({ card, hi, t, onBook, facts }: { card: Card; hi: bo
   if (facts?.map) tiles.push({ key: "map", label: L("Directions", "रास्ता"), icon: "directions", href: facts.map.url, external: true });
   if (facts?.booking) tiles.push({ key: "book", label: L("Book", "बुक करें"), icon: "calendar", onClick: () => onBook?.(facts.booking!.slug) });
   // Service names fill the grid only when they complete it (two rows of four); a half row of ticks reads as filler.
-  const names = siteServiceNames(card, 8 - tiles.length);
+  // A trade's process steps ("1. Message your need") sit among its services in the templates: they are steps, not tiles.
+  const names = siteServiceNames(card, 16).filter((x) => !/^\d+\s*[.)]/.test(x.trim())).slice(0, 8 - tiles.length);
   if (tiles.length + names.length >= 8) for (const s of names) tiles.push({ key: `s-${s}`, label: s, icon: "check" });
   const n = Math.min(4, photos.length);
   return (
@@ -75,6 +76,8 @@ export const COLLAGE_CSS = `
 .site .collage-wrap{max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:0 var(--gutter);display:flex;flex-direction:column;gap:var(--s6)}
 .site .collage-words{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4)}
 .site .collage-words .display{--t-display:clamp(2.25rem,9.5vw,3rem)}
+/* The button comes right after the claim, then the proof, then the quick actions (a phone showed the tiles first and the WhatsApp button below the fold). */
+.site .collage-words>.hero-ctas{order:3}.site .collage-words>.trust-row{order:4}.site .collage-words>.collage-tiles{order:5}
 .site .collage-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:var(--s3) var(--s2);width:100%;margin:var(--s2) 0 0;padding:var(--s4) var(--s3);list-style:none;border:1px solid var(--line);border-radius:var(--r-card);background:var(--surface)}
 .site .collage-tile{display:flex;flex-direction:column;align-items:center;gap:var(--s2);width:100%;text-align:center;font:500 11px/1.2 var(--font-text,var(--look-body));color:var(--ink);text-decoration:none;background:none;border:0;padding:0;cursor:pointer}
 .site .collage-tile i{display:grid;place-items:center;width:52px;height:52px;border-radius:var(--r-ctl);background:var(--p-soft);color:var(--accent)}

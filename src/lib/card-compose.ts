@@ -11,6 +11,7 @@ import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
 import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
+import { tradeCta } from "@/lib/trade-moods";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings, tradeQuestionsFor } from "@/lib/trade-questions";
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
 import { monogramUrl } from "@/lib/brand-identity";
@@ -374,7 +375,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const catTitle = catalogTitle(setup.category, lang, input.products.some((p) => p.price.trim()));
   if (catTitle && !copy.titles?.products) { t.products = catTitle; t.productsPage = catTitle; t.seeAll = lang === "hi" ? `सभी ${catTitle}` : `See all ${catTitle.toLowerCase()}`; }
   if (!copy.titles?.promise) t.promise = lang === "hi" ? "हमें क्यों चुनें" : lang === "hinglish" ? "Humein kyun chunein" : "Why choose us";
-  const ctaText = copy.cta || (booking ? t.cta : ctaLabel(recipe.cta, lang));
+  // The trade's own button words come before the generic ones ("Book a room" over a hotel, "Ask about admission" over a school; 16 Oct 2026).
+  const ctaText = copy.cta || tradeCta(setup.category, lang) || (booking ? t.cta : ctaLabel(recipe.cta, lang));
   const seedLang = lang === "hi" ? "hi" : "en";
   const seedLine = (x: { en: string; hi: string; desc: string; descHi: string }) => seedLang === "hi" ? { name: x.hi, desc: x.descHi } : { name: x.en, desc: x.desc };
 

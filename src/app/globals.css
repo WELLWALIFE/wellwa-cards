@@ -257,8 +257,13 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
   --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 24px; --s6: 32px; --s7: 48px; --s8: 64px; --s9: 96px;
   --gutter: 20px; --content: 1120px; --hero-col: 560px; --section-pad: clamp(3rem, 8vw, 6rem);
   /* Type scale, phone (§2.2); the desktop row is below. */
-  --t-display: clamp(2.5rem, 11vw, 3.25rem); --t-h2: 30px; --t-kicker: 11px; --t-sub: 17px; --t-body: 15px;
+  /* One fluid scale instead of a phone row and a desktop row with a jump at 1024 px (16 Oct 2026): rem bounds, so 200 %
+     zoom still grows the type (WCAG 1.4.4). The H1 meets the old values at 390 px (41) and 1024 px (73). */
+  --t-display: clamp(2.5rem, 1.35rem + 5vw, 5.5rem); --t-h2: clamp(1.75rem, 1.1rem + 2.4vw, 2.75rem); --t-kicker: 11px;
+  --t-sub: clamp(1.0625rem, 1rem + .3vw, 1.1875rem); --t-body: 15px;
   --t-meta: 13px; --t-cta: 15px; --t-stat: 26px; --body-lh: 1.6;
+  /* Motion language: one curve, three durations. Hover 120, state change 220, entrance 520 ms. */
+  --ease: cubic-bezier(.23, 1, .32, 1); --dur-1: 120ms; --dur-2: 220ms; --dur-3: 520ms;
   /* Corners (overridden per style by radiusVars()) and elevation (per blueprint, below). */
   --r-ctl: 12px; --r-card: 16px; --r-tile: 20px; --r-img: 8px;
   --elev: line; --elev-line: 1px solid var(--line, #e3e6f2); --elev-shadow: none;
@@ -266,7 +271,7 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
   --grad: linear-gradient(120deg, var(--p-mid), var(--p-glow));
 }
 @media (min-width: 1024px) {
-  .site { --t-display: clamp(4.5rem, 6vw, 5.5rem); --t-h2: 44px; --t-kicker: 12px; --t-sub: 19px; --t-body: 16px; --t-stat: 28px; --gutter: 64px; }
+  .site { --t-kicker: 12px; --t-body: 16px; --t-stat: 28px; --gutter: 64px; }
 }
 /* Elevation per blueprint: a card is a line (bento, classic) OR a shadow (cinematic) OR nothing (story), never both. */
 .site[data-bp="cinematic"] { --elev: shadow; --elev-line: 0; --elev-shadow: var(--e-1); }
@@ -284,9 +289,15 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
 @media (min-width: 1024px) { .site .display[data-len="long"] { --t-display: 4.5rem; } }
 .site .kicker { display: block; font-family: var(--font-text, var(--look-body)); font-size: var(--t-kicker); line-height: 1; letter-spacing: .12em; text-transform: uppercase; font-weight: 600; color: var(--accent); }
 .site .sub { font-size: var(--t-sub); line-height: 1.45; max-width: 34ch; text-wrap: pretty; margin: 0; }
-.site .trust-row { display: flex; flex-wrap: wrap; align-items: center; column-gap: .55em; font-size: var(--t-meta); font-weight: 500; line-height: 1.4; color: var(--muted); font-variant-numeric: tabular-nums; }
-.site .trust-row > * + *::before { content: "·"; margin-right: .55em; opacity: .6; }
-.site .trust-row .open-dot { display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--wa); margin-right: .4em; vertical-align: 1px; }
+/* The trust row is a row of small chips (16 Oct 2026): rating, years, open now each stand alone, so the three proofs read at a glance
+   and wrap cleanly on a 360 px phone (the old dot-separated line broke mid-fact and read as grey filler). */
+.site .trust-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: var(--t-meta); font-weight: 600; line-height: 1.2; color: color-mix(in srgb, var(--ink) 82%, transparent); font-variant-numeric: tabular-nums; }
+.site .trust-row > * { display: inline-flex; align-items: center; padding: 7px 12px; border-radius: 9999px; background: color-mix(in srgb, var(--ink) 7%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 9%, transparent); }
+.site .trust-row > [data-state=open] { background: color-mix(in srgb, var(--wa) 15%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wa) 30%, transparent); }
+.site .trust-row .open-dot { position: relative; display: inline-block; width: 8px; height: 8px; border-radius: 9999px; background: var(--wa); margin-right: .5em; }
+.site .trust-row [data-state=open] .open-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit; background: inherit; animation: open-ping 2.2s ease-out infinite; }
+@keyframes open-ping { 0% { transform: scale(1); opacity: .55; } 80%, 100% { transform: scale(2.8); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .site .trust-row [data-state=open] .open-dot::after { animation: none; } }
 
 /* Three control shapes: filled primary, ghost secondary, plain link. 48 px tall, --r-ctl, no pills. */
 .site .btn-primary, .site .btn-ghost { display: inline-flex; align-items: center; justify-content: center; gap: .5rem; min-height: 48px; padding: 0 var(--s5); border-radius: var(--r-ctl); font-size: var(--t-cta); font-weight: 600; letter-spacing: 0; line-height: 1; text-decoration: none; transition: background 150ms ease, color 150ms ease, border-color 150ms ease, transform 80ms ease, filter 150ms ease; }
@@ -296,13 +307,18 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
 .site .btn-ghost:hover { border-color: currentColor; }
 .site .btn-link { display: inline-flex; align-items: center; gap: .35em; font-size: var(--t-cta); font-weight: 600; color: inherit; text-decoration: none; text-underline-offset: .2em; }
 .site .btn-link:hover { text-decoration: underline; }
+/* A text link is ~23px tall: the touch area grows to 44px without moving the line (QA pass, 16 Oct 2026). */
+.site .btn-link { position: relative; }
+.site .btn-link::after { content: ""; position: absolute; inset: -11px -6px; }
 .site .btn-primary:active, .site .btn-ghost:active { transform: scale(.97); }
 /* On a dark hero the primary is paper with ink (the accent's lightness is fixed); the ghost borrows the hero's line. */
 .site .hero-dark { background: var(--hero-ink); color: var(--hero-text); }
 .site .hero-dark .btn-primary { background: var(--paper); color: var(--hero-ink); }
 .site .hero-dark .btn-ghost { border-color: var(--hero-line); color: var(--hero-text); }
 .site .hero-dark .kicker { color: var(--hero-muted); }
-.site .hero-dark .trust-row { color: var(--hero-muted); }
+.site .hero-dark .trust-row { color: var(--hero-text); }
+.site .hero-dark .trust-row > * { background: color-mix(in srgb, var(--hero-text) 12%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--hero-text) 18%, transparent); }
+.site .hero-dark .trust-row > [data-state=open] { background: color-mix(in srgb, var(--wa) 24%, transparent); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--wa) 45%, transparent); }
 
 /* Photo recipe (§3.2): the scrim only where the text sits, never a full wash or blur. */
 .site .hero-ph { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: var(--focus, 50% 35%); }
@@ -326,4 +342,41 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
 .site .tile-in { animation: hero-in 520ms cubic-bezier(.23, 1, .32, 1) both; animation-delay: calc(var(--i, 0) * 40ms); }
 @media (prefers-reduced-motion: reduce) {
   .site .hero-in, .site .hero-stagger > *, .site .tile-in { animation-name: hero-fade; }
+}
+
+/* ===== The website's design-system layer (16 Oct 2026) =====
+   What every blueprint shares and no section should re-invent: text rendering, selection and focus, one hover language, the
+   dark bands' colour mesh, a hairline between tinted sections, and the reduced-motion floor. Tokens come from oklchVars() in
+   site-style.ts (--paper-3, --accent-deep, --glow-a/b, --ring, --e-2, --e-3). */
+/* font-synthesis-weight: a single-weight display face (Instrument Serif, Tiro Devanagari) asked for 500-600 on a small title was drawn as a smeared fake bold: letters ran together (jeweller's "How it works", QA sweep 16 Oct 2026). */
+.site { font-synthesis-weight: none; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; text-rendering: optimizeLegibility; font-kerning: normal; accent-color: var(--accent); caret-color: var(--accent); -webkit-tap-highlight-color: transparent; }
+.site :is(h1, h2, h3, .sec-h2, .display) { text-wrap: balance; }
+.site :is(p, li, figcaption, blockquote) { text-wrap: pretty; }
+.site ::selection { background: var(--accent); color: var(--on-accent); }
+.site .hero-dark ::selection { background: var(--hero-text); color: var(--hero-ink); }
+/* A keyboard ring on everything that has no ring of its own (the Tailwind ones use ring-2 + outline-none). */
+.site :is(a, button, summary, input, select, textarea, [tabindex]):focus-visible:not([class*="ring-"]) { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: var(--r-ctl); }
+.site .hero-dark :is(a, button, summary, input, select, textarea, [tabindex]):focus-visible:not([class*="ring-"]) { outline-color: var(--hero-text); }
+/* Hindi headings: no tracking, and room for the matras above and below the line (the .display rule above covers the H1 only). */
+.site:lang(hi) :is(h2, h3, .sec-h2, .stat) { letter-spacing: 0; text-transform: none; }
+.site:lang(hi) :is(h2, .sec-h2) { line-height: 1.28; }
+.site:lang(hi) h3 { line-height: 1.38; }
+/* The primary button: a lit top edge and a soft coloured shadow, so it reads as a thing to press and not a flat label. */
+.site .btn-primary { box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent), 0 6px 16px -8px color-mix(in srgb, var(--accent) 70%, transparent); }
+.site .hero-dark .btn-primary { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .5), 0 8px 22px -10px rgba(0, 0, 0, .6); }
+.site .btn-primary:active, .site .btn-ghost:active { box-shadow: none; }
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .site .btn-primary:hover { transform: translateY(-1px); }
+  .site .p-card, .site .s-card { transition: transform var(--dur-2) var(--ease), box-shadow var(--dur-2) var(--ease), border-color var(--dur-2) var(--ease); }
+  .site .p-card:hover, .site .s-card:hover { transform: translateY(-3px); box-shadow: var(--e-2); }
+}
+/* The dark bands (not the closing card, which has its own mesh in site-proof.tsx): two soft glows of the palette, under the
+   text and above the ink, so a band is a lit surface and not a flat rectangle. A photo hero covers it. */
+.site section.hero-dark:not(.close-band) { position: relative; isolation: isolate; }
+.site section.hero-dark:not(.close-band)::before { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; background: radial-gradient(55% 80% at 10% 0%, var(--glow-a), transparent 70%), radial-gradient(45% 70% at 96% 100%, var(--glow-b), transparent 72%); }
+/* A hairline between sections: the tint change alone left two paper tones touching with a soft edge. */
+.site main > section[data-reveal]:not(.hero-dark) { box-shadow: inset 0 1px 0 color-mix(in srgb, var(--line) 70%, transparent); }
+/* Reduced motion, as a floor: nothing loops, slides or springs; end states still apply (animations are `both`). */
+@media (prefers-reduced-motion: reduce) {
+  .site *, .site *::before, .site *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
 }

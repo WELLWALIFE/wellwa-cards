@@ -138,14 +138,14 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish", 
   // of each list is the trade's own and is what a call without a seed gets.
   const SHORT: [RegExp, string[]][] = [
     [/^(jewellery)$/, ["gold", "royal", "noir"]],
-    [/^(salon|spa|mehndi)$/, ["rose", "royal", "gold"]],
-    [/^(ayurveda|agri|dairy|ngo)$/, ["emerald", "teal", "cocoa"]],
-    [/^(hotel|furniture|cafe)$/, ["cocoa", "noir", "gold"]],
-    [/^(sweets|catering|temple|restaurant)$/, ["saffron", "cocoa", "crimson"]],
+    [/^(salon|spa|mehndi)$/, ["rose", "plum", "royal", "gold"]],
+    [/^(ayurveda|agri|dairy|ngo)$/, ["emerald", "sage", "teal", "cocoa"]],
+    [/^(hotel|furniture|cafe)$/, ["cocoa", "clay", "noir", "gold"]],
+    [/^(sweets|catering|temple|restaurant)$/, ["saffron", "clay", "cocoa", "crimson"]],
     [/^(lawyer|photography)$/, ["noir", "midnight", "steel"]],
     [/^(gym|auto)$/, ["crimson", "steel", "noir"]],
     [/^(realestate|builder|manufacturer|transport|security)$/, ["steel", "midnight", "cocoa"]],
-    [/^(doctor|dentist|hospital|water)$/, ["ocean", "teal", "emerald"]],
+    [/^(doctor|dentist|hospital|water)$/, ["ocean", "teal", "sage", "emerald"]],
   ];
   const opts = SHORT.find(([re]) => re.test(key))?.[1];
   let h = 2166136261;
