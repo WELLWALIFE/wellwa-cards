@@ -11,9 +11,10 @@
 // WhatsApp enquiry (a call link when the card has no WhatsApp). No offerings -> nothing is drawn (the renderer hides the
 // section). An item without a photo is drawn without one - never a grey placeholder.
 import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { Check, Search, Share2 } from "lucide-react";
 import { Icon } from "@/components/site-icons";
 import { linkHref } from "@/components/link-icon";
-import { Head, Photo, Sec, type AdvCtx, type Offering, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { Head, Photo, Sec, splitUnit, type AdvCtx, type Offering, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
 
 type Off = NonNullable<SiteContent["offerings"]>;
 
@@ -48,9 +49,10 @@ const pad2 = (i: number) => String(i + 1).padStart(2, "0");
 function Price({ it, x, className = "" }: { it: Offering; x: AdvCtx; className?: string }) {
   if (!it.price) return null;
   const pc = offPct(it);
+  const unit = splitUnit(it.price);
   return (
     <p className={`cz-price ${className}`}>
-      <span className="cz-now">{it.price}</span>
+      <span className="cz-now" data-unit={unit ? "" : undefined}>{unit ? unit.fig : it.price}{unit && <small className="adv-unit">{unit.unit}</small>}</span>
       {showMrp(it) && <s className="cz-mrp"><span className="sr-only">{x.ui("Original price", "असली दाम")} </span>{it.mrp}</s>}
       {pc >= 5 && <span className="cz-off">{x.hi ? `${pc}% की छूट` : `${pc}% off`}</span>}
     </p>
@@ -489,7 +491,9 @@ function pointsOf(desc?: string): { list: string[]; text?: string } {
     const commas = d.split(/\s*,\s*/).map((s) => s.trim()).filter(Boolean);
     if (commas.length >= 3 && commas.every((s) => s.length <= 40)) parts = commas;
   }
-  return parts.length >= 2 ? { list: parts.slice(0, 7) } : { list: [], text: d };
+  // A ';' inside one long sentence ("... Served chilled; sold by the piece ...") is prose, not a list: ticks are short points only
+  // (16 Oct 2026 QA: a tier showed a half sentence with a tick on it).
+  return parts.length >= 2 && parts.every((s) => s.length <= 64) ? { list: parts.slice(0, 7) } : { list: [], text: d };
 }
 
 export function ServicesTiers({ c, x, index }: VariantProps) {
@@ -531,6 +535,246 @@ export function ServicesTiers({ c, x, index }: VariantProps) {
       <More o={o} x={x} />
     </Sec>
   );
+}
+
+/* ================= index-rows ================= */
+
+/** A numbered index: one large line per offering, a hairline between, the price and the ask at the right. On a laptop a tilted photo
+ *  of the row under the pointer floats up beside it; on a phone the photo is a small round thumbnail. Borrowed from the menu index
+ *  of a cocktail bar's site (Wix "Caveau Nocturne", seen 16 Oct 2026): big type plus rows is the quickest catalogue to read. */
+export function ServicesIndexRows({ c, x, index }: VariantProps) {
+  const o = c.offerings; if (!o) return null;
+  return (
+    <Sec k="services" tone={index % 2 ? "alt" : "paper"} wide>
+      <div className="cmg-head">
+        <Head eyebrow={kindLabel(o, x)} title={x.t(o.title)} />
+        <More o={o} x={x} />
+      </div>
+      <ol className="cix">
+        {o.items.map((it, i) => {
+          const go = x.goto, slug = it.slug;
+          const link = !!(slug && go);
+          const inner = (
+            <>
+              <span className="cix-no" aria-hidden="true">{pad2(i)}</span>
+              <span className="cix-main">
+                <span className="cz-name cix-name">{x.t(it.name)}</span>
+                {it.desc && <span className="cix-desc">{x.t(it.desc)}</span>}
+              </span>
+            </>
+          );
+          return (
+            <li key={i} className="cix-row" data-photo={it.images[0] ? "" : undefined}>
+              {link
+                ? <a href={x.hrefFor(slug!)} className="cix-link" onClick={(e) => { e.preventDefault(); go!(slug!); }} aria-label={`${x.ui("Details", "डिटेल")}: ${x.t(it.name)}`}>{inner}</a>
+                : <div className="cix-link">{inner}</div>}
+              {it.images[0] && <span className="cix-pic" aria-hidden="true"><Photo src={it.images[0]} sizes="200px" /></span>}
+              <span className="cix-end">
+                {it.badge && <span className="cz-badge">{x.t(it.badge)}</span>}
+                <Price it={it} x={x} className="cix-price" />
+                <Ask it={it} c={c} x={x} icon />
+                <span className="cix-go" aria-hidden="true"><Icon name="arrow-right" size={20} /></span>
+              </span>
+            </li>
+          );
+        })}
+      </ol>
+    </Sec>
+  );
+}
+
+/* ================= listing-rows ================= */
+
+/** Full-width photo rows that alternate: the photo fills the row and a card with the name, the line, the price and the buttons
+ *  overlaps one side, then the other. On a phone the card sits under the photo, so nothing overlaps and nothing shifts. For things
+ *  worth looking at (properties, furniture, vehicles, jewellery). Pattern from the Wix real-estate demo "Aria Blake". */
+export function ServicesListingRows({ c, x, index }: VariantProps) {
+  const o = c.offerings; if (!o) return null;
+  return (
+    <Sec k="services" tone={index % 2 ? "alt" : "paper"} wide>
+      <div className="cmg-head">
+        <Head eyebrow={kindLabel(o, x)} title={x.t(o.title)} />
+        <More o={o} x={x} />
+      </div>
+      <div className="clr">
+        {o.items.map((it, i) => (
+          <article key={i} className="clr-row" data-flip={i % 2 ? "" : undefined} data-photo={it.images[0] ? "" : undefined}>
+            {it.images[0] && <Cover it={it} x={x} className="clr-media" eager={i < 1} sizes="(min-width: 900px) 90vw, 100vw" badge={false} />}
+            <div className="clr-card">
+              <div className="clr-top">
+                <span className="cfc-no" aria-hidden="true">{pad2(i)} / {pad2(o.items.length)}</span>
+                {it.badge && <span className="cz-badge">{x.t(it.badge)}</span>}
+              </div>
+              <h3 className="cz-name clr-name">{x.t(it.name)}</h3>
+              {it.desc && <p className="cz-desc clr-desc">{x.t(it.desc)}</p>}
+              <Price it={it} x={x} className="clr-price" />
+              <div className="adv-btn-row">
+                <Ask it={it} c={c} x={x} kind="primary" />
+                <Details it={it} x={x} />
+              </div>
+            </div>
+          </article>
+        ))}
+      </div>
+    </Sec>
+  );
+}
+
+/* ================= shop-grid ================= */
+
+/** The item's address as a link someone can send: the page's own address plus the item's. */
+function ShareItem({ it, x }: { it: Offering; x: AdvCtx }) {
+  const [done, setDone] = useState(false);
+  if (!it.slug) return null;
+  const share = async () => {
+    try {
+      const url = new URL(x.hrefFor(it.slug!), window.location.href).toString();
+      x.track("product-share");
+      if (navigator.share) { await navigator.share({ title: x.t(it.name), url }); return; }
+      await navigator.clipboard.writeText(url);
+      setDone(true); window.setTimeout(() => setDone(false), 2000);
+    } catch { /* the sheet was closed */ }
+  };
+  return (
+    <button type="button" className="cz-iconbtn csg-share" onClick={share} aria-label={`${x.ui("Share", "शेयर करें")}: ${x.t(it.name)}`}>
+      {done ? <Check size={17} aria-hidden="true" /> : <Share2 size={17} aria-hidden="true" />}
+      <span className="sr-only" role="status" aria-live="polite">{done ? x.ui("Link copied", "लिंक कॉपी हुआ") : ""}</span>
+    </button>
+  );
+}
+
+function ShopInner({ c, x, o, index }: { c: SiteContent; x: AdvCtx; o: Off; index: number }) {
+  const groups = groupsFor(o, x);
+  const [picked, setPicked] = useState("all");
+  const [q, setQ] = useState("");
+  const active = groups?.some((g) => g.key === picked) ? picked : "all";
+  const needle = q.trim().toLowerCase();
+  const inGroup = groups?.find((g) => g.key === active)?.idx;
+  const shown = o.items.map((it, i) => ({ it, i })).filter(({ it, i }) => (!inGroup || inGroup.includes(i)) && (!needle || `${it.name} ${it.desc ?? ""}`.toLowerCase().includes(needle)));
+  const search = o.items.length >= 6;
+  return (
+    <Sec k="services" tone={index % 2 ? "alt" : "paper"} wide>
+      <Head eyebrow={kindLabel(o, x)} title={x.t(o.title)} />
+      {(groups || search) && (
+        <div className="csg-tools">
+          {search && (
+            <label className="csg-search">
+              <Search size={17} aria-hidden="true" />
+              <span className="sr-only">{x.ui("Search", "खोजें")}</span>
+              <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={x.ui(`Search ${o.items.length} items`, `${o.items.length} में खोजें`)} enterKeyHint="search" />
+            </label>
+          )}
+          {groups && (
+            <div className="csg-chips" role="group" aria-label={x.ui("Filter", "फ़िल्टर")}>
+              {groups.map((g) => <button key={g.key} type="button" aria-pressed={active === g.key} onClick={() => setPicked(g.key)}>{g.label}<small>{g.idx.length}</small></button>)}
+            </div>
+          )}
+        </div>
+      )}
+      <p className="csg-count" role="status" aria-live="polite">{q || active !== "all" ? x.ui(`Showing ${shown.length} of ${o.items.length}`, `${o.items.length} में से ${shown.length}`) : ""}</p>
+      {shown.length > 0 ? (
+        <div className="csg" key={`${active}|${needle}`}>
+          {shown.map(({ it, i }, k) => {
+            const pc = offPct(it);
+            return (
+              <article key={i} className="csg-card" style={{ ["--d" as string]: `${Math.min(k, 8) * 45}ms` }}>
+                <div className="csg-media">
+                  {it.images[0] ? (
+                    <button type="button" className="cz-cover csg-cover" onClick={() => x.zoom(it.images, 0, x.t(it.name))} aria-label={`${x.ui("View photo", "फ़ोटो देखें")}: ${x.t(it.name)}`}>
+                      <Photo src={it.images[0]} alt="" sizes="(min-width: 1100px) 22vw, (min-width: 640px) 33vw, 50vw" eager={k < 4} />
+                      {it.images[1] && <Photo className="csg-alt" src={it.images[1]} alt="" sizes="(min-width: 1100px) 22vw, 33vw" />}
+                    </button>
+                  ) : <span className="csg-letter" aria-hidden="true">{Array.from(it.name)[0]}</span>}
+                  <span className="csg-tags">
+                    {it.badge && <em>{x.t(it.badge)}</em>}
+                    {pc >= 5 && <em data-off="">{pc}% {x.ui("off", "छूट")}</em>}
+                  </span>
+                </div>
+                <div className="csg-body">
+                  <h3 className="cz-name csg-name">
+                    {it.slug && x.goto
+                      ? <a href={x.hrefFor(it.slug)} onClick={(e) => { e.preventDefault(); x.goto!(it.slug!); }}>{x.t(it.name)}</a>
+                      : x.t(it.name)}
+                  </h3>
+                  {it.desc && <p className="cz-desc csg-desc">{x.t(it.desc)}</p>}
+                  <Price it={it} x={x} className="csg-price" />
+                  <div className="csg-acts">
+                    <Ask it={it} c={c} x={x} kind="ghost" className="csg-ask" />
+                    <Details it={it} x={x} className="csg-details" />
+                    <ShareItem it={it} x={x} />
+                  </div>
+                </div>
+              </article>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="csg-empty">
+          <p>{x.ui("Nothing matches that yet.", "इससे मिलता कुछ नहीं मिला।")}</p>
+          <div className="adv-btn-row">
+            <button type="button" className="btn-ghost" onClick={() => { setQ(""); setPicked("all"); }}>{x.ui("Clear the filters", "फ़िल्टर हटाएँ")}</button>
+            {x.wa && <a className="btn-primary" href={x.waHref(x.hi ? `नमस्ते ${c.name}, मैं "${q}" ढूँढ रहा/रही हूँ।` : `Hi ${c.name}, I'm looking for "${q}".`)} target="_blank" rel="noreferrer"><Icon name="whatsapp" /> {x.ui("Ask us on WhatsApp", "WhatsApp पर पूछें")}</a>}
+          </div>
+        </div>
+      )}
+      <More o={o} x={x} />
+    </Sec>
+  );
+}
+export function ServicesShopGrid(p: VariantProps) {
+  const o = p.c.offerings; if (!o) return null;
+  return <ShopInner c={p.c} x={p.x} o={o} index={p.index} />;
+}
+
+/* ================= rate-list ================= */
+
+/** A ledger for traders: one dense row per item (number, name and line, the rate), a header that names the columns, a search
+ *  box from eight items. The reader is a buyer who knows what they want and wants the rate. */
+function RateInner({ c, x, o, index }: { c: SiteContent; x: AdvCtx; o: Off; index: number }) {
+  const [q, setQ] = useState("");
+  const needle = q.trim().toLowerCase();
+  const rows = o.items.map((it, i) => ({ it, i })).filter(({ it }) => !needle || `${it.name} ${it.desc ?? ""}`.toLowerCase().includes(needle));
+  const word = o.kind === "products" ? x.ui("Item", "आइटम") : x.ui("Service", "सेवा");
+  return (
+    <Sec k="services" tone={index % 2 ? "alt" : "paper"} wide>
+      <div className="crl-head">
+        <Head eyebrow={kindLabel(o, x)} title={x.t(o.title)} />
+        {o.items.length >= 8 && (
+          <label className="csg-search crl-search">
+            <Search size={17} aria-hidden="true" />
+            <span className="sr-only">{x.ui("Search", "खोजें")}</span>
+            <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={x.ui("Search the list", "सूची में खोजें")} enterKeyHint="search" />
+          </label>
+        )}
+      </div>
+      <div className="crl" role="table" aria-label={x.t(o.title)}>
+        <div className="crl-th" role="row">
+          <span role="columnheader">#</span><span role="columnheader">{word}</span><span role="columnheader" className="crl-r">{x.ui("Rate", "रेट")}</span><span role="columnheader" className="crl-r">{x.ui("Order", "ऑर्डर")}</span>
+        </div>
+        {rows.map(({ it, i }) => (
+          <div key={i} className="crl-row" role="row">
+            <span className="crl-no" role="cell" aria-hidden="true">{pad2(i)}</span>
+            <span className="crl-item" role="cell">
+              {it.images[0] && <Cover it={it} x={x} className="crl-thumb" eager={i < 6} sizes="48px" badge={false} />}
+              <span className="crl-txt">
+                <b className="cz-name crl-name">{x.t(it.name)}{it.badge && <span className="cz-badge">{x.t(it.badge)}</span>}</b>
+                {it.desc && <span className="crl-desc">{x.t(it.desc)}</span>}
+                <Details it={it} x={x} className="crl-more" />
+              </span>
+            </span>
+            <span className="crl-rate crl-r" role="cell">{it.price ? <Price it={it} x={x} className="crl-p" /> : <span className="crl-ask">{x.ui("On request", "पूछकर")}</span>}</span>
+            <span className="crl-r crl-act" role="cell"><Ask it={it} c={c} x={x} kind="ghost" label={x.wa ? x.ui("Ask rate", "रेट पूछें") : undefined} /></span>
+          </div>
+        ))}
+        {rows.length === 0 && <p className="crl-none" role="row">{x.ui("Nothing matches that. Ask us - we may have it.", "इससे मिलता कुछ नहीं मिला। हमसे पूछिए - शायद हमारे पास हो।")}</p>}
+      </div>
+      <More o={o} x={x} />
+    </Sec>
+  );
+}
+export function ServicesRateList(p: VariantProps) {
+  const o = p.c.offerings; if (!o) return null;
+  return <RateInner c={p.c} x={p.x} o={o} index={p.index} />;
 }
 
 /* ================= CSS ================= */
@@ -606,7 +850,8 @@ export const CATALOG_CSS = `
 .cmg-tile[data-i="0"]{grid-column:1/-1}
 @media (max-width:899px){.cmg-tile:last-child:nth-child(even){grid-column:1/-1}}
 .cmg-cover{position:absolute;inset:0;width:100%;height:100%}
-.cmg-tile[data-photo]::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to top,color-mix(in srgb,var(--hero-ink) 90%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 45%,transparent) 40%,transparent 68%)}
+.cmg-tile[data-photo]::after{content:"";position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(to top,color-mix(in srgb,var(--hero-ink) 92%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 72%,transparent) 42%,color-mix(in srgb,var(--hero-ink) 38%,transparent) 72%,color-mix(in srgb,var(--hero-ink) 12%,transparent) 100%)}
+/* The small tiles carry a two-line title in their middle: the scrim now reaches the top edge, or white type sat on a bright photo (16 Oct 2026 QA). */
 .cmg-cap{position:absolute;left:0;right:0;bottom:0;z-index:2;display:flex;flex-direction:column;gap:var(--s2);padding:clamp(.9rem,2vw,1.4rem);pointer-events:none}
 .cmg-tile:not([data-photo]) .cmg-cap{top:0;justify-content:flex-end}
 .cmg-cap a,.cmg-cap button{pointer-events:auto}
@@ -620,7 +865,7 @@ export const CATALOG_CSS = `
 .cmg-tile[data-i="0"] .cmg-name{font-size:clamp(1.6rem,4.4vw,2.9rem);max-width:18ch}
 .cmg-desc{margin:0;max-width:46ch;font-size:.9375rem;line-height:1.55;color:var(--hero-muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .cmg-tile:not([data-photo]) .cmg-desc{color:var(--muted)}
-.cmg-row{display:flex;align-items:flex-end;justify-content:space-between;gap:var(--s3)}
+.cmg-row{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s2) var(--s3);min-width:0}
 .cmg-act{display:flex;align-items:center;gap:var(--s3);margin-left:auto}
 .cmg-details{font-size:14px}
 .cmg-cap .cz-now{font-size:1rem}
@@ -670,7 +915,8 @@ export const CATALOG_CSS = `
 .ctb-badge{font-size:11px}
 .ctb-name{font-size:clamp(1.05rem,1.8vw,1.2rem)}
 .ctb-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:.875rem}
-.ctb-foot{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);margin-top:auto;padding-top:var(--s2)}
+/* wrap: price + Details + the round WhatsApp button did not fit a 358px row, and the button ran off the phone's edge (16 Oct 2026 QA). */
+.ctb-foot{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2) var(--s3);margin-top:auto;padding-top:var(--s2)}
 .ctb-act{display:flex;align-items:center;gap:var(--s3)}
 @media (min-width:640px){.ctb-media{width:140px}}
 
@@ -694,6 +940,8 @@ export const CATALOG_CSS = `
 .cml-act{display:flex;align-items:center;gap:var(--s4);margin-top:var(--s2);font-size:14px}
 .cml-act .btn-link,.cml-line .btn-link{font-size:14px}
 .cml-more{text-align:center}
+/* on a phone the name has the first line to itself: beside a badge and a price it was squeezed to one word a line and the badge sat on it (16 Oct 2026 QA) */
+@media (max-width:599px){.cml-line{flex-wrap:wrap;row-gap:4px}.cml-name{flex:1 1 100%}.cml-line .cz-badge{flex:none}.cml-dots{min-width:.75rem}}
 @media (min-width:900px){.cml-list{columns:2}}
 
 /* tiers */
@@ -710,7 +958,7 @@ export const CATALOG_CSS = `
 .ctr-no{font-size:var(--t-meta);font-weight:600;letter-spacing:.14em;color:var(--muted);font-variant-numeric:tabular-nums}
 .ctr-name{font-size:clamp(1.3rem,2.4vw,1.65rem)}
 .ctr-price{flex-direction:row;padding-bottom:var(--s4);border-bottom:1px solid var(--line)}
-.ctr-price .cz-now{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2rem,4vw,2.75rem);line-height:1.05;letter-spacing:var(--display-tr)}
+.ctr-price .cz-now{max-width:100%;overflow-wrap:anywhere;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2rem,4vw,2.75rem);line-height:1.05;letter-spacing:var(--display-tr)}
 .ctr-text{flex:1}
 .ctr-points{list-style:none;margin:0;padding:0;display:grid;gap:var(--s2);flex:1;align-content:start}
 .ctr-points li{display:flex;gap:var(--s3);align-items:flex-start;font-size:.9375rem;line-height:1.5;color:var(--ink)}
@@ -720,4 +968,136 @@ export const CATALOG_CSS = `
 .ctr-cta .btn-link{justify-content:center}
 .ctr-feat .ctr-points svg{color:var(--hero-text)}
 @media (min-width:900px){.ctr-feat{box-shadow:var(--e-1)}}
+
+/* index-rows */
+.cix{list-style:none;margin:0;padding:0;border-top:1px solid var(--line)}
+.cix-row{position:relative;display:grid;grid-template-columns:minmax(0,1fr);align-items:center;border-bottom:1px solid var(--line);transition:background .25s}
+.cix-row:hover,.cix-row:focus-within{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.cix-link{display:grid;grid-template-columns:2.6rem minmax(0,1fr);align-items:baseline;gap:var(--s3);padding:var(--s5) 0 var(--s2);color:inherit;text-decoration:none}
+a.cix-link:focus-visible{outline-offset:-2px}
+.cix-no{font-size:var(--t-meta);font-weight:600;letter-spacing:.14em;color:var(--accent);font-variant-numeric:tabular-nums}
+.cix-main{display:grid;gap:6px;min-width:0}
+.cix-name{font-size:clamp(1.55rem,5.6vw,3.4rem);line-height:1.06;transition:transform .45s cubic-bezier(.2,.7,.2,1)}
+.site:lang(hi) .cix-name{line-height:1.3}
+.cix-desc{max-width:52ch;font-size:.9375rem;line-height:1.55;color:var(--muted);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.cix-end{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4);padding:var(--s2) 0 var(--s5) calc(2.6rem + var(--s3))}
+.cix-end .cz-badge{order:3}
+.cix-price .cz-now{font-family:var(--font-display);font-weight:var(--display-w);font-size:1.3rem}
+.cix-end .cz-iconbtn{margin-left:auto}
+.cix-go{display:none}
+.cix-price .cz-off{display:none}
+.cix-row[data-photo] .cix-link{padding-right:calc(60px + var(--s4))}
+.cix-pic{position:absolute;right:0;top:var(--s5);width:60px;height:60px;border-radius:var(--r-pill);overflow:hidden;pointer-events:none}
+.cix-pic .adv-photo{position:absolute;inset:0}
+@media (min-width:900px){
+  .cix-row{grid-template-columns:minmax(0,1fr) auto;gap:var(--s5)}
+  .cix-link,.cix-row[data-photo] .cix-link{grid-template-columns:4rem minmax(0,1fr);padding:clamp(1.4rem,2.6vw,2.2rem) 0}
+  .cix-end{flex-wrap:nowrap;padding:0 var(--s3) 0 0;gap:var(--s5)}
+  .cix-end .cz-iconbtn{margin-left:0}
+  .cix-end .cz-badge{order:0}
+  .cix-price{min-width:6.5rem;justify-content:flex-end}
+  .cix-price .cz-off{display:inline-flex}
+  .cix-go{display:grid;place-items:center;width:44px;height:44px;border-radius:50%;background:var(--ink);color:var(--paper);transition:transform .35s cubic-bezier(.2,.7,.2,1)}
+  .cix-row:hover .cix-go{transform:translateX(4px) rotate(-45deg)}
+  .cix-row:hover .cix-name{transform:translateX(10px)}
+  .cix-pic{right:30%;top:50%;width:clamp(120px,13vw,190px);height:auto;aspect-ratio:4/5;border-radius:var(--r-img);opacity:0;transform:translateY(-44%) rotate(-6deg) scale(.88);transition:opacity .35s,transform .5s cubic-bezier(.2,.7,.2,1);z-index:2;box-shadow:var(--e-1)}
+  .cix-row[data-photo]:hover .cix-pic{opacity:1;transform:translateY(-50%) rotate(-3deg) scale(1)}
+}
+@media (hover:none) and (min-width:900px){.cix-pic{display:none}}
+
+/* listing-rows */
+.clr{display:grid;gap:clamp(2rem,5vw,3.5rem)}
+.clr-row{position:relative;display:grid;gap:0}
+.clr-media{aspect-ratio:4/3;border-radius:var(--r-tile)}
+.clr-card{display:grid;gap:var(--s3);align-content:start;padding:var(--s5) var(--s1) 0}
+.clr-top{display:flex;align-items:center;gap:var(--s3)}
+.clr-name{font-size:clamp(1.6rem,5vw,2.6rem);line-height:1.05}
+.site:lang(hi) .clr-name{line-height:1.3}
+.clr-desc{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
+.clr-price .cz-now{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.5rem,3vw,2rem)}
+.clr-row:not([data-photo]) .clr-card{padding:clamp(1.5rem,4vw,2.5rem);background:var(--accent-soft);border-radius:var(--r-tile)}
+@media (min-width:900px){
+  .clr-row[data-photo]{min-height:clamp(420px,52vw,640px);align-items:center}
+  .clr-media{position:absolute;inset:0;width:100%;height:100%;aspect-ratio:auto}
+  .clr-row[data-photo]>.clr-card{position:relative;z-index:2;width:min(31rem,46%);margin-left:clamp(1.5rem,6%,5rem);padding:clamp(1.75rem,3vw,2.75rem);background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);box-shadow:var(--e-1)}
+  .clr-row[data-photo][data-flip]>.clr-card{margin-left:auto;margin-right:clamp(1.5rem,6%,5rem)}
+  .clr-row .cz-cover{cursor:zoom-in}
+}
+.adv-sec[data-tone=alt] .clr-card{background:var(--paper)}
+
+/* shop-grid */
+.csg-tools{display:grid;gap:var(--s3);margin-bottom:var(--s4)}
+@media (min-width:900px){.csg-tools{grid-template-columns:minmax(0,320px) minmax(0,1fr);align-items:center}.csg-chips{justify-content:flex-end}}
+.csg-search{display:flex;align-items:center;gap:.6em;min-height:48px;padding:0 1em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--muted);transition:border-color .2s,box-shadow .2s}
+.csg-search:focus-within{border-color:var(--accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--accent) 16%,transparent)}
+.csg-search input{flex:1;min-width:0;border:0;outline:none;background:none;font:inherit;font-size:16px;color:var(--ink)}
+.csg-chips{display:flex;gap:var(--s2);overflow-x:auto;scrollbar-width:none;margin-inline:calc(var(--gutter) * -1);padding:2px var(--gutter)}
+.csg-chips::-webkit-scrollbar{display:none}
+@media (min-width:900px){.csg-chips{margin-inline:0;padding-inline:0}}
+.csg-chips button{flex:none;display:inline-flex;align-items:center;gap:.5em;min-height:44px;padding:0 1.1em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font:inherit;font-size:14px;font-weight:500;cursor:pointer;transition:background .2s,color .2s,border-color .2s}
+.csg-chips button small{font-size:11.5px;opacity:.6}
+.csg-chips button:hover{border-color:var(--ink)}
+.csg-chips button[aria-pressed=true]{background:var(--ink);border-color:var(--ink);color:var(--paper)}
+.csg-count{min-height:1.4em;margin:0 0 var(--s3);font-size:var(--t-meta);color:var(--muted)}
+.csg{display:grid;gap:clamp(1.5rem,3vw,2.5rem) var(--s3);grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (min-width:640px){.csg{grid-template-columns:repeat(3,minmax(0,1fr));column-gap:var(--gap)}}
+@media (min-width:1100px){.csg{grid-template-columns:repeat(4,minmax(0,1fr))}}
+.csg-card{display:flex;flex-direction:column;min-width:0;animation:csg-in .6s cubic-bezier(.2,.7,.2,1) both;animation-delay:var(--d,0ms)}
+@keyframes csg-in{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+.csg-media{position:relative;aspect-ratio:4/5;border-radius:var(--r-card);overflow:hidden;background:var(--accent-soft);isolation:isolate}
+.csg-cover{position:absolute;inset:0;height:100%}
+.csg-alt{opacity:0;transition:opacity .5s}
+@media (hover:hover){.csg-card:hover .csg-alt{opacity:1}}
+.csg-letter{position:absolute;inset:0;display:grid;place-items:center;font-family:var(--font-display);font-size:clamp(3.5rem,9vw,6rem);color:var(--accent)}
+.csg-tags{position:absolute;top:10px;left:10px;right:10px;display:flex;flex-wrap:wrap;gap:6px;z-index:2;pointer-events:none}
+.csg-tags em{font-style:normal;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.35em .7em;border-radius:var(--r-pill);background:var(--paper);color:var(--ink)}
+.csg-tags em[data-off]{background:var(--accent);color:var(--on-accent)}
+.csg-body{display:flex;flex-direction:column;gap:var(--s2);flex:1;padding-top:var(--s3)}
+.csg-name{font-size:clamp(1.05rem,1.8vw,1.3rem)}
+.csg-name a{color:inherit;text-decoration:none;background:linear-gradient(currentColor,currentColor) 0 100%/0 1px no-repeat;transition:background-size .35s}
+.csg-name a:hover{background-size:100% 1px}
+.csg-price .cz-off{display:none}
+.csg-desc{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:.84rem}
+.csg-price{margin-top:auto;padding-top:var(--s1)}
+.csg-price .cz-now{font-size:1.1rem}
+.csg-acts{display:flex;align-items:center;gap:var(--s2);padding-top:var(--s2)}
+.csg-acts .csg-ask{flex:1;min-width:0;justify-content:center}
+.csg-details{display:inline-flex}
+.csg-share{width:44px;height:44px}
+@media (max-width:520px){.csg-desc{display:none}.csg-acts .csg-details{display:none}}
+@media (min-width:521px) and (max-width:1099px){.csg-acts .csg-details{display:none}}
+.csg-empty{display:grid;justify-items:start;gap:var(--s4);padding-block:var(--s7);color:var(--muted);font-size:var(--t-sub)}
+
+/* rate-list */
+.crl-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s3) var(--s6)}
+.crl-head .adv-head{margin-bottom:clamp(1.5rem,4vw,2.5rem)}
+.crl-search{width:min(100%,320px);margin-bottom:clamp(1.5rem,4vw,2.5rem)}
+.crl{border-top:2px solid var(--ink)}
+.crl-th,.crl-row{display:grid;grid-template-columns:2.4rem minmax(0,1fr) 9.5rem 8.5rem;align-items:center;gap:var(--s3) var(--s4)}
+.crl-th{padding:.8em 0;border-bottom:1px solid var(--line);font-size:11.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted)}
+.crl-r{text-align:right;justify-self:end}
+.crl-row{padding:var(--s3) 0;border-bottom:1px solid var(--line);transition:background .2s}
+.crl-row:nth-child(even){background:color-mix(in srgb,var(--ink) 3%,transparent)}
+.crl-row:hover,.crl-row:focus-within{background:color-mix(in srgb,var(--accent) 8%,transparent)}
+.crl-no{font-size:var(--t-meta);font-variant-numeric:tabular-nums;color:var(--muted);padding-left:.4rem}
+.crl-item{display:flex;align-items:center;gap:var(--s3);min-width:0}
+.crl-thumb{width:48px;height:48px;flex:none;border-radius:var(--r-img)}
+.crl-txt{display:grid;gap:2px;min-width:0}
+.crl-name{display:flex;flex-wrap:wrap;align-items:center;gap:.2em .6em;font-size:clamp(1rem,1.7vw,1.15rem)}
+.crl-name .cz-badge{font-size:11px}
+.crl-desc{font-size:.84rem;line-height:1.45;color:var(--muted);display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+.crl-more{font-size:13px;width:fit-content}
+.crl-p{flex-direction:column;align-items:flex-end;gap:0}
+.crl-p .cz-now{font-size:1.1rem}
+.crl-p .cz-off{display:none}
+.crl-ask{font-size:var(--t-meta);color:var(--muted)}
+.crl-none{margin:0;padding:var(--s6) 0;color:var(--muted)}
+@media (max-width:640px){
+  .crl-th{display:none}
+  .crl-row{grid-template-columns:1.8rem minmax(0,1fr) auto;grid-template-areas:"n i i" "n r a";row-gap:var(--s3)}
+  .crl-no{grid-area:n;align-self:start;padding-top:.3rem}.crl-item{grid-area:i;align-items:flex-start}.crl-rate{grid-area:r;justify-self:start;text-align:left}.crl-act{grid-area:a}
+  .crl-p{align-items:flex-start;flex-direction:row;gap:.6em}
+  .crl-desc{-webkit-line-clamp:2}
+  .crl-thumb{width:44px;height:44px}
+}
 `;

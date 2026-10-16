@@ -4,7 +4,7 @@
 //   1. validateSpec / parseAdvanced / activeAdvanced never throw on garbage, and what they return is always drawable
 //   2. 40 fake cards across the trades: specFromSeed gives >= 30 distinct (hero, order, palette) combinations, every spec is valid
 //   3. every variant id (the lists, the archetype library, the specs) exists in the registry; the registry has nothing extra
-//   4. the archetype library is sound (checkArchetypes) and every business category maps to a group with >= 6 archetypes
+//   4. the archetype library is sound (checkArchetypes) and every business category maps to a group with >= 8 archetypes
 //   5. (when the renderer loads in plain Node) the page renders to HTML for a sample of the cards, in both languages
 import Module, { createRequire } from "node:module";
 import path from "node:path";
@@ -132,7 +132,7 @@ function fakeCard(i, catKey) {
     id: `card-${i}`, username: `${name.toLowerCase().replace(/[^a-z]/g, "")}${i}`, name, company: name, jobTitle: "Owner", tagline: "Honest work", about: "", language: i % 4 === 0 ? "hi" : "en",
     themeColor: i % 2 ? "#0e9e90" : undefined, coverUrl: rich ? photo(0) : undefined, seo: { categoryKey: catKey, city: "Jaipur", category: catKey },
     links: [{ id: "w", type: "whatsapp", label: "WhatsApp", value: "919999900000" }, { id: "p", type: "phone", label: "Call", value: "+919999900000" }, { id: "l", type: "location", label: "Map", value: "https://maps.google.com/?q=26.9,75.8" }],
-    pages: [{ slug: "home", title: "Home", blocks }],
+    pages: [{ id: `pg-${i}`, slug: "home", label: "Home", blocks }],
     site: { enabled: true },
   };
 }
@@ -192,9 +192,9 @@ ok(problems.length === 0, `checkArchetypes: ${problems.join("; ")}`);
 for (const c of CATEGORIES) {
   const g = lib.groupOf(c.key);
   ok(c.key === "other" || lib.TRADE_GROUP[c.key] !== undefined, `category ${c.key} is not in TRADE_GROUP (it would land in "general")`);
-  ok((lib.ARCHETYPES_BY_GROUP[g]?.length ?? 0) >= 6, `${c.key} -> ${g}: fewer than 6 archetypes`);
+  ok((lib.ARCHETYPES_BY_GROUP[g]?.length ?? 0) >= 8, `${c.key} -> ${g}: fewer than 8 archetypes`);
 }
-for (const g of lib.GROUPS) ok((lib.ARCHETYPES_BY_GROUP[g.key]?.length ?? 0) >= 6, `group ${g.key}: fewer than 6 archetypes`);
+for (const g of lib.GROUPS) ok((lib.ARCHETYPES_BY_GROUP[g.key]?.length ?? 0) >= 8, `group ${g.key}: fewer than 8 archetypes`);
 for (const g of Object.keys(lib.ARCHETYPES_BY_GROUP)) ok(lib.GROUPS.some((x) => x.key === g), `archetypes for a group that is not declared: ${g}`);
 // Within a group the archetypes are clearly different compositions: no two share both a hero and a lead order.
 for (const [g, list] of Object.entries(lib.ARCHETYPES_BY_GROUP)) {
@@ -237,13 +237,57 @@ try {
     const legacy = draw(withSite({ advanced: specs[6] }));
     const off = draw(withSite({ advanced: specs[6], advancedOn: false }));
     const basic = draw(withSite({}));
-    ok(on.includes("adv-bar") && legacy.includes("adv-bar"), "SiteView did not draw the advanced page for a card with site.advanced on");
-    ok(!off.includes("adv-bar") && !basic.includes("adv-bar"), "SiteView drew the advanced page for a card with it off or absent");
+    ok(on.includes("data-adv") && legacy.includes("data-adv"), "SiteView did not draw the advanced page for a card with site.advanced on");
+    ok(!off.includes("data-adv") && !basic.includes("data-adv"), "SiteView drew the advanced page for a card with it off or absent");
     console.log("  SiteView (the /preview/site renderer): advanced on -> advanced page, off or absent -> basic page");
   } catch (e) { console.log(`  SiteView check skipped: ${String(e?.message).split("\n")[0]}`); }
 } catch (e) {
   console.log(`  skipped: the renderer does not load in plain Node (${String(e?.message).split("\n")[0]})`);
 }
+
+/* ================= 6. the design system (theme.ts) ================= */
+section("6. design system: palettes, pairings, theme CSS");
+try {
+  const theme = src("components/site-adv/theme.ts");
+  const style = src("lib/site-style.ts");
+  const { luminance } = src("lib/color.ts");
+  const cr = (a, b) => { const x = luminance(a), y = luminance(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+  const over = (fg, bg) => { const a = fg.length === 9 ? parseInt(fg.slice(7), 16) / 255 : 1; const mix = (i) => Math.round(parseInt(fg.slice(i, i + 2), 16) * a + parseInt(bg.slice(i, i + 2), 16) * (1 - a)); return "#" + [1, 3, 5].map((i) => mix(i).toString(16).padStart(2, "0")).join(""); };
+  const tokens = (vars) => { const o = {}; for (const d of vars.split(";")) { const i = d.indexOf(":"); const k = d.slice(2, i), v = d.slice(i + 1); if (/^#[0-9a-f]{6,8}$/i.test(v) && !(k in o)) o[k] = v.toLowerCase(); } return o; };
+  // Every named and curated palette, light and dark (luxe is a light look), must carry readable text: WCAG AA for the text pairs.
+  const pals = [...style.SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => ({ name: p.key, p })), ...theme.CURATED_PALETTES.map((c) => ({ name: `curated ${c.id}`, p: style.brandPalette(c.color) }))];
+  let combos = 0;
+  for (const { name, p } of pals) for (const tone of ["light", "dark"]) for (const luxe of [false, true]) {
+    if (luxe && tone === "dark") continue;
+    combos++;
+    const t = tokens(style.oklchVars(p.h, tone, { c: p.c, luxe }));
+    const w = `${name}/${tone}${luxe ? "/luxe" : ""}`;
+    ok(cr(t.ink, t.paper) >= 7, `${w}: ink on paper ${cr(t.ink, t.paper).toFixed(2)}`);
+    ok(cr(over(t.muted, t.paper), t.paper) >= 4.5, `${w}: muted on paper`);
+    ok(cr(over(t.muted, t["paper-2"]), t["paper-2"]) >= 4.5, `${w}: muted on paper-2`);
+    ok(cr(t.accent, t.paper) >= 4.5, `${w}: accent text on paper`);
+    ok(cr(t["on-accent"], t.accent) >= 4.5, `${w}: text on the accent fill`);
+    ok(cr(over(t["hero-text"], t["hero-ink"]), t["hero-ink"]) >= 7, `${w}: text on the ink field`);
+    ok(cr(over(t["hero-muted"], t["hero-ink"]), t["hero-ink"]) >= 4.5, `${w}: muted text on the ink field`);
+  }
+  console.log(`  ${combos} palette x tone combinations pass AA (${theme.CURATED_PALETTES.length} curated, ${style.SITE_PALETTES.length - 1} named)`);
+  const bad = theme.checkPairings();
+  ok(bad.length === 0, `font pairings: ${bad.join("; ")}`);
+  ok(theme.FONT_PAIRINGS.length >= 12, "fewer than 12 font pairings");
+  // The archetype library draws on every variant the renderer has: one nobody uses would never be met on the no-AI path.
+  const used = {};
+  for (const list of Object.values(lib.ARCHETYPES_BY_GROUP)) for (const x of list) { (used[`hero:${x.hero}`] ??= []).push(x.id); for (const [k, v] of Object.entries(x.sections)) (used[`${k}:${v}`] ??= []).push(x.id); }
+  const unused = [];
+  for (const k of SECTION_KEYS) for (const id of VARIANT_IDS[k]) if (!used[`${k}:${id}`]) unused.push(`${k}:${id}`);
+  ok(unused.length === 0, `variants no archetype uses: ${unused.join(", ")}`);
+  console.log(`  ${Object.keys(used).length} variant slots in use by the library; unused: ${unused.length ? unused.join(", ") : "none"}`);
+  // THEME_CSS is one string in a <style>: unbalanced braces would swallow every rule after them.
+  const css = theme.THEME_CSS;
+  ok((css.match(/{/g) ?? []).length === (css.match(/}/g) ?? []).length, "THEME_CSS has unbalanced braces");
+  // A curated palette is drawn as a "brand" palette: the spec keeps its hex.
+  const cp = theme.curatedPalette("terracotta");
+  ok(validateSpec({ palette: cp }).palette.color === cp.color, "validateSpec dropped a curated palette's colour");
+} catch (e) { failed++; console.log(`  FAIL  design system check: ${String(e?.message).split("\n")[0]}`); }
 
 console.log(`\n${failed ? "FAILED" : "OK"}: ${passed} checks passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

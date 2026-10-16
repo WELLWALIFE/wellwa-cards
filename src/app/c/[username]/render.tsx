@@ -21,15 +21,21 @@ import type { Card, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
+import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
 import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // With a real database connected, the cloud is the only source of truth — a
 // card that was deleted must 404, not silently fall back to built-in demo data.
 async function loadCard(username: string) {
   const cloud = await fetchCloudCard(username);
-  if (cloud) return cloud;
-  return getPublicSupabase() ? null : getCardByUsername(username);
+  const card = cloud ?? (getPublicSupabase() ? null : getCardByUsername(username));
+  // The ADVANCED website is a whole website: it adds the About and Gallery pages the card has the material for but no page of
+  // (src/lib/site-advanced.ts), so each has its own address, title and description like any other page.
+  return card && activeAdvanced(card.site, card.username) ? withAdvancedPages(card) : card;
 }
+
+/** The product or service at this address: a product's own page, and on an advanced website a service's as well. */
+const itemAt = (card: Card, slug?: string | null) => findProduct(card, slug) ?? (activeAdvanced(card.site, card.username) ? findAdvancedItem(card, slug) : null);
 
 const pageOf = (card: Card, slug?: string | null): CardPage | null =>
   (slug ? card.pages.find((p) => p.slug === slug) : null) ?? null;
@@ -59,7 +65,7 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
     return { title: { absolute: `${card.lead === "business" && card.company ? card.company : card.name} — card paused` }, robots: { index: false, follow: false } };
   }
   // One product at its own address: its own title, its own description, its own picture in a share preview.
-  const product = findProduct(card, slug);
+  const product = itemAt(card, slug);
   const page = product ? productPageOf(card, product) : pageOf(card, slug);
   const { brand, home } = await addresses(card);
   const updates = slug === "updates" && !page;
@@ -137,8 +143,9 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
       />
     );
   }
-  const product = findProduct(card, slug);
+  const product = itemAt(card, slug);
   const page = product ? productPageOf(card, product) : pageOf(card, slug);
+  const adv = !!activeAdvanced(card.site, card.username);
 
   void Promise.resolve(countCardView(username)).catch(() => undefined);   // counted, not waited for
 
@@ -155,7 +162,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The Story look is built for phones (docs/website-looks-v2.md §3.3; owner's call, 5 Oct 2026: "phone par story
   // website khule"): a phone gets the website itself then, not the card. ?view=card still opens the card.
   const story = card.site?.style?.blueprint === "story";
-  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && (!mobile || story) ? "site" : "card";
+  // An ADVANCED website (Rs 5,999) is built for the phone as much as the desktop (owner, 16 Oct 2026): a phone gets it too.
+  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && (!mobile || story || adv) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
   const tracking = await trackingP;
   const joinHandle = brand ? null : await ownerP;
@@ -176,9 +184,13 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The AI assistant's instructions stay on the server (the chat route reads them itself).
   // A product's page is added to the card for this request only, and kept out of the menu — the visitor came
   // to it from a product card or from search, and the rest of the site stays where it was.
-  const pub = product
-    ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, page!] }
-    : { ...card, botPersona: undefined, botKnowledge: undefined };
+  // The advanced website holds a hidden stub page per item instead, so every item opens without a reload (advancedItemStubs).
+  const itemStubs = adv ? advancedItemStubs(card) : [];
+  const pub = adv
+    ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, ...itemStubs] }
+    : product
+      ? { ...card, botPersona: undefined, botKnowledge: undefined, pages: [...card.pages, page!] }
+      : { ...card, botPersona: undefined, botKnowledge: undefined };
   const ld = <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(seoJsonLd(card, { url: product ? `${home}/${product.slug}` : urlFor(home, card, page), homeUrl: home, page, product: product?.item })).replace(/</g, "\\u003c") }} />;
   // "updates" is the website's own page (recent posters), not one of the card's pages.
   const initialPage = page?.slug ?? (slug === "updates" ? "updates" : undefined);
@@ -202,7 +214,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
           </a>
         )}
         {freeSite && story && <style>{`.site{--site-top:30px}`}</style>}
-        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={product ? [page!.slug] : []} />
+        <SiteView card={pub} qr={qr} brand={brand} shareUrl={shareUrl} free={expired} initialPage={initialPage} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} updates={card.site?.hidden?.includes("updates") ? [] : await recentUpdates(card.username)} unlisted={adv ? itemStubs.map((p) => p.slug) : product ? [page!.slug] : []} />
         <PixelNotice active={tracked} />
       </>
     );

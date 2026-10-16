@@ -8,6 +8,10 @@ import { Icon } from "@/components/site-icons";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic } from "@/components/pic";
 import { Btn, H2, Head, Photo, Sec, Stars, type VariantProps } from "@/components/site-adv/shared";
+import { LiveOpen } from "@/components/site-adv/motion";
+import { Seen } from "@/components/site-adv/abouts";
+import { Mono } from "@/components/site-adv/proof";
+import { shownValue } from "@/components/site-adv/close";
 
 /* ---------- trust: the card's own numbers in one ruled row ---------- */
 export function TrustStrip({ c, x }: VariantProps) {
@@ -15,7 +19,7 @@ export function TrustStrip({ c, x }: VariantProps) {
     <section id="adv-trust" data-sec="trust" data-reveal className="atr" aria-label={x.ui("In numbers", "एक नज़र में")}>
       <ul className="adv-wrap atr-list">
         {c.facts.map((f, i) => (
-          <li key={i}><CountUp value={x.t(f.value)} className="atr-num" /><span>{x.t(f.label)}</span></li>
+          <li key={i}><i className="atr-no" aria-hidden="true">{String(i + 1).padStart(2, "0")}</i><CountUp value={x.t(f.value)} className="atr-num" /><span>{x.t(f.label)}</span></li>
         ))}
       </ul>
     </section>
@@ -69,12 +73,16 @@ export function ServicesGrid({ c, x, index }: VariantProps) {
 /* ---------- gallery: one large tile and a ring of small ones ---------- */
 export function GalleryMosaic({ c, x, index }: VariantProps) {
   const urls = c.gallery.map((g) => g.url);
+  // One big tile plus a ring that fills a four-column grid with no hole (5 or 9 photos); fewer than five, an even grid with no big tile.
+  const n = c.gallery.length;
+  const shown = n >= 9 ? 9 : n >= 5 ? 5 : n;
+  const big = shown >= 5;
   return (
     <Sec k="gallery" tone={index % 2 ? "alt" : "paper"} wide>
       <Head eyebrow={x.ui("Gallery", "फ़ोटो")} title={x.ui("A look inside", "एक झलक")} />
-      <div className="agl">
-        {c.gallery.map((g, i) => (
-          <button key={g.url} type="button" className="agl-tile" data-big={i === 0 ? "" : undefined} onClick={() => x.zoom(urls, i, g.label || c.name)} aria-label={g.label || x.ui("Open photo", "फ़ोटो खोलें")}>
+      <div className="agl" data-n={shown} data-big={big ? "" : undefined}>
+        {c.gallery.slice(0, shown).map((g, i) => (
+          <button key={g.url} type="button" className="agl-tile" data-big={big && i === 0 ? "" : undefined} onClick={() => x.zoom(urls, i, g.label || c.name)} aria-label={g.label || x.ui("Open photo", "फ़ोटो खोलें")}>
             <Photo src={g.url} alt={g.label} sizes={i === 0 ? "(min-width: 900px) 50vw, 100vw" : "(min-width: 900px) 25vw, 50vw"} />
           </button>
         ))}
@@ -96,10 +104,11 @@ export function ProofCards({ c, x, index }: VariantProps) {
       </div>
       <div className="apr-grid">
         {r.items.map((q, i) => (
-          <figure key={i} className="adv-card adv-lift apr-card">
+          <figure key={i} className="adv-card adv-lift apr-card" data-lead={i === 0 ? "" : undefined}>
+            <span className="apr-qm" aria-hidden="true">&ldquo;</span>
             <Stars n={q.rating} />
             <blockquote>{x.t(q.text)}</blockquote>
-            {q.name && <figcaption>{x.t(q.name)}</figcaption>}
+            {q.name && <figcaption><Mono name={q.name} /><span>{x.t(q.name)}</span></figcaption>}
           </figure>
         ))}
       </div>
@@ -112,11 +121,33 @@ export function ProcessSteps({ c, x, index }: VariantProps) {
   return (
     <Sec k="process" tone={index % 2 ? "alt" : "paper"} wide>
       <Head eyebrow={x.ui("How it works", "कैसे काम करते हैं")} title={x.ui("Simple, in steps", "आसान, कुछ ही कदम में")} />
-      <ol className="apc">
+      <Seen><ol className="apc" style={{ ["--n" as string]: c.steps.length }}>
         {c.steps.map((s, i) => (
-          <li key={i}><span className="apc-no">{String(i + 1).padStart(2, "0")}</span><h3>{x.t(s.name)}</h3>{s.desc && <p>{x.t(s.desc)}</p>}</li>
+          <li key={i} style={{ ["--i" as string]: i }}><span className="apc-no">{String(i + 1).padStart(2, "0")}</span><i className="apc-dot" aria-hidden="true" /><h3>{x.t(s.name)}</h3>{s.desc && <p>{x.t(s.desc)}</p>}</li>
         ))}
-      </ol>
+      </ol></Seen>
+    </Sec>
+  );
+}
+
+/* ---------- process: cards that stack as you scroll (owner, 16 Oct 2026) ---------- */
+// Each step is a tall card that sticks under the header; the next one slides over it. Without sticky support, or on a short screen,
+// they simply follow one another. Every card carries the step's own words: nothing is added.
+export function ProcessStackCards({ c, x, index }: VariantProps) {
+  return (
+    <Sec k="process" tone={index % 2 ? "alt" : "paper"} wide>
+      <div className="aps">
+        <div className="aps-head"><Head eyebrow={x.ui("How it works", "कैसे काम करते हैं")} title={x.ui("From the first call to done", "पहली कॉल से काम पूरा होने तक")} /></div>
+        <ol className="aps-list">
+          {c.steps.map((s, i) => (
+            <li key={i} className="aps-card" data-t={i % 3} style={{ ["--i" as string]: i }}>
+              <span className="aps-no" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+              <div className="aps-tx"><h3>{x.t(s.name)}</h3>{s.desc && <p>{x.t(s.desc)}</p>}</div>
+              <span className="aps-of" aria-hidden="true">{i + 1} / {c.steps.length}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
     </Sec>
   );
 }
@@ -124,12 +155,15 @@ export function ProcessSteps({ c, x, index }: VariantProps) {
 /* ---------- faq: questions that open ---------- */
 export function FaqAccordion({ c, x, index }: VariantProps) {
   return (
-    <Sec k="faq" tone={index % 2 ? "alt" : "paper"}>
+    <Sec k="faq" tone={index % 2 ? "alt" : "paper"} wide>
       <div className="afq">
-        <Head eyebrow="FAQ" title={x.ui("Questions, answered", "आपके सवाल, हमारे जवाब")} />
+        <div className="afq-side">
+          <Head eyebrow="FAQ" title={x.ui("Questions, answered", "आपके सवाल, हमारे जवाब")} />
+          {x.wa && <p className="afq-ask"><span>{x.ui("Not here? Ask us directly.", "यहाँ नहीं मिला? सीधे पूछिए।")}</span><Btn kind="ghost" href={x.waHref()} external onClick={() => x.track("faq-ask")}><Icon name="whatsapp" /> {x.ui("Ask on WhatsApp", "WhatsApp पर पूछें")}</Btn></p>}
+        </div>
         <div className="afq-list">
           {c.faq.map((f, i) => (
-            <details key={i}><summary>{x.t(f.q)}<Icon name="chevron-down" /></summary><p>{x.t(f.a)}</p></details>
+            <details key={i}><summary><span className="afq-n" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span><span className="afq-q">{x.t(f.q)}</span><i className="afq-pm" aria-hidden="true" /></summary><p>{x.t(f.a)}</p></details>
           ))}
         </div>
       </div>
@@ -146,6 +180,7 @@ export function VisitSplit({ c, x, index }: VariantProps) {
       <div className="avs">
         <div>
           <Head eyebrow={x.ui("Visit us", "हमसे मिलें")} title={c.city ? (x.hi ? `${c.city} में हमसे मिलें` : `Find us in ${c.city}`) : x.ui("Come and see us", "आइए, मिलिए")} />
+          {v.hours.length > 0 && <p className="avs-live"><LiveOpen rows={v.hours} hi={x.hi} /></p>}
           {v.address && <p className="avs-addr"><Icon name="pin" size={20} /><span>{x.t(v.address)}</span></p>}
           <div className="adv-btn-row avs-btns">
             {dir && <Btn href={dir} external onClick={() => x.track("visit-directions")}><Icon name="directions" /> {x.ui("Get directions", "रास्ता देखें")}</Btn>}
@@ -217,7 +252,7 @@ export function FooterColumns({ c, x }: VariantProps) {
                   // upi:// does nothing in a desktop browser: the ID is shown as text.
                   ? <span><LinkIcon type={l.type} className="h-4 w-4" /> {l.value}</span>
                   : <a href={l.type === "whatsapp" ? x.waHref() : linkHref(l.type, l.value)} target="_blank" rel="noreferrer" onClick={() => x.track(`footer-${l.type}`)}>
-                    <LinkIcon type={l.type} className="h-4 w-4" /><span>{l.value || l.label}</span>{same && l.type === "whatsapp" && <small>· {x.t("WhatsApp & call")}</small>}
+                    <LinkIcon type={l.type} className="h-4 w-4" /><span>{shownValue(l) || l.label}</span>{same && l.type === "whatsapp" && <small>· {x.t("WhatsApp & call")}</small>}
                   </a>}
               </li>
             ))}
@@ -243,16 +278,21 @@ export function FooterColumns({ c, x }: VariantProps) {
 
 export const BASICS_CSS = `
 .atr{border-block:1px solid var(--line);background:var(--paper)}
-.atr-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s5) var(--s4);list-style:none;margin:0 auto;padding-block:clamp(1.5rem,4vw,2.5rem)}
-.atr-list li{display:flex;flex-direction:column;gap:.35rem}
-.atr-num{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.7rem,4.4vw,2.8rem);line-height:1;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
-.atr-list span:not(.atr-num){font-size:var(--t-meta);color:var(--muted)}
-@media (min-width:768px){.atr-list{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}.atr-list li+li{border-left:1px solid var(--line);padding-left:var(--s5)}}
+.atr-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0;list-style:none;margin:0 auto;padding-block:0}
+.atr-list li{position:relative;display:flex;flex-direction:column;gap:.45rem;padding:clamp(1.4rem,4vw,2.4rem) var(--s4) clamp(1.4rem,4vw,2.4rem) 0;border-bottom:1px solid var(--line)}
+.atr-list li:nth-child(even){padding-left:var(--s4);border-left:1px solid var(--line)}
+.atr-list li:nth-last-child(-n+2){border-bottom:0}
+.atr-no{font-style:normal;font-size:11px;font-weight:600;letter-spacing:.12em;color:var(--accent);font-variant-numeric:tabular-nums lining-nums}
+.atr-num{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2rem,6.4vw,4.4rem);line-height:.98;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.atr-list span:not(.atr-num){font-size:var(--t-meta);line-height:1.4;color:var(--muted)}
+@media (min-width:768px){.atr-list{grid-template-columns:repeat(auto-fit,minmax(0,1fr))}.atr-list li,.atr-list li:nth-child(even){border-bottom:0;padding:clamp(1.8rem,3.4vw,2.8rem) var(--s5)}.atr-list li+li{border-left:1px solid var(--line)}.atr-list li:first-child{padding-left:0}}
 
 .asv-grid{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fill,minmax(min(100%,260px),1fr))}
 .asv-item{display:flex;flex-direction:column}
 .asv-img{position:relative;display:block;aspect-ratio:4/5;padding:0;border:0;background:var(--paper-2);cursor:zoom-in;overflow:hidden}
 .asv-img:disabled{cursor:default}
+/* One column on a phone: a 4/5 photo made every card 800px tall (8 cards = 6,400px of scroll); a 4/3 frame keeps the card within one screen (16 Oct 2026 QA). */
+@media (max-width:559px){.asv-img{aspect-ratio:4/3}}
 .asv-badge{position:absolute;top:var(--s3);left:var(--s3);padding:.3em .75em;border-radius:var(--r-pill);background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:600}
 .asv-info{display:flex;flex-direction:column;gap:var(--s2);padding:var(--s4) var(--s4) var(--s5);flex:1}
 .asv-name{font-family:var(--font-text);font-size:1.0625rem;font-weight:600;line-height:1.3}
@@ -265,36 +305,71 @@ export const BASICS_CSS = `
 .asv-more{margin:var(--s5) 0 0}
 @media (min-width:900px){.asv-rows{grid-template-columns:1fr 1fr}}
 
-.agl{display:grid;gap:var(--s2);grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:minmax(0,1fr)}
-.agl-tile{position:relative;padding:0;border:0;overflow:hidden;aspect-ratio:1;border-radius:var(--r-img);background:var(--paper-2);cursor:zoom-in}
+.agl{display:grid;gap:var(--s2);grid-template-columns:repeat(2,minmax(0,1fr))}
+.agl-tile{position:relative;padding:0;border:0;overflow:hidden;aspect-ratio:1;border-radius:var(--r-img);background:var(--paper-2);cursor:zoom-in;color:var(--hero-text);font:inherit}
 .agl-tile[data-big]{grid-column:span 2;aspect-ratio:16/10}
-.agl-tile .adv-photo{transition:transform .6s cubic-bezier(.2,.7,.2,1)}.agl-tile:hover .adv-photo{transform:scale(1.04)}
-@media (min-width:900px){.agl{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}.agl-tile[data-big]{grid-column:span 2;grid-row:span 2;aspect-ratio:auto}}
+.agl-tile .adv-photo{transition:transform .9s cubic-bezier(.2,.7,.2,1)}.agl-tile:hover .adv-photo,.agl-tile:focus-visible .adv-photo{transform:scale(1.05)}
+.agl-cap{position:absolute;inset:auto 0 0 0;display:flex;align-items:baseline;gap:.7em;padding:2.5rem var(--s4) var(--s3);background:linear-gradient(transparent,var(--scrim-bot));font-size:var(--t-meta);font-weight:500;line-height:1.3;text-align:left;opacity:0;transform:translateY(6px);transition:opacity .3s,transform .3s}
+.agl-cap i{font-style:normal;font-family:var(--font-display);font-size:1.1rem;font-variant-numeric:lining-nums}
+.agl-tile:hover .agl-cap,.agl-tile:focus-visible .agl-cap{opacity:1;transform:none}
+@media (hover:none){.agl-cap{opacity:1;transform:none}.agl-cap i{display:none}.agl-cap:not(:has(span)){display:none}}
+@media (min-width:900px){.agl{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3)}.agl[data-n="3"]{grid-template-columns:repeat(3,minmax(0,1fr))}.agl-tile[data-big]{grid-column:span 2;grid-row:span 2;aspect-ratio:auto;min-height:0}.agl-tile[data-big] .adv-photo{position:absolute;inset:0}.agl:not([data-big]) .agl-tile{aspect-ratio:4/5}}
 
 .apr-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:var(--s5)}
 .apr-avg{display:flex;align-items:center;gap:var(--s3);margin:0 0 clamp(2rem,5vw,3.5rem);font-size:var(--t-meta);color:var(--muted)}
 .apr-avg b{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.2rem,5vw,3.4rem);line-height:1;color:var(--ink)}
 .apr-grid{display:grid;gap:var(--gap);grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr))}
-.apr-card{margin:0;padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4)}
+.apr-card{position:relative;margin:0;padding:var(--s5);display:flex;flex-direction:column;gap:var(--s4);overflow:hidden;border-top:3px solid var(--accent)}
+.apr-qm{position:absolute;top:-.05em;right:.15em;font-family:var(--font-display);font-size:6.5rem;line-height:1;color:var(--accent);opacity:.14;pointer-events:none}
 .apr-card blockquote{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(1.1rem,2vw,1.35rem);line-height:1.4;text-wrap:pretty}
+.apr-card[data-lead] blockquote{font-size:clamp(1.2rem,2.3vw,1.55rem)}
 .site:lang(hi) .apr-card blockquote{line-height:1.6}
-.apr-card figcaption{margin-top:auto;font-size:var(--t-meta);font-weight:600;color:var(--muted)}
+.apr-card figcaption{margin-top:auto;display:flex;align-items:center;gap:var(--s3);font-size:var(--t-meta);font-weight:600;color:var(--muted)}
+@media (min-width:900px){.apr-grid:has(.apr-card:nth-child(3)){grid-template-columns:1.25fr 1fr 1fr}}
 
-.apc{display:grid;gap:var(--s6) var(--gap);list-style:none;margin:0;padding:0;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr))}
-.apc li{border-top:2px solid var(--ink);padding-top:var(--s4)}
-.apc-no{display:block;font-family:var(--font-display);font-size:clamp(2rem,4vw,3rem);line-height:1;color:var(--accent);font-variant-numeric:lining-nums}
-.apc h3{margin-top:var(--s3);font-family:var(--font-text);font-size:1.0625rem;font-weight:600}
-.apc p{margin:var(--s2) 0 0;font-size:var(--t-meta);line-height:1.55;color:var(--muted)}
+.apc{display:grid;gap:var(--s6) var(--gap);list-style:none;margin:0;padding:0;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));counter-reset:apc}
+.apc li{position:relative;padding-top:var(--s5);border-top:1px solid var(--line)}
+.apc-dot{position:absolute;top:-6px;left:0;width:11px;height:11px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 5px var(--paper)}
+.adv-sec[data-tone=alt] .apc-dot{box-shadow:0 0 0 5px var(--paper-2)}
+.apc-no{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(3rem,7vw,5.2rem);line-height:.9;letter-spacing:var(--display-tr);color:transparent;-webkit-text-stroke:1.2px var(--accent);font-variant-numeric:lining-nums}
+.apc h3{margin-top:var(--s4);font-family:var(--font-text);font-size:1.125rem;font-weight:600;line-height:1.3}
+.apc p{margin:var(--s2) 0 0;font-size:var(--t-meta);line-height:1.6;color:var(--muted)}
+@media (prefers-reduced-motion:no-preference){[data-arm]:not([data-seen]) .apc li{opacity:0;transform:translateY(22px)}.site[data-adv]:not([data-motion=none]) [data-arm] .apc li{transition:opacity .8s cubic-bezier(.2,.7,.2,1) calc(var(--i,0)*110ms),transform .8s cubic-bezier(.2,.7,.2,1) calc(var(--i,0)*110ms)}}
 
-.afq{display:grid;gap:var(--s5)}
-.afq-list{border-top:1px solid var(--line)}
+/* process: stacking cards */
+.aps{display:grid;gap:var(--s6)}
+.aps-list{list-style:none;margin:0;padding:0;display:grid;gap:var(--s4)}
+.aps-card{position:sticky;top:calc(76px + var(--i,0) * 14px);display:grid;grid-template-columns:auto 1fr;gap:var(--s3) var(--s5);align-items:start;min-height:clamp(11rem,34vw,16rem);padding:clamp(1.25rem,4vw,2.75rem);border-radius:var(--r-tile);background:var(--paper-2);border:1px solid var(--line);box-shadow:0 -8px 24px rgb(0 0 0/.06)}
+.adv-sec[data-tone=alt] .aps-card{background:var(--paper)}
+.aps-card[data-t="1"]{background:var(--accent-soft)}
+.aps .aps-card[data-t="2"]{background:var(--hero-ink);color:var(--hero-text);border-color:transparent}
+.aps-card[data-t="2"] .aps-tx p,.aps-card[data-t="2"] .aps-of{color:var(--hero-muted)}
+.aps-no{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(3.4rem,13vw,8rem);line-height:.82;letter-spacing:var(--display-tr);color:var(--accent);font-variant-numeric:lining-nums}
+.aps-card[data-t="2"] .aps-no{color:color-mix(in srgb,var(--accent) 55%,var(--hero-text))}
+.aps-tx h3{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.4rem,3.4vw,2.4rem);line-height:1.1;letter-spacing:var(--display-tr)}
+.site:lang(hi) .aps-tx h3{line-height:1.35;letter-spacing:0;font-weight:var(--display-w-hi)}
+.aps-tx p{margin:var(--s3) 0 0;max-width:46ch;font-size:var(--t-body);line-height:1.55;color:var(--muted)}
+.aps-of{grid-column:1 / -1;align-self:end;font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--muted);font-variant-numeric:tabular-nums lining-nums}
+@media (min-width:900px){.aps{grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(2rem,6vw,5rem);align-items:start}.aps-head{position:sticky;top:96px}.aps-card{top:calc(92px + var(--i,0) * 18px);column-gap:clamp(1.5rem,4vw,3rem)}.aps-of{display:none}}
+@media (max-height:520px){.aps-card{position:static}}
+@media (prefers-reduced-motion:reduce){.aps-card{position:static}}
+
+.afq{display:grid;gap:clamp(1.5rem,4vw,2.5rem)}
+.afq-ask{display:grid;gap:var(--s3);justify-items:start;margin:var(--s6) 0 0;font-size:var(--t-meta);color:var(--muted)}
+.afq-list{border-top:1px solid var(--ink)}
 .afq details{border-bottom:1px solid var(--line)}
-.afq summary{display:flex;align-items:center;justify-content:space-between;gap:var(--s4);cursor:pointer;list-style:none;padding:var(--s4) 0;font-size:1.0625rem;font-weight:600}
+.afq summary{display:grid;grid-template-columns:2.2rem 1fr auto;align-items:baseline;gap:var(--s3);cursor:pointer;list-style:none;padding:var(--s5) 0;font-size:clamp(1.05rem,2vw,1.3rem);font-weight:600;line-height:1.35}
 .afq summary::-webkit-details-marker{display:none}
-.afq summary svg{flex:none;color:var(--muted);transition:transform .2s}.afq details[open] summary svg{transform:rotate(180deg)}
-.afq details p{margin:0;padding:0 0 var(--s5);font-size:var(--t-body);line-height:var(--body-lh);color:var(--muted);max-width:65ch}
+.afq summary:hover .afq-q{color:var(--accent)}
+.afq-n{font-size:12px;font-weight:600;letter-spacing:.1em;color:var(--accent);font-variant-numeric:tabular-nums lining-nums}
+.afq-pm{position:relative;align-self:center;width:18px;height:18px}
+.afq-pm::before,.afq-pm::after{content:"";position:absolute;left:0;right:0;top:50%;height:2px;margin-top:-1px;background:currentColor;transition:transform .3s}
+.afq-pm::after{transform:rotate(90deg)}.afq details[open] .afq-pm::after{transform:rotate(0)}
+.afq details p{margin:0;padding:0 0 var(--s5) calc(2.2rem + var(--s3));font-size:var(--t-body);line-height:var(--body-lh);color:var(--muted);max-width:65ch}
+@media (min-width:900px){.afq{grid-template-columns:minmax(0,4fr) minmax(0,7fr);gap:clamp(2.5rem,6vw,5rem);align-items:start}.afq-side{position:sticky;top:96px}}
 
 .avs{display:grid;gap:clamp(2rem,5vw,3.5rem);align-items:start}
+.avs-live{margin:0 0 var(--s4)}
 .avs-addr{display:flex;gap:var(--s3);align-items:flex-start;margin:0 0 var(--s5);font-size:var(--t-sub);line-height:1.5}.avs-addr svg{flex:none;margin-top:.2em;color:var(--accent)}
 .avs-hours{padding:var(--s5)}
 .avs-hours table,.aft-hours{width:100%;border-collapse:collapse;margin-top:var(--s3);font-size:var(--t-meta)}
@@ -316,6 +391,7 @@ export const BASICS_CSS = `
 .aft-list{list-style:none;margin:var(--s4) 0 0;padding:0;display:grid;gap:var(--s3)}
 .aft-list a,.aft-list span{display:inline-flex;align-items:center;gap:var(--s2);color:inherit;text-decoration:none;opacity:.88;max-width:100%}.aft-list a:hover{opacity:1}
 .aft-list small{opacity:.65}
+@media (max-width:767px){.aft-list a{min-height:40px}}
 .aft-addr{margin:var(--s4) 0 0;line-height:1.6;opacity:.88}
 .aft-hours td{padding:.2rem 0;opacity:.88}.aft-hours td+td{text-align:right}
 .aft-legal-wrap{margin-top:clamp(2rem,5vw,3.5rem);border-top:1px solid var(--hero-line)}

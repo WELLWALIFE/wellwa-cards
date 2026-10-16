@@ -13,6 +13,7 @@ import type { AdvancedSpec } from "@/lib/site-advanced";
 import { Pic } from "@/components/pic";
 import { Icon } from "@/components/site-icons";
 import type { SiteContent, Offering } from "@/components/site-adv/content";
+import { THEME_CSS } from "@/components/site-adv/theme";
 
 export type { SiteContent, Offering };
 
@@ -76,9 +77,10 @@ export function Lede({ children, className = "" }: { children: ReactNode; classN
   if (!children) return null;
   return <p className={`adv-lede ${className}`}>{children}</p>;
 }
-/** Eyebrow + title + lede, stacked: the head most sections open with. */
-export function Head({ eyebrow, title, lede, className = "" }: { eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode; className?: string }) {
-  return <div className={`adv-head ${className}`}><Eyebrow>{eyebrow}</Eyebrow><H2 className={eyebrow ? "mt-3" : ""}>{title}</H2><Lede>{lede}</Lede></div>;
+/** Eyebrow + title + lede, stacked: the head most sections open with. `align="center"` centres all three; `split` sets the lede
+ *  beside the title on a wide screen (title left, lede right, bottoms aligned) - the editorial head of a section that has room. */
+export function Head({ eyebrow, title, lede, className = "", align, split = false }: { eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode; className?: string; align?: "center"; split?: boolean }) {
+  return <div className={`adv-head ${align === "center" ? "is-center" : ""} ${split && lede ? "is-split" : ""} ${className}`}><Eyebrow>{eyebrow}</Eyebrow><H2 className={eyebrow ? "mt-3" : ""}>{title}</H2><Lede>{lede}</Lede></div>;
 }
 
 /** The three control shapes of the shared design system (filled, ghost, plain link); the corners follow the spec's shape. */
@@ -108,6 +110,13 @@ export function Photo({ src, alt = "", className = "", eager = false, priority =
 }
 
 /* ---------- the base CSS: rides in the page's one inline <style>, after the shared design-system CSS ---------- */
+/** "₹2,200 / month" -> figure "₹2,200" and unit "/ month" (null when there is no unit). Set at headline size the whole string wrapped, a "/"
+ *  stranded at a line end in the tier columns and on the item page (16 Oct 2026 QA); the unit is drawn small beside the figure. */
+export function splitUnit(price: string): { fig: string; unit: string } | null {
+  const m = /^(.{1,24}?)\s*(\/\s*[A-Za-z\u0900-\u097F].*|per\s+\S.*)$/i.exec((price ?? "").trim());
+  return m ? { fig: m[1], unit: m[2] } : null;
+}
+
 export const ADV_BASE_CSS = `
 .site[data-adv]{background:var(--paper);color:var(--ink);font-family:var(--font-text);font-weight:var(--text-w,400);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
 .site[data-adv] h1,.site[data-adv] h2,.site[data-adv] h3{font-family:var(--font-display);font-weight:var(--display-w);margin:0}
@@ -130,6 +139,8 @@ export const ADV_BASE_CSS = `
 .adv-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
 .adv-sec[data-tone=alt] .adv-card{background:var(--paper)}
 .adv-stars{display:inline-flex;gap:2px;color:var(--star)}.adv-stars [data-off]{color:var(--line)}
+.adv-unit{font-family:var(--font-text);font-size:.46em;font-weight:500;letter-spacing:0;color:var(--muted);margin-left:.4em;white-space:nowrap}
+[data-unit]{white-space:nowrap}
 .adv-chip{display:inline-flex;align-items:center;gap:.4em;padding:.35em .8em;border:1px solid var(--line);border-radius:var(--r-pill);font-size:var(--t-meta);font-weight:500;color:var(--muted);background:var(--paper)}
 .adv-rule{display:block;width:44px;height:2px;background:var(--accent);border:0;margin:0}
 .adv-btn-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s4)}
@@ -147,4 +158,4 @@ export const ADV_BASE_CSS = `
 .site[data-adv][data-motion=none] [data-reveal]{opacity:1!important;transform:none!important}
 @media (prefers-reduced-motion:reduce){.site[data-adv] *,.site[data-adv] *::before,.site[data-adv] *::after{animation:none!important;transition:none!important}.site[data-adv].js [data-reveal]{opacity:1!important;transform:none!important}}
 @media print{.site[data-adv] [data-reveal]{opacity:1!important;transform:none!important}}
-`;
+${THEME_CSS}`;

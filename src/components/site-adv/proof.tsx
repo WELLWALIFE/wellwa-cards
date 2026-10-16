@@ -29,10 +29,10 @@ import { Btn, Eyebrow, H2, Head, Photo, Sec, Stars, type AdvCtx, type SiteConten
 
 /* ================= shared helpers ================= */
 
-const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-const pad2 = (n: number) => String(n).padStart(2, "0");
-const first = (s: string) => (Array.from(s.trim())[0] ?? "").toUpperCase();
-const css = (v: Record<string, string | number>) => v as CSSProperties;
+export const reducedMotion = () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+export const pad2 = (n: number) => String(n).padStart(2, "0");
+export const first = (s: string) => (Array.from(s.trim())[0] ?? "").toUpperCase();
+export const css = (v: Record<string, string | number>) => v as CSSProperties;
 
 /** The pages the visitor can see (the same rule as buildContent). */
 function visibleBlocks(x: AdvCtx) {
@@ -42,11 +42,11 @@ function visibleBlocks(x: AdvCtx) {
 
 /* ---------- photos ---------- */
 
-type Frame = { url: string; label: string; group: string };
+export type Frame = { url: string; label: string; group: string };
 /** The photos the section shows: the gallery blocks in page order (with their album heading), then whatever else the page
  *  owns that is a picture (carousel / image blocks), one frame per address. content.ts caps its list at nine; the gallery
  *  variants take up to `max`, so a business that uploaded twenty photos is not cut to nine. */
-function framesOf(c: SiteContent, x: AdvCtx, max = 18): Frame[] {
+export function framesOf(c: SiteContent, x: AdvCtx, max = 18): Frame[] {
   const own: Frame[] = [];
   for (const b of visibleBlocks(x)) if (b.kind === "gallery") for (const i of b.images) if (i.url) own.push({ url: i.url, label: (i.label ?? "").trim(), group: (i.group ?? "").trim() });
   const seen = new Set<string>();
@@ -60,7 +60,7 @@ function framesOf(c: SiteContent, x: AdvCtx, max = 18): Frame[] {
 
 /** One photo as a button that opens the lightbox on `urls` at `i`. A caption (the owner's label) shows on hover / focus and
  *  always on a touch screen. */
-function FrameBtn({ f, i, urls, x, name, cls = "", style, sizes, label, children }: {
+export function FrameBtn({ f, i, urls, x, name, cls = "", style, sizes, label, children }: {
   f: Frame; i: number; urls: string[]; x: AdvCtx; name: string; cls?: string; style?: CSSProperties; sizes?: string; label?: string; children?: ReactNode;
 }) {
   const cap = f.label ? x.t(f.label) : "";
@@ -79,11 +79,11 @@ function FrameBtn({ f, i, urls, x, name, cls = "", style, sizes, label, children
 
 /* ---------- reviews ---------- */
 
-type Rev = { name: string; text: string; rating: number };
-type Reviews = { all: Rev[]; rated: number; avg: number; total: number; dist: number[] };
+export type Rev = { name: string; text: string; rating: number };
+export type Reviews = { all: Rev[]; rated: number; avg: number; total: number; dist: number[] };
 /** Every review the visitor can see, best first (rating, then length: the order content.ts uses), with the average over the
  *  rated ones and how many gave 1..5 stars. content.ts hands the sections three; a wall, a carousel and a breakdown want all. */
-function reviewsOf(c: SiteContent, x: AdvCtx): Reviews {
+export function reviewsOf(c: SiteContent, x: AdvCtx): Reviews {
   let raw = visibleBlocks(x).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((r) => (r.text ?? "").trim());
   if (!raw.length) raw = c.reviews.items;
   const all: Rev[] = raw
@@ -94,15 +94,15 @@ function reviewsOf(c: SiteContent, x: AdvCtx): Reviews {
   for (const r of rated) dist[r.rating - 1]++;
   return { all, rated: rated.length, avg: rated.length ? rated.reduce((s, r) => s + r.rating, 0) / rated.length : 0, total: all.length, dist };
 }
-const countLabel = (x: AdvCtx, n: number) => (x.hi ? `${n} रिव्यू` : `${n} review${n === 1 ? "" : "s"}`);
+export const countLabel = (x: AdvCtx, n: number) => (x.hi ? `${n} रिव्यू` : `${n} review${n === 1 ? "" : "s"}`);
 
 /** The average, five stars and the review count in one line (only when there are enough ratings to average). */
-function AvgLine({ r, x }: { r: Reviews; x: AdvCtx }) {
+export function AvgLine({ r, x }: { r: Reviews; x: AdvCtx }) {
   if (r.rated < 3) return null;
   return <p className="prf-avg"><b>{r.avg.toFixed(1)}</b><Stars n={r.avg} size={16} /><span>{countLabel(x, r.total)}</span></p>;
 }
 /** A round monogram of the reviewer's name (nothing when the review has no name). */
-function Mono({ name }: { name: string }) {
+export function Mono({ name }: { name: string }) {
   return name ? <span className="prf-av" aria-hidden="true">{first(name)}</span> : null;
 }
 
@@ -110,15 +110,15 @@ function Mono({ name }: { name: string }) {
 
 type Fact = SiteContent["facts"][number];
 /** The fact's own icon (from what it says), else a neutral tick; never a wrong glyph. */
-const factIcon = (f: Fact): IconName => iconFor(`${f.label} ${f.value}`) ?? (/★/.test(f.value) ? "star" : "check");
+export const factIcon = (f: Fact): IconName => iconFor(`${f.label} ${f.value}`) ?? (/★/.test(f.value) ? "star" : "check");
 /** The number's size class by its length: "Since 2015" cannot be set as large as "12". */
-const lenOf = (v: string) => { const n = Array.from(v).length; return n <= 6 ? "s" : n <= 10 ? "m" : "l"; };
+export const lenOf = (v: string) => { const n = Array.from(v).length; return n <= 6 ? "s" : n <= 10 ? "m" : "l"; };
 
 /* ---------- a slow ribbon ---------- */
 
 /** A seamless ribbon of `items`, repeated until one copy is at least `min` items long. Hidden from assistive tech (the caller
  *  gives the same words once, as an sr-only list); still, and wrapped, under reduced motion or the spec's motion "none". */
-function Rail({ items, min, speed = 38 }: { items: ReactNode[]; min: number; speed?: number }) {
+export function Rail({ items, min, speed = 38, reverse = false }: { items: ReactNode[]; min: number; speed?: number; reverse?: boolean }) {
   if (!items.length) return null;
   const reps = Math.max(1, Math.ceil(min / items.length));
   const copy = (k: number) => (
@@ -128,12 +128,12 @@ function Rail({ items, min, speed = 38 }: { items: ReactNode[]; min: number; spe
       ))}
     </div>
   );
-  return <div className="rl" aria-hidden="true"><div className="rl-track" style={{ animationDuration: `${speed}s` }}>{copy(0)}{copy(1)}</div></div>;
+  return <div className="rl" aria-hidden="true"><div className="rl-track" style={{ animationDuration: `${speed}s`, ...(reverse ? { animationDirection: "reverse" as const } : {}) }}>{copy(0)}{copy(1)}</div></div>;
 }
 
 /* ================= GALLERY ================= */
 
-const MASONRY_AR = ["4/5", "1/1", "3/4", "5/4", "4/5", "3/2", "1/1", "3/4"];
+export const MASONRY_AR = ["4/5", "1/1", "3/4", "5/4", "4/5", "3/2", "1/1", "3/4"];
 
 /* ---------- masonry ---------- */
 export function GalleryMasonry({ c, x, index }: VariantProps) {
@@ -256,6 +256,10 @@ export function GalleryAlbumTabs({ c, x, index }: VariantProps) {
     : [{ key: "all", label: "", items: fr }];
   const at = Math.min(tab, albums.length - 1);
   const album = albums[at];
+  // A plain grid is four wide on a laptop: 5 or 6 photos left a half-empty last row (16 Oct 2026 QA). It shows the count that fills whole rows
+  // (3 or 4 across), the rest stay one swipe away in the viewer.
+  const fit = (n: number) => (n <= 4 || n % 4 === 0 || n % 3 === 0 ? n : Math.max(n - (n % 4), n - (n % 3)));
+  const shownItems = tabbed ? album.items : album.items.slice(0, fit(album.items.length));
   const urls = album.items.map((f) => f.url);
   const pick = (i: number) => { const j = (i + albums.length) % albums.length; setTab(j); refs.current[j]?.focus(); };
   const onKey = (e: KeyboardEvent, i: number) => {
@@ -266,8 +270,8 @@ export function GalleryAlbumTabs({ c, x, index }: VariantProps) {
     else if (k === "End") { e.preventDefault(); pick(albums.length - 1); }
   };
   const grid = (
-    <div className="gx-panel" key={album.key} {...(tabbed ? { role: "tabpanel", id: `${uid}-p`, "aria-labelledby": `${uid}-t${at}`, tabIndex: 0 } : {})}>
-      {album.items.map((f, i) => <FrameBtn key={f.url} f={f} i={i} urls={urls} x={x} name={c.name} sizes="(min-width:900px) 22vw, 50vw" />)}
+    <div className="gx-panel" key={album.key} data-n={shownItems.length} {...(tabbed ? { role: "tabpanel", id: `${uid}-p`, "aria-labelledby": `${uid}-t${at}`, tabIndex: 0 } : {})}>
+      {shownItems.map((f, i) => <FrameBtn key={f.url} f={f} i={i} urls={urls} x={x} name={c.name} sizes="(min-width:900px) 22vw, 50vw" />)}
     </div>
   );
   return (
@@ -333,19 +337,28 @@ export function GalleryLightboxGrid({ c, x, index }: VariantProps) {
 /* ================= PROOF ================= */
 
 /* ---------- review wall ---------- */
+// The best review leads as a large quote on the ink field; the others sit round it on a six-column grid (a lone last card runs across,
+// two share the row). One review: just the large quote.
 export function ProofWall({ c, x, index }: VariantProps) {
   const r = reviewsOf(c, x);
   if (!r.total) return null;
   const items = r.all.slice(0, 9);
+  const [lead, ...rest] = items;
+  const rem = Math.max(0, rest.length - 2) % 3;
   return (
     <Sec k="proof" tone={index % 2 ? "alt" : "paper"} wide>
       <div className="prf-top">
         <Head eyebrow={x.ui("Reviews", "रिव्यू")} title={x.ui("Words from our customers", "हमारे ग्राहकों की ज़ुबानी")} />
         <AvgLine r={r} x={x} />
       </div>
-      <div className="prf-wall" data-n={Math.min(items.length, 3)}>
-        {items.map((q, i) => (
-          <figure key={i} className="adv-card prf-note" data-feat={items.length >= 4 && i === 1 ? "" : undefined}>
+      <div className="prf-wall" data-n={Math.min(items.length, 4)}>
+        <figure className="prf-feat" data-l={lead.text.length <= 140 ? "l" : lead.text.length <= 260 ? "m" : "s"}>
+          <span className="prf-feat-qm" aria-hidden="true">&ldquo;</span>
+          <blockquote>{x.t(lead.text)}</blockquote>
+          <figcaption><Stars n={lead.rating} size={16} />{lead.name && <span className="prf-who"><Mono name={lead.name} />{x.t(lead.name)}</span>}</figcaption>
+        </figure>
+        {rest.map((q, i) => (
+          <figure key={i} className="adv-card prf-note" data-last={i === rest.length - 1 && i >= 2 ? (rem === 1 ? "full" : rem === 2 ? "half" : undefined) : undefined} data-half={rem === 2 && i === rest.length - 2 && i >= 2 ? "" : undefined}>
             <Stars n={q.rating} />
             <blockquote>{x.t(q.text)}</blockquote>
             {q.name && <figcaption><Mono name={q.name} /><span>{x.t(q.name)}</span></figcaption>}
@@ -456,9 +469,10 @@ export function ProofSummary({ c, x, index }: VariantProps) {
 export function ProofResults({ c, x }: VariantProps) {
   const r = reviewsOf(c, x);
   if (!r.total) return null;
-  // Numbers only when they mean something: an average of two reviews is not a result.
-  const stats: { value: string; label: string }[] = [];
-  if (r.rated >= 3) {
+  // Numbers only when they mean something: the owner's own figures (years, students placed, pass rate) lead when the card has them,
+  // else what the reviews say; an average of two reviews is not a result.
+  const stats: { value: string; label: string }[] = c.facts.length >= 2 ? c.facts.slice(0, 4).map((f) => ({ value: x.t(f.value), label: x.t(f.label) })) : [];
+  if (!stats.length && r.rated >= 3) {
     stats.push({ value: `${r.avg.toFixed(1)}★`, label: x.ui("average rating", "औसत रेटिंग") });
     stats.push({ value: String(r.total), label: x.ui("customer reviews", "ग्राहक रिव्यू") });
     const five = Math.round((r.dist[4] / r.rated) * 100);
@@ -471,8 +485,9 @@ export function ProofResults({ c, x }: VariantProps) {
   const solo = !stats.length;
   return (
     <Sec k="proof" tone="ink" wide label={x.ui("Customer results", "ग्राहकों के नतीजे")}>
+      {stats.length > 0 && <Head className="prf-res-head" eyebrow={x.ui("Results", "नतीजे")} title={x.ui("The numbers we stand behind", "वो आँकड़े जिन पर हमें भरोसा है")} />}
       {stats.length > 0 && (
-        <ul className="prf-res-stats" style={css({ "--n": stats.length })}>
+        <ul className="prf-res-stats" data-n={stats.length} style={css({ "--n": stats.length })}>
           {stats.map((s, i) => (
             <li key={i} data-l={lenOf(s.value)}><CountUp value={s.value} className="prf-res-num" /><span>{s.label}</span></li>
           ))}
@@ -602,7 +617,7 @@ export function TrustSplitCards({ c, x, index }: VariantProps) {
 
 /* ================= CSS ================= */
 
-export const PROOF_CSS = `
+const PROOF_BASE_CSS = `
 /* ---- the slow ribbon (trust ticker, clients strip) ---- */
 .rl{overflow:hidden;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
 .rl-track{display:flex;width:max-content;animation:rl-run 38s linear infinite}
@@ -661,6 +676,7 @@ export const PROOF_CSS = `
 .gx-tab small{font-size:12px;opacity:.7;font-variant-numeric:tabular-nums lining-nums}
 .gx-panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s2);align-content:start;animation:gx-in .45s cubic-bezier(.2,.7,.2,1)}
 .gx-panel .gx-tile{aspect-ratio:4/5}
+.gx-album[data-plain] .gx-panel>:first-child:nth-last-child(odd){grid-column:span 2}.gx-album[data-plain] .gx-panel>:first-child:nth-last-child(odd) .gx-tile{aspect-ratio:16/10}
 @keyframes gx-in{from{opacity:0;transform:translateY(8px)}}
 @media (min-width:900px){
 .gx-album{grid-template-columns:minmax(15rem,.34fr) minmax(0,1fr);gap:var(--s8);align-items:start}
@@ -670,7 +686,9 @@ export const PROOF_CSS = `
 .gx-panel{grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--s3)}
 .gx-album[data-plain]{grid-template-columns:minmax(0,1fr);gap:0}
 .gx-album[data-plain] .gx-album-side{position:static}
+.gx-album[data-plain] .gx-panel>:first-child:nth-last-child(odd){grid-column:auto}.gx-album[data-plain] .gx-panel>:first-child:nth-last-child(odd) .gx-tile{aspect-ratio:4/5}
 .gx-album[data-plain] .gx-panel{grid-template-columns:repeat(4,minmax(0,1fr))}
+.gx-album[data-plain] .gx-panel:is([data-n="3"],[data-n="6"],[data-n="9"],[data-n="15"]){grid-template-columns:repeat(3,minmax(0,1fr))}
 }
 
 /* ---- gallery: lightbox grid ---- */
@@ -699,18 +717,31 @@ export const PROOF_CSS = `
 .site:lang(hi) .prf-av{font-weight:var(--display-w-hi)}
 
 /* ---- proof: review wall ---- */
-.prf-wall{margin-top:clamp(2rem,5vw,3.5rem);column-count:1;column-gap:var(--gap)}
-.prf-wall[data-n="1"]{max-width:40rem}
-@media (min-width:700px){.prf-wall:not([data-n="1"]){column-count:2}}
-@media (min-width:1100px){.prf-wall[data-n="3"]{column-count:3}}
-.prf-note{margin:0 0 var(--gap);padding:clamp(1.25rem,2.4vw,1.75rem);display:flex;flex-direction:column;gap:var(--s4);break-inside:avoid;transition:border-color .25s,box-shadow .25s}
-.prf-note:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:var(--e-1)}
+.prf-wall{margin-top:clamp(2rem,5vw,3.5rem);display:grid;grid-template-columns:minmax(0,1fr);gap:var(--gap)}
+.prf-feat{position:relative;margin:0;padding:clamp(1.5rem,4vw,3rem);border-radius:var(--r-tile);background:var(--hero-ink);color:var(--hero-text);display:flex;flex-direction:column;justify-content:space-between;gap:var(--s5);overflow:hidden}
+.prf-feat-qm{display:block;height:clamp(2.2rem,5vw,3.6rem);font-family:var(--font-display);font-size:clamp(4.5rem,10vw,7.5rem);line-height:.9;color:var(--accent)}
+.prf-feat blockquote{margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.3rem,3vw,2.1rem);line-height:1.15;letter-spacing:var(--display-tr);text-wrap:balance;color:var(--hero-text)}
+.prf-feat[data-l=l] blockquote{font-size:clamp(1.7rem,4.2vw,3rem);line-height:1.08}.prf-feat[data-l=s] blockquote{font-size:clamp(1.1rem,2.2vw,1.45rem);line-height:1.35;letter-spacing:0}
+.site:lang(hi) .prf-feat blockquote{line-height:1.45;letter-spacing:0;font-weight:var(--display-w-hi)}
+.prf-feat figcaption{display:flex;flex-wrap:wrap;align-items:center;gap:var(--s3) var(--s5)}
+.prf-feat .adv-stars{color:var(--accent)}
+.prf-feat .prf-who{color:var(--hero-muted)}
+.prf-feat .prf-av{background:color-mix(in srgb,var(--hero-text) 14%,transparent);color:var(--hero-text)}
+.prf-note{margin:0;padding:clamp(1.25rem,2.4vw,1.75rem);display:flex;flex-direction:column;gap:var(--s4);transition:border-color .25s,box-shadow .25s,transform .35s}
+.prf-note:hover{border-color:color-mix(in srgb,var(--accent) 50%,var(--line));box-shadow:var(--e-1);transform:translateY(-3px)}
 .prf-note blockquote{margin:0;font-family:var(--font-display);font-weight:400;font-size:clamp(1.05rem,1.5vw,1.2rem);line-height:1.5;text-wrap:pretty;color:var(--ink)}
 .site:lang(hi) .prf-note blockquote,.site:lang(hi) .prf-row blockquote{line-height:1.7}
-.prf-note figcaption{display:flex;align-items:center;gap:var(--s3);font-size:var(--t-meta);font-weight:600;color:var(--muted)}
-section .prf-wall .prf-note[data-feat]{background:var(--hero-ink);border-color:transparent;color:var(--hero-text)}
-.prf-note[data-feat] blockquote{color:var(--hero-text)}.prf-note[data-feat] figcaption{color:var(--hero-muted)}
-.prf-note[data-feat] .prf-av{background:color-mix(in srgb,var(--hero-text) 14%,transparent);color:var(--hero-text)}
+.prf-note figcaption{margin-top:auto;display:flex;align-items:center;gap:var(--s3);font-size:var(--t-meta);font-weight:600;color:var(--muted)}
+@media (min-width:900px){
+.prf-wall{grid-template-columns:repeat(6,minmax(0,1fr))}
+.prf-feat{grid-column:span 4;grid-row:span 2}
+.prf-note{grid-column:span 2}
+.prf-wall[data-n="1"] .prf-feat{grid-column:1 / -1}
+.prf-wall[data-n="2"] .prf-feat{grid-row:span 1}.prf-wall[data-n="2"] .prf-note{grid-column:span 2}
+.prf-wall[data-n="3"] .prf-note{grid-column:span 2}
+.prf-note[data-last=full]{grid-column:1 / -1}
+.prf-note[data-last=half],.prf-note[data-half]{grid-column:span 3}
+}
 
 /* ---- proof: carousel ---- */
 .prf-car{max-width:58rem;margin-inline:auto;text-align:center}
@@ -754,8 +785,12 @@ section .prf-wall .prf-note[data-feat]{background:var(--hero-ink);border-color:t
 .prf-res-stats{display:grid;grid-template-columns:repeat(var(--n,3),minmax(0,1fr));gap:var(--s5) var(--s4);list-style:none;margin:0;padding:0;text-align:center}
 .prf-res-stats li{display:flex;flex-direction:column;align-items:center;gap:.5rem;min-width:0}
 .prf-res-stats li+li{border-left:1px solid var(--line);padding-left:var(--s3)}
-.prf-res-num{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.9rem,7vw,4.4rem);line-height:1;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
-.prf-res-stats li[data-l=m] .prf-res-num{font-size:clamp(1.6rem,5vw,3.2rem)}.prf-res-stats li[data-l=l] .prf-res-num{font-size:clamp(1.3rem,3.6vw,2.2rem)}
+.prf-res-head{margin-inline:auto;text-align:center}.prf-res-head .adv-lede{margin-inline:auto}
+.prf-res-num{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.1rem,9vw,6.2rem);line-height:1;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.prf-res-stats li[data-l=m] .prf-res-num{font-size:clamp(1.7rem,6vw,4rem)}.prf-res-stats li[data-l=l] .prf-res-num{font-size:clamp(1.3rem,4vw,2.6rem)}.prf-res-stats li:first-child .prf-res-num{color:color-mix(in srgb,var(--accent) 55%,var(--hero-text))}
+.prf-res-stats[data-n="4"] .prf-res-num{font-size:clamp(1.7rem,6.4vw,4.2rem)}.prf-res-stats[data-n="4"] li[data-l=m] .prf-res-num{font-size:clamp(1.5rem,5vw,3rem)}.prf-res-stats[data-n="4"] li[data-l=l] .prf-res-num{font-size:clamp(1.25rem,3.6vw,2.2rem)}
+@media (max-width:699px){.prf-res-stats[data-n="4"]{grid-template-columns:repeat(2,minmax(0,1fr))}.prf-res-stats[data-n="4"] li:nth-child(odd){border-left:0;padding-left:0}.prf-res-stats[data-n="4"] .prf-res-num,.prf-res-stats[data-n="4"] li[data-l=m] .prf-res-num{font-size:clamp(1.9rem,9vw,2.8rem)}}
+.prf-res-stats[data-n="3"] .prf-res-num{font-size:clamp(2rem,8vw,5rem)}
 .prf-res-stats span:not(.prf-res-num){font-size:var(--t-meta);color:var(--muted);text-wrap:balance}
 .prf-res-q{display:grid;gap:var(--s6);margin-top:clamp(2.25rem,5vw,3.75rem);padding-top:clamp(1.75rem,4vw,2.75rem);border-top:1px solid var(--line)}
 .prf-res-q figure{margin:0;display:flex;flex-direction:column;gap:var(--s3)}
@@ -783,15 +818,15 @@ section .prf-wall .prf-note[data-feat]{background:var(--hero-ink);border-color:t
 /* ---- trust: shared ---- */
 .trv-sec.adv-sec{padding-block:clamp(2.5rem,6vw,4.75rem)}
 .trv-ico{display:grid;place-items:center;flex:none;width:44px;height:44px;border-radius:999px;background:var(--accent-soft);color:var(--accent)}
-.trv-v{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.6rem,3.4vw,2.4rem);line-height:1.05;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
+.trv-v{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.9rem,4.4vw,3.2rem);line-height:1.05;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink)}
 .trv-l{display:block;margin-top:.4rem;font-size:var(--t-meta);line-height:1.4;color:var(--muted)}
 .trv-tx{display:block;min-width:0}
 
 /* ---- trust: counters ---- */
 .trv-count{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:var(--s6) var(--s4);list-style:none;margin:0;padding:0;text-align:center}
 .trv-count li{display:flex;flex-direction:column;align-items:center;gap:var(--s3);min-width:0}
-.trv-num{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.4rem,7vw,4.4rem);line-height:1;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink);text-wrap:balance}
-.trv-count li[data-l=m] .trv-num{font-size:clamp(1.8rem,4.6vw,3rem)}.trv-count li[data-l=l] .trv-num{font-size:clamp(1.35rem,3vw,2rem)}
+.trv-num{display:block;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.6rem,8vw,5.6rem);line-height:1;letter-spacing:var(--display-tr);font-variant-numeric:lining-nums tabular-nums;color:var(--ink);text-wrap:balance}
+.trv-count li[data-l=m] .trv-num{font-size:clamp(2rem,5.6vw,3.8rem)}.trv-count li[data-l=l] .trv-num{font-size:clamp(1.35rem,3vw,2rem)}
 .trv-count .adv-rule{width:28px}
 .trv-lab{font-size:var(--t-meta);font-weight:500;line-height:1.4;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);text-wrap:balance}
 .site:lang(hi) .trv-lab{text-transform:none;letter-spacing:0}
@@ -824,3 +859,5 @@ section .prf-wall .prf-note[data-feat]{background:var(--hero-ink);border-color:t
 @media (min-width:700px){.trv-cards{gap:var(--s4)}}
 @media (min-width:900px){.trv-sp{grid-template-columns:minmax(16rem,.8fr) minmax(0,1.6fr)}}
 `;
+
+export const PROOF_CSS = PROOF_BASE_CSS;

@@ -8,25 +8,39 @@
 // The first (default) variant of each section is the plain one in basics.tsx; these sit beside it. Every variant reads only the
 // shared props (shared.tsx) and the page's content (content.ts), draws nothing when its slice is empty, and takes every
 // colour, radius and font from the spec's tokens. CLOSE_CSS rides in the page's one inline <style> (registry.ts).
-import { useEffect, useId, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Download, Search, X } from "lucide-react";
-import { Wordmark } from "@/components/site-smart";
 import { Icon } from "@/components/site-icons";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic } from "@/components/pic";
 import type { HoursRow, LinkType } from "@/lib/types";
 import type { SectionKey } from "@/lib/site-advanced";
+import type { AdvCtxPlus } from "@/components/site-adv/nav";
 import { sectionHasContent } from "@/components/site-adv/content";
 import { Btn, Head, Photo, Sec, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
 
 /* ================= small helpers shared by the four sections ================= */
 
-/** Today's weekday (0 = Sunday) for the visitor, read after mount so the server and the first client paint agree. */
-function useToday(): number | null {
-  const [d, setD] = useState<number | null>(null);
-  useEffect(() => { setD(new Date().getDay()); }, []);
-  return d;
+/** The business's clock: India time whatever the visitor's phone says (owner, 16 Oct 2026: "Open now" must be true for the shop, not
+ *  for the visitor's time zone). Read after mount so the server and the first client paint agree; ticks once a minute. */
+export type Ist = { day: number; min: number };
+function istNow(): Ist {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Kolkata", weekday: "short", hour: "numeric", minute: "numeric", hourCycle: "h23" }).formatToParts(new Date());
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "";
+  return { day: EN_DAYS.get(get("weekday").toLowerCase()) ?? new Date().getDay(), min: (Number(get("hour")) % 24) * 60 + Number(get("minute")) };
 }
+export function useIst(): Ist | null {
+  const [t, setT] = useState<Ist | null>(null);
+  useEffect(() => {
+    const tick = () => setT(istNow());
+    tick();
+    const id = window.setInterval(tick, 60_000);
+    return () => window.clearInterval(id);
+  }, []);
+  return t;
+}
+/** Today's weekday (0 = Sunday), India time, null until mounted. */
+function useToday(): number | null { return useIst()?.day ?? null; }
 
 const EN_DAYS = new Map<string, number>([
   ["sun", 0], ["sunday", 0], ["mon", 1], ["monday", 1], ["tue", 2], ["tues", 2], ["tuesday", 2], ["wed", 3], ["weds", 3], ["wednesday", 3],
@@ -59,6 +73,100 @@ export function daysOf(label: string): number[] | null {
 function todayRow(rows: HoursRow[], day: number | null): number {
   if (day === null) return -1;
   return rows.findIndex((r) => daysOf(r.day)?.includes(day));
+}
+
+const digitsOf = (s: string) => (s ?? "").replace(/\D/g, "");
+/** "+919876543210" -> "+91 98765 43210"; ten digits -> "98765 43210"; anything else as the owner wrote it. */
+export function prettyPhone(v: string): string {
+  const d = digitsOf(v);
+  if (d.length === 12 && d.startsWith("91")) return `+91 ${d.slice(2, 7)} ${d.slice(7)}`;
+  if (d.length === 10) return `${d.slice(0, 5)} ${d.slice(5)}`;
+  return v.trim();
+}
+
+/** What a contact link says on screen: a phone prettified, a social link as its handle ("@shubhora") and a map link as its label, never the
+ *  raw address ("https://maps.google.com/?q=..." was printed in two footers, 16 Oct 2026 QA). */
+export function shownValue(l: { type: string; value: string; label?: string }): string {
+  const v = (l.value ?? "").trim();
+  if (l.type === "whatsapp" || l.type === "phone") return prettyPhone(v);
+  if (l.type === "location") return (l.label ?? "").trim() || "Find us";
+  if (!/^https?:\/\//i.test(v) && !/^www\./i.test(v)) return v;
+  const bare = v.replace(/^https?:\/\/(www\.)?/i, "").replace(/[?#].*$/, "").replace(/\/$/, "");
+  const handle = /^(?:instagram\.com|twitter\.com|x\.com)\/@?([\w.]+)$/i.exec(bare);
+  return handle ? `@${handle[1]}` : bare;
+}
+
+/* ---------- open now / closed, read from the owner's timings ---------- */
+/** "9 AM - 6 PM", "09:00 to 21:30", "11:00 – 23:00", "Open 24 hours", "Closed" -> minutes since midnight; null when it cannot be read. */
+function rangeOf(time: string): { start: number; end: number } | "closed" | null {
+  const s = (time ?? "").toLowerCase();
+  if (/\b(closed|holiday)\b|बंद|अवकाश/.test(s)) return "closed";
+  if (/\b24\s*(hours?|hrs?|x\s*7)\b|open 24|all day|round the clock|२४|24 घंटे/.test(s)) return { start: 0, end: 1440 };
+  const toks = [...s.matchAll(/(\d{1,2})(?:[:.](\d{2}))?\s*(a\.?m\.?|p\.?m\.?)?/g)];
+  if (toks.length < 2) return null;
+  const at = (i: number, mer?: string) => {
+    const h = Number(toks[i][1]), m = Number(toks[i][2] ?? 0), ap = (toks[i][3] ?? mer ?? "")[0];
+    if (h > 24 || m > 59) return null;
+    return ((ap === "p" ? (h % 12) + 12 : ap === "a" ? h % 12 : h) % 24) * 60 + m;
+  };
+  const endMer = toks[1][3];
+  let a = at(0, toks[0][3] ? undefined : endMer);
+  const b = at(1);
+  if (a === null || b === null) return null;
+  // "9 - 6 PM": the opening hour borrows PM from the closing one and lands after it, so it must have been the morning.
+  if (!toks[0][3] && endMer && a >= b && a >= 12 * 60) a -= 12 * 60;
+  return { start: a, end: b <= a ? b + 1440 : b };
+}
+export type OpenState = { open: boolean; en: string; hi: string };
+const clock = (min: number) => {
+  const m = ((min % 1440) + 1440) % 1440, h = Math.floor(m / 60), mm = m % 60;
+  return `${h % 12 || 12}${mm ? `:${String(mm).padStart(2, "0")}` : ""} ${h < 12 ? "am" : "pm"}`;
+};
+/** Is the business open at `now`? Only rows whose weekday label can be read count (a row like "Lunch thali" is not a day); null
+ *  when no row gives a day and a time, so the page never claims anything it cannot read. */
+export function openStatus(rows: HoursRow[], now: Ist | null): OpenState | null {
+  if (!now) return null;
+  const slots: { day: number; start: number; end: number }[] = [];
+  let known = false;
+  for (const r of rows) {
+    const days = daysOf(r.day), rg = rangeOf(r.time);
+    if (!days || !rg) continue;
+    known = true;
+    if (rg !== "closed") for (const d of days) slots.push({ day: d, ...rg });
+  }
+  if (!known) return null;
+  const yest = (now.day + 6) % 7;
+  for (const sl of slots) {
+    const inToday = sl.day === now.day && now.min >= sl.start && now.min < sl.end;
+    const inFromYesterday = sl.day === yest && sl.end > 1440 && now.min + 1440 < sl.end;
+    if (inToday || inFromYesterday) {
+      const to = clock(sl.end);
+      return { open: true, en: `Open now · until ${to}`, hi: `अभी खुला है · ${to} तक` };
+    }
+  }
+  for (let off = 0; off < 8; off++) {
+    const d = (now.day + off) % 7;
+    const next = slots.filter((sl) => sl.day === d && (off > 0 || sl.start > now.min)).sort((p, q) => p.start - q.start)[0];
+    if (next) {
+      const at = clock(next.start);
+      const when = off === 0 ? "" : off === 1 ? "tomorrow " : ["Sun ", "Mon ", "Tue ", "Wed ", "Thu ", "Fri ", "Sat "][d];
+      const whenHi = off === 0 ? "" : off === 1 ? "कल " : ["रवि ", "सोम ", "मंगल ", "बुध ", "गुरु ", "शुक्र ", "शनि "][d];
+      return { open: false, en: `Closed · opens ${when}${at}`, hi: `अभी बंद है · ${whenHi}${at} को खुलेगा` };
+    }
+  }
+  return { open: false, en: "Closed right now", hi: "अभी बंद है" };
+}
+/** A small live pill: a green dot and "Open now · until 11 pm", or "Closed · opens 11 am". Reserves its line before the clock is read. */
+export function OpenPill({ rows, x, className = "" }: { rows: HoursRow[]; x: AdvCtx; className?: string }) {
+  const now = useIst();
+  const st = openStatus(rows, now);
+  if (!rows.length) return null;
+  if (now && !st) return null;
+  return (
+    <span className={`op-pill ${className}`} data-state={st ? (st.open ? "open" : "closed") : "wait"} role={st ? "status" : undefined} aria-hidden={st ? undefined : true}>
+      <i aria-hidden="true" />{st ? (x.hi ? st.hi : st.en) : "Open now · until 11 pm"}
+    </span>
+  );
 }
 
 const dirOf = (v: NonNullable<SiteContent["visit"]>) => v.mapUrl || (v.address ? `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(v.address)}` : "");
@@ -256,7 +364,7 @@ function HoursTable({ rows, x, today, className = "" }: { rows: HoursRow[]; x: A
 }
 
 /** A quiet street-map drawing (no tiles, no third-party request): roads in paper over the accent wash, one pin. */
-function MapArt() {
+export function MapArt() {
   return (
     <svg className="vz-map" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
       <rect className="bg" width="400" height="300" />
@@ -298,6 +406,7 @@ export function VisitMapHours({ c, x, index }: VariantProps) {
         {v.hours.length > 0 && (
           <div className="adv-card vz-hoursbox">
             <p className="kicker">{x.ui("Timings", "समय")}</p>
+            <OpenPill rows={v.hours} x={x} />
             <HoursTable rows={v.hours} x={x} today={today} />
             {x.phone && <Btn kind="ghost" href={linkHref(x.phone.type, x.phone.value)} onClick={() => x.track("visit-call")}><Icon name="phone" /> {x.ui("Call before you come", "आने से पहले कॉल करें")}</Btn>}
           </div>
@@ -321,6 +430,7 @@ export function VisitTimeline({ c, x, index }: VariantProps) {
       <div className="vz-tlw" data-solo={v.hours.length && hasWhere ? undefined : ""}>
         <div>
           <Head eyebrow={v.hours.length ? x.ui("Timings", "समय") : x.ui("Visit us", "हमसे मिलें")} title={v.hours.length ? x.ui("When to find us", "हम कब मिलेंगे") : visitTitle(c, x)} />
+          {v.hours.length > 0 && <OpenPill rows={v.hours} x={x} className="vz-tl-open" />}
           {v.hours.length > 0 && (
             <ol className="vz-tl" aria-label={x.ui("Opening hours", "खुलने का समय")}>
               {v.hours.map((r, i) => (
@@ -456,7 +566,7 @@ export function VisitBranches({ c, x, index }: VariantProps) {
 /* ================= CTA ================= */
 
 /** The one primary action: WhatsApp (the owner's own button label when set), else a call. Null with no contact. */
-function mainAction(c: SiteContent, x: AdvCtx) {
+export function mainAction(c: SiteContent, x: AdvCtx) {
   if (x.wa) {
     const own = (x.card.site?.hero?.ctaLabel ?? "").trim();
     const label = own || (c.hm.primary.kind === "whatsapp" ? c.hm.primary.label : x.ui("Chat on WhatsApp", "WhatsApp पर बात करें"));
@@ -466,7 +576,7 @@ function mainAction(c: SiteContent, x: AdvCtx) {
   return null;
 }
 /** The line under a closing title: the owner's tagline, else a sentence true for the contact the page has. */
-const ctaLede = (x: AdvCtx) => (x.card.tagline ?? "").trim()
+export const ctaLede = (x: AdvCtx) => (x.card.tagline ?? "").trim()
   ? x.t(x.card.tagline)
   : x.wa ? x.ui("Usually replies within a few hours on WhatsApp.", "आमतौर पर कुछ घंटों में WhatsApp पर जवाब।") : x.ui("Call us - we are glad to help.", "हमें कॉल करें - हमें मदद करके ख़ुशी होगी।");
 /** The call button, only when WhatsApp leads (otherwise the call is already the primary one). */
@@ -494,8 +604,8 @@ function reachRows(x: AdvCtx): Row[] {
   for (const l of x.card.links) {
     const v = l.value.trim();
     if (!v) continue;
-    if (l.type === "whatsapp") rows.push({ id: l.id, type: l.type, label: same ? x.ui("WhatsApp & call", "WhatsApp और कॉल") : "WhatsApp", text: v, href: x.waHref(), ext: true });
-    else if (l.type === "phone" && !same) rows.push({ id: l.id, type: l.type, label: x.ui("Call", "कॉल"), text: v, href: linkHref(l.type, v), ext: false });
+    if (l.type === "whatsapp") rows.push({ id: l.id, type: l.type, label: same ? x.ui("WhatsApp & call", "WhatsApp और कॉल") : "WhatsApp", text: prettyPhone(v), href: x.waHref(), ext: true });
+    else if (l.type === "phone" && !same) rows.push({ id: l.id, type: l.type, label: x.ui("Call", "कॉल"), text: prettyPhone(v), href: linkHref(l.type, v), ext: false });
     else if (l.type === "email") rows.push({ id: l.id, type: l.type, label: x.ui("Email", "ईमेल"), text: v, href: linkHref(l.type, v), ext: false });
   }
   return rows.slice(0, 3);
@@ -632,11 +742,12 @@ const NAV_LABEL: Partial<Record<SectionKey, [string, string]>> = {
 };
 type Item = { id: string; type: LinkType; label: string; text: string; href: string; ext: boolean; note?: string };
 type Social = { id: string; type: LinkType; label: string; href: string };
-type FooterModel = { quick: { key: string; label: string }[]; contact: Item[]; social: Social[]; address: string; dir: string; hours: HoursRow[]; blurb: string };
+type QuickLink = { key: string; label: string; href: string; slug?: string };
+type FooterModel = { quick: QuickLink[]; contact: Item[]; social: Social[]; address: string; dir: string; hours: HoursRow[]; blurb: string };
 
 /** A social link's address: a full link as written, a bare domain given https, a bare handle sent to the platform. Anything
  *  else (a javascript: link, a stray word) is dropped rather than rendered. */
-function socialHref(type: LinkType, value: string): string {
+export function socialHref(type: LinkType, value: string): string {
   const v = value.trim();
   if (/^https?:\/\//i.test(v)) return v;
   if (/^[a-z][a-z0-9+.-]*:/i.test(v)) return "";
@@ -645,25 +756,30 @@ function socialHref(type: LinkType, value: string): string {
   if (!/^[\w.-]+$/.test(h)) return "";
   return type === "instagram" ? `https://instagram.com/${h}` : type === "facebook" ? `https://facebook.com/${h}` : type === "youtube" ? `https://youtube.com/@${h}` : type === "linkedin" ? `https://linkedin.com/in/${h}` : "";
 }
-const SOCIAL_NAME: Partial<Record<LinkType, string>> = { instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn", youtube: "YouTube", website: "Website" };
+export const SOCIAL_NAME: Partial<Record<LinkType, string>> = { instagram: "Instagram", facebook: "Facebook", linkedin: "LinkedIn", youtube: "YouTube", website: "Website" };
 
 function footerModel(c: SiteContent, x: AdvCtx, spec: VariantProps["spec"]): FooterModel {
   const drawn = drawnKeys(c, x, spec);
-  const quick = [
-    { key: "top", label: x.ui("Home", "होम") },
-    ...drawn.filter((k) => NAV_LABEL[k]).map((k) => {
-      const [en, h] = NAV_LABEL[k]!;
-      return { key: k as string, label: k === "services" && c.offerings?.kind === "services" ? x.ui("Services", "सेवाएँ") : x.ui(en, h) };
-    }),
-  ];
+  // The real pages of the website when the shell gives them (owner, 16 Oct 2026: a footer of #anchors was a one-page site's footer);
+  // a bare section list otherwise (the editor's single-page preview).
+  const pages = (x as Partial<AdvCtxPlus>).pages;
+  const quick: QuickLink[] = pages?.list.length
+    ? pages.list.map((e) => ({ key: e.slug, slug: e.slug, href: e.href, label: e.role === "home" ? x.ui("Home", "होम") : e.owner ? x.t(e.label) : e.label }))
+    : [
+      { key: "top", label: x.ui("Home", "होम"), href: "#" },
+      ...drawn.filter((k) => NAV_LABEL[k]).map((k) => {
+        const [en, h] = NAV_LABEL[k]!;
+        return { key: k as string, href: `#adv-${k}`, label: k === "services" && c.offerings?.kind === "services" ? x.ui("Services", "सेवाएँ") : x.ui(en, h) };
+      }),
+    ];
   const links = x.card.links.filter((l) => l.value.trim());
   const digits = (s: string) => (s ?? "").replace(/\D/g, "").slice(-10);
   const same = !!x.wa && !!x.phone && digits(x.wa.value) === digits(x.phone.value);
   const contact: Item[] = [];
   for (const l of links) {
     const v = l.value.trim();
-    if (l.type === "whatsapp") contact.push({ id: l.id, type: l.type, label: "WhatsApp", text: v, href: x.waHref(), ext: true, note: same ? x.ui("WhatsApp & call", "WhatsApp और कॉल") : undefined });
-    else if (l.type === "phone" && !same) contact.push({ id: l.id, type: l.type, label: x.ui("Call", "कॉल"), text: v, href: linkHref(l.type, v), ext: false });
+    if (l.type === "whatsapp") contact.push({ id: l.id, type: l.type, label: "WhatsApp", text: prettyPhone(v), href: x.waHref(), ext: true, note: same ? x.ui("WhatsApp & call", "WhatsApp और कॉल") : undefined });
+    else if (l.type === "phone" && !same) contact.push({ id: l.id, type: l.type, label: x.ui("Call", "कॉल"), text: prettyPhone(v), href: linkHref(l.type, v), ext: false });
     else if (l.type === "email") contact.push({ id: l.id, type: l.type, label: x.ui("Email", "ईमेल"), text: v, href: linkHref(l.type, v), ext: false });
     // upi:// does nothing in a desktop browser: the ID is shown as text, without a link.
     else if (l.type === "upi") contact.push({ id: l.id, type: l.type, label: "UPI", text: v, href: "", ext: false });
@@ -680,20 +796,25 @@ function footerModel(c: SiteContent, x: AdvCtx, spec: VariantProps["spec"]): Foo
 }
 
 function FtLogo({ c, x }: { c: SiteContent; x: AdvCtx }) {
+  // No logo: the name set in the display face, with the trade as a light line (the shared Wordmark's second line was lost on the ink field).
   return c.hm.logo
     ? <Pic src={c.hm.logo} alt={x.t(c.name)} className="ft-logo" w={180} />
-    : <Wordmark name={x.t(c.name)} trade={x.t(c.trade)} lang={x.lang} className="ft-mark" />;
+    : <p className="ft-name"><b>{x.t(c.name)}</b>{c.trade && <small>{x.t(c.trade)}</small>}</p>;
+}
+/** One footer link: a real page opens through the shell (curtain, scroll to top), a section anchor scrolls. */
+function quickClick(q: QuickLink, x: AdvCtx) {
+  return (e: React.MouseEvent) => {
+    x.track(`footer-nav-${q.key}`);
+    if (q.slug && x.goto) { e.preventDefault(); x.goto(q.slug); }
+    else if (!q.slug) { e.preventDefault(); x.jump(q.key); }
+  };
 }
 function FtQuick({ m, x, className = "" }: { m: FooterModel; x: AdvCtx; className?: string }) {
   if (m.quick.length < 2) return null;
   return (
-    <nav aria-label={x.ui("Quick links", "क्विक लिंक")} className={className}>
+    <nav aria-label={x.ui("Pages", "पेज")} className={className}>
       <ul className="ft-list">
-        {m.quick.map((q) => (
-          <li key={q.key}>
-            <a href={q.key === "top" ? "#" : `#adv-${q.key}`} onClick={(e) => { e.preventDefault(); x.jump(q.key); x.track(`footer-nav-${q.key}`); }}>{q.label}</a>
-          </li>
-        ))}
+        {m.quick.map((q) => <li key={q.key}><a href={q.href} onClick={quickClick(q, x)}>{q.label}</a></li>)}
       </ul>
     </nav>
   );
@@ -727,6 +848,7 @@ function FtVisit({ m, x }: { m: FooterModel; x: AdvCtx }) {
   return (
     <div>
       <p className="kicker ft-h">{x.ui("Visit us", "हमसे मिलें")}</p>
+      {m.hours.length > 0 && <OpenPill rows={m.hours} x={x} className="ft-open" />}
       {m.address && <address className="ft-addr">{x.t(m.address)}</address>}
       {m.dir && <a className="btn-link ft-dir" href={m.dir} target="_blank" rel="noreferrer" onClick={() => x.track("footer-directions")}>{x.ui("Get directions", "रास्ता देखें")} <Icon name="arrow-up-right" /></a>}
       {m.hours.length > 0 && (
@@ -840,7 +962,7 @@ export function FooterBigWordmark({ c, x, spec }: VariantProps) {
           {m.contact.length > 0 && <div><p className="kicker ft-h">{x.ui("Contact", "संपर्क")}</p><FtContact m={m} x={x} /></div>}
           <FtVisit m={m} x={x} />
         </div>
-        <p className="ft-wm" style={vars} aria-hidden="true">{name}</p>
+        <FitName text={name} className="ft-wm" style={vars} />
         {gstin(x) && <p className="ft-small mono ft-gst">GSTIN {gstin(x)}</p>}
       </div>
       <Legal c={c} x={x} />
@@ -851,7 +973,7 @@ export function FooterBigWordmark({ c, x, spec }: VariantProps) {
 /* ---------- link-grid: the footer as a grid of tiles - links, ways to reach, the address, the timings ---------- */
 export function FooterLinkGrid({ c, x, spec }: VariantProps) {
   const m = footerModel(c, x, spec);
-  const quick = m.quick.filter((q) => q.key !== "top");
+  const quick = m.quick;
   return (
     <footer id="adv-footer" data-sec="footer" className="hero-dark ft">
       <div className="adv-wrap adv-wide ft-lg">
@@ -860,10 +982,10 @@ export function FooterLinkGrid({ c, x, spec }: VariantProps) {
           {m.blurb && <p className="ft-blurb">{x.t(m.blurb)}</p>}
           <FtSocial m={m} x={x} />
         </div>
-        {quick.length > 0 && (
+        {quick.length > 1 && (
           <nav className="ft-t-nav" aria-label={x.ui("Quick links", "क्विक लिंक")}>
-            {[{ key: "top", label: x.ui("Home", "होम") }, ...quick].map((q) => (
-              <a key={q.key} className="ft-tile ft-link" href={q.key === "top" ? "#" : `#adv-${q.key}`} onClick={(e) => { e.preventDefault(); x.jump(q.key); x.track(`footer-nav-${q.key}`); }}>
+            {quick.map((q) => (
+              <a key={q.key} className="ft-tile ft-link" href={q.href} onClick={quickClick(q, x)}>
                 <span>{q.label}</span><Icon name="arrow-up-right" size={20} />
               </a>
             ))}
@@ -882,6 +1004,160 @@ export function FooterLinkGrid({ c, x, spec }: VariantProps) {
       </div>
       <Legal c={c} x={x} />
     </footer>
+  );
+}
+
+
+
+/** The business's name set so it spans its box exactly (owner, 16 Oct 2026: a "very large name" that stops short of the edge looks
+ *  unfinished). Measured in the browser, once fonts are in and on every resize; until then the CSS size from the name's length shows. */
+function FitName({ text, className, style }: { text: string; className: string; style?: React.CSSProperties }) {
+  const ref = useRef<HTMLParagraphElement>(null);
+  useLayoutEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const fit = () => {
+      const inner = el.firstElementChild as HTMLElement | null;
+      if (!inner || !el.clientWidth) return;
+      el.style.fontSize = "100px";
+      const w = inner.getBoundingClientRect().width;
+      if (w > 0) el.style.fontSize = `${Math.min(340, Math.max(28, (100 * el.clientWidth * 0.985) / w)).toFixed(1)}px`;
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    void document.fonts?.ready.then(fit);
+    return () => ro.disconnect();
+  }, [text]);
+  return <p ref={ref} className={className} style={style} aria-hidden="true"><span>{text}</span></p>;
+}
+
+/* ---------- atelier: a ticker of what we do, the name set very large on top, then the columns ---------- */
+/** The words that run along the ticker: what the business sells (its own items), else its tagline and trade. */
+function tickerWords(c: SiteContent, x: AdvCtx): string[] {
+  const items = (c.offerings?.items ?? []).map((o) => x.t(o.name)).slice(0, 8);
+  if (items.length >= 3) return items;
+  return [...new Set([x.t(c.name), c.trade && x.t(c.trade), (x.card.tagline ?? "").trim() && x.t(x.card.tagline), c.city].filter(Boolean) as string[])];
+}
+export function FooterAtelier({ c, x, spec }: VariantProps) {
+  const m = footerModel(c, x, spec);
+  const name = x.t(c.name);
+  const len = Math.max(6, Array.from(name).length);
+  const vars = { "--wm": `${(150 / len).toFixed(2)}vw`, "--wmx": `${Math.round(2200 / len)}px` } as React.CSSProperties;
+  const words = tickerWords(c, x);
+  const act = mainAction(c, x);
+  return (
+    <footer id="adv-footer" data-sec="footer" className="hero-dark ft ft-at">
+      <div className="at-tick" aria-hidden="true">
+        <div className="at-track">{[0, 1].map((k) => <ul key={k}>{[...words, ...words].map((w, i) => <li key={i}>{w}<span>✦</span></li>)}</ul>)}</div>
+      </div>
+      <div className="adv-wrap adv-wide">
+        <FitName text={name} className="at-wm" style={vars} />
+        <div className="at-lead">
+          {m.blurb && <p className="ft-blurb at-blurb">{x.t(m.blurb)}</p>}
+          {act && <Btn href={act.href} {...(act.ext ? { external: true } : {})} data-kind={act.id} onClick={() => x.track(`footer-cta-${act.id}`)}><Icon name={act.icon} /> {act.label}</Btn>}
+        </div>
+        <div className="at-cols">
+          <div><p className="kicker ft-h">{x.ui("Explore", "देखें")}</p><FtQuick m={m} x={x} /></div>
+          {m.contact.length > 0 && <div><p className="kicker ft-h">{x.ui("Contact", "संपर्क")}</p><FtContact m={m} x={x} /></div>}
+          <FtVisit m={m} x={x} />
+          <div className="at-end">
+            {x.qr && <Pic src={x.qr} alt={x.ui("QR code that opens this website", "QR कोड, जो यह वेबसाइट खोलता है")} className="ft-qrimg" w={96} />}
+            <FtSocial m={m} x={x} />
+            <a href={`/c/${x.card.username}/vcf`} className="btn-ghost ft-xs" onClick={() => x.track("vcard")}><Download size={14} aria-hidden="true" /> {x.ui("Save contact", "कॉन्टैक्ट सेव करें")}</a>
+            {gstin(x) && <p className="ft-small mono">GSTIN {gstin(x)}</p>}
+          </div>
+        </div>
+      </div>
+      <Legal c={c} x={x} />
+    </footer>
+  );
+}
+
+/* ---------- hotline: the phone number is the footer - set huge, with the one-tap actions and the timings beside it ---------- */
+export function FooterHotline({ c, x, spec }: VariantProps) {
+  const m = footerModel(c, x, spec);
+  const num = x.phone?.value ?? x.wa?.value ?? "";
+  const numHref = x.phone ? linkHref(x.phone.type, x.phone.value) : x.wa ? x.waHref() : "";
+  return (
+    <footer id="adv-footer" data-sec="footer" className="hero-dark ft ft-hl">
+      <div className="adv-wrap adv-wide">
+        <div className="hl-top">
+          <div className="hl-call">
+            <p className="kicker">{x.phone ? x.ui("Call us", "कॉल करें") : x.ui("Message us", "मैसेज करें")}</p>
+            {num && <a className="hl-num" href={numHref} {...(x.phone ? {} : { target: "_blank", rel: "noreferrer" })} onClick={() => x.track("footer-hotline")}>{prettyPhone(num)}</a>}
+            <div className="adv-btn-row hl-btns">
+              {x.wa && <Btn href={x.waHref()} external data-kind="whatsapp" onClick={() => x.track("footer-whatsapp")}><Icon name="whatsapp" /> {x.ui("WhatsApp us", "WhatsApp करें")}</Btn>}
+              {m.dir && <Btn kind="ghost" href={m.dir} external onClick={() => x.track("footer-directions")}><Icon name="directions" /> {x.ui("Directions", "रास्ता")}</Btn>}
+            </div>
+            {m.hours.length > 0 && <OpenPill rows={m.hours} x={x} className="hl-open" />}
+          </div>
+          <div className="hl-side">
+            <FtLogo c={c} x={x} />
+            {m.blurb && <p className="ft-blurb">{x.t(m.blurb)}</p>}
+            {m.address && <address className="ft-addr hl-addr">{x.t(m.address)}</address>}
+            <FtSocial m={m} x={x} />
+          </div>
+        </div>
+        <div className="hl-cols">
+          <div><p className="kicker ft-h">{x.ui("Explore", "देखें")}</p><FtQuick m={m} x={x} className="hl-quick" /></div>
+          {m.hours.length > 0 && (
+            <div>
+              <p className="kicker ft-h">{x.ui("Timings", "समय")}</p>
+              <table className="ft-hours hl-hours"><caption className="sr-only">{x.ui("Opening hours", "खुलने का समय")}</caption><tbody>{m.hours.map((r, i) => <tr key={i}><th scope="row">{x.t(r.day)}</th><td>{x.t(r.time)}</td></tr>)}</tbody></table>
+            </div>
+          )}
+          {x.qr && (
+            <div className="hl-qr">
+              <Pic src={x.qr} alt={x.ui("QR code that opens this website", "QR कोड, जो यह वेबसाइट खोलता है")} className="ft-qrimg" w={88} />
+              <p className="ft-small">{x.ui("Scan to open this site on your phone", "फ़ोन पर यह साइट खोलने के लिए स्कैन करें")}</p>
+              {gstin(x) && <p className="ft-small mono">GSTIN {gstin(x)}</p>}
+            </div>
+          )}
+        </div>
+      </div>
+      <Legal c={c} x={x} />
+    </footer>
+  );
+}
+
+/* ================= FAQ: spotlight ================= */
+/* ---------- spotlight: the questions as a large list, the chosen answer set big beside it (on a phone it opens under its question) ---------- */
+export function FaqSpotlight({ c, x, index }: VariantProps) {
+  const [open, setOpen] = useState(0);
+  const uid = useId();
+  const items = c.faq;
+  if (!items.length) return null;
+  const cur = items[Math.min(open, items.length - 1)];
+  return (
+    <Sec k="faq" tone={tone(index)} wide>
+      <Head eyebrow="FAQ" title={x.ui("Ask away", "बेझिझक पूछिए")} lede={x.ui("Pick a question - the answer is right here.", "कोई सवाल चुनिए - जवाब यहीं है।")} />
+      <div className="sp">
+        <ul className="sp-list">
+          {items.map((f, i) => {
+            const on = open === i, id = `${uid}-${i}`;
+            return (
+              <li key={i} data-open={on ? "" : undefined}>
+                <h3>
+                  <button type="button" id={`${id}-b`} className="sp-btn" aria-expanded={on} aria-controls={`${id}-p`} onClick={() => setOpen(i)}>
+                    <span className="qa-n" aria-hidden="true">{String(i + 1).padStart(2, "0")}</span>
+                    <span className="sp-q">{x.t(f.q)}</span>
+                    <span className="sp-ar" aria-hidden="true"><Icon name="arrow-right" size={20} /></span>
+                  </button>
+                </h3>
+                <Panel id={`${id}-p`} labelledBy={`${id}-b`}><p className="sp-inline">{x.t(f.a)}</p></Panel>
+              </li>
+            );
+          })}
+        </ul>
+        <aside className="sp-card" aria-live="polite" key={open}>
+          <span className="sp-mark" aria-hidden="true">{x.ui("A", "उ")}</span>
+          <p className="sp-q2">{x.t(cur.q)}</p>
+          <p className="sp-a">{x.t(cur.a)}</p>
+          <Ask c={c} x={x} lead={false} />
+        </aside>
+      </div>
+    </Sec>
   );
 }
 
@@ -1111,6 +1387,7 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-list a,.ft-plain{display:inline-flex;align-items:center;gap:var(--s2);max-width:100%;padding-block:.35rem;opacity:.88;overflow-wrap:anywhere;transition:opacity .15s}
 .ft-list a:hover{opacity:1;text-decoration:underline;text-underline-offset:.22em}
 .ft-list small{opacity:.7}
+@media (max-width:767px){.ft-list a,.ft-top{min-height:40px}}
 .ft-addr{margin:0;font-style:normal;font-size:var(--t-meta);line-height:1.65;opacity:.88}
 .ft-dir{margin-top:var(--s2);font-size:var(--t-meta)}
 .ft-hours{width:100%;border-collapse:collapse;margin-top:var(--s4);font-size:var(--t-meta)}
@@ -1145,7 +1422,7 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-inline{display:flex;flex-wrap:wrap;gap:0 var(--s5)}
 .ft-min-addr,.ft-min-hrs{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem var(--s3);margin:0;line-height:1.5;opacity:.88}
 .ft-min-addr svg,.ft-min-hrs svg{flex:none}
-.ft-min-addr a{text-decoration:underline;text-underline-offset:.22em}
+.ft-min-addr a{display:inline-flex;align-items:center;min-height:40px;text-decoration:underline;text-underline-offset:.22em}
 .ft-min-hrs b{font-weight:600;font-variant-numeric:tabular-nums}
 .ft-min .ft-small{margin:0}
 .ft-min .ft-legal-wrap{margin-top:clamp(1.5rem,4vw,2.5rem)}
@@ -1181,4 +1458,88 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft-t-nav{display:contents}
 .ft-t-gst{grid-column:1/-1;margin:0}
 @media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4)}.ft-t-brand{grid-column:span 2;grid-row:span 2}.ft-t-visit{grid-column:span 2}}
+
+/* ---- open now pill (every variant that shows timings) ---- */
+.op-pill{display:inline-flex;align-items:center;gap:.55em;align-self:flex-start;padding:.42em .95em .42em .8em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap}
+.op-pill i{position:relative;flex:none;width:9px;height:9px;border-radius:50%;background:var(--muted)}
+.op-pill[data-state=open] i{background:var(--wa)}
+.op-pill[data-state=open] i::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--wa);animation:op-ping 2.2s ease-out infinite}
+.op-pill[data-state=closed] i{background:#c4443a}
+.op-pill[data-state=wait]{visibility:hidden}
+@keyframes op-ping{from{transform:scale(1);opacity:.6}to{transform:scale(2.8);opacity:0}}
+.hero-dark .op-pill,.ft .op-pill{background:transparent;border-color:var(--hero-line);color:var(--hero-text)}
+.ft-open,.vz-tl-open{margin-bottom:var(--s4)}
+.vz-tl-open{margin-bottom:var(--s5)}
+.vz-hoursbox .op-pill{margin-bottom:calc(-1 * var(--s1))}
+.ft-name{margin:0;display:grid;gap:.15rem}
+.ft-name b{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.5rem,3vw,2rem);line-height:1.1;letter-spacing:var(--display-tr)}
+.ft-name small{font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:var(--hero-muted)}
+.site:lang(hi) .ft-name b{font-weight:var(--display-w-hi);letter-spacing:0;line-height:1.35}
+.site:lang(hi) .ft-name small{letter-spacing:0;text-transform:none;font-size:13px}
+
+/* ---- footer: atelier ---- */
+.ft-at{padding-top:0;overflow:hidden}
+.at-tick{border-bottom:1px solid var(--hero-line);overflow:hidden;white-space:nowrap;-webkit-mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent);mask-image:linear-gradient(90deg,transparent,#000 6%,#000 94%,transparent)}
+.at-track{display:flex;width:max-content;animation:at-run 46s linear infinite}
+.at-tick:hover .at-track{animation-play-state:paused}
+.at-track ul{display:flex;flex:none;align-items:center;margin:0;padding:1.05rem 0;list-style:none}
+.at-track li{display:inline-flex;align-items:center;font-family:var(--font-display);font-size:clamp(1.1rem,2.2vw,1.6rem);letter-spacing:var(--display-tr);color:var(--hero-muted)}
+.at-track li span{margin-inline:clamp(1.25rem,3vw,2.5rem);font-size:.6em;color:var(--accent)}
+@keyframes at-run{to{transform:translateX(-50%)}}
+.at-wm span,.ft-wm span{white-space:nowrap}
+.at-wm{display:block;margin:clamp(2rem,5vw,4rem) 0 0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.6rem,min(var(--wm,12vw),var(--wmx,190px)),16rem);line-height:.92;letter-spacing:-.045em;overflow-wrap:break-word;color:transparent;-webkit-text-stroke:1.5px var(--hero-text);transition:color .5s,-webkit-text-stroke-color .5s}
+.at-wm:hover{color:var(--hero-text)}
+@media (hover:none){.at-wm{color:var(--hero-text);-webkit-text-stroke:0}}
+.site:lang(hi) .at-wm{line-height:1.25;letter-spacing:0;font-weight:var(--display-w-hi)}
+.at-lead{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s5);margin-top:clamp(1.5rem,3vw,2.25rem);padding-bottom:clamp(2rem,5vw,3.5rem);border-bottom:1px solid var(--hero-line)}
+.at-blurb{margin:0;max-width:36rem;font-size:var(--t-sub)}
+.at-cols{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr));padding-top:clamp(2rem,5vw,3.5rem)}
+.at-end{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4)}
+.at-end .ft-soc{margin:0}
+@media (min-width:900px){.at-cols{grid-template-columns:.8fr 1.1fr 1.3fr .9fr}}
+@media (max-width:560px){.at-cols>div{grid-column:1/-1}}
+
+/* ---- footer: hotline ---- */
+.hl-top{display:grid;gap:clamp(2rem,5vw,3.5rem);padding-bottom:clamp(2rem,5vw,3.5rem);border-bottom:1px solid var(--hero-line)}
+.hl-call{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4);min-width:0}
+.hl-num{display:block;max-width:100%;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.1rem,9.4vw,7rem);line-height:1;letter-spacing:-.01em;font-variant-numeric:lining-nums;color:var(--hero-text);text-decoration:none;overflow-wrap:anywhere;background:linear-gradient(var(--accent),var(--accent)) 0 100%/0 .06em no-repeat;transition:background-size .5s cubic-bezier(.2,.7,.2,1)}
+.hl-num:hover{background-size:100% .06em}
+.hl-btns{margin-top:var(--s2)}
+.hl-side{display:grid;gap:var(--s4);align-content:start}
+.hl-side .ft-blurb,.hl-side .ft-soc{margin:0}
+.hl-addr{max-width:26rem}
+.hl-cols{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr));padding-top:clamp(2rem,5vw,3rem)}
+.hl-qr{display:flex;flex-direction:column;gap:var(--s2)}
+.hl-qr p{max-width:15rem}
+@media (min-width:900px){.hl-top{grid-template-columns:minmax(0,1.6fr) minmax(0,.9fr);align-items:end}.hl-cols{grid-template-columns:1fr 1.3fr 1fr}}
+@media (max-width:560px){.hl-cols>div{grid-column:1/-1}}
+
+/* ---- faq: spotlight ---- */
+.sp{display:grid;gap:var(--gap)}
+.sp-list{list-style:none;margin:0;padding:0;border-top:1px solid var(--ink)}
+.sp-list>li{border-bottom:1px solid var(--line)}
+.sp-list h3{margin:0;font:inherit}
+.sp-btn{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:baseline;gap:var(--s4);width:100%;padding:var(--s5) var(--s2);background:none;border:0;color:inherit;text-align:left;cursor:pointer;font:inherit;-webkit-tap-highlight-color:transparent;transition:padding .3s cubic-bezier(.2,.7,.2,1),color .2s}
+.sp-q{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.15rem,2.2vw,1.55rem);line-height:1.25;letter-spacing:var(--display-tr);text-wrap:pretty}
+.site:lang(hi) .sp-q{font-weight:var(--display-w-hi);line-height:1.5;letter-spacing:0}
+.sp-ar{align-self:center;color:var(--muted);transition:transform .3s,color .2s}
+.sp-btn:hover .sp-q,.sp-list>li[data-open] .sp-q{color:var(--accent)}
+.sp-list>li[data-open] .sp-ar{color:var(--accent);transform:rotate(90deg)}
+.sp-inline{padding-left:calc(2.2rem + var(--s4)) !important}
+.sp-card,.sp-card *{min-width:0}
+.sp-card{display:none}
+@media (min-width:900px){
+  .sp{grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:clamp(2.5rem,6vw,5rem);align-items:start}
+  .sp-list .qa-panel{display:none}
+  .sp-btn:hover{padding-left:var(--s4)}.sp-list>li[data-open] .sp-btn{padding-left:var(--s4)}.sp-list>li[data-open] .sp-ar{transform:none}
+  .sp-card{position:sticky;top:96px;display:block;padding:clamp(1.75rem,3.5vw,3rem);border-radius:var(--r-tile);background:var(--accent);color:var(--on-accent);overflow:hidden;animation:sp-in .5s cubic-bezier(.2,.7,.2,1) both;--ink:var(--on-accent);--muted:color-mix(in srgb,var(--on-accent) 82%,transparent);--line:color-mix(in srgb,var(--on-accent) 32%,transparent)}
+  .sp-card .btn-ghost{color:var(--on-accent);border-color:var(--line)}
+  .sp-mark{position:absolute;right:-.06em;top:-.22em;font-family:var(--font-display);font-size:clamp(9rem,16vw,15rem);line-height:1;opacity:.12;pointer-events:none;user-select:none}
+  .sp-q2{position:relative;margin:0 0 var(--s5);font-size:var(--t-meta);font-weight:600;letter-spacing:.06em;text-transform:uppercase;opacity:.82}
+  .sp-a{position:relative;margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.4rem,2.4vw,2rem);line-height:1.3;letter-spacing:var(--display-tr);text-wrap:pretty}
+  .sp-card .qa-ask{position:relative;margin-top:var(--s6)}
+}
+.site:lang(hi) .sp-q2{letter-spacing:0;text-transform:none;font-size:14px}
+.site:lang(hi) .sp-a{line-height:1.6;letter-spacing:0;font-weight:var(--display-w-hi)}
+@keyframes sp-in{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
 `;

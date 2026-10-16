@@ -389,13 +389,12 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   // person, so then it is simply "us".
   const ctaTalk = "Talk to us today";
 
-  // The ADVANCED website (Rs 5,999, src/lib/site-advanced.ts): a valid card.site.advanced spec draws its own per-business layout
-  // in place of the blueprint on the home page. Another page (a product's own page) keeps this view, and `go` leads back.
-  // Memoised: a new spec object each render would restart the advanced page's reveal observers every time this view re-renders.
-  const adv = useMemo(() => (isHome ? activeAdvanced(card.site, card.username) : null), [isHome, card.site, card.username]);
-  // The advanced view keeps its own language state and saves it; before a product page (this view) opens, take that choice up (else it opens in English).
-  const adoptSavedLang = () => { try { const s = localStorage.getItem("ne-card-lang"); if (s && s !== L.lang) L.setLang(s); } catch { /* private mode */ } };
-  if (adv) return <AdvancedSite card={card} spec={adv} qr={qr} brand={brand} shareUrl={shareUrl} free={free} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} initialLang={initialLang} goto={(slug) => { adoptSavedLang(); go(slug); }} hrefFor={hrefFor} />;
+  // The ADVANCED website (Rs 5,999, src/lib/site-advanced.ts): a valid card.site.advanced spec draws the whole website (home, catalogue,
+  // an item's own page, about, gallery, contact, updates and the card's other pages) in place of the blueprint, on every page.
+  // `active` is the page on screen and `go` opens another (address pushed); AdvancedSite stays mounted between pages, so the language
+  // and the header keep their state. Memoised: a new spec object each render would restart the advanced page's reveal observers.
+  const adv = useMemo(() => activeAdvanced(card.site, card.username), [card.site, card.username]);
+  if (adv) return <AdvancedSite card={card} spec={adv} qr={qr} brand={brand} shareUrl={shareUrl} free={free} linkBase={linkBase} joinHandle={joinHandle} nudge={nudge} shubhora={shubhora} initialLang={initialLang} page={active} updates={showUpdates ? updates : []} goto={(slug) => { go(slug); window.scrollTo({ top: 0, behavior: "instant" }); }} hrefFor={hrefFor} />;
 
   return (
     <TranslateCtx.Provider value={t}><LayoutCtx.Provider value={card.site?.style?.layouts}><BlueprintCtx.Provider value={bp}>

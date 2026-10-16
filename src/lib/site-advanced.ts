@@ -13,7 +13,9 @@
 // HOW TO ADD A VARIANT: (1) append its id to the section's ID list below (the SLOT line), (2) write the component in
 // src/components/site-adv/ and append it to the section's registry in registry.ts (the SLOT line there) - TypeScript
 // refuses a registry that misses an id. The default for a section is the FIRST id of its list; never reorder old ids.
-import type { Card } from "./types";
+import type { Card, CardBlock, CardPage, ProductItem } from "./types";
+import { isEmptyBlock } from "./site-home";
+import { cardProducts, isProductSlug, productSlug } from "./product-page";
 import { PALETTE_KEYS, SITE_PALETTES, brandPalette, FONT_METRICS, oklchVars, type SitePalette } from "./site-style";
 
 /* ================= sections and their variants ================= */
@@ -34,6 +36,10 @@ export const HERO_IDS = [
   "centered-minimal", // a small arch, the claim, two buttons, a ruled row, a great deal of air
   "diagonal",      // words left, the photo cut on a slant to the screen's edge
   "masthead",      // the business name as a magazine title, the claim as the cover line
+  "kinetic-type",  // a giant headline with round photos set inside the sentence, a hollow ribbon behind it
+  "pinned-story",  // a tall pinned stage: the claim, then the numbers, then the buttons, as you scroll
+  "parallax-collage", // the headline in the middle of a layered, floating collage that follows the pointer
+  "product-spotlight", // one product at a time on a round stage, cycling the catalogue with price and enquiry
   // SLOT hero ids (append here)
 ] as const;
 export const TRUST_IDS = [
@@ -42,6 +48,8 @@ export const TRUST_IDS = [
   "icon-row",      // a line icon per fact
   "ticker",        // a slim accent band that scrolls the facts
   "split-cards",   // a statement on the left, the facts as cards on the right
+  "bento",        // one huge number on the accent field, the rest on ink and paper tiles
+  "hairline",     // a ruled grid, each cell numbered, the figure large at its foot
   // SLOT trust ids (append here)
 ] as const;
 export const ABOUT_IDS = [
@@ -53,6 +61,10 @@ export const ABOUT_IDS = [
   "owner-card",    // "meet the owner": a portrait with a name plate, the opening line, the story, a message button
   "numbers-led",   // the card's own numbers set huge across the top, the statement and the story under them
   "photo-collage", // two or three of the business's photos overlapping, the story beside them
+  "manifesto",    // the opening sentence at poster size across the full width, two photos offset around the story
+  "chapters",     // the story as numbered chapters beside a sticky photo that changes with the chapter in view
+  "founder-letter", // a portrait with a name plate beside the story set as a signed letter
+  "banner-columns", // a wide photograph, a panel overlapping it with the title, the story and the numbered good-to-know list
   // SLOT about ids (append here)
 ] as const;
 export const SERVICES_IDS = [
@@ -64,6 +76,10 @@ export const SERVICES_IDS = [
   "category-tabs", // tabs from the owner's badges, else price bands, else "on offer" (no usable split -> no tabs)
   "menu-leaders",  // a printed menu: name ....... price with dotted leaders, in columns
   "tiers",         // comparison columns: price large, the line as ticks, the owner's badged tier lifted
+  "index-rows",    // a numbered index: one big line per item, a tilted photo floats up beside the row under the pointer
+  "listing-rows",  // full-width photo rows that alternate, a card with the name, price and buttons overlapping one side
+  "shop-grid",     // a shop: search, filter chips, photo cards with a second photo on hover, badges, ask and share
+  "rate-list",     // a ledger for traders: number, item and line, rate, an "ask rate" button; search from eight items
   // SLOT services ids (append here)
 ] as const;
 export const GALLERY_IDS = [
@@ -73,6 +89,10 @@ export const GALLERY_IDS = [
   "bento",         // one large frame and a ring of smaller ones, by how many photos there are
   "album-tabs",    // the owner's album headings as tabs (no headings: a plain grid)
   "lightbox-grid", // an even numbered grid, "+N more" on the last tile
+  "scrapbook",    // taped, slightly tilted prints in staggered columns, each with its number and the owner's caption
+  "rooms",        // a visible hairline grid, one big cell, every cell numbered with its caption under the photo
+  "pinned-reel",  // the page pins and the photos slide sideways as you scroll (a swipe strip without scripting or with reduced motion)
+  "stage",        // one large photo at a time with its caption, arrows and a rail of thumbnails
   // SLOT gallery ids (append here)
 ] as const;
 export const PROOF_IDS = [
@@ -82,6 +102,9 @@ export const PROOF_IDS = [
   "star-summary",  // the average and a 5-to-1 breakdown beside a stack of review cards
   "results-band",  // ink band: the numbers behind the reviews, three short quotes under them
   "clients-strip", // the customers' names as a "trusted by" ribbon, then the best review
+  "receipt",      // the reviews itemised on a paper till receipt, the average as the total
+  "marquee-cards", // two rows of review cards drifting in opposite directions
+  "spotlight",    // one review huge on the ink field, the other reviewers as a list to pick from
   // SLOT proof ids (append here)
 ] as const;
 export const PROCESS_IDS = [
@@ -90,6 +113,7 @@ export const PROCESS_IDS = [
   "timeline-h",    // a rail with numbered nodes, across on a wide screen and down on a phone
   "icon-cards",    // one card per step with an icon picked from what the step says
   "step-accordion", // steps that open one at a time
+  "stack-cards",  // each step a tall card that sticks under the header while the next slides over it
   // SLOT process ids (append here)
 ] as const;
 export const FAQ_IDS = [
@@ -98,6 +122,7 @@ export const FAQ_IDS = [
   "two-column",    // every answer in view, as two columns of cards
   "searchable",    // a search box over the questions; matches open and are marked (under four questions: a plain accordion)
   "chat-bubble",   // each question a message from the visitor, each answer a reply from the business
+  "spotlight",     // the questions as a large list, the chosen answer set big on an accent card beside it
   // SLOT faq ids (append here)
 ] as const;
 export const VISIT_IDS = [
@@ -106,6 +131,7 @@ export const VISIT_IDS = [
   "hours-timeline", // the timings first, as a rail with today lit, and where to go beside it
   "address-poster", // the address set as a poster on the ink field, the timings as chips
   "branch-list",   // every location block as a ruled row with its own directions, the timings under them
+  "contact-desk",  // the number set huge, a map card with directions, live timings, and a real enquiry form beside them
   // SLOT visit ids (append here)
 ] as const;
 export const CTA_IDS = [
@@ -114,6 +140,7 @@ export const CTA_IDS = [
   "floating-card", // an accent card straddling the page and the footer, a photo beside the words
   "split-qr",      // words and buttons on one side, the site's QR on a card on the other
   "sticky-ribbon", // a closing block, and a slim ribbon that follows the visitor down a wide screen until it is reached
+  "callback",      // a closing ink band with a short "call me back" form that sends a lead
   // SLOT cta ids (append here)
 ] as const;
 export const FOOTER_IDS = [
@@ -122,6 +149,8 @@ export const FOOTER_IDS = [
   "minimal",       // one quiet row of name, links and social, one line of contact and timings
   "big-wordmark",  // three compact columns, then the business's name as a very large mark
   "link-grid",     // the footer as a grid of tiles: links, ways to reach, the address, the timings
+  "atelier",       // a ticker of what we sell, the name set very large in outline, then the columns
+  "hotline",       // the phone number as the footer: set huge, with WhatsApp, directions and the timings
   // SLOT footer ids (append here)
 ] as const;
 
@@ -358,4 +387,106 @@ export function advancedVars(card: Pick<Card, "themeColor">, spec: AdvancedSpec)
     // Legacy names a few shared pieces (the hero's photo, the chat bubble) still read.
     `--p-mid:${sp.mid}`, `--p-deep:${sp.deep}`, `--tc:${sp.mid}`,
   ].join(";");
+}
+
+
+/* ================= pages: the advanced site is a whole website, not one scroll (owner, 16 Oct 2026) ================= */
+// The card's own pages differ by trade (products / menu / packages / services / visit / join...). The advanced site gives every
+// page a ROLE from what it holds, draws it with the matching template (src/components/site-adv/pages.tsx), and adds the pages
+// a website is expected to have when the card has the material but no page for it (About, Gallery). Everything here is pure, so
+// the server (render.tsx: titles, descriptions, the address of each page) and the browser agree on the same list.
+
+export type AdvPageRole = "home" | "catalogue" | "about" | "gallery" | "contact" | "faq" | "page";
+
+/** A services block whose first item starts "1. " is the owner's steps ("how it works"), not an offering (content.ts says the same). */
+const isStepsBlock = (b: Extract<CardBlock, { kind: "services" }>) => /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
+
+/** What a page of the card is, from the blocks it carries: the slug alone cannot say ("visit" is a contact page, "menu" a catalogue). */
+export function pageRole(card: Pick<Card, "pages">, p: CardPage): AdvPageRole {
+  if (p === card.pages[0] || p.slug === "home") return "home";
+  const bs = p.blocks.filter((b) => !isEmptyBlock(b));
+  const kinds = new Set(bs.map((b) => b.kind));
+  if (kinds.has("product") || bs.some((b) => b.kind === "services" && !isStepsBlock(b))) return "catalogue";
+  if (kinds.has("contact") || kinds.has("location") || kinds.has("hours") || kinds.has("appointment") || kinds.has("form")) return "contact";
+  const only = (...ks: CardBlock["kind"][]) => bs.length > 0 && bs.every((b) => ks.includes(b.kind));
+  if (only("gallery", "image", "carousel")) return "gallery";
+  if (only("about", "highlights") && kinds.has("about")) return "about";
+  if (only("faq")) return "faq";
+  return "page";
+}
+
+/** The pages of the card that are drawn at all: not hidden by the owner, not the Shubhora page, not empty (home always). */
+export function livePages(card: Pick<Card, "pages" | "site">): CardPage[] {
+  const hidden = new Set(card.site?.hidden ?? []);
+  return card.pages.filter((p, i) => !p.hidden && !hidden.has(p.slug) && (i === 0 || p.slug === "home" || p.blocks.some((b) => !isEmptyBlock(b))));
+}
+
+/** Ids of pages made for the advanced site at request time (never stored on the card): `adv-` + a name. */
+export const ADV_PAGE_PREFIX = "adv-";
+
+const imagesOf = (b: CardBlock): { url: string; label: string; group?: string }[] =>
+  b.kind === "gallery" ? b.images.filter((i) => i.url).map((i) => ({ url: i.url!, label: i.label ?? "", group: i.group }))
+  : b.kind === "image" || b.kind === "carousel" ? b.images.filter((i) => i.url).map((i) => ({ url: i.url, label: i.caption ?? "" }))
+  : [];
+
+/** The card plus the pages a website has and the card does not: About (from the About block or the card's own text) and Gallery
+ *  (from every photo block of the card, three or more). Each is a normal page, so titles, descriptions, links and the sitemap
+ *  logic of the basic site work on it unchanged. Done at request time; a page the card already has, or the owner hid, is left alone. */
+export function withAdvancedPages(card: Card): Card {
+  const hidden = new Set(card.site?.hidden ?? []);
+  const live = livePages(card);
+  const roles = live.map((p) => pageRole(card, p));
+  const hi = card.language === "hi";
+  const extra: CardPage[] = [];
+  const visible = card.pages.filter((p) => !p.hidden);
+  const blocks = visible.flatMap((p) => p.blocks);
+  const taken = new Set(card.pages.map((p) => p.slug));
+  const aboutBlock = blocks.find((b): b is Extract<CardBlock, { kind: "about" }> => b.kind === "about" && !isEmptyBlock(b) && !!(b.body ?? "").trim());
+  const aboutText = (aboutBlock?.body ?? card.about ?? "").trim();
+  if (!roles.includes("about") && !hidden.has("about") && !taken.has("about") && aboutText) {
+    extra.push({ id: `${ADV_PAGE_PREFIX}about`, slug: "about", label: hi ? "हमारे बारे में" : "About", blocks: [{ id: `${ADV_PAGE_PREFIX}about-b`, kind: "about", title: aboutBlock?.title || (hi ? "हमारी कहानी" : "Our story"), body: aboutText, ...(aboutBlock?.imageUrl ? { imageUrl: aboutBlock.imageUrl } : {}) }] });
+  }
+  if (!roles.includes("gallery") && !hidden.has("gallery") && !taken.has("gallery")) {
+    const seen = new Set<string>();
+    const imgs = blocks.flatMap(imagesOf).filter((i) => !seen.has(i.url) && !!seen.add(i.url));
+    if (imgs.length >= 3) extra.push({ id: `${ADV_PAGE_PREFIX}gallery`, slug: "gallery", label: hi ? "फ़ोटो" : "Gallery", blocks: [{ id: `${ADV_PAGE_PREFIX}gallery-b`, kind: "gallery", title: hi ? "फ़ोटो गैलरी" : "Gallery", images: imgs.map((i) => ({ url: i.url, color: card.themeColor || "#999999", label: i.label, ...(i.group ? { group: i.group } : {}) })) }] });
+  }
+  return extra.length ? { ...card, pages: [...card.pages, ...extra] } : card;
+}
+
+/** Every product AND service of the site with the address it answers at. Products keep the address the basic site gave them
+ *  (product-page.ts); a service ("Bridal makeup", "AC repair") gets one made the same way, so every item has a page of its own. */
+export type AdvItem = { item: ProductItem; slug: string; page: string; kind: "product" | "service" };
+export function advancedItems(card: Card): AdvItem[] {
+  const hidden = new Set(card.site?.hidden ?? []);
+  // Pages made for the request (`adv-…`, `prod-…`) never hold the owner's items.
+  const real = card.pages.filter((p) => !p.id.startsWith(ADV_PAGE_PREFIX) && !p.id.startsWith("prod-"));
+  const base = { ...card, pages: real };
+  const out: AdvItem[] = cardProducts(base).filter((p) => (p.item.name ?? "").trim() && !hidden.has(p.page)).map((p) => ({ ...p, kind: "product" as const }));
+  const used = new Set(out.map((o) => o.slug));
+  for (const pg of real) {
+    if (pg.hidden || hidden.has(pg.slug)) continue;
+    for (const b of pg.blocks) {
+      if (b.kind !== "services" || isStepsBlock(b)) continue;
+      for (const s of b.items) {
+        if (!(s.name ?? "").trim()) continue;
+        let slug = productSlug(s.name, out.length);
+        if (used.has(slug)) slug = `${slug}-${out.length + 1}`;
+        used.add(slug);
+        out.push({ item: { name: s.name.trim(), desc: (s.desc ?? "").trim() || undefined, features: [], specs: [] }, slug, page: pg.slug, kind: "service" });
+      }
+    }
+  }
+  return out;
+}
+export const findAdvancedItem = (card: Card, slug: string | null | undefined): AdvItem | null =>
+  isProductSlug(slug) ? advancedItems(card).find((i) => i.slug === slug) ?? null : null;
+
+/** One tiny hidden page per item (just its name): it lets the website's page switch (`go(slug)` in site-view.tsx) reach every
+ *  item without a reload; the advanced renderer reads the item itself from advancedItems(). Pass these slugs as `unlisted`. */
+export function advancedItemStubs(card: Card): CardPage[] {
+  return advancedItems(card).map((i) => ({
+    id: `${ADV_PAGE_PREFIX}item-${i.slug}`, slug: i.slug, label: i.item.name.slice(0, 40), hidden: true,
+    blocks: [{ id: `${ADV_PAGE_PREFIX}item-b-${i.slug}`, kind: "product" as const, title: "", items: [{ name: i.item.name, features: [], specs: [] }] }],
+  }));
 }

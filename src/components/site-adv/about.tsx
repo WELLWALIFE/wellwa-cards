@@ -467,14 +467,16 @@ export const ABOUT_CSS = `
 .abe-lede{margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.35rem,2.7vw,2.1rem);line-height:1.3;letter-spacing:var(--display-tr);color:var(--ink);text-wrap:pretty}
 .abe-fig{position:relative;margin:clamp(1.5rem,4vw,2.5rem) 0;aspect-ratio:16/10;border-radius:var(--r-tile);overflow:hidden;background:var(--paper-2)}
 .abe-cols{column-gap:clamp(1.5rem,3vw,3rem)}
-.abe-text p{break-inside:avoid-column}
+.abe-text p:not(:only-child){break-inside:avoid-column}
 .site:lang(en) .abe-lede~.abe-text>p:first-child::first-letter,.site:lang(en) .abe-fig~.abe-text>p:first-child::first-letter{float:left;font-family:var(--font-display);font-size:3.5em;line-height:.8;padding:.07em .1em 0 0;color:var(--accent)}
 @media (min-width:960px){.abe{grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:clamp(3rem,6vw,6rem)}.abe-side{position:sticky;top:96px;align-self:start}.abe-cols{column-count:2}}
 
 .abq{margin:0;display:flex;flex-direction:column;align-items:center;text-align:center;gap:var(--s4)}
 .abq-mark{font-family:var(--font-display);font-size:clamp(5rem,14vw,9rem);line-height:.7;height:.5em;color:var(--accent);opacity:.9}
-.abq-quote{margin:0;max-width:24ch}
-.abq-quote p{margin:0;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.75rem,4.8vw,3.5rem);line-height:1.14;letter-spacing:var(--display-tr);color:var(--ink);text-wrap:balance}
+/* The measure sits on the <p>, not the blockquote: ch units there were the body face's 190px, so the headline-size quote broke every two words down a
+   700px column (16 Oct 2026 QA). */
+.abq-quote{margin:0;max-width:100%}
+.abq-quote p{margin:0 auto;max-width:30ch;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.5rem,3.7vw,2.7rem);line-height:1.14;letter-spacing:var(--display-tr);color:var(--ink);text-wrap:balance}
 .site:lang(hi) .abq-quote p{line-height:1.35}
 .abq-sign{display:flex;align-items:center;gap:var(--s3);margin-top:var(--s3);text-align:left}
 .abq-sign b{display:block;font-size:var(--t-body);font-weight:600;color:var(--ink)}
@@ -482,7 +484,7 @@ export const ABOUT_CSS = `
 .abq-avatar{position:relative;flex:none;width:48px;height:48px;border-radius:999px;overflow:hidden;background:var(--paper-2)}
 .abq-after{margin:clamp(2.5rem,6vw,4.5rem) auto 0;max-width:62rem;padding-top:clamp(1.75rem,4vw,2.75rem);border-top:1px solid var(--line)}
 .abq-cols{column-gap:clamp(1.5rem,4vw,3.5rem)}
-.abq-text p{break-inside:avoid-column}
+.abq-text p:not(:only-child){break-inside:avoid-column}
 .abq-chips{display:flex;flex-wrap:wrap;justify-content:center;gap:var(--s2);margin:var(--s5) 0 0;padding:0;list-style:none}
 @media (min-width:800px){.abq-cols{column-count:2}}
 
@@ -531,7 +533,8 @@ export const ABOUT_CSS = `
 .abn-statement{font-size:clamp(1.7rem,4.2vw,3rem);line-height:1.12;max-width:22ch}
 .abn-solo .abn-statement{max-width:30ch}
 .abn-cols{column-gap:clamp(1.5rem,3vw,3rem)}
-.abn-body .adv-body p{break-inside:avoid-column}
+/* a lone paragraph must be free to run over both columns: with avoid-column it stayed whole in the first and the second stood empty (16 Oct 2026 QA) */
+.abn-body .adv-body p:not(:only-child){break-inside:avoid-column}
 .abn-ticks{margin-top:var(--s5)}
 @media (min-width:900px){.abn{grid-template-columns:minmax(0,5fr) minmax(0,6fr);gap:clamp(3rem,6vw,6rem);align-items:start}.abn-solo{grid-template-columns:1fr}.abn-cols{column-count:2}}
 @media (min-width:900px) and (max-width:1100px){.abn-cols{column-count:1}}

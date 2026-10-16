@@ -71,6 +71,41 @@ Owner's new segment (15-16 Oct 2026): an AI review of the finished site, redesig
 - Unverified: no live Razorpay run (order, signature, metadata write via admin PUT merge); `triesLeft` is set but decrementing is
   the redesign route's job; no client checkout UI for this product yet; ledger insert untested against RLS/constraints.
 
+### The advanced website is a whole website (16 Oct 2026)
+Owner's test of the first version: "looks nice but you made only ONE page; make it perfect and COMPLETE". It is now a multi-page site
+that replaces the blueprint on EVERY page of a card with a valid `site.advanced` (not only home).
+- Pages: Home (sections in `spec.order`, each in the variant the spec names), the catalogue (Products / Menu / Services / Packages,
+  named per trade by `catalogLabel`; search, category chips, price sort, four item-card layouts), an item's own page at `/p-<slug>`
+  (products AND services; three layouts chosen from the item: shop, dish, offer), About, Gallery, Contact (big number, enquiry form that
+  is a real lead, map card, live timings), Updates when the card has posters, and the card's other pages (FAQ, admissions, custom) drawn block by block.
+  About and Gallery are added at request time when the card has the material but no such page (`withAdvancedPages`); each item also gets a
+  hidden stub page (`advancedItemStubs`, pass its slugs as `unlisted`) so every item opens without a reload.
+- Shell (`nav.tsx`): announcement + offer strips, header that condenses on scroll (layout picked from the spec seed), full-screen menu on
+  phones, progress hairline, breadcrumbs, phone action bar, footer variant, chat/popups/Shubhora strip. Motion (`motion.tsx`) is CSS first,
+  starts from the finished look, so reduced motion / no-JS / print show the finished page.
+- Files: `src/lib/site-advanced.ts` (spec, `activeAdvanced`, `withAdvancedPages`, `advancedItems`, `findAdvancedItem`, `advancedItemStubs`,
+  `pageRole`, `livePages`), `site-advanced-archetypes.ts` (327 archetypes / 34 trade groups, `specFromSeed`), `site-advanced-ai.ts` (the redesign
+  engine; unchanged by the multi-page work). Renderer `src/components/site-adv/`: `index.tsx` (AdvancedSite, home composition), `pages.tsx`
+  (routeOf + AdvPageBody), `nav.tsx`, `theme.ts` (palettes, 12 font pairings, shape language), `motion.tsx`, `registry.ts` (variant ids
+  -> components; never rename or reorder an id, stored specs name them), `shared.tsx`, `content.ts`, home variants (`heroes`, `abouts`, `about`,
+  `basics`, `catalog`, `proof`, `proof-more`, `close`), page files (`page-catalog`, `page-more`, `page-parts`, `product`, `contactpage`).
+- Hooks: `src/components/site-view.tsx` renders `AdvancedSite` whenever `activeAdvanced(card.site, username)` is set, passing `page={active}`;
+  public route `src/app/c/[username]/render.tsx` (`loadCard` adds the About/Gallery pages, `itemAt` resolves a service as well as a product,
+  a phone gets the website not the card when advanced); `/preview/site` (`view.tsx`) does the same from localStorage and takes `?page=<slug>`.
+- Flags: `site.advancedOn === false` shows the basic site (both designs stay stored); no flag = on. Server env flags are above (OPEN / SELL).
+  Basic renderer and the six basic blueprints are untouched and still render (checked 16 Oct 2026).
+- QA: `node scripts/check-advanced.mjs` (5,800 checks: garbage specs, 40 fake cards, registry ids, archetype library, SSR of 28 pages, AA
+  contrast of every palette). Visual: put a full card (a trade template + `specFromSeed(card)` as `site.advanced`) in localStorage and open
+  `/preview/site?k=<key>&page=<slug>&lang=hi|en&shot=1` at 1440x900 and 390x844 with puppeteer-core and Chrome.
+- Known gaps: (1) `src/app/sitemap.ts` lists only the card's stored pages and products, so the About/Gallery pages the advanced site adds and
+  service item pages are not in the sitemap yet (they are crawlable by link). (2) The public `/c/<username>` route was not exercised
+  end to end (the dev DB has no advanced card; routing, item lookup and the advancedOn flag were checked on the same functions in Node and
+  the page itself through /preview/site). (3) Photos are what the card holds: trade-template sample photos are generic stock and often do
+  not match the trade (a water purifier site showing a jeweller's shop) until the owner uploads real ones; the layout does not hide that.
+  (4) Hindi: the card's own text (names, descriptions, page labels) is translated by `/api/translate/<username>`, which a preview or demo
+  user does not have (404), so those lines stay English in the preview; all fixed UI text is bilingual. (5) Tap targets: a few secondary text links are under 44px on phones (the breadcrumb "Home" / "होम" is 18px wide, a footer "Visit" 26px, item-title links inside cards that also have a larger arrow button). (6) The redesign is still
+  closed by default (flags above); no live Razorpay run.
+
 ## Rules for commits
 - Branch `claude/dreamy-faraday-0864zl` only. Clear messages. No model names in code or commits.
 - Keep comments in the codebase's voice (why, dated owner decisions), no hype.

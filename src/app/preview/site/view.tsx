@@ -1,13 +1,14 @@
 "use client";
 // Renders the card saved in localStorage "vcard-preview" (written by /poster/card/build) with the real
 // website renderer. Nothing is sent anywhere; the page follows the preview live when the owner changes it.
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { SiteView } from "@/components/site-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
 import { isShubhoraSellerCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { activeAdvanced, advancedItemStubs, withAdvancedPages } from "@/lib/site-advanced";
 
 const KEY = "vcard-preview";
 /** The website editor (/poster/website/edit) previews under its own key, passed as ?k=, so it never
@@ -22,6 +23,12 @@ function isShot(): boolean {
 /** `?lang=hi|en` forces the visitor language the page opens in (the look audit shoots English cards in both). */
 function forcedLang(): "hi" | "en" | null {
   try { const l = new URLSearchParams(window.location.search).get("lang"); return l === "hi" || l === "en" ? l : null; } catch { return null; }
+}
+
+/** `?page=<slug>` opens a page of the website: a card page ("products", "visit"), "updates", an about / gallery page the advanced site adds,
+ *  or an item's own address ("p-kaju-katli"). The QA tooling and the editor's iframe use it; unset = the home page. */
+function pageParam(): string | undefined {
+  try { const p = new URLSearchParams(window.location.search).get("page") ?? ""; return /^[\w%-]{1,80}$/.test(p) ? decodeURIComponent(p) : undefined; } catch { return undefined; }
 }
 
 function readCard(): Card | null {
@@ -65,12 +72,23 @@ function PreviewInner() {
   const [editor, setEditor] = useState(false);
   const [shot, setShot] = useState(false);
   const [lang, setLang] = useState<"hi" | "en" | null>(null);
+  const [startPage, setStartPage] = useState<string | undefined>(undefined);
+  // The advanced website is several pages: the About and Gallery pages it adds, and a hidden page per item so every item opens
+  // in place (the public route does the same, src/app/c/[username]/render.tsx). A basic card is passed through as it is.
+  const shown = useMemo(() => {
+    if (!card) return card;
+    const base = isShubhoraSellerCard(card) ? card : withoutShubhoraLeaks(card);
+    if (!activeAdvanced(base.site, base.username)) return base;
+    const withPages = withAdvancedPages(base);
+    return { ...withPages, pages: [...withPages.pages, ...advancedItemStubs(withPages)] };
+  }, [card]);
   useEffect(() => {
     const key = storageKey();
     setEditor(key !== KEY);
     setShot(isShot());
     const l = forcedLang();
     setLang(l);
+    setStartPage(pageParam());
     // useCardLang (card-view.tsx) opens in the language it last saved: the forced one is written there first, so
     // the renderer's very first paint is already in it.
     if (l) { try { localStorage.setItem("ne-card-lang", l); } catch { /* ignore */ } }
@@ -85,15 +103,13 @@ function PreviewInner() {
 
   if (card === undefined) return null;
   if (!card) return <div className="flex-1 grid min-h-screen place-items-center text-center text-muted">Nothing to preview</div>;
-  // The same cleanup the live site applies: an own-business card shows Shubhora on the bottom strip only.
-  const shown = isShubhoraSellerCard(card) ? card : withoutShubhoraLeaks(card);
   // The key re-mounts the renderer when a new card arrives, so its page and language state start fresh.
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
-  const links = shown.links.filter((l) => l.value.trim());
+  const links = shown!.links.filter((l) => l.value.trim());
   const hasBar = links.some((l) => l.type === "phone" || l.type === "whatsapp" || l.type === "location");
   return (
     <>
-      <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown} qr={qr} free={loading || plan === "free"} initialLang={lang ?? undefined} />
+      <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown!} qr={qr} free={loading || plan === "free"} initialLang={lang ?? undefined} initialPage={startPage} unlisted={shown!.pages.filter((p) => p.hidden && p.id.startsWith("adv-")).map((p) => p.slug)} />
       {editor && !shot && <UpgradeBar aboveBar={hasBar} />}
     </>
   );

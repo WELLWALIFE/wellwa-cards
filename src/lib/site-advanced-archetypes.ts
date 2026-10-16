@@ -12,11 +12,12 @@
 //
 // Pure module (no React, no fetch, no DOM, no server-only): the engine, the preview and the tests import it.
 import {
-  ADV_FONTS, BODY_FONTS, DEFAULT_ORDER, DENSITIES, HERO_IDS, SANS_HEADINGS, SECTION_KEYS, SERIF_HEADINGS, SHAPES, VARIANT_IDS, rng, validateSpec, variantOf,
+  ADV_FONTS, BODY_FONTS, DEFAULT_ORDER, DENSITIES, HERO_IDS, hash32, SANS_HEADINGS, SECTION_KEYS, SERIF_HEADINGS, SHAPES, VARIANT_IDS, rng, validateSpec, variantOf,
   type AdvancedSpec, type SectionKey,
 } from "./site-advanced";
 import { PALETTE_KEYS, SITE_PALETTES } from "./site-style";
 import { tradeMood } from "./trade-moods";
+import { CURATED_PALETTES, FONT_PAIRINGS, curatedPalette } from "@/components/site-adv/theme";
 import { isEmptyBlock } from "./site-home";
 import type { Card, CardBlock } from "./types";
 
@@ -33,7 +34,8 @@ export type Archetype = {
   lead: string[];
   /** Variant per section (not the hero). */
   sections: Record<string, string>;
-  palette: { key: string; tone: "light" | "dark"; luxe?: boolean };
+  /** `color` is set for a curated palette (theme.ts): key "brand" with the hex that colour comes from. */
+  palette: { key: string; tone: "light" | "dark"; luxe?: boolean; color?: string };
   fonts: { heading: string; body: string };
   shape: "sharp" | "soft" | "pill";
   density: "airy" | "compact";
@@ -51,7 +53,10 @@ function a(id: string, name: string, idea: string, hero: string, lead: string, s
   return {
     id, name, idea, hero, lead: lead.split(/\s+/).filter(Boolean),
     sections: Object.fromEntries(secs.split(/\s+/).filter(Boolean).map((x) => x.split(":") as [string, string])),
-    palette: { key: p[0], tone: p[1] === "dark" ? "dark" : "light", ...(p.includes("luxe") ? { luxe: true } : {}) },
+    // A curated id ("terracotta", "petrol" ...) is a "brand" palette with that colour (theme.ts); a SITE_PALETTES key is used as it is.
+    // "luxe" is ivory paper with espresso ink (oklchVars), so it is a LIGHT look: luxe + dark would set light ink on light paper (seen on
+    // 16 Oct 2026: a whole heritage jeweller's page unreadable). A "dark luxe" line therefore keeps the dark ground and drops the ivory.
+    palette: curatedPalette(p[0], p[1] === "dark" ? "dark" : "light", p.includes("luxe") && p[1] !== "dark") ?? { key: p[0], tone: p[1] === "dark" ? "dark" : "light", ...(p.includes("luxe") && p[1] !== "dark" ? { luxe: true } : {}) },
     fonts: { heading: heading.trim(), body: (body ?? "Inter").trim() },
     shape: shape as Archetype["shape"], density: density as Archetype["density"], motion: motion as Archetype["motion"], notes,
   };
@@ -159,7 +164,7 @@ const LIBRARY: Record<string, Archetype[]> = {
     a("stay-room-ledger", "The room ledger", "a clear tariff of rooms with photographs, amenities as icons, book by call", "split-frame", "trust services gallery visit",
       "trust:icon-row services:tiers gallery:bento proof:cards process:steps", "ocean light", "Manrope/Inter", "soft compact subtle", "clean, trustworthy; sea blue and white; room types as comparison columns"),
     a("stay-heritage-haveli", "The haveli story", "a place with a past: story, courtyard, rooms, stay notes", "masthead", "about gallery services proof",
-      "about:year-timeline gallery:masonry services:price-list proof:review-wall trust:strip", "gold dark luxe", "Newsreader/DM Sans", "sharp airy subtle", "heritage warmth; gold on dark; archival feel; only the history the owner told"),
+      "about:year-timeline gallery:masonry services:price-list proof:review-wall trust:strip", "brass dark", "Newsreader/DM Sans", "sharp airy subtle", "heritage warmth; gold on dark; archival feel; only the history the owner told"),
     a("stay-wedding-lawn", "The celebration venue", "banquet and lawn: capacity (as told), events hosted, enquiry for a date", "stacked-poster", "gallery services process proof",
       "gallery:mosaic services:magazine process:timeline-h proof:results-band about:story-columns", "royal dark", "DM Serif Display/DM Sans", "soft airy rich", "celebratory; deep violet and gold; wide shots of the lawn at dusk"),
     a("stay-pilgrim-lodge", "The pilgrim's lodge", "a simple dharamshala/lodge: where it is, what is near, clear rates", "diagonal", "visit trust services faq",
@@ -171,7 +176,7 @@ const LIBRARY: Record<string, Archetype[]> = {
     a("jewel-one-piece", "The single piece", "one hero piece, a quiet page, a collection that opens like a jewellery box", "centered-minimal", "services about gallery proof",
       "services:scroller about:pull-quote gallery:filmstrip trust:strip proof:testimonial-carousel", "ivory light luxe", "Instrument Serif/Inter", "sharp airy subtle", "ivory and espresso, a gold hairline; macro photographs on velvet; never a discount banner"),
     a("jewel-heritage-house", "The heritage house", "generations of trust: the family name, hallmark, the story, then the collection", "masthead", "about trust services proof",
-      "about:year-timeline trust:counters services:magazine proof:cards gallery:mosaic", "gold dark luxe", "Playfair Display/DM Sans", "sharp airy subtle", "deep gold on dark; archival; hallmark and purity as told"),
+      "about:year-timeline trust:counters services:magazine proof:cards gallery:mosaic", "brass dark", "Playfair Display/DM Sans", "sharp airy subtle", "deep gold on dark; archival; hallmark and purity as told"),
     a("jewel-bridal-suite", "The bridal suite", "bridal sets as the lead, the occasion as the structure: engagement, wedding, gifting", "full-bleed", "services gallery process about",
       "services:category-tabs gallery:bento process:icon-cards about:overlap-card proof:review-wall", "rose dark luxe", "DM Serif Display/Manrope", "soft airy rich", "rich rose and gold; hands, bangles and red silk; a consultation call"),
     a("jewel-lookbook", "The lookbook", "a fashion lookbook: large masonry of pieces, captions, appointment", "editorial-marquee", "gallery services about proof",
@@ -207,7 +212,7 @@ const LIBRARY: Record<string, Archetype[]> = {
     a("decor-materials-library", "The materials library", "finishes, fabrics and woods like swatches; the studio's palette", "mosaic", "services about gallery process",
       "services:magazine about:photo-collage gallery:mosaic process:icon-cards trust:strip", "emerald light", "Lora/DM Sans", "soft airy subtle", "tactile; close-ups of grain and weave; muted greens and sand"),
     a("decor-luxe-residence", "The luxe residence", "high-end homes: few projects, long captions, an appointment", "centered-minimal", "about gallery services proof",
-      "about:pull-quote gallery:bento services:tiers proof:clients-strip trust:counters", "gold dark luxe", "Playfair Display/Inter", "sharp airy rich", "dark and gold; evening interiors; restrained copy"),
+      "about:pull-quote gallery:bento services:tiers proof:clients-strip trust:counters", "brass dark", "Playfair Display/Inter", "sharp airy rich", "dark and gold; evening interiors; restrained copy"),
   ],
   shop: [
     a("shop-aisle-catalogue", "The aisle catalogue", "everything in stock, grouped; quick facts on top, order on WhatsApp", "split-frame", "trust services gallery visit",
@@ -295,7 +300,7 @@ const LIBRARY: Record<string, Archetype[]> = {
   ],
   property: [
     a("prop-project-showcase", "The project showcase", "each project as a feature: location, status, enquiry", "full-bleed", "services gallery about proof",
-      "services:feature-cards gallery:filmstrip about:overlap-card proof:cards trust:counters", "gold dark luxe", "Playfair Display/Inter", "sharp airy rich", "aspirational; dusk renders and real site photographs; no price promises"),
+      "services:feature-cards gallery:filmstrip about:overlap-card proof:cards trust:counters", "brass dark", "Playfair Display/Inter", "sharp airy rich", "aspirational; dusk renders and real site photographs; no price promises"),
     a("prop-site-visit", "The site visit", "book a visit: how it works, locations, timings", "split-frame", "process services visit proof",
       "process:timeline-h services:category-tabs trust:icon-row proof:testimonial-carousel gallery:bento", "teal light", "Manrope/Inter", "soft compact subtle", "bright and helpful; teal; map-led"),
     a("prop-builder-ledger", "The builder's ledger", "years, projects, delivered units - only the numbers the owner gives", "editorial-marquee", "trust about services gallery",
@@ -536,7 +541,7 @@ const RESEARCHED: Record<string, Archetype[]> = {
     a("college-programme-explorer", "Programme explorer", "programmes (B.Com, BCA, MBA) as filterable cards with duration and fee chips", "glass-card", "services trust process proof",
       "services:category-tabs trust:icon-row process:steps proof:star-summary gallery:lightbox-grid faq:searchable visit:split cta:band footer:link-grid", "ocean light", "Manrope/Inter", "soft compact subtle", "filter chips, programme cards with duration, blue and white; informational and comparison-friendly"),
     a("college-placement-board", "Placement scoreboard", "big numerals (highest package, placement rate, recruiters) and a recruiter logo strip: outcomes for students and employers", "editorial-marquee", "proof trust services about",
-      "trust:counters proof:clients-strip services:magazine about:numbers-led gallery:masonry faq:two-column visit:map-hours cta:split-qr footer:mega", "gold dark", "Space Grotesk/DM Sans", "sharp compact rich", "big numerals, logo wall, dark and gold on a strong grid; every figure and every recruiter name only as told"),
+      "trust:counters proof:clients-strip services:magazine about:numbers-led gallery:masonry faq:two-column visit:map-hours cta:split-qr footer:mega", "brass dark", "Space Grotesk/DM Sans", "sharp compact rich", "big numerals, logo wall, dark and gold on a strong grid; every figure and every recruiter name only as told"),
     a("college-student-life", "Student life mosaic", "a photo mosaic of clubs, labs, sports and events with short captions: young and energetic", "diagonal", "gallery about services proof",
       "gallery:mosaic about:photo-collage services:scroller proof:review-wall trust:split-cards faq:chat-bubble visit:split cta:floating-card footer:link-grid", "crimson light", "Bricolage Grotesque/Inter", "pill airy rich", "masonry grid, bright accent, rounded tiles; first-person student voice"),
     a("college-heritage", "The heritage prospectus", "the crest and founding year on a formal split hero, a quote from the principal", "split-frame", "about trust services proof",
@@ -724,13 +729,272 @@ const RESEARCHED: Record<string, Archetype[]> = {
   ],
 };
 
-/** The engine's first set and the researched one, merged by trade group (a group in only one of them is kept as it is). */
+/* ================= the advanced set (16 Oct 2026) ================= */
+// The owner's verdict on the first Advanced site was "good bones, one scrolling page, plain sections": the variants since written
+// (kinetic type, a pinned story, a collage, a product spotlight, index rows, listing rows, a shop grid, a rate ledger, scrapbook /
+// rooms / reel / stage galleries, receipt and marquee reviews, stacked process cards ...) were drawn by no archetype, so the
+// no-AI path almost never met them. This set wires them in as complete art directions - hero, order, ten section variants, a
+// palette (a curated one when the trade has a colour of its own), a face pairing, a shape (which also chooses the section edge and
+// the kicker, theme.ts), density and motion - after the playbook of premium sites the researchers read (Wix restaurant / bar /
+// real-estate / clinic demos, Shopify Prestige and Impulse, Framer salon / gym / cafe templates): one confident idea per page,
+// a proof device early, numbered rows, marquee dividers, a quiet type system. Every group now has at least eight.
+const PREMIUM: Record<string, Archetype[]> = {
+  stay: [
+    a("stay-arrival-reel", "The arrival", "a pinned scroll that walks the guest from the gate to the room, then the rooms as full-bleed rows", "pinned-story", "gallery services about proof",
+      "trust:icon-row gallery:stage services:listing-rows about:chapters proof:testimonial-carousel process:timeline-h faq:numbered-accordion visit:address-poster cta:wide-band footer:atelier", "petrol dark", "Playfair Display/Inter", "sharp airy rich", "cinematic and slow; dusk exteriors and morning light in the room; spec chips (beds, view, size) only as told"),
+    a("stay-courtyard-diary", "The courtyard diary", "a floating collage of the property's corners with the host's letter and a guest scrapbook", "parallax-collage", "about gallery services proof",
+      "trust:strip gallery:scrapbook services:index-rows about:founder-letter proof:marquee-cards process:steps faq:two-column visit:map-hours cta:floating-card footer:big-wordmark", "clay light", "Fraunces/Mukta", "soft airy subtle", "warm and personal; terracotta and cream; a signed note from the host; the courtyard at different hours"),
+    a("stay-direct-desk", "The direct-booking desk", "rooms and rates as a spotlight, then a plain tariff ledger and one number to call", "product-spotlight", "services trust visit proof",
+      "trust:bento gallery:rooms services:rate-list about:story-columns proof:star-summary process:icon-cards faq:searchable visit:contact-desk cta:callback footer:hotline", "cobalt light", "Manrope/Inter", "pill compact rich", "clear and quick; blue and white; room types with a rate each; call and WhatsApp always in reach"),
+  ],
+  shop: [
+    a("shop-spotlight-shelf", "The spotlight shelf", "one product at a time on a round stage, then a searchable shop grid with badges", "product-spotlight", "services trust gallery proof",
+      "trust:bento services:shop-grid about:owner-card gallery:rooms proof:marquee-cards process:icon-cards faq:searchable visit:map-hours cta:sticky-ribbon footer:link-grid", "cobalt light", "Bricolage Grotesque/Inter", "pill compact rich", "bright and tidy; cut-out products on soft colour; New and Sale badges only where the owner gives a price"),
+    a("shop-index-counter", "The index counter", "a giant statement with the range as a numbered index, a tilted photo floating up under the pointer", "kinetic-type", "services trust about gallery",
+      "trust:ticker services:index-rows about:manifesto gallery:pinned-reel proof:spotlight process:stack-cards faq:spotlight visit:address-poster cta:wide-band footer:big-wordmark", "slate light", "Space Grotesk/DM Sans", "sharp airy rich", "typographic and confident; grey-blue, one signal colour; the range as a list you can read in ten seconds"),
+    a("shop-showroom-rows", "The showroom rows", "full-bleed rows that alternate, a card with the name, price and an ask button overlapping each photo", "parallax-collage", "services about gallery proof",
+      "trust:hairline services:listing-rows about:banner-columns gallery:stage proof:receipt process:step-accordion faq:chat-bubble visit:split cta:floating-card footer:mega", "clay light", "Fraunces/DM Sans", "soft airy subtle", "showroom-calm; warm neutrals; one big photograph per product line"),
+  ],
+  grocery: [
+    a("groc-rate-board", "Today's board", "the day's fresh arrivals and rates as a ticker and a ledger, the bill as the proof", "editorial-marquee", "trust services gallery proof",
+      "trust:ticker services:rate-list about:owner-card gallery:bento proof:receipt process:steps faq:chat-bubble visit:hours-timeline cta:sticky-ribbon footer:hotline", "pistachio light", "Bricolage Grotesque/Mukta", "pill compact rich", "fresh and loud-friendly; green and cream; produce shot overhead; rates only as the owner gives them"),
+    a("groc-basket-spotlight", "The basket spotlight", "weekly baskets one at a time on a round stage, then a searchable shop grid", "product-spotlight", "services process trust proof",
+      "trust:bento services:shop-grid about:story-columns gallery:lightbox-grid proof:star-summary process:icon-cards faq:two-column visit:map-hours cta:callback footer:link-grid", "sage light", "DM Sans/Mukta", "soft compact subtle", "sunny and honest; turmeric yellow; baskets, steel dabbas, scales"),
+    a("groc-doorstep-days", "The doorstep days", "a giant promise (home delivery by 9) over round photos, then the delivery routine as stacked cards", "kinetic-type", "process services trust visit",
+      "trust:hairline services:index-rows about:chapters gallery:pinned-reel proof:marquee-cards process:stack-cards faq:numbered-accordion visit:contact-desk cta:wide-band footer:columns", "olive dark", "Bricolage Grotesque/Inter", "sharp compact rich", "dependable; deep olive on ink; the van, the crate, the doorstep; delivery area and timing as told"),
+  ],
+  gifts: [
+    a("gift-occasion-index", "The occasion index", "a giant 'Say it with' line and every occasion as a numbered row with a photo that rises beside it", "kinetic-type", "services process gallery proof",
+      "trust:ticker services:index-rows about:manifesto gallery:scrapbook proof:marquee-cards process:icon-cards faq:chat-bubble visit:split cta:floating-card footer:big-wordmark", "blush light", "Fraunces/DM Sans", "pill airy rich", "romantic and bright; blush and cream; hands, ribbon, tissue paper; order by date on WhatsApp"),
+    a("gift-unboxing", "The unboxing", "a pinned scroll that opens the box in three steps, then the range as full-width rows", "pinned-story", "services gallery about proof",
+      "trust:strip services:listing-rows about:founder-letter gallery:stage proof:spotlight process:stack-cards faq:accordion visit:address-poster cta:band footer:atelier", "plum dark", "DM Serif Display/Manrope", "soft airy rich", "rich and tactile; plum and gold; boxes from above, ribbons, a handwritten card"),
+    a("gift-scrapbook-studio", "The scrapbook studio", "taped prints and notes floating round the headline, a personalised-gift builder beneath", "parallax-collage", "gallery services about process",
+      "trust:icon-row services:shop-grid about:photo-collage gallery:scrapbook proof:receipt process:numbered-list faq:two-column visit:map-hours cta:sticky-ribbon footer:link-grid", "clay light", "Lora/Mukta", "soft airy rich", "handmade; yellow paper, tape and stamps; every gift shown in a hand"),
+  ],
+  wholesale: [
+    a("whole-rate-ledger", "The rate ledger", "a giant 'rates today' line over the ledger itself: item, line, rate, ask-the-rate", "kinetic-type", "services trust about gallery",
+      "trust:counters services:rate-list about:numbers-led gallery:rooms proof:clients-strip process:numbered-list faq:searchable visit:contact-desk cta:callback footer:hotline", "slate light", "Space Grotesk/Inter", "sharp compact subtle", "ledger-plain; grey-blue; tabular numbers; rates only as told, otherwise 'ask'"),
+    a("whole-catalogue-sheets", "The catalogue sheets", "bestsellers one at a time, then a searchable shop of the full range for buyers who know the code", "product-spotlight", "services trust process proof",
+      "trust:hairline services:shop-grid about:story-columns gallery:lightbox-grid proof:results-band process:steps faq:two-column visit:split cta:sticky-ribbon footer:link-grid", "cobalt light", "Manrope/Inter", "soft compact subtle", "clean and quick; white and blue; stacks of cartons, packed and labelled"),
+    a("whole-trade-network", "The trade network", "a layered collage of stock, trucks and counters, the buyers' cities as a marquee", "parallax-collage", "trust about services proof",
+      "trust:ticker services:index-rows about:chapters gallery:bento proof:marquee-cards process:stack-cards faq:numbered-accordion visit:branch-list cta:wide-band footer:big-wordmark", "copper dark", "Bricolage Grotesque/Inter", "sharp compact rich", "industrial warmth on dark; dispatch, credit and MOQ as told; a quote on WhatsApp"),
+  ],
+  industry: [
+    a("ind-plant-tour", "The plant tour", "a pinned scroll through the plant: raw material, line, quality, dispatch - then the product lines as rows", "pinned-story", "about process services trust",
+      "trust:counters about:chapters services:listing-rows gallery:pinned-reel proof:clients-strip process:stack-cards faq:accordion visit:address-poster cta:wide-band footer:atelier", "copper dark", "Space Grotesk/Inter", "sharp airy rich", "documentary; sparks, steel and clean floors; capacity and certifications only as told"),
+    a("ind-spec-ledger", "The spec ledger", "a giant capability line over a ruled grid of numbers, the product range as a spec ledger", "kinetic-type", "trust services about gallery",
+      "trust:hairline services:rate-list about:banner-columns gallery:rooms proof:spotlight process:numbered-list faq:searchable visit:contact-desk cta:callback footer:columns", "steel light", "Space Grotesk/DM Sans", "sharp compact subtle", "precise; grey and a single orange; hairline grids; every figure as the owner gave it"),
+    a("ind-sample-desk", "The sample desk", "products one at a time, then numbered rows; the page ends in a sample request", "product-spotlight", "services process trust proof",
+      "trust:bento services:index-rows about:founder-letter gallery:stage proof:marquee-cards process:step-accordion faq:chat-bubble visit:split cta:floating-card footer:mega", "indigo light", "Manrope/Inter", "soft compact rich", "procurement-friendly; indigo and white; packaged samples on a bench"),
+  ],
+  buildmat: [
+    a("bm-aisle-index", "The aisle index", "a giant 'everything for the site' line, every material as a numbered row with a photo", "kinetic-type", "services trust gallery process",
+      "trust:ticker services:index-rows about:manifesto gallery:rooms proof:clients-strip process:stack-cards faq:two-column visit:map-hours cta:sticky-ribbon footer:big-wordmark", "copper light", "Space Grotesk/Inter", "sharp compact rich", "trade-counter; concrete and copper; stacks, bags and bars; site delivery as told"),
+    a("bm-project-rows", "Projects as rows", "finished sites as full-width rows with the materials used on a card over each photo", "parallax-collage", "services gallery about proof",
+      "trust:hairline services:listing-rows about:banner-columns gallery:stage proof:receipt process:timeline-h faq:numbered-accordion visit:address-poster cta:wide-band footer:mega", "olive dark", "Bricolage Grotesque/Inter", "sharp airy subtle", "earthy and solid; olive on ink; before and after on site; no price promises"),
+    a("bm-foundation-to-finish", "Foundation to finish", "a pinned scroll from foundation to finish, each stage naming the material for it", "pinned-story", "process services trust proof",
+      "trust:counters services:rate-list about:story-columns gallery:filmstrip proof:cards process:step-accordion faq:chat-bubble visit:contact-desk cta:callback footer:hotline", "cobalt light", "Manrope/DM Sans", "soft compact subtle", "practical; blue and white; stage photographs; a rate sheet on request"),
+  ],
+  pharmacy: [
+    a("pharm-calm-shelf", "The calm shelf", "a quiet bento of the pharmacist, the timings and a searchable shelf; nothing shouts", "mosaic", "trust services about visit",
+      "trust:icon-row services:shop-grid about:owner-card gallery:lightbox-grid proof:star-summary process:steps faq:searchable visit:hours-timeline cta:sticky-ribbon footer:hotline", "lagoon light", "Manrope/Inter", "soft compact subtle", "clean and reassuring; clear blue-green; shelves in daylight; never medical advice or claims"),
+  ],
+  fitness: [
+    a("fit-iron-type", "Iron type", "an enormous headline in caps over round photos of the floor, then classes as numbered rows with their time", "kinetic-type", "trust services proof gallery",
+      "trust:counters services:index-rows about:manifesto gallery:pinned-reel proof:marquee-cards process:stack-cards faq:two-column visit:hours-timeline cta:wide-band footer:big-wordmark", "violet dark", "Bricolage Grotesque/Inter", "sharp compact rich", "loud and exact; violet on black; chalk, steel, motion blur; no body-shaming"),
+    a("fit-day-one", "Day one to week twelve", "a pinned scroll of a member's first day to the twelfth week, then plans and a trial", "pinned-story", "proof services trust process",
+      "trust:bento services:tiers about:founder-letter gallery:scrapbook proof:spotlight process:step-accordion faq:chat-bubble visit:contact-desk cta:callback footer:hotline", "copper dark", "Space Grotesk/DM Sans", "soft compact rich", "motivating and honest; copper on charcoal; real members with permission; results as told"),
+    a("fit-crew-collage", "The crew collage", "a collage of classes and faces floating round the name, a timetable as the next block", "parallax-collage", "gallery services proof about",
+      "trust:ticker services:category-tabs about:chapters gallery:stage proof:receipt process:icon-cards faq:numbered-accordion visit:map-hours cta:floating-card footer:link-grid", "saffron dark", "Bricolage Grotesque/Mukta", "pill airy rich", "warm and social; saffron on ink; group shots; a free trial as the one button"),
+  ],
+  beauty: [
+    a("beauty-hairline-atelier", "The hairline atelier", "a macro photograph behind a visible hairline grid, the services as numbered rows with prices", "kinetic-type", "services gallery about proof",
+      "trust:hairline services:index-rows about:founder-letter gallery:rooms proof:spotlight process:numbered-list faq:accordion visit:address-poster cta:wide-band footer:atelier", "plum light", "Playfair Display/Inter", "sharp airy subtle", "gallery-white and plum; 1px lines; close-ups of skin, hair and hands; Book on WhatsApp pre-fills the service"),
+    a("beauty-lookbook-reel", "The lookbook reel", "a pinned horizontal reel of finished looks, then the service menu as listing rows", "pinned-story", "gallery services about proof",
+      "trust:strip services:listing-rows about:manifesto gallery:pinned-reel proof:marquee-cards process:icon-cards faq:chat-bubble visit:map-hours cta:floating-card footer:big-wordmark", "blush light", "Fraunces/DM Sans", "pill airy rich", "soft editorial; blush and cream; one look per frame; faces only with permission"),
+    a("beauty-bridal-collage", "The bridal collage", "a collage of hands, veils and mehndi round a script-like headline, packages beneath", "parallax-collage", "services gallery about process",
+      "trust:ticker services:shop-grid about:photo-collage gallery:scrapbook proof:receipt process:stack-cards faq:two-column visit:split cta:sticky-ribbon footer:link-grid", "oxblood dark", "DM Serif Display/Mukta", "soft airy rich", "red and gold on ink; brides with permission; trial and date check first"),
+  ],
+  wellness: [
+    a("well-giant-serif", "The giant serif", "a giant serif headline with round photos set in the sentence, a ticker, two buttons - the page of one confident idea", "kinetic-type", "trust services about proof",
+      "trust:ticker services:shop-grid about:manifesto gallery:stage proof:spotlight process:step-accordion faq:spotlight visit:split cta:wide-band footer:big-wordmark", "petrol dark", "Playfair Display/Inter", "sharp airy rich", "deep teal on ink; droplets and glass; specifications only as the owner lists them; no health claims"),
+    a("well-model-spotlight", "The model spotlight", "each model or product on a round stage with its price and an enquiry, then a clean grid", "product-spotlight", "services process trust proof",
+      "trust:bento services:feature-cards about:story-columns gallery:bento proof:star-summary process:icon-cards faq:two-column visit:contact-desk cta:callback footer:mega", "lagoon light", "Manrope/Inter", "soft airy subtle", "clean and clear; lagoon blue and white; installation and service as steps"),
+    a("well-honest-labels", "Honest labels", "a pinned scroll from ingredient to jar to routine, with the label shown as it is", "pinned-story", "process services about proof",
+      "trust:icon-row services:index-rows about:chapters gallery:rooms proof:marquee-cards process:stack-cards faq:numbered-accordion visit:split cta:floating-card footer:atelier", "sage light", "Newsreader/DM Sans", "soft airy subtle", "calm sage and cream; labels and bowls in daylight; benefits without claims"),
+  ],
+  advisory: [
+    a("adv-engagement-journey", "How an engagement runs", "a pinned scroll of the first call to the filed return or the signed agreement, each step with its documents", "pinned-story", "process about services proof",
+      "trust:hairline services:index-rows about:founder-letter gallery:stage proof:spotlight process:stack-cards faq:numbered-accordion visit:contact-desk cta:callback footer:minimal", "slate light", "Newsreader/Inter", "sharp airy subtle", "calm and exact; slate and paper; desks, files and a signature; credentials only as told"),
+    a("adv-matters-index", "The index of matters", "a restrained headline and every area of work as a numbered row; one sentence of 'when to call' each", "video-first", "services about trust proof",
+      "trust:counters services:index-rows about:chapters gallery:rooms proof:marquee-cards process:step-accordion faq:searchable visit:address-poster cta:wide-band footer:columns", "midnight dark", "Playfair Display/DM Sans", "sharp airy subtle", "navy on ink with a brass line; the office, the books; no promises of outcome"),
+    a("adv-ledger-rows", "The fee ledger", "a plain ledger of services with a fee line or 'on request', and a one-tap consultation", "diagonal", "services trust process faq",
+      "trust:strip services:rate-list about:banner-columns gallery:lightbox-grid proof:receipt process:timeline-h faq:two-column visit:split cta:sticky-ribbon footer:link-grid", "indigo light", "Space Grotesk/Inter", "soft compact subtle", "orderly; indigo; tabular fees only as told; deadlines in a row"),
+  ],
+  property: [
+    a("prop-listing-rows", "Listings as rows", "each project a full-bleed row with an overlapping spec card (location, status, size), enquiry on every one", "parallax-collage", "services gallery about proof",
+      "trust:bento services:listing-rows about:owner-card gallery:stage proof:marquee-cards process:timeline-h faq:chat-bubble visit:map-hours cta:floating-card footer:mega", "petrol dark", "Playfair Display/Inter", "sharp airy rich", "aspirational; dusk and daylight; spec chips as told; a site-visit button on every row"),
+    a("prop-walkthrough", "The walkthrough", "a pinned scroll that walks through plan, site and keys, then the projects as numbered rows", "pinned-story", "process services gallery proof",
+      "trust:counters services:index-rows about:chapters gallery:pinned-reel proof:results-band process:stack-cards faq:numbered-accordion visit:address-poster cta:wide-band footer:atelier", "slate light", "Manrope/Inter", "sharp airy subtle", "clear and sober; slate and white; plans, site and handover; RERA and delivery only as told"),
+    a("prop-agent-index", "The agent's index", "a giant 'find your address' line and every locality as a numbered row", "kinetic-type", "services trust about proof",
+      "trust:ticker services:rate-list about:manifesto gallery:rooms proof:spotlight process:icon-cards faq:searchable visit:contact-desk cta:callback footer:hotline", "cobalt light", "Bricolage Grotesque/Inter", "pill compact rich", "quick and local; blue and white; streets and doors; no price promises"),
+  ],
+  homeservice: [
+    a("svc-sixty-minutes", "The promise in big type", "a giant 'at your door in 60 minutes' over round photos of the team, the rates as a ledger", "kinetic-type", "trust services process proof",
+      "trust:counters services:rate-list about:founder-letter gallery:rooms proof:marquee-cards process:stack-cards faq:chat-bubble visit:contact-desk cta:callback footer:hotline", "copper dark", "Bricolage Grotesque/Inter", "sharp compact rich", "urgent and calm; copper on charcoal; uniforms, tools, doorsteps; timings only as the owner promises"),
+    a("svc-job-reel", "The job reel", "finished jobs as a pinned reel and a stage, then the price list as numbered rows", "product-spotlight", "gallery services trust proof",
+      "trust:bento services:index-rows about:owner-card gallery:pinned-reel proof:receipt process:step-accordion faq:two-column visit:hours-timeline cta:sticky-ribbon footer:link-grid", "lagoon light", "Manrope/Inter", "pill compact rich", "friendly and clean; before and after; coverage area by locality"),
+  ],
+  creative: [
+    a("creative-index-reel", "The index reel", "a giant name over round frames, the work as a numbered index with a thumbnail rising beside each row", "kinetic-type", "gallery services about proof",
+      "trust:ticker services:index-rows about:manifesto gallery:pinned-reel proof:spotlight process:numbered-list faq:accordion visit:address-poster cta:wide-band footer:big-wordmark", "violet dark", "Instrument Serif/Inter", "sharp airy rich", "black and violet; full-bleed frames; tiny type; one big Book a date button"),
+    a("creative-scrapbook-studio", "The scrapbook studio", "prints, notes and tape drifting round the headline; the gallery as a scrapbook of real events", "parallax-collage", "gallery about services proof",
+      "trust:strip services:tiers about:founder-letter gallery:scrapbook proof:receipt process:timeline-h faq:chat-bubble visit:split cta:floating-card footer:link-grid", "blush light", "Fraunces/DM Sans", "soft airy rich", "warm and handmade; blush and cream; film grain; couples and clients credited"),
+    a("creative-case-studies", "Case studies", "a pinned scroll of one shoot from brief to album, then each package as a full-width row", "pinned-story", "gallery services process proof",
+      "trust:counters services:listing-rows about:chapters gallery:stage proof:marquee-cards process:stack-cards faq:numbered-accordion visit:contact-desk cta:callback footer:atelier", "noir dark", "Playfair Display/Manrope", "sharp airy rich", "editorial black; sequences not singles; a date check in every closing"),
+  ],
+  tech: [
+    a("tech-product-led", "Product-led", "the product on a round stage, the metrics beside it, then work as rows", "product-spotlight", "services proof process trust",
+      "trust:bento services:listing-rows about:story-columns gallery:stage proof:results-band process:stack-cards faq:searchable visit:contact-desk cta:callback footer:mega", "cobalt dark", "Space Grotesk/Inter", "soft compact rich", "crisp and modern; cobalt on ink; screens and devices; results only as told"),
+    a("tech-statement", "The statement", "one giant sentence over round screenshots, a ticker of the stack, and a plain price ledger", "kinetic-type", "services trust process proof",
+      "trust:ticker services:rate-list about:manifesto gallery:rooms proof:marquee-cards process:step-accordion faq:spotlight visit:address-poster cta:wide-band footer:big-wordmark", "violet dark", "Bricolage Grotesque/Inter", "sharp compact rich", "confident and playful; violet on black; one headline; fixed-price packages as told"),
+    a("tech-build-log", "The build log", "a pinned scroll of one project from brief to launch, a hairline grid of capabilities", "pinned-story", "process services about proof",
+      "trust:hairline services:index-rows about:chapters gallery:pinned-reel proof:spotlight process:numbered-list faq:numbered-accordion visit:split cta:floating-card footer:minimal", "indigo light", "Manrope/DM Sans", "sharp airy subtle", "quiet and exact; indigo and paper; screenshots with captions; clients only as told"),
+  ],
+  travel: [
+    a("travel-destination-rows", "Destinations as rows", "a pinned journey and then every package as a full-bleed row with an overlapping itinerary card", "pinned-story", "services gallery process proof",
+      "trust:icon-row services:listing-rows about:chapters gallery:stage proof:testimonial-carousel process:timeline-h faq:numbered-accordion visit:contact-desk cta:wide-band footer:atelier", "lagoon light", "Playfair Display/Inter", "soft airy rich", "wide landscapes; lagoon and sand; what is included as a list; dates by enquiry"),
+    a("travel-postcard-wall", "The postcard wall", "a collage of postcards and ticket stubs round the headline, the gallery as a scrapbook of trips", "parallax-collage", "gallery services about proof",
+      "trust:ticker services:index-rows about:founder-letter gallery:scrapbook proof:receipt process:icon-cards faq:chat-bubble visit:map-hours cta:floating-card footer:big-wordmark", "terracotta light", "Fraunces/Mukta", "soft airy rich", "sunlit and handmade; terracotta and cream; faces with permission; prices as told"),
+    a("travel-itinerary-type", "The itinerary in type", "a giant 'where to next' line, every package as a numbered row with its nights and a photo", "kinetic-type", "services process gallery proof",
+      "trust:hairline services:index-rows about:manifesto gallery:pinned-reel proof:marquee-cards process:stack-cards faq:accordion visit:split cta:sticky-ribbon footer:link-grid", "petrol dark", "Bricolage Grotesque/DM Sans", "pill compact rich", "bold and bright; petrol on ink; a destination per row; enquiry on WhatsApp"),
+  ],
+  playschool: [
+    a("play-parent-diary", "The parent diary", "a giant playful headline with round photos inside the sentence, the day as stacked cards, and the fees said openly", "kinetic-type", "process trust services gallery",
+      "trust:icon-row services:grid about:chapters gallery:scrapbook proof:marquee-cards process:stack-cards faq:chat-bubble visit:hours-timeline cta:floating-card footer:link-grid", "lagoon light", "Bricolage Grotesque/Mukta", "pill airy rich", "sunny and kind; yellow and cream; hands, blocks, paint; children only with permission"),
+  ],
+  college: [
+    a("college-pinned-campus", "The campus in motion", "a pinned scroll across the campus and the year, then programmes as numbered rows", "pinned-story", "services trust about proof",
+      "trust:counters services:index-rows about:chapters gallery:stage proof:results-band process:stack-cards faq:numbered-accordion visit:address-poster cta:wide-band footer:big-wordmark", "indigo dark", "Playfair Display/Inter", "sharp airy rich", "dignified and young; indigo on ink; the quad, the lab, the library; placements and ranks only as told"),
+  ],
+  farm: [
+    a("farm-field-to-door", "Field to door", "a pinned scroll from the field to the crate to the door, then the produce as rows", "pinned-story", "process services about proof",
+      "trust:icon-row services:listing-rows about:chapters gallery:pinned-reel proof:marquee-cards process:stack-cards faq:accordion visit:address-poster cta:wide-band footer:atelier", "olive light", "Fraunces/Mukta", "soft airy rich", "earthy and honest; olive and straw; hands, soil, crates; capacity and certification only as told"),
+    a("farm-harvest-ledger", "The harvest ledger", "a giant seasonal line, produce as a rate ledger for dealers and a sample request", "kinetic-type", "services trust about gallery",
+      "trust:ticker services:rate-list about:founder-letter gallery:rooms proof:receipt process:icon-cards faq:two-column visit:contact-desk cta:callback footer:hotline", "pistachio dark", "Bricolage Grotesque/Inter", "sharp compact rich", "fresh on dark; green and gold; weighing and packing; dealers' enquiries on WhatsApp"),
+    a("farm-product-shelf", "The product shelf", "the produce one at a time on a round stage, then a searchable shop for bulk and retail", "product-spotlight", "services process trust proof",
+      "trust:bento services:shop-grid about:story-columns gallery:stage proof:star-summary process:steps faq:searchable visit:map-hours cta:floating-card footer:link-grid", "clay light", "DM Serif Display/Mukta", "soft airy subtle", "warm and plain; clay and cream; jars, sacks, scales"),
+  ],
+  community: [
+    a("comm-festival-scrapbook", "The festival scrapbook", "prints and ribbons floating round the headline; events as a numbered calendar and a scrapbook of past years", "parallax-collage", "gallery services about proof",
+      "trust:ticker services:index-rows about:founder-letter gallery:scrapbook proof:marquee-cards process:icon-cards faq:chat-bubble visit:map-hours cta:floating-card footer:link-grid", "saffron light", "Fraunces/Mukta", "soft airy rich", "warm and devotional; saffron and cream; lamps, flowers, crowds; dates and rituals as told"),
+    a("comm-seva-chapters", "The seva in chapters", "a pinned scroll of the year's work, then how to join or donate as plain steps", "pinned-story", "about services process proof",
+      "trust:counters services:listing-rows about:chapters gallery:stage proof:spotlight process:step-accordion faq:numbered-accordion visit:address-poster cta:wide-band footer:big-wordmark", "petrol light", "Newsreader/Mukta", "soft airy subtle", "calm and sincere; deep teal and paper; volunteers and queues; figures as told"),
+    a("comm-notice-board", "The notice board", "a giant welcome and the next events as a numbered board, notices as a plain ledger", "kinetic-type", "services trust about gallery",
+      "trust:strip services:rate-list about:manifesto gallery:rooms proof:receipt process:icon-cards faq:two-column visit:contact-desk cta:sticky-ribbon footer:hotline", "saffron light", "Lora/Mukta", "soft compact subtle", "plain and welcoming; turmeric and cream; a notice board feel; dates and timings as told"),
+  ],
+  leader: [
+    a("leader-work-ledger", "The work ledger", "a pinned scroll of the term's work (roads, water, schools), each with a number, then a public contact desk", "pinned-story", "trust about services gallery",
+      "trust:counters services:index-rows about:founder-letter gallery:stage proof:spotlight process:stack-cards faq:numbered-accordion visit:contact-desk cta:callback footer:minimal", "cobalt light", "Newsreader/Mukta", "sharp airy subtle", "plain, respectful and confident; blue and white; the area and its people; figures only as told"),
+    a("leader-welcome-type", "The welcome in type", "a portrait with a giant welcome in the local language, the area's wards as a numbered index", "kinetic-type", "about services gallery trust",
+      "trust:ticker services:index-rows about:chapters gallery:scrapbook proof:marquee-cards process:icon-cards faq:chat-bubble visit:map-hours cta:floating-card footer:hotline", "saffron light", "Fraunces/Mukta", "soft airy rich", "warm and direct; saffron and cream; people, streets, meetings; no claims beyond what is told"),
+    a("leader-ward-collage", "The ward collage", "a collage of meetings and inaugurations round the name; a citizen desk for complaints and appointments", "parallax-collage", "about gallery services proof",
+      "trust:hairline services:rate-list about:banner-columns gallery:rooms proof:receipt process:timeline-h faq:two-column visit:contact-desk cta:sticky-ribbon footer:link-grid", "slate light", "Lora/Mukta", "sharp compact subtle", "respectful and organised; slate and white; dated and located photographs"),
+  ],
+  astro: [
+    a("astro-ritual-index", "The ritual index", "a giant serif line, every consultation or puja as a numbered row with its time and offering", "kinetic-type", "services about process proof",
+      "trust:ticker services:index-rows about:manifesto gallery:pinned-reel proof:marquee-cards process:stack-cards faq:accordion visit:address-poster cta:wide-band footer:atelier", "oxblood dark", "Playfair Display/Mukta", "sharp airy rich", "deep red and gold on ink; lamps, mandalas, brass; no predictions or guarantees"),
+    a("astro-pandit-letter", "The pandit's letter", "a signed letter from the pandit as the page, a calm list of what is offered, a booking call", "masthead", "about services process proof",
+      "trust:strip services:price-list about:founder-letter gallery:stage proof:testimonial-carousel process:numbered-list faq:numbered-accordion visit:split cta:callback footer:minimal", "gold light luxe", "Newsreader/Mukta", "sharp airy subtle", "paper and ink with a gold line; a portrait; offerings and timings as told"),
+    a("astro-chart-collage", "The chart collage", "charts, diyas and mandalas drifting round the headline, consultations as a clear ledger", "parallax-collage", "services about process gallery",
+      "trust:icon-row services:rate-list about:chapters gallery:scrapbook proof:spotlight process:icon-cards faq:chat-bubble visit:contact-desk cta:floating-card footer:link-grid", "violet dark", "Fraunces/Mukta", "soft airy rich", "indigo and gold night sky; careful, humble wording; never fear-based"),
+  ],
+  personal: [
+    a("personal-name-in-type", "The name in type", "the person's name at poster size over round frames of their work; one line, one button", "kinetic-type", "about gallery services proof",
+      "trust:ticker services:index-rows about:manifesto gallery:pinned-reel proof:spotlight process:numbered-list faq:accordion visit:address-poster cta:wide-band footer:big-wordmark", "noir dark", "Instrument Serif/Inter", "sharp airy rich", "black and white with one accent; a portrait; tiny type; a single Book a call"),
+    a("personal-journey", "The journey", "a pinned scroll through the person's story in chapters, then what they offer as rows", "pinned-story", "about services proof process",
+      "trust:counters services:listing-rows about:chapters gallery:stage proof:marquee-cards process:stack-cards faq:numbered-accordion visit:contact-desk cta:callback footer:atelier", "terracotta light", "Fraunces/DM Sans", "soft airy subtle", "personal and warm; terracotta and cream; first-person; milestones as told"),
+    a("personal-collage-card", "The collage card", "a collage of the person's world round their portrait, a plain ledger of what they offer", "parallax-collage", "about services gallery proof",
+      "trust:icon-row services:rate-list about:founder-letter gallery:scrapbook proof:receipt process:icon-cards faq:chat-bubble visit:split cta:floating-card footer:link-grid", "blush light", "Bricolage Grotesque/DM Sans", "pill airy rich", "bright and friendly; blush and cream; handwriting; links and one clear way to reach"),
+  ],
+  general: [
+    a("general-statement", "The statement", "one giant sentence over round photos of the business, a ticker of its offers, a numbered index of what it does", "kinetic-type", "services trust about proof",
+      "trust:ticker services:index-rows about:manifesto gallery:pinned-reel proof:spotlight process:stack-cards faq:spotlight visit:address-poster cta:wide-band footer:big-wordmark", "cobalt light", "Bricolage Grotesque/Inter", "sharp airy rich", "confident and plain; one colour; real photographs; only what the card says"),
+    a("general-showroom-rows", "The rows", "full-width rows that alternate, each offer with a card over its photo", "parallax-collage", "services gallery about proof",
+      "trust:hairline services:listing-rows about:banner-columns gallery:stage proof:marquee-cards process:timeline-h faq:numbered-accordion visit:map-hours cta:floating-card footer:mega", "slate light", "Manrope/DM Sans", "soft airy subtle", "calm and legible; slate and white; one strong photograph per offer"),
+    a("general-journey", "The story scroll", "a pinned scroll from first call to finished work, then rows of what is offered and a closing call", "pinned-story", "process services about proof",
+      "trust:counters services:rate-list about:chapters gallery:rooms proof:receipt process:step-accordion faq:chat-bubble visit:contact-desk cta:callback footer:hotline", "terracotta light", "Fraunces/Inter", "soft compact rich", "warm and organised; terracotta and cream; step photographs; timings as told"),
+  ],
+  // The groups that already had eight: one or two each that use the newest variants.
+  sweets: [
+    a("sweets-numbered-menu", "The numbered menu", "a giant 'Mithai' line and the menu as numbered rows with a small thumbnail each; a marquee of what is fresh", "kinetic-type", "services gallery about proof",
+      "trust:ticker services:index-rows about:chapters gallery:scrapbook proof:receipt process:icon-cards faq:chat-bubble visit:hours-timeline cta:sticky-ribbon footer:big-wordmark", "terracotta light", "Fraunces/Mukta", "soft airy rich", "warm terracotta and cream; trays, foil, marigold; order by weight on WhatsApp"),
+  ],
+  dining: [
+    a("dining-numbered-bar", "The numbered card", "a dark room, a marquee strip, and the menu as numbered rows with a thumbnail each (01 Starters ... 05 Desserts)", "full-bleed", "services gallery about proof",
+      "trust:ticker services:index-rows about:manifesto gallery:stage proof:spotlight process:step-accordion faq:numbered-accordion visit:address-poster cta:wide-band footer:atelier", "oxblood dark", "Playfair Display/Inter", "sharp airy rich", "candlelit and cinematic; oxblood on ink; a centred reservation card; the menu you can read in a minute"),
+    a("dining-street-loud", "Street loud", "a giant loud headline, tilted prints, a receipt for reviews: playful copy, tidy info", "parallax-collage", "gallery services proof about",
+      "trust:ticker services:shop-grid about:photo-collage gallery:scrapbook proof:receipt process:icon-cards faq:chat-bubble visit:map-hours cta:sticky-ribbon footer:link-grid", "saffron light", "Bricolage Grotesque/Mukta", "pill compact rich", "bold and funny; saffron and charcoal; steam, sauce, hands; order and call within a thumb's reach"),
+  ],
+  jewellery: [
+    a("jewel-pinned-reel", "The reel", "a pinned horizontal reel of pieces under a quiet headline, then the collection as full-width rows", "pinned-story", "gallery services about trust",
+      "trust:hairline services:listing-rows about:founder-letter gallery:pinned-reel proof:spotlight process:stack-cards faq:numbered-accordion visit:address-poster cta:wide-band footer:atelier", "ivory light luxe", "Playfair Display/Inter", "sharp airy rich", "ivory and gold hairlines; macro on velvet; one piece per frame; purity and hallmark as told"),
+  ],
+  fashion: [
+    a("fashion-look-rows", "The look rows", "looks as full-bleed rows with a card over each, a collage hero, a receipt-style review", "parallax-collage", "services gallery about proof",
+      "trust:ticker services:listing-rows about:manifesto gallery:pinned-reel proof:marquee-cards process:icon-cards faq:chat-bubble visit:map-hours cta:floating-card footer:big-wordmark", "plum light", "Instrument Serif/DM Sans", "sharp airy rich", "editorial plum and cream; fabric close-ups; captions in small caps"),
+  ],
+  decor: [
+    a("decor-room-index", "The room index", "a giant 'Rooms we have made' line, every project a numbered row, a hairline gallery of finishes", "kinetic-type", "gallery services about process",
+      "trust:hairline services:index-rows about:banner-columns gallery:rooms proof:marquee-cards process:stack-cards faq:accordion visit:address-poster cta:wide-band footer:atelier", "sage light", "Instrument Serif/Inter", "sharp airy subtle", "muted sage and linen; wide honest photographs; materials named"),
+  ],
+  motors: [
+    a("auto-showroom-rows", "The showroom rows", "models as full-bleed rows with a spec card over each; a spotlight hero", "product-spotlight", "services trust gallery visit",
+      "trust:bento services:listing-rows about:banner-columns gallery:stage proof:star-summary process:stack-cards faq:searchable visit:contact-desk cta:callback footer:hotline", "midnight dark", "Space Grotesk/Inter", "sharp airy rich", "gunmetal and one bright accent; three-quarter shots; book a test drive on every row"),
+  ],
+  clinic: [
+    a("clinic-hairline-grid", "The hairline grid", "a macro photograph under a visible hairline grid, treatments as numbered rows, the doctor in a ruled cell", "kinetic-type", "services about trust proof",
+      "trust:hairline services:index-rows about:founder-letter gallery:rooms proof:spotlight process:numbered-list faq:numbered-accordion visit:hours-timeline cta:callback footer:minimal", "petrol light", "Newsreader/Inter", "sharp airy subtle", "clinical and calm; teal and white; 1px lines; no outcome claims; credentials only as told"),
+  ],
+  school: [
+    a("school-pinned-year", "The school year", "a pinned scroll through one school day and one school year, then programmes as rows", "pinned-story", "process about services gallery",
+      "trust:counters services:listing-rows about:chapters gallery:scrapbook proof:marquee-cards process:stack-cards faq:numbered-accordion visit:hours-timeline cta:floating-card footer:link-grid", "pistachio light", "Bricolage Grotesque/Mukta", "pill airy rich", "bright and calm; green and cream; classrooms, playgrounds, hands; figures as the school gave them"),
+  ],
+  coaching: [
+    a("coach-result-index", "The result index", "a giant results line over round topper photos, batches as numbered rows with their start date", "kinetic-type", "proof services trust process",
+      "trust:counters services:index-rows about:founder-letter gallery:rooms proof:marquee-cards process:stack-cards faq:searchable visit:contact-desk cta:callback footer:big-wordmark", "cobalt dark", "Space Grotesk/Inter", "sharp compact rich", "electric blue on ink; ranks and names only as told; a free demo class as the one button"),
+  ],
+};
+
+/** The engine's first set, the researched one and the advanced one, merged by trade group (a group in only one of them is kept as it is). */
 function mergeGroups(...sets: Record<string, Archetype[]>[]): Record<string, Archetype[]> {
   const out: Record<string, Archetype[]> = {};
-  for (const set of sets) for (const [g, list] of Object.entries(set)) out[g] = [...(out[g] ?? []), ...list];
+  for (const set of sets) for (const [g, list] of Object.entries(set)) out[g] = [...(out[g] ?? []), ...list.map((x) => finish(x, g))];
   return out;
 }
-export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED);
+
+/** The closing sections the engine's first set left to chance (FAQ, visit, closing band, footer): drawn from the ones that suit the
+ *  archetype's corners - the shape that chooses the section edge and the kicker (theme.ts) also chooses these, so a sharp page
+ *  ends in a wide band and a big wordmark, a pill page in a sticky ribbon and a tile footer - and, for trades where the phone is the
+ *  product, a call-back form, a contact desk and a hotline footer. Deterministic per archetype (its id), so it never reshuffles. */
+const CLOSING: Record<"faq" | "visit" | "cta" | "footer", Record<Archetype["shape"], string[]>> = {
+  faq: { sharp: ["accordion", "numbered-accordion", "two-column", "spotlight"], soft: ["accordion", "chat-bubble", "two-column", "searchable"], pill: ["chat-bubble", "two-column", "accordion", "searchable"] },
+  visit: { sharp: ["address-poster", "split", "map-hours", "hours-timeline"], soft: ["map-hours", "split", "hours-timeline", "address-poster"], pill: ["map-hours", "split", "hours-timeline", "split"] },
+  cta: { sharp: ["wide-band", "band", "wide-band", "split-qr"], soft: ["floating-card", "band", "split-qr", "floating-card"], pill: ["sticky-ribbon", "floating-card", "band", "sticky-ribbon"] },
+  footer: { sharp: ["big-wordmark", "minimal", "columns", "atelier"], soft: ["columns", "mega", "big-wordmark", "link-grid"], pill: ["link-grid", "mega", "columns", "link-grid"] },
+};
+const CALL_FIRST = new Set(["homeservice", "clinic", "pharmacy", "motors", "advisory", "property", "coaching", "school", "college", "tech", "travel", "industry", "wholesale", "leader"]);
+function finish(arch: Archetype, group: string): Archetype {
+  const sections = { ...arch.sections };
+  for (const k of ["faq", "visit", "cta", "footer"] as const) {
+    if (sections[k]) continue;
+    const pool = [...CLOSING[k][arch.shape]];
+    if (CALL_FIRST.has(group)) pool.push(k === "cta" ? "callback" : k === "visit" ? "contact-desk" : k === "footer" ? "hotline" : "searchable");
+    sections[k] = pool[hash32(`${arch.id}|${k}`) % pool.length];
+  }
+  return { ...arch, sections };
+}
+export const ARCHETYPES_BY_GROUP: Record<string, Archetype[]> = mergeGroups(LIBRARY, RESEARCHED, PREMIUM);
 
 /* ================= what the card has: fit ================= */
 
@@ -785,7 +1049,7 @@ export function fitScore(arch: Archetype, fit: Fit): number {
 export function guardByFit(spec: AdvancedSpec, fit: Fit, seed: string): AdvancedSpec {
   const r = rng(`${seed}|guard`);
   const out: AdvancedSpec = { ...spec, sections: { ...spec.sections }, palette: { ...spec.palette } };
-  if (!fit.cover && PHOTO_HEROES.has(out.hero)) out.hero = TEXT_HEROES[Math.floor(r() * TEXT_HEROES.length)] as AdvancedSpec["hero"];
+  if ((!fit.cover && PHOTO_HEROES.has(out.hero)) || (out.hero === "product-spotlight" && fit.productPhotos < 2)) out.hero = TEXT_HEROES[Math.floor(r() * TEXT_HEROES.length)] as AdvancedSpec["hero"];
   const svc = variantOf(out, "services");
   if (PHOTO_SERVICES.has(svc) && fit.productPhotos === 0) (out.sections as Record<string, string>).services = "price-list";
   if (svc === "tiers" && fit.products < 2) (out.sections as Record<string, string>).services = "grid";
@@ -797,6 +1061,7 @@ export function guardByFit(spec: AdvancedSpec, fit: Fit, seed: string): Advanced
 export function allowedByFit(fit: Fit): (key: string, id: string) => boolean {
   return (key, id) =>
     !(key === "hero" && !fit.cover && PHOTO_HEROES.has(id)) &&
+    !(key === "hero" && id === "product-spotlight" && fit.productPhotos < 2) &&
     !(key === "services" && fit.productPhotos === 0 && PHOTO_SERVICES.has(id)) &&
     !(key === "services" && id === "tiers" && fit.products < 2);
 }
@@ -875,20 +1140,30 @@ export function specFromSeed(card: Card): AdvancedSpec {
   const r = rng(`${seed}|vary`);
   const mood = tradeMood(cat);
   const base = archetypeSpec(arch, seed) as {
-    palette: { key: string; tone: "light" | "dark"; luxe?: boolean }; fonts: { heading: string; body: string };
+    palette: { key: string; tone: "light" | "dark"; luxe?: boolean; color?: string }; fonts: { heading: string; body: string };
     shape: string; density: string; motion: string; hero: string; order: SectionKey[]; sections: Record<string, string>; notes: string; archetype: string;
   };
 
   // Colour: the business's own about half the time (it is theirs), else the archetype's palette, else another of the mood.
   const named = SITE_PALETTES.filter((x) => x.key !== "brand" && (mood.luxe ? ["gold", "noir", "ivory", "cocoa", "crimson", "midnight"].includes(x.key) : x.key !== "ivory" && x.key !== "pearl"));
+  const curated = CURATED_PALETTES.filter((x) => (mood.luxe ? ["oxblood", "plum", "copper", "petrol", "slate"].includes(x.id) : true));
   const roll = r();
-  const palette = { ...base.palette };
-  if (!arch.palette.luxe && card.themeColor && roll < 0.45) palette.key = "brand";
-  else if (roll > 0.8) palette.key = pickOf(r, named).key;
+  const palette: AdvancedSpec["palette"] = { ...base.palette };
+  // The archetype's own colour is a "brand" palette with a hex (theme.ts); the business's colour or another palette replaces it whole.
+  if (!arch.palette.luxe && card.themeColor && roll < 0.45) { palette.key = "brand"; delete palette.color; }
+  else if (roll > 0.8) {
+    // Curated palettes are the richer set (a colour chosen for the trade); the named ones are the plain fifteen.
+    const c = r() < 0.6 ? pickOf(r, curated) : null;
+    if (c) { palette.key = "brand"; palette.color = c.color; palette.tone = r() < 0.5 ? c.tone : palette.tone; }
+    else { palette.key = pickOf(r, named).key; delete palette.color; }
+  }
 
   // Type: the archetype's heading about two thirds of the time, else another face of the same kind; a Hindi-first card reads in Mukta.
-  const kind = ADV_FONTS[base.fonts.heading]?.kind === "sans" ? SANS_HEADINGS : SERIF_HEADINGS;
-  const fonts = { heading: r() < 0.65 ? base.fonts.heading : pickOf(r, kind), body: card.language === "hi" ? "Mukta" : base.fonts.body };
+  // The other third takes a whole PAIRING of the same kind (theme.ts), so a changed heading keeps a body face chosen for it.
+  const kindName = ADV_FONTS[base.fonts.heading]?.kind === "sans" ? "sans" : "serif";
+  const kind = kindName === "sans" ? SANS_HEADINGS : SERIF_HEADINGS;
+  const swap = r() >= 0.65 ? pickOf(r, FONT_PAIRINGS.filter((f) => ADV_FONTS[f.heading]?.kind === kindName && f.heading !== base.fonts.heading)) : null;
+  const fonts = { heading: swap?.heading ?? (r() < 0.2 ? pickOf(r, kind) : base.fonts.heading), body: card.language === "hi" ? "Mukta" : swap?.body ?? base.fonts.body };
 
   const shape = r() < 0.7 ? base.shape : pickOf(r, mood.luxe ? ["sharp", "soft"] : SHAPES);
   const density = r() < 0.75 ? base.density : pickOf(r, DENSITIES);
@@ -911,14 +1186,16 @@ export function specFromSeed(card: Card): AdvancedSpec {
   }, seed);
   const guarded = guardByFit(spec, fit, seed);
   if (LIGHT_ONLY.has(guarded.palette.key)) guarded.palette.tone = "light";
+  if (guarded.palette.luxe && guarded.palette.tone === "dark") delete guarded.palette.luxe;
   return guarded;
 }
 const LIGHT_ONLY = new Set(["ivory", "pearl"]);
 
+const curatedName = (hex: string) => CURATED_PALETTES.find((x) => x.color === hex)?.name ?? "brand";
 /** A one-line description of an archetype for the designer's prompt. */
 export function describeArchetype(arch: Archetype): string {
   const secs = Object.entries(arch.sections).map(([k, v]) => `${k}=${v}`).join(", ");
-  return `${arch.id} "${arch.name}" - ${arch.idea}. hero=${arch.hero}; order after hero: ${arch.lead.join(" > ")}; ${secs}; palette ${arch.palette.key}/${arch.palette.tone}${arch.palette.luxe ? "/luxe" : ""}; fonts ${arch.fonts.heading} + ${arch.fonts.body}; ${arch.shape} corners, ${arch.density}, motion ${arch.motion}. Direction: ${arch.notes}`;
+  return `${arch.id} "${arch.name}" - ${arch.idea}. hero=${arch.hero}; order after hero: ${arch.lead.join(" > ")}; ${secs}; palette ${arch.palette.color ? `${curatedName(arch.palette.color)} ${arch.palette.color}` : arch.palette.key}/${arch.palette.tone}${arch.palette.luxe ? "/luxe" : ""}; fonts ${arch.fonts.heading} + ${arch.fonts.body}; ${arch.shape} corners, ${arch.density}, motion ${arch.motion}. Direction: ${arch.notes}`;
 }
 
 /* ================= uniqueness: no two businesses share a layout ================= */
@@ -973,7 +1250,7 @@ export function diversify(spec: AdvancedSpec, seed: string, others: AdvancedSpec
 export function checkArchetypes(): string[] {
   const bad: string[] = [];
   const seen = new Set<string>();
-  for (const g of GROUPS) if (!(ARCHETYPES_BY_GROUP[g.key]?.length >= 6)) bad.push(`group ${g.key}: fewer than 6 archetypes`);
+  for (const g of GROUPS) if (!(ARCHETYPES_BY_GROUP[g.key]?.length >= 8)) bad.push(`group ${g.key}: fewer than 8 archetypes`);
   for (const [cat, g] of Object.entries(TRADE_GROUP)) if (!GROUPS.some((x) => x.key === g)) bad.push(`category ${cat} -> unknown group ${g}`);
   for (const [g, list] of Object.entries(ARCHETYPES_BY_GROUP)) {
     for (const x of list) {
@@ -984,6 +1261,8 @@ export function checkArchetypes(): string[] {
       for (const k of x.lead) if (!(SECTION_KEYS as readonly string[]).includes(k) || k === "hero" || k === "footer") bad.push(`${w}: lead ${k}`);
       for (const [k, v] of Object.entries(x.sections)) if (!(SECTION_KEYS as readonly string[]).includes(k) || !(VARIANT_IDS[k as SectionKey] ?? []).includes(v)) bad.push(`${w}: section ${k}=${v}`);
       if (!PALETTE_KEYS.includes(x.palette.key)) bad.push(`${w}: palette ${x.palette.key}`);
+      if (x.palette.color && (x.palette.key !== "brand" || !/^#[0-9a-f]{6}$/.test(x.palette.color) || !CURATED_PALETTES.some((c) => c.color === x.palette.color))) bad.push(`${w}: palette colour ${x.palette.color}`);
+      if (x.palette.luxe && x.palette.tone === "dark") bad.push(`${w}: luxe with a dark tone (light ink on ivory paper)`);
       if (!ADV_FONTS[x.fonts.heading]) bad.push(`${w}: heading font ${x.fonts.heading}`);
       if (!(BODY_FONTS as readonly string[]).includes(x.fonts.body)) bad.push(`${w}: body font ${x.fonts.body}`);
       if (!["sharp", "soft", "pill"].includes(x.shape) || !["airy", "compact"].includes(x.density) || !["none", "subtle", "rich"].includes(x.motion)) bad.push(`${w}: shape/density/motion`);
