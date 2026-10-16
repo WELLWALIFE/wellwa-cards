@@ -10,7 +10,7 @@ import type { CardCopy } from "@/lib/card-ai";
 import type { ProductInfo } from "@/lib/product-lookup";
 import { categoryOf } from "@/lib/poster-categories";
 import { isShubhoraHost } from "@/lib/site-role";
-import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, tradeStyle, type HomeKind } from "@/lib/site-recipes";
+import { recipeFor, tradeDataFor, catalogLabel, ctaLabel, isGeneric, isOrgTrade, tradeStyle, type HomeKind } from "@/lib/site-recipes";
 import { tradeCta } from "@/lib/trade-moods";
 import { tradeAnswerLines, tradeAnswerPills, pickedOfferings, tradeQuestionsFor } from "@/lib/trade-questions";
 import { answerCatalog, catalogBlocks, catalogTitle, joinPage, priceTable, servicesTitle } from "@/lib/trade-pages";
@@ -356,7 +356,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const trade = tradeDataFor(setup.category);
   const t = titlesFor(lang, copy.titles, booking);
   // A professional's catalogue word is "services" — that is the services page's name, never the products page's.
-  if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang); t.productsPage = t.products; t.seeAll = lang === "hi" ? `सभी ${t.products}` : `See all ${t.products.toLowerCase()}`; }
+  if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang, setup.category); t.productsPage = t.products; t.seeAll = recipe.catalog === "work" ? (lang === "hi" ? "पूरा काम देखें" : isOrgTrade(setup.category) ? "See all our work" : "See all my work") : lang === "hi" ? `सभी ${t.products}` : `See all ${t.products.toLowerCase()}`; }
   // A school's list is "Courses", a clinic's "Treatments", a gym's "Plans" — not "Our services". When the trade
   // has no products, that list IS the catalogue and wears the catalogue's name.
   const catalogIsServices = recipe.catalog !== "products" && recipe.catalog !== "menu";
@@ -364,9 +364,9 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // read as a mistake in the menu, so the services list then stays "Services".
   const hasProducts = input.products.length > 0 && setup.role !== "personal";
   if (catalogIsServices && !hasProducts && recipe.catalog !== "services" && !copy.titles?.services) {
-    t.services = catalogLabel(recipe.catalog, lang);
+    t.services = catalogLabel(recipe.catalog, lang, setup.category);
     t.servicesPage = t.services;
-    t.seeAllServices = lang === "hi" ? `सभी ${t.services}` : `See all ${t.services.toLowerCase()}`;
+    t.seeAllServices = recipe.catalog === "work" ? (lang === "hi" ? "पूरा काम देखें" : isOrgTrade(setup.category) ? "See all our work" : "See all my work") : lang === "hi" ? `सभी ${t.services}` : `See all ${t.services.toLowerCase()}`;
   }
   // A school's "services" are its facilities, a hospital's its departments (trade-pages.ts).
   const svcTitle = servicesTitle(setup.category, lang);

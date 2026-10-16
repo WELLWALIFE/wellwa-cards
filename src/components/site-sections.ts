@@ -41,7 +41,7 @@ export const MID_CSS = `
 .site .p-grid[data-two] .p-desc{font-size:12.5px;-webkit-line-clamp:2}
 .site .p-grid[data-two] .p-name{font-size:14px}
 .site .p-grid[data-two] .p-card .p-price{font-size:15px}
-.site .p-grid[data-two] .p-wa.p-buy{font-size:12.5px;min-height:40px;padding:0 var(--s2)}
+.site .p-grid[data-two] .p-wa.p-buy{font-size:12.5px;min-height:44px;padding:0 var(--s2)}
 .site .p-grid[data-two] .p-img{aspect-ratio:1}
 .site .p-grid[data-two] .p-ph{font-size:48px}
 /* An odd last card would sit alone beside an empty cell: it takes the full row, picture left, words right. */

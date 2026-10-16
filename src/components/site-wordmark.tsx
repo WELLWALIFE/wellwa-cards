@@ -115,6 +115,10 @@ export const WORDMARK_CSS = `
 .site .mark-strip .mark-tile .mark-tile-foot{flex:0 0 auto}
 .site .mark-ph{aspect-ratio:4/5}
 .site .mark-tile{padding:var(--s5)}
+/* Fewer photos than four columns (a cover and one more, or the cover alone): the strip fills the row instead of leaving the right side bare. */
+.site .mark-strip:has(>:nth-child(3):last-child){grid-template-columns:repeat(3,1fr)}
+.site .mark-strip:has(>:nth-child(2):last-child){grid-template-columns:3fr 2fr}
+.site .mark-strip:has(>:nth-child(2):last-child)>.mark-ph{aspect-ratio:3/2}
 }
 .site .mark .hero-stagger>*{animation-name:hero-in}
 `;

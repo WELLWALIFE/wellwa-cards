@@ -102,7 +102,7 @@ export function SiteHeader({ username, name, tradeWord, logo, lang, setLang, tra
             </a>
           )}
           <button ref={btnRef} type="button" onClick={() => (open ? closeMenu(false) : openMenu())} aria-expanded={open} aria-controls="site-menu" aria-label={hi ? "मेन्यू" : "Menu"}
-            className={`site-burger md:hidden ml-auto h-10 w-10 grid place-items-center rounded-lg border border-border ${FOCUS}`}>
+            className={`site-burger md:hidden ml-auto h-11 w-11 grid place-items-center rounded-lg border border-border ${FOCUS}`}>
             {open ? <X className="h-5 w-5" /> : <Icon name="menu" size={20} />}
           </button>
         </div>

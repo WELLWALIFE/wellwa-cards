@@ -633,7 +633,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
                   : <li key={l.id}><a href={linkHref(l.type, l.value, l.type === "whatsapp" ? waOpen : undefined)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, l.type)} className={`inline-flex items-center gap-2 opacity-85 hover:opacity-100 rounded max-w-full ${FOCUS}`}><LinkIcon type={l.type} className="h-4 w-4 shrink-0" /><span className="truncate max-w-[260px]">{l.value || l.label}</span>{sameNumber && l.type === "whatsapp" && <span className="shrink-0 text-xs opacity-60">· {hiNow ? "WhatsApp और कॉल" : t("WhatsApp & call")}</span>}</a></li>
               ))}
             </ul>
-            {localLine(card) && <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--hero-muted)" }}>{localLine(card)}</p>}
+            {localLine(card, hiNow, trade) && <p className="mt-5 text-xs leading-relaxed" style={{ color: "var(--hero-muted)" }}>{localLine(card, hiNow, trade)}</p>}
           </div>
           {(footAddress || footHours.length > 0) && (
             <div>
@@ -863,7 +863,7 @@ function UpdatesGrid({ items, waHref, hasWa, username, hi }: { items: SiteUpdate
 /** What the trade calls its things — "Menu", "Treatments", "Packages", "Courses" — so a clinic's packages are not
  *  captioned PRODUCTS (review, 13 Oct 2026). From the trade's recipe (site-recipes.ts); "Products" for a shop. */
 function catalogWord(card: Pick<Card, "seo">, hi: boolean): string {
-  return catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en");
+  return catalogLabel(recipeFor(card.seo?.categoryKey ?? "").catalog, hi ? "hi" : "en", card.seo?.categoryKey);
 }
 /** "All 8 services" / "सभी 8 सेवाएँ". The "work" word is a sentence ("What I do"), which read "All 8 what i do". */
 function seeAllCatalog(card: Pick<Card, "seo">, total: number, hi: boolean, title = ""): string {
@@ -1462,7 +1462,7 @@ function ProductGrid({ items, card, theme, ink, waHref, hasWa, onZoom, cols = 3,
   const anyPrice = items.some((p) => p.price || p.mrp);
   const ctaDefault = recipeCta(recipeFor(card.seo?.categoryKey ?? "").cta, uiHi ? "hi" : "en");
   return (
-    <div className={`p-grid ${bp === "cinematic" && items.length >= 3 && items.length <= 6 ? "site-rail" : `grid sm:grid-cols-2 ${wide4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}`} data-two={items.length >= 3 ? "" : undefined}>
+    <div className={`p-grid ${bp === "cinematic" && items.length >= 3 && items.length <= 6 ? `site-rail${items.length === 4 ? " site-rail-4" : ""}` : `grid sm:grid-cols-2 ${wide4 ? "lg:grid-cols-4 gap-4" : "lg:grid-cols-3 gap-6"}`}`} data-two={items.length >= 3 ? "" : undefined}>
       {items.map((p, i) => {
         const gallery = galleryOf(p);
         const mrp = parsePrice(p.mrp), price = parsePrice(p.price);
@@ -1963,11 +1963,11 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
           <div className={`${cls.card} p-8 md:p-12 grid md:grid-cols-[1.2fr_1fr] gap-10 items-center`}>
             <div>
               {/* `.kicker` is display:block and beats the utility classes, so the icon stacked above the words: flex by style. */}
-              <p className={cls.kicker} style={{ display: "flex", alignItems: "center", gap: 6 }}><CalendarClock className="h-4 w-4" /> {t("Book a time")}</p>
+              <p className={cls.kicker} style={{ display: "flex", alignItems: "center", gap: 6 }}><CalendarClock className="h-4 w-4" /> {hi ? "समय चुनें" : t("Book a time")}</p>
               <h2 className="sec-h2 mt-3">{t(block.title)}</h2>
               {block.note && <p className="mt-3 text-[17px] text-muted leading-relaxed max-w-lg">{t(block.note)}</p>}
             </div>
-            <div className="max-w-sm w-full md:justify-self-end"><AppointmentBlock block={block} username={card.username} theme={theme} /></div>
+            <div className="max-w-sm w-full md:justify-self-end"><AppointmentBlock block={block} username={card.username} theme={theme} hi={hi} /></div>
           </div>
         </Section>
       );

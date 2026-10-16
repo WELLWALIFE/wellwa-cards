@@ -85,8 +85,11 @@ export function tradeDataFor(categoryKey: string): TradeData | null {
   return TRADE_DATA[categoryKey] ?? (c ? GROUP_DATA[c.group] : undefined) ?? null;
 }
 
+/** Organisations speak as "we"; a person (an influencer, an agent, a leader) as "I". */
+export const isOrgTrade = (categoryKey?: string): boolean => /^(ngo|temple|samaj|club|union)$/.test(categoryKey ?? "");
+
 /** The catalogue word in the card's language, for section titles and the button. */
-export function catalogLabel(word: CatalogWord, lang: "en" | "hi" | "hinglish"): string {
+export function catalogLabel(word: CatalogWord, lang: "en" | "hi" | "hinglish", categoryKey?: string): string {
   const hi = lang === "hi";
   switch (word) {
     case "menu": return hi ? "मेन्यू" : "Menu";
@@ -95,7 +98,8 @@ export function catalogLabel(word: CatalogWord, lang: "en" | "hi" | "hinglish"):
     case "courses": return hi ? "कोर्स" : "Courses";
     case "projects": return hi ? "हमारा काम" : "Our work";
     case "plans": return hi ? "प्लान" : "Plans";
-    case "work": return hi ? "मेरा काम" : "What I do";
+    // A trust, a samaj, a club or an NGO says "we": "What I do" over a temple's page read as a mistake (QA pass, 16 Oct 2026).
+    case "work": return isOrgTrade(categoryKey) ? (hi ? "हमारा काम" : "Our work") : hi ? "मेरा काम" : "What I do";
     default: return hi ? "प्रोडक्ट" : "Products";
   }
 }

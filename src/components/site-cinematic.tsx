@@ -217,5 +217,7 @@ export const CINEMATIC_CSS = `
 .site[data-bp="cinematic"] .site-rail::-webkit-scrollbar{display:none}
 .site[data-bp="cinematic"] .site-rail>*{flex:0 0 78vw;max-width:360px;scroll-snap-align:start}
 @media (min-width:768px){.site[data-bp="cinematic"] .site-rail>*{flex-basis:340px}}
+/* four products fit one row on a computer: the swipe row cut the fourth card in half at the container edge (QA sweep, 16 Oct 2026) */
+@media (min-width:1100px){.site[data-bp="cinematic"] .site-rail.site-rail-4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));overflow:visible;margin:0;padding:0 0 1rem}.site[data-bp="cinematic"] .site-rail.site-rail-4>*{flex-basis:auto;max-width:none}}
 @media (prefers-reduced-motion: reduce){.site .cin-quote-text{transition:none}}
 `;

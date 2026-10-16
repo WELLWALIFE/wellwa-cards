@@ -59,7 +59,8 @@ const SHOP = `
 .site[data-bp="shop"] main .s-card .line-clamp-2{font-size:12px;display:none}
 .site[data-bp="shop"] main .s-card details{display:none}
 .site[data-bp="shop"] main .s-card .mt-auto{padding-top:var(--s2)}
-.site[data-bp="shop"] main .p-wa{width:100%;justify-content:center;border-radius:999px;background:var(--accent);color:var(--on-accent);padding:.55rem .75rem;font-size:13px}
+.site[data-bp="shop"] main .p-wa{width:100%;justify-content:center;border-radius:999px;background:var(--accent);color:var(--on-accent);padding:.55rem .75rem;font-size:13px;min-height:44px}
+.site[data-bp="shop"] main .p-wa svg{color:currentColor}
 .site[data-bp="shop"] main .s-card .mt-auto>a[aria-label]{display:none}
 .site[data-bp="shop"] main .gtk li{border:1px solid var(--line);border-radius:999px;padding:.3rem .7rem}
 .site[data-bp="shop"] main .gtk{border:0;gap:var(--s2)}
@@ -192,6 +193,8 @@ const SECTIONS = `
 .site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}
 .site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(:first-child){position:absolute;right:0;bottom:.4rem}
 }
+/* Below 1024 px the heading and its link stack, both centred (a short title plus its link on one row sat 70px left of centre on a phone: "Visit us" / "Contact page"). */
+@media (max-width:1023px){.site[data-bp="cinematic"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{flex-direction:column;align-items:center;gap:.75rem}}
 .site[data-bp="cinematic"] main .faq summary{text-transform:uppercase;letter-spacing:.08em;font-size:.9rem}
 .site[data-bp="cinematic"] main img.rounded-3xl,.site[data-bp="cinematic"] main .group{border-radius:0}
 .site[data-bp="cinematic"] main .columns-2,.site[data-bp="cinematic"] main .grid.grid-cols-2.gap-3{gap:2px}
@@ -206,10 +209,13 @@ const SECTIONS = `
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{justify-content:center;text-align:center}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child .max-w-2xl{margin-inline:auto}
 /* The centred title is centred on the page, not on "title + its See-all link" (it sat 35-100px left of centre on a laptop): the link leaves the flow at the right edge (QA pass, 16 Oct 2026). */
+@media (max-width:767px){.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{flex-direction:column;align-items:center;gap:.75rem}}
 @media (min-width:768px){.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child{position:relative}.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark)>div>.flex.flex-wrap:first-child>:not(.max-w-2xl){position:absolute;right:0;bottom:4px}}
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .sec-h2::after{content:"";display:block;width:48px;height:4px;border-radius:4px;background:var(--accent);margin:12px auto 0}
 /* A left-aligned heading (About beside its story) keeps its accent bar under its first letter, not centred under a block it does not fill (QA sweep, 16 Oct 2026). */
 .site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .grid>div>.sec-h2::after{margin-left:0}
+/* The "Planning something bigger?" banner is left-aligned too: its bar sat centred under a heading that is not (QA pass, 16 Oct 2026). */
+.site[data-bp="shop"] main section[data-reveal]:not(.hero-dark) .bulk-banner .sec-h2::after,.site[data-bp="collage"] main section[data-reveal]:not(.hero-dark) .bulk-banner .sec-h2::after{margin-left:0}
 .site[data-bp="shop"] main .faq{border:0}
 .site[data-bp="shop"] main .faq details{border:1px solid var(--line);border-radius:var(--r-card);margin-bottom:10px;padding:0 16px;background:var(--surface)}
 .site[data-bp="shop"] main img.rounded-3xl{border-radius:var(--r-card)}
@@ -217,5 +223,7 @@ const SECTIONS = `
 .site[data-bp="collage"] main .faq details{border:0;background:var(--p-soft);border-radius:var(--r-tile);margin-bottom:10px;padding:0 20px}
 .site[data-bp="collage"] main img.rounded-3xl{border-radius:var(--r-tile);padding:10px;background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 30px -18px rgb(0 0 0/.35)}
 .site[data-bp="collage"] main .group{border-radius:var(--r-tile)}
+/* Devanagari must not be letter-spaced: the looks' spaced kickers and tight headings broke conjuncts ("प्रो ड क्ट", "प्र क्रि या") (QA sweep, 16 Oct 2026). */
+.site[data-bp]:lang(hi) main :is(.kicker,.sec-h2,.mark-claim,.ed-about-title,.hrs em){letter-spacing:0}
 `;
 export const BODY_CSS: Record<string, string> = { split: PHOTOS + SPLIT, wordmark: PHOTOS + WORDMARK + WHY + SECTIONS, shop: PHOTOS + SHOP + WHY + SECTIONS, collage: PHOTOS + COLLAGE + SECTIONS, story: PHOTOS + POSTER + WHY + SECTIONS, cinematic: PHOTOS + CINEMATIC_DARK + WHY + SECTIONS, bento: PHOTOS + BENTO };

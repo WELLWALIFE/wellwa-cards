@@ -1768,10 +1768,12 @@ export function WelcomePopup({ card, theme, active }: { card: Card; theme: strin
   );
 }
 
-export function AppointmentBlock({ block, username, theme }: {
-  block: Extract<CardBlock, { kind: "appointment" }>; username: string; theme: string;
+export function AppointmentBlock({ block, username, theme, hi = false }: {
+  block: Extract<CardBlock, { kind: "appointment" }>; username: string; theme: string; hi?: boolean;
 }) {
   const t = useT();
+  /** A Hindi website says its own words; any other visitor language goes through the translator. */
+  const L = (en: string, h: string) => (hi ? h : t(en));
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ name: "", phone: "", date: "", time: "" });
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
@@ -1798,7 +1800,7 @@ export function AppointmentBlock({ block, username, theme }: {
           <CalendarClock className="h-5 w-5" />
         </span>
         <span className="min-w-0 flex-1">
-          <span className="block text-sm font-semibold">Book an appointment</span>
+          <span className="block text-sm font-semibold">{L("Book an appointment", "अपॉइंटमेंट बुक करें")}</span>
           {block.note && <span className="block text-xs text-white/80 mt-0.5">{t(block.note)}</span>}
         </span>
       </button>
@@ -1814,28 +1816,28 @@ export function AppointmentBlock({ block, username, theme }: {
                 <span className="mx-auto grid h-12 w-12 place-items-center rounded-full text-white" style={{ background: theme }}>
                   <Check className="h-6 w-6" />
                 </span>
-                <p className="mt-3 font-semibold">Request sent! 🎉</p>
-                <p className="mt-1 text-sm text-muted">We will confirm your time on WhatsApp soon.</p>
-                <button onClick={() => setOpen(false)} className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface2">Close</button>
+                <p className="mt-3 font-semibold">{L("Request sent!", "रिक्वेस्ट भेज दी!")} 🎉</p>
+                <p className="mt-1 text-sm text-muted">{L("We will confirm your time on WhatsApp soon.", "हम जल्दी WhatsApp पर आपका समय कन्फ़र्म करेंगे।")}</p>
+                <button onClick={() => setOpen(false)} className="mt-4 rounded-lg border border-border px-4 py-2 text-sm font-medium hover:bg-surface2">{L("Close", "बंद करें")}</button>
               </div>
             ) : (
               <form onSubmit={submit} className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold">Book a time</h3>
+                  <h3 className="font-semibold">{L("Book a time", "समय चुनें")}</h3>
                   <button type="button" onClick={() => setOpen(false)} className="text-muted hover:text-ink"><X className="h-4 w-4" /></button>
                 </div>
-                <input required placeholder="Your name" className="apt-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
-                <input required placeholder="WhatsApp number" className="apt-input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
+                <input required placeholder={L("Your name", "आपका नाम")} className="apt-input" value={f.name} onChange={(e) => setF({ ...f, name: e.target.value })} />
+                <input required placeholder={L("WhatsApp number", "WhatsApp नंबर")} className="apt-input" value={f.phone} onChange={(e) => setF({ ...f, phone: e.target.value })} />
                 <div className="grid grid-cols-2 gap-3">
                   <input type="date" required className="apt-input" value={f.date} onChange={(e) => setF({ ...f, date: e.target.value })} />
                   <select required className="apt-input" value={f.time} onChange={(e) => setF({ ...f, time: e.target.value })}>
-                    <option value="">Time</option>
-                    {["Morning", "Afternoon", "Evening"].map((t) => <option key={t} value={t}>{t}</option>)}
+                    <option value="">{L("Time", "समय")}</option>
+                    {[["Morning", "सुबह"], ["Afternoon", "दोपहर"], ["Evening", "शाम"]].map(([en, h]) => <option key={en} value={en}>{L(en, h)}</option>)}
                   </select>
                 </div>
                 {state === "error" && <p role="alert" className="text-xs text-danger">{err}</p>}
                 <button type="submit" disabled={state === "busy"} className="w-full rounded-xl px-4 py-3 text-sm font-semibold text-white disabled:opacity-60" style={{ background: theme }}>
-                  {state === "busy" ? "Sending…" : "Send request"}
+                  {state === "busy" ? L("Sending…", "भेज रहे हैं…") : L("Send request", "रिक्वेस्ट भेजें")}
                 </button>
                 <style>{`.apt-input{width:100%;background:var(--surface);border:1px solid var(--border);border-radius:.6rem;padding:.6rem .8rem;font-size:.875rem;outline:none;color:var(--ink)}.apt-input:focus{border-color:${theme}}`}</style>
               </form>

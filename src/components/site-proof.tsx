@@ -242,7 +242,7 @@ export const PROOF_CSS = `
 .site .map-card{position:relative;overflow:hidden;border-radius:var(--r-card);border:1px solid var(--line);background:color-mix(in srgb,var(--accent) 7%,var(--surface));min-height:300px;height:100%}
 .site .map-skel{position:absolute;inset:0;display:grid;place-items:center;color:var(--accent);background-image:linear-gradient(color-mix(in srgb,var(--ink) 7%,transparent) 1px,transparent 1px),linear-gradient(90deg,color-mix(in srgb,var(--ink) 7%,transparent) 1px,transparent 1px),linear-gradient(115deg,transparent 46%,color-mix(in srgb,var(--accent) 16%,transparent) 46%,color-mix(in srgb,var(--accent) 16%,transparent) 54%,transparent 54%);background-size:44px 44px,44px 44px,100% 100%}
 .site .map-card iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:transparent}
-.site .map-open{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;min-height:40px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:650;color:var(--ink);background:var(--paper);border:1px solid var(--line);box-shadow:0 6px 18px -8px rgb(0 0 0/.35);text-decoration:none}
+.site .map-open{position:absolute;right:12px;bottom:12px;display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 14px;border-radius:99px;font-size:13px;font-weight:650;color:var(--ink);background:var(--paper);border:1px solid var(--line);box-shadow:0 6px 18px -8px rgb(0 0 0/.35);text-decoration:none}
 .site .map-open:hover{border-color:var(--accent)}
 @media (min-width:860px){
   .site .visit-grid.has-map{grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);align-items:stretch}
@@ -293,6 +293,8 @@ body:has(input:focus,textarea:focus,select:focus) .site-bar{transform:translateY
 @media (min-width:768px){.site .foot-cols{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (min-width:1024px){.site .foot-cols.has-visit{grid-template-columns:1.5fr .8fr 1.1fr 1.1fr}.site .foot-cols:not(.has-visit){grid-template-columns:1.3fr 1fr 1fr}}
 @media (max-width:767px){.site .foot-pages{display:block;columns:2;column-gap:24px}.site .foot-pages>li{margin:0 0 12px!important;break-inside:avoid}}
+/* Phone: every footer link and small button is a 44px target (the page links were 17px tall, the buttons 32 — QA pass, 16 Oct 2026). */
+@media (max-width:767px){.site footer .foot-pages>li{margin:0!important}.site footer .foot-pages a,.site footer ul>li>a{display:inline-flex;align-items:center;min-height:44px}.site footer .btn-xs{min-height:44px}}
 .site .foot-social{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .site .foot-social a{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1px solid var(--hero-line);color:var(--hero-text);transition:background .15s,border-color .15s,transform .1s}
 .site .foot-social a:hover{background:color-mix(in srgb,var(--hero-text) 12%,transparent);border-color:currentColor}

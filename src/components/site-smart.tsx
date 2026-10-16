@@ -231,7 +231,7 @@ export function HeroPhoto({ photo, clip, clipOn = "always", crop = "cover", prio
   const kb = kenBurns && !still && !clip && !photo?.bright;
   return (
     <div className={`hero-ph-wrap hero-ph-in ${className}`} style={lqip ? { backgroundImage: `url(${lqip})` } : undefined}
-      data-bright={photo?.bright ? "" : undefined} data-stock={photo?.src.startsWith("/api/stock/banners/") ? "" : undefined} data-bar={photo && /^\/api\/stock\/banners\/(restaurant|student)\.jpg/.test(photo.src) ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
+      data-bright={photo?.bright ? "" : undefined} data-stock={photo?.src.startsWith("/api/stock/banners/") ? "" : undefined} data-bar={photo && /^\/api\/stock\/banners\/(restaurant|student|kirana)\.jpg/.test(photo.src) ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
       {photo && <Pic src={photo.src} alt={alt} className={`hero-ph ${kb ? "hero-kb" : ""}`} style={{ objectPosition: photo.focus }}
         priority={priority} eager={!lazy && !priority} sizes={sizes ?? heroSizes(crop)} aria-hidden={alt ? undefined : true} />}
       {clip && <HeroClip url={clip.url} poster={clip.poster} />}
@@ -358,10 +358,10 @@ export const HERO_CSS = `
 /* The trade banners carry a pale fade along the top and the left third (made for the poster look). On a full-bleed cover the top 15% is cropped off by a
    slight zoom from the bottom (the individual scale property, so the settle animation's transform is untouched) and, on a desktop, a deeper shade takes the left. */
 .site .hero-ph-wrap[data-stock] .hero-ph{scale:1.28;transform-origin:72% 100%}
-/* restaurant.jpg and student.jpg were exported with a black strip along the bottom (97 and 69 of 600 px): zoom from the top so it falls outside the frame
+/* restaurant.jpg, student.jpg and kirana.jpg were exported with a dark strip along the bottom (97, 69 and 118 of 600 px): zoom from the top so it falls outside the frame
    until the pictures are re-exported (QA sweep, 16 Oct 2026). */
-.site .hero-ph-wrap[data-bar] .hero-ph{scale:1.2;transform-origin:72% 0}
-.site .board-photo[data-banner] .hero-ph-wrap[data-bar] .hero-ph{transform:none;scale:1.2;transform-origin:72% 0}
+.site .hero-ph-wrap[data-bar] .hero-ph{scale:1.27;transform-origin:72% 0}
+.site .board-photo[data-banner] .hero-ph-wrap[data-bar] .hero-ph{transform:none;scale:1.27;transform-origin:72% 0}
 @media (min-width:1024px){.site .hero-ph-wrap[data-bright] .hero-scrim::after{background:linear-gradient(to right,color-mix(in srgb,var(--hero-ink) 94%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 70%,transparent) 36%,transparent 72%)}}
 @media (min-width:768px){
 .site .hero-ph-wrap[data-clip=desktop] .hero-clip{display:block}

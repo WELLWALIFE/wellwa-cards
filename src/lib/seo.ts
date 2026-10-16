@@ -256,9 +256,16 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
 }
 
 /** One line of real, visible local text for the footer: "Sweet shop in Jaipur · Serving C-Scheme, Vaishali Nagar". */
-export function localLine(card: Card): string {
+export function localLine(card: Card, hi = false, hiCategory = ""): string {
   const f = seoFacts(card);
   if (!f.city && !f.areas.length) return "";
+  // A Hindi site speaks the line in Hindi ("होलसेल, Rewari · Dharuhera, Bawal में सेवा"), never "in … · Serving …".
+  if (hi) {
+    const cat = hiCategory.trim() || f.category;
+    const hd = [cat, f.city].filter(Boolean).join(", ");
+    const ar = f.areas.filter((a) => a.trim().toLowerCase() !== f.city.trim().toLowerCase());
+    return ar.length ? `${hd} · ${ar.join(", ")} में सेवा` : hd;
+  }
   const head = f.category ? `${f.category}${f.city ? ` in ${f.city}` : ""}` : f.city;
   // The city is already in `head`; an area that repeats it is not a second place. (The builder drops these
   // now — this is for the cards built before it did.)

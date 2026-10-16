@@ -325,8 +325,16 @@ function heroPhotoSrc(cover: string | undefined): string | undefined {
 /** The trade banners (/api/stock/banners, 1600×600) fade to white on the left third for poster text: the scene is on
  *  the right, so their subject point defaults to the right half. Other photos: the usual 50% 35%. */
 function defaultFocus(src: string): string {
-  return src.startsWith("/api/stock/banners/") ? "70% 50%" : "50% 35%";
+  if (!src.startsWith("/api/stock/banners/")) return "50% 35%";
+  // Where each banner's people actually stand (read off the pictures, 16 Oct 2026): on a phone the 70 % default showed a travel
+  // banner's mountain with the couple cut at the edge, a spa's two therapists half out of frame.
+  const at = BANNER_FOCUS[/\/banners\/([a-z0-9-]+)\.jpg/.exec(src)?.[1] ?? ""];
+  return at ?? "70% 50%";
 }
+const BANNER_FOCUS: Record<string, string> = {
+  salon: "60% 45%", spa: "62% 55%", gym: "64% 50%", realestate: "80% 55%", lawyer: "76% 50%", ca: "74% 50%",
+  photography: "68% 55%", event: "62% 55%", travel: "76% 50%", temple: "70% 50%", ngo: "68% 55%",
+};
 
 const variantFits = (v: HeroVariant, bp: BlueprintKey | undefined): boolean => HERO_VARIANTS_BY_BP[bp ?? "cinematic"].includes(v);
 
