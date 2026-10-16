@@ -42,7 +42,7 @@ export async function POST(request: Request) {
     if (name === "subscription.charged") {
       const pay = ev.payload?.payment?.entity;
       if (pay?.id && ["captured", "authorized"].includes(String(pay.status))) {
-        const res = await applyAutopayCharge(owner, { paymentId: String(pay.id), subscriptionId: String(sub.id), amount: Number(pay.amount) });
+        const res = await applyAutopayCharge(owner, { paymentId: String(pay.id), subscriptionId: String(sub.id), amount: Number(pay.amount), premium: String(sub.notes?.premium ?? "") === "1" });
         return Response.json({ ok: true, event: name, applied: res.applied, reason: res.reason });
       }
     }

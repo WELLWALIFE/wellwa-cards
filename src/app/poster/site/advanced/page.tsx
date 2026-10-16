@@ -294,6 +294,23 @@ export default function AdvancedSitePage() {
     setPayBusy(true); setPayErr("");
     const fail = (m: string) => { setPayErr(m); setPayBusy(false); };
     try {
+      if (!growth) {
+        // Premium is a subscription (first month 5,999, then 2,999 a month): the mandate is opened here and the first debit opens the advanced website.
+        const sub = await api<{ subscriptionId?: string; keyId?: string; already?: boolean; error?: string }>("/api/billing/autopay", { method: "POST", json: { premium: true } });
+        if (sub.data.already) { fail(T("You already have a running plan. Refreshing…", "आपका plan पहले से चल रहा है। Refresh हो रहा है…")); await refreshAccess(); setPayBusy(false); return; }
+        if (!sub.ok || !sub.data.subscriptionId) { fail(srv(sub.data.error, T("Payment is not working right now. Please try again.", "अभी payment नहीं हो पा रहा। फिर से कोशिश करें।"))); return; }
+        if (!(await loadRazorpay())) { fail(T("Could not open the payment page. Check the internet and try again.", "Payment page नहीं खुला। Internet देखकर दोबारा try करें।")); return; }
+        const RZs = (window as unknown as { Razorpay: new (o: Record<string, unknown>) => { open: () => void } }).Razorpay;
+        new RZs({
+          key: sub.data.keyId, subscription_id: sub.data.subscriptionId, prefill: payPrefill(), name: "Shubhora", description: "Premium — ₹5,999 first month, then ₹2,999 a month", theme: { color: "#0e9e90" },
+          handler: async (r: Record<string, string>) => {
+            const v = await api<{ ok?: boolean }>("/api/billing/autopay/verify", { method: "POST", json: r });
+            if (v.ok && v.data.ok) { await refreshAccess(); setPayBusy(false); } else fail(T("We could not confirm your payment. If money was taken, please tell support.", "Payment confirm नहीं हो पाया। पैसे कटे हों तो support को बताएँ।"));
+          },
+          modal: { ondismiss: () => setPayBusy(false) },
+        }).open();
+        return;
+      }
       const o = await api<{ orderId?: string; amount?: number; currency?: string; keyId?: string; message?: string; error?: string }>("/api/poster/pay/advanced", { method: "POST", json: card ? { cardId: card.id } : {} });
       if (o.status === 503 && o.data.error === "advanced_closed") { setSelling(false); fail(T("The advanced website is not open for payment yet. Nothing was charged.", "Advanced website के लिए payment अभी खुला नहीं है। कुछ नहीं कटा।")); return; }
       if (o.status === 409) { fail(T("This account has already paid. Refreshing…", "इस account का payment हो चुका है। Refresh हो रहा है…")); await refreshAccess(); setPayBusy(false); return; }
@@ -591,10 +608,10 @@ export default function AdvancedSitePage() {
         ) : (
           <div className="space-y-1.5">
             <div className="flex items-end justify-between gap-2">
-              <p className="text-sm font-bold">{T("Upgrade to the advanced website", "Advanced website में upgrade करें")}</p>
+              <p className="text-sm font-bold">{growth ? T("Upgrade to the Premium website", "Premium website में upgrade करें") : T("Get the Premium website", "Premium website पाएँ")}</p>
               <p className="text-2xl font-extrabold">{priceText}</p>
             </div>
-            <p className="text-xs text-muted">{growth ? T("You are on Growth (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Growth (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Free and ₹2,999 plans upgrade here. Anyone on the ₹5,999 plan already has this.", "Free और ₹2,999 वाले यहाँ से upgrade करें। ₹5,999 वाले के पास यह पहले से है।")}</p>
+            <p className="text-xs text-muted">{growth ? T("You are on Growth (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Growth (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Premium: ₹5,999 for the first month, then ₹2,999 a month (it includes the Standard plan).", "Premium: पहला महीना ₹5,999, फिर ₹2,999 प्रति महीना (इसमें Standard plan शामिल है)।")}</p>
             <p className="text-xs text-muted">{T(`One payment. You can look at up to ${TRY_LIMIT} layouts and keep the one you like — or keep your basic site.`, `एक बार का payment। ${TRY_LIMIT} layouts तक देखकर जो पसंद आए रखें — या अपनी basic site रखें।`)}</p>
             {pending ? (
               <>
@@ -605,7 +622,7 @@ export default function AdvancedSitePage() {
               </>
             ) : (
               <button type="button" onClick={pay} disabled={payBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {T(`Upgrade — ${priceText}`, `Upgrade करें — ${priceText}`)}
+                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {growth ? T(`Upgrade — ${priceText}`, `Upgrade करें — ${priceText}`) : T("Get Premium — ₹5,999 first month", "Premium लें — पहला महीना ₹5,999")}
               </button>
             )}
             {payErr && <p className={errBox}>{payErr}</p>}

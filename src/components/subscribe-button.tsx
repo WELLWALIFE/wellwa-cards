@@ -7,7 +7,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Check, LoaderCircle, Sparkles } from "lucide-react";
-import { SAAS_PLANS, rupees, type SaasTier } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, rupees, type SaasTier } from "@/lib/billing";
 import { BRAND } from "@/lib/site-brand";
 import { payPrefill } from "@/lib/pay-prefill";
 
@@ -19,12 +19,13 @@ const loadScript = (src: string) => new Promise<boolean>((resolve) => {
 });
 const post = (url: string, body: unknown) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 
-export function SubscribeButton({ tier, className, children, onDone }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void }) {
+export function SubscribeButton({ tier, className, children, onDone, premium }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void; premium?: boolean }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
   const router = useRouter();
   const plan = SAAS_PLANS[tier];
   const autopay = tier === "growth";
+  const label = premium ? PREMIUM.label : plan.label;
 
   const finished = (text: string) => {
     setState("done"); setMsg(text);
@@ -34,7 +35,7 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
   async function start() {
     setState("busy"); setMsg("");
     try {
-      const o = autopay ? await post("/api/billing/autopay", {}) : await post("/api/billing/order", { plan: `saas:${tier}` });
+      const o = autopay ? await post("/api/billing/autopay", premium ? { premium: true } : {}) : await post("/api/billing/order", { plan: `saas:${tier}` });
       if (o.error === "sign in required") { router.push(`/signup?next=/pricing&plan=${tier}`); return; }
       if (o.error) throw new Error(o.error);
       if (o.already) { finished(`You are on ${plan.label}.`); return; }
@@ -43,11 +44,11 @@ export function SubscribeButton({ tier, className, children, onDone }: { tier: S
       new window.Razorpay({
         prefill: payPrefill(), key: o.keyId, name: BRAND, theme: { color: "#0e9e90" },
         ...(autopay
-          ? { subscription_id: o.subscriptionId, description: `${plan.label} — ${rupees(plan.amount)} / month` }
+          ? { subscription_id: o.subscriptionId, description: premium ? `${label} — ${rupees(PREMIUM_FIRST_PAISE)} first month, then ${rupees(plan.amount)} / month` : `${plan.label} — ${rupees(plan.amount)} / month` }
           : { amount: o.amount, currency: "INR", order_id: o.orderId, description: `${plan.label} plan — 1 month` }),
         handler: async (resp: any) => {
           const v = await post(autopay ? "/api/billing/autopay/verify" : "/api/billing/verify", resp);
-          if (v.ok) finished(`You are on ${plan.label}.`);
+          if (v.ok) finished(`You are on ${label}.`);
           else { setState("error"); setMsg("We could not confirm your payment. If money was taken from your account, please tell support and share the payment id."); }
         },
         modal: { ondismiss: () => setState("idle") },

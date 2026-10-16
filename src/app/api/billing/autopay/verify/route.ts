@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       return Response.json({ ok: false, error: "payment details do not match" }, { status: 400 });
     }
     await saveAutopay({ id: sub.id, owner_id: session.user.id, status: sub.status, charge_at: sub.charge_at ?? null, paid_count: sub.paid_count ?? 0 });
-    const res = await applyAutopayCharge(session.user.id, { paymentId, subscriptionId: subId, amount: Number(payment.amount) });
+    const res = await applyAutopayCharge(session.user.id, { paymentId, subscriptionId: subId, amount: Number(payment.amount), premium: String(sub.notes?.premium ?? "") === "1" });
     return Response.json({ ok: true, applied: res.applied, expires: res.expires ?? null, status: sub.status });
   } catch (e) {
     console.error("[autopay] verify failed", e);

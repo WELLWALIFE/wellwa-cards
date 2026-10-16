@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { SAAS_PLANS, GST_PCT, rupees, SAAS_EXTRA, FREE_PLAN, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, PREMIUM_ITEMS, GST_PCT, rupees, SAAS_EXTRA, FREE_PLAN, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { CREDIT_PACKS, PAYG_PACKS } from "@/lib/media/ad-pricing";
 import { WELCOME_CREDITS } from "@/lib/site-pricing";
@@ -35,7 +35,7 @@ export default function PricingPage() {
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-6">
-        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">Free</h2>
             <p className="text-sm text-muted">Your business online</p>
@@ -78,6 +78,25 @@ export default function PricingPage() {
               </div>
             );
           })}
+          {/* Premium (owner, 16 Oct 2026): Rs 5,999 the first month, then Rs 2,999 a month. */}
+          <div className="flex flex-col rounded-2xl border border-brand bg-surface p-6">
+            <span className="mono mb-3 self-start rounded bg-ink px-2 py-0.5 text-[10px] font-bold uppercase text-white">Premium</span>
+            <h2 className="text-lg font-semibold">{PREMIUM.label}</h2>
+            <p className="text-sm text-muted">{PREMIUM.tagline}</p>
+            <div className="mt-4 flex items-baseline gap-1">
+              <span className="text-3xl font-semibold tracking-tight tabular-nums">{rupees(PREMIUM_FIRST_PAISE)}</span>
+              <span className="text-sm text-muted">first month</span>
+            </div>
+            <p className="mt-1 text-xs text-faint">then {rupees(SAAS_PLANS.growth.amount)} a month · includes {GST_PCT}% GST · on Standard, pay only the {rupees(PREMIUM_FIRST_PAISE - SAAS_PLANS.growth.amount)} difference</p>
+            <ul className="mt-5 flex-1 space-y-2.5">
+              {PREMIUM_ITEMS.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
+              ))}
+            </ul>
+            <SubscribeButton tier="growth" premium className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-ink px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90">
+              Get Premium
+            </SubscribeButton>
+          </div>
           {/* Pro: custom price (owner's call, 25 Sep 2026) — talk to us, a dedicated manager sets it up. */}
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">{PRO_CUSTOM.label}</h2>

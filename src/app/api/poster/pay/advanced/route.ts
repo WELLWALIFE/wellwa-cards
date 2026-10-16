@@ -33,6 +33,8 @@ export async function POST(request: Request) {
     if (have?.paid === true) return NextResponse.json({ error: "already_paid" }, { status: 409 });
     // amount is fixed here on the server (the difference for a running Growth plan); nothing the client sends is used
     const pr = await advancedPriceFor(me.token);
+    // Premium is a subscription (first month 5,999, then 2,999): only a running Standard customer pays the 3,000 difference as a one-off here.
+    if (!pr.growth) return NextResponse.json({ error: "premium_subscribe" }, { status: 402 });
     const r = await fetch("https://api.razorpay.com/v1/orders", { method: "POST", headers: { Authorization: auth, "Content-Type": "application/json" }, body: JSON.stringify({ amount: pr.paise, currency: "INR", receipt: `adv-${me.id.slice(0, 8)}-${Date.now()}`, notes: { user_id: me.id, product: PRODUCT, ...(pr.growth ? { growth: "1" } : {}) } }) }).catch(() => null);
     const j = await r?.json().catch(() => null);
     if (!r || !j) return NextResponse.json({ error: "Could not reach the payment service. Please try again." }, { status: 502 });

@@ -14,10 +14,16 @@ export const SAAS_PLANS: Record<SaasTier, { base: number; amount: number; credit
   // Starter (owner's call, 8 Oct 2026): the AI salesman and everything that turns a website into sales — no posters,
   // social posting, AI pictures or own domain (those are Growth). One-time monthly payment, no mandate.
   starter: { base: 84661, amount: 99900, credits: 0, label: "Starter", tagline: "An AI salesman on your website and WhatsApp" },   // ₹999 incl. GST
-  growth: { base: 254153, amount: 299900, credits: 10, label: "Growth", tagline: "Everything to run one business online" },   // ₹2,999 incl. GST (owner, 22 Sep 2026)
+  growth: { base: 254153, amount: 299900, credits: 10, label: "Standard", tagline: "Standard website (up to 5 pages), social posting and WhatsApp AI" },   // ₹2,999 incl. GST (owner, 22 Sep 2026)
   pro: { base: 423644, amount: 499900, credits: 500, label: "Pro", tagline: "For teams, more brands and more AI video" },          // ₹4,999 incl. GST (owner, 22 Sep 2026)
 };
 /** What each plan adds on top of the shared feature list (shown on Pricing and in Settings). */
+/** Premium (owner, 16 Oct 2026): the Standard plan (Rs 2,999 a month) plus the Premium website and Google SEO. First month Rs 5,999, then Rs 2,999 a month:
+ *  one autopay mandate on the Standard plan, with the Rs 3,000 difference added to the first debit. A running Standard customer pays only that difference. */
+export const PREMIUM_EXTRA_PAISE = 300000;
+export const PREMIUM_FIRST_PAISE = SAAS_PLANS.growth.amount + PREMIUM_EXTRA_PAISE;   // 5,999
+export const PREMIUM = { label: "Premium", tagline: "Premium multi-page website and Google SEO, on top of everything in Standard" };
+export const PREMIUM_ITEMS = ["Everything in Standard", "Premium website: a page for every product and service, About, Gallery, Contact, a layout made for your business", "Google SEO: every page and product on Google with schema and a sitemap", "Try up to 3 layouts and keep the one you like"];
 export const SAAS_EXTRA: Record<SaasTier, string[]> = {
   starter: ["AI salesman on your website: it answers questions, suggests items, and takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders for customers and for you", "Follow-up messages go out by themselves for every enquiry", "Festival wishes and offers to all your customers from your WhatsApp", "A message asking for a Google review after every sale", "A report every Monday of views, enquiries and orders", "Change your website just by saying what you want; no Shubhora tag"],
   growth: ["No Shubhora tag; your website shows on Google", "Banner and pictures made by AI; change your website just by saying what you want", "Daily poster + Status video with voice, posted for you", "WhatsApp AI replies, up to 1,000 a month (fair use)", "Your own web address", "1 business profile", "8 free ad storyboards a month (scene pictures you check before the video is made)"],

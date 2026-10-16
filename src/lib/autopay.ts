@@ -6,7 +6,8 @@ import "server-only";
 // safe to call twice for the same payment), the partner panel's BV, and a "payment received" message.
 import Razorpay from "razorpay";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
-import { SAAS_PLANS, type SaasTier } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM_EXTRA_PAISE, type SaasTier } from "@/lib/billing";
+import { grantAdvanced } from "@/lib/advanced-access";
 import { notify } from "@/lib/notify";
 import { reportPaidToPartner } from "@/lib/partner-link";
 
@@ -65,25 +66,30 @@ export async function saveAutopay(s: { id: string; owner_id: string; status: str
 }
 
 /** A new mandate for this customer. */
-export async function createAutopay(ownerId: string) {
+export async function createAutopay(ownerId: string, premium = false) {
   const sub = await razorpay().subscriptions.create({
     plan_id: await growthPlanId(), total_count: TOTAL_COUNT, quantity: 1, customer_notify: 1,
-    notes: { owner_id: ownerId, saas: AUTOPAY_TIER },
+    notes: { owner_id: ownerId, saas: AUTOPAY_TIER, ...(premium ? { premium: "1" } : {}) },
+    // Premium: the Rs 3,000 difference is added to the first debit only (Razorpay add-on), so it is 5,999 once and 2,999 a month after.
+    ...(premium ? { addons: [{ item: { name: "Premium website — first month", amount: PREMIUM_EXTRA_PAISE, currency: "INR" } }] } : {}),
   });
   await saveAutopay({ id: sub.id, owner_id: ownerId, status: sub.status, charge_at: sub.charge_at ?? null, paid_count: sub.paid_count ?? 0 });
   return sub;
 }
 
 /** One debit of the mandate → one more month of Growth. Returns whether this call applied it (false = already done). */
-export async function applyAutopayCharge(ownerId: string, p: { paymentId: string; subscriptionId: string; amount: number }) {
+export async function applyAutopayCharge(ownerId: string, p: { paymentId: string; subscriptionId: string; amount: number; premium?: boolean }) {
   const plan = SAAS_PLANS[AUTOPAY_TIER];
-  if (p.amount !== plan.amount) return { applied: false, reason: "not a monthly debit" as const };
+  const premiumFirst = !!p.premium && p.amount === plan.amount + PREMIUM_EXTRA_PAISE;
+  if (p.amount !== plan.amount && !premiumFirst) return { applied: false, reason: "not a monthly debit" as const };
   const r = await rest("rpc/apply_saas_payment", {
     method: "POST",
     body: JSON.stringify({ p_user: ownerId, p_tier: AUTOPAY_TIER, p_ref: p.paymentId, p_order_ref: p.subscriptionId, p_amount: p.amount, p_credits: plan.credits }),
   });
   if (!r.ok) throw new Error(`apply_saas_payment: ${r.status} ${await r.text().catch(() => "")}`);
   const data = (await r.json()) as { replayed?: boolean; expires?: string };
+  // The first Premium debit also opens the Premium website (idempotent: the same payment id never resets the tries).
+  if (premiumFirst) await grantAdvanced(ownerId, p.paymentId).catch(() => false);
   if (data.replayed) return { applied: false, reason: "already applied" as const, expires: data.expires ?? null };
   // Every month's debit is Growth business for the partner panel — the first as a new sale, later ones as renewals
   // (the panel tells them apart). Logged, never shown as a failed payment.
