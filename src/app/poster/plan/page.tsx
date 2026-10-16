@@ -196,7 +196,7 @@ function MyPlan() {
           );
         })}
         {/* Premium: ₹5,999 for the FIRST month only, then ₹2,999 a month (one autopay). Someone already on Standard pays just the ₹3,000 difference. */}
-        {r.tier !== "pro" && r.tier !== "starter" && (() => {
+        {r.tier !== "pro" && r.tier !== "starter" && !(r as { premium?: boolean }).premium && (() => {
           const onStandard = r.tier === "growth" && r.state === "active";
           const n = welcome ? 3 : null;
           return (

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { SAAS_PLANS, type SaasTier } from "@/lib/billing";
+import { readAdvancedMeta } from "@/lib/advanced-access";
 
 type Saas = { tier: string; expires_at: string | null; days_left: number; state: "none" | "active" | "grace" | "expired"; monthly_credits: number; pack_credits: number };
 /** The V-Card's year (migration 0057): included in a paid plan, free / renewed year running, 7-day grace, or paused. */
@@ -12,7 +13,7 @@ type CardYear = { state: "included" | "active" | "grace" | "paused"; until: stri
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const [saasRes, trialRes, payRes, cardRes, autoRes] = await Promise.all([
+  const [saasRes, trialRes, payRes, cardRes, autoRes, advMeta] = await Promise.all([
     restAsUser<Saas[]>(me.token, `rpc/my_saas`, { method: "POST", body: "{}" }),
     restAsUser<{ plan: string; is_trial: boolean; days_left: number; expired: boolean; expires_at?: string | null }[]>(me.token, `rpc/my_plan`, { method: "POST", body: "{}" }),
     restAsUser<{ amount: number; created_at: string; provider_ref: string; plan?: string }[]>(me.token, `subscriptions?select=amount,created_at,provider_ref,plan&order=created_at.desc&limit=12`),
@@ -20,6 +21,8 @@ export async function GET(request: Request) {
     restAsUser<CardYear[]>(me.token, `rpc/my_card`, { method: "POST", body: "{}" }).catch(() => ({ data: null })),
     // Before migration 0058 has run this call fails — then there is no autopay to show.
     restAsUser<Autopay[]>(me.token, `saas_autopay?select=id,status,charge_at,paid_count&order=created_at.desc&limit=1`).catch(() => ({ data: null })),
+    // Premium = the Premium website has been paid for (first Premium debit, or the Rs 3,000 upgrade).
+    readAdvancedMeta(me.id).catch(() => null),
   ]);
   const saas = saasRes.data?.[0] ?? null;
   const trial = trialRes.data?.[0] ?? null;
@@ -35,6 +38,7 @@ export async function GET(request: Request) {
     trial: trial && trial.is_trial ? { days_left: trial.days_left, expired: trial.expired } : null,
     payments: payRes.data ?? [],
     card: (Array.isArray(cardRes.data) ? cardRes.data[0] : null) ?? null,
+    premium: advMeta?.paid === true,
     autopay: (Array.isArray(autoRes.data) ? autoRes.data[0] : null) ?? null,
   });
 }

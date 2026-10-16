@@ -1,6 +1,8 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { SubscribeButton } from "@/components/subscribe-button";
 import { LoaderCircle, ChevronDown, Sparkles, CreditCard, MessageSquare, Clapperboard, Link2, Pencil, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
@@ -43,6 +45,7 @@ function shareCaption(today: TodayResp | null, profile: Profile | null): string 
 }
 
 export default function TodayPage() {
+  const router = useRouter();
   const [phase, setPhase] = useState<"loading" | "welcome" | "noprofile" | "ready" | "offline">("loading");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -127,6 +130,20 @@ export default function TodayPage() {
         <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
           {phase === "welcome" ? t.startFree : t.makeProfile}
         </Link>
+        {/* Or start with a paid plan (owner, 16 Oct 2026): after the payment the card set-up opens. */}
+        <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
+          <p className="text-center text-xs font-semibold text-muted">{lang === "en" ? "Or start with a plan" : "या किसी plan से शुरू करें"}</p>
+          <div className="rounded-xl border border-border p-3">
+            <div className="flex items-baseline justify-between gap-2"><p className="font-bold">Standard</p><p className="text-sm"><b className="text-lg">₹2,999</b> <span className="text-muted">{lang === "en" ? "/ month" : "/ महीना"}</span></p></div>
+            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Card, Standard website (up to 5 pages), daily posters, Meta Ads and WhatsApp AI." : "Card, Standard website (5 pages तक), रोज़ के poster, Meta Ads और WhatsApp AI।"}</p>
+            <SubscribeButton tier="growth" onDone={() => router.push("/poster/onboard")} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-surface2">{lang === "en" ? "Start with Standard" : "Standard से शुरू करें"}</SubscribeButton>
+          </div>
+          <div className="rounded-xl border-2 border-brand p-3">
+            <div className="flex items-baseline justify-between gap-2"><p className="font-bold">Premium <span className="ml-1 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most popular</span></p><p className="text-sm"><b className="text-lg">₹5,999</b> <span className="text-muted">{lang === "en" ? "first month only" : "सिर्फ़ पहला महीना"}</span></p></div>
+            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Then ₹2,999 a month from the 2nd month. Everything in Standard, plus the Premium multi-page website and Google SEO." : "दूसरे महीने से ₹2,999 / महीना। Standard का सब कुछ, साथ में Premium multi-page website और Google SEO।"}</p>
+            <SubscribeButton tier="growth" premium onDone={() => router.push("/poster/onboard")} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{lang === "en" ? "Start with Premium" : "Premium से शुरू करें"}</SubscribeButton>
+          </div>
+        </div>
         {phase === "welcome" && (
           <p className="text-center text-xs text-muted">{t.haveAccount} <Link href="/login?next=/poster" className="text-brand-ink font-medium">{t.login}</Link></p>
         )}

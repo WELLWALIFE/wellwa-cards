@@ -349,7 +349,7 @@ export default function BuildCard() {
   /** The same, for the banner's follower: it was started from an older render and must read the value of now. */
   const liveUserRef = useRef("");
   useEffect(() => { liveUserRef.current = liveUser; }, [liveUser]);
-  // The Premium banner, made at Final (docs/website-looks-v2.md §7): the site goes live on its stock pictures, then
+  // The AI banner, made at Final (docs/website-looks-v2.md §7): the site goes live on its stock pictures, then
   // /api/card/banner paints the banner in the chosen look and it lands here, with Keep / Another / Back to stock.
   type BannerState = { state: "idle" | "running" | "done" | "failed"; job?: string; elapsed?: number; error?: string; charged?: number; prev?: boolean };
   const [banner, setBanner] = useState<BannerState>({ state: "idle" });
@@ -944,7 +944,7 @@ export default function BuildCard() {
         if (row) {
           setExisting(row); setLiveSig(cardSig(row));
           await api("/api/card/facts", { method: "PATCH", json: { facts: { primaryCardId: row.id } } });
-          // Final (docs/website-looks-v2.md §7): the Premium banner is painted now, in the look that went live.
+          // Final (docs/website-looks-v2.md §7): the AI banner is painted now, in the look that went live.
           if (access.subscribed && !ownBanner && !madeByUs(row.coverUrl)) void startBanner(row.id);
         }
       } catch { /* the card is live; the primary mark can wait */ }
@@ -986,7 +986,7 @@ export default function BuildCard() {
         }
         // The screen shows the live card itself (it went live from here, or opened with ?improve=1) and only its look,
         // adjustments or link changed: the live row AS IT IS NOW is the base, with the look laid on below. Merging
-        // the build it came from would put that build's stock picture back over the Premium banner (§7) the banner
+        // the build it came from would put that build's stock picture back over the AI banner (§7) the banner
         // job has since painted, and lose anything else done to the card meanwhile. A new build merges as before.
         out = live && liveUser
           ? applyChecks({ ...live, username: card.username, site: { ...live.site, enabled: !!live.site?.enabled || access.subscribed } }, checks, off)
@@ -1156,17 +1156,17 @@ export default function BuildCard() {
   }
 
   /** The Premium sheet: asked for from the Make screen, the preview (Write again, the banner) and finish() alike. */
-  const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Standard plan", "Premium के लिए Standard plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
+  const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("This needs the Standard plan", "इसके लिए Standard plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
 
-  /** The Premium banner's state (painting / failed / made: Keep, Another, Back to stock) — on the design screen AND on the finished screen,
+  /** The AI banner's state (painting / failed / made: Keep, Another, Back to stock) — on the design screen AND on the finished screen,
    *  because a publish moves the owner to the finished screen while the banner is still being painted. Its message sits in its own box. */
   const bannerBlock = (
     <>
-      {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your Premium banner…", "आपका Premium banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
+      {banner.state === "running" && <p className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {T("Painting your AI banner…", "आपका AI banner बन रहा है…")} <span className="text-xs text-muted">{T("about a minute; you can close this screen", "करीब 1 मिनट; screen बंद कर सकते हैं")}</span></p>}
       {banner.state === "failed" && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm text-danger">{banner.error} <button type="button" onClick={() => existing && startBanner(existing.id)} className="ml-2 font-semibold underline">{T("Try again", "दोबारा")}</button></p>}
       {banner.state === "done" && existing && (
         <div className="space-y-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm">
-          <p><b className="text-good">✨ {T("Your Premium banner is on the website.", "आपकी website पर Premium banner लग गया।")}</b> <span className="text-xs text-muted">{T("See it on the Website tab.", "Website tab में देखें।")}</span></p>
+          <p><b className="text-good">✨ {T("Your AI banner is on the website.", "आपकी website पर AI banner लग गया।")}</b> <span className="text-xs text-muted">{T("See it on the Website tab.", "Website tab में देखें।")}</span></p>
           <div className="flex flex-wrap gap-2">
             <button type="button" onClick={bannerKeep} className="rounded-lg grad-brand px-3.5 py-2 text-sm font-semibold text-white">{T("Keep it", "रखो")}</button>
             <button type="button" disabled={busy === "banner"} onClick={() => startBanner(existing.id, true)} className="rounded-lg border border-border bg-surface px-3.5 py-2 text-sm font-semibold disabled:opacity-60">{T("Make another", "दूसरा बनाओ")} <CreditPrice credits={1} /></button>
@@ -1322,9 +1322,9 @@ export default function BuildCard() {
           <button type="button" onClick={() => setPremiumUnlock(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Get a website with Standard", "Standard लेकर website पाएँ")}</button>
         </div>
       )}
-      {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
+      {/* The AI banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
-        <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your Premium banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका Premium banner बनाएगा (करीब 1 मिनट)।")}</p>
+        <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your AI banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका AI banner बनाएगा (करीब 1 मिनट)।")}</p>
       )}
       {bannerBlock}
       {/* The preview fills the screen; Website | Card, Computer view and the six designs live in the bottom bar (owner, 15 Oct 2026). */}
@@ -1690,11 +1690,11 @@ export default function BuildCard() {
             <Sparkles className="h-5 w-5" /> {freeMake ? T("Make my free card", "मेरा free card बनाओ") : T("Make my free website", "मेरी free website बनाओ")}
           </button>
           {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-          <p className="text-center text-[11px] text-muted">{freeMake ? T("Carries a small FREE Shubhora tag. A website comes with Standard — ₹2,999 a month, any time.", "छोटा FREE Shubhora tag रहेगा। Website Standard plan में मिलती है — ₹2,999 / महीना, कभी भी।") : T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
+          <p className="text-center text-[11px] text-muted">{freeMake ? T("Carries a small FREE Shubhora tag. A website comes with Standard — ₹2,999 a month, any time.", "छोटा FREE Shubhora tag रहेगा। Website Standard plan में मिलती है — ₹2,999 / महीना, कभी भी।") : T("Carries a small FREE Shubhora tag. Standard removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
         </div>
         )}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-          <div className="flex items-center justify-between"><p className="text-base font-bold">Premium</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Included in your plan", "आपके plan में शामिल") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
+          <div className="flex items-center justify-between"><p className="text-base font-bold">Standard</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Included in your plan", "आपके plan में शामिल") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
             {li(T("No Shubhora tag, and your website shows on Google", "Shubhora का tag नहीं, और आपकी website Google पर दिखती है"))}
             {li(T("AI makes your banner photo. To change anything, just tell the AI", "AI आपकी banner photo बनाता है। कुछ बदलना हो तो बस AI को बता दें"))}
@@ -1702,11 +1702,11 @@ export default function BuildCard() {
           </ul>
           {access.subscribed ? (
             <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Standard</span>
             </button>
           ) : (
             <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setPremiumUnlock(true); }} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Premium</span>
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Standard</span>
             </button>
           )}
           {err && (access.subscribed || makeFrom !== "free") && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
@@ -1832,7 +1832,7 @@ export default function BuildCard() {
       <button type="button" id="make" onClick={async () => { setErr(""); setMakeFrom(""); await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); cameFromForm.current = true; setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
         {finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {finding ? T("Looking up your website…", "आपकी website खोजी जा रही है…") : T("Save and continue →", "Save करके आगे बढ़ें →")}
       </button>
-      <p className="text-center text-xs text-muted">{T("Next: choose Free or Premium, then make it.", "आगे: Free या Premium चुनें, फिर बनाएँ।")}</p>
+      <p className="text-center text-xs text-muted">{T("Next: choose Free or Standard, then make it.", "आगे: Free या Standard चुनें, फिर बनाएँ।")}</p>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
