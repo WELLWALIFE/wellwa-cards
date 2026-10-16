@@ -592,7 +592,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
         {/* closing band (§4.8): an ink field, the wordmark, one primary — skipped when the page already ends on a contact/appointment block */}
         {page?.slug !== "contact" && wa && lastKind !== "contact" && lastKind !== "appointment" && (
-          <section className="hero-dark" data-reveal style={{ background: "var(--p-foot)", ["--hero-ink" as string]: "var(--p-foot)", ["--hero-text" as string]: "var(--p-foot-ink)", ["--hero-muted" as string]: "color-mix(in srgb, var(--p-foot-ink) 72%, transparent)", color: "var(--p-foot-ink)" } as React.CSSProperties}>
+          // A floating card, not a full-width stripe (owner, 16 Oct 2026: "footer aur upar wala part touch hai, gap nahi hai"): the page colour shows above, below and
+          // at the sides, so the closing band and the footer under it never run into each other.
+          <div className="px-4 py-10 md:px-6 md:py-16">
+          <section className="hero-dark mx-auto max-w-6xl overflow-hidden rounded-[28px] md:rounded-[40px]" data-reveal style={{ background: "var(--p-foot)", ["--hero-ink" as string]: "var(--p-foot)", ["--hero-text" as string]: "var(--p-foot-ink)", ["--hero-muted" as string]: "color-mix(in srgb, var(--p-foot-ink) 72%, transparent)", color: "var(--p-foot-ink)" } as React.CSSProperties}>
             <div className="mx-auto max-w-6xl px-5 md:px-6 py-16 md:py-24 grid md:grid-cols-[1fr_auto] gap-10 items-end">
               <div className="max-w-xl">
                 <Wordmark name={t(hm.name)} lang={L.lang} />
@@ -605,6 +608,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
               </div>
             </div>
           </section>
+          </div>
         )}
       </main>
 
