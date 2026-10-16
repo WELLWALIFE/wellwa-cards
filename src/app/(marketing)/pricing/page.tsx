@@ -25,11 +25,13 @@ const STANDARD_ITEMS = [
   "Standard website (up to 5 pages)",
   "With a sub-domain address",
   "Daily poster on Facebook, Instagram and WhatsApp Status",
+  "Meta Ads (Facebook and Instagram)",
   "WhatsApp AI assistant that answers customers and filters leads",
+  "AI chat bot on your website",
+  "AI Ad Studio and Reel Maker",
+  "Google reviews and Google Business posts",
   "Works in 12 Indian languages",
   "WhatsApp AI replies, up to 1,000 a month (fair use)",
-  "Google Business posts and review replies",
-  "AI Ad Studio and Reel Maker",
 ];
 const PREMIUM_LIST = [
   "Everything in Standard",
