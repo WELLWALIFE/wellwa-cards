@@ -139,7 +139,7 @@ function TestBot() {
       <input className="mt-3 w-full rounded-lg border border-border bg-bg px-3 py-2 text-sm mono" placeholder="card name, e.g. niteen-rajput"
         value={username} onChange={(e) => { setUsername(e.target.value); setMessages([]); }} />
       <div ref={scroller} className="mt-3 h-64 overflow-y-auto rounded-xl border border-border bg-bg p-3 space-y-2.5">
-        {messages.length === 0 && <p className="text-sm text-faint text-center py-8">Try: &ldquo;Growth plan me kya milta hai?&rdquo;, &ldquo;WhatsApp kaise connect kare?&rdquo;, &ldquo;kitna kama sakte hain?&rdquo;</p>}
+        {messages.length === 0 && <p className="text-sm text-faint text-center py-8">Try: &ldquo;Standard plan me kya milta hai?&rdquo;, &ldquo;WhatsApp kaise connect kare?&rdquo;, &ldquo;kitna kama sakte hain?&rdquo;</p>}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === "user" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3.5 py-2 text-sm whitespace-pre-wrap ${m.role === "user" ? "bg-brand text-white" : "bg-surface border border-border"}`}>{m.content}</div>

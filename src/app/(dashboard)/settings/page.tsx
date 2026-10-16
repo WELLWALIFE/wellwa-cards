@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { Bell, Check, LogOut, KeyRound, User, CreditCard, TriangleAlert, LoaderCircle } from "lucide-react";
 import { PushSetting } from "@/components/push-toggle";
 import { SubscribeButton } from "@/components/subscribe-button";
-import { GST_PCT, SAAS_EXTRA, SAAS_PLANS, rupees, type SaasTier } from "@/lib/billing";
+import { GST_PCT, PREMIUM, PREMIUM_FIRST_PAISE, PREMIUM_ITEMS, SAAS_EXTRA, SAAS_PLANS, rupees, type SaasTier } from "@/lib/billing";
 import { useAssociate } from "@/lib/associate";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { getSessionUser, signOut, fetchMyCards } from "@/lib/cloud";
@@ -17,10 +17,13 @@ import { displayLogin } from "@/lib/phone";
 
 // No Free entry to pick: every account is on the free plan until it subscribes.
 // Same plans and prices as the public Pricing page (lib/billing.ts is the single source).
-const plans = (["starter", "growth", "pro"] as SaasTier[]).map((t) => ({
-  tier: t, name: SAAS_PLANS[t].label, price: `${rupees(SAAS_PLANS[t].amount)} / month incl. GST`,
-  features: [SAAS_PLANS[t].tagline, ...SAAS_EXTRA[t]],
-}));
+// Sold here: Standard and Premium (owner, 16 Oct 2026). Starter and Pro are no longer offered; people already on them keep working.
+const plans: { tier: SaasTier; name: string; price: string; note: string; features: string[]; premium?: boolean }[] = [
+  { tier: "growth", name: SAAS_PLANS.growth.label, price: `${rupees(SAAS_PLANS.growth.amount)} / month`, note: `Includes ${GST_PCT}% GST`, features: [SAAS_PLANS.growth.tagline, ...SAAS_EXTRA.growth] },
+  { tier: "growth", name: PREMIUM.label, price: `${rupees(PREMIUM_FIRST_PAISE)} first month only`, note: `Then ${rupees(SAAS_PLANS.growth.amount)} a month. Includes ${GST_PCT}% GST`, features: [PREMIUM.tagline, ...PREMIUM_ITEMS], premium: true },
+];
+// What a customer sees for the plan they are on (the stored tier key is internal).
+const TIER_NAME: Record<string, string> = { starter: SAAS_PLANS.starter.label, growth: SAAS_PLANS.growth.label, pro: SAAS_PLANS.pro.label };
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -130,13 +133,13 @@ export default function SettingsPage() {
             : isTrial
               ? <>You&apos;re on the <b className="text-ink">free trial</b> — {daysLeft} day{daysLeft === 1 ? "" : "s"} left, everything unlocked.</>
               : tier?.active && tier.until
-                ? <>You&apos;re on <b className="text-ink capitalize">{tier.tier}</b> till {new Date(tier.until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}.</>
+                ? <>You&apos;re on <b className="text-ink capitalize">{TIER_NAME[tier.tier] ?? tier.tier}</b> till {new Date(tier.until).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}.</>
                 : <>You&apos;re on <b className="text-ink capitalize">{current}</b>.</>}
           {" "}{cardCount} card{cardCount === 1 ? "" : "s"} created.
         </p>
         <div className="grid sm:grid-cols-2 gap-4 max-w-3xl">
           {plans.map((p) => {
-            const isCurrent = !!tier?.active && tier.tier === p.tier;
+            const isCurrent = !!tier?.active && tier.tier === p.tier && !p.premium;
             return (
               <div key={p.name}
                 className={`rounded-xl border p-5 bg-surface flex flex-col ${isCurrent ? "border-brand ring-1 ring-brand" : "border-border"}`}>
@@ -145,7 +148,7 @@ export default function SettingsPage() {
                   {isCurrent && <span className="mono text-[10px] font-bold uppercase text-brand-ink bg-brand-soft rounded px-1.5 py-0.5">Current</span>}
                 </div>
                 <p className="mt-2 text-xl font-semibold tabular-nums">{p.price}</p>
-                <p className="text-xs text-faint">Includes {GST_PCT}% GST</p>
+                <p className="text-xs text-faint">{p.note}</p>
                 <ul className="mt-4 space-y-2 flex-1">
                   {p.features.map((f) => (
                     <li key={f} className="flex items-start gap-2 text-sm text-muted">
@@ -155,7 +158,7 @@ export default function SettingsPage() {
                 </ul>
                 {!isCurrent && (
                   <div className="mt-4">
-                    <SubscribeButton tier={p.tier} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg grad-brand px-4 py-2.5 text-sm font-semibold text-white">
+                    <SubscribeButton tier={p.tier} premium={p.premium} className="w-full inline-flex items-center justify-center gap-1.5 rounded-lg grad-brand px-4 py-2.5 text-sm font-semibold text-white">
                       Choose {p.name}
                     </SubscribeButton>
                   </div>

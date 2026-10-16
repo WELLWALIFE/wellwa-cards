@@ -70,7 +70,7 @@ export function welcomeMail(name: string, credits: number) {
 /** V-Card renewal reminder: the card's year (free first year, then ₹1,499 a year) is ending, has ended, or has paused. */
 export function cardRenewalMail(p: { mark: CardMark; until: string; pauseOn: string; left: number; price: string }) {
   const url = `${SITE_URL}/poster/plan?renew=card`;
-  const keep = `Renew for <b>${esc(p.price)} a year</b> and your link, details and leads keep working without a break. The V-Card is also included in the Growth plan.`;
+  const keep = `Renew for <b>${esc(p.price)} a year</b> and your link, details and leads keep working without a break. The V-Card is also included in the Standard plan.`;
   const safe = "Nothing is deleted — your details, photos and leads are safe, and the card comes back the moment you renew.";
   const days = (n: number) => `${n} day${n === 1 ? "" : "s"}`;
   const toPause = Math.max(1, CARD_RENEWAL.graceDays + p.left); // p.left is 0 or less once the year has ended

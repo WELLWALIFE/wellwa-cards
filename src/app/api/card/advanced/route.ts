@@ -40,7 +40,7 @@ const closed = (reason: "flag" | "unpaid" | undefined) => {
   return NextResponse.json(
   reason === "flag"
     ? { error: "The advanced website is not open yet.", advanced: true, reason }
-    : { error: "The advanced website is part of the Rs 5,999 plan.", advanced: true, reason: reason ?? "unpaid", plan: true },
+    : { error: "The Premium website is part of the Premium plan: Rs 5,999 for the first month only, then Rs 2,999 a month.", advanced: true, reason: reason ?? "unpaid", plan: true },
   { status: reason === "flag" ? 403 : 402 },
   );
 };

@@ -25,11 +25,11 @@ export default function WelcomePage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">{hi ? `बधाई हो${name ? `, ${name}` : ""}!` : `Congratulations${name ? `, ${name}` : ""}!`}</h1>
         <p className="text-base font-semibold">{hi ? "आपका registration हो गया है।" : "Your registration is done."}</p>
-        <p className="text-sm text-muted">{hi ? "अब 5 मिनट में अपनी FREE website और digital card बनाएँ।" : "Now make your FREE website and digital card in 5 minutes."}</p>
+        <p className="text-sm text-muted">{hi ? "अब 5 मिनट में अपना FREE digital business card बनाएँ।" : "Now make your FREE digital business card in 5 minutes."}</p>
       </div>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? "Website अभी बनाएँ" : "Start website now"} <ArrowRight className="h-5 w-5" />
+          {hi ? "Card अभी बनाएँ" : "Make my card now"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}

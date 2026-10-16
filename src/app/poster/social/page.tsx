@@ -153,7 +153,7 @@ function SocialTabInner() {
           <p className="text-xs text-muted">{t.waStatusHint}</p>
           {trial?.free && (trial.active
             ? <p className="rounded-lg bg-good/10 px-3 py-2 text-xs font-semibold text-good">{en ? `Free for 14 days on the free plan${trial.until ? ` — ${trial.days_left} day${trial.days_left === 1 ? "" : "s"} left` : ""}. Every morning, an AI poster and a voice video go on your Status.` : `Free plan में भी 14 दिन फ़्री${trial.until ? ` — ${trial.days_left} दिन बाकी` : ""}। रोज़ सुबह AI का poster और आवाज़ वाली video आपके Status पर लगेगी।`}</p>
-            : <Link href="/poster/plan" className="block rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs font-semibold">{en ? "Your 14 free days of WhatsApp Status are over — continue with the Growth plan →" : "आपके 14 फ़्री दिन पूरे हुए — रोज़ का Status जारी रखने के लिए Growth plan लें →"}</Link>)}
+            : <Link href="/poster/plan" className="block rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs font-semibold">{en ? "Your 14 free days of WhatsApp Status are over — continue with the Standard plan →" : "आपके 14 फ़्री दिन पूरे हुए — रोज़ का Status जारी रखने के लिए Standard plan लें →"}</Link>)}
           <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
             <span className="text-sm font-medium">{t.waStatusOn}</span>
             <input type="checkbox" className="h-5 w-5" checked={!!mine.find((a) => a.auto_post)} onChange={(e) => void toggleWaStatus(e.target.checked)} />

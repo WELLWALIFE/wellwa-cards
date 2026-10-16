@@ -97,7 +97,7 @@ export async function applyAutopayCharge(ownerId: string, p: { paymentId: string
   const until = data.expires ? new Date(data.expires).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
   await notify(ownerId, "payment", {
     title: "Payment received",
-    body: `Thank you. Your ${plan.label} plan is active${until ? ` till ${until}` : ""}.`,
+    body: `Thank you. Your ${premiumFirst ? "Premium" : plan.label} plan is active${until ? ` till ${until}` : ""}.`,
     path: "/poster/plan", ref: p.paymentId,
   }).catch(() => undefined);
   return { applied: true, reason: "ok" as const, expires: data.expires ?? null };

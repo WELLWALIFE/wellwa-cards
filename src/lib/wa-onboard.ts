@@ -196,12 +196,12 @@ async function collect(row: Row, text: string, lang: Lang): Promise<Collected> {
     missing[0] === "business" ? "Aapki dukaan / business ka naam kya hai?" : missing[0] === "trade" ? "Aap kya kaam karte hain ya kya bechte hain?" : missing[0] === "city" ? "Aapki dukaan kis sheher me hai?" : "Aapka naam kya hai?",
     missing[0] === "business" ? "What is your shop / business called?" : missing[0] === "trade" ? "What do you do or sell?" : missing[0] === "city" ? "Which city is it in?" : "What is your name?");
   if (!KEY()) return { facts: {}, reply: fallbackQ, done: false };
-  const system = `You are Shubhora's WhatsApp assistant. Shubhora makes a website (with a digital business card, product catalogue and WhatsApp ordering) for small Indian businesses — shops, clinics, tutors, salons, repair, agents, professionals — in minutes, free to start.
-Your job in this chat: gather what the website needs, warmly, ONE question at a time, short WhatsApp-style messages (1–3 lines). No forms, no lists of questions.
+  const system = `You are Shubhora's WhatsApp assistant. Shubhora makes a digital business card (one link with contact, product catalogue and WhatsApp ordering) for small Indian businesses — shops, clinics, tutors, salons, repair, agents, professionals — in minutes, free. A website with its own pages comes with the paid Standard plan (Rs 2,999 a month); never promise a free website.
+Your job in this chat: gather what the card needs, warmly, ONE question at a time, short WhatsApp-style messages (1–3 lines). No forms, no lists of questions.
 REQUIRED (ask only for what is still missing, in this order): business — the shop / firm / clinic name (for a professional with no firm, use "<Name> — <profession>", e.g. "Dr. Meena Sharma — Dentist"); trade — what they do or sell, in a few words; city; person — the owner's name.
 NICE TO HAVE, never insist, take it when they say it: about (what makes them special), hours, offer, address (area / landmark), since (year started), upi (UPI id), products (name + price).
 Their mobile number is ${row.phone} (it is their WhatsApp) — never ask for a phone number; they can change it later.
-If they ask what this is, answer in one line (free website + card in 10 minutes, right here) and go on with the next question. If they send something unrelated, answer briefly and return to the question. Never invent facts.
+If they ask what this is, answer in one line (a free digital business card in 10 minutes, right here) and go on with the next question. If they send something unrelated, answer briefly and return to the question. Never invent facts.
 Write in ${LANG_NAME[lang]}. Address them with respect (ji / aap).
 Reply with ONE JSON object only: {"facts":{...only the facts this message gives or corrects, keys from: business, trade, city, person, about, hours, offer, address, email, since, upi, products (array of {name, price})...}, "reply":"your next message to them", "done": true when business, trade, city and person are all known after this message}.
 KNOWN SO FAR: ${JSON.stringify(f)}. STILL MISSING: ${missing.join(", ") || "nothing"}.
@@ -421,7 +421,7 @@ async function buildAndGoLive(acc: CloudAccount, row: Row, lang: Lang): Promise<
     // A picture of it first (best effort, under a minute), then the link and what they can do now.
     const shot = await within(screenshotCard(card, url).catch(() => null), 50_000);
     const shotUrl = shot ? await storeImage(uid, shot, "shot") : null;
-    const head = T(lang, `🎉 *${card.company || card.name}* की वेबसाइट तैयार है!`, `🎉 *${card.company || card.name}* ki website taiyar hai!`, `🎉 The website for *${card.company || card.name}* is ready!`);
+    const head = T(lang, `🎉 *${card.company || card.name}* का डिजिटल कार्ड तैयार है!`, `🎉 *${card.company || card.name}* ka digital card taiyar hai!`, `🎉 The digital card for *${card.company || card.name}* is ready!`);
     if (shotUrl) await sayImage(acc, row.phone, shotUrl, `${head}\n${url}`);
     const body = T(lang,
       `${shotUrl ? "" : `${head}\n`}🔗 ${url}\n\nये लिंक अपने ग्राहकों को भेजिए — इसमें आपका कार्ड, कैटलॉग और WhatsApp ऑर्डर बटन है।\n\n*लुक बदलना हो?* नंबर लिखें:\n${looksMenu(looks, idx, lang)}\n\n*कुछ भी बदलना हो तो यहीं लिखें*, जैसे:\n• टाइमिंग 10 से 8 करो\n• ऑफ़र लगाओ — 20% छूट\n• मेरा नाम ठीक करो\n• फ़ोटो भेजें → गैलरी में लग जाएगी\n\n📱 ऐप में खोलें (एक टैप लॉगिन): ${login}`,
@@ -475,9 +475,9 @@ async function editLive(acc: CloudAccount, row: Row, text: string, lang: Lang): 
   if (LOGIN_RE.test(text)) { await say(acc, row.phone, `📱 ${await loginLink(phoneEmail(row.phone))}`); return; }
   if (HELP_RE.test(text)) {
     await say(acc, row.phone, T(lang,
-      `नमस्ते 🙏 आपकी वेबसाइट लाइव है:\n${url}\n\nजो बदलना हो, यहीं लिखें — टाइमिंग, नंबर, ऑफ़र, प्रोडक्ट, दाम। फ़ोटो भेजें तो गैलरी में लग जाती है।\n1/2/3 लिखकर लुक बदलें। *login* लिखकर ऐप खोलें।`,
-      `Namaste 🙏 Aapki website live hai:\n${url}\n\nJo badalna ho yahin likhiye — timing, number, offer, product, daam. Photo bhejiye to gallery me lag jaati hai.\n1/2/3 likh kar look badliye. *login* likh kar app kholiye.`,
-      `Hello 🙏 Your website is live:\n${url}\n\nWrite any change here — timings, number, offer, products, prices. Send a photo and it goes into the gallery.\nReply 1/2/3 to change the look, *login* to open the app.`));
+      `नमस्ते 🙏 आपका डिजिटल कार्ड लाइव है:\n${url}\n\nजो बदलना हो, यहीं लिखें — टाइमिंग, नंबर, ऑफ़र, प्रोडक्ट, दाम। फ़ोटो भेजें तो गैलरी में लग जाती है।\n1/2/3 लिखकर लुक बदलें। *login* लिखकर ऐप खोलें।`,
+      `Namaste 🙏 Aapka digital card live hai:\n${url}\n\nJo badalna ho yahin likhiye — timing, number, offer, product, daam. Photo bhejiye to gallery me lag jaati hai.\n1/2/3 likh kar look badliye. *login* likh kar app kholiye.`,
+      `Hello 🙏 Your digital card is live:\n${url}\n\nWrite any change here — timings, number, offer, products, prices. Send a photo and it goes into the gallery.\nReply 1/2/3 to change the look, *login* to open the app.`));
     return;
   }
   if (REBUILD_RE.test(text)) {
@@ -642,9 +642,9 @@ async function handleOne(acc: CloudAccount, phone: string, waName: string, m: Wa
   if (row.stage === "new") {
     row.stage = "asking";
     const hello = T(lang,
-      `नमस्ते${waName ? ` ${waName.split(" ")[0]} जी` : ""} 🙏 मैं Shubhora का AI हूँ। 10 मिनट में आपकी *वेबसाइट + डिजिटल कार्ड* बना देता हूँ — यहीं WhatsApp पर, शुरू करना फ़्री है।`,
-      `Namaste${waName ? ` ${waName.split(" ")[0]} ji` : ""} 🙏 Main Shubhora ka AI hoon. 10 minute me aapki *website + digital card* bana deta hoon — yahin WhatsApp par, shuru karna free hai.`,
-      `Hello${waName ? ` ${waName.split(" ")[0]}` : ""} 🙏 I am Shubhora's AI. I make your *website + digital card* in 10 minutes — right here on WhatsApp, free to start.`);
+      `नमस्ते${waName ? ` ${waName.split(" ")[0]} जी` : ""} 🙏 मैं Shubhora का AI हूँ। 10 मिनट में आपका *डिजिटल बिज़नेस कार्ड* बना देता हूँ — यहीं WhatsApp पर, फ़्री।`,
+      `Namaste${waName ? ` ${waName.split(" ")[0]} ji` : ""} 🙏 Main Shubhora ka AI hoon. 10 minute me aapka *digital business card* bana deta hoon — yahin WhatsApp par, free.`,
+      `Hello${waName ? ` ${waName.split(" ")[0]}` : ""} 🙏 I am Shubhora's AI. I make your *digital business card* in 10 minutes — right here on WhatsApp, free.`);
     const c = await collect(row, text, lang);
     row.data.facts = mergeFacts(row.data.facts, c.facts);
     row.data.history.push({ role: "assistant", content: c.reply });

@@ -308,7 +308,7 @@ export default function AdsPage() {
   return (
     <div className={`space-y-4 ${whyNot ? "pb-40" : "pb-28"}`}>
       {header}
-      {!paid && <p className="rounded-lg bg-[#12144a] px-3 py-2 text-xs text-white">{hi ? "Ads बनाना Growth plan में आता है — पहली ad free में आज़माएँ। Facebook का ad खर्च आपके अपने ad account से ही कटता है।" : "Making ads comes with the Growth plan. Try your first ad free. The ad money is always taken from your own ad account."}</p>}
+      {!paid && <p className="rounded-lg bg-[#12144a] px-3 py-2 text-xs text-white">{hi ? "Ads बनाना Standard plan में आता है — पहली ad free में आज़माएँ। Facebook का ad खर्च आपके अपने ad account से ही कटता है।" : "Making ads comes with the Standard plan. Try your first ad free. The ad money is always taken from your own ad account."}</p>}
       <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs">
         {acc.picture ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand"><Megaphone className="h-4 w-4" /></span>}
         <span className="min-w-0 flex-1 truncate"><b>{acc.page}</b> · {selectedAcct ? `${selectedAcct.name}${selectedAcct.ok ? "" : (hi ? " (बंद है / payment बाकी)" : " (switched off / payment due)")}` : ""}</span>

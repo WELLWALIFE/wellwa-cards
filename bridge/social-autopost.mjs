@@ -291,7 +291,7 @@ async function main() {
           // the first morning after the trial: the daily Status is switched off and the owner told once (a Growth plan
           // switches it back on from the app)
           await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ auto_post: false }) });
-          await notifyOwner(a.user_id, "14 दिन का फ़्री WhatsApp Status पूरा हुआ", "रोज़ का AI Status जारी रखने के लिए Growth plan लें — app में Plans देखें।");
+          await notifyOwner(a.user_id, "14 दिन का फ़्री WhatsApp Status पूरा हुआ", "रोज़ का AI Status जारी रखने के लिए Standard plan लें — app में Plans देखें।");
         }
       }
       if (!paid) { console.log(`  skip ${a.name}: free plan${trial?.until ? " (status trial over)" : ""}`); continue; }

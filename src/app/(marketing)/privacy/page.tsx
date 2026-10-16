@@ -21,7 +21,7 @@ export default function PrivacyPage() {
         <li><strong>Profile you create:</strong> display name, tagline, phone number, city, photo and logo you upload — these appear on the posters and cards you generate.</li>
         <li><strong>Content:</strong> posters, cards and files you create or upload.</li>
         <li><strong>Usage:</strong> which posters you generated or shared, plan status, device type, and basic logs needed to keep the service running.</li>
-        <li><strong>WhatsApp (Business plan only):</strong> if you connect your WhatsApp, messages between you and your customers pass through our assistant so it can reply on your behalf. We store the latest message per contact as a lead for you; we do not sell or share these.</li>
+        <li><strong>WhatsApp (Standard, Premium and Custom plans):</strong> if you connect your WhatsApp, messages between you and your customers pass through our assistant so it can reply on your behalf. We store the latest message per contact as a lead for you; we do not sell or share these.</li>
       </ul>
 
       <h2>What we do with it</h2>

@@ -41,13 +41,13 @@ const SCENARIOS: Scenario[] = [
   { id: "card-for-me", title: "'आप ही बना दो' → डिटेल नहीं, जुड़ने का लिंक", steps: [
     { say: "mujhe v card chahiye" }, { say: "mobile shop hai" }, { say: "aap hi bana do" }, { say: "Suresh Kumar, Suresh Mobile, Jaipur" }, { say: "mujhe ye sab nahi aata" }] },
   { id: "pdf", title: "सीधा 'pdf'", steps: [{ say: "pdf" }] },
-  { id: "rate", title: "रेट → Growth → अपना डोमेन → 1 साल बाद", steps: [
-    { say: "rate?" }, { say: "growth me kya milta hai" }, { say: "website apne domain par chalegi?" }, { say: "1 saal baad paise lagenge?" }] },
+  { id: "rate", title: "रेट → Standard → Premium → अपना डोमेन → 1 साल बाद", steps: [
+    { say: "rate?" }, { say: "standard me kya milta hai" }, { say: "premium plan ka kitna lagega?" }, { say: "website apne domain par chalegi?" }, { say: "1 saal baad paise lagenge?" }] },
   { id: "plan", title: "बिज़नेस प्लान → कमाई → गारंटी? → मुझे कितना मिलेगा → Red/Green → पेमेंट", steps: [
     { say: "joining ka plan kya hai" }, { say: "kitna kama sakte hain mahine ka?" }, { say: "guarantee hai? pakka milega?" }, { say: "mujhe kitna milega?" },
     { say: "red id green id kya hai" }, { say: "payment kab milta hai" }] },
-  { id: "objections", title: "सेल्समैन टेस्ट: Growth → महँगा है → सोचकर बताता हूँ → MLM है क्या?", steps: [
-    { say: "growth me kya milta hai" }, { say: "ye to mehenga hai" }, { say: "sochke batata hoon" }, { say: "ye MLM to nahi hai?" }] },
+  { id: "objections", title: "सेल्समैन टेस्ट: Standard → महँगा है → सोचकर बताता हूँ → MLM है क्या?", steps: [
+    { say: "standard me kya milta hai" }, { say: "ye to mehenga hai" }, { say: "sochke batata hoon" }, { say: "ye MLM to nahi hai?" }] },
   { id: "next-day", title: "Hello → 4 → अगले दिन वापस", steps: [
     { say: "Hello" }, { say: "4" }, { wait: 26 }, { say: "Hi" }, { say: "joining kaise karni hai" }] },
   { id: "register-help", title: "रजिस्ट्रेशन में दिक्कत — AI खुद मदद करे", steps: [

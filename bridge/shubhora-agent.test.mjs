@@ -312,9 +312,9 @@ test("the AI answers itself: a draft that hands over to the partner is rewritten
   const c2 = newConvo();
   const r2 = await say(c2, "red id kya hoti hai", { answers: [
     "रजिस्ट्रेशन फ्री है और ID लाल रहती है। बाकी Niteen जी आपको समझा देंगे।",
-    "रजिस्ट्रेशन फ्री है और ID लाल रहती है; Growth चालू होते ही हरी हो जाती है। बाकी Niteen जी आपको बताएँगे।",
+    "रजिस्ट्रेशन फ्री है और ID लाल रहती है; Standard चालू होते ही हरी हो जाती है। बाकी Niteen जी आपको बताएँगे।",
   ] });
-  assert.equal(r2.out.reply, "रजिस्ट्रेशन फ्री है और ID लाल रहती है; Growth चालू होते ही हरी हो जाती है।");
+  assert.equal(r2.out.reply, "रजिस्ट्रेशन फ्री है और ID लाल रहती है; Standard चालू होते ही हरी हो जाती है।");
   // the call line offered without being asked for a call
   const c4 = newConvo();
   const r4 = await say(c4, "joining kaise karni hai", { answers: [
@@ -353,7 +353,7 @@ test("call requests: the owner's line + an alert; longer asks keep the AI", asyn
   r = await say(c, "kab tak baat ho payegi?", { answers: ["मैंने Niteen जी को बता दिया है — वो आज ही कॉल कर लेंगे जैसे ही फ्री होंगे 🙏"] });
   assert.equal(r.calls.length, 1, "right after a call request the partner may be mentioned");
   c = newConvo();
-  r = await say(c, "kya AI customer se baat kar sakta hai?", { answers: ["हाँ जी! Growth प्लान में AI आपके WhatsApp पर 24×7 कस्टमर को जवाब देता है।"] });
+  r = await say(c, "kya AI customer se baat kar sakta hai?", { answers: ["हाँ जी! Standard प्लान में AI आपके WhatsApp पर 24×7 कस्टमर को जवाब देता है।"] });
   assert.equal(r.calls.length, 1, "a product question is not a call request");
   assert.equal(r.out.alert, null);
 });
@@ -406,28 +406,28 @@ test("an essay is rewritten once into a short WhatsApp reply (links and [MEDIA] 
     "It gives you a professional digital V-Card and a full website on one link, so your customers can see your products, prices, photos and contact details anytime.",
     "The WhatsApp AI assistant replies to your customers 24x7 in their own language, answers questions about your products and saves every enquiry in your lead CRM.",
     "Every day you also get a ready poster and a status video with your name and number, and they can be posted automatically to your Facebook and Instagram pages.",
-    "The Growth plan costs Rs 2,999 a month including GST, which is less than Rs 100 a day, and you can start today with a free V-Card that stays free for one full year.",
+    "The Standard plan costs Rs 2,999 a month including GST, which is less than Rs 100 a day, and you can start today with a free V-Card that stays free for one full year.",
   ].join("\n\n");
   assert.ok(tooLong(essay));
-  const short = `Growth = website + WhatsApp AI 24×7 + daily posters, ₹2,999 a month (less than ₹100 a day).\nStart with your free V-Card 👉 ${links.join}`;
+  const short = `Standard = website + WhatsApp AI 24×7 + daily posters, ₹2,999 a month (less than ₹100 a day).\nStart with your free V-Card 👉 ${links.join}`;
   assert.equal(tooLong(short), false);
   assert.equal(tooLong(`${"Every pair is ₹500, paid every week. ".repeat(10)}\n[MEDIA] ${links.pdf}\n${links.planVideo}\n${links.join}`), false, "links and the PDF line are not words");
   const c = newConvo(); c.state = { lang: "en", langExplicit: true };
-  const r = await say(c, "What do I get in the Growth plan?", { answers: [essay, short] });
+  const r = await say(c, "What do I get in the Standard plan?", { answers: [essay, short] });
   assert.equal(r.calls.length, 2);
   assert.match(r.calls[1].system, /far too long for WhatsApp/);
   assert.equal(r.out.lang, "en");
   assert.equal(r.out.reply, short);
   // A second long draft is kept (never a third call).
   const c2 = newConvo(); c2.state = { lang: "en", langExplicit: true };
-  const r2 = await say(c2, "What do I get in the Growth plan?", { answers: [essay, essay] });
+  const r2 = await say(c2, "What do I get in the Standard plan?", { answers: [essay, essay] });
   assert.equal(r2.calls.length, 2);
   assert.ok(r2.out.reply.length > 300);
 });
 
 test("Facebook / Instagram leads: English first line → the Hindi menu; English only when asked", async () => {
   for (const t of ["I want to know more about Shubhora AI Business Assistant", "Hello! Can I get more info on this?", "Hi, I am interested in the digital card", "Can I get more details?"]) assert.equal(isAdOpener(t), true, t);
-  assert.equal(isAdOpener("What is the price of the growth plan and how do I pay for it every month?"), false);
+  assert.equal(isAdOpener("What is the price of the standard plan and how do I pay for it every month?"), false);
   let c = newConvo();
   let r = await say(c, "I want to know more about Shubhora AI Business Assistant");
   assert.equal(r.calls.length, 0, "no AI: the menu goes out");
@@ -442,7 +442,7 @@ test("Facebook / Instagram leads: English first line → the Hindi menu; English
   assert.match(r.out.reply, /1️⃣/);
   assert.equal(r.out.lang, "hi");
   // A later English message in a running chat is still answered in Hindi.
-  r = await say(c, "Tell me the price of Growth", { answers: ["Growth ₹2,999 महीना है — रोज़ ₹100 से भी कम।"] });
+  r = await say(c, "Tell me the price of Standard", { answers: ["Standard ₹2,999 महीना है — रोज़ ₹100 से भी कम।"] });
   assert.equal(r.out.lang, "hi");
 });
 
@@ -523,7 +523,7 @@ test("AI failure falls back: menu on a new chat, a holding line + alert later", 
   const c = newConvo();
   let r = await say(c, "card kaise banega", { answers: [new Error("quota")] });
   assert.match(r.out.reply, /1️⃣/);
-  r = await say(c, "growth me kya milta hai", { answers: [new Error("quota")] });
+  r = await say(c, "standard me kya milta hai", { answers: [new Error("quota")] });
   assert.match(r.out.reply, /जल्दी ही जवाब देंगे/);
   assert.match(r.out.alert, /AI error/);
 });

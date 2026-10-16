@@ -58,7 +58,7 @@ export async function POST(request: Request) {
   if (typeof b.claim === "string") return NextResponse.json({ ok: await claim(key, b.claim) });
 
   const paid = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
-  if (!paid) return NextResponse.json({ error: "The AI banner comes with Premium.", plan: true }, { status: 402 });
+  if (!paid) return NextResponse.json({ error: "The AI banner comes with the Standard plan.", plan: true }, { status: 402 });
   const row = await myCard(me.id, typeof b.cardId === "string" ? b.cardId : undefined);
   if (!row) return NextResponse.json({ error: "Create your website first." }, { status: 400 });
   const running = await currentJob(key);
@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     return { status: 200, body: { ok: true, banner, gallery, prev, cardId: row.id, username: cur.username } };
   }, async (j: CardJob) => {
     if (Date.now() - j.seenAt < 20_000) return;
-    if (j.state === "done") await notify(me.id, "website_ready", { title: "Your Premium banner is on", body: "आपकी website पर Premium banner लग गया — खोलकर देखें।", path: "/poster/card/build?improve=1", ref: j.id, whatsappText: `*आपकी website पर Premium banner लग गया* ✨\n\n${SITE_URL}/c/${(j.result as { username?: string })?.username ?? ""}` });
+    if (j.state === "done") await notify(me.id, "website_ready", { title: "Your AI banner is on", body: "आपकी website पर AI banner लग गया — खोलकर देखें।", path: "/poster/card/build?improve=1", ref: j.id, whatsappText: `*आपकी website पर AI banner लग गया* ✨\n\n${SITE_URL}/c/${(j.result as { username?: string })?.username ?? ""}` });
   });
   if (!joined) after(() => done.then(() => undefined));
   return NextResponse.json({ ...jobView(job), joined, count, charged: again || hadAi ? count : 0 }, { status: 202 });

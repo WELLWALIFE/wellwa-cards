@@ -14,11 +14,11 @@ export default function RefundPage() {
       <p className="mt-6 text-sm leading-relaxed text-muted">{BRAND} is a monthly software subscription operated by {LEGAL_NAME}. There is nothing to ship; access is given immediately after payment.</p>
 
       <S h="Try before you pay">
-        <p>Every account starts on the free plan: your digital V-Card, free for its first year. We ask you to use it to decide before you pay, because that is a fairer test than a refund after the fact.</p>
-        <p className="text-xs">After the first year the V-Card is ₹1,499 a year (included in Growth). If it is not renewed, the card keeps working for 7 more days and then pauses; nothing is deleted, and renewing brings it back at once.</p>
+        <p>Every account starts on the free plan: your digital business card (V-Card), free for its first year. We ask you to use it to decide before you pay, because that is a fairer test than a refund after the fact.</p>
+        <p className="text-xs">After the first year the V-Card is ₹1,499 a year (included in Standard). If it is not renewed, the card keeps working for 7 more days and then pauses; nothing is deleted, and renewing brings it back at once.</p>
       </S>
       <S h="Cancelling">
-        <p>Growth renews every month by autopay (a UPI Autopay or card mandate you approve at checkout). You can stop it at any time from your UPI app or bank, or by writing to {SUPPORT_EMAIL}. Stopping it cancels the next debit; your plan keeps working until the end of the month you already paid for, and nothing is deleted.</p>
+        <p>Standard renews every month by autopay (a UPI Autopay or card mandate you approve at checkout). Premium uses the same autopay: its first debit is ₹5,999 for the first month only, and from the second month it is ₹2,999 a month. You can stop it at any time from your UPI app or bank, or by writing to {SUPPORT_EMAIL}. Stopping it cancels the next debit; your plan keeps working until the end of the month you already paid for, and nothing is deleted.</p>
       </S>
       <S h="Refunds">
         <p>If you were charged twice for the same month, or charged after you cancelled, we refund it in full.</p>

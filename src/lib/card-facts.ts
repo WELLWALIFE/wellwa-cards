@@ -380,7 +380,8 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
       active: true,
       views: 0,
       createdAt: today,
-      site: { ...(built.site ?? {}), enabled: true },
+      // A free build arrives with the website off (api/card/build): the free plan is the digital card only. Everything else is on, as before.
+      site: { ...(built.site ?? {}), enabled: built.site?.enabled !== false },
     };
   }
 
@@ -439,7 +440,8 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
     site: {
       ...existing.site,
       ...definedOnly(built.site),
-      enabled: true,
+      // A website that is already on stays on (a free account keeps what it has); a free build never switches one on (api/card/build).
+      enabled: existing.site?.enabled === true || built.site?.enabled !== false,
       hidden: existing.site?.hidden ?? [],
       templateKey: existing.site?.templateKey,
       hideProfile: existing.site?.hideProfile,

@@ -107,7 +107,7 @@ function BusinessInner() {
                   <p className="font-semibold text-white">{n > 0
                     ? (en ? `${n} ${n === 1 ? "person is" : "people are"} in your team — your income is ₹0 because your ID is Red.` : `आपकी team में ${n} ${n === 1 ? "व्यक्ति" : "लोग"} — कमाई ₹0, क्योंकि आपकी ID Red है।`)
                     : (en ? "Your ID is Red — earnings are open only when it is Green." : "आपकी ID Red है — कमाई तभी चालू होती है जब ID Green हो।")}</p>
-                  <p className="mt-1">{en ? "Green = a Growth ₹2,999 subscription. Every joining under you then counts, from the first one." : "Green = Growth ₹2,999 subscription। फिर आपके नीचे की हर joining गिनी जाएगी, पहली से ही।"}</p>
+                  <p className="mt-1">{en ? "Green = a Standard ₹2,999 subscription. Every joining under you then counts, from the first one." : "Green = Standard ₹2,999 subscription। फिर आपके नीचे की हर joining गिनी जाएगी, पहली से ही।"}</p>
                   <Link href="/poster/plan" className="mt-2 inline-block rounded-lg bg-white px-3 py-1.5 font-semibold text-[#12144a]">{en ? "Turn Green" : "Green करें"}</Link>
                 </div>); })()}
             

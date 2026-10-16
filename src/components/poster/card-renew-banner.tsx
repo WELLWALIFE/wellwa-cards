@@ -2,7 +2,7 @@
 
 // The V-Card's year running out (last 30 days), ended (7-day grace) or paused — one strip on Home and My V-Card that
 // opens the renewal. Quiet until the last 30 days, so a fresh account never sees it; nothing at all while a paid plan
-// (Growth) covers the card (owner's call, 27 Sep 2026).
+// (Standard) covers the card (owner's call, 27 Sep 2026).
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { AlertTriangle, CalendarClock } from "lucide-react";
@@ -35,8 +35,8 @@ export function CardRenewBanner() {
       ? ["Your V-Card year has ended", `It keeps working till ${day(c.pause_on)}. After that your link shows “Card renew karein” until you renew.`]
       : ["आपके V-Card का साल पूरा हो गया", `${day(c.pause_on)} तक card चलता रहेगा। उसके बाद आपके link पर “Card renew karein” दिखेगा — renew करते ही card फिर चालू।`])
     : (en
-      ? [`Your V-Card year ends on ${day(c.until)}`, `Renew for ${price} a year and your link, details and leads keep working without a break. Growth includes the V-Card.`]
-      : [`आपके V-Card का साल ${day(c.until)} को पूरा हो रहा है`, `${price} में 1 साल और — आपका link, details और leads बिना रुकावट चलते रहेंगे। Growth में V-Card शामिल है।`]);
+      ? [`Your V-Card year ends on ${day(c.until)}`, `Renew for ${price} a year and your link, details and leads keep working without a break. Standard includes the V-Card.`]
+      : [`आपके V-Card का साल ${day(c.until)} को पूरा हो रहा है`, `${price} में 1 साल और — आपका link, details और leads बिना रुकावट चलते रहेंगे। Standard में V-Card शामिल है।`]);
 
   return (
     <Link href="/poster/plan?renew=card" className={`block rounded-2xl border-2 p-3 ${box}`}>

@@ -611,7 +611,7 @@ export default function AdvancedSitePage() {
               <p className="text-sm font-bold">{growth ? T("Upgrade to the Premium website", "Premium website में upgrade करें") : T("Get the Premium website", "Premium website पाएँ")}</p>
               <p className="text-2xl font-extrabold">{priceText}</p>
             </div>
-            <p className="text-xs text-muted">{growth ? T("You are on Growth (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Growth (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Premium: ₹5,999 for the first month, then ₹2,999 a month (it includes the Standard plan).", "Premium: पहला महीना ₹5,999, फिर ₹2,999 प्रति महीना (इसमें Standard plan शामिल है)।")}</p>
+            <p className="text-xs text-muted">{growth ? T("You are on Standard (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Standard (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Premium: ₹5,999 for the first month, then ₹2,999 a month (it includes the Standard plan).", "Premium: पहला महीना ₹5,999, फिर ₹2,999 प्रति महीना (इसमें Standard plan शामिल है)।")}</p>
             <p className="text-xs text-muted">{T(`One payment. You can look at up to ${TRY_LIMIT} layouts and keep the one you like — or keep your basic site.`, `एक बार का payment। ${TRY_LIMIT} layouts तक देखकर जो पसंद आए रखें — या अपनी basic site रखें।`)}</p>
             {pending ? (
               <>

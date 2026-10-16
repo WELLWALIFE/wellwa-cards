@@ -29,27 +29,32 @@ export const defaultSettings: SiteSettings = {
   introVideoUrl: "",
   announcement: "",
   plans: [
-    // Free V-Card for the first year (then ₹1,499 a year); Growth adds the automation. Prices include GST.
+    // Free = the digital card only (free for 1 year, then ₹1,499 a year). Standard / Premium / Custom, as on the pricing page (owner, 16 Oct 2026). Prices include GST.
     {
-      name: "Growth", price: "₹2,499", period: "/month incl. GST", tagline: "Everything to run one business online", hot: true,
+      name: "Standard", price: "₹2,999", period: "/month incl. GST", tagline: "Card, website, daily posters and WhatsApp AI", hot: false,
       features: [
-        "V-Card free for 1 year, upgrade any time", "Unlimited pages & blocks", "Custom domain + SSL", "AI card builder + AI chat",
-        "Lead CRM + follow-ups", "WhatsApp auto-reply", "Remove branding",
+        "Digital business card on one link", "Standard website (up to 5 pages)", "With a sub-domain address",
+        "Daily poster on Facebook, Instagram and WhatsApp Status", "Meta Ads (Facebook and Instagram)",
+        "WhatsApp AI assistant that answers customers and filters leads", "AI Ad Studio and Reel Maker",
+        "Google reviews and Google Business posts", "Works in 12 Indian languages", "WhatsApp AI replies, up to 1,000 a month (fair use)",
       ],
     },
     {
-      name: "White label", price: "Custom", period: "pricing", tagline: "For resellers and agencies", hot: false,
+      name: "Premium", price: "₹5,999", period: "first month only, then ₹2,999 a month", tagline: "Standard plus a multi-page website and Google SEO", hot: true,
       features: [
-        "Everything in Pro", "Teams, sub-teams & roles", "Broadcast campaigns",
-        "White-label + own billing", "Priority support",
+        "Everything in Standard", "Premium website, multiple pages",
+        "Google SEO: every page and product on Google, with schema and a sitemap", "Try up to 3 layouts and keep the one you like",
       ],
     },
     {
-      name: "Automation software", price: "Custom", period: "quote", tagline: "AI, automation & custom builds", hot: false,
+      name: "Custom Solutions", price: "On request", period: "quoted per requirement", tagline: "Every kind of software and automation", hot: false,
       features: [
-        "Workflow & WhatsApp automation", "AI assistants trained on your business",
-        "CRM, portals & dashboards",
-        "APIs & integrations", "Scoped in phases — pay per milestone",
+        "Custom software, apps and websites built for your business",
+        "Daily work done by itself: WhatsApp, customers, follow-ups, billing and reports",
+        "Your own CRM and business software, with screens for your numbers and logins for your team",
+        "AI assistants and chat bots taught about your business",
+        "Works with the tools you already use: online payments, Tally, Google Sheets",
+        "A manager from Shubhora just for you",
       ],
     },
   ],

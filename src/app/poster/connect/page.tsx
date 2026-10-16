@@ -21,7 +21,7 @@ function Badge({ s, en }: { s: State; en: boolean }) {
     on: ["bg-good/15 text-good", en ? "Connected" : "जुड़ा है"],
     off: ["bg-surface2 text-muted", en ? "Not connected" : "नहीं जुड़ा"],
     fix: ["bg-danger/10 text-danger", en ? "Reconnect" : "दोबारा जोड़ें"],
-    paid: ["bg-amber-500/15 text-amber-700", en ? "Growth plan" : "Growth plan"],
+    paid: ["bg-amber-500/15 text-amber-700", en ? "Standard plan" : "Standard plan"],
     loading: ["bg-surface2 text-faint", "…"],
   };
   const [cls, label] = map[s];
@@ -120,7 +120,7 @@ export default function Connections() {
       <label className={`flex items-center gap-2.5 text-sm ${waLinked ? "" : "opacity-60"}`}>
         <input type="checkbox" className="h-4 w-4" checked={wa === "on" && !!waAi} disabled={!waLinked || waBusy === "ai" || (wa === "on" && waAi === null)} onChange={(e) => setAi(e.target.checked)} />
         <MessageCircle className="h-4 w-4 shrink-0 text-[#25D366]" />
-        <span className="min-w-0"><span className="block font-medium">{en ? "AI auto-reply (chat bot)" : "AI auto-reply (chat bot)"}{wa === "paid" && <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Growth plan</span>}</span><span className="block text-[11px] text-muted">{en ? "Answers your customers any time, day or night, from your number. Everyone who chats is added to your customers." : "आपके number से customers को दिन-रात जवाब देता है। जो भी chat करता है, वह आपके customers में जुड़ जाता है।"}</span></span>
+        <span className="min-w-0"><span className="block font-medium">{en ? "AI auto-reply (chat bot)" : "AI auto-reply (chat bot)"}{wa === "paid" && <span className="ml-1.5 rounded-full bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold text-amber-700">Standard plan</span>}</span><span className="block text-[11px] text-muted">{en ? "Answers your customers any time, day or night, from your number. Everyone who chats is added to your customers." : "आपके number से customers को दिन-रात जवाब देता है। जो भी chat करता है, वह आपके customers में जुड़ जाता है।"}</span></span>
       </label>
     </div>
   );
@@ -189,7 +189,7 @@ export default function Connections() {
           })}
         </section>
       ))}
-      {wa === "paid" && <Link href="/poster/plan" className="block rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs">{en ? "Your WhatsApp is linked. The AI auto-reply comes with the Growth plan — see plans →" : "आपका WhatsApp जुड़ गया है। AI auto-reply Growth plan में है — plans देखें →"}</Link>}
+      {wa === "paid" && <Link href="/poster/plan" className="block rounded-xl bg-amber-500/10 border border-amber-500/30 p-3 text-xs">{en ? "Your WhatsApp is linked. The AI auto-reply comes with the Standard plan — see plans →" : "आपका WhatsApp जुड़ गया है। AI auto-reply Standard plan में है — plans देखें →"}</Link>}
       <p className="text-center text-[11px] text-faint">{en ? "You can always come back here: Me → Connections, or the menu at the top right." : "यहाँ कभी भी आ सकते हैं: Me → Connections, या ऊपर दाएँ menu से।"}</p>
     </div>
   );

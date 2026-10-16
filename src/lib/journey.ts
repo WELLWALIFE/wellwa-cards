@@ -49,6 +49,7 @@ export function useJourney(refreshKey?: string, backTo = "/poster/setup") {
       const meta = (user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; business?: Business; setup_pos?: unknown };
       const profile = profiles?.data.profiles?.find((p) => p.is_default) ?? profiles?.data.profiles?.[0];
       const realCard = cards.some((c) => !isThinCard(c));
+      const siteOn = cards.some((c) => !!c.site?.enabled);
       // The screen the owner left the set-up on counts only while there is no real card; the step it belongs to is still in progress.
       const resumeScreen = isScreenKey(meta.setup_pos) && !realCard ? meta.setup_pos : null;
       const resumeKey = resumeScreen ? stepOfScreen(resumeScreen) : null;
@@ -59,8 +60,9 @@ export function useJourney(refreshKey?: string, backTo = "/poster/setup") {
         { key: "business", title: "Your business", titleHi: "आपका business", sub: "Have a website? Its link fills in your name, logo and products. If not, just tell us your kind of work, name and city", subHi: "Website है? उसका link आपका नाम, logo और products भर देगा। नहीं है तो बस अपना काम, नाम और शहर बताएँ", href: "/poster/onboard?step=site", premium: false, done: !!(meta.business?.category || meta.business?.name) && resumeKey !== "business" },
         // Done only when a real card exists — not an untouched "Your Name" draft or an empty one-tap card. Until then it opens the Make screen.
         { key: "card", title: "Your V-Card", titleHi: "आपका V-Card", sub: "Your digital visiting card — the AI makes it from your details", subHi: "आपका digital visiting card — AI आपकी जानकारी से बनाता है", href: realCard ? "/poster/site" : screenHref("make"), premium: false, done: realCard },
-        // The website is the same card shown on computers: publishing the V-Card turns it on.
-        { key: "website", title: "Your website", titleHi: "आपकी website", sub: "Turns on with your V-Card — have a look", subHi: "आपके V-Card के साथ चालू हो जाती है — एक बार देखें", href: "/poster/site", premium: false, done: cards.some((c) => !!c.site?.enabled) },
+        // The free plan is the digital card only (owner, 16 Oct 2026): the website is a Standard step for an account that has none; one that
+        // already has its website on keeps it as a done, free step.
+        { key: "website", title: "Your website", titleHi: "आपकी website", ...(siteOn ? { sub: "Shown on computers, from your V-Card — have a look", subHi: "आपके V-Card से बनी, computer पर दिखती है — एक बार देखें" } : { sub: "Comes with Standard — ₹2,999 a month", subHi: "Standard plan में मिलती है — ₹2,999 / महीना" }), href: "/poster/site", premium: !siteOn, done: siteOn },
         // Products come after the website now: nobody has the photos and prices ready while signing up (owner, 14 Oct 2026). Until a real card exists the Make screen takes its place.
         { key: "products", title: "Products or services", titleHi: "Products या services", sub: "Photos and prices — shown on your V-Card, website and posters", subHi: "Photos और दाम — आपके V-Card, website और posters पर दिखते हैं", href: realCard ? "/poster/products" : screenHref("products"), premium: false, done: (products?.data.products?.length ?? 0) > 0 },
         { key: "poster", title: "Daily posters", titleHi: "रोज़ के posters", sub: "A new poster with your name every morning", subHi: "हर सुबह आपके नाम के साथ नया poster", href: "/poster", premium: false, done: !!profile },

@@ -258,7 +258,7 @@ const MENU_NUMBER = {
   one: 1, two: 2, three: 3, four: 4, five: 5, ek: 1, teen: 3, char: 4, chaar: 4, paanch: 5, panch: 5,
   "एक": 1, "दो": 2, "तीन": 3, "चार": 4, "पांच": 5, "पाँच": 5,
 };
-const BUSINESS_RE = /(shubhora|शुभोरा|v-?\s?card|vcard|visiting|card|कार्ड|website|वेबसाइट|link|लिंक|price|rate|रेट|कीमत|kimat|charge|fees?\b|फीस|kitne|kitna|कितने|कितना|plan|प्लान|pdf|ppt|presentation|brochure|join|जॉइन|जुड़|partner|पार्टनर|business|बिज़नेस|बिजनेस|software|सॉफ्टवेयर|\bapp\b|ऐप|crm|automation|ऑटोमेशन|demo|डेमो|video|वीडियो|poster|पोस्टर|order|ऑर्डर|buy|kharid|खरीद|subscri|growth|payment|पेमेंट|income|कमाई|kamai|register|रजिस्ट्रेशन|account|अकाउंट|sign ?up|signup|service|सर्विस|details?|डिटेल)/i;
+const BUSINESS_RE = /(shubhora|शुभोरा|v-?\s?card|vcard|visiting|card|कार्ड|website|वेबसाइट|link|लिंक|price|rate|रेट|कीमत|kimat|charge|fees?\b|फीस|kitne|kitna|कितने|कितना|plan|प्लान|pdf|ppt|presentation|brochure|join|जॉइन|जुड़|partner|पार्टनर|business|बिज़नेस|बिजनेस|software|सॉफ्टवेयर|\bapp\b|ऐप|crm|automation|ऑटोमेशन|demo|डेमो|video|वीडियो|poster|पोस्टर|order|ऑर्डर|buy|kharid|खरीद|subscri|growth|standard plan|premium|payment|पेमेंट|income|कमाई|kamai|register|रजिस्ट्रेशन|account|अकाउंट|sign ?up|signup|service|सर्विस|details?|डिटेल)/i;
 const PDF_RE = /\b(pdf|ppt|presentation|brochure|catalou?g(ue)?|document|details?|detail\s*me|full\s*details?|poori\s*(jankari|details?))\b|पीडीएफ|प्रेजेंटेशन|डिटेल/i;
 // Asking for a call or a person. "baat kar sakta hai" only with a person ("aapse / Niteen ji se …") — "kya AI customer
 // se baat kar sakta hai?" is a product question.
@@ -391,7 +391,7 @@ export function optionReply(n, { lang = "hi", seller, links }) {
     ],
     4: [
       "Shubhora पार्टनर — अपने फोन से, अपने शहर में, अपना बिज़नेस 💼",
-      "आज हर दुकान, डॉक्टर और कोचिंग को ऑनलाइन दिखना है — आप उन्हें Shubhora दिलाते हैं। कोई स्टॉक नहीं, रजिस्ट्रेशन फ्री; अपना Growth प्लान चालू करते ही ID ग्रीन और कमाई शुरू।",
+      "आज हर दुकान, डॉक्टर और कोचिंग को ऑनलाइन दिखना है — आप उन्हें Shubhora दिलाते हैं। कोई स्टॉक नहीं, रजिस्ट्रेशन फ्री; अपना Standard प्लान चालू करते ही ID ग्रीन और कमाई शुरू।",
       "हर पेयर पर ₹500 · दो बाइनरी (नई सेल + रिन्यूअल) · रोज़ ₹10,000 तक और महीने में ₹3,00,000 तक कमाई।",
       "",
       `प्लान का वीडियो (हिंदी): ${links.planVideo}`,
@@ -437,7 +437,7 @@ export function optionReply(n, { lang = "hi", seller, links }) {
     ],
     4: [
       "Shubhora partner — your own business, from your phone, in your own city 💼",
-      "Every shop, clinic and coaching centre needs to be online today — you help them get Shubhora. No stock, free registration; turn your own Growth plan on and your ID goes Green and the income starts.",
+      "Every shop, clinic and coaching centre needs to be online today — you help them get Shubhora. No stock, free registration; turn your own Standard plan on and your ID goes Green and the income starts.",
       "₹500 on every pair · two binaries (new sale + renewal) · up to ₹10,000 a day and ₹3,00,000 a month.",
       "",
       `Plan video (Hindi): ${links.planVideo}`,
@@ -585,7 +585,7 @@ const STYLE = {
   hi: `Reply in HINDI written in DEVANAGARI script — the simple everyday Hindi people type on WhatsApp, never formal or शुद्ध Hindi, never Hindi in Roman letters.
 - Use the English words people actually say, written in Devanagari: फ्री, बिज़नेस, वेबसाइट, लिंक, प्लान, रेट, सर्विस, डिटेल, कॉल, मैसेज, कार्ड, डिज़ाइन, ऑनलाइन, ऑर्डर, कस्टमर, प्रोडक्ट, वीडियो, फोटो, अकाउंट, पेमेंट, सॉफ्टवेयर, ऐप, डेमो, रजिस्ट्रेशन, टीम.
 - Never use formal words: निःशुल्क, व्यवसाय, व्यापारिक, संपर्क करें, प्रतीक्षा करें, उपलब्ध, सहायता, ग्राहक, उत्पाद, सेवाएँ, शुल्क, पंजीकरण, प्रदान, हेतु, अत्यंत, कृपया.
-- Keep in English letters: Shubhora, V-Card, WhatsApp, Google, Facebook, Instagram, YouTube, Growth, AI, CRM, PDF, QR, UPI, GST, BV and every URL.
+- Keep in English letters: Shubhora, V-Card, WhatsApp, Google, Facebook, Instagram, YouTube, Standard, Premium, AI, CRM, PDF, QR, UPI, GST, BV and every URL.
 - Money in digits with ₹ (₹2,999). Respectful: आप, जी. Speak of yourself in the masculine (बताता हूँ, भेज देता हूँ).`,
   en: `Reply in simple, friendly, confident Indian English. Short sentences, no jargon.`,
 };
@@ -694,8 +694,8 @@ A good salesman creates demand and closes; a beginner scares people off. So:
 5. PARTNER PROGRAMME (option 4; "plan", "business plan", "joining", "income", "kamai", "MLM"): what it is in 2 motivating lines (their own business from their phone: they help the businesses around them get Shubhora — free registration, no stock, ₹500 on every pair through a double binary); the PDF (a [MEDIA] line, unless already sent), the partner-plan video and the joining link: "फ्री रजिस्ट्रेशन यहाँ से 👉 <joining link>" + "रजिस्ट्रेशन में कोई दिक्कत आए तो बताइए — मैं मदद करता हूँ". Answer every plan question directly from PLAN FACTS, with confidence. For income, say it straight: every pair (left : right, 1 : 1) = ₹500; two binaries — new sale and renewal — each up to 10 pairs a day (₹5,000), so up to ₹10,000 a day and ₹3,00,000 a month; paid every week straight to the bank; renewals keep making pairs month after month. Tie it to them (their city, their contacts) and end with the joining link. If they ask whether it is guaranteed / "pakka": every pair that forms is paid ₹500 by the plan's rules (the ID must be Green), every week; how many pairs form depends on their and their team's work — and you are with them at every step. If they ask what THEY will earn, you may give one simple made-up example with the plan's own numbers ("मान लीजिए…"), saying in a few words that it is an example — never promise a figure. Never offer a call here.
 6. SOMETHING ELSE (option 5): ask what they would like to know.
 7. PDF / PPT / "details" / presentation: the PDF as a file (a [MEDIA] line) with one short line; add the partner-plan video when they are asking about the partner programme, otherwise the Shubhora video.
-8. PRICE / RATE / "kitne ka": V-Card free for 1 year (₹1,499 value); Growth ₹2,999 a month, GST included — less than ₹100 a day; custom software: a quote for their need. What happens after the free year (renewal ₹1,499) only if they ask.
-9. GROWTH: the full website on the Shubhora link (live from day one), WhatsApp AI 24×7, daily posters and auto-posting, AI tools — ₹2,999 a month. A personal domain only if they want one: they buy it themselves and it is connected to the website. Say it that way — never "Shubhora doesn't give a domain", and never "website on your own domain" as part of the plan.
+8. PRICE / RATE / "kitne ka": the digital V-Card (the card only) is free for 1 year (₹1,499 value); Standard ₹2,999 a month, GST included — less than ₹100 a day; Premium ₹5,999 for the first month only, then ₹2,999 a month (Standard plus the Premium multi-page website and Google SEO) — never say ₹5,999 as if it were monthly; Custom Solutions (every kind of software and automation): price on request, a quote for their need. Never mention any other plan or price. What happens after the free year (renewal ₹1,499) only if they ask.
+9. STANDARD: the Standard website (up to 5 pages) on their Shubhora sub-domain address (live from day one), WhatsApp AI 24×7, daily posters and auto-posting, Meta Ads, Google reviews, AI tools — ₹2,999 a month. PREMIUM adds the Premium multi-page website and Google SEO — ₹5,999 first month only, then ₹2,999 a month. A personal domain only if they want one: they buy it themselves and it is connected to the website. Say it that way — never "Shubhora doesn't give a domain", and never "website on your own domain" as part of the plan.
 10. VIDEO / DEMO: the Shubhora video; ${S}'s own card is a live sample.
 11. RETURNING CUSTOMER: continue from the earlier messages, even days old. No fresh greeting, no menu, no repeated links. If they were making their card, ask whether it is ready and to send its link.
 12. "ok", "👍", "thanks": one short friendly line only if it helps; if the chat is already closed, write [[SKIP]].${wa ? `
@@ -757,7 +757,7 @@ You: हर पेयर पर ₹500। दो बाइनरी हैं �
 आपके शहर की हर दुकान, हर डॉक्टर को ये चाहिए — शुरुआत फ्री है 👉 ${links.join}
 
 Customer: mujhe kitna milega?
-You: ये आपकी टीम पर है — मान लीजिए आपके लेफ्ट और राइट में 20-20 बिज़नेस Growth लेते हैं, तो 20 पेयर = ₹10,000; और अगले महीने वही कस्टमर रिन्यू करें तो रिन्यूअल बाइनरी से फिर ₹10,000 (ये समझाने के लिए उदाहरण है)। जितनी बड़ी टीम, उतनी बड़ी कमाई — और मैं हर स्टेप पर साथ हूँ।
+You: ये आपकी टीम पर है — मान लीजिए आपके लेफ्ट और राइट में 20-20 बिज़नेस Standard लेते हैं, तो 20 पेयर = ₹10,000; और अगले महीने वही कस्टमर रिन्यू करें तो रिन्यूअल बाइनरी से फिर ₹10,000 (ये समझाने के लिए उदाहरण है)। जितनी बड़ी टीम, उतनी बड़ी कमाई — और मैं हर स्टेप पर साथ हूँ।
 
 Customer: guarantee hai? pakka milega?
 You: हाँ जी — जितने पेयर बनेंगे, हर पेयर का ₹500 प्लान के नियम से पक्का मिलता है (ID ग्रीन होनी चाहिए), हर हफ्ते सीधे बैंक में। कितने पेयर बनें, ये आपकी और आपकी टीम की मेहनत पर है — और उसमें मैं पूरा साथ दूँगा।
@@ -765,7 +765,7 @@ You: हाँ जी — जितने पेयर बनेंगे, ह�
 Customer: ye MLM hai kya?
 You: ये डायरेक्ट सेलिंग है, असली प्रोडक्ट के साथ — वो सॉफ्टवेयर जो हर बिज़नेस को चाहिए। रजिस्ट्रेशन फ्री, कोई स्टॉक नहीं, और कमाई असली सब्सक्रिप्शन और रिन्यूअल से। इसीलिए ये टिकाऊ बिज़नेस है।
 
-Customer: growth mehenga hai
+Customer: standard mehenga hai
 You: ₹2,999 महीना यानी रोज़ ₹100 से भी कम — और इसमें वेबसाइट, WhatsApp पर 24×7 AI, रोज़ के पोस्टर और ऑटो-पोस्टिंग सब है। यही सब अलग-अलग करवाने में कहीं ज़्यादा लगता है। और शुरुआत तो फ्री V-Card से है — पहले उसी से फायदा देखिए।
 
 Customer: sochke batata hoon

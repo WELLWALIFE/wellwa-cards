@@ -7,7 +7,7 @@ import { LoaderCircle, Check, ChevronLeft, Sparkles, AlertTriangle } from "lucid
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
-import { SAAS_PLANS, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_ITEMS, PREMIUM_FIRST_PAISE, PREMIUM_EXTRA_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { packsFor } from "@/lib/media/ad-pricing";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -21,23 +21,27 @@ type Res = {
   card: { state: "included" | "active" | "grace" | "paused"; until: string | null; days_left: number | null; pause_on: string | null; renewed: boolean } | null;
 };
 const INCLUDED: Record<SaasTier, string[]> = {
-  // Starter stands on its own list (no posters, social or AI pictures); Growth and Pro add theirs to COMMON.
+  // Starter is no longer sold; it keeps its own list only for someone already on it. Standard is COMMON; Pro adds its own lines.
   starter: ["AI salesman on your website: it answers questions, suggests items, and takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders", "Follow-up messages go out by themselves for every enquiry", "Festival wishes and offers to your customers", "A message asking for a Google review after every sale", "A report every Monday", "Change your website just by saying what you want; no Shubhora tag"],
   // No repeats of the common lines below (the list said "website" and "daily poster" twice).
-  growth: ["1 business profile", "WhatsApp AI replies — up to 1,000 a month (fair use)", "8 free ad storyboards a month (scene pictures you check before the video is made)"],
+  growth: [],
   pro: ["3 business profiles or brands", "10,000 AI replies a month", "5 team members who can use your customer list", "Your videos and pictures are made first, and you get help first"],
 };
+// The Standard plan in the owner's own words (16 Oct 2026); Pro (a running subscriber only) adds its own lines on top.
 const COMMON = [
-  "Digital card + full website on your own web address",
-  "Daily poster + Status video, posted to WhatsApp Status for you",
-  "Daily Story, 4 posts and 3 reels a week on Facebook and Instagram",
-  "WhatsApp AI assistant + a list of all your customers",
-  "Google Business posts and review replies",
+  "Digital business card on one link",
+  "Standard website (up to 5 pages), with a sub-domain address",
+  "Daily poster on Facebook, Instagram and WhatsApp Status",
+  "Meta Ads (Facebook and Instagram)",
+  "WhatsApp AI assistant that answers customers and filters leads",
   "AI Ad Studio and Reel Maker",
+  "Google reviews and Google Business posts",
+  "Works in 12 Indian languages",
+  "WhatsApp AI replies, up to 1,000 a month (fair use)",
 ];
 const d = (s: string | null) => (s ? new Date(s).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" }) : "—");
 
-/** The digital V-Card's year: free for 1 year, then ₹1,499 a year, covered by a running Growth / Pro plan. The renew
+/** The digital V-Card's year: free for 1 year, then ₹1,499 a year, covered by a running Standard / Pro plan. The renew
  *  button shows only in the last 30 days, the 7-day grace and while paused — never pushed on a fresh account. */
 function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNullable<Res["card"]>; planLabel: string | null; highlight: boolean; onRenewed: () => void }) {
   const price = `${rupees(CARD_RENEWAL.amount)} / year`;
@@ -57,7 +61,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
         <p className="text-xs font-semibold uppercase tracking-wide text-danger">Digital V-Card · paused</p>
         <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. People who open your link now see “Card renew karein”. Renew and it comes back right away. Your details, photos and customers are safe.</p>
         {renewBtn}
-        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Growth below, which includes the V-Card.</p>
+        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Standard below, which includes the V-Card.</p>
       </div>
     );
   }
@@ -67,7 +71,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
         <p className="text-xs font-semibold uppercase tracking-wide text-amber">Digital V-Card · renew now</p>
         <p className="mt-1 text-sm text-ink">Your V-Card year ended on {d(card.until)}. It keeps working till {d(card.pause_on)}. After that your link shows “Card renew karein” until you renew.</p>
         {renewBtn}
-        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Growth below, which includes the V-Card.</p>
+        <p className="mt-1.5 text-[11px] text-faint">{price}, GST included · or choose Standard below, which includes the V-Card.</p>
       </div>
     );
   }
@@ -82,7 +86,7 @@ function CardYearBox({ card, planLabel, highlight, onRenewed }: { card: NonNulla
         {card.days_left !== null && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${due ? "bg-amber/10 text-amber" : "bg-good/10 text-good"}`}>{card.days_left} day{card.days_left === 1 ? "" : "s"} left</span>}
       </div>
       {due || highlight ? renewBtn : null}
-      <p className="mt-1.5 text-[11px] text-faint">After that it is {price}, GST included. Growth includes it.</p>
+      <p className="mt-1.5 text-[11px] text-faint">After that it is {price}, GST included. Standard includes it.</p>
     </div>
   );
 }
@@ -139,7 +143,7 @@ function MyPlan() {
           <p className="text-sm text-muted">Your account is ready. Start free. You can take a paid plan later.</p>
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2"><p className="font-bold">1. Free</p><p className="text-sm"><span className="mr-1.5 rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-700">Worth {rupees(FREE_PLAN_WORTH)}</span><b className="text-lg text-good">FREE</b></p></div>
-            <p className="mt-1 text-xs text-muted">Website + digital card on your link · daily poster · your customers saved in a list · free for 1 year. Showing on Google, AI banner and changes, auto-posting, WhatsApp AI and your own web address come with Growth.</p>
+            <p className="mt-1 text-xs text-muted">Your digital business card on one link, made by AI in 5 minutes · share on WhatsApp or with a QR code · people can contact you from the card · free for 1 year. The website, daily posters, Meta Ads and the WhatsApp AI assistant come with Standard.</p>
             <p className="mt-1 text-[11px] font-semibold text-good">{FREE_PLAN_TRUST}</p>
             <p className="mt-0.5 text-[10px] text-faint">{FREE_PLAN_TERM}</p>
             <Link href="/poster/onboard" className="mt-3 inline-flex w-full items-center justify-center rounded-xl border-2 border-brand px-3 py-2.5 text-sm font-semibold text-brand-ink">Start free</Link>
@@ -171,13 +175,14 @@ function MyPlan() {
 
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
       <div className="space-y-3">
-        {/* Pro is custom-priced now (owner's call, 25 Sep 2026): only someone already on Pro still renews it here. */}
-        {(r.tier === "pro" ? (["starter", "growth", "pro"] as const) : (["starter", "growth"] as const)).map((tier, i) => {
+        {/* Sold here: Standard, Premium and Custom Solutions (owner, 16 Oct 2026). Starter and Pro are no longer offered;
+            someone already on one of them still sees their own running plan and can renew it. */}
+        {(r.tier === "pro" ? (["growth", "pro"] as const) : r.tier === "starter" ? (["starter", "growth"] as const) : (["growth"] as const)).map((tier, i) => {
           const p = SAAS_PLANS[tier]; const current = r.tier === tier && r.state === "active";
           return (
             <div key={tier} className={`rounded-2xl border p-4 ${current ? "border-good/50 bg-good/5" : tier === "growth" ? "border-brand/60" : "border-border"}`}>
               <div className="flex items-baseline justify-between gap-2">
-                <p className="font-bold">{welcome ? `${i + 2}. ` : ""}{p.label}{tier === "starter" && !current ? <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span> : null}{tier === "growth" && !current ? <span className="ml-2 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most chosen</span> : null}</p>
+                <p className="font-bold">{welcome ? `${i + 2}. ` : ""}{p.label}{tier === "starter" && !current ? <span className="ml-2 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">AI salesman</span> : null}</p>
                 <p className="text-sm"><b className="text-lg">{rupees(p.amount)}</b> <span className="text-muted">/ month, GST included</span></p>
               </div>
               <p className="text-xs text-muted">{p.tagline} · {rupees(p.base)} + {GST_PCT}% GST</p>
@@ -190,10 +195,35 @@ function MyPlan() {
             </div>
           );
         })}
+        {/* Premium: ₹5,999 for the FIRST month only, then ₹2,999 a month (one autopay). Someone already on Standard pays just the ₹3,000 difference. */}
+        {r.tier !== "pro" && r.tier !== "starter" && (() => {
+          const onStandard = r.tier === "growth" && r.state === "active";
+          const n = welcome ? 3 : null;
+          return (
+            <div className="rounded-2xl border-2 border-brand p-4">
+              <div className="flex items-baseline justify-between gap-2">
+                <p className="font-bold">{n ? `${n}. ` : ""}{PREMIUM.label}<span className="ml-2 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most popular</span></p>
+                {onStandard
+                  ? <p className="text-sm"><b className="text-lg">{rupees(PREMIUM_EXTRA_PAISE)}</b> <span className="text-muted">more, one time</span></p>
+                  : <p className="text-sm"><b className="text-lg">{rupees(PREMIUM_FIRST_PAISE)}</b> <span className="text-muted">first month only</span></p>}
+              </div>
+              <p className="text-xs text-muted">
+                {onStandard
+                  ? <>You are on Standard, so you pay only the {rupees(PREMIUM_EXTRA_PAISE)} difference. After that it stays {rupees(SAAS_PLANS.growth.amount)} a month. </>
+                  : <>Then {rupees(SAAS_PLANS.growth.amount)} a month from the 2nd month. </>}
+                GST included.
+              </p>
+              <ul className="mt-2 space-y-1">
+                {PREMIUM_ITEMS.map((f) => <li key={f} className="flex items-start gap-1.5 text-xs text-muted"><Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-brand" />{f}</li>)}
+              </ul>
+              <SubscribeButton tier="growth" premium className="grad-brand mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white">{onStandard ? `Upgrade to Premium — ${rupees(PREMIUM_EXTRA_PAISE)} more` : "Get Premium"}</SubscribeButton>
+            </div>
+          );
+        })()}
         {r.tier !== "pro" && (
           <div className="rounded-2xl border border-border p-4">
             <div className="flex items-baseline justify-between gap-2">
-              <p className="font-bold">{welcome ? "4. " : ""}{PRO_CUSTOM.label}</p>
+              <p className="font-bold">{welcome ? (r.tier === "starter" ? "3. " : "4. ") : ""}{PRO_CUSTOM.label}</p>
               <p className="text-sm"><b className="text-lg">{PRO_CUSTOM.price}</b> <span className="text-muted">price</span></p>
             </div>
             <p className="text-xs text-muted">{PRO_CUSTOM.tagline}</p>

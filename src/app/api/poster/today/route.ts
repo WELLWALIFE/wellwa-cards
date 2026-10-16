@@ -18,7 +18,7 @@ export async function GET(request: Request) {
     `posters?profile_id=eq.${profile.id}&for_date=eq.${date}&select=id,url,title,occasion_slug,shares,style,video_url,caption`,
   );
   const quota = await posterQuota(me.token, me.id);
-  if (quota.plan === "free") return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of Growth. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
+  if (quota.plan === "free") return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
   // The owner's V-Card: its link goes on the poster and with every share; on Sundays the poster IS the card.
   const link = await cardLinkFor(me.id, (profile as unknown as { card_facts?: { primaryCardId?: string } | null }).card_facts?.primaryCardId);
   const card_url = link?.url ?? "";
@@ -40,7 +40,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ poster: { ...existing.data[0], v: await posterVersion(existing.data[0].url) }, date, theme: eng0.themeFor(date), quota, style, overrides, card_url });
   }
   if (!preview && !existing.data?.[0] && quota.limit !== null && quota.used >= quota.limit) {
-    return NextResponse.json({ error: "quota", quota, message: "Today's free poster is made. Growth removes the branding and adds tomorrow's preview and the AI voice." }, { status: 402 });
+    return NextResponse.json({ error: "quota", quota, message: "Today's free poster is made. The Standard plan removes the branding and adds tomorrow's preview and the AI voice." }, { status: 402 });
   }
 
   const eng = await posterEngine();

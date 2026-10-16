@@ -149,7 +149,7 @@ export function CrmInbox() {
 
       {wa !== "connected" && (
         <div className="rounded-xl border border-border bg-surface2/60 px-3 py-2 text-xs text-muted">
-          {wa === "plan" ? "WhatsApp sending comes with the Growth plan — leads and notes still work." : wa === "offline" ? "WhatsApp service is offline right now. Replies from here will send once it is back." : "WhatsApp not connected — open the WhatsApp AI tab and scan the QR to reply from here."}
+          {wa === "plan" ? "WhatsApp sending comes with the Standard plan — leads and notes still work." : wa === "offline" ? "WhatsApp service is offline right now. Replies from here will send once it is back." : "WhatsApp not connected — open the WhatsApp AI tab and scan the QR to reply from here."}
         </div>
       )}
 

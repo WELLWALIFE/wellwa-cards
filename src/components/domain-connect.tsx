@@ -111,11 +111,11 @@ export function DomainConnect({ cardId, username, initialDomain, onChange }: { c
           <input value={input} onChange={(e) => setInput(e.target.value.trim().toLowerCase())} placeholder="yourbusiness.com" inputMode="url"
             className="flex-1 rounded-lg border border-border bg-surface px-3 py-2.5 text-sm" />
           <button type="button" onClick={connect} disabled={(!input && !locked) || !!busy} className={`shrink-0 inline-flex items-center gap-1.5 rounded-lg px-4 py-2.5 text-sm font-semibold disabled:opacity-60 ${locked ? "bg-[#12144a] text-[#ffd54a]" : "grad-brand text-white"}`}>
-            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {locked ? "Growth" : "Connect"}
+            {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : locked ? <Lock className="h-4 w-4" /> : <Globe className="h-4 w-4" />} {locked ? "Standard" : "Connect"}
           </button>
         </div>
         <p className="text-[11px] text-muted">{locked
-          ? "Your own web address (yourbusiness.com) comes with Growth. Your free Shubhora link keeps working as it is."
+          ? "Your own web address (yourbusiness.com) comes with Standard. Your free Shubhora link keeps working as it is."
           : "Already own a web address (domain)? Type it here. We show the exact steps for the company you bought it from, then do everything else ourselves, including the free security certificate (https)."}</p>
         {err && <p className="text-xs text-danger">{err}</p>}
         {upsell && <PremiumSheet feature="Your own web address" onClose={() => setUpsell(false)} />}

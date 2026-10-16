@@ -198,7 +198,7 @@ export default function TodayPage() {
 
       {today?.error === "plan" && (
         <div className="rounded-2xl border border-brand/40 bg-brand-soft p-4">
-          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {lang === "en" ? "Daily posters are part of Growth" : "रोज़ का poster Growth plan में मिलता है"}</p>
+          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {lang === "en" ? "Daily posters are part of Standard" : "रोज़ का poster Standard plan में मिलता है"}</p>
           <p className="text-sm text-ink mt-1">{lang === "en" ? "Your free plan includes the digital V-Card and its leads. Upgrade to get a fresh poster and status video every morning, auto-posted to WhatsApp Status, Facebook and Instagram." : "Free plan में digital V-Card और उसके leads मिलते हैं। Upgrade करें — हर सुबह नया poster और status video, WhatsApp Status, Facebook और Instagram पर अपने-आप।"}</p>
           <div className="mt-3 flex gap-2">
             <Link href="/poster/plan" className="inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{lang === "en" ? "Upgrade — see plans" : "Upgrade करें — plans देखें"}</Link>

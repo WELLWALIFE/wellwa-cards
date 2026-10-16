@@ -28,7 +28,7 @@ const fmt = (ms: number) => new Date(ms).toLocaleDateString("en-IN", { day: "num
 export function cardReminderText(mark: CardMark, until: number, left: number): { title: string; body: string } {
   const price = rupees(CARD_RENEWAL.amount);
   const pauseOn = until + CARD_RENEWAL.graceDays * DAY_MS;
-  const keep = `${price} me 1 saal aur chalu rakhein — link, details aur leads bina rukawat chalte rahenge. Growth plan me V-Card shamil hai.`;
+  const keep = `${price} me 1 saal aur chalu rakhein — link, details aur leads bina rukawat chalte rahenge. Standard plan me V-Card shamil hai.`;
   switch (mark) {
     case "d30":
     case "d7":

@@ -29,7 +29,7 @@ const groups = [
     { icon: Sparkles, title: "AI writing studio", body: "Draft card content, ad ideas, campaign material and a practical manual-posting calendar." },
     { icon: Bot, title: "AI salesman on your website", body: "Answers from your own products and prices, suggests the right item, takes the order or booking — name, number, what exactly — and gives the customer buttons to send it on WhatsApp, pay by UPI or call. You get a hot lead and an alert." },
     { icon: MessageCircle, title: "Your WhatsApp number, official", body: "Connect your own number on Meta's official API with one button (or link the app by QR). The same salesman answers there, in the customer's language, voice notes included." },
-    { icon: ShieldCheck, title: "Free, Starter, Growth", body: "Website, card and leads are free for a year. Starter (₹999) adds the AI salesman, bookings, follow-ups, wishes and the weekly report. Growth (₹2,999) adds daily posters, social posting, AI pictures and your own domain." },
+    { icon: ShieldCheck, title: "Free, Standard, Premium, Custom", body: "The digital business card is free for a year. Standard (₹2,999 a month) adds the Standard website, daily posters, Meta Ads, the WhatsApp AI assistant, Google reviews and the AI Ad Studio. Premium (₹5,999 for the first month only, then ₹2,999 a month) adds the multi-page website and Google SEO. Custom Solutions are quoted on request." },
   ]},
   { title: "Capture and follow up", accent: "var(--good)", items: [
     { icon: UserRoundPlus, title: "Contact exchange", body: "Visitors can save your VCF details or submit their own details as a lead." },

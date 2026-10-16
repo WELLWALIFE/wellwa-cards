@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { siteStatus, patchSite, cleanStyle, cleanHome, type SitePatch } from "@/lib/site-server";
 import { cleanTiles } from "@/lib/site-blueprints";
+import { newWebsiteBlocked, WEBSITE_PLAN_MESSAGE } from "@/lib/site-access";
 
 export const maxDuration = 60;
 
@@ -17,6 +18,9 @@ export async function PATCH(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const b = await request.json().catch(() => ({}));
+  // The free plan is the digital card only (owner, 16 Oct 2026): switching a website ON needs a paid plan. A free account whose
+  // website is already on keeps it, and may still switch it off.
+  if (b.enabled === true && await newWebsiteBlocked(me, typeof b.card_id === "string" ? b.card_id : undefined)) return NextResponse.json({ error: WEBSITE_PLAN_MESSAGE, plan: true }, { status: 402 });
   const patch: SitePatch = {};
   if (typeof b.enabled === "boolean") patch.enabled = b.enabled;
   if (typeof b.hideProfile === "boolean") patch.hideProfile = b.hideProfile;

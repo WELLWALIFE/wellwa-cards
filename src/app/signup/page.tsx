@@ -236,7 +236,7 @@ function SignupInner() {
 
         <form onSubmit={submit} className="rounded-2xl border border-border bg-surface p-6">
           <h1 className="text-xl font-semibold tracking-tight">Create your Shubhora account</h1>
-          <p className="text-sm text-muted mt-1">Your digital card, website and WhatsApp assistant — free to start.</p>
+          <p className="text-sm text-muted mt-1">Your digital business card — free to start.</p>
 
           <div className="mt-5 space-y-4">
             <label className="block">

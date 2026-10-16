@@ -176,8 +176,8 @@ export default function WebsiteEditPage() {
     </div>
   ) : s && !s.hasCard ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
-      <p className="text-sm text-muted">{hi ? "पहले अपनी website बनाएँ। card उसी से बन जाता है।" : "Make your website first. Your card is made from it."}</p>
-      <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "मेरी website बनाएँ →" : "Make my website →"}</Link>
+      <p className="text-sm text-muted">{hi ? "पहले अपना card बनाएँ।" : "Make your card first."}</p>
+      <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "मेरा card बनाएँ →" : "Make my card →"}</Link>
     </div>
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (!s.hasCard) return null;

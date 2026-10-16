@@ -55,9 +55,9 @@ const faqs = [
   { q: "How do I start?", a: "Send Hi to Shubhora's WhatsApp number. The AI asks a few things — your shop, trade, city — takes two or three photos of your shop or rate list, and your website with a digital card is live in about ten minutes. Changes are one message away: “timing 10 se 8 karo”." },
   { q: "Will the WhatsApp assistant work on my existing number?", a: "Yes. Connect your own number on Meta's official API with one button (or link the app with a QR), and the same AI salesman answers there: it replies in the customer's language, takes the order or booking and hands you the conversations that need a person." },
   { q: "Can the AI actually take orders and bookings?", a: "Yes. On your website chat and on WhatsApp it suggests the right item with its price, collects name, number and what exactly, confirms it, and gives the customer buttons to send the order on WhatsApp, pay by UPI or call. You get a hot lead and an alert; a booking goes on your calendar with reminders for both of you." },
-  { q: "Does it answer phone calls?", a: "On the Pro plan, yes. You get a number; forward your missed calls to it and the AI receptionist answers in Hindi, Hinglish or English with your own knowledge, takes bookings and call-backs, and sends you the summary and the caller's number on WhatsApp." },
+  { q: "Does it answer phone calls?", a: "Yes, as part of Custom Solutions. We set up a number for you; forward your missed calls to it and the AI receptionist answers in Hindi, Hinglish or English with your own knowledge, takes bookings and call-backs, and sends you the summary and the caller's number on WhatsApp." },
   { q: "Which languages are supported?", a: "English, Hindi and ten more Indian languages, in their own scripts: posters, captions, AI replies and voice-overs." },
-  { q: "Is the free plan really free?", a: "Yes. Your website and digital card on one link — all pages, products and gallery — the daily poster and the leads they bring are free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in Growth. Take Growth when you want the Shubhora tag off, your website on Google, the AI banner and AI edits, auto-posting with status videos, the WhatsApp AI and your own domain." },
+  { q: "Is the free plan really free?", a: "Yes. The free plan is your digital business card on one link: made by AI in about five minutes, shared on WhatsApp or with a QR code, and people can contact you straight from it. It is free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in Standard. Take Standard (₹2,999 a month) when you want the Standard website, the daily poster on Facebook, Instagram and WhatsApp Status, Meta Ads, the WhatsApp AI assistant, Google reviews and posts, and the AI Ad Studio. Premium adds the multi-page website and Google SEO: ₹5,999 for the first month only, then ₹2,999 a month." },
   { q: "Can you build custom software for my company?", a: "Yes. Beyond the Business Suite we build AI assistants, CRMs, automation and web or mobile apps around your workflow, scoped and priced before we start." },
 ];
 
@@ -311,7 +311,7 @@ export default function Home() {
             </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">{PRO_CUSTOM.label}</h3>
-              <p className="mt-1 text-sm text-muted">Every kind of software and automation</p>
+              <p className="mt-1 text-sm text-muted">Every kind of software and automation, built around your business: CRM, apps, websites, WhatsApp and billing automation, AI assistants and chat bots</p>
               <p className="mt-5"><span className="text-4xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span></p>
               <p className="mt-1 text-xs text-faint"><Link href="/pricing" className="underline">Contact us</Link></p>
             </div>
@@ -368,7 +368,7 @@ export default function Home() {
         <div className="relative max-w-4xl mx-auto px-5 py-20 md:py-24 text-center">
           <div className="flex justify-center gap-1 text-[#ffb35c]">{Array.from({ length: 5 }).map((_, i) => <Star key={i} className="h-5 w-5" fill="currentColor" />)}</div>
           <h2 className="mt-5 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Tomorrow morning, your first poster could already be out.</h2>
-          <p className="mt-4 text-muted text-lg">Five minutes to set up: your website and card go live the same day. 1 year free, no card details needed.</p>
+          <p className="mt-4 text-muted text-lg">Five minutes to set up: your digital card goes live the same day. Free for 1 year, no card details needed.</p>
           <div className="mt-8 flex flex-wrap justify-center gap-3">
             <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl bg-brand px-6 py-3.5 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
             <Link href="/contact" className="inline-flex items-center gap-2 rounded-xl border border-border px-6 py-3.5 text-sm font-semibold text-ink hover:bg-surface">Talk to us</Link>

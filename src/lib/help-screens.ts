@@ -32,16 +32,16 @@ const SCREENS: Record<string, HelpScreen> = {
     title: { hi: "आपका app", en: "Your app" },
     what: { hi: "यहाँ से सब खुलता है — website, card, poster और customers।", en: "Everything opens from here — website, card, poster and customers." },
     steps: [
-      { hi: "पहले अपनी website बनाएँ। उसी से card भी बन जाता है।", en: "Make your website first. Your card comes with it." },
+      { hi: "पहले अपना digital card बनाएँ।", en: "Make your digital card first." },
       { hi: "फिर आज का poster बनाकर WhatsApp पर भेजें।", en: "Then make today's poster and send it on WhatsApp." },
       { hi: "जो आपका link खोलेगा, वह “Customers” में दिखेगा।", en: "Anyone who opens your link shows up in “Customers”." },
     ],
   },
   "/poster/welcome": {
     title: { hi: "शुरू करें", en: "Get started" },
-    what: { hi: "आपका account तैयार है। अब अपनी website बनाइए।", en: "Your account is ready. Now make your website." },
+    what: { hi: "आपका account तैयार है। अब अपना digital card बनाइए।", en: "Your account is ready. Now make your digital card." },
     steps: [
-      { hi: "“Start website now” दबाएँ।", en: "Tap “Start website now”." },
+      { hi: "“Card अभी बनाएँ” दबाएँ।", en: "Tap “Make my card now”." },
       { hi: "अभी नहीं? “Later” दबाएँ — बाद में Home से शुरू कर सकते हैं।", en: "Not now? Tap “Later” — you can start from Home any time." },
     ],
   },

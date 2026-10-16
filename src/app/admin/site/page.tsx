@@ -58,7 +58,7 @@ export default function AdminSite() {
         <h2 className="font-semibold text-sm">Announcement bar</h2>
         <label className="block">
           <span className="text-[13px] font-medium mb-1 block text-muted">Message (empty = hidden)</span>
-          <input className="ed-input" value={s.announcement} placeholder="🎉 Launch offer: 20% off Pro this month"
+          <input className="ed-input" value={s.announcement} placeholder="🎉 Launch offer: 20% off Standard this month"
             onChange={(e) => patch({ announcement: e.target.value })} />
         </label>
       </section>

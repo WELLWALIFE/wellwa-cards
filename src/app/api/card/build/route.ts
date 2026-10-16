@@ -45,6 +45,7 @@ import { googleRow } from "@/lib/google-server";
 import { composeCard, factsText, productName, mergeRefresh, addStockMedia, cityCase, ownOfferings } from "@/lib/card-compose";
 import { BOOKING_CATEGORIES, MAX_GALLERY_PHOTOS, MAX_WRITE_AGAIN_PHOTOS, mergeFacts, writeAgainCredits, type BuildResponse, type SavedProduct, type WriteAgainWant } from "@/lib/card-facts";
 import { isShubhoraHost } from "@/lib/site-role";
+import { hasPaidPlan } from "@/lib/site-access";
 import type { Card } from "@/lib/types";
 
 // A site that has to be rendered page by page takes longer to read than one that hands over its HTML —
@@ -320,6 +321,10 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // Free or paid, read once: it decides where the card's pictures come from, and nothing that costs money
   // may run before this is known.
   const paidPlan = (await posterQuota(me.token, me.id).catch(() => ({ plan: "free" as const }))).plan !== "free";
+  // The free plan is the digital card only (owner, 16 Oct 2026): a free build comes back with the website switched OFF, so the link
+  // opens the card everywhere. The saved card keeps a website that is already on (mergeBuiltCard). Starter and the card plans
+  // count as paid here, and a failed plan lookup counts as paid.
+  const websiteOk = paidPlan || await hasPaidPlan(me.token, me.id);
 
   // "Write again" (owner's call, 4 Oct 2026): Premium only, and 5 credits a time — charged here, before anything
   // that costs money runs, and given back if the AI does not answer. A free account is told it is Premium.
@@ -341,7 +346,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const WRITE_AGAIN_CREDITS = fresh && (wordWants.length || fresh.note || fresh.wordsNote) ? writeAgainCredits(wordWants, `${fresh.note}${fresh.wordsNote}`) : 0;
   let refundWriteAgain: null | (() => Promise<unknown>) = null;
   if (fresh) {
-    if (!paidPlan) return answer({ error: "Write again is a Premium feature: a new look and new words each time. Your free website and card stay as they are.", plan: true }, 402);
+    if (!paidPlan) return answer({ error: "Write again is part of the Standard plan: a new look and new words each time. Your free website and card stay as they are.", plan: true }, 402);
     const ref = `write-again-${me.id.slice(0, 8)}-${Date.now()}`;
     const spend = WRITE_AGAIN_CREDITS === 0 ? { ok: true } : await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WRITE_AGAIN_CREDITS, p_reason: "write-again", p_ref: ref }) });
     if (!spend.ok) return answer({ error: `Write again uses ${WRITE_AGAIN_CREDITS} credits. Add credits and try again — your website stays as it is.`, needCredits: WRITE_AGAIN_CREDITS }, 402);
@@ -666,6 +671,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // its own wears the first look from the start — the preview showed it as a plain cover under a "Bento" tick (6 Oct 2026).
   const looks = design?.looks ?? fallbackLooks({ setup, defaults: { ...tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), ...(built.site?.style ?? {}) } });
   if (built.site && !built.site.style?.blueprint && looks[0]) built = { ...built, site: { ...built.site, style: { ...(built.site.style ?? {}), ...looks[0].style, blueprint: looks[0].blueprint } } };
+  if (!websiteOk && built.site) built = { ...built, site: { ...built.site, enabled: false } };
   const out: BuildResponse = {
     ok: true, card: built, checks, missing,
     ...(audited.standIns.length ? { standIns: audited.standIns } : {}),

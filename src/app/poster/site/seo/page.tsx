@@ -77,8 +77,8 @@ export default function SiteSeoPage() {
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
       {none ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-          <p className="text-sm text-muted">{T("Make your website first.", "पहले अपनी website बनाएँ।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your card first.", "पहले अपना card बनाएँ।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my card →", "मेरा card बनाएँ →")}</Link>
         </section>
       ) : !card ? (
         <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>

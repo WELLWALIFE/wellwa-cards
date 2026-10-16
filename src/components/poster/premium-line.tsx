@@ -1,5 +1,5 @@
 "use client";
-// One quiet line under the day's poster: what is left today, and the one thing Growth would add.
+// One quiet line under the day's poster: what is left today, and the one thing Standard would add.
 // Never a wall — a free user reads it in two seconds and keeps using the app.
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -16,7 +16,7 @@ export function PremiumLine({ plan, used, limit }: { plan?: string; used?: numbe
   const [r, setR] = useState<PlanRes | null>(null);
   useEffect(() => { api<PlanRes>("/api/poster/plan").then((x) => { if (x.ok) setR(x.data); }).catch(() => {}); }, []);
   if (!r || cardPlan.loading) return null;
-  // Paid either way: a Growth / Pro subscription, or a card plan (pro / team, incl. one set by admin or a running trial).
+  // Paid either way: a Standard / Pro subscription, or a card plan (pro / team, incl. one set by admin or a running trial).
   const paid = r.state === "active" || r.state === "grace" || cardPlan.plan !== "free";
   const credits = r.credits?.total ?? 0;
 
@@ -28,7 +28,7 @@ export function PremiumLine({ plan, used, limit }: { plan?: string; used?: numbe
   if (r.trial && !r.trial.expired) return (
     <Link href="/poster/guide/whatsapp" className="flex items-center gap-2 rounded-xl border border-brand/40 bg-brand-soft/40 px-3 py-2 text-xs text-brand-ink">
       <MessageCircle className="h-4 w-4 shrink-0" />
-      <span>{en ? `WhatsApp AI trial — ${r.trial.days_left} day${r.trial.days_left === 1 ? "" : "s"} left. Customers get replies even while you sleep; keep it with Growth.` : `WhatsApp AI trial — ${r.trial.days_left} दिन बाकी। आपके सोते हुए भी customers को जवाब मिलता है; Growth में यह चलता रहेगा।`}</span>
+      <span>{en ? `WhatsApp AI trial — ${r.trial.days_left} day${r.trial.days_left === 1 ? "" : "s"} left. Customers get replies even while you sleep; keep it with Standard.` : `WhatsApp AI trial — ${r.trial.days_left} दिन बाकी। आपके सोते हुए भी customers को जवाब मिलता है; Standard में यह चलता रहेगा।`}</span>
     </Link>
   );
 
@@ -39,7 +39,7 @@ export function PremiumLine({ plan, used, limit }: { plan?: string; used?: numbe
   return (
     <Link href="/poster/plan" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs text-muted">
       <Sparkles className="h-4 w-4 shrink-0 text-brand" />
-      <span>{[day, rest].filter(Boolean).join(" · ")} — <span className="font-semibold text-brand-ink">{"Growth ₹2,999:"}</span> {en ? "no watermark, voice in videos, tomorrow's poster today, auto-post, website." : "बिना watermark, video में आवाज़, कल का poster आज, auto-post, website।"}</span>
+      <span>{[day, rest].filter(Boolean).join(" · ")} — <span className="font-semibold text-brand-ink">{"Standard ₹2,999:"}</span> {en ? "daily poster on Facebook, Instagram and WhatsApp Status, Meta Ads, WhatsApp AI, website." : "Facebook, Instagram, WhatsApp Status पर रोज़ का poster, Meta Ads, WhatsApp AI, website।"}</span>
     </Link>
   );
 }

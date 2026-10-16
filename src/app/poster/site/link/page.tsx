@@ -106,8 +106,8 @@ export default function WebAddressPage() {
 
       {none ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-          <p className="text-sm text-muted">{T("Make your website first.", "पहले अपनी website बनाएँ।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your card first.", "पहले अपना card बनाएँ।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my card →", "मेरा card बनाएँ →")}</Link>
         </section>
       ) : !card ? (
         err ? <p className="text-sm font-semibold text-danger">{err}</p> : <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
@@ -172,7 +172,7 @@ export default function WebAddressPage() {
               <DomainConnect cardId={card.id} username={card.username} initialDomain={domain || undefined} onChange={(d) => setDomain(d)} />
             ) : (
               <div className="space-y-2 rounded-xl bg-brand-soft/50 p-3">
-                <p className="flex items-start gap-2 text-sm"><Link2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {T("Your own domain comes with the Growth plan.", "अपना domain Growth plan के साथ आता है।")}</p>
+                <p className="flex items-start gap-2 text-sm"><Link2 className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {T("Your own domain comes with the Standard plan.", "अपना domain Standard plan के साथ आता है।")}</p>
                 <Link href="/poster/plan" className="inline-flex w-full items-center justify-center rounded-xl border border-brand py-2.5 text-sm font-semibold text-brand-ink">{T("See plans", "Plans देखें")}</Link>
               </div>
             )}

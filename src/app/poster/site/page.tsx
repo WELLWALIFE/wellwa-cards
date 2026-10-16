@@ -6,7 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone } from "lucide-react";
-import { PremiumCard, PremiumGate } from "@/components/poster/premium-lock";
+import { PremiumCard, PremiumGate, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { api, isLoggedIn } from "@/lib/poster-client";
@@ -36,6 +36,8 @@ export default function WebsitePage() {
   /** A copy that the phone refused: shown under the Copy button that was tapped (the link row at the top, or the Share panel). */
   const [copyFail, setCopyFail] = useState<"top" | "share" | null>(null);
   const [panel, setPanel] = useState<Panel>(null);
+  /** The Standard sheet, opened wherever a free account (digital card only) taps something that is the website's. */
+  const [planSheet, setPlanSheet] = useState(false);
   // Opened with Edit (?edit=1): only the edit tiles, starting at "What do you want to change?" — no link, share or open buttons
   // above them (owner, 14 Oct 2026).
   const [editOnly, setEditOnly] = useState(false);
@@ -143,8 +145,8 @@ export default function WebsitePage() {
     setRowErr(null);
     const bad = (why?: string) => setRowErr({ key, text: why || (hi ? "Save नहीं हुआ — internet देखकर दोबारा try करें।" : "Could not save. Check the internet and try again.") });
     try {
-      const r = await api<{ error?: string }>("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } });
-      if (!r.ok) { bad(r.data?.error); return; }
+      const r = await api<{ error?: string; plan?: boolean }>("/api/site/status", { method: "PATCH", json: { ...p, card_id: cardId } });
+      if (!r.ok) { if (r.data?.plan) setPlanSheet(true); bad(r.data?.error); return; }
     } catch { bad(); return; }
     if (!(await load(cardId, true))) bad();
   }
@@ -162,6 +164,9 @@ export default function WebsitePage() {
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const hidden = new Set(s.hasCard ? s.site?.hidden ?? [] : []);
   const T = (en: string, h: string) => (hi ? h : en);
+  // The free plan is the digital card only (owner, 16 Oct 2026): a free account whose website is not on is offered Standard, not a website.
+  // A free account that already has its website on is left exactly as it was.
+  const noSite = !paid && s.hasCard && !s.site?.enabled;
   const door = (k: Exclude<Panel, null>) => `flex flex-col items-center justify-center gap-1 rounded-2xl border-2 px-3 py-3.5 text-base font-semibold ${panel === k ? "border-brand bg-brand-soft/60 text-brand-ink" : "border-border bg-surface"}`;
   const doorSub = "block text-[11px] font-normal leading-tight text-muted";
 
@@ -174,8 +179,8 @@ export default function WebsitePage() {
 
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
-          <p className="text-sm text-muted">{T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{!paid ? T("Make your digital card. It is free.", "अपना digital card बनाएँ। ये free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my card →", "मेरा card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (
         <>
@@ -204,10 +209,14 @@ export default function WebsitePage() {
             <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
               {s.site?.enabled
                 ? <>{T("One link, one set of details. On a computer it opens as your website, on a phone as your card. Edit once — both change.", "एक link, एक ही जानकारी। Computer पर website खुलती है, phone पर card। एक बार edit करो — दोनों बदलेंगे।")}</>
-                : <>{T("The website is off: this link opens the card everywhere. Turn it on under Edit → Show or hide pages.", "Website बंद है: ये link हर जगह card खोलता है। Edit → Pages दिखाएँ या छुपाएँ में जाकर चालू करें।")}</>}
+                : noSite
+                  ? <>{T("Your free plan is the digital card: this link opens your card everywhere. A website with its own pages comes with Standard (₹2,999 a month) or Premium.", "आपका free plan digital card है: ये link हर जगह आपका card खोलता है। अपने pages वाली website Standard plan (₹2,999 / महीना) या Premium में मिलती है।")} <button type="button" onClick={() => setPlanSheet(true)} className="font-semibold text-brand-ink underline">{T("See Standard", "Standard देखें")}</button></>
+                  : <>{T("The website is off: this link opens the card everywhere. Turn it on under Edit → Show or hide pages.", "Website बंद है: ये link हर जगह card खोलता है। Edit → Pages दिखाएँ या छुपाएँ में जाकर चालू करें।")}</>}
             </p>
             <div className="grid grid-cols-2 gap-2">
-              <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>
+              {noSite
+                ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
+                : <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>}
               <CardLink href={link} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
             </div>
           </section>
@@ -235,9 +244,9 @@ export default function WebsitePage() {
               <button type="button" onClick={shareCard} className="flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-3.5 text-left text-white">
                 <Smartphone className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><b className="block text-sm">{T("Share my card", "मेरा card share करें")}</b><span className="block text-xs opacity-90">{T("Contact, products and more — opens as the card on a phone", "Contact, products और बाकी — phone पर card खुलता है")}</span></span><ChevronRight className="h-4 w-4 shrink-0" />
               </button>
-              <button type="button" onClick={shareSite} className="flex w-full items-center gap-3 rounded-xl border-2 border-[#25D366] px-4 py-3.5 text-left text-[#128C7E]">
+              {!noSite && <button type="button" onClick={shareSite} className="flex w-full items-center gap-3 rounded-xl border-2 border-[#25D366] px-4 py-3.5 text-left text-[#128C7E]">
                 <Globe className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><b className="block text-sm">{T("Share my website", "मेरी website share करें")}</b><span className="block text-xs text-muted">{T("The full website — pages, products, about", "पूरी website — pages, products, परिचय")}</span></span><ChevronRight className="h-4 w-4 shrink-0" />
-              </button>
+              </button>}
               <button type="button" onClick={() => void copy("share")} className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
                 <Copy className="h-5 w-5 shrink-0 text-muted" /><span className="min-w-0 flex-1 text-sm font-semibold">{copied ? T("Link copied ✓", "Link copy हुआ ✓") : T("Copy the link", "Link copy करें")}</span>
               </button>
@@ -296,6 +305,7 @@ export default function WebsitePage() {
                       {x.scope && <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${x.scope === "both" ? "bg-good/10 text-good" : "bg-surface2 text-muted"}`}>{x.scope === "both" ? T("Shows on card + website", "Card + website पर दिखेगा") : T("Website only", "सिर्फ़ website")}</span>}
                     </>
                   );
+                  if (noSite && x.scope === "site") return <button key={x.k} type="button" onClick={() => setPlanSheet(true)} className={`${base} border-border`}>{inner}</button>;
                   return x.href
                     ? <Link key={x.k} href={x.href} className={`${base} border-border`}>{inner}</Link>
                     : <button key={x.k} type="button" onClick={() => { setRowErr(null); setOpenTool(on ? null : x.tool ?? null); }} aria-expanded={!!on} className={`${base} ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>{inner}</button>;
@@ -339,7 +349,7 @@ export default function WebsitePage() {
                           <div className="rounded-2xl border border-border p-3">
                             {domainOk || s.customDomain
                               ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
-                              : <p className="text-sm text-muted">{T("Your own web address (www.yourshop.com) comes with Growth.", "अपना web address (www.yourshop.com) Growth के साथ आता है।")}</p>}
+                              : <p className="text-sm text-muted">{T("Your own web address (www.yourshop.com) comes with Standard.", "अपना web address (www.yourshop.com) Standard के साथ आता है।")}</p>}
                           </div>
                         )}
                         {g.k === "settings" && !paid && (
@@ -358,6 +368,7 @@ export default function WebsitePage() {
           {!paid && <PremiumCard compact />}
         </>
       )}
+      {planSheet && <PremiumSheet feature={T("A website", "Website")} onClose={() => setPlanSheet(false)} />}
     </div>
   );
 }

@@ -26,7 +26,7 @@ export const PREMIUM = { label: "Premium", tagline: "Premium multi-page website 
 export const PREMIUM_ITEMS = ["Everything in Standard", "Premium website: a page for every product and service, About, Gallery, Contact, a layout made for your business", "Google SEO: every page and product on Google with schema and a sitemap", "Try up to 3 layouts and keep the one you like"];
 export const SAAS_EXTRA: Record<SaasTier, string[]> = {
   starter: ["AI salesman on your website: it answers questions, suggests items, and takes orders and bookings", "WhatsApp order and UPI pay buttons for customers", "Bookings calendar with reminders for customers and for you", "Follow-up messages go out by themselves for every enquiry", "Festival wishes and offers to all your customers from your WhatsApp", "A message asking for a Google review after every sale", "A report every Monday of views, enquiries and orders", "Change your website just by saying what you want; no Shubhora tag"],
-  growth: ["No Shubhora tag; your website shows on Google", "Banner and pictures made by AI; change your website just by saying what you want", "Daily poster + Status video with voice, posted for you", "WhatsApp AI replies, up to 1,000 a month (fair use)", "Your own web address", "1 business profile", "8 free ad storyboards a month (scene pictures you check before the video is made)"],
+  growth: ["Standard website (up to 5 pages), with a sub-domain address", "Daily poster on Facebook, Instagram and WhatsApp Status", "Meta Ads (Facebook and Instagram)", "WhatsApp AI assistant that answers customers and filters leads", "AI Ad Studio and Reel Maker", "Google reviews and Google Business posts", "Works in 12 Indian languages", "WhatsApp AI replies, up to 1,000 a month (fair use)"],
   pro: ["A manager from Shubhora just for you", "More business profiles or brands", "10,000+ AI replies a month", "Your team members can use your customer list", "Your videos and pictures are made first, and you get help first", "A monthly report on how you show on Google and how your business is doing"],
 };
 
@@ -48,7 +48,7 @@ export const CARD_RENEWAL = { amount: 149900, label: "V-Card renewal", years: 1,
 export const PRO_CUSTOM = {
   label: "Custom Solutions",
   price: "On request",
-  tagline: "Need more than Growth? We build the software you need, set Shubhora up your way, and make daily work run by itself.",
+  tagline: "Need more than Standard or Premium? We build the software you need, set Shubhora up your way, and make daily work run by itself.",
   cta: "Contact us",
   waText: "Hi Shubhora, I need custom software / customization / automation for my business. Please call me.",
   items: [

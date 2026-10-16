@@ -6,6 +6,7 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { rateLimited, clientKey } from "@/lib/api-security";
 import { generateSite, siteStatus } from "@/lib/site-server";
 import { readReference } from "@/lib/reference-site";
+import { newWebsiteBlocked, WEBSITE_PLAN_MESSAGE } from "@/lib/site-access";
 import { SITE_MAX_PHOTOS, SITE_PHOTO_CREDITS, siteAiCost } from "@/lib/site-pricing";
 
 export const maxDuration = 180;
@@ -18,6 +19,9 @@ export async function POST(request: Request) {
   const cardId = typeof b.card_id === "string" ? b.card_id : undefined;
   const photos = Math.max(0, Math.min(SITE_MAX_PHOTOS, Math.trunc(Number(b.photos ?? 0)) || 0));
   const cost = siteAiCost(photos);
+  // The free plan is the digital card only (owner, 16 Oct 2026): a free account with no website cannot build one with credits either.
+  // Checked before anything is read or charged. A free account whose website is already on may still improve it.
+  if (await newWebsiteBlocked(me, cardId)) return NextResponse.json({ error: WEBSITE_PLAN_MESSAGE, plan: true }, { status: 402 });
 
   // Read the reference site first, so a bad link costs nothing.
   let reference = null;

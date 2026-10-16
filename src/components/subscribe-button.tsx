@@ -38,6 +38,8 @@ export function SubscribeButton({ tier, className, children, onDone, premium }: 
       const o = autopay ? await post("/api/billing/autopay", premium ? { premium: true } : {}) : await post("/api/billing/order", { plan: `saas:${tier}` });
       if (o.error === "sign in required") { router.push(`/signup?next=/pricing&plan=${tier}`); return; }
       if (o.error) throw new Error(o.error);
+      // Already on Standard (a running mandate) and asking for Premium: the Rs 3,000 difference is paid on the Premium website page, not by a second mandate.
+      if (o.already && premium) { router.push("/poster/site/advanced"); return; }
       if (o.already) { finished(`You are on ${plan.label}.`); return; }
       if (o.demo) { setState("error"); setMsg("Payment is not switched on yet."); return; }
       if (!(await loadScript("https://checkout.razorpay.com/v1/checkout.js")) || !window.Razorpay) { setState("error"); setMsg("Could not load the payment page."); return; }

@@ -796,7 +796,7 @@ export default function BuildCard() {
       const storyLook = !v.fresh && built.site ? openingLook(threeLooks(built, built.site.style, nextLooks.length ? nextLooks : undefined), built.seo?.categoryKey) : undefined;
       const full = storyLook ? applyLook(full0, storyLook) : full0;
       // The website first (the looks are its), then the card — so the preview opens on the Website tab.
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab("site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab(built.site?.enabled === false && !live?.site?.enabled ? "phone" : "site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
       // A new build is never the card that is live, however the screen got there (Write again on a live preview,
       // ?improve=1, a restored draft): "Make it live" comes back, with its "update your live card?" question. It
       // used to stay "Live", so a paid rewrite could not be published at all — except silently, by tapping a look.
@@ -989,7 +989,7 @@ export default function BuildCard() {
         // the build it came from would put that build's stock picture back over the Premium banner (§7) the banner
         // job has since painted, and lose anything else done to the card meanwhile. A new build merges as before.
         out = live && liveUser
-          ? applyChecks({ ...live, username: card.username, site: { ...live.site, enabled: true } }, checks, off)
+          ? applyChecks({ ...live, username: card.username, site: { ...live.site, enabled: !!live.site?.enabled || access.subscribed } }, checks, off)
           : applyChecks(mergeBuiltCard(live, built, { id: live?.id ?? card.id, username: card.username }), checks, off);
         // The look on screen is the one that goes live (owner's call, 4 Oct 2026: "jisko select kare wo open honi
         // chahiye"). The merge above keeps a live card's earlier style and the server's card carries the designer's;
@@ -1100,6 +1100,12 @@ export default function BuildCard() {
 
   /* ---------------- screens ---------------- */
 
+  // The free plan is the digital card only (owner, 16 Oct 2026). `freeMake`: the Make screen offers a free account its card, and the website as
+  // the Standard plan's. `cardOnly`: the build the server just made came back with the website off (a free account with no website
+  // on) -- the preview, the next steps and the finished screen then talk about the card; a website already live is left exactly as it was.
+  const freeMake = !access.subscribed && !existing?.site?.enabled;
+  const cardOnly = built?.site?.enabled === false && !existing?.site?.enabled;
+
   if (state === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
 
   if (state === "error") return (
@@ -1150,7 +1156,7 @@ export default function BuildCard() {
   }
 
   /** The Premium sheet: asked for from the Make screen, the preview (Write again, the banner) and finish() alike. */
-  const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Growth plan", "Premium के लिए Growth plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
+  const premiumDialog = premiumUnlock && <UnlockDialog subscriptionOnly title={T("Premium needs the Standard plan", "Premium के लिए Standard plan चाहिए")} reason={T("No Shubhora tag, your website on Google, an AI banner and AI edits, WhatsApp AI 24×7. Activate the plan, then try again.", "Shubhora tag नहीं, website Google पर, AI banner और AI edits, WhatsApp AI 24×7। Plan चालू करें, फिर दोबारा try करें।")} onClose={() => { setPremiumUnlock(false); access.refresh(); }} />;
 
   /** The Premium banner's state (painting / failed / made: Keep, Another, Back to stock) — on the design screen AND on the finished screen,
    *  because a publish moves the owner to the finished screen while the banner is still being painted. Its message sits in its own box. */
@@ -1233,15 +1239,15 @@ export default function BuildCard() {
           <div className="relative space-y-3">
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl" aria-hidden="true">🎉</span>
             <h1 className="text-3xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
-            <p className="text-base text-white/90">{T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
+            <p className="text-base text-white/90">{cardOnly ? T("Your digital card is live.", "आपका digital card live हो गया है।") : T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
             <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
-            <p className="text-xs text-white/80">{T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
+            <p className="text-xs text-white/80">{cardOnly ? T("One link: share it on WhatsApp or with a QR code.", "एक ही link: WhatsApp या QR code से share करें।") : T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
             {/* After the site is final (owner, 15 Oct 2026): the own web address first, in plain words; changing the end of this link is the small line below it. */}
-            <button type="button" onClick={() => router.push("/poster/site/link?open=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
+            {!cardOnly && <button type="button" onClick={() => router.push("/poster/site/link?open=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
               <Globe className="h-5 w-5 shrink-0" />
               <span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-tight">{T("Put it on your own domain", "अपने domain पर चलाएँ")}</span><span className="block text-xs text-white/80">{T("Open it at www.yourshop.com", "www.yourshop.com पर खुले")}</span></span>
               <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
-            </button>
+            </button>}
             <button type="button" onClick={() => router.push("/poster/site/link")} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
@@ -1252,11 +1258,11 @@ export default function BuildCard() {
         </section>
         {bannerBlock}
         {/* The Rs 5,999 segment (owner, 15-16 Oct 2026): offered once the basic site is final, before the to-do list. */}
-        <AdvancedEntry cardId={existing?.id} fetchState />
+        {!cardOnly && <AdvancedEntry cardId={existing?.id} fetchState />}
         <section className="space-y-2.5">
           <div>
             <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>
-            <p className="text-xs text-muted">{T("Your website is live. Add these to make it better — each change shows on your website as soon as you save. You can do it now or later.", "आपकी website live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव website पर दिख जाता है। अभी करें या बाद में।")}</p>
+            <p className="text-xs text-muted">{cardOnly ? T("Your card is live. Add these to make it better — each change shows on your card as soon as you save. You can do it now or later.", "आपका card live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव card पर दिख जाता है। अभी करें या बाद में।") : T("Your website is live. Add these to make it better — each change shows on your website as soon as you save. You can do it now or later.", "आपकी website live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव website पर दिख जाता है। अभी करें या बाद में।")}</p>
           </div>
           {([
             { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Add your products or services", "अपने products / services जोड़ें"), s: T("Name, price and a clear photo", "नाम, दाम और साफ़ photo") },
@@ -1287,13 +1293,15 @@ export default function BuildCard() {
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <button type="button" onClick={backFromPreview} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-          <h1 className="min-w-0 flex-1 text-lg font-bold">{liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
+          <h1 className="min-w-0 flex-1 text-lg font-bold">{cardOnly ? (liveUser ? T("Card live", "Card live") : T("Your card is ready", "आपका card तैयार है")) : liveUser ? T("Website live · Card live", "Website live · Card live") : existing ? T("Your new website is ready", "आपकी नई website तैयार है") : T("Your website is ready", "आपकी website तैयार है")}</h1>
         </div>
         {(liveUser || busy === "publish") && <p className="flex items-start gap-1.5 text-xs text-muted">
           {liveUser ? <CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0 text-good" /> : busy === "publish" ? <LoaderCircle className="mt-px h-3.5 w-3.5 shrink-0 animate-spin text-brand" /> : <CircleDashed className="mt-px h-3.5 w-3.5 shrink-0 text-amber" />}
           <span>
             {liveUser
-              ? isStory
+              ? cardOnly
+                ? T("Live. One link: your card opens everywhere. Share it on WhatsApp or with a QR code.", "Live। एक ही link: आपका card हर जगह खुलता है। WhatsApp या QR code से share करें।")
+              : isStory
                 ? T("Live. One link — it opens as the website on phones too.", "Live। एक ही link — phone पर भी website ही खुलती है।")
                 : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
               : busy === "publish"
@@ -1306,6 +1314,14 @@ export default function BuildCard() {
           </span>
         </p>}
       </div>
+      {/* Free = the digital card only (owner, 16 Oct 2026): the website on the Website tab is what Standard gives, and this says so plainly. */}
+      {cardOnly && (
+        <div className="space-y-2 rounded-xl border border-brand/40 bg-brand-soft/40 p-3">
+          <p className="text-sm font-semibold">{T("Your free plan publishes your digital card", "आपका free plan आपका digital card publish करता है")}</p>
+          <p className="text-xs text-muted">{T("The website on the Website tab is part of Standard (₹2,999 a month) or Premium. Your card stays free.", "Website tab वाली website Standard plan (₹2,999 / महीना) या Premium में मिलती है। आपका card free ही रहेगा।")}</p>
+          <button type="button" onClick={() => setPremiumUnlock(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Get a website with Standard", "Standard लेकर website पाएँ")}</button>
+        </div>
+      )}
       {/* The Premium banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
       {access.subscribed && !ownBanner && !liveUser && banner.state === "idle" && !madeByUs(shown.coverUrl) && (
         <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">✨ {T("Your Premium banner is painted by AI when you make it live (about a minute).", "Live करते ही AI आपका Premium banner बनाएगा (करीब 1 मिनट)।")}</p>
@@ -1441,7 +1457,7 @@ export default function BuildCard() {
         {liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, on to the saved Card & Website
           // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
-          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab("site"); setState("style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
+          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
@@ -1660,15 +1676,21 @@ export default function BuildCard() {
         <div className="space-y-3 rounded-2xl border-2 border-brand/40 bg-brand-soft/30 p-4">
           <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
           <ul className="space-y-1">
-            {li(T("Website + digital card on one link, phone and computer", "Website + digital card एक link पर, phone और computer"))}
-            {li(T("Your trade's own look and pages", "आपके काम का अपना look और pages"))}
-            {li(T("Daily poster, leads in your CRM", "रोज़ का poster, leads आपके CRM में"))}
+            {freeMake ? <>
+              {li(T("Digital business card on one link", "एक link पर digital business card"))}
+              {li(T("Made by AI in 5 minutes from your details", "आपकी जानकारी से AI 5 मिनट में बनाता है"))}
+              {li(T("Share on WhatsApp or with a QR code; people contact you from the card", "WhatsApp या QR code से share करें; लोग card से सीधे आपसे contact करते हैं"))}
+            </> : <>
+              {li(T("Website + digital card on one link, phone and computer", "Website + digital card एक link पर, phone और computer"))}
+              {li(T("Your trade's own look and pages", "आपके काम का अपना look और pages"))}
+              {li(T("Daily poster, leads in your CRM", "रोज़ का poster, leads आपके CRM में"))}
+            </>}
           </ul>
           <button type="button" onClick={() => { setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-            <Sparkles className="h-5 w-5" /> {T("Make my free website", "मेरी free website बनाओ")}
+            <Sparkles className="h-5 w-5" /> {freeMake ? T("Make my free card", "मेरा free card बनाओ") : T("Make my free website", "मेरी free website बनाओ")}
           </button>
           {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-          <p className="text-center text-[11px] text-muted">{T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
+          <p className="text-center text-[11px] text-muted">{freeMake ? T("Carries a small FREE Shubhora tag. A website comes with Standard — ₹2,999 a month, any time.", "छोटा FREE Shubhora tag रहेगा। Website Standard plan में मिलती है — ₹2,999 / महीना, कभी भी।") : T("Carries a small FREE Shubhora tag. Premium removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
         </div>
         )}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">

@@ -150,7 +150,7 @@ export function Gate({
           aria-label={`${FEATURE_LABEL[feature]} — upgrade required`}
         >
           <span className="inline-flex items-center gap-1.5 rounded-full bg-ink text-bg px-3 py-1.5 text-xs font-semibold shadow-float group-hover:scale-105 transition-transform">
-            <Lock className="h-3.5 w-3.5" /> Pro
+            <Lock className="h-3.5 w-3.5" /> Standard
           </span>
         </button>
       </div>
@@ -191,10 +191,10 @@ export function UpgradeSheet({ feature, onClose }: { feature: Feature; onClose: 
           <button onClick={onClose} className="ed-icon" aria-label="Close"><X className="h-4 w-4" /></button>
         </div>
         <h2 className="mt-4 text-lg font-semibold tracking-tight">
-          {FEATURE_LABEL[feature]} is included in Growth
+          {FEATURE_LABEL[feature]} is included in Standard
         </h2>
         <p className="mt-1 text-sm text-muted">
-          The free plan does not include this. Choose Growth to unlock:
+          The free plan does not include this. Choose Standard to unlock:
         </p>
         <ul className="mt-4 space-y-2">
           {perks.map((p) => (

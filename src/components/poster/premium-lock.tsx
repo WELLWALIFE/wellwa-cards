@@ -1,6 +1,6 @@
 "use client";
-// A Premium feature on a free account: shown where it lives, with a small 🔒 Premium tag; a tap opens one sheet
-// that says what Premium gives and takes the person to the plan (owner's call, 3 Oct 2026: locks on the item,
+// A paid feature on a free account: shown where it lives, with a small 🔒 Standard tag; a tap opens one sheet
+// that says what the Standard plan gives and takes the person to the plan (owner's call, 3 Oct 2026: locks on the item,
 // never on the whole page, never in the middle of the set-up).
 import { useState } from "react";
 import Link from "next/link";
@@ -10,11 +10,11 @@ import { usePlan } from "@/lib/plan";
 import { SubscribeButton } from "@/components/subscribe-button";
 
 export const PREMIUM_LINES = {
-  en: ["Website on Google (search)", "AI edits — say what to change", "Your photos put on the site, AI pictures when needed", "No Shubhora tag on your website", "WhatsApp AI assistant 24×7", "Auto-post posters, your own domain"],
-  hi: ["Website Google पर (search में)", "AI से बदलाव — बस बोल दो", "आपकी photos site पर, ज़रूरत हो तो AI pictures", "आपकी website पर Shubhora का tag नहीं", "WhatsApp AI assistant 24×7", "Poster auto-post, अपना domain"],
+  en: ["Standard website (up to 5 pages), with a sub-domain address", "Daily poster on Facebook, Instagram and WhatsApp Status", "Meta Ads (Facebook and Instagram)", "WhatsApp AI assistant that answers customers and filters leads", "AI Ad Studio and Reel Maker", "Google reviews and Google Business posts"],
+  hi: ["Standard website (5 pages तक), sub-domain address के साथ", "Facebook, Instagram और WhatsApp Status पर रोज़ का poster", "Meta Ads (Facebook और Instagram)", "WhatsApp AI assistant जो customers को जवाब देता है और leads छाँटता है", "AI Ad Studio और Reel Maker", "Google reviews और Google Business posts"],
 };
 
-/** The sheet: what Premium gives, and the way to it. */
+/** The sheet: what the Standard plan gives, and the way to it. */
 export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: () => void }) {
   const { lang } = useT();
   const hi = lang === "hi";
@@ -27,8 +27,8 @@ export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: 
         <div className="flex items-start gap-3">
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl grad-brand text-white"><Sparkles className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-lg font-bold">{feature ? (hi ? `${feature} — Premium में` : `${feature} — with Premium`) : "Premium"}</p>
-            <p className="text-xs text-muted">{hi ? "₹2,999 / महीना · कभी भी बंद करें" : "₹2,999 a month · cancel any time"}</p>
+            <p className="text-lg font-bold">{feature ? (hi ? `${feature} — Standard में` : `${feature} — with Standard`) : "Standard"}</p>
+            <p className="text-xs text-muted">{hi ? "₹2,999 / महीना (GST सहित) · कभी भी बंद करें" : "₹2,999 a month, GST included · cancel any time"}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface2"><X className="h-5 w-5" /></button>
         </div>
@@ -36,15 +36,15 @@ export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: 
           {(hi ? PREMIUM_LINES.hi : PREMIUM_LINES.en).map((l) => <li key={l} className="flex gap-2"><span className="text-good">✓</span><span>{l}</span></li>)}
         </ul>
         <div className="mt-4">
-          <SubscribeButton tier="growth" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60" onDone={() => { void refresh(); onClose(); }}>{hi ? "Premium लें — UPI / card से" : "Go Premium — pay by UPI / card"}</SubscribeButton>
+          <SubscribeButton tier="growth" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60" onDone={() => { void refresh(); onClose(); }}>{hi ? "Standard लें — UPI / card से" : "Get Standard — pay by UPI / card"}</SubscribeButton>
         </div>
-        <p className="mt-2 text-center text-[11px] text-muted">{hi ? "आपकी free website और card वैसे ही चलते रहेंगे।" : "Your free website and card keep running as they are."} · <Link href="/poster/plan" className="font-semibold text-brand-ink underline">{hi ? "सभी plans" : "All plans"}</Link></p>
+        <p className="mt-2 text-center text-[11px] text-muted">{hi ? "आपका free card वैसे ही चलता रहेगा।" : "Your free card keeps running as it is."} · <Link href="/poster/plan" className="font-semibold text-brand-ink underline">{hi ? "सभी plans" : "All plans"}</Link></p>
       </div>
     </div>
   );
 }
 
-/** A row that is Premium: on a free account it carries the tag and opens the sheet; on a paid one `children` runs as is. */
+/** A row that needs the Standard plan: on a free account it carries the tag and opens the sheet; on a paid one `children` runs as is. */
 export function PremiumGate({ locked, feature, children, className = "" }: { locked: boolean; feature: string; children: React.ReactNode; className?: string }) {
   const [open, setOpen] = useState(false);
   if (!locked) return <>{children}</>;
@@ -52,24 +52,24 @@ export function PremiumGate({ locked, feature, children, className = "" }: { loc
     <>
       <div className={`relative ${className}`} onClickCapture={(e) => { e.preventDefault(); e.stopPropagation(); setOpen(true); }}>
         <div className="pointer-events-none opacity-80">{children}</div>
-        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]"><Lock className="h-3 w-3" /> Premium</span>
+        <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]"><Lock className="h-3 w-3" /> Standard</span>
       </div>
       {open && <PremiumSheet feature={feature} onClose={() => setOpen(false)} />}
     </>
   );
 }
 
-/** The Premium card for Home and Card & Website: one line each, one button. */
+/** The upgrade card for Home and Card & Website: sells Standard (Starter is no longer sold). */
 export function PremiumCard({ compact = false }: { compact?: boolean }) {
   const { lang } = useT();
   const hi = lang === "hi";
   const { refresh } = usePlan();
   return (
     <div className="rounded-2xl bg-[#12144a] p-4 text-white">
-      <p className="flex items-center gap-2 text-base font-bold"><Sparkles className="h-4 w-4 text-[#ffd54a]" /> {hi ? "Premium — AI सेल्समैन और बेहतर वेबसाइट" : "Premium — an AI salesman and a better website"}</p>
-      {!compact && <p className="mt-1 text-xs text-white/80">{hi ? "Starter ₹999: ऑर्डर, बुकिंग, फ़ॉलो-अप, बिना Shubhora tag। Growth ₹2,999: साथ में पोस्टर, सोशल, AI फ़ोटो, अपना domain।" : "Starter ₹999: orders, bookings, follow-ups, no Shubhora tag. Growth ₹2,999: plus posters, social, AI pictures, your own domain."}</p>}
+      <p className="flex items-center gap-2 text-base font-bold"><Sparkles className="h-4 w-4 text-[#ffd54a]" /> {hi ? "Standard — वेबसाइट, रोज़ के poster और WhatsApp AI" : "Standard — a website, daily posters and a WhatsApp AI assistant"}</p>
+      {!compact && <p className="mt-1 text-xs text-white/80">{hi ? "Standard ₹2,999 / महीना: वेबसाइट, Facebook-Instagram-WhatsApp Status पर रोज़ का poster, Meta Ads, WhatsApp AI और Google reviews। ज़्यादा चाहिए तो Premium।" : "Standard ₹2,999 a month: website, daily posters on Facebook, Instagram and WhatsApp Status, Meta Ads, WhatsApp AI and Google reviews. Want more? Premium."}</p>}
       <div className="mt-3 flex flex-wrap items-center gap-3">
-        <SubscribeButton tier="starter" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹999 / महीना से · लें" : "From ₹999 a month · get it"}</SubscribeButton>
+        <SubscribeButton tier="growth" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹2,999 / महीना · Standard लें" : "₹2,999 a month · get Standard"}</SubscribeButton>
         <Link href="/poster/plan" className="text-xs font-semibold text-white/80 underline">{hi ? "सभी plans" : "All plans"}</Link>
       </div>
     </div>

@@ -163,7 +163,10 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // website khule"): a phone gets the website itself then, not the card. ?view=card still opens the card.
   const story = card.site?.style?.blueprint === "story";
   // An ADVANCED website (Rs 5,999) is built for the phone as much as the desktop (owner, 16 Oct 2026): a phone gets it too.
-  const view = viewParam === "card" ? "card" : viewParam === "site" ? "site" : card.site?.enabled && (!mobile || story || adv) ? "site" : "card";
+  // The free plan is the digital card only (owner, 16 Oct 2026): ?view=site opens the website only when the card has one switched on
+  // (every website made before this stays as it was), when the owner is on a paid plan (their own previews), or on a partner's card.
+  const siteAllowed = !!card.site?.enabled || !expired || !!brand;
+  const view = viewParam === "card" ? "card" : viewParam === "site" ? (siteAllowed ? "site" : "card") : card.site?.enabled && (!mobile || story || adv) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
   const tracking = await trackingP;
   const joinHandle = brand ? null : await ownerP;

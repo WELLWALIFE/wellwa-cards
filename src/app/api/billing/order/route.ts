@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   const price = card ? CARD_RENEWAL : tier ? SAAS_PLANS[tier] : PLAN_PRICE[plan as PaidPlan];
   if (!price) return Response.json({ error: "invalid plan" }, { status: 400 });
   // Growth is taken only by autopay now (owner's call, 27 Sep 2026) — /api/billing/autopay.
-  if (tier === "growth") return Response.json({ error: "Growth is now taken with autopay — please refresh the page and try again." }, { status: 400 });
+  if (tier === "growth") return Response.json({ error: "Standard is now taken with autopay — please refresh the page and try again." }, { status: 400 });
 
   if (!razorpayConfigured()) {
     if (process.env.NODE_ENV !== "production") {

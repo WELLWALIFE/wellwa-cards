@@ -13,11 +13,11 @@ export function PaidPage({ feature, children }: { feature: Feature; children: Re
   if (loading || allowed) return <>{children}</>;
 
   const perks = [
-    "AI Studio — taglines, bios, translations",
-    "AI chat + AI bot training on your card",
-    "WhatsApp auto-reply & AI follow-up",
-    "Advanced analytics with lead sources",
-    "Custom domain & no Shubhora branding",
+    "Standard website (up to 5 pages) with a sub-domain address",
+    "Daily poster on Facebook, Instagram and WhatsApp Status",
+    "Meta Ads, AI Ad Studio and Reel Maker",
+    "WhatsApp AI assistant that answers customers and filters leads",
+    "Google reviews and Google Business posts",
   ];
 
   return (
@@ -27,10 +27,10 @@ export function PaidPage({ feature, children }: { feature: Feature; children: Re
           <Lock className="h-6 w-6" />
         </span>
         <h1 className="mt-5 text-xl font-semibold tracking-tight">
-          {FEATURE_LABEL[feature]} — included in Growth
+          {FEATURE_LABEL[feature]} — included in Standard
         </h1>
         <p className="mt-2 text-sm text-muted">
-          This feature is part of the Growth plan.
+          This feature is part of the Standard plan.
         </p>
 
         <ul className="mt-6 space-y-2.5 text-left">

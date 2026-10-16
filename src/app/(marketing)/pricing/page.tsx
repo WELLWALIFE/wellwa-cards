@@ -27,11 +27,19 @@ const STANDARD_ITEMS = [
   "Daily poster on Facebook, Instagram and WhatsApp Status",
   "Meta Ads (Facebook and Instagram)",
   "WhatsApp AI assistant that answers customers and filters leads",
-  "AI chat bot on your website",
   "AI Ad Studio and Reel Maker",
   "Google reviews and Google Business posts",
   "Works in 12 Indian languages",
   "WhatsApp AI replies, up to 1,000 a month (fair use)",
+];
+const CUSTOM_ITEMS = [
+  "Custom software, apps and websites built for your business",
+  "Daily work done by itself: WhatsApp, customers, follow-ups, billing and reports",
+  "Your own CRM and business software, with screens for your numbers and logins for your team",
+  "AI assistants and chat bots taught about your business",
+  "Works with the tools you already use: online payments, Tally, Google Sheets",
+  "More brands and branches on one account",
+  "A manager from Shubhora just for you",
 ];
 const PREMIUM_LIST = [
   "Everything in Standard",
@@ -110,13 +118,18 @@ export default function PricingPage() {
               Get Premium
             </SubscribeButton>
           </div>
-          {/* Custom Solutions (owner, 16 Oct 2026): every kind of software and automation, price on request. */}
+          {/* Custom Solutions (owner, 16 Oct 2026): every kind of software and automation, price on request, with a proper brief. */}
           <div className="flex flex-col rounded-2xl border border-border bg-surface p-6">
             <h2 className="text-lg font-semibold">{PRO_CUSTOM.label}</h2>
             <div className="mt-4">
               <span className="text-3xl font-semibold tracking-tight">{PRO_CUSTOM.price}</span>
             </div>
-            <p className="mt-4 flex-1 text-sm">We build every kind of software and automation for your business.</p>
+            <p className="mt-3 text-sm text-muted">Need something built around how your business works? We design, build and run it for you. Every kind of software and automation.</p>
+            <ul className="mt-5 flex-1 space-y-2.5">
+              {CUSTOM_ITEMS.map((f) => (
+                <li key={f} className="flex items-start gap-2 text-sm"><Check className="mt-0.5 h-4 w-4 shrink-0 text-brand" /> {f}</li>
+              ))}
+            </ul>
             <div className="mt-6"><TalkToUs /></div>
           </div>
         </div>

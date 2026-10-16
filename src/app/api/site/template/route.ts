@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { applySiteTemplate, siteStatus } from "@/lib/site-server";
+import { newWebsiteBlocked, WEBSITE_PLAN_MESSAGE } from "@/lib/site-access";
 import { ALL_TEMPLATES } from "@/lib/template-catalog";
 import { brandSlugOf, callerBrandSlug, canUseTemplate } from "@/lib/template-access";
 
@@ -23,6 +24,8 @@ export async function POST(request: Request) {
   const cardId = typeof b.card_id === "string" ? b.card_id : undefined;
   const tpl = ALL_TEMPLATES.find((t) => t.key === String(b.key ?? ""));
   if (tpl?.brand && !canUseTemplate(tpl.brand, await brandSlugOf(me.id))) return NextResponse.json({ error: "This design is only for that company's members." }, { status: 403 });
+  // A website template switches the website on: a free account (card only) is sent to the plan first.
+  if (await newWebsiteBlocked(me, cardId)) return NextResponse.json({ error: WEBSITE_PLAN_MESSAGE, plan: true }, { status: 402 });
   try {
     await applySiteTemplate(me.id, String(b.key ?? ""), cardId);
     return NextResponse.json({ ok: true, status: await siteStatus(me.id, cardId) });

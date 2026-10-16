@@ -19,7 +19,8 @@ export default function TermsPage() {
       </S>
       <S h="2. Payment and renewal">
         <p>Plans are billed monthly in advance in Indian rupees. Prices shown include GST at the rate in force.</p>
-        <p>Growth is taken with an auto-debit mandate (UPI Autopay or card) that you approve at checkout: it renews every month on its own, and your bank or UPI app tells you before each debit. You can stop it at any time from your UPI app or bank, or by writing to us; the plan then runs to the end of the month you paid for. If a renewal is not paid, your account keeps working for 7 more days, then automatic posting, the WhatsApp assistant and new AI creation stop. Your data, card and website stay available.</p>
+        <p>Standard and Premium are taken with an auto-debit mandate (UPI Autopay or card) that you approve at checkout: they renew every month on their own. Standard is debited at its monthly price each month. Premium is debited ₹5,999 for the first month only and then ₹2,999 a month, under one mandate. If you move from Standard to Premium you pay only the ₹3,000 difference. Custom Solutions are priced and billed as agreed in writing.</p>
+        <p>Your bank or UPI app tells you before each debit. You can stop it at any time from your UPI app or bank, or by writing to us; the plan then runs to the end of the month you paid for. If a renewal is not paid, your account keeps working for 7 more days, then automatic posting, the WhatsApp assistant and new AI creation stop. Your data, card and website stay available.</p>
       </S>
       <S h="3. Your content and your customers">
         <p>You own the photos, text, products and customer data you put into {BRAND}. You give us permission to store and process them only to run the service for you.</p>

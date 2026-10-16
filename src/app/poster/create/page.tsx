@@ -47,7 +47,7 @@ function CreateHubInner() {
     ] },
     // AI Training: everything that teaches or drives the AI, in one place (owner, 14 Oct 2026).
     { key: "ai", I: Bot, t: "AI Training", s: hi ? "AI को सिखाएँ: अपनी website, files, WhatsApp के जवाब, और बोलकर website बदलें" : "Teach your AI about your business: website, files, WhatsApp replies. Change your website by speaking", href: "/poster/ai", items: [] },
-    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "एक link — computer पर website, phone पर card · share करें, बदलें, Premium" : "One link: a website on computers, a card on phones. Share it, change it, go Premium", items: [] },
+    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "एक link — computer पर website, phone पर card · share करें, बदलें" : "One link: a website on computers, a card on phones. Share it, change it", items: [] },
   ];
 
   // Only a door that lists its own choices can be open; one that opens a page (Video, Ads, AI Training, Card) never is.
@@ -61,7 +61,7 @@ function CreateHubInner() {
         <Link key={x.href} href={x.href} className="flex items-center gap-3 rounded-xl border border-border p-3">
           <span className="h-10 w-10 rounded-full bg-brand-soft text-brand grid place-items-center shrink-0"><x.I className="h-5 w-5" /></span>
           <span className="flex-1 min-w-0">
-            <span className="block text-sm font-semibold">{x.t}{x.tag ? <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${x.tag === "FREE" ? "bg-good/15 text-good" : "bg-surface2 text-muted"}`}>{x.tag}</span> : null}{x.paid && free ? <span className="ml-1.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] text-white">Growth</span> : null}</span>
+            <span className="block text-sm font-semibold">{x.t}{x.tag ? <span className={`ml-1.5 rounded-full px-1.5 py-0.5 text-[10px] ${x.tag === "FREE" ? "bg-good/15 text-good" : "bg-surface2 text-muted"}`}>{x.tag}</span> : null}{x.paid && free ? <span className="ml-1.5 rounded-full bg-[#12144a] px-1.5 py-0.5 text-[10px] text-white">Standard</span> : null}</span>
             <span className="block text-xs text-muted">{x.s}</span>
           </span>
           <ChevronRight className="h-5 w-5 text-muted" />

@@ -137,11 +137,11 @@ export function withoutShubhoraLeaks<T extends { pages: CardPage[] }>(card: T): 
   const isPlan = (i: { name?: string; desc?: string; badge?: string; price?: string; mrp?: string; features?: string[] }) => {
     const t = planText(i);
     const offers = /\b(v-?card|digital (visiting |business )?card|daily poster|status video|ai assistant|whatsapp ai|account manager|custom software|any software|software (&|and) automation|auto-?post)/i.test(t);
-    const costs = /2,?999|free for 1 year|worth ₹?1,?499|on request|any software|growth plan|custom solutions|free digital/i.test(t);
+    const costs = /2,?999|free for 1 year|worth ₹?1,?499|on request|any software|growth plan|standard plan|premium plan|custom solutions|free digital/i.test(t);
     return offers && costs;
   };
   // The seller template's other plan blocks and words: "Free vs Growth", "About the plans", "Not sure which plan?".
-  const planWords = /shubhora|v-?card|growth plan|growth ₹|₹\s?2,?999|custom solutions|ai credits|digital (visiting |business )?card|which plan|the plans?\b/i;
+  const planWords = /shubhora|v-?card|growth plan|growth ₹|standard plan|standard ₹|premium plan|premium ₹|₹\s?2,?999|custom solutions|ai credits|digital (visiting |business )?card|which plan|the plans?\b/i;
   const pages = card.pages.map((p) => {
     // The Shubhora page itself stays off the tab row: the small icon and the strip are its only doors (owner's call).
     if (p.slug === SHUBHORA_PAGE_SLUG) return p.hidden ? p : { ...p, hidden: true };

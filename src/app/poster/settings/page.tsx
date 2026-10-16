@@ -112,7 +112,7 @@ export default function SettingsPage() {
   }
 
   const tier = plan?.tier && plan.state !== "none" && plan.state !== "expired" ? SAAS_PLANS[plan.tier] : null;
-  // The V-Card's year on the free plan (Growth includes the card, so nothing to say then).
+  // The V-Card's year on the free plan (Standard includes the card, so nothing to say then).
   const cy = !tier && !plan?.given ? plan?.card ?? null : null;
   const cardLine = !cy || cy.state === "included" ? null
     : cy.state === "paused" ? { cls: "text-danger font-semibold", text: en ? "V-Card is paused — tap to renew" : "V-Card रुका हुआ है — renew करने के लिए दबाएँ" }
@@ -170,7 +170,7 @@ export default function SettingsPage() {
           <span className="block text-base font-bold">{tier ? tier.label : plan?.given ? (plan.given.plan === "team" ? "Team" : "Pro") : "Free"}</span>
           {cardLine && <span className={`block text-xs ${cardLine.cls}`}>{cardLine.text}</span>}
           <span className="block text-xs text-muted">
-            {tier && plan?.expires_at ? (en ? `Active till ${day(plan.expires_at)} — then renew` : `${day(plan.expires_at)} तक चालू — फिर renew करें`) : plan?.given ? (plan.given.expires_at ? (en ? `Active till ${day(plan.given.expires_at)}` : `${day(plan.given.expires_at)} तक चालू`) : en ? "Active" : "चालू") : en ? "Free · Growth ₹2,999 · Custom Solutions — see plans" : "Free · Growth ₹2,999 · Custom Solutions — plans देखें"}
+            {tier && plan?.expires_at ? (en ? `Active till ${day(plan.expires_at)} — then renew` : `${day(plan.expires_at)} तक चालू — फिर renew करें`) : plan?.given ? (plan.given.expires_at ? (en ? `Active till ${day(plan.given.expires_at)}` : `${day(plan.given.expires_at)} तक चालू`) : en ? "Active" : "चालू") : en ? "Free · Standard ₹2,999 · Premium · Custom Solutions — see plans" : "Free · Standard ₹2,999 · Premium · Custom Solutions — plans देखें"}
             {plan?.credits ? ` · ${plan.credits.total} credits` : ""}
           </span>
         </span>
@@ -216,7 +216,7 @@ export default function SettingsPage() {
         ) : (
           <p className="mt-2 text-xs text-white/75">{acct?.username ? (en ? "See your partner ID, team and earnings." : "अपनी partner ID, team और कमाई देखें।") : (en ? "Pick your username above and this turns on." : "ऊपर username चुनते ही यह चालू हो जाएगा।")}</p>
         )}
-        {partner && partner.status === "red" && <p className="mt-2 text-[11px] text-white/70">{en ? "Earnings are available only with Growth." : "कमाई Growth plan के साथ ही चालू होती है।"}</p>}
+        {partner && partner.status === "red" && <p className="mt-2 text-[11px] text-white/70">{en ? "Earnings are available only with Standard." : "कमाई Standard plan के साथ ही चालू होती है।"}</p>}
       </Link>
 
       <AddCredits />

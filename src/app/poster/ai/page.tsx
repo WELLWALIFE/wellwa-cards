@@ -58,8 +58,8 @@ export default function AiTrainingPage() {
 
       {!status.hasCard || !card ? (
         <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-          <p className="text-sm text-muted">{T("Make your website first — the AI learns from it.", "पहले अपनी website बनाएँ — AI उसी से सीखता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          <p className="text-sm text-muted">{T("Make your card first — the AI learns from it.", "पहले अपना card बनाएँ — AI उसी से सीखता है।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my card →", "मेरा card बनाएँ →")}</Link>
         </section>
       ) : (
         <>

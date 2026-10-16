@@ -103,14 +103,14 @@ function WhatsappPageInner({ free = false }: { free?: boolean }) {
 function GrowthForAi() {
   return (
     <section className="rounded-2xl border border-brand/30 bg-brand-soft/40 p-5">
-      <h2 className="font-semibold">🤖 AI auto-reply — with the Growth plan</h2>
+      <h2 className="font-semibold">🤖 AI auto-reply — with the Standard plan</h2>
       <p className="mt-1 text-sm text-muted">Link your number now: post to your WhatsApp Status from the app, and every customer who messages you is saved in your CRM.</p>
       <ul className="mt-3 space-y-1.5 text-sm">
         <li>✓ The AI answers every customer 24×7 from your own number</li>
         <li>✓ Menu, prices, your card link and the next step — like a salesman</li>
         <li>✓ Follow-ups to people who went quiet</li>
       </ul>
-      <a href="/poster/plan" className="mt-4 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> See the Growth plan</a>
+      <a href="/poster/plan" className="mt-4 inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> See the Standard plan</a>
     </section>
   );
 }
@@ -176,7 +176,7 @@ function MobileMode({ free = false }: { free?: boolean }) {
             </div>
             <p className="text-sm text-muted">Linked: <span className="mono text-ink">{status.me?.id?.split(":")[0]}</span></p>
             <p className="text-xs">AI replies: {status.aiActive === false
-              ? <span className="text-muted">off — comes with the Growth plan</span>
+              ? <span className="text-muted">off — comes with the Standard plan</span>
               : status.aiConfigured
               ? <span className="text-ai font-medium">ON</span>
               : <span className="text-muted">off — keyword rules only</span>}</p>
