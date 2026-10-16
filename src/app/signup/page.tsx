@@ -191,7 +191,9 @@ function SignupInner() {
       await fetch("/api/welcome", { method: "POST", headers: auth }).catch(() => {});
       try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
       // Congratulations, then the profile (owner's call, 2 Oct 2026): the plan is chosen at "Make", not before.
-      router.replace("/poster/welcome");
+      // "Start with Standard / Premium" (?plan=…): the payment opens next, then the card set-up.
+      const wanted = params.get("plan");
+      router.replace(wanted === "premium" || wanted === "standard" ? `/poster/start-plan?plan=${wanted}` : "/poster/welcome");
     } else {
       setBusy(false);
       setCheckEmail(true); // email confirmation is enabled on the project
@@ -326,7 +328,7 @@ function SignupInner() {
 
         </form>
         <p className="text-center text-sm text-muted mt-5">
-          Already have an account? <Link href="/login" className="text-brand-ink font-medium">Log in</Link>
+          Already have an account? <Link href={params.get("plan") === "premium" || params.get("plan") === "standard" ? `/login?next=${encodeURIComponent(`/poster/start-plan?plan=${params.get("plan")}`)}` : "/login"} className="text-brand-ink font-medium">Log in</Link>
         </p>
       </div>
     </div>

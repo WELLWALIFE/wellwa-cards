@@ -36,7 +36,7 @@ export function SubscribeButton({ tier, className, children, onDone, premium }: 
     setState("busy"); setMsg("");
     try {
       const o = autopay ? await post("/api/billing/autopay", premium ? { premium: true } : {}) : await post("/api/billing/order", { plan: `saas:${tier}` });
-      if (o.error === "sign in required") { router.push(`/signup?next=/pricing&plan=${tier}`); return; }
+      if (o.error === "sign in required") { router.push(`/signup?plan=${premium ? "premium" : "standard"}`); return; }
       if (o.error) throw new Error(o.error);
       // Already on Standard (a running mandate) and asking for Premium: the Rs 3,000 difference is paid on the Premium website page, not by a second mandate.
       if (o.already && premium) { router.push("/poster/site/advanced"); return; }
