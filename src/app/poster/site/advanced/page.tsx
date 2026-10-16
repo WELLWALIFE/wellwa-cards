@@ -589,9 +589,10 @@ export default function AdvancedSitePage() {
         ) : (
           <div className="space-y-1.5">
             <div className="flex items-end justify-between gap-2">
-              <p className="text-sm font-bold">{T("Get the advanced website", "Advanced website पाएँ")}</p>
+              <p className="text-sm font-bold">{T("Upgrade to the advanced website", "Advanced website में upgrade करें")}</p>
               <p className="text-2xl font-extrabold">{priceText}</p>
             </div>
+            <p className="text-xs text-muted">{T("Free and ₹2,999 plans upgrade here. Anyone on the ₹5,999 plan already has this.", "Free और ₹2,999 वाले यहाँ से upgrade करें। ₹5,999 वाले के पास यह पहले से है।")}</p>
             <p className="text-xs text-muted">{T(`One payment. You can look at up to ${TRY_LIMIT} layouts and keep the one you like — or keep your basic site.`, `एक बार का payment। ${TRY_LIMIT} layouts तक देखकर जो पसंद आए रखें — या अपनी basic site रखें।`)}</p>
             {pending ? (
               <>
@@ -602,7 +603,7 @@ export default function AdvancedSitePage() {
               </>
             ) : (
               <button type="button" onClick={pay} disabled={payBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {T(`Pay ${priceText} with Razorpay`, `Razorpay से ${priceText} दें`)}
+                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {T(`Upgrade — ${priceText}`, `Upgrade करें — ${priceText}`)}
               </button>
             )}
             {payErr && <p className={errBox}>{payErr}</p>}
