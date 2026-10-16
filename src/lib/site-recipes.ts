@@ -147,7 +147,10 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish", 
     [/^(hotel|furniture|cafe)$/, ["cocoa", "clay", "noir", "gold"]],
     [/^(sweets|catering|temple|restaurant)$/, ["saffron", "clay", "cocoa", "crimson"]],
     [/^(lawyer|photography)$/, ["noir", "midnight", "steel"]],
-    [/^(gym|auto)$/, ["crimson", "steel", "noir"]],
+    [/^(gym)$/, ["crimson", "noir", "midnight"]],
+    // A garage and a shoe shop were opening in washed-out grey (steel / noir, no palette at all): QA, 16 Oct 2026. Both get strong, warm colours now.
+    [/^(auto)$/, ["crimson", "saffron", "midnight"]],
+    [/^(footwear)$/, ["saffron", "crimson", "royal", "teal"]],
     [/^(realestate|builder|manufacturer|transport|security)$/, ["steel", "midnight", "cocoa"]],
     [/^(doctor|dentist|hospital|water)$/, ["ocean", "teal", "sage", "emerald"]],
   ];
