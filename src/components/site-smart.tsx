@@ -231,7 +231,7 @@ export function HeroPhoto({ photo, clip, clipOn = "always", crop = "cover", prio
   const kb = kenBurns && !still && !clip && !photo?.bright;
   return (
     <div className={`hero-ph-wrap hero-ph-in ${className}`} style={lqip ? { backgroundImage: `url(${lqip})` } : undefined}
-      data-bright={photo?.bright ? "" : undefined} data-stock={photo?.src.startsWith("/api/stock/banners/") ? "" : undefined} data-bar={photo && /^\/api\/stock\/banners\/(restaurant|student|kirana)\.jpg/.test(photo.src) ? "" : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
+      data-bright={photo?.bright ? "" : undefined} data-stock={photo?.src.startsWith("/api/stock/banners/") ? "" : undefined} data-bar={photo && /^\/api\/stock\/banners\/(restaurant|student|kirana)\.jpg/.test(photo.src) ? "" : undefined} data-top={photo ? /^\/api\/stock\/banners\/(gym|realestate|ca|event)\.jpg/.exec(photo.src)?.[1] : undefined} data-side={side} data-clip={clip ? clipOn : undefined}>
       {photo && <Pic src={photo.src} alt={alt} className={`hero-ph ${kb ? "hero-kb" : ""}`} style={{ objectPosition: photo.focus }}
         priority={priority} eager={!lazy && !priority} sizes={sizes ?? heroSizes(crop)} aria-hidden={alt ? undefined : true} />}
       {clip && <HeroClip url={clip.url} poster={clip.poster} />}
@@ -362,6 +362,22 @@ export const HERO_CSS = `
    until the pictures are re-exported (QA sweep, 16 Oct 2026). */
 .site .hero-ph-wrap[data-bar] .hero-ph{scale:1.27;transform-origin:72% 0}
 .site .board-photo[data-banner] .hero-ph-wrap[data-bar] .hero-ph{transform:none;scale:1.27;transform-origin:72% 0}
+/* gym, realestate, ca and event: the people stand in the TOP of the picture (heads touch the top edge) and the wave sits at the bottom, so the zoom runs from the top, not the bottom:
+   a zoom from the bottom cut the faces off and left legs, keys, hands or a DJ speaker in a phone's tall frame (16 Oct 2026). The scale per trade only has to push the wave and
+   the white frame below the frame. The subject's x position depends on how much of the 8:3 picture the frame shows (a phone cover 17 %, a 4:5 tile 30 %, a 4:3 card 50 %, a desktop
+   cover or tile 62-68 %), so it is a CSS variable per frame width: --fxn (narrow), --fxm (middle), --fxw (wide); !important because the stored focus (the AI's or the default) was
+   made for one frame shape. */
+.site .hero-ph-wrap[data-top=gym]{--fxn:77%;--fxm:88%;--fxw:100%}
+.site .hero-ph-wrap[data-top=realestate]{--fxn:90%;--fxm:100%;--fxw:100%}
+.site .hero-ph-wrap[data-top=ca]{--fxn:80%;--fxm:97%;--fxw:100%}
+.site .hero-ph-wrap[data-top=event]{--fxn:64%;--fxm:70%;--fxw:95%}
+.site .hero-ph-wrap[data-top] .hero-ph{object-position:var(--fxn) 50%!important}
+.site .poster-ph[data-top] .hero-ph{object-position:var(--fxm) 50%!important}
+@media (min-aspect-ratio:1/1){.site .cin-ph[data-top] .hero-ph{object-position:var(--fxm) 50%!important}}
+@media (min-aspect-ratio:3/2){.site .cin-ph[data-top] .hero-ph{object-position:var(--fxw) 50%!important}}
+@media (min-width:1024px){.site .board-photo-pic[data-top] .hero-ph{object-position:var(--fxw) 50%!important}}
+.site .hero-ph-wrap[data-top] .hero-ph,.site .board-photo[data-banner] .hero-ph-wrap[data-top] .hero-ph{transform:none;scale:1.2;transform-origin:50% 0}
+.site .hero-ph-wrap[data-top=event] .hero-ph,.site .board-photo[data-banner] .hero-ph-wrap[data-top=event] .hero-ph{scale:1.38}
 @media (min-width:1024px){.site .hero-ph-wrap[data-bright] .hero-scrim::after{background:linear-gradient(to right,color-mix(in srgb,var(--hero-ink) 94%,transparent) 0%,color-mix(in srgb,var(--hero-ink) 70%,transparent) 36%,transparent 72%)}}
 @media (min-width:768px){
 .site .hero-ph-wrap[data-clip=desktop] .hero-clip{display:block}

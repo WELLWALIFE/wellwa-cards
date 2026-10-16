@@ -7,6 +7,7 @@
 // hide them in the website editor (`card.site.home`). Pure module: the renderer and the editor both use it.
 import type { Card, CardBlock, CardPage, FaqItem, GalleryImage, ProductItem, SiteHome, TestimonialItem } from "./types";
 import { recipeFor, type HomeKind } from "./site-recipes";
+import { noPhotoReel } from "./site-photos";
 
 type Location = Extract<CardBlock, { kind: "location" }>;
 type Hours = Extract<CardBlock, { kind: "hours" }>;
@@ -14,7 +15,8 @@ type Hours = Extract<CardBlock, { kind: "hours" }>;
 export type HomeSection =
   | { key: string; kind: "block"; block: CardBlock }
   | { key: "featured"; kind: "featured"; title: string; items: ProductItem[]; page: string; total: number }
-  | { key: "gallery"; kind: "gallery"; title: string; images: GalleryImage[]; page: string; total: number }
+  /** `reel`: a business with no photo at all — the section draws its services as typography instead (site-nophoto.tsx); `images` is empty. */
+  | { key: "gallery"; kind: "gallery"; title: string; images: GalleryImage[]; page: string; total: number; reel?: { name: string; desc: string }[] }
   | { key: "reviews"; kind: "reviews"; title: string; items: TestimonialItem[]; page: string; total: number; avg: number }
   | { key: "faq"; kind: "faq"; title: string; items: FaqItem[]; page: string; total: number }
   | { key: "visit"; kind: "visit"; title: string; location?: Location; hours?: Hours; page: string };
@@ -96,6 +98,11 @@ function defaultSections(card: Card, pages: CardPage[]): HomeSection[] {
     if (g) {
       const images = g.block.images.filter((i) => i.url).slice(0, 5); // one big + four small tiles
       if (images.length >= 3) insertBefore(["testimonials", "faq", "contact", "appointment", "cta"], { key: "gallery", kind: "gallery", title: g.block.title || L(card, "Photos", "फ़ोटो"), images, page: g.page.slug, total: g.block.images.filter((i) => i.url).length });
+    }
+    // No photo anywhere (a photographer or a planner who has not added any yet): a typographic reel of the services takes the gallery's place.
+    else {
+      const reel = noPhotoReel(card);
+      if (reel.length) insertBefore(["testimonials", "faq", "contact", "appointment", "cta"], { key: "gallery", kind: "gallery", title: L(card, "What we do best", "हम जो सबसे अच्छा करते हैं"), images: [], page: "", total: 0, reel });
     }
   }
   // Reviews: the best three, before the contact end.
@@ -217,6 +224,7 @@ export function sectionLabel(s: HomeSection, lang?: string): string {
     const k = kind[b.kind]?.[h ? 1 : 0] ?? b.kind;
     return title && title.toLowerCase() !== k.toLowerCase() ? `${title} · ${k}` : k || title;
   }
+  if (s.kind === "gallery" && s.reel?.length) return h ? "काम की झलक" : "Work highlights";
   const pulled: Record<Exclude<HomeSection["kind"], "block">, [string, string]> = {
     featured: ["Featured products", "चुनिंदा प्रोडक्ट"], gallery: ["Photo preview", "फ़ोटो झलक"], reviews: ["Top reviews", "बेहतरीन रिव्यू"], faq: ["Quick FAQ", "छोटे सवाल-जवाब"], visit: ["Visit us (map + timings)", "पता और समय"],
   };

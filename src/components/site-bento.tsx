@@ -17,6 +17,7 @@ import { heroModel, type HeroModel } from "@/lib/site-hero";
 import { Kicker, Display, Sub, TrustRow, HeroPhoto, useOpenNow } from "@/components/site-smart";
 import { Icon, type IconName } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
+import { HeroArt, artKind } from "@/components/site-heroart";
 import { trackClick } from "@/lib/track";
 import { safeMapUrl } from "@/components/card-view";
 
@@ -115,6 +116,8 @@ export function BentoHero(i: BentoInput) {
 
   return (
     <section className="board" data-variant={statement ? (ink ? "board-ink" : "board-statement") : m.variant} lang={lang} aria-label={m.name}>
+      {/* No photo, light brand tile: on a desktop the empty right side carries the trade's drawn shape (site-heroart.tsx). */}
+      {statement && !ink && <HeroArt kind={artKind(card.seo?.categoryKey)} tone="dark" />}
       <div className="board-wrap">
         <div className="board-grid" data-photo={photo ? "" : undefined}>
 
@@ -227,7 +230,8 @@ export function bentoFacts(card: Card): { rating?: { avg: number; count: number 
 export const BENTO_CSS = `
 .site .board{position:relative;background:var(--paper)}
 /* max-width counts the gutters (as the other five looks do): with --content alone the board sat 56px inside every section below it on a laptop (QA pass, 16 Oct 2026) */
-.site .board-wrap{margin:0 auto;max-width:calc(var(--content) + 2*var(--gutter));padding:var(--s4) var(--gutter) var(--s6)}
+.site .board .hart{display:none;--hart-ink:var(--accent)}
+.site .board-wrap{position:relative;z-index:1;margin:0 auto;max-width:calc(var(--content) + 2*var(--gutter));padding:var(--s4) var(--gutter) var(--s6)}
 .site .board-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));grid-auto-rows:auto;gap:var(--s3)}
 .site .board-tile{border-radius:var(--r-tile);overflow:hidden}
 .site .board-brand{grid-column:1 / -1;display:flex;flex-direction:column;align-items:flex-start;gap:var(--s3);padding:var(--s2) 0 var(--s3);--t-display:44px}
@@ -280,6 +284,8 @@ export const BENTO_CSS = `
 /* products: a desktop row */
 .site .board-products{display:none}
 @media (min-width:1024px){
+  .site .board[data-variant=board-statement]{overflow:hidden}
+  .site .board[data-variant=board-statement] .hart{display:block;top:var(--s5);right:3%;transform:none;width:min(36vw,480px)}
   .site .board-wrap{padding:var(--s6) var(--gutter) var(--s8)}
   .site .board-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:minmax(120px,auto);gap:var(--s4)}
   .site .board-brand{grid-column:span 5;grid-row:span 3;justify-content:center;gap:var(--s4);padding:var(--s3) var(--s6) var(--s3) 0;--t-display:64px}

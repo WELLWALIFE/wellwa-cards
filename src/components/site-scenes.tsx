@@ -570,6 +570,8 @@ export const SCENES_CSS = `
 .site[data-bp="bento"] .bento-sv li.ask small{font-size:22px;line-height:1;color:var(--accent)}
 .site[data-bp="bento"] .bento-sv li::after{content:"\\2192";position:absolute;right:14px;bottom:14px;display:grid;place-items:center;width:28px;height:28px;border-radius:999px;background:var(--p-soft);color:var(--accent);font-size:14px}
 .site[data-bp="bento"] .bento-sv li.lead::after{background:var(--on-accent);color:var(--accent)}
+/* Phone: the round arrow moves to the top corner (the number sits top-left) so the words take the tile's whole width, and a long description runs to nine lines instead of ending in "…" at six in a 107 px column (16 Oct 2026). */
+@media (max-width:899px){.site[data-bp="bento"] .bento-sv li::after{bottom:auto;top:14px}.site[data-bp="bento"] .bento-sv h3,.site[data-bp="bento"] .bento-sv p{padding-right:0}.site[data-bp="bento"] .bento-sv p{-webkit-line-clamp:9;overflow-wrap:break-word}.site[data-bp="bento"] .bento-sv li{padding:16px}.site[data-bp="bento"] .bento-sv li.ask{padding:0}.site[data-bp="bento"] .bento-sv li.ask a{padding:16px}}
 @media (min-width:900px){.site[data-bp="bento"] .bento-sv{grid-template-columns:repeat(4,1fr);gap:14px}.site[data-bp="bento"] .bento-sv li.lead{grid-column:span 2;grid-row:span 2}}
 .site[data-bp="bento"] .bento-gl{display:grid;grid-template-columns:1fr 1fr;grid-auto-rows:150px;gap:10px}
 .site[data-bp="bento"] .bento-gl-it{position:relative;overflow:hidden;border:0;padding:0;border-radius:var(--r-tile);background:var(--paper-2);cursor:zoom-in}

@@ -3,7 +3,7 @@
 import crypto from "node:crypto";
 import { razorpayConfigured } from "@/lib/billing";
 import { requireUser, sameOrigin } from "@/lib/api-security";
-import { applyAutopayCharge, growthPlanId, razorpay, saveAutopay } from "@/lib/autopay";
+import { applyAutopayCharge, isOurMonthlyPlan, razorpay, saveAutopay } from "@/lib/autopay";
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ ok: false }, { status: 403 });
@@ -23,8 +23,8 @@ export async function POST(request: Request) {
 
   try {
     const rzp = razorpay();
-    const [sub, payment, plan] = await Promise.all([rzp.subscriptions.fetch(subId), rzp.payments.fetch(paymentId), growthPlanId()]);
-    if (String(sub.notes?.owner_id ?? "") !== session.user.id || sub.plan_id !== plan ||
+    const [sub, payment] = await Promise.all([rzp.subscriptions.fetch(subId), rzp.payments.fetch(paymentId)]);
+    if (String(sub.notes?.owner_id ?? "") !== session.user.id || !(await isOurMonthlyPlan(sub.plan_id)) ||
         !["authorized", "captured"].includes(payment.status)) {
       return Response.json({ ok: false, error: "payment details do not match" }, { status: 400 });
     }

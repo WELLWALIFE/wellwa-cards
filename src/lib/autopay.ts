@@ -26,7 +26,9 @@ export function razorpay(): Razorpay {
 const rest = (path: string, init: RequestInit = {}) =>
   fetch(`${SUPA_URL}/rest/v1/${path}`, { ...init, headers: { ...serviceHeaders(), ...(init.headers ?? {}) }, cache: "no-store" });
 
-const PLAN_KEY = `shubhora-${AUTOPAY_TIER}-${SAAS_PLANS[AUTOPAY_TIER].amount}`;
+// The checkout shows the Razorpay plan's own name: "Shubhora Standard" now (it was "Shubhora Growth"). Mandates already running stay on the old plan.
+const PLAN_KEY = `shubhora-standard-${SAAS_PLANS[AUTOPAY_TIER].amount}`;
+const LEGACY_PLAN_KEY = `shubhora-growth-${SAAS_PLANS[AUTOPAY_TIER].amount}`;
 let planId: string | null = process.env.RAZORPAY_PLAN_GROWTH || null;
 
 /** The Razorpay plan for Growth: RAZORPAY_PLAN_GROWTH if set, else the one we made before (notes.key), else a new one.
@@ -47,6 +49,14 @@ export async function growthPlanId(): Promise<string> {
     notes: { key: PLAN_KEY },
   });
   return (planId = made.id);
+}
+
+/** Is this Razorpay plan one of ours for the monthly plan (the current "Standard" one or the earlier "Growth" one)? */
+export async function isOurMonthlyPlan(id: string): Promise<boolean> {
+  if (id === (await growthPlanId())) return true;
+  const p = await razorpay().plans.fetch(id).catch(() => null);
+  const key = String(p?.notes?.key ?? "");
+  return (key === PLAN_KEY || key === LEGACY_PLAN_KEY) && Number(p?.item?.amount) === SAAS_PLANS[AUTOPAY_TIER].amount;
 }
 
 /** This customer's newest autopay, or null. */

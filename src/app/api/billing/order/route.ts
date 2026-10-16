@@ -4,6 +4,7 @@
 import Razorpay from "razorpay";
 import { CARD_RENEWAL, PLAN_PRICE, SAAS_PLANS, razorpayConfigured, publicRazorpayKey, type PaidPlan, type SaasTier } from "@/lib/billing";
 import { clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-security";
+import { restAsService } from "@/lib/poster-server";
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
@@ -20,6 +21,11 @@ export async function POST(request: Request) {
   const price = card ? CARD_RENEWAL : tier ? SAAS_PLANS[tier] : PLAN_PRICE[plan as PaidPlan];
   if (!price) return Response.json({ error: "invalid plan" }, { status: 400 });
   // Growth is taken only by autopay now (owner's call, 27 Sep 2026) — /api/billing/autopay.
+  // Starter and Pro are no longer sold (owner, 16 Oct 2026). Someone already on that plan may still renew it; nobody else can start it, not even by calling this route.
+  if (tier === "starter" || tier === "pro") {
+    const have = (await restAsService<{ saas_tier: string | null }[]>(`profiles?id=eq.${session.user.id}&select=saas_tier`).catch(() => null))?.data?.[0]?.saas_tier;
+    if (have !== tier) return Response.json({ error: "This plan is no longer sold. Please choose Standard or Premium." }, { status: 400 });
+  }
   if (tier === "growth") return Response.json({ error: "Standard is now taken with autopay — please refresh the page and try again." }, { status: 400 });
 
   if (!razorpayConfigured()) {

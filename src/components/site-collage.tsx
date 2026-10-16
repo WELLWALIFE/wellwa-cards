@@ -11,6 +11,7 @@ import { CtaPair, Display, HeroPhoto, Kicker, Sub, TrustRow } from "@/components
 import { Icon, type IconName } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { trackClick } from "@/lib/track";
+import { HeroArt, artKind } from "@/components/site-heroart";
 
 type Facts = ReturnType<typeof bentoFacts>;
 type Tile = { key: string; label: string; icon: IconName; href?: string; external?: boolean; onClick?: () => void };
@@ -34,6 +35,8 @@ export function CollageHero({ card, hi, t, onBook, facts }: { card: Card; hi: bo
   const n = Math.min(4, photos.length);
   return (
     <section className="collage" data-variant={ink ? "collage-ink" : "collage"} lang={lang} aria-label={m.name}>
+      {/* No photo: the right half carries the trade's drawn shape (site-heroart.tsx) in the accent, never an empty column. */}
+      {ink && <HeroArt kind={artKind(card.seo?.categoryKey)} tone="dark" />}
       <div className="collage-wrap">
         <div className="collage-words hero-stagger">
           <Kicker lang={lang}>{t(m.kicker)}</Kicker>
@@ -73,6 +76,12 @@ export function CollageHero({ card, hi, t, onBook, facts }: { card: Card; hi: bo
 
 export const COLLAGE_CSS = `
 .site .collage{background:var(--paper);color:var(--ink);padding:calc(var(--s6) + env(safe-area-inset-top,0px)) 0 var(--s7)}
+.site .collage[data-variant=collage-ink]{position:relative;overflow:hidden}
+.site .collage[data-variant=collage-ink] .hart{--hart-ink:var(--accent)}
+/* On a phone the words and the tiles already fill the width; the drawing would only show as a stray fragment under the tile card. */
+@media (max-width:1023px){.site .collage[data-variant=collage-ink] .hart{display:none}}
+@media (min-width:1024px){.site .collage[data-variant=collage-ink] .hart{right:max(3%,calc(50% - var(--content) / 2 - var(--gutter) / 2));width:min(30vw,400px)}.site .collage[data-variant=collage-ink] .collage-words{flex:0 1 58%;max-width:58%}}
+.site .collage[data-variant=collage-ink] .collage-wrap{position:relative;z-index:1}
 .site .collage-wrap{max-width:calc(var(--content) + 2*var(--gutter));margin:0 auto;padding:0 var(--gutter);display:flex;flex-direction:column;gap:var(--s6)}
 .site .collage-words{display:flex;flex-direction:column;align-items:flex-start;gap:var(--s4)}
 .site .collage-words .display{--t-display:clamp(2.25rem,9.5vw,3rem)}

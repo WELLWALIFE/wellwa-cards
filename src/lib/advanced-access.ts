@@ -15,6 +15,7 @@ import "server-only";
 // Written first by the engine task because the redesign route has to import it; the payment task may extend it
 // (an expiry date, an admin grant) but must keep this signature.
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
+import { restAsService } from "@/lib/poster-server";
 
 export const ADVANCED_PRICE_RUPEES = 5999;
 export const ADVANCED_PRICE_PAISE = ADVANCED_PRICE_RUPEES * 100;
@@ -39,10 +40,27 @@ export type AdvancedMeta = { paid?: boolean; paymentId?: string; at?: string; tr
 
 export type AdvancedAccess = { allowed: boolean; reason?: "flag" | "unpaid" };
 
+/** The Premium website keeps running for ONE YEAR after the Premium payment even if the plan is stopped (owner, 16 Oct 2026); while a
+ *  Standard (or Pro) plan is running it stays for as long as that runs. After that the card and the basic website keep working, the rest is off. */
+export const ADVANCED_KEEP_DAYS = 365;
+export function advancedWithinYear(m: AdvancedMeta | null | undefined, now = Date.now()): boolean {
+  if (m?.paid !== true) return false;
+  const at = m.at ? Date.parse(m.at) : NaN;
+  return !Number.isFinite(at) || now - at <= ADVANCED_KEEP_DAYS * 86400_000;
+}
+/** A running Standard / Pro plan (the 7 grace days count, as everywhere else). */
+export async function standardRunning(userId: string): Promise<boolean> {
+  try {
+    const r = await restAsService<{ saas_tier: string | null; saas_expires_at: string | null }[]>(`profiles?id=eq.${userId}&select=saas_tier,saas_expires_at`);
+    const row = r.data?.[0];
+    return !!row && (row.saas_tier === "growth" || row.saas_tier === "pro") && !!row.saas_expires_at && Date.parse(row.saas_expires_at) + 7 * 86400_000 > Date.now();
+  } catch { return false; }
+}
+
 export async function isAdvancedAllowed(userId: string): Promise<AdvancedAccess> {
   if (process.env.ADVANCED_SITE_OPEN === "1") return { allowed: true };
   const m = await readAdvancedMeta(userId);
-  if (m?.paid === true) return { allowed: true };
+  if (m?.paid === true && (advancedWithinYear(m) || (await standardRunning(userId)))) return { allowed: true };
   return { allowed: false, reason: "unpaid" };
 }
 

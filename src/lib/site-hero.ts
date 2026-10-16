@@ -332,8 +332,8 @@ function defaultFocus(src: string): string {
   return at ?? "70% 50%";
 }
 const BANNER_FOCUS: Record<string, string> = {
-  salon: "60% 45%", spa: "62% 55%", gym: "64% 50%", realestate: "80% 55%", lawyer: "76% 50%", ca: "74% 50%",
-  photography: "68% 55%", event: "62% 55%", travel: "76% 50%", temple: "70% 50%", ngo: "68% 55%",
+  salon: "60% 45%", spa: "62% 55%", gym: "77% 50%", realestate: "90% 55%", lawyer: "76% 50%", ca: "80% 50%",
+  photography: "68% 55%", event: "64% 40%", travel: "76% 50%", temple: "70% 50%", ngo: "68% 55%",
 };
 
 const variantFits = (v: HeroVariant, bp: BlueprintKey | undefined): boolean => HERO_VARIANTS_BY_BP[bp ?? "cinematic"].includes(v);

@@ -97,14 +97,54 @@ that replaces the blueprint on EVERY page of a card with a valid `site.advanced`
 - QA: `node scripts/check-advanced.mjs` (5,800 checks: garbage specs, 40 fake cards, registry ids, archetype library, SSR of 28 pages, AA
   contrast of every palette). Visual: put a full card (a trade template + `specFromSeed(card)` as `site.advanced`) in localStorage and open
   `/preview/site?k=<key>&page=<slug>&lang=hi|en&shot=1` at 1440x900 and 390x844 with puppeteer-core and Chrome.
-- Known gaps: (1) `src/app/sitemap.ts` lists only the card's stored pages and products, so the About/Gallery pages the advanced site adds and
-  service item pages are not in the sitemap yet (they are crawlable by link). (2) The public `/c/<username>` route was not exercised
+- Known gaps: (1) [fixed 16 Oct 2026] `src/app/sitemap.ts` now lists the About/Gallery pages and every product AND service page of an advanced card. (2) The public `/c/<username>` route was not exercised
   end to end (the dev DB has no advanced card; routing, item lookup and the advancedOn flag were checked on the same functions in Node and
   the page itself through /preview/site). (3) Photos are what the card holds: trade-template sample photos are generic stock and often do
   not match the trade (a water purifier site showing a jeweller's shop) until the owner uploads real ones; the layout does not hide that.
   (4) Hindi: the card's own text (names, descriptions, page labels) is translated by `/api/translate/<username>`, which a preview or demo
   user does not have (404), so those lines stay English in the preview; all fixed UI text is bilingual. (5) Tap targets: a few secondary text links are under 44px on phones (the breadcrumb "Home" / "होम" is 18px wide, a footer "Visit" 26px, item-title links inside cards that also have a larger arrow button). (6) The redesign is still
   closed by default (flags above); no live Razorpay run.
+
+## Plans and pricing (owner's structure, 16 Oct 2026)
+Owner's words: Free = the digital card only; Standard Rs 2,999 a month; Premium Rs 5,999 for the FIRST month only, then Rs 2,999 a month;
+Custom Solutions (any software or automation, price on request). Never write Rs 5,999 as if it were monthly.
+- **Names.** "Growth" is now **Standard** in everything a customer sees (the internal tier key stays `"growth"`: DB, `SaasTier`, `saas:growth`).
+  Starter (Rs 999) is no longer sold anywhere: no screen offers it, `/api/billing/order` refuses starter/pro unless the account is already on that plan
+  (renewal). Pro (Rs 4,999) is hidden from new customers; running subscribers keep their plan. Source of truth for the wording: `src/app/(marketing)/pricing/page.tsx`
+  and `src/lib/billing.ts` (`SAAS_PLANS`, `PREMIUM*`, `PRO_CUSTOM`).
+- **Premium = one autopay.** `createAutopay(owner, premium)` (`src/lib/autopay.ts`) makes a Razorpay subscription on the Standard plan with an
+  add-on of Rs 3,000, so the first debit is Rs 5,999 and every later one Rs 2,999. `notes.premium = "1"`. `applyAutopayCharge` accepts amount
+  2,999 or (premium and 5,999) and the first Premium debit calls `grantAdvanced` (auth `app_metadata.advanced_site = {paid, paymentId, at, triesLeft}`).
+  Verify route: `/api/billing/autopay/verify`; webhook: `/api/billing/webhook` (reads `notes.premium`). The checkout page showed "Payable now Rs 5,999,
+  recurring Rs 2,999" for a test subscription (16 Oct 2026); no real money was run through the app's own flow yet.
+- **Standard to Premium** (a running mandate): pays only the Rs 3,000 difference, one time, through `/api/poster/pay/advanced` (price decided on the server by
+  `advancedPriceFor`; `notes.growth = "1"` on that order). `SubscribeButton premium` sends such a customer to `/poster/site/advanced`.
+  Anyone without a running plan gets `402 premium_subscribe` from that route and must take the Premium subscription.
+- **Razorpay plan name.** The checkout shows the Razorpay plan's name: a new plan "Shubhora Standard" (`notes.key = shubhora-standard-299900`) is made on first use;
+  mandates on the old "Shubhora Growth" plan keep working (`isOurMonthlyPlan` accepts both).
+- **Premium website keeps for one year** after the Premium payment even if the plan is stopped, and as long as Standard/Pro runs (`advancedWithinYear`,
+  `standardRunning`, `isAdvancedAllowed` in `src/lib/advanced-access.ts`). Daily cron `scripts/advanced-expiry.sh` (deploy.sh writes
+  `/etc/cron.d/shubhora-advanced-expiry`) calls `/api/cron/advanced-expiry`, which sets `site.advancedOn = false` when neither holds: the basic website and the card
+  keep working, the Premium design stays stored. Accounts that never paid (reviewed while `ADVANCED_SITE_OPEN` was on) are left alone.
+- **When a plan stops:** the card and the basic website keep working; every plan-gated feature (posters, social, ads, WhatsApp AI, CRM sending) is off by the
+  existing plan checks. The owner's rule: "card and website stay, everything else stops".
+- **A failed Premium build** costs nothing: `spendAdvancedTry` is only called for a finished design, so the customer simply runs it again (owner's rule: try again).
+- **Free = card only (new accounts).** `src/lib/site-access.ts` (`hasPaidPlan`, `newWebsiteBlocked`) gates `/api/site/status`, `/template`, `/generate`, `/api/card/build`
+  (a free build comes back with the website off) and the public `?view=site`. Existing free sites that are already on keep rendering. The card builder opens on the
+  Card tab with a "Get a website with Standard" strip. Not run against a real free account yet: test with a fresh account.
+- **Start with a plan:** the first-run Home (`src/app/poster/page.tsx`) offers "Start with Standard / Premium"; signup keeps `?plan=` and lands on
+  `/poster/start-plan`, which opens the payment by itself and then the card set-up.
+- **Manual payment links (Razorpay)** were made by hand for a party on 16 Oct 2026 (a subscription with the add-on, and a Rs 5,999 one-time payment link). They are NOT
+  linked to a Shubhora account: after such a payment, open that person's Premium by hand (admin PUT of `app_metadata.advanced_site`, see `grantAdvanced`).
+- **Env.** `ADVANCED_SITE_SELL=1` is on (sales open); `ADVANCED_SITE_OPEN` was removed (no free access). Gemini billing must be on for the Premium design (review, layout, copy).
+- **Name clash fixed:** the card builder's old "Premium" (paid designs, banner) now says Standard / AI banner.
+- **Standard "up to 5 pages"** is wording only: no code limit yet.
+
+## Standard website QA (16 Oct 2026)
+All 28 trades were looked at in 3 looks each, desktop and phone, with a Hindi pass (about 400 shots across the two nights). The six looks, palettes, hero focus
+per stock banner (`BANNER_FOCUS` in `src/lib/site-hero.ts`), tap targets and Hindi fixes are in. Auto and footwear open in strong colours now (`tradeStyle`,
+`src/lib/site-recipes.ts`). Scripts: `scripts/trade-check/` (shot.mjs, look-shots.mjs, run.cjs, sweep.mjs). Known: sample photos in templates are generic stock; auto/footwear
+cards made before 16 Oct would keep a grey palette (none existed in the DB when checked).
 
 ## Rules for commits
 - Branch `claude/dreamy-faraday-0864zl` only. Clear messages. No model names in code or commits.

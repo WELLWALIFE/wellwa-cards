@@ -294,7 +294,11 @@ body:has(input:focus,textarea:focus,select:focus) .site-bar{transform:translateY
 @media (min-width:1024px){.site .foot-cols.has-visit{grid-template-columns:1.5fr .8fr 1.1fr 1.1fr}.site .foot-cols:not(.has-visit){grid-template-columns:1.3fr 1fr 1fr}}
 @media (max-width:767px){.site .foot-pages{display:block;columns:2;column-gap:24px}.site .foot-pages>li{margin:0 0 12px!important;break-inside:avoid}}
 /* Phone: every footer link and small button is a 44px target (the page links were 17px tall, the buttons 32 — QA pass, 16 Oct 2026). */
-@media (max-width:767px){.site footer .foot-pages>li{margin:0!important}.site footer .foot-pages a,.site footer ul>li>a{display:inline-flex;align-items:center;min-height:44px}.site footer .btn-xs{min-height:44px}}
+@media (max-width:767px){.site footer .foot-pages>li{margin:0!important}.site footer .foot-pages a,.site footer ul>li>a{display:inline-flex;align-items:center;min-height:44px}.site footer .btn-xs{min-height:44px}
+/* Every other footer link too (directions, UPI, back to top), the round social icons, and the address / phone lines of the closing band: 44 px at least both ways (16 Oct 2026). */
+.site footer a,.site footer .foot-top{display:inline-flex;align-items:center;min-height:44px;min-width:44px}
+.site footer .foot-social a{width:44px;height:44px}.site footer .foot-social{gap:8px}
+.site .close-facts a,.site .close-band .hero-ctas a{display:inline-flex;align-items:center;min-height:44px}.site .close-facts li{min-height:44px;align-items:center}}
 .site .foot-social{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}
 .site .foot-social a{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:50%;border:1px solid var(--hero-line);color:var(--hero-text);transition:background .15s,border-color .15s,transform .1s}
 .site .foot-social a:hover{background:color-mix(in srgb,var(--hero-text) 12%,transparent);border-color:currentColor}
