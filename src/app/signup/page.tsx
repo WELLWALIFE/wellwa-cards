@@ -165,9 +165,12 @@ function SignupInner() {
     if (mobile.trim() && !phone) { setError("Enter a valid 10-digit Indian mobile number."); return; }
     if (!phone) { setError("Enter a valid 10-digit Indian mobile number."); return; }
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) { setError("Enter a valid email address."); return; }
-    if (!dob || age(dob) === null) { setError("Enter your date of birth."); return; }
-    if ((age(dob) ?? 0) < 18) { setError("You must be 18 or older to create a Shubhora account."); return; }
-    if (!gender) { setError("Select your gender."); return; }
+    // Date of birth and gender are for partner sign-ups (a join link) only; someone from the website or the /start link is asked neither (owner, 17 Oct 2026).
+    if (sponsored) {
+      if (!dob || age(dob) === null) { setError("Enter your date of birth."); return; }
+      if ((age(dob) ?? 0) < 18) { setError("You must be 18 or older to create a Shubhora account."); return; }
+      if (!gender) { setError("Select your gender."); return; }
+    }
     if (!agree) { setError(sponsored ? "Please accept the Terms, Privacy Policy and Partner Agreement to continue." : "Please accept the Terms and Privacy Policy to continue."); return; }
     if (!usernameOk(username)) { setError(`Choose a username: ${USERNAME_HINT}.`); return; }
     const t = await checkTaken(mobile, email);
@@ -180,7 +183,7 @@ function SignupInner() {
     const { data, error } = await sb.auth.signUp({
       email: phone ? phoneEmail(phone) : email.trim().toLowerCase(),
       password,
-      options: { data: { full_name: name, display_name: name, phone: phone ?? undefined, contact_email: email.trim() || undefined, wanted_username: username, introduced_by: consumerLink ? undefined : by || handleRef.current || undefined, introduced_leg: legRef.current || undefined, dob, gender, agreed_at: new Date().toISOString() } },
+      options: { data: { full_name: name, display_name: name, phone: phone ?? undefined, contact_email: email.trim() || undefined, wanted_username: username, introduced_by: consumerLink ? undefined : by || handleRef.current || undefined, introduced_leg: legRef.current || undefined, dob: sponsored ? dob : undefined, gender: sponsored ? gender : undefined, agreed_at: new Date().toISOString() } },
     });
     if (error) { setBusy(false); setError(error.message); return; }
     if (data.session) {
@@ -277,6 +280,7 @@ function SignupInner() {
                 {check.state === "ok" ? (userTouched ? `${username} is available` : `${username} is free and ready — you log in with it. Change it if you like.`) : check.state === "bad" ? check.reason : `4–20 letters or numbers. You log in with it; it cannot be changed later.`}
               </span>
             </label>
+            {sponsored && (
             <div className="grid grid-cols-2 gap-3">
               <label className="block">
                 <span className="text-sm font-medium mb-1.5 block">Date of birth</span>
@@ -289,6 +293,7 @@ function SignupInner() {
                 </select>
               </label>
             </div>
+            )}
             <label className="block">
               <span className="text-sm font-medium mb-1.5 block">Password</span>
               <span className="flex items-center rounded-lg border border-border bg-surface focus-within:border-brand">
