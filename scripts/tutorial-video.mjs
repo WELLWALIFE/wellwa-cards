@@ -122,6 +122,108 @@ const TUTORIALS = {
         act: async () => { await u.goto(`${SITE}/`); await pause(1000); } },
     ],
   },
+  // Card + website made together, then products, then the Premium website (owner, 17 Oct 2026: no prices; Standard and Premium are only named).
+  // Recorded on a paid demo account (Standard, with Premium open): a Free account makes the card only.
+  cardsite: {
+    title: "Visiting card और Website कैसे बनाएँ",
+    subtitle: "Card + website, एक साथ · Standard और Premium",
+    scenes: (u) => {
+      const page = u.page;
+      const lastOf = async (re) => page.evaluateHandle((src) => { const r = new RegExp(src); const bs = [...document.querySelectorAll("main button")].filter((b) => r.test((b.innerText || "").trim())); return bs[bs.length - 1] ?? null; }, re.source);
+      const setText = async (sel, text) => { await u.type(sel, text); };
+      return [
+        { id: "intro", say: "नमस्ते! आज देखते हैं Shubhora पर अपना digital visiting card और website कैसे बनाएँ। दोनों एक साथ बनते हैं, एक ही link पर।",
+          act: async () => { await u.goto(`${SITE}/`); await u.scrollBy(500, 2500); } },
+        { id: "signup", say: "shubhora.com खोलिए, Start free दबाइए, अपना नाम, mobile, email और password भरकर account बनाइए।",
+          act: async () => {
+            await u.tapThen("Start free", "Create", { timeout: 25000 }); await pause(600);
+            await u.type('[placeholder="Ram Kumar"]', "Rajesh Sharma"); await u.type('[placeholder="9876543210"]', "9811122233");
+            await u.type('[placeholder="you@example.com"]', "rajesh.sharma@gmail.com"); await u.type('[placeholder="At least 6 characters"]', "sharma@123");
+            await pause(800);
+          } },
+        { id: "you", say: "पहला step, आपके बारे में। नाम, mobile और WhatsApp number, email और अपनी photo।",
+          between: async () => { await u.login(); await u.goto(`${SITE}/poster/onboard?step=you`); await u.waitText("About you", 25000); },
+          act: async () => { await pause(1800); await u.scrollBy(500, 1500); await pause(600); await u.tapThen("Next →", "Who is this website for?", { timeout: 25000 }); } },
+        { id: "promote", say: "अब चुनिए कि ये किसके लिए है। अपनी दुकान या काम के लिए, My own business चुनिए।",
+          act: async () => { await pause(1500); await u.tapText("My own business or work"); await pause(700); await u.tapThen("Next →", "Do you have a website?", { timeout: 25000 }); } },
+        { id: "site", say: "अगर पहले से website है तो link डालिए, उसी से details आ जाएँगी। नहीं है तो आख़िरी option, यानी website नहीं है, चुनिए।",
+          act: async () => { await pause(1800); await u.tap(async () => (await lastOf(/^(🏪|🤝|🎨)/)).asElement()); await pause(900); await u.tapThen("Next →", "Just two things", { timeout: 25000 }); } },
+        { id: "business", say: "अपने business का नाम लिखिए। काम अपने आप पहचान लिया जाता है। फिर अपना link चुनिए, business के नाम से या अपने नाम से।",
+          act: async () => {
+            await pause(600); await setText('input[placeholder="e.g. Sharma Sweets"]', "Sharma Medical Store"); await pause(1800);
+            if (!(await page.$eval('input[role="combobox"]', (el) => el.value))) { await u.tap('input[role="combobox"]'); await page.keyboard.type("medical", { delay: 70 }); await pause(900); await u.tap('[role="option"]'); }
+            await pause(1200); await u.scrollBy(300, 1200); await u.tapThen("Next →", "Tap what is true", { timeout: 25000 });
+          } },
+        { id: "details", say: "जो चीज़ें आपके यहाँ सच हैं, उन पर tap कीजिए। आपके पास क्या है, आप में क्या ख़ास है, और कौन आपके ग्राहक हैं।",
+          act: async () => {
+            await pause(1000);
+            for (const w of ["Allopathic", "Home delivery", "Prescription medicines", "Fair prices", "Best quality", "Fast delivery", "Families"]) {
+              try { await u.tapText(w, { sel: "button" }); await pause(350); } catch { /* a chip this trade does not have */ }
+            }
+            await u.tapThen("Next →", "Where & when", { timeout: 25000 });
+          } },
+        { id: "where", say: "शहर, पता और timings लिखिए, और बताइए कि घर पर delivery होती है या नहीं।",
+          act: async () => {
+            await pause(800); await setText('input[placeholder="e.g. Delhi"]', "Delhi"); await setText('input[placeholder="Shop no., street, area"]', "12, Main Market, Lajpat Nagar");
+            await u.scrollBy(500, 1200);
+            for (const w of ["Local", "Mon–Sat 10 AM – 8 PM", "Yes"]) { try { await u.tapText(w, { sel: "button" }); await pause(500); } catch { /* already set */ } }
+            await u.tapThen("Next →", "About & logo", { timeout: 25000 });
+          } },
+        { id: "about", say: "AI आपके बारे में लिख देता है। चाहें तो logo लगाइए और अपनी भूमिका चुनिए।",
+          act: async () => {
+            await pause(1500); await u.tapText("Owner", { exact: true }); await pause(900);
+            await u.tapThen("Save and continue", "Make my website & card", { timeout: 60000, tries: 3 });
+          } },
+        { id: "make", say: "अब Make my website दबाइए। AI आपकी website और card, दोनों लिखता है। इसमें करीब एक मिनट लगता है।",
+          act: async () => {
+            await pause(1500);
+            for (let i = 0; i < 2; i++) {
+              await u.tapText("Make my website");
+              try { await u.page.waitForFunction(() => !document.body?.innerText?.includes("Make my website & card"), { timeout: 9000 }); break; } catch { if (i) throw new Error("the build did not start"); }
+            }
+            await pause(5000);
+          },
+          after: async () => { await u.waitText("Your website is ready", 420000); await pause(1500); } },
+        { id: "preview", say: "लीजिए, आपकी website और card तैयार! ऊपर Website और Card, दोनों देख सकते हैं।",
+          act: async () => { await pause(1800); await u.scrollBy(400, 1800); await u.scrollBy(-400, 1200); await u.tapText("Card", { exact: true }); await pause(2500); await u.tapText("Website", { exact: true }); await pause(1500); } },
+        { id: "designs", say: "See more designs दबाइए। छह designs हैं: Colour poster, Order shop, Tile board, Photo collage, Big name और Full photo। जो पसंद आए, वो चुनिए। website उसी पल बदल जाती है।",
+          act: async () => {
+            await u.tapText("See more designs"); await pause(1500);
+            for (const d of ["Colour poster", "Tile board", "Photo collage", "Big name", "Full photo"]) { await u.tapText(d); await pause(2400); }
+          } },
+        { id: "colours", say: "अब अपना रंग और letter style चुनिए, या Skip कर दीजिए। फिर Done दबाइए।",
+          act: async () => {
+            await u.tapThen("Save and next", "Colours and fonts", { timeout: 60000 });
+            await pause(1200); try { await u.tapText("Ocean", { sel: "button" }); await pause(1800); await u.tapText("Clinic", { sel: "button" }); await pause(1800); } catch { /* names not on screen */ }
+            await u.tapThen("Done — next", "Congratulations", { timeout: 90000 });
+          } },
+        { id: "live", say: "बधाई हो! आपकी website और card live हैं, एक ही link पर। इसे WhatsApp पर भेजिए, status पर लगाइए, या QR code बनवाइए।",
+          act: async () => { await pause(2500); await u.scrollBy(500, 2500); await pause(800); await u.scrollBy(-500, 1200); } },
+        { id: "products", say: "अब products या services जोड़िए। Add many at once में नाम और दाम की list लिखिए। AI हर चीज़ की साफ़ photo खुद ढूँढ लेता है।",
+          act: async () => {
+            await u.goto(`${SITE}/poster/products`); await u.waitText("Add many at once", 30000); await pause(1000);
+            await u.tapText("Add many at once"); await pause(1000);
+            await u.type("textarea", "Paracetamol 500mg strip 25\nCough syrup 95\nBP monitor 1499\nSurgical gloves box 250\nBaby diapers pack 399");
+            await u.tapThen("Read my list", "Add 5 products", { timeout: 60000 }); await pause(1500);
+            await u.tapText("Add 5 products"); await u.waitText("5 products added", 150000); await pause(1500);
+          } },
+        { id: "livesite", say: "और ये रही आपकी website, products के साथ। Home, Products, Services, Photos, FAQ और Contact, सब तैयार।",
+          act: async () => { const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}?view=site`); await pause(1500); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000); } },
+        { id: "premium", say: "अगर आप Premium customer हैं, तो आपकी website भी Premium बनेगी। Make advanced website दबाइए।",
+          act: async () => { await u.goto(`${SITE}/poster/site/advanced`); await u.waitText("Make my advanced website", 40000); await pause(2000); await u.scrollBy(400, 2000); } },
+        { id: "premiumdesign", say: "AI पहले आपकी website देखकर बताता है कि क्या कमज़ोर है। फिर आपके business के लिए नया layout, नई headline और नया about लिखता है। पसंद न आए तो Try another layout दबाइए।",
+          act: async () => { await u.tapText("Make my advanced website"); await pause(4000); },
+          after: async () => { await u.waitText("Your advanced website is ready to see", 360000); await pause(1500); await u.scrollBy(600, 3500); await u.scrollBy(-300, 1200); } },
+        { id: "premiumlive", say: "Use this advanced website दबाइए, और आपकी Premium website live है। हर product और service का अपना पेज है, और ये phone पर भी खुलती है।",
+          act: async () => {
+            await u.tapThen("Use this advanced website", "Your advanced website is live", { timeout: 60000 }); await pause(2000);
+            const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}`); await pause(1500); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000);
+          } },
+        { id: "outro", say: "तो देर किस बात की? आज ही shubhora.com पर अपना digital card और website बनाइए।",
+          act: async () => { await u.goto(`${SITE}/`); await pause(1000); } },
+      ];
+    },
+  },
 };
 
 /* ============================== helpers: account ============================== */
