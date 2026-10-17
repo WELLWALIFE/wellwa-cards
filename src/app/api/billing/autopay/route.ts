@@ -21,9 +21,8 @@ export async function POST(request: Request) {
     const last = await latestAutopay(session.user.id);
     // Already debiting every month: never a second mandate.
     if (last && LIVE_STATES.includes(last.status)) return Response.json({ already: true, status: last.status });
-    // A mandate opened in the last hour but not approved (checkout closed): reuse it instead of making another.
-    const reuse = !premium && last && last.status === "created" && Date.now() - Date.parse(last.created_at) < 3600_000 ? last.id : null;
-    const id = reuse ?? (await createAutopay(session.user.id, premium)).id;
+    // Always a fresh mandate for the plan asked for. (Reusing an unapproved one showed Premium's Rs 5,999 to someone who tapped Standard, 18 Oct 2026.)
+    const id = (await createAutopay(session.user.id, premium)).id;
     const p = SAAS_PLANS[AUTOPAY_TIER];
     return Response.json({ demo: false, subscriptionId: id, keyId: publicRazorpayKey(), amount: premium ? PREMIUM_FIRST_PAISE : p.amount, label: premium ? PREMIUM.label : p.label });
   } catch (e) {
