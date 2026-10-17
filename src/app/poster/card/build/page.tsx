@@ -1259,6 +1259,14 @@ export default function BuildCard() {
         {bannerBlock}
         {/* The Rs 5,999 segment (owner, 15-16 Oct 2026): offered once the basic site is final, before the to-do list. */}
         {!cardOnly && <AdvancedEntry cardId={existing?.id} fetchState />}
+        {/* A free account's finished screen: the website is the next step up (owner, 17 Oct 2026). */}
+        {cardOnly && (
+          <Link href="/poster/plan" className="block rounded-2xl border-2 border-brand bg-brand-soft/40 p-4">
+            <p className="text-base font-bold">{T("Want a website too?", "Website भी चाहिए?")}</p>
+            <p className="mt-0.5 text-sm text-muted">{T("Standard: your own website, a new poster every day and a WhatsApp AI that answers customers. ₹2,999 a month.", "Standard: आपकी अपनी website, रोज़ नया poster और WhatsApp AI जो ग्राहकों को जवाब देता है। ₹2,999 / महीना।")}</p>
+            <span className="mt-2 inline-block rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-white">{T("See the plans", "Plans देखें")}</span>
+          </Link>
+        )}
         <section className="space-y-2.5">
           <div>
             <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>

@@ -130,17 +130,19 @@ export default function TodayPage() {
         <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
           {phase === "welcome" ? t.startFree : t.makeProfile}
         </Link>
+        <p className="text-center text-xs text-muted">{lang === "en" ? "Card only. Want a website, a poster every day and a WhatsApp AI? Choose a plan below." : "सिर्फ़ card। Website, रोज़ का poster और WhatsApp AI चाहिए? नीचे plan चुनें।"}</p>
         {/* Or start with a paid plan (owner, 16 Oct 2026): after the payment the card set-up opens. */}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
           <p className="text-center text-xs font-semibold text-muted">{lang === "en" ? "Or start with a plan" : "या किसी plan से शुरू करें"}</p>
           <div className="rounded-xl border border-border p-3">
             <div className="flex items-baseline justify-between gap-2"><p className="font-bold">Standard</p><p className="text-sm"><b className="text-lg">₹2,999</b> <span className="text-muted">{lang === "en" ? "/ month" : "/ महीना"}</span></p></div>
-            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Card, Standard website (up to 5 pages), daily posters, Meta Ads and WhatsApp AI." : "Card, Standard website (5 pages तक), रोज़ के poster, Meta Ads और WhatsApp AI।"}</p>
+            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Your own website, a new poster every day on Facebook, Instagram and WhatsApp, and a WhatsApp AI that answers your customers." : "आपकी अपनी website, Facebook, Instagram और WhatsApp पर रोज़ नया poster, और WhatsApp AI जो आपके ग्राहकों को जवाब देता है।"}</p>
             <SubscribeButton tier="growth" onDone={() => router.push("/poster/onboard")} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-2.5 text-sm font-semibold hover:bg-surface2">{lang === "en" ? "Start with Standard" : "Standard से शुरू करें"}</SubscribeButton>
           </div>
-          <div className="rounded-xl border-2 border-brand p-3">
-            <div className="flex items-baseline justify-between gap-2"><p className="font-bold">Premium <span className="ml-1 rounded-full bg-good/10 px-2 py-0.5 text-[11px] font-semibold text-good">Most popular</span></p><p className="text-sm"><b className="text-lg">₹5,999</b> <span className="text-muted">{lang === "en" ? "first month only" : "सिर्फ़ पहला महीना"}</span></p></div>
-            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Then ₹2,999 a month from the 2nd month. Everything in Standard, plus the Premium multi-page website and Google SEO." : "दूसरे महीने से ₹2,999 / महीना। Standard का सब कुछ, साथ में Premium multi-page website और Google SEO।"}</p>
+          <div className="relative mt-1 rounded-xl border-2 border-brand p-3 pt-4">
+            <span className="absolute -top-2.5 left-3 rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide text-white">{lang === "en" ? "Most popular" : "सबसे ज़्यादा चुना गया"}</span>
+            <div className="flex items-baseline justify-between gap-2"><p className="font-bold">Premium</p><p className="text-sm"><b className="text-lg">₹5,999</b> <span className="text-muted">{lang === "en" ? "first month only" : "सिर्फ़ पहला महीना"}</span></p></div>
+            <p className="mt-1 text-xs text-muted">{lang === "en" ? "Everything in Standard, plus a bigger multi-page website and Google SEO, so customers find you. Then ₹2,999 a month from the 2nd month." : "Standard का सब कुछ, साथ में बड़ी multi-page website और Google SEO, ताकि ग्राहक आपको ढूँढ लें। दूसरे महीने से ₹2,999 / महीना।"}</p>
             <SubscribeButton tier="growth" premium onDone={() => router.push("/poster/onboard")} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{lang === "en" ? "Start with Premium" : "Premium से शुरू करें"}</SubscribeButton>
           </div>
         </div>
