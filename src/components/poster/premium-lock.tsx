@@ -72,6 +72,14 @@ export function PremiumCard({ compact = false }: { compact?: boolean }) {
         <SubscribeButton tier="growth" className="inline-flex items-center gap-1.5 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹2,999 / महीना · Standard लें" : "₹2,999 a month · get Standard"}</SubscribeButton>
         <Link href="/poster/plan" className="text-xs font-semibold text-white/80 underline">{hi ? "सभी plans" : "All plans"}</Link>
       </div>
+      {/* Premium next to Standard (owner, 17 Oct 2026): ₹5,999 for the first month only, then ₹2,999 a month. */}
+      <div className="mt-3 border-t border-white/15 pt-3">
+        <p className="flex items-center gap-2 text-sm font-bold"><span className="rounded-full bg-[#ffd54a] px-2 py-0.5 text-[10px] font-extrabold uppercase text-[#12144a]">{hi ? "सबसे ज़्यादा चुना गया" : "Most popular"}</span> Premium</p>
+        <p className="mt-1 text-xs text-white/80">{hi ? "Standard का सब कुछ, साथ में बड़ी multi-page website और Google SEO। दूसरे महीने से ₹2,999 / महीना।" : "Everything in Standard, plus a bigger multi-page website and Google SEO. Then ₹2,999 a month from the 2nd month."}</p>
+        <div className="mt-2">
+          <SubscribeButton tier="growth" premium className="inline-flex items-center gap-1.5 rounded-full bg-[#ffd54a] px-3.5 py-1.5 text-sm font-semibold text-[#12144a] disabled:opacity-60" onDone={() => { void refresh(); }}>{hi ? "₹5,999 पहला महीना · Premium लें" : "₹5,999 first month only · get Premium"}</SubscribeButton>
+        </div>
+      </div>
     </div>
   );
 }
