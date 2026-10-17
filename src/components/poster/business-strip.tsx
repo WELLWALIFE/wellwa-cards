@@ -1,6 +1,7 @@
 "use client";
 // The dark line on Home (owner's call, 28 Sep 2026): just two numbers — the team that joined today and the whole team.
 // Opens the Business tab. (Who is logged in shows in the header above, next to the photo.)
+import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronRight, Handshake } from "lucide-react";
@@ -14,10 +15,11 @@ export function BusinessStrip() {
   const [a, setA] = useState<Account | null | undefined>(undefined);
   const { lang } = useT();
   const en = lang === "en";
+  const kind = useAccountKind();
   useEffect(() => {
     api<Account>("/api/account").then((r) => setA(r.ok ? r.data : null)).catch(() => setA(null));
   }, []);
-  if (a === undefined) return null;
+  if (a === undefined || !showsPartnerUi(kind)) return null;
   const p = a?.partner ?? null;
   const green = p?.status === "green";
   return (

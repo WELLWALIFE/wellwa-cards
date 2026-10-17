@@ -7,11 +7,16 @@
 //   POST { action: "auto", by?, leg?, agree? } → a Google sign-up: its username is made from its name and its partner
 //          ID registered at once (owner's call, 28 Sep 2026 — Google sign-ups were left without an ID when they never
 //          picked a username). GET does the same for a Google account that still has none.
+// Who is a partner (owner, 17 Oct 2026): a sign-up that comes with a sponsor (a join link) is a PARTNER account and gets its partner ID. A sign-up
+// straight from the website, with no sponsor, is PENDING: no sponsor is asked and no partner ID is made; the admin decides (partner, with a sponsor and
+// a place, or consumer). `kind: "consumer"` (the /start link) makes a CONSUMER at once. See lib/account-kind.ts.
 // Bearer token, like every /api/poster/* route (the phone app and the web app both send it).
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { partnerCall, partnerLinked, registerPartner, type PartnerSummary } from "@/lib/partner-link";
-import { cleanAccountUsername, usernameOk, DEFAULT_INTRODUCER } from "@/lib/username";
+import { cleanAccountUsername, usernameOk } from "@/lib/username";
+import { setAccountKind } from "@/lib/account-kind-server";
+import type { AccountKind } from "@/lib/account-kind";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 
 async function saveMeta(userId: string, patch: Record<string, unknown>) {
@@ -40,7 +45,7 @@ function usernameIdeas(name: string, email: string): string[] {
 
 /** Give an account without a username one (from its name) and register its partner ID under the introducer.
  *  Never throws; returns the username it ended up with, or null. */
-async function autoAccount(me: { id: string; token: string }, by: string | null, leg?: "L" | "R", agree = false): Promise<string | null> {
+async function autoAccount(me: { id: string; token: string }, by: string | null, leg?: "L" | "R", agree = false, asKind?: AccountKind): Promise<string | null> {
   const acct = await authUser(me.id);
   const name = String(acct.meta.display_name ?? acct.meta.full_name ?? acct.meta.name ?? "");
   for (const u of usernameIdeas(name, acct.email)) {
@@ -55,8 +60,12 @@ async function autoAccount(me: { id: string; token: string }, by: string | null,
     const username = res.username ?? u;
     // "Continue with Google" sits under the Terms / Partner Agreement line: pressing it is the acceptance.
     if (agree && !acct.meta.agreed_at) await saveMeta(me.id, { agreed_at: new Date().toISOString(), agreed_via: "google" });
-    const referred = res.referred_by ?? (await profile(me.token, me.id))?.referred_by ?? null;
-    await registerPartner(me.id, username, referred, by, leg);
+    const kind: AccountKind = asKind ?? (by ? "partner" : "pending");
+    await setAccountKind(me.id, kind);
+    if (kind === "partner") {
+      const referred = res.referred_by ?? (await profile(me.token, me.id))?.referred_by ?? null;
+      await registerPartner(me.id, username, referred, by, leg);
+    }
     return username;
   }
   return null;
@@ -102,13 +111,14 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const b = (await request.json().catch(() => ({}))) as { username?: unknown; by?: unknown; leg?: unknown; action?: unknown; dob?: unknown; gender?: unknown; agree?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { username?: unknown; by?: unknown; leg?: unknown; kind?: unknown; action?: unknown; dob?: unknown; gender?: unknown; agree?: unknown };
 
   if (b.action === "auto") {
     const p = await profile(me.token, me.id);
     if (p?.username) return NextResponse.json({ ok: true, username: p.username, note: "already set" });
-    const by = String(b.by ?? "").trim().slice(0, 40) || process.env.DEFAULT_INTRODUCER || DEFAULT_INTRODUCER;
-    const username = await autoAccount(me, by, b.leg === "L" || b.leg === "R" ? b.leg : undefined, b.agree === true);
+    const consumer = b.kind === "consumer";
+    const by = consumer ? null : String(b.by ?? "").trim().slice(0, 40) || null;
+    const username = await autoAccount(me, by, b.leg === "L" || b.leg === "R" ? b.leg : undefined, b.agree === true, consumer ? "consumer" : undefined);
     return NextResponse.json(username ? { ok: true, username } : { error: "Could not make the username." }, { status: username ? 200 : 502 });
   }
 
@@ -120,10 +130,11 @@ export async function POST(request: Request) {
 
   const username = cleanAccountUsername(String(b.username ?? ""));
   if (!usernameOk(username)) return NextResponse.json({ error: "Username: 4 to 20 letters, numbers or _." }, { status: 400 });
-  const by = String(b.by ?? "").trim().slice(0, 40) || process.env.DEFAULT_INTRODUCER || DEFAULT_INTRODUCER;
+  const consumer = b.kind === "consumer";
+  const by = consumer ? "" : String(b.by ?? "").trim().slice(0, 40);
   // The claim runs as the user (auth.uid() inside the function): the database checks availability and reserved names.
   const r = await restAsUser<{ ok: boolean; error?: string; username?: string; referred_by?: string | null }>(me.token, "rpc/claim_username", {
-    method: "POST", body: JSON.stringify({ p_username: username, p_by: by }),
+    method: "POST", body: JSON.stringify({ p_username: username, p_by: by || null }),
   });
   const res = r.data;
   if (!r.ok || !res) return NextResponse.json({ error: "Could not save the username. Please try again." }, { status: 500 });
@@ -137,6 +148,8 @@ export async function POST(request: Request) {
   if (dob || gender || b.agree === true) await saveMeta(me.id, { ...(dob ? { dob } : {}), ...(gender ? { gender } : {}), ...(b.agree === true ? { agreed_at: new Date().toISOString() } : {}) });
   // The partner account, placed under the introducer. A failure here never blocks the sign-up: GET retries it.
   const leg = b.leg === "L" || b.leg === "R" ? b.leg : undefined;   // the link's side; none → weaker side
-  const partner = await registerPartner(me.id, username, res.referred_by ?? null, by, leg);
-  return NextResponse.json({ ok: true, username, partner });
+  const kind: AccountKind = consumer ? "consumer" : by ? "partner" : "pending";
+  await setAccountKind(me.id, kind);
+  const partner = kind === "partner" ? await registerPartner(me.id, username, res.referred_by ?? null, by, leg) : null;
+  return NextResponse.json({ ok: true, username, kind, partner });
 }

@@ -1,6 +1,7 @@
 "use client";
 // The small round button at the top-right of every app page: who is logged in, language, Log out.
 // Hidden during onboarding and when nobody is logged in.
+import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { initials } from "@/lib/initials";
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
@@ -15,6 +16,7 @@ export function TopMenu() {
   const p = usePathname();
   const router = useRouter();
   const { lang } = useT();
+  const kind = useAccountKind();
   const en = lang === "en";
   const [me, setMe] = useState<{ name: string; photo: string | null } | null>(null);
   const [username, setUsername] = useState("");
@@ -77,7 +79,7 @@ export function TopMenu() {
             <p className="truncate text-sm font-semibold">{me.name}</p>
           </div>
           <Link href="/poster/settings" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><UserRound className="h-4 w-4 text-muted" /> {en ? "Me · account" : "मेरा account"}</Link>
-          <Link href="/poster/business" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Handshake className="h-4 w-4 text-muted" /> Business</Link>
+          {showsPartnerUi(kind) && <Link href="/poster/business" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Handshake className="h-4 w-4 text-muted" /> Business</Link>}
           <Link href="/poster/connect" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Link2 className="h-4 w-4 text-muted" /> {en ? "Connections" : "Connections (WhatsApp, Facebook)"}</Link>
           <Link href="/poster/share" className="flex items-center gap-2.5 px-3 py-2.5 text-sm"><Share2 className="h-4 w-4 text-muted" /> {en ? "Share my links" : "मेरे links share करें"}</Link>
           <div className="flex items-center justify-between px-3 py-2.5 text-sm"><span className="inline-flex items-center gap-2.5"><Languages className="h-4 w-4 text-muted" /> {en ? "Language" : "भाषा"}</span><LangToggle /></div>

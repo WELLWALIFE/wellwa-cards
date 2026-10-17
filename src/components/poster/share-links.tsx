@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { Check, CircleArrowLeft, CircleArrowRight, Copy, Download, Globe, IdCard, LoaderCircle, QrCode, Share2, X } from "lucide-react";
+import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { api } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
@@ -83,13 +84,14 @@ function Row({ it, en }: { it: Item; en: boolean }) {
  *  (WhatsApp, copy, QR) below. Home, the Share page and the share sheet all show the same thing. */
 export function ShareLinks({ compact = false, allHref }: { compact?: boolean; allHref?: string }) {
   const { lang } = useT(); const en = lang === "en";
+  const kind = useAccountKind();
   const [res, setRes] = useState<Res | null | undefined>(undefined);
   const [tab, setTab] = useState<Item["key"]>("card");
   useEffect(() => { if (res === undefined) loadLinks().then(setRes); }, [res]);
 
   if (res === undefined) return <div className="py-6 grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div>;
   const items: Item[] = [];
-  if (res?.link) {
+  if (res?.link && showsPartnerUi(kind)) {   // the Left / Right join links are the partner side: a consumer has none
     const join = (leg: "L" | "R") => withLeg(res.link as string, leg);
     const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
     items.push({ key: "L", emoji: "⬅️", title: en ? "Join link — LEFT team" : "Join link — LEFT team", sub: en ? "Whoever joins with this goes to your left side" : "इस link से जो जुड़ेगा वो आपकी left side में जाएगा", url: join("L"), text: msg(join("L")) });

@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
+import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { INCOME_KIND as KIND, dayShort as day, rupee } from "@/components/business/kit";
 
@@ -29,7 +30,7 @@ const money = (paise: number | null) => (paise === null ? "••••" : rupee
 /** Every Business page is a screen of the app itself now (owner, 14 Oct 2026: nothing framed). */
 const PAGE = (name: string) => `/poster/business/${name}`;
 
-export default function BusinessPage() {
+function BusinessSuspense() {
   return <Suspense fallback={<div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><BusinessInner /></Suspense>;
 }
 
@@ -185,6 +186,20 @@ function BusinessInner() {
           )}
         </section>
       )}
+    </div>
+  );
+}
+
+/** The Business section is the partner side. A consumer (or an account waiting for the admin) has no partner ID, so it sees a short note instead. */
+export default function BusinessPage() {
+  const kind = useAccountKind();
+  const { lang } = useT(); const en = lang === "en";
+  if (kind === "loading" || showsPartnerUi(kind)) return <BusinessSuspense />;
+  return (
+    <div className="mx-auto max-w-md space-y-4 py-16 text-center">
+      <h1 className="text-xl font-bold">{en ? "This account is for your own business" : "यह account आपके अपने business के लिए है"}</h1>
+      <p className="text-sm text-muted">{en ? "Your card, website, posters and customers are on the Home and Create tabs." : "आपका card, website, posters और customers Home और Create tab में हैं।"}</p>
+      <Link href="/poster" className="inline-block rounded-xl grad-brand px-5 py-2.5 text-sm font-semibold text-white">{en ? "Go to Home" : "Home पर जाएँ"}</Link>
     </div>
   );
 }

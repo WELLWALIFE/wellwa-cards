@@ -2,6 +2,7 @@
 // the same secret the panel uses for its calls into us (/api/link). Never imported by client code.
 import crypto from "node:crypto";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
+import { kindOf, type AccountKind } from "@/lib/account-kind";
 
 const URL_ = () => process.env.PARTNER_LINK_IN_URL || "http://127.0.0.1:3002/partners/api/link-in";
 export const partnerLinked = () => !!process.env.LINK_SECRET;
@@ -26,7 +27,7 @@ export async function partnerCall<T = Record<string, unknown>>(action: string, b
 /* ---------- the account ↔ partner record ---------- */
 
 /** Name, mobile and email as the account knows them — for the partner record. */
-export async function accountIdentity(userId: string): Promise<{ name: string; mobile: string; email: string; meta: Record<string, unknown> }> {
+export async function accountIdentity(userId: string): Promise<{ name: string; mobile: string; email: string; meta: Record<string, unknown>; kind: AccountKind }> {
   const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { headers: serviceHeaders(), cache: "no-store" });
   const u = r.ok ? await r.json() : {};
   const md = (u.user_metadata ?? {}) as Record<string, unknown>;
@@ -38,7 +39,7 @@ export async function accountIdentity(userId: string): Promise<{ name: string; m
     const pr = await fetch(`${SUPA_URL}/rest/v1/poster_profiles?user_id=eq.${userId}&is_default=eq.true&select=name&limit=1`, { headers: serviceHeaders(), cache: "no-store" });
     name = String(((pr.ok ? await pr.json() : [])[0] ?? {}).name ?? "").trim();
   }
-  return { name: name || "Shubhora member", mobile: mobile.length === 10 ? mobile : "", email: /@phone\./.test(email) ? "" : email, meta: md };
+  return { name: name || "Shubhora member", mobile: mobile.length === 10 ? mobile : "", email: /@phone\./.test(email) ? "" : email, meta: md, kind: kindOf(u.app_metadata) };
 }
 
 /** Register (or re-find) the account's partner ID and remember its code on the account, so the app's partner
@@ -46,6 +47,8 @@ export async function accountIdentity(userId: string): Promise<{ name: string; m
 export async function registerPartner(userId: string, username: string | null, referredBy: string | null, introducerHandle?: string | null, leg?: "L" | "R"): Promise<{ ok: boolean; code?: string; status?: string; error?: string }> {
   if (!partnerLinked()) return { ok: false, error: "not linked" };
   const me = await accountIdentity(userId);
+  // A consumer or a pending account never gets a partner ID (it is made by the admin, with a sponsor and a place).
+  if (me.kind !== "partner") return { ok: false, error: "not a partner account" };
   // `introducerHandle`: an older partner's SH code (no account username yet) — the panel resolves it itself.
   const r = await partnerCall<{ code?: string; username?: string | null; status?: string }>("register", {
     suiteUserId: userId, username, name: me.name, mobile: me.mobile || undefined, email: me.email || undefined,
@@ -65,6 +68,8 @@ export async function registerPartner(userId: string, username: string | null, r
  *  An account without a partner record yet is registered first (under the company when no introducer is known). */
 export async function reportPaidToPartner(userId: string, p: { totalPaise: number; tier: string; ref: string }): Promise<{ ok: boolean; error?: string }> {
   if (!partnerLinked()) return { ok: false, error: "not linked" };
+  // A consumer's payment is the company's own revenue: nothing goes to the partner panel and nobody is paid on it.
+  if ((await accountIdentity(userId)).kind !== "partner") return { ok: true };
   let r = await partnerCall<{ ok?: boolean }>("paid", { suiteUserId: userId, totalPaise: p.totalPaise, tier: p.tier, ref: p.ref });
   if (r.status === 404) {
     const pr = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${userId}&select=username,referred_by&limit=1`, { headers: serviceHeaders(), cache: "no-store" });

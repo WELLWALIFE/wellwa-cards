@@ -7,7 +7,7 @@ import { BrandLogo } from "@/components/brand-context";
 import { ArrowRight, Check, Eye, EyeOff, LoaderCircle, Lock, MailCheck, UserRound, X } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { toE164, phoneEmail } from "@/lib/phone";
-import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY, DEFAULT_INTRODUCER } from "@/lib/username";
+import { cleanAccountUsername, looksLikePartnerId, usernameOk, USERNAME_HINT, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 
 type Check = { state: "idle" | "checking" | "ok" | "bad"; reason?: string };
 
@@ -61,6 +61,10 @@ function SignupInner() {
   // `by` is the resolved handle (an account username, or an older partner's SH code); `handleRef` keeps whatever
   // the link carried, so the introducer still reaches the server even when the lookup itself failed.
   const [by, setBy] = useState<string>("");
+  // Who this sign-up is for (owner, 17 Oct 2026): from a join link (a sponsor) it is a partner sign-up; straight from the website, or from the /start link
+  // (?kind=consumer), there is no sponsor, nothing about the partner programme is shown, and no partner ID is made.
+  const consumerLink = params.get("kind") === "consumer";
+  const [sponsored, setSponsored] = useState(false);
   const handleRef = useRef<string>("");
   const legRef = useRef<"L" | "R" | "">("");   // side from the link (partner panel's left / right links)
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -98,16 +102,17 @@ function SignupInner() {
     const leg = legParam === "L" || legParam === "R" ? legParam : fromLink ? "" : (storedLeg === "L" || storedLeg === "R" ? storedLeg : "");
     legRef.current = leg as "L" | "R" | "";
     try { if (leg) localStorage.setItem(INTRODUCER_LEG_KEY, leg); else if (fromLink) localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
-    // Nothing from a link or an earlier visit: the main site's default sponsor (shown, never kept in the browser,
-    // so a member's card opened later can still introduce this person).
-    const handle = fromLink || stored || DEFAULT_INTRODUCER;
-    const isDefault = !fromLink && !stored;
+    // No default sponsor any more: nobody is placed under anyone unless a join link (or an earlier visit through one) says so.
+    const handle = consumerLink ? "" : fromLink || stored;
     handleRef.current = handle;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    setSponsored(!!handle);
+    if (!handle) return;
     (async () => {
       try {
         const r = await fetch(`/api/introducer?by=${encodeURIComponent(handle)}`, { cache: "no-store" });
         const j = (await r.json()) as { by?: string | null };
-        if (j.by) { setBy(j.by); if (!isDefault) try { localStorage.setItem(INTRODUCER_KEY, j.by); } catch { /* ignore */ } }
+        if (j.by) { setBy(j.by); try { localStorage.setItem(INTRODUCER_KEY, j.by); } catch { /* ignore */ } }
       } catch { /* offline: no chip, the link's handle is still sent with the sign-up */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -163,7 +168,7 @@ function SignupInner() {
     if (!dob || age(dob) === null) { setError("Enter your date of birth."); return; }
     if ((age(dob) ?? 0) < 18) { setError("You must be 18 or older to create a Shubhora account."); return; }
     if (!gender) { setError("Select your gender."); return; }
-    if (!agree) { setError("Please accept the Terms, Privacy Policy and Partner Agreement to continue."); return; }
+    if (!agree) { setError(sponsored ? "Please accept the Terms, Privacy Policy and Partner Agreement to continue." : "Please accept the Terms and Privacy Policy to continue."); return; }
     if (!usernameOk(username)) { setError(`Choose a username: ${USERNAME_HINT}.`); return; }
     const t = await checkTaken(mobile, email);
     setTaken(t);
@@ -175,14 +180,14 @@ function SignupInner() {
     const { data, error } = await sb.auth.signUp({
       email: phone ? phoneEmail(phone) : email.trim().toLowerCase(),
       password,
-      options: { data: { full_name: name, display_name: name, phone: phone ?? undefined, contact_email: email.trim() || undefined, wanted_username: username, introduced_by: by || handleRef.current || undefined, introduced_leg: legRef.current || undefined, dob, gender, agreed_at: new Date().toISOString() } },
+      options: { data: { full_name: name, display_name: name, phone: phone ?? undefined, contact_email: email.trim() || undefined, wanted_username: username, introduced_by: consumerLink ? undefined : by || handleRef.current || undefined, introduced_leg: legRef.current || undefined, dob, gender, agreed_at: new Date().toISOString() } },
     });
     if (error) { setBusy(false); setError(error.message); return; }
     if (data.session) {
       const auth = { Authorization: `Bearer ${data.session.access_token}` };
       // The username + introducer + partner account, in one call. A clash here (someone took the name a second ago)
       // is shown; the account itself already exists, so the person just picks another name.
-      const r = await fetch("/api/account", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ username, by: by || handleRef.current || undefined, leg: legRef.current || undefined }) });
+      const r = await fetch("/api/account", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ username, by: consumerLink ? undefined : by || handleRef.current || undefined, leg: legRef.current || undefined, kind: consumerLink ? "consumer" : undefined }) });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!r.ok && r.status === 409) { setBusy(false); setCheck({ state: "bad", reason: "Taken — try another" }); setError(j.error || "That username was just taken — choose another and press Create again."); return; }
       // Signed up on a white-label partner's domain? Attach them to that partner.
@@ -297,7 +302,7 @@ function SignupInner() {
 
             <label className="flex items-start gap-2.5 text-xs text-muted">
               <input type="checkbox" checked={agree} onChange={(e) => setAgree(e.target.checked)} className="mt-0.5 h-4 w-4 shrink-0 accent-[#2f4bd8]" />
-              <span>I am 18 or older and I accept the <a href="/terms" target="_blank" className="font-semibold text-brand-ink underline">Terms</a>, <a href="/privacy" target="_blank" className="font-semibold text-brand-ink underline">Privacy Policy</a> and the <a href="/partners/legal/agreement" target="_blank" className="font-semibold text-brand-ink underline">Partner Agreement</a>.</span>
+              <span>I am 18 or older and I accept the <a href="/terms" target="_blank" className="font-semibold text-brand-ink underline">Terms</a>{sponsored ? ", " : " and "}<a href="/privacy" target="_blank" className="font-semibold text-brand-ink underline">Privacy Policy</a>{sponsored && <> and the <a href="/partners/legal/agreement" target="_blank" className="font-semibold text-brand-ink underline">Partner Agreement</a></>}.</span>
             </label>
 
             {error && <p role="alert" className="text-sm text-danger">{error}</p>}
@@ -307,7 +312,7 @@ function SignupInner() {
                 {taken.mobile ? "Create is off: this mobile number already has an account. Log in instead, or use another number."
                   : taken.email ? "Create is off: this email already has an account. Log in instead, or use another email."
                   : check.state === "checking" ? "Create is off for a moment: checking that your username is free…"
-                  : "Create is off: tick the box above to accept the Terms, Privacy Policy and Partner Agreement."}
+                  : "Create is off: tick the box above to accept the Terms and Privacy Policy" + (sponsored ? " and Partner Agreement." : ".")}
               </p>
             )}
             {sb ? (

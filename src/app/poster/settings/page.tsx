@@ -1,6 +1,7 @@
 "use client";
 // Me — the account in one screen: who you are (name, username, your one link), your plan, your partner account,
 // your business, help. Every Shubhora account is a partner account, so the partner strip is always here.
+import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { initials } from "@/lib/initials";
 import { SITE_URL, SITE_HOST } from "@/lib/site-url";
 import { useCallback, useEffect, useState } from "react";
@@ -32,6 +33,7 @@ export default function SettingsPage() {
   const router = useRouter();
   const [me, setMe] = useState<{ email?: string; name: string; photo: string | null } | null>(null);
   const [acct, setAcct] = useState<Account | null>(null);
+  const kind = useAccountKind();
   // Back from "Edit name / mobile" (About you → Save): say it worked, once.
   const [saved, setSaved] = useState<"" | "all" | "np">("");
   useEffect(() => {
@@ -200,6 +202,7 @@ export default function SettingsPage() {
       </Link>
 
       {/* Business — the partner side of this same account. The Business tab has the full picture. */}
+      {showsPartnerUi(kind) && (
       <Link href="/poster/business" className="block rounded-2xl bg-[#12144a] p-4 text-white">
         <div className="flex items-center gap-2">
           <Handshake className="h-4 w-4 opacity-80" />
@@ -218,6 +221,7 @@ export default function SettingsPage() {
         )}
         {partner && partner.status === "red" && <p className="mt-2 text-[11px] text-white/70">{en ? "Earnings are available only with Standard." : "कमाई Standard plan के साथ ही चालू होती है।"}</p>}
       </Link>
+      )}
 
       <AddCredits />
 
