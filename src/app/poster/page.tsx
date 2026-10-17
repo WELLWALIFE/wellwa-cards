@@ -3,6 +3,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SubscribeButton } from "@/components/subscribe-button";
+import { usePlan } from "@/lib/plan";
 import { LoaderCircle, ChevronDown, Sparkles, CreditCard, MessageSquare, Clapperboard, Link2, Pencil, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
@@ -46,6 +47,7 @@ function shareCaption(today: TodayResp | null, profile: Profile | null): string 
 
 export default function TodayPage() {
   const router = useRouter();
+  const { plan: myPlan, loading: planLoading } = usePlan();
   const [phase, setPhase] = useState<"loading" | "welcome" | "noprofile" | "ready" | "offline">("loading");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -130,6 +132,9 @@ export default function TodayPage() {
         <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
           {phase === "welcome" ? t.startFree : t.makeProfile}
         </Link>
+        {/* Someone who already pays does not see the plans again (owner, 17 Oct 2026: a paid member saw "Start with Standard"). */}
+        {!planLoading && myPlan === "free" && (
+          <>
         <p className="text-center text-xs text-muted">{lang === "en" ? "Card only. Want a website, a poster every day and a WhatsApp AI? Choose a plan below." : "सिर्फ़ card। Website, रोज़ का poster और WhatsApp AI चाहिए? नीचे plan चुनें।"}</p>
         {/* Or start with a paid plan (owner, 16 Oct 2026): after the payment the card set-up opens. */}
         <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
@@ -146,6 +151,8 @@ export default function TodayPage() {
             <SubscribeButton tier="growth" premium onDone={() => router.push("/poster/onboard")} className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{lang === "en" ? "Start with Premium" : "Premium से शुरू करें"}</SubscribeButton>
           </div>
         </div>
+          </>
+        )}
         {phase === "welcome" && (
           <p className="text-center text-xs text-muted">{t.haveAccount} <Link href="/login?next=/poster" className="text-brand-ink font-medium">{t.login}</Link></p>
         )}
