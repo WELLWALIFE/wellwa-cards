@@ -106,6 +106,11 @@ export default function TodayPage() {
     boot();
   }, [boot]);
 
+  // Signed in, nothing made yet, and already on a paid plan (Standard / Premium): straight to making the website and card, not the
+  // free-card page with plan boxes (owner, 17 Oct 2026: the page must follow the plan). Free members keep the page; a profile means Home.
+  const goSetup = phase === "noprofile" && !planLoading && myPlan !== "free";
+  useEffect(() => { if (goSetup) router.replace("/poster/onboard"); }, [goSetup, router]);
+  if (goSetup) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (phase === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (phase === "offline") return (
     <div className="py-20 text-center space-y-3">
