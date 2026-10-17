@@ -7,17 +7,22 @@ import QRCode from "qrcode";
 import Link from "next/link";
 import { Check, CircleArrowLeft, CircleArrowRight, Copy, Download, Globe, IdCard, LoaderCircle, QrCode, Share2, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
 
 type Res = { username: string | null; link: string | null; cardLink: string | null; promoter?: boolean };
 type Item = { key: "card" | "site" | "L" | "R"; emoji: string; title: string; sub: string; url: string; text: string };
 
-let cache: Res | null = null;
+// Kept per account: the links of whoever was signed in before must never show for the next account on the same page.
+let cache: { uid: string; data: Res } | null = null;
 async function loadLinks(): Promise<Res | null> {
-  if (cache) return cache;
+  let uid = "";
+  try { uid = (await getBrowserSupabase()?.auth.getSession())?.data.session?.user.id ?? ""; } catch { /* no session */ }
+  if (cache && cache.uid === uid) return cache.data;
+  cache = null;
   const r = await api<Res>("/api/partner/dashboard").catch(() => null);
-  if (r?.ok) cache = r.data;
-  return cache;
+  if (r?.ok) { cache = { uid, data: r.data }; return r.data; }
+  return null;
 }
 
 function withLeg(link: string, leg: "L" | "R") {
@@ -78,7 +83,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
  *  (WhatsApp, copy, QR) below. Home, the Share page and the share sheet all show the same thing. */
 export function ShareLinks({ compact = false, allHref }: { compact?: boolean; allHref?: string }) {
   const { lang } = useT(); const en = lang === "en";
-  const [res, setRes] = useState<Res | null | undefined>(cache ?? undefined);
+  const [res, setRes] = useState<Res | null | undefined>(undefined);
   const [tab, setTab] = useState<Item["key"]>("card");
   useEffect(() => { if (res === undefined) loadLinks().then(setRes); }, [res]);
 
