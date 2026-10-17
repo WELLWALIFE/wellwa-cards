@@ -80,3 +80,23 @@ export async function reportPaidToPartner(userId: string, p: { totalPaise: numbe
   if (!r.ok) console.error("[partner] paid not recorded", userId, p.ref, r.status, r.data.error);
   return { ok: r.ok, error: r.ok ? undefined : r.data.error };
 }
+
+
+/** The admin makes an account a partner (owner, 17 Oct 2026): a partner ID with the sponsor and the place the admin chose, tied to the account.
+ *  The caller has already marked the account a partner. Strict: an unknown sponsor or place is an error, never "under the company". */
+export async function makePartnerId(userId: string, o: { sponsor: string; leg: "L" | "R"; parent?: string }): Promise<{ ok: boolean; code?: string; error?: string }> {
+  if (!partnerLinked()) return { ok: false, error: "partner panel not linked" };
+  const me = await accountIdentity(userId);
+  const pr = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${userId}&select=username&limit=1`, { headers: serviceHeaders(), cache: "no-store" });
+  const username = String(((pr.ok ? await pr.json() : [])[0] ?? {}).username ?? "") || null;
+  const r = await partnerCall<{ code?: string; error?: string }>("register", {
+    suiteUserId: userId, username, name: me.name, mobile: me.mobile || undefined, email: me.email || undefined,
+    dob: typeof me.meta.dob === "string" ? me.meta.dob : undefined, gender: typeof me.meta.gender === "string" ? me.meta.gender : undefined,
+    introducer: o.sponsor, leg: o.leg, parent: o.parent || undefined, strict: true,
+  });
+  if (!r.ok || !r.data.code) return { ok: false, error: r.data.error ?? `partner panel answered ${r.status}` };
+  if (me.meta.associate_id !== r.data.code) {
+    await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { method: "PUT", headers: serviceHeaders(), body: JSON.stringify({ user_metadata: { ...me.meta, associate_id: r.data.code } }) }).catch(() => undefined);
+  }
+  return { ok: true, code: r.data.code };
+}

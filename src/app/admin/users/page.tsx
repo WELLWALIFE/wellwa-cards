@@ -48,6 +48,8 @@ type User = {
   posterPlan?: string;
   name: string;
   associate?: string;
+  /** partner (also a partner ID) · pending (came from the website with no sponsor: waiting for review) · consumer (uses the app only). */
+  accountKind?: "partner" | "pending" | "consumer";
   joined: string;
   lastSeen?: string;
   cards: number;
@@ -71,9 +73,9 @@ async function adminHeaders(): Promise<Record<string, string>> {
   return h;
 }
 
-type View = "all" | "accounts" | "ids" | "partner" | "green" | "red" | "paid" | "check";
+type View = "all" | "accounts" | "ids" | "partner" | "green" | "red" | "paid" | "check" | "review" | "consumers";
 const VIEWS: { id: View; label: string }[] = [
-  { id: "all", label: "All" }, { id: "accounts", label: "App accounts" }, { id: "ids", label: "Partner IDs" }, { id: "partner", label: "Partner-only IDs" },
+  { id: "all", label: "All" }, { id: "review", label: "To review" }, { id: "consumers", label: "Consumers" }, { id: "accounts", label: "App accounts" }, { id: "ids", label: "Partner IDs" }, { id: "partner", label: "Partner-only IDs" },
   { id: "green", label: "Green IDs" }, { id: "red", label: "Red IDs" }, { id: "paid", label: "Paid plan" },
   { id: "check", label: "Check: same name / email / mobile" },
 ];
@@ -195,6 +197,24 @@ export default function AdminUsers() {
     setLinkNote(r.ok ? done(d) : `Not done: ${d.error ?? r.status}`);
     if (r.ok) load();
   }
+  /** The kind of an account (owner, 17 Oct 2026): consumer (app only), back to review, or a partner with the sponsor and place chosen here. */
+  async function kindCall(body: Record<string, unknown>, ok: string) {
+    setLinkNote("Working…");
+    const r = await fetch("/api/admin/users/kind", { method: "POST", headers: await adminHeaders(), body: JSON.stringify(body) });
+    const d = await r.json().catch(() => ({}));
+    setLinkNote(r.ok ? (typeof d.code === "string" ? `${ok} ${d.code}.` : ok) : `Not done: ${d.error ?? r.status}`);
+    if (r.ok) load();
+  }
+  function makeConsumer(u: User) {
+    if (!confirm(`Make ${who(u)} a consumer?\n\nThey keep using the app (card, website, posters, plan) but have no partner ID and never see the partner side. You can make them a partner later.`)) return;
+    void kindCall({ op: "consumer", id: u.id }, `${who(u)} is a consumer.`);
+  }
+  function makePartner(u: User) {
+    const sponsor = prompt(`Make ${who(u)} a partner.\n\nSponsor's username:`)?.trim(); if (!sponsor) return;
+    const leg = prompt("Side under the place: L (left) or R (right)", "L")?.trim().toUpperCase(); if (leg !== "L" && leg !== "R") return;
+    const parent = prompt("Place under which username? (leave empty to place at the end of the sponsor's own " + (leg === "L" ? "left" : "right") + " line)", "")?.trim() ?? "";
+    void kindCall({ op: "make-partner", id: u.id, sponsor, leg, parent }, `${who(u)} is now a partner:`);
+  }
   const repairLinks = () => links({ op: "repair" }, (d) => {
     const c = (d.changes as { email: string; from: string; to: string }[]) ?? [];
     return c.length ? `Fixed ${c.length}: ${c.map((x) => `${x.email} ${x.from || "none"} → ${x.to || "none"}`).join(" · ")}` : "All links were already correct.";
@@ -231,6 +251,8 @@ export default function AdminUsers() {
         : view === "partner" ? !isAccount(u)
         : view === "green" ? u.partner?.status === "green"
         : view === "red" ? u.partner?.status === "red"
+        : view === "review" ? isAccount(u) && u.accountKind === "pending"
+        : view === "consumers" ? isAccount(u) && u.accountKind === "consumer"
         : view === "check" ? twins.has(u.id) || mixed(u)
         : u.plan !== "free");
     if (!s) return inView;
@@ -299,6 +321,8 @@ export default function AdminUsers() {
           extra={<button type="button" onClick={(e) => { e.stopPropagation(); pick("green"); }}
             className={`ml-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${view === "green" ? "bg-good text-white" : "bg-good/10 text-good hover:bg-good/20"}`}>
             {partnerIds.filter((u) => u.partner?.status === "green").length} green</button>} />
+        <Stat label="To review" value={accounts.filter((u) => u.accountKind === "pending").length} on={view === "review"} onClick={() => pick("review")} hint="From the website, no sponsor" />
+        <Stat label="Consumers" value={accounts.filter((u) => u.accountKind === "consumer").length} on={view === "consumers"} onClick={() => pick("consumers")} hint="App only" />
         <Stat label="Paid plan" value={accounts.filter((u) => u.plan !== "free").length} on={view === "paid"} onClick={() => pick("paid")} />
         <Stat label="MRR (est.)" value={`₹${revenue.toLocaleString("en-IN")}`} accent on={false} onClick={() => pick("paid")} hint="Paid accounts" />
       </div>
@@ -375,7 +399,15 @@ export default function AdminUsers() {
                     ) : (
                       <div className="text-xs text-faint space-y-0.5">
                         <span>{u.associate ? <><span className="mono">{u.associate}</span> <b className="text-amber-700">⚠ not tied — press Fix ID links</b></> : "not registered"}</span>
-                        {acct && <div><button onClick={() => linkId(u)} disabled={!live} className="rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Link ID</button></div>}
+                        {acct && u.accountKind === "pending" && <p className="font-semibold text-amber-700">New from the website: to review</p>}
+                        {acct && u.accountKind === "consumer" && <p className="font-semibold text-good">Consumer: app only, no partner ID</p>}
+                        {acct && (
+                          <div className="flex flex-wrap gap-1.5">
+                            <button onClick={() => makePartner(u)} disabled={!live} className="rounded-md bg-brand px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-40">Make partner ID</button>
+                            {u.accountKind !== "consumer" && <button onClick={() => makeConsumer(u)} disabled={!live} className="rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Consumer</button>}
+                            <button onClick={() => linkId(u)} disabled={!live} className="rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2 disabled:opacity-40">Link ID</button>
+                          </div>
+                        )}
                       </div>
                     )}
                   </td>

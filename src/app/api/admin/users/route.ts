@@ -4,6 +4,7 @@
 //   DELETE → remove a user account
 // Every call must carry the super-admin password in x-admin-key.
 
+import { kindOf } from "@/lib/account-kind";
 import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 import { partnerCall } from "@/lib/partner-link";
 
@@ -39,7 +40,7 @@ type AuthUser = {
   created_at?: string;
   last_sign_in_at?: string | null;
   user_metadata?: Record<string, unknown>;
-  app_metadata?: { provider?: string; providers?: string[] };
+  app_metadata?: { provider?: string; providers?: string[]; account_kind?: string };
 };
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com";
 
@@ -99,6 +100,7 @@ export async function GET(request: Request) {
         planExpires: (pr?.plan_expires_at ?? "").slice(0, 10),
         name: (u.user_metadata?.name as string) || (u.user_metadata?.full_name as string) || pr?.full_name || pp.find((x) => x.is_default)?.name || pp[0]?.name || (u.email ?? "").split("@")[0] || (u.phone ? `+${u.phone}` : "user"),
         associate: (u.user_metadata?.associate_id as string) || "",
+        accountKind: kindOf(u.app_metadata),
         joined: (u.created_at ?? "").slice(0, 10),
         joinedAt: u.created_at ?? "",
         lastSeen: u.last_sign_in_at ? u.last_sign_in_at.slice(0, 10) : "",
