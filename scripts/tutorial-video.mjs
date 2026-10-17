@@ -524,13 +524,18 @@ async function record(t, work) {
   await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
   await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.evaluateOnNewDocument(() => {
-    // the tap ripple, and nothing in the picture that a real owner would not see (the demo account's Reset pill)
-    const css = document.createElement("style");
-    css.textContent = `button[title^="Demo account"]{display:none!important} html{scroll-behavior:auto!important} *{caret-color:#6d5dfc}
-      .__rp{position:fixed;z-index:2147483647;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(109,93,252,.45);border:2px solid rgba(109,93,252,.9);pointer-events:none;animation:__rp .55s ease-out forwards}
-      @keyframes __rp{0%{transform:scale(.35);opacity:1}100%{transform:scale(1.4);opacity:0}}`;
-    document.documentElement.appendChild(css);
+    // the tap ripple, and nothing in the picture that a real owner would not see (the demo account's Reset pill).
+    // documentElement may not exist yet when this runs on a new document (the Reset pill showed in the 17 Oct 2026 recording): wait for it.
     window.__ripple = (x, y) => { const d = document.createElement("div"); d.className = "__rp"; d.style.left = `${x}px`; d.style.top = `${y}px`; document.body.appendChild(d); setTimeout(() => d.remove(), 600); };
+    const inject = () => {
+      const css = document.createElement("style");
+      css.textContent = `button[title^="Demo account"]{display:none!important} html{scroll-behavior:auto!important} *{caret-color:#6d5dfc}
+        .__rp{position:fixed;z-index:2147483647;width:52px;height:52px;margin:-26px 0 0 -26px;border-radius:50%;background:rgba(109,93,252,.45);border:2px solid rgba(109,93,252,.9);pointer-events:none;animation:__rp .55s ease-out forwards}
+        @keyframes __rp{0%{transform:scale(.35);opacity:1}100%{transform:scale(1.4);opacity:0}}`;
+      document.documentElement.appendChild(css);
+    };
+    if (document.documentElement) inject();
+    else new MutationObserver((_m, o) => { if (document.documentElement) { o.disconnect(); inject(); } }).observe(document, { childList: true });
   });
   const u = ui(page, { work, email: LOGIN, uid: user.id });
   const done = [];
