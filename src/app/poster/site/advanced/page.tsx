@@ -470,7 +470,7 @@ export default function AdvancedSitePage() {
               style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
           </div>
           <a href={`/preview/site?k=${PREVIEW_KEY}&shot=1`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink underline underline-offset-2"><ExternalLink className="h-3.5 w-3.5" /> {T("Open it full size", "पूरे size में खोलें")}</a>
-          <p className="text-[11px] text-muted">{T("This is the computer view. On a phone your link still opens your card.", "ये computer वाला view है। Phone पर आपका link अब भी आपका card खोलता है।")}</p>
+          <p className="text-[11px] text-muted">{T("This is the computer view. The same website opens on a phone too.", "ये computer वाला view है। यही website phone पर भी खुलती है।")}</p>
         </section>
 
         {(result.diff?.layout || changes.length > 0) && (
@@ -525,7 +525,7 @@ export default function AdvancedSitePage() {
         <section className="space-y-3 rounded-3xl p-6 text-center text-white shadow-float grad-brand">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20" aria-hidden="true"><Sparkles className="h-7 w-7" /></span>
           <h2 className="text-2xl font-extrabold tracking-tight">{on ? T("Your advanced website is live", "आपकी advanced website live है") : T("Your basic website is back", "आपकी basic website वापस आ गई")}</h2>
-          <p className="text-sm text-white/90">{on ? T("People on a computer now see the new design. On a phone they still get your card.", "Computer पर लोग अब नया design देखेंगे। Phone पर उन्हें अब भी आपका card मिलेगा।") : T("Your advanced design is saved — you can turn it on again any time.", "आपका advanced design save है — जब चाहें फिर चालू करें।")}</p>
+          <p className="text-sm text-white/90">{on ? T("Everyone now sees the new design, on a computer and on a phone. Your card is still there with ?view=card.", "अब सब लोग नया design देखेंगे — computer पर भी और phone पर भी। आपका card ?view=card से खुलता है।") : T("Your advanced design is saved — you can turn it on again any time.", "आपका advanced design save है — जब चाहें फिर चालू करें।")}</p>
           <a href={`https://${liveLink}?view=site`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
         </section>
         <div className={`${box} space-y-2`}>
