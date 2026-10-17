@@ -10,6 +10,7 @@ import { ShareLinks } from "@/components/poster/share-links";
 import { api, isLoggedIn, currentProfileId, setCurrentProfileId, captureRef, PERSONAS, type Profile, type Poster, type Quota } from "@/lib/poster-client";
 import { PosterCard } from "@/components/poster/poster-card";
 import { PremiumCard } from "@/components/poster/premium-lock";
+import { PremiumUpgrade } from "@/components/poster/premium-upgrade";
 import { PremiumLine } from "@/components/poster/premium-line";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
 import { Guide } from "@/components/poster/guide";
@@ -178,6 +179,7 @@ export default function TodayPage() {
       </Link>
       {/* Premium, visible from the first day (owner's call, 3 Oct 2026: "subscription ka button kahin nahi tha"). */}
       {quota?.plan === "free" && <PremiumCard compact />}
+      <PremiumUpgrade />
       {/* Connections: WhatsApp, Facebook, Instagram, Google — one place, always one tap from Home. */}
       <Link href="/poster/connect" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
         <Link2 className="h-4 w-4 shrink-0 text-brand" />
