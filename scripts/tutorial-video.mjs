@@ -128,8 +128,9 @@ const TUTORIALS = {
     title: "Visiting card और Website कैसे बनाएँ",
     subtitle: "Card + website, एक साथ · Standard और Premium",
     scenes: (u) => {
-      const page = u.page;
-      const lastOf = async (re) => page.evaluateHandle((src) => { const r = new RegExp(src); const bs = [...document.querySelectorAll("main button")].filter((b) => r.test((b.innerText || "").trim())); return bs[bs.length - 1] ?? null; }, re.source);
+      // scenes(null) is also called once just to read the narration, before there is a browser: the page is only touched when a scene runs.
+      const P = () => u.page;
+      const lastOf = async (re) => P().evaluateHandle((src) => { const r = new RegExp(src); const bs = [...document.querySelectorAll("main button")].filter((b) => r.test((b.innerText || "").trim())); return bs[bs.length - 1] ?? null; }, re.source);
       const setText = async (sel, text) => { await u.type(sel, text); };
       return [
         { id: "intro", say: "नमस्ते! आज देखते हैं Shubhora पर अपना digital visiting card और website कैसे बनाएँ। दोनों एक साथ बनते हैं, एक ही link पर।",
@@ -151,7 +152,7 @@ const TUTORIALS = {
         { id: "business", say: "अपने business का नाम लिखिए। काम अपने आप पहचान लिया जाता है। फिर अपना link चुनिए, business के नाम से या अपने नाम से।",
           act: async () => {
             await pause(600); await setText('input[placeholder="e.g. Sharma Sweets"]', "Sharma Medical Store"); await pause(1800);
-            if (!(await page.$eval('input[role="combobox"]', (el) => el.value))) { await u.tap('input[role="combobox"]'); await page.keyboard.type("medical", { delay: 70 }); await pause(900); await u.tap('[role="option"]'); }
+            if (!(await P().$eval('input[role="combobox"]', (el) => el.value))) { await u.tap('input[role="combobox"]'); await P().keyboard.type("medical", { delay: 70 }); await pause(900); await u.tap('[role="option"]'); }
             await pause(1200); await u.scrollBy(300, 1200); await u.tapThen("Next →", "Tap what is true", { timeout: 25000 });
           } },
         { id: "details", say: "जो चीज़ें आपके यहाँ सच हैं, उन पर tap कीजिए। आपके पास क्या है, आप में क्या ख़ास है, और कौन आपके ग्राहक हैं।",
