@@ -94,16 +94,15 @@ function SignupInner() {
 
   useEffect(() => {
     const fromLink = (params.get("by") || params.get("ref") || "").trim().slice(0, 40);
-    let stored = "";
-    try { stored = localStorage.getItem(INTRODUCER_KEY) || ""; } catch { /* private mode */ }
+    // A sponsor comes ONLY from the link that carries it (?by=… / ?ref=…), never from this browser's memory: an older visit's sponsor is dropped.
+    try { localStorage.removeItem(INTRODUCER_KEY); } catch { /* private mode */ }
     const legParam = params.get("leg");
-    let storedLeg = "";
-    try { storedLeg = localStorage.getItem(INTRODUCER_LEG_KEY) || ""; } catch { /* private mode */ }
-    const leg = legParam === "L" || legParam === "R" ? legParam : fromLink ? "" : (storedLeg === "L" || storedLeg === "R" ? storedLeg : "");
+    try { if (!fromLink) localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* private mode */ }
+    const leg = fromLink && (legParam === "L" || legParam === "R") ? legParam : "";
     legRef.current = leg as "L" | "R" | "";
     try { if (leg) localStorage.setItem(INTRODUCER_LEG_KEY, leg); else if (fromLink) localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
     // No default sponsor any more: nobody is placed under anyone unless a join link (or an earlier visit through one) says so.
-    const handle = consumerLink ? "" : fromLink || stored;
+    const handle = consumerLink ? "" : fromLink;
     handleRef.current = handle;
     // eslint-disable-next-line react-hooks/set-state-in-effect
     setSponsored(!!handle);
@@ -112,7 +111,7 @@ function SignupInner() {
       try {
         const r = await fetch(`/api/introducer?by=${encodeURIComponent(handle)}`, { cache: "no-store" });
         const j = (await r.json()) as { by?: string | null };
-        if (j.by) { setBy(j.by); try { localStorage.setItem(INTRODUCER_KEY, j.by); } catch { /* ignore */ } }
+        if (j.by) setBy(j.by);
       } catch { /* offline: no chip, the link's handle is still sent with the sign-up */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps

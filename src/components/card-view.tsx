@@ -1,7 +1,6 @@
 "use client";
 import { initials } from "@/lib/initials";
 import { SITE_URL } from "@/lib/site-url";
-import { INTRODUCER_KEY } from "@/lib/username";
 
 import { createContext, useContext, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -299,10 +298,8 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
   useEffect(() => { if (!(card.username ?? "").startsWith("__")) trackView(card.username); }, [card.username]);
   // Whose card was this? Remembered on this browser (first card wins), so a person who later opens the sign-up on
   // their own — not through the button — is still introduced by the owner of the card they saw.
-  useEffect(() => {
-    if (!joinHandle || brand) return;
-    try { if (!localStorage.getItem(INTRODUCER_KEY)) localStorage.setItem(INTRODUCER_KEY, joinHandle); } catch { /* private mode */ }
-  }, [joinHandle, brand]);
+  // (A card used to remember its owner as the sponsor of whoever signed up later on this browser. Not any more: a sponsor comes only from a join link
+  // that carries it — owner, 17 Oct 2026.)
 
   // #slug deep-links a block's "Know More" button (or a shared URL) straight to
   // that page — e.g. a Home CTA linking to "#gallery" for real photos/proof.

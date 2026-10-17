@@ -10,7 +10,6 @@
 // fonts, hero layout, corners — comes from card.site.style (src/lib/site-style.ts), with the card's colour and
 // look as the fallback, so a website that never chose a style still wears its brand colour.
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { INTRODUCER_KEY } from "@/lib/username";
 import { X, Download, Check, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardLink, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
@@ -311,10 +310,8 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
   // The owner's own preview ("__preview") is never counted as a visit.
   useEffect(() => { if (!(card.username ?? "").startsWith("__")) trackView(card.username); }, [card.username]);
-  useEffect(() => {
-    if (!joinHandle || brand) return;
-    try { if (!localStorage.getItem(INTRODUCER_KEY)) localStorage.setItem(INTRODUCER_KEY, joinHandle); } catch { /* private mode */ }
-  }, [joinHandle, brand]);
+  // (A card used to remember its owner as the sponsor of whoever signed up later on this browser. Not any more: a sponsor comes only from a join link
+  // that carries it — owner, 17 Oct 2026.)
   useEffect(() => {
     const apply = () => { const s = window.location.hash.slice(1); if (s && pages.some((p) => p.slug === s)) setActive(s); };
     const back = (e: PopStateEvent) => { const s = (e.state as { slug?: string } | null)?.slug; setActive(s && pages.some((p) => p.slug === s) ? s : initialPage ?? pages[0]?.slug ?? "home"); };
