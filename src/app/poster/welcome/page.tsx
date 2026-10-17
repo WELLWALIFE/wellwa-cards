@@ -8,11 +8,15 @@ import { PartyPopper, ArrowRight, Clock } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
 import { PROFILE_STEPS } from "@/components/poster/profile-steps";
+import { usePlan } from "@/lib/plan";
 
 export default function WelcomePage() {
   const { lang } = useT();
   const hi = lang === "hi";
   const [name, setName] = useState("");
+  const { plan, loading: planLoading } = usePlan();
+  // A paid member (Standard / Premium) makes the website and the card, not only the free card (owner, 17 Oct 2026).
+  const paid = !planLoading && plan !== "free";
   useEffect(() => {
     getBrowserSupabase()?.auth.getUser().then(({ data }) => {
       const m = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string };
@@ -25,11 +29,11 @@ export default function WelcomePage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">{hi ? `बधाई हो${name ? `, ${name}` : ""}!` : `Congratulations${name ? `, ${name}` : ""}!`}</h1>
         <p className="text-base font-semibold">{hi ? "आपका registration हो गया है।" : "Your registration is done."}</p>
-        <p className="text-sm text-muted">{hi ? "अब 5 मिनट में अपना FREE digital business card बनाएँ।" : "Now make your FREE digital business card in 5 minutes."}</p>
+        <p className="text-sm text-muted">{paid ? (hi ? "अब 5 मिनट में अपनी website और digital business card बनाएँ।" : "Now make your website and digital business card in 5 minutes.") : (hi ? "अब 5 मिनट में अपना FREE digital business card बनाएँ।" : "Now make your FREE digital business card in 5 minutes.")}</p>
       </div>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {hi ? "Card अभी बनाएँ" : "Make my card now"} <ArrowRight className="h-5 w-5" />
+          {paid ? (hi ? "Website और card अभी बनाएँ" : "Make my website & card now") : (hi ? "Card अभी बनाएँ" : "Make my card now")} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}
