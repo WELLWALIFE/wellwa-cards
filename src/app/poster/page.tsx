@@ -46,9 +46,38 @@ function shareCaption(today: TodayResp | null, profile: Profile | null): string 
   return out;
 }
 
+
+type Kind = "loading" | "free" | "standard" | "premium";
+/** What the signed-in person has: nothing paid (free), a running Standard plan, or Premium. A visitor who is not signed in is "free". */
+function usePlanKind(): Kind {
+  const { plan, loading } = usePlan();
+  const [r, setR] = useState<{ premium?: boolean; state?: string } | null>(null);
+  useEffect(() => { api<{ premium?: boolean; state?: string }>("/api/poster/plan").then((x) => setR(x.ok ? x.data : {})).catch(() => setR({})); }, []);
+  if (loading || r === null) return "loading";
+  if (r.premium) return "premium";
+  return plan !== "free" || r.state === "active" || r.state === "grace" ? "standard" : "free";
+}
+
+/** The first screen for someone who has not made anything yet: what they are about to make depends on what they have. */
+function firstRun(kind: Kind, en: boolean) {
+  if (kind === "standard" || kind === "premium") {
+    const premium = kind === "premium";
+    return {
+      title: en ? "Make your website and digital card\nin 5 minutes." : "अपनी website और digital card\n5 मिनट में बनाएँ।",
+      sub: en ? "Answer a few simple questions. We make your website and your card for you, together, on one link." : "कुछ आसान सवालों के जवाब दें। आपकी website और card हम साथ में, एक ही link पर बना देंगे।",
+      bullets: premium
+        ? (en ? ["Your website and digital card on one link", "Then your Premium website: many pages, made for your business, with Google SEO", "A new poster every day, ready to share"] : ["आपकी website और digital card — एक ही link पर", "फिर आपकी Premium website: कई pages, आपके business के लिए, Google SEO के साथ", "रोज़ नया poster, share करने के लिए तैयार"])
+        : (en ? ["Your website (up to 5 pages) and digital card on one link", "A new poster every day, ready to share", "Add products and photos afterwards, whenever you like"] : ["आपकी website (5 pages तक) और digital card — एक ही link पर", "रोज़ नया poster, share करने के लिए तैयार", "products और photos बाद में, जब चाहें जोड़ें"]),
+      button: en ? "Make my website & card" : "मेरी website और card बनाएँ",
+      note: premium ? (en ? "Your Premium website is one tap away once the first one is made." : "पहली website बनते ही आपकी Premium website बस एक tap दूर है।") : "",
+    };
+  }
+  return null;
+}
+
 export default function TodayPage() {
   const router = useRouter();
-  const { plan: myPlan, loading: planLoading } = usePlan();
+  const kind = usePlanKind();
   const [phase, setPhase] = useState<"loading" | "welcome" | "noprofile" | "ready" | "offline">("loading");
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -106,12 +135,7 @@ export default function TodayPage() {
     boot();
   }, [boot]);
 
-  // Signed in, nothing made yet, and already on a paid plan (Standard / Premium): straight to making the website and card, not the
-  // free-card page with plan boxes (owner, 17 Oct 2026: the page must follow the plan). Free members keep the page; a profile means Home.
-  const goSetup = phase === "noprofile" && !planLoading && myPlan !== "free";
-  useEffect(() => { if (goSetup) router.replace("/poster/onboard"); }, [goSetup, router]);
-  if (goSetup) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
-  if (phase === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  if (phase === "loading" || (phase === "noprofile" && kind === "loading")) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (phase === "offline") return (
     <div className="py-20 text-center space-y-3">
       <WifiOff className="h-8 w-8 text-muted mx-auto" />
@@ -122,24 +146,24 @@ export default function TodayPage() {
   );
 
   if (phase === "welcome" || phase === "noprofile") {
+    const fr = firstRun(kind, lang === "en");
     return (
       <div className="py-8 space-y-6">
         <div className="rounded-3xl overflow-hidden grad-brand p-6 text-white">
           <p className="text-xs font-semibold tracking-widest opacity-80">SHUBHORA</p>
-          <h1 className="text-3xl font-bold mt-2 leading-tight whitespace-pre-line">{t.heroTitle}</h1>
-          <p className="mt-3 text-sm opacity-90">{t.heroSub}</p>
+          <h1 className="text-3xl font-bold mt-2 leading-tight whitespace-pre-line">{fr?.title ?? t.heroTitle}</h1>
+          <p className="mt-3 text-sm opacity-90">{fr?.sub ?? t.heroSub}</p>
         </div>
         <ul className="space-y-2 text-sm">
-          <li className="flex gap-2"><span>✅</span><span>{t.f1}</span></li>
-          <li className="flex gap-2"><span>✅</span><span>{t.f2}</span></li>
-          <li className="flex gap-2"><span>✅</span><span>{t.f3}</span></li>
+          {(fr?.bullets ?? [t.f1, t.f2, t.f3]).map((b) => <li key={b} className="flex gap-2"><span>✅</span><span>{b}</span></li>)}
         </ul>
         {/* Someone not signed in has no account yet: Sign up first (it opens the Welcome screen and the set-up). Log in is the line below. */}
         <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="block w-full text-center rounded-xl grad-brand px-4 py-3.5 text-base font-semibold text-white">
-          {phase === "welcome" ? t.startFree : t.makeProfile}
+          {phase === "welcome" ? t.startFree : fr?.button ?? t.makeProfile}
         </Link>
+        {fr?.note && <p className="text-center text-xs text-muted">{fr.note}</p>}
         {/* Someone who already pays does not see the plans again (owner, 17 Oct 2026: a paid member saw "Start with Standard"). */}
-        {!planLoading && myPlan === "free" && (
+        {kind === "free" && (
           <>
         <p className="text-center text-xs text-muted">{lang === "en" ? "Card only. Want a website, a poster every day and a WhatsApp AI? Choose a plan below." : "सिर्फ़ card। Website, रोज़ का poster और WhatsApp AI चाहिए? नीचे plan चुनें।"}</p>
         {/* Or start with a paid plan (owner, 16 Oct 2026): after the payment the card set-up opens. */}
