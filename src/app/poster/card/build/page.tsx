@@ -339,8 +339,11 @@ export default function BuildCard() {
     const look = looks.find((l) => l.key === k);
     if (!look || !card) return;
     const next = applyLook(card, look);
-    writeJson(PREVIEW_KEY, { ...next, username: "__preview" });
-    window.open(liveUser && username === liveUser && next.site?.style?.blueprint === shown?.site?.style?.blueprint ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${PREVIEW_KEY}`, "_blank", "noopener");
+    // Each design opens under its OWN key (owner, 18 Oct 2026: six tabs opened to compare all turned into the last one, because they shared one
+    // preview key and the page follows its key live). A tab is a fixed picture of that design, so the six can sit side by side.
+    const key = `vcard-look-${String(k).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`.slice(0, 40);
+    writeJson(key, { ...next, username: "__preview" });
+    window.open(liveUser && username === liveUser && next.site?.style?.blueprint === shown?.site?.style?.blueprint ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${key}`, "_blank", "noopener");
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
