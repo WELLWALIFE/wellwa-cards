@@ -149,10 +149,20 @@ const TUTORIALS = {
         { id: "you", say: "पहला step, आपके बारे में। यहाँ आपका नाम, mobile और WhatsApp number, email और आपकी photo आती है। सब भरकर Next दबाइए।",
           between: async () => { await u.login(); await u.goto(`${SITE}/poster/onboard?step=you`); await u.waitText("About you", 25000); },
           act: async () => { await u.cue(0); await pause(1200); await u.cue(1); await u.scrollBy(500, 1500); await pause(600); await u.cue(2); await u.hold(2); await u.tapThen("Next →", "Who is this website for?", { timeout: 25000 }); } },
-        { id: "promote", say: "अब चुनिए कि ये किसके लिए है। अपनी दुकान या काम के लिए, My own business चुनिए।",
-          act: async () => { await u.cue(0); await pause(800); await u.cue(1); await u.hold(1, 0.55); await u.tapText("My own business or work"); await pause(700); await u.tapThen("Next →", "Do you have a website?", { timeout: 25000 }); } },
-        { id: "site", say: "अगर पहले से website है, तो उसका link डालिए, उसी से details आ जाएँगी। नहीं है, तो आख़िरी option चुनिए, यानी website नहीं है।",
-          act: async () => { await u.cue(0); await pause(800); await u.cue(1); await u.hold(1, 0.7); await u.tap(async () => (await lastOf(/^(🏪|🤝|🎨)/)).asElement()); await pause(900); await u.tapThen("Next →", "Just two things", { timeout: 25000 }); } },
+        { id: "promote", say: "अब चुनिए कि ये website किसके लिए है। पहला, My own business or work: अपनी दुकान, clinic या काम की website। दूसरा, Selling Shubhora as a partner: जब आप Shubhora बेचकर partner income कमाना चाहते हैं। और तीसरा, Both: यानी अपना business भी, और Shubhora का partner काम भी। हमें अपनी दुकान की website बनानी है, इसलिए पहला option चुनिए।",
+          act: async () => {
+            await u.cue(0); await pause(600); await u.cue(1); await pause(500);
+            await u.cue(2); await u.scrollBy(240, 700); await u.cue(3); await u.scrollBy(240, 700);
+            await u.cue(4); await u.scrollBy(-480, 900); await u.hold(4, 0.75); await u.tapText("My own business or work"); await pause(700);
+            await u.tapThen("Next →", "Do you have a website?", { timeout: 25000 });
+          } },
+        { id: "site", say: "अब बताइए कि क्या आपकी पहले से website है। पहला, I have my own website: तो उसका link डालिए, और नाम, logo, photos और products वहीं से आ जाएँगे। दूसरा, I sell a brand's products: अगर आप किसी brand के dealer हैं, तो सिर्फ़ उस brand के products और दाम लिए जाते हैं। और तीसरा, I have no website: तो कोई example दे सकते हैं, या खाली छोड़ सकते हैं। हमारे पास website नहीं है, इसलिए आख़िरी option चुनिए।",
+          act: async () => {
+            await u.cue(0); await pause(600); await u.cue(1); await pause(500);
+            await u.cue(2); await u.scrollBy(220, 700); await u.cue(3); await u.scrollBy(220, 700);
+            await u.cue(4); await u.hold(4, 0.7); await u.tap(async () => (await lastOf(/^(🏪|🤝|🎨)/)).asElement()); await pause(900);
+            await u.tapThen("Next →", "Just two things", { timeout: 25000 });
+          } },
         { id: "business", say: "अपने business का नाम लिखिए। काम अपने आप पहचान लिया जाता है। फिर अपना link चुनिए, business के नाम से या अपने नाम से।",
           act: async () => {
             await u.cue(0); await pause(400); await setText('input[placeholder="e.g. Sharma Sweets"]', "Sharma Medical Store");
@@ -560,6 +570,27 @@ async function record(t, work) {
     if (document.documentElement) inject();
     else new MutationObserver((_m, o) => { if (document.documentElement) { o.disconnect(); inject(); } }).observe(document, { childList: true });
   });
+  // The demo account's own name, mobile and email must not show in a public video (owner, 18 Oct 2026): every place they appear on a
+  // page is shown as the sample owner of the video (Rajesh Sharma), the same one typed in the sign-up scene.
+  await page.evaluateOnNewDocument(() => {
+    const subs = [
+      [/tech@gmail\.com/gi, "rajesh.sharma@gmail.com"],
+      [/\+?91[\s-]?9000001212|9000001212/g, (m) => (/^\+?91/.test(m) ? m.replace(/9000001212/, "9811122233") : "9811122233")],
+      [/90000[\s-]?01212/g, "98111 22233"],
+      [/hariom/gi, (m) => (m === m.toUpperCase() ? "RAJESH" : m[0] === m[0].toUpperCase() ? "Rajesh" : "rajesh")],
+    ];
+    const fix = (t) => { let o = t; for (const [re, to] of subs) o = o.replace(re, to); return o.trim() === "HA" ? o.replace("HA", "RS") : o; };
+    const run = () => {
+      if (!document.body) return;
+      const w = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+      for (let n = w.nextNode(); n; n = w.nextNode()) { const v = n.nodeValue; if (v && v.trim()) { const f = fix(v); if (f !== v) n.nodeValue = f; } }
+      for (const el of document.querySelectorAll("input, textarea")) { const v = el.value; if (v) { const f = fix(v); if (f !== v) el.value = f; } }
+    };
+    let queued = false;
+    const later = () => { if (queued) return; queued = true; requestAnimationFrame(() => { queued = false; run(); }); };
+    new MutationObserver(later).observe(document, { childList: true, subtree: true, characterData: true });
+    setInterval(run, 400);
+  });
   const u = ui(page, { work, email: LOGIN, uid: user.id });
   const done = [];
   const list = t.scenes(u);
@@ -670,7 +701,7 @@ async function compose(work, outDir) {
   for (const s of scenes) {
     const p = probe(s.clip); s.dur = p.seconds; s.start = at; at += p.seconds; s.px = p;
     for (const [k, q] of (s.parts ?? []).entries()) if (/shubhora/i.test(q.text)) {
-      const t = await tts(q.text); q.wav = t.file;
+      const t = await tts(q.text); q.wav = t.file; q.sec = t.seconds;
       const slot = (s.cues[k + 1] ?? s.dur) - s.cues[k];
       if (t.seconds > slot - 0.05) log(`!! "${q.text.slice(0, 30)}…" is now ${t.seconds.toFixed(1)} s, its slot is ${slot.toFixed(1)} s: it may run into the next sentence`);
     }
@@ -699,18 +730,40 @@ async function compose(work, outDir) {
     // Owner, 18 Oct 2026: no phone frame, no captions, no pills — the recording fills the whole picture, with the voice.
     const W = 1080, H = 1920;
     const out = path.join(outDir, `${slug}-phone.mp4`);
-    log(`phone: ${W}x${H}, full screen, ${total.toFixed(1)} s → ${out}`);
-    // One clip at a time, then joined: a single 20-input filter held every clip's frames in memory at once and ran the server out of it (18 Oct 2026).
-    const parts = [];
+    log(`phone: ${W}x${H}, full screen → ${out}`);
+    // One clip at a time (a single many-input ffmpeg graph ran the server out of memory). Stretches with no voice that last a while
+    // (the AI working, a page loading) are played fast (owner, 18 Oct 2026: "jaha sirf processing ho rahi, voice nahi, fast forward kar do").
+    const SR = 24000, bytes = (sec) => Math.round(sec * SR) * 2, FAST_MIN = 1.4;
+    const segFiles = [], audioBits = []; let outSec = 0, sped = 0;
     for (const [i, x] of scenes.entries()) {
-      const part = path.join(work, `full-${String(i).padStart(2, "0")}.mp4`);
-      ff(["-i", x.clip, "-vf", `scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1`, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", part], `clip ${x.id}`);
-      parts.push(part);
+      const tag = String(i).padStart(2, "0");
+      const full = path.join(work, `full-${tag}.mp4`);
+      ff(["-i", x.clip, "-vf", `scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1`, "-an", "-c:v", "libx264", "-preset", "veryfast", "-crf", "14", "-threads", "1", "-pix_fmt", "yuv420p", full], `clip ${x.id}`);
+      const spans = (x.parts ?? []).map((q, k) => [Math.max(0, x.cues[k] - 0.15), Math.min(x.dur, x.cues[k] + (q.sec ?? 0) + 0.3)]).sort((m, n) => m[0] - n[0]);
+      const speech = []; for (const sp of spans) { const l = speech[speech.length - 1]; if (l && sp[0] <= l[1]) l[1] = Math.max(l[1], sp[1]); else speech.push([...sp]); }
+      const segs = []; let t = 0;
+      if (!speech.length) segs.push({ from: 0, to: x.dur, speed: 1 });
+      else {
+        const gap = (m, n) => { if (n - m <= 0.05) return; const len = n - m; segs.push({ from: m, to: n, speed: len >= FAST_MIN ? Math.min(60, Math.max(5, len / 2.5)) : 1 }); };
+        for (const [m, n] of speech) { gap(t, m); segs.push({ from: m, to: n, speed: 1 }); t = n; }
+        gap(t, x.dur);
+      }
+      for (const [j, g] of segs.entries()) {
+        const seg = path.join(work, `seg-${tag}-${String(j).padStart(2, "0")}.mp4`);
+        ff(["-ss", g.from.toFixed(3), "-t", (g.to - g.from).toFixed(3), "-i", full, "-vf", g.speed > 1 ? `setpts=PTS/${g.speed.toFixed(3)},fps=30` : "fps=30", "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", seg], `cut ${x.id}`);
+        segFiles.push(seg);
+        const len = (g.to - g.from) / g.speed; outSec += len; if (g.speed > 1) sped += g.to - g.from;
+        audioBits.push(g.speed > 1 ? Buffer.alloc(bytes(len)) : pcm[i].subarray(bytes(g.from), bytes(g.to)));
+      }
+      fs.rmSync(full, { force: true });
     }
-    const list = path.join(work, "full-list.txt"); fs.writeFileSync(list, parts.map((x) => `file '${x}'`).join("\n"));
+    log(`phone: ${sped.toFixed(0)} s of silent waiting played fast; ${total.toFixed(0)} s → ${outSec.toFixed(0)} s`);
+    const list = path.join(work, "full-list.txt"); fs.writeFileSync(list, segFiles.map((x) => `file '${x}'`).join("\n"));
     const video = path.join(work, "full-video.mp4");
     ff(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", video], "join");
-    ff(["-i", video, "-i", audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], "phone");
+    const body2 = Buffer.concat(audioBits), audio2 = path.join(work, "voice-full.wav"); fs.writeFileSync(audio2, Buffer.concat([wavHeader(body2.length), body2]));
+    ff(["-i", video, "-i", audio2, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], "phone");
+    for (const f of segFiles) fs.rmSync(f, { force: true });
     fs.writeFileSync(path.join(outDir, `${slug}.json`), JSON.stringify({ title: meta.title, seconds: Math.round(total), made: new Date().toISOString() }, null, 1));
     return [out];
   }
