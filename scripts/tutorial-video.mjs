@@ -698,9 +698,18 @@ async function compose(work, outDir) {
     // Owner, 18 Oct 2026: no phone frame, no captions, no pills — the recording fills the whole picture, with the voice.
     const W = 1080, H = Math.round((W * scenes[0].px.h) / scenes[0].px.w / 2) * 2, n = scenes.length;
     const out = path.join(outDir, `${slug}-phone.mp4`);
-    const f = scenes.map((_, i) => `[${i}:v]scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1[c${i}]`).join(";") + ";" + scenes.map((_, i) => `[c${i}]`).join("") + `concat=n=${n}:v=1:a=0[v]`;
     log(`phone: ${W}x${H}, full screen, ${total.toFixed(1)} s → ${out}`);
-    ff([...scenes.flatMap((x) => ["-i", x.clip]), "-i", audio, "-filter_complex", f, "-map", "[v]", "-map", `${n}:a`, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], "phone");
+    // One clip at a time, then joined: a single 20-input filter held every clip's frames in memory at once and ran the server out of it (18 Oct 2026).
+    const parts = [];
+    for (const [i, x] of scenes.entries()) {
+      const part = path.join(work, `full-${String(i).padStart(2, "0")}.mp4`);
+      ff(["-i", x.clip, "-vf", `scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1`, "-an", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-threads", "1", "-pix_fmt", "yuv420p", part], `clip ${x.id}`);
+      parts.push(part);
+    }
+    const list = path.join(work, "full-list.txt"); fs.writeFileSync(list, parts.map((x) => `file '${x}'`).join("\n"));
+    const video = path.join(work, "full-video.mp4");
+    ff(["-f", "concat", "-safe", "0", "-i", list, "-c", "copy", video], "join");
+    ff(["-i", video, "-i", audio, "-map", "0:v", "-map", "1:a", "-c:v", "copy", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], "phone");
     fs.writeFileSync(path.join(outDir, `${slug}.json`), JSON.stringify({ title: meta.title, seconds: Math.round(total), made: new Date().toISOString() }, null, 1));
     return [out];
   }
