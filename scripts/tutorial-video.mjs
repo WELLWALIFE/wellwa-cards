@@ -304,11 +304,13 @@ async function tts(text) {
   if (!fs.existsSync(file)) {
     if (!GEMINI) throw new Error("GEMINI_API_KEY missing");
     let b64 = "", why = "";
-    for (let i = 0; i < 4 && !b64; i++) {
+    // A few short lines come back as "OTHER" with the long style prefix: retry with a shorter one, then with none.
+    const prefixes = [STYLE, STYLE, STYLE && "Say this in a warm, friendly Hindi voice: ", STYLE && "Say warmly: ", ""];
+    for (let i = 0; i < prefixes.length && !b64; i++) {
       if (i) await pause(1500);
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent`, {
         method: "POST", headers: { "x-goog-api-key": GEMINI, "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text: STYLE + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: prefixes[i] + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
         signal: AbortSignal.timeout(90000),
       }).catch((e) => ({ json: async () => ({ error: { message: e.message } }) }));
       const d = await r.json();
