@@ -313,10 +313,10 @@ function SignupInner() {
 
             {sb && !busy && (check.state === "checking" || !agree || taken.mobile || taken.email) && (
               <p className="text-xs text-muted">
-                {taken.mobile ? "Create is off: this mobile number already has an account. Log in instead, or use another number."
-                  : taken.email ? "Create is off: this email already has an account. Log in instead, or use another email."
-                  : check.state === "checking" ? "Create is off for a moment: checking that your username is free…"
-                  : "Create is off: tick the box above to accept the Terms and Privacy Policy" + (sponsored ? " and Partner Agreement." : ".")}
+                {taken.mobile ? "This mobile number already has an account. Log in instead, or use another number."
+                  : taken.email ? "This email already has an account. Log in instead, or use another email."
+                  : check.state === "checking" ? "Checking that your username is free…"
+                  : "Tick the box above to continue: accept the Terms and Privacy Policy" + (sponsored ? " and Partner Agreement." : ".")}
               </p>
             )}
             {sb ? (

@@ -76,7 +76,7 @@ export default function LoginPage() {
             <label className="block">
               <span className="text-sm font-medium mb-1.5 block">Username, mobile number or email</span>
               <input type="text" inputMode="email" autoComplete="username" autoCapitalize="none" autoCorrect="off" spellCheck={false} required value={ident} onChange={(e) => setIdent(e.target.value)}
-                placeholder="sharma_kirana · 98765 43210 · you@example.com" className={field} />
+                placeholder="Username, mobile or email" className={field} />
             </label>
             <label className="block">
               <span className="text-sm font-medium mb-1.5 block">Password</span>
@@ -110,9 +110,7 @@ export default function LoginPage() {
 
           {sb && (
             <>
-              <div className="my-5 flex items-center gap-3 text-xs text-faint"><span className="h-px flex-1 bg-border" />or<span className="h-px flex-1 bg-border" /></div>
-              <GoogleButton label="Log in with Google" divider={false} />
-              <p className="mt-2 text-center text-[11px] text-faint">Only for accounts already on Shubhora. New here? <Link href="/signup" className="underline">Create your account</Link> with email.</p>
+              <div className="mt-5"><GoogleButton label="Log in with Google" divider={false} /></div>
             </>
           )}
         </form>
