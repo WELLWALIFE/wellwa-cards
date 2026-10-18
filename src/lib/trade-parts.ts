@@ -8,6 +8,8 @@
 // Isomorphic: no 'use client', no 'server-only'.
 
 /** `label` / `labelHi`: how the business is NAMED when only this part is ticked (default: `en` / `hi`). */
+import { PARTS_ALL, TICKS_ALL } from "@/lib/trade-data/parts-all";
+
 export type TradePart = { key: string; en: string; hi: string; label?: string; labelHi?: string };
 export const PARTS_KEY = "parts";
 
@@ -20,6 +22,7 @@ export const TRADE_PARTS: Record<string, TradePart[]> = {
     { key: "make", en: "We make them", hi: "हम बनाते हैं", label: "Cleaning products manufacturer", labelHi: "क्लीनिंग प्रोडक्ट्स निर्माता" },
     { key: "supply", en: "We sell / supply them", hi: "हम बेचते / सप्लाई करते हैं", label: "Cleaning products supplier", labelHi: "क्लीनिंग प्रोडक्ट्स सप्लायर" },
   ],
+  ...PARTS_ALL,   // the other combined trades (trade-data/parts-a … parts-d)
 };
 
 /** Which of a category's "what you do" ticks belong to which part (a tick named in no part belongs to all). */
@@ -28,6 +31,7 @@ export const PART_TICKS: Record<string, Record<string, string[]>> = {
     pest: ["Pest control", "Termite", "Sanitization"],
     cleaning: ["Deep cleaning", "Sofa / carpet", "Water tank", "Sanitization", "Office cleaning"],
   },
+  ...TICKS_ALL,
 };
 
 export const partsOf = (categoryKey: string | null | undefined): TradePart[] => (categoryKey ? TRADE_PARTS[categoryKey] ?? [] : []);

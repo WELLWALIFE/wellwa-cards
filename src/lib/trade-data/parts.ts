@@ -1,6 +1,7 @@
 // The seeds of ONE part of a combined category (see lib/trade-parts.ts), keyed "category:part". Same rules as types.ts: plain Indian
 // English, natural Hindi, no numbers, no prices, no guarantees. Used when the owner ticks only that part.
-import type { TradeData } from "./types";
+import type { TradeData, TradeLine } from "./types";
+import { SEEDS_ALL } from "./parts-all";
 
 export const PART_DATA: Record<string, TradeData> = {
   "cleaning:pest": {
@@ -177,10 +178,46 @@ export const PART_DATA: Record<string, TradeData> = {
   },
 };
 
-/** The seeds for the owner's chosen parts of a category: one part → its data; several (not all) → the parts joined. */
-export function partData(categoryKey: string, partKeys: string[]): TradeData | null {
+/** The short seeds of a part (services + what to explain + words that signal the OTHER parts); the rest of its data is the trade's shared
+ *  data with the lines that talk about other parts dropped (see fromSeeds). Written per category in parts-a … parts-d. */
+export type PartSeed = { explain: string[]; services: TradeLine[]; avoid: string[] };
+const SEEDS: Record<string, PartSeed> = SEEDS_ALL;
+
+const NEUTRAL_STEPS: TradeLine[] = [
+  { en: "Tell us what you need", hi: "ज़रूरत बताएँ", desc: "Share your need and your area on WhatsApp.", descHi: "WhatsApp पर अपनी ज़रूरत और इलाक़ा बताएँ।" },
+  { en: "Get the details", hi: "जानकारी पाएँ", desc: "We reply with the options, the rate and the time.", descHi: "हम विकल्प, रेट और समय बताते हैं।" },
+  { en: "Go ahead", hi: "आगे बढ़ें", desc: "Confirm, and we take it from there.", descHi: "हाँ कहें, आगे का काम हम संभालते हैं।" },
+];
+
+const uniqBy = <T,>(xs: T[], key: (x: T) => string, max: number) => { const seen = new Set<string>(); return xs.filter((x) => { const k = key(x).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, max); };
+
+/** A part's data from its seeds and the trade's shared data. A word is "avoided" only when EVERY chosen part avoids it, i.e. it can only
+ *  belong to a part that was not chosen; shared lines naming such a word are dropped (never below 3 lines: then the shared lines stay). */
+function fromSeeds(categoryKey: string, partKeys: string[], base: TradeData | null): TradeData | null {
+  const seeds = partKeys.map((k) => SEEDS[`${categoryKey}:${k}`]).filter((x): x is PartSeed => !!x);
+  if (!seeds.length || !base) return null;
+  const own = seeds.flatMap((s) => [...s.explain, ...s.services.flatMap((x) => [x.en, x.desc])]).join(" ").toLowerCase();
+  // a word the part's own services use is never "another part" (a geyser is fitted by an electrician too)
+  const avoid = seeds.map((s) => s.avoid.map((a) => a.toLowerCase())).reduce((acc, a) => acc.filter((w) => a.includes(w))).filter((w) => !own.includes(w.trim()));
+  // a word counts at the START of a word ("plumb" in "plumber", never "lock" inside "block")
+  const re = avoid.length ? new RegExp(`\\b(?:${avoid.map((w) => w.trim().replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).filter(Boolean).join("|")})`, "i") : null;
+  const bad = (t: string) => !!re && re.test(t);
+  const keep = <T,>(xs: T[], text: (x: T) => string, min: number) => { const k = xs.filter((x) => !bad(text(x))); return k.length >= Math.min(min, xs.length) ? k : null; };
+  return {
+    explain: uniqBy(seeds.flatMap((s) => s.explain), (s) => s, 4),
+    services: uniqBy(seeds.flatMap((s) => s.services), (s) => s.en, 8),
+    whyUs: keep(base.whyUs, (w) => w.en, 4) ?? base.whyUs,
+    // Steps name the work ("painting, bathroom, wiring…"): when they talk about other parts the neutral three stand in.
+    steps: keep(base.steps, (s) => `${s.en} ${s.desc}`, 3) ?? NEUTRAL_STEPS,
+    faq: keep(base.faq, (f) => `${f.q} ${f.a}`, 3) ?? base.faq.filter((f) => !bad(`${f.q} ${f.a}`)),
+    ...(base.generic ? { generic: base.generic } : {}),
+  };
+}
+
+/** The seeds for the owner's chosen parts of a category: one part → its data; several (not all) → the parts joined. `base`: the trade's shared data. */
+export function partData(categoryKey: string, partKeys: string[], base: TradeData | null = null): TradeData | null {
   const got = partKeys.map((k) => PART_DATA[`${categoryKey}:${k}`]).filter((d): d is TradeData => !!d);
-  if (!got.length) return null;
+  if (!got.length) return fromSeeds(categoryKey, partKeys, base);
   if (got.length === 1) return got[0];
   const uniq = <T,>(xs: T[], key: (x: T) => string, max: number) => { const seen = new Set<string>(); return xs.filter((x) => { const k = key(x).toLowerCase(); if (seen.has(k)) return false; seen.add(k); return true; }).slice(0, max); };
   return {

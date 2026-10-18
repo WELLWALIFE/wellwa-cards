@@ -83,11 +83,11 @@ export function recipeFor(categoryKey: string): Recipe {
 
 /** The trade's own seeds (services, why-us, steps, FAQ, what to explain): by key, else the group's. */
 export function tradeDataFor(categoryKey: string, answers?: Record<string, string[]>): TradeData | null {
-  const only = chosenParts(categoryKey, answers);   // the owner ticked some, not all, of a combined trade's parts
-  const own = only ? partData(categoryKey, only.map((p) => p.key)) : null;
-  if (own) return own;
   const c = categoryOf(categoryKey);
-  return TRADE_DATA[categoryKey] ?? (c ? GROUP_DATA[c.group] : undefined) ?? null;
+  const base = TRADE_DATA[categoryKey] ?? (c ? GROUP_DATA[c.group] : undefined) ?? null;
+  const only = chosenParts(categoryKey, answers);   // the owner ticked some, not all, of a combined trade's parts
+  const own = only ? partData(categoryKey, only.map((p) => p.key), base) : null;
+  return own ?? base;
 }
 
 /** Organisations speak as "we"; a person (an influencer, an agent, a leader) as "I". */

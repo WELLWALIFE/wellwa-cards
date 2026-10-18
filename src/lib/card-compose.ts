@@ -3,6 +3,7 @@
 // code, so nothing the owner did not give can appear.
 //
 // Pure on purpose: no fetch, no env, no 'server-only'. The type imports below are erased at build time.
+import { chosenParts, partsLabel } from "@/lib/trade-parts";
 import type { CardBlock, CardImage, CardLink, CardPage, FaqItem, ProductItem, ServiceItem, SiteStyle, TestimonialItem } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { styleFromReference, styleFromLook, homeOrderFromLook, cleanStyle, SITE_PALETTES, type ReferenceStyle, type MeasuredLook } from "@/lib/site-style";
@@ -376,7 +377,8 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   if (catTitle && !copy.titles?.products) { t.products = catTitle; t.productsPage = catTitle; t.seeAll = lang === "hi" ? `सभी ${catTitle}` : `See all ${catTitle.toLowerCase()}`; }
   if (!copy.titles?.promise) t.promise = lang === "hi" ? "हमें क्यों चुनें" : lang === "hinglish" ? "Humein kyun chunein" : "Why choose us";
   // The trade's own button words come before the generic ones ("Book a room" over a hotel, "Ask about admission" over a school; 16 Oct 2026).
-  const ctaText = copy.cta || tradeCta(setup.category, lang) || (booking ? t.cta : ctaLabel(recipe.cta, lang));
+  // (a combined trade with only some parts ticked has no trade-wide button: "Ask about a loan" is wrong for an investment advisor)
+  const ctaText = copy.cta || (chosenParts(setup.category, facts.tradeAnswers) ? null : tradeCta(setup.category, lang)) || (booking ? t.cta : ctaLabel(recipe.cta, lang));
   const seedLang = lang === "hi" ? "hi" : "en";
   const seedLine = (x: { en: string; hi: string; desc: string; descHi: string }) => seedLang === "hi" ? { name: x.hi, desc: x.descHi } : { name: x.en, desc: x.desc };
 
@@ -392,7 +394,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   const company = setup.business && setup.business !== name ? setup.business : "";
   // The trade in the owner's words first (card-inputs tradeLabelOf: "Mithai wala" over the list's Sweets), else the
   // category's name — never the list's "Other", which is no trade.
-  const catName = cat && cat.key !== "other" ? cat.en : "";
+  const catName = cat && cat.key !== "other" ? partsLabel(cat.key, facts.tradeAnswers) ?? cat.en : "";   // a combined trade with some parts ticked is named by them
   const tradeName = notOther(setup.categoryLabel) || catName;
   // The owner's own designation first (Owner, Director, Dr., Advocate — profile step 1); else the old rule.
   const jobTitle = facts.designation || (professional ? (facts.qualification || catName || copy.jobTitle || tradeName || "Business") : (copy.jobTitle || tradeName || "Business"));
