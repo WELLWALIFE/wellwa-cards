@@ -483,6 +483,19 @@ function Onboard() {
     window.addEventListener("pagehide", writeDraft);
     return () => { clearTimeout(t); window.removeEventListener("pagehide", writeDraft); writeDraft(); };
   }, [writeDraft]);
+  // Typing is kept on the server too (owner, 18 Oct 2026: a customer may leave at any point and must never have to fill a screen again):
+  // 2.5 s after the last change the screen's answers are written exactly as "Next" would write them, without moving on. "About you" has its
+  // own save (it changes the account's name and login number), so it is left to its Next.
+  const autosaved = useRef("");
+  useEffect(() => {
+    if (!draftReady.current || !uid || editing || moved.current || draftDead.current || step === "you" || busy) return;
+    const sig = JSON.stringify([biz, facts, site, promote]);
+    if (!autosaved.current) { autosaved.current = sig; return; }   // what the screen opened with is already on the server
+    if (sig === autosaved.current) return;
+    const t = setTimeout(() => { autosaved.current = sig; void track(persistStep()); }, 2500);
+    return () => clearTimeout(t);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biz, facts, site, promote, step, busy, uid, editing]);
   /** The account as the server has it NOW. getUser() keeps its answer for 20 s (lib/supabase/browser.ts) — only a screen's own save clears that —
    *  so it would still show the account as it was before a write the SERVER made (a partner ID registered, a username claimed). Asking with the
    *  session's own token is never reused. */
