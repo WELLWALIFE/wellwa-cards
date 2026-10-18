@@ -544,7 +544,8 @@ async function record(t, work) {
   const page = await browser.newPage();
   page.on("error", (e) => log("!! the page crashed:", e.message));
   await page.setUserAgent("Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1");
-  await page.setViewport({ width: 390, height: 844, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
+  // 390 x 694 is 9:16 (owner, 18 Oct 2026: the video must fill a 9:16 screen), so the recording needs no frame, bars or cropping.
+  await page.setViewport({ width: 390, height: 694, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.evaluateOnNewDocument(() => {
     // the tap ripple, and nothing in the picture that a real owner would not see (the demo account's Reset pill).
     // documentElement may not exist yet when this runs on a new document (the Reset pill showed in the 17 Oct 2026 recording): wait for it.
@@ -696,7 +697,7 @@ async function compose(work, outDir) {
   const outs = [];
   if (!flag("--framed") && !flag("--wide")) {
     // Owner, 18 Oct 2026: no phone frame, no captions, no pills — the recording fills the whole picture, with the voice.
-    const W = 1080, H = Math.round((W * scenes[0].px.h) / scenes[0].px.w / 2) * 2, n = scenes.length;
+    const W = 1080, H = 1920;
     const out = path.join(outDir, `${slug}-phone.mp4`);
     log(`phone: ${W}x${H}, full screen, ${total.toFixed(1)} s → ${out}`);
     // One clip at a time, then joined: a single 20-input filter held every clip's frames in memory at once and ran the server out of it (18 Oct 2026).
