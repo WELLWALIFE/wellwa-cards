@@ -488,7 +488,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // The city is printed in the hero chip, the footer line and the search data: "dharuhera" is tidied once here.
   if (setup.city && cityCase(setup.city) !== setup.city) setup = { ...setup, city: cityCase(setup.city) };
   const recipe = recipeFor(setup.category);
-  const tdata = tradeDataFor(setup.category);
+  const tdata = tradeDataFor(setup.category, facts.tradeAnswers);
   // The owner's standing on Google, if they have connected the profile (best effort — never fails a build).
   const gRow = await googleRow(me.id).catch(() => null);
   const gRating = gRow?.rating && gRow.review_count ? { avg: Number(gRow.rating), count: Number(gRow.review_count) } : null;

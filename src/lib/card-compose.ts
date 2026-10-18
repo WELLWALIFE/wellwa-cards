@@ -353,7 +353,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
   // The trade's recipe: what the catalogue is called, what the button says, which sections in what order, and
   // the seeds that fill a section the AI left thin or generic.
   const recipe = recipeFor(setup.category);
-  const trade = tradeDataFor(setup.category);
+  const trade = tradeDataFor(setup.category, facts.tradeAnswers);
   const t = titlesFor(lang, copy.titles, booking);
   // A professional's catalogue word is "services" — that is the services page's name, never the products page's.
   if (!copy.titles?.products && recipe.catalog !== "products" && recipe.catalog !== "services") { t.products = catalogLabel(recipe.catalog, lang, setup.category); t.productsPage = t.products; t.seeAll = recipe.catalog === "work" ? (lang === "hi" ? "पूरा काम देखें" : isOrgTrade(setup.category) ? "See all our work" : "See all my work") : lang === "hi" ? `सभी ${t.products}` : `See all ${t.products.toLowerCase()}`; }

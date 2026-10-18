@@ -20,6 +20,7 @@
   },
   "include": [
     "./trades.ts",
+    "./parts.ts",
     "../../src/lib/**/*.ts"
   ],
   "exclude": [

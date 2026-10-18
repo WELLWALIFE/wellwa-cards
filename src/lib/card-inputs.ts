@@ -1,3 +1,4 @@
+import { partsLabel } from "@/lib/trade-parts";
 import "server-only";
 // Everything the owner already told us, in one place, for "Make your V-Card": the setup (auth metadata + poster
 // profile), the saved card facts, their products (or their brand's, when they have none), and approved reviews.
@@ -51,6 +52,8 @@ export function tradeLabelOf(setup: Pick<SetupInfo, "category" | "categoryLabel"
   const typed = S(setup.categoryLabel, 40);
   if (typed && !isOther(typed)) return typed;
   const cat = categoryOf(setup.category);
+  const part = partsLabel(setup.category, answers);   // "Cleaning", from a combined "Pest control / cleaning" (lib/trade-parts.ts)
+  if (part) return part;
   if (cat && cat.key !== "other") return cat.en;
   const main = S(answers?.main?.[0], 60);
   if (main && !isOther(main)) return main;

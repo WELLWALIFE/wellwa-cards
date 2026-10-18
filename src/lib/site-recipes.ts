@@ -4,6 +4,8 @@
 // come out complete and professional in one build, for all 78 trades, with or without a website).
 //
 // Isomorphic: no 'use client', no 'server-only'.
+import { chosenParts } from "@/lib/trade-parts";
+import { partData } from "@/lib/trade-data/parts";
 import { categoryOf } from "@/lib/poster-categories";
 import { TRADE_DATA, GROUP_DATA } from "@/lib/trade-data";
 import type { TradeData } from "@/lib/trade-data/types";
@@ -80,7 +82,10 @@ export function recipeFor(categoryKey: string): Recipe {
 }
 
 /** The trade's own seeds (services, why-us, steps, FAQ, what to explain): by key, else the group's. */
-export function tradeDataFor(categoryKey: string): TradeData | null {
+export function tradeDataFor(categoryKey: string, answers?: Record<string, string[]>): TradeData | null {
+  const only = chosenParts(categoryKey, answers);   // the owner ticked some, not all, of a combined trade's parts
+  const own = only ? partData(categoryKey, only.map((p) => p.key)) : null;
+  if (own) return own;
   const c = categoryOf(categoryKey);
   return TRADE_DATA[categoryKey] ?? (c ? GROUP_DATA[c.group] : undefined) ?? null;
 }

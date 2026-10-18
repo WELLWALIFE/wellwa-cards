@@ -11,6 +11,7 @@
 // Isomorphic: no 'use client', no 'server-only'.
 import { categoryOf } from "@/lib/poster-categories";
 import { tradeDataFor } from "@/lib/site-recipes";
+import { PARTS_KEY, partsOf, tickFitsParts } from "@/lib/trade-parts";
 import { PERSONAL, PERSONAL_DEFAULT } from "@/lib/trade-data/personal";
 
 export type TradeOption = { en: string; hi: string };
@@ -24,6 +25,8 @@ export type TradeQuestion = {
   pill?: string;
   /** Example for a text answer. */
   eg?: string; egHi?: string;
+  /** Only the listed options (no "+ Write your own"), all ticked until the owner changes it, at least one kept: the parts of a combined trade. */
+  closed?: boolean;
 };
 
 /** "English|हिंदी, English|हिंदी" → options. A part without "|" uses the same word in both. */
@@ -189,11 +192,18 @@ const BY_GROUP: Record<string, TradeQuestion[]> = {
   Personal: [],
 };
 
+export type TradeAnswers = Record<string, string[]>;
+
 /** The trade's own questions (without the "what you offer" tick list). */
-export function tradeOwnQuestions(categoryKey: string): TradeQuestion[] {
+export function tradeOwnQuestions(categoryKey: string, answers?: TradeAnswers): TradeQuestion[] {
   const c = categoryOf(categoryKey);
   if (!c) return [];
-  return BY_KEY[categoryKey] ?? BY_GROUP[c.group] ?? [];
+  const base = BY_KEY[categoryKey] ?? BY_GROUP[c.group] ?? [];
+  const parts = partsOf(categoryKey);
+  if (parts.length < 2) return base;
+  // A combined trade first asks which of its parts the owner does; the ticks of the other parts are then not offered.
+  const first: TradeQuestion = { key: PARTS_KEY, en: "What exactly do you do?", hi: "आप ठीक-ठीक क्या काम करते हैं?", type: "many", closed: true, options: parts.map((p) => ({ en: p.en, hi: p.hi })) };
+  return [first, ...base.map((q) => (q.options && answers ? { ...q, options: q.options.filter((o) => tickFitsParts(categoryKey, answers, o.en)) } : q))];
 }
 
 /** Service names that describe the card itself, not a business ("Save my contact", "Share my card" — the personal
@@ -203,21 +213,20 @@ const isCardFeatureList = (services: { en: string }[]) => services.every((s) => 
 
 /** "What do you have / offer?" — the trade's usual services from trade-data as tick boxes. Not for "other": its seeds
  *  are placeholders, not this business's services (owner's call, 5 Oct 2026). */
-export function offeringsQuestion(categoryKey: string): TradeQuestion | null {
+export function offeringsQuestion(categoryKey: string, answers?: TradeAnswers): TradeQuestion | null {
   const c = categoryOf(categoryKey);
-  const d = tradeDataFor(categoryKey);
+  const d = tradeDataFor(categoryKey, answers);
   if (!c || !d?.services?.length || c.persona === "personal" || c.persona === "student" || categoryKey === "other" || isCardFeatureList(d.services)) return null;
   return { key: "offerings", en: "What do you have / offer? Tick all that apply.", hi: "आपके यहाँ क्या-क्या है? जो हो उसे दबाएँ।", type: "many", options: d.services.map((s) => ({ en: s.en, hi: s.hi })) };
 }
 
 /** Everything a trade is asked, in order: its own questions, then what it offers. */
-export function tradeQuestionsFor(categoryKey: string): TradeQuestion[] {
-  const own = tradeOwnQuestions(categoryKey);
-  const off = offeringsQuestion(categoryKey);
+export function tradeQuestionsFor(categoryKey: string, answers?: TradeAnswers): TradeQuestion[] {
+  const own = tradeOwnQuestions(categoryKey, answers);
+  const off = offeringsQuestion(categoryKey, answers);
   return off ? [...own, off] : own;
 }
 
-export type TradeAnswers = Record<string, string[]>;
 
 const labelOf = (q: TradeQuestion, v: string, hi: boolean) => (hi ? q.options?.find((o) => o.en === v)?.hi ?? v : v);
 

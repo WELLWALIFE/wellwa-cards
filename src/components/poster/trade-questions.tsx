@@ -14,6 +14,7 @@ import { Sec, box, chipCls, field, type FactsPatch } from "@/components/poster/f
 import { MAX_TRADE_ANSWERS, type CardFacts } from "@/lib/card-facts";
 import { categoryOf } from "@/lib/poster-categories";
 import { tradeQuestionsFor } from "@/lib/trade-questions";
+import { partsLabel } from "@/lib/trade-parts";
 
 const isOtherOption = (en: string) => /^(other|others)$/i.test(en.trim());
 const sameText = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -31,7 +32,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
    *  "other" business is never asked "About your other". */
   tradeLabel?: string;
 }) {
-  const qs = tradeQuestionsFor(category);
+  const qs = tradeQuestionsFor(category, facts.tradeAnswers);
   const c = categoryOf(category);
   // Which questions have their "Write your own" line open (also open whenever a typed answer is saved).
   const [otherOpen, setOtherOpen] = useState<Record<string, boolean>>({});
@@ -52,12 +53,31 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
     clearTimeout(timers.current[key]);
     timers.current[key] = setTimeout(() => setFlash((f) => { const n = { ...f }; delete n[key]; return n; }), FLASH_MS);
   };
-  const tradeName = tradeLabel?.trim() || (isOtherOption(c.en) ? T("work", "काम") : (hi ? c.hi : c.en).split(" / ")[0].split(" (")[0]);
+  const tradeName = tradeLabel?.trim() || partsLabel(category, answers, hi) || (isOtherOption(c.en) ? T("work", "काम") : (hi ? c.hi : c.en).split(" / ")[0].split(" (")[0]);
   return (
     <div className="space-y-3">
       {title && <p className="text-sm font-semibold">{T(`About your ${tradeName.toLowerCase()}`, `आपके ${tradeName} के बारे में`)} <span className="font-normal text-muted">({T("tap what applies", "जो सही हो दबाएँ")})</span></p>}
       {qs.map((q) => {
         const cur = answers[q.key] ?? [];
+        // The parts of a combined trade ("Pest control / cleaning"): all ticked until the owner unticks one; at least one stays ticked.
+        if (q.closed) {
+          const names = (q.options ?? []).map((o) => o.en);
+          const on = cur.length ? names.filter((n) => cur.includes(n)) : names;
+          const flip = (v: string) => {
+            if (on.includes(v) && on.length === 1) return note(q.key, T("Keep at least one ticked", "कम से कम एक चुना रहने दें"));
+            set(q.key, on.includes(v) ? on.filter((x) => x !== v) : names.filter((n) => on.includes(n) || n === v));
+          };
+          return (
+            <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)} hint={T("Tick only what you do. Do both? Keep both ticked.", "जो करते हैं बस वही दबाएँ। दोनों करते हैं तो दोनों रहने दें।")}>
+              <div className="flex flex-wrap gap-2">
+                {(q.options ?? []).map((o) => (
+                  <button key={o.en} type="button" aria-pressed={on.includes(o.en)} onClick={() => flip(o.en)} className={chipCls(on.includes(o.en))}>{on.includes(o.en) ? "✓ " : ""}{hi ? o.hi : o.en}</button>
+                ))}
+              </div>
+              {flash[q.key] && <p role="status" className="animate-rise text-xs font-medium text-brand-ink">{flash[q.key]}</p>}
+            </Sec>
+          );
+        }
         if (q.type === "text") return (
           <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)}>
             <input value={cur[0] ?? ""} onChange={(e) => set(q.key, e.target.value ? [e.target.value.slice(0, 80)] : [])} placeholder={T(q.eg ?? "", q.egHi ?? q.eg ?? "")} className={field} />
