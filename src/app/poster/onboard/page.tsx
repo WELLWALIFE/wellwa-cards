@@ -42,7 +42,7 @@ import { COMPANY_FACT_KEYS, FactsFields, pickFacts, PRODUCT_FACT_KEYS, type Fact
 const SCREEN_FACT_KEYS = [...COMPANY_FACT_KEYS, ...PRODUCT_FACT_KEYS] as const;
 import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
-import { partsLabel } from "@/lib/trade-parts";
+import { partsLabel, partsOf } from "@/lib/trade-parts";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeEmail, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 import { ONBOARD_SCREENS, SETUP_HOME, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
@@ -1395,6 +1395,8 @@ function Onboard() {
     if (typed) return typed;
     const part = partsLabel(biz.category, facts.tradeAnswers, hi);   // a combined trade with only some parts ticked: "Cleaning"
     if (part) return part;
+    const all = partsOf(biz.category);   // a combined trade with every part (or none) ticked is all of them: "Pest control + Cleaning"
+    if (all.length > 1) return all.map((x) => (hi ? x.hi : x.en)).join(" + ");
     const c = categoryOf(biz.category ?? "");
     return c && c.key !== "other" ? (hi ? c.hi : c.en).split(" / ")[0].split(" (")[0] : "";
   }
