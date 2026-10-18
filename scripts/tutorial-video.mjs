@@ -299,7 +299,10 @@ const sentencesOf = (say) => say.split(/(?<=[।!?.])\s+/).filter(Boolean);
 const wavHeader = (n) => { const b = Buffer.alloc(44); b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVE", 8); b.write("fmt ", 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(24000, 24); b.writeUInt32LE(48000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write("data", 36); b.writeUInt32LE(n, 40); return b; };
 // How the narrator should sound (owner, 18 Oct 2026: "voice thoda better"): a warm, relaxed teacher, not a newsreader. --plain-voice turns it off.
 const STYLE = flag("--plain-voice") ? "" : "Read this in a warm, friendly, clear and relaxed Hindi, like a helpful friend teaching a shopkeeper step by step. Natural pace, not rushed, a gentle smile in the voice:\n\n";
+// The narrator mispronounced "Shubhora" written in Latin letters (owner, 18 Oct 2026): it is spoken from the Devanagari spelling.
+const spoken = (t) => t.replace(/shubhora\.com/gi, "शुभोरा डॉट कॉम").replace(/Shubhora/gi, "शुभोरा");
 async function tts(text) {
+  text = spoken(text);
   fs.mkdirSync(CACHE, { recursive: true });
   const file = path.join(CACHE, crypto.createHash("sha1").update(`${TTS_MODEL}|${VOICE}|${STYLE}|${text}`).digest("hex") + ".wav");
   if (!fs.existsSync(file)) {
@@ -664,7 +667,12 @@ async function compose(work, outDir) {
   // The clips' real lengths (the recorder's, not the stopwatch's), the captions' timing, one audio track.
   let at = 0; const pcm = [];
   for (const s of scenes) {
-    const p = probe(s.clip); s.dur = p.seconds; s.start = at; at += p.seconds;
+    const p = probe(s.clip); s.dur = p.seconds; s.start = at; at += p.seconds; s.px = p;
+    for (const [k, q] of (s.parts ?? []).entries()) if (/shubhora/i.test(q.text)) {
+      const t = await tts(q.text); q.wav = t.file;
+      const slot = (s.cues[k + 1] ?? s.dur) - s.cues[k];
+      if (t.seconds > slot - 0.05) log(`!! "${q.text.slice(0, 30)}…" is now ${t.seconds.toFixed(1)} s, its slot is ${slot.toFixed(1)} s: it may run into the next sentence`);
+    }
     const want = Math.round(p.seconds * 24000) * 2;
     if (s.parts && s.cues) {
       // each sentence's voice is placed at the moment the recorder began it, so words and screen match; its caption stays up until the next sentence starts
@@ -686,6 +694,16 @@ async function compose(work, outDir) {
   const slug = meta.tutorial;
   fs.mkdirSync(outDir, { recursive: true });
   const outs = [];
+  if (!flag("--framed") && !flag("--wide")) {
+    // Owner, 18 Oct 2026: no phone frame, no captions, no pills — the recording fills the whole picture, with the voice.
+    const W = 1080, H = Math.round((W * scenes[0].px.h) / scenes[0].px.w / 2) * 2, n = scenes.length;
+    const out = path.join(outDir, `${slug}-phone.mp4`);
+    const f = scenes.map((_, i) => `[${i}:v]scale=${W}:${H}:flags=lanczos,fps=30,format=yuv420p,setsar=1[c${i}]`).join(";") + ";" + scenes.map((_, i) => `[c${i}]`).join("") + `concat=n=${n}:v=1:a=0[v]`;
+    log(`phone: ${W}x${H}, full screen, ${total.toFixed(1)} s → ${out}`);
+    ff([...scenes.flatMap((x) => ["-i", x.clip]), "-i", audio, "-filter_complex", f, "-map", "[v]", "-map", `${n}:a`, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], "phone");
+    fs.writeFileSync(path.join(outDir, `${slug}.json`), JSON.stringify({ title: meta.title, seconds: Math.round(total), made: new Date().toISOString() }, null, 1));
+    return [out];
+  }
   for (const [name, L] of Object.entries(LAYOUTS).filter(([k]) => k === "phone" || flag("--wide"))) {
     const bg = path.join(work, `bg-${name}.png`), frame = path.join(work, `frame-${name}.png`);
     await backgroundPng(bg, L.W, L.H, { title: meta.title, subtitle: name === "phone" && meta.tutorial === "cardsite" ? "" : meta.subtitle, logo: L.logo, titleAt: L.title, size: L.title.size });
