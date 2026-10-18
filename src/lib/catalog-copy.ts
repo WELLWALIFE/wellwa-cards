@@ -205,7 +205,7 @@ const ORG_BY_KEY: Record<string, [string, string]> = {
   salon: ["salon", "सैलून"], gym: ["gym", "जिम"], tiffin: ["kitchen", "किचन"], catering: ["kitchen", "किचन"], bakery: ["bakery", "बेकरी"],
   ngo: ["organisation", "संस्था"], temple: ["temple", "मंदिर"], society: ["society", "सोसायटी"], community: ["organisation", "संस्था"],
   builder: ["company", "company"], realestate: ["office", "office"], ca: ["office", "office"], lawyer: ["office", "office"], insurance: ["office", "office"], finance: ["office", "office"],
-  manufacturer: ["factory", "फ़ैक्टरी"], wholesale: ["firm", "firm"], transport: ["company", "company"], courier: ["company", "company"],
+  manufacturer: ["factory", "फ़ैक्टरी"], wholesale: ["firm", "firm"], cleanprod: ["company", "company"], transport: ["company", "company"], courier: ["company", "company"],
 };
 export function orgWordFor(categoryKey: string | null | undefined): OrgWord {
   const hit = categoryKey ? ORG_BY_KEY[categoryKey] : undefined;
@@ -227,7 +227,7 @@ const EXAMPLE_NAME: Record<string, string> = {
   salon: "Glamour Beauty Salon", gym: "Fit Zone Gym", wellness: "Wellness Hub", water: "Pure Water Solutions",
   electrician: "Raj Electricals", auto: "City Motors", tailor: "Perfect Fit Tailors", printing: "Quick Print", cleaning: "Spark Cleaning Services", photography: "Pixel Studio", event: "Royal Events", travel: "Sky Tours & Travels", transport: "Fast Track Transport", courier: "Speed Courier",
   realestate: "Prime Properties", builder: "Shree Builders", interior: "Dream Interiors", it: "Tech Solutions", ca: "Sharma & Associates", lawyer: "Verma Law Chambers", insurance: "Secure Life Advisor", finance: "Smart Finance",
-  manufacturer: "Shree Industries", wholesale: "Gupta Traders", agri: "Kisan Agro Centre", ngo: "Seva Foundation", astro: "Jyotish Kendra",
+  manufacturer: "Shree Industries", wholesale: "Gupta Traders", cleanprod: "Shine Clean Products", agri: "Kisan Agro Centre", ngo: "Seva Foundation", astro: "Jyotish Kendra",
 };
 export function exampleNameFor(categoryKey: string | null | undefined): string {
   if (categoryKey && EXAMPLE_NAME[categoryKey]) return EXAMPLE_NAME[categoryKey];
@@ -262,7 +262,7 @@ const CATEGORY_EXAMPLES: Record<string, string> = {
   college: "Undergraduate, Postgraduate, Diploma, Short courses", computer: "Basic computer, Tally, Programming, Typing", teacher: "Maths, Science, English, Languages",
   dance: "Classical, Western, Music, Art", mlm: "Health, Beauty, Home care, Kits", distributor: "Brands, Products, Bulk orders, Schemes", sales: "Products, Plans, Offers, Services",
   agent: "Services, Plans, Listings, Offers", agri: "Seeds, Fertilizers, Tools, Pesticides", dairy: "Milk, Paneer, Ghee, Curd", manufacturer: "Products, Custom orders, Bulk, Spares",
-  wholesale: "Categories, Brands, Bulk packs, Schemes", textile: "Sarees, Suits, Fabrics, Bridal",
+  wholesale: "Categories, Brands, Bulk packs, Schemes", cleanprod: "Floor cleaners, Detergents, Hand wash, Bulk packs", textile: "Sarees, Suits, Fabrics, Bridal",
   political: "Work done, Schemes, Events, Appeals", mla: "Projects, Schemes, Events, Help desk", ngo: "Programs, Donations, Events, Volunteers", samaj: "Events, Services, Members, Donations",
   temple: "Pooja, Events, Donations, Prasad", club: "Events, Membership, Projects, Services", union: "Services, Events, Membership, Notices", housing: "Notices, Services, Events, Facilities",
 };

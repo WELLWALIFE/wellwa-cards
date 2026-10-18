@@ -48,6 +48,7 @@ export const ALIASES: Record<string, string[]> = {
   computer: ["skill centre", "typing"],
   manufacturer: ["factory", "manufacturing", "industries"],
   wholesale: ["trading", "traders", "wholesaler"],
+  cleanprod: ["phenyl", "phenol", "detergent", "floor cleaner", "toilet cleaner", "dishwash", "hand wash", "handwash", "sanitizer", "sanitiser", "disinfectant", "cleaning products", "cleaning chemicals", "janitorial", "harpic", "soap", "bleach", "acid"],
   textile: ["saree", "sarees", "fabric", "suits"],
   insurance: ["lic", "policy"],
   finance: ["loan", "mutual fund", "emi"],

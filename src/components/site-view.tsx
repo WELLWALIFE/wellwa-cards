@@ -897,7 +897,7 @@ function bigWords(cat: string): { en: string; hi: string; ask: string; askHi: st
     ? { en: "Bigger projects", hi: "बड़े प्रोजेक्ट", ask: "Hello, I would like a quote for a bigger project.", askHi: "नमस्ते, मुझे एक बड़े प्रोजेक्ट का भाव चाहिए।" }
     : { en: "Bulk & custom orders", hi: "बड़े और ख़ास ऑर्डर", ask: "Hello, I would like a quote for a bulk / custom order.", askHi: "नमस्ते, मुझे बड़े / ख़ास ऑर्डर का भाव चाहिए।" };
 }
-const BULK_TRADES = new Set(["sweets", "catering", "garments", "textile", "furniture", "interior", "printing", "gift", "event", "wedding", "florist", "tailor", "builder", "manufacturer", "wholesale", "hardware", "tiffin", "cafe", "restaurant", "photography", "jewellery"]);
+const BULK_TRADES = new Set(["sweets", "catering", "garments", "textile", "furniture", "interior", "printing", "gift", "event", "wedding", "florist", "tailor", "builder", "manufacturer", "wholesale", "cleanprod", "hardware", "tiffin", "cafe", "restaurant", "photography", "jewellery"]);
 
 /** One quiet line under a section's heading, the way the leading sites set one under "Ready made hampers" (review, 14
  *  Oct 2026): it says what the visitor can do or expect, in plain words, so a heading is never left alone. */

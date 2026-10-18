@@ -154,6 +154,11 @@ const BY_KEY: Record<string, TradeQuestion[]> = {
   agri: [many("sell", "You sell", "क्या बेचते हैं", "Seeds|बीज, Fertilizer|खाद, Pesticides|कीटनाशक, Farm tools|कृषि औज़ार, Irrigation / pipes|सिंचाई / पाइप, Nursery plants|पौधे, Animal feed|पशु आहार, Tractors / machinery|ट्रैक्टर / मशीनरी", "🌾")],
   dairy: [many("sell", "You sell", "क्या बेचते हैं", "Milk|दूध, Paneer|पनीर, Ghee|घी, Curd / buttermilk|दही / छाछ, Sweets|मिठाई, Home delivery|होम डिलीवरी, Cattle feed|पशु आहार", "🥛")],
   manufacturer: [text("makes", "You make", "क्या बनाते हैं", "e.g. Steel furniture, Plastic containers", "जैसे स्टील फ़र्नीचर, प्लास्टिक डिब्बे", "🏭"), many("supply", "Supply to", "किसे देते हैं", "Retailers|रिटेलर, Wholesalers|होलसेलर, Companies|कंपनियाँ, Export|एक्सपोर्ट, Govt|सरकारी")],
+  cleanprod: [
+    many("range", "Your products", "आपके प्रोडक्ट", "Floor cleaner|फ़र्श क्लीनर, Phenyl / disinfectant|फिनायल / डिसइंफ़ेक्टेंट, Toilet cleaner|टॉयलेट क्लीनर, Detergent powder / liquid|डिटर्जेंट पाउडर / लिक्विड, Dishwash|डिशवॉश, Hand wash / soap|हैंड वॉश / साबुन, Glass / kitchen cleaner|ग्लास / किचन क्लीनर, Sanitizer|सैनिटाइज़र, Mops / brooms / tools|पोंछा / झाड़ू / टूल, Bulk drums / cans|बल्क ड्रम / कैन", "🧴"),
+    many("for", "Who do you supply?", "किसे सप्लाई करते हैं?", "Households|घर, Shops / dealers|दुकानें / डीलर, Hotels & restaurants|होटल / रेस्टोरेंट, Offices|ऑफ़िस, Schools & hospitals|स्कूल / अस्पताल, Wholesalers|होलसेलर, Housekeeping companies|हाउसकीपिंग कंपनियाँ"),
+    many("extra", "Also", "साथ में", "Private label|प्राइवेट लेबल, Custom fragrance|ख़ास ख़ुशबू, Samples on request|सैंपल मिलेगा, GST bill|GST बिल, Home / shop delivery|होम / दुकान डिलीवरी, Pan India dispatch|पूरे भारत में डिस्पैच"),
+  ],
   wholesale: [text("trades", "You trade in", "किसका व्यापार", "e.g. Grocery, Garments, Hardware", "जैसे किराना, कपड़े, हार्डवेयर", "📦"), many("sell", "Sell to", "किसे बेचते हैं", "Retailers|रिटेलर, Businesses|व्यवसाय, Also retail|रिटेल भी, All India|पूरा भारत")],
   textile: [many("sell", "You sell", "क्या बेचते हैं", "Sarees|साड़ी, Suits / dress material|सूट / ड्रेस मटीरियल, Lehengas|लहंगा, Fabric by metre|मीटर कपड़ा, Bedsheets / curtains|चादर / पर्दे, Wholesale|होलसेल, Readymade|रेडीमेड", "🧵")],
   // community

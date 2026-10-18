@@ -80,6 +80,7 @@ export const CATEGORIES: Category[] = [
   c("dairy", "डेयरी / दूध", "Dairy", "Industry", "business", "clean", "#0369a1", "डेयरी का नाम"),
   c("manufacturer", "मैन्युफ़ैक्चरर / फ़ैक्टरी", "Manufacturer", "Industry", "business", "bold", "#374151", "कंपनी का नाम"),
   c("wholesale", "होलसेल / ट्रेडिंग", "Wholesale / trading", "Industry", "business", "bold", "#b45309", "फ़र्म का नाम"),
+  c("cleanprod", "क्लीनिंग प्रोडक्ट्स / केमिकल", "Cleaning products / chemicals", "Industry", "business", "bold", "#0ea5e9", "कंपनी / ब्रांड का नाम"),
   c("textile", "टेक्सटाइल / साड़ी", "Textile / sarees", "Industry", "business", "festive", "#db2777", "फ़र्म का नाम"),
   // community & political
   c("political", "राजनीति / नेता / कार्यकर्ता", "Politics / leader / karyakarta", "Community", "community", "bold", "#ff9933", "पद और पार्टी"),

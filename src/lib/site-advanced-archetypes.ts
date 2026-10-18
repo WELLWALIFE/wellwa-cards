@@ -108,7 +108,7 @@ export const TRADE_GROUP: Record<string, string> = {
   restaurant: "dining", cafe: "dining", hotel: "stay", jewellery: "jewellery",
   garments: "fashion", textile: "fashion", tailor: "fashion",
   furniture: "decor", interior: "decor",
-  kirana: "grocery", "grocery-online": "shop", gift: "gifts", hardware: "buildmat", footwear: "fashion", mobile: "shop", optical: "shop", wholesale: "wholesale", distributor: "wholesale",
+  kirana: "grocery", "grocery-online": "shop", gift: "gifts", hardware: "buildmat", footwear: "fashion", mobile: "shop", optical: "shop", wholesale: "wholesale", cleanprod: "wholesale", distributor: "wholesale",
   doctor: "clinic", dentist: "clinic", ayurveda: "clinic", hospital: "clinic", medical: "pharmacy", pharma: "pharmacy",
   gym: "fitness", salon: "beauty", spa: "beauty", mehndi: "beauty",
   water: "wellness", wellness: "wellness", mlm: "wellness",

@@ -68,7 +68,7 @@ const BY_KEY: Record<string, Recipe> = {
   // sales
   mlm: AGENT, distributor: SHOP, sales: AGENT, agent: AGENT,
   // industry
-  manufacturer: { ...SHOP, cta: "enquire" }, wholesale: { ...SHOP, cta: "enquire" }, agri: SHOP, dairy: SHOP, textile: SHOP,
+  manufacturer: { ...SHOP, cta: "enquire" }, wholesale: { ...SHOP, cta: "enquire" }, cleanprod: { ...SHOP, cta: "enquire" }, agri: SHOP, dairy: SHOP, textile: SHOP,
   // personal
   influencer: { ...PERSON, catalog: "work", cta: "enquire" }, other: SERVICE,
   // a residents' society lists its facilities and charges, not "What I do" (15 Oct 2026 sweep)
@@ -132,7 +132,7 @@ export function tradeStyle(categoryKey: string, lang: "en" | "hi" | "hinglish", 
     : /^(salon|interior|photography|mehndi|furniture|cafe|optical|garments|textile|event)$/.test(key) ? "elegant"
     : /^(ayurveda|astro|temple|lawyer|teacher|college|school|samaj|ngo)$/.test(key) ? "editorial"
     : /^(it|mobile|computer|water|security)$/.test(key) ? "tech"
-    : /^(gym|builder|realestate|auto|hardware|transport|manufacturer|wholesale|mla|political|union|army)$/.test(key) ? "bold"
+    : /^(gym|builder|realestate|auto|hardware|transport|manufacturer|wholesale|cleanprod|mla|political|union|army)$/.test(key) ? "bold"
     : style === "festive" || style === "traditional" ? "friendly"
     : style === "minimal" ? "elegant"
     : style === "bold" ? "bold"
@@ -190,7 +190,7 @@ const SCHEMA_TYPE: Record<string, string> = {
   school: "School", playschool: "Preschool", coaching: "EducationalOrganization", college: "CollegeOrUniversity",
   computer: "EducationalOrganization", teacher: "EducationalOrganization", dance: "EducationalOrganization",
   // industry
-  agri: "Store", dairy: "Store", manufacturer: "Organization", wholesale: "Store", textile: "Store",
+  agri: "Store", dairy: "Store", manufacturer: "Organization", wholesale: "Store", cleanprod: "Store", textile: "Store",
   // community
   ngo: "NGO", temple: "PlaceOfWorship", samaj: "Organization", club: "Organization", union: "Organization", housing: "Organization",
 };

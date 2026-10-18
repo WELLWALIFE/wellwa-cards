@@ -95,6 +95,7 @@ const SCENE = {
   dairy: "a clean dairy with milk cans, cows and fresh milk products",
   manufacturer: "a modern factory floor with machines and workers in safety gear",
   wholesale: "a wholesale market godown with bulk goods and cartons",
+  cleanprod: "shelves of colourful cleaning product bottles and cans in a tidy godown",
   textile: "rolls of colourful fabric in a textile shop",
   political: "a public gathering with the Indian tricolour and a leader greeting people",
   mla: "a public meeting with the Indian tricolour, people welcoming a leader",

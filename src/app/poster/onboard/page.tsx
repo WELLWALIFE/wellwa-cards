@@ -234,7 +234,7 @@ function Onboard() {
     { k: "online", e: "🌐", t: "Online / Worldwide", s: "IT, coaching, freelancer", th: "Online / दुनिया भर", sh: "IT, coaching, freelancer" },
   ];
   const reachOf = (role: Role, catKey: string): Reach =>
-    role === "agent" || /^(courier|transport|manufacturer|wholesale|distributor|textile|pharma|agri)$/.test(catKey) ? "india" : /^(it|influencer|astro)$/.test(catKey) ? "online" : "local";
+    role === "agent" || /^(courier|transport|manufacturer|wholesale|cleanprod|distributor|textile|pharma|agri)$/.test(catKey) ? "india" : /^(it|influencer|astro)$/.test(catKey) ? "online" : "local";
   const [biz, setBiz] = useState<Business & { logo?: string | null; kind: "business" | "person"; role: Role; roleTouched?: boolean; reachTouched?: boolean; linkBy?: "name" | "business"; /** Set while the About is one the AI wrote from nothing (see aboutIsStale). */ aboutMade?: AboutMade; /** The trade guessed from the name (not picked): kept in the state, not a ref, because a setState updater runs twice in dev and must stay pure. */ guessed?: string }>({ kind: "business", role: "business", reach: "local" });
   /** The card link the owner picked — or, untouched, the business name for a shop and the person's name otherwise. */
   const linkBy = (): "name" | "business" => biz.linkBy ?? (biz.role === "business" && (biz.name ?? "").trim() ? "business" : "name");

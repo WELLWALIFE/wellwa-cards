@@ -7,13 +7,18 @@
 // its parts' data in trade-data/parts.ts, and tag its "what you do" ticks in PART_TICKS.
 // Isomorphic: no 'use client', no 'server-only'.
 
-export type TradePart = { key: string; en: string; hi: string };
+/** `label` / `labelHi`: how the business is NAMED when only this part is ticked (default: `en` / `hi`). */
+export type TradePart = { key: string; en: string; hi: string; label?: string; labelHi?: string };
 export const PARTS_KEY = "parts";
 
 export const TRADE_PARTS: Record<string, TradePart[]> = {
   cleaning: [
     { key: "pest", en: "Pest control", hi: "पेस्ट कंट्रोल" },
     { key: "cleaning", en: "Cleaning", hi: "क्लीनिंग" },
+  ],
+  cleanprod: [
+    { key: "make", en: "We make them", hi: "हम बनाते हैं", label: "Cleaning products manufacturer", labelHi: "क्लीनिंग प्रोडक्ट्स निर्माता" },
+    { key: "supply", en: "We sell / supply them", hi: "हम बेचते / सप्लाई करते हैं", label: "Cleaning products supplier", labelHi: "क्लीनिंग प्रोडक्ट्स सप्लायर" },
   ],
 };
 
@@ -42,7 +47,7 @@ export function chosenParts(categoryKey: string | null | undefined, answers: Ans
 /** "Cleaning" / "Pest control + Cleaning" for a strict choice, else null (the category's own name stands). */
 export function partsLabel(categoryKey: string | null | undefined, answers: Answers, hi = false): string | null {
   const g = chosenParts(categoryKey, answers);
-  return g ? g.map((p) => (hi ? p.hi : p.en)).join(hi ? " + " : " + ") : null;
+  return g ? g.map((p) => (hi ? p.labelHi ?? p.hi : p.label ?? p.en)).join(" + ") : null;
 }
 
 /** The ticks of a "what you do" question that fit the chosen parts. */

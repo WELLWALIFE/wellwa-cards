@@ -46,7 +46,7 @@ export const BLUEPRINTS: Blueprint[] = [
   {
     key: "shop", name: "Order shop", hi: "ऑर्डर शॉप", blurb: "A category row, a promo banner, products with Order buttons", blurbHi: "category row, promo banner, Order button वाले products",
     defaults: { radius: "soft", motion: "calm", pattern: "none", heroVariant: "shelf", layouts: { about: "photo-left", services: "cards", products: "dense", faq: "accordion", reviews: "cards", gallery: "mosaic" } },
-    fits: ["kirana", "sweets", "garments", "mobile", "medical", "gift", "footwear", "optical", "hardware", "furniture", "grocery-online", "wholesale", "dairy"],
+    fits: ["kirana", "sweets", "garments", "mobile", "medical", "gift", "footwear", "optical", "hardware", "furniture", "grocery-online", "wholesale", "cleanprod", "dairy"],
   },
   {
     key: "collage", name: "Photo collage", hi: "फ़ोटो कोलाज", blurb: "Words and quick actions beside a photo collage", blurbHi: "शब्द और quick actions, बगल में photo collage",

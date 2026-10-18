@@ -132,6 +132,50 @@ export const INDUSTRY: Record<string, TradeData> = {
     generic: ["connect with us", "explore options", "quality products", "best quality", "customer satisfaction", "trusted name"],
   },
 
+  cleanprod: {
+    explain: [
+      "the range — floor and surface cleaners, phenyl and disinfectant, toilet cleaner, detergent, dishwash, hand wash, sanitiser, cleaning tools",
+      "who is supplied — households, shops and dealers, hotels and restaurants, offices, schools and hospitals, wholesalers",
+      "pack sizes from small bottles to large cans and drums; private label and custom packing as told",
+      "orders on WhatsApp, a GST bill, and delivery or dispatch as told",
+    ],
+    services: [
+      { en: "Floor & surface cleaners", hi: "फ़र्श और सतह क्लीनर", desc: "Floor, tile and glass cleaners in different fragrances and pack sizes.", descHi: "अलग-अलग ख़ुशबू और पैक साइज़ में फ़र्श, टाइल और काँच के क्लीनर।" },
+      { en: "Phenyl & disinfectants", hi: "फिनायल और डिसइंफ़ेक्टेंट", desc: "Phenyl and disinfectant liquids for homes, shops and institutions.", descHi: "घर, दुकान और संस्थाओं के लिए फिनायल और डिसइंफ़ेक्टेंट लिक्विड।" },
+      { en: "Toilet & bathroom cleaners", hi: "टॉयलेट और बाथरूम क्लीनर", desc: "Strong cleaners for toilets, tiles and stains, with clear directions.", descHi: "टॉयलेट, टाइल और दाग़ के लिए असरदार क्लीनर, इस्तेमाल का तरीक़ा साफ़ लिखा।" },
+      { en: "Detergent powder & liquid", hi: "डिटर्जेंट पाउडर और लिक्विड", desc: "Washing powder and liquid for everyday and bulk use.", descHi: "रोज़ और बल्क इस्तेमाल के लिए वॉशिंग पाउडर और लिक्विड।" },
+      { en: "Dishwash gel & bars", hi: "डिशवॉश जेल और बार", desc: "Dishwash gel and bars that cut grease and rinse clean.", descHi: "चिकनाई काटने वाले और आसानी से धुलने वाले डिशवॉश जेल और बार।" },
+      { en: "Hand wash & soaps", hi: "हैंड वॉश और साबुन", desc: "Liquid hand wash and soaps in refill and pump packs.", descHi: "रिफ़िल और पंप पैक में लिक्विड हैंड वॉश और साबुन।" },
+      { en: "Mops, brooms & tools", hi: "पोंछा, झाड़ू और टूल", desc: "Cleaning tools to go with the products, for homes and housekeeping teams.", descHi: "घरों और हाउसकीपिंग टीमों के लिए प्रोडक्ट के साथ चलने वाले सफ़ाई के औज़ार।" },
+      { en: "Bulk & institutional packs", hi: "बल्क और इंस्टीट्यूशनल पैक", desc: "Large cans and drums for hotels, hospitals, schools and offices.", descHi: "होटल, अस्पताल, स्कूल और ऑफ़िस के लिए बड़े कैन और ड्रम।" },
+    ],
+    whyUs: [
+      { en: "Steady quality, pack after pack", hi: "हर पैक में एक-सी क्वालिटी" },
+      { en: "Small bottles to bulk cans", hi: "छोटी बोतल से बल्क कैन तक" },
+      { en: "Clear rates, GST bill", hi: "साफ़ रेट, GST बिल" },
+      { en: "Samples on request", hi: "माँगने पर सैंपल" },
+      { en: "Quick dispatch or delivery", hi: "जल्दी डिस्पैच या डिलीवरी" },
+      { en: "Custom packing possible", hi: "ख़ास पैकिंग भी संभव" },
+      { en: "Order on WhatsApp", hi: "WhatsApp पर ऑर्डर" },
+    ],
+    steps: [
+      { en: "Share your need", hi: "ज़रूरत बताएँ", desc: "Which products, how much and where it has to go.", descHi: "कौन से प्रोडक्ट, कितना और कहाँ भेजना है।" },
+      { en: "Rates and sample", hi: "रेट और सैंपल", desc: "We send the rates, and a sample if you want to check first.", descHi: "हम रेट भेजते हैं, और पहले जाँचना हो तो सैंपल भी।" },
+      { en: "Order and payment", hi: "ऑर्डर और भुगतान", desc: "Confirm the order on WhatsApp and pay as agreed.", descHi: "WhatsApp पर ऑर्डर पक्का करें और तय तरीक़े से भुगतान करें।" },
+      { en: "Packing and delivery", hi: "पैकिंग और डिलीवरी", desc: "Packed and sent to you, with the GST bill.", descHi: "पैक होकर आपके पास भेजा जाता है, GST बिल के साथ।" },
+    ],
+    faq: [
+      { q: "Do you give samples?", qHi: "सैंपल मिलता है?", a: "Yes, on request, so you can check a product before ordering in bulk.", aHi: "हाँ, माँगने पर; बल्क ऑर्डर से पहले प्रोडक्ट जाँच सकते हैं।" },
+      { q: "Do you take bulk orders?", qHi: "बल्क ऑर्डर लेते हैं?", a: "Yes, in large cans and drums as well as small packs; send us the quantity for a quote.", aHi: "हाँ, बड़े कैन और ड्रम में भी और छोटे पैक में भी; भाव के लिए मात्रा भेजें।" },
+      { q: "Do you supply hotels and institutions?", qHi: "होटल और संस्थाओं को सप्लाई करते हैं?", a: "Yes, regular supply to hotels, restaurants, offices, schools and hospitals.", aHi: "हाँ, होटल, रेस्टोरेंट, ऑफ़िस, स्कूल और अस्पताल को नियमित सप्लाई।" },
+      { q: "Can I get my own brand name on the pack?", qHi: "क्या पैक पर मेरा अपना ब्रांड लग सकता है?", a: "Private label and custom packing can be arranged; message us what you need.", aHi: "प्राइवेट लेबल और ख़ास पैकिंग हो सकती है; क्या चाहिए, मैसेज करें।" },
+      { q: "Is a GST bill given?", qHi: "GST बिल मिलता है?", a: "Yes, a proper GST bill with every order.", aHi: "हाँ, हर ऑर्डर के साथ पक्का GST बिल।" },
+      { q: "How is the order delivered?", qHi: "ऑर्डर कैसे पहुँचता है?", a: "Delivery nearby, and dispatch by transport or courier to other places.", aHi: "आस-पास डिलीवरी, और दूसरे शहरों के लिए ट्रांसपोर्ट या कूरियर से डिस्पैच।" },
+      { q: "How do I pay?", qHi: "भुगतान कैसे करें?", a: "UPI, bank transfer or cash as agreed; terms for regular buyers on request.", aHi: "UPI, बैंक ट्रांसफ़र या तय तरीक़े से नक़द; नियमित ख़रीदारों के लिए शर्तें माँगने पर।" },
+    ],
+    generic: ["connect with us", "explore options", "clean and fresh", "trusted name", "quality products", "customer satisfaction"],
+  },
+
   wholesale: {
     explain: [
       "what is traded (the product lines and brands) and who buys — retailers, shops, institutions, contractors",

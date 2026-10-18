@@ -19,7 +19,7 @@ export function artKind(categoryKey: string | undefined): ArtKind {
   if (/^(coaching|college|school|computer|it|ca|lawyer|finance|insurance|agent)$/.test(k)) return "grid";
   if (/^(gym|auto|electrician|plumber|hardware|builder|housing|interior|manufacturer|transport|courier|cleaning|printing|security|army|govt|union|employee)$/.test(k)) return "blade";
   if (/^(doctor|dentist|hospital|medical|ayurveda|ngo)$/.test(k)) return "pulse";
-  if (/^(kirana|garments|footwear|gift|mobile|furniture|distributor|wholesale|mlm|optical)$/.test(k)) return "blobs";
+  if (/^(kirana|garments|footwear|gift|mobile|furniture|distributor|wholesale|cleanprod|mlm|optical)$/.test(k)) return "blobs";
   return "wave";
 }
 
