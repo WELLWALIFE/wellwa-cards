@@ -1396,8 +1396,8 @@ function Onboard() {
     const part = partsLabel(biz.category, facts.tradeAnswers, hi);   // a combined trade with only some parts ticked: "Cleaning"
     if (part) return part;
     const all = partsOf(biz.category);   // a combined trade with every part (or none) ticked is all of them: "Pest control + Cleaning"
-    if (all.length > 1 && !all.some((x) => x.label)) return all.map((x) => (hi ? x.hi : x.en)).join(" + ");
     const c = categoryOf(biz.category ?? "");
+    if (all.length > 1) return !all.some((x) => x.label) ? all.map((x) => (hi ? x.hi : x.en)).join(" + ") : c ? (hi ? c.hi : c.en) : "";   // parts that name a role (makes / supplies, AC technician) read better as the whole trade
     return c && c.key !== "other" ? (hi ? c.hi : c.en).split(" / ")[0].split(" (")[0] : "";
   }
   /** The trade in the owner's own words when they typed one, else the list's name — never the word "Other". */
