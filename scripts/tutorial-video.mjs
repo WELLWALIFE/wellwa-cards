@@ -48,7 +48,7 @@ const TUTORIAL = args.find((a, i) => !a.startsWith("--") && !WITH_VALUE.has(args
 const USER = opt("--user", "");
 const SITE = (opt("--site", env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com")).replace(/\/$/, "");
 const OUT = opt("--out", path.join(APP, "public", "tutorials"));
-const VOICE = opt("--voice", "Charon");
+const VOICE = opt("--voice", "Kore");   // owner picked Kore (sample 2), 18 Oct 2026
 const COMPOSE_ONLY = opt("--compose", "");
 const RESUME = opt("--resume", "");   // work folder of an earlier run that stopped part-way
 const FROM = opt("--from", "");       // …and the scene to carry on from (its earlier scenes are kept as recorded)
@@ -133,95 +133,102 @@ const TUTORIALS = {
       const lastOf = async (re) => P().evaluateHandle((src) => { const r = new RegExp(src); const bs = [...document.querySelectorAll("main button")].filter((b) => r.test((b.innerText || "").trim())); return bs[bs.length - 1] ?? null; }, re.source);
       const setText = async (sel, text) => { await u.type(sel, text); };
       return [
-        { id: "intro", say: "नमस्ते! आज देखते हैं Shubhora पर अपना digital visiting card और website कैसे बनाएँ। दोनों एक साथ बनते हैं, एक ही link पर।",
-          act: async () => { await u.goto(`${SITE}/`); await u.scrollBy(500, 2500); } },
-        { id: "signup", say: "shubhora.com खोलिए, Start free दबाइए, अपना नाम, mobile, email और password भरकर account बनाइए।",
+        // Each scene's words are cut into sentences and `await u.cue(k)` starts sentence k at the moment its action begins on
+        // screen (the next sentence waits for the one before to finish), so what is said and what is shown always match.
+        { id: "intro", say: "नमस्ते, आज देखते हैं Shubhora पर अपना digital visiting card और website कैसे बनाएँ। दोनों एक साथ बनते हैं, एक ही link पर।",
+          act: async () => { await u.goto(`${SITE}/`); await u.cue(0); await pause(600); await u.cue(1); await u.scrollBy(500, 2500); } },
+        { id: "signup", say: "shubhora.com खोलिए और Start free दबाइए। अपना नाम, mobile और email भरिए। फिर password डालिए, और account बन जाएगा।",
           act: async () => {
-            await u.tapThen("Start free", "Create", { timeout: 25000 }); await pause(600);
-            await u.type('[placeholder="Ram Kumar"]', "Rajesh Sharma"); await u.type('[placeholder="9876543210"]', "9811122233");
-            await u.type('[placeholder="you@example.com"]', "rajesh.sharma@gmail.com"); await u.type('[placeholder="At least 6 characters"]', "sharma@123");
+            await u.cue(0); await u.tapThen("Start free", "Create", { timeout: 25000 }); await pause(600);
+            await u.cue(1); await u.type('[placeholder="Ram Kumar"]', "Rajesh Sharma"); await u.type('[placeholder="9876543210"]', "9811122233");
+            await u.type('[placeholder="you@example.com"]', "rajesh.sharma@gmail.com");
+            await u.cue(2); await u.type('[placeholder="At least 6 characters"]', "sharma@123");
             await pause(800);
           } },
-        { id: "you", say: "पहला step, आपके बारे में। नाम, mobile और WhatsApp number, email और अपनी photo।",
+        { id: "you", say: "पहला step, आपके बारे में। यहाँ आपका नाम, mobile और WhatsApp number, email और आपकी photo आती है। सब भरकर Next दबाइए।",
           between: async () => { await u.login(); await u.goto(`${SITE}/poster/onboard?step=you`); await u.waitText("About you", 25000); },
-          act: async () => { await pause(1800); await u.scrollBy(500, 1500); await pause(600); await u.tapThen("Next →", "Who is this website for?", { timeout: 25000 }); } },
+          act: async () => { await u.cue(0); await pause(1200); await u.cue(1); await u.scrollBy(500, 1500); await pause(600); await u.cue(2); await u.tapThen("Next →", "Who is this website for?", { timeout: 25000 }); } },
         { id: "promote", say: "अब चुनिए कि ये किसके लिए है। अपनी दुकान या काम के लिए, My own business चुनिए।",
-          act: async () => { await pause(1500); await u.tapText("My own business or work"); await pause(700); await u.tapThen("Next →", "Do you have a website?", { timeout: 25000 }); } },
-        { id: "site", say: "अगर पहले से website है तो link डालिए, उसी से details आ जाएँगी। नहीं है तो आख़िरी option, यानी website नहीं है, चुनिए।",
-          act: async () => { await pause(1800); await u.tap(async () => (await lastOf(/^(🏪|🤝|🎨)/)).asElement()); await pause(900); await u.tapThen("Next →", "Just two things", { timeout: 25000 }); } },
+          act: async () => { await u.cue(0); await pause(800); await u.cue(1); await u.tapText("My own business or work"); await pause(700); await u.tapThen("Next →", "Do you have a website?", { timeout: 25000 }); } },
+        { id: "site", say: "अगर पहले से website है, तो उसका link डालिए, उसी से details आ जाएँगी। नहीं है, तो आख़िरी option चुनिए, यानी website नहीं है।",
+          act: async () => { await u.cue(0); await pause(800); await u.cue(1); await u.tap(async () => (await lastOf(/^(🏪|🤝|🎨)/)).asElement()); await pause(900); await u.tapThen("Next →", "Just two things", { timeout: 25000 }); } },
         { id: "business", say: "अपने business का नाम लिखिए। काम अपने आप पहचान लिया जाता है। फिर अपना link चुनिए, business के नाम से या अपने नाम से।",
           act: async () => {
-            await pause(600); await setText('input[placeholder="e.g. Sharma Sweets"]', "Sharma Medical Store"); await pause(1800);
+            await u.cue(0); await pause(400); await setText('input[placeholder="e.g. Sharma Sweets"]', "Sharma Medical Store");
+            await u.cue(1); await pause(1800);
             if (!(await P().$eval('input[role="combobox"]', (el) => el.value))) { await u.tap('input[role="combobox"]'); await P().keyboard.type("medical", { delay: 70 }); await pause(900); await u.tap('[role="option"]'); }
-            await pause(1200); await u.scrollBy(300, 1200); await u.tapThen("Next →", "Tap what is true", { timeout: 25000 });
+            await u.cue(2); await pause(1200); await u.scrollBy(300, 1200); await u.tapThen("Next →", "Tap what is true", { timeout: 25000 });
           } },
-        { id: "details", say: "जो चीज़ें आपके यहाँ सच हैं, उन पर tap कीजिए। आपके पास क्या है, आप में क्या ख़ास है, और कौन आपके ग्राहक हैं।",
+        { id: "details", say: "अब जो चीज़ें आपके यहाँ सच हैं, उन पर tap कीजिए। आपके पास क्या है, आप में क्या ख़ास है, और कौन आपके ग्राहक हैं।",
           act: async () => {
-            await pause(1000);
+            await u.cue(0); await pause(1200); await u.cue(1);
             for (const w of ["Allopathic", "Home delivery", "Prescription medicines", "Fair prices", "Best quality", "Fast delivery", "Families"]) {
               try { await u.tapText(w, { sel: "button" }); await pause(350); } catch { /* a chip this trade does not have */ }
             }
             await u.tapThen("Next →", "Where & when", { timeout: 25000 });
           } },
-        { id: "where", say: "शहर, पता और timings लिखिए, और बताइए कि घर पर delivery होती है या नहीं।",
+        { id: "where", say: "अब शहर और पूरा पता लिखिए। फिर बताइए कि आप किसे सेवा देते हैं, और आपके timings क्या हैं। घर पर delivery होती है या नहीं, ये भी चुनिए।",
           act: async () => {
-            await pause(800); await setText('input[placeholder="e.g. Delhi"]', "Delhi"); await setText('input[placeholder="Shop no., street, area"]', "12, Main Market, Lajpat Nagar");
-            await u.scrollBy(500, 1200);
-            for (const w of ["Local", "Mon–Sat 10 AM – 8 PM", "Yes"]) { try { await u.tapText(w, { sel: "button" }); await pause(500); } catch { /* already set */ } }
+            await u.cue(0); await pause(500); await setText('input[placeholder="e.g. Delhi"]', "Delhi"); await setText('input[placeholder="Shop no., street, area"]', "12, Main Market, Lajpat Nagar");
+            await u.cue(1); await u.scrollBy(500, 1200);
+            for (const w of ["Local", "Mon–Sat 10 AM – 8 PM"]) { try { await u.tapText(w, { sel: "button" }); await pause(500); } catch { /* already set */ } }
+            await u.cue(2); try { await u.tapText("Yes", { sel: "button" }); await pause(500); } catch { /* already set */ }
             await u.tapThen("Next →", "About & logo", { timeout: 25000 });
           } },
-        { id: "about", say: "AI आपके बारे में लिख देता है। चाहें तो logo लगाइए और अपनी भूमिका चुनिए।",
+        { id: "about", say: "AI आपके बारे में लिख देता है। चाहें तो logo लगाइए, और अपनी भूमिका चुनिए, जैसे Owner। फिर Save and continue दबाइए।",
           act: async () => {
-            await pause(1500); await u.tapText("Owner", { exact: true }); await pause(900);
-            await u.tapThen("Save and continue", "Make my website & card", { timeout: 60000, tries: 3 });
+            await u.cue(0); await pause(1500); await u.cue(1); await u.tapText("Owner", { exact: true }); await pause(900);
+            await u.cue(2); await u.tapThen("Save and continue", "Make my website & card", { timeout: 60000, tries: 3 });
           } },
         { id: "make", say: "अब Make my website दबाइए। AI आपकी website और card, दोनों लिखता है। इसमें करीब एक मिनट लगता है।",
           act: async () => {
-            await pause(1500);
+            await u.cue(0); await pause(1200);
             for (let i = 0; i < 2; i++) {
               await u.tapText("Make my website");
               try { await u.page.waitForFunction(() => !document.body?.innerText?.includes("Make my website & card"), { timeout: 9000 }); break; } catch { if (i) throw new Error("the build did not start"); }
             }
-            await pause(5000);
+            await u.cue(1); await pause(5000); await u.cue(2); await pause(1500);
           },
           after: async () => { await u.waitText("Your website is ready", 420000); await pause(1500); } },
-        { id: "preview", say: "लीजिए, आपकी website और card तैयार! ऊपर Website और Card, दोनों देख सकते हैं।",
-          act: async () => { await pause(1800); await u.scrollBy(400, 1800); await u.scrollBy(-400, 1200); await u.tapText("Card", { exact: true }); await pause(2500); await u.tapText("Website", { exact: true }); await pause(1500); } },
-        { id: "designs", say: "See more designs दबाइए। छह designs हैं: Colour poster, Order shop, Tile board, Photo collage, Big name और Full photo। जो पसंद आए, वो चुनिए। website उसी पल बदल जाती है।",
+        { id: "preview", say: "लीजिए, आपकी website और card तैयार। ऊपर Website और Card, दोनों देख सकते हैं।",
+          act: async () => { await u.cue(0); await pause(1000); await u.scrollBy(400, 1800); await u.scrollBy(-400, 1200); await u.cue(1); await u.tapText("Card", { exact: true }); await pause(2500); await u.tapText("Website", { exact: true }); await pause(1500); } },
+        { id: "designs", say: "See more designs दबाइए। छह designs हैं: Colour poster, Order shop, Tile board, Photo collage, Big name और Full photo। जो पसंद आए, वो चुनिए, और website उसी पल बदल जाती है।",
           act: async () => {
-            await u.tapText("See more designs"); await pause(1500);
-            for (const d of ["Colour poster", "Tile board", "Photo collage", "Big name", "Full photo"]) { await u.tapText(d); await pause(2400); }
+            await u.cue(0); await u.tapText("See more designs"); await pause(900); await u.cue(1);
+            for (const d of ["Colour poster", "Order shop", "Tile board", "Photo collage", "Big name", "Full photo"]) { await u.tapText(d); await pause(1250); }
+            await u.cue(2); await u.tapText("Order shop"); await pause(1500);
           } },
         { id: "colours", say: "अब अपना रंग और letter style चुनिए, या Skip कर दीजिए। फिर Done दबाइए।",
           act: async () => {
             await u.tapThen("Save and next", "Colours and fonts", { timeout: 60000 });
-            await pause(1200); try { await u.tapText("Ocean", { sel: "button" }); await pause(1800); await u.tapText("Clinic", { sel: "button" }); await pause(1800); } catch { /* names not on screen */ }
-            await u.tapThen("Done — next", "Congratulations", { timeout: 90000 });
+            await u.cue(0); await pause(1200); try { await u.tapText("Ocean", { sel: "button" }); await pause(1800); await u.tapText("Clinic", { sel: "button" }); await pause(1500); } catch { /* names not on screen */ }
+            await u.cue(1); await u.tapThen("Done — next", "Congratulations", { timeout: 90000 });
           } },
-        { id: "live", say: "बधाई हो! आपकी website और card live हैं, एक ही link पर। इसे WhatsApp पर भेजिए, status पर लगाइए, या QR code बनवाइए।",
-          act: async () => { await pause(2500); await u.scrollBy(500, 2500); await pause(800); await u.scrollBy(-500, 1200); } },
-        { id: "products", say: "अब products या services जोड़िए। Add many at once में नाम और दाम की list लिखिए। AI हर चीज़ की साफ़ photo खुद ढूँढ लेता है।",
+        { id: "live", say: "बधाई हो, आपकी website और card live हैं, एक ही link पर। इसे WhatsApp पर भेजिए, status पर लगाइए, या QR code बनवाइए।",
+          act: async () => { await u.cue(0); await pause(2000); await u.cue(1); await u.scrollBy(500, 2500); await pause(800); await u.scrollBy(-500, 1200); } },
+        { id: "products", say: "अब products या services जोड़िए। Add many at once में नाम और दाम की list लिखिए। फिर Read my list दबाइए, और AI हर चीज़ की साफ़ photo खुद ढूँढ लेता है।",
           act: async () => {
-            await u.goto(`${SITE}/poster/products`); await u.waitText("Add many at once", 30000); await pause(1000);
-            await u.tapText("Add many at once"); await pause(1000);
+            await u.goto(`${SITE}/poster/products`); await u.waitText("Add many at once", 30000); await u.cue(0); await pause(900);
+            await u.cue(1); await u.tapText("Add many at once"); await pause(800);
             await u.type("textarea", "Paracetamol 500mg strip 25\nCough syrup 95\nBP monitor 1499\nSurgical gloves box 250\nBaby diapers pack 399");
-            await u.tapThen("Read my list", "Add 5 products", { timeout: 60000 }); await pause(1500);
+            await u.cue(2); await u.tapThen("Read my list", "Add 5 products", { timeout: 60000 }); await pause(1500);
             await u.tapText("Add 5 products"); await u.waitText("5 products added", 150000); await pause(1500);
           } },
         { id: "livesite", say: "और ये रही आपकी website, products के साथ। Home, Products, Services, Photos, FAQ और Contact, सब तैयार।",
-          act: async () => { const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}?view=site`); await pause(1500); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000); } },
+          act: async () => { const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}?view=site`); await u.cue(0); await pause(1200); await u.cue(1); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000); } },
         { id: "premium", say: "अगर आप Premium customer हैं, तो आपकी website भी Premium बनेगी। Make advanced website दबाइए।",
-          act: async () => { await u.goto(`${SITE}/poster/site/advanced`); await u.waitText("Make my advanced website", 40000); await pause(2000); await u.scrollBy(400, 2000); } },
-        { id: "premiumdesign", say: "AI पहले आपकी website देखकर बताता है कि क्या कमज़ोर है। फिर आपके business के लिए नया layout, नई headline और नया about लिखता है। पसंद न आए तो Try another layout दबाइए।",
-          act: async () => { await u.tapText("Make my advanced website"); await pause(4000); },
-          after: async () => { await u.waitText("Your advanced website is ready to see", 360000); await pause(1500); await u.scrollBy(600, 3500); await u.scrollBy(-300, 1200); } },
-        { id: "premiumlive", say: "Use this advanced website दबाइए, और आपकी Premium website live है। हर product और service का अपना पेज है, और ये phone पर भी खुलती है।",
+          act: async () => { await u.goto(`${SITE}/poster/site/advanced`); await u.waitText("Make my advanced website", 40000); await u.cue(0); await pause(1200); await u.scrollBy(400, 1800); await u.cue(1); await u.tapText("Make my advanced website"); await pause(1500); } },
+        { id: "premiumdesign", say: "AI पहले आपकी website देखकर बताता है कि क्या कमज़ोर है। फिर आपके business के लिए नया layout, नई headline और नया about लिखता है।",
+          act: async () => { await u.cue(0); await pause(2500); await u.cue(1); await pause(2500); },
+          after: async () => { await u.waitText("Your advanced website is ready to see", 360000); await pause(1500); await u.scrollBy(600, 1500); await u.scrollBy(-600, 800); } },
+        { id: "premiumlive", say: "लीजिए, आपकी Premium website तैयार। पसंद न आए तो Try another layout दबाइए। पसंद आए तो Use this advanced website दबाइए, और Premium website live हो जाती है। हर product और service का अपना पेज है, और ये phone पर भी खुलती है।",
           act: async () => {
-            await u.tapThen("Use this advanced website", "Your advanced website is live", { timeout: 60000 }); await pause(2000);
-            const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}`); await pause(1500); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000);
+            await u.cue(0); await pause(1500); await u.cue(1); await pause(1200); await u.cue(2);
+            await u.tapThen("Use this advanced website", "Your advanced website is live", { timeout: 60000 }); await pause(1500);
+            await u.cue(3); const slug = await u.cardSlug(); await u.goto(`${SITE}/c/${slug}`); await pause(1000); await u.scrollBy(1400, 6000); await u.scrollBy(-1400, 2000);
           } },
         { id: "outro", say: "तो देर किस बात की? आज ही shubhora.com पर अपना digital card और website बनाइए।",
-          act: async () => { await u.goto(`${SITE}/`); await pause(1000); } },
+          act: async () => { await u.goto(`${SITE}/`); await u.cue(0); await pause(1200); await u.cue(1); await pause(1000); } },
       ];
     },
   },
@@ -287,6 +294,7 @@ export async function writePlan(uid, cols) {
 }
 
 /* ============================== helpers: voice ============================== */
+const sentencesOf = (say) => say.split(/(?<=[।!?.])\s+/).filter(Boolean);
 const wavHeader = (n) => { const b = Buffer.alloc(44); b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVE", 8); b.write("fmt ", 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(24000, 24); b.writeUInt32LE(48000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write("data", 36); b.writeUInt32LE(n, 40); return b; };
 // How the narrator should sound (owner, 18 Oct 2026: "voice thoda better"): a warm, relaxed teacher, not a newsreader. --plain-voice turns it off.
 const STYLE = flag("--plain-voice") ? "" : "Read this in a warm, friendly, clear and relaxed Hindi, like a helpful friend teaching a shopkeeper step by step. Natural pace, not rushed, a gentle smile in the voice:\n\n";
@@ -516,8 +524,14 @@ async function record(t, work) {
   }
   // The narration first, all at once: the clips are only as long as the words need.
   const scenes = t.scenes(null);
-  const voices = await Promise.all(scenes.map((s) => tts(s.say)));
-  log(`voice: ${scenes.length} lines, ${voices.reduce((a, v) => a + v.seconds, 0).toFixed(1)} s`);
+  // One voice clip per sentence: a scene can then start each sentence at the moment its action shows on screen (u.cue).
+  const voices = [];
+  for (let i = 0; i < scenes.length; i += 4) voices.push(...await Promise.all(scenes.slice(i, i + 4).map(async (s) => {
+    const parts = await Promise.all(sentencesOf(s.say).map(async (text) => ({ text, ...(await tts(text)) })));
+    return { parts, seconds: parts.reduce((a, p) => a + p.seconds + 0.3, 0) };
+  })));
+  for (const [i, v] of voices.entries()) for (const p of v.parts) if (p.seconds > p.text.length * 0.16 + 2.5) log(`!! voice line is unusually long (${p.seconds.toFixed(1)} s for ${p.text.length} letters), listen to it: ${scenes[i].id} "${p.text.slice(0, 40)}"`);
+  log(`voice: ${scenes.length} scenes, ${voices.reduce((a, v) => a + v.seconds, 0).toFixed(1)} s`);
 
   const browser = await puppeteer.launch({ executablePath: CHROME, headless: true, protocolTimeout: 600000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--hide-scrollbars", "--lang=en-IN", "--font-render-hinting=none", "--disable-gpu"] });
   browser.on("disconnected", () => log("!! Chrome closed"));
@@ -581,7 +595,7 @@ async function record(t, work) {
     // progress.json lists what a run finished; a run from before it existed is rebuilt from the clips on disk
     let prev = [];
     try { prev = JSON.parse(fs.readFileSync(path.join(work, "progress.json"), "utf8")); } catch { /* none */ }
-    kept = list.slice(0, fromIdx).map((x, k) => prev[k] ?? { id: x.id, say: x.say, clip: path.join(work, `${String(k + 1).padStart(2, "0")}-${x.id}.webm`), wav: voices[k].file, saySec: voices[k].seconds });
+    kept = list.slice(0, fromIdx).map((x, k) => prev[k] ?? { id: x.id, say: x.say, clip: path.join(work, `${String(k + 1).padStart(2, "0")}-${x.id}.webm`), parts: voices[k].parts.map((p) => ({ text: p.text, wav: p.file, sec: p.seconds })), cues: voices[k].parts.map((_, j) => j * 3), saySec: voices[k].seconds });
     const missing = kept.filter((x) => !fs.existsSync(x.clip)).map((x) => path.basename(x.clip));
     if (missing.length) throw new Error(`the earlier run has no clip for: ${missing.join(", ")} (needed before "${FROM}")`);
     log(`carrying on from "${FROM}": ${fromIdx} scenes kept`);
@@ -591,15 +605,24 @@ async function record(t, work) {
       if (resuming && i === fromIdx && s.enter) { log(`${s.id}: opening the screen…`); await s.enter(); }
       else if (s.between) { log(`${s.id}: preparing…`); await s.between(); }
       const clip = path.join(work, `${String(i + 1).padStart(2, "0")}-${s.id}.webm`);
-      log(`${s.id}: recording (${voices[i].seconds.toFixed(1)} s of words)`);
+      log(`${s.id}: recording (${voices[i].seconds.toFixed(1)} s of words, ${voices[i].parts.length} sentences)`);
       const rec = await page.screencast({ path: clip, ffmpegPath: FFMPEG });
-      const t0 = Date.now();
+      const t0 = Date.now(), now = () => Date.now() - t0, parts = voices[i].parts, cues = [];
+      let spokenTill = 0;
+      // u.cue(k): sentence k starts now, but never over the one before it.
+      u.cue = async (k) => {
+        if (cues[k] !== undefined || !parts[k]) return;
+        const wait = spokenTill + 300 - now(); if (wait > 0) await pause(wait);
+        cues[k] = now() / 1000; spokenTill = now() + parts[k].seconds * 1000;
+      };
       try { await s.act(); }
       catch (e) { await rec.stop().catch(() => undefined); throw await failed(s, e, ""); }
-      const left = voices[i].seconds * 1000 + 800 - (Date.now() - t0);
+      if (!cues.length) { let c = 0; parts.forEach((p, k) => { cues[k] = c; c += p.seconds + 0.3; }); spokenTill = c * 1000; }   // a scene with no cues: the words run from its start
+      else for (let k = 0; k < parts.length; k++) await u.cue(k);
+      const left = spokenTill + 800 - now();
       if (left > 0) await pause(left);
       await rec.stop();
-      done.push({ id: s.id, say: s.say, clip, wav: voices[i].file, saySec: voices[i].seconds });
+      done.push({ id: s.id, say: s.say, clip, parts: parts.map((p) => ({ text: p.text, wav: p.file, sec: p.seconds })), cues, saySec: voices[i].seconds });
       fs.writeFileSync(path.join(work, "progress.json"), JSON.stringify(done, null, 1));
       if (s.after) { log(`${s.id}: waiting…`); try { await s.after(); } catch (e) { throw await failed(s, e, " (while waiting)"); } }
     }
@@ -637,8 +660,16 @@ async function compose(work, outDir) {
   let at = 0; const pcm = [];
   for (const s of scenes) {
     const p = probe(s.clip); s.dur = p.seconds; s.start = at; at += p.seconds;
-    const wav = fs.readFileSync(s.wav).subarray(44);
     const want = Math.round(p.seconds * 24000) * 2;
+    if (s.parts && s.cues) {
+      // each sentence's voice is placed at the moment the recorder began it, so words and screen match; its caption stays up until the next sentence starts
+      const buf = Buffer.alloc(want);
+      s.parts.forEach((q, k) => { const w = fs.readFileSync(q.wav).subarray(44); const off = Math.round(s.cues[k] * 24000) * 2; if (off < want) w.copy(buf, off, 0, Math.min(w.length, want - off)); });
+      pcm.push(buf);
+      s.caps = s.parts.map((q, k) => ({ text: q.text, from: s.start + s.cues[k], to: k === s.parts.length - 1 ? s.start + s.dur : s.start + s.cues[k + 1] }));
+      continue;
+    }
+    const wav = fs.readFileSync(s.wav).subarray(44);
     pcm.push(wav.length >= want ? wav.subarray(0, want) : Buffer.concat([wav, Buffer.alloc(want - wav.length)]));
     // one caption per sentence, each on screen for its share of the spoken time; the last stays till the clip ends
     const parts = s.say.split(/(?<=[।!?.])\s+/).filter(Boolean);
@@ -699,6 +730,7 @@ if (RUN_DIRECT) try {
     log(`work: ${work}`);
     await record(t, work);
   }
+  if (flag("--record-only")) { console.log(`\nrecorded. To put it together (run it on its own, at low priority): nice -n 19 node scripts/tutorial-video.mjs ${TUTORIAL} --compose ${work}`); process.exit(0); }
   const outs = await compose(work, OUT);
   console.log("\ndone:");
   for (const o of outs) console.log(`  ${o}  →  ${SITE}/tutorials/${path.basename(o)}`);
