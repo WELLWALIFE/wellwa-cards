@@ -73,6 +73,12 @@ export async function currentJob(uid: string): Promise<CardJob | null> {
   return job;
 }
 
+/** A wiped account (demo reset, Clear all data) must not get an earlier website build handed back on its next visit. */
+export async function forgetJob(uid: string) {
+  reg.live.delete(uid);
+  await fs.rm(fileOf(uid), { force: true }).catch(() => undefined);
+}
+
 /** The phone asked: it is watching (so no push is needed when it finishes). */
 export function touch(uid: string) {
   const live = reg.live.get(uid);

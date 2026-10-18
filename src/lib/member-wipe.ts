@@ -7,6 +7,7 @@
 //   kept:    the login, the username, name and mobile, the partner ID and team, the plan, credits and wallet.
 // The account is stamped data_cleared_at so the owner's phone drops its own copies of the old answers.
 import { SUPA_URL } from "@/lib/admin-guard";
+import { forgetJob } from "@/lib/card-jobs";
 
 // [table, owner column] — in an order where nothing is still pointed at when it goes (cards cascade their own rows).
 const TABLES: [string, string][] = [
@@ -28,6 +29,7 @@ const BRIDGE = "http://127.0.0.1:8787";
 export async function wipeMemberData(id: string, h: Record<string, string>, userMetadata: Record<string, unknown> | undefined): Promise<{ ok: boolean; cleared: Record<string, number | string> }> {
   const cleared: Record<string, number | string> = {};
   const slugs: string[] = [];
+  await forgetJob(id);
   for (const [table, col] of TABLES) {
     const r = await fetch(`${SUPA_URL}/rest/v1/${table}?${col}=eq.${id}`, { method: "DELETE", headers: { ...h, Prefer: "return=representation" } });
     if (r.ok) {
