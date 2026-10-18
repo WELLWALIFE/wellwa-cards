@@ -288,9 +288,11 @@ export async function writePlan(uid, cols) {
 
 /* ============================== helpers: voice ============================== */
 const wavHeader = (n) => { const b = Buffer.alloc(44); b.write("RIFF", 0); b.writeUInt32LE(36 + n, 4); b.write("WAVE", 8); b.write("fmt ", 12); b.writeUInt32LE(16, 16); b.writeUInt16LE(1, 20); b.writeUInt16LE(1, 22); b.writeUInt32LE(24000, 24); b.writeUInt32LE(48000, 28); b.writeUInt16LE(2, 32); b.writeUInt16LE(16, 34); b.write("data", 36); b.writeUInt32LE(n, 40); return b; };
+// How the narrator should sound (owner, 18 Oct 2026: "voice thoda better"): a warm, relaxed teacher, not a newsreader. --plain-voice turns it off.
+const STYLE = flag("--plain-voice") ? "" : "Read this in a warm, friendly, clear and relaxed Hindi, like a helpful friend teaching a shopkeeper step by step. Natural pace, not rushed, a gentle smile in the voice:\n\n";
 async function tts(text) {
   fs.mkdirSync(CACHE, { recursive: true });
-  const file = path.join(CACHE, crypto.createHash("sha1").update(`${TTS_MODEL}|${VOICE}|${text}`).digest("hex") + ".wav");
+  const file = path.join(CACHE, crypto.createHash("sha1").update(`${TTS_MODEL}|${VOICE}|${STYLE}|${text}`).digest("hex") + ".wav");
   if (!fs.existsSync(file)) {
     if (!GEMINI) throw new Error("GEMINI_API_KEY missing");
     let b64 = "", why = "";
@@ -298,7 +300,7 @@ async function tts(text) {
       if (i) await pause(1500);
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${TTS_MODEL}:generateContent`, {
         method: "POST", headers: { "x-goog-api-key": GEMINI, "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ parts: [{ text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
+        body: JSON.stringify({ contents: [{ parts: [{ text: STYLE + text }] }], generationConfig: { responseModalities: ["AUDIO"], speechConfig: { voiceConfig: { prebuiltVoiceConfig: { voiceName: VOICE } } } } }),
         signal: AbortSignal.timeout(90000),
       }).catch((e) => ({ json: async () => ({ error: { message: e.message } }) }));
       const d = await r.json();
@@ -608,9 +610,26 @@ async function record(t, work) {
 
 /* ============================== compose ============================== */
 const LAYOUTS = {
-  phone: { W: 1080, H: 1920, screen: { x: 212, y: 190, w: 656, h: 1420 }, cap: { width: 960, size: 42, x: 60, y: 1660 }, title: { x: 540, y: 112, anchor: "middle", size: 54 }, logo: { x: 40, y: 40, size: 72 } },
+  phone: { W: 1080, H: 1920, screen: { x: 212, y: 190, w: 656, h: 1420 }, cap: { width: 960, size: 44, x: 60, y: 1650 }, title: { x: 540, y: 112, anchor: "middle", size: 54 }, logo: { x: 40, y: 40, size: 72 } },
   wide: { W: 1920, H: 1080, screen: { x: 150, y: 70, w: 434, h: 940 }, cap: { width: 1100, size: 46, x: 700, y: 560 }, title: { x: 700, y: 300, anchor: "start", size: 76 }, logo: { x: 700, y: 120, size: 110 } },
 };
+// A short heading for each scene of the card+website video, shown as a pill under the title with a progress bar along the top.
+const HEADS = {
+  intro: "शुरुआत", signup: "1 · Account बनाइए", you: "2 · आपके बारे में", promote: "3 · किसके लिए", site: "3 · किसके लिए", business: "4 · Business का नाम",
+  details: "5 · क्या ख़ास है", where: "6 · पता और timing", about: "7 · About", make: "8 · Website बनाइए", preview: "9 · Website तैयार", designs: "10 · Design चुनिए",
+  colours: "11 · रंग और style", live: "12 · Save करें", products: "13 · Products जोड़ें", livesite: "14 · Live website", premium: "15 · Premium website",
+  premiumdesign: "15 · Premium website", premiumlive: "16 · Premium live", outro: "shubhora.com · Free शुरू करें",
+};
+async function headPng(file, W, H, { label, frac, y }) {
+  const w = Math.max(280, Math.round(label.length * 30 + 90)), h = 50, x = Math.round((W - w) / 2);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}">
+    <rect x="0" y="0" width="${W}" height="10" fill="#ffffff" fill-opacity="0.12"/>
+    <rect x="0" y="0" width="${Math.max(12, Math.round(W * frac))}" height="10" fill="#ffb454"/>
+    <rect x="${x}" y="${y}" width="${w}" height="${h}" rx="25" fill="#6d5dfc"/>
+    <text x="${W / 2}" y="${y + 35}" text-anchor="middle" font-family="${FONT}" font-size="30" font-weight="700" fill="#ffffff">${esc(label)}</text>
+  </svg>`;
+  await sharp(Buffer.from(svg)).png().toFile(file);
+}
 async function compose(work, outDir) {
   const meta = JSON.parse(fs.readFileSync(path.join(work, "scenes.json"), "utf8"));
   const scenes = meta.scenes;
@@ -631,9 +650,9 @@ async function compose(work, outDir) {
   const slug = meta.tutorial;
   fs.mkdirSync(outDir, { recursive: true });
   const outs = [];
-  for (const [name, L] of Object.entries(LAYOUTS)) {
+  for (const [name, L] of Object.entries(LAYOUTS).filter(([k]) => k === "phone" || flag("--wide"))) {
     const bg = path.join(work, `bg-${name}.png`), frame = path.join(work, `frame-${name}.png`);
-    await backgroundPng(bg, L.W, L.H, { title: meta.title, subtitle: meta.subtitle, logo: L.logo, titleAt: L.title, size: L.title.size });
+    await backgroundPng(bg, L.W, L.H, { title: meta.title, subtitle: name === "phone" && meta.tutorial === "cardsite" ? "" : meta.subtitle, logo: L.logo, titleAt: L.title, size: L.title.size });
     await framePng(frame, L.W, L.H, L.screen);
     const caps = [];
     for (const [i, s] of scenes.entries()) for (const [j, c] of s.caps.entries()) {
@@ -641,7 +660,14 @@ async function compose(work, outDir) {
       const size = await captionPng(file, c.text, L.cap);
       caps.push({ file, from: c.from, to: c.to, x: L.cap.x, y: L.cap.y, h: size.h });
     }
-    const inputs = ["-i", bg, ...scenes.flatMap((s) => ["-i", s.clip]), "-i", frame, ...caps.flatMap((c) => ["-i", c.file]), "-i", audio];
+    const heads = [];
+    if (name === "phone" && meta.tutorial === "cardsite") for (const [i, s] of scenes.entries()) {
+      const label = HEADS[s.id]; if (!label) continue;
+      const file = path.join(work, `head-${i}.png`);
+      await headPng(file, L.W, L.H, { label, frac: (i + 1) / scenes.length, y: 138 });
+      heads.push({ file, from: s.start, to: s.start + s.dur });
+    }
+    const inputs = ["-i", bg, ...scenes.flatMap((s) => ["-i", s.clip]), "-i", frame, ...caps.flatMap((c) => ["-i", c.file]), ...heads.flatMap((x) => ["-i", x.file]), "-i", audio];
     const n = scenes.length;
     let f = scenes.map((_, i) => `[${i + 1}:v]scale=${L.screen.w}:${L.screen.h}:flags=lanczos,fps=30,format=yuv420p,setsar=1[c${i}]`).join(";") + ";";
     f += scenes.map((_, i) => `[c${i}]`).join("") + `concat=n=${n}:v=1:a=0[scr];`;
@@ -649,8 +675,9 @@ async function compose(work, outDir) {
     let last = "v1";
     caps.forEach((c, k) => { const idx = n + 2 + k; f += `;[${last}][${idx}:v]overlay=${c.x}:${c.y}:enable='between(t,${c.from.toFixed(2)},${c.to.toFixed(2)})'[v${k + 2}]`; last = `v${k + 2}`; });
     const out = path.join(outDir, `${slug}-${name}.mp4`);
+    heads.forEach((c, k) => { const idx = n + 2 + caps.length + k; f += `;[${last}][${idx}:v]overlay=0:0:enable='between(t,${c.from.toFixed(2)},${c.to.toFixed(2)})'[h${k}]`; last = `h${k}`; });
     log(`${name}: ${L.W}x${L.H}, ${total.toFixed(1)} s, ${caps.length} captions → ${out}`);
-    ff([...inputs, "-filter_complex", f, "-map", `[${last}]`, "-map", `${n + 2 + caps.length}:a`, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], name);
+    ff([...inputs, "-filter_complex", f, "-map", `[${last}]`, "-map", `${n + 2 + caps.length + heads.length}:a`, "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-r", "30", "-c:a", "aac", "-b:a", "160k", "-shortest", "-movflags", "+faststart", out], name);
     outs.push(out);
   }
   fs.writeFileSync(path.join(outDir, `${slug}.json`), JSON.stringify({ title: meta.title, seconds: Math.round(total), made: new Date().toISOString(), scenes: scenes.map((s) => ({ id: s.id, start: Math.round(s.start), say: s.say })) }, null, 1));
