@@ -1396,7 +1396,7 @@ function Onboard() {
     const part = partsLabel(biz.category, facts.tradeAnswers, hi);   // a combined trade with only some parts ticked: "Cleaning"
     if (part) return part;
     const all = partsOf(biz.category);   // a combined trade with every part (or none) ticked is all of them: "Pest control + Cleaning"
-    if (all.length > 1) return all.map((x) => (hi ? x.hi : x.en)).join(" + ");
+    if (all.length > 1 && !all.some((x) => x.label)) return all.map((x) => (hi ? x.hi : x.en)).join(" + ");
     const c = categoryOf(biz.category ?? "");
     return c && c.key !== "other" ? (hi ? c.hi : c.en).split(" / ")[0].split(" (")[0] : "";
   }
