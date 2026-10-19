@@ -64,16 +64,16 @@ export function ShareScreen() {
   async function start() {
     if (busy) return;
     setBusy(true); setErr("");
-    // WhatsApp opens in a window made NOW (a tap), filled in when the link is ready: a window opened after the wait is taken for a pop-up.
-    const win = window.open("", "_blank");
     try {
       const r = await api<Live & { error?: string }>("/api/share", { method: "POST", json: {} });
       if (!r.ok || !r.data.token) throw new Error(r.data.error || T("Could not make the link. Please try again.", "link नहीं बन पाया। दोबारा कोशिश करें।"));
       const l: Live = { token: r.data.token, secret: r.data.secret, url: r.data.url };
       liveRef.current = l; setLive(l);
       const { record } = await import("rrweb");
+      let gotPicture: () => void = () => undefined;
+      const picture = new Promise<void>((res) => { gotPicture = res; });
       stopRec.current = record({
-        emit(e) { buffer.current.push(e); },
+        emit(e) { buffer.current.push(e); if ((e as { type?: number }).type === 2) gotPicture(); },
         // What is typed is shown (a form is the whole point); passwords and secret-looking fields never are.
         maskInputOptions: { password: true },
         maskInputFn: (text, el) => (SECRET_FIELD.test(`${el?.getAttribute?.("name") ?? ""} ${el?.id ?? ""} ${el?.getAttribute?.("autocomplete") ?? ""} ${el?.getAttribute?.("placeholder") ?? ""} ${el?.getAttribute?.("aria-label") ?? ""}`) ? "•".repeat(text.length) : text),
@@ -83,13 +83,11 @@ export function ShareScreen() {
       }) as (() => void) | undefined;
       timers.current.push(setInterval(() => { if (buffer.current.length) void push(); }, FLUSH_MS));
       timers.current.push(setInterval(() => { void push(); }, BEAT_MS));
-      void push();
-      const text = `${T("I am sharing my Shubhora screen with you so you can guide me. Open this link to watch (you can only watch):", "मैं अपनी Shubhora की screen आपको दिखा रहा/रही हूँ ताकि आप मुझे बता सकें। देखने के लिए ये link खोलें (आप सिर्फ़ देख सकते हैं):")}\n${l.url}`;
-      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      if (win) win.location.href = url; else window.open(url, "_blank");
-      setAsk(false);
+      // The first complete picture of the screen is sent BEFORE the link is handed out, so whoever opens it sees the screen at once (when the app goes to
+      // WhatsApp the page is in the background and cannot draw a picture until the person is back).
+      await Promise.race([picture, new Promise((res) => setTimeout(res, 4000))]);
+      await push();
     } catch (e) {
-      win?.close();
       halt(false);
       setErr(e instanceof Error ? e.message : T("Could not make the link. Please try again.", "link नहीं बन पाया। दोबारा कोशिश करें।"));
     } finally { setBusy(false); }
@@ -107,6 +105,7 @@ export function ShareScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const shareText = live ? `${T("I am sharing my Shubhora screen with you so you can guide me. Open this link to watch (you can only watch):", "मैं अपनी Shubhora की screen आपको दिखा रहा/रही हूँ ताकि आप मुझे बता सकें। देखने के लिए ये link खोलें (आप सिर्फ़ देख सकते हैं):")}\n${live.url}` : "";
   async function copy() {
     if (!live) return;
     try { await navigator.clipboard.writeText(live.url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
@@ -114,27 +113,40 @@ export function ShareScreen() {
 
   return (
     <>
-      {ask && !live && (
+      {ask && (
         <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 px-4" role="dialog" aria-modal="true">
           <div className="w-full max-w-sm space-y-3 rounded-2xl bg-surface p-5 shadow-xl">
             <div className="flex items-start justify-between gap-3">
               <p className="flex items-center gap-2 text-base font-bold"><ShieldCheck className="h-5 w-5 text-good" /> {T("Show your screen to someone", "अपनी screen किसी को दिखाएँ")}</p>
               <button type="button" onClick={() => setAsk(false)} aria-label={T("Close", "बंद करें")} className="text-muted"><X className="h-5 w-5" /></button>
             </div>
+            {live ? (
+              <div className="space-y-3">
+                <p className="rounded-xl bg-good/10 px-3 py-2.5 text-sm font-medium">{T("Your link is ready. Send it to whoever should watch. Your screen is being shared now.", "आपका link तैयार है। जिसे दिखाना है उसे भेजें। आपकी screen अब share हो रही है।")}</p>
+                <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" onClick={() => setAsk(false)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25d366] px-4 py-3 text-sm font-bold text-white">{T("Send on WhatsApp", "WhatsApp पर भेजें")}</a>
+                <div className="grid grid-cols-2 gap-2">
+                  <button type="button" onClick={() => void copy()} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">{copied ? T("Copied", "copy हुआ") : T("Copy link", "link copy करें")}</button>
+                  <button type="button" onClick={() => setAsk(false)} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">{T("Done", "हो गया")}</button>
+                </div>
+                <button type="button" onClick={() => { halt(true); setAsk(false); }} className="w-full rounded-xl px-3 py-2 text-xs font-semibold text-danger">{T("Stop sharing", "share बंद करें")}</button>
+              </div>
+            ) : (<>
             <ul className="space-y-2 text-sm">
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("Whoever gets the link sees only your Shubhora app screen, as you use it.", "जिसे link मिलेगा वो सिर्फ़ आपकी Shubhora app की screen देख पाएगा, जैसे आप चलाते हैं।")}</li>
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("He or she can only look. Nothing can be tapped, changed or sent from their side.", "वो सिर्फ़ देख सकता/सकती है। उनकी तरफ़ से कुछ दबाया, बदला या भेजा नहीं जा सकता।")}</li>
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("Nothing else is shared: no other app, no phone screen, no passwords. Fields that look like a PIN, OTP or card are hidden.", "और कुछ नहीं दिखता: कोई दूसरा app, phone की screen, या password नहीं। PIN, OTP, card जैसे fields छिपे रहते हैं।")}</li>
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("It stops when you tap Stop, when you close the app, or by itself after a while.", "ये तब बंद हो जाता है जब आप 'रोकें' दबाएँ, app बंद करें, या कुछ देर बाद अपने आप।")}</li>
             </ul>
-            {err && <p className="text-xs text-danger">{err}</p>}
-            <div className="grid grid-cols-2 gap-2">
+            {err && !live && <p className="text-xs text-danger">{err}</p>}
+            {!live && <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => setAsk(false)} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">{T("Not now", "अभी नहीं")}</button>
               <button type="button" onClick={() => void start()} disabled={busy} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
                 {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {T("Make link", "link बनाएँ")}
               </button>
-            </div>
-            <p className="text-[11px] leading-snug text-muted">{T("You will be taken to WhatsApp to choose who gets it.", "link किसे भेजना है, ये चुनने के लिए आप WhatsApp पर जाएँगे।")}</p>
+            </div>}
+            <p className="text-[11px] leading-snug text-muted">{T("Next you choose who gets the link, on WhatsApp.", "इसके बाद आप WhatsApp पर चुनेंगे कि link किसे भेजना है।")}</p>
+            </>)}
           </div>
         </div>
       )}
