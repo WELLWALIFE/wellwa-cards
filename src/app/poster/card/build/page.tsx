@@ -16,7 +16,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
-import { Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X } from "lucide-react";
+import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -333,6 +333,29 @@ export default function BuildCard() {
     // The design is picked: keep the six tabs at the top of the screen with the website right under them, so the page
     // can be seen change while choosing (owner, 13 Oct 2026).
     setTimeout(() => previewRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 80);
+  }
+  // "Send 6 test links on WhatsApp": the six designs as six links, to the owner's own WhatsApp or anyone's, to open on any phone and compare.
+  const [sendingLinks, setSendingLinks] = useState(false);
+  const [linksNote, setLinksNote] = useState("");
+  async function sendTestLinks() {
+    if (!card || !looks.length || sendingLinks) return;
+    setLinksNote(""); setSendingLinks(true);
+    // WhatsApp opens in a window made NOW (a tap), filled in when the links are ready: a window opened after the wait is taken for a pop-up.
+    const win = window.open("", "_blank");
+    try {
+      const body = JSON.stringify({ card, looks });
+      if (body.length > 3_500_000) throw new Error(T("This card is too big to send as links.", "यह card links भेजने के लिए बहुत बड़ा है।"));
+      const r = await api<{ token?: string; error?: string }>("/api/card/test-links", { method: "POST", json: { card, looks } });
+      if (!r.ok || !r.data.token) throw new Error(r.data.error || T("Could not make the links. Please try again.", "links नहीं बन पाए। दोबारा try करें।"));
+      const lines = looks.map((l, i) => `${i + 1}. ${l.name}: ${SITE_URL}/t/${r.data.token}/${l.key}`);
+      const who = (shown?.company || shown?.name || "").trim();
+      const text = `${T("Website design test", "Website design का test")}${who ? ` — ${who}` : ""}\n${T("Open each link to see that design:", "हर link खोलकर वो design देखें:")}\n\n${lines.join("\n")}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      if (win) win.location.href = url; else window.location.href = url;
+    } catch (e) {
+      win?.close();
+      setLinksNote(e instanceof Error ? e.message : T("Could not make the links. Please try again.", "links नहीं बन पाए। दोबारा try करें।"));
+    } finally { setSendingLinks(false); }
   }
   /** The website in this look, full size in a new tab: the live link once live, else the preview of this phone. */
   function openLookInTab(k: LookKey) {
@@ -1434,6 +1457,11 @@ export default function BuildCard() {
               );
             })}
           </div>
+          <button type="button" onClick={() => void sendTestLinks()} disabled={sendingLinks || !looks.length}
+            className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#25d366] bg-[#25d366]/10 px-3 py-2.5 text-sm font-bold text-[#128c4a] disabled:opacity-60">
+            {sendingLinks ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />} {T("Send 6 test links on WhatsApp", "6 test links WhatsApp पर भेजें")}
+          </button>
+          <p className="mt-1 text-center text-[11px] text-muted">{linksNote ? <span className="text-danger">{linksNote}</span> : T("Send them to yourself or anyone: each design opens on its own, to test and compare. Links work for 14 days.", "अपने या किसी और के WhatsApp पर भेजें: हर design अलग खुलता है, test और compare के लिए। Links 14 दिन चलते हैं।")}</p>
           </div>
         )}
         <div className="space-y-2 p-2.5">
