@@ -14,6 +14,7 @@ import { FONT_PAIRS, FONT_ALIASES, SITE_PALETTES } from "@/lib/site-style";
 import { tradeMood, rankBlueprints, tradeCta } from "@/lib/trade-moods";
 import type { CardCopy } from "@/lib/card-ai";
 import type { Card, CardBlock } from "@/lib/types";
+import tplData from "@/lib/trade-templates/data.json";
 
 const emptyCopy = (): CardCopy => ({ jobTitle: "", tagline: "", about: "", color: "", highlights: [], services: [], offer: null, hours: [], faq: [], contactNote: "", promise: [], steps: [], more: "", titles: {}, cta: "", hero: { sub: "" }, productLines: {}, productGroups: {}, seoTitle: "", seoDescription: "" });
 const products = (n: number): SavedProduct[] => Array.from({ length: n }, (_, i) => ({ id: `p${i}`, name: `Item ${i + 1}`, brand: "", price: `${199 + i * 50}`, mrp: "", photo: `https://x.supabase.co/storage/v1/object/public/media/u/p${i}.jpg`, images: [], offer: "", benefits: ["Good quality", "Fair price"] }));
@@ -22,7 +23,12 @@ const products = (n: number): SavedProduct[] => Array.from({ length: n }, (_, i)
  *  real build would have) as JSON, for the visual sweep (/preview/site reads it from localStorage). */
 const DUMP = process.env.DUMP_DIR ?? "";
 const IMG = ["/wellwa/images/aura-plus-7.webp", "/wellwa/images/aura-maxx.webp", "/wellwa/images/aura-5.webp", "/wellwa/images/nmd-drops.webp", "/wellwa/images/home-demo-consultation.webp", "/wellwa/images/distributor-training.webp"];
-const richFacts = (lang: "en" | "hi") => ({ ...EMPTY_FACTS, lang, social: { ...EMPTY_FACTS.social, instagram: "shubhora" }, since: "2015", areas: "Rewari, Dharuhera, Bawal", hours: "Mon–Sat 10am–8pm", upi: "test@upi", special: ["Home delivery", "GST billing"], customers: ["Families", "Shops"], photos: IMG.slice(0, 5), bannerUrl: "/wellwa/images/aura-plus-kitchen-hero.webp" });
+/** The trade's OWN sample photos (public/art/tpl/<trade>/), never another business's: a kirana sample once came out with a water ionizer on it (owner, 19 Oct 2026). */
+/** A trade with no photo set of its own borrows the nearest trade's (never the Wellwa product photos). */
+const PHOTO_LIKE: Record<string, string> = { cleanprod: "wholesale", other: "agent", influencer: "personal" };
+const tradeImgs = (key: string): string[] => { const k = (tplData as unknown as { photos: Record<string, string[]> }).photos[key] ? key : PHOTO_LIKE[key] ?? key; return ((tplData as unknown as { photos: Record<string, string[]> }).photos[k] ?? []).map((slug) => `/art/tpl/${k}/${slug}.jpg`); };
+const heroImg = (key: string): string => { const all = tradeImgs(key); return all.find((u) => /(shopfront|exterior|storefront|hero|cover)\.jpg$/.test(u)) ?? all[0] ?? ""; };
+const richFacts = (lang: "en" | "hi", key: string) => ({ ...EMPTY_FACTS, lang, social: { ...EMPTY_FACTS.social, instagram: "shubhora" }, since: "2015", areas: "Rewari, Dharuhera, Bawal", hours: "Mon–Sat 10am–8pm", upi: "test@upi", special: ["Home delivery", "GST billing"], customers: ["Families", "Shops"], photos: (tradeImgs(key).length ? tradeImgs(key) : IMG).slice(0, 5), bannerUrl: heroImg(key) });
 const richCopy = (c: { en: string }, lang: "en" | "hi"): CardCopy => ({ ...emptyCopy(), about: lang === "hi"
   ? `${c.en} — रेवाड़ी में 2015 से। हम हर ग्राहक को पूरा समय देते हैं, दाम पहले बताते हैं और काम समय पर पूरा करते हैं।\n\nहमारी टीम प्रशिक्षित है और हर काम की ज़िम्मेदारी लेती है। आज रेवाड़ी, धारूहेड़ा और बावल के सैकड़ों परिवार हम पर भरोसा करते हैं।`
   : `${c.en} in Rewari since 2015. We give every customer our full time, tell the price before we start and finish on the day we promise.\n\nOur team is trained and takes responsibility for every job. Today hundreds of families across Rewari, Dharuhera and Bawal rely on us.`, hero: { sub: lang === "hi" ? "रेवाड़ी में भरोसे का नाम, 2015 से" : "Trusted in Rewari since 2015" } });
@@ -42,7 +48,7 @@ for (const c of CATEGORIES) {
       const setup: SetupInfo = { kind: role === "business" ? "business" : "person", role, reach: "local", business: `Test ${c.en}`, person: "Ramesh Kumar", category: c.key, categoryLabel: c.en, persona, city: "Rewari", address: "Main market", website: "", gstin: "", about: "", map: "", logo: "", photo: "", phone: "9876543210", email: "" };
       const input: ComposeInput = { setup, facts: { ...EMPTY_FACTS, lang, social: { ...EMPTY_FACTS.social } }, products: products(n), brandProducts: false, reviews: [], copy: emptyCopy(), info: new Map(), siteUrl: null };
       if (DUMP && n === 4) {
-        const rich: ComposeInput = { ...input, facts: richFacts(lang), copy: richCopy(c, lang), reviews: richReviews, products: products(4).map((p, i) => ({ ...p, photo: IMG[i], benefits: ["Good quality", "Fair price", "Home delivery"] })) };
+        const rich: ComposeInput = { ...input, facts: richFacts(lang, c.key), copy: richCopy(c, lang), reviews: richReviews, products: products(4).map((p, i) => ({ ...p, photo: (tradeImgs(c.key).length ? tradeImgs(c.key) : IMG)[i] ?? IMG[i], benefits: ["Good quality", "Fair price", "Home delivery"] })) };
         try {
           const a0 = auditCard(composeCard(rich).card, { stockPhotos: [], city: setup.city, trade, lang }).card;
           const tctx = { trade, lang, business: setup.business, tradeLabel: c.en, city: setup.city, since: "2015" };
