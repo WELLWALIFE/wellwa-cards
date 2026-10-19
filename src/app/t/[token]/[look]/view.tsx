@@ -20,7 +20,7 @@ export function TestSite({ card, name, n, of }: { card: Card; name: string; n: n
   return (
     <>
       <div className="sticky top-0 z-50 bg-[#12144a] px-3 py-1.5 text-center text-[12px] font-semibold text-white">Design {n} of {of}: {name} — test link</div>
-      <SiteView card={shown} qr={qr} free={false} unlisted={shown.pages.filter((p) => p.hidden && p.id.startsWith("adv-")).map((p) => p.slug)} />
+      <SiteView card={shown} qr={qr} free={false} initialLang={card.language === "hi" ? "hi" : "en"} unlisted={shown.pages.filter((p) => p.hidden && p.id.startsWith("adv-")).map((p) => p.slug)} />
     </>
   );
 }
