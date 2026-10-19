@@ -532,6 +532,7 @@ export default function AdvancedSitePage() {
           <AdvancedSwitch cardId={card?.id} on={on} onChanged={(s) => { if (s) setCur(s); }} />
           <p className="text-[11px] text-muted">{T("Both designs stay saved, so you can go back and forth.", "दोनों designs save रहते हैं, तो आप आगे-पीछे जा सकते हैं।")}</p>
         </div>
+        {on && <Link href="/poster/seo" className={`${box} flex items-center justify-between gap-3 text-sm font-semibold`}><span>{T("Google SEO checklist: see what is ready", "Google SEO checklist: क्या तैयार है देखें")}</span><span className="text-brand-ink">→</span></Link>}
         {/* Back = the screen before this one (lib/nav-back): a fixed link to Card & Website would stack a second copy of it on top of the first. */}
         <button type="button" onClick={() => goBack(router, "/poster/site")} className="inline-flex w-full items-center justify-center rounded-xl border border-border bg-surface py-3 text-sm font-semibold">{T("Done", "हो गया")}</button>
       </div>

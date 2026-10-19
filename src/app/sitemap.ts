@@ -4,44 +4,14 @@ import { getPublicSupabase, fetchCardExpired } from "@/lib/supabase/public";
 import { sampleCards } from "@/lib/sample-data";
 import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
-import { cardProducts } from "@/lib/product-page";
-import { advancedItems, livePages, withAdvancedPages } from "@/lib/site-advanced";
+import { cardUrls, isPremiumRow, type Row } from "@/lib/seo-urls";
 import { cities } from "@/lib/directory";
-import type { Card, CardPage } from "@/lib/types";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
 
 // Always generated fresh — a prerendered sitemap would keep advertising cards
 // that have since been deleted, and miss ones just published.
 export const dynamic = "force-dynamic";
-
-type Row = { username: string; pages: CardPage[] | null; site?: Card["site"] | null; about?: string | null; language?: string | null };
-
-/** Every page of a card that has something on it: home first, then /<slug>, then each product at its own
- *  address (/p-kaju-katli) — Google indexes a product only when the sitemap lists it. */
-function cardUrls(home: string, r: Row): MetadataRoute.Sitemap {
-  // The Premium (advanced) website has pages the stored card does not: About and Gallery made at request time, and a page for every product AND
-  // service. Google is told about all of them (owner, 16 Oct 2026: the Premium "Google SEO" promise).
-  if (r.site?.advanced && (r.site as { advancedOn?: boolean }).advancedOn !== false) {
-    const card = withAdvancedPages({ username: r.username, pages: r.pages ?? [], site: r.site, about: r.about ?? "", language: r.language ?? "en" } as Card);
-    const lastModified = new Date();
-    const pages = livePages(card);
-    return [
-      ...pages.map((p, i) => ({ url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7 })),
-      ...advancedItems(card).map((it) => ({ url: `${home}/${encodeURIComponent(it.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
-    ];
-  }
-  const pages = (r.pages ?? []).filter((p, i) => i === 0 || (p.blocks ?? []).length > 0);
-  const lastModified = new Date();
-  const products = cardProducts({ username: r.username, pages } as Card).filter((p) => p.item.name?.trim());
-  return [
-    ...pages.map((p, i) => ({
-      url: i === 0 ? home : `${home}/${encodeURIComponent(p.slug)}`,
-      lastModified, changeFrequency: "weekly" as const, priority: i === 0 ? 0.9 : 0.7,
-    })),
-    ...products.map((p) => ({ url: `${home}/${encodeURIComponent(p.slug)}`, lastModified, changeFrequency: "weekly" as const, priority: 0.6 })),
-  ];
-}
 
 /** Automatic sitemap, per host: on Shubhora the marketing pages and every published card (all its pages); on an
  *  owner's own domain only that card's pages at that domain. */
@@ -59,7 +29,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       }
       if (!username) return [];
       const { data } = await sb.from("cards").select("username, pages:data->pages, site:data->site, about:data->about, language:data->language").eq("username", username).eq("active", true).maybeSingle();
-      return data ? cardUrls(`https://${host}`, data as Row) : [];
+      return data && isPremiumRow(data as Row) ? cardUrls(`https://${host}`, data as Row) : [];
     } catch { return []; }
   }
 
@@ -82,7 +52,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ]);
       // A card on its own domain is listed in that domain's sitemap, not here (its canonical address is there).
       const elsewhere = new Set(((own ?? []) as { username: string }[]).map((r) => r.username));
-      rows = ((data ?? []) as Row[]).filter((r) => r.username && !elsewhere.has(r.username));
+      rows = ((data ?? []) as Row[]).filter((r) => r.username && !elsewhere.has(r.username) && isPremiumRow(r));   // Google is for the Premium website only
       // Google is for subscribed websites only (owner, 14 Oct 2026): a free or lapsed card is noindex, so it is not listed either.
       const keep: Row[] = [];
       for (let i = 0; i < rows.length; i += 40) {

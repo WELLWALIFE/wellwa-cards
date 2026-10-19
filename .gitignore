@@ -56,3 +56,4 @@ next-env.d.ts
 # Website builds kept for their owners (src/lib/card-jobs.ts)
 /.card-jobs/
 /.test-links/
+/.indexnow-state.json

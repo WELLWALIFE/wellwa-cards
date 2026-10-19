@@ -94,6 +94,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-weekly-report || printf '%s\n' 'PAT
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/15 * * * * root bash $APP/scripts/booking-reminders.sh >> /var/log/shubhora-booking-reminders.log 2>&1' > /etc/cron.d/shubhora-booking-reminders"
 # Premium website expiry: one year after the Premium payment (or while Standard runs); then the basic website and card carry on. Daily 11:00 IST. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-advanced-expiry || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 5 * * * root bash $APP/scripts/advanced-expiry.sh >> /var/log/shubhora-advanced-expiry.log 2>&1' > /etc/cron.d/shubhora-advanced-expiry && chmod 644 /etc/cron.d/shubhora-advanced-expiry"
+# Premium websites tell the search engines (IndexNow) when their pages change, hourly. One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-indexnow || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '10 * * * * root bash $APP/scripts/indexnow.sh >> /var/log/shubhora-indexnow.log 2>&1' > /etc/cron.d/shubhora-indexnow && chmod 644 /etc/cron.d/shubhora-indexnow"
 # Festival wishes to every owner's customers, 9:00 IST daily (sends only on a festival day). One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/festival-wishes.sh >> /var/log/shubhora-festival-wishes.log 2>&1' > /etc/cron.d/shubhora-festival-wishes"
 echo "→ health check…"

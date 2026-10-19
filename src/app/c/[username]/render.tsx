@@ -98,7 +98,8 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
     },
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
     // Free plan: live, shareable, but not on Google (owner's call, 3 Oct 2026: Google is Premium).
-    robots: { index: card.active !== false && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    // Google is for the Premium website only (owner, 19 Oct 2026); a free card, a Standard website and a lapsed one stay out of search.
+    robots: { index: card.active !== false && !!activeAdvanced(card.site, card.username) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
     ...(card.seo?.googleVerify ? { verification: { google: card.seo.googleVerify.replace(/^.*content="([^"]+)".*$/, "$1").trim() } } : {}),
