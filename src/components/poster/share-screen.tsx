@@ -56,11 +56,19 @@ export function ShareScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  /** Ends the link on the server with a small message that always goes (a beacon: no size limit trouble, it survives the page closing). */
+  function endNow(l: Live) {
+    const body = JSON.stringify({ token: l.token, secret: l.secret, end: true });
+    let sent = false;
+    try { sent = navigator.sendBeacon("/api/share/push", new Blob([body], { type: "application/json" })); } catch { /* below */ }
+    if (!sent) void fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true, cache: "no-store" }).catch(() => undefined);
+  }
+
   /** Stops recording and, when asked, tells the server (the link ends at once; otherwise it ends by itself within 2 minutes). */
   function halt(tell: boolean) {
     stopRec.current?.(); stopRec.current = undefined;
     for (const t of timers.current) clearInterval(t); timers.current = [];
-    if (tell && liveRef.current) void push({ end: true });
+    if (tell && liveRef.current) endNow(liveRef.current);
     liveRef.current = null; buffer.current = [];
     setLive(null); setViewers(0);
   }
@@ -102,7 +110,7 @@ export function ShareScreen() {
     const bye = (e: PageTransitionEvent) => {
       const l = liveRef.current;
       if (!l || e.persisted) return;
-      try { navigator.sendBeacon("/api/share/push", new Blob([JSON.stringify({ token: l.token, secret: l.secret, end: true })], { type: "application/json" })); } catch { /* ignore */ }
+      endNow(l);
     };
     window.addEventListener("pagehide", bye);
     return () => { window.removeEventListener("pagehide", bye); halt(true); };

@@ -20,6 +20,10 @@ export function WatchScreen({ token }: { token: string }) {
     const cur: { r: R | null } = { r: null };
     const vid = Math.random().toString(36).slice(2, 12);
     let after = 0, epoch = 0, first = true;
+    // The sender's own clock is never trusted: rrweb plays a live event when its time comes, so every event is stamped here, on ARRIVAL, a moment after
+    // the replayer's start. (A phone whose clock is minutes off would otherwise be shown minutes late; a batch arrives and plays at once, in order.)
+    let base = 0, t0 = 0;
+    const stamp = (e: unknown) => ({ ...(e as Record<string, unknown>), timestamp: base + Math.round(performance.now() - t0) + 1 });
 
     async function make(events: unknown[]) {
       cur.r?.destroy(); cur.r = null;
@@ -28,8 +32,9 @@ export function WatchScreen({ token }: { token: string }) {
       if (stop || !box.current) return;
       const r = new Replayer([], { root: box.current, liveMode: true, mouseTail: false, triggerFocus: false, UNSAFE_replayCanvas: false }) as unknown as R;
       r.on("resize", (d) => setSize({ w: d.width, h: d.height }));
-      r.startLive();
-      for (const e of events) r.addEvent(e);
+      base = Date.now(); t0 = performance.now();
+      r.startLive(base);
+      for (const e of events) r.addEvent(stamp(e));
       cur.r = r;
     }
 
@@ -44,7 +49,7 @@ export function WatchScreen({ token }: { token: string }) {
           if (r.status === "ended") { setWhy(r.why ?? ""); setState("ended"); return; }
           if (r.status === "full") { setState("full"); return; }
           if (r.reset || first) { await make(r.events); first = false; epoch = r.epoch; }
-          else for (const e of r.events) cur.r?.addEvent(e);
+          else for (const e of r.events) cur.r?.addEvent(stamp(e));
           after = r.next;
           if (r.width && r.height) setSize((s) => (s.w === r.width && s.h === r.height ? s : { w: r.width, h: r.height }));
           if (r.events.length) setSeen(true);
