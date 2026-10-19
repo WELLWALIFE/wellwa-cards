@@ -11,7 +11,7 @@ export default async function robots(): Promise<MetadataRoute.Robots> {
   const origin = own ? `https://${host}` : SITE;
   return {
     rules: [
-      { userAgent: "*", allow: "/", disallow: ["/dashboard", "/admin", "/api", "/cards", "/poster", "/settings", "/login", "/signup"] },
+      { userAgent: "*", allow: "/", disallow: ["/dashboard", "/admin", "/api", "/cards", "/poster", "/settings", "/login", "/signup", "/watch"] },
     ],
     sitemap: `${origin}/sitemap.xml`,
     host: origin,

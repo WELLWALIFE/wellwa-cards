@@ -13,9 +13,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
-import { CircleQuestionMark, Headset, LoaderCircle, PlayCircle, Send, Sparkles, TriangleAlert, X } from "lucide-react";
+import { CircleQuestionMark, Eye, Headset, LoaderCircle, PlayCircle, Send, Sparkles, TriangleAlert, X } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { helpFor, screenName } from "@/lib/help-screens";
+import { SHARE_SCREEN_EVENT } from "@/components/poster/share-screen";
 import { useT } from "@/lib/poster-i18n";
 
 type Session = {
@@ -305,6 +306,15 @@ export function HelpDock() {
                 </button>
               </div>
               {answer && <p className="mt-2 whitespace-pre-wrap rounded-xl bg-surface2 px-3 py-2.5 text-sm leading-snug">{answer}</p>}
+            </div>
+
+            {/* Not the staff: anyone the person chooses (an upline, a friend) can watch this screen, only watch, from a link. */}
+            <div className="mt-4 border-t border-border pt-4">
+              <button type="button" onClick={() => { setOpen(false); window.dispatchEvent(new Event(SHARE_SCREEN_EVENT)); }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-sm font-semibold">
+                <Eye className="h-4 w-4 text-brand" /> {hi ? "अपनी screen किसी को दिखाएँ" : "Show my screen to someone"}
+              </button>
+              <p className="mt-2 text-[11px] leading-snug text-muted">{hi ? "आप जिसे link भेजेंगे वो सिर्फ़ देख पाएगा, कुछ कर नहीं पाएगा।" : "Whoever you send the link to can only watch, never do anything."}</p>
             </div>
 
             <div className="mt-4 border-t border-border pt-4">

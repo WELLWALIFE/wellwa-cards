@@ -7,6 +7,7 @@ import { NavTracker } from "@/components/poster/nav-tracker";
 import { UpdateWatcher } from "@/components/update-watcher";
 import { SetupResume } from "@/components/setup-resume";
 import { HelpDock } from "@/components/poster/help-dock";
+import { ShareScreen } from "@/components/poster/share-screen";
 import { DemoReset } from "@/components/poster/demo-reset";
 import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
@@ -35,6 +36,8 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           <PosterNav />
           {/* One Help button on every screen, and the live-help session behind it. */}
           <HelpDock />
+          {/* "Apni screen kisi ko dikhayein": a link that lets anyone watch this screen live, and only watch (opened from the Help panel). */}
+          <ShareScreen />
           {/* The demo account's own Reset pill (only on an account Super Admin marked as demo). */}
           <DemoReset />
           <NativeBridge />
