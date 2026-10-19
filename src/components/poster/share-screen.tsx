@@ -44,11 +44,15 @@ export function ShareScreen() {
     if (!l) return;
     const events = buffer.current; buffer.current = [];
     try {
-      const r = await fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: l.token, secret: l.secret, events, ...(extra ?? {}) }), keepalive: true, cache: "no-store" });
+      // keepalive is only for the tiny "end" message: a keepalive request may not carry more than 64 KB, and the first picture of a screen is several times that.
+      const r = await fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: l.token, secret: l.secret, events, ...(extra ?? {}) }), keepalive: !!extra?.end, cache: "no-store" });
       const j = (await r.json().catch(() => ({}))) as { viewers?: number; ended?: string };
       if (typeof j.viewers === "number") setViewers(j.viewers);
       if (j.ended || r.status === 403) halt(false);
-    } catch { /* offline for a moment: the next push carries on (events not sent are dropped, a fresh picture comes with the next re-base) */ }
+    } catch {
+      // offline for a moment (or a slow send): what was not sent goes back in front, so the next push carries it (and the first picture is never lost)
+      if (!extra?.end && liveRef.current) buffer.current = [...events, ...buffer.current].slice(-4000);
+    }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
