@@ -184,7 +184,7 @@ function MemberList() {
 type BizNode = { handle: string; status: Status; subActive: boolean; parent: string | null; side: Side | null; depth: number; sponsor: string | null;
   bv: { L: number; R: number; carryL: number; carryR: number; pairs: number }; team: { greenL: number; redL: number; greenR: number; redR: number } };
 type TreeRes = { root: string; levels: number; bin: "new" | "renewal"; nodes: BizNode[]; path: string[]; up: string | null;
-  counts: { left: number; right: number; leftGreen: number; rightGreen: number }; carry: { L: number; R: number }; bottom: { left: string | null; right: string | null }; error?: string };
+  counts: { left: number; right: number; leftGreen: number; rightGreen: number }; carry: { L: number; R: number; renewalL?: number; renewalR?: number }; bottom: { left: string | null; right: string | null }; error?: string };
 
 const kFmt = (bv: number) => (bv >= 100000 ? `${(bv / 100000).toFixed(1)}L` : bv >= 1000 ? `${Math.round(bv / 100) / 10}k` : String(bv));
 const inFmt = (v: number) => v.toLocaleString("en-IN");
@@ -197,7 +197,7 @@ function TreeView({ rootHandle, found, onClear }: { rootHandle: string; found: T
   const tr = useBizMsg();
   const [root, setRoot] = useState<string>(found?.handle ?? rootHandle);
   const [levels, setLevels] = useState(3);
-  const [bin, setBin] = useState<"new" | "renewal">("new");
+  const bin = "new" as const;   // one binary since 20 Oct 2026: sales and renewals in the same legs
   const [res, setRes] = useState<TreeRes | null>(null);
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState(false);
@@ -226,14 +226,6 @@ function TreeView({ rootHandle, found, onClear }: { rootHandle: string; found: T
 
   return (
     <section className="space-y-3">
-      <div className="flex gap-1 rounded-xl bg-surface2 p-1">
-        {(["new", "renewal"] as const).map((b) => (
-          <button key={b} type="button" onClick={() => setBin(b)} className={`flex-1 rounded-lg py-1.5 text-xs font-semibold ${bin === b ? "bg-surface shadow-sm" : "text-muted"}`}>
-            {b === "new" ? (en ? "New sale tree" : "New sale tree") : (en ? "Renewal tree" : "Renewal tree")}
-          </button>
-        ))}
-      </div>
-
       <div className="flex flex-wrap items-center gap-1.5">
         <button type="button" onClick={back} disabled={atHome && history.length === 0} className={btn}><ChevronLeft className="h-3.5 w-3.5" /> {en ? "Back" : "पीछे"}</button>
         <button type="button" onClick={() => res?.up && go(res.up)} disabled={!res?.up} className={btn}><ArrowUp className="h-3.5 w-3.5" /> {en ? "Up" : "ऊपर"}</button>
@@ -257,7 +249,7 @@ function TreeView({ rootHandle, found, onClear }: { rootHandle: string; found: T
       {res && (
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl bg-surface2 px-3 py-2 text-[11px]">
           <span>Left <b>{res.counts.left}</b> ({res.counts.leftGreen} green) · Right <b>{res.counts.right}</b> ({res.counts.rightGreen} green)</span>
-          <span>{bin === "new" ? "New-sale" : "Renewal"} carry L <b>{inFmt(res.carry.L)}</b> / R <b>{inFmt(res.carry.R)}</b></span>
+          <span>Carry L <b>{inFmt(res.carry.L)}</b> / R <b>{inFmt(res.carry.R)}</b>{(res.carry.renewalL ?? 0) + (res.carry.renewalR ?? 0) > 0 ? <span className="text-muted"> ({en ? "renewal part" : "renewal का हिस्सा"} {inFmt(res.carry.renewalL ?? 0)} / {inFmt(res.carry.renewalR ?? 0)})</span> : null}</span>
           <span>{en ? "Bottom" : "सबसे नीचे"}: {res.bottom.left ? <button type="button" onClick={() => go(res.bottom.left!)} className="font-semibold text-brand-ink underline">left {res.bottom.left}</button> : "left —"} · {res.bottom.right ? <button type="button" onClick={() => go(res.bottom.right!)} className="font-semibold text-brand-ink underline">right {res.bottom.right}</button> : "right —"}</span>
         </div>
       )}
@@ -273,9 +265,7 @@ function TreeView({ rootHandle, found, onClear }: { rootHandle: string; found: T
           </div>
         ) : !err ? <div className="grid place-items-center py-10"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div> : null}
         <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-muted">
-          {bin === "new"
-            ? <><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-good" />Green ID (paid)</span><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger" />Red ID (not active)</span></>
-            : <><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-good" />{en ? "Subscription active" : "Subscription चालू"}</span><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-amber" />{en ? "Lapsed" : "खत्म"}</span><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger" />{en ? "Never activated" : "कभी activate नहीं"}</span></>}
+          <span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-good" />Green ID (paid)</span><span><span className="mr-1 inline-block h-2 w-2 rounded-full bg-danger" />Red ID (not active)</span>
           <span>{en ? "L | R = lifetime BV in each leg. Tap an ID for details, tap again to open its tree." : "L | R = हर leg का lifetime BV। ID पर tap करें details के लिए, दोबारा tap करें उसका tree खोलने के लिए।"}</span>
         </div>
       </div>

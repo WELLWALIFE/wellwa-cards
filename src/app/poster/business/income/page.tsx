@@ -7,21 +7,20 @@ import { BizShell, BizState, CARD, ExcelButton, INCOME_KIND as KIND, bizAct, day
 
 type Totals = Record<string, { total: number; last: number }>;
 type Row = { kind: string; paise: number; held: boolean; day: string; from: string | null };
-type Line = { day: string; bin: "new" | "renewal"; openL: number; openR: number; inL: number; inR: number; pairs: number; paidPairs: number; flushedPairs: number; closeL: number; closeR: number; paise: number; reason: string | null };
-type View = { carryL: number; carryR: number; totalL: number; totalR: number; firstPair: boolean; pairs: number; todayL: number; todayR: number };
+type Line = { day: string; bin: "new" | "renewal"; openL: number; openR: number; inL: number; inR: number; pairs: number; renewalPairs?: number; unpaidRenewalPairs?: number; paidPairs: number; flushedPairs: number; closeL: number; closeR: number; paise: number; reason: string | null };
+type View = { carryL: number; carryR: number; totalL: number; totalR: number; firstPair: boolean; pairs: number; todayL: number; todayR: number; carryRenewalL?: number; carryRenewalR?: number; todayRenewalL?: number; todayRenewalR?: number };
 type Res = {
   disabled?: boolean; totals: Totals; grandTotal: number; heldPaise?: number; lostPaise?: number; lastTotal: number; lastClosing: string | null; t: string; offset: number; limit: number; more: boolean;
-  rows?: Row[]; lines?: Line[]; binary?: { new: View; renewal: View }; exportUrls?: { income?: string | null };
+  rows?: Row[]; lines?: Line[]; binary?: View; exportUrls?: { income?: string | null };
 };
 
-const KINDS = ["direct", "match_new", "match_renewal", "sponsor", "rank_reward", "royalty"] as const;
+const KINDS = ["direct", "match_new", "match_renewal", "sponsor", "rank_reward"] as const;
 const WHAT: Record<string, [string, string]> = {
   direct: ["Someone you introduced buys a plan. You get a bonus at once.", "आपके बुलाए व्यक्ति ने plan लिया। आपको तुरंत bonus मिलता है।"],
   match_new: ["One new person on your Left side and one on your Right side make a pair. Each pair pays you.", "Left side और Right side पर एक-एक नया व्यक्ति मिलकर एक pair बनाता है। हर pair का पैसा मिलता है।"],
   match_renewal: ["Same pair idea, but when people in your team renew their plan.", "वही pair, पर तब जब आपकी team के लोग plan renew करते हैं।"],
   sponsor: ["A small bonus from the sales of the people you introduced.", "आपके बुलाए लोगों की बिक्री पर छोटा bonus।"],
   rank_reward: ["A reward you get when you reach a new rank.", "नया rank मिलने पर इनाम।"],
-  royalty: ["Every month, 2% of the company's total business is shared equally among members with 100 lifetime pairs.", "हर महीने company के कुल business का 2% उन सब में बराबर बँटता है जिनके 100 lifetime pairs हो गए।"],
 };
 const REASON: Record<string, [string, string]> = {
   red: ["ID was red", "ID Red थी"], "daily cap": ["Above daily limit", "रोज़ की limit से ऊपर"], blocked: ["ID blocked", "ID blocked"], complimentary: ["Free ID", "Free ID"],
@@ -83,24 +82,25 @@ export default function IncomePage() {
 
             {loading ? <div className="py-8 grid place-items-center"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div> : t === "closings" ? (
               <>
-                {data.binary && (["new", "renewal"] as const).map((b) => (
-                  <section key={b} className={`${CARD} space-y-1`}>
-                    <p className="text-sm font-semibold">{b === "new" ? (en ? "New sales" : "नई बिक्री") : "Renewal"}</p>
+                {data.binary && (() => { const b = data.binary; const renL = (b.carryRenewalL ?? 0) + (b.todayRenewalL ?? 0); const renR = (b.carryRenewalR ?? 0) + (b.todayRenewalR ?? 0); return (
+                  <section className={`${CARD} space-y-1`}>
+                    <p className="text-sm font-semibold">{en ? "My binary (sales and renewals together)" : "मेरी binary (बिक्री और renewal एक साथ)"}</p>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Waiting" : "बचा हुआ"}</p><p className="font-bold">{data.binary![b].carryL} / {data.binary![b].carryR}</p></div>
-                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Today" : "आज"}</p><p className="font-bold">{data.binary![b].todayL} / {data.binary![b].todayR}</p></div>
-                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Pairs so far" : "अब तक pair"}</p><p className="font-bold">{data.binary![b].pairs}</p></div>
+                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Waiting" : "बचा हुआ"}</p><p className="font-bold">{b.carryL} / {b.carryR}</p></div>
+                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Today" : "आज"}</p><p className="font-bold">{b.todayL} / {b.todayR}</p></div>
+                      <div className="rounded-xl bg-surface2 p-2"><p className="text-muted">{en ? "Pairs so far" : "अब तक pair"}</p><p className="font-bold">{b.pairs}</p></div>
                     </div>
-                    <p className="text-[11px] text-muted">{en ? "Numbers are Left / Right. The side with less decides how many pairs you get; the extra stays waiting for the next day." : "संख्या Left / Right की है। जिस side में कम है वही pair तय करती है; बाकी अगले दिन के लिए रुकता है।"}</p>
+                    {renL + renR > 0 && <p className="text-[11px] text-muted">{en ? `Of this, renewal BV waiting: ${renL} / ${renR}.` : `इसमें renewal का BV: ${renL} / ${renR}।`}</p>}
+                    <p className="text-[11px] text-muted">{en ? "Numbers are Left / Right. The side with less decides how many pairs you get; the extra stays waiting for the next day. Pairs from fresh sales are paid even if your own plan has ended; the renewal part is paid only while your own plan is active." : "संख्या Left / Right की है। जिस side में कम है वही pair तय करती है; बाकी अगले दिन के लिए बचा रहता है। नई बिक्री वाले pair आपका plan खत्म होने पर भी मिलते हैं; renewal वाला हिस्सा तभी मिलता है जब आपका अपना plan चालू हो।"}</p>
                   </section>
-                ))}
+                ); })()}
                 <section className="space-y-2">
                   {lines.length === 0 && <p className={`${CARD} text-center text-sm text-muted`}>{en ? "No closings for you yet." : "अभी आपकी कोई closing नहीं।"}</p>}
                   {lines.map((l, i) => (
                     <div key={i} className={`${CARD} space-y-1 text-xs`}>
-                      <div className="flex items-center justify-between"><span className="font-semibold">{dayOf(l.day)} · {l.bin === "new" ? (en ? "New sale" : "नई बिक्री") : "Renewal"}</span><span className="text-sm font-bold">{rupee(l.paise)}</span></div>
+                      <div className="flex items-center justify-between"><span className="font-semibold">{dayOf(l.day)}{l.bin === "renewal" ? ` · ${en ? "old renewal binary" : "पुरानी renewal binary"}` : ""}</span><span className="text-sm font-bold">{rupee(l.paise)}</span></div>
                       <p className="text-muted">{en ? "Before" : "पहले"} {l.openL}/{l.openR} · {en ? "New" : "नया"} {l.inL}/{l.inR} · {en ? "Left over" : "बचा"} {l.closeL}/{l.closeR}</p>
-                      <p><span className="font-semibold">{l.pairs}</span> {en ? "pairs" : "pair"}, <span className="font-semibold text-good">{l.paidPairs} {en ? "paid" : "मिले"}</span>{l.flushedPairs > 0 && <>, <span className="text-danger">{l.flushedPairs} {en ? "over the limit" : "limit से ऊपर"}</span></>}{l.reason && <span className="text-muted"> · {REASON[l.reason] ? tx(REASON[l.reason]) : l.reason}</span>}</p>
+                      <p><span className="font-semibold">{l.pairs}</span> {en ? "pairs" : "pair"}{(l.renewalPairs ?? 0) > 0 && <> ({l.renewalPairs} renewal{(l.unpaidRenewalPairs ?? 0) > 0 ? `, ${l.unpaidRenewalPairs} ${en ? "unpaid — your plan was not active" : "नहीं मिले — आपका plan चालू नहीं था"}` : ""})</>}, <span className="font-semibold text-good">{l.paidPairs} {en ? "paid" : "मिले"}</span>{l.flushedPairs > 0 && <>, <span className="text-danger">{l.flushedPairs} {en ? "over the limit" : "limit से ऊपर"}</span></>}{l.reason && <span className="text-muted"> · {REASON[l.reason] ? tx(REASON[l.reason]) : l.reason}</span>}</p>
                     </div>
                   ))}
                 </section>
