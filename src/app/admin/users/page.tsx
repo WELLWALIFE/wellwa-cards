@@ -3,7 +3,8 @@ import { PARTNER_URL } from "@/lib/site-url";
 
 // Super Admin → Users. EVERY account: app accounts from Supabase Auth, each joined to its partner ID, plus the partner
 // IDs that have no app account, newest first (owner's calls, 24 and 27 Sep 2026: "show every user, even the root ID",
-// "newest on top"). Edit / delete / plan / credits work on app accounts; partner-only IDs open in Staff Admin.
+// "newest on top"). Edit / delete / plan / credits work on app accounts. A partner-only ID (no app login) is edited
+// here too and gets an app login with one click (owner, 20 Oct 2026: "such IDs should be normal too").
 // Passwords are never stored or displayed.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -235,6 +236,36 @@ export default function AdminUsers() {
     }
   }
 
+  // ---- partner-only IDs (no app login yet): edit the ID here, or give it an app login ----
+  const [editingPartner, setEditingPartner] = useState<User | null>(null);
+  const [creating, setCreating] = useState("");
+  /** An app account for the ID: mobile login like a mobile sign-up, name / username / email copied, tied to the ID. */
+  async function createLogin(u: User, quiet = false): Promise<boolean> {
+    const code = u.partner?.code; if (!code) return false;
+    if (!quiet && !confirm(`Create an app login for ${u.name} (${code})?\n\nLogin = their mobile ${u.phone || "(none on file)"}; name, username and email are copied from the ID. Set the password with "Edit login", or use "Login as" for a temporary one.`)) return false;
+    setCreating(code); if (!quiet) setLinkNote("Working…");
+    const r = await fetch("/api/admin/users/partner-only", { method: "POST", headers: await adminHeaders(), body: JSON.stringify({ op: "create_login", code }) });
+    const d = await r.json().catch(() => ({}));
+    setCreating("");
+    if (!quiet) { setLinkNote(r.ok ? `${code}: app login created — mobile ${d.login}${d.username ? `, username ${d.username}` : ""}.` : `${code}: ${d.error ?? r.status}`); if (r.ok) load(); }
+    return r.ok;
+  }
+  /** Every partner-only ID in the list (not the company root), one after another. */
+  async function createAllLogins() {
+    const list = users.filter((u) => !isAccount(u) && u.partner && !u.partner.isRoot);
+    if (!list.length) { setLinkNote("Every partner ID already has an app login."); return; }
+    if (!confirm(`Create app logins for ${list.length} partner ID${list.length === 1 ? "" : "s"} without one?\n\nEach gets a mobile login (its mobile on file). IDs without a valid mobile are skipped and listed.`)) return;
+    const done: string[] = [], failed: string[] = [];
+    for (const u of list) {
+      setLinkNote(`Creating ${done.length + failed.length + 1} of ${list.length}: ${u.partner!.code}…`);
+      const r = await fetch("/api/admin/users/partner-only", { method: "POST", headers: await adminHeaders(), body: JSON.stringify({ op: "create_login", code: u.partner!.code }) });
+      const d = await r.json().catch(() => ({}));
+      (r.ok ? done : failed).push(r.ok ? u.partner!.code : `${u.partner!.code} (${d.error ?? r.status})`);
+    }
+    setLinkNote(`${done.length} created${done.length ? `: ${done.join(", ")}` : ""}.${failed.length ? ` Not done: ${failed.join(" · ")}` : ""}`);
+    load();
+  }
+
   const listTop = useRef<HTMLDivElement>(null);
   /** A summary card was clicked: its list, and the page scrolls down to it. */
   function pick(v: View) {
@@ -282,6 +313,12 @@ export default function AdminUsers() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {users.some((u) => !isAccount(u) && u.partner && !u.partner.isRoot) && (
+            <button onClick={createAllLogins} disabled={!live || !!creating} title="Give every partner-only ID (no app login) an app account with its mobile as the login"
+              className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold hover:bg-surface2 disabled:opacity-40">
+              Create app logins ({users.filter((u) => !isAccount(u) && u.partner && !u.partner.isRoot).length})
+            </button>
+          )}
           <button onClick={repairLinks} disabled={!live} title="Make every app account show the partner ID it is really tied to"
             className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold hover:bg-surface2 disabled:opacity-40">
             Fix ID links{users.some(mixed) ? ` (${users.filter(mixed).length})` : ""}
@@ -487,10 +524,25 @@ export default function AdminUsers() {
                         </button>
                       </>
                     ) : p ? (
-                      <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer"
-                        className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-semibold hover:bg-surface2">
-                        Open in Staff Admin <ExternalLink className="h-3 w-3" />
-                      </a>
+                      <div className="inline-flex flex-wrap items-center justify-end gap-1">
+                        {!p.isRoot && (
+                          <>
+                            <button onClick={() => setEditingPartner(u)} disabled={!live}
+                              className="ed-icon disabled:opacity-40" title="Edit this ID (name, username, mobile, email, DOB)" aria-label="Edit partner ID">
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button onClick={() => createLogin(u)} disabled={!live || !!creating}
+                              className="inline-flex items-center gap-1 rounded-md border border-brand px-2 py-1 text-[11px] font-semibold text-brand-ink hover:bg-brand-soft disabled:opacity-40"
+                              title="An app account for this ID: mobile login, name / username / email copied, tied to the ID">
+                              {creating === p.code ? <LoaderCircle className="h-3 w-3 animate-spin" /> : <KeyRound className="h-3 w-3" />} Create app login
+                            </button>
+                          </>
+                        )}
+                        <a href={`${PARTNER_URL}/admin/members/${p.code}`} target="_blank" rel="noreferrer"
+                          className="inline-flex items-center gap-1 rounded-md border border-border px-2 py-1 text-[11px] font-semibold hover:bg-surface2">
+                          Staff Admin <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </div>
                     ) : null}
                   </td>
                 </tr>
@@ -515,6 +567,14 @@ export default function AdminUsers() {
 
       {viewingCredits && (
         <CreditsHistory user={viewingCredits} onClose={() => setViewingCredits(null)} />
+      )}
+
+      {editingPartner && (
+        <EditPartnerOnly
+          user={editingPartner}
+          onClose={() => setEditingPartner(null)}
+          onSaved={(note) => { setEditingPartner(null); setLinkNote(note); load(); }}
+        />
       )}
 
       <PasswordSecurityNotice />
@@ -610,6 +670,64 @@ function EditUser({ user, onClose, onSaved }: { user: User; onClose: () => void;
           className="w-full rounded-lg grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60">
           {busy ? "Saving…" : "Save changes"}
         </button>
+      </form>
+    </div>
+  );
+}
+
+/* ---------------- a partner-only ID: edit the ID itself (it has no app profile yet) ---------------- */
+function EditPartnerOnly({ user, onClose, onSaved }: { user: User; onClose: () => void; onSaved: (note: string) => void }) {
+  const code = user.partner?.code ?? "";
+  const [f, setF] = useState({ name: user.name, username: user.username ?? "", mobile: user.phone ?? "", email: user.email ?? "", dob: "", gender: "" });
+  const [loaded, setLoaded] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      const r = await fetch(`/api/admin/users/partner-only?code=${encodeURIComponent(code)}`, { headers: await adminHeaders() });
+      const d = await r.json().catch(() => ({}));
+      if (!on) return;
+      if (r.ok && d.member) setF({ name: d.member.name ?? "", username: d.member.username ?? "", mobile: d.member.mobile ?? "", email: d.member.email ?? "", dob: d.member.dob ?? "", gender: d.member.gender ?? "" });
+      else setErr(d.error ?? "Could not load this ID.");
+      setLoaded(true);
+    })();
+    return () => { on = false; };
+  }, [code]);
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+  async function save(e: React.FormEvent) {
+    e.preventDefault(); setBusy(true); setErr("");
+    const r = await fetch("/api/admin/users/partner-only", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ code, ...f }) });
+    const d = await r.json().catch(() => ({}));
+    setBusy(false);
+    if (!r.ok) { setErr(d.error ?? `Error ${r.status}`); return; }
+    onSaved(`${code} saved.`);
+  }
+  const inp = "ed-input mt-1";
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 backdrop-blur-sm p-4" onClick={onClose}>
+      <form onSubmit={save} className="w-full max-w-md rounded-2xl border border-border bg-surface p-6 shadow-float space-y-3" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between">
+          <div><h2 className="font-semibold">Edit partner ID <span className="mono">{code}</span></h2><p className="text-xs text-muted">No app login yet — these details live on the ID itself (Staff Admin, tree, welcome letter).</p></div>
+          <button type="button" onClick={onClose} className="ed-icon" aria-label="Close"><X className="h-4 w-4" /></button>
+        </div>
+        {!loaded ? <div className="grid place-items-center py-6"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></div> : (
+          <>
+            <label className="block"><span className="text-xs font-medium text-muted">Name</span><input className={inp} value={f.name} onChange={set("name")} required /></label>
+            <label className="block"><span className="text-xs font-medium text-muted">Username (what the team sees)</span><input className={`${inp} mono`} value={f.username} onChange={set("username")} placeholder="4–20 letters, numbers, _" /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block"><span className="text-xs font-medium text-muted">Mobile (becomes the app login)</span><input className={inp} value={f.mobile} onChange={set("mobile")} inputMode="numeric" /></label>
+              <label className="block"><span className="text-xs font-medium text-muted">Email</span><input className={inp} value={f.email} onChange={set("email")} /></label>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="block"><span className="text-xs font-medium text-muted">Date of birth</span><input className={inp} type="date" value={f.dob} onChange={set("dob")} /></label>
+              <label className="block"><span className="text-xs font-medium text-muted">Gender</span>
+                <select className={inp} value={f.gender} onChange={set("gender")}><option value="">—</option><option value="male">Male</option><option value="female">Female</option><option value="other">Other</option></select></label>
+            </div>
+          </>
+        )}
+        {err && <p className="text-xs text-red-500">{err}</p>}
+        <button type="submit" disabled={busy || !loaded} className="w-full rounded-lg grad-brand py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy ? "Saving…" : "Save"}</button>
       </form>
     </div>
   );
