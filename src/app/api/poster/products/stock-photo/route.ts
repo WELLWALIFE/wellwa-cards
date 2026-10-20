@@ -7,6 +7,7 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { stockPhotoForProduct, usedPhotoIds, tradeOf } from "@/lib/media/product-stock";
 import { aiImage, storeImage, MODERN_LOOK, NO_TEXT } from "@/lib/media/ai-image";
+import { digitalProductPrompt, isDigitalProduct, productDetail } from "@/lib/media/product-prompt";
 
 export const maxDuration = 90;
 const CREDITS = 1;
@@ -18,10 +19,12 @@ export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return fail("Please log in.", 401, "login");
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return fail("That request is too big.", 413, "big");
-  const b = (await request.json().catch(() => ({}))) as { name?: unknown; mode?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { name?: unknown; mode?: unknown; brand?: unknown; category?: unknown; about?: unknown };
   const ai = b?.mode === "ai";
-  const name = (typeof b?.name === "string" ? b.name : "").replace(/\s+/g, " ").trim().slice(0, 60);
-  if (!name) return fail("Write the product name first.", 400, "name");
+  const clean = (v: unknown, n: number) => (typeof v === "string" ? v : "").replace(/\s+/g, " ").trim().slice(0, n);
+  const name = clean(b?.name, 60);
+  const brand = clean(b?.brand, 50), category = clean(b?.category, 50), about = clean(b?.about, 400);
+  const digital = isDigitalProduct(name, category, brand, about);
   // A tap while the last one is still being found is turned away BEFORE it counts against the hour (and long before any credit moves).
   if (inFlight.has(me.id)) return fail("One picture is still being found. Please wait a moment.", 409, "busy");
   if (rateLimited(`product-stock-photo:${me.id}`, ai ? 15 : 30, 60 * 60_000)) return fail("Too many tries in an hour. Please wait a little.", 429, "limit");
@@ -44,7 +47,10 @@ export async function POST(request: Request) {
       let why: "nomatch" | "timeout" | "error" = "nomatch";
       if (ai) {
         // Made fresh from the name: one product, plainly shown, a modern studio look (never an old-looking picture).
-        const png = await aiImage(`Photorealistic modern e-commerce product photograph of: ${name}${trade ? ` (sold by an Indian ${trade})` : ""}. One single item, shown clearly and large in the centre, on a clean light seamless background with soft natural daylight and a gentle shadow. Crisp sharp detail, true-to-life colour, current premium catalogue style. ${MODERN_LOOK} ${NO_TEXT}`, "4:5");
+        const detail = productDetail(brand, category, about);
+        const png = await aiImage(digital
+          ? digitalProductPrompt(name, detail)
+          : `Photorealistic modern e-commerce product photograph of: ${name}${detail ? ` (${detail})` : ""}${trade ? ` (sold by an Indian ${trade})` : ""}. One single item, shown clearly and large in the centre, on a clean light seamless background with soft natural daylight and a gentle shadow. Crisp sharp detail, true-to-life colour, current premium catalogue style. ${MODERN_LOOK} ${NO_TEXT}`, "4:5");
         url = png ? await storeImage(me.id, "product-ai", png) : null;
       } else {
         // Not a picture another product just took, nor the one a first try gave.

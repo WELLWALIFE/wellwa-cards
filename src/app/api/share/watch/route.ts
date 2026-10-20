@@ -11,6 +11,6 @@ export async function GET(request: Request) {
   if (!s) return NextResponse.json({ status: "notfound" }, { status: 404, headers: none });
   const vid = (u.searchParams.get("v") ?? "").replace(/[^a-z0-9]/gi, "").slice(0, 24) || "anon";
   const after = Math.max(0, Number(u.searchParams.get("after")) || 0), epoch = Number(u.searchParams.get("epoch")) || 0;
-  const r = await watch(s, vid, after, epoch, 20_000);
+  const r = await watch(s, vid, after, epoch, u.searchParams.get("ask") === "1" ? 0 : 20_000, u.searchParams.get("ask") === "1");
   return NextResponse.json(r, { headers: none });
 }

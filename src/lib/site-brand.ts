@@ -9,7 +9,8 @@ export const SUPPORT_EMAIL = process.env.NEXT_PUBLIC_SUPPORT_EMAIL || "support@s
 export const SUPPORT_PHONE = process.env.NEXT_PUBLIC_SUPPORT_PHONE || "+91 76656 69888";
 export const SUPPORT_WHATSAPP = SUPPORT_PHONE.replace(/\D/g, "");               // digits for wa.me links
 export const COMPANY_CITY = "Gurgaon, Haryana, India";
-export const REGISTERED_OFFICE = "704, 7th Floor, Palm Court, Gurgaon, Haryana 122007, India";
+// As on the company's registration (the same text Meta Business Verification holds, 19 Oct 2026).
+export const REGISTERED_OFFICE = "704, 7th Floor, Palm Court, Gurgaon-Mehrauli Road, Industrial Estate, Gurgaon, Haryana 122007, India";
 export const GRIEVANCE_OFFICER = "Mr. R. Kumar";
 // Shown on the Company information page and invoices once available. Leave empty until issued.
 export const GSTIN = process.env.NEXT_PUBLIC_GSTIN || "";

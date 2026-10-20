@@ -198,10 +198,10 @@ export function VisitSplit({ c, x, index }: VariantProps) {
   );
 }
 
-/* ---------- cta: the closing ink band ---------- */
+/* ---------- cta: the closing band — on paper, because the dark footer follows it (owner, 20 Oct 2026: ink on ink read as one slab) ---------- */
 export function CtaBand({ c, x }: VariantProps) {
   return (
-    <Sec k="cta" tone="ink" wide>
+    <Sec k="cta" tone="paper" wide>
       <div className="acb">
         <div>
           <H2>{x.ui("Talk to us today", "आज ही बात करें")}</H2>
@@ -224,6 +224,9 @@ export function FooterColumns({ c, x }: VariantProps) {
   const links = card.links.filter((l) => l.value.trim() && !(same && l.type === "phone"));
   const blurb = (card.tagline ?? "").trim() || (card.about ?? "").trim().replace(/\s+/g, " ").slice(0, 180);
   const v = c.visit;
+  // The website's pages (owner, 20 Oct 2026: "footer me ek bhi link nahi"): the shell gives them; the editor's single-page preview has none.
+  const pages = (x as { pages?: { list: { slug: string; href: string; label: string; role?: string; owner?: boolean }[] } }).pages?.list ?? [];
+  const quick = pages.map((e) => ({ key: e.slug, href: e.href, label: e.role === "home" ? x.ui("Home", "होम") : e.owner ? x.t(e.label) : e.label }));
   return (
     <footer id="adv-footer" data-sec="footer" className="hero-dark aft">
       <div className="adv-wrap adv-wide aft-grid">
@@ -243,6 +246,12 @@ export function FooterColumns({ c, x }: VariantProps) {
             </div>
           </div>
         </div>
+        {quick.length >= 2 && (
+          <div>
+            <p className="kicker">{x.ui("Explore", "देखें")}</p>
+            <nav aria-label={x.ui("Pages", "पेज")}><ul className="aft-list">{quick.map((q) => <li key={q.key}><a href={q.href}>{q.label}</a></li>)}</ul></nav>
+          </div>
+        )}
         <div>
           <p className="kicker">{x.t("Contact")}</p>
           <ul className="aft-list">
@@ -396,5 +405,5 @@ export const BASICS_CSS = `
 .aft-hours td{padding:.2rem 0;opacity:.88}.aft-hours td+td{text-align:right}
 .aft-legal-wrap{margin-top:clamp(2rem,5vw,3.5rem);border-top:1px solid var(--hero-line)}
 .aft-legal{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--s2);padding-block:var(--s4) 4.5rem;font-size:12px;color:var(--hero-muted)}
-@media (min-width:768px){.aft-grid{grid-template-columns:1.3fr 1fr 1fr}.aft-legal{padding-bottom:var(--s4)}}
+@media (min-width:768px){.aft-grid{grid-template-columns:1.3fr 1fr 1fr}.aft-grid:has(nav){grid-template-columns:1.3fr .8fr 1fr 1fr}.aft-legal{padding-bottom:var(--s4)}}
 `;

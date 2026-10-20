@@ -8,7 +8,8 @@
 import { NextResponse } from "next/server";
 import { restAsService, userFromRequest } from "@/lib/poster-server";
 import { SUPA_URL } from "@/lib/admin-guard";
-import { storeImage } from "@/lib/media/ai-image";
+import { aiImage, storeImage } from "@/lib/media/ai-image";
+import { digitalProductPrompt, isDigitalProduct, productDetail } from "@/lib/media/product-prompt";
 import { IMAGE_GUIDE, checkImage } from "@/lib/media/image-check";
 import { rateLimited } from "@/lib/api-security";
 
@@ -41,6 +42,7 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const url = String(b.photo_url ?? "");
   const product = String(b.product ?? "").slice(0, 80), brand = String(b.brand ?? "").slice(0, 50);
+  const category = String(b.category ?? "").slice(0, 50), about = String(b.about ?? "").replace(/\s+/g, " ").slice(0, 400);
   const productId = typeof b.product_id === "string" && UUID.test(b.product_id) ? b.product_id : "";
   // Only the owner's own uploads.
   if (!url.startsWith(`${SUPA_URL}/storage/v1/object/public/media/`) || !url.includes(me.id)) return NextResponse.json({ error: "Upload the photo first." }, { status: 400 });
@@ -53,6 +55,15 @@ export async function POST(request: Request) {
   const refund = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: PER_PHOTO, p_reason: "product-photo-refund", p_ref: ref }) });
 
   try {
+    // A software / digital product (owner, 19 Oct 2026): "the exact same product as in the photo" makes no sense — the photo is only ever a
+    // stand-in — so the studio draws the product itself, in use on a screen, from what the product is.
+    if (isDigitalProduct(product, category, brand, about)) {
+      const png = await aiImage(digitalProductPrompt(product, productDetail(brand, category, about)), "4:5");
+      const out = png ? await storeImage(me.id, "product-studio", png) : null;
+      if (!out) { await refund(); return NextResponse.json({ error: "The AI could not make this picture. Your original photo is kept." }, { status: 502 }); }
+      const saved = productId ? await saveOnProduct(productId, me.id, out).catch(() => false) : false;
+      return NextResponse.json({ ok: true, url: out, charged: PER_PHOTO, saved });
+    }
     const src = await fetch(url);
     const buf = src.ok ? Buffer.from(await src.arrayBuffer()) : null;
     if (!buf || buf.length > 8 * 1024 * 1024) { await refund(); return NextResponse.json({ error: "Could not read the photo. Try a smaller one." }, { status: 400 }); }

@@ -32,7 +32,7 @@ import {
 } from "@/lib/site-advanced";
 import { PALETTE_KEYS } from "@/lib/site-style";
 import {
-  TRADE_GROUP, allowedByFit, archetypeSpec, candidatesFor, describeArchetype, diversify, groupInfo, groupOf, guardByFit, pickArchetype, specFromSeed, type Fit,
+  TRADE_GROUP, allowedByFit, archetypeSpec, candidatesFor, describeArchetype, distinctLook, diversify, groupInfo, groupOf, guardByFit, pickArchetype, specFromSeed, type Fit,
 } from "@/lib/site-advanced-archetypes";
 
 /* ================= types ================= */
@@ -373,20 +373,24 @@ RULES
 Return {"archetype":"2-3 words naming this composition","palette":{"key":"","color":"","tone":"","luxe":false},"fonts":{"heading":"","body":""},"shape":"","density":"","hero":"","order":[],"sections":{"trust":"","about":"","services":"","gallery":"","proof":"","process":""},"motion":"","notes":"2-3 sentences: why this layout for this business and what it fixes"}`;
 }
 
-async function designSpec(card: Card, s: Signals, critique: Critique, owner: string, wish: string, round: number, near: AdvancedSpec[]): Promise<{ spec: AdvancedSpec; source: AdvancedResult["source"]["spec"] }> {
+async function designSpec(card: Card, s: Signals, critique: Critique, owner: string, wish: string, round: number, near: AdvancedSpec[], previous: AdvancedSpec[] = []): Promise<{ spec: AdvancedSpec; source: AdvancedResult["source"]["spec"] }> {
   const cat = card.seo?.categoryKey ?? "";
   const baseSeed = `${s.business.toLowerCase()}|${cat}|${card.username ?? ""}`;
   const seed = round ? `${baseSeed}|r${round}` : baseSeed;
   const group = groupOf(cat);
   // This business's own earlier design also counts as "another site": design again must look different.
   const prev = parseAdvanced(card.site?.advanced);
-  const against = [...near, ...(prev ? [prev] : [])];
+  // `previous`: the designs this owner already looked at in THIS payment's previews (owner, 20 Oct 2026: "3 types are looking same") —
+  // a preview saves nothing, so without them every try was judged only against the neighbours and the last SAVED design.
+  const against = [...near, ...(prev ? [prev] : []), ...previous];
   const cands = candidatesFor(cat, seed, 3, fitOfSignals(s));
   const finish = (spec: AdvancedSpec, why: string): AdvancedSpec => {
     const guarded = guardSpec({ ...spec, seed }, s, seed);
     // Only onto ids the card can carry: diversify after the guard would otherwise put a photo hero back on a card with no banner.
-    const unique = diversify(guarded, seed, against, 4, allowedByFit(fitOfSignals(s)));
-    return { ...unique, seed, notes: unique.notes || why };
+    const unique = diversify(guarded, seed, against, previous.length ? 6 : 4, allowedByFit(fitOfSignals(s)));
+    // The owner's own earlier previews: a different colour, background tone and heading face too, not only another layout.
+    const distinct = distinctLook(unique, seed, previous);
+    return { ...distinct, seed, notes: distinct.notes || why };
   };
   try {
     const raw = await askJson(designPrompt(card, s, critique, owner, seed, wish, cands, against, group), { tag: "adv-design", timeout: 60_000, temperature: 0.85, maxOut: 3000 });
@@ -593,7 +597,7 @@ export function buildDiff(basic: Card, spec: AdvancedSpec, copy: AdvancedCopy): 
 
 /** Review -> design -> copy for one card. Saves nothing and generates no picture. `step` reports progress to the job
  *  ("details" = the review, "website" = the design, "writing" = the words, "checking" = the checks). */
-export async function designAdvanced(card: Card, ctx: { userId: string; cardId: string; wish?: string; bump?: number; step?: (s: "details" | "website" | "writing" | "checking") => void }): Promise<AdvancedResult> {
+export async function designAdvanced(card: Card, ctx: { userId: string; cardId: string; wish?: string; bump?: number; /** The owner's earlier previews of this round of tries: the new one must sit far from each. */ previous?: AdvancedSpec[]; step?: (s: "details" | "website" | "writing" | "checking") => void }): Promise<AdvancedResult> {
   const step = ctx.step ?? (() => undefined);
   // Everything is judged against the owner's own site, not against an advanced version already on (design again).
   const basic = basicOf(card);
@@ -612,7 +616,7 @@ export async function designAdvanced(card: Card, ctx: { userId: string; cardId: 
 
   step("website");
   // The design and the words need only the review, so they run side by side.
-  const designing = designSpec(basic, s, rev.critique, owner, wish, round, near);
+  const designing = designSpec(basic, s, rev.critique, owner, wish, round, near, ctx.previous ?? []);
   step("writing");
   const [design, copy] = await Promise.all([designing, writeAdvancedCopy(basic, s, rev.critique, owner, blob, wish)]);
 

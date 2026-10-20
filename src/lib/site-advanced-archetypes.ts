@@ -1206,6 +1206,40 @@ export function layoutSlots(spec: AdvancedSpec): string[] {
   return [...LAYOUT_KEYS.map((k) => variantOf(spec, k)), spec.order.join(">")];
 }
 /** How many of the 8 layout slots differ (0 = the same layout, 8 = nothing in common). */
+/** The look of a spec in one line: the colours and the heading face (what a person sees first). */
+const lookSig = (s: AdvancedSpec) => `${s.palette.key}|${s.palette.color ?? ""}|${s.palette.tone}`;
+
+/** A different COLOUR and heading face from every design in `others` (owner, 20 Oct 2026: the three Premium designs had the same
+ *  background and colour pattern — diversify moves the layout only). The palette is drawn from the curated and named sets minus
+ *  the ones already seen, the tone alternates when the seen ones share one, and the heading face changes to another pairing of
+ *  its kind. Deterministic per seed. */
+export function distinctLook(spec: AdvancedSpec, seed: string, others: AdvancedSpec[]): AdvancedSpec {
+  if (!others.length) return spec;
+  const r = rng(`${seed}|look`);
+  const seen = new Set(others.map(lookSig));
+  const cur: AdvancedSpec = { ...spec, palette: { ...spec.palette }, fonts: { ...spec.fonts } };
+  if (seen.has(lookSig(cur)) || others.some((o) => o.palette.key === cur.palette.key && (o.palette.color ?? "") === (cur.palette.color ?? ""))) {
+    const usedColors = new Set(others.map((o) => `${o.palette.key}|${o.palette.color ?? ""}`));
+    const pool: AdvancedSpec["palette"][] = [
+      ...CURATED_PALETTES.map((c) => ({ key: "brand", color: c.color, tone: c.tone } as AdvancedSpec["palette"])),
+      ...SITE_PALETTES.filter((x) => x.key !== "brand" && x.key !== "ivory" && x.key !== "pearl").map((x) => ({ key: x.key, tone: cur.palette.tone } as AdvancedSpec["palette"])),
+    ].filter((pal) => !usedColors.has(`${pal.key}|${pal.color ?? ""}`));
+    if (pool.length) cur.palette = { ...pickOf(r, pool), ...(cur.palette.luxe ? { luxe: true } : {}) };
+  }
+  // Tone: when every seen design is light (or all dark), this one takes the other, so the backgrounds differ at a glance.
+  const tones = new Set(others.map((o) => o.palette.tone));
+  if (tones.size === 1 && tones.has(cur.palette.tone)) cur.palette.tone = cur.palette.tone === "light" ? "dark" : "light";
+  // Heading face: another pairing of the same kind, never one already seen.
+  const usedHeads = new Set(others.map((o) => o.fonts.heading));
+  if (usedHeads.has(cur.fonts.heading)) {
+    const kindName = ADV_FONTS[cur.fonts.heading]?.kind === "sans" ? "sans" : "serif";
+    const pairs = FONT_PAIRINGS.filter((f) => ADV_FONTS[f.heading]?.kind === kindName && !usedHeads.has(f.heading));
+    const alt = pairs.length ? pickOf(r, pairs) : FONT_PAIRINGS.find((f) => !usedHeads.has(f.heading));
+    if (alt) cur.fonts = { heading: alt.heading, body: alt.body };
+  }
+  return cur;
+}
+
 export function layoutDistance(a: AdvancedSpec, b: AdvancedSpec): number {
   const x = layoutSlots(a), y = layoutSlots(b);
   return x.reduce((n, v, i) => n + (v === y[i] ? 0 : 1), 0);

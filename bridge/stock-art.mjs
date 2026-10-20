@@ -22,7 +22,7 @@ const CLIPS = path.join(DIR, "clips");
 const JUDGE = "gemini-3.5-flash-lite";
 /** The quality bar (owner's call, 7 Oct 2026: "kai baar bahut purani si image le leta hai, ajeeb si — neat and clean
  *  chahiye"): a photo must look recent, sharp and professional; anything dated, odd or shabby is out. */
-const QUALITY = `Then DATED true/false: true when the photo looks old or odd — film grain, faded or yellow tint, a 1990s–2000s look (old phones, cars, TVs, clothes, interiors), blurry, dark, noisy, over-filtered, an illustration / render / clip-art, an awkward crop or a strange, staged or messy scene. Only a photo that looks like it was shot recently by a professional — sharp, well lit, natural colours, neat and tidy, modern setting — is not dated. A dated photo also scores FIT 0–3.`;
+const QUALITY = `Then DATED true/false: true when the photo looks old or odd — film grain, faded or yellow tint, a 1990s–2000s look (old phones, cars, TVs, clothes, interiors), blurry, dark, noisy, over-filtered, an illustration / render / clip-art, an awkward crop or a strange, staged or messy scene. ALSO true for an old-style or poor-looking premises (owner, 20 Oct 2026: such pictures make a good website look cheap): a roadside stall or street-market shop, a cramped or cluttered shop, hanging sachets and loose packets, handwritten boards, peeling paint, rusty shutters, dusty counters, bare wires, crowds pushing at a counter, a tarpaulin roof. Only a tidy, bright, organised, modern premises passes — supermarket-style shelves, clean counters, good lighting, the kind of place a customer would photograph proudly. Only a photo that looks like it was shot recently by a professional — sharp, well lit, natural colours, neat and tidy, modern setting — is not dated. A dated photo also scores FIT 0–3.`;
 /** Picks are cached; this version tag makes the old, un-judged-for-quality picks be chosen again. */
 const QUALITY_V = "q2";
 const log = (...a) => console.log("[stock]", ...a);
@@ -69,8 +69,10 @@ export function stockQueries(theme, category, kind) {
   return [`morning sunlight ${trade.split(" ")[0]}`, "good morning sunrise india", "tea cup morning light", "nature calm sunrise"];
 }
 
-async function gemini(parts) {
-  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${JUDGE}:generateContent`, {
+/** The card-pool judge is the full flash model (20 Oct 2026): the lite one let foreign supermarkets, vintage tins and non-Indian staff into a kirana pool. */
+const JUDGE_CARD = "gemini-3.5-flash";
+async function gemini(parts, model = JUDGE) {
+  const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`, {
     method: "POST", headers: { "x-goog-api-key": GEMINI, "Content-Type": "application/json" },
     body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 2048 } }), signal: AbortSignal.timeout(45000),
   }).then((x) => x.json());
@@ -262,22 +264,22 @@ async function judgeCard(cands, label, what) {
     for (const [f, u] of urls.entries()) {
       try {
         const buf = Buffer.from(await (await fetch(u, { signal: AbortSignal.timeout(15000) })).arrayBuffer());
-        const small = await sharp(buf).resize({ width: 320 }).jpeg({ quality: 75 }).toBuffer();
+        const small = await sharp(buf).resize({ width: isClip ? 320 : 512 }).jpeg({ quality: 78 }).toBuffer();
         parts.push({ text: `${what} ${k}${urls.length > 1 ? `, frame ${f + 1} of ${urls.length}` : ""}:` }, { inlineData: { mimeType: "image/jpeg", data: small.toString("base64") } });
       } catch { /* skip */ }
     }
   }
   if (!parts.length) return [];
   const brandNote = /^[A-Z][\w&.-]*(?: [A-Z][\w&.-]*)? /.test(label) ? ` The label starts with a BRAND: the thing shown must be recognisably that brand's (its cars, phones, paint…), not a rival's — a rival brand's product scores 0–3.` : "";
-  const clean = `CLEAN true/false (no readable text, logos, watermarks or screens; people, if any, look Indian / South Asian and appropriately dressed; nothing offensive; no alcohol, smoking or gore).`;
+  const clean = `CLEAN true/false (no readable text, logos, watermarks or screens; nothing offensive; no alcohol, smoking or gore). PEOPLE: this is for a business in INDIA — if ANY person in the picture does not look Indian / South Asian (European, East Asian, African, Latin American faces, foreign shop staff), CLEAN is false, no exceptions; a picture with no people is fine.`;
   parts.push({ text: isClip
     ? `These are VIDEO clips (a few frames of each) for the HOME PAGE of a "${label}" business's website in INDIA. It plays right under the heading, so a wrong clip is worse than none.${brandNote}
 First say in 3–6 words what each clip actually shows ("shows"). Then score FIT 0–10: give 9–10 ONLY when you can SEE something that only THIS trade has (a pharmacy: medicine boxes, strips or bottles on shelves, a chemist counter, a pharmacist, a green cross; a school: classrooms, uniforms, a blackboard; a sweet shop: trays of mithai; and so on). A general / kirana / grocery or snack shop, a street stall, a market, a crowd, a generic interior, or any other trade scores 0–2 even if it looks like some small shop. Footage must be bright, steady and premium. Also ${clean}
 Return ONLY JSON {"items":[{"n":0,"shows":"","fit":0,"clean":true}]}`
     : `These are candidates for the photo gallery of a "${label}" business's digital visiting card in INDIA — a customer should look and think "yes, this is that kind of business".${brandNote}
-Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché) and ${clean} ${QUALITY}
+Score each 0–10 for FIT (UNMISTAKABLY this trade and no other — a general store is not a pharmacy, a café is not a sweet shop: a different or vague trade scores 0–3 — premium, bright, real-looking, not a stock cliché). FIT is also 0–3 when the place is clearly NOT in India: foreign-language signs or price tags, foreign brands or currency, a Western / East Asian supermarket or market; and 0–3 for a vintage, antique or museum-style display of old products, a props shop or a studio set. A good picture is a real, present-day Indian premises of this trade. Then ${clean} ${QUALITY}
 Return ONLY JSON {"items":[{"n":0,"fit":0,"clean":true,"dated":false}]}` });
-  try { const j = await gemini(parts); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false && p.dated !== true, shows: String(p.shows ?? "").slice(0, 60) })); } catch { return null; }
+  try { const j = await gemini(parts, JUDGE_CARD); return (j.items ?? []).map((p) => ({ n: Number(p.n), fit: Number(p.fit) || 0, clean: p.clean !== false && p.dated !== true, shows: String(p.shows ?? "").slice(0, 60) })); } catch { return null; }
 }
 
 /**
@@ -309,8 +311,9 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   const brandWord = String(brand || "").trim().slice(0, 40);
   const brandSlug = brandWord.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
   const cat = `${String(category || "other").toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 24) || "other"}${brandSlug ? `-${brandSlug}` : ""}`;
-  // v3: photos judged for quality too (QUALITY). The v2 pool stands in while the v3 one fills, like v1 did for v2.
-  const meta = path.join(CARD_DIR, `${cat}-v3.json`);
+  // v3: photos judged for quality too (QUALITY). v4 (20 Oct 2026): judged with the stricter bar — no old-style or cluttered premises.
+  // The v3 pool stands in while the v4 one fills, like v2 did for v3.
+  const meta = path.join(CARD_DIR, `${cat}-v4.json`);
   const onDisk = (m) => (m.photos ?? []).every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url)))) && (!m.clip || fs.existsSync(path.join(CARD_DIR, path.basename(m.clip.url))));
   let partial = null, clipOnly = null;
   if (fs.existsSync(meta)) {
@@ -318,7 +321,8 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       const m = JSON.parse(fs.readFileSync(meta, "utf8"));
       if (m.clip && m.clipV !== CLIP_V) m.clip = null;   // chosen by the old judge: not trusted
       if (onDisk(m)) {
-        if (!m.partial && (m.photos ?? []).length >= floor) { if (m.clipV === CLIP_V) return m; clipOnly = m; }   // photos done: only the clip again
+        // An AI-made pool (scripts/ai-card-pool.mjs) is complete at whatever size it has: stock must never be searched over it.
+        if (!m.partial && ((m.photos ?? []).length >= floor || m.ai)) { if (m.clipV === CLIP_V || m.ai) return m; clipOnly = m; }   // photos done: only the clip again
         else partial = m;
       }
     } catch { /* rebuild */ }
@@ -326,7 +330,7 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
   // The older six-photo pool, when there is one: handed back at once so this build is not left bare, while the
   // twelve are made in the background for the next one.
   let legacy = partial && (partial.photos ?? []).length >= floor ? partial : null;
-  for (const old of [path.join(CARD_DIR, `${cat}-v2.json`), ...(brandSlug ? [] : [path.join(CARD_DIR, `${cat}.json`)])]) {
+  for (const old of [path.join(CARD_DIR, `${cat}-v3.json`), path.join(CARD_DIR, `${cat}-v2.json`), ...(brandSlug ? [] : [path.join(CARD_DIR, `${cat}.json`)])]) {
     if (legacy || !fs.existsSync(old)) continue;
     try { const m = JSON.parse(fs.readFileSync(old, "utf8")); if ((m.photos ?? []).length && m.photos.every((p) => fs.existsSync(path.join(CARD_DIR, path.basename(p.url))))) legacy = m; } catch { /* ignore */ }
   }
@@ -368,7 +372,7 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
       try {
         const buf = Buffer.from(await (await fetch(c.url, { signal: AbortSignal.timeout(40000) })).arrayBuffer());
         const n = pool.photos.length + 1;
-        const file = path.join(CARD_DIR, `${cat}-v3-${n}-${c.id}.jpg`);
+        const file = path.join(CARD_DIR, `${cat}-v4-${n}-${c.id}.jpg`);
         await sharp(buf).resize({ width: 1800, withoutEnlargement: true }).jpeg({ quality: 85, mozjpeg: true }).toFile(file);
         if (pool.photos.length >= want) { try { fs.unlinkSync(file); } catch { /* ignore */ } return; }
         pool.photos.push({ url: CARD_URL(file), credit: c.credit, id: c.id });
@@ -378,7 +382,7 @@ export async function ensureCardMedia({ category, label = "", want = 12, brand =
     if (!clipOnly) {
     for (const q of queries) {
       if (pool.photos.length >= want) break;
-      const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 16);
+      const cands = (await landscapePhotos(q).catch(() => [])).filter((c) => !seen.has(c.id) && !spare.some((x) => x.c.id === c.id)).slice(0, 10);
       if (!cands.length) continue;
       const scores = await judgeCard(cands, trade, "Photo");
       // Strict: 8+ (this trade, clean, recent, sharp). 6–7 are near-misses, used only when the pool would be short.

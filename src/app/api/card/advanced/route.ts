@@ -24,6 +24,17 @@ import { advancedTriesLeft, isAdvancedAllowed, spendAdvancedTry } from "@/lib/ad
 import { advancedState, applyAdvanced, cleanResult, designAdvanced, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
+import type { AdvancedSpec } from "@/lib/site-advanced";
+
+// The designs an owner has already previewed for a card, so "Try another layout" is measured against them (a preview saves nothing on
+// the card). In memory, like the job itself; forgotten after a few hours or once a preview is accepted.
+const SEEN_MS = 3 * 60 * 60_000;
+// Every preview of this round is kept whole, so the owner can go back to design 1 after seeing 2 and 3 and put THAT one live.
+const g = globalThis as unknown as { __advSeen?: Map<string, { at: number; items: Obj[] }> };
+const seen = (g.__advSeen ??= new Map());
+const seenItems = (k: string): Obj[] => { const e = seen.get(k); if (!e || Date.now() - e.at > SEEN_MS) { seen.delete(k); return []; } return e.items; };
+const seenSpecs = (k: string): AdvancedSpec[] => seenItems(k).map((r) => r.spec as AdvancedSpec).filter(Boolean);
+const remember = (k: string, result: Obj) => { const list = seenItems(k); seen.set(k, { at: Date.now(), items: [...list, result].slice(-6) }); };
 
 // Review + design + words are three AI calls, two of them side by side; the job outlives the request.
 export const maxDuration = 200;
@@ -92,12 +103,13 @@ export async function POST(request: Request) {
   const access = await isAdvancedAllowed(me.id);
   if (!access.allowed) return closed(access.reason);
 
-  if (typeof b.accept === "string") {
+  if (typeof b.accept === "string" || typeof b.acceptSeed === "string") {
     const job = await currentJob(key);
-    const res = job?.result as Obj | undefined;
-    if (!job || job.id !== b.accept || job.state !== "done" || !res || res.mode !== "preview" || res.cardId !== row.id) {
-      return NextResponse.json({ error: "That preview is no longer there. Please make it again." }, { status: 400 });
-    }
+    let res = job?.result as Obj | undefined;
+    const isCurrent = !!job && job.id === b.accept && job.state === "done" && !!res && res.mode === "preview" && res.cardId === row.id;
+    // An earlier design of this round (design 1 after 2 and 3 were seen): found by its seed among the previews kept here.
+    if (!isCurrent) res = seenItems(`${me.id}:${row.id}`).find((r) => (r.spec as AdvancedSpec | undefined)?.seed === b.acceptSeed && r.cardId === row.id);
+    if (!res) return NextResponse.json({ error: "That preview is no longer there. Please make it again." }, { status: 400 });
     // Saved onto the card as it is NOW (the owner may have edited it while looking at the preview).
     const fresh = (await myCard(me.id, row.id))?.data ?? data;
     const clean = cleanResult(res, fresh);
@@ -105,7 +117,8 @@ export async function POST(request: Request) {
     const next = applyAdvanced(fresh, clean);
     const r = await save(row.id, me.id, next);
     if (!r.ok) return NextResponse.json({ error: "Could not save your advanced website. Please try again." }, { status: 500 });
-    await claim(key, job.id);
+    if (job) await claim(key, job.id);
+    seen.delete(`${me.id}:${row.id}`);
     return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
   }
 
@@ -125,7 +138,8 @@ export async function POST(request: Request) {
   const wish = typeof b.wish === "string" ? b.wish.trim().slice(0, 300) : "";
 
   const { job, done, joined } = await startJob(key, { fresh: !!data.site.advanced }, async (step) => {
-    const result = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, step });
+    const result = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: seenSpecs(`${me.id}:${row.id}`), step });
+    remember(`${me.id}:${row.id}`, { ok: true, mode, cardId: row.id, username: row.username, ...result } as unknown as Obj);
     await spendAdvancedTry(me.id);       // a finished design is one try; a crash above costs nothing
     let saved = false;
     if (mode === "apply") {

@@ -108,7 +108,7 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
       url: siteUrl, text: en ? `Visit our website — products, services and everything about us: ${siteUrl}` : `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteUrl}`,
     });
   }
-  if (res?.link) {
+  if (res?.link && showsPartnerUi(kind)) {   // the Right join link is partner-only too (owner, 19 Oct 2026: a website sign-up was seeing it)
     const join = (leg: "L" | "R") => withLeg(res.link as string, leg);
     const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
     items.push({ key: "R", emoji: "➡️", title: en ? "Join link — RIGHT team" : "Join link — RIGHT team", sub: en ? "Whoever joins with this goes to your right side" : "इस link से जो जुड़ेगा वो आपकी right side में जाएगा", url: join("R"), text: msg(join("R")) });

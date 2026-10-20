@@ -1,0 +1,33 @@
+// Demo account: choose "Selling Shubhora as a partner" on the onboarding, then check the published card has its website ON. Run on the VPS.
+import fs from "node:fs"; import path from "node:path"; import { createRequire } from "node:module";
+const APP = "/opt/neuraledge/app"; const env = {};
+for (const l of fs.readFileSync(path.join(APP, ".env.local"), "utf8").split("\n")) { const m = l.match(/^([A-Z0-9_]+)=(.*)$/); if (m) env[m[1]] = m[2].replace(/^"|"$/g, ""); }
+const SITE = "https://shubhora.com", EMAIL = "p919000001212@phone.neuraledge.me", UID = "2e4475d3-89e9-470e-b48b-3c197dc094ed";
+const require = createRequire(path.join(APP, "package.json")); const puppeteer = require("puppeteer-core");
+const { ui } = await import(path.join(APP, "scripts/tutorial-video.mjs"));
+const pause = (ms) => new Promise((r) => setTimeout(r, ms));
+const out = (k, v) => console.log(k.padEnd(44), v);
+const browser = await puppeteer.launch({ executablePath: env.CHROME_PATH || "/usr/bin/chromium-browser", headless: true, protocolTimeout: 120000, args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"] });
+const page = await browser.newPage(); await page.setViewport({ width: 390, height: 844, isMobile: true, hasTouch: true });
+const u = ui(page, { work: "/tmp", email: EMAIL, uid: UID });
+await u.login(); await u.goto(`${SITE}/poster/onboard?step=promote`); await pause(2500);
+out("promote screen", JSON.stringify((await page.evaluate(() => document.body.innerText)).replace(/\n+/g, " | ").slice(0, 260)));
+await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /Selling Shubhora as a partner|Shubhora partner बनकर/.test(x.innerText)); b?.click(); });
+await pause(400);
+out("option text", JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("button")].find((x) => /Selling Shubhora as a partner/.test(x.innerText))?.innerText.replace(/\n+/g, " | "))));
+await page.evaluate(() => { const b = [...document.querySelectorAll("button")].find((x) => /^(Next|आगे)/.test(x.innerText.trim())); b?.click(); });
+const t = Date.now(); while (Date.now() - t < 40000 && !/\/poster\/site/.test(page.url())) await pause(500);
+out("landed on", page.url().replace(SITE, "")); await pause(3000);
+out("ready note", JSON.stringify((await page.evaluate(() => document.body.innerText)).match(/Your Shubhora card and website are ready[^|]*/)?.[0] ?? "(none)"));
+const H = { apikey: env.SUPABASE_SERVICE_ROLE_KEY, Authorization: `Bearer ${env.SUPABASE_SERVICE_ROLE_KEY}` };
+const cards = await (await fetch(`${env.NEXT_PUBLIC_SUPABASE_URL}/rest/v1/cards?owner_id=eq.${UID}&select=username,active,data`, { headers: H })).json();
+for (const c of cards) out("card " + c.username, JSON.stringify({ active: c.active, siteEnabled: c.data?.site?.enabled, pages: (c.data?.pages || []).length, kb: c.data?.kb }));
+const handle = cards[0]?.username;
+const desk = await browser.newPage(); await desk.setViewport({ width: 1280, height: 800 });
+await desk.goto(`${SITE}/c/${handle}`, { waitUntil: "networkidle2" }); await pause(1500);
+out("desktop /c/<handle> is website", await desk.evaluate(() => !!document.querySelector(".site") && /Shubhora/.test(document.body.innerText)));
+out("desktop text", JSON.stringify((await desk.evaluate(() => document.body.innerText)).replace(/\n+/g, " | ").slice(0, 200)));
+await u.goto(`${SITE}/poster`); await pause(3000);
+out("home share tabs", JSON.stringify(await page.evaluate(() => [...document.querySelectorAll("button")].map((b) => b.innerText.trim()).filter((x) => /^(Card|Website|Left|Right)$/.test(x)))));
+out("home finish setup", JSON.stringify((await page.evaluate(() => document.body.innerText)).match(/Finish setup[^|]*\|?[^|]*/)?.[0]?.replace(/\n+/g, " | ") ?? "(none)"));
+await browser.close(); process.exit(0);

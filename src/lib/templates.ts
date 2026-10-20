@@ -961,6 +961,8 @@ const vcardReseller: CardTemplateDef = {
     // answer with today's prices and features. `kb` marks the card; botKnowledge is only the partner's own notes.
     kb: "shubhora",
     botKnowledge: "",
+    // The website this card opens as on a computer (promoteShubhora switches it on): its own first line, never the trade fallback.
+    site: { enabled: true, hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link." } },
     popup: {
       enabled: true,
       title: "Make free card",

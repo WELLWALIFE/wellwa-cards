@@ -98,7 +98,14 @@ function PreviewInner() {
     // The editor sits in the parent window and posts after every change as well (storage events can lag).
     const onMessage = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data === `preview:${key}`) setCard(readCard()); };
     window.addEventListener("storage", onStorage); window.addEventListener("message", onMessage);
-    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("message", onMessage); };
+    // The page's own height, told to the screen that frames it (the advanced-website page sizes its frame to it: no blank space under
+    // the footer, no second scrollbar inside). Posted whenever the page grows or shrinks.
+    let lastH = 0;
+    const tell = () => { const h = document.documentElement.scrollHeight; if (h !== lastH && window.parent !== window) { lastH = h; try { window.parent.postMessage({ type: "preview-height", key, h }, window.location.origin); } catch { /* ignore */ } } };
+    const ro = "ResizeObserver" in window ? new ResizeObserver(tell) : null;
+    ro?.observe(document.documentElement); if (document.body) ro?.observe(document.body);
+    const tick = setInterval(tell, 1500);
+    return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("message", onMessage); ro?.disconnect(); clearInterval(tick); };
   }, []);
 
   if (card === undefined) return null;

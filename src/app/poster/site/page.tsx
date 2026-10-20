@@ -30,6 +30,9 @@ export default function WebsitePage() {
   const { lang } = useT(); const hi = lang !== "en";
   const [s, setS] = useState<Status | null>(null);
   const [cardId, setCardId] = useState<string>("");
+  // ?made=shubhora: the partner's Shubhora card and website were just published by the set-up (onboard → promoteShubhora).
+  const [justMade, setJustMade] = useState(false);
+  useEffect(() => { try { if (new URLSearchParams(window.location.search).get("made") === "shubhora") { setJustMade(true); window.history.replaceState(null, "", "/poster/site"); } } catch { /* ignore */ } }, []);
   const [err, setErr] = useState("");
   /** A save that failed in "Show or hide pages": shown under the very switch that was tapped (key "enabled" or "page:<slug>"). */
   const [rowErr, setRowErr] = useState<{ key: string; text: string } | null>(null);
@@ -152,7 +155,8 @@ export default function WebsitePage() {
   }
   /** Back = the screen the owner was just on (lib/nav-back); only when there is none, the Create tab this page hangs off. The Edit address is
    *  the first screen's child: its Back is leaveEdit. A focused edit's Save replaces its own form, so Back never lands on a finished one. */
-  function back() { if (editOnly) leaveEdit(); else goBack(router, "/poster/create"); }
+  // Just made by the set-up: Back is Home, not the set-up question behind this page (owner, 19 Oct 2026: it landed on "About you").
+  function back() { if (editOnly) leaveEdit(); else if (justMade) router.replace("/poster"); else goBack(router, "/poster/create"); }
 
   if (!s) return err ? (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -177,6 +181,12 @@ export default function WebsitePage() {
         <h1 className="text-lg font-bold flex-1">{T("Card & Website", "Card & Website")}</h1>
       </div>
 
+      {justMade && s.hasCard && (
+        <section className="rounded-2xl border border-good/40 bg-good/10 p-4">
+          <p className="flex items-center gap-2 text-base font-bold"><Check className="h-5 w-5 text-good" /> {T("Your Shubhora card and website are ready", "आपका Shubhora card और website तैयार है")}</p>
+          <p className="mt-1 text-sm text-muted">{T("One link: on a phone it opens as your card, on a computer as your website. Share it below, or tap Edit to put your own photo and words on it.", "एक link: phone पर card खुलता है, computer पर website। नीचे से share करें, या Edit दबाकर अपनी photo और बातें डालें।")}</p>
+        </section>
+      )}
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
           <p className="text-sm text-muted">{!paid ? T("Make your digital card. It is free.", "अपना digital card बनाएँ। ये free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
@@ -235,7 +245,8 @@ export default function WebsitePage() {
           </Link>
 
           {/* The Rs 5,999 advanced website (owner, 15-16 Oct 2026): its own door; once one exists it shows the state and the way back to the basic site. */}
-          <AdvancedEntry key={cardId} cardId={cardId} fetchState />
+          {/* A partner's Shubhora card is the company's own design: the Premium redesign is not for it (owner, 20 Oct 2026). */}
+          {card?.kb !== "shubhora" && <AdvancedEntry key={cardId} cardId={cardId} fetchState />}
           </>}
 
           {panel === "share" && !editOnly && (

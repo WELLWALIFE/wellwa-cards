@@ -22,7 +22,7 @@ import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE } from "@/lib/cloud";
-import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, withShubhoraPage } from "@/lib/shubhora-page";
+import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, isShubhoraSellerCard, withShubhoraPage } from "@/lib/shubhora-page";
 import { CardView } from "@/components/card-view";
 import { applyLook, openingLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
 import { paletteFor } from "@/lib/site-style";
@@ -203,6 +203,8 @@ export default function BuildCard() {
 
 
   const [busy, setBusy] = useState("");
+  /** "Update your live website?" asked in the app, not with the browser's own confirm box (owner, 19 Oct 2026: a native dialog is not the app). Holds the publish options to run on Yes. */
+  const [askLive, setAskLive] = useState<{ card?: Card; quiet?: boolean } | null>(null);
   const [err, setErr] = useState("");
   /** The one on-screen error line (the preview's bar, the Make cards, the form's Save): scrolled into view when it appears, so it is never off-screen. */
   const errRef = useRef<HTMLParagraphElement>(null);
@@ -984,10 +986,10 @@ export default function BuildCard() {
   /** `card`: the card to put live when it is not the one on screen yet (a look just tapped — React state has not
    *  settled, and the stale `shown` used to copy the previous look's tiles and home order over the new one).
    *  `quiet`: a look / adjustment on a live site — the page must not jump to the top. */
-  async function publish(opts?: { card?: Card; quiet?: boolean }) {
+  async function publish(opts?: { card?: Card; quiet?: boolean; confirmed?: boolean }) {
     if (!shown || !card) return;
     const base = opts?.card ? applyChecks(opts.card, checks, off) : shown;
-    if (existing && existing.active && !isThinCard(existing) && !liveUser && !confirm(T("Update your live website and card? Your link, QR code, verified badge and settings stay the same.", "अपनी live website और card update करें? आपका link, QR code, verified badge और settings वैसे ही रहेंगे।"))) return;
+    if (existing && existing.active && !isThinCard(existing) && !liveUser && !opts?.confirmed) { setAskLive(opts ?? {}); return; }
     publishing.current = true;
     setBusy("publish"); setErr("");
     try {
@@ -1022,6 +1024,12 @@ export default function BuildCard() {
         // the preview the owner approved carries the look they picked, and that wins over both.
         const pickedStyle = base.site?.style;
         if (pickedStyle && out.site) out = { ...out, site: { ...out.site, style: { ...pickedStyle } } };
+        // A card built for the owner's OWN business over a Shubhora seller card must not keep that card's seller marks (demo, 19 Oct 2026:
+        // "Sharma Sweets" went live with kb "shubhora" and the Shubhora logo): the assistant would answer as Shubhora and the plan-photo sync would run.
+        if (!liveUser && out.kb === "shubhora" && !isShubhoraSellerCard(out)) {
+          const { kb: _kb, ...rest } = out; void _kb;
+          out = { ...rest, ...(out.site?.logoUrl === "/art/brand/shubhora-logo.png" ? { site: { ...out.site, logoUrl: undefined } } : {}) } as Card;
+        }
         // The owner's adjustments on the preview (tiles, clip / photo, section order and hidden list) go live too.
         if (out.site && base.site) {
           const h = base.site.hero;
@@ -1113,7 +1121,8 @@ export default function BuildCard() {
     // Live: never Make (it would offer to build it again). Make is in-page state, not a history entry, so Back lands on the screen before this page.
     if (liveUser) { goBack(router, "/poster"); return; }
     // A new build of a website that is already live (?again=1, a new website at set-up): back to where it was asked for, never to Make.
-    if (isLiveSite(existing)) { goBack(router, "/poster/site"); return; }
+    // With no earlier screen (opened fresh): the last form step of the set-up, not Card & Website (owner, 20 Oct 2026: Back = the previous step).
+    if (isLiveSite(existing)) { goBack(router, screenHref(LAST_ONBOARD_SCREEN)); return; }
     setErr(""); setMakeFrom("");
     setState("make"); toTop();
   }
@@ -1653,6 +1662,18 @@ export default function BuildCard() {
               className="mt-2 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T(`Write again · ${againCost} ${againCost === 1 ? "credit" : "credits"}`, `दोबारा लिखवाएँ · ${againCost} credit`)}
             </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {askLive && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/55 px-4" role="dialog" aria-modal="true">
+          <div className="w-full max-w-sm space-y-3 rounded-2xl bg-surface p-5 shadow-xl">
+            <p className="text-base font-bold">{T("Update your live website and card?", "अपनी live website और card update करें?")}</p>
+            <p className="text-sm text-muted">{T("Your link, QR code, verified badge and settings stay the same. Only the words, photos and design change.", "आपका link, QR code, verified badge और settings वैसे ही रहेंगे। सिर्फ़ शब्द, photos और design बदलेंगे।")}</p>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAskLive(null)} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">{T("Not now", "अभी नहीं")}</button>
+              <button type="button" onClick={() => { const o = askLive; setAskLive(null); void publish({ ...o, confirmed: true }); }} className="rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white">{T("Yes, update", "हाँ, update करें")}</button>
             </div>
           </div>
         </div>

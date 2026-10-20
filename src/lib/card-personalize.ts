@@ -2,7 +2,7 @@
 
 // A template is a design with sample content. When the owner picks one, their own details from the setup (name,
 // photo, business, phone, city, address, "about") replace the sample ones, so the first thing they see is their card.
-import { SHUBHORA_PAGE_SLUG } from "@/lib/shubhora-page";
+import { SHUBHORA_PAGE_SLUG, isShubhoraSellerCard } from "@/lib/shubhora-page";
 import { api, type Profile } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
@@ -234,11 +234,28 @@ export async function syncProductsToCard(rows: ProductSync[]) {
     c = primary ? cards.find((x) => x.id === primary) : undefined;
   } else c = cards[0];
   if (!c || /\byour name\b/i.test(c.name ?? "")) return;
+  const imagesOf = (r: ProductSync) => { const list = [...(r.photos ?? []).map((p) => p?.url).filter((u): u is string => !!u), ...(r.photo_url ? [r.photo_url] : [])]; return [...new Set(list)].slice(0, 3); };
+  // A partner's own Shubhora card (owner, 19 Oct 2026: "product photos AI se banwaye, site par update nahi hue"): its "Plans and prices"
+  // items are the company's — words and prices stay as written — but the PHOTOS the partner put on the Shubhora products follow.
+  // Plans and products are matched by plan name (Free / Standard / Premium / Custom), the two are never named alike.
+  if (c.kb === "shubhora" || isShubhoraSellerCard(c)) {
+    const plan = (n: string) => (/premium/i.test(n) ? "premium" : /standard|growth/i.test(n) ? "standard" : /custom/i.test(n) ? "custom" : /free/i.test(n) ? "free" : "");
+    const shots = new Map<string, string[]>();
+    for (const r of rows) {
+      if (r.active === false || !/shubhora/i.test(`${r.name} ${r.category ?? ""}`)) continue;
+      const k = plan(r.name ?? ""), imgs = imagesOf(r).filter((u) => /^https?:\/\//.test(u));   // only the partner's own uploads / AI photos, never our stock art back
+      if (k && imgs.length && !shots.has(k)) shots.set(k, imgs);
+    }
+    if (shots.size) {
+      const next = structuredClone(c);
+      for (const pg of next.pages) for (const b of pg.blocks) if (b.kind === "product") b.items = b.items.map((it) => { const imgs = shots.get(plan(it.name)); return imgs ? { ...it, images: imgs, imageUrl: imgs[0] } : it; });
+      if (JSON.stringify(next) !== JSON.stringify(c)) { await publishCard(next); c = next; }   // the own-products pass below builds on this, not on the stale card
+    }
+  }
   const own = rows.filter((r) => (r.name ?? "").trim() && !/shubhora/i.test(`${r.name} ${r.category ?? ""}`));
   if (!own.length) return;
   const key = (n: string) => n.trim().toLowerCase().replace(/\s+/g, " ");
   const byName = new Map(own.map((r) => [key(r.name), r]));
-  const imagesOf = (r: ProductSync) => { const list = [...(r.photos ?? []).map((p) => p?.url).filter((u): u is string => !!u), ...(r.photo_url ? [r.photo_url] : [])]; return [...new Set(list)].slice(0, 3); };
   const price = (v?: string | null) => (v ?? "").trim() ? ((/^(₹|rs)/i.test(v!.trim()) ? v!.trim() : `₹${v!.trim()}`)) : "";
   const next = structuredClone(c);
   const seen = new Set<string>();

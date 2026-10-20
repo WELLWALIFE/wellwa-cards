@@ -2,7 +2,7 @@
 // has no way to (lib/live-share.ts). Same-origin only; the batch size is capped.
 import { NextResponse } from "next/server";
 import { clientKey, rateLimited, sameOrigin } from "@/lib/api-security";
-import { endShare, findShare, pushEvents, secretOk } from "@/lib/live-share";
+import { findShare, pushEvents, secretOk, stopShare } from "@/lib/live-share";
 
 const none = { "Cache-Control": "no-store" };
 export async function POST(request: Request) {
@@ -15,7 +15,7 @@ export async function POST(request: Request) {
   const s = b && typeof b.token === "string" ? findShare(b.token) : null;
   // The same answer for "no such link" and "wrong secret": nothing to learn by trying.
   if (!s || !secretOk(s, b?.secret)) return NextResponse.json({ error: "forbidden" }, { status: 403, headers: none });
-  if (b?.end) { endShare(s, "stopped"); return NextResponse.json({ ok: true, ended: "stopped" }, { headers: none }); }
+  if (b?.end) { stopShare(s); return NextResponse.json({ ok: true, paused: "stopped" }, { headers: none }); }
   const r = pushEvents(s, Array.isArray(b?.events) ? b!.events! : []);
   return NextResponse.json({ ok: true, ...r }, { headers: none });
 }

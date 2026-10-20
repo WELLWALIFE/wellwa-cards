@@ -313,12 +313,7 @@ export default function TodayPage() {
 
       {/* The same count as the floating setup sheet (the free steps): two different totals on one screen read as a bug. */}
       {/* "Next:" names the step the screen it opens belongs to: the exact set-up screen the owner left, else the list of steps. */}
-      {journey.continueTo && (
-        <Link href={journey.resumeHref ?? "/poster/setup"} className="block rounded-xl border border-brand bg-brand-soft/50 p-3">
-          <p className="text-sm font-semibold">{lang === "en" ? "Finish setup" : "Setup पूरा करें"} · {journey.freeDone}/{journey.freeTotal}</p>
-          <p className="text-xs text-muted">{lang === "en" ? "Next" : "अगला"}: {lang === "en" ? journey.continueTo.title : journey.continueTo.titleHi} →</p>
-        </Link>
-      )}
+      {/* "Finish setup" is the floating sheet (components/setup-resume.tsx) alone: the same card here as well read as two (owner, 20 Oct 2026). */}
       {today?.error !== "plan" && (day === "tomorrow"
         ? <Guide hi="ये कल का poster है — सुबह 4 बजे Facebook/Status पर अपने-आप जाएगा। कुछ बदलना हो तो poster पर “बदलें” दबाएँ।" en="This is tomorrow's poster — it goes to Facebook/Status by itself at 4 AM. To change it, tap Edit on the poster." />
         : <Guide hi="ये आज का poster है — नीचे के हरे button से WhatsApp पर भेजें। Facebook/Status पर सुबह 4 बजे अपने-आप जाता है।" en="This is today's poster — send it on WhatsApp with the green button. It goes to Facebook/Status automatically at 4 AM." />)}

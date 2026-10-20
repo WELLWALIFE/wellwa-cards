@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, ChevronLeft, CircleDashed, ExternalLink, LoaderCircle, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronLeft, CircleDashed, ExternalLink, LoaderCircle, Sparkles } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
@@ -139,6 +139,10 @@ export default function AdvancedSitePage() {
 
   const [jobId, setJobId] = useState("");
   const [result, setResult] = useState<Result | null>(null);
+  /** Every design of this round, in the order they were made (owner, 20 Oct 2026: after seeing 2 and 3, design 1 must still be there to pick). */
+  const [designs, setDesigns] = useState<{ job: string; res: Result }[]>([]);
+  const [openFound, setOpenFound] = useState(false);
+  const [openChanges, setOpenChanges] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
   const [acceptErr, setAcceptErr] = useState("");
   const [againErr, setAgainErr] = useState("");
@@ -146,10 +150,17 @@ export default function AdvancedSitePage() {
   const [keepErr, setKeepErr] = useState("");
   const [doneUser, setDoneUser] = useState("");
   const [frameW, setFrameW] = useState(360);
+  /** The preview page's own height (it posts it): the frame is exactly that tall, so nothing is blank under the footer. */
+  const [frameH, setFrameH] = useState(1600);
+  useEffect(() => {
+    const on = (e: MessageEvent) => { const d = e.data as { type?: string; key?: string; h?: number }; if (e.origin === window.location.origin && d?.type === "preview-height" && d.key === PREVIEW_KEY && typeof d.h === "number" && d.h > 200) setFrameH(Math.min(20000, Math.round(d.h))); };
+    window.addEventListener("message", on);
+    return () => window.removeEventListener("message", on);
+  }, []);
   const frameBox = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; run.current += 1; dropKey(PREVIEW_KEY); }; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; run.current += 1; dropKey(PREVIEW_KEY); for (let i = 1; i <= TRY_LIMIT; i++) dropKey(`${PREVIEW_KEY}-${i}`); }; }, []);
   useEffect(() => { if (step !== "running") return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [step]);
 
   // A payment that is already on the account needs no confirming any more.
@@ -185,6 +196,8 @@ export default function AdvancedSitePage() {
     const t = readTries(mine.id);
     if (!t.jobs.includes(v.job)) { t.n += 1; t.jobs.push(v.job); writeTries(mine.id, t); }
     setUsed(t.n); setJobId(v.job); setResult(res); setAcceptErr(""); setAgainErr(""); setKeepErr("");
+    setDesigns((d) => (d.some((x) => x.job === v.job) ? d : [...d, { job: v.job, res }]));
+    setOpenFound(false); setOpenChanges(false);
     setStep("preview");
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
     void refreshAccess();
@@ -333,7 +346,8 @@ export default function AdvancedSitePage() {
     if (!card || !jobId || acceptBusy) return;
     setAcceptBusy(true); setAcceptErr("");
     try {
-      const r = await api<{ ok?: boolean; error?: string; current?: AdvState; username?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: jobId } });
+      // The design on screen: the current job, or an earlier one of this round (by its seed).
+      const r = await api<{ ok?: boolean; error?: string; current?: AdvState; username?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: jobId, acceptSeed: result?.spec?.seed } });
       if (!r.ok) { setAcceptErr(r.status === 400 ? T("That preview is no longer there. Please make it again.", "वो preview अब नहीं है। दोबारा बनाएँ।") : srv(r.data.error, T("Could not save your advanced website. Please try again.", "आपकी advanced website save नहीं हुई। दोबारा try करें।"))); return; }
       if (r.data.current) setCur(r.data.current);
       setDoneUser(r.data.username || card.username); dropKey(PREVIEW_KEY); setStep("done");
@@ -435,62 +449,94 @@ export default function AdvancedSitePage() {
     );
   }
 
-  /* ---- 4 · the critique and the preview ---- */
+  /* ---- 4 · the preview: the design first, the AI's notes and the changes folded away, the three designs side by side ---- */
   if (step === "preview" && result && card) {
     const items = result.critique?.items ?? [];
     const summary = result.critique?.summary;
     const changes = (result.diff?.text ?? []).filter((d) => d.before !== d.after).slice(0, 4);
+    const which = Math.max(0, designs.findIndex((d) => d.job === jobId));
+    const fold = "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-bold";
     return (
-      <div className="space-y-4 py-2">
+      <div className="space-y-3 py-2">
         {header}
         <section className="space-y-1">
-          <p className="flex items-center gap-1.5 text-base font-bold"><Sparkles className="h-4 w-4 text-ai" /> {T("Your advanced website is ready to see", "आपकी advanced website देखने के लिए तैयार है")}</p>
-          <p className="text-xs text-muted">{T(`Design ${Math.min(used, TRY_LIMIT)} of ${TRY_LIMIT}. Nothing is live yet — your website stays as it is until you tap “Use this advanced website”.`, `Design ${Math.min(used, TRY_LIMIT)} / ${TRY_LIMIT}। अभी कुछ live नहीं है — “Use this advanced website” दबाने तक आपकी website वैसी ही रहेगी।`)}</p>
+          <p className="flex items-center gap-1.5 text-base font-bold"><Sparkles className="h-4 w-4 text-ai" /> {T("Your advanced website", "आपकी advanced website")}</p>
+          <p className="text-xs text-muted">{T("Nothing is live yet. Look, compare, then tap “Use this design”.", "अभी कुछ live नहीं है। देखें, मिलाएँ, फिर “यही design लगाएँ” दबाएँ।")}</p>
         </section>
 
-        <section className={`${box} space-y-2.5`}>
-          <p className="text-sm font-bold">{T("What the AI found on your present site", "AI को आपकी मौजूदा site में क्या मिला")}</p>
-          {summary && (hi ? summary.hi || summary.en : summary.en) && <p className="text-sm text-ink">{hi ? summary.hi || summary.en : summary.en}</p>}
-          {items.length > 0 ? (
-            <ul className="space-y-2">
-              {items.map((it, i) => (
-                <li key={i} className="flex items-start gap-2 text-sm">
-                  <span className="mt-0.5 shrink-0 rounded-full bg-ai-soft px-2 py-0.5 text-[11px] font-semibold text-ai">{(AREA[it.area] ?? AREA.design)[hi ? 1 : 0]}</span>
-                  <span className="min-w-0">{hi ? it.hi || it.en : it.en}</span>
-                </li>
-              ))}
-            </ul>
-          ) : <p className="text-xs text-muted">{T("No big problems were found; the new design is about a more premium look.", "कोई बड़ी कमी नहीं मिली; नया design ज़्यादा premium look के लिए है।")}</p>}
-        </section>
+        {/* The designs made so far: tap one to see it again. */}
+        <div className="flex gap-2">
+          {Array.from({ length: TRY_LIMIT }, (_, i) => designs[i]).map((d, i) => (
+            <button key={i} type="button" disabled={!d} onClick={() => { if (d) { setJobId(d.job); setResult(d.res); setAcceptErr(""); } }}
+              className={`flex-1 rounded-xl border px-2 py-2 text-xs font-semibold ${d && i === which ? "border-brand bg-brand-soft/60 text-brand-ink" : d ? "border-border bg-surface" : "border-dashed border-border text-faint"}`}>
+              {T(`Design ${i + 1}`, `Design ${i + 1}`)}{!d && <span className="block text-[10px] font-normal">{T("not made yet", "अभी नहीं बना")}</span>}
+            </button>
+          ))}
+        </div>
 
         <section className="space-y-2">
-          <div ref={frameBox} className="overflow-hidden rounded-xl border border-border bg-white" style={{ height: 1600 * scale }}>
-            <iframe key={jobId} ref={frame} title={T("Advanced website preview", "Advanced website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`}
-              onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
-              style={{ width: 1280, height: 1600, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+          <div ref={frameBox} className="overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white" style={{ height: Math.min(frameH * scale, 440) }}>
+            <div style={{ width: "100%", height: frameH * scale, overflow: "hidden" }}>
+              <iframe key={jobId} ref={frame} title={T("Advanced website preview", "Advanced website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} scrolling="no"
+                onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
+                style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+            </div>
           </div>
-          <a href={`/preview/site?k=${PREVIEW_KEY}&shot=1`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink underline underline-offset-2"><ExternalLink className="h-3.5 w-3.5" /> {T("Open it full size", "पूरे size में खोलें")}</a>
-          <p className="text-[11px] text-muted">{T("This is the computer view. The same website opens on a phone too.", "ये computer वाला view है। यही website phone पर भी खुलती है।")}</p>
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-muted">{T("Computer view · scroll inside to see more", "Computer वाला view · और देखने के लिए अंदर scroll करें")}</p>
+            {/* Its own key per design (owner, 20 Oct 2026: a tab opened for design 1 turned into design 2 when 2 was tapped): three tabs, three designs. */}
+            <a href={`/preview/site?k=${PREVIEW_KEY}-${which + 1}&shot=1`} target="_blank" rel="noreferrer" onClick={() => { if (previewCard) writeJson(`${PREVIEW_KEY}-${which + 1}`, { ...previewCard, username: "__preview" }); }}
+              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold"><ExternalLink className="h-3.5 w-3.5" /> {T(`Open design ${which + 1} full size`, `Design ${which + 1} पूरा खोलें`)}</a>
+          </div>
+        </section>
+
+        <section className="rounded-2xl border border-border bg-surface">
+          <button type="button" onClick={() => setOpenFound((v) => !v)} className={fold} aria-expanded={openFound}>
+            <span>{T("What the AI found on your present site", "AI को आपकी मौजूदा site में क्या मिला")} <span className="font-normal text-muted">({items.length})</span></span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${openFound ? "rotate-180" : ""}`} />
+          </button>
+          {openFound && (
+            <div className="space-y-2.5 border-t border-border px-4 py-3">
+              {summary && (hi ? summary.hi || summary.en : summary.en) && <p className="text-sm text-ink">{hi ? summary.hi || summary.en : summary.en}</p>}
+              {items.length > 0 ? (
+                <ul className="space-y-2">
+                  {items.map((it, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm">
+                      <span className="mt-0.5 shrink-0 rounded-full bg-ai-soft px-2 py-0.5 text-[11px] font-semibold text-ai">{(AREA[it.area] ?? AREA.design)[hi ? 1 : 0]}</span>
+                      <span className="min-w-0">{hi ? it.hi || it.en : it.en}</span>
+                    </li>
+                  ))}
+                </ul>
+              ) : <p className="text-xs text-muted">{T("No big problems were found; the new design is about a more premium look.", "कोई बड़ी कमी नहीं मिली; नया design ज़्यादा premium look के लिए है।")}</p>}
+            </div>
+          )}
         </section>
 
         {(result.diff?.layout || changes.length > 0) && (
-          <section className={`${box} space-y-2`}>
-            <p className="text-sm font-bold">{T("What changes", "क्या बदलेगा")}</p>
-            {result.diff?.layout && <p className="text-sm"><b>{T("Layout", "Layout")}:</b> <span className="text-muted">{result.diff.layout.before}</span> → {result.diff.layout.after}</p>}
-            {changes.map((d) => (
-              <div key={d.key} className="space-y-0.5 text-sm">
-                <p className="text-xs font-semibold text-muted">{hi ? d.label.hi || d.label.en : d.label.en}</p>
-                {d.before && <p className="text-xs text-muted line-through">{d.before}</p>}
-                <p>{d.after}</p>
+          <section className="rounded-2xl border border-border bg-surface">
+            <button type="button" onClick={() => setOpenChanges((v) => !v)} className={fold} aria-expanded={openChanges}>
+              <span>{T("What changes", "क्या बदलेगा")}</span>
+              <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${openChanges ? "rotate-180" : ""}`} />
+            </button>
+            {openChanges && (
+              <div className="space-y-2 border-t border-border px-4 py-3">
+                {result.diff?.layout && <p className="text-sm"><b>{T("Layout", "Layout")}:</b> <span className="text-muted">{result.diff.layout.before}</span> → {result.diff.layout.after}</p>}
+                {changes.map((d) => (
+                  <div key={d.key} className="space-y-0.5 text-sm">
+                    <p className="text-xs font-semibold text-muted">{hi ? d.label.hi || d.label.en : d.label.en}</p>
+                    {d.before && <p className="text-xs text-muted line-through">{d.before}</p>}
+                    <p>{d.after}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            )}
           </section>
         )}
 
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="space-y-1.5">
             <button type="button" onClick={accept} disabled={acceptBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              {acceptBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Use this advanced website", "यही advanced website लगाएँ")}
+              {acceptBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T(`Use design ${which + 1}`, `Design ${which + 1} लगाएँ`)}
             </button>
             {acceptErr && <p className={errBox}>{acceptErr}</p>}
           </div>
@@ -500,9 +546,9 @@ export default function AdvancedSitePage() {
                 <button type="button" onClick={() => start("again")} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold disabled:opacity-60">
                   {startBusy === "again" && <LoaderCircle className="h-4 w-4 animate-spin" />} {T("Try another layout", "दूसरा layout आज़माएँ")} <span className="text-xs font-normal text-muted">({T(`${remaining} left`, `${remaining} बचे`)})</span>
                 </button>
-                <p className="text-[11px] text-muted">{T("A new layout takes about 1–2 minutes and replaces this one.", "नया layout बनने में करीब 1–2 मिनट लगते हैं और ये वाला हट जाता है।")}</p>
+                <p className="text-[11px] text-muted">{T("About 1–2 minutes. The designs you have seen stay above, so you can come back to any of them.", "करीब 1–2 मिनट। देखे हुए designs ऊपर रहते हैं, किसी पर भी वापस आ सकते हैं।")}</p>
               </>
-            ) : <p className="rounded-xl bg-surface2 px-3 py-2.5 text-xs">{T(`You have seen all ${TRY_LIMIT} layouts of this payment. Use this one, or keep your basic website.`, `इस payment के सारे ${TRY_LIMIT} layouts आप देख चुके हैं। यही लगाएँ, या अपनी basic website रखें।`)}</p>}
+            ) : <p className="rounded-xl bg-surface2 px-3 py-2.5 text-xs">{T(`You have seen all ${TRY_LIMIT} layouts of this payment. Pick one above, or keep your basic website.`, `इस payment के सारे ${TRY_LIMIT} layouts आप देख चुके हैं। ऊपर से एक चुनें, या basic website रखें।`)}</p>}
             {againErr && <p className={errBox}>{againErr}</p>}
           </div>
           <div className="space-y-1.5">

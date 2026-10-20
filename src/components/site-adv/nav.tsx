@@ -131,7 +131,9 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
   const headRef = useRef<HTMLElement>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const { pages } = x;
-  const items = pages.list.filter((e) => e.primary);
+  // "Home" is always the first link (owner, 20 Oct 2026): the logo alone was not read as the way back to the first page.
+  const homeEntry = pages.list.find((e) => e.role === "home");
+  const items = [...(homeEntry && !homeEntry.primary ? [homeEntry] : []), ...pages.list.filter((e) => e.primary)];
   const go = (e: React.MouseEvent, slug: string) => {
     e.preventDefault(); setOpen(false);
     if (x.goto) x.goto(slug); else x.jump(slug);
@@ -159,7 +161,7 @@ export function AdvHeader({ x, name, logo, scrolled, showCta, lang, chrome, onHo
     return () => mq.removeEventListener("change", on);
   }, []);
 
-  const label = (e: AdvPageEntry) => (e.owner ? x.t(e.label) : e.label);
+  const label = (e: AdvPageEntry) => (e.role === "home" ? x.ui("Home", "होम") : e.owner ? x.t(e.label) : e.label);
   const link = (e: AdvPageEntry) => (
     <a key={e.slug} href={e.href} className="nv-link" aria-current={pages.active === e.slug ? "page" : undefined} onClick={(ev) => go(ev, e.slug)}>{label(e)}</a>
   );

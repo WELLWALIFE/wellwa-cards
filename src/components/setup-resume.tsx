@@ -53,7 +53,8 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   // "Continue" buttons on one screen confused new owners (owner's review, 25 Sep 2026).
   // The website editor has its own Save bar in the same place (30 Sep 2026).
   // The Business screens (/poster/business and every page under it): the bar sat over their buttons and lists (14 Oct 2026).
-  const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads)(\/|$)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
+  // The advanced-website page (20 Oct 2026): it sat over "Open it full size" and the design buttons.
+  const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads|site\/advanced)(\/|$)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
   // The Home screen of a brand-new account has its own one big button ("Make my website"): a second "Continue" bar made two buttons for one job.
   if (path === "/poster" && freeDone === 0) return null;
   if (hidden || !nextFree || onSetupScreens) return null;

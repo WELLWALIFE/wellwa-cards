@@ -260,6 +260,8 @@ function Onboard() {
   const siteAtLoad = useRef({ url: "", role: "own" });
   const factsLoaded = useRef(false);   // the card facts came back at load: only then may a save write the WhatsApp / second number
   const hadLiveCard = useRef(false);
+  /** The live card as it was when this screen opened: a changed business (another name, or Shubhora card for an own business now) is built again. */
+  const liveCard = useRef<{ company: string; kb?: string } | null>(null);
   const [youSkipped, setYouSkipped] = useState(false);
   /** "About your business" is written by the AI on its own when the name is known and it is still empty — or was written for another
    *  name or trade (aboutIsStale). Holds the name + trade it was last tried for, so one try is made per name, never a loop. */
@@ -395,6 +397,8 @@ function Onboard() {
       const storedRole = f?.website ? f.websiteRole : "own";
       siteAtLoad.current = { url: storedUrl, role: storedRole };
       hadLiveCard.current = cards.some((c) => c.active !== false);
+      const lc = cards.find((c) => c.active !== false);
+      liveCard.current = lc ? { company: (lc.company ?? "").trim(), kb: lc.kb } : null;
       if (storedUrl) setSite({ kind: storedRole, url: storedUrl, assertedAt: f?.dealerAssertedAt ?? "" });
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
@@ -414,7 +418,8 @@ function Onboard() {
       setPhoneLocked(IS_PHONE_EMAIL.test(data.user?.email ?? "") && phone0.replace(/\D/g, "").length >= 10);
       setYouDone(!!(meta.you_done_at || meta.home_city));
       // The answer given last time comes back (Both is the default; "Only my own business" wrote false).
-      setPromote(meta.also_shubhora === false ? "own" : "both");
+      // "Selling Shubhora" set the business itself to Shubhora (promoteShubhora), so that answer shows as ticked again too.
+      setPromote(meta.also_shubhora === false ? "own" : isPartnerBiz(meta.business) ? "shubhora" : "both");
       setBiz({ kind: p && p.persona !== "business" && !meta.business?.name ? "person" : "business", role: (meta.business?.role as Role) || (p && p.persona !== "business" && !meta.business?.name ? "professional" : "business"), ...meta.business, name: meta.business?.name || (p?.persona === "business" ? p.name : ""), category: meta.business?.category || p?.category || "", city: meta.business?.city || p?.city || "", logo: p?.logo_url ?? null });
       const mail = data.user?.email ?? "";
       setNeedEmail(IS_PHONE_EMAIL.test(mail));
@@ -728,12 +733,16 @@ function Onboard() {
         // The old card's Google title / description / keywords described the OLD business — they must not survive
         // the switch (bug: the Shubhora card kept "Sharma Sweets" in its search title). Only the site-verification
         // code is the owner's own setting and stays.
+        // The partner's website is the Shubhora pages of this template (owner, 19 Oct 2026: "sirf card banata hai, website nahi"):
+        // switched ON here, so a computer opens it as the website, "My website" is in Share Links and the set-up step counts as done.
         const card = { ...(existingCard ?? {}), ...data, id: existingCard?.id ?? Math.random().toString(36).slice(2, 10), username: handle, active: true,
+          site: { ...(existingCard?.site ?? {}), ...(data.site ?? {}), enabled: true },
           seoTitle: data.seoTitle ?? "", seoDescription: data.seoDescription ?? "",
           seo: { ...(data.seo ?? {}), ...(existingCard?.seo?.googleVerify ? { googleVerify: existingCard.seo.googleVerify } : {}) } } as Parameters<typeof publishCard>[0];
         const r = await publishCard(card);
-        // Replace: the Shubhora card now exists — Back from the editor must not land on this question to be answered (and published) again.
-        if (r.ok) { router.replace(`/poster/d/editor?id=${card.id}`); return; }
+        // Replace: the Shubhora card now exists — Back must not land on this question to be answered (and published) again. It lands on
+        // Card & Website with a "ready" note (owner, 19 Oct 2026: straight into the editor felt like nothing had been made), not the raw editor.
+        if (r.ok) { router.replace("/poster/site?made=shubhora"); return; }
         setErr(hi ? "Card publish नहीं हो पाया — editor खोलकर Publish दबाएँ।" : (r.error || "Could not publish the card — open the editor and press Publish."));
       }
       // no username yet (or publish failed): the editor with the template, publish by hand
@@ -758,7 +767,8 @@ function Onboard() {
       const sb = getBrowserSupabase();
       // Remembered on the account, not in this screen's state: the card is built on a later screen, and the
       // person may well close the app in between.
-      const up = await sb?.auth.updateUser({ data: { also_shubhora: true, setup_pos: "site" } });
+      const up = await sb?.auth.updateUser({ data: { also_shubhora: true, setup_pos: "site", ...(isPartnerBiz(biz) ? { business: null } : {}) } });
+      if (isPartnerBiz(biz)) setBiz(freshBiz);
       if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
       await bumpServerBase();
       if (!stillOn("promote")) return;   // Back was pressed while it saved: the answer is kept, they are not pulled forward again
@@ -773,7 +783,16 @@ function Onboard() {
     setBusy("own"); setErr("");
     try {
       if (await accountMoved()) return;
-      const up = await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false, setup_pos: "site" } });
+      const up = await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false, setup_pos: "site", ...(isPartnerBiz(biz) ? { business: null } : {}) } });
+      if (isPartnerBiz(biz)) {
+        setBiz(freshBiz);
+        // The Shubhora plans the partner flow put on the Products page go too: on an own-business account they would still make the daily
+        // poster ("Shubhora Premium" on a sweets shop, 19 Oct 2026) and sit "On card" on the Products page.
+        try {
+          const r = await api<{ products?: { id: string; category?: string; brand?: string; name: string }[] }>("/api/poster/products");
+          for (const pr of r.ok ? (r.data.products ?? []) : []) if (/shubhora/i.test(`${pr.category ?? ""} ${pr.brand ?? ""}`)) await api(`/api/poster/products?id=${pr.id}`, { method: "DELETE" });
+        } catch { /* the Products page can still delete them by hand */ }
+      }
       if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
       await bumpServerBase();
       if (!stillOn("promote")) return;
@@ -1240,8 +1259,17 @@ function Onboard() {
   /** The screen after the last Save: Card & Website when the card is live already; the Make screen when the website
    *  supplies the products (a dealer's from the brand's site, an own site that lists them); else the Products step.
    *  A site that showed none (a JavaScript shell, a plain brochure site) still gets the products screen. */
+  /** The live card no longer fits the business on this form (owner, 19 Oct 2026: the form was filled as Sharma Sweets and Card & Website still
+   *  showed the Shubhora card): another business name, or Shubhora own card while the person now chose their own business. */
+  function cardOutdated(): boolean {
+    const lc = liveCard.current;
+    if (!lc) return false;
+    if (lc.kb === "shubhora" && promote !== "shubhora") return true;
+    const now = (biz.name ?? "").trim().toLowerCase();
+    return !!lc.company && !!now && lc.company.toLowerCase() !== now;
+  }
   function nextStep(): string {
-    if (hadLiveCard.current) return "/poster/site";
+    if (hadLiveCard.current) return cardOutdated() ? "/poster/card/build?again=1" : "/poster/site";
     if (site.kind === "dealer" || (site.kind === "own" && peek.state === "found" && (peek.data?.products ?? 0) > 0)) return "/poster/card/build?make=1";
     return "/poster/card/build?make=1";
   }
@@ -1588,7 +1616,7 @@ function Onboard() {
           {([
             { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("My own business or work", "मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
             // eslint-disable-next-line @next/next/no-img-element
-            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Selling Shubhora as a partner", "Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card। आप partner income कमाते हैं।"), eg: "" },
+            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Selling Shubhora as a partner", "Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card and website with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card और website। आप partner income कमाते हैं।"), eg: "" },
             { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Your own card and website, plus a separate Shubhora page on its own link.", "आपका अपना card और website, और एक अलग link पर Shubhora page।"), eg: T("Your customers never see Shubhora.", "आपके customers को Shubhora नहीं दिखेगा।") },
           ]).map((c) => {
             const on = promote === c.k;
@@ -1985,11 +2013,16 @@ function Onboard() {
 
 // The Shubhora plans (Free, Standard, Premium, Custom Solutions) as products (same as "Shubhora seller card banao" on My products).
 const SHUBHORA_PRODUCTS = [
-  { name: "Shubhora AI Business Assistant — Standard", price: "2,999 / month", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-growth.jpg", photos: [{ url: "/api/stock/vcard/plan-growth.jpg", view: "front", role: "identity" }], offer: "Pre-launch: join free, book your city's top ID", benefits: ["Digital business card + Standard website (up to 5 pages)", "With a sub-domain address, no Shubhora tag", "Daily poster on Facebook, Instagram and WhatsApp Status", "Meta Ads, AI Ad Studio and Reel Maker", "WhatsApp AI assistant answers customers and filters leads", "Google reviews and Google Business posts", "12 Indian languages; 1,000 WhatsApp AI replies a month"] },
+  { name: "Shubhora AI Business Assistant — Standard", price: "2,999 / month", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-growth.jpg", photos: [{ url: "/api/stock/vcard/plan-growth.jpg", view: "front", role: "identity" }], offer: "Pre-launch: join free", benefits: ["Digital business card + Standard website (up to 5 pages)", "With a sub-domain address, no Shubhora tag", "Daily poster on Facebook, Instagram and WhatsApp Status", "Meta Ads, AI Ad Studio and Reel Maker", "WhatsApp AI assistant answers customers and filters leads", "Google reviews and Google Business posts", "12 Indian languages; 1,000 WhatsApp AI replies a month"] },
   { name: "Shubhora Premium — Website + Google SEO", price: "5,999 first month only", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-growth.jpg", photos: [{ url: "/api/stock/vcard/plan-growth.jpg", view: "front", role: "identity" }], offer: "Then ₹2,999 a month, one autopay", benefits: ["Everything in Standard", "Premium website: a page for every product and service", "Google SEO: every page and product on Google", "Try up to 3 layouts and keep the one you like", "Standard customers pay only the ₹3,000 difference"] },
   { name: "Shubhora Custom Solutions — Software & Automation", price: "On request — contact us", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-pro.jpg", photos: [{ url: "/api/stock/vcard/plan-pro.jpg", view: "front", role: "identity" }], offer: "Every kind of software and automation. Tell us what you need", benefits: ["A manager from Shubhora just for you", "Software, apps and websites built for you", "Shubhora set up the way your business works", "Daily work done by itself: WhatsApp, follow-ups, billing, reports", "Your own CRM and business software, with logins for your team", "Screens that show your numbers", "AI assistants and chat bots taught about your business", "Works with online payments, Tally, Google Sheets and your tools", "More brands and branches on one account", "Price on request, quoted per requirement"] },
   { name: "Free Digital Business Card", price: "FREE for 1 year (worth ₹1,499)", brand: "Shubhora", category: "Shubhora", photo_url: "/api/stock/vcard/plan-free.jpg", photos: [{ url: "/api/stock/vcard/plan-free.jpg", view: "front", role: "identity" }], offer: "", benefits: ["Digital business card on one link", "Made by AI in 5 minutes from your details", "Share on WhatsApp or with a QR code", "People contact you directly from the card", "Free for 1 year, then ₹1,499 a year"] },
 ];
+
+/** The business as "Selling Shubhora as a partner" sets it (promoteShubhora): Shubhora, network marketing. Choosing one's own business after that
+ *  must not start the form with Shubhora's name, trade and logo in it (owner, 19 Oct 2026). */
+const isPartnerBiz = (b: { name?: string; category?: string } | null | undefined) => !!b && /^shubhora$/i.test((b.name ?? "").trim()) && (b.category ?? "") === "mlm";
+const freshBiz = { kind: "business" as const, role: "business" as const, name: "", category: "", city: "", logo: null, about: "", website: "", address: "", map: "", gstin: "" };
 
 export default function OnboardPage() {
   return <Suspense><Onboard /></Suspense>;

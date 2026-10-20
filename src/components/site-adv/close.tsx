@@ -713,7 +713,8 @@ export function CtaRibbon({ c, x, index }: VariantProps) {
   if (!act) return null;
   return (
     <>
-      <Sec k="cta" tone={tone(index)}>
+      {/* Always on paper: the footer under it is dark, and a dark closing block ran into it as one slab (owner, 20 Oct 2026). */}
+      <Sec k="cta" tone="paper">
         <div className="cx-end">
           <p className="kicker">{x.ui("Get in touch", "संपर्क करें")}</p>
           <h2 className="adv-h2 mt-3">{x.ui("Talk to us today", "आज ही बात करें")}</h2>
