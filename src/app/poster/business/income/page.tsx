@@ -14,13 +14,14 @@ type Res = {
   rows?: Row[]; lines?: Line[]; binary?: { new: View; renewal: View }; exportUrls?: { income?: string | null };
 };
 
-const KINDS = ["direct", "match_new", "match_renewal", "sponsor", "rank_reward"] as const;
+const KINDS = ["direct", "match_new", "match_renewal", "sponsor", "rank_reward", "royalty"] as const;
 const WHAT: Record<string, [string, string]> = {
   direct: ["Someone you introduced buys a plan. You get a bonus at once.", "आपके बुलाए व्यक्ति ने plan लिया। आपको तुरंत bonus मिलता है।"],
   match_new: ["One new person on your Left side and one on your Right side make a pair. Each pair pays you.", "Left side और Right side पर एक-एक नया व्यक्ति मिलकर एक pair बनाता है। हर pair का पैसा मिलता है।"],
   match_renewal: ["Same pair idea, but when people in your team renew their plan.", "वही pair, पर तब जब आपकी team के लोग plan renew करते हैं।"],
   sponsor: ["A small bonus from the sales of the people you introduced.", "आपके बुलाए लोगों की बिक्री पर छोटा bonus।"],
   rank_reward: ["A reward you get when you reach a new rank.", "नया rank मिलने पर इनाम।"],
+  royalty: ["Every month, 2% of the company's total business is shared equally among members with 100 lifetime pairs.", "हर महीने company के कुल business का 2% उन सब में बराबर बँटता है जिनके 100 lifetime pairs हो गए।"],
 };
 const REASON: Record<string, [string, string]> = {
   red: ["ID was red", "ID Red थी"], "daily cap": ["Above daily limit", "रोज़ की limit से ऊपर"], blocked: ["ID blocked", "ID blocked"], complimentary: ["Free ID", "Free ID"],

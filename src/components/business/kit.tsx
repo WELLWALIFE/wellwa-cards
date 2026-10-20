@@ -28,7 +28,7 @@ export const dayShort = (s: string | null | undefined) => fmtWhen(s, { day: "num
 
 /** The kinds of income, as [English, Hindi] — one list for the Income and Wallet pages. */
 export const INCOME_KIND: Record<string, [string, string]> = {
-  direct: ["Direct sale", "सीधी बिक्री"], match_new: ["Pair (new)", "Pair (नया)"], match_renewal: ["Pair (renewal)", "Pair (renewal)"], sponsor: ["Sponsor", "Sponsor"], rank_reward: ["Rank reward", "Rank reward"],
+  direct: ["Direct sale", "सीधी बिक्री"], match_new: ["Pair (new)", "Pair (नया)"], match_renewal: ["Pair (renewal)", "Pair (renewal)"], sponsor: ["Sponsor", "Sponsor"], rank_reward: ["Rank reward", "Rank reward"], royalty: ["Monthly Royalty", "Monthly Royalty"],
 };
 
 /** Only a normal web address goes into a link (the addresses come from our own service; this keeps anything else out). */

@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import crypto from "node:crypto";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { ADVANCED_PRICE_PAISE, ADVANCED_UPGRADE_PAISE, advancedPriceFor, isAdvancedAllowed, readAdvancedMeta, grantAdvanced } from "@/lib/advanced-access";
+import { reportPaidToPartner } from "@/lib/partner-link";
 const KEY = process.env.RAZORPAY_KEY_ID ?? "", SECRET = process.env.RAZORPAY_KEY_SECRET ?? "";
 const PRODUCT = "advanced-site";
 
@@ -59,5 +60,8 @@ export async function POST(request: Request) {
     await restAsService("credit_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ user_id: me.id, delta: 0, reason: "advanced-site", ref: paymentId }) }).catch(() => null);
   }
   if (!(await grantAdvanced(me.id, paymentId))) return NextResponse.json({ error: "grant failed" }, { status: 500 });
+  // Partner Plan v3: the Standard → Premium difference is an upgrade on the partner side too (1 PV more into the tree,
+  // the daily cap doubles). Logged, never a failed payment: the website is already granted.
+  if (Number(o.amount) === ADVANCED_UPGRADE_PAISE) await reportPaidToPartner(me.id, { totalPaise: Number(o.amount), tier: "upgrade", ref: paymentId }).catch(() => undefined);
   return NextResponse.json({ ok: true });
 }
