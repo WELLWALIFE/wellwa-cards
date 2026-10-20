@@ -146,6 +146,15 @@ per stock banner (`BANNER_FOCUS` in `src/lib/site-hero.ts`), tap targets and Hin
 `src/lib/site-recipes.ts`). Scripts: `scripts/trade-check/` (shot.mjs, look-shots.mjs, run.cjs, sweep.mjs). Known: sample photos in templates are generic stock; auto/footwear
 cards made before 16 Oct would keep a grey palette (none existed in the DB when checked).
 
+## Video made simple (20 Oct 2026)
+Owner: "video wala part bahut mushkil hai — bilkul simple, jo koi bhi bana sake". The simple screens are the doors; every old choice is one link away.
+- `/poster/videos` = two buttons (Reel free, Video ad 20 credits). The old hub with all four kinds is `/poster/videos/all` ("more ways").
+- `/poster/reel` = pick the kind (tip / offer / why us / festival), tap Make; everything else is chosen. Old Reel Maker = `/poster/reel/pro`.
+- `/poster/video` = pick the product, tap Make: 10 s, Reel size, template tier, product photo, one price (adCredits(10)), idem key.
+  Old wizard = `/poster/video/pro`; `?credits=1`, `?testimonial=`, and a photoshoot seed (`akp-ad-seed`) are forwarded there.
+- `src/components/poster/back-bar.tsx`: `/poster/video` has its own Back; `/poster/video/pro` → `/poster/video`.
+- Not run against the live API yet (no dev DB with products here): first test = make one free Reel and one 20-credit ad on the owner's account.
+
 ## Rules for commits
 - Branch `claude/dreamy-faraday-0864zl` only. Clear messages. No model names in code or commits.
 - Keep comments in the codebase's voice (why, dated owner decisions), no hype.
