@@ -5,7 +5,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import {
-  Award, BadgeIndianRupee, CalendarClock, Check, Copy, Download, FileCheck2, Handshake, Headphones, LoaderCircle, Network, Share2, UserRound, Wallet,
+  Award, BadgeIndianRupee, BookOpen, CalendarClock, Check, Copy, Download, FileCheck2, Handshake, Headphones, LoaderCircle, Network, Share2, UserRound, Wallet,
 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
@@ -148,6 +148,7 @@ function BusinessInner() {
               ["wallet", "Wallet", Wallet, p.menu.wallet],
               ["rank", "Rank", Award, p.menu.rank],
               ["subscription", "Subscription", CalendarClock, p.menu.subscription],
+              ["plan", "Plan", BookOpen, true],
               ["grow", en ? "Grow" : "बढ़ाएँ", Share2, p.menu.grow],
               ["kyc", `KYC${p.kyc ? ` · ${p.kyc}` : ""}`, FileCheck2, p.menu.kyc],
               ["downloads", "Downloads", Download, p.menu.downloads],

@@ -36,7 +36,7 @@ export default function RankPage() {
                     <p className="mt-3 text-sm text-white/80">{en ? "Next" : "अगला"}: <b className="text-white">{nx.name}</b> · {en ? "reward" : "इनाम"} <b className="text-white">{rupee(nx.rewardPaise)}</b>{nx.instalments > 1 ? (en ? ` in ${nx.instalments} monthly parts` : ` ${nx.instalments} महीनों में`) : ""}</p>
                     <div className="mt-2 h-2.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-white" style={{ width: `${pct}%` }} /></div>
                     <div className="mt-3 space-y-1">
-                      <Need ok={data.pairs >= nx.renewalPairs} text={`${en ? "Renewal pairs" : "Renewal pair"} ${data.pairs.toLocaleString("en-IN")} / ${nx.renewalPairs.toLocaleString("en-IN")}`} />
+                      <Need ok={data.pairs >= nx.renewalPairs} text={`${en ? "Pairs" : "Pair"} ${data.pairs.toLocaleString("en-IN")} / ${nx.renewalPairs.toLocaleString("en-IN")}`} />
                       {nx.greenDirects > 0 && <Need ok={data.directs >= nx.greenDirects} text={`${en ? "Green people you introduced" : "आपके बुलाए Green लोग"} ${data.directs} / ${nx.greenDirects}`} />}
                       <Need ok={data.ownGreen} text={en ? "Your ID is Green and plan is active" : "आपकी ID Green और plan active"} />
                     </div>
@@ -46,7 +46,7 @@ export default function RankPage() {
 
               <section className={`${CARD} space-y-2 text-xs text-muted`}>
                 <p className="text-sm font-semibold text-ink">{en ? "How ranks work" : "Rank कैसे मिलता है"}</p>
-                <p>{en ? "Ranks come from renewal pairs: customers in your team who keep their plan month after month." : "Rank renewal pair से मिलता है: आपकी team के वे लोग जो हर महीने plan चालू रखते हैं।"}</p>
+                <p>{en ? "Ranks come from your total pairs: new sales, upgrades and renewals in your team all count." : "Rank आपके कुल pair से मिलता है: team की नई sale, upgrade और renewal — सब गिनते हैं।"}</p>
                 <p>{en ? "Each reward is paid once into your wallet, after TDS. Big rewards come in monthly parts, and a part is paid only if your ID is active that month." : "हर इनाम एक बार wallet में आता है, TDS के बाद। बड़े इनाम महीने-महीने हिस्सों में आते हैं, और हिस्सा तभी मिलता है जब उस महीने आपकी ID active हो।"}</p>
                 <p>{en ? "Rewards come from a monthly pool. If it is used up, your payment moves to the next days. These are the most you can get, not a promise." : "इनाम महीने के pool से मिलते हैं। pool खत्म हो जाए तो आपका भुगतान अगले दिनों में जाता है। ये ज़्यादा से ज़्यादा रकम है, वादा नहीं।"}</p>
               </section>
@@ -57,7 +57,7 @@ export default function RankPage() {
                   <div key={k.level} className={`${CARD} space-y-1 ${k.earnedOn ? "" : "opacity-80"}`}>
                     <div className="flex items-center justify-between"><span className="font-semibold">{k.name}</span>
                       {k.earnedOn ? <span className="inline-flex items-center gap-1 text-xs font-semibold text-good"><Check className="h-4 w-4" />{dayOf(k.earnedOn)}</span> : <span className="inline-flex items-center gap-1 text-xs text-faint"><Lock className="h-3.5 w-3.5" />{en ? "Locked" : "बंद"}</span>}</div>
-                    <p className="text-xs text-muted">{en ? "Renewal pairs" : "Renewal pair"} {k.renewalPairs.toLocaleString("en-IN")}{k.greenDirects > 0 ? ` · ${en ? "Green people you introduced" : "बुलाए Green लोग"} ${k.greenDirects}` : ""}</p>
+                    <p className="text-xs text-muted">{en ? "Pairs" : "Pair"} {k.renewalPairs.toLocaleString("en-IN")}{k.greenDirects > 0 ? ` · ${en ? "Green people you introduced" : "बुलाए Green लोग"} ${k.greenDirects}` : ""}</p>
                     <p className="text-xs"><b>{rupee(k.rewardPaise)}</b> · {k.instalments > 1 ? (en ? `${k.instalments} monthly parts of ${rupee(Math.floor(k.rewardPaise / k.instalments))}` : `${k.instalments} महीनों में ${rupee(Math.floor(k.rewardPaise / k.instalments))}`) : en ? "One payment" : "एक बार में"}</p>
                   </div>
                 ))}

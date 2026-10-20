@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { partnerCall, partnerLinked } from "@/lib/partner-link";
 
-export const PAGES = ["team", "grow", "income", "rank", "wallet", "subscription", "support", "downloads", "profile", "kyc", "welcome-letter"] as const;
+export const PAGES = ["team", "grow", "income", "rank", "wallet", "subscription", "support", "downloads", "profile", "kyc", "welcome-letter", "plan"] as const;
 
 async function run(request: Request, page: string, fields: Record<string, unknown>) {
   const me = await userFromRequest(request);

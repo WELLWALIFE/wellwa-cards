@@ -14,6 +14,8 @@ type View = {
   id: { handle: string; status: "red" | "green" };
   subscription: { state: "none" | "active" | "due soon" | "lapsed"; validTill: string | null; daysLeft: number | null; activatedOn: string | null; lastRenewal: { paidOn: string; delayDays: number | null } | null; renewalsCount: number; lateCount: number };
   history: Hist[];
+  package?: "standard" | "premium";
+  upgrade?: { pricePaise: number; bv: number; premiumCapPaise: number; standardCapPaise: number };
   price: { basePaise: number; gstBp: number; gstPaise: number; totalPaise: number };
   onlinePay: boolean;
   payTo: { upiId: string | null; upiLink: string | null; qr: string | null; bank: { name: string; accountNo: string; ifsc: string; bankName: string } | null };
@@ -104,6 +106,20 @@ export default function SubscriptionPage() {
               <Link href="/poster/plan" className="mt-3 flex w-full items-center justify-center rounded-xl grad-brand py-2.5 text-sm font-semibold text-white">{en ? "Pay online (Razorpay)" : "Online भरें (Razorpay)"}</Link>
               <p className="mt-1.5 text-xs text-muted">{en ? "This is the fastest way. Or pay by UPI or bank and send the proof below." : "यह सबसे तेज़ तरीका है। या UPI / bank से भरकर नीचे सबूत भेजें।"}</p>
             </section>
+
+            {/* Plan v3: a running Standard ID can become Premium for the difference — daily limit doubles, 1 PV more goes up the tree. */}
+            {v.upgrade && (v.package === "premium" ? (
+              <p className={`${CARD} text-sm`}><b>Premium</b> · {en ? `Daily limit ${rupee(v.upgrade.premiumCapPaise)}` : `रोज़ की limit ${rupee(v.upgrade.premiumCapPaise)}`}</p>
+            ) : green && (
+              <section className={`${CARD} border-brand`}>
+                <h2 className="font-bold">{en ? `Upgrade to Premium · ${rupee(v.upgrade.pricePaise)}` : `Premium बनें · ${rupee(v.upgrade.pricePaise)}`}</h2>
+                <p className="mt-1 text-sm text-muted">{en
+                  ? `You are on Standard (daily limit ${rupee(v.upgrade.standardCapPaise)}). Premium doubles it to ${rupee(v.upgrade.premiumCapPaise)}, adds ${v.upgrade.bv.toLocaleString("en-IN")} BV to your upline's tree, and gives your introducer credits. One-time; your monthly renewal stays the same.`
+                  : `आप Standard पर हैं (रोज़ की limit ${rupee(v.upgrade.standardCapPaise)})। Premium में limit दोगुनी ${rupee(v.upgrade.premiumCapPaise)}, आपके upline की tree में ${v.upgrade.bv.toLocaleString("en-IN")} BV और, और आपके introducer को credits। एक बार; महीने का renewal वही रहता है।`}</p>
+                <Link href="/poster/site/advanced" className="mt-3 flex w-full items-center justify-center rounded-xl grad-brand py-2.5 text-sm font-semibold text-white">{en ? "Upgrade now" : "अभी upgrade करें"}</Link>
+                <p className="mt-1.5 text-xs text-muted">{en ? "Pays online (Razorpay). You also get the advanced website that comes with Premium." : "Online (Razorpay)। Premium के साथ आने वाली advanced website भी मिलती है।"}</p>
+              </section>
+            ))}
 
             <section className={CARD}>
               <h2 className="font-bold">{en ? "Paid by UPI or bank? Send the proof" : "UPI / bank से भरा? सबूत भेजें"}</h2>
