@@ -33,9 +33,9 @@ function CreateHubInner() {
       { href: "/poster/social", I: Share2, t: hi ? "अपने-आप post" : "Post by itself", s: hi ? "Facebook, Instagram, Status — रोज़ सुबह 4 बजे अपने-आप" : "Facebook, Instagram, Status — every morning at 4 AM, by itself", paid: true },
     ] },
     // The Video door opens the hub (/poster/videos): every kind with its length, credits and time, then the same 4 steps.
-    { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel free · Video ad 20–120 credits · अपने शब्दों से · 5–10 मिनट का video" : "Reel free · Video ad 20–120 credits · from your own words · long video 5–10 minutes", href: "/poster/videos", items: [
-      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "तैयार clips + आपकी photos + AI आवाज़ — free" : "Ready-made clips, your photos and an AI voice — free", tag: "FREE" },
-      { href: "/poster/video", I: Clapperboard, t: hi ? "Video ad" : "Video ad", s: hi ? "AI शब्द लिखेगा, आप बदल सकते हैं · 20–120 credits" : "AI writes the words, you can change them · 20–120 credits", tag: "AI" },
+    { key: "video", I: Clapperboard, t: "Video", s: hi ? "एक tap में Reel (free) या Video ad (20 credits) — शब्द, आवाज़, music सब तैयार" : "A Reel (free) or a Video ad (20 credits) in one tap — words, voice and music all done", href: "/poster/videos", items: [
+      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "एक tap में reel — शब्द, clips, आवाज़, music सब तैयार — free" : "One tap — words, clips, voice and music all done — free", tag: "FREE" },
+      { href: "/poster/video", I: Clapperboard, t: hi ? "Video ad" : "Video ad", s: hi ? "एक tap — product चुनो, 10 सेकंड का ad तैयार · 20 credits" : "One tap — pick the product, a 10-second ad is made · 20 credits", tag: "AI" },
       { href: "/poster/text-video", I: Wand2, t: hi ? "अपने शब्दों से" : "From your own words", s: hi ? "10 सेकंड से 10 मिनट तक · 20 credits से" : "10 seconds to 10 minutes · from 20 credits" },
       { href: "/poster/explainer", I: Film, t: hi ? "लंबा video (5–10 मिनट)" : "Long video (5–10 minutes)", s: hi ? "1 मिनट के 10 credits (कम से कम 20)" : "10 credits a minute (at least 20)" },
     ] },

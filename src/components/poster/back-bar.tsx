@@ -14,12 +14,13 @@ const TAB_ROOTS = /^\/poster(\/(create|leads|business|more|settings))?\/?$/;
  *  a page with an arrow that is missing here gets two), and full-screen steps with none: start, welcome (the first screens after
  *  sign-up — Back would land on the finished sign-up form). Pages left out get the row from here: ai, card, card/edit, card/looks,
  *  connect, setup, share, social, video (its own Back / Next at the bottom step the wizard; this row leaves the page). */
-const OWN_BACK = /^\/poster\/(start|welcome|onboard|brand|ads|calendar|learn|report|testimonials|photos|photoshoot|profiles|history|videos|explainer|plan|products|reel|website|guide|d|text-video|card\/build|business|site)(\/|$)/;
+const OWN_BACK = /^\/poster\/(start|welcome|onboard|brand|ads|calendar|learn|report|video$|testimonials|photos|photoshoot|profiles|history|videos|explainer|plan|products|reel|website|guide|d|text-video|card\/build|business|site)(\/|$)/;
 
 /** Where "Back" goes when there is no earlier screen in this tab (only for the pages that get this row). */
 function parentOf(p: string): string {
   if (p.startsWith("/poster/card/")) return "/poster/card";
   if (p === "/poster/video") return "/poster/videos";
+  if (p === "/poster/video/pro") return "/poster/video";
   if (/^\/poster\/(card|social|ai)(\/|$)/.test(p)) return "/poster/create";
   if (/^\/poster\/(setup|connect)(\/|$)/.test(p)) return "/poster/more";
   return "/poster";
