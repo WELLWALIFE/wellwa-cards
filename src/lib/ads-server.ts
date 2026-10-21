@@ -191,10 +191,18 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   } catch (e) { await discardCampaign(ut, camp.id); throw e; }
 }
 
-/** Start / pause a whole campaign (ad set and ad follow the campaign's status in delivery). */
+/** Start / pause a whole campaign. A campaign saved as "do not start" has its ad set and ad PAUSED too, and Meta does
+ *  not switch those on when the campaign goes ACTIVE (Ads Manager then shows "Ad set off" and nothing runs), so the
+ *  ad set and the ad get the same status. Pausing only the campaign is enough to stop delivery, but we keep all three
+ *  in step so the owner sees one clear state. */
 export async function setCampaignStatus(fb: AccountRow, campaignId: string, status: "ACTIVE" | "PAUSED") {
   const ut = fb.user_token; if (!ut) throw new Error("Reconnect Facebook to allow ads.");
   await graph(`${campaignId}`, { status, access_token: ut }, "POST");
+  const [sets, ads] = await Promise.all([
+    graph<{ data: { id: string }[] }>(`${campaignId}/adsets`, { access_token: ut, fields: "id", limit: "20" }).catch(() => ({ data: [] })),
+    graph<{ data: { id: string }[] }>(`${campaignId}/ads`, { access_token: ut, fields: "id", limit: "20" }).catch(() => ({ data: [] })),
+  ]);
+  for (const x of [...(sets.data ?? []), ...(ads.data ?? [])]) await graph(`${x.id}`, { status, access_token: ut }, "POST").catch(() => null);
 }
 
 export type CampaignRow = { id: string; user_id: string; ad_account: string; campaign_id: string; adset_id: string | null; ad_id: string | null; name: string; goal: AdGoal; creative_url: string | null; creative_kind: string | null; primary_text: string | null; headline: string | null; daily_paise: number; days: number; status: string; created_at: string };
@@ -209,11 +217,19 @@ export async function liveCampaigns(fb: AccountRow, acct: string, ids: string[])
     fields: "id,status,effective_status,start_time,stop_time,insights.date_preset(maximum){spend,impressions,reach,clicks,actions}",
     filtering: JSON.stringify([{ field: "id", operator: "IN", value: ids }]),
   });
+  // The ad's own effective status is the truth about delivery: a campaign can be ACTIVE while its ad set or ad is
+  // still PAUSED (Ads Manager: "Ad set off"), and the ad is also where "in review" / "disapproved" show up.
+  const adState: Record<string, string> = {};
+  try {
+    const a = await graph<{ data: { campaign_id: string; effective_status: string }[] }>(`${acct}/ads`, { access_token: ut, limit: "100", fields: "campaign_id,effective_status", filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: ids }]) });
+    for (const x of a.data ?? []) if (!adState[x.campaign_id] || x.effective_status === "ACTIVE") adState[x.campaign_id] = x.effective_status;
+  } catch { /* the campaign status is still shown */ }
   for (const c of r.data ?? []) {
     const i = c.insights?.data?.[0];
     const act = (t: string) => Number(i?.actions?.find((a) => a.action_type === t)?.value ?? 0);
     const results = act("link_click") || Number(i?.clicks ?? 0);
-    out[c.id] = { campaign_id: c.id, status: c.status, effective_status: c.effective_status, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0), results, resultLabel: "clicks", start: c.start_time, stop: c.stop_time };
+    const eff = c.effective_status === "ACTIVE" && adState[c.id] && adState[c.id] !== "ACTIVE" ? adState[c.id] : c.effective_status;
+    out[c.id] = { campaign_id: c.id, status: c.status, effective_status: eff, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0), results, resultLabel: "clicks", start: c.start_time, stop: c.stop_time };
   }
   return out;
 }

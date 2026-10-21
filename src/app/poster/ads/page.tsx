@@ -282,7 +282,7 @@ export default function AdsPage() {
             {mine.campaigns.map((c) => {
               const l = mine.live[c.campaign_id];
               const active = (l?.effective_status ?? c.status) === "ACTIVE";
-              const eff = l?.effective_status ?? c.status;
+              const eff = (l?.effective_status ?? c.status).replace(/^(ADSET|CAMPAIGN|AD)_PAUSED$/, "PAUSED");
               const G = GOALS.find((g) => g.key === c.goal);
               return (
                 <section key={c.id} className="rounded-2xl border border-border p-3 space-y-2">
