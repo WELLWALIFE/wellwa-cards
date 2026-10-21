@@ -56,6 +56,12 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
 2. Owner setups above: Shubhora Cloud API number + `WA_ONBOARD_OWNER_ID`; Embedded Signup; Exotel phone line.
 3. "Owner-style training" of the bot — owner said do this LAST ("training baad me").
 4. Offered, not decided: "AI से बात करो" WebRTC voice button on the card (voice without Exotel).
+5. **CRM Pro (owner, 21 Oct 2026: "professional CRM — direct call, sab kuch wahi se").** Spec in `docs/crm-pro.md`; build Phase 1 first
+   (Today screen, tap-to-call with outcome sheet + call list, tasks, customer screen with one timeline, Hindi/English, server-side list,
+   migration 0068). Phase 2 = Exotel click-to-call + desktop + automations + reports; Phase 3 = sales, quotes, team extras.
+6. Meta App Review (docs/meta-app-review.md): 7 of 11 permissions complete on 21 Oct 2026; pending = Meta's test-call data (24 h),
+   screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
+   on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.
 
 ## Advanced website (Rs 5,999)
 Owner's new segment (15-16 Oct 2026): an AI review of the finished site, redesigned with a layout different for every business.
