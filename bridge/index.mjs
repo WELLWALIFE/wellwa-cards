@@ -770,7 +770,9 @@ async function saveLead(from, name, message) {
     "Content-Type": "application/json", Prefer: "return=minimal",
   };
   try {
-    const q = `${SUPA_URL}/rest/v1/leads?card_id=eq.${cardContext.id}&phone=eq.${encodeURIComponent(phone)}&select=id&limit=1`;
+    // One lead per contact per OWNER, not per card (22 Oct 2026): looking up by card made a second lead for every old
+    // customer once the owner had a newer card — 165 duplicate pairs on one account. wa_log_message() also looks up by owner.
+    const q = `${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id&order=created_at&limit=1`;
     const found = await fetch(q, { headers }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
     const body = {
       name: name || "", message: (message || "").slice(0, 500),
