@@ -3,8 +3,8 @@
 // Facebook Page and/or Instagram (as a Reel) with a caption. Upload once (progress shown), then post to the ticked accounts.
 import { useEffect, useRef, useState } from "react";
 import { Check, Film, LoaderCircle, Send, Upload, X } from "lucide-react";
-import { api, uploadImage } from "@/lib/poster-client";
-import { captureVideoThumb, uploadVideo, videoFileProblem } from "@/lib/video-upload";
+import { api } from "@/lib/poster-client";
+import { captureVideoThumb, uploadVideo, uploadVideoThumb, videoFileProblem } from "@/lib/video-upload";
 
 export type VideoAccount = { id: string; provider: "facebook" | "instagram"; name: string; status: "ok" | "reconnect" };
 
@@ -32,9 +32,9 @@ export function VideoPost({ accounts, current, en, onPosted }: { accounts: Video
     setFile(f); setBusy("up");
     try {
       const thumb = await captureVideoThumb(f);
-      if (thumb) { setThumbPreview(URL.createObjectURL(thumb)); const u = await uploadImage(thumb, "wide"); if (u) setThumbUrl(u); }
+      if (thumb) setThumbPreview(URL.createObjectURL(thumb));
       const r = await uploadVideo(f, setPct);
-      if ("url" in r) { setVideoUrl(r.url); setPct(100); }
+      if ("url" in r) { setVideoUrl(r.url); setPct(100); if (thumb) { const u = await uploadVideoThumb(thumb, r.url); if (u) setThumbUrl(u); } }
       else setMsg({ ok: false, text: hi ? `Video नहीं चढ़ पाई — ${r.error}` : `Could not upload the video — ${r.error}` });
     } catch { setMsg({ ok: false, text: hi ? "Video नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not upload the video. Please try again." }); }
     finally { setBusy(""); }

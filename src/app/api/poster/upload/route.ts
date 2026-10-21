@@ -4,14 +4,16 @@
 //   product → up to 1400×1400 (PNG)
 //   wide    → a shop / work photo, up to 1600×1600, never cropped (JPEG)
 //   video   → the owner's own MP4 / MOV (up to 60 MB), stored as it is — for a Facebook / Instagram post or an ad
+//   video_thumb (+ video=<stamp>) → one frame of that video as video-<stamp>.jpg, so the list below can pair them
+// GET ?kind=video → the owner's uploaded videos, newest first: { videos: [{ url, thumbUrl, name, at }] }
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import type { Sharp } from "sharp";
 import { userFromRequest } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
-type Kind = "photo" | "logo" | "product" | "wide" | "doc" | "video";
-const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide", "doc", "video"];
+type Kind = "photo" | "logo" | "product" | "wide" | "doc" | "video" | "video_thumb";
+const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide", "doc", "video", "video_thumb"];
 const VIDEO_MAX = 60 * 1024 * 1024;
 
 export async function POST(request: Request) {
@@ -23,6 +25,17 @@ export async function POST(request: Request) {
   const kind: Kind = KINDS.includes(asked as Kind) ? (asked as Kind) : "photo";
   if (!(file instanceof Blob)) return NextResponse.json({ error: "No file." }, { status: 400 });
   // video → "apni video" (owner, 21 Oct 2026): MP4 / MOV kept as it is; Facebook, Instagram and the ad creative fetch it by URL.
+  if (kind === "video_thumb") {
+    const stamp = String(form?.get("video") ?? "").replace(/\D/g, "").slice(0, 16);
+    if (!stamp) return NextResponse.json({ error: "video stamp required" }, { status: 400 });
+    let out: Buffer;
+    try { out = await sharp(Buffer.from(await file.arrayBuffer())).rotate().resize({ width: 1080, height: 1080, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 84, mozjpeg: true }).toBuffer(); }
+    catch { return NextResponse.json({ error: "That file is not an image." }, { status: 400 }); }
+    const key = `poster/${me.id}/video-${stamp}.jpg`;
+    const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { ...serviceHeaders(), "Content-Type": "image/jpeg", "x-upsert": "true" }, body: new Uint8Array(out) });
+    if (!r.ok) return NextResponse.json({ error: "Upload failed.", detail: (await r.text()).slice(0, 200) }, { status: 500 });
+    return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}` });
+  }
   if (kind === "video") {
     if (file.size > VIDEO_MAX) return NextResponse.json({ error: "Video too large (max 60 MB)." }, { status: 400 });
     const src = Buffer.from(await file.arrayBuffer());
@@ -67,4 +80,23 @@ export async function POST(request: Request) {
   });
   if (!r.ok) return NextResponse.json({ error: "Upload failed.", detail: (await r.text()).slice(0, 200) }, { status: 500 });
   return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}` });
+}
+
+/** The owner's own uploaded videos (newest first), each with its cover frame when one was saved. */
+export async function GET(request: Request) {
+  const me = await userFromRequest(request);
+  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
+  if (new URL(request.url).searchParams.get("kind") !== "video") return NextResponse.json({ error: "kind=video" }, { status: 400 });
+  const r = await fetch(`${SUPA_URL}/storage/v1/object/list/media`, {
+    method: "POST", headers: { ...serviceHeaders(), "Content-Type": "application/json" },
+    body: JSON.stringify({ prefix: `poster/${me.id}/`, limit: 500, offset: 0, sortBy: { column: "name", order: "desc" } }), cache: "no-store",
+  });
+  const items = (r.ok ? await r.json().catch(() => []) : []) as { name: string; created_at?: string }[];
+  const pub = (name: string) => `${SUPA_URL}/storage/v1/object/public/media/poster/${me.id}/${name}`;
+  const thumbs = new Set(items.map((x) => x.name).filter((n) => /^video-\d+\.jpg$/.test(n)));
+  const videos = items.filter((x) => /^video-\d+\.(mp4|mov)$/i.test(x.name)).slice(0, 24).map((x) => {
+    const stamp = x.name.replace(/^video-(\d+)\..*$/, "$1");
+    return { url: pub(x.name), thumbUrl: thumbs.has(`video-${stamp}.jpg`) ? pub(`video-${stamp}.jpg`) : null, name: x.name, at: new Date(Number(stamp)).toISOString() };
+  });
+  return NextResponse.json({ videos });
 }

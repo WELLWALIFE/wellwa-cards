@@ -58,3 +58,27 @@ export function videoFileProblem(file: File, hi: boolean): string {
   if (file.size > VIDEO_MAX_MB * 1024 * 1024) return hi ? `Video ${VIDEO_MAX_MB} MB से छोटी होनी चाहिए। Phone की gallery में "compress" या छोटी clip चुनें।` : `The video must be under ${VIDEO_MAX_MB} MB. Compress it or pick a shorter clip.`;
   return "";
 }
+
+/** The cover frame goes up under the video's own stamp (video-<stamp>.jpg), so the "my videos" list can show it. */
+export async function uploadVideoThumb(thumb: File, videoUrl: string): Promise<string | null> {
+  const stamp = videoUrl.match(/video-(\d+)\.(?:mp4|mov)$/i)?.[1];
+  if (!stamp) return null;
+  try {
+    const headers = await authHeaders(); delete headers["content-type"];
+    const fd = new FormData(); fd.append("file", thumb); fd.append("kind", "video_thumb"); fd.append("video", stamp);
+    const r = await fetch("/api/poster/upload", { method: "POST", headers, body: fd });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && typeof j.url === "string" ? j.url : null;
+  } catch { return null; }
+}
+
+export type UploadedVideo = { url: string; thumbUrl: string | null; name: string; at: string };
+/** The owner's uploaded videos, newest first. */
+export async function listUploadedVideos(): Promise<UploadedVideo[]> {
+  try {
+    const headers = await authHeaders();
+    const r = await fetch("/api/poster/upload?kind=video", { headers, cache: "no-store" });
+    const j = await r.json().catch(() => ({}));
+    return r.ok && Array.isArray(j.videos) ? (j.videos as UploadedVideo[]) : [];
+  } catch { return []; }
+}

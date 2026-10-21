@@ -8,7 +8,7 @@ import Link from "next/link";
 import { LoaderCircle, ChevronLeft, ChevronRight, Megaphone, MessageCircle, Phone, Globe, Check, Sparkles, Play, Pause, ExternalLink, RefreshCw, MapPin, X, Image as ImageIcon, Film, Upload, AlertTriangle, Wallet } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
-import { captureVideoThumb, uploadVideo, videoFileProblem } from "@/lib/video-upload";
+import { captureVideoThumb, listUploadedVideos, uploadVideo, uploadVideoThumb, videoFileProblem, type UploadedVideo } from "@/lib/video-upload";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { goBack } from "@/lib/nav-back";
@@ -136,17 +136,20 @@ export default function AdsPage() {
   }
   // "Apni video" as the ad (owner, 21 Oct 2026): upload the file, grab a frame as the cover, done.
   const [vidPct, setVidPct] = useState(0);
+  const [uploads, setUploads] = useState<UploadedVideo[]>([]);
+  useEffect(() => { listUploadedVideos().then(setUploads); }, []);
   async function uploadVid(file: File | null) {
     if (!file) return;
     const problem = videoFileProblem(file, hi); if (problem) { setUpErr(problem); return; }
     setBusy("upv"); setUpErr(""); setVidPct(0);
     try {
-      let thumbUrl: string | undefined;
       const thumb = await captureVideoThumb(file);
-      if (thumb) thumbUrl = (await uploadImage(thumb, "wide")) ?? undefined;
       const r = await uploadVideo(file, setVidPct);
-      if ("url" in r) setCreative({ kind: "video", url: r.url, thumbUrl, label: hi ? "आपकी video" : "Your video" });
-      else setUpErr(hi ? `Video नहीं चढ़ पाई — ${r.error}` : `Could not add the video — ${r.error}`);
+      if ("url" in r) {
+        const thumbUrl = thumb ? (await uploadVideoThumb(thumb, r.url)) ?? undefined : undefined;
+        setCreative({ kind: "video", url: r.url, thumbUrl, label: hi ? "आपकी video" : "Your video" });
+        setUploads((u) => [{ url: r.url, thumbUrl: thumbUrl ?? null, name: file.name, at: new Date().toISOString() }, ...u]);
+      } else setUpErr(hi ? `Video नहीं चढ़ पाई — ${r.error}` : `Could not add the video — ${r.error}`);
     } catch { setUpErr(hi ? "Video नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the video. Please try again."); }
     finally { setBusy(""); }
   }
@@ -343,6 +346,7 @@ export default function AdsPage() {
           <Guide hi="वही poster या video चुनें जो आप लोगों को दिखाना चाहते हैं। Product की अपनी photo या कोई नई photo भी चलेगी।" en="Pick the poster or video you want people to see. A product photo or a new photo also works." />
           {posters.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरे posters" : "My posters"}</p><div className="flex gap-2 overflow-x-auto pb-1">{posters.map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.url, label: p.title })} className={`h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border-2 ${creative?.url === p.url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.url} alt={p.title} className="h-full w-full object-cover" /></button>)}</div></div>}
           {products.some((p) => p.photo_url) && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Product की photos" : "Product photos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{products.filter((p) => p.photo_url).map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.photo_url!, label: p.name }, p.id)} className={`h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${creative?.url === p.photo_url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.photo_url!} alt={p.name} className="h-full w-full object-contain" /></button>)}</div></div>}
+          {uploads.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी चढ़ाई हुई videos" : "My uploaded videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{uploads.map((v) => <button key={v.url} type="button" onClick={() => pickCreative({ kind: "video", url: v.url, thumbUrl: v.thumbUrl ?? undefined, label: hi ? "आपकी video" : "Your video" })} className={`relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-black ${creative?.url === v.url ? "border-brand" : "border-transparent"}`}>{v.thumbUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={v.thumbUrl} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-white"><Film className="h-6 w-6" /></span>}<span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[9px] text-white">{new Date(v.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span></button>)}</div></div>}
           {videos.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी videos" : "My videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{videos.map((j) => <button key={j.id} type="button" onClick={() => pickCreative({ kind: "video", url: j.output_url!, thumbUrl: profile?.logo_url ?? undefined, label: j.input?.title || j.input?.product || "Video" })} className={`flex h-24 w-32 shrink-0 flex-col items-center justify-center gap-1 rounded-xl border-2 bg-black/90 px-2 text-center text-white ${creative?.url === j.output_url ? "border-brand" : "border-border"}`}><Film className="h-6 w-6" /><span className="line-clamp-2 text-[11px]">{j.input?.title || j.input?.product || new Date(j.created_at).toLocaleDateString("en-IN")}</span></button>)}</div></div>}
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "up" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5 text-brand" />} {hi ? "अपनी photo डालें (1080×1080 या 1080×1350 सबसे अच्छी)" : "Add your own photo (1080×1080 or 1080×1350 is best)"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; upload(f); }} /></label>
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "upv" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Film className="h-5 w-5 text-brand" />} {busy === "upv" ? `${hi ? "Video चढ़ रही है" : "Uploading video"} ${vidPct}%` : (hi ? "अपनी video डालें (MP4/MOV, 60 MB तक, 9:16 या 1:1 सबसे अच्छी)" : "Add your own video (MP4/MOV, up to 60 MB, 9:16 or 1:1 is best)")}<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void uploadVid(f); }} /></label>
