@@ -11,6 +11,7 @@ import { forgetJob } from "@/lib/card-jobs";
 
 // [table, owner column] — in an order where nothing is still pointed at when it goes (cards cascade their own rows).
 const TABLES: [string, string][] = [
+  ["crm_quotes", "owner_id"], ["crm_sales", "owner_id"], ["crm_calls", "owner_id"], ["crm_tasks", "owner_id"],
   ["leads", "owner_id"], ["lead_events", "owner_id"], ["card_domains", "owner_id"], ["cards", "owner_id"],
   ["poster_calendar", "user_id"], ["poster_testimonials", "user_id"], ["poster_products", "user_id"], ["poster_profiles", "user_id"],
   ["social_posts", "user_id"], ["social_replies", "user_id"], ["social_accounts", "user_id"], ["google_accounts", "user_id"],

@@ -68,8 +68,11 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
    desktop two-pane Customers, bulk actions (`/api/crm/bulk`: assign / stage / tag / WhatsApp to a selection), Automations (owner_prefs.crm:
    auto task on new lead + round-robin as DB triggers in **migration 0069**, birthday/anniversary wish + "going cold" nudge + daily 8 pm summary
    via `/api/cron/crm-daily` → `scripts/crm-daily.sh`, cron.d written by deploy.sh), Reports v2 (`/api/crm/reports`). Owner runs 0068 then 0069,
-   then deploys, then `pm2 start ecosystem.config.cjs --only neuraledge-recordings && pm2 save` on the server. Next: Phase 3 (sales, quotes,
-   segments, phone-contacts import, merge, leaderboard) per the spec.
+   then deploys, then `pm2 start ecosystem.config.cjs --only neuraledge-recordings && pm2 save` on the server. **Phase 3 built (22 Oct 2026):** migration **0070**
+   (crm_sales, crm_quotes, crm_next_quote_number, crm_merge_leads), `src/lib/crm-pro3.ts`, routes `/api/crm/{duplicates,merge,sales,quotes,products,leaderboard}`,
+   `src/components/crm/sales.tsx` (customer Sales tab: new sale — Won asks "what was sold", quotation → A4 PDF via `htmlToPdf` in render-page.ts on the
+   server's Chromium → sent on WhatsApp through /api/crm/send; Accepted makes the sale), Settings → duplicates merge + phone-contacts import (Contact Picker,
+   Android), Reports → leaderboard. Left from the spec: saved segments, scheduled WhatsApp tasks, Meta Lead Ads direct, Android dialer-role call log.
 6. Meta App Review (docs/meta-app-review.md): 7 of 11 permissions complete on 21 Oct 2026; pending = Meta's test-call data (24 h),
    screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
    on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.

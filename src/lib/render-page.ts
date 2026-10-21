@@ -356,3 +356,18 @@ function measureLook() {
     sections: sections.slice(0, 10),
   };
 }
+
+/** A ready HTML document → A4 PDF (CRM quotations, docs/crm-pro.md 3.10). Same one-at-a-time browser as above. */
+export async function htmlToPdf(html: string): Promise<Buffer | null> {
+  return oneAtATime(async () => {
+    let page: import("puppeteer-core").Page | null = null;
+    try {
+      const browser = await browserFor(LIGHT_ARGS);
+      page = await browser.newPage();
+      await page.setContent(html, { waitUntil: "load", timeout: NAV_MS });
+      const pdf = await page.pdf({ format: "A4", printBackground: true, margin: { top: "14mm", bottom: "14mm", left: "12mm", right: "12mm" } });
+      return Buffer.from(pdf);
+    } catch { return null; }
+    finally { await page?.close().catch(() => undefined); releaseBrowser(); }
+  });
+}

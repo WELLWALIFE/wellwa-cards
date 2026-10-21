@@ -10,16 +10,17 @@ import { Thread, STAGES } from "@/components/crm/crm";
 import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call } from "@/components/crm/shared";
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 import { TaskSheet, TaskRow } from "@/components/crm/tasks";
+import { SalesTab, SaleSheet } from "@/components/crm/sales";
 
 type TimelineItem = { id: string; at: string; kind: "message" | "event" | "call" | "task" | "task_done" | "booking"; icon: string; text: string; sub?: string; data?: Record<string, unknown> };
 type Full = { lead: LeadPro; tasks: Task[]; calls: Call[]; timeline: TimelineItem[] };
 
-export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string; onBack: () => void; initialTab?: "chat" | "activity" | "details" }) {
+export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string; onBack: () => void; initialTab?: "chat" | "activity" | "details" | "sales" }) {
   const { L, ws, ctx, as, startCall, version } = useShell();
   const [data, setData] = useState<Full | null>(null);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<"chat" | "activity" | "details">(initialTab);
-  const [sheet, setSheet] = useState<"" | "task" | "note" | "stage">("");
+  const [tab, setTab] = useState<"chat" | "activity" | "details" | "sales">(initialTab);
+  const [sheet, setSheet] = useState<"" | "task" | "note" | "stage" | "sale">("");
   const [tplOpen, setTplOpen] = useState(false);
   const [hdrErr, setHdrErr] = useState("");
   const load = useCallback(async (quiet = false) => {
@@ -68,7 +69,7 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
           { k: "task", I: CalendarClock, t: L.task, f: () => setSheet("task"), cls: "text-lead" },
           { k: "note", I: StickyNote, t: L.note, f: () => setSheet("note"), cls: "text-ai" },
           { k: "book", I: CalendarPlus, t: L.book, href: `/poster/leads?tab=bookings`, cls: "text-brand-ink" },
-          { k: "pay", I: IndianRupee, t: L.pay, f: () => setTab("chat"), cls: "text-good" },
+          { k: "pay", I: IndianRupee, t: L.sales, f: () => setTab("sales"), cls: "text-good" },
         ].map((a) => a.href ? (
           <Link key={a.k} href={a.href} className="flex flex-col items-center gap-0.5 rounded-xl border border-border bg-surface py-2"><a.I className={`h-4 w-4 ${a.cls}`} />{a.t}</Link>
         ) : (
@@ -82,17 +83,19 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         : <button type="button" onClick={() => setSheet("task")} className="flex w-full items-center gap-2 rounded-xl border border-dashed border-border px-3 py-2 text-xs text-muted"><Plus className="h-3.5 w-3.5" /> {L.noNext}</button>
       )}
 
-      <div className="flex rounded-full border border-border bg-surface p-0.5">{tabBtn("chat", L.chat)}{tabBtn("activity", `${L.activity}${data ? ` · ${data.timeline.length}` : ""}`)}{tabBtn("details", L.details)}</div>
+      <div className="flex rounded-full border border-border bg-surface p-0.5">{tabBtn("chat", L.chat)}{tabBtn("activity", `${L.activity}${data ? ` · ${data.timeline.length}` : ""}`)}{tabBtn("details", L.details)}{tabBtn("sales", L.sales)}</div>
 
       {tab === "chat" && <Thread id={id} seed={l} wa={ws.wa} ctx={ctx} embedded onBack={onBack} onLead={(x) => setData((d) => (d ? { ...d, lead: { ...d.lead, ...x } } : d))} onTemplates={() => setTplOpen(true)} tplOpen={tplOpen} closeTpl={() => setTplOpen(false)} />}
       {tab === "activity" && <Activity items={data!.timeline} openTasks={openTasks} onChanged={() => load(true)} />}
       {tab === "details" && <Details lead={l} onSave={patch} />}
+      {tab === "sales" && <SalesTab lead={l} onChanged={() => load(true)} />}
+      {sheet === "sale" && <SaleSheet leadId={id} onClose={() => setSheet("")} onSaved={() => { load(true); setTab("sales"); }} />}
 
       {sheet === "task" && <TaskSheet leadId={id} onClose={() => setSheet("")} onSaved={() => load(true)} />}
       {sheet === "note" && <NoteSheet onClose={() => setSheet("")} onSave={async (n) => { const ok = await patch({ note: n }); if (ok) setSheet(""); }} />}
       {sheet === "stage" && (
         <BottomSheet title={L.stage} onClose={() => setSheet("")}>
-          <div className="flex flex-wrap gap-2">{STAGES.map((s) => <Chip key={s.key} on={l.status === s.key || (s.key === "converted" && l.status === "won")} tone={s.key === "converted" ? "good" : s.key === "lost" ? "danger" : "brand"} onClick={async () => { const ok = await patch({ status: s.key }); if (ok) setSheet(""); }}>{STAGE_LABEL[s.key][L.lang]}</Chip>)}</div>
+          <div className="flex flex-wrap gap-2">{STAGES.map((s) => <Chip key={s.key} on={l.status === s.key || (s.key === "converted" && l.status === "won")} tone={s.key === "converted" ? "good" : s.key === "lost" ? "danger" : "brand"} onClick={async () => { const ok = await patch({ status: s.key }); if (ok) setSheet(s.key === "converted" ? "sale" : ""); }}>{STAGE_LABEL[s.key][L.lang]}</Chip>)}</div>
           <p className="mt-3 text-[11px] text-muted">{L.convertedHint}</p>
         </BottomSheet>
       )}

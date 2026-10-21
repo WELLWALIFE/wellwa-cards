@@ -6,10 +6,11 @@ import { Zap, Users, GitBranch, Plug, Upload, Download, UserCheck, LoaderCircle,
 import { api } from "@/lib/poster-client";
 import { Templates, TeamSheet, ImportSheet, FlowSheet, IntegrationsSheet, AnalyticsSheet } from "@/components/crm/crm";
 import { useShell, inputCls, Chip, type Prefs } from "@/components/crm/shared";
+import { DuplicatesSheet, ContactsImport, Leaderboard } from "@/components/crm/sales";
 
 export function SettingsSection({ onChanged }: { onChanged: () => void }) {
   const { L, ws, ctx, as } = useShell();
-  const [sheet, setSheet] = useState<"" | "tpl" | "team" | "import" | "flow" | "integrations">("");
+  const [sheet, setSheet] = useState<"" | "tpl" | "team" | "import" | "flow" | "integrations" | "dups">("");
   const [p, setP] = useState<Prefs>(ws.prefs);
   const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false); const [err, setErr] = useState("");
   const owner = ctx.role === "owner";
@@ -64,6 +65,7 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
         {owner && btn(GitBranch, L.stBot, () => setSheet("flow"))}
         {owner && btn(Plug, L.stIntegrations, () => setSheet("integrations"))}
         {ctx.role !== "agent" && btn(Upload, L.stImport, () => setSheet("import"))}
+        {ctx.role !== "agent" && btn(Users, L.hi ? "एक ही ग्राहक दो बार — मिलाएँ" : "Duplicate customers — merge", () => setSheet("dups"))}
         {btn(Download, L.stExport, exportCsv)}
         {!as && !owner && btn(UserCheck, L.stJoin, () => setSheet("team"))}
         {!as && owner && btn(UserCheck, L.stJoin, () => setSheet("team"))}
@@ -73,6 +75,8 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
       {sheet === "import" && <ImportSheet ctx={ctx} onClose={() => setSheet("")} onDone={() => { setSheet(""); onChanged(); }} />}
       {sheet === "flow" && <FlowSheet onClose={() => setSheet("")} />}
       {sheet === "integrations" && <IntegrationsSheet onClose={() => setSheet("")} />}
+      {sheet === "dups" && <DuplicatesSheet onClose={() => setSheet("")} onChanged={onChanged} />}
+      <ContactsImport onDone={onChanged} />
     </div>
   );
 }
@@ -115,6 +119,7 @@ export function ReportsSection() {
             <div className="mb-1 text-xs font-semibold text-muted">{L.hi ? "कहाँ से आए, कितने बिके" : "By source"}</div>
             {r.bySource.map((s) => <div key={s.source} className="flex items-center gap-2 py-0.5 text-xs"><span className="w-24 truncate text-ink">{s.source}</span><div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full bg-brand/70" style={{ width: `${(s.leads / Math.max(1, r.bySource[0].leads)) * 100}%` }} /></div><span className="w-20 text-right text-muted">{s.leads} · <b className="text-good">{s.won}</b></span></div>)}
           </div>
+          <Leaderboard days={days} />
           {r.lost.length > 0 && <div className="rounded-xl border border-border bg-surface p-2.5"><div className="mb-1 text-xs font-semibold text-muted">{L.lostReason}</div><div className="flex flex-wrap gap-1.5 text-xs">{r.lost.map((x) => <span key={x.reason} className="rounded-full border border-border px-2 py-0.5"><b className="text-ink">{x.count}</b> <span className="text-muted">{x.reason}</span></span>)}</div></div>}
           {ctx.role !== "agent" && <button type="button" onClick={() => setOpen(true)} className="rounded-xl border border-border px-3 py-2 text-xs text-muted">{L.hi ? "WhatsApp / reply-time analytics (30 दिन)" : "WhatsApp / reply-time analytics (30 days)"}</button>}
           {open && ctx.role !== "agent" && <AnalyticsSheet ctx={ctx} onClose={() => setOpen(false)} />}
