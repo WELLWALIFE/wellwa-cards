@@ -375,7 +375,7 @@ export default function AdsPage() {
               {goal === g.key && <Check className="h-5 w-5 text-brand" />}
             </button>
           ); })}
-          {goal !== "website" && <label className="block text-sm font-semibold">{goal === "whatsapp" ? "WhatsApp number" : (hi ? "Phone number" : "Phone number")}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="98765 43210" readOnly={phoneLocked} className={`${field} ${phoneLocked ? "bg-black/[.04] text-muted" : ""}`} /></label>}
+          {goal !== "website" && <label className="block text-sm font-semibold">{goal === "whatsapp" ? "WhatsApp number" : (hi ? "Phone number" : "Phone number")}<input value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" placeholder="98765 43210" readOnly={phoneLocked} className={`${field} ${phoneLocked ? "bg-black/[.04] text-muted" : ""}`} />{phoneLocked && <button type="button" onClick={() => setPhoneLocked(false)} className="mt-1 text-xs font-semibold text-brand-ink">{hi ? "इस ad के लिए दूसरा number डालें" : "Use a different number for this ad"}</button>}</label>}
           {goal === "website" && <label className="block text-sm font-semibold">{hi ? "कौन-सा link खुले" : "Which link should open"}<input value={link} onChange={(e) => setLink(e.target.value.trim())} inputMode="url" placeholder="https://shubhora.com/c/…" className={field} /><span className="mt-1 block text-xs font-normal text-muted">{hi ? "खाली छोड़ें तो आपके card या website का link लगेगा।" : "Leave it empty to use your card or website link."}</span></label>}
           {products.length > 0 && <div><p className="text-xs font-semibold text-muted mb-1.5">{hi ? "Ad किस product की है? (ज़रूरी नहीं)" : "Which product is the ad for? (optional)"}</p><div className="flex flex-wrap gap-2"><button type="button" onClick={() => setProductId("")} className={chip(!productId)}>{hi ? "पूरा business" : "Whole business"}</button>{products.map((p) => <button key={p.id} type="button" onClick={() => setProductId(p.id)} className={chip(productId === p.id)}>{p.name}</button>)}</div></div>}
           <label className="block text-sm font-semibold">{hi ? "Offer (ज़रूरी नहीं)" : "Offer (optional)"}<input value={offer} onChange={(e) => setOffer(e.target.value)} maxLength={80} placeholder={hi ? "जैसे: इस हफ़्ते 10% छूट" : "e.g. 10% off this week"} className={field} /></label>
@@ -388,6 +388,8 @@ export default function AdsPage() {
           <div>
             <p className="text-sm font-semibold flex items-center gap-1.5"><MapPin className="h-4 w-4 text-brand" /> {hi ? "कहाँ" : "Where"}</p>
             <div className="mt-1.5 flex flex-wrap gap-2">
+              {/* "All India" is a chip of its own (owner, 21 Oct 2026): one tap clears the towns; adding a town narrows it again. */}
+              <button type="button" onClick={() => setTargeting({ ...targeting, cities: [] })} className={chip(targeting.cities.length === 0)}>{hi ? "पूरा India" : "All India"}</button>
               {targeting.cities.map((c) => (
                 <span key={c.key} className="inline-flex items-center gap-1 rounded-full border border-brand bg-brand-soft px-3 py-1.5 text-sm">
                   {c.name}{c.type !== "region" && <> · <select value={c.radius} onChange={(e) => setTargeting({ ...targeting, cities: targeting.cities.map((x) => (x.key === c.key ? { ...x, radius: Number(e.target.value) } : x)) })} className="bg-transparent text-sm">{[10, 15, 25, 40, 60, 80].map((r) => <option key={r} value={r}>{r} km</option>)}</select></>}
