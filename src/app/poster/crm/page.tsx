@@ -72,23 +72,23 @@ function CrmPage() {
 
   return (
     <Shell.Provider value={shell}>
-      <div className="space-y-3 md:grid md:grid-cols-[180px_1fr] md:gap-4 md:space-y-0">
+      <div className="@container"><div className="space-y-3 @3xl:grid @3xl:grid-cols-[180px_1fr] @3xl:gap-4 @3xl:space-y-0">
         {/* section switch: pills on the phone, a rail on a laptop */}
-        <div className="space-y-2 md:sticky md:top-20 md:self-start">
+        <div className="space-y-2 @3xl:sticky @3xl:top-20 @3xl:self-start">
           {(ws.teams.length > 0 || as) && (
-            <div className="flex gap-1.5 overflow-x-auto text-xs [scrollbar-width:none] md:flex-col">
+            <div className="flex gap-1.5 overflow-x-auto text-xs [scrollbar-width:none] @3xl:flex-col">
               <button type="button" onClick={() => switchWs(null)} className={`shrink-0 rounded-full border px-2.5 py-1 font-semibold ${!as ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`}>{L.hi ? "मेरा CRM" : "My CRM"}</button>
               {ws.teams.map((t) => <button key={t.owner_id} type="button" onClick={() => switchWs(t.owner_id)} className={`shrink-0 rounded-full border px-2.5 py-1 font-semibold ${as === t.owner_id ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-muted"}`}><Users className="mr-1 inline h-3 w-3" />{t.owner_name} · {t.role}</button>)}
             </div>
           )}
-          <div className="flex gap-1 overflow-x-auto rounded-full border border-border bg-surface p-0.5 text-sm font-semibold [scrollbar-width:none] md:flex-col md:rounded-2xl md:p-1">
-            {sections.map(([k, t]) => <button key={k} type="button" onClick={() => { setSection(k); setCustomer(null); setCallList(null); router.replace(`/poster/crm?s=${k}`); }} className={`shrink-0 rounded-full px-3 py-1.5 md:rounded-xl md:text-left ${section === k && !customer ? "grad-brand text-white" : "text-muted"}`}>{t}</button>)}
+          <div className="flex gap-1 overflow-x-auto rounded-full border border-border bg-surface p-0.5 text-sm font-semibold [scrollbar-width:none] @3xl:flex-col @3xl:rounded-2xl @3xl:p-1">
+            {sections.map(([k, t]) => <button key={k} type="button" onClick={() => { setSection(k); setCustomer(null); setCallList(null); router.replace(`/poster/crm?s=${k}`); }} className={`shrink-0 rounded-full px-3 py-1.5 @3xl:rounded-xl @3xl:text-left ${section === k && !customer ? "grad-brand text-white" : "text-muted"}`}>{t}</button>)}
           </div>
         </div>
         <div className="min-w-0">
           {customer && section === "customers" ? (
-            <div className="md:grid md:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)] md:gap-4">
-              <div className="hidden md:block"><CustomersList onCallThese={(leads) => { setCustomer(null); setCallList(leads.map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" }))); }} /></div>
+            <div className="@5xl:grid @5xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)] @5xl:gap-4">
+              <div className="hidden @5xl:block"><CustomersList onCallThese={(leads) => { setCustomer(null); setCallList(leads.map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" }))); }} /></div>
               <CustomerScreen key={customer} id={customer} onBack={() => { setCustomer(null); shell.reload(); }} />
             </div>
           ) : customer ? <CustomerScreen key={customer} id={customer} onBack={() => { setCustomer(null); shell.reload(); }} />
@@ -99,7 +99,7 @@ function CrmPage() {
             : section === "reports" ? <ReportsSection />
             : <SettingsSection onChanged={loadWs} />}
         </div>
-      </div>
+      </div></div>
       <CallReturnWatcher />
       {desktopCall && <CallOutcomeSheet pending={desktopCall} dialHint onSaved={shell.notifyLogged} onClose={() => setDesktopCall(null)} />}
       {cloudCall && <CloudCallSheet lead={cloudCall} onFallback={() => { const l = cloudCall; setCloudCall(null); dial(l, () => setDesktopCall(readPending())); }} onClose={() => setCloudCall(null)} />}
