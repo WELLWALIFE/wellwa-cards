@@ -4,7 +4,7 @@ import "server-only";
 // Money rules: every campaign is created PAUSED unless the owner explicitly taps "Start now"; the daily budget and
 // the end date are always set, so nothing can run for ever; Start / Pause work from the app and Ads Manager alike.
 // Needs the Facebook login to carry ads_management + ads_read (SCOPES in social-server.ts).
-import { graph, listAccounts, type AccountRow } from "@/lib/social-server";
+import { graph, graphStep, listAccounts, type AccountRow } from "@/lib/social-server";
 import { restAsService } from "@/lib/poster-server";
 import { geminiComplete } from "@/lib/gemini";
 import { SITE_URL } from "@/lib/site-url";
@@ -142,7 +142,7 @@ const CAMPAIGN_PREFIX = "Shubhora · ";
 const objectiveFor = (): string => "OUTCOME_TRAFFIC";
 
 async function uploadVideo(acct: string, ut: string, fileUrl: string, name: string): Promise<string> {
-  const v = await graph<{ id: string }>(`${acct}/advideos`, { file_url: fileUrl, name, access_token: ut }, "POST");
+  const v = await graphStep<{ id: string }>("video upload", `${acct}/advideos`, { file_url: fileUrl, name, access_token: ut }, "POST");
   // Meta processes the upload for a while; the creative needs it ready.
   for (let i = 0; i < 20; i++) {
     const s = await graph<{ status?: { video_status?: string } }>(`${v.id}`, { access_token: ut, fields: "status" });
@@ -167,8 +167,8 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   const name = `${CAMPAIGN_PREFIX}${S(spec.name, 60)}`;
   const start = new Date(Date.now() + 10 * 60_000), end = new Date(start.getTime() + spec.days * 86400_000);
 
-  const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name, objective: objectiveFor(), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
-  const adset = await graph<{ id: string }>(`${acct}/adsets`, {
+  const camp = await graphStep<{ id: string }>("campaign", `${acct}/campaigns`, { name, objective: objectiveFor(), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
+  const adset = await graphStep<{ id: string }>("ad set", `${acct}/adsets`, {
     name: `${name} · audience`, campaign_id: camp.id, status,
     daily_budget: String(spec.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     start_time: start.toISOString(), end_time: end.toISOString(),
@@ -180,13 +180,13 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   if (spec.creative.kind === "video") {
     const videoId = await uploadVideo(acct, ut, spec.creative.url, name);
     const thumb = spec.creative.thumbUrl || `${SITE_URL}/og-shubhora.jpg`;
-    creativeId = (await graph<{ id: string }>(`${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, video_data: { video_id: videoId, image_url: thumb, message, title: S(spec.headline, 40), link_description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
+    creativeId = (await graphStep<{ id: string }>("video creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, video_data: { video_id: videoId, image_url: thumb, message, title: S(spec.headline, 40), link_description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   } else {
-    const img = await graph<{ images: Record<string, { hash: string }> }>(`${acct}/adimages`, { url: spec.creative.url, access_token: ut }, "POST");
+    const img = await graphStep<{ images: Record<string, { hash: string }> }>("image", `${acct}/adimages`, { url: spec.creative.url, access_token: ut }, "POST");
     const hash = Object.values(img.images ?? {})[0]?.hash; if (!hash) throw new Error("Facebook could not read the picture.");
-    creativeId = (await graph<{ id: string }>(`${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, link_data: { image_hash: hash, link, message, name: S(spec.headline, 40), description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
+    creativeId = (await graphStep<{ id: string }>("creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, link_data: { image_hash: hash, link, message, name: S(spec.headline, 40), description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   }
-  const ad = await graph<{ id: string }>(`${acct}/ads`, { name, adset_id: adset.id, creative: JSON.stringify({ creative_id: creativeId }), status, access_token: ut }, "POST");
+  const ad = await graphStep<{ id: string }>("ad", `${acct}/ads`, { name, adset_id: adset.id, creative: JSON.stringify({ creative_id: creativeId }), status, access_token: ut }, "POST");
   return { adAccount: acct, campaignId: camp.id, adsetId: adset.id, adId: ad.id, creativeId, managerUrl: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace("act_", "")}`, status };
 }
 
