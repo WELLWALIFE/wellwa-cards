@@ -14,24 +14,24 @@ import {
 import { api, authHeaders } from "@/lib/poster-client";
 
 /* ---------------- types ---------------- */
-type Lead = {
+export type Lead = {
   id: string; name: string; phone: string; email: string; message: string; source: string; status: string; score: number;
   notes: string; next_follow_up: string | null; value_paise: number; lost_reason: string; tags: string[]; last_message_at: string | null; unread: number;
   ai_intent: string; ai_sentiment: string; ai_summary: string; ai_next: string; ai_at: string | null; city: string; created_at: string; _aiTags?: string[];
   assigned_to: string | null;
 };
-type Agent = { id: string; name: string; role: "agent" | "manager"; joined: boolean };
-type Team = { owner_id: string; role: "agent" | "manager"; owner_name: string };
-type Role = "owner" | "manager" | "agent";
-type Ctx = { as: string | null; role: Role; me: string; agents: Agent[]; upi?: string; payee?: string };
+export type Agent = { id: string; name: string; role: "agent" | "manager"; joined: boolean };
+export type Team = { owner_id: string; role: "agent" | "manager"; owner_name: string };
+export type Role = "owner" | "manager" | "agent";
+export type Ctx = { as: string | null; role: Role; me: string; agents: Agent[]; upi?: string; payee?: string };
 const q_as = (c: Ctx) => (c.as ? `&as=${c.as}` : "");
 const WS_KEY = "akp-crm-ws";
 type Msg = { id: string; direction: "in" | "out"; sender: "customer" | "bot" | "owner"; kind: string; text: string; sent_at: string };
 type Ev = { id: string; kind: string; text: string; created_at: string };
 type Tpl = { id: string; name: string; shortcut: string; body: string; uses: number };
-type Wa = "connected" | "disconnected" | "offline" | "plan";
+export type Wa = "connected" | "disconnected" | "offline" | "plan";
 
-const STAGES = [
+export const STAGES = [
   { key: "new", label: "New", cls: "bg-surface2 text-muted" },
   { key: "contacted", label: "Contacted", cls: "bg-ai/10 text-ai" },
   { key: "interested", label: "Interested", cls: "bg-brand-soft text-brand-ink" },
@@ -39,10 +39,10 @@ const STAGES = [
   { key: "converted", label: "Won", cls: "bg-good/15 text-good" },
   { key: "lost", label: "Lost", cls: "bg-surface2 text-faint" },
 ] as const;
-const stage = (k: string) => STAGES.find((s) => s.key === k) ?? (k === "hot" ? STAGES[2] : k === "warm" ? STAGES[1] : k === "won" ? STAGES[4] : STAGES[0]);
+export const stage = (k: string) => STAGES.find((s) => s.key === k) ?? (k === "hot" ? STAGES[2] : k === "warm" ? STAGES[1] : k === "won" ? STAGES[4] : STAGES[0]);
 
 const IST = "Asia/Kolkata";
-function ago(iso: string | null | undefined): string {
+export function ago(iso: string | null | undefined): string {
   if (!iso) return "";
   const d = new Date(iso), diff = (Date.now() - d.getTime()) / 1000;
   if (diff < 60) return "now";
@@ -52,7 +52,7 @@ function ago(iso: string | null | undefined): string {
   if (d.toDateString() === y.toDateString()) return "Yesterday";
   return d.toLocaleDateString("en-IN", { timeZone: IST, day: "numeric", month: "short" });
 }
-const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: IST, day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
+export const when = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: IST, day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
 const digits = (p: string) => p.replace(/[^0-9]/g, "");
 const isToday = (iso: string | null) => !!iso && new Date(iso).toDateString() === new Date().toDateString();
 const isOverdue = (iso: string | null) => !!iso && new Date(iso).getTime() < Date.now();
@@ -257,7 +257,7 @@ function Row({ l, onClick }: { l: Lead; onClick: () => void }) {
   );
 }
 
-function Pipeline({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => void }) {
+export function Pipeline({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => void }) {
   return (
     <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2 [scrollbar-width:thin]">
       {STAGES.map((s) => {
@@ -287,7 +287,9 @@ function Pipeline({ leads, onOpen }: { leads: Lead[]; onOpen: (id: string) => vo
 }
 
 /* ---------------- thread ---------------- */
-function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, closeTpl }: { id: string; seed?: Lead; wa: Wa; ctx: Ctx; onBack: () => void; onLead: (l: Lead) => void; onTemplates: () => void; tplOpen: boolean; closeTpl: () => void }) {
+// embedded: inside the CRM Pro customer screen (docs/crm-pro.md 3.3) the screen owns the header, stage and assignee, so the
+// thread shows only the AI insight, the messages and the composer.
+export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, closeTpl, embedded = false }: { id: string; seed?: Lead; wa: Wa; ctx: Ctx; onBack: () => void; onLead: (l: Lead) => void; onTemplates: () => void; tplOpen: boolean; closeTpl: () => void; embedded?: boolean }) {
   const [lead, setLead] = useState<Lead | null>(seed ?? null);
   const [msgs, setMsgs] = useState<Msg[] | null>(null);
   const [events, setEvents] = useState<Ev[]>([]);
@@ -368,9 +370,9 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
   const suggestedTags = (l?._aiTags ?? []).filter((t) => !(l?.tags ?? []).includes(t));
 
   return (
-    <div className="-mx-3 flex h-[calc(100dvh-12.5rem)] min-h-[420px] flex-col overflow-hidden rounded-t-2xl border border-border bg-surface md:mx-0">
+    <div className={embedded ? "flex h-[calc(100dvh-19rem)] min-h-[360px] flex-col overflow-hidden rounded-2xl border border-border bg-surface" : "-mx-3 flex h-[calc(100dvh-12.5rem)] min-h-[420px] flex-col overflow-hidden rounded-t-2xl border border-border bg-surface md:mx-0"}>
       {/* header */}
-      <div className="flex items-center gap-2 border-b border-border px-2 py-2">
+      {!embedded && <div className="flex items-center gap-2 border-b border-border px-2 py-2">
         <button type="button" onClick={onBack} className="rounded-lg p-1.5 text-muted hover:bg-surface2" aria-label="Back"><ArrowLeft className="h-5 w-5" /></button>
         <button type="button" onClick={() => setSheet("profile")} className="flex min-w-0 flex-1 items-center gap-2 text-left">
           <div className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-sm font-bold text-white" style={{ background: `hsl(${hue(l?.phone || id)} 55% 50%)` }}>{l ? initial(l) : "#"}</div>
@@ -385,17 +387,17 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
             <a href={`https://wa.me/${digits(l.phone)}`} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-good hover:bg-surface2" aria-label="Open in WhatsApp"><ExternalLink className="h-4 w-4" /></a>
           </>
         )}
-      </div>
+      </div>}
 
       {/* stage strip */}
-      <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border px-2 py-1.5 text-[11px] [scrollbar-width:none]">
+      {!embedded && <div className="flex items-center gap-1.5 overflow-x-auto border-b border-border px-2 py-1.5 text-[11px] [scrollbar-width:none]">
         {STAGES.map((s) => (
           <button key={s.key} type="button" onClick={() => update({ status: s.key })} className={`shrink-0 rounded-full px-2 py-0.5 font-semibold ${st.key === s.key ? s.cls + " ring-1 ring-current" : "text-faint"}`}>{s.label}</button>
         ))}
         {l?.next_follow_up && !["converted", "lost"].includes(l.status) && <span className={`ml-auto inline-flex shrink-0 items-center gap-1 ${isOverdue(l.next_follow_up) ? "text-danger" : "text-lead"}`}><CalendarClock className="h-3 w-3" />{when(l.next_follow_up)}</span>}
-      </div>
+      </div>}
       {hdrErr && <p role="alert" className="border-b border-border px-3 py-1 text-[11px] text-danger">{hdrErr}</p>}
-      {ctx.role !== "agent" && ctx.agents.length > 0 && l && (
+      {!embedded && ctx.role !== "agent" && ctx.agents.length > 0 && l && (
         <div className="flex items-center gap-2 border-b border-border px-3 py-1.5 text-[11px] text-muted">
           <Users className="h-3.5 w-3.5" /> Assigned to
           <select value={l.assigned_to ?? ""} onChange={(e) => update({ assigned_to: e.target.value || null })} className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-ink">
@@ -496,7 +498,7 @@ function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen, close
 }
 
 /* ---------------- profile sheet ---------------- */
-function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
+export function Sheet({ title, onClose, children }: { title: string; onClose: () => void; children: ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 md:items-center" onClick={onClose}>
       <div className="max-h-[92dvh] w-full max-w-lg overflow-y-auto rounded-t-3xl bg-surface p-4 shadow-xl md:rounded-3xl" onClick={(e) => e.stopPropagation()}>
@@ -506,14 +508,14 @@ function Sheet({ title, onClose, children }: { title: string; onClose: () => voi
     </div>
   );
 }
-const inputCls = "w-full rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand";
-const quickDates = (): { l: string; v: string }[] => {
+export const inputCls = "w-full rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand";
+export const quickDates = (): { l: string; v: string }[] => {
   const at = (d: number, h: number) => { const x = new Date(); x.setDate(x.getDate() + d); x.setHours(h, 0, 0, 0); return x; };
   const iso = (x: Date) => new Date(x.getTime() - x.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
   return [{ l: "Today 6 pm", v: iso(at(0, 18)) }, { l: "Tomorrow 11 am", v: iso(at(1, 11)) }, { l: "In 3 days", v: iso(at(3, 11)) }, { l: "Next week", v: iso(at(7, 11)) }];
 };
 
-function Profile({ lead, events, error, onClose, onSave }: { lead: Lead; events: Ev[]; error?: string; onClose: () => void; onSave: (p: Record<string, unknown>) => Promise<void> }) {
+export function Profile({ lead, events, error, onClose, onSave }: { lead: Lead; events: Ev[]; error?: string; onClose: () => void; onSave: (p: Record<string, unknown>) => Promise<void> }) {
   const [f, setF] = useState({ name: lead.name, city: lead.city, status: stage(lead.status).key as string, tags: lead.tags ?? [], notes: lead.notes, value: lead.value_paise ? String(lead.value_paise / 100) : "", lost_reason: lead.lost_reason, next: lead.next_follow_up ? new Date(new Date(lead.next_follow_up).getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16) : "", note: "" });
   const [tag, setTag] = useState("");
   const [saving, setSaving] = useState(false);
@@ -566,7 +568,7 @@ function Profile({ lead, events, error, onClose, onSave }: { lead: Lead; events:
 }
 
 /* ---------------- add lead ---------------- */
-function AddLead({ ctx, onClose, onAdded }: { ctx: Ctx; onClose: () => void; onAdded: (l: Lead) => void }) {
+export function AddLead({ ctx, onClose, onAdded }: { ctx: Ctx; onClose: () => void; onAdded: (l: Lead) => void }) {
   const [f, setF] = useState({ name: "", phone: "", city: "", note: "" });
   const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
   async function add() {
@@ -598,7 +600,7 @@ const STARTER: Omit<Tpl, "id" | "uses">[] = [
   { name: "Follow-up", shortcut: "fu", body: "Namaste {name} ji, aapne {business} ke baare me poocha tha. Koi sawaal ho to zaroor batayein — main yahin hoon 🙂" },
   { name: "Thank you", shortcut: "thanks", body: "Dhanyavaad {name} ji! 🙏 Aap par bharosa karne ke liye shukriya. Koi bhi help chahiye to seedha message karein." },
 ];
-function Templates({ ctx, onClose, onPick }: { ctx: Ctx; onClose: () => void; onPick?: (t: Tpl) => void }) {
+export function Templates({ ctx, onClose, onPick }: { ctx: Ctx; onClose: () => void; onPick?: (t: Tpl) => void }) {
   const [tpls, setTpls] = useState<Tpl[] | null>(null);
   const [edit, setEdit] = useState<Partial<Tpl> | null>(null);
   const [busy, setBusy] = useState(false);
@@ -670,7 +672,7 @@ type An = {
   agents: { id: string; name: string; assigned: number; open: number; sent: number; won: number }[];
 };
 const mins = (m: number | null) => (m === null ? "—" : m < 1 ? "<1 min" : m < 60 ? `${Math.round(m)} min` : m < 1440 ? `${(m / 60).toFixed(1)} h` : `${(m / 1440).toFixed(1)} d`);
-function AnalyticsSheet({ ctx, onClose }: { ctx: Ctx; onClose: () => void }) {
+export function AnalyticsSheet({ ctx, onClose }: { ctx: Ctx; onClose: () => void }) {
   const [a, setA] = useState<An | null>(null);
   const [err, setErr] = useState("");
   useEffect(() => { (async () => { const r = await api<An & { error?: string }>(`/api/crm/analytics?x=1${q_as(ctx)}`); if (!r.ok) setErr(r.data.error || "Could not load."); else setA(r.data); })(); }, [ctx]);
@@ -729,7 +731,7 @@ function AnalyticsSheet({ ctx, onClose }: { ctx: Ctx; onClose: () => void }) {
 
 /* ---------------- team ---------------- */
 type AgentFull = { id: string; agent_user_id: string | null; name: string; phone: string; role: "agent" | "manager"; join_code: string; active: boolean; joined_at: string | null };
-function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () => void; onChanged: () => void }) {
+export function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () => void; onChanged: () => void }) {
   const [agents, setAgents] = useState<AgentFull[] | null>(null);
   const [f, setF] = useState({ name: "", phone: "", role: "agent" as "agent" | "manager" });
   const [code, setCode] = useState("");
@@ -841,7 +843,7 @@ function parseRows(text: string): { name: string; phone: string; city: string; t
   }
   return out;
 }
-function ImportSheet({ ctx, onClose, onDone }: { ctx: Ctx; onClose: () => void; onDone: () => void }) {
+export function ImportSheet({ ctx, onClose, onDone }: { ctx: Ctx; onClose: () => void; onDone: () => void }) {
   const [text, setText] = useState("");
   const [busy, setBusy] = useState(false);
   const [res, setRes] = useState("");
@@ -922,7 +924,7 @@ const DEFAULT_FLOW = (): FlowData => ({
   ],
 });
 const nid = () => Math.random().toString(36).slice(2, 8);
-function FlowSheet({ onClose }: { onClose: () => void }) {
+export function FlowSheet({ onClose }: { onClose: () => void }) {
   const [enabled, setEnabled] = useState(false);
   const [data, setData] = useState<FlowData | null>(null);
   const [sel, setSel] = useState(0);
@@ -1007,7 +1009,7 @@ const SHEETS_SCRIPT = `function doPost(e) {
   sh.appendRow([new Date(), b.event, d.name || "", d.phone || "", d.city || "", d.stage || d.previous_stage || "", (d.tags || []).join(" "), d.source || d.sender || "", d.message || d.text || "", d.score || "", d.value || ""]);
   return ContentService.createTextOutput("ok");
 }`;
-function IntegrationsSheet({ onClose }: { onClose: () => void }) {
+export function IntegrationsSheet({ onClose }: { onClose: () => void }) {
   const [it, setIt] = useState<Integ | null>(null);
   const [tab, setTab] = useState<"in" | "out" | "sheets">("in");
   const [f, setF] = useState({ outbound_url: "", outbound_secret: "", outbound_events: [] as string[], active: false });

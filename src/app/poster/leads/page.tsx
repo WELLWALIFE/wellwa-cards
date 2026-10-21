@@ -37,6 +37,8 @@ function LeadsTab() {
   useEffect(() => { setCameFrom(!!wantedTab && canGoBackInApp()); }, [wantedTab]);
   // replace, not push: Back from the login screen must not land here and bounce straight back to it.
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/leads${window.location.search}`)}`); return; } setReady(true); })(); }, [router]);
+  // The Customers tab is CRM Pro now (/poster/crm, 21 Oct 2026); this page keeps Bookings / Phone / WhatsApp / Teach bot.
+  useEffect(() => { if (ready && tab === "leads") router.replace("/poster/crm"); }, [ready, tab, router]);
   if (!ready) return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
     <div className="space-y-3">

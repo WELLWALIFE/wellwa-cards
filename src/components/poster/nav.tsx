@@ -12,7 +12,7 @@ export function PosterNav() {
   const tabs = [
     { href: "/poster", label: t.tabHome, icon: Home },
     { href: "/poster/create", label: t.tabCard, icon: PlusCircle },
-    { href: "/poster/leads", label: t.tabLeads, icon: Users },
+    { href: "/poster/crm", label: t.tabLeads, icon: Users },
     { href: "/poster/business", label: t.tabBusiness, icon: Handshake },
     { href: "/poster/more", label: t.tabMore, icon: UserCircle },
   ].filter((x) => x.href !== "/poster/business" || showsPartnerUi(kind));   // a consumer has no Business tab
@@ -25,7 +25,7 @@ export function PosterNav() {
       style={{ paddingBottom: "env(safe-area-inset-bottom)" }}>
       <div className="grid" style={{ gridTemplateColumns: `repeat(${tabs.length}, minmax(0, 1fr))` }}>
         {tabs.map((t) => {
-          const active = t.href === "/poster" ? (p === "/poster" || p.startsWith("/poster/history")) : t.href === "/poster/more" ? /^\/poster\/(more|settings|profiles|products|setup|social|report|guide|connect)/.test(p) : t.href === "/poster/create" ? /^\/poster\/(create|video|calendar|brand|testimonials|card|text-video|explainer|reel|photoshoot|website)/.test(p) : t.href === "/poster/leads" ? /^\/poster\/(leads|learn)/.test(p) : p.startsWith(t.href);
+          const active = t.href === "/poster" ? (p === "/poster" || p.startsWith("/poster/history")) : t.href === "/poster/more" ? /^\/poster\/(more|settings|profiles|products|setup|social|report|guide|connect)/.test(p) : t.href === "/poster/create" ? /^\/poster\/(create|video|calendar|brand|testimonials|card|text-video|explainer|reel|photoshoot|website)/.test(p) : t.href === "/poster/crm" ? /^\/poster\/(crm|leads|learn)/.test(p) : p.startsWith(t.href);
           return (
             <Link key={t.href} href={t.href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-medium ${active ? "text-brand-ink" : "text-muted"}`}>
               <t.icon className={`h-5 w-5 ${active ? "text-brand" : ""}`} />

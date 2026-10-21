@@ -56,9 +56,14 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
 2. Owner setups above: Shubhora Cloud API number + `WA_ONBOARD_OWNER_ID`; Embedded Signup; Exotel phone line.
 3. "Owner-style training" of the bot — owner said do this LAST ("training baad me").
 4. Offered, not decided: "AI से बात करो" WebRTC voice button on the card (voice without Exotel).
-5. **CRM Pro (owner, 21 Oct 2026: "professional CRM — direct call, sab kuch wahi se").** Spec in `docs/crm-pro.md`; build Phase 1 first
-   (Today screen, tap-to-call with outcome sheet + call list, tasks, customer screen with one timeline, Hindi/English, server-side list,
-   migration 0068). Phase 2 = Exotel click-to-call + desktop + automations + reports; Phase 3 = sales, quotes, team extras.
+5. **CRM Pro (owner, 21 Oct 2026: "professional CRM — direct call, sab kuch wahi se").** Spec in `docs/crm-pro.md`. **Phase 1 is built
+   (22 Oct 2026, not yet deployed/tested live):** `/poster/crm` (Today · Customers · Calendar · Reports · Settings; the bottom tab points
+   here, `/poster/leads` keeps Bookings/Phone/WhatsApp/Teach bot), `src/components/crm/{i18n,shared,call,tasks,customer,list,today,settings}.tsx`,
+   `src/lib/crm-pro.ts`, routes `/api/crm/{today,leads,lead/[id],tasks,calls,automations,workspace}`, migration **0068** (owner must run it
+   BEFORE deploying: leads columns, crm_tasks, crm_calls, triggers, backfill of follow-ups into tasks), `bridge/crm-reminders.mjs` now
+   reminds per task. Tap-to-call: `tel:` + outcome sheet on return (sessionStorage `akp-crm-pending-call`); call list; follow-up = task
+   (`leads.next_follow_up` mirrors the earliest open task by trigger). Next: Phase 2 (Exotel click-to-call, desktop 3-pane, automations,
+   reports v2, daily summary) and Phase 3 (sales, quotes, round-robin, birthday wishes) per the spec.
 6. Meta App Review (docs/meta-app-review.md): 7 of 11 permissions complete on 21 Oct 2026; pending = Meta's test-call data (24 h),
    screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
    on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.

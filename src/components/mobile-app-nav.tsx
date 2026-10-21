@@ -10,7 +10,7 @@ import { Home, PlusCircle, Users, Handshake, UserCircle, ChevronLeft } from "luc
 const TABS = [
   { href: "/poster", label: "Home", icon: Home },
   { href: "/poster/create", label: "Create", icon: PlusCircle },
-  { href: "/poster/leads", label: "Leads", icon: Users },
+  { href: "/poster/crm", label: "Customers", icon: Users },
   { href: "/poster/business", label: "Business", icon: Handshake },
   { href: "/poster/more", label: "Me", icon: UserCircle },
 ];

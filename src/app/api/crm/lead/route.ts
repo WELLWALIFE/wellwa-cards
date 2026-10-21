@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser, restAsService } from "@/lib/poster-server";
 import { STAGES, LEAD_COLS, addEvent, leadById, resolveScope, agentsFor, type LeadRow } from "@/lib/crm-server";
 import { askForReview } from "@/lib/customer-send";
+import { createTask, patchTask, TASK_COLS, PRO_COLS, type TaskRow } from "@/lib/crm-pro";
 
 const S = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : undefined);
 const cleanPhone = (v: unknown) => { let d = String(v ?? "").replace(/[^0-9]/g, ""); if (d.length === 11 && d.startsWith("0")) d = d.slice(1); if (d.length < 10 || d.length > 15) return ""; return "+" + (d.length === 10 ? "91" + d : d); };
@@ -64,11 +65,17 @@ export async function PATCH(request: Request) {
   if (S(b.city, 60) !== undefined) patch.city = S(b.city, 60);
   if (S(b.lost_reason, 200) !== undefined) patch.lost_reason = S(b.lost_reason, 200);
   if (typeof b.value_paise === "number" && b.value_paise >= 0) patch.value_paise = Math.round(b.value_paise);
-  if (b.next_follow_up === null) { patch.next_follow_up = null; patch.reminded_at = null; if (before.next_follow_up) events.push(["followup", "Follow-up cleared"]); }
-  else if (typeof b.next_follow_up === "string" && !Number.isNaN(Date.parse(b.next_follow_up))) {
-    const iso = new Date(b.next_follow_up).toISOString();
-    if (iso !== before.next_follow_up) { patch.next_follow_up = iso; patch.reminded_at = null; events.push(["followup", `Follow-up set: ${new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}`]); }
-  }
+  // Profile fields of CRM Pro (migration 0068).
+  for (const [k, n] of [["alt_phone", 20], ["business", 80], ["address", 200], ["pincode", 10], ["email", 120], ["lang", 2]] as const) { const v = S(b[k], n); if (v !== undefined) patch[k] = k === "alt_phone" ? (v ? cleanPhone(v) || v : "") : k === "lang" ? (["hi", "en"].includes(v) ? v : "") : v; }
+  for (const k of ["birthday", "anniversary"] as const) { if (b[k] === null || b[k] === "") patch[k] = null; else if (typeof b[k] === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b[k])) patch[k] = b[k]; }
+  if (typeof b.budget_paise === "number" && b.budget_paise >= 0) patch.budget_paise = Math.round(b.budget_paise);
+  if (Array.isArray(b.product_ids)) patch.product_ids = b.product_ids.filter((x: unknown) => typeof x === "string" && /^[0-9a-f-]{36}$/i.test(x)).slice(0, 20);
+  if (typeof b.opted_out === "boolean") patch.opted_out = b.opted_out;
+  // The follow-up date is a task since migration 0068 (docs/crm-pro.md 3.8): the earliest open task IS next_follow_up
+  // (trigger-synced), so the old profile sheet keeps working and the Today screen sees the same thing.
+  let followUp: string | null | undefined;
+  if (b.next_follow_up === null) followUp = null;
+  else if (typeof b.next_follow_up === "string" && !Number.isNaN(Date.parse(b.next_follow_up))) followUp = new Date(b.next_follow_up).toISOString();
   if ("assigned_to" in b && scope.role !== "agent") {
     const to = b.assigned_to === null ? null : String(b.assigned_to);
     if (to !== before.assigned_to) {
@@ -79,10 +86,17 @@ export async function PATCH(request: Request) {
     }
   }
   const note = S(b.note, 500); if (note) events.push(["note", note]);
-  const r = await restAsUser<LeadRow[]>(me.token, `leads?id=eq.${before.id}&select=${LEAD_COLS}`, { method: "PATCH", body: JSON.stringify(patch), headers: { Prefer: "return=representation" } });
+  const r = await restAsUser<LeadRow[]>(me.token, `leads?id=eq.${before.id}&select=${PRO_COLS}`, { method: "PATCH", body: JSON.stringify(patch), headers: { Prefer: "return=representation" } });
   const lead = Array.isArray(r.data) ? r.data[0] : null;
   if (!lead) return NextResponse.json({ error: friendly(r.text) }, { status: 502 });
   for (const [k, t] of events) await addEvent(me.token, scope.ownerId, lead.id, k, t);
+  if (followUp !== undefined && followUp !== before.next_follow_up) {
+    const open = (await restAsService<TaskRow[]>(`crm_tasks?lead_id=eq.${lead.id}&done_at=is.null&select=${TASK_COLS}&order=due_at&limit=1`)).data?.[0];
+    if (followUp === null) { if (open) await restAsService(`crm_tasks?lead_id=eq.${lead.id}&done_at=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ done_at: new Date().toISOString(), outcome: "cleared" }) }); await addEvent(me.token, scope.ownerId, lead.id, "followup", "Follow-up cleared"); }
+    else if (open) await patchTask(scope, open.id, { due_at: followUp });
+    else await createTask(scope, { lead_id: lead.id, kind: "call", title: "Follow-up", due_at: followUp });
+    lead.next_follow_up = followUp;
+  }
   // Converted → thank-you with the Google review link (phase 2: review collector).
   if (patch.status === "converted" && lead.phone) void askForReview(scope.ownerId, { name: lead.name, phone: lead.phone }, `lead:${lead.id}`);
   return NextResponse.json({ lead });
