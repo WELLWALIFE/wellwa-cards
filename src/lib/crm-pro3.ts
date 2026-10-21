@@ -51,6 +51,7 @@ export type ProductLite = { id: string; name: string; price_paise: number; photo
 // "1 year ₹1499" must not read as ₹11,499.
 const pricePaise = (v: unknown) => {
   const t = String(v ?? "");
+  if (/^\s*(free|मुफ़्त|मुफ्त)\b/i.test(t)) return 0;            // "FREE for 1 year (worth ₹1,499)" is free, not ₹1,499
   const m = t.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/i) ?? t.match(/(\d[\d,]*(?:\.\d+)?)/);
   const n = m ? parseFloat(m[1].replace(/,/g, "")) : NaN;
   return Number.isFinite(n) ? Math.round(n * 100) : 0;
