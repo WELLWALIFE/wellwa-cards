@@ -82,3 +82,27 @@ export async function listUploadedVideos(): Promise<UploadedVideo[]> {
     return r.ok && Array.isArray(j.videos) ? (j.videos as UploadedVideo[]) : [];
   } catch { return []; }
 }
+
+/** The cover frame of a video that is already online (our own storage sends CORS headers, so the canvas is not tainted). */
+export function captureThumbFromUrl(url: string): Promise<File | null> {
+  return new Promise((resolve) => {
+    const v = document.createElement("video");
+    v.crossOrigin = "anonymous"; v.muted = true; v.playsInline = true; v.preload = "auto"; v.src = url;
+    const timer = setTimeout(() => resolve(null), 20000);
+    const done = (f: File | null) => { clearTimeout(timer); resolve(f); };
+    v.onerror = () => done(null);
+    v.onloadedmetadata = () => { try { v.currentTime = Math.min(0.5, Math.max(0, (v.duration || 1) / 10)); } catch { /* seek later */ } };
+    v.onseeked = () => {
+      try {
+        const scale = Math.min(1, 1080 / Math.max(1, v.videoWidth));
+        const c = document.createElement("canvas"); c.width = Math.round(v.videoWidth * scale); c.height = Math.round(v.videoHeight * scale);
+        const ctx = c.getContext("2d"); if (!ctx) return done(null);
+        ctx.drawImage(v, 0, 0, c.width, c.height);
+        c.toBlob((b) => done(b ? new File([b], "thumb.jpg", { type: "image/jpeg" }) : null), "image/jpeg", 0.88);
+      } catch { done(null); }
+    };
+  });
+}
+
+/** A video tile: the cover picture when we have one, else the browser draws the video's own first frame. */
+export const videoFrameSrc = (url: string) => `${url}#t=0.5`;
