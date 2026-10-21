@@ -47,7 +47,14 @@ export async function merge(scope: Scope, keep: string, drop: string): Promise<{
 
 /* ---------------- products (for sales and quotes) ---------------- */
 export type ProductLite = { id: string; name: string; price_paise: number; photo_url: string | null };
-const pricePaise = (v: unknown) => { const n = parseFloat(String(v ?? "").replace(/[^\d.]/g, "")); return Number.isFinite(n) ? Math.round(n * 100) : 0; };
+// The first amount in the owner's price text ("₹1,499 / year", "Free (worth ₹1,499)", "2999"), not every digit joined up —
+// "1 year ₹1499" must not read as ₹11,499.
+const pricePaise = (v: unknown) => {
+  const t = String(v ?? "");
+  const m = t.match(/(?:₹|rs\.?|inr)\s*(\d[\d,]*(?:\.\d+)?)/i) ?? t.match(/(\d[\d,]*(?:\.\d+)?)/);
+  const n = m ? parseFloat(m[1].replace(/,/g, "")) : NaN;
+  return Number.isFinite(n) ? Math.round(n * 100) : 0;
+};
 export async function productsOf(ownerId: string): Promise<ProductLite[]> {
   let r = await restAsService<{ id: string; name: string; price: string | null; photo_url: string | null }[]>(`poster_products?user_id=eq.${ownerId}&active=eq.true&select=id,name,price,photo_url&order=sort,created_at&limit=200`);
   if (!r.ok) r = await restAsService(`poster_products?user_id=eq.${ownerId}&active=eq.true&select=id,name,photo_url&order=sort,created_at&limit=200`);
