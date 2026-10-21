@@ -167,7 +167,7 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   const name = `${CAMPAIGN_PREFIX}${S(spec.name, 60)}`;
   const start = new Date(Date.now() + 10 * 60_000), end = new Date(start.getTime() + spec.days * 86400_000);
 
-  const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name, objective: objectiveFor(), status, special_ad_categories: "[]", access_token: ut }, "POST");
+  const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name, objective: objectiveFor(), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
   const adset = await graph<{ id: string }>(`${acct}/adsets`, {
     name: `${name} · audience`, campaign_id: camp.id, status,
     daily_budget: String(spec.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",

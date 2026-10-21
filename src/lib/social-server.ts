@@ -200,7 +200,7 @@ export async function createPausedBoost(a: AccountRow, opts: { imageUrl: string;
     await restAsService(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ ad_account_id: acct }) });
   }
   const start = new Date(Date.now() + 3600_000), end = new Date(start.getTime() + opts.days * 86400_000);
-  const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name: `Shubhora · ${opts.name}`, objective: "OUTCOME_TRAFFIC", status: "PAUSED", special_ad_categories: "[]", access_token: ut }, "POST");
+  const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name: `Shubhora · ${opts.name}`, objective: "OUTCOME_TRAFFIC", status: "PAUSED", special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
   const adset = await graph<{ id: string }>(`${acct}/adsets`, {
     name: `Shubhora · ${opts.name} · set`, campaign_id: camp.id, status: "PAUSED", daily_budget: String(opts.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     start_time: start.toISOString(), end_time: end.toISOString(), targeting: JSON.stringify({ geo_locations: { countries: ["IN"] }, age_min: 21, age_max: 60, publisher_platforms: ["facebook", "instagram"], targeting_automation: { advantage_audience: 0 } }), access_token: ut,
