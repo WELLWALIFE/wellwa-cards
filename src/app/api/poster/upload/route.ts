@@ -1,16 +1,18 @@
-// POST multipart { file, kind: photo|logo|product|wide } → resized image in the media bucket
+// POST multipart { file, kind: photo|logo|product|wide|doc|video } → resized image in the media bucket
 //   photo   → 600×600 face crop (JPEG)
 //   logo    → up to 600×300 (PNG, keeps transparency)
 //   product → up to 1400×1400 (PNG)
 //   wide    → a shop / work photo, up to 1600×1600, never cropped (JPEG)
+//   video   → the owner's own MP4 / MOV (up to 60 MB), stored as it is — for a Facebook / Instagram post or an ad
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import type { Sharp } from "sharp";
 import { userFromRequest } from "@/lib/poster-server";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 
-type Kind = "photo" | "logo" | "product" | "wide" | "doc";
-const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide", "doc"];
+type Kind = "photo" | "logo" | "product" | "wide" | "doc" | "video";
+const KINDS: readonly Kind[] = ["photo", "logo", "product", "wide", "doc", "video"];
+const VIDEO_MAX = 60 * 1024 * 1024;
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
@@ -20,6 +22,18 @@ export async function POST(request: Request) {
   const asked = form?.get("kind");
   const kind: Kind = KINDS.includes(asked as Kind) ? (asked as Kind) : "photo";
   if (!(file instanceof Blob)) return NextResponse.json({ error: "No file." }, { status: 400 });
+  // video → "apni video" (owner, 21 Oct 2026): MP4 / MOV kept as it is; Facebook, Instagram and the ad creative fetch it by URL.
+  if (kind === "video") {
+    if (file.size > VIDEO_MAX) return NextResponse.json({ error: "Video too large (max 60 MB)." }, { status: 400 });
+    const src = Buffer.from(await file.arrayBuffer());
+    const isMp4 = src.length > 12 && src.subarray(4, 8).toString() === "ftyp"; // MP4 / MOV / M4V all start with an ftyp box
+    if (!isMp4) return NextResponse.json({ error: "Only MP4 or MOV videos work here." }, { status: 400 });
+    const mov = /\.mov$/i.test(String((file as File).name ?? "")) || file.type === "video/quicktime";
+    const key = `poster/${me.id}/video-${Date.now()}.${mov ? "mov" : "mp4"}`;
+    const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { ...serviceHeaders(), "Content-Type": mov ? "video/quicktime" : "video/mp4", "x-upsert": "true" }, body: new Uint8Array(src) });
+    if (!r.ok) return NextResponse.json({ error: "Upload failed.", detail: (await r.text()).slice(0, 200) }, { status: 500 });
+    return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}` });
+  }
   if (file.size > 12 * 1024 * 1024) return NextResponse.json({ error: "Image too large (max 12 MB)." }, { status: 400 });
   // doc → a PDF the bot can send as a WhatsApp document (brochure, price list), stored as it is.
   if (kind === "doc") {

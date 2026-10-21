@@ -209,6 +209,34 @@ export async function createPausedBoost(a: AccountRow, opts: { imageUrl: string;
   return { campaignId: camp.id, adId: ad.id, adAccount: acct, managerUrl: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace("act_", "")}` };
 }
 
+/** Publish one video (public https URL) to one account (owner, 21 Oct 2026: "apni video"). Facebook: a Page video post.
+ *  Instagram: a Reel (the only video kind the API publishes), also shown in the feed. Returns the remote post id.
+ *  Instagram processes the file for a while — we wait up to ~2 minutes for the container to be ready. */
+export async function publishVideo(a: AccountRow, videoUrl: string, caption: string, thumbUrl?: string): Promise<string> {
+  if (a.provider === "facebook") {
+    const r = await graph<{ id?: string; post_id?: string }>(`${a.account_id}/videos`, { file_url: videoUrl, description: caption, access_token: a.access_token }, "POST");
+    return String(r.post_id ?? r.id ?? "");
+  }
+  const c = await graph<{ id: string }>(`${a.account_id}/media`, { media_type: "REELS", video_url: videoUrl, caption, share_to_feed: "true", ...(thumbUrl ? { cover_url: thumbUrl } : {}), access_token: a.access_token }, "POST");
+  for (let i = 0; i < 40; i++) {
+    const st = await graph<{ status_code?: string; status?: string }>(`${c.id}`, { fields: "status_code,status", access_token: a.access_token });
+    if (st.status_code === "FINISHED") break;
+    if (st.status_code === "ERROR" || st.status_code === "EXPIRED") throw new Error(`Instagram could not process the video${st.status ? ` (${String(st.status).slice(0, 120)})` : ""}. Use an MP4 (H.264, 9:16 or 1:1, under 90 seconds).`);
+    await new Promise((res) => setTimeout(res, 3000));
+  }
+  for (let i = 0; i < 4; i++) {
+    try {
+      const p = await graph<{ id: string }>(`${a.account_id}/media_publish`, { creation_id: c.id, access_token: a.access_token }, "POST");
+      return p.id;
+    } catch (e) {
+      const code = (e as { code?: number }).code;
+      if ((code !== 9007 && code !== 4) || i === 3) throw e;
+      await new Promise((res) => setTimeout(res, 4000));
+    }
+  }
+  throw new Error("Instagram is still processing the video, try again in a minute.");
+}
+
 /** Make one account THE account for its provider; drop the other candidates. */
 export async function activateAccount(userId: string, id: string): Promise<AccountRow | null> {
   const rows = await listAccounts(userId);

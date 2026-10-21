@@ -10,6 +10,7 @@ import { api, isLoggedIn, currentProfileId, type Profile, type Poster } from "@/
 import { ProviderIcon, startConnect, invalidateSocialAccounts, type SocialAccount } from "@/components/poster/social-connect";
 import { GooglePanel } from "@/components/poster/google-panel";
 import { ReviewsPanel } from "@/components/poster/reviews-panel";
+import { VideoPost, type VideoAccount } from "@/components/poster/video-post";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 
@@ -215,6 +216,11 @@ function SocialTabInner() {
               {/* Why the button does nothing: the account needs to be connected again first. */}
               {active.status !== "ok" && <p className="text-xs font-semibold text-danger">{en ? `Reconnect your account first (tap “${t.changeAcct}” above), then post.` : `पहले अपना account दोबारा जोड़ें (ऊपर “${t.changeAcct}” दबाएँ), फिर post करें।`}</p>}
               {note("post")}
+              {/* Apni video (owner, 21 Oct 2026): a video from the phone to this Page / Instagram, Facebook + Instagram in one go. */}
+              {active.provider !== "whatsapp" && (
+                <VideoPost en={en} current={active.id} onPosted={load}
+                  accounts={(list ?? []).filter((a): a is Acct & { provider: "facebook" | "instagram" } => a.is_active && (a.provider === "facebook" || a.provider === "instagram")).map((a): VideoAccount => ({ id: a.id, provider: a.provider, name: a.name, status: a.status }))} />
+              )}
               {active.provider === "facebook" && (
                 <div className="rounded-lg border border-border p-3 space-y-2">
                   <button type="button" onClick={() => setBoost({ ...boost, open: !boost.open })} className="w-full text-left text-sm font-semibold">🚀 {t.tabMore === "और" ? "Boost — Facebook / Instagram पर ad चलवाएँ (पहले बनेगी पर चलेगी नहीं, आप Start दबाएँ)" : "Boost — pay to show this on Facebook / Instagram (it is made but does not run until you press Start)"}</button>
