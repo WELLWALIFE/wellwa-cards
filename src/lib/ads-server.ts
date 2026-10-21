@@ -86,6 +86,9 @@ export function targetingSpec(t: AdTargeting, placements: AdSpec["placements"]) 
     ...(t.gender === "men" ? { genders: [1] } : t.gender === "women" ? { genders: [2] } : {}),
     ...(t.interests.length ? { flexible_spec: [{ interests: t.interests.map((i) => ({ id: i.id, name: i.name })) }] } : {}),
     publisher_platforms: ["facebook", "instagram"],
+    // Meta refuses a new ad set without the Advantage+ audience flag ("Invalid parameter", 21 Oct 2026). 0 = exactly the
+    // audience the owner chose; their city and age range stay as they set them.
+    targeting_automation: { advantage_audience: 0 },
     ...(placements === "feeds" ? { facebook_positions: ["feed"], instagram_positions: ["stream"] } : placements === "stories" ? { facebook_positions: ["story"], instagram_positions: ["story", "reels"] } : {}),
   };
   return spec;

@@ -64,11 +64,15 @@ export async function graph<T = G>(path: string, params: Record<string, string>,
   const q = new URLSearchParams(params);
   const url = method === "GET" ? `${GRAPH}/${path}?${q}` : `${GRAPH}/${path}`;
   const r = await fetch(url, method === "GET" ? { cache: "no-store" } : { method: "POST", body: q, cache: "no-store" });
-  const j = (await r.json().catch(() => ({}))) as G & { error?: { message?: string; code?: number; type?: string } };
+  const j = (await r.json().catch(() => ({}))) as G & { error?: { message?: string; code?: number; error_subcode?: number; type?: string; error_user_title?: string; error_user_msg?: string } };
   if (!r.ok || j.error) {
     const e = j.error ?? {};
-    const err = new Error(String(e.message ?? `Graph ${r.status}`)) as Error & { code?: number };
+    // Meta's "Invalid parameter" says nothing on its own; the user-facing title/message (and the subcode) say what was wrong.
+    const detail = [e.error_user_title, e.error_user_msg].filter(Boolean).join(": ");
+    const base = String(e.message ?? `Graph ${r.status}`);
+    const err = new Error(detail && !base.includes(detail) ? `${base} — ${detail}` : base) as Error & { code?: number; subcode?: number };
     err.code = Number(e.code ?? r.status);
+    if (e.error_subcode) err.subcode = Number(e.error_subcode);
     throw err;
   }
   return j as T;
@@ -199,7 +203,7 @@ export async function createPausedBoost(a: AccountRow, opts: { imageUrl: string;
   const camp = await graph<{ id: string }>(`${acct}/campaigns`, { name: `Shubhora · ${opts.name}`, objective: "OUTCOME_TRAFFIC", status: "PAUSED", special_ad_categories: "[]", access_token: ut }, "POST");
   const adset = await graph<{ id: string }>(`${acct}/adsets`, {
     name: `Shubhora · ${opts.name} · set`, campaign_id: camp.id, status: "PAUSED", daily_budget: String(opts.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
-    start_time: start.toISOString(), end_time: end.toISOString(), targeting: JSON.stringify({ geo_locations: { countries: ["IN"] }, age_min: 21, age_max: 60, publisher_platforms: ["facebook", "instagram"] }), access_token: ut,
+    start_time: start.toISOString(), end_time: end.toISOString(), targeting: JSON.stringify({ geo_locations: { countries: ["IN"] }, age_min: 21, age_max: 60, publisher_platforms: ["facebook", "instagram"], targeting_automation: { advantage_audience: 0 } }), access_token: ut,
   }, "POST");
   const img = await graph<{ images: Record<string, { hash: string }> }>(`${acct}/adimages`, { url: opts.imageUrl, access_token: ut }, "POST");
   const hash = Object.values(img.images ?? {})[0]?.hash; if (!hash) throw new Error("Image upload failed");
