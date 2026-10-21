@@ -10,7 +10,7 @@ export type LeadPro = Lead & { kind: "lead" | "customer" | "lost"; alt_phone: st
 export type Task = { id: string; lead_id: string | null; assigned_to: string | null; kind: "call" | "whatsapp" | "visit" | "meeting" | "other"; title: string; text: string; due_at: string; remind_at: string | null; done_at: string | null; outcome: string; source: string; created_at: string };
 export type Call = { id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: string; status: string; started_at: string; seconds: number; outcome: string; note: string; recording_url: string | null };
 export type Prefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number };
-export type Workspace = { wa: Wa; channel: string; role: "owner" | "manager" | "agent"; ownerId: string; me: string; teams: Team[]; upi: string; payee: string; business: string; prefs: Prefs; agents: Agent[] };
+export type Workspace = { wa: Wa; channel: string; role: "owner" | "manager" | "agent"; ownerId: string; me: string; teams: Team[]; upi: string; payee: string; business: string; prefs: Prefs; agents: Agent[]; line: { number: string; caller_id: string; label: string } | null };
 
 export type CrmShell = {
   ws: Workspace; ctx: Ctx; L: CrmStrings & { lang: "hi" | "en"; hi: boolean };

@@ -49,7 +49,7 @@ async function push(userId, title, body) {
   let n = 0;
   for (const d of devices) {
     const r = await fetch(`https://fcm.googleapis.com/v1/projects/${fcm.projectId}/messages:send`, { method: "POST", headers: { Authorization: `Bearer ${fcm.bearer}`, "content-type": "application/json" },
-      body: JSON.stringify({ message: { token: d.token, notification: { title, body }, data: { url: "/poster/leads" }, android: { priority: "high", notification: { channel_id: "daily", default_sound: true } } } }), signal: AbortSignal.timeout(15000) }).catch(() => null);
+      body: JSON.stringify({ message: { token: d.token, notification: { title, body }, data: { url: "/poster/crm?s=today" }, android: { priority: "high", notification: { channel_id: "daily", default_sound: true } } } }), signal: AbortSignal.timeout(15000) }).catch(() => null);
     if (r?.ok) n += 1;
   }
   return n;

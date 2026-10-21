@@ -25,8 +25,8 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const callable: CallListItem[] = [...d.overdue, ...d.due, ...d.callbacks, ...d.fresh].filter((x, i, a) => a.findIndex((y) => y.lead.id === x.lead.id) === i && x.lead.phone).map((x) => ({ lead: x.lead, task: x.task, why: x.why }));
   const total = d.overdue.length + d.due.length + d.unread.length + d.fresh.length + d.bookings.length + d.callbacks.length + d.cold.length;
   const date = new Date().toLocaleDateString(L.hi ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" });
-  const Sec = ({ k, title, items, tone, render }: { k: string; title: string; items: Item[]; tone?: string; render?: (x: Item) => string }) => items.length === 0 ? null : (
-    <section className="overflow-hidden rounded-2xl border border-border bg-surface">
+  const sec = (k: string, title: string, items: Item[], tone?: string, render?: (x: Item) => string) => items.length === 0 ? null : (
+    <section key={k} className="overflow-hidden rounded-2xl border border-border bg-surface">
       <button type="button" onClick={() => setOpen((o) => ({ ...o, [k]: !(o[k] ?? true) }))} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide ${tone ?? "text-muted"}`}>{title}<span className="rounded-full bg-surface2 px-1.5 text-[10px] text-ink">{items.length}</span><ChevronDown className={`ml-auto h-4 w-4 transition ${(open[k] ?? true) ? "" : "-rotate-90"}`} /></button>
       {(open[k] ?? true) && <ul className="divide-y divide-border">{items.map((x) => <Row key={`${k}-${x.lead.id}-${x.task?.id ?? x.booking?.id ?? ""}`} x={x} sub={render ? render(x) : x.why} onOpen={() => x.lead.id.startsWith("b-") ? null : openCustomer(x.lead.id)} onCall={() => startCall(x.lead, load)} onDone={x.task ? async () => { await api("/api/crm/tasks", { method: "PATCH", json: { id: x.task!.id, as: as ?? undefined, done: true } }); load(); } : undefined} />)}</ul>}
     </section>
@@ -45,13 +45,13 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
       {callable.length > 0 && <button type="button" onClick={() => onCallList(callable)} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white"><PhoneCall className="h-4 w-4" /> {L.startCalling(callable.length)}</button>}
       {err && <p className="text-xs text-danger">{err}</p>}
       {total === 0 && <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">{L.allClear}</p>}
-      <Sec k="overdue" title={L.overdue} items={d.overdue} tone="text-danger" render={(x) => `${x.task?.title || x.why} · ${fmtWhen(x.task!.due_at, L.hi)}`} />
-      <Sec k="due" title={L.dueToday} items={d.due} tone="text-lead" render={(x) => `${x.task?.title || x.why} · ${fmtTime(x.task!.due_at, L.hi)}`} />
-      <Sec k="unread" title={L.unreadChats} items={d.unread} render={(x) => x.lead.message || x.why} />
-      <Sec k="fresh" title={L.freshLeads} items={d.fresh} render={(x) => `${x.lead.message || x.lead.ai_intent || x.lead.source} · ${ago(x.lead.created_at, L.hi)}`} />
-      <Sec k="bookings" title={L.todaysBookings} items={d.bookings} render={(x) => `${x.booking?.service || ""} · ${x.booking ? fmtTime(x.booking.starts_at, L.hi) : ""}`} />
-      <Sec k="callbacks" title={L.callbacks} items={d.callbacks} />
-      <Sec k="cold" title={L.goingCold} items={d.cold} render={(x) => `${x.why || ""} · ${ago(x.lead.last_activity_at, L.hi)}`} />
+      {sec("overdue", L.overdue, d.overdue, "text-danger", (x) => `${x.task?.title || x.why} · ${fmtWhen(x.task!.due_at, L.hi)}`)}
+      {sec("due", L.dueToday, d.due, "text-lead", (x) => `${x.task?.title || x.why} · ${fmtTime(x.task!.due_at, L.hi)}`)}
+      {sec("unread", L.unreadChats, d.unread, undefined, (x) => x.lead.message || x.why)}
+      {sec("fresh", L.freshLeads, d.fresh, undefined, (x) => `${x.lead.message || x.lead.ai_intent || x.lead.source} · ${ago(x.lead.created_at, L.hi)}`)}
+      {sec("bookings", L.todaysBookings, d.bookings, undefined, (x) => `${x.booking?.service || ""} · ${x.booking ? fmtTime(x.booking.starts_at, L.hi) : ""}`)}
+      {sec("callbacks", L.callbacks, d.callbacks, undefined)}
+      {sec("cold", L.goingCold, d.cold, undefined, (x) => `${x.why || ""} · ${ago(x.lead.last_activity_at, L.hi)}`)}
     </div>
   );
 }

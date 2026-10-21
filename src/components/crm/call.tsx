@@ -10,6 +10,7 @@ import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
 export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean };
 const KEY = "akp-crm-pending-call";
+const nowMs = () => Date.now();
 export const readPending = (): PendingCall | null => { try { const v = sessionStorage.getItem(KEY); return v ? (JSON.parse(v) as PendingCall) : null; } catch { return null; } };
 export const writePending = (p: PendingCall | null) => { try { if (p) sessionStorage.setItem(KEY, JSON.stringify(p)); else sessionStorage.removeItem(KEY); } catch { /* ignore */ } };
 export const isPhoneDevice = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
@@ -39,7 +40,8 @@ export function CallReturnWatcher() {
 export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pending: PendingCall; onClose: () => void; onSaved?: () => void; dialHint?: boolean }) {
   const { L, ws, as, reload } = useShell();
   const [outcome, setOutcome] = useState<string>("");
-  const [secs, setSecs] = useState<number>(() => Math.max(0, Math.round((Date.now() - pending.startedAt) / 1000) - 8));
+  const [secs, setSecs] = useState<number>(0);
+  useEffect(() => { setSecs(Math.max(0, Math.round((Date.now() - pending.startedAt) / 1000) - 8)); }, [pending.startedAt]);
   const [note, setNote] = useState("");
   const [nextKey, setNextKey] = useState<string>("");
   const [customNext, setCustomNext] = useState("");
@@ -63,7 +65,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
     else if (o === "connected") { setNextKey(""); setSendWa(false); if (pending.status === "new") setStage("contacted"); }
     else { setNextKey(""); setSendWa(false); }
   }
-  const nextIso = nextKey === "retry" ? new Date(Date.now() + Math.max(15, ws.prefs.retry_after_min) * 60000).toISOString() : nextKey === "custom" ? (customNext ? new Date(customNext).toISOString() : "") : moments.find((m) => m.key === nextKey)?.iso ?? "";
+  const nextIsoAt = (now: number) => nextKey === "retry" ? new Date(now + Math.max(15, ws.prefs.retry_after_min) * 60000).toISOString() : nextKey === "custom" ? (customNext ? new Date(customNext).toISOString() : "") : moments.find((m) => m.key === nextKey)?.iso ?? "";
 
   function speak() {
     const W = window as unknown as { webkitSpeechRecognition?: new () => SpeechRec; SpeechRecognition?: new () => SpeechRec };
@@ -76,6 +78,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
   }
   async function save() {
     if (!outcome || busy) return; setBusy(true); setErr("");
+    const nextIso = nextIsoAt(nowMs());
     const body: Record<string, unknown> = { lead_id: pending.leadId, as: as ?? undefined, outcome, seconds: outcome === "connected" ? secs : 0, note: note.trim(), started_at: new Date(pending.startedAt).toISOString() };
     if (nextIso) body.next = { kind: "call", title: nextKey === "retry" ? (L.hi ? "फिर call करें" : "Call again") : L.hi ? "Follow-up call" : "Follow-up call", due_at: nextIso };
     if (stage) body.stage = stage;
@@ -194,5 +197,53 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
         </div>
       </div>
     </div>
+  );
+}
+
+/* ---------------- phase 2: through the Shubhora number (Exotel) ---------------- */
+type LiveCall = { id: string; status: string; seconds: number; outcome: string; recording_url: string | null; started_at: string };
+export function CloudCallSheet({ lead, onFallback, onClose }: { lead: Pick<LeadPro, "id" | "name" | "phone" | "status">; onFallback: () => void; onClose: () => void }) {
+  const { L, as, ws, notifyLogged } = useShell();
+  const [call, setCall] = useState<LiveCall | null>(null);
+  const [err, setErr] = useState("");
+  const [outcome, setOutcome] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  useEffect(() => {
+    let dead = false;
+    (async () => {
+      const r = await api<{ call?: LiveCall; error?: string }>("/api/crm/call", { method: "POST", json: { lead_id: lead.id, as: as ?? undefined } });
+      if (dead) return;
+      if (r.status === 409) { onFallback(); return; }
+      if (!r.ok || !r.data.call) { setErr(r.data.error || L.failed); return; }
+      setCall(r.data.call);
+    })();
+    return () => { dead = true; };
+  }, [lead.id, as, onFallback, L.failed]);
+  useEffect(() => {
+    if (!call || call.status === "done" || call.status === "failed") return;
+    const t = setInterval(async () => {
+      const r = await api<{ call: LiveCall }>(`/api/crm/calls/${call.id}${as ? `?as=${as}` : ""}`);
+      if (r.ok) { setCall(r.data.call); setElapsed(Math.max(0, Math.round((Date.now() - new Date(r.data.call.started_at).getTime()) / 1000))); }
+    }, 3000);
+    return () => clearInterval(t);
+  }, [call, as]);
+  if (outcome && call) {
+    return <CallOutcomeSheet pending={{ leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: new Date(call.started_at).getTime() }} onSaved={notifyLogged} onClose={onClose} />;
+  }
+  return (
+    <BottomSheet title={`${L.call} · ${ws.line?.label || ws.line?.caller_id || "Shubhora"}`} onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        <div className="flex items-center gap-3"><Avatar name={lead.name} phone={lead.phone} size={10} /><div><p className="font-semibold text-ink">{lead.name || lead.phone}</p><p className="text-xs text-muted">{lead.phone}</p></div></div>
+        {err ? <p className="text-xs text-danger">{err}</p>
+          : !call ? <p className="flex items-center gap-2 text-xs text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> …</p>
+          : call.status === "failed" ? <p className="text-xs text-danger">{L.failed}</p>
+          : call.status === "done" ? <p className="text-xs text-good">{OUTCOME_LABEL[call.outcome]?.[L.lang] ?? call.outcome}{call.seconds ? ` · ${Math.floor(call.seconds / 60)}:${String(call.seconds % 60).padStart(2, "0")}` : ""}</p>
+          : <p className="flex items-center gap-2 text-xs text-ink"><LoaderCircle className="h-4 w-4 animate-spin text-brand" /> {call.status === "in_progress" ? `${L.connected} · ${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}` : (L.hi ? "आपका फ़ोन बज रहा है — उठाइए, फिर customer से जुड़ेगा" : "Your phone is ringing — pick up, then the customer is dialled")}</p>}
+        <div className="flex gap-2">
+          <button type="button" onClick={onClose} className="rounded-xl border border-border px-3 py-2 text-xs">{L.close}</button>
+          {call && (call.status === "done" || elapsed > 20) && <button type="button" onClick={() => setOutcome(true)} className="grad-brand flex-1 rounded-xl py-2 text-sm font-semibold text-white">{L.callOutcome}</button>}
+        </div>
+      </div>
+    </BottomSheet>
   );
 }

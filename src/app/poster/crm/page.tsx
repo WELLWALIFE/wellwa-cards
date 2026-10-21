@@ -2,13 +2,13 @@
 // CRM Pro (owner's call, 21 Oct 2026 — docs/crm-pro.md): Today · Customers · Calendar · Reports · Settings, a customer's
 // screen with everything on it, tap-to-call with the outcome sheet, the call list. The old CRM's sheets (quick replies,
 // team, menu bot, integrations, import) live on under Settings; /poster/leads keeps Bookings / Phone / WhatsApp / Teach bot.
-import { Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { LoaderCircle, Users } from "lucide-react";
 import { isLoggedIn } from "@/lib/poster-client";
 import { useCrmT } from "@/components/crm/i18n";
 import { Shell, loadWorkspace, type Workspace, type LeadPro, type CrmShell } from "@/components/crm/shared";
-import { CallReturnWatcher, CallOutcomeSheet, CallList, dial, readPending, type CallListItem, type PendingCall } from "@/components/crm/call";
+import { CallReturnWatcher, CallOutcomeSheet, CallList, CloudCallSheet, dial, readPending, type CallListItem, type PendingCall } from "@/components/crm/call";
 import { TodayScreen } from "@/components/crm/today";
 import { CustomersList } from "@/components/crm/list";
 import { CustomerScreen } from "@/components/crm/customer";
@@ -17,6 +17,7 @@ import { SettingsSection, ReportsSection } from "@/components/crm/settings";
 import type { Ctx } from "@/components/crm/crm";
 
 const WS_KEY = "akp-crm-ws";
+let loggedCb: (() => void) | null = null;   // what to do once the call outcome is saved (the call list moves on)
 type Section = "today" | "customers" | "calendar" | "reports" | "settings";
 
 function CrmPage() {
@@ -31,8 +32,8 @@ function CrmPage() {
   const [customer, setCustomer] = useState<string | null>(sp.get("lead"));
   const [callList, setCallList] = useState<CallListItem[] | null>(null);
   const [desktopCall, setDesktopCall] = useState<PendingCall | null>(null);
+  const [cloudCall, setCloudCall] = useState<Pick<LeadPro, "id" | "name" | "phone" | "status"> | null>(null);
   const [tick, setTick] = useState(0);
-  const loggedCb = useRef<(() => void) | null>(null);
 
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/crm${window.location.search}`)}`); return; } setReady(true); })(); }, [router]);
   const loadWs = useCallback(async () => {
@@ -45,18 +46,23 @@ function CrmPage() {
   useEffect(() => { const lead = sp.get("lead"); if (lead) setCustomer(lead); }, [sp]);
 
   const ctx = useMemo<Ctx>(() => (ws ? { as: ws.ownerId === ws.me ? null : ws.ownerId, role: ws.role, me: ws.me, agents: ws.agents, upi: ws.upi, payee: ws.payee } : { as: null, role: "owner", me: "", agents: [] }), [ws]);
+  const hasLine = !!ws?.line, askOutcome = ws?.prefs.ask_outcome ?? true;
+  const startCall = useCallback((lead: Pick<LeadPro, "id" | "name" | "phone" | "status">, onLogged?: () => void) => {
+    loggedCb = onLogged ?? null;
+    // Phase 2: a tenant with an outbound Shubhora number calls through Exotel (works from a laptop too; recorded).
+    if (hasLine) { setCloudCall(lead); return; }
+    if (!askOutcome) { window.location.href = `tel:${lead.phone}`; return; }
+    dial(lead, () => setDesktopCall(readPending()));
+  }, [hasLine, askOutcome]);
+  const notifyLogged = useCallback(() => { const f = loggedCb; loggedCb = null; f?.(); setTick((t) => t + 1); }, []);
   const shell = useMemo<CrmShell | null>(() => ws ? {
     ws, ctx, L, as: ws.ownerId === ws.me ? null : ws.ownerId,
     openCustomer: (id: string) => { setCustomer(id); window.scrollTo({ top: 0 }); },
-    startCall: (lead: Pick<LeadPro, "id" | "name" | "phone" | "status">, onLogged?: () => void) => {
-      loggedCb.current = onLogged ?? null;
-      if (!ws.prefs.ask_outcome) { window.location.href = `tel:${lead.phone}`; return; }
-      dial(lead, () => setDesktopCall(readPending()));
-    },
+    startCall,
     reload: () => setTick((t) => t + 1),
     version: tick,
-    notifyLogged: () => { const f = loggedCb.current; loggedCb.current = null; f?.(); setTick((t) => t + 1); },
-  } : null, [ws, ctx, L, tick]);
+    notifyLogged,
+  } : null, [ws, ctx, L, tick, startCall, notifyLogged]);
 
   const switchWs = (id: string | null) => { setAs(id); setWs(null); setCustomer(null); setCallList(null); try { if (id) localStorage.setItem(WS_KEY, id); else localStorage.removeItem(WS_KEY); } catch { /* ignore */ } };
   if (!ready || (!ws && !wsErr)) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -80,7 +86,12 @@ function CrmPage() {
           </div>
         </div>
         <div className="min-w-0">
-          {customer ? <CustomerScreen id={customer} onBack={() => { setCustomer(null); shell.reload(); }} />
+          {customer && section === "customers" ? (
+            <div className="md:grid md:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)] md:gap-4">
+              <div className="hidden md:block"><CustomersList onCallThese={(leads) => { setCustomer(null); setCallList(leads.map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" }))); }} /></div>
+              <CustomerScreen key={customer} id={customer} onBack={() => { setCustomer(null); shell.reload(); }} />
+            </div>
+          ) : customer ? <CustomerScreen key={customer} id={customer} onBack={() => { setCustomer(null); shell.reload(); }} />
             : callList ? <CallList items={callList} onExit={() => setCallList(null)} />
             : section === "today" ? <TodayScreen firstName={firstName} onCallList={setCallList} />
             : section === "customers" ? <CustomersList onCallThese={(leads) => setCallList(leads.map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" })))} />
@@ -91,6 +102,7 @@ function CrmPage() {
       </div>
       <CallReturnWatcher />
       {desktopCall && <CallOutcomeSheet pending={desktopCall} dialHint onSaved={shell.notifyLogged} onClose={() => setDesktopCall(null)} />}
+      {cloudCall && <CloudCallSheet lead={cloudCall} onFallback={() => { const l = cloudCall; setCloudCall(null); dial(l, () => setDesktopCall(readPending())); }} onClose={() => setCloudCall(null)} />}
     </Shell.Provider>
   );
 }

@@ -18,6 +18,7 @@ module.exports = {
     cron("neuraledge-autoreply", "social-autoreply.mjs", "*/30 * * * *"),
     cron("neuraledge-crm", "crm-reminders.mjs", "*/15 * * * *"),
     cron("neuraledge-webhooks", "crm-webhooks.mjs", "* * * * *"),
+    cron("neuraledge-recordings", "call-recordings.mjs", "20 * * * *"),      // Exotel click-to-call recordings → our storage
     cron("neuraledge-broadcast", "wa-broadcast.mjs", "* * * * *"),
     cron("neuraledge-autopost", "social-autopost.mjs", "30 22 * * *"),            // 4:00 AM IST
     cron("neuraledge-prerender", "social-autopost.mjs", "30 6 * * *", "--prerender"), // 12 noon IST

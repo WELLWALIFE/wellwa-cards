@@ -62,8 +62,14 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
    `src/lib/crm-pro.ts`, routes `/api/crm/{today,leads,lead/[id],tasks,calls,automations,workspace}`, migration **0068** (owner must run it
    BEFORE deploying: leads columns, crm_tasks, crm_calls, triggers, backfill of follow-ups into tasks), `bridge/crm-reminders.mjs` now
    reminds per task. Tap-to-call: `tel:` + outcome sheet on return (sessionStorage `akp-crm-pending-call`); call list; follow-up = task
-   (`leads.next_follow_up` mirrors the earliest open task by trigger). Next: Phase 2 (Exotel click-to-call, desktop 3-pane, automations,
-   reports v2, daily summary) and Phase 3 (sales, quotes, round-robin, birthday wishes) per the spec.
+   (`leads.next_follow_up` mirrors the earliest open task by trigger). **Phase 2 is built too (22 Oct 2026, same status):** Exotel click-to-call
+   (`/api/crm/call`, callback `/api/phone/status?k=CRON_KEY`, `bridge/call-recordings.mjs` hourly via pm2; needs EXOTEL_SID / EXOTEL_API_KEY /
+   EXOTEL_API_TOKEN / EXOTEL_SUBDOMAIN in server env and a `phone_lines` row with `outbound=true`, `caller_id` — until then the app dials with tel:),
+   desktop two-pane Customers, bulk actions (`/api/crm/bulk`: assign / stage / tag / WhatsApp to a selection), Automations (owner_prefs.crm:
+   auto task on new lead + round-robin as DB triggers in **migration 0069**, birthday/anniversary wish + "going cold" nudge + daily 8 pm summary
+   via `/api/cron/crm-daily` → `scripts/crm-daily.sh`, cron.d written by deploy.sh), Reports v2 (`/api/crm/reports`). Owner runs 0068 then 0069,
+   then deploys, then `pm2 start ecosystem.config.cjs --only neuraledge-recordings && pm2 save` on the server. Next: Phase 3 (sales, quotes,
+   segments, phone-contacts import, merge, leaderboard) per the spec.
 6. Meta App Review (docs/meta-app-review.md): 7 of 11 permissions complete on 21 Oct 2026; pending = Meta's test-call data (24 h),
    screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
    on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.

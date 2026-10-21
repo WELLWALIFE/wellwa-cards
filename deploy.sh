@@ -96,6 +96,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-advanced-expiry || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 5 * * * root bash $APP/scripts/advanced-expiry.sh >> /var/log/shubhora-advanced-expiry.log 2>&1' > /etc/cron.d/shubhora-advanced-expiry && chmod 644 /etc/cron.d/shubhora-advanced-expiry"
 # Premium websites tell the search engines (IndexNow) when their pages change, hourly. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-indexnow || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '10 * * * * root bash $APP/scripts/indexnow.sh >> /var/log/shubhora-indexnow.log 2>&1' > /etc/cron.d/shubhora-indexnow && chmod 644 /etc/cron.d/shubhora-indexnow"
+# CRM Pro automations (docs/crm-pro.md): 09:00 IST birthday wishes + "going cold" nudge, 20:00 IST daily summary. Written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-crm-daily || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/crm-daily.sh morning >> /var/log/shubhora-crm-daily.log 2>&1' '30 14 * * * root bash $APP/scripts/crm-daily.sh evening >> /var/log/shubhora-crm-daily.log 2>&1' > /etc/cron.d/shubhora-crm-daily && chmod 644 /etc/cron.d/shubhora-crm-daily"
 # Festival wishes to every owner's customers, 9:00 IST daily (sends only on a festival day). One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/festival-wishes.sh >> /var/log/shubhora-festival-wishes.log 2>&1' > /etc/cron.d/shubhora-festival-wishes"
 echo "→ health check…"

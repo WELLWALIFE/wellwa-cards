@@ -153,16 +153,16 @@ function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, u
     const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: f.tags, notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
     setBusy(false); setOk(done);
   }
-  const Row = ({ k, label, type = "text", ph }: { k: keyof typeof f; label: string; type?: string; ph?: string }) => <label className="text-xs text-muted">{label}<input type={type} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className={inputCls} /></label>;
+  const row = (k: keyof typeof f, label: string, type = "text", ph?: string) => <label className="text-xs text-muted">{label}<input type={type} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className={inputCls} /></label>;
   return (
     <div className="space-y-3 text-sm">
-      <div className="grid grid-cols-2 gap-2"><Row k="name" label={L.name} /><Row k="business" label={L.business} /></div>
-      <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted">{L.phone}<input value={lead.phone} readOnly className={inputCls + " opacity-70"} /></label><Row k="alt_phone" label={L.altPhone} type="tel" /></div>
-      <div className="grid grid-cols-2 gap-2"><Row k="city" label={L.city} /><Row k="pincode" label={L.pincode} /></div>
-      <Row k="address" label={L.address} />
-      <div className="grid grid-cols-2 gap-2"><Row k="email" label={L.email} type="email" /><label className="text-xs text-muted">{L.langPref}<select value={f.lang} onChange={(e) => setF({ ...f, lang: e.target.value })} className={inputCls}><option value="">—</option><option value="hi">हिंदी</option><option value="en">English</option></select></label></div>
-      <div className="grid grid-cols-2 gap-2"><Row k="birthday" label={L.birthday} type="date" /><Row k="anniversary" label={L.anniversary} type="date" /></div>
-      <div className="grid grid-cols-2 gap-2"><Row k="budget" label={L.budget} ph="25000" /><Row k="value" label={L.dealValue} ph="45000" /></div>
+      <div className="grid grid-cols-2 gap-2">{row("name", L.name)}{row("business", L.business)}</div>
+      <div className="grid grid-cols-2 gap-2"><label className="text-xs text-muted">{L.phone}<input value={lead.phone} readOnly className={inputCls + " opacity-70"} /></label>{row("alt_phone", L.altPhone, "tel")}</div>
+      <div className="grid grid-cols-2 gap-2">{row("city", L.city)}{row("pincode", L.pincode)}</div>
+      {row("address", L.address)}
+      <div className="grid grid-cols-2 gap-2">{row("email", L.email, "email")}<label className="text-xs text-muted">{L.langPref}<select value={f.lang} onChange={(e) => setF({ ...f, lang: e.target.value })} className={inputCls}><option value="">—</option><option value="hi">हिंदी</option><option value="en">English</option></select></label></div>
+      <div className="grid grid-cols-2 gap-2">{row("birthday", L.birthday, "date")}{row("anniversary", L.anniversary, "date")}</div>
+      <div className="grid grid-cols-2 gap-2">{row("budget", L.budget, "text", "25000")}{row("value", L.dealValue, "text", "45000")}</div>
       <div>
         <div className="mb-1 text-xs text-muted">{L.tags}</div>
         <div className="flex flex-wrap items-center gap-1.5">
@@ -170,7 +170,7 @@ function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, u
           <input value={tag} onChange={(e) => setTag(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter" || e.key === ",") { e.preventDefault(); addTag(); } }} onBlur={addTag} placeholder={L.addTag} className="min-w-24 flex-1 rounded-full border border-dashed border-border bg-transparent px-2 py-0.5 text-xs outline-none" />
         </div>
       </div>
-      {(lead.status === "lost") && <Row k="lost_reason" label={L.lostReason} />}
+      {lead.status === "lost" && row("lost_reason", L.lostReason)}
       <label className="block text-xs text-muted">{L.notes}<textarea value={f.notes} onChange={(e) => setF({ ...f, notes: e.target.value })} rows={3} placeholder={L.notesPh} className={inputCls} /></label>
       <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={f.opted_out} onChange={(e) => setF({ ...f, opted_out: e.target.checked })} /> {L.optOut}</label>
       <p className="text-[11px] text-faint">{L.source}: {lead.source} · {L.scoreHint} {lead.score}/100 · {ago(lead.created_at, L.hi)}{lead.calls_count ? ` · ${lead.calls_count} ${L.callsReport.toLowerCase()}` : ""}{lead.next_follow_up && isPast(lead.next_follow_up) ? ` · ⏰ ${L.overdueTag}` : ""}{lead.value_paise ? ` · ${rupees(lead.value_paise)}` : ""}</p>
