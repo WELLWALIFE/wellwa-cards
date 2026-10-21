@@ -26,7 +26,9 @@ export async function duplicates(scope: Scope): Promise<DupGroup[]> {
   for (const l of rows) { const k = last10(l.phone); if (k) byPhone.set(k, [...(byPhone.get(k) ?? []), l]); }
   for (const g of byPhone.values()) if (g.length > 1) { groups.push({ why: "phone", leads: g }); g.forEach((l) => used.add(l.id)); }
   const byName = new Map<string, DupLead[]>();
-  for (const l of rows) { if (used.has(l.id)) continue; const k = normName(l.name); if (k.replace(/\s/g, "").length >= 3) byName.set(k, [...(byName.get(k) ?? []), l]); }
+  // Names the app writes itself are placeholders for different people, never one person.
+  const PLACEHOLDER = /^(card chat visitor|caller|unknown|visitor|customer|guest|no|n a|na)$/;
+  for (const l of rows) { if (used.has(l.id)) continue; const k = normName(l.name); if (k.replace(/\s/g, "").length >= 3 && !PLACEHOLDER.test(k)) byName.set(k, [...(byName.get(k) ?? []), l]); }
   for (const g of byName.values()) {
     if (g.length < 2 || g.length > 6) continue;                          // a common name used by many people is not a duplicate
     const real = g.filter((l) => /^\+\d{11,15}$/.test(l.phone));
