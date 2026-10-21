@@ -4,7 +4,7 @@ import "server-only";
 // Money rules: every campaign is created PAUSED unless the owner explicitly taps "Start now"; the daily budget and
 // the end date are always set, so nothing can run for ever; Start / Pause work from the app and Ads Manager alike.
 // Needs the Facebook login to carry ads_management + ads_read (SCOPES in social-server.ts).
-import { graph, graphStep, listAccounts, type AccountRow } from "@/lib/social-server";
+import { discardCampaign, graph, graphStep, listAccounts, uploadAdImage, type AccountRow } from "@/lib/social-server";
 import { restAsService } from "@/lib/poster-server";
 import { geminiComplete } from "@/lib/gemini";
 import { SITE_URL } from "@/lib/site-url";
@@ -177,17 +177,18 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
 
   let creativeId: string;
   const message = S(spec.primaryText, 1500).replace(/ {2,}/g, " ");
+  try {
   if (spec.creative.kind === "video") {
     const videoId = await uploadVideo(acct, ut, spec.creative.url, name);
     const thumb = spec.creative.thumbUrl || `${SITE_URL}/og-shubhora.jpg`;
     creativeId = (await graphStep<{ id: string }>("video creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, video_data: { video_id: videoId, image_url: thumb, message, title: S(spec.headline, 40), link_description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   } else {
-    const img = await graphStep<{ images: Record<string, { hash: string }> }>("image", `${acct}/adimages`, { url: spec.creative.url, access_token: ut }, "POST");
-    const hash = Object.values(img.images ?? {})[0]?.hash; if (!hash) throw new Error("Facebook could not read the picture.");
+    const hash = await uploadAdImage(acct, ut, spec.creative.url);
     creativeId = (await graphStep<{ id: string }>("creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, link_data: { image_hash: hash, link, message, name: S(spec.headline, 40), description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   }
   const ad = await graphStep<{ id: string }>("ad", `${acct}/ads`, { name, adset_id: adset.id, creative: JSON.stringify({ creative_id: creativeId }), status, access_token: ut }, "POST");
   return { adAccount: acct, campaignId: camp.id, adsetId: adset.id, adId: ad.id, creativeId, managerUrl: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace("act_", "")}`, status };
+  } catch (e) { await discardCampaign(ut, camp.id); throw e; }
 }
 
 /** Start / pause a whole campaign (ad set and ad follow the campaign's status in delivery). */
