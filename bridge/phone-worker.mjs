@@ -33,6 +33,8 @@ const GEMINI_KEY = env.GEMINI_API_KEY || "";
 const LIVE_MODEL = env.GEMINI_LIVE_MODEL || "gemini-live-2.5-flash-preview";
 const MAX_CALL_MS = Number(env.PHONE_MAX_CALL_MIN || 10) * 60_000;
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), "[phone]", ...a);
+// One failed promise must not end the process — and with it every call in progress.
+process.on("unhandledRejection", (e) => log("unhandled rejection", e?.message ?? e));
 
 /* ---------------- provider adapters ---------------- */
 /** Exotel and Twilio differ only in field names and the audio codec; this reads both. */
@@ -71,7 +73,11 @@ class Call {
     log(`call from ${from || "?"} to ${to || "?"} (${this.meta.provider})`);
     const r = await fetch(`${APP_URL}/api/phone/context?to=${encodeURIComponent(to)}&from=${encodeURIComponent(from)}`, { headers: { "x-internal-key": INTERNAL_KEY }, signal: AbortSignal.timeout(15_000) }).catch(() => null);
     if (!r?.ok) { log("no context for line", to, r?.status); this.end("no context"); return; }
-    this.ctx = await r.json();
+    const ctx = await r.json().catch(() => null);
+    // The caller hung up while the context was loading: no Gemini session for a call that is already over.
+    if (this.ended) return;
+    if (!ctx) { this.end("bad context"); return; }
+    this.ctx = ctx;
     if (!GEMINI_KEY) { log("GEMINI_API_KEY missing"); this.end("no key"); return; }
     this.openAi();
   }
@@ -169,7 +175,7 @@ wss.on("connection", (tel) => {
     let msg; try { msg = JSON.parse(data.toString()); } catch { return; }
     switch (msg.event) {
       case "connected": break;
-      case "start": void call.start(msg); break;
+      case "start": call.start(msg).catch((e) => { log("start failed", e?.message ?? e); void call.end("start failed"); }); break;
       case "media": if (call.meta && msg.media?.payload) call.onTelMedia(msg.media.payload); break;
       case "stop": case "closed": void call.end("hangup"); break;
       default: break;

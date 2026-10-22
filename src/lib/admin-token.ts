@@ -27,7 +27,7 @@ export function verifyAdminToken(token: string, typ: Kind): { sub: string; scope
   const [, body, sig] = token.split(".");
   if (!body || !sig) return null;
   const want = crypto.createHmac("sha256", secret()).update(body).digest("base64url");
-  if (want.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(sig))) return null;
+  if (Buffer.byteLength(sig) !== want.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(sig))) return null;
   try {
     const p = JSON.parse(Buffer.from(body, "base64url").toString()) as { sub: string; typ: Kind; exp: number; sc?: string };
     if (p.typ !== typ || p.exp < Date.now() / 1000) return null;

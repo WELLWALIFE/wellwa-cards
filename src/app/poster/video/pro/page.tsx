@@ -318,7 +318,10 @@ function VideoTabInner() {
   function startFresh() { setOptions([]); setChosen(null); setPhotos([]); setF(emptyForm()); setPlan(null); setPlanErr(null); setNameErr(""); setGenErr(""); setHookErr(""); setPhotoErr(""); setPresenterErr(""); setSampleErr(null); setTestimonialData(null); setHookOptions([]); setStep(0); setSubmitted(false); setNeedCredits(null); setStoryboardFree(false); setDraftOn(true); newIdem(); clearVideoDraft(); }
   function editJob(j: Job) {
     const inp = j.input ?? {};
-    setF({ ...emptyForm(), ...(inp as Record<string, unknown>) } as typeof f);
+    // The job stores features as an array (the plan's), the form keeps them as one line each in a textarea: an array left in
+    // f.features crashed "Write the words again" (f.features.split is not a function).
+    const feats = (inp as Record<string, unknown>).features;
+    setF({ ...emptyForm(), ...(inp as Record<string, unknown>), features: Array.isArray(feats) ? feats.map(String).join("\n") : typeof feats === "string" ? feats : "" } as typeof f);
     setPhotos(Array.isArray(inp.photos) ? (inp.photos as string[]) : []);
     const scenes = Array.isArray(inp.scenes) ? (inp.scenes as Scene[]) : [];
     setPlan({ headline: String(inp.headline ?? ""), scenes: scenes.length ? scenes : [{ text: "", caption_text: "", visual: "", motion: "" }], cta: String(inp.cta ?? ""), caption: String(inp.caption ?? ""), features: Array.isArray(inp.features) ? (inp.features as string[]) : [], template: String(inp.template ?? "bold"), music: String(inp.music ?? "") });

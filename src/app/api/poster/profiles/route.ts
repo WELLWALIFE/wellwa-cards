@@ -8,6 +8,9 @@ const STYLES = new Set(["classic", "bold", "clean", "festive", "minimal", "tradi
 const HEX = /^#[0-9a-f]{6}$/i;
 const S = (v: unknown, n: number) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const URLOK = (v: unknown) => (typeof v === "string" && /^https?:\/\//.test(v) && v.length < 500 ? v : "");
+/** A picture the poster engine opens on the server: a web address, or a path of our own site — never one that climbs out
+ *  of the public folder ("/../.env.local") or another scheme. */
+const PIC = (v: unknown): string | null => (typeof v === "string" && v.length < 500 && !v.includes("..") && !v.includes("\\") && (/^https?:\/\//i.test(v) || /^\/(?!\/)/.test(v)) ? v : null);
 function cleanLayout(v: unknown) {
   const l = (v && typeof v === "object" ? v : {}) as Record<string, unknown>;
   const out: Record<string, unknown> = {};
@@ -58,8 +61,8 @@ export async function POST(request: Request) {
     phone: String(b.phone ?? "").trim().slice(0, 20),
     city: String(b.city ?? "").trim().slice(0, 40),
     lang: LANGS.has(b.lang) ? b.lang : "hi",
-    photo_url: typeof b.photo_url === "string" && b.photo_url.length < 500 ? b.photo_url : null,
-    logo_url: typeof b.logo_url === "string" && b.logo_url.length < 500 ? b.logo_url : null,
+    photo_url: PIC(b.photo_url),
+    logo_url: PIC(b.logo_url),
     kids_mode: persona === "student" ? true : !!b.kids_mode,
     mode: b.mode === "product" ? "product" : "greeting",
     is_default: !!b.is_default,

@@ -13,12 +13,19 @@ type Quote = { id: string; number: string; items: Item[]; subtotal_paise: number
 const rs = (p: number) => "₹" + (Math.round(p) / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 });
 const toPaise = (v: string) => Math.round((parseFloat(v.replace(/[^\d.]/g, "")) || 0) * 100);
 
-let productCache: Product[] | null = null;
+// Per workspace: a team member switching to another owner's CRM must not get the previous owner's products.
+const productCache = new Map<string, Product[]>();
 function useProducts() {
   const { as } = useShell();
-  const [ps, setPs] = useState<Product[]>(productCache ?? []);
-  useEffect(() => { if (productCache) return; api<{ products: Product[] }>(`/api/crm/products${as ? `?as=${as}` : ""}`).then((r) => { if (r.ok) { productCache = r.data.products; setPs(r.data.products); } }); }, [as]);
-  return ps;
+  const key = as ?? "";
+  const [got, setGot] = useState<{ key: string; ps: Product[] } | null>(null);
+  useEffect(() => {
+    if (productCache.has(key)) return;
+    let dead = false;
+    api<{ products: Product[] }>(`/api/crm/products${as ? `?as=${as}` : ""}`).then((r) => { if (r.ok) { productCache.set(key, r.data.products); if (!dead) setGot({ key, ps: r.data.products }); } }).catch(() => undefined);
+    return () => { dead = true; };
+  }, [as, key]);
+  return productCache.get(key) ?? (got?.key === key ? got.ps : []);
 }
 
 /* ---------------- line items editor (sale + quote) ---------------- */
@@ -145,6 +152,7 @@ export function SalesTab({ lead, onChanged }: { lead: LeadPro; onChanged: () => 
   const [quotes, setQuotes] = useState<Quote[]>([]);
   const [sheet, setSheet] = useState<"" | "sale" | "quote">("");
   const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
   const load = useCallback(async () => {
     const q = as ? `&as=${as}` : "";
     const [s, qs] = await Promise.all([api<{ sales: Sale[] }>(`/api/crm/sales?lead=${lead.id}${q}`), api<{ quotes: Quote[] }>(`/api/crm/quotes?lead=${lead.id}${q}`)]);
@@ -152,8 +160,16 @@ export function SalesTab({ lead, onChanged }: { lead: LeadPro; onChanged: () => 
   }, [lead.id, as]);
   useEffect(() => { load(); }, [load]);
   const changed = () => { load(); onChanged(); };
-  async function quoteStatus(id: string, status: string) { setBusy(id); await api("/api/crm/quotes", { method: "PATCH", json: { id, as: as ?? undefined, status } }); setBusy(""); changed(); }
-  async function markPaid(s: Sale) { setBusy(s.id); await api("/api/crm/sales", { method: "PATCH", json: { id: s.id, as: as ?? undefined, paid_paise: s.amount_paise } }); setBusy(""); changed(); }
+  async function quoteStatus(id: string, status: string) {
+    if (busy) return; setBusy(id); setErr("");
+    const r = await api<{ error?: string }>("/api/crm/quotes", { method: "PATCH", json: { id, as: as ?? undefined, status } }).catch(() => null);
+    setBusy(""); if (!r?.ok) setErr(r?.data.error || L.failed); changed();
+  }
+  async function markPaid(s: Sale) {
+    if (busy) return; setBusy(s.id); setErr("");
+    const r = await api<{ error?: string }>("/api/crm/sales", { method: "PATCH", json: { id: s.id, as: as ?? undefined, paid_paise: s.amount_paise } }).catch(() => null);
+    setBusy(""); if (!r?.ok) setErr(r?.data.error || L.failed); changed();
+  }
   const revenue = (sales ?? []).filter((s) => s.status !== "refunded").reduce((n, s) => n + s.amount_paise, 0);
   const due = (sales ?? []).filter((s) => s.status !== "refunded").reduce((n, s) => n + (s.amount_paise - s.paid_paise), 0);
   return (
@@ -162,6 +178,7 @@ export function SalesTab({ lead, onChanged }: { lead: LeadPro; onChanged: () => 
         <button type="button" onClick={() => setSheet("sale")} className="grad-brand inline-flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-semibold text-white"><IndianRupee className="h-4 w-4" /> {hi ? "नई बिक्री" : "New sale"}</button>
         <button type="button" onClick={() => setSheet("quote")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface py-2.5 text-xs font-semibold text-ink"><FileText className="h-4 w-4 text-brand" /> {hi ? "कोटेशन" : "Quotation"}</button>
       </div>
+      {err && <p role="alert" className="text-xs text-danger">{err}</p>}
       {sales === null ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : (
         <>
           {(revenue > 0 || due > 0) && <div className="grid grid-cols-2 gap-2"><div className="rounded-xl border border-border p-2"><div className="text-[10px] uppercase text-muted">{hi ? "कुल बिक्री" : "Total sales"}</div><div className="text-lg font-bold text-ink">{rs(revenue)}</div></div><div className="rounded-xl border border-border p-2"><div className="text-[10px] uppercase text-muted">{hi ? "बाकी पैसा" : "Due"}</div><div className={`text-lg font-bold ${due ? "text-danger" : "text-ink"}`}>{rs(due)}</div></div></div>}

@@ -11,7 +11,7 @@ export async function POST(request: Request) {
   const ct = request.headers.get("content-type") ?? "";
   if (ct.includes("json")) b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   else { const f = await request.formData().catch(() => null); if (f) for (const [k, v] of f.entries()) b[k] = typeof v === "string" ? v : ""; }
-  const ok = await applyCallStatus(b);
+  const ok = await applyCallStatus(b, u.searchParams.get("call"));
   return NextResponse.json({ ok });
 }
 export async function GET() { return NextResponse.json({ ok: true }); }

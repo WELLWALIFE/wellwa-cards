@@ -37,7 +37,8 @@ export async function POST(request: Request) {
 
   // 1. HMAC-SHA256(order|payment, secret) must equal the signature Razorpay handed the client.
   const expected = crypto.createHmac("sha256", secret).update(`${orderId}|${paymentId}`).digest("hex");
-  if (expected.length !== signature.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(signature))) {
+  const want = Buffer.from(expected), got = Buffer.from(signature);
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
     return NextResponse.json({ ok: false, error: "Invalid signature." }, { status: 400 });
   }
 

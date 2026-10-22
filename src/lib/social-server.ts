@@ -85,7 +85,9 @@ export async function graphStep<T = G>(step: string, path: string, params: Recor
 export async function graph<T = G>(path: string, params: Record<string, string>, method: "GET" | "POST" = "GET"): Promise<T> {
   const q = new URLSearchParams(params);
   const url = method === "GET" ? `${GRAPH}/${path}?${q}` : `${GRAPH}/${path}`;
-  const r = await fetch(url, method === "GET" ? { cache: "no-store" } : { method: "POST", body: q, cache: "no-store" });
+  // A stalled Meta call must not hold an ad create / status change open until the route's maxDuration.
+  const signal = AbortSignal.timeout(90_000);
+  const r = await fetch(url, method === "GET" ? { cache: "no-store", signal } : { method: "POST", body: q, cache: "no-store", signal });
   const j = (await r.json().catch(() => ({}))) as G & { error?: { message?: string; code?: number; error_subcode?: number; type?: string; error_user_title?: string; error_user_msg?: string } };
   if (!r.ok || j.error) {
     const e = j.error ?? {};

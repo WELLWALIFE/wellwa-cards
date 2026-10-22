@@ -22,7 +22,8 @@ export const directoryCards = cache(async (): Promise<DirCard[]> => {
     const out: DirCard[] = [];
     for (const r of (data ?? []) as Row[]) {
       const city = String(r.seo?.city ?? "").trim();
-      if (!city || !r.username) continue;
+      // A city written only in a script the slug does not keep (Tamil, Bengali…) or only in punctuation has no address: /in/ would be its link.
+      if (!city || !r.username || !slugOf(city)) continue;
       const key = String(r.seo?.categoryKey ?? "");
       const cat = key ? categoryOf(key) : null;
       const category = String(r.seo?.category ?? cat?.en ?? "Business").trim();

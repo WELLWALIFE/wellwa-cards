@@ -17,8 +17,12 @@ function userHeaders(request: Request): Record<string, string> | null {
   if (!auth.toLowerCase().startsWith("bearer ")) return null;
   return { apikey: ANON, Authorization: auth, "Content-Type": "application/json" };
 }
-const rows = (h: Record<string, string>, hosts: string[]) =>
-  fetch(`${SUPA}/rest/v1/card_domains?domain=in.(${hosts.map(encodeURIComponent).join(",")})&select=domain,verified,last_error`, { headers: h, cache: "no-store" })
+const whoAmI = (h: Record<string, string>) =>
+  fetch(`${SUPA}/auth/v1/user`, { headers: h, cache: "no-store" }).then((r) => (r.ok ? r.json() : null)).catch(() => null) as Promise<{ id?: string } | null>;
+// Only the caller's OWN rows: the "public resolves verified domains" policy lets any signed-in user read every verified row, so without
+// the owner filter anyone could re-run the DNS check and the certificate script for somebody else's domain.
+const rows = (h: Record<string, string>, hosts: string[], ownerId: string) =>
+  fetch(`${SUPA}/rest/v1/card_domains?domain=in.(${hosts.map(encodeURIComponent).join(",")})&owner_id=eq.${encodeURIComponent(ownerId)}&select=domain,verified,last_error`, { headers: h, cache: "no-store" })
     .then((r) => (r.ok ? r.json() : [])).catch(() => []) as Promise<{ domain: string; verified: boolean; last_error: string | null }[]>;
 
 export async function POST(request: Request) {
@@ -28,10 +32,17 @@ export async function POST(request: Request) {
   const domain = cleanDomain(body.domain);
   const bad = validDomain(domain, SITE_HOST);
   if (bad) return NextResponse.json({ error: bad }, { status: 400 });
-  if (!body.cardId || !body.username) return NextResponse.json({ error: "Publish the card first, then add a domain." }, { status: 400 });
+  const cardId = typeof body.cardId === "string" && /^[0-9a-f-]{36}$/i.test(body.cardId) ? body.cardId : "";
+  if (!cardId || !body.username) return NextResponse.json({ error: "Publish the card first, then add a domain." }, { status: 400 });
 
-  const who = await fetch(`${SUPA}/auth/v1/user`, { headers: h }).then((r) => r.json()).catch(() => null);
+  const who = await whoAmI(h);
   if (!who?.id) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
+  // The card must be the caller's own, and the username served on the domain is that card's, never the one sent
+  // (RLS only checks owner_id, so a sent username could point a domain at anybody's card).
+  const card = await fetch(`${SUPA}/rest/v1/cards?id=eq.${cardId}&owner_id=eq.${who.id}&select=username`, { headers: h, cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : [])).catch(() => []) as { username?: string }[];
+  const username = card[0]?.username;
+  if (!username) return NextResponse.json({ error: "Publish the card first, then add a domain." }, { status: 400 });
   // Your own domain is part of the paid plan (the Shubhora link is free).
   const plan = await fetch(`${SUPA}/rest/v1/rpc/my_plan`, { method: "POST", headers: h, body: "{}" }).then((r) => r.json()).catch(() => null);
   const row = Array.isArray(plan) ? plan[0] : plan;
@@ -40,13 +51,13 @@ export async function POST(request: Request) {
   const hosts = hostsFor(domain);
   for (const host of hosts) {
     if (await servedElsewhere(host)) return NextResponse.json({ error: `${host} is already a website hosted with us, so it cannot be connected to a card.` }, { status: 409 });
-    const avail = await fetch(`${SUPA}/rest/v1/rpc/domain_available`, { method: "POST", headers: h, body: JSON.stringify({ p_domain: host, p_card_id: body.cardId }) })
+    const avail = await fetch(`${SUPA}/rest/v1/rpc/domain_available`, { method: "POST", headers: h, body: JSON.stringify({ p_domain: host, p_card_id: cardId }) })
       .then((r) => r.json()).catch(() => null);
     if (avail === false) return NextResponse.json({ error: `${host} is already connected to another card.` }, { status: 409 });
   }
   const res = await fetch(`${SUPA}/rest/v1/card_domains?on_conflict=domain`, {
     method: "POST", headers: { ...h, Prefer: "resolution=merge-duplicates,return=minimal" },
-    body: JSON.stringify(hosts.map((host) => ({ domain: host, card_id: body.cardId, owner_id: who.id, username: body.username, verified: false, last_error: null }))),
+    body: JSON.stringify(hosts.map((host) => ({ domain: host, card_id: cardId, owner_id: who.id, username, verified: false, last_error: null }))),
   });
   if (!res.ok) {
     const text = await res.text();
@@ -61,8 +72,10 @@ export async function GET(request: Request) {
   if (!h) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const domain = cleanDomain(new URL(request.url).searchParams.get("domain"));
   if (validDomain(domain, SITE_HOST)) return NextResponse.json({ error: "Invalid domain." }, { status: 400 });
+  const who = await whoAmI(h);
+  if (!who?.id) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const hosts = hostsFor(domain);
-  const [status, mine] = await Promise.all([dnsStatus(hosts[0]), rows(h, hosts)]);
+  const [status, mine] = await Promise.all([dnsStatus(hosts[0]), rows(h, hosts, who.id)]);
   if (!mine.length) return NextResponse.json({ error: "This domain is not connected to your card." }, { status: 404 });
   return NextResponse.json({ domain: hosts[0], ...status, live: mine.filter((r) => r.verified).map((r) => r.domain), lastError: mine.find((r) => r.last_error)?.last_error ?? null });
 }
@@ -74,8 +87,10 @@ export async function PUT(request: Request) {
   const body = await request.json().catch(() => ({}));
   const domain = cleanDomain(body.domain);
   if (validDomain(domain, SITE_HOST)) return NextResponse.json({ error: "Invalid domain." }, { status: 400 });
+  const who = await whoAmI(h);
+  if (!who?.id) return NextResponse.json({ error: "Please log in first." }, { status: 401 });
   const hosts = hostsFor(domain);
-  const mine = await rows(h, hosts);
+  const mine = await rows(h, hosts, who.id);
   if (!mine.length) return NextResponse.json({ error: "This domain is not connected to your card." }, { status: 404 });
 
   const status = await dnsStatus(hosts[0]);

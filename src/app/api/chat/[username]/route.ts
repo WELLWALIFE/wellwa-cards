@@ -96,7 +96,9 @@ export async function POST(
     return Response.json({ error: "request too large" }, { status: 413 });
   }
   const { username } = await params;
-  const { messages, page } = (await request.json()) as { messages: Msg[]; page?: string };
+  const parsed = (await request.json().catch(() => null)) as { messages?: Msg[]; page?: string } | null;
+  if (!parsed || typeof parsed !== "object") return Response.json({ error: "bad request" }, { status: 400 });
+  const { messages, page } = parsed;
 
   const card = (await fetchCloudCard(username)) ?? getCardByUsername(username);
   if (!card) return Response.json({ reply: "Sorry, this card was not found." }, { status: 404 });

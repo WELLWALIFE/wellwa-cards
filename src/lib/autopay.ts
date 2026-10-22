@@ -7,7 +7,7 @@ import "server-only";
 import Razorpay from "razorpay";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 import { SAAS_PLANS, PREMIUM_EXTRA_PAISE, type SaasTier } from "@/lib/billing";
-import { grantAdvanced } from "@/lib/advanced-access";
+import { grantAdvanced, readAdvancedMeta } from "@/lib/advanced-access";
 import { notify } from "@/lib/notify";
 import { reportPaidToPartner } from "@/lib/partner-link";
 
@@ -98,8 +98,9 @@ export async function applyAutopayCharge(ownerId: string, p: { paymentId: string
   });
   if (!r.ok) throw new Error(`apply_saas_payment: ${r.status} ${await r.text().catch(() => "")}`);
   const data = (await r.json()) as { replayed?: boolean; expires?: string };
-  // The first Premium debit also opens the Premium website (idempotent: the same payment id never resets the tries).
-  if (premiumFirst) await grantAdvanced(ownerId, p.paymentId).catch(() => false);
+  // The first Premium debit also opens the Premium website. The verify route and the webhook both bring the same payment:
+  // only the first grants, so a later copy never resets the tries already spent (a failed lookup still grants).
+  if (premiumFirst && (await readAdvancedMeta(ownerId))?.paymentId !== p.paymentId) await grantAdvanced(ownerId, p.paymentId).catch(() => false);
   if (data.replayed) return { applied: false, reason: "already applied" as const, expires: data.expires ?? null };
   // Every month's debit is Growth business for the partner panel — the first as a new sale, later ones as renewals
   // (the panel tells them apart). Logged, never shown as a failed payment.

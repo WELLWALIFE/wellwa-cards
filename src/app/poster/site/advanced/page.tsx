@@ -317,8 +317,8 @@ export default function AdvancedSitePage() {
         new RZs({
           key: sub.data.keyId, subscription_id: sub.data.subscriptionId, prefill: payPrefill(), name: "Shubhora", description: "Premium — ₹5,999 first month, then ₹2,999 a month", theme: { color: "#0e9e90" },
           handler: async (r: Record<string, string>) => {
-            const v = await api<{ ok?: boolean }>("/api/billing/autopay/verify", { method: "POST", json: r });
-            if (v.ok && v.data.ok) { await refreshAccess(); setPayBusy(false); } else fail(T("We could not confirm your payment. If money was taken, please tell support.", "Payment confirm नहीं हो पाया। पैसे कटे हों तो support को बताएँ।"));
+            const v = await api<{ ok?: boolean }>("/api/billing/autopay/verify", { method: "POST", json: r }).catch(() => null);
+            if (v?.ok && v.data.ok) { await refreshAccess(); setPayBusy(false); } else fail(T("We could not confirm your payment. If money was taken, please tell support.", "Payment confirm नहीं हो पाया। पैसे कटे हों तो support को बताएँ।"));
           },
           modal: { ondismiss: () => setPayBusy(false) },
         }).open();

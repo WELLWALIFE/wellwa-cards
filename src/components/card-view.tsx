@@ -97,7 +97,8 @@ export function useCardLang(username: string) {
       .finally(() => { if (!cancelled) setTranslating(false); });
     return () => { cancelled = true; };
   }, [lang, username]);
-  const t = (s: string) => (s ? dict[s.trim()] ?? s : s);
+  // Own keys only: a card line that reads "constructor" or "toString" must not pick up Object.prototype's function.
+  const t = (s: string) => { if (typeof s !== "string" || !s) return s; const k = s.trim(); return Object.prototype.hasOwnProperty.call(dict, k) && typeof dict[k] === "string" ? dict[k] : s; };
   return { lang, setLang, translating, t };
 }
 

@@ -69,8 +69,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   // The city directory: /in, each city, each trade in it.
   const dir: MetadataRoute.Sitemap = [{ url: `${SITE}/in`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 }];
   for (const c of await cities().catch(() => [])) {
-    dir.push({ url: `${SITE}/in/${c.slug}`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 });
-    for (const k of c.categories) dir.push({ url: `${SITE}/in/${c.slug}/${k.slug}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.6 });
+    // A Hindi city or trade name keeps its Devanagari in the slug: a sitemap <loc> must be a percent-encoded URL.
+    dir.push({ url: `${SITE}/in/${encodeURIComponent(c.slug)}`, lastModified: new Date(), changeFrequency: "daily" as const, priority: 0.7 });
+    for (const k of c.categories) dir.push({ url: `${SITE}/in/${encodeURIComponent(c.slug)}/${encodeURIComponent(k.slug)}`, lastModified: new Date(), changeFrequency: "weekly" as const, priority: 0.6 });
   }
   return [...staticPages, ...dir, ...rows.flatMap((r) => cardUrls(`${SITE}/c/${r.username}`, r))];
 }

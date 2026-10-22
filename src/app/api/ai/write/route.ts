@@ -98,7 +98,7 @@ export async function POST(request: Request) {
   if (Number(request.headers.get("content-length") ?? 0) > 25_000) {
     return Response.json({ error: "request too large" }, { status: 413 });
   }
-  const body = (await request.json()) as Body;
+  const body = ((await request.json().catch(() => null)) ?? {}) as Body;
   body.input = String(body.input ?? "").slice(0, 6000);
   body.role = String(body.role ?? "").slice(0, 200);
   body.company = String(body.company ?? "").slice(0, 200);

@@ -27,10 +27,23 @@ export async function POST(request: Request) {
     if (!r.ok) await restAsService(`profiles?id=eq.${me.id}&plan_source=eq.trial`, { method: "PATCH", body: JSON.stringify({ ...free, plan_source: "paid" }) });
   }
 
+  // Two calls at once (sign-up page and the sign-in landing) must not both welcome: one at a time per account.
+  if (busy.has(me.id)) return NextResponse.json({ ok: true, granted: 0 });
+  busy.add(me.id);
+  try { return await welcome(me); } finally { busy.delete(me.id); }
+}
+
+const busy = new Set<string>();
+async function welcome(me: { id: string; token: string }) {
   const already = (await restAsService<{ id: string }[]>(`credit_ledger?user_id=eq.${me.id}&reason=eq.welcome&select=id&limit=1`)).data;
   if (already?.length) return NextResponse.json({ ok: true, granted: 0 });
   // WELCOME_CREDITS may be 0 (free = the card only); the ledger row still marks the welcome as done, so mails go once.
-  const g = await restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WELCOME_CREDITS, p_reason: "welcome", p_ref: `welcome:${me.id}` }) });
+  // grant_credits refuses an amount of 0 ("Invalid amount"), so then the marker row is written straight into the ledger;
+  // without it every sign-in in the first three days sent the welcome mail again and reopened the new-account setup.
+  const ref = `welcome:${me.id}`;
+  const g = WELCOME_CREDITS > 0
+    ? await restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: WELCOME_CREDITS, p_reason: "welcome", p_ref: ref }) })
+    : await restAsService("credit_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ user_id: me.id, delta: 0, reason: "welcome", ref }) });
 
   // Welcome email to the owner (real inboxes only) and a new-registration alert to the company. Never blocks sign-up.
   const who = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "", Authorization: `Bearer ${me.token}` }, cache: "no-store" })

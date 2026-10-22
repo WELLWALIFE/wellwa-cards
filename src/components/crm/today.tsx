@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Phone, MessageCircle, Check, LoaderCircle, PhoneCall, ChevronDown } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, waLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task } from "@/components/crm/shared";
+import { useShell, waLink, telLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task } from "@/components/crm/shared";
 import type { CallListItem } from "@/components/crm/call";
 
 type Item = { lead: LeadPro; task?: Task; booking?: { id: string; service: string; starts_at: string }; why: string };
@@ -16,8 +16,8 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const [err, setErr] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   const load = useCallback(async () => {
-    const r = await api<Today & { error?: string }>(`/api/crm/today?x=1${as ? `&as=${as}` : ""}`);
-    if (!r.ok) { setErr(r.data.error || L.failed); setD((x) => x ?? { overdue: [], due: [], unread: [], fresh: [], bookings: [], callbacks: [], cold: [], counts: { due: 0, unread: 0, fresh: 0, hot: 0, calledToday: 0, target: 0 } }); return; }
+    const r = await api<Today & { error?: string }>(`/api/crm/today?x=1${as ? `&as=${as}` : ""}`).catch(() => null);
+    if (!r?.ok) { setErr(r?.data.error || L.failed); setD((x) => x ?? { overdue: [], due: [], unread: [], fresh: [], bookings: [], callbacks: [], cold: [], counts: { due: 0, unread: 0, fresh: 0, hot: 0, calledToday: 0, target: 0 } }); return; }
     setErr(""); setD(r.data);
   }, [as, L.failed]);
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load, version]);
@@ -28,7 +28,7 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const sec = (k: string, title: string, items: Item[], tone?: string, render?: (x: Item) => string) => items.length === 0 ? null : (
     <section key={k} className="overflow-hidden rounded-2xl border border-border bg-surface">
       <button type="button" onClick={() => setOpen((o) => ({ ...o, [k]: !(o[k] ?? true) }))} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide ${tone ?? "text-muted"}`}>{title}<span className="rounded-full bg-surface2 px-1.5 text-[10px] text-ink">{items.length}</span><ChevronDown className={`ml-auto h-4 w-4 transition ${(open[k] ?? true) ? "" : "-rotate-90"}`} /></button>
-      {(open[k] ?? true) && <ul className="divide-y divide-border">{items.map((x) => <Row key={`${k}-${x.lead.id}-${x.task?.id ?? x.booking?.id ?? ""}`} x={x} sub={render ? render(x) : x.why} onOpen={() => x.lead.id.startsWith("b-") ? null : openCustomer(x.lead.id)} onCall={() => startCall(x.lead, load)} onDone={x.task ? async () => { await api("/api/crm/tasks", { method: "PATCH", json: { id: x.task!.id, as: as ?? undefined, done: true } }); load(); } : undefined} />)}</ul>}
+      {(open[k] ?? true) && <ul className="divide-y divide-border">{items.map((x) => <Row key={`${k}-${x.lead.id}-${x.task?.id ?? x.booking?.id ?? ""}`} x={x} sub={render ? render(x) : x.why} onOpen={() => x.lead.id.startsWith("b-") ? null : openCustomer(x.lead.id)} onCall={() => { if (x.lead.id.startsWith("b-")) window.location.href = telLink(x.lead.phone); else startCall(x.lead, load); }} onDone={x.task ? async () => { await api("/api/crm/tasks", { method: "PATCH", json: { id: x.task!.id, as: as ?? undefined, done: true } }); load(); } : undefined} />)}</ul>}
     </section>
   );
   return (
@@ -72,7 +72,7 @@ function Row({ x, sub, onOpen, onCall, onDone }: { x: Item; sub: string; onOpen:
       </button>
       {l.phone && <button type="button" onClick={onCall} className="rounded-lg bg-brand-soft p-2 text-brand-ink" aria-label={L.call}><Phone className="h-4 w-4" /></button>}
       {l.phone && <a href={waLink(l.phone)} target="_blank" rel="noreferrer" className="rounded-lg bg-good/10 p-2 text-good" aria-label={L.whatsapp}><MessageCircle className="h-4 w-4" /></a>}
-      {onDone && <button type="button" disabled={busy} onClick={async () => { setBusy(true); await onDone(); setBusy(false); }} className="rounded-lg border border-border p-2 text-muted" aria-label={L.done}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</button>}
+      {onDone && <button type="button" disabled={busy} onClick={async () => { setBusy(true); try { await onDone(); } finally { setBusy(false); } }} className="rounded-lg border border-border p-2 text-muted" aria-label={L.done}>{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}</button>}
     </li>
   );
 }

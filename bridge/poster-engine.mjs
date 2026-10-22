@@ -23,6 +23,7 @@ import { isShubhoraProduct, shubhoraProductArt } from "./shubhora-product-art.mj
 import { uspsFor as sigUspsFor, SCRIPT_PAIR as SIG_SCRIPT, CTA as SIG_CTA, TAG as SIG_TAG, LINES as SIG_LINES, BANNER_FALLBACK as SIG_BANNER, groupOf as sigGroupOf, defaultLook as sigDefaultLook, accentOf as sigAccentOf, labelOf as sigLabelOf, paletteOf as sigPaletteOf } from "./signature-presets.mjs";
 export { rosterKind };
 import sharp from "sharp";
+import { guardedFetch, originOf } from "./url-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const APP = path.join(__dirname, "..");
@@ -46,6 +47,8 @@ function loadEnv() {
 }
 const env = loadEnv();
 const KEY = env.GEMINI_API_KEY || "";
+/** Our own Supabase project and site: fetched even when they are local (development). */
+const OWN_ORIGINS = [originOf(env.NEXT_PUBLIC_SUPABASE_URL), originOf(env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com")].filter(Boolean);
 const WM_HOST = (env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/^https?:\/\//, "").replace(/\/$/, "");   // poster watermark
 
 /* ---------------- calendar ---------------- */
@@ -308,12 +311,18 @@ function fitLines(text, width, hi, lo, two) {
 async function fetchImage(url) {
   if (!url) return null;
   try {
-    if (/^https?:/i.test(url)) { const r = await fetch(url); if (!r.ok) return null; return Buffer.from(await r.arrayBuffer()); }
-    if (url.startsWith("data:")) return Buffer.from(url.split(",")[1], "base64");
+    url = String(url);
+    // Any public web picture is allowed (owners paste logo/party-symbol links); private, loopback and link-local
+    // hosts are not, except our own Supabase project and site.
+    if (/^https?:/i.test(url)) return await guardedFetch(url, { allowed: OWN_ORIGINS, allowPublic: true, timeoutMs: 30_000, maxBytes: 20 * 1024 * 1024 });
+    if (url.startsWith("data:")) return Buffer.from(url.split(",")[1] || "", "base64");
+    if (url.startsWith("//")) return null;
     // /api/stock/<vcard|banners|demo>/x → the folders that route reads (public/art/vcard, public/art/banners, public/demo)
     const stock = url.match(/^\/api\/stock\/(vcard|banners|demo)\/([\w.-]+)$/);
-    const local = stock ? path.join(APP, "public", stock[1] === "demo" ? "demo" : path.join("art", stock[1]), stock[2]) : path.join(APP, "public", url.replace(/^\//, ""));
-    return fs.existsSync(local) ? fs.readFileSync(local) : null;
+    const pub = path.join(APP, "public");
+    const local = stock ? path.join(pub, stock[1] === "demo" ? "demo" : path.join("art", stock[1]), stock[2]) : path.join(pub, url.split(/[?#]/)[0].replace(/^\//, ""));
+    if (!local.startsWith(pub + path.sep)) return null;   // "/../.env.local" must not climb out of public/
+    return fs.existsSync(local) && fs.statSync(local).isFile() ? fs.readFileSync(local) : null;
   } catch { return null; }
 }
 

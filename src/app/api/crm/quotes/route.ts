@@ -36,5 +36,6 @@ export async function PATCH(request: Request) {
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope || !isUuid(b.id) || !["sent", "accepted", "rejected", "expired"].includes(b.status)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
   const r = await patchQuote(scope, b.id, b.status);
+  if (r?.sale && typeof r.sale === "object" && "error" in r.sale) return NextResponse.json({ error: String((r.sale as { error: unknown }).error) }, { status: 400 });
   return r ? NextResponse.json(r) : NextResponse.json({ error: "Quotation not found." }, { status: 404 });
 }

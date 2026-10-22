@@ -2,7 +2,7 @@
 import { restAsService } from "@/lib/poster-server";
 import { STAGES, addEvent, type Scope } from "@/lib/crm-server";
 import { sendCustomer } from "@/lib/customer-send";
-import { CALL_COLS, isUuid, scopeFilter, type CallRow } from "@/lib/crm-pro";
+import { CALL_COLS, isUuid, isTeamMember, scopeFilter, type CallRow } from "@/lib/crm-pro";
 
 const list = <T,>(r: { data: T[] | null }): T[] => (Array.isArray(r.data) ? r.data : []);
 const enc = encodeURIComponent;
@@ -43,9 +43,12 @@ export async function callerMobile(scope: Scope): Promise<string> {
 }
 
 /** Exotel's status callback → the call row (by Sid). Fields differ a little between accounts; read generously. */
-export async function applyCallStatus(b: Record<string, unknown>): Promise<boolean> {
+export async function applyCallStatus(b: Record<string, unknown>, callId?: string | null): Promise<boolean> {
   const sid = String(b.CallSid ?? b.Sid ?? b.sid ?? "");
   if (!sid) return false;
+  // /api/crm/call saves provider_sid only after Exotel answers the Connect request; a callback that wins that race finds
+  // the row by the id carried in the callback URL instead (and only while it has no Sid yet).
+  if (isUuid(callId)) await restAsService(`crm_calls?id=eq.${callId}&provider_sid=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ provider_sid: sid }) });
   const status = String(b.Status ?? b.CallStatus ?? "").toLowerCase();
   const seconds = Number(b.ConversationDuration ?? b.Duration ?? b.Legs?.toString?.() ?? 0) || 0;
   const rec = typeof b.RecordingUrl === "string" ? b.RecordingUrl : null;
@@ -127,26 +130,32 @@ export async function bulk(scope: Scope, ids: string[], action: BulkAction, valu
   const rows = list(await restAsService<{ id: string; phone: string; name: string; tags: string[]; status: string; opted_out: boolean }[]>(`leads?${scopeFilter(scope)}&id=in.(${clean.join(",")})&select=id,phone,name,tags,status,opted_out&limit=200`));
   let done = 0, failed = 0, skipped = clean.length - rows.length;
   const stamp = new Date().toISOString();
+  // Leads go only to someone in this team (the owner or a joined, active agent) — never to an arbitrary user id.
+  if (action === "assign" && value && !(await isTeamMember(scope.ownerId, value))) return { done: 0, failed: 0, skipped: clean.length };
+  const patchLead = async (id: string, body: Record<string, unknown>) => {
+    const r = await restAsService(`leads?id=eq.${id}&owner_id=eq.${scope.ownerId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(body) });
+    if (!r.ok) throw new Error(r.text.slice(0, 200));
+  };
   for (const l of rows) {
     try {
       if (action === "assign") {
         if (scope.role === "agent") { skipped += 1; continue; }
-        await restAsService(`leads?id=eq.${l.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ assigned_to: value || null, updated_at: stamp }) });
-        await addEvent(scope.token, scope.ownerId, l.id, "assign", value ? "Assigned (bulk)" : "Unassigned (bulk)");
+        await patchLead(l.id, { assigned_to: value || null, updated_at: stamp });
+        await addEvent(scope.token, scope.ownerId, l.id, "assign", value ? "Assigned (bulk)" : "Unassigned (bulk)").catch(() => null);
       } else if (action === "stage") {
         if (!value || !(STAGES as readonly string[]).includes(value) || value === l.status) { skipped += 1; continue; }
-        await restAsService(`leads?id=eq.${l.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: value, updated_at: stamp }) });
-        await addEvent(scope.token, scope.ownerId, l.id, "status", `Stage → ${value.replace("_", " ")}`);
+        await patchLead(l.id, { status: value, updated_at: stamp });
+        await addEvent(scope.token, scope.ownerId, l.id, "status", `Stage → ${value.replace("_", " ")}`).catch(() => null);
       } else if (action === "tag" || action === "untag") {
         const t = String(value ?? "").trim().replace(/^#/, "").slice(0, 24); if (!t) { skipped += 1; continue; }
         const tags = action === "tag" ? [...new Set([...(l.tags ?? []), t])] : (l.tags ?? []).filter((x) => x !== t);
-        await restAsService(`leads?id=eq.${l.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ tags, updated_at: stamp }) });
+        await patchLead(l.id, { tags, updated_at: stamp });
       } else if (action === "send") {
         const text = String(value ?? "").trim(); if (!text || l.opted_out || !l.phone) { skipped += 1; continue; }
         const first = (l.name || "").split(/\s+/)[0] || "";
         const ok = await sendCustomer(scope.ownerId, l.phone, text.replace(/\{name\}/g, first).replace(/\s+ji\b/g, first ? " ji" : ""));
         if (!ok) { failed += 1; continue; }
-        await addEvent(scope.token, scope.ownerId, l.id, "sent", `📤 ${text.slice(0, 120)}`);
+        await addEvent(scope.token, scope.ownerId, l.id, "sent", `📤 ${text.slice(0, 120)}`).catch(() => null);
         await new Promise((r) => setTimeout(r, 1200));   // paced: one every ~1.2 s from the owner's own number
       }
       done += 1;

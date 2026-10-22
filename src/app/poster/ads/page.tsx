@@ -162,11 +162,13 @@ export default function AdsPage() {
     } catch { setUpErr(hi ? "Video नहीं चढ़ पाई। फिर से कोशिश करें।" : "Could not add the video. Please try again."); }
     finally { setBusy(""); }
   }
+  // A second tap before the first answer would make (and maybe start) a second campaign: one request at a time.
+  const creating = useRef(false);
   async function create(startNow: boolean) {
-    if (!creative) return;
+    if (!creative || creating.current) return;
     const total = daily * days;
     if (startNow && !confirm(hi ? `Ad अभी शुरू हो जाएगी। Facebook आपके ad account से रोज़ ${inr(daily)} तक लेगा, ${days} दिन में ज़्यादा से ज़्यादा ${inr(total)}। शुरू करें?` : `The ad will start now. Facebook will take up to ${inr(daily)} a day from your ad account, at most ${inr(total)} in ${days} days. Start?`)) return;
-    setBusy("create"); setCreateErr(""); setStErr(null);
+    creating.current = true; setBusy("create"); setCreateErr(""); setStErr(null);
     // the error lands right above the Save / Start buttons; the preview above them is long, so bring it into view
     const fail = (t: string) => { setCreateErr(t); window.setTimeout(() => createErrRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
     try {
@@ -178,7 +180,7 @@ export default function AdsPage() {
       setDone({ managerUrl: r.data.managerUrl ?? "", status: r.data.status ?? "PAUSED", id: r.data.row?.id });
       loadMine();
     } catch { fail(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
-    finally { setBusy(""); }
+    finally { creating.current = false; setBusy(""); }
   }
   // true when Facebook accepted the change; on a failure the reason shows right under THAT ad's Start / Pause button (stErr).
   async function setStatus(id: string, status: "ACTIVE" | "PAUSED"): Promise<boolean> {
@@ -283,6 +285,9 @@ export default function AdsPage() {
               const l = mine.live[c.campaign_id];
               const active = (l?.effective_status ?? c.status) === "ACTIVE";
               const eff = (l?.effective_status ?? c.status).replace(/^(ADSET|CAMPAIGN|AD)_PAUSED$/, "PAUSED");
+              // Start / Pause follows what the campaign is SET to, not what it is doing now: a started ad that is still
+              // "in review" (or waiting for its start time) will spend once Facebook lets it, so it must offer Pause.
+              const switchedOn = (l?.status ?? c.status) === "ACTIVE" && eff !== "PAUSED";
               const G = GOALS.find((g) => g.key === c.goal);
               return (
                 <section key={c.id} className="rounded-2xl border border-border p-3 space-y-2">
@@ -298,7 +303,7 @@ export default function AdsPage() {
                     {[[hi ? "खर्च" : "Spent", inr(l?.spend ?? 0)], [hi ? "लोगों तक" : "People reached", (l?.reach ?? 0).toLocaleString("en-IN")], [hi ? "बार दिखी" : "Times shown", (l?.impressions ?? 0).toLocaleString("en-IN")], [hi ? "Clicks" : "Clicks", (l?.clicks ?? 0).toLocaleString("en-IN")]].map(([k, v]) => <div key={k} className="rounded-lg bg-surface2 px-1 py-2"><p className="text-sm font-bold">{v}</p><p className="text-[10px] text-muted">{k}</p></div>)}
                   </div>
                   <div className="flex gap-2">
-                    {active
+                    {switchedOn
                       ? <button type="button" disabled={busy === `st-${c.id}`} onClick={() => setStatus(c.id, "PAUSED")} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold disabled:opacity-60"><Pause className="h-4 w-4" /> {hi ? "रोकें" : "Pause"}</button>
                       : <button type="button" disabled={busy === `st-${c.id}`} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr(c.daily_paise / 100)} तक लेगा।` : `Start this ad? Facebook will take up to ${inr(c.daily_paise / 100)} a day.`)) setStatus(c.id, "ACTIVE"); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Play className="h-4 w-4" /> {hi ? "शुरू करें" : "Start"}</button>}
                     <a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${c.ad_account.replace("act_", "")}&selected_campaign_ids=${c.campaign_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">Ads Manager <ExternalLink className="h-3.5 w-3.5" /></a>

@@ -23,12 +23,45 @@ const CHROME = process.env.CHROME_PATH || "/usr/bin/chromium-browser";
 const NAV_MS = 20_000;
 const SETTLE_MS = 1_200;
 
-/** One at a time. A second caller waits for the first rather than starting a second browser. */
+/** One at a time. A second caller waits for the first rather than starting a second browser.
+ *  A job that hangs (a page that never answers page.content / evaluate / pdf, a wedged Chromium) would hold the
+ *  queue for every later caller, so each job has a hard limit: past it the browser is killed, which makes the
+ *  stuck job's calls fail, and the queue moves on. */
+const JOB_MS = 75_000;
 let queue: Promise<unknown> = Promise.resolve();
+/** The job using the browser right now, 0 for none (the idle timer must not close it under that job). A job that ran
+ *  past its limit no longer counts: when it finally ends it must not clear the mark of the job after it. */
+let running = 0, jobSeq = 0;
 function oneAtATime<T>(job: () => Promise<T>): Promise<T> {
-  const run = queue.then(job, job);
+  const guarded = () => new Promise<T>((resolve, reject) => {
+    const id = ++jobSeq; running = id;
+    const timer = setTimeout(() => {
+      if (running === id) running = 0;
+      const b = shared; shared = null;
+      if (b) { try { b.process()?.kill("SIGKILL"); } catch { /* already gone */ } b.close().catch(() => undefined); }
+      reject(new Error("render: timed out"));
+    }, JOB_MS);
+    job().then(resolve, reject).finally(() => { clearTimeout(timer); if (running === id) running = 0; });
+  });
+  const run = queue.then(guarded, guarded);
   queue = run.then(() => undefined, () => undefined);
   return run;
+}
+
+/** The server's own network and the cloud metadata address are never opened by the browser: a public page that
+ *  redirects or fetches there (directly or from its scripts) would otherwise hand us what sits behind the firewall. */
+function privateHost(raw: string): boolean {
+  let h: string;
+  try { const u = new URL(raw); if (!/^https?:$/.test(u.protocol)) return false; h = u.hostname.toLowerCase().replace(/^\[|\]$/g, ""); } catch { return false; }
+  if (h === "localhost" || h.endsWith(".localhost") || h.endsWith(".local") || h.endsWith(".internal") || (!h.includes(".") && !h.includes(":"))) return true;
+  const v4 = /^(\d+)\.(\d+)\.(\d+)\.(\d+)$/.exec(h);
+  if (v4) {
+    const [a, b] = [Number(v4[1]), Number(v4[2])];
+    return a === 0 || a === 10 || a === 127 || (a === 169 && b === 254) || (a === 172 && b >= 16 && b <= 31) || (a === 192 && b === 168) || (a === 100 && b >= 64 && b <= 127);
+  }
+  // IPv6 literals only (a hostname such as "fdhotels.com" or "fcbarcelona.com" is a public site).
+  if (!h.includes(":")) return false;
+  return h === "::1" || h === "::" || /^(fc|fd|fe80:)/.test(h) || h.startsWith("::ffff:");
 }
 
 /** The browser is kept open for a short while after a page, so an import that reads ten pages of one
@@ -41,13 +74,18 @@ async function browserFor(args: string[]): Promise<Browser> {
   if (idle) { clearTimeout(idle); idle = undefined; }
   if (shared && shared.connected) return shared;
   const puppeteer = (await import("puppeteer-core")).default;
-  shared = await puppeteer.launch({ executablePath: CHROME, headless: true, args, timeout: NAV_MS });
-  shared.once("disconnected", () => { shared = null; });
-  return shared;
+  const b = await puppeteer.launch({ executablePath: CHROME, headless: true, args, timeout: NAV_MS });
+  // Only forget THIS browser: an old one closed by the idle timer (or the job limit) disconnects later, and must
+  // not drop the newer browser, which would then never be closed.
+  b.once("disconnected", () => { if (shared === b) shared = null; });
+  shared = b;
+  return b;
 }
 function releaseBrowser() {
   if (idle) clearTimeout(idle);
-  idle = setTimeout(() => { const b = shared; shared = null; b?.close().catch(() => undefined); }, IDLE_MS);
+  // A job that ran past its limit still calls this when it finally gives up; by then the next job may be using a
+  // new browser, so the timer leaves a browser that is in use alone (that job's own release arms it again).
+  idle = setTimeout(() => { if (running) return; const b = shared; shared = null; b?.close().catch(() => undefined); }, IDLE_MS);
 }
 const LIGHT_ARGS = [
   "--no-sandbox", "--disable-setuid-sandbox",
@@ -83,7 +121,7 @@ export async function renderedHtml(url: string): Promise<string | null> {
       await page.setRequestInterception(true);
       page.on("request", (r) => {
         const t = r.resourceType();
-        if (t === "image" || t === "media" || t === "font") r.abort().catch(() => undefined);
+        if (t === "image" || t === "media" || t === "font" || privateHost(r.url())) r.abort().catch(() => undefined);
         else r.continue().catch(() => undefined);
       });
       await page.goto(url, { waitUntil: "networkidle2", timeout: NAV_MS });
@@ -140,7 +178,7 @@ export async function readLayout(url: string): Promise<PageLayout | null> {
       // Stylesheets and images are needed here — the whole point is what the page looks like — but video
       // and audio never are.
       await page.setRequestInterception(true);
-      page.on("request", (r) => (r.resourceType() === "media" ? r.abort().catch(() => undefined) : r.continue().catch(() => undefined)));
+      page.on("request", (r) => (r.resourceType() === "media" || privateHost(r.url()) ? r.abort().catch(() => undefined) : r.continue().catch(() => undefined)));
       await page.goto(url, { waitUntil: "networkidle2", timeout: NAV_MS });
       await new Promise((r) => setTimeout(r, SETTLE_MS));
       return (await page.evaluate(measureLook)) as PageLayout;

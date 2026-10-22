@@ -17,18 +17,36 @@ import { lookOf } from "@/lib/looks";
 import { brandForHost } from "@/lib/brand";
 import { PLATFORM_HOSTS, SITE_URL } from "@/lib/site-url";
 import { seoDescription, seoJsonLd, seoKeywords, seoTitle } from "@/lib/seo";
-import type { Card, CardPage } from "@/lib/types";
+import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
 import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
+// The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
+const BLOCK_LISTS: Partial<Record<CardBlock["kind"], string>> = {
+  highlights: "items", services: "items", product: "items", testimonials: "items", faq: "items",
+  gallery: "images", image: "images", carousel: "images", hours: "rows", compare: "rows",
+};
+const withLists = (b: CardBlock): CardBlock => {
+  const key = BLOCK_LISTS[b.kind];
+  return key && !Array.isArray((b as unknown as Record<string, unknown>)[key]) ? ({ ...b, [key]: [] } as CardBlock) : b;
+};
+
 // With a real database connected, the cloud is the only source of truth — a
 // card that was deleted must 404, not silently fall back to built-in demo data.
 async function loadCard(username: string) {
   const cloud = await fetchCloudCard(username);
-  const card = cloud ?? (getPublicSupabase() ? null : getCardByUsername(username));
+  const raw = cloud ?? (getPublicSupabase() ? null : getCardByUsername(username));
+  // The stored JSON is read as it is: a row saved half-way (no pages, a page with no blocks, no links) must still open,
+  // not answer 500 on `card.pages.find` / `card.links.find` further down.
+  const card: Card | null = raw ? {
+    ...raw,
+    pages: (Array.isArray(raw.pages) ? raw.pages : []).filter((p) => p && typeof p.slug === "string").map((p) => ({ ...p, blocks: (Array.isArray(p.blocks) ? p.blocks : []).filter(Boolean).map(withLists) })),
+    links: Array.isArray(raw.links) ? raw.links : [],
+    ...Object.fromEntries((["name", "company", "jobTitle", "tagline", "about"] as const).map((k) => [k, typeof raw[k] === "string" ? raw[k] : ""])),
+  } : null;
   // The ADVANCED website is a whole website: it adds the About and Gallery pages the card has the material for but no page of
   // (src/lib/site-advanced.ts), so each has its own address, title and description like any other page.
   return card && activeAdvanced(card.site, card.username) ? withAdvancedPages(card) : card;

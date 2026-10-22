@@ -33,8 +33,8 @@ export async function POST(request: Request) {
     .update(`${razorpay_order_id}|${razorpay_payment_id}`)
     .digest("hex");
 
-  if (expected.length !== razorpay_signature.length ||
-      !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(razorpay_signature))) {
+  const want = Buffer.from(expected), got = Buffer.from(String(razorpay_signature));
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
     return Response.json({ ok: false, error: "invalid signature" }, { status: 400 });
   }
 
@@ -72,9 +72,11 @@ export async function POST(request: Request) {
     // Every account is a partner account: the payment turns their ID green (or renews it) and pays the team.
     // Reported after the plan is applied; a partner-side failure is logged, never shown as a failed payment.
     // A ₹1,499 V-Card renewal is NOT reported: BV comes only from Growth (owner's call, 27 Sep 2026).
-    if (tier && !card) await reportPaidToPartner(session.user.id, { totalPaise: amount, tier, ref: razorpay_payment_id }).catch(() => undefined);
+    // A payment already applied (the same verify sent twice, or a page reload) is not reported or announced again.
+    const replayed = (data as { replayed?: boolean } | null)?.replayed === true;
+    if (tier && !card && !replayed) await reportPaidToPartner(session.user.id, { totalPaise: amount, tier, ref: razorpay_payment_id }).catch(() => undefined);
     const until = card && data?.expires ? new Date(String(data.expires)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
-    await notify(session.user.id, "payment", card
+    if (!replayed) await notify(session.user.id, "payment", card
       ? { title: "V-Card renewed", body: `Thank you. Your V-Card is active${until ? ` till ${until}` : " for one more year"}.`, path: "/poster/plan", ref: razorpay_payment_id }
       : { title: "Payment received", body: "Thank you. Your Shubhora plan is active.", path: "/settings", ref: razorpay_payment_id }).catch(() => undefined);
     return Response.json({ ok: true, paymentId: razorpay_payment_id, plan: card ? "card" : tier ? `saas:${tier}` : plan, result: data });

@@ -26,8 +26,8 @@ export async function POST(request: Request) {
   }
   const expected = process.env.SUPER_ADMIN_PASSWORD ?? "";
   const supplied = typeof body.password === "string" ? body.password : "";
-  const ok = expected.length >= 12 && supplied.length === expected.length &&
-    crypto.timingSafeEqual(Buffer.from(supplied), Buffer.from(expected));
+  const got = Buffer.from(supplied), want = Buffer.from(expected);
+  const ok = expected.length >= 12 && got.length === want.length && crypto.timingSafeEqual(got, want);
   if (!ok) return Response.json({ ok: false }, { status: 401 });
   return Response.json({ ok: true, scope: "all" });
 }

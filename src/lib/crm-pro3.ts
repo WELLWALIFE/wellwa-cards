@@ -140,7 +140,7 @@ function quoteHtml(q: QuoteRow, lead: { name: string; phone: string; business: s
   .note{margin-top:18px;padding:10px;background:#fffbeb;border-radius:8px} .foot{margin-top:28px;font-size:10px;color:#9ca3af;text-align:center}
   </style></head><body>
   <div class="top"><div>${biz.logo ? `<img src="${esc(biz.logo)}" style="height:48px;margin-bottom:6px"/><br/>` : ""}<div class="biz">${esc(biz.name)}</div><div class="muted">${esc([biz.address, biz.phone, biz.email].filter(Boolean).join(" · "))}</div>${biz.gstin ? `<div class="muted">GSTIN: ${esc(biz.gstin)}</div>` : ""}</div>
-  <div style="text-align:right"><h1>${T("कोटेशन", "QUOTATION")}</h1><div><b>${esc(q.number)}</b></div><div class="muted">${T("तारीख", "Date")}: ${date}</div>${q.valid_till ? `<div class="muted">${T("मान्य", "Valid till")}: ${new Date(q.valid_till).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}</div>` : ""}</div></div>
+  <div style="text-align:right"><h1>${T("कोटेशन", "QUOTATION")}</h1><div><b>${esc(q.number)}</b></div><div class="muted">${T("तारीख", "Date")}: ${date}</div>${q.valid_till ? `<div class="muted">${T("मान्य", "Valid till")}: ${new Date(`${q.valid_till}T00:00:00+05:30`).toLocaleDateString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric" })}</div>` : ""}</div></div>
   <div class="box"><div><div class="muted">${T("ग्राहक", "To")}</div><b>${esc(lead.name || lead.phone)}</b>${lead.business ? `<br/>${esc(lead.business)}` : ""}<br/>${esc([lead.address, lead.city].filter(Boolean).join(", "))}<br/>${esc(lead.phone)}</div></div>
   <table><thead><tr><th>#</th><th>${T("सामान / सेवा", "Item")}</th><th class="r">${T("मात्रा", "Qty")}</th><th class="r">${T("दर", "Rate")}</th><th class="r">${T("छूट", "Disc.")}</th><th class="r">${T("रकम", "Amount")}</th></tr></thead><tbody>${rows}</tbody></table>
   <div class="tot"><div><span>${T("कुल", "Subtotal")}</span><span>${rupeesOf(q.subtotal_paise)}</span></div>${q.discount_paise ? `<div><span>${T("छूट", "Discount")}</span><span>− ${rupeesOf(q.discount_paise)}</span></div>` : ""}${q.gst_pct ? `<div><span>GST ${q.gst_pct}%</span><span>${rupeesOf(gst)}</span></div>` : ""}<div class="grand"><span>${T("कुल देय", "Total")}</span><span>${rupeesOf(q.total_paise)}</span></div></div>
@@ -158,7 +158,7 @@ export async function createQuote(scope: Scope, b: { lead_id: string; items: unk
   const num = await restAsService<string>("rpc/crm_next_quote_number", { method: "POST", body: JSON.stringify({ p_owner: scope.ownerId }) });
   const number = typeof num.data === "string" && num.data ? num.data : `Q-${Date.now().toString().slice(-6)}`;
   const validDays = Math.max(1, Math.min(365, Number(b.valid_days) || 15));
-  const valid = new Date(Date.now() + validDays * 86400000).toISOString().slice(0, 10);
+  const valid = new Date(Date.now() + 5.5 * 3600_000 + validDays * 86400000).toISOString().slice(0, 10);   // IST date
   const row = { owner_id: scope.ownerId, lead_id: lead.id, number, items, subtotal_paise: subtotal, discount_paise: discount, gst_pct: gstPct, total_paise: total, valid_till: valid, note: String(b.note ?? "").slice(0, 1000), status: "draft" };
   const r = await restAsService<QuoteRow[]>(`crm_quotes?select=${QUOTE_COLS}`, { method: "POST", body: JSON.stringify(row), headers: { Prefer: "return=representation" } });
   const q = Array.isArray(r.data) ? r.data[0] : null;
@@ -179,12 +179,19 @@ export async function createQuote(scope: Scope, b: { lead_id: string; items: unk
 export async function patchQuote(scope: Scope, id: string, status: QuoteRow["status"]): Promise<{ quote: QuoteRow; sale?: unknown } | null> {
   const q = list(await restAsService<QuoteRow[]>(`crm_quotes?id=eq.${id}&owner_id=eq.${scope.ownerId}&select=${QUOTE_COLS}&limit=1`))[0];
   if (!q) return null;
-  let sale_id = q.sale_id; let sale: unknown;
+  // An agent may only touch quotations of their own leads (same rule as every other read and write).
+  if (scope.role === "agent" && !(await leadIn(scope, q.lead_id))) return null;
+  let sale_id: string | undefined; let sale: unknown;
   if (status === "accepted" && !q.sale_id) {
-    const s = await createSale(scope, { lead_id: q.lead_id, items: q.items, paid_paise: 0, note: q.number, quote_id: q.id });
-    if ("id" in s) { sale_id = s.id; sale = s; }
+    // Claim the quote first so a double tap (or two people) cannot make two sales from one quotation.
+    const claim = await restAsService<{ id: string }[]>(`crm_quotes?id=eq.${id}&sale_id=is.null&status=neq.accepted&select=id`, { method: "PATCH", body: JSON.stringify({ status: "accepted" }), headers: { Prefer: "return=representation" } });
+    if (Array.isArray(claim.data) && claim.data.length) {
+      const s = await createSale(scope, { lead_id: q.lead_id, items: q.items, paid_paise: 0, note: q.number, quote_id: q.id });
+      if ("id" in s) { sale_id = s.id; sale = s; }
+      else { await restAsService(`crm_quotes?id=eq.${id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: q.status }) }); return { quote: q, sale: s }; }
+    }
   }
-  const r = await restAsService<QuoteRow[]>(`crm_quotes?id=eq.${id}&select=${QUOTE_COLS}`, { method: "PATCH", body: JSON.stringify({ status, sale_id }), headers: { Prefer: "return=representation" } });
+  const r = await restAsService<QuoteRow[]>(`crm_quotes?id=eq.${id}&select=${QUOTE_COLS}`, { method: "PATCH", body: JSON.stringify(sale_id ? { status, sale_id } : { status }), headers: { Prefer: "return=representation" } });
   const quote = Array.isArray(r.data) ? r.data[0] : q;
   if (status !== q.status) await addEvent(scope.token, scope.ownerId, q.lead_id, "quote", `📄 ${q.number} → ${status}`).catch(() => null);
   return { quote, sale };

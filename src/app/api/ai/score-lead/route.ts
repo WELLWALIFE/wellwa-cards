@@ -23,7 +23,7 @@ export async function POST(request: Request) {
   if (rateLimited(clientKey(request, `lead-score:${session.user.id}`), 30, 60 * 60_000)) {
     return Response.json({ error: "AI hourly limit reached." }, { status: 429 });
   }
-  const body = (await request.json()) as Body;
+  const body = ((await request.json().catch(() => null)) ?? {}) as Body;
   const key = process.env.GEMINI_API_KEY;
   if (!key) return Response.json({ score: heuristic(body), reason: "heuristic", demo: true });
 

@@ -5,7 +5,9 @@ import { monogramSvg, type MonogramShape } from "@/lib/brand-identity";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ file: string }> }) {
   const { file } = await ctx.params;
-  const m = /^([^-]{1,2})-([0-9a-f]{6})-(round|soft|sharp)\.svg$/i.exec(decodeURIComponent(file || ""));
+  let name = "";
+  try { name = decodeURIComponent(file || ""); } catch { /* a broken %-escape is just not a monogram */ }
+  const m = /^([^-]{1,2})-([0-9a-f]{6})-(round|soft|sharp)\.svg$/i.exec(name);
   if (!m) return new NextResponse("Not found", { status: 404 });
   const svg = monogramSvg(m[1], m[2], m[3].toLowerCase() as MonogramShape);
   return new NextResponse(svg, { headers: { "Content-Type": "image/svg+xml; charset=utf-8", "Cache-Control": "public, max-age=31536000, immutable" } });

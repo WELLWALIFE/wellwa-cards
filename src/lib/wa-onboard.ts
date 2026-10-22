@@ -16,7 +16,7 @@
 // build runs as the user (a session minted from a magic link), so quotas, saves and ownership are exactly the app's.
 import { randomUUID } from "node:crypto";
 import sharp from "sharp";
-import { graph, logCloud, markRead, sendCloud, friendlyGraphError, type CloudAccount } from "@/lib/wa-cloud";
+import { alreadyLogged, graph, logCloud, markRead, sendCloud, friendlyGraphError, type CloudAccount } from "@/lib/wa-cloud";
 import { restAsService } from "@/lib/poster-server";
 import { SUPA_URL, serviceHeaders, serviceConfigured } from "@/lib/admin-guard";
 import { SITE_URL } from "@/lib/site-url";
@@ -483,7 +483,7 @@ async function editLive(acc: CloudAccount, row: Row, text: string, lang: Lang): 
   if (REBUILD_RE.test(text)) {
     row.stage = "building"; row.data.buildStartedAt = Date.now(); await saveRow(row);
     await say(acc, row.phone, T(lang, "🔄 ठीक है, वेबसाइट दोबारा बना रहा हूँ — 3–5 मिनट। लिंक वही रहेगा।", "🔄 Theek hai, website dobara bana raha hoon — 3–5 minute. Link wahi rahega.", "🔄 Okay, making the website again — 3–5 minutes. The link stays the same."));
-    void buildAndGoLive(acc, row, lang);
+    buildAndGoLive(acc, row, lang).catch((e) => console.error("[wa-onboard] build", e instanceof Error ? e.message : e));
     return;
   }
   if (rateLimited(`wa-edit:${row.phone}`, 40, 60 * 60_000)) { await say(acc, row.phone, T(lang, "एक घंटे में बहुत बदलाव हो गए — थोड़ी देर बाद लिखें।", "Ek ghante me bahut badlav ho gaye — thodi der baad likhiye.", "Too many changes in an hour — please write again in a little while.")); return; }
@@ -529,6 +529,7 @@ export async function handleOnboardValue(acc: CloudAccount, v: WaValue): Promise
   for (const m of v.messages ?? []) {
     if (!m.id || seen.has(m.id)) continue;
     seen.set(m.id, Date.now()); if (seen.size > 5000) for (const [k, t] of seen) if (Date.now() - t > 3600_000) seen.delete(k);
+    if (await alreadyLogged(acc.owner_id, m.id)) continue; // Meta re-delivered a message handled before a restart
     const phone = e164(m.from);
     const waName = S(v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name, 60);
     const sentAt = m.timestamp ? new Date(Number(m.timestamp) * 1000).toISOString() : undefined;
@@ -693,5 +694,5 @@ async function startBuild(acc: CloudAccount, row: Row, lang: Lang, lead: string)
     `🚀 ${lead ? `${lead} ` : ""}*${row.data.facts.business}* ki website bana raha hoon${n ? ` — ${n} photo` : ""}${p ? `, ${p} product` : ""}.\n3–5 minute lagenge. Taiyar hote hi link yahin bhejunga. ☕`,
     `🚀 ${lead ? `${lead} ` : ""}Making the website for *${row.data.facts.business}*${n ? ` — ${n} photo${n > 1 ? "s" : ""}` : ""}${p ? `, ${p} product${p > 1 ? "s" : ""}` : ""}.\nIt takes 3–5 minutes. I will send the link here as soon as it is ready. ☕`);
   await say(acc, row.phone, summary);
-  void buildAndGoLive(acc, row, lang);
+  buildAndGoLive(acc, row, lang).catch((e) => console.error("[wa-onboard] build", e instanceof Error ? e.message : e));
 }

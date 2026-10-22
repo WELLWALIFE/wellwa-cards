@@ -77,6 +77,14 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
    screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
    on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.
 
+## Code review, night of 22 Oct 2026
+Full review (CRM, money/auth/admin, WhatsApp/AI/bridge, public site, member app, workers). ~45 bugs fixed; tsc, eslint, bridge tests and a
+production build pass. Owner must run two new migrations in Supabase (both safe to re-run): **0071_crm_fixes.sql** (merge keeps an empty
+last-message date instead of 1970) and **0072_payment_safety.sql** (apply_saas_payment locks before its replay check; unique purchase ref
+in credit_ledger). New bridge file `bridge/url-guard.mjs` (server-side fetches refuse private hosts). Left open on purpose: unsigned Cloud
+webhooks for manual accounts without app_secret; automated bridge sends mute the bot 15 min; festival-wish cron too slow for 150/owner;
+chat route may join two visitors' leads (needs a conversation id).
+
 ## Advanced website (Rs 5,999)
 Owner's new segment (15-16 Oct 2026): an AI review of the finished site, redesigned with a layout different for every business.
 - Flags (server env, both default off; documented in `src/lib/advanced-access.ts`): `ADVANCED_SITE_OPEN=1` = reviewers use it

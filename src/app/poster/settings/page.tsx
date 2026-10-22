@@ -71,8 +71,10 @@ export default function SettingsPage() {
       const sb = getBrowserSupabase();
       const { data } = (await sb?.auth.getUser()) ?? { data: { user: null } };
       const md = (data.user?.user_metadata ?? {}) as Record<string, unknown>;
-      const profs = await api<{ profiles?: Profile[] }>("/api/poster/profiles");
-      const p = (profs.data.profiles ?? []).find((x) => x.is_default) ?? (profs.data.profiles ?? [])[0];
+      // Offline here used to reject the whole start-up, so the account line spun forever with no Try again.
+      const profs = await api<{ profiles?: Profile[] }>("/api/poster/profiles").catch(() => null);
+      const list = profs?.data?.profiles ?? [];
+      const p = list.find((x) => x.is_default) ?? list[0];
       setMe({ email: data.user?.email, name: String(md.display_name ?? md.full_name ?? p?.name ?? "").trim() || (p?.name ?? ""), photo: (md.photo_url as string) || p?.photo_url || null });
       api<PlanRes>("/api/poster/plan").then((r) => { if (r.ok) setPlan(r.data); }).catch(() => {});
       const a = await loadAccount();
@@ -82,8 +84,8 @@ export default function SettingsPage() {
         let leg = typeof md.introduced_leg === "string" ? md.introduced_leg : "";
         try { by = by || localStorage.getItem(INTRODUCER_KEY) || ""; leg = leg || localStorage.getItem(INTRODUCER_LEG_KEY) || ""; } catch { /* ignore */ }
         const h = await authHeaders();
-        const r = await fetch("/api/account", { method: "POST", headers: h, body: JSON.stringify({ username: md.wanted_username, by: by || undefined, leg: leg === "L" || leg === "R" ? leg : undefined }) });
-        if (r.ok) { try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ } await loadAccount(); }
+        const r = await fetch("/api/account", { method: "POST", headers: h, body: JSON.stringify({ username: md.wanted_username, by: by || undefined, leg: leg === "L" || leg === "R" ? leg : undefined }) }).catch(() => null);
+        if (r?.ok) { try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ } await loadAccount(); }
       }
     })();
   }, [router, loadAccount]);

@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
+import { discardCampaign } from "@/lib/social-server";
 import { fbAccount, createAd, saveCampaign, isPermissionError, type AdGoal } from "@/lib/ads-server";
 import { cleanTargeting, AD_BUDGET } from "@/lib/ads-shared";
 
@@ -40,6 +41,11 @@ export async function POST(request: Request) {
       name: spec.name, goal, creative_url: url, creative_kind: spec.creative.kind, primary_text: primaryText, headline,
       daily_paise: spec.dailyPaise, days, status: r.status, targeting: spec.targeting,
     });
+    if (!row) {
+      // Without our record the ad would not show under "My ads" and could not be paused from the app: take it back.
+      if (fb.user_token) await discardCampaign(fb.user_token, r.campaignId);
+      return NextResponse.json({ error: "The ad could not be saved. Nothing was started. Please try again." }, { status: 500 });
+    }
     return NextResponse.json({ ok: true, ...r, row });
   } catch (e) {
     const msg = (e as Error).message;

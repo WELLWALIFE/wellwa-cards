@@ -81,6 +81,9 @@ export async function POST(request: Request) {
   if (b.action === "set") {
     const profile = String(b.profile ?? ""), date = String(b.for_date ?? "");
     if (!UUID.test(profile) || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return NextResponse.json({ error: "bad params" }, { status: 400 });
+    // The day plan is read with the service role when the poster is drawn, so a row on someone else's profile would put
+    // the caller's words on that owner's poster: only the caller's own profile.
+    if (!(await ownProfile(me.token, profile))) return NextResponse.json({ error: "profile not found" }, { status: 404 });
     const kind = ["auto", "festival", "product", "offer", "greeting", "testimonial", "skip"].includes(b.kind) ? b.kind : "auto";
     const row: Record<string, unknown> = { user_id: me.id, profile_id: profile, for_date: date, kind, product_id: UUID.test(String(b.product_id ?? "")) ? b.product_id : null, note: String(b.note ?? "").slice(0, 120), status: "planned" };
     if ("overrides" in b) row.overrides = cleanOverrides(b.overrides);

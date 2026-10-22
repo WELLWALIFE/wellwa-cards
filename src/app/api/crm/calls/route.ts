@@ -36,7 +36,19 @@ export async function POST(request: Request) {
   const lead = (await restAsService<{ id: string; phone: string; name: string; status: string }[]>(`leads?id=eq.${b.lead_id}&owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&assigned_to=eq.${scope.userId}` : ""}&select=id,phone,name,status&limit=1`)).data?.[0];
   if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   const outcome: Outcome = (OUTCOMES as readonly string[]).includes(b.outcome) ? b.outcome : "unknown";
-  const call = await logCall(scope, { lead_id: lead.id, outcome, seconds: Number(b.seconds) || 0, note: typeof b.note === "string" ? b.note.trim() : "", started_at: iso(b.started_at) ?? undefined });
+  const note = typeof b.note === "string" ? b.note.trim().slice(0, 1000) : "";
+  let call: CallRow | null;
+  if (isUuid(b.call_id)) {
+    // A call through the Shubhora number (Exotel) already has its row — with the real duration and the recording — so the
+    // outcome sheet completes that row instead of logging the same call a second time.
+    const r = await restAsService<CallRow[]>(`crm_calls?id=eq.${b.call_id}&owner_id=eq.${scope.ownerId}&lead_id=eq.${lead.id}${scope.role === "agent" ? `&agent_id=eq.${scope.userId}` : ""}&select=${CALL_COLS}`, { method: "PATCH", body: JSON.stringify({ outcome, note, status: "done" }), headers: { Prefer: "return=representation" } });
+    call = Array.isArray(r.data) ? r.data[0] ?? null : null;
+    // That row was not found (another agent's call, a lead merged since): the outcome is still saved, as its own call.
+    if (!call) call = await logCall(scope, { lead_id: lead.id, outcome, seconds: Number(b.seconds) || 0, note, started_at: iso(b.started_at) ?? undefined });
+    else if (note) await addEvent(scope.token, scope.ownerId, lead.id, "note", `📞 ${note.slice(0, 200)}`).catch(() => null);
+  } else {
+    call = await logCall(scope, { lead_id: lead.id, outcome, seconds: Number(b.seconds) || 0, note, started_at: iso(b.started_at) ?? undefined });
+  }
   if (!call) return NextResponse.json({ error: "Could not save the call. Please try again." }, { status: 502 });
   let task = null;
   if (b.next && typeof b.next === "object") {

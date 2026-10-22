@@ -205,8 +205,9 @@ export async function aiReply(card: Card, history: ChatMsg[], channel: "card" | 
   } catch { return ""; }
 }
 
-/** Split a trailing [[ALERT: …]] line off an AI reply. */
+/** Split the [[ALERT: …]] line off an AI reply. Matched anywhere, not only at the very end: a reply that ends
+ *  "[[ALERT: …]]\n[[ORDER: {…}]]" used to keep the ALERT tag in the text the customer got. */
 export function splitAlert(reply: string): { text: string; alert: string } {
-  const m = reply.match(/\[\[ALERT:\s*([^\]]+)\]\]\s*$/i);
-  return m ? { text: reply.slice(0, m.index).trim(), alert: m[1].trim() } : { text: reply, alert: "" };
+  const m = reply.match(/\[\[\s*ALERT\s*:\s*([^\]]+)\]\]/i);
+  return m ? { text: reply.replace(m[0], "").replace(/\n{3,}/g, "\n\n").trim(), alert: m[1].trim() } : { text: reply, alert: "" };
 }

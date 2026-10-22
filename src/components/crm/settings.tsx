@@ -86,7 +86,14 @@ export function ReportsSection() {
   const [days, setDays] = useState<7 | 30 | 90>(30);
   const [r, setR] = useState<Rep | null>(null);
   const [open, setOpen] = useState(false);
-  useEffect(() => { setR(null); api<Rep>(`/api/crm/reports?days=${days}${as ? `&as=${as}` : ""}`).then((x) => setR(x.ok ? x.data : null)); }, [days, as]);
+  const [err, setErr] = useState("");
+  const [retry, setRetry] = useState(0);
+  useEffect(() => {
+    let dead = false;   // switching 7 / 30 / 90 quickly: only the last answer counts
+    setR(null); setErr("");
+    api<Rep & { error?: string }>(`/api/crm/reports?days=${days}${as ? `&as=${as}` : ""}`).then((x) => { if (dead) return; if (x.ok) setR(x.data); else setErr(x.data.error || L.failed); }).catch(() => { if (!dead) setErr(L.failed); });
+    return () => { dead = true; };
+  }, [days, as, retry, L.failed]);
   const agentName = (id: string) => (id === ctx.me ? (L.hi ? "मैं" : "me") : ctx.agents.find((a) => a.id === id)?.name ?? (L.hi ? "मालिक" : "owner"));
   const mmss = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
   const kpi = (l: string, v: string | number, s?: string) => <div key={l} className="rounded-xl border border-border bg-surface p-2"><div className="text-[10px] font-semibold uppercase tracking-wide text-muted">{l}</div><div className="text-lg font-bold text-ink">{v}</div>{s && <div className="text-[10px] text-faint">{s}</div>}</div>;
@@ -94,7 +101,8 @@ export function ReportsSection() {
   return (
     <div className="space-y-3">
       <div className="flex gap-1.5">{([7, 30, 90] as const).map((d) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{d} {L.hi ? "दिन" : "days"}</Chip>)}</div>
-      {!r ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : (
+      {err ? <div className="space-y-2 py-6 text-center"><p className="text-xs text-danger">{err}</p><button type="button" onClick={() => setRetry((n) => n + 1)} className="rounded-xl border border-border px-3 py-1.5 text-xs">↻</button></div>
+        : !r ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : (
         <>
           <div className="grid grid-cols-3 gap-2">
             {kpi(`${L.callsReport} · ${L.callsMade}`, r.calls.made, `${r.calls.connected} ${L.callsConnected}`)}

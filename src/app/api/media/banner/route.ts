@@ -25,10 +25,14 @@ export async function POST(request: Request) {
   if (photoUrl) {
     const site = (process.env.NEXT_PUBLIC_SITE_URL || "").replace(/\/$/, "");
     const supa = process.env.NEXT_PUBLIC_SUPABASE_URL || "";
-    if (!(photoUrl.startsWith(site + "/") || photoUrl.startsWith(supa) || photoUrl.startsWith("/"))) {
+    // Compared as parsed origins, not string prefixes: "https://<project>.supabase.co.evil.com/x" starts with the Supabase URL, and
+    // "//evil.com/x" starts with "/", so a prefix test let this server fetch any address it was handed.
+    const originOf = (u: string) => { try { return new URL(u).origin; } catch { return ""; } };
+    const ownOrigins = [originOf(site), originOf(supa)].filter(Boolean);
+    const abs = /^\/(?![/\\])/.test(photoUrl) ? site + photoUrl : photoUrl;
+    if (!ownOrigins.includes(originOf(abs))) {
       return NextResponse.json({ error: "Choose a photo from your card / storage." }, { status: 400 });
     }
-    const abs = photoUrl.startsWith("/") ? site + photoUrl : photoUrl;
     const r = await fetch(abs).catch(() => null);
     if (r?.ok) {
       const buf = Buffer.from(await r.arrayBuffer());

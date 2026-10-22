@@ -71,7 +71,7 @@ const allowed = (ch) => !switches || (switches.enabled && switches[ch] && switch
 async function webPush(owner, title, body, ref) {
   try {
     const r = await fetch(`${APP_URL}/api/notify/internal`, { method: "POST", headers: { "content-type": "application/json", "x-cron-key": env.CRON_KEY || "" },
-      body: JSON.stringify({ userId: owner, type: "followup_due", title, body, path: "/crm", ref, channels: ["push"] }) });
+      body: JSON.stringify({ userId: owner, type: "followup_due", title, body, path: "/poster/crm?s=today", ref, channels: ["push"] }) });
     const j = await r.json().catch(() => ({}));
     return !!j?.result?.push?.ok;
   } catch { return false; }
@@ -85,15 +85,24 @@ async function main() {
   const now = new Date().toISOString();
   // Since migration 0068 (CRM Pro) a follow-up is a crm_tasks row; leads.next_follow_up mirrors the earliest open one.
   // Remind per task (at remind_at, else due_at), once; a task without a lead is reminded by its title.
-  const tasks = await restList(`crm_tasks?done_at=is.null&reminded_at=is.null&or=(remind_at.lte.${now},and(remind_at.is.null,due_at.lte.${now}))&select=id,owner_id,lead_id,kind,title,text,due_at,leads(id,name,phone,message,ai_next,status)&order=due_at&limit=200`);
+  const tasks = await restList(`crm_tasks?done_at=is.null&reminded_at=is.null&or=(remind_at.lte.${now},and(remind_at.is.null,due_at.lte.${now}))&select=id,owner_id,lead_id,kind,title,text,due_at,leads(id,name,phone,message,ai_next,status)&order=due_at&limit=1000`);
+  // Tasks of leads that are already won / lost are never reminded — mark them so, or (oldest first) they would fill every
+  // run's page for ever and push the real follow-ups out of it.
+  const closed = tasks.filter((t) => t.leads && ["converted", "lost", "won"].includes(t.leads.status)).map((t) => t.id);
+  for (let i = 0; i < closed.length; i += 100) await rest(`crm_tasks?id=in.(${closed.slice(i, i + 100).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: now }) });
   const due = tasks.filter((t) => !t.leads || !["converted", "lost", "won"].includes(t.leads.status))
     .map((t) => ({ id: t.leads?.id ?? null, task_id: t.id, owner_id: t.owner_id, name: t.leads?.name ?? t.title, phone: t.leads?.phone ?? "", message: t.leads?.message ?? "", ai_next: [t.kind === "call" ? "📞" : t.kind === "whatsapp" ? "💬" : t.kind === "visit" ? "🚶" : t.kind === "meeting" ? "🤝" : "☐", t.title, t.leads?.ai_next].filter(Boolean).join(" "), next_follow_up: t.due_at }));
   if (!due.length) { console.log("[crm] nothing due"); return; }
   const byOwner = new Map();
   for (const l of due) { if (!byOwner.has(l.owner_id)) byOwner.set(l.owner_id, []); byOwner.get(l.owner_id).push(l); }
   for (const [owner, leads] of byOwner) {
-    const prof = (await restList(`profiles?id=eq.${owner}&select=plan,plan_expires_at`))[0];
-    const expiresAt = prof?.plan_expires_at || "2999-12-31T23:59:59.000Z";
+    const prof = (await restList(`profiles?id=eq.${owner}&select=plan,plan_expires_at,saas_expires_at`))[0];
+    // WhatsApp needs a running plan: a card plan (pro / team) or a Shubhora subscription — the same rule as the CRM's
+    // ownerPlanExpiry(); the bridge refuses an expired date.
+    const FAR = "2999-12-31T23:59:59.000Z", nowMs = Date.now();
+    const cardOk = ["pro", "team"].includes(prof?.plan) && !(prof?.plan_expires_at && new Date(prof.plan_expires_at).getTime() < nowMs);
+    const saasOk = !!prof?.saas_expires_at && new Date(prof.saas_expires_at).getTime() > nowMs;
+    const expiresAt = cardOk ? prof.plan_expires_at || FAR : saasOk ? prof.saas_expires_at : null;
     // Each line ends with a tap-to-message link: the follow-up is already written (name, what they asked), so the owner
     // sends it in one tap instead of opening the CRM (owner's call, 8 Oct 2026: follow-up engine).
     const biz = (await restList(`cards?owner_id=eq.${owner}&select=company,name&order=created_at.desc&limit=1`))[0] ?? {};
@@ -108,15 +117,16 @@ async function main() {
     const text = `⏰ *Follow-up reminder*\n${leads.length} customer${leads.length > 1 ? "s" : ""} to contact now:\n\n${lines.join("\n")}${leads.length > 10 ? `\n…and ${leads.length - 10} more` : ""}\n\nTap a link to send the ready message, or open Shubhora → Customers → Today.`;
     const title = `⏰ ${leads.length} follow-up${leads.length > 1 ? "s" : ""} due`;
     const names = leads.map((l) => l.name || l.phone).slice(0, 3).join(", ");
-    const wa = allowed("whatsapp") && ["pro", "team"].includes(prof?.plan) ? await selfNote(owner, expiresAt, text) : false;
+    const wa = allowed("whatsapp") && expiresAt ? await selfNote(owner, expiresAt, text) : false;
     const appPush = allowed("push") ? await push(owner, title, names) : 0;
-    const browserPush = allowed("push") ? await webPush(owner, title, names, `followup-${leads.map((l) => l.id).join(",").slice(0, 120)}`) : false;
+    const browserPush = allowed("push") ? await webPush(owner, title, names, `followup-${leads.map((l) => l.task_id).join(",").slice(0, 120)}`) : false;
     const pushed = appPush || browserPush;
     if (!wa && !pushed) { console.log(`[crm] ${owner.slice(0, 8)}: could not deliver (whatsapp off, no device) — will retry next run`); continue; }
-    await rest(`crm_tasks?id=in.(${leads.map((l) => l.task_id).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: now }) });
+    for (let i = 0; i < leads.length; i += 100) await rest(`crm_tasks?id=in.(${leads.slice(i, i + 100).map((l) => l.task_id).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: now }) });
     const withLead = leads.filter((l) => l.id);
     if (withLead.length) {
-      await rest(`leads?id=in.(${withLead.map((l) => l.id).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: now }) });
+      const leadIds = [...new Set(withLead.map((l) => l.id))];
+      for (let i = 0; i < leadIds.length; i += 100) await rest(`leads?id=in.(${leadIds.slice(i, i + 100).join(",")})`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ reminded_at: now }) });
       await rest("lead_events", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(withLead.map((l) => ({ owner_id: owner, lead_id: l.id, kind: "followup", text: `Reminder sent (${new Date(l.next_follow_up).toLocaleString("en-IN", { timeZone: IST, day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })})` }))) });
     }
     console.log(`[crm] ${owner.slice(0, 8)}: ${leads.length} due, whatsapp=${wa}, push=${pushed}`);

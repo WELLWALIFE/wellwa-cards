@@ -35,6 +35,8 @@ export async function geminiComplete(opts: {
     method: "POST",
     headers: { "x-goog-api-key": opts.apiKey, "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    // A hung connection used to hold the caller (the WhatsApp webhook, a chat request) open forever.
+    signal: AbortSignal.timeout(90_000),
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d?.error?.message || `gemini ${r.status}`);

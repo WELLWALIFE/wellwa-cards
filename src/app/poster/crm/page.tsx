@@ -8,7 +8,7 @@ import { LoaderCircle, Users } from "lucide-react";
 import { isLoggedIn } from "@/lib/poster-client";
 import { useCrmT } from "@/components/crm/i18n";
 import { Shell, loadWorkspace, type Workspace, type LeadPro, type CrmShell } from "@/components/crm/shared";
-import { CallReturnWatcher, CallOutcomeSheet, CallList, CloudCallSheet, dial, readPending, type CallListItem, type PendingCall } from "@/components/crm/call";
+import { CallReturnWatcher, CallOutcomeSheet, CallList, CloudCallSheet, dial, type CallListItem, type PendingCall } from "@/components/crm/call";
 import { TodayScreen } from "@/components/crm/today";
 import { CustomersList } from "@/components/crm/list";
 import { CustomerScreen } from "@/components/crm/customer";
@@ -52,7 +52,7 @@ function CrmPage() {
     // Phase 2: a tenant with an outbound Shubhora number calls through Exotel (works from a laptop too; recorded).
     if (hasLine) { setCloudCall(lead); return; }
     if (!askOutcome) { window.location.href = `tel:${lead.phone}`; return; }
-    dial(lead, () => setDesktopCall(readPending()));
+    dial(lead, setDesktopCall);
   }, [hasLine, askOutcome]);
   const notifyLogged = useCallback(() => { const f = loggedCb; loggedCb = null; f?.(); setTick((t) => t + 1); }, []);
   const shell = useMemo<CrmShell | null>(() => ws ? {
@@ -102,7 +102,7 @@ function CrmPage() {
       </div></div>
       <CallReturnWatcher />
       {desktopCall && <CallOutcomeSheet pending={desktopCall} dialHint onSaved={shell.notifyLogged} onClose={() => setDesktopCall(null)} />}
-      {cloudCall && <CloudCallSheet lead={cloudCall} onFallback={() => { const l = cloudCall; setCloudCall(null); dial(l, () => setDesktopCall(readPending())); }} onClose={() => setCloudCall(null)} />}
+      {cloudCall && <CloudCallSheet lead={cloudCall} onFallback={() => { const l = cloudCall; setCloudCall(null); dial(l, setDesktopCall); }} onClose={() => setCloudCall(null)} />}
     </Shell.Provider>
   );
 }

@@ -28,6 +28,7 @@ export default function DashboardPage() {
   const [cards, setCards] = useState<Card[] | null>(null);
   const [leads, setLeads] = useState<Row[]>([]);
   const [clicks, setClicks] = useState(0);
+  const [leadTotal, setLeadTotal] = useState<number | null>(null);
   const [demo, setDemo] = useState(false);
 
   useEffect(() => {
@@ -48,13 +49,15 @@ export default function DashboardPage() {
       const mine = await fetchMyCards();
       setCards(mine);
 
-      const { data: ld } = await sb
+      const { data: ld, count: lc } = await sb
         .from("leads")
-        .select("id,name,message,status,score")
+        .select("id,name,message,status,score", { count: "exact" })
         .eq("owner_id", auth.user.id)
         .order("created_at", { ascending: false })
         .limit(4);
       setLeads((ld ?? []) as Row[]);
+      // The list shows the latest 4; the stat and the conversion count every lead (it read "4" for any account with more).
+      setLeadTotal(lc ?? null);
 
       // WhatsApp/chat engagement = click events on my cards
       if (mine.length) {
@@ -69,7 +72,7 @@ export default function DashboardPage() {
   }, []);
 
   const views = (cards ?? []).reduce((n, c) => n + (c.views ?? 0), 0);
-  const leadCount = leads.length;
+  const leadCount = leadTotal ?? leads.length;
   const conversion = views > 0 ? ((leadCount / views) * 100).toFixed(1) + "%" : "—";
 
   const stats = demo

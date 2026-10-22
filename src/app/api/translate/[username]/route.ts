@@ -115,40 +115,45 @@ ${JSON.stringify(numbered)}` }],
 /** Every human-readable string on a card, in render order. */
 function collect(card: Card): string[] {
   const out: string[] = [card.jobTitle, card.company, card.tagline, card.about];
-  for (const p of card.pages) {
+  for (const p of card.pages ?? []) {
     out.push(p.label);
-    for (const b of p.blocks) out.push(...blockStrings(b));
+    for (const b of p.blocks ?? []) out.push(...blockStrings(b));
   }
-  return [...new Set(out.map((s) => (s ?? "").trim()).filter((s) => s.length > 1))];
+  // A card saved by an older editor can hold a non-string here (a number price, null): never let one break the whole language.
+  return [...new Set(out.map((s) => (typeof s === "string" ? s : "").trim()).filter((s) => s.length > 1))];
 }
 
-function blockStrings(b: CardBlock): string[] {
+function blockStrings(block: CardBlock): string[] {
+  // Stored cards are JSON the owner's editor wrote over the years: a list a block type now always has may be missing on an old one.
+  const arr = <T,>(v: T[] | undefined | null): T[] => (Array.isArray(v) ? v : []);
+  const b = block as CardBlock & Record<string, unknown>;
   const s: string[] = [b.title];
   switch (b.kind) {
     case "about": s.push(b.body); break;
-    case "highlights": s.push(...b.items); break;
-    case "services": b.items.forEach((i) => s.push(i.name, i.desc)); break;
+    case "highlights": s.push(...arr(b.items)); break;
+    case "services": arr(b.items).forEach((i) => s.push(i?.name, i?.desc)); break;
     case "product":
-      b.items.forEach((p) => {
+      arr(b.items).forEach((p) => {
+        if (!p) return;
         s.push(p.name, p.desc ?? "", p.badge ?? "", p.ctaLabel ?? "");
-        s.push(...p.features);
-        p.specs.forEach((sp) => s.push(sp.label, sp.value));
+        s.push(...arr(p.features));
+        arr(p.specs).forEach((sp) => s.push(sp?.label, sp?.value));
       });
       break;
-    case "gallery": b.images.forEach((i) => s.push(i.label)); break;
-    case "image": b.images.forEach((i) => s.push(i.caption ?? "")); break;
-    case "carousel": b.images.forEach((i) => s.push(i.caption ?? "")); break;
+    case "gallery": arr(b.images).forEach((i) => s.push(i?.label)); break;
+    case "image": arr(b.images).forEach((i) => s.push(i?.caption ?? "")); break;
+    case "carousel": arr(b.images).forEach((i) => s.push(i?.caption ?? "")); break;
     case "video": s.push(b.caption); break;
     case "pdf": s.push(b.fileLabel); if (b.hint) s.push(b.hint); break;
-    case "testimonials": b.items.forEach((t) => s.push(t.name, t.text)); break;
-    case "faq": b.items.forEach((f) => s.push(f.q, f.a)); break;
-    case "hours": b.rows.forEach((r) => s.push(r.day, r.time)); break;
+    case "testimonials": arr(b.items).forEach((t) => s.push(t?.name, t?.text)); break;
+    case "faq": arr(b.items).forEach((f) => s.push(f?.q, f?.a)); break;
+    case "hours": arr(b.rows).forEach((r) => s.push(r?.day, r?.time)); break;
     case "appointment": s.push(b.note); break;
     case "location": s.push(b.address); break;
     case "offer": s.push(b.text, b.expires); break;
     case "cta": s.push(b.body ?? "", b.joinLabel); break;
     case "contact": if (b.note) s.push(b.note); break;
-    case "compare": s.push(b.leftLabel, b.rightLabel); b.rows.forEach((r) => s.push(r.feature, r.left, r.right)); break;
+    case "compare": s.push(b.leftLabel, b.rightLabel); arr(b.rows).forEach((r) => s.push(r?.feature, r?.left, r?.right)); break;
   }
   return s;
 }
@@ -162,7 +167,7 @@ export async function POST(
     return Response.json({ error: "translation limit reached" }, { status: 429 });
   }
   const { username } = await params;
-  const body = (await request.json()) as { lang?: string };
+  const body = (await request.json().catch(() => ({}))) as { lang?: string };
   const lang = body.lang ?? "";
   const target = LANGS[lang];
   if (!target) return Response.json({ error: "unsupported language" }, { status: 400 });

@@ -14,7 +14,8 @@ function LinkSignIn() {
   useEffect(() => {
     const token = params.get("t");
     const to = params.get("to") ?? "";
-    const dest = /^\/(?!\/)[^\s]*$/.test(to) ? to : "/dashboard";
+    // Same-site paths only: "//host" and a backslash path both leave the site in a browser.
+    const dest = /^\/(?![/\\])[^\s\\]*$/.test(to) ? to : "/dashboard";
     const sb = getBrowserSupabase();
     if (!token || !sb) { setError("This sign-in link is not valid."); return; }
     sb.auth.verifyOtp({ token_hash: token, type: "magiclink" }).then(({ error: e }) => {

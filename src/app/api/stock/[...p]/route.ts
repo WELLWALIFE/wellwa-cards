@@ -31,6 +31,8 @@ export async function GET(_req: Request, ctx: { params: Promise<{ p: string[] }>
     const m = range.match(/bytes=(\d*)-(\d*)/);
     const start = m && m[1] ? Number(m[1]) : 0;
     const end = m && m[2] ? Math.min(Number(m[2]), stat.size - 1) : Math.min(start + 1_000_000, stat.size - 1);
+    // A range past the end (or backwards) is answered 416: createReadStream throws on start > end, which was a 500.
+    if (start >= stat.size || end < start) return new NextResponse(null, { status: 416, headers: { "Content-Range": `bytes */${stat.size}`, "Accept-Ranges": "bytes" } });
     const stream = fs.createReadStream(file, { start, end });
     return new NextResponse(stream as unknown as ReadableStream, { status: 206, headers: { "Content-Type": type, "Content-Range": `bytes ${start}-${end}/${stat.size}`, "Accept-Ranges": "bytes", "Content-Length": String(end - start + 1), "Cache-Control": "public, max-age=31536000, immutable" } });
   }

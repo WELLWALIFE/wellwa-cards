@@ -22,7 +22,8 @@ export async function GET(request: Request) {
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
   const u = new URL(request.url);
   const job = u.searchParams.get("job") === "morning" ? "morning" : "evening";
-  const date = u.searchParams.get("date") ?? istToday();
+  const dParam = u.searchParams.get("date") ?? "";
+  const date = /^\d{4}-\d{2}-\d{2}$/.test(dParam) && !Number.isNaN(Date.parse(`${dParam}T00:00:00+05:30`)) ? dParam : istToday();
   const owners = list(await restAsService<{ owner_id: string; crm: Partial<CrmPrefs> | null }[]>("owner_prefs?select=owner_id,crm&limit=5000")).map((o) => ({ id: o.owner_id, p: { ...DEFAULT_PREFS, ...(o.crm ?? {}) } }));
   const out: Record<string, number> = { owners: owners.length, wishes: 0, nudges: 0, summaries: 0 };
   const dayStart = new Date(`${date}T00:00:00+05:30`), dayEnd = new Date(dayStart.getTime() + 86400000), nextEnd = new Date(dayStart.getTime() + 2 * 86400000);
@@ -66,7 +67,8 @@ export async function GET(request: Request) {
           restAsService<{ title: string; due_at: string; leads: { name: string; phone: string } | null }[]>(`crm_tasks?owner_id=eq.${owner}&done_at=is.null&due_at=lt.${enc(nextEnd.toISOString())}&select=title,due_at,leads(name,phone)&order=due_at&limit=30`),
         ]);
         const C = list(calls), conn = C.filter((c) => c.outcome === "connected").length, D = list(due);
-        const overdue = D.filter((t) => new Date(t.due_at) < dayEnd).length, tomorrow = D.length - overdue;
+        // Overdue = already past (a task at 9 pm today is not overdue at 8 pm); tomorrow = due on the next IST day.
+        const overdue = D.filter((t) => new Date(t.due_at).getTime() < Math.min(Date.now(), dayEnd.getTime())).length, tomorrow = D.filter((t) => new Date(t.due_at) >= dayEnd).length;
         const value = list(won).reduce((n, w) => n + (w.value_paise || 0), 0);
         const body = `📞 ${C.length} calls (${conn} connected) · ✨ ${list(newLeads).length} new · 🏆 ${list(won).length} won${value ? ` ₹${(value / 100).toLocaleString("en-IN")}` : ""} · ⏰ ${tomorrow} due tomorrow${overdue ? `, ${overdue} overdue` : ""}`;
         const lines = D.slice(0, 10).map((t) => `• ${t.leads?.name || t.leads?.phone || ""} — ${t.title}`).join("\n");

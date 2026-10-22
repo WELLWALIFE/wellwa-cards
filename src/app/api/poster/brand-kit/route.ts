@@ -153,8 +153,9 @@ export async function POST(request: Request) {
   // "Had one before" = logo files already in this account's folder.
   const prior = await fetch(`${SUPA_URL}/storage/v1/object/list/media`, { method: "POST", headers: serviceHeaders(), body: JSON.stringify({ prefix: `poster/${me.id}/logo`, limit: 1 }) })
     .then(async (r) => (r.ok ? ((await r.json()) as unknown[]).length : 0)).catch(() => 0);
+  const spendRef = `logo:${me.id}:${Date.now()}`;
   if (prior > 0) {
-    const spend = await restAsService<{ ok?: boolean }>("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: LOGO_CREDITS, p_reason: "logo_kit", p_ref: `logo:${me.id}:${Date.now()}` }) });
+    const spend = await restAsService<{ ok?: boolean }>("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: LOGO_CREDITS, p_reason: "logo_kit", p_ref: spendRef }) });
     if (!spend.ok) return NextResponse.json({ error: `A new logo set costs ${LOGO_CREDITS} credits. Add credits and try again.`, cost: LOGO_CREDITS }, { status: 402 });
   }
 
@@ -190,6 +191,9 @@ export async function POST(request: Request) {
     } catch { /* this option is left out */ }
   }));
   const opts = options.filter(Boolean), vars = variants.filter(Boolean);
-  if (!kit && opts.length === 0) return NextResponse.json({ error: "AI did not respond. Please try again." }, { status: 502 });
-  return NextResponse.json({ options: opts, variants: vars, taglines: kit?.taglines ?? [], voice: kit?.voice ?? "", palette: kit?.palette ?? [], keywords: kit?.keywords ?? [], partial: !kit || opts.length < 4, charged: prior > 0 ? LOGO_CREDITS : 0 });
+  // No logo was made: the credits taken for this set go back (the words alone are not what was paid for).
+  const refunded = prior > 0 && opts.length === 0
+    && (await restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: LOGO_CREDITS, p_reason: "logo_kit-refund", p_ref: spendRef }) }).catch(() => null))?.ok === true;
+  if (!kit && opts.length === 0) return NextResponse.json({ error: refunded ? "AI did not respond. Your credits were returned. Please try again." : "AI did not respond. Please try again." }, { status: 502 });
+  return NextResponse.json({ options: opts, variants: vars, taglines: kit?.taglines ?? [], voice: kit?.voice ?? "", palette: kit?.palette ?? [], keywords: kit?.keywords ?? [], partial: !kit || opts.length < 4, charged: prior > 0 && !refunded ? LOGO_CREDITS : 0 });
 }

@@ -8,18 +8,21 @@ import { api } from "@/lib/poster-client";
 import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
-export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean };
+export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean; callId?: string };
 const KEY = "akp-crm-pending-call";
 const nowMs = () => Date.now();
 export const readPending = (): PendingCall | null => { try { const v = sessionStorage.getItem(KEY); return v ? (JSON.parse(v) as PendingCall) : null; } catch { return null; } };
 export const writePending = (p: PendingCall | null) => { try { if (p) sessionStorage.setItem(KEY, JSON.stringify(p)); else sessionStorage.removeItem(KEY); } catch { /* ignore */ } };
 export const isPhoneDevice = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-/** Opens the dialer and remembers the call; on a laptop (no dialer) the sheet opens straight away with the number to dial. */
-export function dial(lead: Pick<LeadPro, "id" | "name" | "phone" | "status">, onNoDialer: () => void) {
-  writePending({ leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: Date.now() });
-  if (isPhoneDevice()) { window.location.href = telLink(lead.phone); return; }
-  onNoDialer();
+/** Opens the dialer and remembers the call; on a laptop (no dialer) the sheet opens straight away with the number to dial.
+ *  Only the dialer path is remembered for CallReturnWatcher — on a laptop the caller's sheet is already open, and a second
+ *  sheet from the watcher (on the next window focus) would log the same call twice. */
+export function dial(lead: Pick<LeadPro, "id" | "name" | "phone" | "status">, onNoDialer: (p: PendingCall) => void) {
+  const p: PendingCall = { leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: Date.now() };
+  if (isPhoneDevice()) { writePending(p); window.location.href = telLink(lead.phone); return; }
+  writePending(null);
+  onNoDialer(p);
 }
 
 /** Mounted once at the CRM root: when the app comes back after a call, shows the outcome sheet. */
@@ -83,9 +86,10 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
     if (nextIso) body.next = { kind: "call", title: nextKey === "retry" ? (L.hi ? "फिर call करें" : "Call again") : L.hi ? "Follow-up call" : "Follow-up call", due_at: nextIso };
     if (stage) body.stage = stage;
     if (sendWa && waText.trim()) body.wa_text = waText.trim();
-    const r = await api<{ error?: string; sent?: boolean | null }>("/api/crm/calls", { method: "POST", json: body });
+    if (pending.callId) body.call_id = pending.callId;
+    const r = await api<{ error?: string; sent?: boolean | null }>("/api/crm/calls", { method: "POST", json: body }).catch(() => null);
     setBusy(false);
-    if (!r.ok) { setErr(r.data.error || L.failed); return; }
+    if (!r || !r.ok) { setErr(r?.data.error || L.failed); return; }
     writePending(null); onSaved?.(); reload(); onClose();
   }
   const hasSpeech = typeof window !== "undefined" && !!((window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition || (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition);
@@ -102,8 +106,8 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
         </div>
         {outcome === "connected" && (
           <label className="flex items-center gap-2 text-xs text-muted">{L.duration}
-            <input value={Math.floor(secs / 60)} onChange={(e) => setSecs(Math.max(0, parseInt(e.target.value || "0", 10)) * 60 + (secs % 60))} inputMode="numeric" className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-ink" /> min
-            <input value={secs % 60} onChange={(e) => setSecs(Math.floor(secs / 60) * 60 + Math.min(59, Math.max(0, parseInt(e.target.value || "0", 10))))} inputMode="numeric" className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-ink" /> sec
+            <input value={Math.floor(secs / 60)} onChange={(e) => setSecs(Math.max(0, parseInt(e.target.value, 10) || 0) * 60 + (secs % 60))} inputMode="numeric" className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-ink" /> min
+            <input value={secs % 60} onChange={(e) => setSecs(Math.floor(secs / 60) * 60 + Math.min(59, Math.max(0, parseInt(e.target.value, 10) || 0)))} inputMode="numeric" className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-ink" /> sec
           </label>
         )}
         <div>
@@ -148,7 +152,7 @@ type SpeechRec = { lang: string; interimResults: boolean; maxAlternatives: numbe
 /* ---------------- call list: one lead at a time ---------------- */
 export type CallListItem = { lead: LeadPro; task?: Task; why: string };
 export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () => void }) {
-  const { L, startCall, openCustomer } = useShell();
+  const { L, as, startCall, openCustomer } = useShell();
   const [i, setI] = useState(0);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [msgs, setMsgs] = useState<{ direction: string; text: string; sent_at: string }[] | null>(null);
@@ -156,8 +160,11 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
   useEffect(() => {
     setMsgs(null);
     if (!cur) return;
-    api<{ messages?: { direction: string; text: string; sent_at: string }[] }>(`/api/crm/thread?lead=${cur.lead.id}`).then((r) => setMsgs(r.ok ? (r.data.messages ?? []).slice(-2) : []));
-  }, [cur]);
+    let dead = false;
+    // ?as= so a team workspace reads the owner's thread (without it the lead is "not found" for an agent / manager).
+    api<{ messages?: { direction: string; text: string; sent_at: string }[] }>(`/api/crm/thread?lead=${cur.lead.id}${as ? `&as=${as}` : ""}`).then((r) => { if (!dead) setMsgs(r.ok ? (r.data.messages ?? []).slice(-2) : []); }).catch(() => { if (!dead) setMsgs([]); });
+    return () => { dead = true; };
+  }, [cur, as]);
   if (!cur) return (
     <div className="rounded-2xl border border-border bg-surface p-8 text-center">
       <p className="text-lg font-bold text-ink">{L.callListEmpty}</p>
@@ -208,27 +215,36 @@ export function CloudCallSheet({ lead, onFallback, onClose }: { lead: Pick<LeadP
   const [err, setErr] = useState("");
   const [outcome, setOutcome] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  // Placing the call is not idempotent (Exotel rings the phone): once per lead for this sheet, however often the effect
+  // re-runs (a new onFallback arrow from the parent on every render, React's dev double-invoke).
+  const placed = useRef<string | null>(null);
+  const fallbackRef = useRef(onFallback);
+  const alive = useRef(false);
+  useEffect(() => { fallbackRef.current = onFallback; }, [onFallback]);
+  useEffect(() => { alive.current = true; return () => { alive.current = false; }; }, []);
+  const failedText = L.failed;
   useEffect(() => {
-    let dead = false;
+    if (placed.current === lead.id) return;
+    placed.current = lead.id;
     (async () => {
-      const r = await api<{ call?: LiveCall; error?: string }>("/api/crm/call", { method: "POST", json: { lead_id: lead.id, as: as ?? undefined } });
-      if (dead) return;
-      if (r.status === 409) { onFallback(); return; }
-      if (!r.ok || !r.data.call) { setErr(r.data.error || L.failed); return; }
+      const r = await api<{ call?: LiveCall; error?: string }>("/api/crm/call", { method: "POST", json: { lead_id: lead.id, as: as ?? undefined } }).catch(() => null);
+      if (!alive.current) return;   // the sheet was closed while the call was being placed
+      if (!r) { setErr(failedText); return; }
+      if (r.status === 409) { fallbackRef.current(); return; }
+      if (!r.ok || !r.data.call) { setErr(r.data.error || failedText); return; }
       setCall(r.data.call);
     })();
-    return () => { dead = true; };
-  }, [lead.id, as, onFallback, L.failed]);
+  }, [lead.id, as, failedText]);
   useEffect(() => {
     if (!call || call.status === "done" || call.status === "failed") return;
     const t = setInterval(async () => {
-      const r = await api<{ call: LiveCall }>(`/api/crm/calls/${call.id}${as ? `?as=${as}` : ""}`);
-      if (r.ok) { setCall(r.data.call); setElapsed(Math.max(0, Math.round((Date.now() - new Date(r.data.call.started_at).getTime()) / 1000))); }
+      const r = await api<{ call: LiveCall }>(`/api/crm/calls/${call.id}${as ? `?as=${as}` : ""}`).catch(() => null);
+      if (r?.ok) { setCall(r.data.call); setElapsed(Math.max(0, Math.round((Date.now() - new Date(r.data.call.started_at).getTime()) / 1000))); }
     }, 3000);
     return () => clearInterval(t);
   }, [call, as]);
   if (outcome && call) {
-    return <CallOutcomeSheet pending={{ leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: new Date(call.started_at).getTime() }} onSaved={notifyLogged} onClose={onClose} />;
+    return <CallOutcomeSheet pending={{ leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: new Date(call.started_at).getTime(), callId: call.id }} onSaved={notifyLogged} onClose={onClose} />;
   }
   return (
     <BottomSheet title={`${L.call} · ${ws.line?.label || ws.line?.caller_id || "Shubhora"}`} onClose={onClose}>

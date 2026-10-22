@@ -45,10 +45,11 @@ export function PlanPayButton({ plan, label, className = "" }: { plan: "personal
         prefill: payPrefill(), name: "Shubhora", description: `${plan === "business" ? "Business" : "Personal"} plan · 1 month`, theme: { color: "#0e9e90" },
         handler: async (r) => {
           setState("verifying");
+          // The money is already taken here: a dropped connection must end in a clear message, never an endless spinner.
           const v = await api<{ ok: boolean; error?: string }>("/api/poster/pay/verify", {
             method: "POST", json: { orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature, plan },
-          });
-          if (v.ok && v.data.ok) { window.location.reload(); return; }
+          }).catch(() => null);
+          if (v?.ok && v.data.ok) { window.location.reload(); return; }
           setState("error"); setErr(t.payVerifyFail);
         },
         modal: { ondismiss: () => setState("idle") },

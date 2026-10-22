@@ -101,10 +101,15 @@ async function browserPush() {
   const subs = await rest("push_subscriptions?select=user_id");
   const ids = [...new Set((Array.isArray(subs) ? subs : []).map((x) => x.user_id))];
   if (!ids.length) return 0;
-  const withPoster = await rest(`poster_profiles?is_default=eq.true&user_id=in.(${ids.join(",")})&select=user_id`);
+  // In chunks: a few hundred ids in one URL is past what the REST gateway accepts, and the whole query failed.
+  const withPoster = [];
+  for (let i = 0; i < ids.length; i += 100) {
+    const part = await rest(`poster_profiles?is_default=eq.true&user_id=in.(${ids.slice(i, i + 100).join(",")})&select=user_id`);
+    if (Array.isArray(part)) withPoster.push(...part);
+  }
   const date = new Date(Date.now() + 5.5 * 3600_000).toISOString().slice(0, 10);
   let sent = 0;
-  for (const { user_id } of Array.isArray(withPoster) ? withPoster : []) {
+  for (const { user_id } of withPoster) {
     const r = await fetch(`${APP_URL}/api/notify/internal`, { method: "POST", headers: { "content-type": "application/json", "x-cron-key": env.CRON_KEY || "" },
       body: JSON.stringify({ userId: user_id, type: "poster_ready", title: "Today's poster is ready", body: "Open Shubhora to share it on WhatsApp.", path: "/poster", ref: date, channels: ["push"] }) })
       .then((x) => x.json()).catch(() => null);

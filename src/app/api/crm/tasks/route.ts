@@ -8,7 +8,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { resolveScope } from "@/lib/crm-server";
-import { createTask, patchTask, deleteTask, isUuid, TASK_COLS, TASK_KINDS, type TaskKind, type TaskRow } from "@/lib/crm-pro";
+import { createTask, patchTask, deleteTask, isUuid, isTeamMember, TASK_COLS, TASK_KINDS, type TaskKind, type TaskRow } from "@/lib/crm-pro";
 
 const enc = encodeURIComponent;
 const iso = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
@@ -44,7 +44,10 @@ export async function POST(request: Request) {
     const ok = (await restAsService<{ id: string }[]>(`leads?id=eq.${lead_id}&owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&assigned_to=eq.${scope.userId}` : ""}&select=id&limit=1`)).data?.[0];
     if (!ok) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   }
-  const task = await createTask(scope, { lead_id, kind, title: String(b.title ?? "").trim(), text: typeof b.text === "string" ? b.text : "", due_at: due, assigned_to: isUuid(b.assigned_to) ? b.assigned_to : undefined, remind_at: iso(b.remind_at), source: b.source === "ai" ? "ai" : "manual" });
+  // An agent's task is always their own; the owner / a manager may hand it to someone in the team (and nobody else).
+  const assigned_to = scope.role !== "agent" && isUuid(b.assigned_to) ? b.assigned_to : undefined;
+  if (assigned_to && !(await isTeamMember(scope.ownerId, assigned_to))) return NextResponse.json({ error: "That person is not in your team." }, { status: 400 });
+  const task = await createTask(scope, { lead_id, kind, title: String(b.title ?? "").trim(), text: typeof b.text === "string" ? b.text : "", due_at: due, assigned_to, remind_at: iso(b.remind_at), source: b.source === "ai" ? "ai" : "manual" });
   if (!task) return NextResponse.json({ error: "Could not save the task. Please try again." }, { status: 502 });
   return NextResponse.json({ task });
 }
@@ -55,6 +58,7 @@ export async function PATCH(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope || !isUuid(b.id)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  if (scope.role !== "agent" && isUuid(b.assigned_to) && !(await isTeamMember(scope.ownerId, b.assigned_to))) return NextResponse.json({ error: "That person is not in your team." }, { status: 400 });
   const task = await patchTask(scope, b.id, { done: typeof b.done === "boolean" ? b.done : undefined, outcome: typeof b.outcome === "string" ? b.outcome : undefined, snooze_to: iso(b.snooze_to) ?? undefined, due_at: iso(b.due_at) ?? undefined, title: typeof b.title === "string" ? b.title : undefined, kind: (TASK_KINDS as readonly string[]).includes(b.kind) ? b.kind : undefined, text: typeof b.text === "string" ? b.text : undefined, assigned_to: b.assigned_to === null ? null : isUuid(b.assigned_to) ? b.assigned_to : undefined });
   if (!task) return NextResponse.json({ error: "Task not found." }, { status: 404 });
   return NextResponse.json({ task });

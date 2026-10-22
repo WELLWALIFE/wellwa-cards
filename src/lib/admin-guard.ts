@@ -16,7 +16,8 @@ function keyHolder(request: Request): { scope: AdminScope; sub: string } | null 
   const sent = request.headers.get("x-admin-key") ?? "";
   const expected = process.env.SUPER_ADMIN_PASSWORD ?? "";
   // Constant-time compare: this key opens every /api/admin route (owner's review, 28 Sep 2026).
-  if (sent.length > 0 && expected.length > 0 && sent.length === expected.length && timingSafeEqual(Buffer.from(sent), Buffer.from(expected))) return { scope: "all", sub: "owner" };
+  const a = Buffer.from(sent), b = Buffer.from(expected);
+  if (a.length > 0 && b.length > 0 && a.length === b.length && timingSafeEqual(a, b)) return { scope: "all", sub: "owner" };
   // Or a session token issued when someone came in from the associate admin. The owner's opens everything;
   // a Staff Admin member sent over to help a card holder carries scope "support" and opens only Live help.
   if (!sent.startsWith("v1.")) return null;

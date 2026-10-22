@@ -103,6 +103,7 @@ async function geminiComplete({ system, messages, maxTokens, temperature }) {
     method: "POST",
     headers: { "x-goog-api-key": GEMINI_KEY, "Content-Type": "application/json" },
     body: JSON.stringify(body),
+    signal: AbortSignal.timeout(60_000), // a hung call used to leave the customer's chat waiting for ever
   });
   const d = await r.json();
   if (!r.ok) throw new Error(d?.error?.message || `gemini ${r.status}`);
@@ -513,14 +514,18 @@ setInterval(() => {
 }, 30 * 1000);
 const OPT_OUT_RE = /\b(stop|unsubscribe|opt.?out|band karo|band kar do|mat bhejo|mat bhej[eo]|nahi chahiye)\b/i;
 
-// Snap a timestamp into the next allowed business-hours window.
+// Business hours are India time. The server runs on UTC, so the process's local clock (getHours) put the 9–20 window
+// at 14:30–01:30 IST and follow-ups landed around midnight.
+const IST_MS = 5.5 * 3600 * 1000;
+const istHour = (ts = Date.now()) => new Date(ts + IST_MS).getUTCHours();
+// Snap a timestamp into the next allowed business-hours window (IST).
 function nextBusinessTime(ts) {
   const fu = config.followup || {};
   const start = fu.businessStart ?? 9, end = fu.businessEnd ?? 20;
-  const d = new Date(ts);
-  if (d.getHours() < start) d.setHours(start, 0, 0, 0);
-  else if (d.getHours() >= end) { d.setDate(d.getDate() + 1); d.setHours(start, 0, 0, 0); }
-  return d.getTime();
+  const d = new Date(ts + IST_MS); // UTC fields of this Date = the IST wall clock
+  if (d.getUTCHours() < start) d.setUTCHours(start, 0, 0, 0);
+  else if (d.getUTCHours() >= end) { d.setUTCDate(d.getUTCDate() + 1); d.setUTCHours(start, 0, 0, 0); }
+  return d.getTime() - IST_MS;
 }
 
 // Any inbound reply (re)starts the sequence from Day 1 — unless they opted out.
@@ -905,6 +910,14 @@ async function runFlow(jid, name, text, firstContact) {
 }
 
 /* ---------------- reply engine ---------------- */
+const handledIds = new Map(); // inbound message id -> ts (duplicate deliveries)
+function alreadyHandled(id) {
+  if (!id) return false;
+  if (handledIds.has(id)) return true;
+  handledIds.set(id, Date.now());
+  if (handledIds.size > 3000) for (const [k] of handledIds) { handledIds.delete(k); if (handledIds.size <= 2000) break; }
+  return false;
+}
 const history = new Map(); // jid -> [{role, content}]
 const historyTouch = new Map(); // jid -> last activity ts
 const lastWelcome = new Map(); // jid -> ts
@@ -916,6 +929,11 @@ setInterval(() => {
   }
   for (const [jid, ts] of humanActive) { if (ts < cutoff) humanActive.delete(jid); }
   for (const [jid, ts] of botSentAt) { if (ts < cutoff) botSentAt.delete(jid); }
+  for (const [jid, list] of replyLog) { if ((list[list.length - 1] ?? 0) < cutoff) replyLog.delete(jid); }
+  for (const [jid, ts] of mutedUntil) { if (ts < Date.now()) mutedUntil.delete(jid); }
+  for (const [jid, ts] of alertedAt) { if (ts < cutoff) alertedAt.delete(jid); }
+  for (const [jid, q] of lastInbound) { if (q.at < cutoff) lastInbound.delete(jid); }
+  for (const [jid, st] of flowState) { if (st.at < cutoff) flowState.delete(jid); }
   for (const [jid, list] of v2Recent) { if ((list[list.length - 1]?.at ?? 0) < cutoff) v2Recent.delete(jid); }
   while (history.size > 300) { // insertion order ≈ oldest first
     const oldest = history.keys().next().value;
@@ -933,6 +951,11 @@ const COOLDOWN_MS = 5000;
 const WINDOW_MS = 60000;
 const MAX_IN_WINDOW = 10;     // >10 replies to one contact in 60s ⇒ likely a loop (a real chat never gets there)
 const MUTE_MS = 3 * 60 * 1000;
+// Each reply waits the cooldown plus 2.5–8 s of "typing", so two bots answering each other never reach 10 in a minute —
+// the short window alone never tripped. A longer window catches the slow ping-pong.
+const LONG_WINDOW_MS = 10 * 60 * 1000;
+const MAX_IN_LONG = 25;       // 25 replies to one contact in 10 min with long inbound messages ⇒ a loop
+const LONG_MUTE_MS = 60 * 60 * 1000;
 
 /* The cooldown used to DROP a message that arrived <5 s after our last reply —
  * which is exactly what a real customer does after a quick answer ("Your name
@@ -941,11 +964,20 @@ const MUTE_MS = 3 * 60 * 1000;
 function replyGate(jid, inbound = "") {
   const now = Date.now();
   if ((mutedUntil.get(jid) ?? 0) > now) return { muted: true, wait: 0 };
-  const log = (replyLog.get(jid) ?? []).filter((t) => now - t < WINDOW_MS);
-  replyLog.set(jid, log);
+  const longLog = (replyLog.get(jid) ?? []).filter((t) => now - t < LONG_WINDOW_MS);
+  replyLog.set(jid, longLog);
+  const log = longLog.filter((t) => now - t < WINDOW_MS);
   // A one-liner ("Your name plz", "price?", "ok") is how real people talk fast;
   // bot-vs-bot loops are long, formatted messages. Short = never loop-guarded.
   const shortHuman = String(inbound).trim().length > 0 && String(inbound).trim().length <= 80;
+  // Only a long TEXT inbound trips the 60-min guard: canAutoReply() (voice notes, photos) passes no text, and a real
+  // customer in a busy chat who then sends a voice note must not be silenced for an hour.
+  if (longLog.length >= MAX_IN_LONG && String(inbound).trim().length > 80) {
+    mutedUntil.set(jid, now + LONG_MUTE_MS);
+    replyLog.set(jid, []);
+    console.log(`[wa] ⚠️ LOOP GUARD: muted ${jid} for 60 min (${longLog.length} replies in 10 min — possible bot-vs-bot)`);
+    return { muted: true, wait: 0 };
+  }
   if (log.length >= MAX_IN_WINDOW && !shortHuman) {
     mutedUntil.set(jid, now + MUTE_MS);
     replyLog.set(jid, []);
@@ -1176,7 +1208,7 @@ async function followupMessage(entry, jid) {
   const invite = shubhora ? "a free demo card made with their own name, or a quick call" : "a FREE home demo";
   const tip = shubhora ? "getting more customers online (WhatsApp, Google reviews, a daily poster, replying fast)" : "water / hydration / wellness";
 
-  const hour = new Date().getHours();
+  const hour = istHour();
   const partOfDay = hour < 12 ? "morning" : hour < 17 ? "afternoon" : "evening";
   const productPhase = (entry.step ?? 0) <= 2;
   const goal = entry.outreach && (entry.step ?? 0) === 0
@@ -1217,7 +1249,7 @@ async function runFollowups() {
   if (!config.enabled || fu.enabled === false) return;
   if (state !== "connected" || !sock) return;
   const now = Date.now();
-  const hour = new Date().getHours();
+  const hour = istHour(now);
   const start = fu.businessStart ?? 9, end = fu.businessEnd ?? 20;
   const inHours = hour >= start && hour < end;
 
@@ -1274,7 +1306,13 @@ async function runFollowups() {
     if (sent < cap) await new Promise((r) => setTimeout(r, 20000 + Math.floor(Math.random() * 20000)));
   }
 }
-setInterval(() => { runFollowups().catch((e) => console.error("[followup] tick", e?.message ?? e)); }, 10 * 60 * 1000);
+// One run at a time: a slow run (AI + paced sends) must not overlap the next tick and message a contact twice.
+let followupsRunning = false;
+setInterval(() => {
+  if (followupsRunning) return;
+  followupsRunning = true;
+  runFollowups().catch((e) => console.error("[followup] tick", e?.message ?? e)).finally(() => { followupsRunning = false; });
+}, 10 * 60 * 1000);
 
 function welcomeOrFallback(jid) {
   const now = Date.now();
@@ -1476,6 +1514,15 @@ function extractText(msg) {
 }
 
 /* ---------------- WhatsApp socket ---------------- */
+/** Start a new socket after `ms`. A start that fails (auth files unreadable for a moment, …) is tried again instead of
+ *  leaving the number without a socket until the worker is restarted. */
+function reconnectLater(ms) {
+  const gen = sockGen;
+  setTimeout(() => {
+    if (gen !== sockGen) return; // something else (a restart, a logout) already opened the next socket
+    startWhatsApp().catch((e) => { console.error("[wa] reconnect failed:", e?.message ?? e); reconnectLater(Math.min(ms * 2, 60_000)); });
+  }, ms);
+}
 let sock = null;
 let state = "disconnected"; // disconnected | awaiting_qr | connected
 let lastQr = null;
@@ -1547,10 +1594,10 @@ async function startWhatsApp() {
       if (code === DisconnectReason.loggedOut) {
         console.log("[wa] logged out — clearing auth");
         try { rmSync(authDir, { recursive: true, force: true }); } catch {}
-        setTimeout(startWhatsApp, 1500);
+        reconnectLater(1500);
       } else {
         console.log("[wa] connection closed (", code, ") — reconnecting");
-        setTimeout(startWhatsApp, 2500);
+        reconnectLater(2500);
       }
     }
   });
@@ -1601,6 +1648,9 @@ async function startWhatsApp() {
           }
         }
         if (m.key?.fromMe) { noteHumanEcho(jid, m.message, type, Number(m.messageTimestamp ?? 0)); continue; }
+        // The same message can arrive twice (a "notify" and an "append" replay after a reconnect, or a retry):
+        // answer it once.
+        if (alreadyHandled(m.key?.id)) { console.log(`[wa] duplicate ${m.key?.id} — skipped`); continue; }
         // Process live ("notify") messages, plus queued/offline ones from the
         // last 3 min (they may arrive as "append" after a reconnect). Skip old history.
         const ts = Number(m.messageTimestamp ?? 0);
@@ -2231,7 +2281,7 @@ const server = createServer(async (req, res) => {
       try { await sock?.logout(); } catch {}
       try { rmSync(path.join(DATA_DIR, "auth"), { recursive: true, force: true }); } catch {}
       state = "disconnected"; me = null; lastQr = null;
-      setTimeout(startWhatsApp, 1000);
+      reconnectLater(1000);
       return json(res, 200, { ok: true });
     }
     json(res, 404, { error: "not found" });

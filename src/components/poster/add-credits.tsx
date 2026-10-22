@@ -18,17 +18,21 @@ export function AddCredits({ need, have, onDone }: { need?: number; have?: numbe
       if (!r.ok) return;
       setSubscribed(!!r.data.subscribed);
       setPacks((r.data.packs ?? []).map((p) => ({ credits: p.credits, price: `₹${(p.paise / 100).toLocaleString("en-IN")}` })));
-    });
+    }).catch(() => undefined);
   }, []);
   async function buy(credits: number) {
+    if (busy !== null) return;
     setBusy(credits); setMsg("");
-    const o = await api<{ orderId?: string; amount?: number; currency?: string; keyId?: string; message?: string; error?: string }>("/api/poster/pay/credits", { method: "POST", json: { pack: credits } });
+    const o = await api<{ orderId?: string; amount?: number; currency?: string; keyId?: string; message?: string; error?: string }>("/api/poster/pay/credits", { method: "POST", json: { pack: credits } }).catch(() => null);
+    if (!o) { setMsg(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); setBusy(null); return; }
     if (!o.ok || !o.data.orderId) { setMsg(o.data.message || o.data.error || (hi ? "अभी payment नहीं हो पा रहा। फिर से कोशिश करें।" : "Payment is not working right now. Please try again.")); setBusy(null); return; }
     if (!document.querySelector('script[src*="checkout.razorpay.com"]')) { await new Promise<void>((res, rej) => { const s = document.createElement("script"); s.src = "https://checkout.razorpay.com/v1/checkout.js"; s.onload = () => res(); s.onerror = () => rej(new Error("load")); document.body.appendChild(s); }).catch(() => setMsg(hi ? "Payment page नहीं खुला।" : "Could not open the payment page.")); }
     const RZ = (window as unknown as { Razorpay?: new (o: Record<string, unknown>) => Rz }).Razorpay; if (!RZ) { setBusy(null); setMsg((m) => m || (hi ? "Payment page नहीं खुला।" : "Could not open the payment page.")); return; }
     new RZ({ key: o.data.keyId, amount: o.data.amount, currency: o.data.currency, prefill: payPrefill(), name: "Shubhora", description: `${credits} credits`, order_id: o.data.orderId, theme: { color: "#0e9e90" },
       handler: async (r: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) => {
-        const v = await api<{ ok?: boolean; error?: string }>("/api/poster/pay/credits", { method: "POST", json: { pack: credits, orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature } });
+        // The money is already taken here: a dropped connection must end in the "tell support" message, not a stuck button.
+        const v = await api<{ ok?: boolean; error?: string }>("/api/poster/pay/credits", { method: "POST", json: { pack: credits, orderId: r.razorpay_order_id, paymentId: r.razorpay_payment_id, signature: r.razorpay_signature } })
+          .catch(() => ({ ok: false, status: 0, data: {} as { ok?: boolean; error?: string } }));
         setBusy(null); setMsg(v.ok ? (hi ? `✅ ${credits} credits जुड़ गए` : `✅ ${credits} credits added`) : (v.data.error || (hi ? "Payment confirm नहीं हुआ। पैसे कटे हों तो support को बताएँ।" : "We could not confirm the payment. If money was taken from your account, please tell support."))); onDone?.();
       }, modal: { ondismiss: () => setBusy(null) } }).open();
   }

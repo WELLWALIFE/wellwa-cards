@@ -39,7 +39,7 @@ async function main() {
   let ok = 0, fail = 0;
   for (const row of rows) {
     const c = cfg.get(row.owner_id);
-    if (!c || !c.outbound_events.includes(row.event)) { await rest(`crm_outbox?id=eq.${row.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ delivered_at: new Date().toISOString(), last_error: "skipped (integration off)" }) }); continue; }
+    if (!c || !(Array.isArray(c.outbound_events) ? c.outbound_events : []).includes(row.event)) { await rest(`crm_outbox?id=eq.${row.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ delivered_at: new Date().toISOString(), last_error: "skipped (integration off)" }) }); continue; }
     if (!backoffOk(row)) continue;
     const body = JSON.stringify({ event: row.event, id: row.id, created_at: row.created_at, data: row.payload });
     const sig = c.outbound_secret ? crypto.createHmac("sha256", c.outbound_secret).update(body).digest("hex") : "";

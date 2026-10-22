@@ -45,7 +45,7 @@ export async function POST(request: Request) {
   const { orderId, paymentId, signature } = b;
   if (typeof orderId !== "string" || typeof paymentId !== "string") return NextResponse.json({ error: "bad request" }, { status: 400 });
   const want = crypto.createHmac("sha256", SECRET).update(`${orderId}|${paymentId}`).digest("hex");
-  if (typeof signature !== "string" || want.length !== signature.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(signature))) return NextResponse.json({ error: "bad signature" }, { status: 400 });
+  if (typeof signature !== "string" || Buffer.byteLength(signature) !== want.length || !crypto.timingSafeEqual(Buffer.from(want), Buffer.from(signature))) return NextResponse.json({ error: "bad signature" }, { status: 400 });
   const or = await fetch(`https://api.razorpay.com/v1/orders/${encodeURIComponent(orderId)}`, { headers: { Authorization: auth } }).catch(() => null);
   if (!or) return NextResponse.json({ error: "Could not reach the payment service. Please try again." }, { status: 502 });
   const o = or.ok ? await or.json().catch(() => null) : null;

@@ -91,13 +91,19 @@ export default function TodayPage() {
   const [restyling, setRestyling] = useState(false);
   const [day, setDay] = useState<"today" | "tomorrow">("today");
   const [tomorrow] = useState(() => new Date(Date.now() + 5.5 * 3600e3 + 86400e3).toISOString().slice(0, 10));
+  // Only the latest request may fill the screen: tapping Today → Tomorrow (or another profile) while the first poster is
+  // still being made used to let the slower, older answer land last and show the wrong day's poster.
+  const loadSeq = useRef(0);
   const loadPoster = useCallback(async (p: Profile, force = false, st?: string, which: "today" | "tomorrow" = day) => {
+    const seq = ++loadSeq.current;
     if (st) setRestyling(true); else setBusy(true);
     setErr("");
     let r: { ok: boolean; status: number; data: TodayResp };
     try {
       r = await api<TodayResp>(`/api/poster/today?profile=${p.id}${which === "tomorrow" ? `&date=${tomorrow}` : ""}${force ? "&force=1" : ""}${st ? `&style=${st}` : ""}`);
+      if (seq !== loadSeq.current) return;
     } catch {
+      if (seq !== loadSeq.current) return;
       // The connection dropped (phone switching Wi-Fi / mobile data): say so, with a retry — never an endless spinner.
       setBusy(false); setRestyling(false);
       setErr(lang === "en" ? "No internet right now. Check your connection and tap Try again." : "अभी internet नहीं है। Connection देखकर Try again दबाएँ।");
@@ -284,7 +290,7 @@ export default function TodayPage() {
         <PosterCard poster={today.poster} date={today.date ?? ""} caption={shareCaption(today, profile)}
           profile={profile} style={style || profile?.style || "classic"} restyling={restyling} plan={quota?.plan} dayOverrides={today.overrides ?? null}
           onStyle={async (st) => { if (!profile) return; await loadPoster(profile, false, st, day); api("/api/poster/profiles", { method: "POST", json: { ...profile, style: st, layout: { ...(profile.layout ?? {}), look: st.startsWith("signature") ? (st === "signature-classic" ? "classic" : "vibrant") : "old" } } }).then((r) => { const np = (r.data as { profile?: Profile }).profile; if (np) setProfile(np); }).catch(() => {}); }}
-          onEdited={async () => { if (!profile) return; const r = await api<{ profiles: Profile[] }>("/api/poster/profiles"); const np = (r.data.profiles ?? []).find((x) => x.id === profile.id) ?? profile; setProfile(np); await loadPoster(np, true, style || np.style, day); }} />
+          onEdited={async () => { if (!profile) return; const r = await api<{ profiles: Profile[] }>("/api/poster/profiles").catch(() => null); const np = (r?.data?.profiles ?? []).find((x) => x.id === profile.id) ?? profile; setProfile(np); await loadPoster(np, true, style || np.style, day); }} />
       )}
 
       {today?.error === "plan" && (

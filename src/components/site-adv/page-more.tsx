@@ -267,7 +267,7 @@ export function ContactPage({ c, x, chrome, slot, has, entry, page }: Props & { 
 
 /* ================= updates ================= */
 
-const dateOf = (iso: string, hi: boolean) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", year: "numeric" }); };
+const dateOf = (iso: string, hi: boolean) => { const d = new Date(iso); return Number.isNaN(d.getTime()) ? "" : d.toLocaleDateString(hi ? "hi-IN" : "en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }); };   // one zone: the server and the visitor's phone print the same day (no hydration mismatch)
 
 export function UpdatesPage({ c, x, chrome, entry, updates }: Pick<Props, "c" | "x" | "chrome"> & { entry: AdvPageEntry; updates: SiteUpdate[] }) {
   return (

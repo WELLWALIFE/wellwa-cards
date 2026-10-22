@@ -26,6 +26,11 @@ const SUPA = env.NEXT_PUBLIC_SUPABASE_URL, KEY = env.SUPABASE_SERVICE_ROLE_KEY;
 const GRAPH = "https://graph.facebook.com/v21.0";
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 const PER_RUN = 80;
+// pm2 restarts this script every minute (cron_restart), killing a run still going. A run stops taking new items before
+// that, and every item is claimed ("sending") before it goes out, so a killed run never sends the same message twice.
+const RUN_BUDGET_MS = 45_000;
+const STARTED = Date.now();
+const timeLeft = () => Date.now() - STARTED < RUN_BUDGET_MS;
 async function rest(q, init) { const r = await fetch(`${SUPA}/rest/v1/${q}`, { ...init, headers: { ...H, ...(init?.headers ?? {}) } }); const t = await r.text(); try { return JSON.parse(t); } catch { return null; } }
 async function restList(q) { const j = await rest(q); if (Array.isArray(j)) return j; if (j?.message) console.error(`[broadcast] ${q.split("?")[0]}: ${j.message}`); return []; }
 const patch = (q, body) => rest(q, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(body) });
@@ -49,14 +54,18 @@ async function main() {
   const now = new Date().toISOString();
   // scheduled → sending
   await patch(`wa_broadcasts?status=eq.scheduled&scheduled_at=lte.${now}`, { status: "sending" });
+  // An item claimed by a run that was killed mid-send: it may or may not have gone out — never resend it.
+  await patch(`wa_broadcast_items?status=eq.sending&updated_at=lt.${new Date(Date.now() - 10 * 60_000).toISOString()}`, { status: "failed", error: "interrupted (may have been sent)" });
   const campaigns = await restList("wa_broadcasts?status=eq.sending&select=id,owner_id,template_name,template_lang,params,header_image&order=created_at&limit=20");
   if (!campaigns.length) return;
   for (const b of campaigns) {
+    if (!timeLeft()) break;
     const acc = (await restList(`wa_cloud_accounts?owner_id=eq.${b.owner_id}&select=phone_number_id,access_token,enabled`))[0];
     if (!acc?.enabled) { await patch(`wa_broadcasts?id=eq.${b.id}`, { status: "failed", finished_at: now }); await patch(`wa_broadcast_items?broadcast_id=eq.${b.id}&status=eq.queued`, { status: "failed", error: "API not connected" }); continue; }
     const items = await restList(`wa_broadcast_items?broadcast_id=eq.${b.id}&status=eq.queued&select=id,lead_id,phone,name&order=id&limit=${PER_RUN}`);
     if (!items.length) {
       const counts = await restList(`wa_broadcast_items?broadcast_id=eq.${b.id}&select=status`);
+      if (counts.some((x) => x.status === "sending")) continue; // a claimed item is still settling — finish next run
       const sent = counts.filter((x) => x.status !== "failed").length, failed = counts.length - sent;
       await patch(`wa_broadcasts?id=eq.${b.id}`, { status: "done", finished_at: now, sent, failed });
       console.log(`[broadcast] ${b.id.slice(0, 8)} done: sent=${sent} failed=${failed}`);
@@ -67,6 +76,10 @@ async function main() {
     const cities = new Map((leadIds.length ? await restList(`leads?id=in.(${leadIds.join(",")})&select=id,city`) : []).map((l) => [l.id, l.city]));
     let ok = 0, bad = 0;
     for (const it of items) {
+      if (!timeLeft()) break;
+      // Claim it: only the run that moves it from queued to sending may send it.
+      const claimed = await rest(`wa_broadcast_items?id=eq.${it.id}&status=eq.queued&select=id`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ status: "sending", updated_at: new Date().toISOString() }) });
+      if (!Array.isArray(claimed) || !claimed.length) continue;
       try {
         const id = await sendTemplate(acc, { ...it, city: cities.get(it.lead_id) || "" }, b);
         await patch(`wa_broadcast_items?id=eq.${it.id}`, { status: "sent", wa_msg_id: id, updated_at: now });
@@ -80,7 +93,7 @@ async function main() {
       }
       await new Promise((r) => setTimeout(r, 700));
     }
-    const done = await restList(`wa_broadcast_items?broadcast_id=eq.${b.id}&status=neq.queued&select=status`);
+    const done = await restList(`wa_broadcast_items?broadcast_id=eq.${b.id}&status=not.in.(queued,sending)&select=status`);
     await patch(`wa_broadcasts?id=eq.${b.id}`, { sent: done.filter((x) => x.status !== "failed").length, failed: done.filter((x) => x.status === "failed").length });
     console.log(`[broadcast] ${b.id.slice(0, 8)}: +${ok} sent, ${bad} failed`);
   }

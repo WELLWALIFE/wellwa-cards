@@ -114,6 +114,12 @@ export async function logCloud(o: { ownerId: string; cardId: string | null; phon
   return r.ok ? r.data : null;
 }
 const e164 = (digits: string) => "+" + digits.replace(/[^0-9]/g, "");
+/** This WhatsApp message id is already in the CRM log: Meta re-delivered it (a retry after a slow answer, or after an
+ *  app restart emptied the in-memory list) and it was handled the first time — no second reply, no second lead. */
+export async function alreadyLogged(ownerId: string, waId: string): Promise<boolean> {
+  const r = await restAsService<{ id: string }[]>(`wa_messages?owner_id=eq.${ownerId}&wa_id=eq.${encodeURIComponent(waId)}&select=id&limit=1`);
+  return r.ok && Array.isArray(r.data) && r.data.length > 0;
+}
 
 /* ---------------- menu bot (same JSON as the QR bridge) ---------------- */
 type FOpt = { label: string; action: "menu" | "text" | "ai" | "human"; target?: string; reply?: string };
@@ -195,6 +201,7 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (!m.id || seen.has(m.id)) continue;
     seen.set(m.id, Date.now()); if (seen.size > 5000) for (const [k, t] of seen) if (Date.now() - t > 3600_000) seen.delete(k);
     const { kind, text } = textOf(m); if (!kind) continue;
+    if (await alreadyLogged(acc.owner_id, m.id)) continue;
     const phone = e164(m.from), name = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? "";
     const sentAt = m.timestamp ? new Date(Number(m.timestamp) * 1000).toISOString() : undefined;
     const leadId = await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, name, waId: m.id, direction: "in", sender: "customer", kind, text: text || (kind === "text" ? "" : `[${kind}]`), sentAt });
@@ -211,6 +218,13 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     const lastOwner = rows.filter((r) => r.sender === "owner").pop();
     if (lastOwner && Date.now() - new Date(lastOwner.sent_at).getTime() < 15 * 60_000) continue;
     if (!card) continue;
+    // Loop guard: another business's auto-reply bot answering ours would ping-pong for ever. Many bot replies in the
+    // last 3 minutes and the last five inbound messages in that time all long (a real person cannot type five long
+    // messages that fast, and mixes in short lines) → stay quiet.
+    const recent = rows.filter((r) => Date.now() - new Date(r.sent_at).getTime() < 3 * 60_000);
+    const botRecent = recent.filter((r) => r.sender === "bot").length;
+    const lastIn = recent.filter((r) => r.direction === "in").slice(-5);
+    if (botRecent >= 6 && lastIn.length === 5 && lastIn.every((r) => (r.text ?? "").trim().length > 80)) { console.warn("[wa-cloud] loop guard: no reply to", phone.slice(0, 6) + "…"); continue; }
     const firstContact = rows.filter((r) => r.direction === "in").length <= 1;
     const flow = text ? await runFlow(acc.owner_id, card, site, m.from, text, firstContact) : null;
     if (flow) {

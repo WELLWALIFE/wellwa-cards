@@ -308,12 +308,17 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
   const endRef = useRef<HTMLDivElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // onLead is often an inline arrow (the CRM Pro customer screen): kept in a ref so a new function on every parent render
+  // does not make a new `load` — that re-ran the load effect after every response (setData → render → load → …), an endless
+  // stream of thread requests (each one also marking the chat read and re-asking the AI).
+  const onLeadRef = useRef(onLead);
+  useEffect(() => { onLeadRef.current = onLead; }, [onLead]);
 
   const load = useCallback(async (quiet = false) => {
-    const r = await api<{ lead: Lead; messages: Msg[]; events: Ev[]; templates: Tpl[]; error?: string }>(`/api/crm/thread?lead=${id}${q_as(ctx)}`);
-    if (!r.ok) { if (!quiet) setErr(r.data.error || "Could not open this chat."); return; }
-    setLead(r.data.lead); onLead(r.data.lead); setMsgs(r.data.messages); setEvents(r.data.events); setTpls(r.data.templates);
-  }, [id, onLead, ctx]);
+    const r = await api<{ lead: Lead; messages: Msg[]; events: Ev[]; templates: Tpl[]; error?: string }>(`/api/crm/thread?lead=${id}${q_as(ctx)}`).catch(() => null);
+    if (!r || !r.ok) { if (!quiet) setErr(r?.data.error || "Could not open this chat."); return; }
+    setLead(r.data.lead); onLeadRef.current(r.data.lead); setMsgs(r.data.messages); setEvents(r.data.events); setTpls(r.data.templates);
+  }, [id, ctx]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const t = setInterval(() => load(true), 8000); return () => clearInterval(t); }, [load]);
   useEffect(() => { endRef.current?.scrollIntoView({ block: "end" }); }, [msgs?.length]);
@@ -323,8 +328,8 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
     setE("");
     const r = await api<{ lead: Lead; error?: string }>("/api/crm/lead", { method: "PATCH", json: { id, as: ctx.as ?? undefined, ...patch } });
     if (!r.ok) { setE(r.data.error || "Could not save. Please try again."); return null; }
-    setLead(r.data.lead); onLead(r.data.lead); load(true); return r.data.lead;
-  }, [id, onLead, load, ctx.as]);
+    setLead(r.data.lead); onLeadRef.current(r.data.lead); load(true); return r.data.lead;
+  }, [id, load, ctx.as]);
 
   async function pickFile(f: File | undefined) {
     if (!f) return; setUploading(true); setErr("");

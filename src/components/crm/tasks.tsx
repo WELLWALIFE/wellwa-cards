@@ -1,7 +1,7 @@
 "use client";
 // Tasks (docs/crm-pro.md 3.8): the New-task sheet (kind, what, when — quick chips first), one task row with
 // Done / Snooze, and the Calendar section (tasks + bookings by day).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { Check, LoaderCircle, Phone, MessageCircle, Footprints, Handshake, CircleDot, Clock, Trash2 } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useShell, quickMoments, inputCls, Chip, BottomSheet, fmtWhen, fmtTime, isPast, toLocalInput, type Task } from "@/components/crm/shared";
@@ -54,8 +54,8 @@ export function TaskRow({ task, onChanged, showLead }: { task: Task; onChanged: 
   const I = KIND_ICON[task.kind] ?? CircleDot;
   async function patch(json: Record<string, unknown>, tag: string) {
     setBusy(tag); setErr("");
-    const r = await api<{ task: Task; error?: string }>("/api/crm/tasks", { method: "PATCH", json: { id: task.id, as: as ?? undefined, ...json } });
-    setBusy(""); if (!r.ok) { setErr(r.data.error || L.failed); return; } onChanged(r.data.task);
+    const r = await api<{ task: Task; error?: string }>("/api/crm/tasks", { method: "PATCH", json: { id: task.id, as: as ?? undefined, ...json } }).catch(() => null);
+    setBusy(""); if (!r?.ok) { setErr(r?.data.error || L.failed); return; } onChanged(r.data.task);
   }
   async function remove() {
     setBusy("del"); const r = await api<{ ok: boolean }>(`/api/crm/tasks?id=${task.id}${as ? `&as=${as}` : ""}`, { method: "DELETE" }); setBusy(""); if (r.ok) onChanged(null); else setErr(L.failed);
@@ -87,13 +87,19 @@ export function CalendarSection() {
   const [day, setDay] = useState(() => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" }));
   type Row = Task & { leads?: { name: string; phone: string } | null };
   const [tasks, setTasks] = useState<Row[] | null>(null);
+  const [err, setErr] = useState("");
+  const seq = useRef(0);
   const load = useCallback(async (d: string) => {
+    const my = ++seq.current;
     const from = new Date(`${d}T00:00:00+05:30`).toISOString(), to = new Date(new Date(`${d}T00:00:00+05:30`).getTime() + 86400000).toISOString();
-    const r = await api<{ tasks: Row[] }>(`/api/crm/tasks?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${as ? `&as=${as}` : ""}`);
-    setTasks(r.ok ? r.data.tasks : []);
-  }, [as]);
+    const r = await api<{ tasks: Row[]; error?: string }>(`/api/crm/tasks?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}${as ? `&as=${as}` : ""}`).catch(() => null);
+    if (my !== seq.current) return;   // a quicker tap on ‹ › already asked for another day
+    setErr(r?.ok ? "" : r?.data.error || L.failed);
+    setTasks(r?.ok ? r.data.tasks : []);
+  }, [as, L.failed]);
   useEffect(() => { setTasks(null); load(day); }, [day, load, version]);
-  const shift = (n: number) => { const d = new Date(`${day}T00:00:00+05:30`); d.setDate(d.getDate() + n); setDay(d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })); };
+  // IST has no DST: whole days are 24 h. (setDate() works in the device's zone and slips a day across a DST change.)
+  const shift = (n: number) => { const d = new Date(new Date(`${day}T12:00:00+05:30`).getTime() + n * 86400000); setDay(d.toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" })); };
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
@@ -104,6 +110,7 @@ export function CalendarSection() {
       </div>
       <section>
         <h3 className="mb-1.5 text-xs font-semibold uppercase tracking-wide text-muted">{L.tasks}</h3>
+        {err && <p role="alert" className="mb-1.5 text-xs text-danger">{err}</p>}
         {tasks === null ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : tasks.length === 0 ? <p className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted">{L.calendarEmpty}</p> : (
           <div className="space-y-1.5">{tasks.map((t) => (
             <div key={t.id} className="flex items-center gap-2">

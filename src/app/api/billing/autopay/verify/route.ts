@@ -17,7 +17,8 @@ export async function POST(request: Request) {
 
   // Razorpay signs "<payment id>|<subscription id>" with the key secret.
   const expected = crypto.createHmac("sha256", process.env.RAZORPAY_KEY_SECRET!).update(`${paymentId}|${subId}`).digest("hex");
-  if (expected.length !== sig.length || !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))) {
+  const want = Buffer.from(expected), got = Buffer.from(String(sig));
+  if (want.length !== got.length || !crypto.timingSafeEqual(want, got)) {
     return Response.json({ ok: false, error: "invalid signature" }, { status: 400 });
   }
 

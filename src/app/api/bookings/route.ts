@@ -45,10 +45,14 @@ export async function PATCH(request: Request) {
   if (typeof b.status === "string" && (STATUSES as string[]).includes(b.status)) patch.status = b.status;
   if (b.at !== undefined) { const at = istInstant(S(b.at, 20)); if (!at) return NextResponse.json({ error: "That time is not valid." }, { status: 400 }); patch.starts_at = at.toISOString(); patch.reminded_customer_24h = null; patch.reminded_customer_2h = null; patch.reminded_owner_at = null; }
   for (const k of ["name", "phone", "service", "note"] as const) if (b[k] !== undefined) patch[k] = S(b[k], k === "note" ? 300 : k === "service" ? 120 : 80);
+  // The review ask goes once, when the booking BECOMES done — not again on every later save of a done booking.
+  const wasDone = patch.status === "done"
+    ? (await restAsUser<{ status: BookingStatus }[]>(me.token, `bookings?id=eq.${id}&owner_id=eq.${me.id}&select=status`)).data?.[0]?.status === "done"
+    : false;
   const r = await restAsUser<Booking[]>(me.token, `bookings?id=eq.${id}&owner_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) });
   if (!r.ok || !r.data?.[0]) return NextResponse.json({ error: "Could not update the booking." }, { status: 400 });
   // Done → thank-you with the Google review link (phase 2: review collector).
-  if (patch.status === "done") void askForReview(me.id, { name: r.data[0].name, phone: r.data[0].phone }, `booking:${r.data[0].id}`);
+  if (patch.status === "done" && !wasDone) void askForReview(me.id, { name: r.data[0].name, phone: r.data[0].phone }, `booking:${r.data[0].id}`);
   return NextResponse.json({ booking: r.data[0] });
 }
 

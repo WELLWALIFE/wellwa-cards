@@ -197,12 +197,30 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
  *  in step so the owner sees one clear state. */
 export async function setCampaignStatus(fb: AccountRow, campaignId: string, status: "ACTIVE" | "PAUSED") {
   const ut = fb.user_token; if (!ut) throw new Error("Reconnect Facebook to allow ads.");
-  await graph(`${campaignId}`, { status, access_token: ut }, "POST");
-  const [sets, ads] = await Promise.all([
-    graph<{ data: { id: string }[] }>(`${campaignId}/adsets`, { access_token: ut, fields: "id", limit: "20" }).catch(() => ({ data: [] })),
-    graph<{ data: { id: string }[] }>(`${campaignId}/ads`, { access_token: ut, fields: "id", limit: "20" }).catch(() => ({ data: [] })),
-  ]);
-  for (const x of [...(sets.data ?? []), ...(ads.data ?? [])]) await graph(`${x.id}`, { status, access_token: ut }, "POST").catch(() => null);
+  type Kid = { id: string; status?: string };
+  const kids = async (): Promise<Kid[]> => {
+    const [sets, ads] = await Promise.all([
+      graphStep<{ data: Kid[] }>("ad sets", `${campaignId}/adsets`, { access_token: ut, fields: "id,status", limit: "50" }),
+      graphStep<{ data: Kid[] }>("ads", `${campaignId}/ads`, { access_token: ut, fields: "id,status", limit: "50" }),
+    ]);
+    // a deleted / archived ad set or ad cannot change state (Meta refuses it), and one already in that state needs no call
+    return [...(sets.data ?? []), ...(ads.data ?? [])].filter((x) => x.status !== "DELETED" && x.status !== "ARCHIVED" && x.status !== status);
+  };
+  if (status === "PAUSED") {
+    // Pausing the campaign alone stops all spending, so it goes first and its failure is the only fatal one; the ad sets
+    // and ads follow on a best-effort basis (a failure there leaves them ACTIVE under a PAUSED campaign: nothing runs).
+    await graphStep("campaign", `${campaignId}`, { status, access_token: ut }, "POST");
+    const list = await kids().catch(() => [] as Kid[]);
+    await Promise.allSettled(list.map((x) => graph(`${x.id}`, { status, access_token: ut }, "POST")));
+    return;
+  }
+  // Starting: the ad sets and ads first, the campaign last, and any failure stops before the campaign goes ACTIVE, so the
+  // owner never sees "Running" while Meta still has the ad set or the ad off (or the opposite: money spent unasked).
+  const list = await kids();
+  const res = await Promise.allSettled(list.map((x) => graph(`${x.id}`, { status, access_token: ut }, "POST")));
+  const bad = res.find((r): r is PromiseRejectedResult => r.status === "rejected");
+  if (bad) throw bad.reason instanceof Error ? bad.reason : new Error(String(bad.reason));
+  await graphStep("campaign", `${campaignId}`, { status, access_token: ut }, "POST");
 }
 
 export type CampaignRow = { id: string; user_id: string; ad_account: string; campaign_id: string; adset_id: string | null; ad_id: string | null; name: string; goal: AdGoal; creative_url: string | null; creative_kind: string | null; primary_text: string | null; headline: string | null; daily_paise: number; days: number; status: string; created_at: string };

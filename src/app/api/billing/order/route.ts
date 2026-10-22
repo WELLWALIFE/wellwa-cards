@@ -13,12 +13,13 @@ export async function POST(request: Request) {
   if (rateLimited(clientKey(request, `billing-order:${session.user.id}`), 10, 60_000)) {
     return Response.json({ error: "too many requests" }, { status: 429 });
   }
-  const { plan } = (await request.json()) as { plan: PaidPlan | `saas:${SaasTier}` | "card" };
+  const { plan } = (await request.json().catch(() => ({}))) as { plan?: PaidPlan | `saas:${SaasTier}` | "card" };
   // "saas:growth" / "saas:pro" = the all-in-one subscription; plain "pro" / "team" stay the older card plans;
   // "card" = one more year of the V-Card after its free year (₹1,499, not partner business).
   const card = plan === "card";
   const tier = !card && typeof plan === "string" && plan.startsWith("saas:") ? (plan.slice(5) as SaasTier) : null;
-  const price = card ? CARD_RENEWAL : tier ? SAAS_PLANS[tier] : PLAN_PRICE[plan as PaidPlan];
+  // Own keys only: "saas:toString" or "constructor" must be "invalid plan", not a price without an amount.
+  const price = card ? CARD_RENEWAL : tier ? (Object.hasOwn(SAAS_PLANS, tier) ? SAAS_PLANS[tier] : null) : typeof plan === "string" && Object.hasOwn(PLAN_PRICE, plan) ? PLAN_PRICE[plan as PaidPlan] : null;
   if (!price) return Response.json({ error: "invalid plan" }, { status: 400 });
   // Growth is taken only by autopay now (owner's call, 27 Sep 2026) — /api/billing/autopay.
   // Starter and Pro are no longer sold (owner, 16 Oct 2026). Someone already on that plan may still renew it; nobody else can start it, not even by calling this route.

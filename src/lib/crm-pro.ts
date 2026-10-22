@@ -33,6 +33,13 @@ export function scopeFilter(scope: Scope): string {
   return `owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&assigned_to=eq.${scope.userId}` : ""}`;
 }
 
+/** Someone a lead or task of this workspace may be assigned to: the owner, or a joined, active team member. */
+export async function isTeamMember(ownerId: string, userId: string): Promise<boolean> {
+  if (!isUuid(userId)) return false;
+  if (userId === ownerId) return true;
+  return list(await restAsService<{ id: string }[]>(`crm_agents?owner_id=eq.${ownerId}&agent_user_id=eq.${userId}&active=is.true&select=id&limit=1`)).length > 0;
+}
+
 export async function prefsOf(ownerId: string): Promise<CrmPrefs> {
   const r = (await restAsService<{ crm: Partial<CrmPrefs> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`)).data?.[0];
   return { ...DEFAULT_PREFS, ...(r?.crm ?? {}) };
@@ -48,17 +55,25 @@ export type ListQuery = { q?: string; stage?: string; kind?: string; tag?: strin
 export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: LeadPro[]; page: number; more: boolean }> {
   const page = Math.max(0, qy.page ?? 0), size = 50;
   const f: string[] = [scopeFilter(scope)];
-  const q = (qy.q ?? "").trim().replace(/[,.()]/g, " ").slice(0, 60);
-  if (q) { const like = `*${q}*`; f.push(`or=(name.ilike.${enc(like)},phone.ilike.${enc(like)},city.ilike.${enc(like)},business.ilike.${enc(like)},ai_intent.ilike.${enc(like)},message.ilike.${enc(like)})`); }
+  // Characters that are syntax inside a PostgREST or=(...) list (and the ilike wildcards) are dropped from the search.
+  const q = (qy.q ?? "").trim().replace(/[,.()"\\*:]/g, " ").replace(/\s+/g, " ").trim().slice(0, 60);
+  if (q) {
+    const like = `*${q}*`;
+    // "+91 98765 43210" / "98765-43210" must still find "+919876543210": also match the digits alone against the phone.
+    const dq = q.replace(/\D/g, "");
+    const byDigits = dq.length >= 4 && dq !== q ? `,phone.ilike.${enc(`*${dq}*`)}` : "";
+    f.push(`or=(name.ilike.${enc(like)},phone.ilike.${enc(like)}${byDigits},city.ilike.${enc(like)},business.ilike.${enc(like)},ai_intent.ilike.${enc(like)},message.ilike.${enc(like)})`);
+  }
   if (qy.stage) f.push(`status=eq.${enc(qy.stage)}`);
   if (qy.kind) f.push(`kind=eq.${enc(qy.kind)}`);
-  if (qy.tag) f.push(`tags=cs.${enc(`{${qy.tag.replace(/[{}"]/g, "")}}`)}`);
+  if (qy.tag) f.push(`tags=cs.${enc(`{${qy.tag.replace(/[{}",\\]/g, "")}}`)}`);
   if (qy.source) f.push(`source=eq.${enc(qy.source)}`);
   if (qy.city) f.push(`city=ilike.${enc(qy.city)}`);
   if (qy.assigned === "me") f.push(`assigned_to=eq.${scope.userId}`);
   else if (qy.assigned === "none") f.push("assigned_to=is.null");
   else if (isUuid(qy.assigned)) f.push(`assigned_to=eq.${qy.assigned}`);
-  if (qy.due === "today") f.push(`next_follow_up=lte.${enc(new Date(new Date().setHours(23, 59, 59, 999)).toISOString())}`, OPEN);
+  // End of today in IST (the server runs in UTC: setHours() would end "today" at 05:30 IST tomorrow).
+  if (qy.due === "today") f.push(`next_follow_up=lt.${enc(istDayBounds().end)}`, OPEN);
   else if (qy.due === "overdue") f.push(`next_follow_up=lt.${enc(new Date().toISOString())}`, OPEN);
   else if (qy.due === "any") f.push("next_follow_up=not.is.null", OPEN);
   if (qy.idle && qy.idle > 0) f.push(`last_activity_at=lt.${enc(new Date(Date.now() - qy.idle * 86400000).toISOString())}`, OPEN);
@@ -70,9 +85,14 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
 /* ---------------- today ---------------- */
 export type TodayItem = { lead: LeadPro; task?: TaskRow; booking?: BookingLite; why: string };
 export type Today = { overdue: TodayItem[]; due: TodayItem[]; unread: TodayItem[]; fresh: TodayItem[]; bookings: TodayItem[]; callbacks: TodayItem[]; cold: TodayItem[]; counts: { due: number; unread: number; fresh: number; hot: number; calledToday: number; target: number } };
+/** Start and end (exclusive) of today in IST, as UTC ISO strings. */
+function istDayBounds(): { start: string; end: string } {
+  const startIst = new Date(Date.now() + 5.5 * 3600_000); startIst.setUTCHours(0, 0, 0, 0);
+  return { start: new Date(startIst.getTime() - 5.5 * 3600_000).toISOString(), end: new Date(startIst.getTime() + 86400000 - 5.5 * 3600_000).toISOString() };
+}
 export async function today(scope: Scope): Promise<Today> {
-  const now = new Date(), startIst = new Date(now.getTime() + 5.5 * 3600_000); startIst.setUTCHours(0, 0, 0, 0);
-  const dayStart = new Date(startIst.getTime() - 5.5 * 3600_000).toISOString(), dayEnd = new Date(startIst.getTime() + 86400000 - 5.5 * 3600_000).toISOString();
+  const now = new Date();
+  const { start: dayStart, end: dayEnd } = istDayBounds();
   const sf = scopeFilter(scope);
   const taskF = scope.role === "agent" ? `owner_id=eq.${scope.ownerId}&assigned_to=eq.${scope.userId}` : `owner_id=eq.${scope.ownerId}`;
   const [tasks, unread, fresh, bookings, cold, calls, prefs] = await Promise.all([
@@ -87,7 +107,8 @@ export async function today(scope: Scope): Promise<Today> {
   const taskRows = list(tasks);
   const ids = new Set<string>([...taskRows.map((t) => t.lead_id).filter(Boolean) as string[], ...list(bookings).map((b) => b.lead_id).filter(Boolean) as string[]]);
   const leadsById = new Map<string, LeadPro>();
-  if (ids.size) for (const l of list(await restAsService<LeadPro[]>(`leads?owner_id=eq.${scope.ownerId}&id=in.(${[...ids].join(",")})&select=${PRO_COLS}&limit=300`))) leadsById.set(l.id, l);
+  // Scoped like every other read: an agent only gets the leads assigned to them (a task or booking on someone else's lead is dropped).
+  if (ids.size) for (const l of list(await restAsService<LeadPro[]>(`leads?${sf}&id=in.(${[...ids].join(",")})&select=${PRO_COLS}&limit=300`))) leadsById.set(l.id, l);
   const overdue: TodayItem[] = [], due: TodayItem[] = [];
   for (const t of taskRows) {
     const lead = t.lead_id ? leadsById.get(t.lead_id) : undefined;
@@ -96,7 +117,7 @@ export async function today(scope: Scope): Promise<Today> {
   }
   const unreadItems = list(unread).map((lead) => ({ lead, why: `${lead.unread} unread` }));
   const freshItems = list(fresh).map((lead) => ({ lead, why: lead.source }));
-  const bookingItems = list(bookings).map((b) => ({ lead: (b.lead_id && leadsById.get(b.lead_id)) || ({ id: b.lead_id ?? `b-${b.id}`, name: b.name, phone: b.phone, status: "booked", tags: [], unread: 0, score: 0 } as unknown as LeadPro), booking: b, why: b.service }));
+  const bookingItems = list(bookings).filter((b) => scope.role !== "agent" || (b.lead_id && leadsById.has(b.lead_id))).map((b) => ({ lead: (b.lead_id && leadsById.get(b.lead_id)) || ({ id: b.lead_id ?? `b-${b.id}`, name: b.name, phone: b.phone, status: "booked", tags: [], unread: 0, score: 0 } as unknown as LeadPro), booking: b, why: b.service }));
   // AI-answered calls that asked for a call back and have no open task yet.
   let callbacks: TodayItem[] = [];
   if (scope.role !== "agent") {
@@ -138,7 +159,13 @@ export async function leadFull(scope: Scope, id: string): Promise<{ lead: LeadPr
 
 /* ---------------- tasks ---------------- */
 export async function createTask(scope: Scope, t: { lead_id: string | null; kind: TaskKind; title: string; text?: string; due_at: string; assigned_to?: string | null; remind_at?: string | null; source?: string }): Promise<TaskRow | null> {
-  const row = { owner_id: scope.ownerId, lead_id: t.lead_id, assigned_to: t.assigned_to ?? (scope.role === "agent" ? scope.userId : null), created_by: scope.userId, kind: t.kind, title: t.title.slice(0, 120), text: (t.text ?? "").slice(0, 1000), due_at: t.due_at, remind_at: t.remind_at ?? null, source: t.source ?? "manual" };
+  // No assignee given: an agent's own task is theirs; the owner's / a manager's task on a lead goes to whoever has that lead,
+  // so it shows on that agent's Today screen (it filters tasks by assigned_to).
+  let assignee = t.assigned_to ?? (scope.role === "agent" ? scope.userId : null);
+  if (t.assigned_to === undefined && scope.role !== "agent" && t.lead_id) {
+    assignee = (await restAsService<{ assigned_to: string | null }[]>(`leads?id=eq.${t.lead_id}&owner_id=eq.${scope.ownerId}&select=assigned_to&limit=1`)).data?.[0]?.assigned_to ?? null;
+  }
+  const row = { owner_id: scope.ownerId, lead_id: t.lead_id, assigned_to: assignee, created_by: scope.userId, kind: t.kind, title: t.title.slice(0, 120), text: (t.text ?? "").slice(0, 1000), due_at: t.due_at, remind_at: t.remind_at ?? null, source: t.source ?? "manual" };
   const r = await restAsService<TaskRow[]>(`crm_tasks?select=${TASK_COLS}`, { method: "POST", body: JSON.stringify(row), headers: { Prefer: "return=representation" } });
   const task = Array.isArray(r.data) ? r.data[0] : null;
   if (task && t.lead_id) await addEvent(scope.token, scope.ownerId, t.lead_id, "task", `${t.kind === "call" ? "📞" : t.kind === "whatsapp" ? "💬" : t.kind === "visit" ? "🚶" : t.kind === "meeting" ? "🤝" : "☐"} ${t.title || t.kind} · ${fmtIst(t.due_at)}`).catch(() => null);

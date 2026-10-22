@@ -31,6 +31,7 @@ import { nativeScript } from "./tts-script.mjs";
 import { runStoryboard, runAnimate, sweepV2 } from "./ad-v2.mjs";
 import { processStockReel } from "./stock-reel.mjs";
 import { processExplainer } from "./explainer-engine.mjs";
+import { guardedFetch, originOf } from "./url-guard.mjs";
 
 const run = promisify(execFile);
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -118,6 +119,8 @@ const FONT = [
 const SITE = (env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com").replace(/\/$/, "");
 
 if (!SUPA_URL || !SUPA_KEY) { console.error("[media] missing Supabase env"); process.exit(1); }
+/** The only origins fetchPhoto/fetchOwnFile download from: our Supabase project and our own site. */
+const OWN_ORIGINS = [originOf(SUPA_URL), originOf(SITE)].filter(Boolean);
 
 const sb = (p, init = {}) => fetch(`${SUPA_URL}${p}`, {
   signal: AbortSignal.timeout(T_JSON),   // a hung Supabase socket must not hold the render slot
@@ -246,12 +249,9 @@ function beats(script) {
 async function fetchPhoto(url) {
   if (!url) return null;
   try {
-    const abs = url.startsWith("/") ? SITE + url : url;
-    if (!(abs.startsWith(SITE) || abs.startsWith(SUPA_URL))) return null;
-    const r = await fetch(abs, { signal: AbortSignal.timeout(T_JSON) });
-    if (!r.ok) return null;
-    const buf = Buffer.from(await r.arrayBuffer());
-    return buf.length <= 5 * 1024 * 1024 ? buf : null;
+    const s = String(url);
+    const abs = s.startsWith("/") && !s.startsWith("//") ? SITE + s : s;
+    return await guardedFetch(abs, { allowed: OWN_ORIGINS, timeoutMs: T_JSON, maxBytes: 5 * 1024 * 1024 });
   } catch { return null; }
 }
 
@@ -1387,14 +1387,9 @@ let busyStoryboard = false;
 /** Any file from our own storage or site. fetchPhoto caps at 5 MB, which a ten-minute voice-over goes past. */
 async function fetchOwnFile(url, maxBytes = 48 * 1024 * 1024) {
   if (!url) return null;
-  const abs = String(url).startsWith("/") ? SITE + url : String(url);
-  if (!(abs.startsWith(SITE) || abs.startsWith(SUPA_URL))) return null;
-  try {
-    const r = await fetch(abs, { signal: AbortSignal.timeout(T_MEDIA) });
-    if (!r.ok) return null;
-    const buf = Buffer.from(await r.arrayBuffer());
-    return buf.length <= maxBytes ? buf : null;
-  } catch { return null; }
+  const s = String(url);
+  const abs = s.startsWith("/") && !s.startsWith("//") ? SITE + s : s;
+  return guardedFetch(abs, { allowed: OWN_ORIGINS, timeoutMs: T_MEDIA, maxBytes });
 }
 /** Wake a human. The platform owners get an email (and WhatsApp/push through their own accounts) when the AI
  *  picture service refuses for money, a video fails, or the worker gives up on a job. Throttled here per key
