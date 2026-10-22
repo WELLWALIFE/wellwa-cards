@@ -2,7 +2,7 @@
 // POST { ad_account } → choose the ad account.
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
-import { fbAccount, adAccounts, chooseAdAccount, isPermissionError } from "@/lib/ads-server";
+import { fbAccount, adAccounts, chooseAdAccount, isPermissionError, pageWhatsApp } from "@/lib/ads-server";
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
@@ -10,9 +10,9 @@ export async function GET(request: Request) {
   const fb = await fbAccount(me.id);
   if (!fb) return NextResponse.json({ connected: false, accounts: [], selected: "", permission: "none" });
   try {
-    const accounts = await adAccounts(fb);
+    const [accounts, pageWa] = await Promise.all([adAccounts(fb), pageWhatsApp(fb)]);
     const selected = fb.ad_account_id && accounts.some((a) => a.id === fb.ad_account_id) ? fb.ad_account_id : (accounts.find((a) => a.ok)?.id ?? accounts[0]?.id ?? "");
-    return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts, selected, permission: "ok" });
+    return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts, selected, permission: "ok", pageWhatsapp: pageWa === null ? null : pageWa.slice(-10) });
   } catch (e) {
     const msg = (e as Error).message;
     return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts: [], selected: "", permission: isPermissionError(msg) ? "missing" : "error", error: msg.slice(0, 200) });

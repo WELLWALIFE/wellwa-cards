@@ -4,7 +4,7 @@ import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { discardCampaign } from "@/lib/social-server";
 import { fbAccount, createAd, saveCampaign, isPermissionError, type AdGoal } from "@/lib/ads-server";
-import { cleanTargeting, AD_BUDGET } from "@/lib/ads-shared";
+import { cleanTargeting, AD_BUDGET, waMismatchText } from "@/lib/ads-shared";
 
 export const maxDuration = 120;
 const https = (u: unknown) => (typeof u === "string" && /^https:\/\/.{5,600}$/.test(u) ? u : "");
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...r, row });
   } catch (e) {
     const msg = (e as Error).message;
+    const wa = waMismatchText(msg); if (wa) return NextResponse.json({ error: wa }, { status: 400 });
     return NextResponse.json({ error: isPermissionError(msg) ? "Facebook has not allowed ads for this login yet. Open Connections → disconnect Facebook → connect again and allow 'Manage ads'." : msg.slice(0, 300) }, { status: 400 });
   }
 }

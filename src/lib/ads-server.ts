@@ -139,7 +139,24 @@ Rules: primaryText 3-5 short lines (max 80 words), the first line is a hook a lo
 
 /* ---------------- creating the campaign ---------------- */
 const CAMPAIGN_PREFIX = "Shubhora · ";
-const objectiveFor = (): string => "OUTCOME_TRAFFIC";
+// A WhatsApp ad is a click-to-WhatsApp ad: Meta optimises for people who START a chat (owner, 22 Oct 2026: a traffic ad
+// with a WhatsApp button gave 73 link clicks and 1 message). Calls and website stay traffic ads.
+const objectiveFor = (goal: AdGoal): string => (goal === "whatsapp" ? "OUTCOME_ENGAGEMENT" : "OUTCOME_TRAFFIC");
+
+/** The WhatsApp number linked to the Facebook Page (digits; "" when none is linked; null when it could not be read). Meta sends EVERY WhatsApp ad
+ *  button of the Page to this number, whatever link the ad carries — so the ad must use it. */
+export async function pageWhatsApp(fb: AccountRow): Promise<string | null> {
+  if (!fb.page_id) return null;
+  for (const token of [fb.access_token, fb.user_token]) {
+    if (!token) continue;
+    try {
+      const r = await graph<{ whatsapp_number?: string }>(fb.page_id, { fields: "whatsapp_number", access_token: token });
+      return String(r.whatsapp_number ?? "").replace(/\D/g, "");
+    } catch { /* try the other token */ }
+  }
+  return null; // could not read it (permission / network): unknown, not "none"
+}
+const last10 = (s: string) => s.replace(/\D/g, "").slice(-10);
 
 async function uploadVideo(acct: string, ut: string, fileUrl: string, name: string): Promise<string> {
   const v = await graphStep<{ id: string }>("video upload", `${acct}/advideos`, { file_url: fileUrl, name, access_token: ut }, "POST");
@@ -160,17 +177,26 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   if (!fb.page_id) throw new Error("Connect a Facebook Page first.");
   const acct = await currentAdAccount(fb);
   const digits = spec.phone.replace(/\D/g, "").slice(-10);
-  const wa = `https://wa.me/91${digits}?text=${encodeURIComponent("Hi, I saw your ad")}`;
+  if (spec.goal === "whatsapp") {
+    // Meta ignores the number in the link and opens the Page's linked WhatsApp. Refuse an ad that would send people elsewhere.
+    const linked = await pageWhatsApp(fb);
+    if (linked === "") throw new Error("WA_NOT_LINKED");
+    if (linked && last10(linked) !== digits) throw new Error(`WA_NUMBER_MISMATCH:${last10(linked)}`);
+  }
+  const wa = "https://api.whatsapp.com/send";
   const link = spec.goal === "whatsapp" ? wa : spec.link || `${SITE_URL}`;
-  const cta = spec.goal === "whatsapp" ? { type: "WHATSAPP_MESSAGE", value: { link: wa } } : spec.goal === "calls" ? { type: "CALL_NOW", value: { link: `tel:+91${digits}` } } : { type: "LEARN_MORE", value: { link } };
+  const cta = spec.goal === "whatsapp" ? { type: "WHATSAPP_MESSAGE", value: { app_destination: "WHATSAPP" } } : spec.goal === "calls" ? { type: "CALL_NOW", value: { link: `tel:+91${digits}` } } : { type: "LEARN_MORE", value: { link } };
   const status = spec.startNow ? "ACTIVE" : "PAUSED";
   const name = `${CAMPAIGN_PREFIX}${S(spec.name, 60)}`;
   const start = new Date(Date.now() + 10 * 60_000), end = new Date(start.getTime() + spec.days * 86400_000);
 
-  const camp = await graphStep<{ id: string }>("campaign", `${acct}/campaigns`, { name, objective: objectiveFor(), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
+  const camp = await graphStep<{ id: string }>("campaign", `${acct}/campaigns`, { name, objective: objectiveFor(spec.goal), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
   const adset = await graphStep<{ id: string }>("ad set", `${acct}/adsets`, {
     name: `${name} · audience`, campaign_id: camp.id, status,
-    daily_budget: String(spec.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "LINK_CLICKS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    daily_budget: String(spec.dailyPaise), billing_event: "IMPRESSIONS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    ...(spec.goal === "whatsapp"
+      ? { optimization_goal: "CONVERSATIONS", destination_type: "WHATSAPP", promoted_object: JSON.stringify({ page_id: fb.page_id }) }
+      : { optimization_goal: "LINK_CLICKS" }),
     start_time: start.toISOString(), end_time: end.toISOString(),
     targeting: JSON.stringify(targetingSpec(spec.targeting, spec.placements)), access_token: ut,
   }, "POST");
@@ -224,7 +250,7 @@ export async function setCampaignStatus(fb: AccountRow, campaignId: string, stat
 }
 
 export type CampaignRow = { id: string; user_id: string; ad_account: string; campaign_id: string; adset_id: string | null; ad_id: string | null; name: string; goal: AdGoal; creative_url: string | null; creative_kind: string | null; primary_text: string | null; headline: string | null; daily_paise: number; days: number; status: string; created_at: string };
-export type CampaignLive = { campaign_id: string; status: string; effective_status: string; spend: number; impressions: number; reach: number; clicks: number; results: number; resultLabel: string; start?: string; stop?: string };
+export type CampaignLive = { campaign_id: string; status: string; effective_status: string; spend: number; impressions: number; reach: number; clicks: number; results: number; resultLabel: string; chats?: number; linkClicks?: number; start?: string; stop?: string };
 
 /** Live numbers for the owner's campaigns (spend, people reached, clicks, results). */
 export async function liveCampaigns(fb: AccountRow, acct: string, ids: string[]): Promise<Record<string, CampaignLive>> {
@@ -245,9 +271,10 @@ export async function liveCampaigns(fb: AccountRow, acct: string, ids: string[])
   for (const c of r.data ?? []) {
     const i = c.insights?.data?.[0];
     const act = (t: string) => Number(i?.actions?.find((a) => a.action_type === t)?.value ?? 0);
-    const results = act("link_click") || Number(i?.clicks ?? 0);
+    const chats = act("onsite_conversion.messaging_conversation_started_7d");
+    const results = chats || act("link_click") || Number(i?.clicks ?? 0);
     const eff = c.effective_status === "ACTIVE" && adState[c.id] && adState[c.id] !== "ACTIVE" ? adState[c.id] : c.effective_status;
-    out[c.id] = { campaign_id: c.id, status: c.status, effective_status: eff, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0), results, resultLabel: "clicks", start: c.start_time, stop: c.stop_time };
+    out[c.id] = { campaign_id: c.id, status: c.status, effective_status: eff, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0), results, resultLabel: chats ? "chats" : "clicks", chats, linkClicks: act("link_click"), start: c.start_time, stop: c.stop_time };
   }
   return out;
 }

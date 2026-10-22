@@ -29,3 +29,11 @@ export function roughResults(dailyRupees: number, days: number, goal: AdGoal) {
   const [lo, hi] = goal === "website" ? [3, 8] : goal === "calls" ? [8, 20] : [4, 12];
   return { low: Math.round((dailyRupees * days) / hi), high: Math.round((dailyRupees * days) / lo), unit: goal === "whatsapp" ? "messages" : goal === "calls" ? "calls" : "visits" };
 }
+
+/** The ad asked for one WhatsApp number but the Facebook Page has another linked (Meta always opens the Page's number). */
+export function waMismatchText(msg: string): string | null {
+  if (msg.startsWith("WA_NOT_LINKED")) return "Your Facebook Page has no WhatsApp number linked, so a WhatsApp ad cannot open a chat. Link it first: Facebook Page → Settings → Linked accounts → WhatsApp. / आपके Facebook Page से कोई WhatsApp नंबर जुड़ा नहीं है। पहले Page की Settings → Linked accounts → WhatsApp में नंबर जोड़ें, फिर ad बनाएँ।";
+  const m = /^WA_NUMBER_MISMATCH:(\d{10})/.exec(msg);
+  if (!m) return null;
+  return `WhatsApp ads open the WhatsApp number linked to your Facebook Page (+91 ${m[1]}), not the number typed here. Use +91 ${m[1]} for this ad, or link the other number to the Page first (Facebook Page → Settings → Linked accounts → WhatsApp). / WhatsApp ad हमेशा Facebook Page से जुड़े नंबर (+91 ${m[1]}) पर खुलता है। इसी नंबर से ad बनाएँ, या पहले Page की Settings → Linked accounts → WhatsApp में दूसरा नंबर जोड़ें।`;
+}

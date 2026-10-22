@@ -2,6 +2,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { listAccounts, createPausedBoost, SITE_URL } from "@/lib/social-server";
+import { waMismatchText } from "@/lib/ads-shared";
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
@@ -21,6 +22,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true, ...r });
   } catch (e) {
     const msg = (e as Error).message;
+    const wa = waMismatchText(msg); if (wa) return NextResponse.json({ error: wa }, { status: 400 });
     return NextResponse.json({ error: /permission|ads_management|\(#200\)|\(#10\)/i.test(msg) ? "Ads permission not granted yet — reconnect Facebook after Meta approves ads access." : msg.slice(0, 200) }, { status: 400 });
   }
 }
