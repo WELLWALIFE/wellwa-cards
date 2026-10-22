@@ -80,19 +80,26 @@ export async function customersOf(ownerId: string): Promise<{ name: string; phon
 
 const sleep = (ms: number) => new Promise((res) => setTimeout(res, ms));
 /** The same message to every customer, paced (a human's speed, well under WhatsApp's patience). `{name}` in the text
- *  becomes the customer's first name. Returns how many went. */
-export async function blast(ownerId: string, text: string, opts: { max?: number; gapMs?: number } = {}): Promise<{ sent: number; total: number; linked: boolean }> {
+ *  becomes the customer's first name. Returns how many went. Optional: `until` (a Date.now() deadline: no new send is
+ *  started after it) and `claim` / `release` (claim a number before sending, false = already sent, skip it; release it
+ *  again when the send failed) — the festival cron uses them to resume a big list over several runs without sending
+ *  anyone the same wish twice. `complete` is false when the deadline or a gone bridge stopped the list early. */
+export async function blast(ownerId: string, text: string, opts: { max?: number; gapMs?: number; until?: number; claim?: (to: string) => Promise<boolean>; release?: (to: string) => Promise<void> } = {}): Promise<{ sent: number; total: number; linked: boolean; complete: boolean }> {
   const expiry = await ownerPlanExpiry(ownerId);
   const list = await customersOf(ownerId);
-  if (!expiry) return { sent: 0, total: list.length, linked: false };
+  if (!expiry) return { sent: 0, total: list.length, linked: false, complete: true };
   const max = Math.min(opts.max ?? 100, list.length);
-  let sent = 0;
+  let sent = 0, complete = true;
   for (const c of list.slice(0, max)) {
+    if (opts.until && Date.now() > opts.until) { complete = false; break; }
+    const to = digitsOf(c.phone);
+    if (opts.claim && !(await opts.claim(to))) continue;
     const body = text.replace(/\{name\}/g, (c.name || "").split(" ")[0] || (/[ऀ-ॿ]/.test(text) ? "जी" : "there"));
-    const r = await bridge(ownerId, expiry, "send", { to: digitsOf(c.phone), text: body });
+    const r = await bridge(ownerId, expiry, "send", { to, text: body });
     if (r.ok) sent++;
-    else if (r.status === 503) break; // bridge gone: stop, do not hammer
+    else await opts.release?.(to).catch(() => undefined);
+    if (!r.ok && r.status === 503) { complete = false; break; } // bridge gone: stop, do not hammer
     await sleep(opts.gapMs ?? 2500 + Math.floor(Math.random() * 1500));
   }
-  return { sent, total: list.length, linked: true };
+  return { sent, total: list.length, linked: true, complete };
 }

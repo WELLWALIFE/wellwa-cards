@@ -303,6 +303,15 @@ async function followupImage(step) {
 const HUMAN_MUTE_MS = 15 * 60 * 1000;
 const humanActive = new Map(); // jid -> ts of the holder's last hand-typed message
 const botSentAt = new Map();   // jid -> ts of our last outbound (tells media echoes from human sends)
+// Automation sends through POST /send without asOwner (booking reminders, festival wishes, review asks, CRM
+// reminders…) carry no marker, so their "fromMe" echo looked like the holder typing: the bot went quiet for
+// 15 min and the CRM showed them as "You". We remember the ids we sent (and, while a send is in flight, the chat
+// itself, since the echo can arrive before sendMessage returns the id) and treat those echoes as the bot's own.
+const automationSentIds = new Map(); // wa message id -> ts
+const automationInFlight = new Map(); // jid -> number of /send calls still in flight
+function isAutomationEcho(jid, waId) {
+  return Boolean((waId && automationSentIds.has(waId)) || (automationInFlight.get(jid) ?? 0) > 0);
+}
 
 // Only a message the holder actually composed counts: live ("notify"), fresh,
 // and carrying real content. Reactions, edits, deletes, poll votes, protocol /
@@ -328,9 +337,9 @@ async function captureLearning(jid, answer) {
       body: JSON.stringify({ user_id: TENANT_ID, question: q.text.slice(0, 500), answer: answer.slice(0, 1000) }) });
   } catch (e) { console.log("[wa] learning save failed", e?.message); }
 }
-function noteHumanEcho(jid, msg, upsertType = "notify", ts = 0) {
+function noteHumanEcho(jid, msg, upsertType = "notify", ts = 0, waId = "") {
   const echo = extractText(msg);
-  const isBot = hasBotMarker(echo) || (!echo && Date.now() - (botSentAt.get(jid) ?? 0) < 30_000);
+  const isBot = hasBotMarker(echo) || isAutomationEcho(jid, waId) || (!echo && Date.now() - (botSentAt.get(jid) ?? 0) < 30_000);
   if (isBot) return;
   const fresh = !ts || Math.floor(Date.now() / 1000) - ts < 180;
   if (upsertType !== "notify" || !fresh || !isComposedMessage(msg)) {
@@ -818,7 +827,7 @@ async function logWaMessage({ jid, waId, fromMe, msg, name, ts, senderOverride, 
   const kind = textOverride !== undefined ? "text" : mediaKind(msg);
   if (!kind) return; // reactions, edits, protocol events — not chat content
   const rawText = textOverride !== undefined ? textOverride : extractText(msg);
-  const sender = senderOverride ?? (!fromMe ? "customer" : (hasBotMarker(rawText) || (!rawText && Date.now() - (botSentAt.get(jid) ?? 0) < 30_000)) ? "bot" : "owner");
+  const sender = senderOverride ?? (!fromMe ? "customer" : (hasBotMarker(rawText) || isAutomationEcho(jid, waId) || (!rawText && Date.now() - (botSentAt.get(jid) ?? 0) < 30_000)) ? "bot" : "owner");
   const pn = await phoneOf(jid);
   const phone = pn ? "+" + pn : jid;
   const body = {
@@ -929,6 +938,7 @@ setInterval(() => {
   }
   for (const [jid, ts] of humanActive) { if (ts < cutoff) humanActive.delete(jid); }
   for (const [jid, ts] of botSentAt) { if (ts < cutoff) botSentAt.delete(jid); }
+  for (const [id, ts] of automationSentIds) { if (ts < cutoff) automationSentIds.delete(id); }
   for (const [jid, list] of replyLog) { if ((list[list.length - 1] ?? 0) < cutoff) replyLog.delete(jid); }
   for (const [jid, ts] of mutedUntil) { if (ts < Date.now()) mutedUntil.delete(jid); }
   for (const [jid, ts] of alertedAt) { if (ts < cutoff) alertedAt.delete(jid); }
@@ -1647,7 +1657,7 @@ async function startWhatsApp() {
             logWaMessage({ jid, waId: m.key?.id, fromMe: !!m.key?.fromMe, msg: m.message, name: m.key?.fromMe ? "" : (m.pushName ?? ""), ts: mts }).catch(() => {});
           }
         }
-        if (m.key?.fromMe) { noteHumanEcho(jid, m.message, type, Number(m.messageTimestamp ?? 0)); continue; }
+        if (m.key?.fromMe) { noteHumanEcho(jid, m.message, type, Number(m.messageTimestamp ?? 0), m.key?.id ?? ""); continue; }
         // The same message can arrive twice (a "notify" and an "append" replay after a reconnect, or a retry):
         // answer it once.
         if (alreadyHandled(m.key?.id)) { console.log(`[wa] duplicate ${m.key?.id} — skipped`); continue; }
@@ -2245,21 +2255,30 @@ const server = createServer(async (req, res) => {
       if (state !== "connected") return json(res, 409, { error: "not connected" });
       const jid = to.replace(/[^0-9]/g, "") + "@s.whatsapp.net";
       let sent;
-      if (imageUrl) sent = await sock.sendMessage(jid, { image: { url: imageUrl }, caption: text || "" });
-      else if (videoUrl) {
-        // a video into a chat (the status video sent to a customer, or to oneself to check it): same file, same
-        // length / size / preview fields as a status
-        const rv = await fetch(String(videoUrl));
-        if (!rv.ok) return json(res, 400, { error: "video fetch failed" });
-        const video = Buffer.from(await rv.arrayBuffer());
-        const meta = await statusVideoMeta(video);
-        sent = await sock.sendMessage(jid, { video, caption: text || "", mimetype: "video/mp4", gifPlayback: false, ...meta });
+      if (!asOwner) automationInFlight.set(jid, (automationInFlight.get(jid) ?? 0) + 1);
+      try {
+        if (imageUrl) sent = await sock.sendMessage(jid, { image: { url: imageUrl }, caption: text || "" });
+        else if (videoUrl) {
+          // a video into a chat (the status video sent to a customer, or to oneself to check it): same file, same
+          // length / size / preview fields as a status
+          const rv = await fetch(String(videoUrl));
+          if (!rv.ok) return json(res, 400, { error: "video fetch failed" });
+          const video = Buffer.from(await rv.arrayBuffer());
+          const meta = await statusVideoMeta(video);
+          sent = await sock.sendMessage(jid, { video, caption: text || "", mimetype: "video/mp4", gifPlayback: false, ...meta });
+        }
+        else if (documentUrl) {
+          const name = String(fileName || "file.pdf").replace(/[^\w .()-]/g, "").slice(0, 80) || "file.pdf";
+          sent = await sock.sendMessage(jid, { document: { url: documentUrl }, mimetype: /\.pdf(\?|$)/i.test(documentUrl) ? "application/pdf" : "application/octet-stream", fileName: name, caption: text || "" });
+        }
+        else sent = await sock.sendMessage(jid, { text });
+      } finally {
+        if (!asOwner) {
+          if (sent?.key?.id) automationSentIds.set(sent.key.id, Date.now());
+          const left = (automationInFlight.get(jid) ?? 1) - 1;
+          if (left > 0) automationInFlight.set(jid, left); else automationInFlight.delete(jid);
+        }
       }
-      else if (documentUrl) {
-        const name = String(fileName || "file.pdf").replace(/[^\w .()-]/g, "").slice(0, 80) || "file.pdf";
-        sent = await sock.sendMessage(jid, { document: { url: documentUrl }, mimetype: /\.pdf(\?|$)/i.test(documentUrl) ? "application/pdf" : "application/octet-stream", fileName: name, caption: text || "" });
-      }
-      else sent = await sock.sendMessage(jid, { text });
       if (asOwner) {
         // The card holder (or their agent) replied from the CRM: same as typing on the phone — bot steps aside for 15 min.
         humanActive.set(jid, Date.now());

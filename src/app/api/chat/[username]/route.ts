@@ -96,9 +96,12 @@ export async function POST(
     return Response.json({ error: "request too large" }, { status: 413 });
   }
   const { username } = await params;
-  const parsed = (await request.json().catch(() => null)) as { messages?: Msg[]; page?: string } | null;
+  const parsed = (await request.json().catch(() => null)) as { messages?: Msg[]; page?: string; chatId?: string } | null;
   if (!parsed || typeof parsed !== "object") return Response.json({ error: "bad request" }, { status: 400 });
   const { messages, page } = parsed;
+  // The visitor's conversation id (card-chat.tsx, one per chat session): their lead is keyed to it. Older pages send
+  // none and get the old matching.
+  const chatId = typeof parsed.chatId === "string" && /^[A-Za-z0-9-]{8,64}$/.test(parsed.chatId) ? parsed.chatId : undefined;
 
   const card = (await fetchCloudCard(username)) ?? getCardByUsername(username);
   if (!card) return Response.json({ reply: "Sorry, this card was not found." }, { status: 404 });
@@ -127,7 +130,7 @@ export async function POST(
       channel: "web", text: last.content, history, state: webState(history), contact: { known: false },
       ctx: await agentContext(card, platform), now: Date.now(), complete: agentComplete(key), cardLookup: agentCardLookup,
     });
-    if (firstMessage || out.alert) logChat(card, safeMessages, { newLead: firstMessage, alert: out.alert }).catch(() => {});
+    if (firstMessage || out.alert) logChat(card, safeMessages, { newLead: firstMessage, alert: out.alert, chatId }).catch(() => {});
     return Response.json({ reply: out.reply || "जी, बताइए — क्या जानना चाहते हैं? 🙂" });
   }
 
@@ -155,9 +158,11 @@ export async function POST(
         const demo = demoLink(card.botFiles);
         const reply = ensureDemoLink(reply0, safeMessages[safeMessages.length - 1]?.content ?? "", card.botFiles, !!demo && safeMessages.some((m) => m.role !== "user" && m.content.includes(demo.url)));
         if (reply || order) {
-          if (firstMessage) logChat(card, safeMessages, { newLead: true }).catch(() => {});
+          const logged = firstMessage ? logChat(card, safeMessages, { newLead: true, chatId }).catch(() => {}) : null;
+          // An order on the very first message: its lead must exist before the order fills it in, or both would make one.
+          if (order && logged) await logged;
           // The salesman closed: the owner gets a hot lead and an alert; the visitor gets the next-step buttons.
-          const actions = order ? await closeOrder(card, order, safeMessages, wa).catch(() => null) : null;
+          const actions = order ? await closeOrder(card, order, safeMessages, wa, chatId).catch(() => null) : null;
           return Response.json({ reply: reply || (order ? "✅" : ""), ...(order ? { order } : {}), ...(actions ? { actions } : {}) });
         }
       }
@@ -178,7 +183,7 @@ export async function POST(
 /** A lead for the conversation's first message, and the owner's alert (push + their own WhatsApp) for it or for
  *  anything the assistant flagged — a call request (with the number the visitor typed), a custom-software need, a
  *  payment or account problem. */
-async function logChat(card: Card, messages: Msg[], opts: { newLead: boolean; alert?: string | null }) {
+async function logChat(card: Card, messages: Msg[], opts: { newLead: boolean; alert?: string | null; chatId?: string }) {
   const sb = getAdminSupabase() ?? getPublicSupabase();
   if (!sb || !messages?.length) return;
   const { data: row } = await sb.from("cards").select("id, owner_id").eq("username", card.username).maybeSingle();
@@ -186,11 +191,13 @@ async function logChat(card: Card, messages: Msg[], opts: { newLead: boolean; al
   const firstUser = messages.find((m) => m.role === "user")?.content ?? "";
   const lastUser = [...messages].reverse().find((m) => m.role === "user")?.content ?? "";
   if (opts.newLead) {
-    await sb.from("leads").insert({
-      card_id: row.id, owner_id: row.owner_id,
-      name: "Card chat visitor", phone: "", email: "",
-      message: firstUser.slice(0, 300), source: "form",
-    });
+    const lead = { card_id: row.id, owner_id: row.owner_id, name: "Card chat visitor", phone: "", email: "", message: firstUser.slice(0, 300), source: "form" };
+    // Keyed to the conversation (0073): a repeat of the first message never makes a second lead. Without the column
+    // (migration not run yet) the plain insert, as before.
+    const keyed = opts.chatId
+      ? await sb.from("leads").upsert({ ...lead, chat_session: opts.chatId }, { onConflict: "card_id,chat_session", ignoreDuplicates: true })
+      : null;
+    if (!keyed || keyed.error) await sb.from("leads").insert(lead);
   }
   const what = opts.alert ? `${opts.alert} — "${lastUser.slice(0, 120)}"` : firstUser.slice(0, 120);
   // Browser notification (admin switch "New lead"), then the hot-lead alert to the owner's WhatsApp.
@@ -218,8 +225,9 @@ async function logChat(card: Card, messages: Msg[], opts: { newLead: boolean; al
 type Actions = { whatsapp?: string; upi?: string; upiId?: string; call?: string };
 
 /** The order becomes the lead: the "Card chat visitor" row this conversation opened (still nameless) is filled in, or a
- *  new hot lead is made; the owner is told on push + their WhatsApp. Returns the visitor's buttons. */
-async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: string): Promise<Actions> {
+ *  new hot lead is made; the owner is told on push + their WhatsApp. Returns the visitor's buttons. With the chat's id
+ *  that row is the one keyed to it — never another visitor's; without one (older pages), the newest nameless row. */
+async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: string, chatId?: string): Promise<Actions> {
   const summary = orderSummary(order);
   const kindLabel = order.kind === "booking" ? "Booking" : order.kind === "callback" ? "Call back" : "Order";
   const hindi = !/^English/.test(replyLanguage([...messages].reverse().find((m) => m.role === "user")?.content ?? "", messages.filter((m) => m.role === "user").map((m) => m.content)));
@@ -247,12 +255,21 @@ async function closeOrder(card: Card, order: ChatOrder, messages: Msg[], wa?: st
   // Follow-up tomorrow at 11 am IST unless the owner closes it first: the CRM reminder (bridge/crm-reminders.mjs) then
   // hands the owner a tap-to-message link, so a website order never goes quiet (owner's call, 8 Oct 2026).
   const fields = { name: order.name || "Card chat visitor", phone: order.phone, message, source: "chat", status: "hot", ai_intent: kindLabel, value_paise: paise, tags: [order.kind], next_follow_up: nextFollowUp(), reminded_at: null };
-  // This conversation's nameless lead (opened on its first message, within the last hours) is the one to fill in.
-  const { data: prior } = await sb.from("leads").select("id").eq("card_id", row.id).eq("name", "Card chat visitor").eq("phone", "")
-    .gte("created_at", new Date(Date.now() - 6 * 3600_000).toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
-  let leadId = prior?.id as string | undefined;
-  if (leadId) await sb.from("leads").update(fields).eq("id", leadId);
-  else { const { data: made } = await sb.from("leads").insert({ card_id: row.id, owner_id: row.owner_id, email: "", ...fields }).select("id").maybeSingle(); leadId = made?.id; }
+  let leadId: string | undefined;
+  let keyed = false;
+  if (chatId) {
+    // This conversation's own lead, made or filled in one step (unique per card + chat, 0073).
+    const { data: made, error } = await sb.from("leads").upsert({ card_id: row.id, owner_id: row.owner_id, email: "", chat_session: chatId, ...fields }, { onConflict: "card_id,chat_session" }).select("id").maybeSingle();
+    if (!error) { keyed = true; leadId = made?.id; }
+  }
+  if (!keyed) {
+    // This conversation's nameless lead (opened on its first message, within the last hours) is the one to fill in.
+    const { data: prior } = await sb.from("leads").select("id").eq("card_id", row.id).eq("name", "Card chat visitor").eq("phone", "")
+      .gte("created_at", new Date(Date.now() - 6 * 3600_000).toISOString()).order("created_at", { ascending: false }).limit(1).maybeSingle();
+    leadId = prior?.id as string | undefined;
+    if (leadId) await sb.from("leads").update(fields).eq("id", leadId);
+    else { const { data: made } = await sb.from("leads").insert({ card_id: row.id, owner_id: row.owner_id, email: "", ...fields }).select("id").maybeSingle(); leadId = made?.id; }
+  }
   // A booking with a day and time goes on the owner's calendar; the reminders cron takes it from there.
   const at = order.kind === "booking" ? istInstant(order.at) : null;
   if (at) await createBooking({ ownerId: row.owner_id, cardId: row.id, leadId: leadId ?? null, name: order.name, phone: order.phone, service: order.items.map((i) => i.name).join(", ") || order.note, startsAt: at, note: order.when, source: "chat" });

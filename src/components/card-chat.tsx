@@ -93,6 +93,23 @@ function save(username: string, messages: Msg[]) {
   } catch { /* private mode / storage full */ }
 }
 
+// One id per chat session (this tab), sent with every message: the server keys this visitor's lead to it, so two
+// visitors of the same card are never joined into one lead. A "new chat" starts a new id.
+const idKey = (username: string) => `sh-chat-id:${username}`;
+function newChatId(): string {
+  try { return crypto.randomUUID(); } catch { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 12)}`; }
+}
+const memoryIds: Record<string, string> = {}; // storage blocked: keep the id for this page view
+function chatId(username: string, fresh = false): string {
+  try {
+    const have = fresh ? null : sessionStorage.getItem(idKey(username));
+    if (have) return have;
+    const id = newChatId();
+    sessionStorage.setItem(idKey(username), id);
+    return id;
+  } catch { return memoryIds[username] && !fresh ? memoryIds[username] : (memoryIds[username] = newChatId()); }
+}
+
 export function CardChat({
   username, name, theme, page,
 }: {
@@ -146,7 +163,7 @@ export function CardChat({
       const r = await fetch(`/api/chat/${username}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: next, page }),
+        body: JSON.stringify({ messages: next, page, chatId: chatId(username) }),
       });
       const data = await r.json() as { reply?: string; order?: Order; actions?: Actions };
       setMessages((m) => [...m, { role: "assistant", content: data.reply ?? (v2 ? "माफ़ कीजिए, फिर से भेजिए।" : "Sorry, please try again."), at: stampNow(), ...(data.order ? { order: data.order } : {}), ...(data.actions ? { actions: data.actions } : {}) }]);
@@ -181,7 +198,7 @@ export function CardChat({
               <p className="text-[11px] opacity-80 leading-tight flex items-center gap-1"><Sparkles className="h-3 w-3" /> {v2 && meta?.subtitle ? meta.subtitle : sales?.subtitle ? sales.subtitle : <>Answers about {name.split(" ")[0]}&apos;s services</>}</p>
             </div>
             {messages.length > 0 && (
-              <button onClick={() => setMessages([])} className="p-1 rounded-lg hover:bg-white/15" title="नई बातचीत" aria-label="New chat"><RotateCcw className="h-4 w-4" /></button>
+              <button onClick={() => { setMessages([]); chatId(username, true); }} className="p-1 rounded-lg hover:bg-white/15" title="नई बातचीत" aria-label="New chat"><RotateCcw className="h-4 w-4" /></button>
             )}
             <button onClick={() => setOpen(false)} className="p-1 rounded-lg hover:bg-white/15"><X className="h-4 w-4" /></button>
           </div>
