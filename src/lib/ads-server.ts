@@ -178,10 +178,11 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   const acct = await currentAdAccount(fb);
   const digits = spec.phone.replace(/\D/g, "").slice(-10);
   if (spec.goal === "whatsapp") {
-    // Meta ignores the number in the link and opens the Page's linked WhatsApp. Refuse an ad that would send people elsewhere.
+    // Meta ignores any number in a link: the ad opens a WhatsApp number linked to the Page, named in the ad set.
     const linked = await pageWhatsApp(fb);
+    // A Page can have more than one WhatsApp number linked; the ad set names the one to open (promoted_object below),
+    // so only a Page with no number at all is refused here. A number that is not linked is refused by Meta itself.
     if (linked === "") throw new Error("WA_NOT_LINKED");
-    if (linked && last10(linked) !== digits) throw new Error(`WA_NUMBER_MISMATCH:${last10(linked)}`);
   }
   const wa = "https://api.whatsapp.com/send";
   const link = spec.goal === "whatsapp" ? wa : spec.link || `${SITE_URL}`;
@@ -195,7 +196,7 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
     name: `${name} · audience`, campaign_id: camp.id, status,
     daily_budget: String(spec.dailyPaise), billing_event: "IMPRESSIONS", bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     ...(spec.goal === "whatsapp"
-      ? { optimization_goal: "CONVERSATIONS", destination_type: "WHATSAPP", promoted_object: JSON.stringify({ page_id: fb.page_id }) }
+      ? { optimization_goal: "CONVERSATIONS", destination_type: "WHATSAPP", promoted_object: JSON.stringify({ page_id: fb.page_id, whatsapp_phone_number: `+91${digits}` }) }
       : { optimization_goal: "LINK_CLICKS" }),
     start_time: start.toISOString(), end_time: end.toISOString(),
     targeting: JSON.stringify(targetingSpec(spec.targeting, spec.placements)), access_token: ut,

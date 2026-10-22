@@ -228,11 +228,11 @@ export async function createPausedBoost(a: AccountRow, opts: { imageUrl: string;
   // number in a link is ignored), so that number must be the one asked for.
   if (a.page_id) {
     const linked = await graph<{ whatsapp_number?: string }>(a.page_id, { fields: "whatsapp_number", access_token: a.access_token || ut }).then((r) => String(r.whatsapp_number ?? "").replace(/\D/g, "")).catch(() => "");
-    if (linked && linked.slice(-10) !== opts.phone.replace(/\D/g, "").slice(-10)) throw new Error(`WA_NUMBER_MISMATCH:${linked.slice(-10)}`);
+    if (linked === "") throw new Error("WA_NOT_LINKED");
   }
   const camp = await graphStep<{ id: string }>("campaign", `${acct}/campaigns`, { name: `Shubhora · ${opts.name}`, objective: "OUTCOME_ENGAGEMENT", status: "PAUSED", special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
   const adset = await graphStep<{ id: string }>("ad set", `${acct}/adsets`, {
-    name: `Shubhora · ${opts.name} · set`, campaign_id: camp.id, status: "PAUSED", daily_budget: String(opts.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS", destination_type: "WHATSAPP", promoted_object: JSON.stringify({ page_id: a.page_id }), bid_strategy: "LOWEST_COST_WITHOUT_CAP",
+    name: `Shubhora · ${opts.name} · set`, campaign_id: camp.id, status: "PAUSED", daily_budget: String(opts.dailyPaise), billing_event: "IMPRESSIONS", optimization_goal: "CONVERSATIONS", destination_type: "WHATSAPP", promoted_object: JSON.stringify({ page_id: a.page_id, whatsapp_phone_number: `+91${opts.phone.replace(/\D/g, "").slice(-10)}` }), bid_strategy: "LOWEST_COST_WITHOUT_CAP",
     start_time: start.toISOString(), end_time: end.toISOString(), targeting: JSON.stringify({ geo_locations: { countries: ["IN"] }, age_min: 21, age_max: 60, publisher_platforms: ["facebook", "instagram"], targeting_automation: { advantage_audience: 0 } }), access_token: ut,
   }, "POST");
   try {
