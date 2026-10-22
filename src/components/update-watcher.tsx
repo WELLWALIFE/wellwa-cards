@@ -15,8 +15,12 @@ export function UpdateWatcher() {
     let alive = true;
     const check = async () => {
       try {
-        const r = await fetch("/api/health", { cache: "no-store" });
-        const j = (await r.json()) as { deploy?: string };
+        // One question per minute for the whole tab, however many screens mount this (each round trip is a far one).
+        const w = window as unknown as { __shDeploy?: { at: number; p: Promise<{ deploy?: string }> } };
+        if (!w.__shDeploy || Date.now() - w.__shDeploy.at > 60_000) {
+          w.__shDeploy = { at: Date.now(), p: fetch("/api/health", { cache: "no-store" }).then((r) => r.json() as Promise<{ deploy?: string }>) };
+        }
+        const j = await w.__shDeploy.p;
         if (alive && j.deploy && j.deploy !== DEPLOY_ID) setStale(true);
       } catch { /* offline: ask again later */ }
     };

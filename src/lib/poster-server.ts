@@ -16,13 +16,49 @@ export type PosterProfile = {
   photo_url: string | null; logo_url: string | null; lang: string; city: string | null; is_default: boolean; kids_mode: boolean; mode?: string;
 };
 
+/* Who is calling. Every API route starts here, and each check used to be one more round trip from the server to Supabase
+ * (the database sits in another region: 250–400 ms a trip, so a screen that calls six routes paid it six times, and a tab
+ * that reloads fires the same routes again). A token Supabase has confirmed is now reused for up to 5 minutes (never past
+ * the token's own expiry), and calls that arrive together share one check. Signing out gives the browser a new token, so
+ * the cache never answers for a different person; a deleted or banned account can still get answers for those minutes. */
+type Who = { id: string; email?: string };
+const whoCache = new Map<string, { who: Who; until: number }>();
+const whoFlying = new Map<string, Promise<Who | null>>();
+const WHO_TTL = 5 * 60_000;
+function tokenExpiry(token: string): number {
+  try { const p = JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")) as { exp?: number }; return p.exp ? p.exp * 1000 : 0; } catch { return 0; }
+}
+async function whoIs(token: string): Promise<Who | null> {
+  const now = Date.now();
+  const hit = whoCache.get(token);
+  if (hit && hit.until > now) return hit.who;
+  const flying = whoFlying.get(token);
+  if (flying) return flying;
+  const p = fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: `Bearer ${token}` }, cache: "no-store" })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null)
+    .then((j: { id?: string; email?: string } | null) => {
+      if (!j?.id) return null;
+      const who: Who = { id: j.id, email: j.email };
+      const exp = tokenExpiry(token);
+      const until = Math.min(now + WHO_TTL, exp || now + WHO_TTL);
+      if (until > now) whoCache.set(token, { who, until });
+      if (whoCache.size > 5000) for (const [k, v] of whoCache) { if (v.until <= now) whoCache.delete(k); if (whoCache.size <= 4000) break; }
+      return who;
+    })
+    .finally(() => { whoFlying.delete(token); });
+  whoFlying.set(token, p);
+  return p;
+}
+/** Drop what is remembered about a token (after the account itself changed: password, metadata, deletion). */
+export function forgetUser(token: string) { whoCache.delete(token); }
+
 export async function userFromRequest(request: Request): Promise<{ id: string; token: string; email?: string } | null> {
   const auth = request.headers.get("authorization") ?? "";
   if (!auth.toLowerCase().startsWith("bearer ")) return null;
   const token = auth.slice(7);
-  const who = await fetch(`${SUPA_URL}/auth/v1/user`, { headers: { apikey: ANON, Authorization: auth }, cache: "no-store" })
-    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  return who?.id ? { id: who.id, token, email: who.email } : null;
+  if (!token || token.length > 4096) return null;
+  const who = await whoIs(token);
+  return who ? { id: who.id, token, email: who.email } : null;
 }
 
 export function userHeaders(token: string): Record<string, string> {

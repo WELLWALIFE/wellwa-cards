@@ -5,10 +5,7 @@ import { listAccounts, metaConfigured, activateAccount } from "@/lib/social-serv
 
 /** WhatsApp Status free for 14 days (owner's call, 29 Sep 2026): a free account's trial state, from profiles.status_trial_until.
  *  Missing column (SQL not run yet) → null, and nothing else changes. */
-async function statusTrial(userId: string, plan: string): Promise<{ free: boolean; until: string | null; active: boolean; days_left: number } | null> {
-  const r = await restAsService<{ status_trial_until: string | null }[]>(`profiles?id=eq.${userId}&select=status_trial_until`);
-  if (!r.ok || !Array.isArray(r.data)) return null;
-  const until = r.data[0]?.status_trial_until ?? null;
+function statusTrialOf(until: string | null, plan: string): { free: boolean; until: string | null; active: boolean; days_left: number } {
   const left = until ? Math.max(0, Math.ceil((new Date(until).getTime() - Date.now()) / 86400_000)) : 14;
   return { free: plan === "free", until, active: plan === "free" && (!until || new Date(until).getTime() > Date.now()), days_left: left };
 }
@@ -16,9 +13,13 @@ async function statusTrial(userId: string, plan: string): Promise<{ free: boolea
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const rows = await listAccounts(me.id);
-  const quota = await posterQuota(me.token, me.id).catch(() => ({ plan: "free", used: 0, limit: 0 }));
-  const status_trial = await statusTrial(me.id, quota.plan).catch(() => null);
+  // Three independent reads at once (each is a far round trip), not one after the other.
+  const [rows, quota, trialRow] = await Promise.all([
+    listAccounts(me.id),
+    posterQuota(me.token, me.id).catch(() => ({ plan: "free", used: 0, limit: 0 })),
+    restAsService<{ status_trial_until: string | null }[]>(`profiles?id=eq.${me.id}&select=status_trial_until`).catch(() => null),
+  ]);
+  const status_trial = trialRow && trialRow.ok && Array.isArray(trialRow.data) ? statusTrialOf(trialRow.data[0]?.status_trial_until ?? null, quota.plan) : null;
   return NextResponse.json({
     configured: metaConfigured(),
     plan: quota.plan,

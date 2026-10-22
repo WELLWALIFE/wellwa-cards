@@ -42,16 +42,42 @@ export async function isLoggedIn(): Promise<boolean> {
   try { const sb = getBrowserSupabase(); const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } }; return !!data.session; } catch { return false; }
 }
 
-export async function api<T>(path: string, init?: RequestInit & { json?: unknown }): Promise<{ ok: boolean; status: number; data: T }> {
-  const headers = await authHeaders();
-  const r = await fetch(path, {
-    ...init,
-    headers: { ...headers, ...(init?.headers ?? {}) },
-    body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
-    cache: "no-store",
-  });
-  const data = (await r.json().catch(() => ({}))) as T;
-  return { ok: r.ok, status: r.status, data };
+/* One screen asks for the same things several times over (the shell, the plan bar, the page and a guard each ask for the
+ * profiles, the WhatsApp status, the connected accounts…), and the server is far away, so every repeat cost a full second.
+ * Identical GETs made at the same time now share one request, and a GET's answer is reused for a few seconds; any write
+ * (POST / PATCH / PUT / DELETE) empties that memory, so a screen never shows a stale answer after it saved something. */
+type ApiAnswer = { ok: boolean; status: number; data: unknown };
+const apiFlying = new Map<string, Promise<ApiAnswer>>();
+const apiRecent = new Map<string, { at: number; v: ApiAnswer }>();
+const API_FRESH_MS = 4_000;
+/** Forget every remembered GET answer (after a change made outside api(), e.g. an upload or a direct fetch). */
+export function forgetApi() { apiRecent.clear(); }
+
+export async function api<T>(path: string, init?: RequestInit & { json?: unknown; fresh?: boolean }): Promise<{ ok: boolean; status: number; data: T }> {
+  const method = (init?.method ?? "GET").toUpperCase();
+  const isGet = method === "GET" && init?.json === undefined && !init?.body;
+  if (!isGet) apiRecent.clear();
+  if (isGet && !init?.fresh) {
+    const kept = apiRecent.get(path);
+    if (kept && Date.now() - kept.at < API_FRESH_MS) return kept.v as { ok: boolean; status: number; data: T };
+    const flying = apiFlying.get(path);
+    if (flying) return flying as Promise<{ ok: boolean; status: number; data: T }>;
+  }
+  const run = (async (): Promise<ApiAnswer> => {
+    const headers = await authHeaders();
+    const r = await fetch(path, {
+      ...init,
+      headers: { ...headers, ...(init?.headers ?? {}) },
+      body: init?.json !== undefined ? JSON.stringify(init.json) : init?.body,
+      cache: "no-store",
+    });
+    const data = (await r.json().catch(() => ({}))) as T;
+    const v = { ok: r.ok, status: r.status, data };
+    if (isGet && r.ok) apiRecent.set(path, { at: Date.now(), v });
+    return v;
+  })();
+  if (isGet) { apiFlying.set(path, run); run.finally(() => { if (apiFlying.get(path) === run) apiFlying.delete(path); }).catch(() => {}); }
+  return run as Promise<{ ok: boolean; status: number; data: T }>;
 }
 
 /** kind: "photo" = 600×600 face crop · "logo" = small PNG · "product" = PNG up to 1400 px ·

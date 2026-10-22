@@ -308,6 +308,7 @@ export async function publishCard(card: Card): Promise<PublishResult> {
   const { error } = existing
     ? await sb.from("cards").update(row).eq("id", existing.id)
     : await sb.from("cards").insert(row);
+  myCardsKept = null;
 
   if (error) {
     // 23505 = unique violation on username; 42501/RLS = someone else's row.
@@ -369,23 +370,37 @@ export async function fetchMyCardsStrict(): Promise<Card[]> {
   }));
 }
 
-/** Every card owned by the signed-in user. Empty when logged out. */
+/** Every card owned by the signed-in user. Empty when logged out. Several parts of one screen ask for this at the same
+ *  moment (the journey, the home page, the menu), so calls made together share one query and the answer is reused for a
+ *  few seconds; a save or delete through this module forgets it. */
+let myCardsKept: { at: number; v: Card[] } | null = null;
+let myCardsFlying: Promise<Card[]> | null = null;
+export function forgetMyCards() { myCardsKept = null; }
 export async function fetchMyCards(): Promise<Card[]> {
-  const sb = getBrowserSupabase();
-  if (!sb) return [];
-  const { data: auth } = await sb.auth.getUser();
-  if (!auth.user) return [];
-  const { data } = await sb
-    .from("cards")
-    .select("id, data, active, username")
-    .eq("owner_id", auth.user.id)
-    .order("created_at", { ascending: false });
-  return (data ?? []).map((row: { id: string; data: Card; active: boolean; username: string }) => ({
-    ...row.data,
-    id: row.id,                    // DB id is the editor's identity
-    username: row.username,
-    active: row.active ?? true,
-  }));
+  if (myCardsKept && Date.now() - myCardsKept.at < 4_000) return myCardsKept.v;
+  if (myCardsFlying) return myCardsFlying;
+  const run = (async () => {
+    const sb = getBrowserSupabase();
+    if (!sb) return [];
+    const { data: auth } = await sb.auth.getUser();
+    if (!auth.user) return [];
+    const { data } = await sb
+      .from("cards")
+      .select("id, data, active, username")
+      .eq("owner_id", auth.user.id)
+      .order("created_at", { ascending: false });
+    const v = (data ?? []).map((row: { id: string; data: Card; active: boolean; username: string }) => ({
+      ...row.data,
+      id: row.id,                    // DB id is the editor's identity
+      username: row.username,
+      active: row.active ?? true,
+    }));
+    myCardsKept = { at: Date.now(), v };
+    return v;
+  })();
+  myCardsFlying = run;
+  run.finally(() => { if (myCardsFlying === run) myCardsFlying = null; }).catch(() => {});
+  return run;
 }
 
 /** One of MY cards by id. Returns null if it doesn't exist or isn't mine. */
@@ -427,6 +442,7 @@ export async function deleteMyCard(id: string): Promise<boolean> {
   const { data: auth } = await sb.auth.getUser();
   if (!auth.user) return false;
   const { error } = await sb.from("cards").delete().eq("id", id).eq("owner_id", auth.user.id);
+  myCardsKept = null;
   return !error;
 }
 

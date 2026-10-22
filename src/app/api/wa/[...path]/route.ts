@@ -23,11 +23,11 @@ async function proxy(request: Request, path: string[]) {
   // message saved as a lead. The AI auto-reply (chat bot, follow-ups) runs only on a paid plan: a card plan (pro / team,
   // incl. the trial) or a running Shubhora subscription (Growth / Pro). Same paid rule as waPlanExpiry() in crm-server.
   const FAR = "2999-12-31T23:59:59.000Z";
-  const { data: planData } = await session.supabase.rpc("my_plan");
+  // Both plan reads at once: the database is a far round trip away and the status bar asks this on every screen.
+  const [{ data: planData }, { data: saasData }] = await Promise.all([session.supabase.rpc("my_plan"), session.supabase.rpc("my_saas")]);
   const plan = Array.isArray(planData) ? planData[0] : planData;
   let expiresAt: string | null = plan && ["pro", "team"].includes(plan.plan) && !plan.expired ? (plan.expires_at || FAR) : null;
   if (!expiresAt) {
-    const { data: saasData } = await session.supabase.rpc("my_saas");
     const saas = Array.isArray(saasData) ? saasData[0] : saasData;
     if (saas && saas.tier && saas.tier !== "none" && ["active", "grace"].includes(String(saas.state))) expiresAt = saas.expires_at || FAR;
   }

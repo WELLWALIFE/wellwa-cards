@@ -44,7 +44,7 @@ export function useJourney(refreshKey?: string, backTo = "/poster/setup") {
         api<{ products?: unknown[] }>("/api/poster/products").catch(() => null),
         fetchMyCards().catch(() => []),
         api<{ accounts?: { provider: string; is_active?: boolean }[] }>("/api/social/accounts").catch(() => null),
-        fetch("/api/wa/status", { cache: "no-store" }).then((r) => r.json()).catch(() => ({})),
+        api<{ state?: string }>("/api/wa/status").then((r) => r.data).catch(() => ({} as { state?: string })),
       ]);
       const meta = (user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; business?: Business; setup_pos?: unknown };
       const profile = profiles?.data.profiles?.find((p) => p.is_default) ?? profiles?.data.profiles?.[0];
