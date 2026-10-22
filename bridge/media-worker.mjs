@@ -1279,7 +1279,7 @@ async function beat() {
   const caps = { ...WORKER_CAPS, job: current?.id ?? null, job_age_s: current ? Math.round((Date.now() - current.at) / 1000) : 0 };
   try { await sb(`/rest/v1/media_worker_status?on_conflict=id`, { method: "POST", headers: { Prefer: "resolution=merge-duplicates" }, body: JSON.stringify({ id: 1, caps, beat_at: new Date().toISOString() }) }); } catch { /* table may not exist yet */ }
 }
-setInterval(beat, 30_000); beat();
+setInterval(beat, 45_000); beat(); // the app counts a beat under 120 s as alive
 // ffmpeg children of a previous (killed) worker keep burning CPU/RAM — clear them before taking work.
 run("/bin/sh", ["-c", "pkill -f 'ffmpeg.*/(ad|reel)-' || true"]).catch(() => {});
 // Old job folders are pure leftovers: a full disk fails every render at once,
@@ -1422,7 +1422,7 @@ async function tickStoryboard() {
     }
   } catch (e) { console.error("[media] storyboard tick error:", e?.message ?? e); } finally { busyStoryboard = false; }
 }
-setInterval(tickStoryboard, 6000);
+setInterval(tickStoryboard, 15_000); // was 6 s: an idle worker alone made ~1.5 million queue reads a month
 setInterval(() => { if (HAS_PIPELINE_COL) sweepV2(v2Helpers()); }, 3600_000);
 
 // PAUSED long videos. When the picture service refuses (no balance, no quota, nothing coming back) the explainer
@@ -1522,4 +1522,4 @@ async function requeueInterrupted() {
 }
 // Nothing is claimed until the interrupted jobs have been sorted out, so tick()
 // cannot pick one up and have this loop fail it a second later.
-requeueInterrupted().finally(() => { setInterval(tick, 8000); tick(); });
+requeueInterrupted().finally(() => { setInterval(tick, 15_000); tick(); });
