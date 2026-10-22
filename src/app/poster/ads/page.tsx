@@ -71,6 +71,11 @@ export default function AdsPage() {
   const [iq, setIq] = useState(""); const [ihits, setIhits] = useState<{ id: string; name: string; size: number }[]>([]);
   const [mine, setMine] = useState<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string } | null>(null);
   const cityTimer = useRef<number | null>(null);
+  // Campaigns made in Facebook Ads Manager: listed on request and added to "My ads" one by one.
+  type Outer = { campaign_id: string; name: string; status: string; effective_status: string; goal: AdGoal; daily_paise: number; days: number };
+  const [outer, setOuter] = useState<Outer[] | null>(null);
+  const [outerErr, setOuterErr] = useState("");
+  const [outerBusy, setOuterBusy] = useState("");
 
   const loadAccounts = useCallback(async () => {
     setChkMsg("");
@@ -82,6 +87,23 @@ export default function AdsPage() {
     try { const r = await api<{ campaigns: CampaignRow[]; live: Record<string, CampaignLive>; managerUrl: string; liveError?: string }>("/api/ads/campaigns"); if (r.ok) setMine(r.data); else setMineErr(hiRef.current ? "आपकी ads नहीं खुल पाईं। फिर से कोशिश करें।" : "Could not open your ads. Please try again."); }
     catch { setMineErr(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
   }, []);
+
+  const loadOuter = useCallback(async () => {
+    setOuterErr(""); setOuterBusy("list");
+    try { const r = await api<{ campaigns?: Outer[]; error?: string }>("/api/ads/import"); if (r.ok) setOuter(r.data.campaigns ?? []); else setOuterErr(r.data.error || (hiRef.current ? "Facebook से ads नहीं मिलीं। फिर से कोशिश करें।" : "Could not get your Facebook ads. Please try again.")); }
+    catch { setOuterErr(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+    finally { setOuterBusy(""); }
+  }, []);
+  const addOuter = useCallback(async (id: string) => {
+    setOuterErr(""); setOuterBusy(id);
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/ads/import", { method: "POST", json: { campaign_id: id } });
+      if (!r.ok) { setOuterErr(r.data.error || (hiRef.current ? "यह ad नहीं जुड़ पाई।" : "Could not add this ad.")); return; }
+      setOuter((o) => (o ?? []).filter((x) => x.campaign_id !== id));
+      await loadMine();
+    } catch { setOuterErr(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+    finally { setOuterBusy(""); }
+  }, [loadMine]);
 
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ads"); return; }
@@ -271,6 +293,25 @@ export default function AdsPage() {
   );
 
   /* ---------- my ads ---------- */
+  const importBox = (
+    <section className="rounded-2xl border border-dashed border-border p-3 space-y-2">
+      <p className="text-sm font-semibold">{hi ? "Facebook Ads Manager में बनी ads" : "Ads made in Facebook Ads Manager"}</p>
+      <p className="text-xs text-muted">{hi ? "जो ad आपने सीधे Facebook पर बनाई है, उसे यहाँ जोड़ें — फिर खर्च, chats और रोकें / शुरू करें यहीं से।" : "Add an ad you made directly on Facebook. Then see its spend and chats, and pause or start it from here."}</p>
+      {outer === null
+        ? <button type="button" disabled={outerBusy === "list"} onClick={loadOuter} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-sm font-semibold disabled:opacity-60">{outerBusy === "list" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} {hi ? "Facebook से ads देखें" : "Show my Facebook ads"}</button>
+        : !outer.length ? <p className="text-xs text-muted">{hi ? "कोई नई ad नहीं मिली — सब पहले से यहाँ हैं।" : "No other ads found. They are all here already."}</p>
+        : outer.map((o) => (
+          <div key={o.campaign_id} className="flex items-center gap-2 rounded-xl bg-surface2 px-3 py-2">
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold">{o.name}</p>
+              <p className="text-[11px] text-muted">{o.effective_status.replace(/_/g, " ").toLowerCase()}{o.daily_paise ? ` · ${inr(o.daily_paise / 100)}/${hi ? "दिन" : "day"}` : ""}{o.goal === "whatsapp" ? " · WhatsApp" : ""}</p>
+            </div>
+            <button type="button" disabled={!!outerBusy} onClick={() => addOuter(o.campaign_id)} className="shrink-0 rounded-lg grad-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{outerBusy === o.campaign_id ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "जोड़ें" : "Add")}</button>
+          </div>
+        ))}
+      {outerErr && <p className={errBox}>{outerErr}</p>}
+    </section>
+  );
   if (tab === "mine") return (
     <div className="space-y-4">
       {header}
@@ -278,7 +319,8 @@ export default function AdsPage() {
           ? <section className="rounded-2xl border border-border p-4 space-y-2 text-center"><p className="text-sm font-semibold text-danger">{mineErr}</p><button type="button" onClick={loadMine} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Try again"}</button></section>
           : <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>)
         : !mine.campaigns.length ? <section className="rounded-2xl border border-border p-6 text-center space-y-2"><p className="font-semibold">{hi ? "अभी कोई ad नहीं है" : "No ads yet"}</p><p className="text-sm text-muted">{hi ? "पहली ad 5 आसान कदम में बनाएँ।" : "Make your first ad in 5 easy steps."}</p><button type="button" onClick={() => setTab("new")} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{hi ? "नई ad" : "New ad"}</button></section>
-        : (
+        : null}
+      {mine && mine.campaigns.length > 0 && (
           <div className="space-y-3">
             {mine.liveError && <p className="text-xs text-muted flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> {hi ? "Facebook से अभी के आँकड़े नहीं मिले — थोड़ी देर बाद फिर देखें।" : "Could not get the latest numbers from Facebook. Please check again in a little while."}</p>}
             {mine.campaigns.map((c) => {
@@ -295,7 +337,7 @@ export default function AdsPage() {
                     {c.creative_url && (c.creative_kind === "video" ? <span className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-black text-white"><Film className="h-6 w-6" /></span> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.creative_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover bg-surface2" />)}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{c.name}</p>
-                      <p className="text-xs text-muted">{hi ? G?.hi : G?.en} · {inr(c.daily_paise / 100)}/{hi ? "दिन" : "day"} · {c.days} {hi ? "दिन" : "days"} · {new Date(c.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</p>
+                      <p className="text-xs text-muted">{hi ? G?.hi : G?.en} · {inr(c.daily_paise / 100)}/{hi ? "दिन" : "day"} {c.days ? ` · ${c.days} ${hi ? "दिन" : "days"}` : ""} · {new Date(c.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</p>
                       <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-good/15 text-good" : eff === "PAUSED" ? "bg-surface2 text-muted" : "bg-amber-100 text-amber-800"}`}>{active ? (hi ? "चल रही है" : "Running") : eff === "PAUSED" ? (hi ? "रुकी हुई" : "Paused") : eff.replace(/_/g, " ").toLowerCase()}</span>
                     </div>
                   </div>
@@ -315,6 +357,7 @@ export default function AdsPage() {
             <p className="text-[11px] text-muted">{hi ? "ये आँकड़े Facebook से आते हैं, कुछ मिनट पुराने हो सकते हैं। नई ad पर 'in review' दिख सकता है — Facebook आम तौर पर 24 घंटे में मंज़ूर कर देता है।" : "These numbers come from Facebook and may be a few minutes old. A new ad may say 'in review'. Facebook usually says yes within 24 hours."}</p>
           </div>
         )}
+      {mine && importBox}
     </div>
   );
 

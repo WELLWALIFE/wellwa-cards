@@ -289,3 +289,30 @@ export async function myCampaigns(userId: string): Promise<CampaignRow[]> {
   const r = await restAsService<CampaignRow[]>(`ad_campaigns?user_id=eq.${userId}&order=created_at.desc&limit=40&select=*`);
   return r.data ?? [];
 }
+
+/* ---------------- campaigns made outside the app (Ads Manager) ---------------- */
+export type OuterCampaign = { campaign_id: string; name: string; status: string; effective_status: string; goal: AdGoal; daily_paise: number; days: number; adset_id: string | null; ad_id: string | null; created: string };
+/** Campaigns on the chosen ad account that the app does not know yet (made in Ads Manager), so the owner can add them
+ *  to "My ads" and start / pause them from the app. Deleted and archived ones are not listed. */
+export async function outerCampaigns(fb: AccountRow, known: Set<string>): Promise<{ acct: string; list: OuterCampaign[] }> {
+  const ut = fb.user_token; if (!ut) throw new Error("Reconnect Facebook to allow ads.");
+  const acct = await currentAdAccount(fb);
+  type AdsetRow = { id: string; daily_budget?: string; destination_type?: string; start_time?: string; end_time?: string };
+  const r = await graph<{ data: { id: string; name: string; status: string; effective_status: string; daily_budget?: string; created_time?: string; start_time?: string; stop_time?: string; adsets?: { data: AdsetRow[] }; ads?: { data: { id: string }[] } }[] }>(`${acct}/campaigns`, {
+    access_token: ut, limit: "50",
+    fields: "id,name,status,effective_status,daily_budget,created_time,start_time,stop_time,adsets.limit(1){id,daily_budget,destination_type,start_time,end_time},ads.limit(1){id}",
+    filtering: JSON.stringify([{ field: "effective_status", operator: "IN", value: ["ACTIVE", "PAUSED", "PENDING_REVIEW", "IN_PROCESS", "WITH_ISSUES", "CAMPAIGN_PAUSED", "ADSET_PAUSED", "DISAPPROVED"] }]),
+  });
+  const list: OuterCampaign[] = [];
+  for (const c of r.data ?? []) {
+    if (known.has(c.id)) continue;
+    const s = c.adsets?.data?.[0];
+    const daily = Number(c.daily_budget ?? s?.daily_budget ?? 0);
+    const from = Date.parse(s?.start_time ?? c.start_time ?? c.created_time ?? ""), to = Date.parse(s?.end_time ?? c.stop_time ?? "");
+    const days = Number.isFinite(from) && Number.isFinite(to) && to > from ? Math.max(1, Math.round((to - from) / 86400_000)) : 0;
+    const dest = String(s?.destination_type ?? "").toUpperCase();
+    const goal: AdGoal = dest.includes("WHATSAPP") || dest.includes("MESSAG") ? "whatsapp" : dest.includes("PHONE") || dest.includes("CALL") ? "calls" : "website";
+    list.push({ campaign_id: c.id, name: c.name, status: c.status, effective_status: c.effective_status, goal, daily_paise: daily, days, adset_id: s?.id ?? null, ad_id: c.ads?.data?.[0]?.id ?? null, created: c.created_time ?? "" });
+  }
+  return { acct, list };
+}
