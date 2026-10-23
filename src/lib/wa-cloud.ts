@@ -3,6 +3,7 @@
 // handling (CRM log + menu bot + AI reply) and delivery statuses live here;
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
+import { AI_STOP_TAG } from "@/lib/crm-pro";
 import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, ensureDemoLink, demoLink, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
@@ -211,6 +212,11 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
       if (leadId) await restAsService(`leads?id=eq.${leadId}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ opted_out: true }) });
       await reply(acc, card, phone, "ठीक है 🙏 अब आपको हमारी तरफ़ से promotional message नहीं आएँगे। कभी भी ज़रूरत हो तो यहीं लिख दें।");
       continue;
+    }
+    // Marked "Not interested" in the CRM (owner, 23 Oct 2026): the message is saved, nothing automatic goes back.
+    if (leadId) {
+      const lr = (await restAsService<{ tags: string[] | null }[]>(`leads?id=eq.${leadId}&select=tags`)).data;
+      if (Array.isArray(lr) && (lr[0]?.tags ?? []).includes(AI_STOP_TAG)) continue;
     }
     // Owner/agent replied in the last 15 min → human is handling this chat.
     const hist = (await restAsService<{ direction: string; sender: string; text: string; sent_at: string }[]>(`wa_messages?owner_id=eq.${acc.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=direction,sender,text,sent_at&order=sent_at.desc&limit=14`)).data ?? [];

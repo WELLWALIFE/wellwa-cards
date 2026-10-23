@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { resolveScope, addEvent, STAGES } from "@/lib/crm-server";
 import { sendCustomer } from "@/lib/customer-send";
-import { logCall, patchCall, createTask, isUuid, OUTCOMES, CALL_COLS, TASK_KINDS, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
+import { logCall, patchCall, createTask, isUuid, OUTCOMES, CALL_COLS, TASK_KINDS, AI_STOP_TAG, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
 
 const iso = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
 
@@ -33,9 +33,10 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope || !isUuid(b.lead_id)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
-  const lead = (await restAsService<{ id: string; phone: string; name: string; status: string }[]>(`leads?id=eq.${b.lead_id}&owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&assigned_to=eq.${scope.userId}` : ""}&select=id,phone,name,status&limit=1`)).data?.[0];
+  const lead = (await restAsService<{ id: string; phone: string; name: string; status: string; tags: string[] | null; lost_reason: string | null }[]>(`leads?id=eq.${b.lead_id}&owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&assigned_to=eq.${scope.userId}` : ""}&select=id,phone,name,status,tags,lost_reason&limit=1`)).data?.[0];
   if (!lead) return NextResponse.json({ error: "Lead not found." }, { status: 404 });
   const outcome: Outcome = (OUTCOMES as readonly string[]).includes(b.outcome) ? b.outcome : "unknown";
+  const notInterested = outcome === "not_interested";
   const note = typeof b.note === "string" ? b.note.trim().slice(0, 1000) : "";
   let call: CallRow | null;
   if (isUuid(b.call_id)) {
@@ -49,6 +50,9 @@ export async function POST(request: Request) {
   } else {
     call = await logCall(scope, { lead_id: lead.id, outcome, seconds: Number(b.seconds) || 0, note, started_at: iso(b.started_at) ?? undefined });
   }
+  // "Not interested" is a call outcome since migration 0075; before it is run the database refuses it, so the call is kept as
+  // "connected" with the words in its note (everything else below still happens).
+  if (!call && notInterested) call = await logCall(scope, { lead_id: lead.id, outcome: "connected", seconds: Number(b.seconds) || 0, note: `Not interested${note ? ` — ${note}` : ""}`.slice(0, 1000), started_at: iso(b.started_at) ?? undefined });
   if (!call) return NextResponse.json({ error: "Could not save the call. Please try again." }, { status: 502 });
   let task = null;
   if (b.next && typeof b.next === "object") {
@@ -58,6 +62,16 @@ export async function POST(request: Request) {
   if (typeof b.stage === "string" && (STAGES as readonly string[]).includes(b.stage) && b.stage !== lead.status) {
     await restAsService(`leads?id=eq.${lead.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: b.stage, updated_at: new Date().toISOString() }) });
     await addEvent(scope.token, scope.ownerId, lead.id, "status", `Stage → ${b.stage.replace("_", " ")}`).catch(() => null);
+  }
+  // Not interested (owner, 23 Oct 2026): the customer is marked lost, their open follow-ups are closed, and every automatic message
+  // stops — the AI does not reply or follow up (bridge / Cloud check the tag), and wishes and broadcasts skip them (opted_out).
+  if (notInterested) {
+    const now = new Date().toISOString();
+    const tags = [...new Set([...(lead.tags ?? []), AI_STOP_TAG])].slice(0, 12);
+    await restAsService(`leads?id=eq.${lead.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "lost", tags, opted_out: true, ...(lead.lost_reason ? {} : { lost_reason: "Not interested" }), updated_at: now }) });
+    await restAsService(`crm_tasks?lead_id=eq.${lead.id}&owner_id=eq.${scope.ownerId}&done_at=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ done_at: now, outcome: "not interested" }) }).catch(() => null);
+    if (lead.status !== "lost") await addEvent(scope.token, scope.ownerId, lead.id, "status", "Stage → lost (not interested) · AI messages stopped").catch(() => null);
+    return NextResponse.json({ call, task: null, sent: null });
   }
   let sent: boolean | null = null;
   if (typeof b.wa_text === "string" && b.wa_text.trim()) {

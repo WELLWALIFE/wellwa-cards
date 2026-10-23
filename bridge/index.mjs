@@ -1287,7 +1287,7 @@ async function runFollowups() {
   for (const [jid, e] of due) {
     if (sent >= cap) break;
     // Never follow up a number on the never-reply list, or (new AI) a personal contact.
-    if ((await isNeverReply(jid).catch(() => false)) || (agentMode() && agentState[jid]?.personalAt)) {
+    if ((await isNeverReply(jid).catch(() => false)) || (agentMode() && agentState[jid]?.personalAt) || (await aiStopped(jid).catch(() => false))) {
       e.active = false; e.updatedAt = Date.now(); saveFollowups();
       continue;
     }
@@ -1411,6 +1411,26 @@ async function isNeverReply(jid) {
   if (!pn) return false;
   const tail = pn.slice(-10);
   return list.some((n) => String(n).replace(/[^0-9]/g, "").slice(-10) === tail);
+}
+
+/** "Not interested" in the CRM (owner, 23 Oct 2026): the lead carries the tag below and no automatic message goes to it — no AI
+ *  reply, no follow-up. Read from the lead itself (cached a minute), so the owner's choice in the app takes effect at once. */
+const AI_STOP_TAG = "not-interested";
+const aiStopCache = new Map();   // jid -> { at, stop }
+async function aiStopped(jid) {
+  if (!cardContext || !SUPA_URL || !SUPA_KEY) return false;
+  const hit = aiStopCache.get(jid);
+  if (hit && Date.now() - hit.at < 60_000) return hit.stop;
+  const pn = await phoneOf(jid);
+  const phone = pn ? "+" + pn : jid;
+  const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
+  const rows = await fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=tags&limit=5`, { headers })
+    .then((r) => (r.ok ? r.json() : null)).catch(() => null);
+  if (!Array.isArray(rows)) return hit?.stop ?? false;   // database not reachable: keep the last answer
+  const stop = rows.some((x) => Array.isArray(x.tags) && x.tags.includes(AI_STOP_TAG));
+  aiStopCache.set(jid, { at: Date.now(), stop });
+  if (aiStopCache.size > 5000) aiStopCache.delete(aiStopCache.keys().next().value);
+  return stop;
 }
 
 function stopFollowups(jid) {
@@ -1673,6 +1693,8 @@ async function startWhatsApp() {
         const ts = Number(m.messageTimestamp ?? 0);
         if (type !== "notify" && (!ts || nowSec - ts > 180)) continue;
         if (never) { console.log(`[wa] ${jid} is on the never-reply list — no reply`); continue; }
+        // Marked "Not interested" in the CRM: the message is in the CRM already (logged above); no AI reply, no follow-up.
+        if (await aiStopped(jid).catch(() => false)) { stopFollowups(jid); console.log(`[wa] ${jid} is "not interested" in the CRM — no reply`); continue; }
         // New AI (switch in Super Admin): null = everything as before.
         const mode = agentMode();
         const personalContact = Boolean(mode && agentState[jid]?.personalAt);

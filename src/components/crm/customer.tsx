@@ -113,6 +113,12 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         ))}
       </div>
 
+      {(l.tags ?? []).includes("not-interested") && (
+        <div className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-xs">
+          <span className="min-w-0 flex-1 font-semibold text-danger">{L.hi ? "🚫 Not interested — AI और अपने-आप जाने वाले messages बंद हैं" : "🚫 Not interested — AI and automatic messages are off"}</span>
+          <button type="button" onClick={() => void patch({ tags: (l.tags ?? []).filter((t) => t !== "not-interested"), opted_out: false })} className="shrink-0 rounded-lg border border-border bg-surface px-2.5 py-1 font-semibold text-ink">{L.hi ? "फिर चालू करें" : "Turn back on"}</button>
+        </div>
+      )}
       {l.phone && <button type="button" onClick={() => setLogAt(Date.now())} className="w-full text-left text-[11px] font-semibold text-brand-ink underline">{L.hi ? "📝 Call पहले ही कर ली (WhatsApp / phone से)? उसका हाल यहाँ लिखें" : "📝 Already called (WhatsApp / phone)? Write what happened here"}</button>}
       {logAt > 0 && <CallOutcomeSheet pending={{ leadId: l.id, name: l.name, phone: l.phone, status: l.status, startedAt: logAt }} onClose={() => setLogAt(0)} onSaved={() => load(true)} />}
 

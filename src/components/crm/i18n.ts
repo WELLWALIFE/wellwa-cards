@@ -77,5 +77,5 @@ export const STAGE_LABEL: Record<string, { hi: string; en: string }> = {
   new: { hi: "नया", en: "New" }, contacted: { hi: "बात हुई", en: "Contacted" }, interested: { hi: "रुचि है", en: "Interested" }, follow_up: { hi: "Follow-up", en: "Follow-up" }, converted: { hi: "बिका", en: "Won" }, lost: { hi: "गया", en: "Lost" },
 };
 export const OUTCOME_LABEL: Record<string, { hi: string; en: string }> = {
-  connected: { hi: "बात हुई", en: "Connected" }, no_answer: { hi: "नहीं उठाया", en: "No answer" }, busy: { hi: "Busy", en: "Busy" }, switched_off: { hi: "बंद था", en: "Switched off" }, wrong_number: { hi: "गलत नंबर", en: "Wrong number" }, call_back: { hi: "बाद में call", en: "Call back later" }, unknown: { hi: "Call", en: "Call" },
+  connected: { hi: "बात हुई", en: "Connected" }, no_answer: { hi: "नहीं उठाया", en: "No answer" }, busy: { hi: "Busy", en: "Busy" }, switched_off: { hi: "बंद था", en: "Switched off" }, wrong_number: { hi: "गलत नंबर", en: "Wrong number" }, call_back: { hi: "बाद में call", en: "Call back later" }, not_interested: { hi: "रुचि नहीं", en: "Not interested" }, unknown: { hi: "Call", en: "Call" },
 };

@@ -89,6 +89,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
     if (o === "no_answer" || o === "busy" || o === "switched_off") { setNextKey("retry"); setSendWa(ws.prefs.missed_call_wa && ws.wa === "connected"); setWaText(missedText); }
     else if (o === "call_back") { setNextKey("tomorrow11"); setSendWa(false); }
     else if (o === "connected") { setNextKey(""); setSendWa(false); if (pending.status === "new") setStage("contacted"); }
+    else if (o === "not_interested") { setNextKey(""); setSendWa(false); setStage("lost"); }
     else { setNextKey(""); setSendWa(false); }
   }
   const nextIsoAt = (now: number) => nextKey === "retry" ? new Date(now + Math.max(15, ws.prefs.retry_after_min) * 60000).toISOString() : nextKey === "custom" ? (customNext ? new Date(customNext).toISOString() : "") : moments.find((m) => m.key === nextKey)?.iso ?? "";
@@ -126,7 +127,10 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
           {(["connected", "no_answer", "busy", "switched_off", "wrong_number", "call_back"] as const).map((o) => (
             <button key={o} type="button" onClick={() => pick(o)} className={`rounded-xl border px-2 py-2 text-xs font-semibold ${outcome === o ? (o === "connected" ? "border-good bg-good/10 text-good" : "border-brand bg-brand-soft text-brand-ink") : "border-border bg-surface text-ink"}`}>{OUTCOME_LABEL[o][L.lang]}</button>
           ))}
+          {/* Not interested (owner, 23 Oct 2026): the customer is marked lost and gets no more automatic messages. */}
+          <button type="button" onClick={() => pick("not_interested")} className={`col-span-3 rounded-xl border px-2 py-2 text-xs font-semibold ${outcome === "not_interested" ? "border-danger bg-danger/10 text-danger" : "border-border bg-surface text-ink"}`}>🚫 {OUTCOME_LABEL.not_interested[L.lang]}</button>
         </div>
+        {outcome === "not_interested" && <p className="rounded-xl bg-danger/10 px-3 py-2 text-[11px] font-semibold text-danger">{L.hi ? "ये ग्राहक 'गया' (Lost) में चला जाएगा, उसके follow-up बंद होंगे, और AI / अपने-आप जाने वाले सारे messages (reply, follow-up, wishes, broadcast) इसे नहीं जाएँगे। बाद में ग्राहक की screen से फिर चालू कर सकते हैं।" : "The customer moves to Lost, their follow-ups close, and no automatic message (AI replies, follow-ups, wishes, broadcasts) goes to them. You can turn it back on from their screen."}</p>}
         {outcome === "connected" && (
           <label className="flex items-center gap-2 text-xs text-muted">{L.duration}
             <input value={Math.floor(secs / 60)} onChange={(e) => setSecs(Math.max(0, parseInt(e.target.value, 10) || 0) * 60 + (secs % 60))} inputMode="numeric" className="w-14 rounded-lg border border-border bg-surface px-2 py-1 text-center text-ink" /> min
@@ -137,7 +141,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
           <div className="mb-1 flex items-center justify-between text-xs text-muted"><span>{L.callNote}</span>{hasSpeech && <button type="button" onClick={speak} className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] ${listening ? "border-danger text-danger" : "border-border text-muted"}`}><Mic className="h-3 w-3" />{listening ? L.listening : L.speak}</button>}</div>
           <textarea value={note} onChange={(e) => setNote(e.target.value.slice(0, 1000))} rows={2} placeholder={L.callNotePh} className={inputCls} />
         </div>
-        {outcome && outcome !== "wrong_number" && (
+        {outcome && outcome !== "wrong_number" && outcome !== "not_interested" && (
           <div>
             <div className="mb-1 text-xs text-muted">{L.nextStep}</div>
             <div className="flex flex-wrap gap-1.5">
@@ -148,13 +152,13 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
             {nextKey === "custom" && <input type="datetime-local" value={customNext} onChange={(e) => setCustomNext(e.target.value)} className={inputCls + " mt-1.5"} />}
           </div>
         )}
-        {outcome && (
+        {outcome && outcome !== "not_interested" && (
           <div>
             <div className="mb-1 text-xs text-muted">{L.moveStage}</div>
             <div className="flex flex-wrap gap-1.5">{["contacted", "interested", "follow_up", "converted", "lost"].map((s) => <Chip key={s} on={stage === s} onClick={() => setStage(stage === s ? "" : s)} tone={s === "converted" ? "good" : s === "lost" ? "danger" : "brand"}>{STAGE_LABEL[s][L.lang]}</Chip>)}</div>
           </div>
         )}
-        {outcome && outcome !== "connected" && outcome !== "wrong_number" && (
+        {outcome && outcome !== "connected" && outcome !== "wrong_number" && outcome !== "not_interested" && (
           <div className="rounded-xl border border-border p-2.5">
             <label className="flex items-center gap-2 text-xs font-semibold text-ink"><input type="checkbox" checked={sendWa} disabled={ws.wa !== "connected"} onChange={(e) => { setSendWa(e.target.checked); if (!waText) setWaText(missedText); }} /> {L.sendWa} · {L.waMissedYou}</label>
             {ws.wa !== "connected" && <p className="mt-1 text-[11px] text-muted">{L.waNotLinked}</p>}

@@ -15,7 +15,9 @@ export const TASK_KINDS = ["call", "whatsapp", "visit", "meeting", "other"] as c
 export type TaskKind = (typeof TASK_KINDS)[number];
 export type TaskRow = { id: string; owner_id: string; lead_id: string | null; assigned_to: string | null; created_by: string | null; kind: TaskKind; title: string; text: string; due_at: string; remind_at: string | null; reminded_at: string | null; done_at: string | null; outcome: string; source: string; created_at: string };
 export const TASK_COLS = "id,owner_id,lead_id,assigned_to,created_by,kind,title,text,due_at,remind_at,reminded_at,done_at,outcome,source,created_at";
-export const OUTCOMES = ["connected", "no_answer", "busy", "switched_off", "wrong_number", "call_back", "unknown"] as const;
+export const OUTCOMES = ["connected", "no_answer", "busy", "switched_off", "wrong_number", "call_back", "not_interested", "unknown"] as const;
+/** The tag that stops every automatic message to a customer (AI replies, follow-ups, wishes, broadcasts) — set by "Not interested". */
+export const AI_STOP_TAG = "not-interested";
 export type Outcome = (typeof OUTCOMES)[number];
 export type CallRow = { id: string; owner_id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: "phone" | "exotel" | "ai"; status: string; started_at: string; seconds: number; outcome: Outcome; note: string; recording_url: string | null; created_at: string };
 export const CALL_COLS = "id,owner_id,lead_id,agent_id,direction,channel,status,started_at,seconds,outcome,note,recording_url,created_at";
@@ -214,6 +216,6 @@ export async function patchCall(scope: Scope, id: string, p: { outcome?: Outcome
   const r = await restAsService<CallRow[]>(`crm_calls?id=eq.${id}&owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&agent_id=eq.${scope.userId}` : ""}&select=${CALL_COLS}`, { method: "PATCH", body: JSON.stringify(patch), headers: { Prefer: "return=representation" } });
   return Array.isArray(r.data) ? r.data[0] ?? null : null;
 }
-export const OUTCOME_TEXT: Record<string, string> = { connected: "Connected", no_answer: "No answer", busy: "Busy", switched_off: "Switched off", wrong_number: "Wrong number", call_back: "Call back later", unknown: "Call" };
+export const OUTCOME_TEXT: Record<string, string> = { connected: "Connected", no_answer: "No answer", busy: "Busy", switched_off: "Switched off", wrong_number: "Wrong number", call_back: "Call back later", not_interested: "Not interested", unknown: "Call" };
 
 export const fmtIst = (iso: string) => new Date(iso).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", hour: "numeric", minute: "2-digit" });
