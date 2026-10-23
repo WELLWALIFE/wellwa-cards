@@ -5,6 +5,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { partnerCall, partnerLinked, registerPartner } from "@/lib/partner-link";
 import { SITE_URL } from "@/lib/site-url";
+import { publicCardUrl } from "@/lib/own-domain";
 
 type Prof = { username: string | null; referred_by: string | null };
 
@@ -26,7 +27,8 @@ export async function GET(request: Request) {
   const username = p?.username ?? null;
   // Two different links: the referral link (Business) and the card link (the person's own site). Never mixed up.
   const link = username ? `${SITE_URL}/join/${username}` : null;
-  const cardLink = cardSlug ? `${SITE_URL}/c/${cardSlug}` : null;
+  // The owner's own domain once it is live (Home → Share Links → Card / Website), else the Shubhora link.
+  const cardLink = cardSlug ? await publicCardUrl(cardSlug) : null;
 
   let partner: Record<string, unknown> | null = null;
   let error: string | undefined;

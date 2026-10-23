@@ -12,7 +12,7 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import type { Card } from "@/lib/types";
 import type { FactsResponse } from "@/lib/card-facts";
 import { useT } from "@/lib/poster-i18n";
-import { SITE_URL } from "@/lib/site-url";
+import { cardHome } from "@/lib/site-url";
 import { CardLink } from "@/components/poster/card-sheet";
 
 const SWATCHES = ["#2f5bf5", "#0e9e90", "#6d5cf5", "#d24b4b", "#e5673b", "#f2a33c", "#1e3a8a", "#b86a3a", "#0d9488", "#111827"];
@@ -39,7 +39,7 @@ export default function LooksGallery() {
     setCard(mine); setColor(mine.themeColor);
   }, [router]);
   useEffect(() => { load(); }, [load]);
-  useEffect(() => { if (card) QRCode.toDataURL(`${SITE_URL}/c/${card.username}`, { width: 240, margin: 1 }).then(setQr).catch(() => setQr("")); }, [card]);
+  useEffect(() => { if (card) QRCode.toDataURL(cardHome(card.username, card.customDomain), { width: 240, margin: 1 }).then(setQr).catch(() => setQr("")); }, [card]);
 
   // Previews never count as visits and never open the chat or the welcome popup.
   const preview = useMemo(() => card ? { ...card, username: "__looks", popup: undefined } as Card : null, [card]);
@@ -107,7 +107,7 @@ export default function LooksGallery() {
           {busy ? (hi ? "लग रहा है…" : "Applying…") : isOn ? (hi ? "यही look लगा है ✓" : "This look is on ✓") : (hi ? `यही look लगाएँ — ${sel.name}` : `Use this look — ${sel.name}`)}
         </button>
       </div>
-      <CardLink href={`${SITE_URL}/c/${card.username}`} title={hi ? "मेरा कार्ड" : "My card"} className="inline-flex items-center gap-1.5 text-sm text-brand-ink"><ExternalLink className="h-4 w-4" /> {hi ? "मेरा card खोलें" : "Open my card"}</CardLink>
+      <CardLink href={cardHome(card.username, card.customDomain)} title={hi ? "मेरा कार्ड" : "My card"} className="inline-flex items-center gap-1.5 text-sm text-brand-ink"><ExternalLink className="h-4 w-4" /> {hi ? "मेरा card खोलें" : "Open my card"}</CardLink>
     </div>
   );
 }
