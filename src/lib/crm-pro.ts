@@ -60,8 +60,10 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
   if (q) {
     const like = `*${q}*`;
     // "+91 98765 43210" / "98765-43210" must still find "+919876543210": also match the digits alone against the phone.
-    const dq = q.replace(/\D/g, "");
-    const byDigits = dq.length >= 4 && dq !== q ? `,phone.ilike.${enc(`*${dq}*`)}` : "";
+    // A number pasted with its country code ("+91 98765 43210", "919876543210") is matched on its last 10 digits, so a number saved without
+    // (or with) the 91 is still found; the other phone (alt_phone) is searched too.
+    const d0 = q.replace(/\D/g, ""), dq = d0.length > 10 ? d0.slice(-10) : d0;
+    const byDigits = dq.length >= 4 ? `,phone.ilike.${enc(`*${dq}*`)},alt_phone.ilike.${enc(`*${dq}*`)}` : "";
     f.push(`or=(name.ilike.${enc(like)},phone.ilike.${enc(like)}${byDigits},city.ilike.${enc(like)},business.ilike.${enc(like)},ai_intent.ilike.${enc(like)},message.ilike.${enc(like)})`);
   }
   if (qy.stage) f.push(`status=eq.${enc(qy.stage)}`);

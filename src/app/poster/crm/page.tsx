@@ -4,11 +4,11 @@
 // team, menu bot, integrations, import) live on under Settings; /poster/leads keeps Bookings / Phone / WhatsApp / Teach bot.
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { LoaderCircle, Users } from "lucide-react";
+import { LoaderCircle, Phone, Users } from "lucide-react";
 import { isLoggedIn } from "@/lib/poster-client";
 import { useCrmT } from "@/components/crm/i18n";
 import { Shell, loadWorkspace, type Workspace, type LeadPro, type CrmShell } from "@/components/crm/shared";
-import { CallReturnWatcher, CallOutcomeSheet, CallList, CloudCallSheet, dial, type CallListItem, type PendingCall } from "@/components/crm/call";
+import { CallReturnWatcher, CallOutcomeSheet, CallList, CloudCallSheet, DialSheet, UnloggedCalls, dial, type CallListItem, type PendingCall } from "@/components/crm/call";
 import { TodayScreen } from "@/components/crm/today";
 import { CustomersList } from "@/components/crm/list";
 import { CustomerScreen } from "@/components/crm/customer";
@@ -34,6 +34,7 @@ function CrmPage() {
   const [desktopCall, setDesktopCall] = useState<PendingCall | null>(null);
   const [cloudCall, setCloudCall] = useState<Pick<LeadPro, "id" | "name" | "phone" | "status"> | null>(null);
   const [tick, setTick] = useState(0);
+  const [dialOpen, setDialOpen] = useState(false);
 
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/crm${window.location.search}`)}`); return; } setReady(true); })(); }, [router]);
   const loadWs = useCallback(async () => {
@@ -85,7 +86,19 @@ function CrmPage() {
             {sections.map(([k, t]) => <button key={k} type="button" onClick={() => { setSection(k); setCustomer(null); setCallList(null); router.replace(`/poster/crm?s=${k}`); }} className={`shrink-0 rounded-full px-3 py-1.5 @3xl:rounded-xl @3xl:text-left ${section === k && !customer ? "grad-brand text-white" : "text-muted"}`}>{t}</button>)}
           </div>
         </div>
-        <div className="min-w-0">
+        <div className="min-w-0 space-y-3">
+          {/* A number from WhatsApp or a message: dial or paste it, find the customer or add them, and call — saved in the CRM (owner, 23 Oct 2026).
+              And every call whose "what happened" was missed, to fill in later. */}
+          {!customer && !callList && (section === "today" || section === "customers") && (
+            <>
+              <UnloggedCalls />
+              <button type="button" onClick={() => setDialOpen(true)} className="flex w-full items-center gap-3 rounded-2xl border-2 border-brand/30 bg-brand-soft/30 px-3 py-2.5 text-left">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl grad-brand text-white"><Phone className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1"><span className="block text-sm font-bold text-ink">{L.hi ? "Number dial करें" : "Dial a number"}</span><span className="block text-[11px] text-muted">{L.hi ? "number डालें या paste करें — ग्राहक मिलेगा, नहीं तो जुड़कर call होगी" : "Type or paste a number — finds the customer, or adds them, then calls"}</span></span>
+              </button>
+            </>
+          )}
+          <div>
           {customer && section === "customers" ? (
             <div className="@5xl:grid @5xl:grid-cols-[minmax(280px,1fr)_minmax(0,1.4fr)] @5xl:gap-4">
               <div className="hidden @5xl:block"><CustomersList onCallThese={(leads) => { setCustomer(null); setCallList(leads.map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" }))); }} /></div>
@@ -98,9 +111,11 @@ function CrmPage() {
             : section === "calendar" ? <CalendarSection />
             : section === "reports" ? <ReportsSection />
             : <SettingsSection onChanged={loadWs} />}
+          </div>
         </div>
       </div></div>
       <CallReturnWatcher />
+      {dialOpen && <DialSheet onClose={() => setDialOpen(false)} />}
       {desktopCall && <CallOutcomeSheet pending={desktopCall} dialHint onSaved={shell.notifyLogged} onClose={() => setDesktopCall(null)} />}
       {cloudCall && <CloudCallSheet lead={cloudCall} onFallback={() => { const l = cloudCall; setCloudCall(null); dial(l, setDesktopCall); }} onClose={() => setCloudCall(null)} />}
     </Shell.Provider>

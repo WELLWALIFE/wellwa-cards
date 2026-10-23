@@ -3,7 +3,7 @@
 // happened, saves the call, the next step and (optional) a WhatsApp — one tap each. CallList (3.5) walks today's calls
 // one lead at a time. Phase 2 (Exotel click-to-call) plugs into startCall without changing these screens.
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles } from "lucide-react";
+import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles, ClipboardPaste, UserPlus, X, AlertTriangle, ChevronDown, Search } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
@@ -12,7 +12,28 @@ export type PendingCall = { leadId: string; name: string; phone: string; status:
 const KEY = "akp-crm-pending-call";
 const nowMs = () => Date.now();
 export const readPending = (): PendingCall | null => { try { const v = sessionStorage.getItem(KEY); return v ? (JSON.parse(v) as PendingCall) : null; } catch { return null; } };
-export const writePending = (p: PendingCall | null) => { try { if (p) sessionStorage.setItem(KEY, JSON.stringify(p)); else sessionStorage.removeItem(KEY); } catch { /* ignore */ } };
+export const writePending = (p: PendingCall | null) => {
+  try { if (p) sessionStorage.setItem(KEY, JSON.stringify(p)); else sessionStorage.removeItem(KEY); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event("akp-crm-unlogged")); } catch { /* ignore */ }   // the "calls to fill" list shows a call once its sheet is gone
+};
+/** Calls dialled from the CRM whose outcome was never saved (owner, 23 Oct 2026: "call ke baad ka pop-up fill karna miss ho jata hai").
+ *  Kept on this phone until the outcome is saved or the owner removes it; the Today and Customers screens list them with "Fill now". */
+const UNLOGGED_KEY = "akp-crm-unlogged-calls";
+const UNLOGGED_DAYS = 7;
+export function readUnlogged(): PendingCall[] {
+  try {
+    const v = JSON.parse(localStorage.getItem(UNLOGGED_KEY) || "[]") as PendingCall[];
+    const cut = Date.now() - UNLOGGED_DAYS * 86400_000;
+    return Array.isArray(v) ? v.filter((x) => x && x.leadId && x.startedAt > cut) : [];
+  } catch { return []; }
+}
+function writeUnlogged(list: PendingCall[]) {
+  try { localStorage.setItem(UNLOGGED_KEY, JSON.stringify(list.slice(0, 30))); } catch { /* ignore */ }
+  try { window.dispatchEvent(new Event("akp-crm-unlogged")); } catch { /* ignore */ }
+}
+export function addUnlogged(p: PendingCall) { writeUnlogged([p, ...readUnlogged().filter((x) => !(x.leadId === p.leadId && x.startedAt === p.startedAt))]); }
+/** The outcome was saved (or the owner removed it): this call and any older unsaved call to the same customer are done. */
+export function dropUnlogged(p: Pick<PendingCall, "leadId" | "startedAt">) { writeUnlogged(readUnlogged().filter((x) => !(x.leadId === p.leadId && x.startedAt <= p.startedAt))); }
 export const isPhoneDevice = () => typeof navigator !== "undefined" && /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
 /** Opens the dialer and remembers the call; on a laptop (no dialer) the sheet opens straight away with the number to dial.
@@ -20,6 +41,7 @@ export const isPhoneDevice = () => typeof navigator !== "undefined" && /Android|
  *  sheet from the watcher (on the next window focus) would log the same call twice. */
 export function dial(lead: Pick<LeadPro, "id" | "name" | "phone" | "status">, onNoDialer: (p: PendingCall) => void) {
   const p: PendingCall = { leadId: lead.id, name: lead.name, phone: lead.phone, status: lead.status, startedAt: Date.now() };
+  addUnlogged(p);
   if (isPhoneDevice()) { writePending(p); window.location.href = telLink(lead.phone); return; }
   writePending(null);
   onNoDialer(p);
@@ -44,7 +66,8 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
   const { L, ws, as, reload } = useShell();
   const [outcome, setOutcome] = useState<string>("");
   const [secs, setSecs] = useState<number>(0);
-  useEffect(() => { setSecs(Math.max(0, Math.round((Date.now() - pending.startedAt) / 1000) - 8)); }, [pending.startedAt]);
+  // Filled in late (from "calls to fill"): the time since dialling is not the call's length, so it starts at 0 for the owner to set.
+  useEffect(() => { const gone = Math.round((Date.now() - pending.startedAt) / 1000); setSecs(gone > 45 * 60 ? 0 : Math.max(0, gone - 8)); }, [pending.startedAt]);
   const [note, setNote] = useState("");
   const [nextKey, setNextKey] = useState<string>("");
   const [customNext, setCustomNext] = useState("");
@@ -90,7 +113,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
     const r = await api<{ error?: string; sent?: boolean | null }>("/api/crm/calls", { method: "POST", json: body }).catch(() => null);
     setBusy(false);
     if (!r || !r.ok) { setErr(r?.data.error || L.failed); return; }
-    writePending(null); onSaved?.(); reload(); onClose();
+    writePending(null); dropUnlogged(pending); onSaved?.(); reload(); onClose();
   }
   const hasSpeech = typeof window !== "undefined" && !!((window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition || (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition);
   return (
@@ -259,6 +282,131 @@ export function CloudCallSheet({ lead, onFallback, onClose }: { lead: Pick<LeadP
           <button type="button" onClick={onClose} className="rounded-xl border border-border px-3 py-2 text-xs">{L.close}</button>
           {call && (call.status === "done" || elapsed > 20) && <button type="button" onClick={() => setOutcome(true)} className="grad-brand flex-1 rounded-xl py-2 text-sm font-semibold text-white">{L.callOutcome}</button>}
         </div>
+      </div>
+    </BottomSheet>
+  );
+}
+
+/* ---------------- calls whose outcome was not filled ---------------- */
+/** "N calls to fill": every call dialled from here whose outcome sheet was closed or missed. One tap opens the same sheet. */
+export function UnloggedCalls() {
+  const { L, notifyLogged } = useShell();
+  const [list, setList] = useState<PendingCall[]>([]);
+  const [open, setOpen] = useState(false);
+  const [fill, setFill] = useState<PendingCall | null>(null);
+  useEffect(() => {
+    const read = () => setList(readUnlogged().filter((x) => { const p = readPending(); return !(p && p.leadId === x.leadId && p.startedAt === x.startedAt); }));
+    read();
+    window.addEventListener("akp-crm-unlogged", read); window.addEventListener("focus", read); document.addEventListener("visibilitychange", read);
+    return () => { window.removeEventListener("akp-crm-unlogged", read); window.removeEventListener("focus", read); document.removeEventListener("visibilitychange", read); };
+  }, []);
+  if (!list.length && !fill) return null;
+  const T = (en: string, hi: string) => (L.hi ? hi : en);
+  return (
+    <>
+      {list.length > 0 && (
+        <section className="overflow-hidden rounded-2xl border border-lead/40 bg-lead/10">
+          <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center gap-2 px-3 py-2.5 text-left text-sm font-semibold text-ink">
+            <AlertTriangle className="h-4 w-4 shrink-0 text-lead" />
+            <span className="min-w-0 flex-1">{T(`${list.length} call${list.length === 1 ? "" : "s"}: what happened is not filled`, `${list.length} call का हाल भरना बाकी है`)}<span className="block text-[11px] font-normal text-muted">{T("Fill it so it is saved in the CRM", "भर दें ताकि CRM में record रहे")}</span></span>
+            <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${open ? "" : "-rotate-90"}`} />
+          </button>
+          {open && (
+            <ul className="divide-y divide-border border-t border-border bg-surface">
+              {list.map((c) => (
+                <li key={`${c.leadId}-${c.startedAt}`} className="flex items-center gap-2 px-2.5 py-2">
+                  <Avatar name={c.name} phone={c.phone} size={9} />
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold text-ink">{c.name || c.phone}</p><p className="text-[11px] text-muted">{c.phone} · {fmtWhen(new Date(c.startedAt).toISOString(), L.hi)}</p></div>
+                  <button type="button" onClick={() => setFill(c)} className="grad-brand rounded-lg px-3 py-1.5 text-xs font-semibold text-white">{T("Fill now", "अभी भरें")}</button>
+                  <button type="button" onClick={() => dropUnlogged(c)} className="rounded-lg border border-border p-1.5 text-muted" aria-label={T("Remove", "हटाएँ")}><X className="h-4 w-4" /></button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
+      {fill && <CallOutcomeSheet pending={fill} onSaved={notifyLogged} onClose={() => setFill(null)} />}
+    </>
+  );
+}
+
+/* ---------------- dial a number: search it, or add it and call ---------------- */
+const tenOf = (v: string) => { const d = v.replace(/\D/g, ""); return d.length > 10 ? d.slice(-10) : d; };
+/** A number typed or pasted (from WhatsApp, a message…): if it is already a customer, call them from here; if not, add it and call,
+ *  so the call and its outcome are saved in the CRM either way (owner, 23 Oct 2026). */
+export function DialSheet({ onClose }: { onClose: () => void }) {
+  const { L, ctx, as, startCall, openCustomer } = useShell();
+  const [num, setNum] = useState("");
+  const [name, setName] = useState("");
+  const [found, setFound] = useState<LeadPro[] | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [pasteFail, setPasteFail] = useState(false);
+  const T = (en: string, hi: string) => (L.hi ? hi : en);
+  const ten = tenOf(num);
+  const valid = ten.length === 10;
+  useEffect(() => {
+    setErr("");
+    if (ten.length < 4) { setFound(null); return; }
+    let dead = false;
+    const t = setTimeout(async () => {
+      const sp = new URLSearchParams({ q: ten, page: "0" }); if (as) sp.set("as", as);
+      const r = await api<{ leads: LeadPro[] }>(`/api/crm/leads?${sp}`).catch(() => null);
+      if (!dead) setFound(r?.ok ? r.data.leads.filter((l) => tenOf(l.phone).includes(ten) || tenOf(l.alt_phone || "").includes(ten)).slice(0, 6) : []);
+    }, 250);
+    return () => { dead = true; clearTimeout(t); };
+  }, [ten, as]);
+  const exact = found?.find((l) => tenOf(l.phone) === ten) ?? null;
+  async function paste() {
+    setPasteFail(false);
+    try { const t = await navigator.clipboard.readText(); if (t) setNum(t.replace(/[^\d+\s-]/g, "").trim().slice(0, 20)); else setPasteFail(true); } catch { setPasteFail(true); }
+  }
+  function call(l: Pick<LeadPro, "id" | "name" | "phone" | "status">) { onClose(); startCall(l); }
+  async function addAndCall() {
+    if (!valid || busy) return;
+    setBusy(true); setErr("");
+    const r = await api<{ lead?: LeadPro; id?: string; error?: string }>("/api/crm/lead", { method: "POST", json: { phone: ten, name: name.trim(), as: as ?? undefined, note: T("Added from Dial", "Dial से जोड़ा") } }).catch(() => null);
+    setBusy(false);
+    if (r?.ok && r.data.lead) { call(r.data.lead); return; }
+    if (r?.status === 409 && r.data.id) { call({ id: r.data.id, name: name.trim(), phone: `+91${ten}`, status: "new" }); return; }
+    setErr(r?.data.error || L.failed);
+  }
+  return (
+    <BottomSheet title={T("Dial a number", "Number dial करें")} onClose={onClose}>
+      <div className="space-y-3 text-sm">
+        <div className="flex gap-2">
+          <input value={num} onChange={(e) => setNum(e.target.value.slice(0, 20))} inputMode="tel" autoFocus placeholder={T("Mobile number", "Mobile number")} className={`${inputCls} text-lg font-semibold tracking-wide`} />
+          <button type="button" onClick={() => void paste()} className="inline-flex shrink-0 items-center gap-1 rounded-xl border border-border px-3 text-xs font-semibold text-brand-ink"><ClipboardPaste className="h-4 w-4" /> {T("Paste", "Paste")}</button>
+        </div>
+        {pasteFail && <p className="text-[11px] text-muted">{T("Could not read the copied number. Press and hold the box, then Paste.", "Copy किया number नहीं पढ़ पाए। box को दबाकर रखें, फिर Paste करें।")}</p>}
+        {ten.length >= 4 && found === null && <p className="flex items-center gap-2 text-xs text-muted"><Search className="h-3.5 w-3.5" /> {T("Searching your customers…", "आपके ग्राहकों में खोज रहे हैं…")}</p>}
+        {found && found.length > 0 && (
+          <div className="space-y-1.5">
+            <p className="text-[11px] font-semibold text-muted">{T("Already in your CRM", "पहले से CRM में है")}</p>
+            <ul className="divide-y divide-border overflow-hidden rounded-xl border border-border">
+              {found.map((l) => (
+                <li key={l.id} className="flex items-center gap-2 px-2.5 py-2">
+                  <button type="button" onClick={() => { onClose(); openCustomer(l.id); }} className="flex min-w-0 flex-1 items-center gap-2 text-left">
+                    <Avatar name={l.name} phone={l.phone} size={9} />
+                    <span className="min-w-0"><span className="block truncate font-semibold text-ink">{l.name || l.phone}</span><span className="block text-[11px] text-muted">{l.phone}</span></span>
+                  </button>
+                  <button type="button" onClick={() => call(l)} className="grad-brand inline-flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs font-semibold text-white"><Phone className="h-3.5 w-3.5" /> {L.call}</button>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        {valid && found !== null && !exact && (
+          <div className="space-y-2 rounded-xl border border-dashed border-border p-2.5">
+            <p className="text-xs font-semibold text-ink">{T("New number: it will be added to your CRM, then called", "नया number: पहले CRM में जुड़ेगा, फिर call होगी")}</p>
+            <input value={name} onChange={(e) => setName(e.target.value.slice(0, 80))} placeholder={T("Name (optional)", "नाम (optional)")} className={inputCls} />
+            {ctx.role === "agent"
+              ? <a href={telLink(`91${ten}`)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 font-semibold text-ink"><Phone className="h-4 w-4" /> {T("Call (not saved in the CRM)", "Call करें (CRM में save नहीं होगा)")}</a>
+              : <button type="button" disabled={busy} onClick={() => void addAndCall()} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <UserPlus className="h-4 w-4" />} {T("Add & call", "जोड़ें और call करें")}</button>}
+          </div>
+        )}
+        {num && !valid && ten.length > 0 && <p className="text-[11px] text-muted">{T("Enter the full 10-digit mobile number.", "पूरा 10 अंकों का mobile number डालें।")}</p>}
+        {err && <p role="alert" className="text-xs text-danger">{err}</p>}
       </div>
     </BottomSheet>
   );
