@@ -14,6 +14,7 @@
 // POST (bearer) { toggle: true | false }   → show the advanced website / the basic one (both stay stored).
 // POST (bearer) { revert: true }           → the basic website for good: the owner's own words back, every advanced field removed.
 // POST (bearer) { claim: <job id> }        → the phone has taken that finished job.
+import { writeSlides } from "@/lib/site-slides";
 import { NextResponse, after } from "next/server";
 import { claim, currentJob, jobView, startJob, touch, type CardJob } from "@/lib/card-jobs";
 import { notify } from "@/lib/notify";
@@ -23,7 +24,7 @@ import { myCard } from "@/lib/site-server";
 import { advancedTriesLeft, isAdvancedAllowed, spendAdvancedTry } from "@/lib/advanced-access";
 import { advancedState, applyAdvanced, cleanResult, designAdvanced, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
 import { SITE_URL } from "@/lib/site-url";
-import type { Card } from "@/lib/types";
+import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 
 // The designs an owner has already previewed for a card, so "Try another layout" is measured against them (a preview saves nothing on
@@ -114,7 +115,7 @@ export async function POST(request: Request) {
     const fresh = (await myCard(me.id, row.id))?.data ?? data;
     const clean = cleanResult(res, fresh);
     if (!clean) return NextResponse.json({ error: "That preview could not be read. Please make it again." }, { status: 400 });
-    const next = applyAdvanced(fresh, clean);
+    const next = withSlides(applyAdvanced(fresh, clean), Array.isArray(res.slides) ? res.slides as HeroSlide[] : null);
     const r = await save(row.id, me.id, next);
     if (!r.ok) return NextResponse.json({ error: "Could not save your advanced website. Please try again." }, { status: 500 });
     if (job) await claim(key, job.id);
@@ -138,14 +139,18 @@ export async function POST(request: Request) {
   const wish = typeof b.wish === "string" ? b.wish.trim().slice(0, 300) : "";
 
   const { job, done, joined } = await startJob(key, { fresh: !!data.site.advanced }, async (step) => {
-    const result = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: seenSpecs(`${me.id}:${row.id}`), step });
+    const result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: seenSpecs(`${me.id}:${row.id}`), step });
+    // The sliding top banners come with the design (owner, 23 Oct 2026) when the card has none yet; owner-made ones are kept.
+    const hasSlides = (data.site?.hero?.slides ?? []).length >= 2;
+    const slides = hasSlides ? null : await writeSlides(data, true).catch(() => null);
+    const result = slides ? { ...result0, slides } : result0;
     remember(`${me.id}:${row.id}`, { ok: true, mode, cardId: row.id, username: row.username, ...result } as unknown as Obj);
     await spendAdvancedTry(me.id);       // a finished design is one try; a crash above costs nothing
     let saved = false;
     if (mode === "apply") {
       // Re-read the card: the words are put on what the owner has now, not on what it was when the tap came.
       const fresh = (await myCard(me.id, row.id))?.data ?? data;
-      const next = applyAdvanced(fresh, result);
+      const next = withSlides(applyAdvanced(fresh, result), slides);
       const r = await save(row.id, me.id, next);
       if (!r.ok) return { status: 500, body: { error: "The advanced design was made but could not be saved. Please try again." } };
       saved = true;
@@ -157,4 +162,11 @@ export async function POST(request: Request) {
   });
   if (!joined) after(() => done.then(() => undefined));
   return NextResponse.json({ ...jobView(job), joined, mode }, { status: 202 });
+}
+
+/** The design's sliding banners onto the card — only when the card has none of its own (the owner's banners always win). */
+function withSlides(card: Card, slides: HeroSlide[] | null): Card {
+  if (!slides || slides.length < 2 || (card.site?.hero?.slides ?? []).length >= 2 || !card.site) return card;
+  const clean = slides.slice(0, 3).map((x) => ({ headline: String(x.headline ?? "").slice(0, 90), ...(x.sub ? { sub: String(x.sub).slice(0, 240) } : {}), ...(typeof x.imageUrl === "string" && /^https:\/\//.test(x.imageUrl) ? { imageUrl: x.imageUrl } : {}) })).filter((x) => x.headline);
+  return { ...card, site: { ...card.site, hero: { headline: card.company || card.name, sub: "", ...(card.site.hero ?? {}), slides: clean } } };
 }

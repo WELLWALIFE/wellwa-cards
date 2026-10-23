@@ -67,7 +67,11 @@ function readPending(): PendingPay | null {
 /** The live card wearing the previewed design and words: what the server will save on "Use this" (the same words rules as the engine's
  *  applyCopy, which is server-only), so the frame shows exactly that. */
 function withAdvanced(card: Card, res: Result): Card {
-  const base = { ...(card.site ?? { enabled: true }), advanced: res.spec, advancedOn: true } as NonNullable<Card["site"]>;
+  // The design's sliding top banners (owner, 23 Oct 2026), unless the owner already made their own.
+  const own = (card.site?.hero?.slides ?? []).length >= 2;
+  const site0 = card.site ?? { enabled: true };
+  const slides = !own && Array.isArray((res as { slides?: unknown }).slides) ? (res as { slides: NonNullable<NonNullable<NonNullable<Card["site"]>["hero"]>["slides"]> }).slides : null;
+  const base = { ...site0, ...(slides ? { hero: { headline: card.company || card.name, sub: "", ...(site0.hero ?? {}), slides } } : {}), advanced: res.spec, advancedOn: true } as NonNullable<Card["site"]>;
   let next: Card = { ...card, site: base };
   const c = res.copy;
   if (c?.hero && (c.hero.headline !== undefined || c.hero.sub !== undefined)) {
