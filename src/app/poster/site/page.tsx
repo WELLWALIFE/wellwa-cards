@@ -8,8 +8,9 @@
 // so a change made from either page shows on both.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
+import { createPortal } from "react-dom";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X } from "lucide-react";
 import { PremiumCard, PremiumGate, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -384,9 +385,14 @@ export default function WebsitePage() {
                           <p className="text-[11px] text-muted">{g.note}</p>
                         </div>
                         <div className="grid grid-cols-2 gap-2">{g.tiles.map(tile)}</div>
-                        {has(g, "notice") && openTool === "notice" && card && <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} />}
+                        {has(g, "notice") && openTool === "notice" && (
+                          <ToolSheet title={T("Offer / pop-up", "Offer / pop-up")} onClose={() => setOpenTool(null)} closeLabel={T("Close", "बंद करें")}>
+                            {card ? <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard(c)} /> : <div className="grid place-items-center py-10"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}
+                          </ToolSheet>
+                        )}
                         {has(g, "mode") && openTool === "mode" && (
-                          <div className="space-y-3 rounded-2xl border border-border bg-surface p-3">
+                          <ToolSheet title={T("Show or hide pages", "Pages दिखाएँ या छुपाएँ")} onClose={() => setOpenTool(null)} closeLabel={T("Close", "बंद करें")}>
+                          <div className="space-y-3">
                             <label className="flex items-center justify-between rounded-lg bg-surface2 px-3 py-2.5">
                               <span><span className="block text-sm font-medium">{T("Website on computers", "Computer पर website")}</span><span className="text-[11px] text-muted">{s.site?.enabled ? T("ON — website on computers, card on phones", "ON — computer पर website, phone पर card") : T("OFF — the card shows everywhere", "OFF — हर जगह card दिखता है")}</span></span>
                               <input type="checkbox" className="h-5 w-5" checked={!!s.site?.enabled} onChange={(e) => patch({ enabled: e.target.checked }, "enabled")} />
@@ -403,13 +409,16 @@ export default function WebsitePage() {
                               </div>
                             ))}
                           </div>
+                          </ToolSheet>
                         )}
                         {has(g, "domain") && openTool === "domain" && (
-                          <div className="rounded-2xl border border-border bg-surface p-3">
+                          <ToolSheet title={T("Your own web address", "अपना web address")} onClose={() => setOpenTool(null)} closeLabel={T("Close", "बंद करें")}>
+                          <div>
                             {domainOk || s.customDomain
                               ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={s.customDomain || undefined} />
                               : <p className="text-sm text-muted">{T("Your own web address (www.yourshop.com) comes with Standard.", "अपना web address (www.yourshop.com) Standard के साथ आता है।")}</p>}
                           </div>
+                          </ToolSheet>
                         )}
                         {g.k === "rarely" && !paid && (
                           <PremiumGate locked feature={T("Removing the Shubhora tag", "Shubhora tag हटाना")}>
@@ -429,5 +438,30 @@ export default function WebsitePage() {
       )}
       {planSheet && <PremiumSheet feature={T("A website", "Website")} onClose={() => setPlanSheet(false)} />}
     </div>
+  );
+}
+
+/** A tile's editor opened as a pop-up over the page (owner, 23 Oct 2026: "Offer / pop-up dabane par pop khulna chahiye"): a sheet from the bottom
+ *  on a phone, a centred box on a wide screen. Closes with ✕, a tap outside, or the Escape key; the page under it does not scroll. */
+function ToolSheet({ title, onClose, closeLabel, children }: { title: string; onClose: () => void; closeLabel: string; children: React.ReactNode }) {
+  useEffect(() => {
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", esc);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => { window.removeEventListener("keydown", esc); document.body.style.overflow = prev; };
+  }, [onClose]);
+  // On <body>, so no parent's transform or overflow can trap or clip it.
+  return createPortal(
+    <div className="fixed inset-0 z-[60] flex items-end justify-center bg-black/50 sm:items-center sm:p-4" role="dialog" aria-modal="true" aria-label={title} onClick={onClose}>
+      <div className="flex max-h-[90dvh] w-full max-w-md flex-col overflow-hidden rounded-t-3xl bg-surface shadow-xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center gap-2 border-b border-border px-4 py-3">
+          <p className="min-w-0 flex-1 text-base font-bold">{title}</p>
+          <button type="button" onClick={onClose} aria-label={closeLabel} className="grid h-9 w-9 place-items-center rounded-full bg-surface2 text-muted"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="overflow-y-auto overscroll-contain p-4 pb-[max(1rem,env(safe-area-inset-bottom))]">{children}</div>
+      </div>
+    </div>,
+    document.body,
   );
 }
