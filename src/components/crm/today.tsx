@@ -15,14 +15,26 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const [d, setD] = useState<Today | null>(null);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  /** The moment of the last load (refreshed every 30 s): what counts as "its time has come". */
+  const [nowMs, setNowMs] = useState(0);
   const load = useCallback(async () => {
     const r = await api<Today & { error?: string }>(`/api/crm/today?x=1${as ? `&as=${as}` : ""}`).catch(() => null);
-    if (!r?.ok) { setErr(r?.data.error || L.failed); setD((x) => x ?? { overdue: [], due: [], unread: [], fresh: [], bookings: [], callbacks: [], cold: [], counts: { due: 0, unread: 0, fresh: 0, hot: 0, calledToday: 0, target: 0 } }); return; }
-    setErr(""); setD(r.data);
+    if (!r?.ok) { setNowMs(Date.now()); setErr(r?.data.error || L.failed); setD((x) => x ?? { overdue: [], due: [], unread: [], fresh: [], bookings: [], callbacks: [], cold: [], counts: { due: 0, unread: 0, fresh: 0, hot: 0, calledToday: 0, target: 0 } }); return; }
+    setErr(""); setD(r.data); setNowMs(Date.now());
   }, [as, L.failed]);
   useEffect(() => { load(); const t = setInterval(load, 30000); return () => clearInterval(t); }, [load, version]);
   if (!d) return <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
-  const callable: CallListItem[] = [...d.overdue, ...d.due, ...d.callbacks, ...d.fresh].filter((x, i, a) => a.findIndex((y) => y.lead.id === x.lead.id) === i && x.lead.phone).map((x) => ({ lead: x.lead, task: x.task, why: x.why }));
+  // The call list, in a fixed order (owner, 23 Oct 2026: "har baar 1st number hi aata hai, jabki uska time abhi nahi aaya"):
+  //   1. follow-ups whose time has come (the oldest first; a 6 pm one joins at 6 pm, not before),
+  //   2. AI-answered calls that asked for a call back, 3. new leads nobody has called yet.
+  // Visits and meetings are not calls; a customer called in the last 30 minutes waits (the call they just had counts).
+  const calledJustNow = (x: Item) => !!x.lead.last_call_at && nowMs - new Date(x.lead.last_call_at).getTime() < 30 * 60_000;
+  const dueNow = [...d.overdue, ...d.due].filter((x) => x.task && (x.task.kind === "call" || x.task.kind === "whatsapp" || x.task.kind === "other") && new Date(x.task.due_at).getTime() <= nowMs).sort((a, b) => (a.task!.due_at < b.task!.due_at ? -1 : 1));
+  const laterToday = d.due.filter((x) => x.task && new Date(x.task.due_at).getTime() > nowMs);
+  const callable: CallListItem[] = [...dueNow, ...d.callbacks, ...[...d.fresh].reverse()]
+    .filter((x, i, a) => a.findIndex((y) => y.lead.id === x.lead.id) === i && x.lead.phone && !calledJustNow(x))
+    .map((x) => ({ lead: x.lead, task: x.task, why: x.why }));
+  const nextLater = laterToday.map((x) => x.task!.due_at).sort()[0];
   const total = d.overdue.length + d.due.length + d.unread.length + d.fresh.length + d.bookings.length + d.callbacks.length + d.cold.length;
   const date = new Date().toLocaleDateString(L.hi ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" });
   const sec = (k: string, title: string, items: Item[], tone?: string, render?: (x: Item) => string) => items.length === 0 ? null : (
@@ -43,6 +55,7 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
         ))}
       </div>
       {callable.length > 0 && <button type="button" onClick={() => onCallList(callable)} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white"><PhoneCall className="h-4 w-4" /> {L.startCalling(callable.length)}</button>}
+      {laterToday.length > 0 && nextLater && <p className="text-center text-[11px] text-muted">{L.hi ? `⏳ आज बाद में ${laterToday.length} call — अपने समय पर list में आएँगे (अगली ${fmtTime(nextLater, true)} बजे)` : `⏳ ${laterToday.length} more call${laterToday.length === 1 ? "" : "s"} later today — they join the list at their time (next at ${fmtTime(nextLater, false)})`}</p>}
       {err && <p className="text-xs text-danger">{err}</p>}
       {total === 0 && <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">{L.allClear}</p>}
       {sec("overdue", L.overdue, d.overdue, "text-danger", (x) => `${x.task?.title || x.why} · ${fmtWhen(x.task!.due_at, L.hi)}`)}

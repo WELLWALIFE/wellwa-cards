@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { resolveScope, addEvent, STAGES } from "@/lib/crm-server";
 import { sendCustomer } from "@/lib/customer-send";
-import { logCall, patchCall, createTask, isUuid, OUTCOMES, CALL_COLS, TASK_KINDS, AI_STOP_TAG, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
+import { logCall, patchCall, createTask, isUuid, OUTCOMES, OUTCOME_TEXT, CALL_COLS, TASK_KINDS, AI_STOP_TAG, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
 
 const iso = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
 
@@ -54,6 +54,13 @@ export async function POST(request: Request) {
   // "connected" with the words in its note (everything else below still happens).
   if (!call && notInterested) call = await logCall(scope, { lead_id: lead.id, outcome: "connected", seconds: Number(b.seconds) || 0, note: `Not interested${note ? ` — ${note}` : ""}`.slice(0, 1000), started_at: iso(b.started_at) ?? undefined });
   if (!call) return NextResponse.json({ error: "Could not save the call. Please try again." }, { status: 502 });
+  // The call that was due is done (owner, 23 Oct 2026: "Start calling" kept opening the same customer first, because the follow-up
+  // stayed open after the call). Every open call / WhatsApp follow-up of this customer that is due now or within the hour is closed
+  // with this outcome; the next one, if the owner picked one below, is made fresh.
+  {
+    const soon = new Date(Date.now() + 60 * 60_000).toISOString();
+    await restAsService(`crm_tasks?lead_id=eq.${lead.id}&owner_id=eq.${scope.ownerId}&done_at=is.null&kind=in.(call,whatsapp)&due_at=lte.${encodeURIComponent(soon)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ done_at: new Date().toISOString(), outcome: `Call: ${OUTCOME_TEXT[call.outcome] ?? call.outcome}`.slice(0, 200) }) }).catch(() => null);
+  }
   let task = null;
   if (b.next && typeof b.next === "object") {
     const due = iso(b.next.due_at);
