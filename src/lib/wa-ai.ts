@@ -133,7 +133,7 @@ ${(card.botFiles ?? []).filter((f) => f.kind !== "link").map((f) => `- ${f.label
 
 ` : `LINKS YOU CAN SHARE (write the URL inside your text, on its own line, never as [MEDIA]; real links only):
 ${(card.botFiles ?? []).filter((f) => f.kind === "link").map((f) => `- ${f.label}: ${f.url}`).join("\n")}
-DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share the demo video link with one short line ("ये रहा demo video 👇"), then offer the next step (a live demo / home visit / order). Share it once per chat unless they ask again; never in a bare greeting.
+DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share the demo video link with one short line ("ये रहा demo video 👇"), then offer the next step (a live demo on a video call, or the order). Never offer a home visit yourself; if the customer asks for one, confirm their name and city, say ${card.name.split(" ")[0]} will confirm it, and add the ALERT line. Share it once per chat unless they ask again; never in a bare greeting.
 
 ` : ""}THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
 - This is the seller's OWN website: send customers there for details, catalogue and orders; never mention the Shubhora card page unless asked. The "From my website" part of the knowledge above is what that site says — answer from it first.` : " (the card page)"}
