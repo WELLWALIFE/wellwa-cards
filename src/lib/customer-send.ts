@@ -4,7 +4,7 @@
 import { restAsService } from "@/lib/poster-server";
 import { bridge, ownerPlanExpiry } from "@/lib/crm-server";
 import { notify } from "@/lib/notify";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, cardHome } from "@/lib/site-url";
 import { tapLink } from "@/lib/bookings";
 import type { Card } from "@/lib/types";
 
@@ -17,7 +17,7 @@ export async function cardOf(ownerId: string): Promise<OwnerCard | null> {
 }
 export const businessOf = (c: OwnerCard | null) => c?.company || c?.name || "Shubhora";
 export const hindiCard = (c: OwnerCard | null) => !c || c.data?.language !== "en";   // Hindi for everyone unless the card is English
-export const siteOf = (c: OwnerCard | null) => (c ? `${SITE_URL}/c/${c.username}` : SITE_URL);
+export const siteOf = (c: OwnerCard | null) => (c ? cardHome(c.username, c.data?.customDomain) : SITE_URL);
 /** The card's Google Maps link (the review goes there), if the owner gave one. */
 export function googleLink(c: OwnerCard | null): string {
   const v = c?.data?.links?.find((l) => l.type === "location")?.value ?? "";

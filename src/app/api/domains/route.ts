@@ -5,6 +5,8 @@
 //   DELETE ?domain=…                     → release it (and its www)
 // A background job (/api/cron/domains) finishes the same PUT step by itself, so the owner can close the page.
 // The caller must own the card: queries use the caller's own token so RLS decides.
+import { restAsService } from "@/lib/poster-server";
+import { syncCardDomain } from "@/lib/own-domain";
 import { NextResponse } from "next/server";
 import { SITE_HOST } from "@/lib/site-url";
 import { cleanDomain, dnsStatus, hostsFor, issueCertificate, servedElsewhere, validDomain } from "@/lib/domains-server";
@@ -109,6 +111,8 @@ export async function PUT(request: Request) {
     await mark(h, rec.host, true, null);
     live.push(rec.host);
   }
+  // The card now shows the own domain everywhere in the app (lib/own-domain.ts).
+  if (live.length) await syncFor(hosts);
   if (!live.includes(hosts[0])) return NextResponse.json({ error: error ?? "Not ready yet.", ...status, live }, { status: 400 });
   return NextResponse.json({ ok: true, domain: hosts[0], url: `https://${hosts[0]}`, live, ...status });
 }
@@ -125,8 +129,17 @@ export async function DELETE(request: Request) {
   const domain = cleanDomain(new URL(request.url).searchParams.get("domain") ?? "");
   if (!domain) return NextResponse.json({ error: "No domain given." }, { status: 400 });
   const hosts = hostsFor(domain);
+  const cards = await cardsOf(hosts);
   const res = await fetch(`${SUPA}/rest/v1/card_domains?domain=in.(${hosts.map(encodeURIComponent).join(",")})`, { method: "DELETE", headers: h });
   if (!res.ok) return NextResponse.json({ error: await res.text() }, { status: 400 });
+  for (const id of cards) await syncCardDomain(id).catch(() => null);   // the app goes back to the Shubhora link
   // Certificates and vhosts stay: harmless once DNS stops pointing here.
   return NextResponse.json({ ok: true });
 }
+
+/** The cards these hosts belong to. */
+async function cardsOf(hosts: string[]): Promise<string[]> {
+  const r = await restAsService<{ card_id: string }[]>(`card_domains?domain=in.(${hosts.map(encodeURIComponent).join(",")})&select=card_id`).catch(() => null);
+  return [...new Set((Array.isArray(r?.data) ? r!.data : []).map((x) => x.card_id).filter(Boolean))];
+}
+async function syncFor(hosts: string[]) { for (const id of await cardsOf(hosts)) await syncCardDomain(id).catch(() => null); }

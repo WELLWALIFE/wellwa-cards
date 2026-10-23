@@ -1,6 +1,7 @@
 // Shared AI reply engine for WhatsApp (Cloud API mode) and the on-card chat.
 // Same system prompt layers as the on-card chat route: platform persona +
 // brand training + this card's own knowledge, language-locked to the customer.
+import { cardHome } from "@/lib/site-url";
 import { geminiComplete } from "@/lib/gemini";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { buildTrainingBlock, guessTrade, languageLock, type AiLayers } from "@/lib/ai-training";
@@ -30,6 +31,7 @@ export async function getBrandTraining(username: string): Promise<BrandTraining>
 }
 
 export function cardSiteUrl(card: Card, brand?: BrandTraining): string {
+  if (card.customDomain && !brand?.brand_domain) return cardHome(card.username, card.customDomain);   // the owner's own domain
   return brand?.brand_domain ? `https://${card.username}.${brand.brand_domain}` : `${SITE}/c/${card.username}`;
 }
 /** The link the assistant gives customers: the owner's OWN website when they set one (Train AI bot), else the card. */

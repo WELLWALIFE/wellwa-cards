@@ -1,9 +1,9 @@
 // GET ?lead=<id>&as=<ownerId> (bearer) → lead + WhatsApp messages + timeline + templates + the links the owner can send
 // in one tap (website, demo video and other links / files saved for the bot on Card & Website).
 // Marks the thread read and refreshes AI insights when new messages arrived.
+import { publicCardUrl } from "@/lib/own-domain";
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
-import { SITE_URL } from "@/lib/site-url";
 import { leadById, messagesFor, eventsFor, templatesFor, markRead, refreshInsights, resolveScope } from "@/lib/crm-server";
 
 export async function GET(request: Request) {
@@ -27,13 +27,14 @@ export async function GET(request: Request) {
 type LinkRow = { label: string; url: string; kind: string };
 /** Website first, then the demo video and every other link or file the owner saved for the bot. */
 async function ownerLinks(ownerId: string): Promise<LinkRow[]> {
-  const c = (await restAsService<{ username: string; custom_domain: string | null; data: { botSite?: string; botFiles?: { label?: string; url?: string; kind?: string }[] } | null }[]>(
-    `cards?owner_id=eq.${ownerId}&order=created_at.desc&limit=1&select=username,custom_domain,data`).catch(() => null))?.data?.[0];
+  // (There is no custom_domain column: asking for one failed the whole read, so no link showed. The own domain is card_domains.)
+  const c = (await restAsService<{ id: string; username: string; data: { botSite?: string; botFiles?: { label?: string; url?: string; kind?: string }[] } | null }[]>(
+    `cards?owner_id=eq.${ownerId}&order=created_at.desc&limit=1&select=id,username,data`).catch(() => null))?.data?.[0];
   if (!c) return [];
   const out: LinkRow[] = [];
   const site = c.data?.botSite?.trim();
   if (site && /^https?:\/\//.test(site)) out.push({ label: "Website", url: site, kind: "link" });
-  out.push({ label: site ? "V-Card" : "Website", url: c.custom_domain ? `https://${c.custom_domain}` : `${SITE_URL}/c/${c.username}`, kind: "link" });
+  out.push({ label: site ? "V-Card" : "Website", url: await publicCardUrl(c.username, c.id), kind: "link" });
   for (const f of c.data?.botFiles ?? []) {
     const url = String(f.url ?? "").trim();
     if (!/^https?:\/\//.test(url) || out.some((o) => o.url === url)) continue;

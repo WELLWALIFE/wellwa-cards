@@ -2,6 +2,7 @@
 //   curl -H "x-cron-key: $CRON_KEY" http://127.0.0.1:3001/api/cron/domains
 // For every domain added in the last 14 days that is not live yet: if DNS now points here, fit the certificate, mark
 // it live and tell the owner ("Website is live"). Owners never have to come back and press anything.
+import { syncCardDomain } from "@/lib/own-domain";
 import { NextResponse } from "next/server";
 import { SUPA_URL, serviceConfigured, serviceHeaders } from "@/lib/admin-guard";
 import { addressesOf, issueCertificate, SERVER_IP } from "@/lib/domains-server";
@@ -14,8 +15,8 @@ export async function GET(request: Request) {
   if (!process.env.CRON_KEY || request.headers.get("x-cron-key") !== process.env.CRON_KEY) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
   const since = new Date(Date.now() - 14 * 86400_000).toISOString();
-  const r = await rest(`card_domains?verified=is.false&created_at=gte.${since}&select=domain,owner_id&order=created_at&limit=100`);
-  const pending = (r.ok ? await r.json() : []) as { domain: string; owner_id: string }[];
+  const r = await rest(`card_domains?verified=is.false&created_at=gte.${since}&select=domain,owner_id,card_id&order=created_at&limit=100`);
+  const pending = (r.ok ? await r.json() : []) as { domain: string; owner_id: string; card_id: string }[];
   const madeLive: string[] = [];
   for (const d of pending) {
     const ips = await addressesOf(d.domain);
@@ -27,6 +28,7 @@ export async function GET(request: Request) {
     });
     if (!cert.ok) continue;
     madeLive.push(d.domain);
+    if (d.card_id) await syncCardDomain(d.card_id).catch(() => null);   // the app shows the own domain from now on
     if (!d.domain.startsWith("www.")) {
       await notify(d.owner_id, "website_live", {
         title: "Your website is live 🎉", body: `https://${d.domain} is connected and secured.`, path: "/poster/website", ref: `live:${d.domain}`,

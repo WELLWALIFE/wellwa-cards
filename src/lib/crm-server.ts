@@ -3,6 +3,7 @@
 // insight writes and template use-counts go through the service role.
 // Sending goes to the tenant's WhatsApp worker via the bridge manager, exactly
 // like /api/wa/send, but flagged asOwner so the bot mutes for 15 minutes.
+import { publicCardUrl } from "@/lib/own-domain";
 import { restAsUser, restAsService, userHeaders } from "@/lib/poster-server";
 import { businessContext } from "@/lib/reviews-server";
 import { SUPA_URL } from "@/lib/admin-guard";
@@ -198,9 +199,10 @@ export function fillTemplate(body: string, lead: { name: string }, ctx: { name: 
 }
 
 export async function cardLink(userId: string): Promise<string> {
-  const c = (await restAsService<{ username: string; custom_domain: string | null }[]>(`cards?owner_id=eq.${userId}&order=created_at.desc&limit=1&select=username,custom_domain`)).data?.[0];
+  // The own domain when verified, else the Shubhora link (there is no custom_domain column; the old wellwalife.com address is gone).
+  const c = (await restAsService<{ id: string; username: string }[]>(`cards?owner_id=eq.${userId}&order=created_at.desc&limit=1&select=id,username`)).data?.[0];
   if (!c?.username) return "";
-  return c.custom_domain ? `https://${c.custom_domain}` : `https://${c.username}.wellwalife.com`;
+  return publicCardUrl(c.username, c.id);
 }
 
 const transcript = (msgs: MsgRow[], n = 40) =>

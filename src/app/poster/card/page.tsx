@@ -44,6 +44,8 @@ export default function CardTab() {
   const { t, lang } = useT();
   const [card, setCard] = useState<Card | null>(null);
   const [domain, setDomain] = useState<string>("");
+  /** The own domain once it is live (verified): the link shown, copied, shared and put in the QR code. */
+  const [liveDomain, setLiveDomain] = useState<string>("");
   const [failed, setFailed] = useState(false);
   const [published, setPublished] = useState(false);
   const { plan, loading: planLoading } = usePlan();
@@ -87,7 +89,7 @@ export default function CardTab() {
       // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
       if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(`/poster/card${window.location.search}`)}`); return; }
       const cards = await fetchMyCardsStrict();
-      api<{ hasCard: boolean; customDomain?: string }>("/api/site/status").then((r) => { if (r.ok && r.data.hasCard) setDomain(r.data.customDomain || ""); }).catch(() => {});
+      api<{ hasCard: boolean; customDomain?: string }>("/api/site/status").then((r) => { if (r.ok && r.data.hasCard) { setDomain(r.data.customDomain || ""); setLiveDomain(r.data.customDomain || ""); } }).catch(() => {});
       // With several cards, the one made on "Make your V-Card" is the owner's own (the others may be for clients).
       let primaryId = "";
       if (cards.length > 1) {
@@ -113,7 +115,7 @@ export default function CardTab() {
     load();
   }, [load]);
 
-  const url = card ? `${SITE}/c/${card.username}` : "";
+  const url = card ? (liveDomain ? `https://${liveDomain}` : `${SITE}/c/${card.username}`) : "";
   useEffect(() => { if (url) QRCode.toDataURL(url, { width: 480, margin: 1, color: { dark: "#0b1220", light: "#ffffff" } }).then(setQr).catch(() => setQr("")); }, [url]);
 
   async function copy() { setCopyFail(""); try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail("card"); } }

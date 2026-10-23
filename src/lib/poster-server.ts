@@ -7,7 +7,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
-import { SITE_URL } from "@/lib/site-url";
+import { SITE_URL, cardHome } from "@/lib/site-url";
 
 const ANON = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 
@@ -289,7 +289,9 @@ export async function cardLinkFor(userId: string, primaryCardId?: string | null)
   if (!row) row = (await restAsService<Row[]>(`cards?owner_id=eq.${userId}&active=eq.true&order=created_at.asc&limit=1&select=username,data`)).data?.[0];
   if (!row?.username) return null;
   // ?view=card: opens the card on a computer too (plain /c/<user> shows the website version there)
-  return { url: `${SITE_URL}/c/${row.username}?view=card`, show: `${SITE_URL.replace(/^https?:\/\//, "")}/c/${row.username}`, username: row.username, data: row.data && typeof row.data === "object" ? row.data : {} };
+  // The owner's own domain when connected (owner, 23 Oct 2026): the poster prints it and the caption links to it.
+  const home = cardHome(row.username, typeof row.data?.customDomain === "string" ? row.data.customDomain : "");
+  return { url: `${home}?view=card`, show: home.replace(/^https?:\/\//, ""), username: row.username, data: row.data && typeof row.data === "object" ? row.data : {} };
 }
 
 /** Post caption for a poster (cached on the row): the selling lines about the day's product / plan, the number and the

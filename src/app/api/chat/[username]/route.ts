@@ -5,6 +5,7 @@
 // Shubhora partner cards, with the "New AI" switch on (Super Admin → Shubhora AI), get the partner playbook from
 // bridge/shubhora-agent.mjs — the same one WhatsApp uses: a menu for a hello, everyday Hindi, the PDF, the joining link.
 
+import { cardHome } from "@/lib/site-url";
 import { notify, whatsappAllowed } from "@/lib/notify";
 import { geminiComplete } from "@/lib/gemini";
 import { fetchCloudCard, fetchCardExpired, getPublicSupabase } from "@/lib/supabase/public";
@@ -176,7 +177,7 @@ export async function POST(
   const reply =
     `Thanks for your message! For "${last.slice(0, 60)}" ${card.name.split(" ")[0]} will reply personally. ` +
     (wa ? `WhatsApp: https://wa.me/${wa} · ` : "") +
-    `Full details: ${SITE}/c/${card.username}`;
+    `Full details: ${card.customDomain ? cardHome(card.username, card.customDomain) : `${SITE}/c/${card.username}`}`;
   return Response.json({ reply, demo: !key });
 }
 

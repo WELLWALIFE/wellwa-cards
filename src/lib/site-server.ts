@@ -12,6 +12,7 @@ import type { SiteHome, SiteStyle } from "@/lib/types";
 import { loadProducts } from "@/lib/card-inputs";
 import { restAsService } from "@/lib/poster-server";
 import { SITE_URL } from "@/lib/social-server";
+import { syncCardDomain } from "@/lib/own-domain";
 import type { SavedProduct } from "@/lib/card-facts";
 import type { Card, CardBlock, CardPage, ProductItem } from "@/lib/types";
 
@@ -350,6 +351,8 @@ export async function siteStatus(userId: string, cardId?: string, opts: { full?:
   const row = (cardId ? all.find((c) => c.id === cardId) : undefined) ?? all[0];
   if (!row) return { hasCard: false as const };
   const c = row.data;
+  // The own domain once it is verified (card_domains), kept in the card too; the app shows, copies and shares it everywhere.
+  const own = await syncCardDomain(row.id, c.customDomain ?? "").catch(() => null);
   // Image choices for the desktop hero: brand logo, the card's own images, product photos.
   const prof = (await restAsService<{ logo_url: string | null }[]>(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1&select=logo_url`)).data;
   const prods = (await restAsService<{ name: string; photo_url: string | null }[]>(`poster_products?user_id=eq.${userId}&active=eq.true&order=sort,created_at&limit=8&select=name,photo_url`)).data;
@@ -359,7 +362,7 @@ export async function siteStatus(userId: string, cardId?: string, opts: { full?:
   for (const p of Array.isArray(prods) ? prods : []) if (p.photo_url) images.push({ label: p.name, url: abs(p.photo_url) });
   for (const pg of c.pages) if (!pg.hidden) for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u?.startsWith("http") && !images.some((x) => x.url === u)) images.push({ label: it.name, url: u }); }
   return {
-    hasCard: true as const, cards: all.map((x) => ({ id: x.id, username: x.username, name: x.data.company || x.data.name || x.username })), cardId: row.id, username: row.username, url: `${SITE_URL}/c/${row.username}`, customDomain: c.customDomain ?? "", knowledge: c.botKnowledge ?? "", site: c.site ?? null, pages: c.pages.map((p) => ({ slug: p.slug, label: p.label, blocks: p.blocks.length })), images: images.slice(0, 12), defaults: { headline: c.company || c.name, sub: (c.about || "").split(/\n+/)[0]?.slice(0, 220) || c.tagline || "", jobTitle: c.jobTitle },
+    hasCard: true as const, cards: all.map((x) => ({ id: x.id, username: x.username, name: x.data.company || x.data.name || x.username })), cardId: row.id, username: row.username, url: `${SITE_URL}/c/${row.username}`, customDomain: own ?? "", knowledge: c.botKnowledge ?? "", site: c.site ?? null, pages: c.pages.map((p) => ({ slug: p.slug, label: p.label, blocks: p.blocks.length })), images: images.slice(0, 12), defaults: { headline: c.company || c.name, sub: (c.about || "").split(/\n+/)[0]?.slice(0, 220) || c.tagline || "", jobTitle: c.jobTitle },
     // The website editor renders a live preview from the whole card.
     ...(opts.full ? { card: { ...c, id: row.id, username: row.username } } : {}),
   };
