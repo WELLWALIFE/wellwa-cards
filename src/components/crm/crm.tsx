@@ -487,7 +487,7 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
           <button type="button" onClick={onTemplates} className="rounded-xl p-2 text-muted hover:bg-surface2" aria-label="Quick replies"><Zap className="h-5 w-5" /></button>
           <button type="button" onClick={() => setPay(true)} className="rounded-xl p-2 text-muted hover:bg-surface2" aria-label="Payment request"><IndianRupee className="h-5 w-5" /></button>
           <button type="button" disabled={!!busy} onClick={() => suggest()} className="rounded-xl p-2 text-ai hover:bg-surface2 disabled:opacity-50" aria-label="AI reply">{busy === "ai" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}</button>
-          <textarea ref={taRef} value={text} onChange={(e) => setText(e.target.value)} rows={Math.min(5, Math.max(1, text.split("\n").length))}
+          <textarea ref={taRef} data-crm-reply={canSend ? "on" : "off"} value={text} onChange={(e) => setText(e.target.value)} rows={Math.min(5, Math.max(1, text.split("\n").length))}
             onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } }}
             placeholder={canSend ? "Type a reply… (/ for quick replies)" : "Connect WhatsApp to reply from here"}
             className="max-h-32 flex-1 resize-none rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand" />

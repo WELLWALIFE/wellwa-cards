@@ -41,6 +41,16 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
   if (err && !data) return <div className="space-y-3 py-8 text-center"><p className="text-sm text-danger">{err}</p><button type="button" onClick={onBack} className="rounded-xl border border-border px-4 py-2 text-sm">{L.back}</button></div>;
   if (!l) return <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const closed = CLOSED.includes(l.status);
+  const openWhatsApp = () => {
+    setTab("chat");
+    // Give the Chat tab a moment to draw, then use its reply box if WhatsApp can send from here.
+    window.setTimeout(() => {
+      const box = document.querySelector<HTMLTextAreaElement>('textarea[data-crm-reply="on"]');
+      if (box) { box.scrollIntoView({ behavior: "smooth", block: "center" }); box.focus(); return; }
+      const digits = String(l.phone ?? "").replace(/\D/g, "");
+      if (digits.length >= 10) window.open(`https://wa.me/${digits.length === 10 ? "91" + digits : digits}`, "_blank", "noopener");
+    }, 150);
+  };
   const tabBtn = (k: typeof tab, label: string) => <button key={k} type="button" onClick={() => setTab(k)} className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{label}</button>;
   return (
     <div className="space-y-2">
@@ -62,10 +72,12 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
       {hdrErr && <p role="alert" className="text-[11px] text-danger">{hdrErr}</p>}
 
       {/* action bar */}
+      {/* WhatsApp: the Chat tab was already open, so the button looked dead (owner, 23 Oct 2026). Now it goes to the reply box
+          when WhatsApp is linked here; otherwise it opens the customer's chat in the WhatsApp app. */}
       <div className="grid grid-cols-6 gap-1 text-[10px] font-semibold text-ink">
         {[
           { k: "call", I: Phone, t: L.call, f: () => startCall(l, () => load(true)), cls: "text-brand" },
-          { k: "wa", I: MessageCircle, t: L.whatsapp, f: () => setTab("chat"), cls: "text-good" },
+          { k: "wa", I: MessageCircle, t: L.whatsapp, f: openWhatsApp, cls: "text-good" },
           { k: "task", I: CalendarClock, t: L.task, f: () => setSheet("task"), cls: "text-lead" },
           { k: "note", I: StickyNote, t: L.note, f: () => setSheet("note"), cls: "text-ai" },
           { k: "book", I: CalendarPlus, t: L.book, href: `/poster/leads?tab=bookings`, cls: "text-brand-ink" },
