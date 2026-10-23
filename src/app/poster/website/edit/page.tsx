@@ -15,10 +15,10 @@ import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
-import type { Card, SiteStyle } from "@/lib/types";
+import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
-type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
+type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
 type Tab = "look" | "hero" | "home" | "pages";
 
@@ -123,7 +123,7 @@ export default function WebsiteEditPage() {
         card_id: s.cardId,
         style: site.style ?? {},
         home: { order: site.home?.order ?? [], hidden: site.home?.hidden ?? [], ...(site.home?.stats ? { stats: site.home.stats } : {}) },
-        hero: { headline: site.hero?.headline ?? "", sub: site.hero?.sub ?? "", ctaLabel: site.hero?.ctaLabel ?? "", ...(site.hero?.imageUrl !== undefined ? { imageUrl: site.hero.imageUrl } : {}) },
+        hero: { headline: site.hero?.headline ?? "", sub: site.hero?.sub ?? "", ctaLabel: site.hero?.ctaLabel ?? "", ...(site.hero?.imageUrl !== undefined ? { imageUrl: site.hero.imageUrl } : {}), ...(site.hero?.slides ? { slides: site.hero.slides.filter((x) => x.headline.trim()) } : {}) },
         hideProfile: !!site.hideProfile,
         logoUrl: site.logoUrl ?? "",
         hidden: site.hidden ?? [],
@@ -276,6 +276,7 @@ export default function WebsiteEditPage() {
 
       {tab === "hero" && (
         <section className="space-y-4 rounded-xl border border-border p-3">
+          <SlidesEditor hi={hi} card={card} images={s.images} slides={site.hero?.slides ?? []} onChange={(slides) => setHero({ slides })} cardId={s.cardId} />
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "बड़ी लाइन के नीचे 1–2 लाइन" : "One or two lines under the big line"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "WhatsApp बटन का टेक्स्ट" : "Words on the WhatsApp button"}</span><input value={site.hero?.ctaLabel ?? ""} onChange={(e) => setHero({ ctaLabel: e.target.value })} placeholder="WhatsApp" maxLength={30} className={field} /></label>
@@ -388,6 +389,52 @@ export default function WebsiteEditPage() {
         </div>
       </div>
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
+    </div>
+  );
+}
+
+/** The Premium website's sliding banners (owner, 23 Oct 2026): up to 3, each its own big line, small line and picture. "AI से लिखें"
+ *  fills three different big lines from the card's facts (/api/site/slides); the owner changes anything, then Save. */
+function SlidesEditor({ hi, card, images, slides, onChange, cardId }: { hi: boolean; card: Card; images: { label: string; url: string }[]; slides: HeroSlide[]; onChange: (s: HeroSlide[]) => void; cardId: string }) {
+  const T = (en: string, h: string) => (hi ? h : en);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const photos = useMemo(() => {
+    const gallery = card.pages.flatMap((p) => p.blocks).flatMap((b) => (b.kind === "gallery" ? b.images.map((g) => g.url) : []));
+    const all = [card.site?.hero?.imageUrl, card.coverUrl, ...gallery, ...images.filter((im) => im.label !== "Logo").map((im) => im.url)];
+    return [...new Set(all.filter((u): u is string => !!u && /^https:\/\//.test(u)))].slice(0, 14);
+  }, [card, images]);
+  const setOne = (i: number, patch: Partial<HeroSlide>) => onChange(slides.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  async function write() {
+    setBusy(true); setErr("");
+    const r = await api<{ slides?: { headline: string; sub: string }[]; error?: string }>("/api/site/slides", { method: "POST", json: { card_id: cardId } }).catch(() => null);
+    setBusy(false);
+    if (!r?.ok || !r.data.slides) { setErr(r?.data.error || T("Could not write them. Try again.", "नहीं लिख पाए। दोबारा try करें।")); return; }
+    onChange(r.data.slides.map((x, i) => ({ headline: x.headline, sub: x.sub, ...(slides[i]?.imageUrl || photos[i] ? { imageUrl: slides[i]?.imageUrl || photos[i] } : {}) })));
+  }
+  return (
+    <div className="space-y-2.5 rounded-xl border-2 border-ai/30 bg-ai-soft/20 p-3">
+      <div className="flex items-start justify-between gap-2">
+        <div><p className="text-sm font-bold">🎞️ {T("Sliding banners", "बदलते banner")} <span className="ml-1 rounded-full bg-ai-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-ai">Premium</span></p>
+          <p className="text-[11px] text-muted">{T("2–3 banners at the top that change by themselves, each with its own heading.", "ऊपर 2–3 banner जो अपने-आप बदलते हैं, हर एक की अपनी heading।")}</p></div>
+        <button type="button" onClick={() => void write()} disabled={busy} className="inline-flex shrink-0 items-center gap-1 rounded-lg grad-brand px-2.5 py-1.5 text-xs font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("Write with AI", "AI से लिखें")}</button>
+      </div>
+      {err && <p className="text-xs text-danger">{err}</p>}
+      {slides.map((sl, i) => (
+        <div key={i} className="space-y-1.5 rounded-lg border border-border bg-surface p-2">
+          <div className="flex items-center gap-2"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-ai text-[10px] font-bold text-white">{i + 1}</span>
+            <input value={sl.headline} onChange={(e) => setOne(i, { headline: e.target.value.slice(0, 90) })} placeholder={T("Big line", "बड़ी लाइन")} className={`${field} mt-0`} />
+            <button type="button" onClick={() => onChange(slides.filter((_, j) => j !== i))} className="shrink-0 text-xs text-muted underline">{T("Remove", "हटाएँ")}</button></div>
+          <input value={sl.sub ?? ""} onChange={(e) => setOne(i, { sub: e.target.value.slice(0, 240) })} placeholder={T("Small line (optional)", "छोटी लाइन (optional)")} className={`${field} mt-0`} />
+          {photos.length > 0 && (
+            <div className="flex gap-1.5 overflow-x-auto pb-1">
+              {photos.map((u) => <button key={u} type="button" onClick={() => setOne(i, { imageUrl: u })} className={`h-11 w-16 shrink-0 overflow-hidden rounded-md border-2 bg-white ${sl.imageUrl === u ? "border-brand" : "border-transparent"}`}><Thumb src={u} alt="" /></button>)}
+            </div>
+          )}
+        </div>
+      ))}
+      {slides.length < 3 && <button type="button" onClick={() => onChange([...slides, { headline: "", imageUrl: photos[slides.length] }])} className="w-full rounded-lg border-2 border-dashed border-border py-2 text-xs font-semibold text-muted">+ {T("Add a banner", "banner जोड़ें")}</button>}
+      {slides.length === 1 && <p className="text-[11px] text-muted">{T("Add at least 2 to make them slide.", "बदलने के लिए कम से कम 2 banner चाहिए।")}</p>}
     </div>
   );
 }

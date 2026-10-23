@@ -36,6 +36,12 @@ export async function PATCH(request: Request) {
     if (typeof h.imageUrl === "string") patch.hero.imageUrl = /^https:\/\/.{0,400}$/.test(h.imageUrl) ? h.imageUrl : "";
     const tiles = cleanTiles(h.tiles); if (tiles) patch.hero.tiles = tiles;
     if (typeof h.video === "boolean") patch.hero.video = h.video;
+    // The Premium website's sliding banners: up to 3, each a big line (required), a small line and an https picture.
+    if (Array.isArray(h.slides)) patch.hero.slides = h.slides.slice(0, 3).map((x: unknown) => {
+      const o = x && typeof x === "object" ? x as Record<string, unknown> : {};
+      const img = typeof o.imageUrl === "string" && /^https:\/\/.{0,400}$/.test(o.imageUrl) ? o.imageUrl : undefined;
+      return { headline: S(o.headline, 90) ?? "", ...(S(o.sub, 240) ? { sub: S(o.sub, 240) } : {}), ...(img ? { imageUrl: img } : {}) };
+    }).filter((x: { headline: string }) => x.headline);
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
   if (b.bar === null) patch.bar = null;

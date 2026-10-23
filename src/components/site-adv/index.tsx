@@ -9,7 +9,8 @@
 // Rendered by SiteView (site-view.tsx) in place of the blueprint, on EVERY page of a card whose `site.advanced` spec is valid.
 // SiteView has already counted the visit, saved the introducer and owns which page is open (`page`) and how a page is opened
 // (`goto`, which also pushes the address), so none of that is repeated here.
-import { Fragment, createElement, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { Fragment, createElement, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { HeroSlides } from "@/components/site-adv/hero-slides";
 import { Megaphone, X } from "lucide-react";
 import type { Card } from "@/lib/types";
 import { ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, type CardBrand } from "@/components/card-view";
@@ -25,7 +26,7 @@ import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { advancedPalette, advancedVars, validateSpec, variantOf, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
 import type { SiteUpdate } from "@/components/site-view";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
-import { ADV_BASE_CSS } from "@/components/site-adv/shared";
+import { ADV_BASE_CSS, type VariantProps } from "@/components/site-adv/shared";
 import { VARIANT_CSS, variantComponent } from "@/components/site-adv/registry";
 import { AdvHeader, MobileBar, NAV_CSS, buildPages, chromeOf, useScrolled, type AdvCtxPlus } from "@/components/site-adv/nav";
 import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/components/site-adv/pages";
@@ -174,7 +175,11 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const drawn = spec.order.filter((k) => k !== "footer" && has(k));
   useReveal(rootRef, [spec, card, L.lang, slug]);
   // A section in the variant the spec names (createElement: the registry's component is looked up per section, not created).
-  const slot = (k: SectionKey, index: number) => createElement(variantComponent(k, variantOf(spec, k)), { c, spec, x, index });
+  // The hero with 2–3 sliding banners when the owner set them (site.hero.slides), else the one hero.
+  const slides = (card.site?.hero?.slides ?? []).filter((sl) => sl && sl.headline).slice(0, 3);
+  const slot = (k: SectionKey, index: number) => k === "hero" && slides.length >= 2
+    ? createElement(HeroSlides, { c, spec, x, index, slides, Hero: variantComponent(k, variantOf(spec, k)) as ComponentType<VariantProps> })
+    : createElement(variantComponent(k, variantOf(spec, k)), { c, spec, x, index });
 
   // Section links of other files (`#adv-about` in a footer) become the real address of the page, so they open in a new tab and
   // crawl; their click already goes through `jump`.

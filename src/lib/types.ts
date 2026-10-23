@@ -289,6 +289,9 @@ export interface Card {
       tiles?: string[];
       /** The hero shows the trade clip (Premium) rather than the photo; unset = the clip when there is one. */
       video?: boolean;
+      /** Premium website: 2–3 banners that slide by themselves, each with its own big line, small line and picture (owner,
+       *  23 Oct 2026). Drawn by components/site-adv/hero-slides.tsx; fewer than 2 = the one hero as before. */
+      slides?: HeroSlide[];
     };
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline
@@ -322,6 +325,9 @@ export interface Card {
     terms?: string;     // fine print under the button
   };
 }
+
+/** One banner of the Premium website's sliding top (site.hero.slides). */
+export type HeroSlide = { headline: string; sub?: string; imageUrl?: string };
 
 export interface CardNotice {
   text: string;        // one or two lines

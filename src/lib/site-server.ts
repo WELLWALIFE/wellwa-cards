@@ -370,7 +370,7 @@ export async function siteStatus(userId: string, cardId?: string, opts: { full?:
 
 export type SitePatch = {
   enabled?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string;
-  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean };
+  hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string }[] };
   /** Design choices from the website editor (already cleaned, see cleanStyle). Replaces the stored style. */
   style?: SiteStyle;
   /** Home-page section order / hidden sections / trust facts (already cleaned, see cleanHome). */
