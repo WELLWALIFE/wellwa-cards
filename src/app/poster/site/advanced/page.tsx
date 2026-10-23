@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, ChevronDown, ChevronLeft, CircleDashed, ExternalLink, LoaderCircle, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronLeft, CircleDashed, ExternalLink, LoaderCircle, Plus, Sparkles } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
@@ -459,36 +459,56 @@ export default function AdvancedSitePage() {
     return (
       <div className="space-y-3 py-2">
         {header}
-        <section className="space-y-1">
-          <p className="flex items-center gap-1.5 text-base font-bold"><Sparkles className="h-4 w-4 text-ai" /> {T("Your advanced website", "आपकी advanced website")}</p>
-          <p className="text-xs text-muted">{T("Nothing is live yet. Look, compare, then tap “Use this design”.", "अभी कुछ live नहीं है। देखें, मिलाएँ, फिर “यही design लगाएँ” दबाएँ।")}</p>
-        </section>
+        {/* Redesigned 23 Oct 2026 (owner: every design button opens that website; a simpler page): pick a design, see it, use it. */}
+        <p className="text-xs text-muted">{T("Nothing is live yet. Pick a design, open it, then use it.", "अभी कुछ live नहीं है। Design चुनें, खोलकर देखें, फिर लगाएँ।")}</p>
 
-        {/* The designs made so far: tap one to see it again. */}
-        <div className="flex gap-2">
-          {Array.from({ length: TRY_LIMIT }, (_, i) => designs[i]).map((d, i) => (
-            <button key={i} type="button" disabled={!d} onClick={() => { if (d) { setJobId(d.job); setResult(d.res); setAcceptErr(""); } }}
-              className={`flex-1 rounded-xl border px-2 py-2 text-xs font-semibold ${d && i === which ? "border-brand bg-brand-soft/60 text-brand-ink" : d ? "border-border bg-surface" : "border-dashed border-border text-faint"}`}>
-              {T(`Design ${i + 1}`, `Design ${i + 1}`)}{!d && <span className="block text-[10px] font-normal">{T("not made yet", "अभी नहीं बना")}</span>}
-            </button>
-          ))}
+        {/* The three designs: tap to see it below; ↗ opens it full size in a new tab; an empty one can be made from here. */}
+        <div className="grid grid-cols-3 gap-2">
+          {Array.from({ length: TRY_LIMIT }, (_, i) => designs[i]).map((d, i) => {
+            const on = !!d && i === which;
+            if (!d) return (
+              <button key={i} type="button" disabled={!!startBusy || remaining <= 0 || i !== designs.length} onClick={() => start("again")}
+                className="flex flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-dashed border-border px-1 py-2.5 text-xs font-semibold text-muted disabled:opacity-50">
+                {startBusy === "again" && i === designs.length ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+                {T(`Design ${i + 1}`, `Design ${i + 1}`)}
+                <span className="text-[10px] font-normal">{i === designs.length && remaining > 0 ? T("make it", "बनाएँ") : T("not made", "नहीं बना")}</span>
+              </button>
+            );
+            const pc = card ? withAdvanced(card, d.res) : null;
+            return (
+              <div key={i} className={`overflow-hidden rounded-xl border-2 ${on ? "border-brand bg-brand-soft/60" : "border-border bg-surface"}`}>
+                <button type="button" onClick={() => { setJobId(d.job); setResult(d.res); setAcceptErr(""); }} className={`block w-full px-1 pt-2 pb-1 text-xs font-bold ${on ? "text-brand-ink" : ""}`}>
+                  {on && <Check className="mr-0.5 inline h-3.5 w-3.5" />}{T(`Design ${i + 1}`, `Design ${i + 1}`)}
+                </button>
+                {/* Its own key per design (owner, 20 Oct 2026): three tabs, three designs. */}
+                <a href={`/preview/site?k=${PREVIEW_KEY}-${i + 1}&shot=1`} target="_blank" rel="noreferrer" onClick={() => { if (pc) writeJson(`${PREVIEW_KEY}-${i + 1}`, { ...pc, username: "__preview" }); }}
+                  className="flex items-center justify-center gap-1 border-t border-border/70 py-1.5 text-[11px] font-semibold text-brand-ink">
+                  <ExternalLink className="h-3.5 w-3.5" /> {T("Open", "खोलें")}
+                </a>
+              </div>
+            );
+          })}
+        </div>
+        {againErr && <p className={errBox}>{againErr}</p>}
+
+        <div ref={frameBox} className="overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white" style={{ height: Math.min(frameH * scale, 400) }}>
+          <div style={{ width: "100%", height: frameH * scale, overflow: "hidden" }}>
+            <iframe key={jobId} ref={frame} title={T("Premium website preview", "Premium website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} scrolling="no"
+              onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
+              style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+          </div>
         </div>
 
-        <section className="space-y-2">
-          <div ref={frameBox} className="overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white" style={{ height: Math.min(frameH * scale, 440) }}>
-            <div style={{ width: "100%", height: frameH * scale, overflow: "hidden" }}>
-              <iframe key={jobId} ref={frame} title={T("Advanced website preview", "Advanced website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} scrolling="no"
-                onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
-                style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
-            </div>
-          </div>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-[11px] text-muted">{T("Computer view · scroll inside to see more", "Computer वाला view · और देखने के लिए अंदर scroll करें")}</p>
-            {/* Its own key per design (owner, 20 Oct 2026: a tab opened for design 1 turned into design 2 when 2 was tapped): three tabs, three designs. */}
-            <a href={`/preview/site?k=${PREVIEW_KEY}-${which + 1}&shot=1`} target="_blank" rel="noreferrer" onClick={() => { if (previewCard) writeJson(`${PREVIEW_KEY}-${which + 1}`, { ...previewCard, username: "__preview" }); }}
-              className="inline-flex shrink-0 items-center gap-1.5 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs font-semibold"><ExternalLink className="h-3.5 w-3.5" /> {T(`Open design ${which + 1} full size`, `Design ${which + 1} पूरा खोलें`)}</a>
-          </div>
-        </section>
+        <div className="space-y-2">
+          <button type="button" onClick={accept} disabled={acceptBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            {acceptBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T(`Use design ${which + 1}`, `Design ${which + 1} लगाएँ`)}
+          </button>
+          {acceptErr && <p className={errBox}>{acceptErr}</p>}
+          <button type="button" onClick={keepBasic} disabled={keepBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border py-2.5 text-sm font-semibold text-muted disabled:opacity-60">
+            {keepBusy && <LoaderCircle className="h-4 w-4 animate-spin" />} {cur?.has && cur.on ? T("Keep my current website", "मौजूदा website ही रखें") : T("Keep my old website", "पुरानी website ही रखें")}
+          </button>
+          {keepErr && <p className={errBox}>{keepErr}</p>}
+        </div>
 
         <section className="rounded-2xl border border-border bg-surface">
           <button type="button" onClick={() => setOpenFound((v) => !v)} className={fold} aria-expanded={openFound}>
@@ -533,31 +553,6 @@ export default function AdvancedSitePage() {
           </section>
         )}
 
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <button type="button" onClick={accept} disabled={acceptBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              {acceptBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T(`Use design ${which + 1}`, `Design ${which + 1} लगाएँ`)}
-            </button>
-            {acceptErr && <p className={errBox}>{acceptErr}</p>}
-          </div>
-          <div className="space-y-1.5">
-            {remaining > 0 ? (
-              <>
-                <button type="button" onClick={() => start("again")} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border bg-surface py-3 text-sm font-semibold disabled:opacity-60">
-                  {startBusy === "again" && <LoaderCircle className="h-4 w-4 animate-spin" />} {T("Try another layout", "दूसरा layout आज़माएँ")} <span className="text-xs font-normal text-muted">({T(`${remaining} left`, `${remaining} बचे`)})</span>
-                </button>
-                <p className="text-[11px] text-muted">{T("About 1–2 minutes. The designs you have seen stay above, so you can come back to any of them.", "करीब 1–2 मिनट। देखे हुए designs ऊपर रहते हैं, किसी पर भी वापस आ सकते हैं।")}</p>
-              </>
-            ) : <p className="rounded-xl bg-surface2 px-3 py-2.5 text-xs">{T(`You have seen all ${TRY_LIMIT} layouts of this payment. Pick one above, or keep your basic website.`, `इस payment के सारे ${TRY_LIMIT} layouts आप देख चुके हैं। ऊपर से एक चुनें, या basic website रखें।`)}</p>}
-            {againErr && <p className={errBox}>{againErr}</p>}
-          </div>
-          <div className="space-y-1.5">
-            <button type="button" onClick={keepBasic} disabled={keepBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-muted disabled:opacity-60">
-              {keepBusy && <LoaderCircle className="h-4 w-4 animate-spin" />} {cur?.has && cur.on ? T("Keep my current website", "मेरी मौजूदा website ही रखें") : T("Keep my basic site", "मेरी basic site ही रखें")}
-            </button>
-            {keepErr && <p className={errBox}>{keepErr}</p>}
-          </div>
-        </div>
       </div>
     );
   }
