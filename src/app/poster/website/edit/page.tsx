@@ -206,7 +206,11 @@ export default function WebsiteEditPage() {
         {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
         <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>
-        <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>
+        {/* Not saved yet: this opens the working copy (the same one the preview above shows), full size — the live link would still show
+            the old look (owner, 23 Oct 2026: "colour change karke dekha to purana hi dikha"). */}
+        {dirty
+          ? <a href={`/preview/site?k=${PREVIEW_KEY}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3.5 w-3.5" /></a>
+          : <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>}
       </div>
       {s.cards.length > 1 && (
         <div className="space-y-1.5">
@@ -394,7 +398,7 @@ export default function WebsiteEditPage() {
       <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         {line("save", "mb-2")}
         <div className="flex items-center gap-3">
-          <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "बदलाव अभी सेव नहीं हुए" : "Changes not saved yet") : (hi ? "सब सेव है" : "All saved")}</p>
+          <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "Save दबाएँ — तभी website पर लगेगा" : "Tap Save to put it on your website") : (hi ? "सब सेव है" : "All saved")}</p>
           <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
         </div>
       </div>
