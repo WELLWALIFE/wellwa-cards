@@ -31,11 +31,11 @@ const Thumb = ({ src, alt }: { src: string; alt: string }) => <img src={src} alt
 /** A palette as a small gradient disc. */
 function Swatch({ p, on, onClick, label }: { p: SitePalette; on: boolean; onClick: () => void; label: string }) {
   return (
-    <button type="button" onClick={onClick} title={label} className="flex shrink-0 flex-col items-center gap-1.5">
-      <span className={`grid h-12 w-12 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)] ${on ? "ring-brand" : "ring-transparent"}`} style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 55%, ${p.glow} 100%)` }}>
+    <button type="button" onClick={onClick} title={label} className="flex shrink-0 flex-col items-center gap-1 pt-1">
+      <span className={`grid h-10 w-10 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)] ${on ? "ring-brand" : "ring-transparent"}`} style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 55%, ${p.glow} 100%)` }}>
         {on && <Check className="h-5 w-5" style={{ color: p.ink }} />}
       </span>
-      <span className="text-[11px] text-muted">{label}</span>
+      <span className="text-[10px] text-muted">{label}</span>
     </button>
   );
 }
@@ -183,7 +183,7 @@ export default function WebsiteEditPage() {
   if (!s.hasCard) return null;
 
   const TABS: { key: Tab; label: string; Icon: typeof Palette }[] = [
-    { key: "look", label: hi ? "रंग और अक्षर" : "Colours & letters", Icon: Palette },
+    { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette },
     { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
     { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
     { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
@@ -207,13 +207,30 @@ export default function WebsiteEditPage() {
         </div>
       )}
 
-      {/* ---- live preview (the real website renderer, scaled to fit) ---- */}
-      <div ref={box} className="rounded-xl border border-border bg-white overflow-auto" style={{ height: Math.min(560, Math.round(PREVIEW_H * scale * 0.55)) }}>
-        <div className="relative" style={{ width: Math.round(1280 * scale), height: Math.round(PREVIEW_H * scale) }}>
-          <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: PREVIEW_H, border: 0, transform: `scale(${scale})` }} />
+      {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
+          wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
+      <div className="overflow-hidden rounded-xl border border-border">
+        <div ref={box} className="bg-white overflow-auto" style={{ height: Math.min(560, Math.round(PREVIEW_H * scale * 0.55)) }}>
+          <div className="relative" style={{ width: Math.round(1280 * scale), height: Math.round(PREVIEW_H * scale) }}>
+            <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: PREVIEW_H, border: 0, transform: `scale(${scale})` }} />
+          </div>
+        </div>
+        <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
+          <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें — ऊपर website तुरंत बदलेगी" : "Pick a colour — the website above changes at once"}</p>
+          <div className="mt-1.5 flex gap-2.5 overflow-x-auto pb-1">
+            <Swatch p={brand} on={paletteKey === "brand"} onClick={() => setStyle({ palette: "brand" })} label={hi ? "आपका" : "Yours"} />
+            {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => setStyle({ palette: p.key })} label={hi ? p.hi : p.name} />)}
+          </div>
+          {paletteKey === "brand" && (
+            <label className="mt-0.5 inline-flex items-center gap-2 px-1 text-[11px] text-muted">
+              <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => setStyle({ color: e.target.value })} className="h-6 w-9 rounded border border-border bg-surface p-0.5" />
+              {hi ? "अपना रंग" : "Your own colour"}
+              {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">{hi ? "कार्ड जैसा" : "Same as the card"}</button>}
+            </label>
+          )}
         </div>
       </div>
-      <p className="text-[11px] text-muted -mt-2">{hi ? "यह कंप्यूटर पर आपकी वेबसाइट का रूप है। अंदर स्क्रॉल करके पूरा देखें। Save दबाने के बाद ही बदलाव दिखेंगे।" : "This is how your website looks on a computer. Scroll inside to see it all. Your changes show on your website only after you tap Save."}</p>
+      <p className="-mt-2 text-[11px] text-muted">{hi ? "बदलाव Save दबाने पर live होंगे।" : "Changes go live when you tap Save."}</p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => { setNote((n) => (n?.k === "save" ? n : null)); setTab(key); }} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
@@ -221,22 +238,7 @@ export default function WebsiteEditPage() {
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
-          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=site" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग और अक्षर बदलें।" : ". Here you change its colours and letters."}</p>
-          <div>
-            <p className="text-sm font-semibold flex items-center gap-1.5"><Palette className="h-4 w-4 text-brand" /> {hi ? "रंग" : "Colours"}</p>
-            <p className="text-[11px] text-muted mt-0.5">{hi ? "वेबसाइट के रंग। आपका फ़ोन कार्ड अपने रंग में ही रहेगा।" : "The website's colours. Your phone card keeps its own colour."}</p>
-            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-              <Swatch p={brand} on={paletteKey === "brand"} onClick={() => setStyle({ palette: "brand" })} label={hi ? "आपका" : "Yours"} />
-              {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => setStyle({ palette: p.key })} label={hi ? p.hi : p.name} />)}
-            </div>
-            {paletteKey === "brand" && (
-              <label className="mt-1 inline-flex items-center gap-2 text-xs text-muted">
-                <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => setStyle({ color: e.target.value })} className="h-7 w-10 rounded border border-border bg-surface p-0.5" />
-                {hi ? "वेबसाइट का रंग (कार्ड से अलग रख सकते हैं)" : "Website colour (can differ from the card)"}
-                {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">{hi ? "कार्ड जैसा" : "Same as the card"}</button>}
-              </label>
-            )}
-          </div>
+          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/card/build?improve=1" className="font-semibold text-brand-ink">{hi ? "Website का design" : "Website design"}</Link>.</p>
           <div>
             <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
