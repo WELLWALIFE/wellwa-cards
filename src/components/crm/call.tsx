@@ -229,6 +229,7 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
           <a href={waLink(l.phone)} onClick={waClick(l.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-good/40 bg-good/10 py-3 text-sm font-semibold text-good"><MessageCircle className="h-4 w-4" /> {L.whatsapp}</a>
           <button type="button" onClick={() => setI((x) => x + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-muted"><SkipForward className="h-4 w-4" /> {L.skip}</button>
         </div>
+        <PersonalButton key={l.id} lead={l} onDone={() => setI((x) => x + 1)} className="mt-3 w-full" />
       </div>
     </div>
   );
@@ -413,5 +414,47 @@ export function DialSheet({ onClose }: { onClose: () => void }) {
         {err && <p role="alert" className="text-xs text-danger">{err}</p>}
       </div>
     </BottomSheet>
+  );
+}
+
+/* ---------------- personal number: out of the CRM, away from the AI, for good ---------------- */
+/** "Personal number" (owner, 23 Oct 2026): family / friends. Asks once, then removes the customer (and their chat) from the CRM
+ *  and puts the number on the never-reply list, so the AI never answers it and it never comes back as a lead. */
+export function PersonalButton({ lead, onDone, className = "" }: { lead: Pick<LeadPro, "id" | "name" | "phone">; onDone: () => void; className?: string }) {
+  const { L, ctx, as, reload } = useShell();
+  const [ask, setAsk] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  if (ctx.role === "agent" || !lead.phone) return null;
+  const T = (en: string, hi: string) => (L.hi ? hi : en);
+  async function go() {
+    setBusy(true); setErr("");
+    const r = await api<{ ok?: boolean; error?: string }>("/api/crm/block", { method: "POST", json: { lead_id: lead.id, as: as ?? undefined } }).catch(() => null);
+    setBusy(false);
+    if (!r?.ok) { setErr(r?.data.error || L.failed); return; }
+    setAsk(false); dropUnlogged({ leadId: lead.id, startedAt: Date.now() }); reload(); onDone();
+  }
+  return (
+    <>
+      <button type="button" onClick={() => setAsk(true)} className={`inline-flex items-center justify-center gap-1.5 text-xs font-semibold text-danger ${className}`}>🚫 {T("Personal number — remove from CRM", "Personal number — CRM से हटाएँ")}</button>
+      {ask && (
+        <BottomSheet title={T("Personal number?", "Personal number है?")} onClose={() => setAsk(false)}>
+          <div className="space-y-3 text-sm">
+            <p className="font-semibold text-ink">{lead.name || lead.phone} · {lead.phone}</p>
+            <ul className="list-disc space-y-1 pl-5 text-xs text-muted">
+              <li>{T("Removed from the CRM for good, with its chat, tasks and calls.", "CRM से हमेशा के लिए हट जाएगा — chat, tasks और calls के साथ।")}</li>
+              <li>{T("The AI never replies to this number on WhatsApp, and sends no follow-up, wish or broadcast.", "WhatsApp पर AI इस number को कभी जवाब नहीं देगा, न follow-up, wishes या broadcast भेजेगा।")}</li>
+              <li>{T("New messages from it are not saved as a lead. You still see them in your own WhatsApp.", "इसके नए message lead नहीं बनेंगे। आपके अपने WhatsApp में message दिखते रहेंगे।")}</li>
+              <li>{T("You can bring the number back from CRM → Settings → Personal numbers (the old history does not come back).", "CRM → Settings → Personal numbers से number वापस ला सकते हैं (पुरानी history वापस नहीं आएगी)।")}</li>
+            </ul>
+            {err && <p role="alert" className="text-xs text-danger">{err}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => setAsk(false)} className="rounded-xl border border-border py-2.5 font-semibold text-ink">{T("Cancel", "रहने दें")}</button>
+              <button type="button" disabled={busy} onClick={() => void go()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-danger py-2.5 font-semibold text-white disabled:opacity-60">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {T("Yes, remove", "हाँ, हटाएँ")}</button>
+            </div>
+          </div>
+        </BottomSheet>
+      )}
+    </>
   );
 }

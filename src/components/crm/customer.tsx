@@ -11,7 +11,7 @@ import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWh
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 import { TaskSheet, TaskRow } from "@/components/crm/tasks";
 import { SalesTab, SaleSheet } from "@/components/crm/sales";
-import { CallOutcomeSheet } from "@/components/crm/call";
+import { CallOutcomeSheet, PersonalButton } from "@/components/crm/call";
 
 type TimelineItem = { id: string; at: string; kind: "message" | "event" | "call" | "task" | "task_done" | "booking"; icon: string; text: string; sub?: string; data?: Record<string, unknown> };
 type Full = { lead: LeadPro; tasks: Task[]; calls: Call[]; timeline: TimelineItem[] };
@@ -120,6 +120,7 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         </div>
       )}
       {l.phone && <button type="button" onClick={() => setLogAt(Date.now())} className="w-full text-left text-[11px] font-semibold text-brand-ink underline">{L.hi ? "📝 Call पहले ही कर ली (WhatsApp / phone से)? उसका हाल यहाँ लिखें" : "📝 Already called (WhatsApp / phone)? Write what happened here"}</button>}
+      <PersonalButton lead={l} onDone={onBack} className="w-full justify-start" />
       {logAt > 0 && <CallOutcomeSheet pending={{ leadId: l.id, name: l.name, phone: l.phone, status: l.status, startedAt: logAt }} onClose={() => setLogAt(0)} onSaved={() => load(true)} />}
 
       {/* next action */}

@@ -1404,8 +1404,21 @@ function isFromAd(msg) {
 }
 
 /** WhatsApp settings → "Never auto-reply to these numbers" (family, friends). Matched on the last 10 digits. */
+/** Personal numbers removed from the CRM in the app (CRM → "Personal number", owner_prefs.crm.blocked; owner, 23 Oct 2026):
+ *  last 10 digits, read every minute. Kept on failure, so a database hiccup never lets the bot answer family. */
+let crmBlocked = { at: 0, list: [] };
+async function crmBlockedList() {
+  if (!cardContext || !SUPA_URL || !SUPA_KEY) return crmBlocked.list;
+  if (Date.now() - crmBlocked.at < 60_000) return crmBlocked.list;
+  crmBlocked.at = Date.now();
+  try {
+    const r = await fetch(`${SUPA_URL}/rest/v1/owner_prefs?owner_id=eq.${cardContext.owner_id}&select=crm`, { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } });
+    if (r.ok) { const rows = await r.json(); const b = rows?.[0]?.crm?.blocked; crmBlocked.list = Array.isArray(b) ? b.map((n) => String(n).replace(/[^0-9]/g, "").slice(-10)).filter((n) => n.length === 10) : []; }
+  } catch { /* keep the last list */ }
+  return crmBlocked.list;
+}
 async function isNeverReply(jid) {
-  const list = Array.isArray(config.neverReply) ? config.neverReply : [];
+  const list = [...(Array.isArray(config.neverReply) ? config.neverReply : []), ...(await crmBlockedList())];
   if (!list.length) return false;
   const pn = phoneSync(jid) ?? (await phoneOf(jid));
   if (!pn) return false;

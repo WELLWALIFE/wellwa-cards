@@ -33,6 +33,7 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
   const btn = (I: typeof Zap, t: string, f: () => void) => <button key={t} type="button" onClick={f} className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2.5 text-left text-sm text-ink"><I className="h-4 w-4 text-brand" />{t}</button>;
   return (
     <div className="space-y-4">
+      {ctx.role !== "agent" && <PersonalNumbers />}
       {owner && (
         <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 text-sm">
           <h3 className="flex items-center gap-1.5 font-bold text-ink"><PhoneCall className="h-4 w-4 text-brand" /> {L.stCalling}</h3>
@@ -137,3 +138,52 @@ export function ReportsSection() {
   );
 }
 type Rep = { days: number; calls: { made: number; connected: number; avgSeconds: number; byDay: { day: string; made: number; connected: number }[]; byAgent: { id: string; made: number; connected: number; seconds: number }[]; outcomes: { outcome: string; count: number }[] }; tasks: { done: number; onTime: number; overdueOpen: number; openTotal: number }; bySource: { source: string; leads: number; won: number; value: number }[]; lost: { reason: string; count: number }[]; stages: { stage: string; count: number; value: number }[]; leads: { total: number; newInRange: number; wonInRange: number; wonValue: number; customers: number; idle7: number } };
+
+/** Personal numbers (lib/crm-block.ts): never in the CRM, never answered by the AI. Add one by number, or bring one back. */
+function PersonalNumbers() {
+  const { L, as, reload } = useShell();
+  const T = (en: string, hi: string) => (L.hi ? hi : en);
+  const [nums, setNums] = useState<string[] | null>(null);
+  const [add, setAdd] = useState("");
+  const [busy, setBusy] = useState("");
+  const [err, setErr] = useState("");
+  const [open, setOpen] = useState(false);
+  const qs = as ? `?as=${as}` : "";
+  async function load() { const r = await api<{ numbers: string[] }>(`/api/crm/block${qs}`).catch(() => null); setNums(r?.ok ? r.data.numbers : []); }
+  useEffect(() => { if (open && nums === null) void load(); });
+  async function block() {
+    const d = add.replace(/\D/g, "").slice(-10);
+    if (d.length !== 10) { setErr(T("Enter a 10-digit mobile number.", "10 अंकों का mobile number डालें।")); return; }
+    setBusy("add"); setErr("");
+    const r = await api<{ error?: string }>("/api/crm/block", { method: "POST", json: { phone: d, as: as ?? undefined } }).catch(() => null);
+    setBusy(""); if (!r?.ok) { setErr(r?.data.error || L.failed); return; }
+    setAdd(""); reload(); void load();
+  }
+  async function unblock(n: string) {
+    setBusy(n); setErr("");
+    const r = await api<{ error?: string }>(`/api/crm/block?phone=${n}${as ? `&as=${as}` : ""}`, { method: "DELETE" }).catch(() => null);
+    setBusy(""); if (!r?.ok) { setErr(r?.data.error || L.failed); return; }
+    void load();
+  }
+  return (
+    <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 text-sm">
+      <button type="button" onClick={() => setOpen((v) => !v)} className="flex w-full items-center justify-between text-left font-bold text-ink">🚫 {T("Personal numbers (not in CRM, no AI)", "Personal numbers (CRM में नहीं, AI बंद)")}<span className="text-xs text-muted">{open ? "▲" : "▼"}</span></button>
+      {open && (
+        <>
+          <p className="text-[11px] text-muted">{T("Family and friends: never saved in the CRM and the AI never replies to them on WhatsApp.", "परिवार और दोस्त: CRM में कभी save नहीं होंगे और WhatsApp पर AI इन्हें कभी जवाब नहीं देगा।")}</p>
+          <div className="flex gap-2">
+            <input value={add} onChange={(e) => setAdd(e.target.value.slice(0, 20))} inputMode="tel" placeholder={T("Mobile number", "Mobile number")} className={inputCls} />
+            <button type="button" disabled={busy === "add"} onClick={() => void block()} className="shrink-0 rounded-xl bg-danger px-3 text-xs font-semibold text-white disabled:opacity-60">{busy === "add" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : T("Add", "जोड़ें")}</button>
+          </div>
+          {err && <p className="text-xs text-danger">{err}</p>}
+          {nums === null ? <LoaderCircle className="h-4 w-4 animate-spin text-muted" />
+            : nums.length === 0 ? <p className="text-xs text-muted">{T("None yet.", "अभी कोई नहीं।")}</p>
+            : <ul className="divide-y divide-border rounded-xl border border-border">{nums.map((n) => (
+                <li key={n} className="flex items-center justify-between px-3 py-2"><span className="font-mono text-xs text-ink">+91 {n.slice(0, 5)} {n.slice(5)}</span>
+                  <button type="button" disabled={busy === n} onClick={() => void unblock(n)} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-ink disabled:opacity-60">{busy === n ? "…" : T("Bring back", "वापस लाएँ")}</button></li>
+              ))}</ul>}
+        </>
+      )}
+    </section>
+  );
+}

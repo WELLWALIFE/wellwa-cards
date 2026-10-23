@@ -4,6 +4,7 @@
 // the webhook route and the CRM send route are thin wrappers.
 import { restAsService } from "@/lib/poster-server";
 import { AI_STOP_TAG } from "@/lib/crm-pro";
+import { isBlocked } from "@/lib/crm-block";
 import { aiReply, splitAlert, splitOrder, orderSummary, orderPaise, sellerSiteUrl, completeFileSets, ensureDemoLink, demoLink, getBrandTraining, type ChatMsg } from "@/lib/wa-ai";
 import { istInstant } from "@/lib/bookings";
 import { createBooking } from "@/lib/bookings-server";
@@ -205,6 +206,8 @@ export async function handleCloudValue(acc: CloudAccount, v: WaValue): Promise<v
     if (await alreadyLogged(acc.owner_id, m.id)) continue;
     const phone = e164(m.from), name = v.contacts?.find((c) => c.wa_id === m.from)?.profile?.name ?? "";
     const sentAt = m.timestamp ? new Date(Number(m.timestamp) * 1000).toISOString() : undefined;
+    // A personal number the owner removed from the CRM for good: not saved, never answered (lib/crm-block.ts).
+    if (await isBlocked(acc.owner_id, phone).catch(() => false)) continue;
     const leadId = await logCloud({ ownerId: acc.owner_id, cardId: card?.id ?? null, phone, name, waId: m.id, direction: "in", sender: "customer", kind, text: text || (kind === "text" ? "" : `[${kind}]`), sentAt });
     if (!acc.enabled) continue;
     markRead(acc, m.id);
