@@ -784,8 +784,15 @@ async function saveLead(from, name, message) {
     "Content-Type": "application/json", Prefer: "return=minimal",
   };
   try {
-    // One lead per contact per OWNER, not per card (22 Oct 2026): looking up by card made a second lead for every old
-    // customer once the owner had a newer card — 165 duplicate pairs on one account. wa_log_message() also looks up by owner.
+    // One lead per contact per OWNER (22 Oct 2026), made under a per-contact lock (0074, 23 Oct 2026): the old look-up-then-insert raced
+    // with wa_log_message() and made two leads for one number in the same second.
+    const r = await fetch(`${SUPA_URL}/rest/v1/rpc/wa_save_lead`, {
+      method: "POST", headers,
+      body: JSON.stringify({ p_owner: cardContext.owner_id, p_card: cardContext.id, p_phone: phone, p_name: name || "", p_message: (message || "").slice(0, 500) }),
+    }).catch(() => null);
+    if (r && r.ok) return;
+    if (r && r.status !== 404) return;   // the database said no for another reason: do not insert around it
+    // Database not migrated yet (no wa_save_lead): the old way.
     const q = `${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id&order=created_at&limit=1`;
     const found = await fetch(q, { headers }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
     const body = {
