@@ -223,73 +223,63 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
-          {/* ---- 1. the link ---- */}
-          <section className="space-y-3 rounded-2xl border border-border p-3">
-            <div className="space-y-1.5">
-            <div className="flex items-center gap-2 rounded-lg bg-surface2 px-3 py-2.5">
+          {/* Redesigned 23 Oct 2026 (owner: "easy to understand, koi zyada text nahi — pehle Share, phir Edit, phir SEO"):
+              the link on top, then three short blocks. */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5">
               <Globe className="h-4 w-4 shrink-0 text-brand" />
               <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
-              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-4 w-4 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-4 w-4" /> {T("Copy", "Copy")}</>}</button>
+              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft px-2.5 py-1.5 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-3.5 w-3.5 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-3.5 w-3.5" /> {T("Copy", "Copy")}</>}</button>
             </div>
-            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link above to copy it by hand.", "Copy नहीं हुआ। ऊपर का link दबाकर रखें और हाथ से copy करें।")}</p>}
+            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
+          </div>
+
+          {/* ---- 1. Share ---- */}
+          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-[#25D366] text-[11px] text-white">1</span> {T("Share", "Share करें")}</h2>
+            <div className={`grid gap-2 ${noSite ? "grid-cols-1" : "grid-cols-2"}`}>
+              <button type="button" onClick={shareCard} className="flex flex-col items-center gap-1 rounded-xl bg-[#25D366] px-2 py-3 text-white">
+                <Smartphone className="h-6 w-6" /><span className="text-sm font-bold">{T("Send card", "Card भेजें")}</span>
+              </button>
+              {!noSite && <button type="button" onClick={shareSite} className="flex flex-col items-center gap-1 rounded-xl border-2 border-[#25D366] px-2 py-3 text-[#128C7E]">
+                <Globe className="h-6 w-6" /><span className="text-sm font-bold">{T("Send website", "Website भेजें")}</span>
+              </button>}
             </div>
-            {/* The one thing people got wrong here (owner, 7 Oct 2026: "Edit dabane par kya edit hoga, card ya website?"):
-                one link, one set of details — the website and the card are the same thing in two shapes. Said once, here. */}
-            <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
-              {s.site?.enabled
-                ? <>{T("One link. On a computer it opens as your website, on a phone as your card. Your details are shared: change them once and both change. Only the banner is separate for each.", "एक link। Computer पर website खुलती है, phone पर card। जानकारी एक ही है: एक बार बदलो, दोनों में बदलेगी। सिर्फ़ banner दोनों का अलग-अलग है।")}</>
-                : noSite
-                  ? <>{T("Your free plan is the digital card: this link opens your card everywhere. A website with its own pages comes with Standard (₹2,999 a month) or Premium.", "आपका free plan digital card है: ये link हर जगह आपका card खोलता है। अपने pages वाली website Standard plan (₹2,999 / महीना) या Premium में मिलती है।")} <button type="button" onClick={() => setPlanSheet(true)} className="font-semibold text-brand-ink underline">{T("See Standard", "Standard देखें")}</button></>
-                  : <>{T("The website is off: this link opens the card everywhere. Turn it on under Edit website → Show or hide pages.", "Website बंद है: ये link हर जगह card खोलता है। Website edit करें → Pages दिखाएँ या छुपाएँ में जाकर चालू करें।")}</>}
-            </p>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-3 gap-2 text-xs font-semibold">
+              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Smartphone className="h-3.5 w-3.5 text-brand" /> {T("See card", "Card देखें")}</CardLink>
               {noSite
-                ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
-                : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>}
-              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
+                ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Globe className="h-3.5 w-3.5 text-brand" /> {T("Website", "Website")}</button>
+                : <a href={siteLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Globe className="h-3.5 w-3.5 text-brand" /> {T("See website", "Website देखें")}</a>}
+              <Link href="/poster/share" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Share2 className="h-3.5 w-3.5 text-brand" /> {T("QR & more", "QR और बाकी")}</Link>
             </div>
           </section>
 
-          {/* ---- 2. the doors: Edit the card, Edit the website (owner, 23 Oct 2026: "alag alag"), then Share ---- */}
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => openEdit("card")} className={door("edit")}><span className="relative"><Smartphone className="h-6 w-6" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface" /></span> {T("Edit card", "Card edit करें")}<span className={doorSub}>{T("the card that opens on a phone", "phone पर खुलने वाला card")}</span></button>
-            <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className={door("edit")}><span className="relative"><Globe className="h-6 w-6" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface" /></span> {T("Edit website", "Website edit करें")}<span className={doorSub}>{T("the website that opens on a computer", "computer पर खुलने वाली website")}</span></button>
-          </div>
-          <button type="button" onClick={() => { setCopyFail(null); setPanel(panel === "share" ? null : "share"); }} aria-expanded={panel === "share"} className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3.5 text-left ${panel === "share" ? "border-brand bg-brand-soft/60" : "border-border bg-surface"}`}>
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Share2 className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("Share", "Share करें")}</span><span className="block text-[11px] leading-tight text-muted">{T("Send your card or website on WhatsApp, copy the link, QR code", "card या website WhatsApp पर भेजें, link copy, QR code")}</span></span>
-            <ChevronRight className={`h-5 w-5 shrink-0 text-muted transition-transform ${panel === "share" ? "rotate-90" : ""}`} />
-          </button>
-
-          {panel === "share" && !editOnly && (
-            <section className="space-y-2 rounded-2xl border border-border p-3">
-              <p className="text-sm font-semibold">{T("Share on WhatsApp", "WhatsApp पर share करें")}</p>
-              <button type="button" onClick={shareCard} className="flex w-full items-center gap-3 rounded-xl bg-[#25D366] px-4 py-3.5 text-left text-white">
-                <Smartphone className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><b className="block text-sm">{T("Share my card", "मेरा card share करें")}</b><span className="block text-xs opacity-90">{T("Contact, products and more — opens as the card on a phone", "Contact, products और बाकी — phone पर card खुलता है")}</span></span><ChevronRight className="h-4 w-4 shrink-0" />
+          {/* ---- 2. Edit ---- */}
+          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-brand text-[11px] text-white">2</span> {T("Edit", "Edit करें")}</h2>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => openEdit("card")} className="flex flex-col items-center gap-1 rounded-xl border-2 border-border px-2 py-3">
+                <span className="relative"><Smartphone className="h-6 w-6 text-brand" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface text-brand" /></span>
+                <span className="text-sm font-bold">{T("Card", "Card")}</span>
               </button>
-              {!noSite && <button type="button" onClick={shareSite} className="flex w-full items-center gap-3 rounded-xl border-2 border-[#25D366] px-4 py-3.5 text-left text-[#128C7E]">
-                <Globe className="h-5 w-5 shrink-0" /><span className="min-w-0 flex-1"><b className="block text-sm">{T("Share my website", "मेरी website share करें")}</b><span className="block text-xs text-muted">{T("The full website — pages, products, about", "पूरी website — pages, products, परिचय")}</span></span><ChevronRight className="h-4 w-4 shrink-0" />
-              </button>}
-              <button type="button" onClick={() => void copy("share")} className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
-                <Copy className="h-5 w-5 shrink-0 text-muted" /><span className="min-w-0 flex-1 text-sm font-semibold">{copied ? T("Link copied ✓", "Link copy हुआ ✓") : T("Copy the link", "Link copy करें")}</span>
+              <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className="flex flex-col items-center gap-1 rounded-xl border-2 border-border px-2 py-3">
+                <span className="relative"><Globe className="h-6 w-6 text-brand" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface text-brand" /></span>
+                <span className="text-sm font-bold">{T("Website", "Website")}</span>
               </button>
-              {copyFail === "share" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link at the top of this page to copy it by hand.", "Copy नहीं हुआ। इस page के ऊपर वाला link दबाकर रखें और हाथ से copy करें।")}</p>}
-              <Link href="/poster/share" className="flex w-full items-center gap-3 rounded-xl border border-border px-4 py-3 text-left">
-                <Share2 className="h-5 w-5 shrink-0 text-muted" /><span className="min-w-0 flex-1 text-sm font-semibold">{T("QR code and more ways to share", "QR code और share के और तरीके")}</span><ChevronRight className="h-4 w-4 shrink-0 text-muted" />
-              </Link>
-            </section>
-          )}
+            </div>
+          </section>
 
-          {/* SEO is its own door under Share and Edit (owner, 14 Oct 2026): how the website shows on Google. */}
-          <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className="flex items-center gap-3 rounded-2xl border-2 border-border bg-surface p-3.5 text-left">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><Search className="h-5 w-5" /></span>
-            <span className="min-w-0 flex-1"><span className="block text-base font-semibold">{T("Show on Google", "Google पर दिखें")}</span><span className="block text-[11px] leading-tight text-muted">{T("Your city, areas and search words. See how it looks on Google.", "आपका शहर, इलाक़े और search words। देखें Google पर कैसा दिखेगा।")}</span></span>
-            <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
-          </Link>
+          {/* ---- 3. Google SEO ---- */}
+          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
+            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-ai text-[11px] text-white">3</span> {T("Google", "Google")}</h2>
+            <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className="flex items-center gap-3 rounded-xl border-2 border-border px-3 py-2.5">
+              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand"><Search className="h-4 w-4" /></span>
+              <span className="min-w-0 flex-1 text-sm font-bold">{T("Do Google SEO", "Google SEO करें")}</span>
+              <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
+            </Link>
+          </section>
 
-          {/* The Rs 5,999 advanced website (owner, 15-16 Oct 2026): its own door; once one exists it shows the state and the way back to the basic site. */}
-          {/* Every card may have the Premium website, a partner's Shubhora card too (owner, 23 Oct 2026: a partner on Premium could not
-              find it — it had been kept off partner cards on 20 Oct). */}
+          {/* The Premium website (Rs 5,999), for every card, partner cards too (owner, 23 Oct 2026). */}
           <AdvancedEntry key={cardId} cardId={cardId} fetchState />
           </>}
 
