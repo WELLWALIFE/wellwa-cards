@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, Star, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X, Monitor, Sparkles } from "lucide-react";
 import { PremiumCard, PremiumGate, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -23,7 +23,7 @@ import type { Card } from "@/lib/types";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
-import { AdvancedEntry } from "@/components/poster/advanced-entry";
+import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -223,64 +223,54 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
-          {/* Redesigned 23 Oct 2026 (owner: "easy to understand, koi zyada text nahi — pehle Share, phir Edit, phir SEO"):
-              the link on top, then three short blocks. */}
-          <div className="space-y-1.5">
-            <div className="flex items-center gap-2 rounded-2xl border border-border bg-surface px-3 py-2.5">
+          {/* Redesigned 23 Oct 2026 (owner: "easy to understand, koi zyada text nahi — pehle Share, phir Edit, phir SEO … page chhota,
+              scroll ki zaroorat na pade"): the link, then three compact rows that fit one phone screen. */}
+          <div className="space-y-1">
+            <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-surface py-1.5 pl-3 pr-1.5">
               <Globe className="h-4 w-4 shrink-0 text-brand" />
               <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
-              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft px-2.5 py-1.5 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <><Check className="h-3.5 w-3.5 text-good" /> {T("Copied", "Copy हुआ")}</> : <><Copy className="h-3.5 w-3.5" /> {T("Copy", "Copy")}</>}</button>
+              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft px-2 py-1.5 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
+              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See card", "Card देखें")}><Smartphone className="h-4 w-4 text-brand" /></CardLink>
+              {!noSite && <a href={siteLink} target="_blank" rel="noreferrer" className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See website", "Website देखें")}><Monitor className="h-4 w-4 text-brand" /></a>}
             </div>
-            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
+            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
           </div>
 
-          {/* ---- 1. Share ---- */}
-          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-[#25D366] text-[11px] text-white">1</span> {T("Share", "Share करें")}</h2>
-            <div className={`grid gap-2 ${noSite ? "grid-cols-1" : "grid-cols-2"}`}>
-              <button type="button" onClick={shareCard} className="flex flex-col items-center gap-1 rounded-xl bg-[#25D366] px-2 py-3 text-white">
-                <Smartphone className="h-6 w-6" /><span className="text-sm font-bold">{T("Send card", "Card भेजें")}</span>
-              </button>
-              {!noSite && <button type="button" onClick={shareSite} className="flex flex-col items-center gap-1 rounded-xl border-2 border-[#25D366] px-2 py-3 text-[#128C7E]">
-                <Globe className="h-6 w-6" /><span className="text-sm font-bold">{T("Send website", "Website भेजें")}</span>
-              </button>}
-            </div>
-            <div className="grid grid-cols-3 gap-2 text-xs font-semibold">
-              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Smartphone className="h-3.5 w-3.5 text-brand" /> {T("See card", "Card देखें")}</CardLink>
-              {noSite
-                ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Globe className="h-3.5 w-3.5 text-brand" /> {T("Website", "Website")}</button>
-                : <a href={siteLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Globe className="h-3.5 w-3.5 text-brand" /> {T("See website", "Website देखें")}</a>}
-              <Link href="/poster/share" className="inline-flex items-center justify-center gap-1 rounded-lg border border-border py-2"><Share2 className="h-3.5 w-3.5 text-brand" /> {T("QR & more", "QR और बाकी")}</Link>
-            </div>
-          </section>
-
-          {/* ---- 2. Edit ---- */}
-          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-brand text-[11px] text-white">2</span> {T("Edit", "Edit करें")}</h2>
-            <div className="grid grid-cols-2 gap-2">
-              <button type="button" onClick={() => openEdit("card")} className="flex flex-col items-center gap-1 rounded-xl border-2 border-border px-2 py-3">
-                <span className="relative"><Smartphone className="h-6 w-6 text-brand" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface text-brand" /></span>
-                <span className="text-sm font-bold">{T("Card", "Card")}</span>
-              </button>
-              <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className="flex flex-col items-center gap-1 rounded-xl border-2 border-border px-2 py-3">
-                <span className="relative"><Globe className="h-6 w-6 text-brand" /><Pencil className="absolute -bottom-1 -right-2 h-3.5 w-3.5 rounded-full bg-surface text-brand" /></span>
-                <span className="text-sm font-bold">{T("Website", "Website")}</span>
-              </button>
-            </div>
-          </section>
-
-          {/* ---- 3. Google SEO ---- */}
-          <section className="space-y-2.5 rounded-2xl border border-border bg-surface p-3">
-            <h2 className="flex items-center gap-2 text-sm font-bold"><span className="grid h-6 w-6 place-items-center rounded-full bg-ai text-[11px] text-white">3</span> {T("Google", "Google")}</h2>
-            <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className="flex items-center gap-3 rounded-xl border-2 border-border px-3 py-2.5">
-              <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand"><Search className="h-4 w-4" /></span>
-              <span className="min-w-0 flex-1 text-sm font-bold">{T("Do Google SEO", "Google SEO करें")}</span>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
-            </Link>
-          </section>
-
-          {/* The Premium website (Rs 5,999), for every card, partner cards too (owner, 23 Oct 2026). */}
-          <AdvancedEntry key={cardId} cardId={cardId} fetchState />
+          {(() => {
+            const row = "space-y-1.5";
+            const label = "flex items-center gap-1.5 px-1 text-xs font-bold text-muted";
+            const num = (n: number, c: string) => <span className={`grid h-5 w-5 place-items-center rounded-full text-[10px] text-white ${c}`}>{n}</span>;
+            const tile = "flex items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-sm font-bold";
+            return (
+              <>
+                {/* 1 · Share */}
+                <div className={row}>
+                  <p className={label}>{num(1, "bg-[#25D366]")} {T("Share", "Share करें")}</p>
+                  <div className={`grid gap-2 ${noSite ? "grid-cols-2" : "grid-cols-3"}`}>
+                    <button type="button" onClick={shareCard} className={`${tile} bg-[#25D366] text-white`}><Smartphone className="h-4 w-4" /> {T("Card", "Card")}</button>
+                    {!noSite && <button type="button" onClick={shareSite} className={`${tile} border-2 border-[#25D366] text-[#128C7E]`}><Globe className="h-4 w-4" /> {T("Website", "Website")}</button>}
+                    <Link href="/poster/share" className={`${tile} border-2 border-border`}><Share2 className="h-4 w-4 text-brand" /> QR</Link>
+                  </div>
+                </div>
+                {/* 2 · Edit */}
+                <div className={row}>
+                  <p className={label}>{num(2, "bg-brand")} {T("Edit", "Edit करें")}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button type="button" onClick={() => openEdit("card")} className={`${tile} border-2 border-border`}><Pencil className="h-4 w-4 text-brand" /> {T("Card", "Card")}</button>
+                    <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className={`${tile} border-2 border-border`}><Pencil className="h-4 w-4 text-brand" /> {T("Website", "Website")}</button>
+                  </div>
+                </div>
+                {/* 3 · Google SEO, and the Premium website (Rs 5,999; every card, partner cards too — owner, 23 Oct 2026) */}
+                <div className={row}>
+                  <p className={label}>{num(3, "bg-ai")} {T("Grow", "आगे बढ़ें")}</p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${tile} border-2 border-border`}><Search className="h-4 w-4 text-brand" /> {T("Google SEO", "Google SEO करें")}</Link>
+                    <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} border-2 border-ai/40 bg-ai-soft/40 text-ai`}><Sparkles className="h-4 w-4" /> {T("Premium site", "Premium website")}</Link>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
           </>}
 
           {panel === "edit" && target === "pick" && (
