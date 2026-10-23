@@ -28,8 +28,8 @@ export type Outcome = (typeof OUTCOMES)[number];
 export type CallRow = { id: string; owner_id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: "phone" | "exotel" | "ai"; status: string; started_at: string; seconds: number; outcome: Outcome; note: string; recording_url: string | null; created_at: string };
 export const CALL_COLS = "id,owner_id,lead_id,agent_id,direction,channel,status,started_at,seconds,outcome,note,recording_url,created_at";
 export type BookingLite = { id: string; lead_id: string | null; name: string; phone: string; service: string; starts_at: string; status: string };
-export type CrmPrefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number };
-export const DEFAULT_PREFS: CrmPrefs = { ask_outcome: true, retry_after_min: 180, missed_call_wa: false, missed_call_text: "Namaste {name} ji 🙏 {business} se call kiya tha, baat nahi ho paayi. Jab suvidha ho, is number par call ya message kar dein.", auto_task_new_lead: false, daily_summary: false, birthday_wish: false, stale_days: 7, round_robin: false, call_target: 0 };
+export type CrmPrefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number; sales_target_k: number };
+export const DEFAULT_PREFS: CrmPrefs = { ask_outcome: true, retry_after_min: 180, missed_call_wa: false, missed_call_text: "Namaste {name} ji 🙏 {business} se call kiya tha, baat nahi ho paayi. Jab suvidha ho, is number par call ya message kar dein.", auto_task_new_lead: false, daily_summary: false, birthday_wish: false, stale_days: 7, round_robin: false, call_target: 0, sales_target_k: 0 };
 
 const list = <T,>(r: { data: T[] | null }): T[] => (Array.isArray(r.data) ? r.data : []);
 const enc = encodeURIComponent;
@@ -123,7 +123,9 @@ export async function today(scope: Scope): Promise<Today> {
   const overdue: TodayItem[] = [], due: TodayItem[] = [];
   for (const t of taskRows) {
     const lead = t.lead_id ? leadsById.get(t.lead_id) : undefined;
-    if (!lead || ["converted", "won", "lost"].includes(lead.status) || (lead.tags ?? []).includes(PERSONAL_TAG)) continue;
+    // A sold customer's service reminder still shows (repeat business); every other task on a closed lead does not.
+    const service = serviceMonths(t.text) > 0 && lead && lead.status !== "lost";
+    if (!lead || (["converted", "won", "lost"].includes(lead.status) && !service) || (lead.tags ?? []).includes(PERSONAL_TAG)) continue;
     (t.due_at < dayStart ? overdue : due).push({ lead, task: t, why: t.title || t.kind });
   }
   const unreadItems = list(unread).map((lead) => ({ lead, why: `${lead.unread} unread` }));
@@ -182,6 +184,28 @@ export async function createTask(scope: Scope, t: { lead_id: string | null; kind
   if (task && t.lead_id) await addEvent(scope.token, scope.ownerId, t.lead_id, "task", `${t.kind === "call" ? "📞" : t.kind === "whatsapp" ? "💬" : t.kind === "visit" ? "🚶" : t.kind === "meeting" ? "🤝" : "☐"} ${t.title || t.kind} · ${fmtIst(t.due_at)}`).catch(() => null);
   return task;
 }
+/* ---------------- service / filter reminders (owner, 23 Oct 2026: repeat business) ---------------- */
+/** A service reminder carries "[service:N]" at the start of its text: N months between services. When one is done, the next
+ *  one is made N months later — once per customer (an open one already there is left alone). */
+const SERVICE_RE = /^\[service:(\d{1,2})\]/;
+export const serviceMonths = (text: string) => { const m = SERVICE_RE.exec(text ?? ""); const n = m ? Number(m[1]) : 0; return n >= 1 && n <= 36 ? n : 0; };
+/** 11 am IST, N months after `from`. */
+export function monthsLater(from: Date, n: number): string {
+  const x = new Date(from.getTime() + 5.5 * 3600_000); x.setUTCMonth(x.getUTCMonth() + n); x.setUTCHours(11, 0, 0, 0);
+  return new Date(x.getTime() - 5.5 * 3600_000).toISOString();
+}
+export async function createServiceTask(scope: Scope, leadId: string, months: number, what: string, from = new Date()): Promise<TaskRow | null> {
+  if (months < 1 || months > 36) return null;
+  const open = list(await restAsService<{ id: string }[]>(`crm_tasks?lead_id=eq.${leadId}&owner_id=eq.${scope.ownerId}&done_at=is.null&text=like.${enc("[service:*")}&select=id&limit=1`));
+  if (open.length) return null;
+  return createTask(scope, { lead_id: leadId, kind: "call", title: `🔧 Service${what ? ` — ${what}` : ""}`.slice(0, 120), text: `[service:${months}] ${what}`.slice(0, 1000), due_at: monthsLater(from, months), source: "auto" });
+}
+/** A finished service reminder makes the next one. */
+export async function nextServiceAfter(scope: Scope, t: Pick<TaskRow, "lead_id" | "text" | "title">): Promise<void> {
+  const n = serviceMonths(t.text);
+  if (!n || !t.lead_id) return;
+  await createServiceTask(scope, t.lead_id, n, t.text.replace(SERVICE_RE, "").trim()).catch(() => null);
+}
 export async function patchTask(scope: Scope, id: string, p: { done?: boolean; outcome?: string; snooze_to?: string; due_at?: string; title?: string; kind?: TaskKind; text?: string; assigned_to?: string | null }): Promise<TaskRow | null> {
   const before = list(await restAsService<TaskRow[]>(`crm_tasks?id=eq.${id}&owner_id=eq.${scope.ownerId}&select=${TASK_COLS}&limit=1`))[0];
   if (!before || (scope.role === "agent" && before.assigned_to && before.assigned_to !== scope.userId)) return null;
@@ -198,6 +222,7 @@ export async function patchTask(scope: Scope, id: string, p: { done?: boolean; o
   const task = Array.isArray(r.data) ? r.data[0] : null;
   if (task && task.lead_id) {
     if (p.done === true) await addEvent(scope.token, scope.ownerId, task.lead_id, "task_done", `☑ ${task.title || task.kind}${task.outcome ? ` — ${task.outcome}` : ""}`).catch(() => null);
+    if (p.done === true && !before.done_at) await nextServiceAfter(scope, task);
     else if (p.snooze_to) await addEvent(scope.token, scope.ownerId, task.lead_id, "followup", `⏰ ${task.title || task.kind} → ${fmtIst(task.due_at)}`).catch(() => null);
   }
   return task;

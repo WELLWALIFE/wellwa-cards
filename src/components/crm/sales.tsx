@@ -67,10 +67,13 @@ export function SaleSheet({ leadId, onClose, onSaved }: { leadId: string; onClos
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  /** Months between services (filter change, AMC visit); 0 = no reminder. Remembered on this phone for the next sale. */
+  const [service, setService] = useState<number>(() => { try { return Number(localStorage.getItem("akp-crm-service-months") || 0) || 0; } catch { return 0; } });
+  const pickService = (n: number) => { setService(n); try { localStorage.setItem("akp-crm-service-months", String(n)); } catch { /* ignore */ } };
   const sum = items.length ? total(items) : toPaise(amount);
   async function save() {
     if (sum <= 0 || busy) return; setBusy(true); setErr("");
-    const r = await api<{ error?: string }>("/api/crm/sales", { method: "POST", json: { lead_id: leadId, as: as ?? undefined, items, amount_paise: items.length ? undefined : sum, paid_paise: paidAll ? sum : toPaise(paid), method, note } });
+    const r = await api<{ error?: string }>("/api/crm/sales", { method: "POST", json: { lead_id: leadId, as: as ?? undefined, items, amount_paise: items.length ? undefined : sum, paid_paise: paidAll ? sum : toPaise(paid), method, note, service_months: service || undefined } });
     setBusy(false); if (!r.ok) { setErr(r.data.error || L.failed); return; } onSaved(); onClose();
   }
   return (
@@ -83,6 +86,12 @@ export function SaleSheet({ leadId, onClose, onSaved }: { leadId: string; onClos
         <label className="flex items-center gap-2 text-xs text-ink"><input type="checkbox" checked={paidAll} onChange={(e) => setPaidAll(e.target.checked)} /> {hi ? "पूरा पैसा मिल गया" : "Paid in full"}</label>
         {!paidAll && <label className="block text-xs text-muted">{hi ? "अभी कितना मिला ₹" : "Paid now ₹"}<input value={paid} onChange={(e) => setPaid(e.target.value)} inputMode="decimal" className={inputCls} /></label>}
         <input value={note} onChange={(e) => setNote(e.target.value.slice(0, 500))} placeholder={hi ? "Note (बिल नंबर, delivery…)" : "Note (bill no., delivery…)"} className={inputCls} />
+        {/* Repeat business (owner, 23 Oct 2026): a call reminder for the next service / filter change, and the one after it. */}
+        <div className="rounded-xl border border-border p-2.5">
+          <p className="mb-1.5 text-xs font-semibold text-ink">🔧 {hi ? "Service / filter बदलने की याद" : "Service / filter-change reminder"}</p>
+          <div className="flex flex-wrap gap-1.5">{[0, 3, 6, 12].map((n) => <Chip key={n} on={service === n} onClick={() => pickService(n)}>{n === 0 ? (hi ? "नहीं" : "None") : hi ? `हर ${n} महीने` : `Every ${n} months`}</Chip>)}</div>
+          {service > 0 && <p className="mt-1.5 text-[11px] text-muted">{hi ? `${service} महीने बाद Today में call का काम आएगा; पूरा करते ही अगला अपने-आप बन जाएगा।` : `A call task shows in Today in ${service} months; when it is done the next one is made by itself.`}</p>}
+        </div>
         {err && <p className="text-xs text-danger">{err}</p>}
         <button type="button" disabled={sum <= 0 || busy} onClick={save} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 font-semibold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {hi ? "बिक्री सेव करें (Won)" : "Save sale (Won)"}</button>
       </div>

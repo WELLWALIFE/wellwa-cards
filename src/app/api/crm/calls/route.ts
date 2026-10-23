@@ -9,7 +9,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { resolveScope, addEvent, STAGES } from "@/lib/crm-server";
 import { sendCustomer } from "@/lib/customer-send";
-import { logCall, patchCall, createTask, isUuid, OUTCOMES, OUTCOME_TEXT, CALL_COLS, TASK_KINDS, AI_STOP_TAG, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
+import { logCall, patchCall, createTask, nextServiceAfter, isUuid, OUTCOMES, OUTCOME_TEXT, CALL_COLS, TASK_KINDS, AI_STOP_TAG, type Outcome, type CallRow, type TaskKind } from "@/lib/crm-pro";
 
 const iso = (v: unknown) => (typeof v === "string" && !Number.isNaN(Date.parse(v)) ? new Date(v).toISOString() : null);
 
@@ -59,7 +59,9 @@ export async function POST(request: Request) {
   // with this outcome; the next one, if the owner picked one below, is made fresh.
   {
     const soon = new Date(Date.now() + 60 * 60_000).toISOString();
-    await restAsService(`crm_tasks?lead_id=eq.${lead.id}&owner_id=eq.${scope.ownerId}&done_at=is.null&kind=in.(call,whatsapp)&due_at=lte.${encodeURIComponent(soon)}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ done_at: new Date().toISOString(), outcome: `Call: ${OUTCOME_TEXT[call.outcome] ?? call.outcome}`.slice(0, 200) }) }).catch(() => null);
+    const closed = await restAsService<{ lead_id: string | null; text: string; title: string }[]>(`crm_tasks?lead_id=eq.${lead.id}&owner_id=eq.${scope.ownerId}&done_at=is.null&kind=in.(call,whatsapp)&due_at=lte.${encodeURIComponent(soon)}&select=lead_id,text,title`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ done_at: new Date().toISOString(), outcome: `Call: ${OUTCOME_TEXT[call.outcome] ?? call.outcome}`.slice(0, 200) }) }).catch(() => null);
+    // A service reminder that was due makes the next one (lib/crm-pro.ts) — not when the customer said they are not interested.
+    if (!notInterested) for (const t of Array.isArray(closed?.data) ? closed!.data : []) await nextServiceAfter(scope, t);
   }
   let task = null;
   if (b.next && typeof b.next === "object") {

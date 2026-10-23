@@ -5,7 +5,7 @@ import { serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 import { addEvent, type Scope } from "@/lib/crm-server";
 import { cardOf, businessOf, hindiCard } from "@/lib/customer-send";
 import { htmlToPdf } from "@/lib/render-page";
-import { isUuid, scopeFilter } from "@/lib/crm-pro";
+import { isUuid, scopeFilter, createServiceTask } from "@/lib/crm-pro";
 
 const list = <T,>(r: { data: T[] | null }): T[] => (Array.isArray(r.data) ? r.data : []);
 const enc = encodeURIComponent;
@@ -84,7 +84,7 @@ export async function salesOf(scope: Scope, leadId?: string): Promise<SaleRow[]>
   const f = leadId ? `lead_id=eq.${leadId}` : `owner_id=eq.${scope.ownerId}`;
   return list(await restAsService<SaleRow[]>(`crm_sales?${f}&owner_id=eq.${scope.ownerId}&select=${SALE_COLS}&order=sold_at.desc&limit=200`));
 }
-export async function createSale(scope: Scope, b: { lead_id: string; items: unknown; amount_paise?: number; paid_paise?: number; method?: string; note?: string; sold_at?: string; quote_id?: string | null; mark_won?: boolean }): Promise<SaleRow | { error: string }> {
+export async function createSale(scope: Scope, b: { lead_id: string; items: unknown; amount_paise?: number; paid_paise?: number; method?: string; note?: string; sold_at?: string; quote_id?: string | null; mark_won?: boolean; service_months?: number }): Promise<SaleRow | { error: string }> {
   const lead = await leadIn(scope, b.lead_id); if (!lead) return { error: "Lead not found." };
   const items = cleanItems(b.items);
   const amount = items.length ? itemsTotal(items) : Math.max(0, Math.round(Number(b.amount_paise) || 0));
@@ -98,6 +98,13 @@ export async function createSale(scope: Scope, b: { lead_id: string; items: unkn
   if (b.mark_won !== false && !["converted", "won"].includes(lead.status)) {
     await restAsService(`leads?id=eq.${lead.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "converted", updated_at: new Date().toISOString() }) });
     await addEvent(scope.token, scope.ownerId, lead.id, "status", "Stage → converted").catch(() => null);
+  }
+  // Service / filter reminder (owner, 23 Oct 2026): a call task N months after the sale, and the next one each time it is done.
+  const months = Math.round(Number(b.service_months) || 0);
+  if (months >= 1 && months <= 36) {
+    const what = items.map((i) => i.name).filter(Boolean).join(", ").slice(0, 80);
+    const t = await createServiceTask(scope, lead.id, months, what, new Date(sale.sold_at)).catch(() => null);
+    if (t) await addEvent(scope.token, scope.ownerId, lead.id, "followup", `🔧 Service reminder every ${months} month${months === 1 ? "" : "s"}`).catch(() => null);
   }
   return sale;
 }

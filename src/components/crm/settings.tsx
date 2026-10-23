@@ -16,7 +16,7 @@ export function SettingsSection({ onChanged }: { onChanged: () => void }) {
   const owner = ctx.role === "owner";
   async function save() {
     setBusy(true); setOk(false); setErr("");
-    const r = await api<{ prefs: Prefs; error?: string }>("/api/crm/automations", { method: "PUT", json: p });
+    const r = await api<{ prefs: Prefs; error?: string }>("/api/crm/automations", { method: "PUT", json: { ...p, sales_target_k: undefined } });   // the target is set on Reports
     setBusy(false); if (!r.ok) { setErr(r.data.error || L.failed); return; } setP(r.data.prefs); setOk(true); onChanged();
   }
   async function exportCsv() {
@@ -101,6 +101,7 @@ export function ReportsSection() {
   const maxDay = Math.max(1, ...(r?.calls.byDay.map((d) => d.made) ?? [1]));
   return (
     <div className="space-y-3">
+      <TargetCard agentName={agentName} />
       <div className="flex gap-1.5">{([7, 30, 90] as const).map((d) => <Chip key={d} on={days === d} onClick={() => setDays(d)}>{d} {L.hi ? "दिन" : "days"}</Chip>)}</div>
       {err ? <div className="space-y-2 py-6 text-center"><p className="text-xs text-danger">{err}</p><button type="button" onClick={() => setRetry((n) => n + 1)} className="rounded-xl border border-border px-3 py-1.5 text-xs">↻</button></div>
         : !r ? <LoaderCircle className="mx-auto h-5 w-5 animate-spin text-muted" /> : (
@@ -183,6 +184,56 @@ function PersonalNumbers() {
                   <button type="button" disabled={busy === n} onClick={() => void unblock(n)} className="rounded-lg border border-border px-2 py-1 text-[11px] font-semibold text-ink disabled:opacity-60">{busy === n ? "…" : T("Bring back", "वापस लाएँ")}</button></li>
               ))}</ul>}
         </>
+      )}
+    </section>
+  );
+}
+
+/** This month: sales against the target, per person, and the expected sales in the pipeline (owner, 23 Oct 2026). */
+type Targets = { month: string; target_paise: number; sold_paise: number; sales: number; byAgent: { id: string; sold_paise: number; sales: number }[]; pipeline: { paise: number; leads: number } };
+function TargetCard({ agentName }: { agentName: (id: string) => string }) {
+  const { L, ctx, as } = useShell();
+  const T = (en: string, hi: string) => (L.hi ? hi : en);
+  const [t, setT] = useState<Targets | null>(null);
+  const [edit, setEdit] = useState(false);
+  const [val, setVal] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  const [tick, setTick] = useState(0);
+  useEffect(() => { api<Targets>(`/api/crm/targets${as ? `?as=${as}` : ""}`).then((r) => { if (r.ok) setT(r.data); }).catch(() => undefined); }, [as, tick]);
+  if (!t) return null;
+  const rs = (p: number) => "₹" + Math.round(p / 100).toLocaleString("en-IN");
+  const pct = t.target_paise ? Math.min(100, Math.round((t.sold_paise / t.target_paise) * 100)) : 0;
+  async function save() {
+    const k = Math.round((parseFloat(val.replace(/[^\d.]/g, "")) || 0) / 1000);
+    setBusy(true); setErr("");
+    const r = await api<{ error?: string }>("/api/crm/automations", { method: "PUT", json: { sales_target_k: k } }).catch(() => null);
+    setBusy(false); if (!r?.ok) { setErr(L.failed); return; }
+    setEdit(false); setTick((n) => n + 1);
+  }
+  return (
+    <section className="space-y-2 rounded-2xl border border-border bg-surface p-3 text-sm">
+      <div className="flex items-center justify-between">
+        <h3 className="font-bold text-ink">🎯 {T("This month's sales", "इस महीने की बिक्री")}</h3>
+        {ctx.role === "owner" && <button type="button" onClick={() => { setEdit((v) => !v); setVal(t.target_paise ? String(t.target_paise / 100) : ""); }} className="text-xs font-semibold text-brand-ink">{t.target_paise ? T("Change target", "Target बदलें") : T("Set target", "Target लगाएँ")}</button>}
+      </div>
+      <p className="text-xl font-bold text-ink">{rs(t.sold_paise)}{t.target_paise > 0 && <span className="text-sm font-semibold text-muted"> / {rs(t.target_paise)}</span>} <span className="text-xs font-normal text-muted">· {t.sales} {T("sales", "बिक्री")}</span></p>
+      {t.target_paise > 0 && (
+        <div>
+          <div className="h-2.5 overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full bg-good" style={{ width: `${pct}%` }} /></div>
+          <p className="mt-1 text-[11px] text-muted">{pct}% {T("of the target", "target का")}{t.sold_paise < t.target_paise ? ` · ${T("left", "बाकी")} ${rs(t.target_paise - t.sold_paise)}` : " 🎉"}</p>
+        </div>
+      )}
+      {edit && (
+        <div className="flex gap-2">
+          <input value={val} onChange={(e) => setVal(e.target.value)} inputMode="decimal" placeholder={T("Monthly target ₹, e.g. 500000", "महीने का target ₹, जैसे 500000")} className={inputCls} />
+          <button type="button" disabled={busy} onClick={() => void save()} className="grad-brand shrink-0 rounded-xl px-3 text-xs font-semibold text-white disabled:opacity-60">{busy ? "…" : L.save}</button>
+        </div>
+      )}
+      {err && <p className="text-xs text-danger">{err}</p>}
+      <p className="rounded-xl bg-brand-soft/40 px-3 py-2 text-xs text-ink">{T("Expected (interested + follow-up):", "उम्मीद (रुचि + follow-up वाले):")} <b>{rs(t.pipeline.paise)}</b> · {t.pipeline.leads} {T("customers", "ग्राहक")}{t.pipeline.paise === 0 && t.pipeline.leads > 0 ? ` — ${T("add a deal value on their Details to see it", "Details में deal की कीमत डालें तो दिखेगा")}` : ""}</p>
+      {t.byAgent.length > 1 && (
+        <ul className="space-y-1 text-xs">{t.byAgent.map((a) => <li key={a.id} className="flex justify-between"><span className="text-ink">{agentName(a.id)}</span><span className="font-semibold text-ink">{rs(a.sold_paise)} · {a.sales}</span></li>)}</ul>
       )}
     </section>
   );
