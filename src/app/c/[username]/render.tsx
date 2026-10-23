@@ -188,7 +188,8 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // On the member's own domain (proxy.ts sets x-own-domain) the plain address is the website on every screen, a phone too;
   // ?view=card (kept for the visit in the "sv" cookie) is the card (owner, 23 Oct 2026).
   const ownDomain = hdrs.get("x-own-domain") === "1";
-  const kept = ownDomain ? (await cookies()).get("sv")?.value : undefined;
+  // The kept choice only for the pages inside (a card's tabs carry no ?view); the plain home address is always the website.
+  const kept = ownDomain && slug ? (await cookies()).get("sv")?.value : undefined;
   const asked = viewParam === "card" || viewParam === "site" ? viewParam : kept === "card" || kept === "site" ? kept : undefined;
   const view = asked === "card" ? "card" : asked === "site" ? (siteAllowed ? "site" : "card") : card.site?.enabled && (!mobile || story || adv || ownDomain) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;

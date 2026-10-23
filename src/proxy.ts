@@ -71,7 +71,10 @@ export async function proxy(req: NextRequest) {
   const headers = new Headers(req.headers);
   headers.set("x-own-domain", "1");
   const res = NextResponse.rewrite(url, { request: { headers } });
-  if (want === "card" || want === "site") res.cookies.set("sv", want, { path: "/", maxAge: 60 * 60, sameSite: "lax", secure: true, httpOnly: true });
+  // The plain home address is always the website, and makes the website the choice for the pages after it too (owner, 23 Oct 2026:
+  // after opening the card link, the plain address still showed the card).
+  const keep = want === "card" || want === "site" ? want : !page ? "site" : null;
+  if (keep) res.cookies.set("sv", keep, { path: "/", maxAge: 60 * 60, sameSite: "lax", secure: true, httpOnly: true });
   return res;
 }
 
