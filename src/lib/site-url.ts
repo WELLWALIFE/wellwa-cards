@@ -11,3 +11,10 @@ export function cardHome(username: string, customDomain?: string | null): string
   const d = String(customDomain ?? "").trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
   return /^[a-z0-9-]+(\.[a-z0-9-]+)+$/.test(d) ? `https://${d}` : `${SITE_URL}/c/${username}`;
 }
+/** The same address forced to one view: "card" opens the card on every screen (a computer too), "site" the website on a phone too
+ *  (owner, 23 Oct 2026: "card wala har jagah card hi khulna chahiye"). The plain address picks by screen. */
+export function withView(url: string, view: "card" | "site"): string {
+  if (!url) return url;
+  const clean = url.replace(/([?&])view=(card|site)(&|$)/, (_m, a: string, _v: string, b: string) => (b ? a : "")).replace(/[?&]$/, "");
+  return `${clean}${clean.includes("?") ? "&" : "?"}view=${view}`;
+}

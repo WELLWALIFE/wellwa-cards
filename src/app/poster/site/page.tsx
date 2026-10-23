@@ -6,6 +6,7 @@
 // (?edit=card / ?edit=site; ?edit=1 asks which), grouped by how often a thing is changed: often (offer, pop-up, products, photos),
 // sometimes (banner, name, timings…), rarely (design, pages, settings). The banner is each one's own; everything else is shared,
 // so a change made from either page shows on both.
+import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
@@ -137,9 +138,11 @@ export default function WebsitePage() {
   const [copied, setCopied] = useState(false);
   /** The one address shown, copied, shared and opened: the owner's own domain when connected, else the Shubhora link. */
   const link = s?.hasCard ? (s.customDomain ? `https://${s.customDomain}` : s.url) : "";
+  /** The website link: on the owner's own domain the plain address IS the website (proxy.ts); the Shubhora link needs ?view=site. */
+  const siteLink = s?.hasCard && s.customDomain ? link : withView(link, "site");
   async function copy(where: "top" | "share") { if (!s || !s.hasCard) return; setCopyFail(null); try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail(where); } }
-  function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${link}` : `Hello! Here is my digital card — contact, products and more in one tap: ${link}`)}`, "_blank", "noopener"); }
-  function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${link}?view=site` : `See our website — products, services and all about us: ${link}?view=site`)}`, "_blank", "noopener"); }
+  function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${withView(link, "card")}` : `Hello! Here is my digital card — contact, products and more in one tap: ${withView(link, "card")}`)}`, "_blank", "noopener"); }
+  function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteLink}` : `See our website — products, services and all about us: ${siteLink}`)}`, "_blank", "noopener"); }
 
   // api() resolves on ANY status, so a 401 (expired login) or a server error must be caught here — without
   // this check the screen keeps spinning for ever with nothing to tap.
@@ -242,8 +245,8 @@ export default function WebsitePage() {
             <div className="grid grid-cols-2 gap-2">
               {noSite
                 ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
-                : <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>}
-              <CardLink href={link} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
+                : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Globe className="h-4 w-4 text-brand" /> {T("Open website", "Website खोलें")}</a>}
+              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><Smartphone className="h-4 w-4 text-brand" /> {T("Open card", "Card खोलें")}</CardLink>
             </div>
           </section>
 
@@ -314,13 +317,13 @@ export default function WebsitePage() {
               <div className="flex items-center gap-2">
                 <p className="min-w-0 flex-1 text-base font-bold">{target === "card" ? T("Edit your card", "अपना card edit करें") : T("Edit your website", "अपनी website edit करें")}</p>
                 {target === "card"
-                  ? <CardLink href={link} title={T("My card", "मेरा card")} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See card", "Card देखें")}</CardLink>
-                  : <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See website", "Website देखें")}</a>}
+                  ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See card", "Card देखें")}</CardLink>
+                  : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See website", "Website देखें")}</a>}
               </div>
               <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
                 {T("Green tag = changes on both the card and the website. The banner is separate for each.", "हरा tag = card और website दोनों में बदलेगा। Banner दोनों का अलग-अलग है।")}
               </p>
-              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is live now.", "Save हो गया। अब live है।")} {target === "card" ? <CardLink href={link} title={T("My card", "मेरा card")} className="underline">{T("See it", "देखें")}</CardLink> : <a href={`${link}?view=site`} target="_blank" rel="noreferrer" className="underline">{T("See it", "देखें")}</a>}</p>}
+              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is live now.", "Save हो गया। अब live है।")} {target === "card" ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="underline">{T("See it", "देखें")}</CardLink> : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="underline">{T("See it", "देखें")}</a>}</p>}
               <PhotoNudge />
               {(() => {
                 const isCard = target === "card";

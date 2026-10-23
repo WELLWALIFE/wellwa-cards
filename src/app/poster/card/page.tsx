@@ -1,6 +1,7 @@
 "use client";
 // "My V-Card" tab: share, QR and views of the owner's card. No real card yet → "Make your V-Card"
 // (/poster/card/build), which makes it from the setup details. A failed load never counts as "no card".
+import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -115,7 +116,8 @@ export default function CardTab() {
     load();
   }, [load]);
 
-  const url = card ? (liveDomain ? `https://${liveDomain}` : `${SITE}/c/${card.username}`) : "";
+  // The card link opens the card on every screen (owner, 23 Oct 2026).
+  const url = card ? withView(liveDomain ? `https://${liveDomain}` : `${SITE}/c/${card.username}`, "card") : "";
   useEffect(() => { if (url) QRCode.toDataURL(url, { width: 480, margin: 1, color: { dark: "#0b1220", light: "#ffffff" } }).then(setQr).catch(() => setQr("")); }, [url]);
 
   async function copy() { setCopyFail(""); try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail("card"); } }

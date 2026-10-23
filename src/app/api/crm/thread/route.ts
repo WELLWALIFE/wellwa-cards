@@ -1,6 +1,7 @@
 // GET ?lead=<id>&as=<ownerId> (bearer) → lead + WhatsApp messages + timeline + templates + the links the owner can send
 // in one tap (website, demo video and other links / files saved for the bot on Card & Website).
 // Marks the thread read and refreshes AI insights when new messages arrived.
+import { withView } from "@/lib/site-url";
 import { publicCardUrl } from "@/lib/own-domain";
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
@@ -34,7 +35,7 @@ async function ownerLinks(ownerId: string): Promise<LinkRow[]> {
   const out: LinkRow[] = [];
   const site = c.data?.botSite?.trim();
   if (site && /^https?:\/\//.test(site)) out.push({ label: "Website", url: site, kind: "link" });
-  out.push({ label: site ? "V-Card" : "Website", url: await publicCardUrl(c.username, c.id), kind: "link" });
+  out.push({ label: site ? "V-Card" : "Website", url: site ? withView(await publicCardUrl(c.username, c.id), "card") : await publicCardUrl(c.username, c.id), kind: "link" });
   for (const f of c.data?.botFiles ?? []) {
     const url = String(f.url ?? "").trim();
     if (!/^https?:\/\//.test(url) || out.some((o) => o.url === url)) continue;

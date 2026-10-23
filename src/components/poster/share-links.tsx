@@ -2,6 +2,7 @@
 // The three links people share most (owner's call, 24 Sep 2026): the card, the LEFT join link and the RIGHT join link.
 // One tap each — WhatsApp, copy, share, QR. Shown on the Share page, in the share sheet (the round share button at the
 // top of every app page) and on Home.
+import { withView } from "@/lib/site-url";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -96,13 +97,16 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
     const msg = (u: string) => en ? `Get your own Shubhora — digital card, website, daily posters, WhatsApp AI. Free to start: ${u}` : `अपना Shubhora लें — digital card, website, रोज़ के poster, WhatsApp AI. Free में शुरू: ${u}`;
     items.push({ key: "L", emoji: "⬅️", title: en ? "Join link — LEFT team" : "Join link — LEFT team", sub: en ? "Whoever joins with this goes to your left side" : "इस link से जो जुड़ेगा वो आपकी left side में जाएगा", url: join("L"), text: msg(join("L")) });
   }
+  // The card opens as the card everywhere, a computer too (owner, 23 Oct 2026).
+  const cardUrl = res?.cardLink ? withView(res.cardLink, "card") : "";
   if (res?.cardLink) items.push({
     key: "card", emoji: "📇", title: en ? "My card" : "मेरा card", sub: en ? "Your digital visiting card — for customers" : "आपका digital visiting card — customers के लिए",
-    url: res.cardLink, text: en ? `Hi! Here is my digital visiting card — contact, products and more in one tap: ${res.cardLink}` : `नमस्ते! ये मेरा digital visiting card है — contact, products सब एक tap में: ${res.cardLink}`,
+    url: cardUrl, text: en ? `Hi! Here is my digital visiting card — contact, products and more in one tap: ${cardUrl}` : `नमस्ते! ये मेरा digital visiting card है — contact, products सब एक tap में: ${cardUrl}`,
   });
   // The website (owner's call, 2 Oct 2026): the same link with ?view=site opens the full website on a phone too.
   if (res?.cardLink) {
-    const siteUrl = `${res.cardLink}${res.cardLink.includes("?") ? "&" : "?"}view=site`;
+    // The owner's own domain is the website by itself (proxy.ts); the Shubhora link needs ?view=site.
+    const siteUrl = /\/c\//.test(res.cardLink) ? withView(res.cardLink, "site") : res.cardLink;
     items.push({
       key: "site", emoji: "🌐", title: en ? "My website" : "मेरी website", sub: en ? "Your full website — products, services, about, contact" : "आपकी पूरी website — products, services, about, contact",
       url: siteUrl, text: en ? `Visit our website — products, services and everything about us: ${siteUrl}` : `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteUrl}`,

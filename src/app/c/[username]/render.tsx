@@ -3,7 +3,7 @@
 // Canonical address: the owner's own domain when connected, else the white-label address, else Shubhora.
 import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { headers } from "next/headers";
+import { headers, cookies } from "next/headers";
 import { getCardByUsername } from "@/lib/sample-data";
 import { fetchCloudCard, countCardView, getPublicSupabase, fetchCardExpired, fetchCardPaused, fetchCardTracking, fetchCardDomain, fetchCardOwnerUsername, findCardByLooseLink } from "@/lib/supabase/public";
 import { CardPaused } from "@/components/card-paused";
@@ -185,7 +185,12 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // The free plan is the digital card only (owner, 16 Oct 2026): ?view=site opens the website only when the card has one switched on
   // (every website made before this stays as it was), when the owner is on a paid plan (their own previews), or on a partner's card.
   const siteAllowed = !!card.site?.enabled || !expired || !!brand;
-  const view = viewParam === "card" ? "card" : viewParam === "site" ? (siteAllowed ? "site" : "card") : card.site?.enabled && (!mobile || story || adv) ? "site" : "card";
+  // On the member's own domain (proxy.ts sets x-own-domain) the plain address is the website on every screen, a phone too;
+  // ?view=card (kept for the visit in the "sv" cookie) is the card (owner, 23 Oct 2026).
+  const ownDomain = hdrs.get("x-own-domain") === "1";
+  const kept = ownDomain ? (await cookies()).get("sv")?.value : undefined;
+  const asked = viewParam === "card" || viewParam === "site" ? viewParam : kept === "card" || kept === "site" ? kept : undefined;
+  const view = asked === "card" ? "card" : asked === "site" ? (siteAllowed ? "site" : "card") : card.site?.enabled && (!mobile || story || adv || ownDomain) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
   const tracking = await trackingP;
   const joinHandle = brand ? null : await ownerP;
