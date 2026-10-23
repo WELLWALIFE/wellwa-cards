@@ -394,7 +394,7 @@ export default function AdvancedSitePage() {
   const header = (
     <div className="flex items-center gap-2">
       <button type="button" onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-      <h1 className="flex-1 text-lg font-bold">{T("Advanced website", "Advanced website")}</h1>
+      <h1 className="flex-1 text-lg font-bold">{T("Premium website", "Premium website")}</h1>
     </div>
   );
 
@@ -601,75 +601,58 @@ export default function AdvancedSitePage() {
   }
 
   /* ---- 1 + 2 · what changes, and how to get it ---- */
-  const bullets: [string, string, string, string][] = [
-    ["A layout made only for your business", "सिर्फ़ आपके business के लिए बना layout", "Built from your trade and your details, and checked against other websites of the same trade so yours is not a copy of theirs.", "आपके काम और आपकी जानकारी से बना, और उसी काम की दूसरी websites से मिलाकर देखा जाता है ताकि आपकी किसी की नक़ल न हो।"],
-    ["AI reviews your present site first", "पहले AI आपकी मौजूदा site जाँचता है", "It lists what is weak — a flat top, plain titles, little proof — and the new design fixes those.", "कमज़ोर बातों की list बनती है — फीका ऊपरी हिस्सा, सादे titles, कम भरोसा — और नया design उन्हें ठीक करता है।"],
-    ["A more premium look and words", "ज़्यादा premium look और शब्द", "New composition, spacing, colours and fonts; a sharper top line, About text and section titles.", "नई बनावट, spacing, रंग और fonts; ऊपर की बात, About और section titles ज़्यादा असरदार।"],
-    ["Your basic website is kept", "आपकी basic website बची रहती है", "You see the new site before it goes live, and you can switch back whenever you want.", "Live होने से पहले आप नई site देखते हैं, और जब चाहें वापस basic पर जा सकते हैं।"],
+  // Kept short (owner, 23 Oct 2026: "jo zaroori hai wahi likhna hai, simple"): one line on top, the button, three short points.
+  const bullets: [string, string][] = [
+    ["A design made only for your business", "सिर्फ़ आपके business के लिए नया design"],
+    ["See it first, then put it live", "पहले देखें, फिर live करें"],
+    ["Your basic website stays saved", "पुरानी website भी save रहती है"],
   ];
   return (
-    <div className="space-y-4 py-2">
+    <div className="space-y-3 py-2">
       {header}
-      <section className="relative overflow-hidden rounded-3xl p-5 text-white shadow-float grad-brand">
-        <div aria-hidden="true" className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
-        <div className="relative space-y-2">
-          <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide"><Sparkles className="h-3 w-3" /> Premium</span>
-          <h2 className="text-2xl font-extrabold leading-tight tracking-tight">{T("A website that looks made for you alone", "ऐसी website जो सिर्फ़ आपके लिए बनी दिखे")}</h2>
-          <p className="text-sm text-white/90">{T("AI reviews your site and gives it a premium new look — a layout made only for your business.", "AI आपकी site को जाँचकर उसे premium नया look देता है — ऐसा layout जो सिर्फ़ आपके business के लिए बने।")}</p>
-        </div>
-      </section>
-
-      <section className={`${box} space-y-3`}>
-        <p className="text-sm font-bold">{T("What changes", "क्या बदलता है")}</p>
-        <ul className="space-y-3">
-          {bullets.map(([te, th, de, dh]) => (
-            <li key={te} className="flex items-start gap-2.5">
-              <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-ai" />
-              <span className="min-w-0"><span className="block text-sm font-semibold">{T(te, th)}</span><span className="block text-xs text-muted">{T(de, dh)}</span></span>
-            </li>
-          ))}
+      <section className="space-y-3 rounded-3xl p-5 text-white shadow-float grad-brand">
+        <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide"><Sparkles className="h-3 w-3" /> Premium</span>
+        <h2 className="text-xl font-extrabold leading-tight">{T("AI gives your website a premium new look", "AI आपकी website को premium नया look देगा")}</h2>
+        <ul className="space-y-1.5">
+          {bullets.map(([te, th]) => <li key={te} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 shrink-0" /> {T(te, th)}</li>)}
         </ul>
-        <p className="rounded-xl bg-surface2 px-3 py-2.5 text-xs text-muted">{T("What it does not do: it does not make new photos or change your prices, phone number or address. It uses the photos and facts already on your website.", "ये क्या नहीं करता: नई photos नहीं बनाता, और आपके दाम, फ़ोन number या पता नहीं बदलता। आपकी website की मौजूदा photos और जानकारी ही इस्तेमाल होती हैं।")}</p>
       </section>
 
-      <section className={`${box} space-y-3`}>
+      <section className={`${box} space-y-2.5`}>
         {cur?.has && (
-          <div className="space-y-1.5 rounded-xl border border-ai/30 bg-ai-soft/50 px-3 py-2.5">
-            <p className="text-sm font-semibold">{cur.on ? T("You already have an advanced website — it is live.", "आपके पास advanced website पहले से है — वो live है।") : T("You have an advanced website saved, but your basic one is showing.", "आपकी advanced website save है, पर अभी basic दिख रही है।")}</p>
+          <div className="space-y-1 rounded-xl border border-ai/30 bg-ai-soft/50 px-3 py-2">
+            <p className="text-sm font-semibold">{cur.on ? T("Your Premium website is live.", "आपकी Premium website live है।") : T("Your Premium design is saved; the basic one is showing.", "Premium design save है; अभी पुरानी website दिख रही है।")}</p>
             <AdvancedSwitch cardId={card?.id} on={!!cur.on} onChanged={(s) => { if (s) setCur(s); }} />
           </div>
         )}
         {allowed ? (
           <div className="space-y-1.5">
-            {paidNote && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Payment received. Thank you!", "Payment मिल गया। धन्यवाद!")}</p>}
+            {paidNote && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Payment received.", "Payment मिल गया।")}</p>}
             <button type="button" onClick={() => start("make")} disabled={!!startBusy || remaining <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              {startBusy === "make" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {cur?.has ? T("Design it again", "दोबारा design बनाएँ") : T("Make my advanced website", "मेरी advanced website बनाएँ")}
+              {startBusy === "make" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {cur?.has ? T("Make a new design", "नया design बनाएँ") : T("Make my Premium website", "मेरी Premium website बनाएँ")}
             </button>
-            {remaining <= 0
-              ? <p className="text-xs text-muted">{T(`You have used all ${TRY_LIMIT} layouts of this payment.`, `इस payment के सारे ${TRY_LIMIT} layouts इस्तेमाल हो चुके हैं।`)}</p>
-              : <p className="text-xs text-muted">{T(`About 1–2 minutes. You see it first, and you can try up to ${TRY_LIMIT} layouts.`, `करीब 1–2 मिनट। पहले आप देखते हैं, और ${TRY_LIMIT} layouts तक आज़मा सकते हैं।`)}</p>}
+            <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`All ${TRY_LIMIT} designs used.`, `सारे ${TRY_LIMIT} design इस्तेमाल हो गए।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} designs left`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी`)}</p>
             {startErr && <p className={errBox}>{startErr}</p>}
           </div>
         ) : !pending && (!selling || closedReason === "flag" || closedReason === "closed" || closedReason === "off") ? (
-          <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2.5 text-sm">{T("The advanced website is opening soon. Nothing to pay yet — we will tell you when it is ready.", "Advanced website जल्द शुरू हो रही है। अभी कुछ देना नहीं है — तैयार होते ही हम बता देंगे।")}</p>
+          <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2.5 text-sm">{T("Coming soon. Nothing to pay yet.", "जल्द आ रहा है। अभी कुछ देना नहीं है।")}</p>
         ) : (
           <div className="space-y-1.5">
             <div className="flex items-end justify-between gap-2">
-              <p className="text-sm font-bold">{growth ? T("Upgrade to the Premium website", "Premium website में upgrade करें") : T("Get the Premium website", "Premium website पाएँ")}</p>
+              <p className="text-sm font-bold">{growth ? T("Upgrade to Premium", "Premium में upgrade करें") : T("Get Premium", "Premium लें")}</p>
               <p className="text-2xl font-extrabold">{priceText}</p>
             </div>
-            <p className="text-xs text-muted">{growth ? T("You are on Standard (₹2,999): you pay only the difference, ₹3,000, not the full ₹5,999.", "आप Standard (₹2,999) पर हैं: पूरे ₹5,999 नहीं, सिर्फ़ फ़र्क़ ₹3,000 देना है।") : T("Premium: ₹5,999 for the first month, then ₹2,999 a month (it includes the Standard plan).", "Premium: पहला महीना ₹5,999, फिर ₹2,999 प्रति महीना (इसमें Standard plan शामिल है)।")}</p>
-            <p className="text-xs text-muted">{T(`One payment. You can look at up to ${TRY_LIMIT} layouts and keep the one you like — or keep your basic site.`, `एक बार का payment। ${TRY_LIMIT} layouts तक देखकर जो पसंद आए रखें — या अपनी basic site रखें।`)}</p>
+            <p className="text-xs text-muted">{growth ? T("You pay only the difference from Standard.", "Standard से सिर्फ़ फ़र्क़ देना है।") : T("₹5,999 first month, then ₹2,999 a month.", "पहला महीना ₹5,999, फिर ₹2,999 महीना।")}</p>
             {pending ? (
               <>
-                <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">{T("Your payment went through, but we have not confirmed it yet. Please do not pay again.", "आपका payment हो चुका है, पर हमने अभी confirm नहीं किया। कृपया दोबारा payment न करें।")}</p>
+                <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">{T("Payment done but not confirmed yet. Do not pay again.", "Payment हो गया, confirm बाकी है। दोबारा payment न करें।")}</p>
                 <button type="button" onClick={() => confirmPay(pending)} disabled={payBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
                   {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {T("Confirm my payment", "मेरा payment confirm करें")}
                 </button>
               </>
             ) : (
               <button type="button" onClick={pay} disabled={payBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {growth ? T(`Upgrade — ${priceText}`, `Upgrade करें — ${priceText}`) : T("Get Premium — ₹5,999 first month", "Premium लें — पहला महीना ₹5,999")}
+                {payBusy && <LoaderCircle className="h-5 w-5 animate-spin" />} {growth ? T(`Upgrade — ${priceText}`, `Upgrade करें — ${priceText}`) : T("Get Premium — ₹5,999", "Premium लें — ₹5,999")}
               </button>
             )}
             {payErr && <p className={errBox}>{payErr}</p>}
