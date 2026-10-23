@@ -1,4 +1,4 @@
-// Admin → Live help: everyone who tapped "Admin" in Help and is inside their 15 minutes (GET), and a nudge to a paused one to share again (POST).
+// Admin → Live help: everyone who tapped "Admin" in Help and is inside their 30 minutes (GET), and a nudge to a paused one to share again (POST).
 import { adminAllowedFor } from "@/lib/admin-guard";
 import { adminShares, findShare, knock, viewerCount } from "@/lib/live-share";
 

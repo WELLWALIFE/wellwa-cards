@@ -3,8 +3,9 @@
 // Shubhora screen live, and can only look. Opened from the Help panel (a window event), so it works on every screen of the app.
 //
 // What the person is told, before anything starts, is exactly what happens: only this app's screen, only to whoever gets the link, nothing can be
-// done from the other side, a password is never shown, and it ends when they tap Stop, or by itself after 15 minutes. The SAME link keeps working for
-// those 15 minutes: if sharing stopped by mistake, whoever opens it again makes this app ask "share your screen?" and the person decides.
+// done from the other side, a password is never shown, and it ends when they tap Stop, or by itself after 30 minutes. The SAME link keeps working:
+// if sharing stopped (by mistake, or because the 30 minutes ran out), whoever opens it again — or taps Reconnect on it — makes this app ask "share your
+// screen?" and the person decides; on yes the same link carries on (another 30 minutes when the time had run out). No new link is needed for a day.
 // lib/live-share.ts is the server.
 
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -21,7 +22,7 @@ const STATUS_MS = 4_000;
 const SECRET_FIELD = /otp|one-time|passcode|password|\bpin\b|cvv|cvc|card|aadhaar|aadhar|\bpan\b|account|ifsc|upi|bank/i;
 
 type Live = { token: string; secret: string; url: string; expiresAt: number; kind: ShareKind };
-type Status = { token: string; kind: ShareKind; state: "live" | "paused" | "ended"; expiresAt: number; viewers: number; knockAt: number; waiting: boolean; url: string };
+type Status = { token: string; kind: ShareKind; state: "live" | "paused" | "ended"; why?: string | null; expiresAt: number; viewers: number; knockAt: number; waiting: boolean; url: string };
 
 export function ShareScreen() {
   const { lang } = useT();
@@ -48,7 +49,7 @@ export function ShareScreen() {
     return () => window.removeEventListener(SHARE_SCREEN_EVENT, open);
   }, []);
 
-  /** This account's own link, if it is still inside its 15 minutes (and whether somebody is waiting for sharing to start again). */
+  /** This account's own link, if it is still open (and whether somebody is waiting for sharing to start again). */
   const refresh = useCallback(async () => {
     try {
       const r = await api<{ link?: Status | null }>("/api/share/status");
@@ -65,7 +66,8 @@ export function ShareScreen() {
       const r = await fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: l.token, secret: l.secret, events, ...(extra ?? {}) }), keepalive: !!extra?.end, cache: "no-store" });
       const j = (await r.json().catch(() => ({}))) as { viewers?: number; ended?: string; paused?: string };
       if (typeof j.viewers === "number") setViewers(j.viewers);
-      if (j.ended) { halt(false); setNote(j.ended === "expired" ? T("The 15 minutes are over, so sharing has ended. The link no longer works.", "15 मिनट पूरे हो गए, इसलिए sharing बंद हो गई। link अब नहीं चलेगा।") : T("Sharing has ended.", "sharing बंद हो गई।")); }
+      if (j.ended) { halt(false); setNote(j.ended === "expired" ? T("This link is over. Please make a new one.", "ये link खत्म हो गया। नया link बनाएँ।") : T("Sharing has ended.", "sharing बंद हो गई।")); }
+      else if (j.paused === "expired") { halt(false); setNote(T("The 30 minutes are over, so sharing stopped.", "30 मिनट पूरे हो गए, इसलिए sharing रुक गई।")); void refresh(); }
       else if (j.paused === "stopped" || r.status === 403) { halt(false); void refresh(); }
     } catch {
       // offline for a moment (or a slow send): what was not sent goes back in front, so the next push carries it (and the first picture is never lost)
@@ -82,7 +84,7 @@ export function ShareScreen() {
     if (!sent) void fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body, keepalive: true, cache: "no-store" }).catch(() => undefined);
   }
 
-  /** Stops recording and, when asked, tells the server (sharing stops at once; the link itself stays until its 15 minutes are over). */
+  /** Stops recording and, when asked, tells the server (sharing stops at once; the link itself stays, so it can reconnect). */
   function halt(tell: boolean) {
     stopRec.current?.(); stopRec.current = undefined;
     for (const t of timers.current) clearInterval(t); timers.current = [];
@@ -142,7 +144,7 @@ export function ShareScreen() {
     } finally { setBusy(false); }
   }
 
-  // Closing the page stops sharing at once (the link stays, for its 15 minutes). A phone that only switches app is covered by the server: after 2 minutes
+  // Closing the page stops sharing at once (the link stays, and can reconnect). A phone that only switches app is covered by the server: after 2 minutes
   // without a sign of life it shows the viewer "paused", and carries on by itself when the app is back.
   useEffect(() => {
     const bye = (e: PageTransitionEvent) => {
@@ -176,17 +178,19 @@ export function ShareScreen() {
   }, [live, st]);
 
   // Somebody opened the link (or asked again) while nothing is being shared: ask, never start by itself.
-  const knock = !!st && !live && st.waiting && st.state === "paused" && st.knockAt > dismissed.current && st.expiresAt > now && !ask;
+  const knock = !!st && !live && st.waiting && st.state === "paused" && st.knockAt > dismissed.current && !ask;
 
   const minsLeft = (at: number) => Math.max(0, Math.round((at - now) / 60_000));
   const isAdmin = (live?.kind ?? ask) === "admin";
-  const shareText = live ? `${T("I am sharing my Shubhora screen with you so you can guide me. Open this link to watch (you can only watch, and the link works for 15 minutes):", "मैं अपनी Shubhora की screen आपको दिखा रहा/रही हूँ ताकि आप मुझे बता सकें। देखने के लिए ये link खोलें (आप सिर्फ़ देख सकते हैं, link 15 मिनट चलेगा):")}\n${live.url}` : "";
+  const shareText = live ? `${T("I am sharing my Shubhora screen with you so you can guide me. Open this link to watch (you can only watch; it runs 30 minutes at a time, and if it stops just tap Reconnect on the same link):", "मैं अपनी Shubhora की screen आपको दिखा रहा/रही हूँ ताकि आप मुझे बता सकें। देखने के लिए ये link खोलें (आप सिर्फ़ देख सकते हैं; एक बार में 30 मिनट चलेगा, रुक जाए तो उसी link पर Reconnect दबाएँ):")}\n${live.url}` : "";
   async function copy() {
     const url = live?.url ?? st?.url;
     if (!url) return;
     try { await navigator.clipboard.writeText(url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* ignore */ }
   }
-  const sameLink = !live && st && st.state === "paused" && st.kind === (ask ?? "link") && st.expiresAt > now ? st : null;
+  const sameLink = !live && st && st.state === "paused" && st.kind === (ask ?? "link") ? st : null;
+  /** The 30 minutes of this turn ran out: Reconnect gives the same link another 30. */
+  const runOut = (x: Status) => x.why === "expired" || x.expiresAt <= now;
 
   return (
     <>
@@ -202,7 +206,7 @@ export function ShareScreen() {
                 <p className="rounded-xl bg-good/10 px-3 py-2.5 text-sm font-medium">
                   {isAdmin
                     ? T("Your request has gone to the Shubhora admin. Keep this app open: they will join in a moment and see only your Shubhora screen.", "आपकी request Shubhora admin के पास पहुँच गई है। app खुला रखें: वो अभी जुड़ेंगे और सिर्फ़ आपकी Shubhora screen देखेंगे।")
-                    : T("Your link is ready and works for 15 minutes. Send it to whoever should watch. Your screen is being shared now.", "आपका link तैयार है और 15 मिनट चलेगा। जिसे दिखाना है उसे भेजें। आपकी screen अब share हो रही है।")}
+                    : T("Your link is ready and runs 30 minutes at a time (it can reconnect on the same link). Send it to whoever should watch. Your screen is being shared now.", "आपका link तैयार है, एक बार में 30 मिनट चलेगा (रुकने पर उसी link से Reconnect हो जाएगा)। जिसे दिखाना है उसे भेजें। आपकी screen अब share हो रही है।")}
                 </p>
                 {!isAdmin && <>
                   <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" onClick={() => setAsk(null)}
@@ -223,12 +227,12 @@ export function ShareScreen() {
             <ul className="space-y-2 text-sm">
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("They can only look. Nothing can be tapped, changed or sent from their side.", "वो सिर्फ़ देख सकते हैं। उनकी तरफ़ से कुछ दबाया, बदला या भेजा नहीं जा सकता।")}</li>
               <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("No other app, no phone screen, no passwords. Fields that look like a PIN, OTP or card are hidden.", "कोई दूसरा app, phone की screen या password नहीं। PIN, OTP, card जैसे fields छिपे रहते हैं।")}</li>
-              <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("It ends when you tap End, or by itself after 15 minutes. If it stops by mistake, the same link works again for those 15 minutes; you will be asked before your screen is shared again.", "ये तब खत्म होता है जब आप End दबाएँ, या 15 मिनट बाद अपने आप। गलती से रुक जाए तो उन्हीं 15 मिनट में वही link फिर चलता है; screen दोबारा share होने से पहले आपसे पूछा जाएगा।")}</li>
+              <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("It stops when you tap End, or by itself after 30 minutes. After that you do not need a new link: tap Reconnect (or they tap it on their side) and the same link runs again; you will be asked before your screen is shared again.", "ये तब रुकता है जब आप End दबाएँ, या 30 मिनट बाद अपने आप। उसके बाद नया link नहीं बनाना पड़ेगा: Reconnect दबाएँ (या सामने वाला अपनी तरफ़ दबाए) और वही link फिर चलेगा; screen दोबारा share होने से पहले आपसे पूछा जाएगा।")}</li>
             </ul>
             {err && <p className="text-xs text-danger">{err}</p>}
             {sameLink && (
               <button type="button" onClick={() => void resume(sameLink)} disabled={busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {T(`Continue with the same link (${minsLeft(sameLink.expiresAt)} min left)`, `वही link जारी रखें (${minsLeft(sameLink.expiresAt)} मिनट बचे)`)}
+                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {runOut(sameLink) ? T("Reconnect on the same link (30 min)", "उसी link से Reconnect करें (30 मिनट)") : T(`Continue with the same link (${minsLeft(sameLink.expiresAt)} min left)`, `वही link जारी रखें (${minsLeft(sameLink.expiresAt)} मिनट बचे)`)}
               </button>
             )}
             <div className="grid grid-cols-2 gap-2">
@@ -258,7 +262,7 @@ export function ShareScreen() {
             <div className="grid grid-cols-2 gap-2">
               <button type="button" onClick={() => { dismissed.current = st.knockAt; setSt({ ...st }); }} className="rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">{T("Not now", "अभी नहीं")}</button>
               <button type="button" onClick={() => void resume(st)} disabled={busy} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {T("Share screen", "Screen share करें")}
+                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {runOut(st) ? T("Reconnect", "Reconnect करें") : T("Share screen", "Screen share करें")}
               </button>
             </div>
           </div>
@@ -286,7 +290,14 @@ export function ShareScreen() {
           <div className="flex items-start gap-2 rounded-xl border border-border bg-[#12144a] px-3 py-2 text-xs font-semibold text-white shadow-card">
             <span className="min-w-0 flex-1 leading-snug">
               {note}
-              {st && st.state === "paused" && st.expiresAt > now && <span className="block font-normal text-white/70">{T(`The same link still works for ${minsLeft(st.expiresAt)} more min. You will be asked before sharing again.`, `वही link ${minsLeft(st.expiresAt)} मिनट और चलेगा। दोबारा share करने से पहले आपसे पूछा जाएगा।`)}</span>}
+              {st && st.state === "paused" && <span className="block font-normal text-white/70">{runOut(st)
+                ? T("No new link needed: tap Reconnect and the same link runs for another 30 min.", "नया link नहीं चाहिए: Reconnect दबाएँ, वही link 30 मिनट और चलेगा।")
+                : T(`The same link still works for ${minsLeft(st.expiresAt)} more min. You will be asked before sharing again.`, `वही link ${minsLeft(st.expiresAt)} मिनट और चलेगा। दोबारा share करने से पहले आपसे पूछा जाएगा।`)}</span>}
+              {st && st.state === "paused" && (
+                <button type="button" onClick={() => void resume(st)} disabled={busy} className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-[#12144a] disabled:opacity-60">
+                  {busy && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />} {T("Reconnect", "Reconnect करें")}
+                </button>
+              )}
             </span>
             <button type="button" onClick={() => setNote("")} aria-label={T("Close", "बंद करें")} className="shrink-0"><X className="h-4 w-4" /></button>
           </div>

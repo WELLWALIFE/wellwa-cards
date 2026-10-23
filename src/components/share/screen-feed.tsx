@@ -103,11 +103,12 @@ export function ScreenFeed({ load, name = "the other person", maxWidth = 1.25 }:
   }
 
   const msg = state === "ended"
-    ? (why === "expired" ? "This 15-minute link is over. Ask for a new link." : "This link was closed. Ask for a new link.")
-    : state === "notfound" ? "This link is not valid, or it is already over (a link lasts 15 minutes)."
+    ? (why === "expired" ? "This link is over. Ask for a new link." : "This link was closed. Ask for a new link.")
+    : state === "notfound" ? "This link is not valid, or it is already over."
     : state === "full" ? "Too many people are watching this screen."
     : state === "paused"
-      ? (why === "stopped" ? `${name} stopped sharing. If they share again it continues here by itself, you do not need a new link.`
+      ? (why === "expired" ? `The 30 minutes are over. Tap Reconnect: ${name} will be asked on their phone, and this same link carries on (no new link needed).`
+        : why === "stopped" ? `${name} stopped sharing. If they share again it continues here by itself, you do not need a new link.`
         : why === "offline" ? "Your connection dropped. Trying again…"
         : `Paused: ${name} has left the app for a moment. It continues here by itself when they are back.`)
     : state === "connecting" || !seen ? "Connecting…" : "";
@@ -126,11 +127,11 @@ export function ScreenFeed({ load, name = "the other person", maxWidth = 1.25 }:
       {state === "paused" && why !== "offline" && (
         <div className="mx-auto max-w-md px-6 pb-3 text-center">
           <button type="button" onClick={() => void askAgain()} disabled={asked} className="rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-[#12144a] disabled:opacity-60">
-            {asked ? "Asked. They will see a question on their phone." : "Ask them to share again"}
+            {asked ? "Asked. They will see a question on their phone." : why === "expired" ? "Reconnect" : "Ask them to share again"}
           </button>
         </div>
       )}
-      {left !== null && state !== "ended" && state !== "notfound" && (
+      {left !== null && state !== "ended" && state !== "notfound" && why !== "expired" && (
         <p className="mx-auto max-w-md px-6 pb-8 text-center text-[11px] text-white/50">This link works for {left} more minute{left === 1 ? "" : "s"}.</p>
       )}
     </>

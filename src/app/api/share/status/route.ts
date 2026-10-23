@@ -1,4 +1,4 @@
-// GET (login required) → this account's own link, if it is still inside its 15 minutes: its state, and whether somebody is waiting for the app to start
+// GET (login required) → this account's own link, if it is still open (sharing, paused, or able to reconnect): its state, and whether somebody is waiting for the app to start
 // sharing again. Only the owner's own app asks; it never shows anything of a viewer except how many there are.
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";

@@ -78,8 +78,8 @@ export function HelpDock() {
             <p className="mt-4 flex gap-2 rounded-xl bg-surface2 px-3 py-2.5 text-xs leading-snug text-muted">
               <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-good" />
               <span>{hi
-                ? "सिर्फ़ Shubhora screen दिखेगी: आपका कोई दूसरा app या phone की screen नहीं, और password कभी नहीं। वो सिर्फ़ देख सकते हैं, कुछ कर नहीं सकते। 15 मिनट बाद या आपके End दबाने पर बंद हो जाता है।"
-                : "Only your Shubhora screen is shown: no other app, no phone screen, never a password. They can only look, never do anything. It ends after 15 minutes, or when you tap End."}</span>
+                ? "सिर्फ़ Shubhora screen दिखेगी: आपका कोई दूसरा app या phone की screen नहीं, और password कभी नहीं। वो सिर्फ़ देख सकते हैं, कुछ कर नहीं सकते। 30 मिनट बाद या आपके End दबाने पर बंद हो जाता है; वही link बाद में Reconnect हो सकता है।"
+                : "Only your Shubhora screen is shown: no other app, no phone screen, never a password. They can only look, never do anything. It ends after 30 minutes, or when you tap End; the same link can reconnect later."}</span>
             </p>
           </div>
         </div>

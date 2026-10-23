@@ -38,7 +38,7 @@ export function ShareRequests() {
   return (
     <div className="rounded-2xl border border-border bg-surface p-4">
       <p className="flex items-center gap-2 text-sm font-semibold"><Eye className="h-4 w-4 text-brand" /> Asking you now <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] text-brand-ink">{reqs.length}</span></p>
-      <p className="mt-1 text-xs text-muted">People who tapped “Admin” under Call for live help. Their Shubhora screen opens here live, as quick as it shows on their phone. View only; a request lasts 15 minutes.</p>
+      <p className="mt-1 text-xs text-muted">People who tapped “Admin” under Call for live help. Their Shubhora screen opens here live, as quick as it shows on their phone. View only; a request lasts 30 minutes.</p>
       {!reqs.length && <p className="mt-3 rounded-xl border border-dashed border-border px-3 py-5 text-center text-sm text-muted">Nobody is asking right now.</p>}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
         {reqs.map((r) => (

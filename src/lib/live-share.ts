@@ -8,14 +8,17 @@ import "server-only";
 //     guessed a link — can only read.
 //   • What is shared is only what the sender's Shubhora page draws (rrweb): never another app or tab, never a password (masked at the source),
 //     never cookies, tokens or the address bar.
-//   • A link lives 15 minutes, counted from when it was made, and then it is gone (sharing stops by itself). Inside those 15 minutes the SAME link
-//     can be sharing, paused (the sender tapped Stop, or left the app) and sharing again; the sender is asked on their phone before it starts again.
+//   • One sharing turn lasts 30 minutes (owner, 23 Oct 2026: was 15), then sharing stops by itself. The link is NOT thrown away: for a day after,
+//     the SAME link can "Reconnect" — the viewer taps Reconnect (or the sender taps it), the sender is asked on their phone, and on yes the same link
+//     gets another 30 minutes. Inside a turn the same link can be sharing, paused (the sender tapped Stop, or left the app) and sharing again; the
+//     sender is always asked before it starts again.
 //   • Nothing is stored on disk: it lives in this server's memory only, and is gone at the end (or at a restart).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
 export type Ev = { type: number; data?: { width?: number; height?: number } & Record<string, unknown>; timestamp?: number } & Record<string, unknown>;
-/** "stopped": the sender tapped Stop (or closed the page). "away": the app has not been heard from for a while. Both can be resumed on the same link. */
-export type PauseReason = "stopped" | "away";
+/** "stopped": the sender tapped Stop (or closed the page). "away": the app has not been heard from for a while. "expired": the 30 minutes of this turn
+ * are over. All can be resumed (reconnected) on the same link; "expired" for up to a day. */
+export type PauseReason = "stopped" | "away" | "expired";
 export type EndReason = "expired" | "closed";
 export type ShareKind = "link" | "admin";
 type Share = {
@@ -28,7 +31,8 @@ type Share = {
   viewers: Map<string, number>; waiters: Set<() => void>;
 };
 
-export const LINK_MS = 15 * 60_000;        // how long one link lives, from the moment it is made
+export const LINK_MS = 30 * 60_000;        // how long one sharing turn lives (from creation, and again from each reconnect after it ran out)
+const RECONNECT_MS = 24 * 60 * 60_000;     // after a turn ran out, the same link can still reconnect for this long, then it is over
 export const AWAY_MS = 120_000;            // the sender's app not heard from this long: sharing is paused (it can start again on the same link)
 const KEEP_ENDED_MS = 10 * 60_000;         // an ended link still says "ended" for a while, then is forgotten
 export const MAX_VIEWERS = 8;
@@ -58,7 +62,8 @@ function finish(s: Share, why: EndReason) {
 function sweep() {
   const now = Date.now();
   for (const [t, s] of shares) {
-    if (!s.ended && now >= s.expiresAt) finish(s, "expired");
+    if (!s.ended && now >= s.expiresAt + RECONNECT_MS) finish(s, "expired");
+    else if (!s.ended && now >= s.expiresAt && s.paused !== "expired") { s.paused = "expired"; clearPicture(s); wake(s); }   // the turn is over; the link waits for a reconnect
     else if (!s.ended && !s.paused && now - s.lastBeat > AWAY_MS) pause(s, "away");
     else if (s.ended && now - s.endedAt > KEEP_ENDED_MS) shares.delete(t);
   }
@@ -68,17 +73,17 @@ export function findShare(token: string): Share | null {
   sweep();
   return TOKEN.test(token) ? shares.get(token) ?? null : null;
 }
-/** The newest link of this account that is still inside its 15 minutes, if any. */
+/** The newest link of this account that is still open (sharing, paused, or waiting for a reconnect), if any. */
 export function shareOf(uid: string): Share | null {
   sweep();
   let best: Share | null = null;
   for (const s of shares.values()) if (s.uid === uid && !s.ended && (!best || s.at > best.at)) best = s;
   return best;
 }
-/** Links made to ask the admin for help that are still inside their 15 minutes, newest first. */
+/** Links made to ask the admin for help that are still inside their 30 minutes, newest first (a run-out one is no longer a live request). */
 export function adminShares(): Share[] {
   sweep();
-  return [...shares.values()].filter((s) => s.kind === "admin" && !s.ended).sort((a, b) => b.at - a.at);
+  return [...shares.values()].filter((s) => s.kind === "admin" && !s.ended && s.paused !== "expired").sort((a, b) => b.at - a.at);
 }
 /** The push secret, compared in constant time. */
 export function secretOk(s: Share, secret: unknown): boolean {
@@ -98,11 +103,14 @@ export function createShare(uid: string, kind: ShareKind = "link", who: { name: 
   return { token, secret, expiresAt: now + LINK_MS };
 }
 
-/** The owner of the link starts sharing again on the SAME link: a new push secret (the old one stops working), the picture starts afresh. */
+/** The owner of the link starts sharing again on the SAME link: a new push secret (the old one stops working), the picture starts afresh. A link whose
+ *  30 minutes ran out gets another 30 (Reconnect): the viewers keep the link they already have. */
 export function resumeShare(s: Share): { secret: string } | null {
   if (s.ended) return null;
   const secret = randomBytes(24).toString("base64url");
-  s.secretHash = hash(secret); s.paused = null; s.lastBeat = Date.now();
+  const now = Date.now();
+  if (s.paused === "expired" || now >= s.expiresAt) s.expiresAt = now + LINK_MS;
+  s.secretHash = hash(secret); s.paused = null; s.lastBeat = now;
   clearPicture(s); s.epoch++; s.knockAt = 0;
   wake(s);
   return { secret };
@@ -131,8 +139,8 @@ export function senderView(s: Share) {
 /** The sender's batch of screen events. Returns how many are watching, and whether the link has ended or been paused. */
 export function pushEvents(s: Share, events: unknown[]): { viewers: number; ended: EndReason | null; paused: PauseReason | null; expiresAt: number } {
   if (s.ended) return { viewers: 0, ended: s.ended, paused: s.paused, expiresAt: s.expiresAt };
-  // A sender that was only "away" and is heard again carries on by itself; one that was stopped does not (it needs a resume, which the owner confirms).
-  if (s.paused === "stopped") return { viewers: viewerCount(s), ended: null, paused: s.paused, expiresAt: s.expiresAt };
+  // A sender that was only "away" and is heard again carries on by itself; one that was stopped (or ran out of time) does not (it needs a resume, which the owner confirms).
+  if (s.paused === "stopped" || s.paused === "expired") return { viewers: viewerCount(s), ended: null, paused: s.paused, expiresAt: s.expiresAt };
   s.lastBeat = Date.now();
   if (s.paused === "away") { s.paused = null; wake(s); }
   for (const raw of events.slice(0, 1000)) {
@@ -151,7 +159,7 @@ export function pushEvents(s: Share, events: unknown[]): { viewers: number; ende
   return { viewers: viewerCount(s), ended: s.ended, paused: s.paused, expiresAt: s.expiresAt };
 }
 
-/** The sender tapped Stop: sharing stops now. The link stays (until its 15 minutes are over) so it can be started again. */
+/** The sender tapped Stop: sharing stops now. The link stays so it can be started again. */
 export function stopShare(s: Share) { pause(s, "stopped"); }
 /** Gives the link up altogether. */
 export function closeShare(s: Share) { finish(s, "closed"); }
