@@ -380,6 +380,9 @@ export type SitePatch = {
   /** Announcement bar; `null` removes it. */
   bar?: { text: string; link?: string; until?: string } | null;
   float?: "whatsapp" | "call" | "none";
+  /** The Premium website's colour (owner, 23 Oct 2026: the colour row did nothing on a Premium site): a SITE_PALETTES key or "brand"
+   *  with a #rrggbb colour. Applied to site.advanced.palette when the card has a Premium design. */
+  advancedPalette?: { key: string; color?: string };
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -407,6 +410,12 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     ...(patch.bar === null ? { bar: undefined } : patch.bar ? { bar: patch.bar } : {}),
     ...(patch.float ? { float: patch.float } : {}),
   };
+  const adv = (site as { advanced?: { palette?: Record<string, unknown> } & Record<string, unknown> }).advanced;
+  if (patch.advancedPalette && adv && typeof adv === "object") {
+    const pal = { ...(adv.palette ?? {}), key: patch.advancedPalette.key } as Record<string, unknown>;
+    if (patch.advancedPalette.key === "brand" && patch.advancedPalette.color) pal.color = patch.advancedPalette.color; else delete pal.color;
+    (site as Record<string, unknown>).advanced = { ...adv, palette: pal };
+  }
   const data = { ...row.data, site };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });
   if (!r.ok) throw new Error(r.text.slice(0, 200) || "save failed");

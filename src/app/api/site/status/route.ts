@@ -1,5 +1,6 @@
 // GET (bearer) → website status for the user's card (`?full=1` adds the whole card, for the website editor's
 // live preview). PATCH { enabled?, hidden?, hideProfile?, logoUrl?, hero?, style?, home?, reference? }.
+import { PALETTE_KEYS } from "@/lib/site-style";
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { siteStatus, patchSite, cleanStyle, cleanHome, type SitePatch } from "@/lib/site-server";
@@ -44,6 +45,11 @@ export async function PATCH(request: Request) {
     }).filter((x: { headline: string }) => x.headline);
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
+  if (b.advancedPalette && typeof b.advancedPalette === "object") {
+    const k = String((b.advancedPalette as { key?: unknown }).key ?? "");
+    const col = String((b.advancedPalette as { color?: unknown }).color ?? "");
+    if (k === "brand" || PALETTE_KEYS.includes(k)) patch.advancedPalette = { key: k, ...(/^#[0-9a-f]{6}$/i.test(col) ? { color: col.toLowerCase() } : {}) };
+  }
   if (b.bar === null) patch.bar = null;
   else if (b.bar && typeof b.bar === "object") {
     const t = String((b.bar as { text?: unknown }).text ?? "").trim().slice(0, 120);

@@ -97,7 +97,16 @@ export default function WebsiteEditPage() {
   const autoFacts = useMemo(() => card ? trustFacts({ ...card, site: { ...(card.site ?? { enabled: true }), home: { ...(card.site?.home ?? {}), stats: undefined } } }) : [], [card]);
   const stats = site.home?.stats ?? autoFacts;
   const brand = brandPalette(style.color || card?.themeColor || "#0e9e90");
-  const paletteKey = style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
+  // A Premium design carries its own colours (site.advanced.palette): the colour row changes THOSE when it is the design on show
+  // (owner, 23 Oct 2026: tapping a colour did nothing on a Premium site), and the basic site's colour along with it.
+  const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
+  const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
+    : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
+  const pickColour = (key: string, color?: string) => {
+    const nextStyle = { ...style, palette: key, ...(color !== undefined ? { color } : {}) };
+    if (adv) set({ style: nextStyle, advanced: { ...adv, palette: { ...(adv.palette ?? {}), key, ...(key === "brand" ? { color: color ?? style.color ?? card?.themeColor } : {}) } } as NonNullable<Card["site"]>["advanced"] });
+    else set({ style: nextStyle });
+  };
 
   function move(key: string, dir: -1 | 1) {
     const keys = sections.map((x) => x.key);
@@ -129,6 +138,7 @@ export default function WebsiteEditPage() {
         hidden: site.hidden ?? [],
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
+        ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}) } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
@@ -218,12 +228,12 @@ export default function WebsiteEditPage() {
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
           <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें — ऊपर website तुरंत बदलेगी" : "Pick a colour — the website above changes at once"}</p>
           <div className="mt-1.5 flex gap-2.5 overflow-x-auto pb-1">
-            <Swatch p={brand} on={paletteKey === "brand"} onClick={() => setStyle({ palette: "brand" })} label={hi ? "आपका" : "Yours"} />
-            {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => setStyle({ palette: p.key })} label={hi ? p.hi : p.name} />)}
+            <Swatch p={brand} on={paletteKey === "brand"} onClick={() => pickColour("brand")} label={hi ? "आपका" : "Yours"} />
+            {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => pickColour(p.key)} label={hi ? p.hi : p.name} />)}
           </div>
           {paletteKey === "brand" && (
             <label className="mt-0.5 inline-flex items-center gap-2 px-1 text-[11px] text-muted">
-              <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => setStyle({ color: e.target.value })} className="h-6 w-9 rounded border border-border bg-surface p-0.5" />
+              <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => pickColour("brand", e.target.value)} className="h-6 w-9 rounded border border-border bg-surface p-0.5" />
               {hi ? "अपना रंग" : "Your own colour"}
               {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">{hi ? "कार्ड जैसा" : "Same as the card"}</button>}
             </label>
