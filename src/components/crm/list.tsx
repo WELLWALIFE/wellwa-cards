@@ -8,8 +8,8 @@ import { Pipeline, AddLead } from "@/components/crm/crm";
 import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick } from "@/components/crm/shared";
 import { STAGE_LABEL } from "@/components/crm/i18n";
 
-type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string };
-const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "" };
+type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string; tag: string };
+const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "", tag: "" };
 
 export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[]) => void }) {
   const { L, ctx, as, openCustomer, startCall, version } = useShell();
@@ -50,11 +50,13 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
         {ctx.role !== "agent" && <button type="button" onClick={() => setAdding(true)} className="grad-brand rounded-xl p-2 text-white" aria-label={L.addLead}><Plus className="h-4 w-4" /></button>}
       </div>
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-        <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
+        <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned && !qy.tag} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
         <Chip on={qy.due === "any"} onClick={() => toggle("due", "any")}>⏰ {L.filterDue}</Chip>
         <Chip on={qy.idle === 7} onClick={() => toggle("idle", 7)}>{L.filterIdle}</Chip>
         {(ctx.agents.length > 0 || as) && <Chip on={qy.assigned === "me"} onClick={() => toggle("assigned", "me")}>👤 {L.mine}</Chip>}
         {Object.keys(STAGE_LABEL).map((s) => <Chip key={s} on={qy.stage === s} onClick={() => toggle("stage", s)}>{STAGE_LABEL[s][L.lang]}</Chip>)}
+        {/* Chats the AI found personal (family, friends): kept out of the list until opened here (owner, 23 Oct 2026). */}
+        <Chip on={qy.tag === "personal"} onClick={() => toggle("tag", "personal")}>🙂 {L.hi ? "Personal" : "Personal"}</Chip>
       </div>
       {filters && (
         <div className="space-y-2 rounded-xl border border-border bg-surface p-2.5 text-xs">

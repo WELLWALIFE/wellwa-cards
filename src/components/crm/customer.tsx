@@ -113,6 +113,15 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         ))}
       </div>
 
+      {(l.tags ?? []).includes("personal") && !(l.tags ?? []).includes("not-personal") && (
+        <div className="space-y-2 rounded-xl border border-ai/30 bg-ai/5 px-3 py-2 text-xs">
+          <p className="font-semibold text-ink">{L.hi ? "🙂 AI ने इसे personal chat माना — AI जवाब नहीं देगा, और ये Today / call list में नहीं आएगा।" : "🙂 The AI found this chat personal — no AI replies, and it stays out of Today and the call list."}</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button type="button" onClick={() => void patch({ tags: [...(l.tags ?? []).filter((t) => t !== "personal"), "not-personal"] })} className="rounded-lg border border-border bg-surface px-2.5 py-1 font-semibold text-ink">{L.hi ? "ये ग्राहक है" : "This is a customer"}</button>
+            <PersonalButton lead={l} onDone={onBack} />
+          </div>
+        </div>
+      )}
       {(l.tags ?? []).includes("not-interested") && (
         <div className="flex items-center gap-2 rounded-xl border border-danger/30 bg-danger/10 px-3 py-2 text-xs">
           <span className="min-w-0 flex-1 font-semibold text-danger">{L.hi ? "🚫 Not interested — AI और अपने-आप जाने वाले messages बंद हैं" : "🚫 Not interested — AI and automatic messages are off"}</span>

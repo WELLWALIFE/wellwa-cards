@@ -1429,22 +1429,28 @@ async function isNeverReply(jid) {
 /** "Not interested" in the CRM (owner, 23 Oct 2026): the lead carries the tag below and no automatic message goes to it — no AI
  *  reply, no follow-up. Read from the lead itself (cached a minute), so the owner's choice in the app takes effect at once. */
 const AI_STOP_TAG = "not-interested";
-const aiStopCache = new Map();   // jid -> { at, stop }
-async function aiStopped(jid) {
-  if (!cardContext || !SUPA_URL || !SUPA_KEY) return false;
+// Personal chats (owner, 23 Oct 2026): the AI tags them "personal" (markPersonal) and from then on stays silent; the app keeps
+// them out of Today and the call list. "not-personal" = the owner said it is a customer: never marked personal again.
+const aiStopCache = new Map();   // jid -> { at, stop, notPersonal }
+async function leadFlags(jid) {
+  const none = { stop: false, notPersonal: false };
+  if (!cardContext || !SUPA_URL || !SUPA_KEY) return none;
   const hit = aiStopCache.get(jid);
-  if (hit && Date.now() - hit.at < 60_000) return hit.stop;
+  if (hit && Date.now() - hit.at < 60_000) return hit;
   const pn = await phoneOf(jid);
   const phone = pn ? "+" + pn : jid;
   const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` };
   const rows = await fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=tags&limit=5`, { headers })
     .then((r) => (r.ok ? r.json() : null)).catch(() => null);
-  if (!Array.isArray(rows)) return hit?.stop ?? false;   // database not reachable: keep the last answer
-  const stop = rows.some((x) => Array.isArray(x.tags) && x.tags.includes(AI_STOP_TAG));
-  aiStopCache.set(jid, { at: Date.now(), stop });
+  if (!Array.isArray(rows)) return hit ?? none;   // database not reachable: keep the last answer
+  const tags = rows.flatMap((x) => (Array.isArray(x.tags) ? x.tags : []));
+  const notPersonal = tags.includes("not-personal");
+  const flags = { at: Date.now(), stop: tags.includes(AI_STOP_TAG) || (tags.includes("personal") && !notPersonal), notPersonal };
+  aiStopCache.set(jid, flags);
   if (aiStopCache.size > 5000) aiStopCache.delete(aiStopCache.keys().next().value);
-  return stop;
+  return flags;
 }
+async function aiStopped(jid) { return (await leadFlags(jid)).stop; }
 
 function stopFollowups(jid) {
   if (followups[jid]?.active) { followups[jid].active = false; followups[jid].updatedAt = Date.now(); saveFollowups(); }
@@ -1456,11 +1462,15 @@ async function markPersonal(jid) {
   const pn = await phoneOf(jid);
   const phone = pn ? "+" + pn : jid;
   const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" };
-  const rows = await fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id,tags`, { headers })
+  const read = () => fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id,tags`, { headers })
     .then((r) => (r.ok ? r.json() : [])).catch(() => []);
+  let rows = await read();
+  // The lead is made by the message log a moment earlier; if it is not there yet, look once more.
+  if (!Array.isArray(rows) || !rows.length) { await new Promise((r) => setTimeout(r, 4000)); rows = await read(); }
+  aiStopCache.delete(jid);
   for (const row of Array.isArray(rows) ? rows : []) {
     const tags = Array.isArray(row.tags) ? row.tags : [];
-    if (tags.includes("personal")) continue;
+    if (tags.includes("personal") || tags.includes("not-personal")) continue;   // the owner said: a customer
     await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ tags: [...tags, "personal"] }) }).catch(() => {});
   }
 }
@@ -1512,6 +1522,8 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
 
   // "generic": this card's own assistant, with memory and the personal filter.
   const q = quickRead(text);
+  const flags = await leadFlags(jid).catch(() => ({ notPersonal: false }));
+  if (flags.notPersonal && st.personalAt) { delete st.personalAt; agentState[jid] = { ...st, updatedAt: Date.now() }; saveAgentState(); }
   if (st.personalAt && !q.business) { stopFollowups(jid); console.log(`[v2] ${jid}: personal contact — silent`); return; }
   if (forwarded && !q.business) { console.log(`[v2] ${jid}: forwarded — silent`); return; }
   const hist = (await loadHistory(jid, waId)).filter((m) => !m.at || Date.now() - m.at < 30 * DAY);
@@ -1521,7 +1533,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
   if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { saveLead(jid, name, text); noteFollowupInbound(jid, name, text); return; }
   const botOut = firstContact && AD_OPENER_RE.test(text)
     ? adOpenerReply(jid, name)
-    : await buildReply(jid, text, { history: hist, personalCheck: true, known, saved: savedName(jid) });
+    : await buildReply(jid, text, { history: hist, personalCheck: !flags.notPersonal, known, saved: savedName(jid) });
   let { reply, alert } = splitAlert(botOut, text);
   if (reply && /\[\[\s*PERSONAL\s*\]\]/i.test(reply)) { // the tag anywhere — the old prompt likes to add a question
     const told = !!st.personalAt;
@@ -1824,10 +1836,23 @@ async function startWhatsApp() {
         if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { console.log(`[flow] handled ${jid}: ${text.slice(0, 30)}`); continue; }
         const botOut = firstContact && AD_OPENER_RE.test(text)
           ? adOpenerReply(jid, name)
-          : await buildReply(jid, text);
+          : await buildReply(jid, text, { personalCheck: !(await leadFlags(jid).catch(() => ({ notPersonal: false }))).notPersonal, known: knownBefore, saved: savedName(jid) });
         // The AI flags "needs the seller now" moments with a trailing
         // [[ALERT: …]] line; strip it and ping the card holder for real.
         let { reply, alert } = splitAlert(botOut, text);
+        // A personal chat (family, friends): tagged in the CRM (kept out of Today / the call list), no follow-ups, one polite line
+        // the first time and silence after (owner, 23 Oct 2026).
+        if (reply && /\[\[\s*PERSONAL\s*\]\]/i.test(reply)) {
+          const st0 = agentState[jid] || {};
+          const told = !!st0.personalAt;
+          agentState[jid] = { ...st0, personalAt: st0.personalAt || Date.now(), updatedAt: Date.now() };
+          saveAgentState();
+          markPersonal(jid).catch(() => {});
+          stopFollowups(jid);
+          console.log(`[wa] ${jid}: personal${told ? " — silent" : " — one polite line"}`);
+          if (!told) await sendReply(jid, genericPersonalLine(text));
+          continue;
+        }
         // Asked for the plan / a PDF? Make sure the document actually goes out,
         // even if the AI only talked about it.
         if (reply && DOC_ASK_RE.test(text)) reply = ensureDocs(reply);

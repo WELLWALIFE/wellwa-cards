@@ -18,6 +18,12 @@ export const TASK_COLS = "id,owner_id,lead_id,assigned_to,created_by,kind,title,
 export const OUTCOMES = ["connected", "no_answer", "busy", "switched_off", "wrong_number", "call_back", "not_interested", "unknown"] as const;
 /** The tag that stops every automatic message to a customer (AI replies, follow-ups, wishes, broadcasts) — set by "Not interested". */
 export const AI_STOP_TAG = "not-interested";
+/** Set by the WhatsApp AI when a chat is personal (family, friends): no AI reply, and the customer is kept out of Today, the
+ *  call list and the main list — only the "Personal" filter shows them (owner, 23 Oct 2026). "not-personal" = the owner said
+ *  it is a customer after all: the AI never marks it personal again. */
+export const PERSONAL_TAG = "personal";
+export const NOT_PERSONAL_TAG = "not-personal";
+const NOT_PERSONAL_LEADS = "tags=not.cs.%7Bpersonal%7D";
 export type Outcome = (typeof OUTCOMES)[number];
 export type CallRow = { id: string; owner_id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: "phone" | "exotel" | "ai"; status: string; started_at: string; seconds: number; outcome: Outcome; note: string; recording_url: string | null; created_at: string };
 export const CALL_COLS = "id,owner_id,lead_id,agent_id,direction,channel,status,started_at,seconds,outcome,note,recording_url,created_at";
@@ -71,6 +77,7 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
   if (qy.stage) f.push(`status=eq.${enc(qy.stage)}`);
   if (qy.kind) f.push(`kind=eq.${enc(qy.kind)}`);
   if (qy.tag) f.push(`tags=cs.${enc(`{${qy.tag.replace(/[{}",\\]/g, "")}}`)}`);
+  if (qy.tag !== PERSONAL_TAG && !q) f.push(NOT_PERSONAL_LEADS);   // personal chats only under their own filter (a search still finds them)
   if (qy.source) f.push(`source=eq.${enc(qy.source)}`);
   if (qy.city) f.push(`city=ilike.${enc(qy.city)}`);
   if (qy.assigned === "me") f.push(`assigned_to=eq.${scope.userId}`);
@@ -101,10 +108,10 @@ export async function today(scope: Scope): Promise<Today> {
   const taskF = scope.role === "agent" ? `owner_id=eq.${scope.ownerId}&assigned_to=eq.${scope.userId}` : `owner_id=eq.${scope.ownerId}`;
   const [tasks, unread, fresh, bookings, cold, calls, prefs] = await Promise.all([
     restAsService<TaskRow[]>(`crm_tasks?${taskF}&done_at=is.null&due_at=lt.${enc(dayEnd)}&select=${TASK_COLS}&order=due_at&limit=200`),
-    restAsService<LeadPro[]>(`leads?${sf}&unread=gt.0&select=${PRO_COLS}&order=last_message_at.desc&limit=50`),
-    restAsService<LeadPro[]>(`leads?${sf}&created_at=gte.${enc(new Date(now.getTime() - 86400000).toISOString())}&calls_count=eq.0&status=eq.new&select=${PRO_COLS}&order=created_at.desc&limit=50`),
+    restAsService<LeadPro[]>(`leads?${sf}&unread=gt.0&${NOT_PERSONAL_LEADS}&select=${PRO_COLS}&order=last_message_at.desc&limit=50`),
+    restAsService<LeadPro[]>(`leads?${sf}&${NOT_PERSONAL_LEADS}&created_at=gte.${enc(new Date(now.getTime() - 86400000).toISOString())}&calls_count=eq.0&status=eq.new&select=${PRO_COLS}&order=created_at.desc&limit=50`),
     restAsService<BookingLite[]>(`bookings?owner_id=eq.${scope.ownerId}&status=eq.booked&starts_at=gte.${enc(dayStart)}&starts_at=lt.${enc(dayEnd)}&select=id,lead_id,name,phone,service,starts_at,status&order=starts_at&limit=50`),
-    restAsService<LeadPro[]>(`leads?${sf}&status=in.(interested,follow_up)&last_activity_at=lt.${enc(new Date(now.getTime() - 3 * 86400000).toISOString())}&next_follow_up=is.null&select=${PRO_COLS}&order=last_activity_at&limit=30`),
+    restAsService<LeadPro[]>(`leads?${sf}&${NOT_PERSONAL_LEADS}&status=in.(interested,follow_up)&last_activity_at=lt.${enc(new Date(now.getTime() - 3 * 86400000).toISOString())}&next_follow_up=is.null&select=${PRO_COLS}&order=last_activity_at&limit=30`),
     restAsService<{ id: string }[]>(`crm_calls?owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&agent_id=eq.${scope.userId}` : ""}&status=eq.done&started_at=gte.${enc(dayStart)}&select=id&limit=500`),
     prefsOf(scope.ownerId),
   ]);
@@ -116,7 +123,7 @@ export async function today(scope: Scope): Promise<Today> {
   const overdue: TodayItem[] = [], due: TodayItem[] = [];
   for (const t of taskRows) {
     const lead = t.lead_id ? leadsById.get(t.lead_id) : undefined;
-    if (!lead || ["converted", "won", "lost"].includes(lead.status)) continue;
+    if (!lead || ["converted", "won", "lost"].includes(lead.status) || (lead.tags ?? []).includes(PERSONAL_TAG)) continue;
     (t.due_at < dayStart ? overdue : due).push({ lead, task: t, why: t.title || t.kind });
   }
   const unreadItems = list(unread).map((lead) => ({ lead, why: `${lead.unread} unread` }));
