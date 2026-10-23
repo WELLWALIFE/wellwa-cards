@@ -31,7 +31,8 @@ async function fitTo(file: File, kind: Slot["kind"]): Promise<File> {
   } finally { URL.revokeObjectURL(url); }
 }
 
-export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
+/** `scope`: "card" = the phone card's own banner, "site" = the website's own banner (each has its own); every other photo is shared. */
+export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string; scope?: "card" | "site" }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [max, setMax] = useState(12);
@@ -56,7 +57,8 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
 
   const load = useCallback(async () => {
-    const r = await api<Got>(`/api/card/photos${cardId ? `?cardId=${encodeURIComponent(cardId)}` : ""}`);
+    const qs = new URLSearchParams({ ...(cardId ? { cardId } : {}), ...(scope ? { scope } : {}) }).toString();
+    const r = await api<Got>(`/api/card/photos${qs ? `?${qs}` : ""}`);
     if (r.ok) { setSlots(r.data.slots ?? []); setMax(r.data.max ?? 12); setIdeas(r.data.ideas ?? []); } else { setSlots([]); setErr(r.data.error ?? T("Could not load the photos.", "Photos नहीं खुलीं।")); }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -70,7 +72,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
     try {
       // `expect` is the picture the owner was looking at: if the numbering moved meanwhile the server says so instead of changing another one.
       const slot = typeof body.slot === "string" ? body.slot : "";
-      const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(cardId ? { cardId } : {}), ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
+      const r = await api<Got & { ok?: boolean; stale?: boolean }>("/api/card/photos", { method: "POST", json: { ...body, ...(cardId ? { cardId } : {}), ...(scope ? { scope } : {}), ...(slot ? { expect: slots?.find((x) => x.id === slot)?.url } : {}) } });
       if (!r.ok) {
         if (r.status === 402) { setPay(true); return; }
         setErr(r.data.error ?? T("Something went wrong. Please try again.", "कुछ गड़बड़ हुई। दोबारा try करें।"), at);
@@ -88,7 +90,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
   async function chosen(file: File | null) {
     const slot = target.current;
     if (!file) return;
-    const kind: Slot["kind"] = slot === "banner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
+    const kind: Slot["kind"] = slot === "banner" || slot === "cardbanner" || slot === "sitebanner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     const key = slot ? `${slot}:replace` : "add";
     const at = slot || "add";
     if (lock.current) return;
@@ -126,8 +128,9 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
       <div key={s.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
         <div className="relative bg-surface2" style={{ aspectRatio: s.kind === "banner" ? "16 / 9" : "4 / 3" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={s.url} alt={s.label} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
-          <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">{tag(s)}</span>
+          {s.url ? <img src={s.url} alt={s.label} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
+            : <span className="absolute inset-0 grid place-items-center text-xs font-semibold text-muted">{T("No banner yet — add one below", "अभी banner नहीं है — नीचे से लगाएँ")}</span>}
+          {s.url && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">{tag(s)}</span>}
           {working && <span className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-semibold text-white"><span className="flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {busy.endsWith(":ai") ? T("Making… about 30 seconds", "बन रही है… लगभग 30 सेकंड") : T("Please wait…", "रुकिए…")}</span></span>}
         </div>
         <div className="space-y-2 p-2.5">
@@ -143,7 +146,7 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
           ) : (
             <button type="button" disabled={!!busy} onClick={() => { setHeadFor(s.id); setHeadVal(s.group ?? ""); }} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-brand-ink disabled:opacity-50"><Tag className="h-3 w-3 shrink-0" /> <span className="truncate">{s.group ? s.group : T("Add a heading", "Heading जोड़ें")}</span></button>
           ))}
-          <p className="text-sm font-semibold">{s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
+          <p className="text-sm font-semibold">{s.id === "cardbanner" ? T("Card banner (only on your phone card)", "Card का banner (सिर्फ़ phone card पर)") : s.id === "sitebanner" ? T("Website banner (only on your website)", "Website का banner (सिर्फ़ website पर)") : s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
           <p className="text-[11px] text-muted">{T("Best size", "सही size")}: {s.size}. {T("Any photo works — we fit it.", "कोई भी photo चलेगी — हम फ़िट कर देंगे।")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             <button type="button" className={btn} disabled={!!busy} onClick={() => choose(s.id)}><Camera className="h-3.5 w-3.5" /> {T("Replace", "बदलें")}</button>
@@ -162,6 +165,9 @@ export function SitePhotos({ hi, cardId }: { hi: boolean; cardId?: string }) {
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
+      {scope && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs font-semibold text-ink">{scope === "card"
+        ? T("The banner here is your card's own. The About and gallery photos are the same on your card and website.", "यहाँ का banner सिर्फ़ आपके card का है। परिचय और gallery की photos card और website दोनों में एक ही हैं।")
+        : T("The banner here is your website's own. The About and gallery photos are the same on your card and website.", "यहाँ का banner सिर्फ़ आपकी website का है। परिचय और gallery की photos card और website दोनों में एक ही हैं।")}</p>}
       <p className="text-sm text-muted">{T("These are the photos on your website. You can change any of them. It shows on your website as soon as you tap. “Make by AI” makes a new picture for that place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदल सकते हैं। tap करते ही website पर दिखने लगती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
       {errHere("top")}
       {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}

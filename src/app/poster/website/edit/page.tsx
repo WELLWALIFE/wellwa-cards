@@ -194,7 +194,7 @@ export default function WebsiteEditPage() {
     <div className="space-y-4 pb-28">
       <div className="flex items-center gap-2">
         {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
-        <button type="button" onClick={() => goBack(router, "/poster/site?edit=1")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>
         <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>
       </div>
@@ -221,7 +221,7 @@ export default function WebsiteEditPage() {
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
-          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग और अक्षर बदलें।" : ". Here you change its colours and letters."}</p>
+          <p className="rounded-lg bg-surface2 px-3 py-2 text-[11px] text-muted">{hi ? "छह design (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) " : "The six designs (Tile board, Full photo, Colour poster, Big name, Order shop, Photo collage) are chosen in "}<Link href="/poster/site?edit=site" className="font-semibold text-brand-ink">Card & Website → Edit</Link>{hi ? " पर बदलें। यहाँ उसके रंग और अक्षर बदलें।" : ". Here you change its colours and letters."}</p>
           <div>
             <p className="text-sm font-semibold flex items-center gap-1.5"><Palette className="h-4 w-4 text-brand" /> {hi ? "रंग" : "Colours"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "वेबसाइट के रंग। आपका फ़ोन कार्ड अपने रंग में ही रहेगा।" : "The website's colours. Your phone card keeps its own colour."}</p>
@@ -307,7 +307,7 @@ export default function WebsiteEditPage() {
               announcement bar here is gone (audit, 7 Oct 2026: two announcement systems). */}
           <div className="rounded-lg border border-border p-3">
             <p className="text-sm font-semibold">📣 {hi ? "न्यूज़ / ऑफ़र की पट्टी" : "Offer bar"}</p>
-            <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "Offer, holiday and news bars and pop-ups are now set in one place:"} <Link href="/poster/site?edit=1" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
+            <p className="mt-1 text-[11px] text-muted">{hi ? "ऑफ़र, छुट्टी या ख़बर की पट्टी और पॉप-अप अब एक जगह से लगती है:" : "Offer, holiday and news bars and pop-ups are now set in one place:"} <Link href="/poster/site?edit=site" className="font-semibold text-brand-ink">{hi ? "Card & Website → News" : "Card & Website → News"}</Link></p>
           </div>
           <div>
             <p className="text-sm font-semibold">{hi ? "गोल बटन (वेबसाइट पर)" : "Round button on the website"}</p>

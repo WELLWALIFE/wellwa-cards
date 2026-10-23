@@ -1117,7 +1117,7 @@ export default function BuildCard() {
   function backFromPreview() {
     if (busy === "publish") return;                                        // going live: the finished screen follows by itself
     // Opened from Card & Website, Products, the AI page or the banner notification (?improve=1): back to where it was opened from.
-    if (improveMode) { goBack(router, "/poster/site?edit=1"); return; }
+    if (improveMode) { goBack(router, "/poster/site?edit=site"); return; }
     // Live: never Make (it would offer to build it again). Make is in-page state, not a history entry, so Back lands on the screen before this page.
     if (liveUser) { goBack(router, "/poster"); return; }
     // A new build of a website that is already live (?again=1, a new website at set-up): back to where it was asked for, never to Make.
@@ -1505,7 +1505,7 @@ export default function BuildCard() {
         {liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, on to the saved Card & Website
           // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
-          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=1&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
+          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=site&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}

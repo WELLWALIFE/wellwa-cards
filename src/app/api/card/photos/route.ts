@@ -8,6 +8,9 @@
 //      (bearer) { action: "add", url }                → one more gallery picture
 //      (bearer) { action: "ai", slot | kind:"gallery" } → one picture made for that place, one credit; `slot` omitted = a new gallery picture
 // `slot` is the id GET gave: "banner", "about:<block>", "gallery:<block>:<index>".
+// `scope` (GET ?scope=, POST { scope }): the card and the website each have their OWN banner (owner, 23 Oct 2026: "banner card me alag alag
+// rahege"). scope "card" lists "cardbanner" (the phone card's cover only), scope "site" lists "sitebanner" (the website's top banner only);
+// without a scope it is the old shared "banner" (both at once). Every other photo is one and the same on the card and the website.
 // Every change lands on the live website at once and, for the banner and the gallery, in the card's facts, so a rebuild keeps it.
 import { randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
@@ -28,6 +31,10 @@ import type { Card, CardBlock } from "@/lib/types";
 export const maxDuration = 120;
 
 type Kind = "banner" | "about" | "gallery";
+type Scope = "card" | "site" | "";
+const BANNERS = new Set(["banner", "cardbanner", "sitebanner"]);
+const isBanner = (slot: string) => BANNERS.has(slot);
+const scopeOf = (v: unknown): Scope => (v === "card" || v === "site" ? v : "");
 type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: string; size: string; ours: boolean; stock: boolean };
 
 // One change at a time per owner: two taps (or two tabs) would both read the same card and the second save would undo the first.
@@ -37,10 +44,17 @@ const isStock = (u: string) => /^\/(api\/stock|art)\//.test(u) || /\/api\/stock\
 const SIZE: Record<Kind, string> = { banner: "1600 × 900 px · wide", about: "1200 × 900 px", gallery: "1200 × 900 px" };
 const visibleBlocks = (card: Card) => card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
 
-function slotsOf(card: Card): PhotoSlot[] {
+/** The banner picture of one banner slot. */
+function bannerOf(card: Card, slot: string): string {
+  if (slot === "cardbanner") return card.coverUrl || "";
+  return card.site?.hero?.imageUrl || card.coverUrl || "";
+}
+function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
   const out: PhotoSlot[] = [];
-  const banner = card.site?.hero?.imageUrl || card.coverUrl || "";
-  if (banner) out.push({ id: "banner", kind: "banner", url: banner, label: "Top banner", group: "", size: SIZE.banner, ours: madeByUs(banner), stock: isStock(banner) });
+  const id = scope === "card" ? "cardbanner" : scope === "site" ? "sitebanner" : "banner";
+  const banner = bannerOf(card, id);
+  // A card or website without a banner yet still gets its place (empty), so one can be put there.
+  if (banner || scope) out.push({ id, kind: "banner", url: banner, label: id === "cardbanner" ? "Card banner" : "Top banner", group: "", size: SIZE.banner, ours: madeByUs(banner), stock: isStock(banner) });
   for (const b of visibleBlocks(card)) {
     if (b.kind === "about" && b.imageUrl) out.push({ id: `about:${b.id}`, kind: "about", url: b.imageUrl, label: "About picture", group: "", size: SIZE.about, ours: madeByUs(b.imageUrl), stock: isStock(b.imageUrl) });
     if (b.kind === "gallery") b.images.forEach((g, i) => { if (g.url) out.push({ id: `gallery:${b.id}:${i}`, kind: "gallery", url: g.url, label: g.label || `Gallery photo ${out.filter((x) => x.kind === "gallery").length + 1}`, group: g.group ?? "", size: SIZE.gallery, ours: madeByUs(g.url), stock: isStock(g.url) }); });
@@ -51,7 +65,15 @@ function slotsOf(card: Card): PhotoSlot[] {
 const mapBlock = (card: Card, id: string, f: (b: CardBlock) => CardBlock): Card => ({ ...card, pages: card.pages.map((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? f(b) : b)) })) });
 
 function setSlot(card: Card, slot: string, url: string, focus: { focus?: string; textSide?: "left" | "right" | "center" } | null): Card | null {
-  if (slot === "banner") {
+  if (slot === "cardbanner") {
+    // The card's own banner. A website that was still showing the card's picture keeps that picture (it is pinned to the website first).
+    const pin = card.site && !card.site.hero?.imageUrl && card.coverUrl ? { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: card.coverUrl } } : card.site;
+    return { ...card, coverUrl: url, site: pin };
+  }
+  if (slot === "sitebanner" && card.site) {
+    return { ...card, site: { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } };
+  }
+  if (slot === "banner" || slot === "sitebanner") {
     const site = card.site ? { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } : card.site;
     return { ...card, coverUrl: url, site };
   }
@@ -85,29 +107,31 @@ function addToGallery(card: Card, url: string, group = ""): Card | null {
   const colors = ["#e2e8f0", "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#ddd6fe"];
   return mapBlock(card, g.id, (b) => (b.kind === "gallery" ? { ...b, images: [...b.images, { url, color: colors[b.images.length % colors.length], label: "", ...(group ? { group } : {}) }] } : b));
 }
-const urlOf = (card: Card, slot: string) => slotsOf(card).find((s) => s.id === slot)?.url ?? "";
+const urlOf = (card: Card, slot: string) => (isBanner(slot) ? bannerOf(card, slot) : slotsOf(card).find((s) => s.id === slot)?.url ?? "");
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const cardId = new URL(request.url).searchParams.get("cardId") ?? undefined;
+  const q = new URL(request.url).searchParams;
+  const cardId = q.get("cardId") ?? undefined;
   const row = await myCard(me.id, cardId);
   if (!row) return NextResponse.json({ error: "Create your website first." }, { status: 404 });
   const card = row.data as Card;
-  return NextResponse.json({ cardId: row.id, username: card.username, slots: slotsOf(card), max: MAX_GALLERY_PHOTOS, ideas: albumIdeas(card.seo?.categoryKey || card.jobTitle || "") });
+  return NextResponse.json({ cardId: row.id, username: card.username, slots: slotsOf(card, scopeOf(q.get("scope"))), max: MAX_GALLERY_PHOTOS, ideas: albumIdeas(card.seo?.categoryKey || card.jobTitle || "") });
 }
 
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (rateLimited(`card-photos:${me.id}`, 60, 60 * 60_000)) return NextResponse.json({ error: "Too many changes in an hour. Please wait a little." }, { status: 429 });
-  const b = (await request.json().catch(() => ({}))) as { action?: string; slot?: string; url?: string; cardId?: string; expect?: string; group?: string };
+  const b = (await request.json().catch(() => ({}))) as { action?: string; slot?: string; url?: string; cardId?: string; expect?: string; group?: string; scope?: string };
   if (b.action === "ai" && rateLimited(`card-photos-ai:${me.id}`, 15, 60 * 60_000)) return NextResponse.json({ error: "That is enough pictures for this hour. Please try again a little later." }, { status: 429 });
   const row = await myCard(me.id, typeof b.cardId === "string" ? b.cardId : undefined);
   if (!row) return NextResponse.json({ error: "Create your website first." }, { status: 404 });
   const card = row.data as Card;
   const action = b.action;
   const slot = typeof b.slot === "string" ? b.slot : "";
+  const scope = scopeOf(b.scope);
   const url = typeof b.url === "string" ? b.url.trim() : "";
   const group = (typeof b.group === "string" ? b.group : "").replace(/\s+/g, " ").trim().slice(0, 40);
   const galleryCount = slotsOf(card).filter((s) => s.kind === "gallery").length;
@@ -116,7 +140,7 @@ export async function POST(request: Request) {
   const OWN = `${SUPA_URL}/storage/v1/object/public/media/poster/${me.id}/`;
   if ((action === "replace" || action === "add") && (!url.startsWith(OWN) || url.includes("..") || url.includes("?") || url.length > 400)) return NextResponse.json({ error: "Upload the photo first." }, { status: 400 });
   // The place must still hold the picture the owner was looking at (the gallery's numbering shifts when a photo is removed elsewhere).
-  if ((action === "replace" || action === "remove" || action === "group" || (action === "ai" && slot)) && slot !== "banner") {
+  if ((action === "replace" || action === "remove" || action === "group" || (action === "ai" && slot)) && !isBanner(slot)) {
     const now = urlOf(card, slot);
     if (!now) return NextResponse.json({ error: "That picture is no longer there. Reload the page.", stale: true }, { status: 409 });
     if (typeof b.expect === "string" && b.expect && b.expect !== now) return NextResponse.json({ error: "The photos changed meanwhile. Reload the page.", stale: true }, { status: 409 });
@@ -133,7 +157,7 @@ export async function POST(request: Request) {
   if (action === "replace") {
     if (!url || !slot) return NextResponse.json({ error: "Nothing to put there." }, { status: 400 });
     newUrl = url;
-    next = setSlot(card, slot, url, slot === "banner" ? await bannerFocus(url).catch(() => null) : null);
+    next = setSlot(card, slot, url, isBanner(slot) ? await bannerFocus(url).catch(() => null) : null);
   } else if (action === "group") {
     next = setGroup(card, slot, group);
     if (!next) return NextResponse.json({ error: "Only gallery photos can have a heading." }, { status: 400 });
@@ -147,9 +171,9 @@ export async function POST(request: Request) {
     next = addToGallery(card, url, group);
     if (!next) return NextResponse.json({ error: "This website has no gallery yet." }, { status: 400 });
   } else if (action === "ai") {
-    const kind: Kind = slot === "banner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
+    const kind: Kind = isBanner(slot) ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     if (!slot && galleryCount >= MAX_GALLERY_PHOTOS) return NextResponse.json({ error: `The gallery holds ${MAX_GALLERY_PHOTOS} photos.` }, { status: 400 });
-    if (slot && !urlOf(card, slot)) return NextResponse.json({ error: "That picture is not on the website." }, { status: 400 });
+    if (slot && !isBanner(slot) && !urlOf(card, slot)) return NextResponse.json({ error: "That picture is not on the website." }, { status: 400 });
     // One credit a picture (owner's call, 4 Oct 2026), taken before anything runs and given back when nothing comes out.
     const ref = `photo-${me.id.slice(0, 8)}-${randomUUID()}`;
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: 1, p_reason: "site-photo-ai", p_ref: ref }) });
@@ -174,17 +198,18 @@ export async function POST(request: Request) {
   if (!r.ok) { await refund?.().catch(() => undefined); return NextResponse.json({ error: "Could not save the change. Please try again." }, { status: 500 }); }
 
   // The facts keep what the website shows, so the next build starts from it.
-  if (inputs.profileId && action !== "group") {
+  // The card's own banner is not a website fact (a rebuild keeps an owner's own card cover by itself, lib/card-facts.ts).
+  if (inputs.profileId && action !== "group" && slot !== "cardbanner") {
     const f = inputs.facts;
     const old = slot ? urlOf(card, slot) : "";
-    const facts = slot === "banner"
+    const facts = slot === "banner" || slot === "sitebanner"
       ? { ...f, bannerUrl: newUrl || f.bannerUrl }
       : action === "remove" ? { ...f, photos: f.photos.filter((u) => u !== old) }
       : action === "replace" || (action === "ai" && slot) ? { ...f, photos: f.photos.includes(old) ? f.photos.map((u) => (u === old ? newUrl : u)) : [...f.photos, newUrl].slice(0, MAX_GALLERY_PHOTOS) }
       : { ...f, photos: [...f.photos, newUrl].slice(0, MAX_GALLERY_PHOTOS) };
     if (slot.startsWith("about:")) { /* the About picture is not a fact */ } else await saveFacts(me.id, inputs.profileId, facts).catch(() => undefined);
   }
-  return NextResponse.json({ ok: true, url: newUrl, slots: slotsOf(next) });
+  return NextResponse.json({ ok: true, url: newUrl, slots: slotsOf(next, scope) });
   } catch {
     await refund?.().catch(() => undefined);
     return NextResponse.json({ error: "Something went wrong. If a credit was taken it has been given back. Please try again." }, { status: 500 });
