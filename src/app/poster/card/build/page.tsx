@@ -46,7 +46,7 @@ import { useT } from "@/lib/poster-i18n";
 import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
 import { LookTweaks } from "@/components/poster/look-tweaks";
-import { AdvancedEntry } from "@/components/poster/advanced-entry";
+import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -1443,6 +1443,13 @@ export default function BuildCard() {
               </div>
               <button type="button" onClick={() => setDesignOpen(false)} aria-label={T("Close", "बंद करें")} className="rounded-lg p-1 text-muted"><ChevronDown className="h-5 w-5" /></button>
             </div>
+          {/* The 7th choice (owner, 23 Oct 2026: "6 design ke saath premium website ka option nahi aaya"): the Premium website, made by AI
+              only for this business — its own page, which also takes the payment when the plan does not include it yet. */}
+          <Link href={`${ADVANCED_HREF}${existing?.id ? `?card=${encodeURIComponent(existing.id)}` : ""}`} className="flex items-center gap-2.5 rounded-xl border-2 border-ai/40 bg-ai-soft/40 px-3 py-2.5">
+            <Sparkles className="h-5 w-5 shrink-0 text-ai" />
+            <span className="min-w-0 flex-1"><span className="block text-sm font-bold">{T("Premium website", "Premium website")} <span className="ml-1 rounded-full bg-ai-soft px-1.5 py-0.5 text-[10px] font-bold uppercase text-ai">Premium</span></span><span className="block text-[11px] leading-tight text-muted">{T("A layout made by AI only for your business", "AI से सिर्फ़ आपके business के लिए बना खास layout")}</span></span>
+            <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+          </Link>
           <div className="grid grid-cols-3 gap-2">
             {looks.map((l, idx) => {
               const on = activeLook === l.key;

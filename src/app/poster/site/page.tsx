@@ -288,8 +288,9 @@ export default function WebsitePage() {
           </Link>
 
           {/* The Rs 5,999 advanced website (owner, 15-16 Oct 2026): its own door; once one exists it shows the state and the way back to the basic site. */}
-          {/* A partner's Shubhora card is the company's own design: the Premium redesign is not for it (owner, 20 Oct 2026). */}
-          {card?.kb !== "shubhora" && <AdvancedEntry key={cardId} cardId={cardId} fetchState />}
+          {/* Every card may have the Premium website, a partner's Shubhora card too (owner, 23 Oct 2026: a partner on Premium could not
+              find it — it had been kept off partner cards on 20 Oct). */}
+          <AdvancedEntry key={cardId} cardId={cardId} fetchState />
           </>}
 
           {panel === "edit" && target === "pick" && (
@@ -387,6 +388,8 @@ export default function WebsitePage() {
                           <h2 className="text-base font-bold">{g.title}</h2>
                           <p className="text-[11px] text-muted">{g.note}</p>
                         </div>
+                        {/* The Premium website (Rs 5,999) next to the six designs, so it is found where the look is chosen. */}
+                        {g.k === "rarely" && !isCard && <AdvancedEntry key={`adv-${cardId}`} cardId={cardId} fetchState />}
                         <div className="grid grid-cols-2 gap-2">{g.tiles.map(tile)}</div>
                         {has(g, "notice") && openTool === "notice" && (
                           <ToolSheet title={T("Offer / pop-up", "Offer / pop-up")} onClose={() => setOpenTool(null)} closeLabel={T("Close", "बंद करें")}>
