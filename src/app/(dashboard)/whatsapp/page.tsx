@@ -120,6 +120,7 @@ function MobileMode({ free = false }: { free?: boolean }) {
   const [qr, setQr] = useState<string | null>(null);
   const [offline, setOffline] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
+  const [linkNumber, setLinkNumber] = useState("");   // the business number, offered in "link with phone number"
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function poll() {
@@ -175,6 +176,7 @@ function MobileMode({ free = false }: { free?: boolean }) {
               <span className="h-2.5 w-2.5 rounded-full bg-good animate-pulse" /> Connected
             </div>
             <p className="text-sm text-muted">Linked: <span className="mono text-ink">{status.me?.id?.split(":")[0]}</span></p>
+            <BusinessNumber linked={status.me?.id?.split(":")[0] ?? ""} onUnlinkFor={async () => { await logout(); }} />
             <p className="text-xs">AI replies: {status.aiActive === false
               ? <span className="text-muted">off — comes with the Standard plan</span>
               : status.aiConfigured
@@ -195,7 +197,8 @@ function MobileMode({ free = false }: { free?: boolean }) {
         ) : (
           <div className="mt-4">
             <UnofficialNotice />
-            <LinkBox status={status} qr={qr} onChange={poll} />
+            <BusinessNumber linked="" onPicked={setLinkNumber} />
+            <LinkBox status={status} qr={qr} onChange={poll} suggest={linkNumber} />
           </div>
         )}
         <p className="mt-4 text-[11px] text-faint leading-relaxed">
@@ -208,9 +211,70 @@ function MobileMode({ free = false }: { free?: boolean }) {
   );
 }
 
+/** The business WhatsApp number: the WhatsApp button on the V-Card / website. A sign-up that skipped it shows the login
+ *  mobile (owner, 23 Oct 2026), so it is shown here with Change. Not linked yet: the saved number is the one to link.
+ *  Linked: when the linked number differs, one tap puts the linked number on the card, or unlinks to link the other. */
+function BusinessNumber({ linked, onPicked, onUnlinkFor }: { linked: string; onPicked?: (n: string) => void; onUnlinkFor?: () => Promise<void> }) {
+  const [num, setNum] = useState<string | null>(null);
+  const [hasCard, setHasCard] = useState(true);
+  const [edit, setEdit] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState<{ ok: boolean; t: string } | null>(null);
+  const last10 = (v: string) => v.replace(/\D/g, "").slice(-10);
+  useEffect(() => { (async () => {
+    try {
+      const r = await api<{ number?: string; hasCard?: boolean }>("/api/card/whatsapp");
+      if (r.ok) { setNum(r.data.number ?? ""); setHasCard(r.data.hasCard !== false); if (r.data.number && !linked) onPicked?.(r.data.number); }
+      else setNum("");
+    } catch { setNum(""); }
+  })(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  async function save(n: string) {
+    setBusy(true); setMsg(null);
+    try {
+      const r = await api<{ ok?: boolean; number?: string; error?: string }>("/api/card/whatsapp", { method: "POST", json: { number: n } });
+      if (!r.ok) { setMsg({ ok: false, t: r.data.error || "Could not save. Please try again." }); return; }
+      setNum(r.data.number ?? n); setEdit(false); setMsg({ ok: true, t: "Saved — your V-Card and website WhatsApp button now use this number." });
+      if (!linked) onPicked?.(r.data.number ?? n);
+    } catch { setMsg({ ok: false, t: "No internet. Please try again." }); }
+    finally { setBusy(false); }
+  }
+  if (num === null) return null;
+  const differs = !!linked && !!num && last10(linked) !== last10(num);
+  return (
+    <div className="mb-3 rounded-xl border border-border bg-surface2/40 p-3 text-sm">
+      <p className="text-xs font-semibold text-muted">Business WhatsApp number <span className="font-normal">(customers message you here)</span></p>
+      {!edit ? (
+        <div className="mt-1 flex items-center gap-2">
+          <span className="mono flex-1 text-ink">{num || "Not set"}</span>
+          {hasCard && <button type="button" onClick={() => { setDraft(num.replace(/^\+91/, "")); setEdit(true); setMsg(null); }} className="rounded-lg border border-border px-2.5 py-1 text-xs font-semibold text-brand-ink">Change</button>}
+        </div>
+      ) : (
+        <form className="mt-1 flex items-center gap-2" onSubmit={(e) => { e.preventDefault(); void save(draft); }}>
+          <input type="tel" inputMode="tel" autoFocus value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="98765 43210" className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 mono text-sm outline-none focus:border-brand" />
+          <button type="submit" disabled={busy || draft.replace(/\D/g, "").length < 10} className="rounded-lg grad-brand px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">{busy ? "…" : "Save"}</button>
+          <button type="button" onClick={() => setEdit(false)} className="p-1 text-muted" aria-label="Cancel"><X className="h-4 w-4" /></button>
+        </form>
+      )}
+      {!hasCard && <p className="mt-1 text-xs text-muted">Make your V-Card first — this number goes on its WhatsApp button.</p>}
+      {!linked && num && !edit && <p className="mt-1 text-xs text-muted">This is the number linked below. To link a different WhatsApp, tap Change.</p>}
+      {differs && (
+        <div className="mt-2 rounded-lg border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-ink">
+          <p>The linked WhatsApp is <b className="mono">+{linked}</b>, but customers are sent to <b className="mono">{num}</b>.</p>
+          <div className="mt-1.5 flex flex-wrap gap-2">
+            <button type="button" disabled={busy} onClick={() => save(linked)} className="rounded-lg grad-brand px-2.5 py-1 font-semibold text-white disabled:opacity-50">Use +{linked} on my card</button>
+            {onUnlinkFor && <button type="button" disabled={busy} onClick={async () => { if (!confirm(`Unlink +${linked} and link ${num} instead?`)) return; setBusy(true); await onUnlinkFor(); setBusy(false); }} className="rounded-lg border border-border px-2.5 py-1 font-semibold text-danger">Link {num} instead</button>}
+          </div>
+        </div>
+      )}
+      {msg && <p className={`mt-1 text-xs ${msg.ok ? "text-good" : "text-danger"}`}>{msg.t}</p>}
+    </div>
+  );
+}
+
 /** Two ways to link (owner's call, 28 Sep 2026 — "no second phone"): an 8-letter code typed in WhatsApp on this same
  *  phone, or the QR for a laptop. A phone opens on the code, a computer on the QR. */
-function LinkBox({ status, qr, onChange }: { status: Status | null; qr: string | null; onChange: () => void }) {
+function LinkBox({ status, qr, onChange, suggest = "" }: { status: Status | null; qr: string | null; onChange: () => void; suggest?: string }) {
   // Opens on "On this phone" on a phone and on the QR on a computer (owner's call, 28 Sep 2026); the other is one tap away.
   const [way, setWay] = useState<"code" | "qr">("code");
   const [phone, setPhone] = useState("");
@@ -236,6 +300,8 @@ function LinkBox({ status, qr, onChange }: { status: Status | null; qr: string |
     })();
   }, []);
   useEffect(() => { if (status?.pairCode) setWay("code"); }, [status?.pairCode]);
+  // The business WhatsApp number (from the box above) is the one to link — it replaces the login-mobile guess.
+  useEffect(() => { if (suggest) { setPhone(suggest.replace(/^\+?91/, "")); setWay("code"); } }, [suggest]);
 
   async function getCode(e?: React.FormEvent) {
     e?.preventDefault();
