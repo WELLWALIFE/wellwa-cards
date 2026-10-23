@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, Plus, Phone, MessageCircle, Columns3, List, LoaderCircle, PhoneCall, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Pipeline, AddLead } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick } from "@/components/crm/shared";
 import { STAGE_LABEL } from "@/components/crm/i18n";
 
 type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string };
@@ -105,7 +105,7 @@ function Row({ l, onOpen, onCall, selected, onToggle }: { l: LeadPro; onOpen: ()
       </button>
       <div className="flex shrink-0 flex-col gap-1">
         <button type="button" onClick={onCall} className="rounded-lg bg-brand-soft p-2 text-brand-ink" aria-label={L.call}><Phone className="h-4 w-4" /></button>
-        <a href={waLink(l.phone)} target="_blank" rel="noreferrer" className="rounded-lg bg-good/10 p-2 text-good" aria-label={L.whatsapp}><MessageCircle className="h-4 w-4" /></a>
+        <a href={waLink(l.phone)} onClick={waClick(l.phone)} target="_blank" rel="noreferrer" className="rounded-lg bg-good/10 p-2 text-good" aria-label={L.whatsapp}><MessageCircle className="h-4 w-4" /></a>
       </div>
     </li>
   );

@@ -27,7 +27,9 @@ export const useShell = () => { const c = useContext(Shell); if (!c) throw new E
 export const IST = "Asia/Kolkata";
 export const CLOSED = ["converted", "won", "lost"];
 export const digits = (p: string) => (p || "").replace(/[^0-9]/g, "");
-export const waLink = (p: string) => `https://wa.me/${digits(p)}`;
+const waNumOf = (p: string) => { const d = digits(p); return d.length === 10 ? `91${d}` : d; };
+export const waLink = (p: string) => `https://wa.me/${waNumOf(p)}`;
+export { waNum, waOpenHref, openWhatsAppChat, waClick } from "@/lib/wa-open";
 export const telLink = (p: string) => `tel:${p.startsWith("+") ? p : "+" + digits(p)}`;
 export const rupees = (paise: number) => (paise ? "₹" + (paise / 100).toLocaleString("en-IN") : "");
 export const initial = (name: string, phone: string) => (name || "").trim().charAt(0).toUpperCase() || (phone ? "#" : "?");

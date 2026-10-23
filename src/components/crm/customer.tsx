@@ -3,11 +3,11 @@
 // (Call · WhatsApp · Task · Note · Booking · Payment), the next action, then Chat (the existing thread, embedded),
 // Activity (one timeline: messages, notes, calls, tasks, bookings) and Details (the profile).
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Phone, MessageCircle, CalendarClock, StickyNote, CalendarPlus, IndianRupee, LoaderCircle, Plus, ExternalLink, Check, Mic } from "lucide-react";
+import { ArrowLeft, Phone, MessageCircle, CalendarClock, StickyNote, CalendarPlus, IndianRupee, LoaderCircle, Plus, ExternalLink, Check, Mic, UserPlus } from "lucide-react";
 import Link from "next/link";
 import { api } from "@/lib/poster-client";
 import { Thread, STAGES } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call, waClick, openWhatsAppChat } from "@/components/crm/shared";
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 import { TaskSheet, TaskRow } from "@/components/crm/tasks";
 import { SalesTab, SaleSheet } from "@/components/crm/sales";
@@ -48,8 +48,22 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
       const box = document.querySelector<HTMLTextAreaElement>('textarea[data-crm-reply="on"]');
       if (box) { box.scrollIntoView({ behavior: "smooth", block: "center" }); box.focus(); return; }
       const digits = String(l.phone ?? "").replace(/\D/g, "");
-      if (digits.length >= 10) window.open(`https://wa.me/${digits.length === 10 ? "91" + digits : digits}`, "_blank", "noopener");
+      if (digits.length >= 10) openWhatsAppChat(digits);
     }, 150);
+  };
+  const waDigits = (() => { const d = String(l.phone ?? "").replace(/\D/g, ""); return d.length === 10 ? `91${d}` : d; })();
+  /** The phone's own "add contact" screen: a vCard file opens it on Android and iPhone (owner, 23 Oct 2026: "no save"). */
+  const saveContact = () => {
+    const esc = (v: string) => v.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, " ");
+    const name = (l.name || "").trim() || `Customer ${String(l.phone).slice(-4)}`;
+    const lines = ["BEGIN:VCARD", "VERSION:3.0", `FN:${esc(name)}`, `N:${esc(name)};;;;`, `TEL;TYPE=CELL:+${waDigits}`];
+    if (l.business) lines.push(`ORG:${esc(String(l.business))}`);
+    if (l.city) lines.push(`ADR;TYPE=HOME:;;;${esc(String(l.city))};;;`);
+    lines.push("END:VCARD");
+    const blob = new Blob([lines.join("\r\n") + "\r\n"], { type: "text/vcard;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob);
+    a.download = `${name.replace(/[^\w\u0900-\u097F -]+/g, "").trim().slice(0, 40) || "contact"}.vcf`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
   };
   const tabBtn = (k: typeof tab, label: string) => <button key={k} type="button" onClick={() => setTab(k)} className={`flex-1 rounded-full px-3 py-1.5 text-xs font-semibold ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{label}</button>;
   return (
@@ -64,6 +78,13 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         </div>
         <button type="button" onClick={() => setSheet("stage")} className="shrink-0"><StagePill status={l.status} hi={L.hi} /></button>
       </div>
+      {/* the customer's chat in the WhatsApp app itself, and the number into the phone book */}
+      {waDigits.length >= 11 && (
+        <div className="flex gap-2 text-xs font-semibold">
+          <a href={`https://wa.me/${waDigits}`} onClick={waClick(waDigits)} target="_blank" rel="noopener noreferrer" className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface py-2 text-good"><MessageCircle className="h-4 w-4" />{L.hi ? "WhatsApp app में खोलें" : "Open in WhatsApp app"}</a>
+          <button type="button" onClick={saveContact} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl border border-border bg-surface py-2 text-brand-ink"><UserPlus className="h-4 w-4" />{L.hi ? "Number save करें" : "Save number"}</button>
+        </div>
+      )}
       {ctx.role !== "agent" && ctx.agents.length > 0 && (
         <div className="flex items-center gap-2 text-[11px] text-muted">{L.assigned}
           <select value={l.assigned_to ?? ""} onChange={(e) => patch({ assigned_to: e.target.value || null })} className="rounded-lg border border-border bg-surface px-2 py-1 text-xs text-ink"><option value="">{L.nobody}</option>{ctx.agents.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>
@@ -120,7 +141,7 @@ function NoteSheet({ onClose, onSave }: { onClose: () => void; onSave: (n: strin
   const [n, setN] = useState(""); const [busy, setBusy] = useState(false); const [listening, setListening] = useState(false);
   const speak = () => {
     const W = window as unknown as { webkitSpeechRecognition?: new () => { lang: string; onresult: ((e: { results: { [i: number]: { [j: number]: { transcript: string } } } }) => void) | null; onend: (() => void) | null; start: () => void } };
-    const R = W.webkitSpeechRecognition; if (!R) return; const r = new R(); r.lang = L.hi ? "hi-IN" : "en-IN"; r.onresult = (e) => setN((x) => `${x ? x + " " : ""}${e.results[0][0].transcript}`); r.onend = () => setListening(false); setListening(true); r.start();
+    const R = W.webkitSpeechRecognition; if (!R) return; const r = new R(); r.lang = L.hi ? "hi-IN" : "en-IN"; r.onresult = (e) => setN((x) => `${x ? x + " " : ""}${e.results[0][0].transcript}`); r.onend = () => setListening(false); (r as unknown as { onerror: (() => void) | null }).onerror = () => setListening(false); setListening(true); try { r.start(); } catch { setListening(false); }
   };
   return (
     <BottomSheet title={L.note} onClose={onClose}>
@@ -190,7 +211,7 @@ function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, u
       <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={f.opted_out} onChange={(e) => setF({ ...f, opted_out: e.target.checked })} /> {L.optOut}</label>
       <p className="text-[11px] text-faint">{L.source}: {lead.source} · {L.scoreHint} {lead.score}/100 · {ago(lead.created_at, L.hi)}{lead.calls_count ? ` · ${lead.calls_count} ${L.callsReport.toLowerCase()}` : ""}{lead.next_follow_up && isPast(lead.next_follow_up) ? ` · ⏰ ${L.overdueTag}` : ""}{lead.value_paise ? ` · ${rupees(lead.value_paise)}` : ""}</p>
       <button type="button" disabled={busy} onClick={save} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : ok ? <Check className="h-4 w-4" /> : null} {ok ? L.saved : L.save}</button>
-      <a href={waLink(lead.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-good"><ExternalLink className="h-3.5 w-3.5" /> {L.openWa}</a>
+      <a href={waLink(lead.phone)} onClick={waClick(lead.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs text-good"><ExternalLink className="h-3.5 w-3.5" /> {L.openWa}</a>
     </div>
   );
 }

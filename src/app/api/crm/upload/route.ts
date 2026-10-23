@@ -1,4 +1,5 @@
-// POST multipart { file } (bearer) → a photo (resized JPEG) or PDF in the media bucket, for sending from the CRM.
+// POST multipart { file } (bearer) → a photo (resized JPEG), a video (as it is, MP4 / MOV / 3GP, up to 16 MB — WhatsApp's own
+// limit) or a PDF in the media bucket, for sending from the CRM.
 import { NextResponse } from "next/server";
 import sharp from "sharp";
 import { userFromRequest } from "@/lib/poster-server";
@@ -13,15 +14,22 @@ export async function POST(request: Request) {
   if (file.size > 16 * 1024 * 1024) return NextResponse.json({ error: "File too large (max 16 MB)." }, { status: 400 });
   const src = Buffer.from(await file.arrayBuffer());
   const isPdf = file.type === "application/pdf" || /\.pdf$/i.test(file.name) || src.subarray(0, 4).toString() === "%PDF";
-  let out: Buffer, ext: string, type: string, kind: "image" | "pdf";
+  const head = src.subarray(4, 12).toString("latin1");
+  const isVideo = /^video\//.test(file.type) || /\.(mp4|mov|3gp|m4v)$/i.test(file.name) || /^ftyp/.test(head);
+  let out: Buffer, ext: string, type: string, kind: "image" | "pdf" | "video";
   if (isPdf) { out = src; ext = "pdf"; type = "application/pdf"; kind = "pdf"; }
+  else if (isVideo) {
+    out = src; kind = "video";
+    ext = /\.mov$/i.test(file.name) || file.type === "video/quicktime" ? "mov" : /\.3gp$/i.test(file.name) ? "3gp" : "mp4";
+    type = ext === "mov" ? "video/quicktime" : ext === "3gp" ? "video/3gpp" : "video/mp4";
+  }
   else {
     try { out = await sharp(src).rotate().resize({ width: 1600, height: 1600, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 86 }).toBuffer(); }
-    catch { return NextResponse.json({ error: "Only photos and PDF files can be sent." }, { status: 400 }); }
+    catch { return NextResponse.json({ error: "Only photos, videos and PDF files can be sent." }, { status: 400 }); }
     ext = "jpg"; type = "image/jpeg"; kind = "image";
   }
   const key = `crm/${me.id}/${Date.now()}-${Math.random().toString(36).slice(2, 7)}.${ext}`;
   const r = await fetch(`${SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { ...serviceHeaders(), "Content-Type": type, "x-upsert": "true" }, body: new Uint8Array(out) });
   if (!r.ok) return NextResponse.json({ error: "Upload failed.", detail: (await r.text()).slice(0, 200) }, { status: 500 });
-  return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}`, kind, name: file.name.replace(/[^\w .()-]/g, "").slice(0, 80) || (isPdf ? "document.pdf" : "photo.jpg") });
+  return NextResponse.json({ url: `${SUPA_URL}/storage/v1/object/public/media/${key}`, kind, name: file.name.replace(/[^\w .()-]/g, "").slice(0, 80) || (isPdf ? "document.pdf" : kind === "video" ? `video.${ext}` : "photo.jpg") });
 }

@@ -9,9 +9,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import {
   Search, Plus, Phone, MessageCircle, ArrowLeft, Send, Sparkles, LoaderCircle, X, Zap, Tag, CalendarClock,
   ChevronDown, ExternalLink, Bot, User, RefreshCw, Trash2, Pencil, Columns3, List, BellRing, IndianRupee, Check,
-  Paperclip, BarChart3, Users, MoreVertical, Download, Upload, Copy, UserCheck, GitBranch, Plug, ArrowRight,
+  Paperclip, Link2, BarChart3, Users, MoreVertical, Download, Upload, Copy, UserCheck, GitBranch, Plug, ArrowRight,
 } from "lucide-react";
 import { api, authHeaders } from "@/lib/poster-client";
+import { waNum, waClick, openWhatsAppChat } from "@/lib/wa-open";
 
 /* ---------------- types ---------------- */
 export type Lead = {
@@ -302,7 +303,12 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
   const [profErr, setProfErr] = useState(""); // Lead details Save — shown above its button
   const [sheet, setSheet] = useState<"" | "profile">("");
   const [aiOpen, setAiOpen] = useState(true);
-  const [attach, setAttach] = useState<{ url: string; kind: "image" | "pdf"; name: string } | null>(null);
+  // Several photos / videos / PDFs at once, like WhatsApp (owner, 23 Oct 2026): each one is uploaded as soon as it is picked
+  // and sent as its own message; the typed text goes as the caption of the first.
+  type Att = { key: string; url: string; kind: "image" | "pdf" | "video"; name: string; preview?: string };
+  const [attach, setAttach] = useState<Att[]>([]);
+  const [linksOpen, setLinksOpen] = useState(false);
+  const [links, setLinks] = useState<{ label: string; url: string; kind: string }[]>([]);
   const [pay, setPay] = useState(false);
   const [uploading, setUploading] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
@@ -315,9 +321,9 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
   useEffect(() => { onLeadRef.current = onLead; }, [onLead]);
 
   const load = useCallback(async (quiet = false) => {
-    const r = await api<{ lead: Lead; messages: Msg[]; events: Ev[]; templates: Tpl[]; error?: string }>(`/api/crm/thread?lead=${id}${q_as(ctx)}`).catch(() => null);
+    const r = await api<{ lead: Lead; messages: Msg[]; events: Ev[]; templates: Tpl[]; links?: { label: string; url: string; kind: string }[]; error?: string }>(`/api/crm/thread?lead=${id}${q_as(ctx)}`).catch(() => null);
     if (!r || !r.ok) { if (!quiet) setErr(r?.data.error || "Could not open this chat."); return; }
-    setLead(r.data.lead); onLeadRef.current(r.data.lead); setMsgs(r.data.messages); setEvents(r.data.events); setTpls(r.data.templates);
+    setLead(r.data.lead); onLeadRef.current(r.data.lead); setMsgs(r.data.messages); setEvents(r.data.events); setTpls(r.data.templates); setLinks(r.data.links ?? []);
   }, [id, ctx]);
   useEffect(() => { load(); }, [load]);
   useEffect(() => { const t = setInterval(() => load(true), 8000); return () => clearInterval(t); }, [load]);
@@ -331,25 +337,57 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
     setLead(r.data.lead); onLeadRef.current(r.data.lead); load(true); return r.data.lead;
   }, [id, load, ctx.as]);
 
-  async function pickFile(f: File | undefined) {
-    if (!f) return; setUploading(true); setErr("");
+  async function pickFiles(list: FileList | null) {
+    const files = Array.from(list ?? []).slice(0, Math.max(0, 10 - attach.length));
+    if (!files.length) return;
+    if ((list?.length ?? 0) + attach.length > 10) setErr("Up to 10 files at a time.");
+    else setErr("");
+    setUploading(true);
     const h = await authHeaders(); delete h["content-type"];
-    const fd = new FormData(); fd.append("file", f);
-    const r = await fetch("/api/crm/upload", { method: "POST", headers: h, body: fd });
-    const j = await r.json().catch(() => ({}));
+    // Three at a time: quick on a phone, and the server is not flooded.
+    const queue = [...files]; const done: Att[] = []; const fails: string[] = [];
+    const worker = async () => {
+      for (let f = queue.shift(); f; f = queue.shift()) {
+        if (f.size > 16 * 1024 * 1024) { fails.push(`${f.name}: more than 16 MB`); continue; }
+        try {
+          const fd = new FormData(); fd.append("file", f);
+          const r = await fetch("/api/crm/upload", { method: "POST", headers: h, body: fd });
+          const j = await r.json().catch(() => ({}));
+          if (!r.ok || !j.url) { fails.push(`${f.name}: ${j.error || "upload failed"}`); continue; }
+          done.push({ key: `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`, url: j.url, kind: j.kind, name: j.name, preview: j.kind === "image" ? j.url : undefined });
+          setAttach((a) => [...a, done[done.length - 1]]);
+        } catch { fails.push(`${f.name}: no internet`); }
+      }
+    };
+    await Promise.all([worker(), worker(), worker()]);
     setUploading(false);
-    if (!r.ok) { setErr(j.error || "Upload failed."); return; }
-    setAttach({ url: j.url, kind: j.kind, name: j.name });
+    if (fails.length) setErr(fails.slice(0, 3).join(" · "));
   }
   async function send(tplId?: string) {
-    const body = text.trim(); if ((!body && !attach) || busy) return;
+    const body = text.trim(); if ((!body && !attach.length) || busy) return;
     setBusy("send"); setErr("");
-    const r = await api<{ ok: boolean; text: string; error?: string }>("/api/crm/send", { method: "POST", json: { lead_id: id, as: ctx.as ?? undefined, text: body, template_id: tplId, imageUrl: attach?.kind === "image" ? attach.url : undefined, fileUrl: attach?.kind === "pdf" ? attach.url : undefined, fileName: attach?.kind === "pdf" ? attach.name : undefined } });
+    const items = attach.length ? attach : [null];
+    const sentLabels: string[] = []; let failed = 0;
+    for (let i = 0; i < items.length; i++) {
+      const a = items[i];
+      const caption = i === 0 ? body : "";
+      const json: Record<string, unknown> = { lead_id: id, as: ctx.as ?? undefined, text: caption, template_id: i === 0 ? tplId : undefined };
+      if (a?.kind === "image") json.imageUrl = a.url;
+      if (a?.kind === "video") json.videoUrl = a.url;
+      if (a?.kind === "pdf") { json.fileUrl = a.url; json.fileName = a.name; }
+      const r = await api<{ ok: boolean; text: string; error?: string }>("/api/crm/send", { method: "POST", json }).catch(() => null);
+      if (!r || !r.ok) { failed++; if (!r?.data?.error) continue; setErr(r.data.error); break; }
+      sentLabels.push(r.data.text);
+      if (a) setAttach((x) => x.filter((y) => y.key !== a.key));
+    }
     setBusy("");
-    if (!r.ok) { setErr(r.data.error || "Send failed."); return; }
-    setText(""); setAttach(null);
-    setMsgs((m) => [...(m ?? []), { id: `tmp-${Date.now()}`, direction: "out", sender: "owner", kind: "text", text: r.data.text, sent_at: new Date().toISOString() }]);
-    setTimeout(() => load(true), 1500);
+    if (sentLabels.length) {
+      setText("");
+      setMsgs((m) => [...(m ?? []), ...sentLabels.map((t, i) => ({ id: `tmp-${Date.now()}-${i}`, direction: "out", sender: "owner", kind: "text", text: t, sent_at: new Date().toISOString() }) as Msg)]);
+      setTimeout(() => load(true), 1500);
+    }
+    if (failed && !sentLabels.length) setErr((e) => e || "Send failed.");
+    else if (failed) setErr((e) => e || `${failed} could not be sent — tap send again for the rest.`);
   }
   async function suggest(hint?: string, from?: "ai") {
     if (busy) return; setBusy("ai"); setErr(""); setAiErr("");
@@ -389,7 +427,7 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
         {l?.phone?.startsWith("+") && (
           <>
             <a href={`tel:${l.phone}`} onClick={() => update({ note: "📞 Called" })} className="rounded-lg p-2 text-brand hover:bg-surface2" aria-label="Call"><Phone className="h-4 w-4" /></a>
-            <a href={`https://wa.me/${digits(l.phone)}`} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-good hover:bg-surface2" aria-label="Open in WhatsApp"><ExternalLink className="h-4 w-4" /></a>
+            <a href={`https://wa.me/${waNum(l.phone)}`} onClick={waClick(l.phone)} target="_blank" rel="noreferrer" className="rounded-lg p-2 text-good hover:bg-surface2" aria-label="Open in WhatsApp"><ExternalLink className="h-4 w-4" /></a>
           </>
         )}
       </div>}
@@ -473,17 +511,34 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
             ))}
           </div>
         )}
-        {attach && (
-          <div className="mb-1 flex items-center gap-2 rounded-xl border border-border bg-surface2/60 px-2 py-1.5 text-xs">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            {attach.kind === "image" ? <img src={attach.url} alt="" className="h-10 w-10 rounded-lg object-cover" /> : <span className="grid h-10 w-10 place-items-center rounded-lg bg-surface text-lg">📄</span>}
-            <span className="truncate text-ink">{attach.name}</span>
-            <button type="button" onClick={() => setAttach(null)} className="ml-auto p-1 text-muted" aria-label="Remove"><X className="h-4 w-4" /></button>
+        {(attach.length > 0 || uploading) && (
+          <div className="mb-1 flex gap-2 overflow-x-auto rounded-xl border border-border bg-surface2/60 p-1.5 text-xs">
+            {attach.map((a) => (
+              <div key={a.key} className="relative h-14 w-14 shrink-0 overflow-hidden rounded-lg bg-surface" title={a.name}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {a.kind === "image" ? <img src={a.preview || a.url} alt="" className="h-full w-full object-cover" /> : <span className="grid h-full w-full place-items-center text-xl">{a.kind === "video" ? "🎬" : "📄"}</span>}
+                <button type="button" onClick={() => setAttach((x) => x.filter((y) => y.key !== a.key))} className="absolute right-0 top-0 rounded-bl-lg bg-black/60 p-0.5 text-white" aria-label="Remove"><X className="h-3.5 w-3.5" /></button>
+              </div>
+            ))}
+            {uploading && <span className="grid h-14 w-14 shrink-0 place-items-center rounded-lg bg-surface"><LoaderCircle className="h-5 w-5 animate-spin text-muted" /></span>}
+            {attach.length > 1 && <span className="self-center whitespace-nowrap px-1 text-muted">{attach.length} files</span>}
+          </div>
+        )}
+        {linksOpen && (
+          <div className="mb-1 max-h-56 overflow-y-auto rounded-xl border border-border bg-surface shadow-float">
+            <p className="px-3 pt-2 text-[11px] font-semibold text-muted">Tap a link to add it to your message</p>
+            {links.length ? links.map((k) => (
+              <button key={k.url} type="button" onClick={() => { setText((t) => (t.trim() ? `${t.trimEnd()}\n${k.label}: ${k.url}` : `${k.label}: ${k.url}`)); setLinksOpen(false); taRef.current?.focus(); }} className="flex w-full items-start gap-2 px-3 py-2 text-left text-xs hover:bg-surface2">
+                <span className="shrink-0 font-semibold text-brand">{k.kind === "video" ? "🎬" : k.kind === "pdf" ? "📄" : k.kind === "image" ? "🖼" : "🔗"} {k.label}</span><span className="truncate text-muted">{k.url}</span>
+              </button>
+            )) : <p className="px-3 py-2 text-xs text-muted">No links saved yet.</p>}
+            <p className="border-t border-border px-3 py-2 text-[11px] text-muted">Add a demo video or other links in Create → Card &amp; Website → bot files, or save any message with a link as a quick reply (⚡).</p>
           </div>
         )}
         <div className="flex items-end gap-1.5">
-          <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={(e) => { pickFile(e.target.files?.[0]); e.target.value = ""; }} />
+          <input ref={fileRef} type="file" multiple accept="image/*,video/*,application/pdf" className="hidden" onChange={(e) => { void pickFiles(e.target.files); e.target.value = ""; }} />
           <button type="button" disabled={uploading || !canSend} onClick={() => fileRef.current?.click()} className="rounded-xl p-2 text-muted hover:bg-surface2 disabled:opacity-40" aria-label="Attach photo or PDF">{uploading ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Paperclip className="h-5 w-5" />}</button>
+          <button type="button" onClick={() => setLinksOpen((o) => !o)} className={`rounded-xl p-2 hover:bg-surface2 ${linksOpen ? "text-brand" : "text-muted"}`} aria-label="Send a link"><Link2 className="h-5 w-5" /></button>
           <button type="button" onClick={onTemplates} className="rounded-xl p-2 text-muted hover:bg-surface2" aria-label="Quick replies"><Zap className="h-5 w-5" /></button>
           <button type="button" onClick={() => setPay(true)} className="rounded-xl p-2 text-muted hover:bg-surface2" aria-label="Payment request"><IndianRupee className="h-5 w-5" /></button>
           <button type="button" disabled={!!busy} onClick={() => suggest()} className="rounded-xl p-2 text-ai hover:bg-surface2 disabled:opacity-50" aria-label="AI reply">{busy === "ai" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />}</button>
@@ -491,7 +546,7 @@ export function Thread({ id, seed, wa, ctx, onBack, onLead, onTemplates, tplOpen
             onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); send(); } }}
             placeholder={canSend ? "Type a reply… (/ for quick replies)" : "Connect WhatsApp to reply from here"}
             className="max-h-32 flex-1 resize-none rounded-xl border border-border bg-surface2/50 px-3 py-2 text-sm outline-none focus:border-brand" />
-          <button type="button" disabled={(!text.trim() && !attach) || busy === "send" || !canSend} onClick={() => send()} className="grad-brand rounded-xl p-2.5 text-white disabled:opacity-40" aria-label="Send">{busy === "send" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</button>
+          <button type="button" disabled={(!text.trim() && !attach.length) || busy === "send" || uploading || !canSend} onClick={() => send()} className="grad-brand rounded-xl p-2.5 text-white disabled:opacity-40" aria-label="Send">{busy === "send" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}</button>
         </div>
       </div>
 
@@ -778,7 +833,7 @@ export function TeamSheet({ ctx, onClose, onChanged }: { ctx: Ctx; onClose: () =
   const shareInvite = (a: AgentFull) => {
     const t = `You are invited to our WhatsApp CRM team on Shubhora.\n1. Open ${SITE_URL}/poster and log in (or sign up)\n2. Go to CRM → ⋮ → Join a team\n3. Enter code: ${a.join_code}`;
     const d = a.phone.replace(/[^0-9]/g, "");
-    window.open(`https://wa.me/${d ? (d.length === 10 ? "91" + d : d) : ""}?text=${encodeURIComponent(t)}`, "_blank");
+    if (d) openWhatsAppChat(d, t); else window.open(`https://wa.me/?text=${encodeURIComponent(t)}`, "_blank");
   };
   return (
     <Sheet title="Team inbox" onClose={onClose}>

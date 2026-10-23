@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task } from "@/components/crm/shared";
+import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
 export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean; callId?: string };
@@ -140,7 +140,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
         )}
         {err && <p role="alert" className="text-xs text-danger">{err}</p>}
         <div className="flex gap-2">
-          <a href={waLink(pending.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-xs font-semibold text-good"><MessageCircle className="h-4 w-4" /> {L.whatsapp}</a>
+          <a href={waLink(pending.phone)} onClick={waClick(pending.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-xs font-semibold text-good"><MessageCircle className="h-4 w-4" /> {L.whatsapp}</a>
           <button type="button" disabled={!outcome || busy} onClick={save} className="grad-brand inline-flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 font-semibold text-white disabled:opacity-50">{busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {L.saveCall}</button>
         </div>
       </div>
@@ -199,7 +199,7 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
         )}
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button type="button" onClick={() => startCall(l, advance)} className="grad-brand inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white"><Phone className="h-4 w-4" /> {L.call}</button>
-          <a href={waLink(l.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-good/40 bg-good/10 py-3 text-sm font-semibold text-good"><MessageCircle className="h-4 w-4" /> {L.whatsapp}</a>
+          <a href={waLink(l.phone)} onClick={waClick(l.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-xl border border-good/40 bg-good/10 py-3 text-sm font-semibold text-good"><MessageCircle className="h-4 w-4" /> {L.whatsapp}</a>
           <button type="button" onClick={() => setI((x) => x + 1)} className="inline-flex items-center justify-center gap-2 rounded-xl border border-border py-3 text-sm font-semibold text-muted"><SkipForward className="h-4 w-4" /> {L.skip}</button>
         </div>
       </div>

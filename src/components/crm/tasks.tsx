@@ -2,13 +2,33 @@
 // Tasks (docs/crm-pro.md 3.8): the New-task sheet (kind, what, when — quick chips first), one task row with
 // Done / Snooze, and the Calendar section (tasks + bookings by day).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, LoaderCircle, Phone, MessageCircle, Footprints, Handshake, CircleDot, Clock, Trash2 } from "lucide-react";
+import { Check, LoaderCircle, Phone, MessageCircle, Footprints, Handshake, CircleDot, Clock, Trash2, AlarmClock } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useShell, quickMoments, inputCls, Chip, BottomSheet, fmtWhen, fmtTime, isPast, toLocalInput, type Task } from "@/components/crm/shared";
 import { Bookings } from "@/components/poster/bookings";
 
 export const KIND_ICON = { call: Phone, whatsapp: MessageCircle, visit: Footprints, meeting: Handshake, other: CircleDot } as const;
 export function kindLabel(L: ReturnType<typeof useShell>["L"], k: Task["kind"]) { return k === "call" ? L.kCall : k === "whatsapp" ? L.kWhatsapp : k === "visit" ? L.kVisit : k === "meeting" ? L.kMeeting : L.kOther; }
+
+/** A follow-up that RINGS (owner, 23 Oct 2026): the app's own reminder is a notification, which a busy phone can bury. This
+ *  puts the task in the phone's calendar with an alarm at the time: Google Calendar on Android, a calendar file on iPhone. */
+export function addToPhoneCalendar(title: string, dueIso: string, details = "") {
+  const start = new Date(dueIso); if (!Number.isFinite(start.getTime())) return;
+  const end = new Date(start.getTime() + 15 * 60_000);
+  const z = (d: Date) => d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  const ios = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+  if (!ios) {
+    const u = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(title)}&dates=${z(start)}/${z(end)}&details=${encodeURIComponent(details)}`;
+    window.open(u, "_blank", "noopener");
+    return;
+  }
+  const esc = (v: string) => v.replace(/[\\;,]/g, (c) => `\\${c}`).replace(/\r?\n/g, "\\n");
+  const ics = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Shubhora//CRM//EN", "BEGIN:VEVENT", `UID:${z(start)}-${Math.random().toString(36).slice(2, 8)}@shubhora`, `DTSTAMP:${z(new Date())}`,
+    `DTSTART:${z(start)}`, `DTEND:${z(end)}`, `SUMMARY:${esc(title)}`, `DESCRIPTION:${esc(details)}`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${esc(title)}`, "TRIGGER:PT0M", "END:VALARM", "END:VEVENT", "END:VCALENDAR"].join("\r\n");
+  const a = document.createElement("a"); a.href = URL.createObjectURL(new Blob([ics], { type: "text/calendar;charset=utf-8" })); a.download = "follow-up.ics";
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+}
 
 export function TaskSheet({ leadId, task, onClose, onSaved }: { leadId: string | null; task?: Task; onClose: () => void; onSaved: (t: Task) => void }) {
   const { L, as } = useShell();
@@ -74,6 +94,7 @@ export function TaskRow({ task, onChanged, showLead }: { task: Task; onChanged: 
         <div className="flex shrink-0 items-center gap-1">
           <button type="button" disabled={!!busy} onClick={() => patch({ snooze_to: new Date(Date.now() + 3600_000).toISOString() }, "s1")} className="rounded-lg border border-border px-1.5 py-1 text-[10px] text-muted" title={L.snooze1h}><Clock className="mr-0.5 inline h-3 w-3" />1h</button>
           <button type="button" disabled={!!busy} onClick={() => patch({ snooze_to: tomorrow11 }, "s2")} className="rounded-lg border border-border px-1.5 py-1 text-[10px] text-muted" title={L.snoozeTomorrow}>{L.hi ? "कल" : "Tmrw"}</button>
+          <button type="button" onClick={() => addToPhoneCalendar(`${task.title || kindLabel(L, task.kind)}${showLead ? ` — ${showLead}` : ""}`, task.due_at, "Shubhora CRM follow-up")} className="rounded-lg border border-border px-1.5 py-1 text-[10px] text-muted" title={L.hi ? "फ़ोन में alarm लगाएँ" : "Phone alarm"}><AlarmClock className="inline h-3 w-3" /></button>
           <button type="button" disabled={!!busy} onClick={remove} className="p-1 text-faint" aria-label={L.delete}><Trash2 className="h-3.5 w-3.5" /></button>
         </div>
       )}
