@@ -60,7 +60,14 @@ export async function GET(request: Request) {
   const [access, row, job] = await Promise.all([isAdvancedAllowed(me.id), myCard(me.id, cardId), currentJob(keyOf(me.id))]);
   const current = row ? advancedState(row.data) : null;
   // Every design made for this card (newest last): the screen opens on them instead of making a new one.
-  const designs = row ? (await advDesigns(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec) : [];
+  let designs = row ? (await advDesigns(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec) : [];
+  // Designs made before they were kept on disk (before 24 Oct 2026) are gone, but the one on the card (live or switched off) is not:
+  // it is kept now, so "See my designs" opens it and it can be put live again (owner: "premium ke teeno design dekhne ho to kahan?").
+  const onCard = row ? (row.data as Card).site?.advanced : undefined;
+  if (row && !designs.length && onCard && typeof onCard === "object") {
+    await rememberAdvDesign(me.id, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, spec: onCard } as unknown as Obj);
+    designs = (await advDesigns(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  }
   if (!job) return NextResponse.json({ access, current, designs, job: null });
   touch(keyOf(me.id));
   return NextResponse.json({ access, current, designs, ...jobView(job) });
