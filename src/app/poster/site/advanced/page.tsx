@@ -721,6 +721,17 @@ export default function AdvancedSitePage() {
         {cur?.has && (
           <div className="space-y-1 rounded-xl border border-ai/30 bg-ai-soft/50 px-3 py-2">
             <p className="text-sm font-semibold">{cur.on ? T("Your Premium website is live.", "आपकी Premium website live है।") : T("Your Premium design is saved; the basic one is showing.", "Premium design save है; अभी पुरानी website दिख रही है।")}</p>
+            {/* The way to the live Premium website, and to change it (owner, 24 Oct 2026: "premium site wale page per kaise jaaun?"). */}
+            {cur.on && (
+              <div className="grid grid-cols-2 gap-2 py-1">
+                <SiteLink href={`https://${liveLink}?view=site`} title="Website" className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand py-2.5 text-sm font-semibold text-white">
+                  <ExternalLink className="h-4 w-4" /> {T("See my website", "मेरी website देखें")}
+                </SiteLink>
+                <Link href="/poster/site?edit=site" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface py-2.5 text-sm font-semibold">
+                  {T("Change it", "बदलें")}
+                </Link>
+              </div>
+            )}
             <AdvancedSwitch cardId={card?.id} on={!!cur.on} onChanged={(s) => { if (s) setCur(s); }} />
           </div>
         )}
