@@ -135,8 +135,18 @@ function removeSlot(card: Card, slot: string): Card | null {
   return null;   // the banner is never taken off
 }
 function addToGallery(card: Card, url: string, group = ""): Card | null {
-  const g = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).find((b) => b.kind === "gallery");
-  if (!g || g.kind !== "gallery") return null;
+  let g = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).find((b) => b.kind === "gallery");
+  if (!g || g.kind !== "gallery") {
+    // No gallery yet (owner, 24 Oct 2026: "gallery nahi hai ka warning sahi hai, par add gallery ka option bhi"): the first photo
+    // makes one — on the website's Gallery page when it has one, else on the home page just above the closing contact / call-to-action.
+    const host = card.pages.find((p) => !p.hidden && p.slug === "gallery") ?? card.pages.find((p) => !p.hidden && p.slug === "home") ?? card.pages.find((p) => !p.hidden);
+    if (!host) return null;
+    const block: CardBlock = { id: randomUUID().slice(0, 8), kind: "gallery", title: card.language === "hi" ? "फ़ोटो" : "Photos", images: [] };
+    let at = host.blocks.findIndex((b) => b.kind === "contact" || b.kind === "cta");
+    if (at < 0) at = host.blocks.length;
+    card = { ...card, pages: card.pages.map((p) => (p === host ? { ...p, blocks: [...p.blocks.slice(0, at), block, ...p.blocks.slice(at)] } : p)) };
+    g = block;
+  }
   const colors = ["#e2e8f0", "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#ddd6fe"];
   return mapBlock(card, g.id, (b) => (b.kind === "gallery" ? { ...b, images: [...b.images, { url, color: colors[b.images.length % colors.length], label: "", ...(group ? { group } : {}) }] } : b));
 }
