@@ -1791,72 +1791,63 @@ export default function BuildCard() {
         {!finding && found && !found.url && facts.website === found.q && (
           <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-sm">{T(`No website was found for “${found.q}”, so it is used as typed. To use a website, go back and paste its link.`, `“${found.q}” की website नहीं मिली, इसलिए उसे वैसे ही रखा गया है। website लगानी हो तो वापस जाकर उसका link डालें।`)}</p>
         )}
-        <p className="text-sm text-muted">{T("Your details are saved. Tap once and we make your website and digital card.", "आपकी जानकारी save हो गई। एक बार दबाइए, हम आपकी website और digital card बना देंगे।")}</p>
+        {/* Made short (owner, 24 Oct 2026: "short and simple, professional"): check the details, then one button. */}
         {setup && (
-          <section className="rounded-2xl border border-border bg-surface p-3.5">
-            <p className="mb-1.5 text-sm font-bold">{T("Please check your details", "अपनी जानकारी एक बार देख लें")}</p>
+          <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+            <p className="border-b border-border px-4 py-3 text-sm font-bold">{T("Check your details", "अपनी जानकारी देख लें")}</p>
             <ul className="divide-y divide-border">
               {([
                 { l: T("Name", "नाम"), v: setup.business || setup.person, step: "trade" },
-                { l: T("What you do", "आपका काम"), v: setup.categoryLabel, step: "trade" },
-                { l: T("City", "शहर"), v: setup.city, step: "where" },
+                { l: T("Work", "काम"), v: setup.categoryLabel, step: "trade" },
+                { l: T("City", "शहर"), v: setup.city, step: "trade" },
                 { l: T("Timings", "समय"), v: facts.hours, step: "where" },
-                { l: T("About you", "परिचय"), v: setup.about ? `${setup.about.slice(0, 60)}${setup.about.length > 60 ? "…" : ""}` : "", step: "about" },
+                { l: T("About", "परिचय"), v: setup.about ? `${setup.about.slice(0, 60)}${setup.about.length > 60 ? "…" : ""}` : "", step: "about" },
               ] as const).map((r) => (
-                <li key={r.l} className="flex items-center gap-2 py-2 text-sm">
+                <li key={r.l} className="flex items-center gap-2.5 px-4 py-2.5 text-sm">
                   <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${r.v ? "bg-good/15 text-good" : "bg-amber/15 text-amber"}`}>{r.v ? "✓" : "!"}</span>
-                  <span className="w-20 shrink-0 text-muted">{r.l}</span>
+                  <span className="w-14 shrink-0 text-muted">{r.l}</span>
                   <span className="min-w-0 flex-1 truncate font-medium">{r.v || T("Not filled", "भरा नहीं")}</span>
                   {/* ?back= : that one screen, Save, and straight back to Make — not the whole walk again (onboard's focused-edit mode). */}
-                  <Link href={`/poster/onboard?step=${r.step}&back=${encodeURIComponent("/poster/card/build?make=1")}`} onClick={() => setEditMark(true)} className="shrink-0 text-xs font-semibold text-brand-ink underline">{r.v ? T("Change", "बदलें") : T("Add", "भरें")}</Link>
+                  <Link href={`/poster/onboard?step=${r.step}&back=${encodeURIComponent("/poster/card/build?make=1")}`} onClick={() => setEditMark(true)} className="shrink-0 text-xs font-semibold text-brand-ink">{r.v ? T("Change", "बदलें") : T("Add", "भरें")}</Link>
                 </li>
               ))}
             </ul>
           </section>
         )}
-        {/* Free: one button, no wall (owner's call, 3 Oct 2026: "make step easy, warna wo bana hi nahi payega"). */}
-        {/* A Premium owner's build is Premium whatever button is tapped (the server decides by the plan): only that button. */}
+        {/* Free: one button, no wall (owner's call, 3 Oct 2026). A Premium owner's build is Premium whatever button is tapped: only that one. */}
         {!access.subscribed && (
-        <div className="space-y-3 rounded-2xl border-2 border-brand/40 bg-brand-soft/30 p-4">
-          <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
-          <ul className="space-y-1">
-            {freeMake ? <>
-              {li(T("Digital business card on one link", "एक link पर digital business card"))}
-              {li(T("Made by AI in 5 minutes from your details", "आपकी जानकारी से AI 5 मिनट में बनाता है"))}
-              {li(T("Share on WhatsApp or with a QR code; people contact you from the card", "WhatsApp या QR code से share करें; लोग card से सीधे आपसे contact करते हैं"))}
-            </> : <>
-              {li(T("Website + digital card on one link, phone and computer", "Website + digital card एक link पर, phone और computer"))}
-              {li(T("Your trade's own look and pages", "आपके काम का अपना look और pages"))}
-              {li(T("Daily poster, leads in your CRM", "रोज़ का poster, leads आपके CRM में"))}
-            </>}
-          </ul>
-          <button type="button" onClick={() => { setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-            <Sparkles className="h-5 w-5" /> {freeMake ? T("Make my free card", "मेरा free card बनाओ") : T("Make my free website", "मेरी free website बनाओ")}
-          </button>
-          {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-          <p className="text-center text-[11px] text-muted">{freeMake ? T("Carries a small FREE Shubhora tag. A website comes with Standard — ₹2,999 a month, any time.", "छोटा FREE Shubhora tag रहेगा। Website Standard plan में मिलती है — ₹2,999 / महीना, कभी भी।") : T("Carries a small FREE Shubhora tag. Standard removes it — any time, one tap.", "छोटा FREE Shubhora tag रहेगा। Premium में हट जाता है — कभी भी, एक tap।")}</p>
-        </div>
+          <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card">
+            <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
+            <ul className="space-y-1">
+              {freeMake ? <>{li(T("Digital card on one link", "एक link पर digital card"))}{li(T("Share on WhatsApp / QR", "WhatsApp / QR से share"))}</>
+                : <>{li(T("Website + digital card", "Website + digital card"))}{li(T("Daily poster, leads in CRM", "रोज़ poster, leads CRM में"))}</>}
+            </ul>
+            <button type="button" onClick={() => { setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5" /> {freeMake ? T("Make my free card", "मेरा free card बनाओ") : T("Make my free website", "मेरी free website बनाओ")}
+            </button>
+            {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
+          </section>
         )}
-        <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-          <div className="flex items-center justify-between"><p className="text-base font-bold">Standard</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("Included in your plan", "आपके plan में शामिल") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
+        <section className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
+          <div className="flex items-center justify-between"><p className="text-base font-bold">Standard</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("In your plan", "आपके plan में") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
-            {li(T("No Shubhora tag, and your website shows on Google", "Shubhora का tag नहीं, और आपकी website Google पर दिखती है"))}
-            {li(T("AI makes your banner photo. To change anything, just tell the AI", "AI आपकी banner photo बनाता है। कुछ बदलना हो तो बस AI को बता दें"))}
-            {li(T("WhatsApp AI replies to customers day and night, posts for you, and you can use your own web address", "WhatsApp AI दिन-रात ग्राहकों को जवाब देता है, आपके लिए post करता है, और आप अपना web address लगा सकते हैं"))}
+            {li(T("No Shubhora tag · on Google", "Shubhora tag नहीं · Google पर"))}
+            {li(T("AI banner · WhatsApp AI 24×7", "AI banner · WhatsApp AI 24×7"))}
+            {li(T("Your own domain", "अपना domain"))}
           </ul>
           {access.subscribed ? (
-            <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Standard</span>
+            <button type="button" onClick={() => { setPlan("premium"); setMakeFrom("premium"); void build(); }} disabled={!!busy || access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}
             </button>
           ) : (
-            <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setPremiumUnlock(true); }} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-4 text-base font-semibold text-white disabled:opacity-60">
-              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Make my website", "मेरी website बनाएँ")}<span className="ml-1.5 rounded-full bg-white/15 px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">Standard</span>
+            <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setPremiumUnlock(true); }} disabled={access.loading} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl bg-[#12144a] py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              {access.loading ? <LoaderCircle className="h-5 w-5 animate-spin text-[#ffd54a]" /> : <Sparkles className="h-5 w-5 text-[#ffd54a]" />} {T("Get Standard", "Standard लें")}
             </button>
           )}
           {err && (access.subscribed || makeFrom !== "free") && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-        </div>
+        </section>
         </>}
-        <p className="text-center text-xs text-muted">{T("The AI writes only from what you told us. It does not invent prices or claims.", "AI सिर्फ़ वही लिखता है जो आपने बताया। वह अपनी तरफ़ से दाम या दावे नहीं जोड़ता।")}</p>
+        <p className="text-center text-[11px] text-muted">{T("AI writes only what you told us.", "AI वही लिखता है जो आपने बताया।")}</p>
         {premiumDialog}
       </div>
     );

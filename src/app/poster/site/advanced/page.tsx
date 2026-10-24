@@ -235,7 +235,7 @@ export default function AdvancedSitePage() {
     const good = v.state === "done" && (v.status ?? 500) < 400 && res.mode === "preview" && !!res.spec && res.cardId === mine.id;
     if (!good) {
       void api("/api/card/advanced", { method: "POST", json: { claim: v.job } }).catch(() => undefined);
-      setStartErr(srv(res.error, T("The advanced design could not be made now. Please try again.", "Advanced design अभी नहीं बन पाया। दोबारा try करें।")));
+      setStartErr(srv(res.error, T("The Premium design could not be made now. Please try again.", "Premium design अभी नहीं बन पाया। दोबारा try करें।")));
       setStep("intro"); return;
     }
     const t = readTries(mine.id);
@@ -263,7 +263,7 @@ export default function AdvancedSitePage() {
       try {
         const r = await api<EngineGet>(`/api/card/advanced?cardId=${encodeURIComponent(mine.id)}`);
         if (r.ok && r.data.job) { v = r.data as JobView; setLost(false); }
-        else if (r.ok) { setStartErr(T("The advanced design could not be made. Please try again.", "Advanced design नहीं बन पाया। दोबारा try करें।")); setStep("intro"); return; }
+        else if (r.ok) { setStartErr(T("The Premium design could not be made. Please try again.", "Premium design नहीं बन पाया। दोबारा try करें।")); setStep("intro"); return; }
         else if (r.status === 401) { setStartErr(T("You were logged out. Please log in again.", "आप logout हो गए। दोबारा login करें।")); setStep("intro"); return; }
         else setLost(true);
       } catch { setLost(true); }
@@ -319,10 +319,10 @@ export default function AdvancedSitePage() {
         method: "POST",
         json: { cardId: card.id, mode: "preview", seedBump: used, ...(used ? { wish: `Make a clearly different layout from the earlier ones. This is design number ${used + 1}.` } : {}) },
       });
-      if (r.status === 402 || r.status === 403) { setAllowed(false); void refreshAccess(); setErr(srv(r.data.error, T("The advanced website is not open for your account yet.", "Advanced website अभी आपके account के लिए खुली नहीं है।"))); return; }
+      if (r.status === 402 || r.status === 403) { setAllowed(false); void refreshAccess(); setErr(srv(r.data.error, T("The Premium website is not open for your account yet.", "Premium website अभी आपके account के लिए खुली नहीं है।"))); return; }
       if (r.status === 429) {
         if (r.data.reason === "tries") { setServerLeft(0); setErr(T(`You have used all ${TRY_LIMIT} layouts of your payment.`, `आपके payment के सारे ${TRY_LIMIT} layouts इस्तेमाल हो चुके हैं।`)); }
-        else setErr(T("You have made the advanced design 8 times in the last hour. Please try again later.", "पिछले एक घंटे में आप 8 बार advanced design बना चुके हैं। थोड़ी देर बाद try करें।"));
+        else setErr(T("You have made the Premium design 8 times in the last hour. Please try again later.", "पिछले एक घंटे में आप 8 बार Premium design बना चुके हैं। थोड़ी देर बाद try करें।"));
         return;
       }
       if (!r.ok || !r.data.job) { setErr(srv(r.data.error, T("Could not start. Please try again.", "शुरू नहीं हो पाया। दोबारा try करें।"))); return; }
@@ -375,7 +375,7 @@ export default function AdvancedSitePage() {
         return;
       }
       const o = await api<{ orderId?: string; amount?: number; currency?: string; keyId?: string; message?: string; error?: string }>("/api/poster/pay/advanced", { method: "POST", json: card ? { cardId: card.id } : {} });
-      if (o.status === 503 && o.data.error === "advanced_closed") { setSelling(false); fail(T("The advanced website is not open for payment yet. Nothing was charged.", "Advanced website के लिए payment अभी खुला नहीं है। कुछ नहीं कटा।")); return; }
+      if (o.status === 503 && o.data.error === "advanced_closed") { setSelling(false); fail(T("The Premium website is not open for payment yet. Nothing was charged.", "Premium website के लिए payment अभी खुला नहीं है। कुछ नहीं कटा।")); return; }
       if (o.status === 409) { fail(T("This account has already paid. Refreshing…", "इस account का payment हो चुका है। Refresh हो रहा है…")); await refreshAccess(); setPayBusy(false); return; }
       if (!o.ok || !o.data.orderId) { fail(srv(o.data.message || o.data.error, T("Payment is not working right now. Please try again.", "अभी payment नहीं हो पा रहा। फिर से कोशिश करें।"))); return; }
       if (!(await loadRazorpay())) { fail(T("Could not open the payment page. Check the internet and try again.", "Payment page नहीं खुला। Internet देखकर दोबारा try करें।")); return; }
@@ -398,7 +398,7 @@ export default function AdvancedSitePage() {
     try {
       // The design on screen: the current job, or an earlier one of this round (by its seed).
       const r = await api<{ ok?: boolean; error?: string; current?: AdvState; username?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: jobId, acceptSeed: result?.spec?.seed } });
-      if (!r.ok) { setAcceptErr(r.status === 400 ? T("That preview is no longer there. Please make it again.", "वो preview अब नहीं है। दोबारा बनाएँ।") : srv(r.data.error, T("Could not save your advanced website. Please try again.", "आपकी advanced website save नहीं हुई। दोबारा try करें।"))); return; }
+      if (!r.ok) { setAcceptErr(r.status === 400 ? T("That preview is no longer there. Please make it again.", "वो preview अब नहीं है। दोबारा बनाएँ।") : srv(r.data.error, T("Could not save your Premium website. Please try again.", "आपकी Premium website save नहीं हुई। दोबारा try करें।"))); return; }
       if (r.data.current) setCur(r.data.current);
       setDoneUser(r.data.username || card.username); dropKey(PREVIEW_KEY); setStep("done");
       try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
@@ -459,7 +459,7 @@ export default function AdvancedSitePage() {
     <div className="space-y-4 py-2">
       {header}
       <section className="space-y-3 rounded-xl border border-border p-4 text-center">
-        <p className="text-sm text-muted">{T("Make your website first. The advanced design is made from it.", "पहले अपनी website बनाएँ। Advanced design उसी से बनता है।")}</p>
+        <p className="text-sm text-muted">{T("Make your website first. The Premium design is made from it.", "पहले अपनी website बनाएँ। Premium design उसी से बनता है।")}</p>
         <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Make my website →", "मेरी website बनाएँ →")}</Link>
       </section>
     </div>
@@ -646,13 +646,13 @@ export default function AdvancedSitePage() {
         {header}
         <section className="space-y-3 rounded-3xl p-6 text-center text-white shadow-float grad-brand">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20" aria-hidden="true"><Sparkles className="h-7 w-7" /></span>
-          <h2 className="text-2xl font-extrabold tracking-tight">{on ? T("Your advanced website is live", "आपकी advanced website live है") : T("Your basic website is back", "आपकी basic website वापस आ गई")}</h2>
-          <p className="text-sm text-white/90">{on ? T("Everyone now sees the new design, on a computer and on a phone. Your card is still there with ?view=card.", "अब सब लोग नया design देखेंगे — computer पर भी और phone पर भी। आपका card ?view=card से खुलता है।") : T("Your advanced design is saved — you can turn it on again any time.", "आपका advanced design save है — जब चाहें फिर चालू करें।")}</p>
+          <h2 className="text-2xl font-extrabold tracking-tight">{on ? T("Your Premium website is live", "आपकी Premium website live है") : T("Your old website is back", "आपकी पुरानी website वापस आ गई")}</h2>
+          <p className="text-sm text-white/90">{on ? T("Live on phone and computer.", "Phone और computer, दोनों पर live।") : T("The Premium design stays saved.", "Premium design save रहेगा।")}</p>
           <SiteLink href={`https://${liveLink}?view=site`} title="Website" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
         </section>
         <div className={`${box} space-y-2`}>
           <AdvancedSwitch cardId={card?.id} on={on} onChanged={(s) => { if (s) setCur(s); }} />
-          <p className="text-[11px] text-muted">{T("Both designs stay saved, so you can go back and forth.", "दोनों designs save रहते हैं, तो आप आगे-पीछे जा सकते हैं।")}</p>
+          <p className="text-[11px] text-muted">{T("Both stay saved. Switch any time.", "दोनों save हैं। कभी भी बदलें।")}</p>
         </div>
         {on && <Link href="/poster/seo" className={`${box} flex items-center justify-between gap-3 text-sm font-semibold`}><span>{T("Google SEO checklist: see what is ready", "Google SEO checklist: क्या तैयार है देखें")}</span><span className="text-brand-ink">→</span></Link>}
         {/* Back = the screen before this one (lib/nav-back): a fixed link to Card & Website would stack a second copy of it on top of the first. */}
@@ -668,8 +668,8 @@ export default function AdvancedSitePage() {
       <div className="space-y-4 py-2">
         {header}
         <section className={`${box} space-y-3 text-center`}>
-          <p className="text-base font-bold">{live ? T("Your website stays as it is", "आपकी website वैसी ही रहेगी") : T("Your basic website stays as it is", "आपकी basic website वैसी ही रहेगी")}</p>
-          <p className="text-sm text-muted">{live ? T("The new design was not used. Your advanced website is still live.", "नया design इस्तेमाल नहीं हुआ। आपकी advanced website अब भी live है।") : T("Nothing was changed. You can make the advanced one any time from Card & Website.", "कुछ नहीं बदला। Advanced वाली आप कभी भी Card & Website से बनवा सकते हैं।")}</p>
+          <p className="text-base font-bold">{live ? T("Your website stays as it is", "आपकी website वैसी ही रहेगी") : T("Your old website stays", "आपकी पुरानी website ही रहेगी")}</p>
+          <p className="text-sm text-muted">{live ? T("Your Premium website is still live.", "आपकी Premium website अब भी live है।") : T("Nothing changed. Your designs stay saved.", "कुछ नहीं बदला। आपके designs save हैं।")}</p>
           <button type="button" onClick={() => goBack(router, "/poster/site")} className="inline-flex w-full items-center justify-center rounded-xl grad-brand py-3 text-sm font-semibold text-white">{T("Done", "हो गया")}</button>
         </section>
       </div>
