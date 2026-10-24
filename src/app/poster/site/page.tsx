@@ -11,7 +11,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createPortal } from "react-dom";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X, Monitor, Sparkles } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X, Monitor, Sparkles } from "lucide-react";
 import { PremiumCard, PremiumGate, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink, SiteLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
@@ -223,52 +223,61 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
-          {/* Redesigned 23 Oct 2026 (owner: "easy to understand, koi zyada text nahi — pehle Share, phir Edit, phir SEO … page chhota,
-              scroll ki zaroorat na pade"): the link, then three compact rows that fit one phone screen. */}
-          <div className="space-y-1">
-            <div className="flex items-center gap-1.5 rounded-2xl border border-border bg-surface py-1.5 pl-3 pr-1.5">
-              <Globe className="h-4 w-4 shrink-0 text-brand" />
-              <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
-              <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft px-2 py-1.5 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
-              <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See card", "Card देखें")}><Smartphone className="h-4 w-4 text-brand" /></CardLink>
-              {!noSite && <SiteLink href={siteLink} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See website", "Website देखें")}><Monitor className="h-4 w-4 text-brand" /></SiteLink>}
-            </div>
-            {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
-          </div>
-
+          {/* Redesigned 24 Oct 2026 (owner: "3 alag box, achhe se — design bahut important hai"): three clear boxes — Share, Edit, Grow —
+              each with a coloured head, one short line, and big icon tiles. */}
           {(() => {
-            const row = "space-y-1.5";
-            const label = "flex items-center gap-1.5 px-1 text-xs font-bold text-muted";
-            const num = (n: number, c: string) => <span className={`grid h-5 w-5 place-items-center rounded-full text-[10px] text-white ${c}`}>{n}</span>;
-            const tile = "flex items-center justify-center gap-1.5 rounded-xl px-2 py-3 text-sm font-bold";
+            const tile = "flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3.5 text-center transition active:scale-[.97]";
+            const icon = (bg: string, fg: string, I: typeof Globe) => <span className={`grid h-11 w-11 place-items-center rounded-full ${bg}`}><I className={`h-5 w-5 ${fg}`} /></span>;
+            const head = (n: number, title: string, sub: string, cls: string) => (
+              <div className={`flex items-center gap-3 px-4 pt-3.5 pb-3 ${cls}`}>
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-extrabold text-white">{n}</span>
+                <span className="min-w-0"><span className="block text-base font-extrabold text-white">{title}</span><span className="block text-[12px] text-white/85">{sub}</span></span>
+              </div>
+            );
             return (
-              <>
+              <div className="space-y-4">
                 {/* 1 · Share */}
-                <div className={row}>
-                  <p className={label}>{num(1, "bg-[#25D366]")} {T("Share", "Share करें")}</p>
-                  <div className={`grid gap-2 ${noSite ? "grid-cols-2" : "grid-cols-3"}`}>
-                    <button type="button" onClick={shareCard} className={`${tile} bg-[#25D366] text-white`}><Smartphone className="h-4 w-4" /> {T("Card", "Card")}</button>
-                    {!noSite && <button type="button" onClick={shareSite} className={`${tile} border-2 border-[#25D366] text-[#128C7E]`}><Globe className="h-4 w-4" /> {T("Website", "Website")}</button>}
-                    <Link href="/poster/share" className={`${tile} border-2 border-border`}><Share2 className="h-4 w-4 text-brand" /> QR</Link>
+                <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                  {head(1, T("Share", "Share करें"), T("Send to customers on WhatsApp", "ग्राहकों को WhatsApp पर भेजें"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}
+                  <div className="space-y-3 p-3">
+                    <div className={`grid gap-2.5 ${noSite ? "grid-cols-2" : "grid-cols-3"}`}>
+                      <button type="button" onClick={shareCard} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Card", "Card")}</span></button>
+                      {!noSite && <button type="button" onClick={shareSite} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Globe)}<span className="text-sm font-bold">{T("Website", "Website")}</span></button>}
+                      <Link href="/poster/share" className={`${tile} bg-surface2 ring-1 ring-border`}>{icon("bg-white", "text-ink", Share2)}<span className="text-sm font-bold">{T("QR code", "QR code")}</span></Link>
+                    </div>
+                    <div className="flex items-center gap-2 rounded-2xl bg-surface2 py-1.5 pl-3 pr-1.5">
+                      <Globe className="h-4 w-4 shrink-0 text-brand" />
+                      <code className="min-w-0 flex-1 truncate text-[13px] font-semibold">{link.replace(/^https?:\/\//, "")}</code>
+                      <button type="button" onClick={() => void copy("top")} className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-brand-ink shadow-sm" aria-label={T("Copy link", "Link copy करें")}>{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
+                    </div>
+                    {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
+                    <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
+                      <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Smartphone className="h-4 w-4 text-brand" /> {T("See card", "Card देखें")}</CardLink>
+                      {noSite
+                        ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
+                        : <SiteLink href={siteLink} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("See website", "Website देखें")}</SiteLink>}
+                    </div>
                   </div>
-                </div>
+                </section>
+
                 {/* 2 · Edit */}
-                <div className={row}>
-                  <p className={label}>{num(2, "bg-brand")} {T("Edit", "Edit करें")}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <button type="button" onClick={() => openEdit("card")} className={`${tile} border-2 border-border`}><Pencil className="h-4 w-4 text-brand" /> {T("Card", "Card")}</button>
-                    <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className={`${tile} border-2 border-border`}><Pencil className="h-4 w-4 text-brand" /> {T("Website", "Website")}</button>
+                <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                  {head(2, T("Edit", "Edit करें"), T("Change details, photos and offers", "जानकारी, photo और offer बदलें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
+                  <div className="grid grid-cols-2 gap-2.5 p-3">
+                    <button type="button" onClick={() => openEdit("card")} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Edit card", "Card edit")}</span><span className="text-[11px] text-muted">{T("opens on a phone", "phone पर दिखता है")}</span></button>
+                    <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit")}</span><span className="text-[11px] text-muted">{T("opens on a computer", "computer पर दिखती है")}</span></button>
                   </div>
-                </div>
-                {/* 3 · Google SEO, and the Premium website (Rs 5,999; every card, partner cards too — owner, 23 Oct 2026) */}
-                <div className={row}>
-                  <p className={label}>{num(3, "bg-ai")} {T("Grow", "आगे बढ़ें")}</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${tile} border-2 border-border`}><Search className="h-4 w-4 text-brand" /> {T("Google SEO", "Google SEO करें")}</Link>
-                    <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} border-2 border-ai/40 bg-ai-soft/40 text-ai`}><Sparkles className="h-4 w-4" /> {T("Premium site", "Premium website")}</Link>
+                </section>
+
+                {/* 3 · Grow: Google SEO, and the Premium website (Rs 5,999; every card, partner cards too — owner, 23 Oct 2026) */}
+                <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                  {head(3, T("Grow", "आगे बढ़ें"), T("Get found on Google, look premium", "Google पर दिखें, premium दिखें"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
+                  <div className="grid grid-cols-2 gap-2.5 p-3">
+                    <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${tile} bg-surface2 ring-1 ring-border`}>{icon("bg-white", "text-brand", Search)}<span className="text-sm font-bold">{T("Google SEO", "Google SEO")}</span><span className="text-[11px] text-muted">{T("show up in search", "search में आएँ")}</span></Link>
+                    <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} bg-ai-soft/50 ring-1 ring-ai/30`}>{icon("bg-ai", "text-white", Sparkles)}<span className="text-sm font-bold text-ai">{T("Premium website", "Premium website")}</span><span className="text-[11px] text-muted">{T("made by AI for you", "AI से खास design")}</span></Link>
                   </div>
-                </div>
-              </>
+                </section>
+              </div>
             );
           })()}
           </>}
