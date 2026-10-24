@@ -123,6 +123,21 @@ const AREA: Record<string, [string, string]> = {
   proof: ["Trust", "भरोसा"], structure: ["Structure", "बनावट"], design: ["Design", "Design"],
 };
 
+/** What the owner can add for one of the AI's findings (owner, 24 Oct 2026: "jo kami mili wo add ka option de clearly" — fix the data,
+ *  keep the same design, do not make a new one each time). null = the new design already takes care of it. */
+type Fix = { k: string; en: string; hi: string; href: string };
+function fixFor(it: { area: string; en: string }): Fix | null {
+  const back = encodeURIComponent("/poster/site/advanced");
+  const photos = `/poster/onboard?step=extras&part=photos&back=${back}`;
+  const t = it.en.toLowerCase();
+  if (it.area === "proof" || /review|testimonial/.test(t)) return { k: "reviews", en: "Add reviews", hi: "राय जोड़ें", href: "/poster/testimonials" };
+  if (/banner|first screen/.test(t)) return { k: "banner", en: "Add banner", hi: "Banner जोड़ें", href: photos };
+  if (/product|catalogue|catalog/.test(t)) return { k: "products", en: "Add photos", hi: "Photos जोड़ें", href: `/poster/products?back=${back}` };
+  if (it.area === "photos" || /photo|picture|gallery/.test(t)) return { k: "photos", en: "Add photos", hi: "Photos जोड़ें", href: photos };
+  if (/about/.test(t)) return { k: "about", en: "Write more", hi: "और लिखें", href: `/poster/onboard?step=about&back=${back}` };
+  return null;
+}
+
 async function loadRazorpay(): Promise<boolean> {
   if ((window as unknown as { Razorpay?: unknown }).Razorpay) return true;
   if (!document.querySelector('script[src*="checkout.razorpay.com"]')) {
@@ -480,7 +495,6 @@ export default function AdvancedSitePage() {
   /* ---- 4 · the preview: the design first, the AI's notes and the changes folded away, the three designs side by side ---- */
   if (step === "preview" && result && card) {
     const items = result.critique?.items ?? [];
-    const summary = result.critique?.summary;
     const changes = (result.diff?.text ?? []).filter((d) => d.before !== d.after).slice(0, 4);
     const which = Math.max(0, designs.findIndex((d) => d.job === jobId));
     const fold = "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-bold";
@@ -527,6 +541,54 @@ export default function AdvancedSitePage() {
           </div>
         </div>
 
+        {/* What the AI found: the things only the owner can add come first, each with its own button; the rest the new design already
+            handles. Adding them keeps THIS design — it shows the new photos / products / reviews by itself, no new design needed. */}
+        {(() => {
+          const withFix = items.map((it) => ({ it, fix: fixFor(it) }));
+          const todo = withFix.filter((x) => x.fix).filter((x, i, arr) => arr.findIndex((y) => y.fix!.k === x.fix!.k) === i);
+          const handled = withFix.filter((x) => !x.fix);
+          return (
+            <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+              <div className="flex items-center justify-between gap-2 bg-gradient-to-r from-[#8b3dff] to-[#c04ee8] px-4 py-3 text-white">
+                <p className="text-base font-bold leading-tight">{T("What the AI found", "AI को क्या कमी मिली")}</p>
+                <span className="rounded-full bg-white/25 px-2 py-0.5 text-[11px] font-bold">{todo.length ? T(`${todo.length} to add`, `${todo.length} जोड़ना है`) : T("All good", "सब ठीक")}</span>
+              </div>
+              {todo.length > 0 ? (
+                <>
+                  <ul className="divide-y divide-border">
+                    {todo.map(({ it, fix }) => (
+                      <li key={fix!.k} className="flex items-center gap-3 px-4 py-3">
+                        <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-amber/15 text-xs font-bold text-amber">!</span>
+                        <span className="min-w-0 flex-1 text-sm leading-snug">{hi ? it.hi || it.en : it.en}</span>
+                        <Link href={fix!.href} className="inline-flex shrink-0 items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-xs font-semibold text-white"><Plus className="h-3.5 w-3.5" /> {T(fix!.en, fix!.hi)}</Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="flex items-start gap-1.5 bg-good/10 px-4 py-2.5 text-xs font-semibold text-good"><CheckCircle2 className="mt-px h-3.5 w-3.5 shrink-0" /> {T("Add them and come back: this same design shows them. No need to make a new one.", "जोड़कर यहीं वापस आएँ: यही design उन्हें दिखाएगा। नया design बनाने की ज़रूरत नहीं।")}</p>
+                </>
+              ) : <p className="px-4 py-3 text-sm text-muted">{T("Nothing to add. The new design is ready.", "कुछ जोड़ना नहीं है। नया design तैयार है।")}</p>}
+              {handled.length > 0 && (
+                <div className="border-t border-border">
+                  <button type="button" onClick={() => setOpenFound((v) => !v)} className="flex w-full items-center gap-2 px-4 py-2.5 text-left text-xs font-semibold text-muted" aria-expanded={openFound}>
+                    <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-good" /> <span className="flex-1">{T(`${handled.length} more fixed by the new design`, `${handled.length} बातें नए design ने ठीक कर दीं`)}</span>
+                    <ChevronDown className={`h-4 w-4 shrink-0 transition ${openFound ? "rotate-180" : ""}`} />
+                  </button>
+                  {openFound && (
+                    <ul className="space-y-1.5 px-4 pb-3">
+                      {handled.map(({ it }, i) => (
+                        <li key={i} className="flex items-start gap-2 text-xs text-muted">
+                          <span className="mt-px shrink-0 rounded-full bg-ai-soft px-1.5 py-0.5 text-[10px] font-semibold text-ai">{(AREA[it.area] ?? AREA.design)[hi ? 1 : 0]}</span>
+                          <span className="min-w-0">{hi ? it.hi || it.en : it.en}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
+            </section>
+          );
+        })()}
+
         <div className="space-y-2">
           <button type="button" onClick={accept} disabled={acceptBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
             {acceptBusy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T(`Use design ${which + 1}`, `Design ${which + 1} लगाएँ`)}
@@ -537,28 +599,6 @@ export default function AdvancedSitePage() {
           </button>
           {keepErr && <p className={errBox}>{keepErr}</p>}
         </div>
-
-        <section className="rounded-2xl border border-border bg-surface">
-          <button type="button" onClick={() => setOpenFound((v) => !v)} className={fold} aria-expanded={openFound}>
-            <span>{T("What the AI found on your present site", "AI को आपकी मौजूदा site में क्या मिला")} <span className="font-normal text-muted">({items.length})</span></span>
-            <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${openFound ? "rotate-180" : ""}`} />
-          </button>
-          {openFound && (
-            <div className="space-y-2.5 border-t border-border px-4 py-3">
-              {summary && (hi ? summary.hi || summary.en : summary.en) && <p className="text-sm text-ink">{hi ? summary.hi || summary.en : summary.en}</p>}
-              {items.length > 0 ? (
-                <ul className="space-y-2">
-                  {items.map((it, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <span className="mt-0.5 shrink-0 rounded-full bg-ai-soft px-2 py-0.5 text-[11px] font-semibold text-ai">{(AREA[it.area] ?? AREA.design)[hi ? 1 : 0]}</span>
-                      <span className="min-w-0">{hi ? it.hi || it.en : it.en}</span>
-                    </li>
-                  ))}
-                </ul>
-              ) : <p className="text-xs text-muted">{T("No big problems were found; the new design is about a more premium look.", "कोई बड़ी कमी नहीं मिली; नया design ज़्यादा premium look के लिए है।")}</p>}
-            </div>
-          )}
-        </section>
 
         {(result.diff?.layout || changes.length > 0) && (
           <section className="rounded-2xl border border-border bg-surface">
