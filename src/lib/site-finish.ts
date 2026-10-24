@@ -16,7 +16,6 @@ const has = <K extends CardBlock["kind"]>(card: Card, kind: K) => blocksOf(card)
 
 /** The steps in order, each with whether it is done. `products`: how many products the owner's list has (the list lives outside the card). */
 export function finishSteps(card: Card, products = 0): FinishStep[] {
-  const items = has(card, "product").reduce((n, b) => n + b.items.length, 0) + has(card, "services").reduce((n, b) => n + b.items.length, 0);
   const gallery = has(card, "gallery").reduce((n, b) => n + b.images.length, 0);
   const ownBanner = !!card.coverUrl && !card.coverUrl.startsWith("/api/stock/");
   const where = has(card, "location").some((b) => (b.address ?? "").trim() || (b.mapUrl ?? "").trim());
@@ -24,7 +23,7 @@ export function finishSteps(card: Card, products = 0): FinishStep[] {
   const reviews = has(card, "testimonials").some((b) => b.items.length > 0);
   const seo = card.seo;
   return [
-    { key: "products", icon: "plus", done: products > 0 || items > 0, href: `/poster/products?${back}`, en: "Products / services", hi: "Products / services", sub: "Name, price, photo", subHi: "नाम, दाम, photo" },
+    { key: "products", icon: "plus", done: products > 0, /* only the owner's own products count, never the services the AI wrote (owner, 24 Oct 2026: "2nd") */ href: `/poster/products?${back}`, en: "Products / services", hi: "Products / services", sub: "Name, price, photo", subHi: "नाम, दाम, photo" },
     { key: "photos", icon: "camera", done: ownBanner && gallery >= 2, href: `/poster/onboard?step=extras&part=photos&${back}`, en: "Photos & banner", hi: "Photos और banner", sub: "Yours, or made by AI", subHi: "आपकी, या AI से" },
     { key: "where", icon: "map", done: where, /* the address or the map pin is enough; timings are optional (least data, 24 Oct 2026) */ href: `/poster/onboard?step=where&${back}`, en: "Map & timings", hi: "Map और समय", sub: "Easy to find you", subHi: "ग्राहक आसानी से पहुँचें" },
     { key: "links", icon: "phone", done: links, href: `/poster/onboard?step=extras&part=links&${back}`, en: "UPI & social links", hi: "UPI और social links", sub: "Pay and follow", subHi: "Pay और follow" },
