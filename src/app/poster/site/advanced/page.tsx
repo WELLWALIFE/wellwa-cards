@@ -434,8 +434,8 @@ export default function AdvancedSitePage() {
       <div className="mx-auto max-w-sm space-y-5 py-10">
         <div className="grid place-items-center gap-2 text-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-ai" />
-          <p className="text-lg font-bold">{T("Your advanced website is being made", "आपकी advanced website बन रही है")}</p>
-          <p className="text-xs text-muted">{T("Usually 1–2 minutes. Sometimes up to 3.", "आम तौर पर 1–2 मिनट। कभी-कभी 3 मिनट तक।")} · {clock}{used ? ` · ${T(`design ${used + 1} of ${TRY_LIMIT}`, `design ${used + 1} / ${TRY_LIMIT}`)}` : ""}</p>
+          <p className="text-lg font-bold">{T("Your Premium website is being made", "आपकी Premium website बन रही है")}</p>
+          <p className="text-xs text-muted">{T("About 2 minutes", "लगभग 2 मिनट")} · {clock}{used ? ` · ${T(`design ${used + 1} of ${TRY_LIMIT}`, `design ${used + 1} / ${TRY_LIMIT}`)}` : ""}</p>
         </div>
         <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
           {steps.map(([k, label]) => {
@@ -448,8 +448,8 @@ export default function AdvancedSitePage() {
             );
           })}
         </ul>
-        <p className="rounded-xl bg-surface2 px-3 py-2.5 text-sm">{T("You can close this screen. The design keeps being made on our server, and we tell you when it is ready. Nothing goes live until you say so.", "आप ये screen बंद कर सकते हैं। Design हमारे server पर बनता रहेगा, और तैयार होते ही हम बता देंगे। आपके कहे बिना कुछ live नहीं होगा।")}</p>
-        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">{T("No internet right now — your design is still being made on our server and shows here once you are back online.", "अभी internet नहीं है — आपका design हमारे server पर बन रहा है, internet आते ही यहाँ दिख जाएगा।")}</p>}
+        <p className="text-center text-xs text-muted">✓ {T("You can close this screen.", "Screen बंद कर सकते हैं।")}</p>
+        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2 text-center text-xs">{T("No internet. It is still being made.", "Internet नहीं है। Website बन रही है।")}</p>}
       </div>
     );
   }

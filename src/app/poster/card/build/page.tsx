@@ -1174,7 +1174,7 @@ export default function BuildCard() {
         <div className="grid place-items-center gap-2 text-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
           <p className="text-lg font-bold">{T("Your website is being made", "आपकी website बन रही है")}</p>
-          <p className="text-xs text-muted">{T("Usually about a minute. Sometimes it takes up to 3.", "आम तौर पर लगभग 1 मिनट। कभी-कभी 3 मिनट तक लग जाते हैं।")} · {clock}</p>
+          <p className="text-xs text-muted">{T("About 1 minute", "लगभग 1 मिनट")} · {clock}</p>
         </div>
         <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
           {steps.map(([k, label]) => {
@@ -1188,8 +1188,9 @@ export default function BuildCard() {
           })}
         </ul>
         {/* The build is the server's (card-jobs.ts): closing the screen no longer loses it, and a second tap joins it. */}
-        <p className="rounded-xl bg-surface2 px-3 py-2.5 text-sm">{T("You can close this screen. Your website keeps being made, and we will tell you when it is ready. Opening this screen again shows it.", "आप ये screen बंद कर सकते हैं। आपकी website बनती रहेगी, और तैयार होते ही हम आपको बता देंगे। ये screen दोबारा खोलते ही दिख जाएगी।")}</p>
-        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">{T("No internet right now — your website is still being made on our server and shows here once you are back online.", "अभी internet नहीं है — आपकी website हमारे server पर बन रही है, internet आते ही यहाँ दिख जाएगी।")}</p>}
+        {/* Short (owner, 24 Oct 2026: "lambi line… simple likho"). */}
+        <p className="text-center text-xs text-muted">✓ {T("You can close this screen.", "Screen बंद कर सकते हैं।")}</p>
+        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2 text-center text-xs">{T("No internet. It is still being made.", "Internet नहीं है। Website बन रही है।")}</p>}
       </div>
     );
   }
