@@ -12,6 +12,9 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
   Rounded cards with a soft shadow, a gradient head where it fits, big clear tiles, compact fields. A form screen fits one phone
   screen with no scroll where possible. Optional fields stay closed behind a tick box and open only when ticked
   (e.g. "WhatsApp number अलग है", "एक और number जोड़ें" on About you).
+- **Set-up: "Who is this website for?" is part of the website screen** (owner, 24 Oct 2026: "dono page ko mila kar ek"). Partners see
+  three chips (My business / Shubhora / Both) on top of "Do you have a website?"; Shubhora hides the website rows. The old "promote"
+  step key is always skipped and redirects to "site".
 
 ## Where things are
 - Repo on the Mac: `/Users/jsrao/Desktop/Wellwa Life/wellwa-cards`

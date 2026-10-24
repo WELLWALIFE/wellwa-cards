@@ -425,6 +425,8 @@ function Onboard() {
       // The answer given last time comes back (Both is the default; "Only my own business" wrote false).
       // "Selling Shubhora" set the business itself to Shubhora (promoteShubhora), so that answer shows as ticked again too.
       setPromote(meta.also_shubhora === false ? "own" : isPartnerBiz(meta.business) ? "shubhora" : "both");
+      // What the account already holds: Next on the website screen does not write (or, for Shubhora, re-publish) it again.
+      promoteSaved.current = meta.also_shubhora === false ? "own" : isPartnerBiz(meta.business) ? "shubhora" : meta.also_shubhora === true ? "both" : "";
       setBiz({ kind: p && p.persona !== "business" && !meta.business?.name ? "person" : "business", role: (meta.business?.role as Role) || (p && p.persona !== "business" && !meta.business?.name ? "professional" : "business"), ...meta.business, name: meta.business?.name || (p?.persona === "business" ? p.name : ""), category: meta.business?.category || p?.category || "", city: meta.business?.city || p?.city || "", logo: p?.logo_url ?? null });
       const mail = data.user?.email ?? "";
       setNeedEmail(IS_PHONE_EMAIL.test(mail));
@@ -654,7 +656,8 @@ function Onboard() {
     // A tab left open from before a reset must not write its old answers over the fresh account (see accountMoved).
     if (await accountMoved()) { setBusy(""); return; }
     // Only a partner is asked "Who is this website for?"; everyone else is simply an owner of their own business and goes on to the website question.
-    const after: StepKey = partnerRef.current === "yes" ? "promote" : "site";
+    // "Who is this website for?" now sits on top of the website screen itself (owner, 24 Oct 2026: "dono page ko mila kar ek"), so everyone goes there.
+    const after: StepKey = "site";
     // The sign that step 1 was done: after a reset the name and mobile stay but this goes, so the step shows again.
     // "Own business only" is written for them here only when the server says it has no partner panel at all (an account that is simply not known as a
     // partner yet is left as it is: nobody is saved as own-only without choosing).
@@ -765,29 +768,29 @@ function Onboard() {
    *  when that card is published the Shubhora page rides along on its own hidden link — /c/<user>/shubhora.
    *  The two never mix: their customers see only their business, that one link shows only Shubhora, and the
    *  daily posters stay their own. */
-  async function bothFlow() {
+  async function bothFlow(): Promise<boolean> {
     setBusy("both"); setErr("");
     try {
-      if (await accountMoved()) return;
+      if (await accountMoved()) return false;
       const sb = getBrowserSupabase();
       // Remembered on the account, not in this screen's state: the card is built on a later screen, and the
       // person may well close the app in between.
       const up = await sb?.auth.updateUser({ data: { also_shubhora: true, setup_pos: "site", ...(isPartnerBiz(biz) ? { business: null } : {}) } });
       if (isPartnerBiz(biz)) setBiz(freshBiz);
-      if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
+      if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return false; }
       await bumpServerBase();
-      if (!stillOn("promote")) return;   // Back was pressed while it saved: the answer is kept, they are not pulled forward again
-      go("site");
+      return true;
     } catch {
       setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
+      return false;
     } finally { setBusy(""); }
   }
 
   /** "Only my own business or work": remembered on the account like the other two answers, then the website screen. */
-  async function ownFlow() {
+  async function ownFlow(): Promise<boolean> {
     setBusy("own"); setErr("");
     try {
-      if (await accountMoved()) return;
+      if (await accountMoved()) return false;
       const up = await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false, setup_pos: "site", ...(isPartnerBiz(biz) ? { business: null } : {}) } });
       if (isPartnerBiz(biz)) {
         setBiz(freshBiz);
@@ -798,13 +801,35 @@ function Onboard() {
           for (const pr of r.ok ? (r.data.products ?? []) : []) if (/shubhora/i.test(`${pr.category ?? ""} ${pr.brand ?? ""}`)) await api(`/api/poster/products?id=${pr.id}`, { method: "DELETE" });
         } catch { /* the Products page can still delete them by hand */ }
       }
-      if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return; }
+      if (up?.error) { setErr(T("Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।")); return false; }
       await bumpServerBase();
-      if (!stillOn("promote")) return;
-      go("site");
+      return true;
     } catch {
       setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"));
+      return false;
     } finally { setBusy(""); }
+  }
+
+  /** The partner's "for whom" answer, written once per choice (a second Next after a link error does not save it again). */
+  const promoteSaved = useRef<string>("");
+  /** After the answer is saved the website part runs on the NEXT render, with the business the save may have reset. */
+  const [siteGo, setSiteGo] = useState<{ n: number; how: "next" | "without" }>({ n: 0, how: "next" });
+  async function nextFromSiteScreen(how: "next" | "without") {
+    if (associate) {
+      if (promote === "shubhora") {
+        // Already a Shubhora card: nothing to build again — straight to Card & Website.
+        if (promoteSaved.current === "shubhora") { router.replace("/poster/site"); return; }
+        await promoteShubhora(); return;
+      }
+      if (promoteSaved.current !== promote) {
+        const ok = promote === "both" ? await bothFlow() : await ownFlow();
+        if (!ok || !stillOn("site")) return;
+        promoteSaved.current = promote;
+        setSiteGo((g) => ({ n: g.n + 1, how }));
+        return;
+      }
+    }
+    if (how === "without") await continueWithoutSite(); else await nextFromWebsite();
   }
 
   /* ================= the website step ================= */
@@ -1000,6 +1025,11 @@ function Onboard() {
     if (opener && canGoBackInApp()) { setStep(opener); router.back(); return; }
     go(to, opener ? "replace" : "push");
   }
+  useEffect(() => {
+    if (!siteGo.n) return;
+    if (siteGo.how === "without") void continueWithoutSite(); else void nextFromWebsite();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [siteGo]);
   /** The dealer's tick is missing: said under the tick box itself, not under the link box. */
   const tickMsg = T("Tick first that you are this brand's authorised dealer.", "पहले tick करें कि आप इस brand के authorised dealer हैं।");
   async function nextFromWebsite() {
@@ -1224,7 +1254,7 @@ function Onboard() {
     if (skippedYou.current || loading || wanted || autoSkip || username === undefined || !accountReady) return;
     skippedYou.current = true;
     // "About you" is not shown: its address is replaced by the next screen's (Back from there leaves the walk, it cannot stop on a screen never seen).
-    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10 && youDone) { setYouSkipped(true); go(partnerRef.current === "yes" ? "promote" : "site", "replace"); }
+    if (step === "you" && username && you.name.trim().length >= 2 && you.phone.replace(/\D/g, "").length >= 10 && youDone) { setYouSkipped(true); go("site", "replace"); }
     // Opened at /poster/onboard with no ?step=: the screen shown gets its address now, so the browser's Back can come back to it.
     else writeStepUrl(step, "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1234,7 +1264,8 @@ function Onboard() {
   // set-up there before the question became partners-only) goes on to the website question instead of asking a shop owner about Shubhora.
   useEffect(() => {
     // After the first look at the account (a partner ID it is about to write must not send a partner on past the question).
-    if (!loading && accountReady && step === "promote" && !associate) go("site", "replace");
+    // The question is part of the website screen now: an old link or saved place on "promote" opens that screen.
+    if (!loading && accountReady && step === "promote") go("site", "replace");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loading, accountReady, step, associate]);
 
@@ -1505,7 +1536,7 @@ function Onboard() {
     } catch { /* offline: the draft keeps it; Save writes it all again */ }
   }
   // "Who is this website for?" is for partners only: everyone else is simply an owner of their own business.
-  const skipped: ScreenKey[] = associate ? [] : ["promote"];
+  const skipped: ScreenKey[] = ["promote"];
   const at = ONBOARD_SCREENS.indexOf(step);
   const screenInfo = SETUP_SCREENS.find((x) => x.key === step)!;
   /** A trade with no questions of its own (a personal card) has nothing on the Details screen: it is skipped. */
@@ -1522,7 +1553,7 @@ function Onboard() {
     // A screen outside the walk (Photos & more) sits after the last walk screen — its Back used to jump to "About you".
     const here = at >= 0 ? at : ONBOARD_SCREENS.length;
     let prev: StepKey | null = opener ?? (here > 0 ? ONBOARD_SCREENS[here - 1] : null);
-    if (!opener && prev === "promote" && !associate) prev = here > 1 ? ONBOARD_SCREENS[here - 2] : null;
+    if (!opener && prev === "promote") prev = here > 1 ? ONBOARD_SCREENS[here - 2] : null;
     // The first screen the owner saw ("About you" was skipped for them): there is nothing before it in the walk.
     if (!prev || (prev === "you" && youSkipped)) { router.push(SETUP_HOME); return; }
     go(prev, "replace");
@@ -1545,7 +1576,7 @@ function Onboard() {
     setBusy("next");
     if (await accountMoved()) { setBusy(""); return; }
     let nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 1)];
-    if (nxt === "promote" && partnerRef.current !== "yes") {
+    if (nxt === "promote") {
       // Not a partner: no question asked. Saved as "own business only" only when the server says it has no partner panel.
       if (partnerRef.current === "no") { try { await getBrowserSupabase()?.auth.updateUser({ data: { also_shubhora: false } }); } catch { /* the site step saves it again */ } }
       nxt = ONBOARD_SCREENS[Math.min(ONBOARD_SCREENS.length - 1, at + 2)];
@@ -1612,75 +1643,65 @@ function Onboard() {
       </>}
 
       {step === "promote" ? (
-        <section className="space-y-4">
-          {/* Owner's call, 25 Sep 2026: a referral link does not make someone a networker — many take Shubhora for their
-              own shop. So everyone gets this choice, answerable in one look. Both is ticked by default (owner's call,
-              4 Oct 2026): the person's own business, and a Shubhora page of its own on a hidden link. */}
-          {head(T("Who is this website for?", "यह website किसके लिए है?"), T("Pick one. Not sure? Keep “Both”.", "एक चुनें। पक्का नहीं है तो “दोनों” रहने दें।"), "promote")}
-
-          {([
-            { k: "own" as const, icon: <Store className="h-6 w-6" />, t: T("My own business or work", "मेरा अपना business / काम"), s: T("Shop, clinic, school, office or profession. Your products and number go on the card.", "दुकान, clinic, school, office या profession। Card पर आपके products और number।"), eg: `${T("For example", "जैसे")}: ${egName} · City Care Clinic` },
-            // eslint-disable-next-line @next/next/no-img-element
-            { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-8 w-8 object-contain" />, t: T("Selling Shubhora as a partner", "Shubhora partner बनकर Shubhora बेचना"), s: T("A ready Shubhora card and website with your name, photo and number. You earn partner income.", "आपके नाम, photo और number के साथ तैयार Shubhora card और website। आप partner income कमाते हैं।"), eg: "" },
-            { k: "both" as const, icon: <Layers className="h-6 w-6" />, t: T("Both — my business and Shubhora", "दोनों — मेरा business और Shubhora"), s: T("Your own card and website, plus a separate Shubhora page on its own link.", "आपका अपना card और website, और एक अलग link पर Shubhora page।"), eg: T("Your customers never see Shubhora.", "आपके customers को Shubhora नहीं दिखेगा।") },
-          ]).map((c) => {
-            const on = promote === c.k;
-            return (
-              <button key={c.k} type="button" onClick={() => setPromote(c.k)} disabled={!!busy} aria-pressed={on}
-                className={`w-full rounded-2xl border-2 p-4 text-left disabled:opacity-60 ${on ? "border-brand bg-brand-soft/60" : "border-border bg-surface"}`}>
-                <div className="flex items-start gap-3">
-                  <span className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-surface text-brand shadow-card">{c.icon}</span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-base font-bold">{c.t}{c.k === "both" && <span className="ml-2 rounded-full bg-brand px-2 py-0.5 align-middle text-[10px] font-bold uppercase tracking-wide text-white">{T("Default", "Default")}</span>}</p>
-                    <p className="mt-0.5 text-sm text-muted">{c.s}</p>
-                    {c.eg && <p className="mt-1.5 text-xs text-muted">{c.eg}</p>}
-                  </div>
-                  <span className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong"}`}>{on && <Check className="h-3.5 w-3.5" />}</span>
-                </div>
-              </button>
-            );
-          })}
-
-          {err && <p className="text-sm text-danger">{err}</p>}
-          <button type="button" onClick={() => { if (promote === "both") void bothFlow(); else if (promote === "shubhora") void promoteShubhora(); else void ownFlow(); }} disabled={!!busy}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "both" || busy === "shubhora" || busy === "own" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : <>{T("Next", "आगे")} →</>}
-          </button>
-          <p className="text-center text-xs text-muted">{T("Not sure? Keep Both.", "पक्का नहीं? दोनों रहने दें।")}</p>
-        </section>
+        <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
       ) : step === "site" ? (
-        <section className="space-y-4">
-          {head(T("Do you have a website?", "क्या आपकी website है?"), T("If yes, we take your details from it, so you type less. If not, choose the last option — nothing else is needed.", "है तो हम उसी से आपकी जानकारी ले लेंगे, आपको कम लिखना पड़ेगा। नहीं है तो आख़िरी option चुनें — और कुछ नहीं चाहिए।"), "site")}
+        <section className="space-y-3">
+          {/* One screen for "Who is this website for?" (partners only) and "Do you have a website?" (owner, 24 Oct 2026: "dono page ko mila
+              kar ek"): short lines, compact tick rows, only the ticked row opens. */}
+          <div><h1 className="text-xl font-bold tracking-tight">{associate ? T("Your website", "आपकी Website") : T("Do you have a website?", "क्या आपकी website है?")}<Help k="site" className="translate-y-0" /></h1>
+            <p className="text-xs text-muted">{T("If you have one, we fill your details from it.", "हो तो उसी से आपकी जानकारी भर देंगे।")}</p></div>
+
+          {associate && (
+            <div className="rounded-3xl border border-border bg-surface p-3.5 shadow-card">
+              <p className="mb-2 text-xs font-semibold text-muted">{T("Who is it for?", "Website किसके लिए?")}<Help k="promote" /></p>
+              <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-surface2 p-1">
+                {([
+                  { k: "own" as const, icon: <Store className="h-4 w-4" />, t: T("My business", "मेरा business") },
+                  // eslint-disable-next-line @next/next/no-img-element
+                  { k: "shubhora" as const, icon: <img src="/art/brand/shubhora-logo.png" alt="" className="h-4 w-4 object-contain" />, t: "Shubhora" },
+                  { k: "both" as const, icon: <Layers className="h-4 w-4" />, t: T("Both", "दोनों") },
+                ]).map((c) => {
+                  const on = promote === c.k;
+                  return (
+                    <button key={c.k} type="button" onClick={() => { setPromote(c.k); setErr(""); }} disabled={!!busy} aria-pressed={on}
+                      className={`flex flex-col items-center gap-1 rounded-xl px-1 py-2 text-xs font-bold transition disabled:opacity-60 ${on ? "bg-surface text-brand-ink shadow-card ring-1 ring-brand/40" : "text-muted"}`}>
+                      {c.icon}<span className="leading-tight">{c.t}</span>
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="mt-2 text-[11px] text-muted">{promote === "shubhora" ? T("A ready Shubhora card and website with your name.", "आपके नाम से तैयार Shubhora card और website।") : promote === "both" ? T("Your own website + a separate Shubhora link.", "आपकी अपनी website + Shubhora का अलग link।") : T("Only your own business.", "सिर्फ़ आपका अपना business।")}</p>
+            </div>
+          )}
 
           {/* Three choices, one of them required (owner's call, 7 Oct 2026): "No website" is gone — a reference
-              website (any business like theirs) is what someone without a site of their own picks. */}
+              website (any business like theirs) is what someone without a site of their own picks. Not asked when the partner picks
+              Shubhora only: that website is ready-made. */}
+          {!(associate && promote === "shubhora") && (
+          <div className="space-y-2 rounded-3xl border border-border bg-surface p-3.5 shadow-card">
+          {associate && <p className="text-xs font-semibold text-muted">{T("Do you have a website?", "क्या आपकी website है?")}</p>}
           {SITE_CARDS.filter((c) => c.k !== "none").map((c) => {
             const on = site.kind === c.k;
             const bad = siteErr && !site.kind;
+            const short = c.k === "own" ? T("Yes, I have my website", "हाँ, मेरी website है") : c.k === "dealer" ? T("I am a brand's dealer", "मैं किसी brand का dealer हूँ") : T("No — I'll give an example", "नहीं है — example दूँगा");
             return (
-              <div key={c.k}>
-                <button type="button" onClick={() => pickSite(c.k)} disabled={!!busy}
-                  className={`w-full rounded-2xl border-2 p-3.5 text-left disabled:opacity-60 ${on ? "border-brand bg-brand-soft/60" : bad ? "border-danger/60 bg-surface" : "border-border bg-surface"}`}>
-                  <div className="flex items-start gap-3">
-                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-surface text-xl shadow-card">{c.e}</span>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-[15px] font-bold leading-snug">{hi ? c.th : c.t}</p>
-                      <p className="mt-0.5 text-xs text-muted">{hi ? c.sh : c.s}</p>
-                    </div>
-                    <span className={`mt-1 grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong"}`}>{on && <Check className="h-3.5 w-3.5" />}</span>
-                  </div>
+              <div key={c.k} className={`overflow-hidden rounded-2xl border transition-colors ${on ? "border-brand/50 bg-brand-soft/30" : bad ? "border-danger/60" : "border-border"}`}>
+                <button type="button" onClick={() => pickSite(c.k)} disabled={!!busy} aria-pressed={on}
+                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left disabled:opacity-60">
+                  <span className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded-[5px] border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong bg-surface"}`}>{on && <Check className="h-3 w-3" strokeWidth={3} />}</span>
+                  <span className="text-lg leading-none">{c.e}</span>
+                  <span className="min-w-0 flex-1 text-sm font-semibold">{short}</span>
                 </button>
                 {on && c.k !== "none" && (
-                  <div className="-mt-1 space-y-2.5 rounded-b-2xl border-2 border-t-0 border-brand/40 bg-surface px-3.5 pb-3.5 pt-4">
-                    <label className="block text-sm font-semibold">
-                      {c.k === "own" ? T("Your website link", "आपकी website का link") : c.k === "dealer" ? T("The brand's website link", "Brand की website का link") : T("Example website link", "Example website का link")}{c.k === "reference" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}<Help k="siteLink" />
+                  <div className="space-y-2 px-3 pb-3">
+                    <label className="block text-xs font-semibold text-muted">
+                      {c.k === "own" ? T("Your website link or name", "आपकी website का link या नाम") : c.k === "dealer" ? T("Brand's website or name", "Brand की website या नाम") : T("A website like yours (optional)", "आपके जैसी कोई website (ज़रूरी नहीं)")}<Help k="siteLink" />
                       <div className="mt-1 flex items-stretch gap-2">
                         <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookupTyped(true); } }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                          placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`)} className={`${box} min-w-0 flex-1 ${siteErr && siteErr !== tickMsg && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                          placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`)} className={`${box} min-w-0 flex-1 py-2.5 text-ink ${siteErr && siteErr !== tickMsg && site.kind && !pendingSocial ? "border-danger" : ""}`} />
                         <button type="button" onClick={() => void lookupTyped(true)} disabled={!!finding || site.url.trim().length < 2} aria-label={T("Search", "खोजें")} title={T("Search", "खोजें")}
-                          className="grid w-12 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
+                          className="grid w-11 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
                       </div>
-                      <span className="mt-1 block text-[11px] font-normal text-muted">{c.k === "reference" ? T("Any website of a shop like yours. None in mind? Leave it empty.", "आपके जैसी किसी दुकान की website। कोई नहीं सूझती? खाली छोड़ दें।") : T("Type the link or just the name. It is looked up by itself.", "link या सिर्फ़ नाम लिखें। अपने आप खोज लेंगे।")}</span>
                     </label>
                     {siteErr && siteErr !== tickMsg && !pendingSocial && <FieldErr id="site" msg={siteErr} />}
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
@@ -1692,19 +1713,16 @@ function Onboard() {
                           <button type="button" onClick={() => { setPendingSocial(null); setSiteErr(""); setSite((st) => ({ ...st, url: "" })); }} className="rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold">{T("Change the link", "link बदलें")}</button>
                         </div>
                       </div>
-                    ) : (
-                      <p className="text-[11px] text-muted">{T("Instagram, Facebook, YouTube or Google Maps links are not websites.", "Instagram / Facebook / YouTube / Google Maps link website नहीं है।")}</p>
-                    )}
+                    ) : null}
                     {c.k === "dealer" && (
                       <div>
                         <label className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm ${siteErr === tickMsg ? "border-danger" : "border-border bg-surface2"}`}>
                           <input type="checkbox" checked={!!site.assertedAt} onChange={(e) => { setSiteErr(""); setSite((st) => ({ ...st, assertedAt: e.target.checked ? new Date().toISOString() : "" })); }} className="mt-0.5 h-4 w-4" />
-                          <span>{T("I am this brand's authorised dealer and may show its product photos.", "मैं इस brand का authorised dealer हूँ और इसके product photos दिखा सकता हूँ।")}</span>
+                          <span>{T("I am this brand's authorised dealer.", "मैं इस brand का authorised dealer हूँ।")}</span>
                         </label>
                         {siteErr === tickMsg && <FieldErr id="tick" msg={siteErr} />}
                       </div>
                     )}
-                    <p className="text-xs text-muted">{hi ? c.takesHi : c.takes}</p>
                     {/* …and only while it still describes the link in the box: typing a new one must not leave
                         "Found: Haldiram's" standing under a box that now says bikano.com. */}
                     {peek.state !== "idle" && peek.role === c.k && peek.url === cleanSiteUrl(site.url) && (
@@ -1733,15 +1751,17 @@ function Onboard() {
           )}
           {/* Only "pick one of the three" belongs down here (above Next, with the three cards just over it); every message about a link is under its box. */}
           {!site.kind && <FieldErr id="pick" msg={siteErr} />}
+          </div>
+          )}
           {err && <p className="text-sm text-danger">{err}</p>}
-          <button type="button" onClick={nextFromWebsite} disabled={!!busy}
-            className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-70">
-            {busy === "next" ? (finding ? T("Looking for the website…", "Website ढूँढ रहे हैं…") : T("Saving…", "Save हो रहा है…")) : T("Next →", "आगे →")}
+          <button type="button" onClick={() => void nextFromSiteScreen("next")} disabled={!!busy}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card disabled:opacity-70">
+            {busy === "both" || busy === "own" || busy === "shubhora" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {T("Saving…", "Save हो रहा है…")}</> : busy === "next" ? (finding ? T("Looking for the website…", "Website ढूँढ रहे हैं…") : T("Saving…", "Save हो रहा है…")) : T("Next →", "आगे →")}
           </button>
           {/* Whatever goes wrong with a link — or while a name is still being looked up — the owner is never stuck: one tap carries on with no
               website (an example only). It stays tappable during the name search; only the saves that follow hold it. */}
-          {!!site.kind && (!!siteErr || (busy === "next" && !!finding)) && (
-            <button type="button" onClick={() => void continueWithoutSite()} disabled={!!busy && !(busy === "next" && !!finding)}
+          {!!site.kind && !(associate && promote === "shubhora") && (!!siteErr || (busy === "next" && !!finding)) && (
+            <button type="button" onClick={() => void nextFromSiteScreen("without")} disabled={!!busy && !(busy === "next" && !!finding)}
               className="w-full rounded-2xl border-2 border-border bg-surface py-3.5 text-sm font-semibold disabled:opacity-60">
               {T("Carry on without a website →", "बिना website के आगे बढ़ें →")}
             </button>
