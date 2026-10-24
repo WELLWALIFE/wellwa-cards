@@ -31,11 +31,13 @@ export function HeroSlides({ Hero, slides, ...p }: VariantProps & { Hero: Compon
     return () => clearInterval(t);
   }, [hold, n]);
   return (
-    <div className="adv-slides" style={{ position: "relative", display: "grid" }}
+    // One column exactly as wide as the page (minmax(0, 1fr)): an auto column grew to a wide hero's content and pushed its words and
+    // picture far off the right edge, so the top looked empty (found on a new design, 25 Oct 2026).
+    <div className="adv-slides" style={{ position: "relative", display: "grid", gridTemplateColumns: "minmax(0, 1fr)", width: "100%" }}
       onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocusCapture={() => setHold(true)} onBlurCapture={() => setHold(false)}>
       {slides.map((s, i) => (
         <div key={i} aria-hidden={i !== at} inert={i !== at}
-          style={{ gridArea: "1 / 1", opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
+          style={{ gridArea: "1 / 1", minWidth: 0, opacity: i === at ? 1 : 0, transition: "opacity .8s ease", pointerEvents: i === at ? "auto" : "none", zIndex: i === at ? 1 : 0 }}>
           {createElement(Hero, { ...p, c: contentFor(p.c, s) })}
         </div>
       ))}
