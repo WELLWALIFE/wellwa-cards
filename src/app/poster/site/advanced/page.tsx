@@ -19,6 +19,8 @@ import { goBack } from "@/lib/nav-back";
 import { payPrefill } from "@/lib/pay-prefill";
 import { cardHomeShown } from "@/lib/site-url";
 import { AdvancedSwitch, type AdvState } from "@/components/poster/advanced-entry";
+import { DESIGN_CREDITS } from "@/lib/adv-price";
+import { UnlockDialog } from "@/lib/ai-access";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 import type { Card, CardBlock } from "@/lib/types";
 
@@ -191,6 +193,7 @@ export default function AdvancedSitePage() {
   const [openFound, setOpenFound] = useState(false);
   const [openChanges, setOpenChanges] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
+  const [needCredits, setNeedCredits] = useState(false);
   const [acceptErr, setAcceptErr] = useState("");
   const [againErr, setAgainErr] = useState("");
   const [keepBusy, setKeepBusy] = useState(false);
@@ -304,7 +307,7 @@ export default function AdvancedSitePage() {
 
   const remaining = serverLeft ?? Math.max(0, TRY_LIMIT - used);
 
-  async function start(from: "make" | "again") {
+  async function start(from: "make" | "again", credits = false) {
     if (!card || startBusy) return;
     const setErr = from === "make" ? setStartErr : setAgainErr;
     setErr(""); setStartBusy(from);
@@ -312,8 +315,10 @@ export default function AdvancedSitePage() {
       // seedBump / wish: the next try is asked to be a different composition from the last one.
       const r = await api<JobView & { error?: string; reason?: string }>("/api/card/advanced", {
         method: "POST",
-        json: { cardId: card.id, mode: "preview", seedBump: used, ...(used ? { wish: `Make a clearly different layout from the earlier ones. This is design number ${used + 1}.` } : {}) },
+        json: { cardId: card.id, mode: "preview", seedBump: used, ...(credits ? { credits: true } : {}), ...(used ? { wish: `Make a clearly different layout from the earlier ones. This is design number ${used + 1}.` } : {}) },
       });
+      // Not enough credits for a credits design: the Add-credits sheet, nothing else changes.
+      if (r.status === 402 && (r.data as { needCredits?: number }).needCredits) { setNeedCredits(true); return; }
       if (r.status === 402 || r.status === 403) { setAllowed(false); void refreshAccess(); setErr(srv(r.data.error, T("The Premium website is not open for your account yet.", "Premium website अभी आपके account के लिए खुली नहीं है।"))); return; }
       if (r.status === 429) {
         if (r.data.reason === "tries") { setServerLeft(0); setErr(T(`You have used all ${TRY_LIMIT} layouts of your payment.`, `आपके payment के सारे ${TRY_LIMIT} layouts इस्तेमाल हो चुके हैं।`)); }
@@ -503,6 +508,7 @@ export default function AdvancedSitePage() {
     return (
       <div className="space-y-3 py-2">
         {header}
+        {needCredits && <UnlockDialog reason={T(`A new design uses ${DESIGN_CREDITS} credits.`, `नए design में ${DESIGN_CREDITS} credits लगते हैं।`)} onClose={() => setNeedCredits(false)} />}
         {/* Redesigned 23 Oct 2026 (owner: every design button opens that website; a simpler page): pick a design, see it, use it. */}
 
 
@@ -543,6 +549,12 @@ export default function AdvancedSitePage() {
         {designs.length >= TRY_LIMIT && remaining > 0 && (
           <button type="button" onClick={() => start("again")} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-2.5 text-xs font-semibold text-muted disabled:opacity-50">
             {startBusy === "again" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Make a new design", "नया design बनाएँ")}
+          </button>
+        )}
+        {/* The payment's designs are used: another one is always possible for credits (owner, 25 Oct 2026). */}
+        {remaining <= 0 && (
+          <button type="button" onClick={() => start("again", true)} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/40 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-50">
+            {startBusy === "again" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T(`New design · ${DESIGN_CREDITS} credits`, `नया design · ${DESIGN_CREDITS} credits`)}
           </button>
         )}
         {againErr && <p className={errBox}>{againErr}</p>}
@@ -679,6 +691,7 @@ export default function AdvancedSitePage() {
   return (
     <div className="space-y-3 py-2">
       {header}
+      {needCredits && <UnlockDialog reason={T(`A new design uses ${DESIGN_CREDITS} credits.`, `नए design में ${DESIGN_CREDITS} credits लगते हैं।`)} onClose={() => setNeedCredits(false)} />}
       <section className="space-y-3 rounded-3xl p-5 text-white shadow-float grad-brand">
         <span className="inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-[11px] font-bold uppercase tracking-wide"><Sparkles className="h-3 w-3" /> Premium</span>
         <h2 className="text-xl font-extrabold leading-tight">{T("AI gives your website a premium new look", "AI आपकी website को premium नया look देगा")}</h2>
@@ -741,7 +754,12 @@ export default function AdvancedSitePage() {
             {designs.length === 0 && <button type="button" onClick={() => start("make")} disabled={!!startBusy || remaining <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {startBusy === "make" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {cur?.has ? T("Make a new design", "नया design बनाएँ") : T("Make my Premium website", "मेरी Premium website बनाएँ")}
             </button>}
-            <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`All ${TRY_LIMIT} designs used.`, `सारे ${TRY_LIMIT} design इस्तेमाल हो गए।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} designs left`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी`)}</p>
+            {remaining <= 0 && (
+              <button type="button" onClick={() => start("make", true)} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-brand/40 bg-brand-soft/40 py-3 text-sm font-semibold text-brand-ink disabled:opacity-60">
+                {startBusy === "make" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T(`Make a new design · ${DESIGN_CREDITS} credits`, `नया design बनाएँ · ${DESIGN_CREDITS} credits`)}
+              </button>
+            )}
+            <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`Your ${TRY_LIMIT} designs are used. More with credits.`, `आपके ${TRY_LIMIT} design इस्तेमाल हो गए। आगे credits से।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} designs left`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी`)}</p>
             {startErr && <p className={errBox}>{startErr}</p>}
           </div>
         ) : !pending && (!selling || closedReason === "flag" || closedReason === "closed" || closedReason === "off") ? (

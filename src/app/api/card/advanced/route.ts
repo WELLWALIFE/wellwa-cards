@@ -25,6 +25,7 @@ import { advancedTriesLeft, isAdvancedAllowed, spendAdvancedTry } from "@/lib/ad
 import { advancedState, applyAdvanced, cleanResult, designAdvanced, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
 import { SITE_URL } from "@/lib/site-url";
 import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
+import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 
@@ -137,20 +138,32 @@ export async function POST(request: Request) {
 
   // The paid tries (ADVANCED_TRIES per payment) are counted here on the server, not only on the phone. 429, not 402/403: the phone
   // treats those as "not open for you" and would hide the button instead of saying the three layouts are used.
-  if ((await advancedTriesLeft(me.id)) === 0) return NextResponse.json({ error: "You have used all 3 layouts of your payment.", advanced: true, reason: "tries" }, { status: 429 });
+  // Once they are used, another design is always possible for credits (DESIGN_CREDITS each), taken before it runs and given back if it fails.
+  let refund: null | (() => Promise<unknown>) = null;
+  if ((await advancedTriesLeft(me.id)) === 0) {
+    if (b.credits !== true) return NextResponse.json({ error: "You have used all 3 layouts of your payment.", advanced: true, reason: "tries", credits: DESIGN_CREDITS }, { status: 429 });
+    const ref = `adv-design-${me.id.slice(0, 8)}-${Date.now()}`;
+    const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: DESIGN_CREDITS, p_reason: "premium-design", p_ref: ref }) });
+    if (!spend.ok) return spend.status >= 500
+      ? NextResponse.json({ error: "Could not start just now. Nothing was charged. Please try again." }, { status: 503 })
+      : NextResponse.json({ error: `A new design uses ${DESIGN_CREDITS} credits. Add credits and try again.`, needCredits: DESIGN_CREDITS }, { status: 402 });
+    refund = () => restAsService("rpc/grant_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: DESIGN_CREDITS, p_reason: "premium-design-refund", p_ref: ref }) });
+  }
 
   const mode = b.mode === "apply" ? "apply" : "preview";
   const bump = Math.max(0, Math.min(20, Math.round(Number(b.seedBump)) || 0));
   const wish = typeof b.wish === "string" ? b.wish.trim().slice(0, 300) : "";
 
   const { job, done, joined } = await startJob(key, { fresh: !!data.site.advanced }, async (step) => {
-    const result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: await seenSpecs(me.id, row.id), step });
+    let result0: Awaited<ReturnType<typeof designAdvanced>>;
+    try { result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: await seenSpecs(me.id, row.id), step }); }
+    catch (e) { await refund?.().catch(() => undefined); throw e; }   // a design that did not come out costs nothing
     // The sliding top banners come with the design (owner, 23 Oct 2026) when the card has none yet; owner-made ones are kept.
     const hasSlides = (data.site?.hero?.slides ?? []).length >= 2;
     const slides = hasSlides ? null : await writeSlides(data, true).catch(() => null);
     const result = slides ? { ...result0, slides } : result0;
     await rememberAdvDesign(me.id, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, ...result } as unknown as Obj);
-    await spendAdvancedTry(me.id);       // a finished design is one try; a crash above costs nothing
+    if (!refund) await spendAdvancedTry(me.id);       // a finished design is one try (a credits design is paid already); a crash above costs nothing
     let saved = false;
     if (mode === "apply") {
       // Re-read the card: the words are put on what the owner has now, not on what it was when the tap came.
