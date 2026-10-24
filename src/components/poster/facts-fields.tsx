@@ -41,8 +41,8 @@ export function Sec({ id, title, hint, help, children }: { id?: string; title: s
   const only = useContext(OnlyCtx);
   if (only && id && !only.includes(id)) return null;
   return (
-    <section id={id} className="scroll-mt-4 space-y-2 rounded-2xl border border-border bg-surface p-4">
-      <p className="text-[15px] font-semibold">{title}{help && <Help k={help} />}</p>
+    <section id={id} className="scroll-mt-4 space-y-2 rounded-3xl border border-border bg-surface p-4 shadow-card">
+      <p className="text-sm font-bold">{title}{help && <Help k={help} />}</p>
       {hint && <p className="text-xs text-muted">{hint}</p>}
       {children}
     </section>

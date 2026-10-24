@@ -125,7 +125,7 @@ export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string
   const tile = (s: Slot) => {
     const working = busy.startsWith(`${s.id}:`);
     return (
-      <div key={s.id} className="overflow-hidden rounded-2xl border border-border bg-surface">
+      <div key={s.id} className="overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
         <div className="relative bg-surface2" style={{ aspectRatio: s.kind === "banner" ? "16 / 9" : "4 / 3" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {s.url ? <img src={s.url} alt={s.label} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
@@ -147,7 +147,7 @@ export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string
             <button type="button" disabled={!!busy} onClick={() => { setHeadFor(s.id); setHeadVal(s.group ?? ""); }} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-brand-ink disabled:opacity-50"><Tag className="h-3 w-3 shrink-0" /> <span className="truncate">{s.group ? s.group : T("Add a heading", "Heading जोड़ें")}</span></button>
           ))}
           <p className="text-sm font-semibold">{s.id === "cardbanner" ? T("Card banner (only on your phone card)", "Card का banner (सिर्फ़ phone card पर)") : s.id === "sitebanner" ? T("Website banner (only on your website)", "Website का banner (सिर्फ़ website पर)") : s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
-          <p className="text-[11px] text-muted">{T("Best size", "सही size")}: {s.size}. {T("Any photo works — we fit it.", "कोई भी photo चलेगी — हम फ़िट कर देंगे।")}</p>
+          <p className="text-[11px] text-muted">{T("Any photo works — we fit it.", "कोई भी photo चलेगी, हम fit कर देंगे।")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             <button type="button" className={btn} disabled={!!busy} onClick={() => choose(s.id)}><Camera className="h-3.5 w-3.5" /> {T("Replace", "बदलें")}</button>
             <button type="button" className={btn} disabled={!!busy} onClick={() => void run(`${s.id}:ai`, { action: "ai", slot: s.id })}><Sparkles className="h-3.5 w-3.5 text-brand" /> {T("Make by AI", "AI से बनाएँ")}</button>
@@ -166,15 +166,15 @@ export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
       <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
       {scope && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs font-semibold text-ink">{scope === "card"
-        ? T("The banner here is your card's own. The About and gallery photos are the same on your card and website.", "यहाँ का banner सिर्फ़ आपके card का है। परिचय और gallery की photos card और website दोनों में एक ही हैं।")
-        : T("The banner here is your website's own. The About and gallery photos are the same on your card and website.", "यहाँ का banner सिर्फ़ आपकी website का है। परिचय और gallery की photos card और website दोनों में एक ही हैं।")}</p>}
-      <p className="text-sm text-muted">{T("These are the photos on your website. You can change any of them. It shows on your website as soon as you tap. “Make by AI” makes a new picture for that place (1 credit).", "आपकी website पर यही photos हैं। किसी को भी बदल सकते हैं। tap करते ही website पर दिखने लगती है। “AI से बनाएँ” उसी जगह के लिए नई picture बनाता है (1 credit)।")}</p>
+        ? T("Banner: card only. Other photos: card + website.", "Banner: सिर्फ़ card का। बाकी photos: card + website दोनों।")
+        : T("Banner: website only. Other photos: card + website.", "Banner: सिर्फ़ website का। बाकी photos: card + website दोनों।")}</p>}
+      <p className="text-xs text-muted">{T("Tap to change. It shows on your website at once. “Make by AI” = 1 credit.", "बदलने के लिए दबाएँ, website पर तुरंत दिखेगा। “AI से बनाएँ” = 1 credit।")}</p>
       {errHere("top")}
       {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
       <section className="space-y-2">
         <h3 className="text-sm font-bold">{T("Gallery", "Gallery")} <span className="font-normal text-muted">({gallery.length}/{max})</span></h3>
-        <p className="text-xs text-muted">{T("Put photos under a heading, like “Opening ceremony” or “Seminar”. Visitors can pick a heading or search for one.", "photos को heading के नीचे रखें, जैसे “उद्घाटन” या “Seminar”। देखने वाले heading चुन सकते हैं या खोज सकते हैं।")}</p>
+        <p className="text-xs text-muted">{T("Group photos under a heading, e.g. “Seminar”.", "Photos को heading में रखें, जैसे “Seminar”।")}</p>
         {(groups.length > 0 || gallery.length > 6) && (
           <div className="space-y-2">
             <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2"><Search className="h-4 w-4 shrink-0 text-muted" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Search a heading", "Heading खोजें")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>

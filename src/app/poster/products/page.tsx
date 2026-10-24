@@ -530,7 +530,7 @@ export default function ProductsPage() {
       ) : (
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => goUp("/poster/create")} className="text-muted" aria-label={C("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-          <h1 className="text-lg font-bold flex-1">{C(copy.title, copy.titleHi)}</h1>
+          <h1 className="flex-1 text-xl font-bold tracking-tight">{C(copy.title, copy.titleHi)}</h1>
           {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
       )}
@@ -601,7 +601,7 @@ export default function ProductsPage() {
                 <button type="button" onClick={() => void findMatch("stock")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
                 <button type="button" onClick={() => void findMatch("ai")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" /> {en ? "Make by AI · 1 credit" : "AI से बनाएँ · 1 credit"}</button>
               </div>
-              <p className="text-[11px] text-muted">{en ? "Best size: 1200 × 1500 px (tall) or 1200 × 1200 px (square). Any photo works — we fit it. Keep the product in the middle." : "सही size: 1200 × 1500 px (लंबी) या 1200 × 1200 px (चौकोर)। कोई भी photo चलेगी — हम फ़िट कर देंगे। Product बीच में रखें।"}</p>
+              <p className="text-[11px] text-muted">{en ? "Any photo works. Keep the product in the middle." : "कोई भी photo चलेगी। Product बीच में रखें।"}</p>
               {photoErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
               {draft.photo_url && (
                 <div className="space-y-1">
@@ -610,7 +610,7 @@ export default function ProductsPage() {
                   </button>
                   {studio.note === "ok" && <p className="text-[11px] font-semibold text-good">✨ {en ? "Studio photo ready — same product, clean background." : "Studio photo तैयार — वही product, साफ़ background।"} {studio.orig && <button type="button" onClick={useOriginalPhoto} className="underline text-muted">{en ? "Use my original" : "मेरी original रखें"}</button>}</p>}
                   {studio.note && studio.note !== "ok" && <p className="text-[11px] font-semibold text-danger">{studio.note}</p>}
-                  {!studio.note && !studio.busy && <p className="text-[11px] text-muted">{en ? "A phone photo becomes a clean studio picture of the same product. Your original is kept." : "फ़ोन की photo उसी product की साफ़ studio picture बन जाती है। आपकी original रखी रहती है।"}</p>}
+                  {!studio.note && !studio.busy && <p className="text-[11px] text-muted">{en ? "Your original is kept." : "आपकी original photo भी रहेगी।"}</p>}
                 </div>
               )}
             </div>
@@ -736,18 +736,18 @@ export default function ProductsPage() {
       )}
       <div className="space-y-2">
         {list.length === 0 && !draft && !setupMode && (
-          <div className="rounded-2xl border-2 border-dashed border-brand/40 bg-brand-soft/30 p-5 text-center">
+          <div className="rounded-3xl border-2 border-dashed border-brand/40 bg-brand-soft/30 p-5 text-center">
             <Package className="mx-auto h-8 w-8 text-brand" />
             <p className="mt-2 text-base font-bold">{C("No products yet", "अभी कोई product नहीं")}</p>
-            <p className="mx-auto mt-1 max-w-xs text-sm text-muted">{C("Add your first one: a photo, a name and a price. It shows on your card, website and posters.", "पहला जोड़ें: एक photo, नाम और दाम। ये card, website और poster पर दिखेगा।")}</p>
+            <p className="mx-auto mt-1 max-w-xs text-sm text-muted">{C("Photo, name and price. Shows on your card, website and posters.", "Photo, नाम और दाम। Card, website और poster पर दिखेगा।")}</p>
             <button type="button" disabled={locked} onClick={() => setBulk(true)} className="mt-3 mr-2 inline-flex items-center gap-2 rounded-xl border-2 border-brand px-4 py-3 text-sm font-semibold text-brand-ink disabled:opacity-60"><ClipboardList className="h-4 w-4" /> {C("Add many at once", "बहुत से एक साथ")}</button>
             <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="mt-3 inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>
           </div>
         )}
         {list.map((p) => (
           <div key={p.id}>
-          <div className={`flex items-center gap-3 rounded-xl border p-3 ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border"}`}>
-            <div className="h-14 w-14 rounded-lg bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
+          <div className={`flex items-center gap-3 rounded-2xl border p-3 shadow-sm ${p.active === false ? "border-border bg-surface2 opacity-70" : "border-border bg-surface"}`}>
+            <div className="h-14 w-14 rounded-xl bg-surface2 overflow-hidden grid place-items-center shrink-0">{p.photo_url ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={p.photo_url} alt="" className="h-full w-full object-contain" /> : "📦"}</div>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold truncate">{p.name}</p>
               {/* ₹ only before a number ("₹On request" / "₹FREE" read wrong); no internal counts like "0 lines". */}

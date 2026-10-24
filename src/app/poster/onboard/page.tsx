@@ -49,7 +49,6 @@ import { tradeQuestionsFor } from "@/lib/trade-questions";
 import { Help, type HelpKey } from "@/components/poster/field-help";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
-const field = `mt-1 w-full ${box}`;
 /** The compact field of "About you" (one screen, no scroll). */
 const cField = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-base font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15";
 const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
@@ -2030,12 +2029,12 @@ function Onboard() {
           {nextBar(true)}
         </section>
       ) : step === "where" ? (
-        <section className="space-y-4">
-          {head(T("Where & when", "कहाँ और कब"), T("Your city, address and timings. Customers find you from these.", "आपका शहर, पता और समय। Customers इन्हीं से आपको ढूँढते हैं।"))}
+        <section className="space-y-3">
+          {head(T("Where & when", "कहाँ और कब"), T("City, address, map and timings.", "शहर, पता, map और समय।"))}
           {/* 3 — city */}
-          <label className="block text-sm font-semibold">{T(`${org.En} city`, `${place} का शहर`)} <span className="text-danger">*</span><Help k="city" /><input id="ob-in-city" value={biz.city ?? ""} onChange={(e) => { touch("city"); clearFE("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder={T("e.g. Delhi", "जैसे Delhi")} className={`${field} ${fe("city") ? "border-danger" : ""}`} /><FieldErr id="city" msg={fe("city")} /></label>
+          <label className="block text-sm font-semibold">{T(`${org.En} city`, `${place} का शहर`)} <span className="text-danger">*</span><Help k="city" /><input id="ob-in-city" value={biz.city ?? ""} onChange={(e) => { touch("city"); clearFE("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder={T("e.g. Delhi", "जैसे Delhi")} className={`${cField} ${fe("city") ? "border-danger" : ""}`} /><FieldErr id="city" msg={fe("city")} /></label>
           <div className="space-y-3">
-              <label className="block text-sm font-semibold">{T("Full address", "पूरा पता")}<Help k="address" /><input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={field} /></label>
+              <label className="block text-sm font-semibold">{T("Full address", "पूरा पता")}<Help k="address" /><input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={cField} /></label>
               {biz.map ? (
                 <>
                 <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm font-semibold text-good">
@@ -2058,8 +2057,8 @@ function Onboard() {
               {/* "Pin again" that could not read the position says "paste a link below": the box is there too, though a pin exists. */}
               {(!biz.map || !!pinErr) && (mapPaste.open ? (
                 <div className="space-y-1">
-                  <input value={mapPaste.value} onChange={(e) => pasteMapLink(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={T("Paste your Google Maps link", "अपना Google Maps link paste करें")} className={`${box} w-full`} />
-                  <p className={`text-xs ${mapPaste.bad ? "font-semibold text-danger" : "text-muted"}`}>{mapPaste.bad ? T("That is not a Google Maps link. Open your shop in Google Maps → Share → Copy link.", "ये Google Maps link नहीं है। Google Maps में अपनी दुकान खोलें → Share → Copy link।") : T("Google Maps → your shop → Share → Copy link.", "Google Maps → आपकी दुकान → Share → Copy link।")}</p>
+                  <input value={mapPaste.value} onChange={(e) => pasteMapLink(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={T("Paste your Google Maps link", "अपना Google Maps link paste करें")} className={cField} />
+                  <p className={`text-xs ${mapPaste.bad ? "font-semibold text-danger" : "text-muted"}`}>{mapPaste.bad ? T("Not a Google Maps link. Maps → Share → Copy link.", "ये Google Maps link नहीं है। Maps → Share → Copy link।") : T("Google Maps → your shop → Share → Copy link.", "Google Maps → आपकी दुकान → Share → Copy link।")}</p>
                 </div>
               ) : (
                 <button type="button" onClick={() => setMapPaste((m) => ({ ...m, open: true }))} className="text-xs font-semibold text-brand-ink underline underline-offset-2">{T("Or paste a Google Maps link", "या Google Maps link paste करें")}</button>
@@ -2087,8 +2086,8 @@ function Onboard() {
           {nextBar(true)}
         </section>
       ) : step === "about" ? (
-        <section className="space-y-4">
-          {head(T("About & logo", "परिचय और logo"), T("A few lines about you. The AI writes them, you fix what you like.", "आपके बारे में कुछ लाइनें। AI लिखेगा, आप जो चाहें बदल लें।"))}
+        <section className="space-y-3">
+          {head(T("About & logo", "परिचय और logo"), T("AI writes it. Change what you like.", "AI लिखता है। जो चाहें बदलें।"))}
           {/* 4 — about (the AI writes it) */}
           <div className="block text-sm font-semibold">
             <div className="flex items-center justify-between gap-2">
@@ -2099,7 +2098,7 @@ function Onboard() {
             </div>
             {aboutErr && <FieldErr id="aboutai" msg={aboutErr} />}
             <textarea id="about" value={biz.about ?? ""} onChange={(e) => { touch("about"); clearFE("about"); setAboutErr(""); const v = e.target.value; setBiz({ ...biz, about: words(v) > ABOUT_MAX_WORDS ? v.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ") : v, aboutMade: undefined }); }} rows={4}
-              placeholder={T(`A few words is enough — e.g. “${copy.aboutEg}” — then tap Write with AI.`, `थोड़े शब्द काफ़ी हैं — जैसे “${copy.aboutEgHi}” — फिर AI से लिखवाएँ दबाएँ।`)} className={`${field} ${fe("about") ? "border-danger" : ""}`} />
+              placeholder={T(`A few words is enough — e.g. “${copy.aboutEg}” — then tap Write with AI.`, `थोड़े शब्द काफ़ी हैं — जैसे “${copy.aboutEgHi}” — फिर AI से लिखवाएँ दबाएँ।`)} className={`${cField} ${fe("about") ? "border-danger" : ""}`} />
             <FieldErr id="about" msg={fe("about")} />
             <span className="mt-1 flex justify-between gap-2 text-xs font-normal text-muted">
               <span>{T("Used on your card and website.", "Card और website पर यही जाएगा।")}</span>
@@ -2111,14 +2110,14 @@ function Onboard() {
             <FieldErr id="logo" msg={photoErr?.kind === "logo" ? photoErr.msg : ""} /></div>}
           {site.kind === "dealer" && !biz.logo && !!peek.data?.logo && <p className="-mt-2 text-xs text-muted">{T(`Using ${peek.data?.name || "the brand"}'s logo for now.`, `अभी ${peek.data?.name || "brand"} का logo लगेगा।`)}</p>}
           <FactsFields group="company" only={biz.role === "personal" ? ["q-designation"] : ["q-since", "q-designation", "q-qual"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} />
-              {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><Help k="gst" /><input id="ob-in-gst" value={biz.gstin ?? ""} onChange={(e) => { clearFE("gst"); setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) }); }} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${field} uppercase tracking-wide ${fe("gst") ? "border-danger" : ""}`} />
+              {(biz.role === "business" || biz.role === "agent") && <label className="block text-sm font-semibold">{T("GST number", "GST number")} <span className="font-normal text-muted">({T("if you have one", "अगर है तो")})</span><Help k="gst" /><input id="ob-in-gst" value={biz.gstin ?? ""} onChange={(e) => { clearFE("gst"); setBiz({ ...biz, gstin: e.target.value.toUpperCase().replace(/[^0-9A-Z]/g, "").slice(0, 15) }); }} inputMode="text" autoCapitalize="characters" spellCheck={false} placeholder="07ABCDE1234F1Z5" className={`${cField} uppercase tracking-wide ${fe("gst") ? "border-danger" : ""}`} />
                 <span className="mt-1 block text-xs font-normal text-muted">{(biz.gstin ?? "").length}/15</span><FieldErr id="gst" msg={fe("gst")} /></label>}
           {nextBar(true)}
         </section>
       ) : (
-        <section className="space-y-4">
+        <section className="space-y-3">
           {/* Two edit tiles share this screen: ?part=photos (the pictures) and ?part=links (payments, social, Maps); the set-up shows both. */}
-          {head(editing && part === "photos" ? T("Photos & banner", "Photos और banner") : editing && part === "links" ? T("Payments & social links", "Payment और social links") : T("Photos & more", "Photos और बाकी"), editing && part === "photos" ? T("Every picture on your website.", "आपकी website की हर picture।") : editing && part === "links" ? T("How customers pay you, and where to find you online. All optional.", "ग्राहक आपको कैसे payment दें, और आप online कहाँ मिलेंगे। सब optional।") : T("All optional. No photos? Ready pictures of your trade are used; change them any time.", "सब optional। Photos नहीं हैं? आपके काम की तैयार pictures लगेंगी; कभी भी बदल सकते हैं।"))}
+          {head(editing && part === "photos" ? T("Photos & banner", "Photos और banner") : editing && part === "links" ? T("Payments & social links", "Payment और social links") : T("Photos & more", "Photos और बाकी"), editing && part === "photos" ? T("Every picture on your website.", "आपकी website की हर picture।") : editing && part === "links" ? T("UPI and social links. All optional.", "UPI और social links। सब ज़रूरी नहीं।") : T("All optional.", "सब ज़रूरी नहीं।"))}
           {/* A focused edit shows the photos that are on the website, one by one; the set-up (no website yet) asks for the banner and photos. */}
           {editing && part !== "links" && <SitePhotos hi={hi} cardId={params.get("card") ?? undefined} scope={params.get("for") === "card" ? "card" : params.get("for") === "site" ? "site" : undefined} />}
           {!(editing && part === "photos") && <FactsFields group="company" only={editing ? ["q-pay", "q-social"] : ["q-photos", "q-pay", "q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} />}

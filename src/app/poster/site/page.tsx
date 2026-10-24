@@ -311,7 +311,7 @@ export default function WebsitePage() {
                   : <SiteLink href={`${siteLink}`} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See website", "Website देखें")}</SiteLink>}
               </div>
               <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
-                {T("Green tag = changes on both the card and the website. The banner is separate for each.", "हरा tag = card और website दोनों में बदलेगा। Banner दोनों का अलग-अलग है।")}
+                {T("Green tag = changes on both.", "हरा tag = दोनों में बदलेगा।")}
               </p>
               {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is live now.", "Save हो गया। अब live है।")} {target === "card" ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="underline">{T("See it", "देखें")}</CardLink> : <SiteLink href={`${siteLink}`} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="underline">{T("See it", "देखें")}</SiteLink>}</p>}
               <PhotoNudge />
@@ -344,14 +344,14 @@ export default function WebsitePage() {
                     { k: "design", I: Paintbrush, t: T("Website design", "Website का design"), s: T("Pick one of six looks and your colours", "छह look में से चुनें, और रंग"), href: "/poster/card/build?improve=1", scope: "site" },
                     { k: "mode", I: Settings, t: T("Show or hide pages", "Pages दिखाएँ या छुपाएँ"), s: T("Choose what people can see", "चुनें कि लोग क्या देखें"), tool: "mode", scope: "site" },
                     { k: "domain", I: Globe, t: T("Your own web address", "अपना web address"), s: T("www.yourshop.com", "www.yourshop.com"), tool: "domain", scope: "site" },
-                    { k: "seo", I: Search, t: T("Show on Google", "Google पर दिखें"), s: T("Help people find you when they search", "लोग खोजें तो आप मिलें"), href: `/poster/site/seo${cardId ? `?card=${cardId}` : ""}`, scope: "site" },
+                    { k: "seo", I: Search, t: T("Google SEO", "Google SEO"), s: T("Be found on Google", "Google पर मिलें"), href: `/poster/site/seo${cardId ? `?card=${cardId}` : ""}`, scope: "site" },
                     { k: "editor", I: FileText, t: T("Full editor", "पूरा editor"), s: T("Change any word or photo by hand", "कोई भी शब्द या photo हाथ से बदलें"), href: `/poster/d/editor?id=${s.cardId}&back=${BACK}`, scope: "both" },
                   ] },
                 ];
-                const base = "block rounded-2xl border-2 bg-surface p-3 text-left";
+                const base = "block rounded-2xl border bg-surface p-3 text-left shadow-sm transition active:scale-[.98]";
                 const badge = (sc: Tile["scope"]) => (
-                  <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${sc === "both" ? "bg-good/10 text-good" : "bg-brand-soft text-brand-ink"}`}>
-                    {sc === "both" ? T("Card + website", "Card + website दोनों") : sc === "card" ? T("Card only", "सिर्फ़ card") : T("Website only", "सिर्फ़ website")}
+                  <span className={`mt-1.5 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ${sc === "both" ? "bg-good/10 text-good" : "bg-brand-soft text-brand-ink"}`}>
+                    {sc === "both" ? T("Both", "दोनों") : sc === "card" ? T("Card only", "सिर्फ़ card") : T("Website only", "सिर्फ़ website")}
                   </span>
                 );
                 const tile = (x: Tile) => {
@@ -368,15 +368,18 @@ export default function WebsitePage() {
                     ? <Link key={x.k} href={x.href} className={`${base} border-border`}>{inner}</Link>
                     : <button key={x.k} type="button" onClick={() => { setRowErr(null); setOpenTool(on ? null : x.tool ?? null); }} aria-expanded={!!on} className={`${base} ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>{inner}</button>;
                 };
+                // Each group a box with its own coloured head, like the Card & Website first screen (owner, 24 Oct 2026: professional look).
+                const groupHead: Record<string, string> = { often: "bg-gradient-to-r from-[#f59e0b] to-[#f97316]", sometimes: "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]", rarely: "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]" };
                 const has = (g: { tiles: Tile[] }, t: Tool) => g.tiles.some((x) => x.tool === t);
                 return (
                   <>
                     {groups.map((g) => (
-                      <section key={g.k} className={`space-y-2 rounded-2xl p-3 ${g.k === "often" ? "border-2 border-brand/30 bg-brand-soft/20" : "border border-border"}`}>
-                        <div>
-                          <h2 className="text-base font-bold">{g.title}</h2>
-                          <p className="text-[11px] text-muted">{g.note}</p>
+                      <section key={g.k} className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                        <div className={`px-4 py-3 text-white ${groupHead[g.k] ?? groupHead.sometimes}`}>
+                          <h2 className="text-base font-bold leading-tight">{g.title}</h2>
+                          <p className="text-[11px] text-white/85">{g.note}</p>
                         </div>
+                        <div className="space-y-2 p-3">
                         {/* The Premium website (Rs 5,999) next to the six designs, so it is found where the look is chosen. */}
                         {g.k === "rarely" && !isCard && <AdvancedEntry key={`adv-${cardId}`} cardId={cardId} fetchState />}
                         <div className="grid grid-cols-2 gap-2">{g.tiles.map(tile)}</div>
@@ -420,6 +423,7 @@ export default function WebsitePage() {
                             <div className="rounded-xl border border-border bg-surface p-3 pr-20"><p className="flex items-center gap-1.5 text-sm font-semibold"><Tag className="h-4 w-4 text-brand" /> {T("Remove the Shubhora tag", "Shubhora tag हटाएँ")}</p></div>
                           </PremiumGate>
                         )}
+                        </div>
                       </section>
                     ))}
                   </>
