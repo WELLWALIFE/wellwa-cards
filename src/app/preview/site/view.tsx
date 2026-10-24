@@ -123,7 +123,8 @@ function PreviewInner() {
           el = (el?.closest("section") as HTMLElement | null) ?? el;
         }
         const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
-        try { window.parent.postMessage({ type: "preview-at", key, y }, window.location.origin); } catch { /* ignore */ }
+        // The editor's window is one screen of this page: the page itself scrolls to the part.
+        try { window.scrollTo({ top: y, behavior: "smooth" }); } catch { window.scrollTo(0, y); }
         if (el) { const o = el.style.outline, off = el.style.outlineOffset; el.style.outline = "4px solid #ffb400"; el.style.outlineOffset = "-4px"; setTimeout(() => { el!.style.outline = o; el!.style.outlineOffset = off; }, 1400); }
       }, 260);
     };

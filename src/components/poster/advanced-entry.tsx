@@ -67,7 +67,7 @@ export function AdvancedEntry({ cardId, fetchState = false, className = "" }: { 
         <span className="relative min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="text-base font-bold leading-tight">
-              {has ? T("Your advanced website", "आपकी advanced website") : T("Make advanced website", "Advanced website बनवाएँ")}
+              {has ? T("Your Premium website", "आपकी Premium website") : T("Make a Premium website", "Premium website बनवाएँ")}
             </span>
             <span className="rounded-full bg-ai-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ai">{T("Premium", "Premium")}</span>
           </span>
@@ -76,7 +76,7 @@ export function AdvancedEntry({ cardId, fetchState = false, className = "" }: { 
               ? (st?.on
                 ? T("It is live on your link. Tap to design it again.", "ये आपके link पर live है। दोबारा design करने के लिए दबाएँ।")
                 : T("Saved, but your basic website is showing. Tap to see it.", "Save है, पर अभी आपकी basic website दिख रही है। देखने के लिए दबाएँ।"))
-              : T("AI reviews your site and gives it a premium new look — a layout made only for your business", "AI आपकी site को जाँचकर उसे premium नया look देता है — ऐसा layout जो सिर्फ़ आपके business के लिए बने")}
+              : T("A new look made only for your business", "सिर्फ़ आपके business के लिए नया look")}
           </span>
         </span>
         <ChevronRight className="relative h-5 w-5 shrink-0 text-muted" />

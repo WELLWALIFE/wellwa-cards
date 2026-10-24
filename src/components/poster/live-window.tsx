@@ -19,24 +19,21 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
   const box = useRef<HTMLDivElement>(null);
   const [big, setBig] = useState(false);
   const [scale, setScale] = useState(0.3);
-  const [frameH, setFrameH] = useState(1600);
-  const scaleRef = useRef(0.3);
+  // The frame is one screen of the website (the window's own height, unscaled), never the whole page: a hero made "one screen tall"
+  // grew with a page-tall frame and pushed its words thousands of pixels down (found on the live walk, 24 Oct 2026). The website
+  // scrolls inside it, and a change scrolls the preview itself to the part (preview/site/view.tsx).
+  const [boxH, setBoxH] = useState(220);
   const w = view === "card" ? CARD_W : SITE_W;
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
   useEffect(() => {
-    const fit = () => { const cw = box.current?.clientWidth ?? 0; if (cw) setScale(Math.min(1, cw / w)); };
-    fit(); window.addEventListener("resize", fit); return () => window.removeEventListener("resize", fit);
+    const el = box.current;
+    if (!el) return;
+    const fit = () => { if (el.clientWidth) setScale(Math.min(1, el.clientWidth / w)); if (el.clientHeight) setBoxH(el.clientHeight); };
+    fit();
+    const ro = "ResizeObserver" in window ? new ResizeObserver(fit) : null;
+    ro?.observe(el); window.addEventListener("resize", fit);
+    return () => { ro?.disconnect(); window.removeEventListener("resize", fit); };
   }, [w, card]);
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin) return;
-      const d = e.data as { type?: string; key?: string; h?: number; y?: number } | null;
-      if (!d || d.key !== k) return;
-      if (d.type === "preview-height" && typeof d.h === "number") setFrameH(Math.max(700, Math.min(20000, d.h)));
-      if (d.type === "preview-at" && typeof d.y === "number") box.current?.scrollTo({ top: d.y * scaleRef.current, behavior: "smooth" });
-    };
-    window.addEventListener("message", onMsg); return () => window.removeEventListener("message", onMsg);
-  }, [k]);
+  const frameH = Math.round(boxH / scale);
   const post = (m: unknown) => { try { frame.current?.contentWindow?.postMessage(m, window.location.origin); } catch { /* ignore */ } };
   // Every change: the copy to the preview, then where to look.
   const sig = card ? JSON.stringify(card) : "";
@@ -51,8 +48,8 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
   return (
     <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
       <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
-        <div ref={box} className="overflow-auto overscroll-contain bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
-          <div className="relative" style={{ width: Math.round(w * scale), height: Math.round(frameH * scale) }}>
+        <div ref={box} className="overflow-hidden bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
+          <div className="relative" style={{ width: Math.round(w * scale), height: boxH }}>
             <iframe ref={frame} title={hi ? "Live preview" : "Live preview"} src={`/preview/site?k=${k}${view === "card" ? "&view=card" : ""}${page && view !== "card" ? `&page=${encodeURIComponent(page)}` : ""}`}
               onLoad={() => post(`preview:${k}`)} className="absolute left-0 top-0 origin-top-left" style={{ width: w, height: frameH, border: 0, transform: `scale(${scale})` }} />
           </div>

@@ -63,22 +63,11 @@ export default function WebsiteEditPage() {
   const [scale, setScale] = useState(0.3);
   // The window on top stays put while the options under it scroll (owner, 24 Oct 2026); a tap makes it big or small again.
   const [big, setBig] = useState(false);
-  const [frameH, setFrameH] = useState(2400);
-  const scaleRef = useRef(0.3);
-  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  // One screen of the website, not the whole page (a one-screen-tall hero grew with a page-tall frame; 24 Oct 2026): it scrolls inside.
+  const [boxH, setBoxH] = useState(230);
   const focusAsk = useRef<{ top?: boolean; text?: string } | null>(null);
   /** Show this part in the window: the top of the website, or the section / line with this text. */
   const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
-  useEffect(() => {
-    const onMsg = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin) return;
-      const d = e.data as { type?: string; key?: string; h?: number; y?: number } | null;
-      if (!d || d.key !== PREVIEW_KEY) return;
-      if (d.type === "preview-height" && typeof d.h === "number") setFrameH(Math.max(900, Math.min(20000, d.h)));
-      if (d.type === "preview-at" && typeof d.y === "number") box.current?.scrollTo({ top: d.y * scaleRef.current, behavior: "smooth" });
-    };
-    window.addEventListener("message", onMsg); return () => window.removeEventListener("message", onMsg);
-  }, []);
 
   const load = useCallback(async (id?: string) => {
     setErr("");
@@ -101,9 +90,14 @@ export default function WebsiteEditPage() {
     if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
   }, [card]);
   useEffect(() => {
-    const fit = () => { const w = box.current?.clientWidth ?? 0; if (w) setScale(Math.min(1, w / 1280)); };
-    fit(); window.addEventListener("resize", fit); return () => window.removeEventListener("resize", fit);
+    const el = box.current;
+    const fit = () => { if (!el) return; if (el.clientWidth) setScale(Math.min(1, el.clientWidth / 1280)); if (el.clientHeight) setBoxH(el.clientHeight); };
+    fit();
+    const ro = el && "ResizeObserver" in window ? new ResizeObserver(fit) : null;
+    if (el) ro?.observe(el);
+    window.addEventListener("resize", fit); return () => { ro?.disconnect(); window.removeEventListener("resize", fit); };
   }, [s]);
+  const frameH = Math.round(boxH / scale);
 
   const site = card?.site ?? { enabled: true };
   const style: SiteStyle = site.style ?? {};
@@ -260,8 +254,8 @@ export default function WebsiteEditPage() {
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
       <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
-          <div ref={box} className="bg-white overflow-auto overscroll-contain transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
-            <div className="relative" style={{ width: Math.round(1280 * scale), height: Math.round(frameH * scale) }}>
+          <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
+            <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
               <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
