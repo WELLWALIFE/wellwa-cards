@@ -20,8 +20,8 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 - **Set-up is 4 screens + Make** (owner, 24 Oct 2026: "minimum steps, easy steps"): About you → Website → Your business (logo, name,
   work, city, address, map pin) → About your trade (taps; ticks open hours/delivery and since/post/degree) → Save → Make.
   "Where & when" and "About & logo" are `later` (edit screens only); the AI writes the About in the background (Next on Your
-  business, one more try on Save). The sub domain is not asked in set-up: the finished screen's `LiveLink`
-  (components/poster/live-link.tsx) offers business-name link / own-name link / own domain.
+  business, one more try on Save). The sub domain is not asked in set-up: the "Select your domain" screen (`DomainPick`,
+  components/poster/domain-pick.tsx, after Colours and fonts, before Congratulations) offers the two free links, a typed one, and the own domain inline.
 
 ## Where things are
 - Repo on the Mac: `/Users/jsrao/Desktop/Wellwa Life/wellwa-cards`

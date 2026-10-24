@@ -34,7 +34,7 @@ import { SEED_KEY } from "@/lib/card-personalize";
 import { goBack } from "@/lib/nav-back";
 import { LAST_ONBOARD_SCREEN, screenHref } from "@/lib/setup-steps";
 import { getLinkPref } from "@/lib/link-pref";
-import { LiveLink } from "@/components/poster/live-link";
+import { DomainPick } from "@/components/poster/domain-pick";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
@@ -166,7 +166,7 @@ export default function BuildCard() {
   const hi = lang !== "en";
   const T = useCallback((en: string, hiText: string) => (hi ? hiText : en), [hi]);
 
-  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview" | "style" | "done">("loading");
+  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview" | "style" | "domain" | "done">("loading");
   // Step 5 (owner's call, 2 Oct 2026): "Save and continue" opens a page of its own with two tabs — Standard for the
   // free plan, Premium for the paid one — and the build starts from there, never by itself.
   const [, setPlan] = useState<"standard" | "premium">("standard");
@@ -1133,7 +1133,7 @@ export default function BuildCard() {
   /** The finished screen → the design screen when the owner came from it; opened straight (the dock, Home, a reload) it is the screen before this page. */
   function backFromDone() {
     setErr(""); setMakeFrom("");
-    if (doneFromPreview.current) { setState("style"); toTop(); return; }
+    if (doneFromPreview.current) { setState("domain"); toTop(); return; }
     goBack(router, "/poster/site");
   }
 
@@ -1222,7 +1222,8 @@ export default function BuildCard() {
   // Edit now (Create → Card & Website → Edit) or Later (home).
   // Colours and fonts — its own step between the design and "Congratulations" (owner, 15 Oct 2026): pick or skip.
   if (state === "style" && shown && card?.site) {
-    const goDone = () => { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
+    // Next is "Select your domain", then Congratulations (owner, 24 Oct 2026).
+    const goDone = () => { setState("domain"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
     const restyle = (patch: Record<string, unknown>) => { const next = { ...card, site: { ...card.site!, style: { ...(card.site!.style ?? {}), ...patch } } } as Card; setCard(next); liveTap(next); };
     return (
       <div className="space-y-3 py-2">
@@ -1276,6 +1277,25 @@ export default function BuildCard() {
     );
   }
 
+  // "Select your domain" — between the final website and Congratulations (owner, 24 Oct 2026): the free link (two ready, or typed
+  // here) and the own domain, set up on this same page.
+  if (state === "domain" && shown) {
+    return (
+      <div className="space-y-3 py-2">
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={() => { setState(cardOnly ? "preview" : "style"); toTop(); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+          <h1 className="min-w-0 flex-1 text-xl font-bold tracking-tight">{T("Select your domain", "अपना domain चुनें")}</h1>
+        </div>
+        <p className="-mt-1 text-xs text-muted">{T("People open your website and card at this address.", "लोग इसी address पर आपकी website और card खोलेंगे।")}</p>
+        <DomainPick current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish}
+          onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
+        <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
+          <button type="button" onClick={() => { setState("done"); toTop(); }} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done — next", "हो गया — आगे")}</button>
+        </div>
+      </div>
+    );
+  }
+
   if (state === "done" && shown) {
     const liveLink = `${SITE_HOST}/c/${liveUser || username}`;
     return (
@@ -1284,7 +1304,7 @@ export default function BuildCard() {
           <button type="button" onClick={backFromDone} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         </div>
         {/* The finished screen, in order (owner, 24 Oct 2026: "systematically, professional look"): the good news and the link, then
-            three numbered boxes — 1 choose the link, 2 finish the website, 3 grow — and Home / Edit at the foot. */}
+            two numbered boxes — 1 finish the website, 2 grow — and Home / Edit at the foot (the link is chosen on the screen before). */}
         <section className="relative overflow-hidden rounded-3xl px-5 py-6 text-center text-white shadow-float grad-brand">
           <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-8 h-44 w-44 rounded-full bg-white/10" />
@@ -1319,15 +1339,7 @@ export default function BuildCard() {
           return (
             <>
               <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-                {boxHead(1, T("Choose your link", "अपना link चुनें"), T("Business name, your name or own domain", "Business का नाम, आपका नाम या अपना domain"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}
-                <div className="p-3">
-                  <LiveLink current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish} bare
-                    onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
-                </div>
-              </section>
-
-              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-                {boxHead(2, cardOnly ? T("Complete your card", "Card पूरा करें") : T("Complete your website", "Website पूरी करें"), T("Add these now or later", "अभी या बाद में जोड़ें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
+                {boxHead(1, cardOnly ? T("Complete your card", "Card पूरा करें") : T("Complete your website", "Website पूरी करें"), T("Add these now or later", "अभी या बाद में जोड़ें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
                 <div className="grid grid-cols-2 gap-2 p-3">
                   {todo.map((x, i) => (
                     <button key={x.href} type="button" onClick={() => router.push(x.href)}
@@ -1340,7 +1352,7 @@ export default function BuildCard() {
               </section>
 
               <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-                {boxHead(3, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
+                {boxHead(2, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
                 <div className="p-3">
                   {/* The Rs 5,999 segment (owner, 15-16 Oct 2026) / a free account's next step up (17 Oct 2026). */}
                   {cardOnly ? (
@@ -1567,7 +1579,7 @@ export default function BuildCard() {
         {liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, on to the saved Card & Website
           // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
-          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=site&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
+          <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=site&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "domain" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
             {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Yes, select this design", "हाँ, यही design चुनें")}
