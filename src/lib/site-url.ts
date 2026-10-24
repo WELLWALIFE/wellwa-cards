@@ -18,3 +18,8 @@ export function withView(url: string, view: "card" | "site"): string {
   const clean = url.replace(/([?&])view=(card|site)(&|$)/, (_m, a: string, _v: string, b: string) => (b ? a : "")).replace(/[?&]$/, "");
   return `${clean}${clean.includes("?") ? "&" : "?"}view=${view}`;
 }
+
+/** The card's public address without "https://", for showing on screen: the own domain when it is live, else the Shubhora link. */
+export function cardHomeShown(username: string, customDomain?: string | null): string {
+  return cardHome(username, customDomain).replace(/^https?:\/\//, "");
+}

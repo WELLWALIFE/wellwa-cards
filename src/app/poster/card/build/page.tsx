@@ -28,7 +28,7 @@ import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, isShubhoraSellerCard, withShubhora
 import { CardView } from "@/components/card-view";
 import { applyLook, openingLook, threeLooks, type LookKey, type LookPlan } from "@/lib/site-looks";
 import { paletteFor } from "@/lib/site-style";
-import { SITE_HOST, SITE_URL } from "@/lib/site-url";
+import { SITE_URL, cardHomeShown } from "@/lib/site-url";
 import type { Card, CardBlock } from "@/lib/types";
 import type { TemplateCard } from "@/lib/templates";
 import { SEED_KEY } from "@/lib/card-personalize";
@@ -1325,7 +1325,8 @@ export default function BuildCard() {
   }
 
   if (state === "done" && shown) {
-    const liveLink = `${SITE_HOST}/c/${liveUser || username}`;
+    // The own domain when it is live (owner, 24 Oct 2026: "apna domain hai to Shubhora ka link kyon?").
+    const liveLink = cardHomeShown(liveUser || username, (card ?? existing)?.customDomain);
     return (
       <div className="space-y-4 py-2">
         {afterSteps(3)}

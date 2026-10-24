@@ -13,7 +13,7 @@ import { useT } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
 import { UnlockDialog } from "@/lib/ai-access";
 import { SeoPanel } from "@/components/editor/seo-panel";
-import { SITE_HOST } from "@/lib/site-url";
+import { cardHomeShown } from "@/lib/site-url";
 import { goBack } from "@/lib/nav-back";
 import type { Card } from "@/lib/types";
 
@@ -85,7 +85,7 @@ export default function SiteSeoPage() {
         <div className="py-16 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
       ) : (
         <>
-          <SeoPanel card={card} onChange={(p) => { setMsg(""); setSaveErr(""); setCard((c) => (c ? { ...c, ...p } : c)); }} address={`${SITE_HOST}/c/${card.username}`} />
+          <SeoPanel card={card} onChange={(p) => { setMsg(""); setSaveErr(""); setCard((c) => (c ? { ...c, ...p } : c)); }} address={cardHomeShown(card.username, card.customDomain)} />
           {saveErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{saveErr}</p>}
           {msg && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {msg}</p>}
           <button type="button" onClick={save} disabled={busy} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">

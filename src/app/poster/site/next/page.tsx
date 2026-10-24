@@ -7,7 +7,7 @@ import { useRouter } from "next/navigation";
 import { Check, ChevronLeft, ChevronRight, ExternalLink, LoaderCircle, Pencil, RotateCcw } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
-import { SITE_HOST } from "@/lib/site-url";
+import { cardHomeShown } from "@/lib/site-url";
 import { clearSkips, skipStep } from "@/lib/site-finish";
 import { FINISH_ICON, useFinish } from "@/components/poster/site-finish";
 import { SiteLink } from "@/components/poster/card-sheet";
@@ -48,7 +48,7 @@ export default function SiteNextPage() {
 
   const no = next ? steps.findIndex((s) => s.key === next.key) + 1 : 0;
   const all = done === total;
-  const link = `${SITE_HOST}/c/${card.username}`;
+  const link = cardHomeShown(card.username, card.customDomain);
 
   return (
     <div className="space-y-3 pb-6">

@@ -17,7 +17,7 @@ import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
 import { payPrefill } from "@/lib/pay-prefill";
-import { SITE_HOST } from "@/lib/site-url";
+import { cardHomeShown } from "@/lib/site-url";
 import { AdvancedSwitch, type AdvState } from "@/components/poster/advanced-entry";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 import type { Card, CardBlock } from "@/lib/types";
@@ -437,7 +437,7 @@ export default function AdvancedSitePage() {
   const secs = Math.max(0, Math.round(prog.base + (now - prog.at) / 1000));
   const clock = `${Math.floor(secs / 60)}:${String(secs % 60).padStart(2, "0")}`;
   const priceText = money(price);
-  const liveLink = `${SITE_HOST}/c/${doneUser || card?.username || ""}`;
+  const liveLink = cardHomeShown(doneUser || card?.username || "", card?.customDomain);
   const box = "rounded-2xl border border-border bg-surface p-4";
   const errBox = "rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-medium text-danger";
 
