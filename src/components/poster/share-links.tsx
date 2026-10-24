@@ -41,7 +41,11 @@ function Row({ it, en }: { it: Item; en: boolean }) {
   const [err, setErr] = useState(""); // shown right under the buttons, cleared on the next tap
   const copyFail = en ? "Could not copy — press and hold the link above to copy it." : "Copy नहीं हो पाया — ऊपर का link दबाकर रखें और copy करें।";
   async function copy() { setErr(""); try { await navigator.clipboard.writeText(it.url); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { setCopied(false); setErr(copyFail); } }
-  async function more() { setErr(""); try { if (navigator.share) { await navigator.share({ text: it.text, url: it.url }); return; } } catch (e) { if ((e as { name?: string })?.name === "AbortError") return; setErr(en ? "Could not open the share menu. Try WhatsApp or Copy instead." : "Share menu नहीं खुला। WhatsApp या Copy से भेजें।"); return; } copy(); }
+  // "More apps" opens the phone's own share sheet (Facebook, Instagram, SMS…). A computer's browser often has none, or refuses it
+  // (owner, 24 Oct 2026: a red warning on a Mac): the line shows only on a phone, and if the sheet still fails the link is copied instead.
+  const [canShare, setCanShare] = useState(false);
+  useEffect(() => { try { setCanShare(typeof navigator.share === "function" && window.matchMedia("(pointer: coarse)").matches); } catch { setCanShare(false); } }, []);
+  async function more() { setErr(""); try { await navigator.share({ text: it.text, url: it.url }); return; } catch (e) { if ((e as { name?: string })?.name === "AbortError") return; } copy(); }
   async function showQr() { setErr(""); if (qr) { setQr(""); return; } try { setQr(await QRCode.toDataURL(it.url, { width: 520, margin: 1 })); } catch { setErr(en ? "Could not make the QR code. Please try again." : "QR code नहीं बन पाया। दोबारा try करें।"); } }
   return (
     <div className="rounded-2xl border border-border bg-surface p-3 space-y-2.5">
@@ -69,7 +73,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
         </button>
       </div>
       {err && <p role="alert" className="text-xs text-danger">{err}</p>}
-      <button type="button" onClick={more} className="w-full text-center text-[11px] font-semibold text-brand-ink">{en ? "More apps (Facebook, Instagram, SMS…) →" : "और apps (Facebook, Instagram, SMS…) →"}</button>
+      {canShare && <button type="button" onClick={more} className="w-full text-center text-[11px] font-semibold text-brand-ink">{en ? "More apps (Facebook, Instagram, SMS…) →" : "और apps (Facebook, Instagram, SMS…) →"}</button>}
       {qr && (
         <div className="rounded-xl border border-border p-3 text-center space-y-2">
           {/* eslint-disable-next-line @next/next/no-img-element */}
