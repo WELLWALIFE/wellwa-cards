@@ -2004,8 +2004,9 @@ function Onboard() {
             ? head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))
             : head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
           {!!biz.category && !noDetails() && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
-          {/* "Who buys from you" is gone from set-up (owner, 24 Oct 2026: "ai bhi apne se samjh jayega"): the AI works out the buyers from the trade. */}
-          <FactsFields group="products" only={["q-special", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
+          {/* Only what the AI cannot guess (owner, 24 Oct 2026: "jitana kam se kaam chal sake utana kam data"): "Who buys from you" goes (the AI
+              works it out from the trade), and "Any offer?" is added later from Card & Website → Offer / pop-up. */}
+          <FactsFields group="products" only={["q-special"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
           {/* What the old "Where & when" and "About & logo" screens asked beyond the basics, closed until ticked (owner, 24 Oct 2026). */}
           {!editing && ([
             { k: "hours" as const, t: T("Add opening hours / delivery", "खुलने का समय / delivery जोड़ें"), body: <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} /> },
