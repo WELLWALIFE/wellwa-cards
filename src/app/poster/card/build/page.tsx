@@ -198,6 +198,8 @@ export default function BuildCard() {
   // unreadable); "Computer view" shows the scaled desktop frame as before.
   // The website preview opens in the computer view (owner, 24 Oct 2026); "Phone" switches it.
   const [desk, setDesk] = useState(true);
+  /** Make screen: the owner asked to make a new website although one is made. */
+  const [remake, setRemake] = useState(false);
   /** The "Change…" sheet: adjust this look, edit details, edit card, write again — one place instead of five paths. */
   const [more, setMore] = useState(false);
   const [viewed, setViewed] = useState<string[]>([]);          // the designs the owner has tapped
@@ -1764,6 +1766,8 @@ export default function BuildCard() {
 
 
   if (state === "make") {
+    // A website built in this session (or restored from this phone's draft) or already live.
+    const madeAlready = !!card && (!!built || !!liveUser || isLiveSite(existing));
     const li = (text: string) => <li className="flex items-start gap-2 text-sm"><span className="text-good">✓</span><span>{text}</span></li>;
     return (
       <div className="space-y-4 py-2">
@@ -1772,12 +1776,18 @@ export default function BuildCard() {
           <button type="button" onClick={backFromMake} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold">{T("Make my website & card", "मेरी website और card बनाएँ")}</h1>
         </div>
-        {/* Came back from a built preview: it is still saved on this phone — go on to it instead of building a second time. */}
-        {card && (
-          <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setState("preview"); toTop(); }} className="inline-flex items-center gap-1.5 rounded-xl border border-border bg-surface px-3.5 py-2 text-sm font-semibold">
-            <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
-          </button>
+        {/* Came back from a built website: it is kept — the big button goes on to it, and making a new one is a small, asked-for choice
+            (owner, 24 Oct 2026: "pehle se web site bani ho to dobara process na kare"). */}
+        {madeAlready && !remake && (
+          <section className="space-y-3 rounded-3xl border border-good/40 bg-good/5 p-4 shadow-card">
+            <p className="flex items-center gap-2 text-base font-bold"><CheckCircle2 className="h-5 w-5 text-good" /> {T("Your website is already made", "आपकी website पहले से बनी हुई है")}</p>
+            <button type="button" onClick={() => { setErr(""); setMakeFrom(""); setState("preview"); toTop(); }} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white">
+              {T("Show my website", "मेरी website देखें")} <ChevronRight className="h-5 w-5" />
+            </button>
+            <button type="button" onClick={() => setRemake(true)} className="block w-full text-center text-xs font-semibold text-muted underline underline-offset-2">{T("Make a new one instead", "नई website बनानी है")}</button>
+          </section>
         )}
+        {(!madeAlready || remake) && <>
         {!finding && found && !found.url && facts.website === found.q && (
           <p className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-sm">{T(`No website was found for “${found.q}”, so it is used as typed. To use a website, go back and paste its link.`, `“${found.q}” की website नहीं मिली, इसलिए उसे वैसे ही रखा गया है। website लगानी हो तो वापस जाकर उसका link डालें।`)}</p>
         )}
@@ -1845,6 +1855,7 @@ export default function BuildCard() {
           )}
           {err && (access.subscribed || makeFrom !== "free") && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
         </div>
+        </>}
         <p className="text-center text-xs text-muted">{T("The AI writes only from what you told us. It does not invent prices or claims.", "AI सिर्फ़ वही लिखता है जो आपने बताया। वह अपनी तरफ़ से दाम या दावे नहीं जोड़ता।")}</p>
         {premiumDialog}
       </div>

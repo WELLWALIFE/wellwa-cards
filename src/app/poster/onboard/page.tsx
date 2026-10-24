@@ -147,7 +147,7 @@ function Onboard() {
   const back = SAFE_PATH.test(params.get("back") ?? "") ? params.get("back")! : "";
   const editing = !!back;
   /** What the set-up had when it opened: a focused edit writes onto the live card only what CHANGED here. */
-  const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[] }>({ about: "", hours: "", address: "", banner: "", photos: [] });
+  const atLoad = useRef<{ about: string; hours: string; address: string; banner: string; photos: string[]; name?: string }>({ about: "", hours: "", address: "", banner: "", photos: [] });
   const stepRef = useRef(step);
   stepRef.current = step;
   // Every screen of the walk has an address of its own (…?step=trade), one history entry each (owner, 15 Oct 2026: "back matlab previous
@@ -407,7 +407,7 @@ function Onboard() {
       const p = prof.data.profiles?.find((x) => x.is_default) ?? prof.data.profiles?.[0] ?? null;
       setProfile(p);
       if (f) setFacts(f);
-      atLoad.current = { about: meta.business?.about ?? "", hours: f?.hours ?? "", address: [meta.business?.address, meta.business?.city].filter(Boolean).join(", "), banner: f?.bannerUrl ?? "", photos: f?.photos ?? [] };
+      atLoad.current = { about: meta.business?.about ?? "", hours: f?.hours ?? "", address: [meta.business?.address, meta.business?.city].filter(Boolean).join(", "), banner: f?.bannerUrl ?? "", photos: f?.photos ?? [], name: meta.business?.name ?? "" };
       const phone0 = (p?.phone || meta.phone || "").replace(/^\+91/, "");
       // Before the profile exists the WhatsApp number waits on the account (step 1 saves it there).
       const wa = f?.whatsapp || (meta.whatsapp ?? "").replace(/\D/g, "").slice(-10);
@@ -1313,8 +1313,12 @@ function Onboard() {
     const lc = liveCard.current;
     if (!lc) return false;
     if (lc.kb === "shubhora" && promote !== "shubhora") return true;
-    const now = (biz.name ?? "").trim().toLowerCase();
-    return !!lc.company && !!now && lc.company.toLowerCase() !== now;
+    // Only a name the owner actually changed on this form makes the website again (owner, 24 Oct 2026: Back into the form and Next again
+    // rebuilt a finished website — the AI's company line "Sharma Sweets & Namkeen" never matched the typed "Sharma Sweets").
+    const norm = (v: string) => v.toLowerCase().replace(/[^a-z0-9\u0900-\u097f]+/g, "");
+    const now = norm(biz.name ?? "");
+    if (!now || now === norm(atLoad.current.name ?? "")) return false;
+    return !!lc.company && !norm(lc.company).includes(now) && !now.includes(norm(lc.company));
   }
   function nextStep(): string {
     if (hadLiveCard.current) return cardOutdated() ? "/poster/card/build?again=1" : "/poster/site";
