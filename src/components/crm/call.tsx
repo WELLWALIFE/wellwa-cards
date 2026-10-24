@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles, ClipboardPaste, UserPlus, X, AlertTriangle, ChevronDown, Search } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick } from "@/components/crm/shared";
+import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, type LeadPro, type Task, waClick } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
 export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean; callId?: string };
@@ -183,13 +183,14 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
   const [i, setI] = useState(0);
   const [done, setDone] = useState<Set<string>>(new Set());
   const [msgs, setMsgs] = useState<{ direction: string; text: string; sent_at: string }[] | null>(null);
+  const [note, setNote] = useState<{ text: string; at: string; call: boolean } | null>(null);
   const cur = items[i];
   useEffect(() => {
-    setMsgs(null);
+    setMsgs(null); setNote(null);
     if (!cur) return;
     let dead = false;
     // ?as= so a team workspace reads the owner's thread (without it the lead is "not found" for an agent / manager).
-    api<{ messages?: { direction: string; text: string; sent_at: string }[] }>(`/api/crm/thread?lead=${cur.lead.id}${as ? `&as=${as}` : ""}`).then((r) => { if (!dead) setMsgs(r.ok ? (r.data.messages ?? []).slice(-2) : []); }).catch(() => { if (!dead) setMsgs([]); });
+    api<{ messages?: { direction: string; text: string; sent_at: string }[]; lastNote?: { text: string; at: string; call: boolean } | null }>(`/api/crm/thread?lead=${cur.lead.id}${as ? `&as=${as}` : ""}`).then((r) => { if (!dead) { setMsgs(r.ok ? (r.data.messages ?? []).slice(-2) : []); setNote(r.ok ? r.data.lastNote ?? null : null); } }).catch(() => { if (!dead) setMsgs([]); });
     return () => { dead = true; };
   }, [cur, as]);
   if (!cur) return (
@@ -216,6 +217,13 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
             {l.ai_summary && <p className="text-ink">{l.ai_summary}</p>}
             {l.ai_next && <p className="text-ink"><b>→</b> {l.ai_next}</p>}
             {!l.ai_summary && l.message && <p className="text-ink">“{l.message}”</p>}
+          </div>
+        )}
+        {/* The last note, typed or spoken (owner, 24 Oct 2026): what was said last time, before this call. */}
+        {(note || l.notes?.trim()) && (
+          <div className="mt-3 rounded-xl border border-amber/30 bg-amber/10 px-3 py-2 text-xs">
+            <p className="mb-0.5 font-semibold text-ink">📝 {L.hi ? (note?.call ? "पिछली call का note" : "आखिरी note") : (note?.call ? "Note from the last call" : "Last note")}{note ? <span className="font-normal text-muted"> · {ago(note.at, L.hi)}</span> : null}</p>
+            <p className="whitespace-pre-line text-ink">{(note?.text ?? l.notes ?? "").slice(0, 300)}</p>
           </div>
         )}
         {msgs && msgs.length > 0 && (

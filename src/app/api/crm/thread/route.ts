@@ -22,7 +22,17 @@ export async function GET(request: Request) {
     const ai = await refreshInsights(scope.ownerId, lead, messages);
     if (ai) Object.assign(lead, { ai_intent: ai.intent, ai_sentiment: ai.sentiment, ai_summary: ai.summary, ai_next: ai.next, ai_at: new Date().toISOString(), score: ai.score, _aiTags: ai.tags });
   }
-  return NextResponse.json({ lead, messages, events, templates, links });
+  // The last note the owner wrote or spoke (the Note button, or the note after a call): shown on the Call list card before the next call
+  // (owner, 24 Oct 2026: "is page per last note jo type kiya tha ya mic se kiya tha, wo dikhana chahiye").
+  const own = `owner_id=eq.${scope.ownerId}&lead_id=eq.${lead.id}`;
+  const [ev, cl] = await Promise.all([
+    restAsService<{ text: string; created_at: string }[]>(`lead_events?${own}&kind=eq.note&select=text,created_at&order=created_at.desc&limit=1`).catch(() => null),
+    restAsService<{ note: string; started_at: string }[]>(`crm_calls?${own}&note=neq.&select=note,started_at&order=started_at.desc&limit=1`).catch(() => null),
+  ]);
+  const n1 = ev?.ok ? ev.data?.[0] : undefined, n2 = cl?.ok ? cl.data?.[0] : undefined;
+  const lastNote = n1 && (!n2 || n1.created_at >= n2.started_at) ? { text: n1.text, at: n1.created_at, call: false }
+    : n2?.note?.trim() ? { text: n2.note.trim(), at: n2.started_at, call: true } : null;
+  return NextResponse.json({ lead, messages, events, templates, links, lastNote });
 }
 
 type LinkRow = { label: string; url: string; kind: string };
