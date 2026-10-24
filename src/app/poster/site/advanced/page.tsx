@@ -66,7 +66,9 @@ type Result = {
   diff?: { layout?: { before: string; after: string }; text?: { key: string; label: Bi; before: string; after: string }[]; changed?: number };
 };
 type JobView = { job: string; state: "running" | "done" | "failed"; stage: Stage; elapsed: number; claimed: boolean; status?: number; result?: unknown };
-type EngineGet = Partial<JobView> & { job?: string | null; access?: { allowed: boolean; reason?: string }; current?: AdvState | null; error?: string };
+type EngineGet = Partial<JobView> & { job?: string | null; access?: { allowed: boolean; reason?: string }; current?: AdvState | null; error?: string; /** Every design already made for this card, kept on the server. */ designs?: Result[] };
+/** One design's handle: its job, or (a kept design) its seed. */
+const seedKey = (r: Result) => `seed:${r.spec?.seed ?? ""}`;
 type PayStatus = { allowed?: boolean; reason?: string | null; price?: number; triesLeft?: number; selling?: boolean; error?: string };
 type Step = "load" | "none" | "intro" | "running" | "preview" | "done" | "kept";
 
@@ -239,7 +241,7 @@ export default function AdvancedSitePage() {
     const t = readTries(mine.id);
     if (!t.jobs.includes(v.job)) { t.n += 1; t.jobs.push(v.job); writeTries(mine.id, t); }
     setUsed(t.n); setJobId(v.job); setResult(res); setAcceptErr(""); setAgainErr(""); setKeepErr("");
-    setDesigns((d) => (d.some((x) => x.job === v.job) ? d : [...d, { job: v.job, res }]));
+    setDesigns((d) => (d.some((x) => x.job === v.job || (!!res.spec?.seed && x.res.spec?.seed === res.spec.seed)) ? d.map((x) => (x.res.spec?.seed === res.spec?.seed ? { job: v.job, res } : x)) : [...d, { job: v.job, res }].slice(-TRY_LIMIT)));
     setOpenFound(false); setOpenChanges(false);
     setStep("preview");
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
@@ -289,12 +291,17 @@ export default function AdvancedSitePage() {
       await refreshAccess(eg);
       if (!mounted.current) return;
       setCur(eg.current ?? null);
+      // The designs made before (kept on the server, owner 24 Oct 2026): shown again, never made again.
+      const kept = (eg.designs ?? []).filter((r) => r.spec && r.cardId === mine.id);
+      if (kept.length) setDesigns(kept.map((r) => ({ job: seedKey(r), res: r })));
       // A design left running (or finished while this screen was closed) is picked up where it is.
       if (eg.job) {
         const v = eg as JobView;
         if (v.state === "running") { void follow(v, mine); return; }
         if (!v.claimed) { finish(v, mine); return; }
       }
+      // Made before but not live yet: straight to them.
+      if (kept.length && !eg.current?.on) { const last = kept[kept.length - 1]; setJobId(seedKey(last)); setResult(last); setStep("preview"); return; }
       setStep("intro");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -531,6 +538,12 @@ export default function AdvancedSitePage() {
             );
           })}
         </div>
+        {/* All three slots hold kept designs but a new payment gave more tries: a new one can still be made. */}
+        {designs.length >= TRY_LIMIT && remaining > 0 && (
+          <button type="button" onClick={() => start("again")} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-2.5 text-xs font-semibold text-muted disabled:opacity-50">
+            {startBusy === "again" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Make a new design", "नया design बनाएँ")}
+          </button>
+        )}
         {againErr && <p className={errBox}>{againErr}</p>}
 
         <div ref={frameBox} className="overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white" style={{ height: Math.min(frameH * scale, 400) }}>
@@ -714,9 +727,16 @@ export default function AdvancedSitePage() {
         {allowed ? (
           <div className="space-y-1.5">
             {paidNote && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Payment received.", "Payment मिल गया।")}</p>}
-            <button type="button" onClick={() => start("make")} disabled={!!startBusy || remaining <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            {/* Designs made before: open them, never make a new one from here (a new one is the empty slot on the designs screen). */}
+            {designs.length > 0 && (
+              <button type="button" onClick={() => { const last = designs[designs.length - 1]; setJobId(last.job); setResult(last.res); setAcceptErr(""); setStep("preview"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }}
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white">
+                <Sparkles className="h-5 w-5" /> {T(`See my designs (${designs.length})`, `मेरे बने designs देखें (${designs.length})`)}
+              </button>
+            )}
+            {designs.length === 0 && <button type="button" onClick={() => start("make")} disabled={!!startBusy || remaining <= 0} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {startBusy === "make" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Sparkles className="h-5 w-5" />} {cur?.has ? T("Make a new design", "नया design बनाएँ") : T("Make my Premium website", "मेरी Premium website बनाएँ")}
-            </button>
+            </button>}
             <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`All ${TRY_LIMIT} designs used.`, `सारे ${TRY_LIMIT} design इस्तेमाल हो गए।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} designs left`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी`)}</p>
             {startErr && <p className={errBox}>{startErr}</p>}
           </div>

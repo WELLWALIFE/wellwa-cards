@@ -24,18 +24,14 @@ import { myCard } from "@/lib/site-server";
 import { advancedTriesLeft, isAdvancedAllowed, spendAdvancedTry } from "@/lib/advanced-access";
 import { advancedState, applyAdvanced, cleanResult, designAdvanced, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
 import { SITE_URL } from "@/lib/site-url";
+import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 
-// The designs an owner has already previewed for a card, so "Try another layout" is measured against them (a preview saves nothing on
-// the card). In memory, like the job itself; forgotten after a few hours or once a preview is accepted.
-const SEEN_MS = 3 * 60 * 60_000;
-// Every preview of this round is kept whole, so the owner can go back to design 1 after seeing 2 and 3 and put THAT one live.
-const g = globalThis as unknown as { __advSeen?: Map<string, { at: number; items: Obj[] }> };
-const seen = (g.__advSeen ??= new Map());
-const seenItems = (k: string): Obj[] => { const e = seen.get(k); if (!e || Date.now() - e.at > SEEN_MS) { seen.delete(k); return []; } return e.items; };
-const seenSpecs = (k: string): AdvancedSpec[] => seenItems(k).map((r) => r.spec as AdvancedSpec).filter(Boolean);
-const remember = (k: string, result: Obj) => { const list = seenItems(k); seen.set(k, { at: Date.now(), items: [...list, result].slice(-6) }); };
+// The designs an owner has already made for a card: kept on disk (lib/adv-designs.ts), so "Try another layout" is measured against them,
+// an earlier one can be put live, and a closed screen or a restart never loses a design that was paid for.
+const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId);
+const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);
 
 // Review + design + words are three AI calls, two of them side by side; the job outlives the request.
 export const maxDuration = 200;
@@ -63,9 +59,11 @@ export async function GET(request: Request) {
   const cardId = new URL(request.url).searchParams.get("cardId") ?? undefined;
   const [access, row, job] = await Promise.all([isAdvancedAllowed(me.id), myCard(me.id, cardId), currentJob(keyOf(me.id))]);
   const current = row ? advancedState(row.data) : null;
-  if (!job) return NextResponse.json({ access, current, job: null });
+  // Every design made for this card (newest last): the screen opens on them instead of making a new one.
+  const designs = row ? (await advDesigns(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec) : [];
+  if (!job) return NextResponse.json({ access, current, designs, job: null });
   touch(keyOf(me.id));
-  return NextResponse.json({ access, current, ...jobView(job) });
+  return NextResponse.json({ access, current, designs, ...jobView(job) });
 }
 
 export async function POST(request: Request) {
@@ -109,7 +107,7 @@ export async function POST(request: Request) {
     let res = job?.result as Obj | undefined;
     const isCurrent = !!job && job.id === b.accept && job.state === "done" && !!res && res.mode === "preview" && res.cardId === row.id;
     // An earlier design of this round (design 1 after 2 and 3 were seen): found by its seed among the previews kept here.
-    if (!isCurrent) res = seenItems(`${me.id}:${row.id}`).find((r) => (r.spec as AdvancedSpec | undefined)?.seed === b.acceptSeed && r.cardId === row.id);
+    if (!isCurrent) res = (await seenItems(me.id, row.id)).find((r) => (r.spec as AdvancedSpec | undefined)?.seed === b.acceptSeed && r.cardId === row.id);
     if (!res) return NextResponse.json({ error: "That preview is no longer there. Please make it again." }, { status: 400 });
     // Saved onto the card as it is NOW (the owner may have edited it while looking at the preview).
     const fresh = (await myCard(me.id, row.id))?.data ?? data;
@@ -119,7 +117,7 @@ export async function POST(request: Request) {
     const r = await save(row.id, me.id, next);
     if (!r.ok) return NextResponse.json({ error: "Could not save your advanced website. Please try again." }, { status: 500 });
     if (job) await claim(key, job.id);
-    seen.delete(`${me.id}:${row.id}`);
+    // The designs stay kept: the owner can come back and put another of them live without making a new one.
     return NextResponse.json({ ok: true, current: advancedState(next), username: row.username });
   }
 
@@ -139,12 +137,12 @@ export async function POST(request: Request) {
   const wish = typeof b.wish === "string" ? b.wish.trim().slice(0, 300) : "";
 
   const { job, done, joined } = await startJob(key, { fresh: !!data.site.advanced }, async (step) => {
-    const result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: seenSpecs(`${me.id}:${row.id}`), step });
+    const result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: await seenSpecs(me.id, row.id), step });
     // The sliding top banners come with the design (owner, 23 Oct 2026) when the card has none yet; owner-made ones are kept.
     const hasSlides = (data.site?.hero?.slides ?? []).length >= 2;
     const slides = hasSlides ? null : await writeSlides(data, true).catch(() => null);
     const result = slides ? { ...result0, slides } : result0;
-    remember(`${me.id}:${row.id}`, { ok: true, mode, cardId: row.id, username: row.username, ...result } as unknown as Obj);
+    await rememberAdvDesign(me.id, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, ...result } as unknown as Obj);
     await spendAdvancedTry(me.id);       // a finished design is one try; a crash above costs nothing
     let saved = false;
     if (mode === "apply") {
