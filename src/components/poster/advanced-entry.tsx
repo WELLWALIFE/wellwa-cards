@@ -41,7 +41,7 @@ export function AdvancedSwitch({ cardId, on, onChanged, className = "" }: { card
     <div className={className}>
       <button type="button" onClick={flip} disabled={busy} className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink underline underline-offset-2 disabled:opacity-60">
         {busy && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />}
-        {on ? T("Switch back to my basic website", "मेरी basic website वापस लगाएँ") : T("Turn my advanced website back on", "मेरी advanced website फिर चालू करें")}
+        {on ? T("Switch back to my basic website", "मेरी basic website वापस लगाएँ") : T("Turn my Premium website back on", "मेरी Premium website फिर चालू करें")}
       </button>
       {err && <p className="mt-1.5 rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-medium text-danger">{err}</p>}
     </div>
