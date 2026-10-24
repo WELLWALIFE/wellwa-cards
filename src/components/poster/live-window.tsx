@@ -10,8 +10,9 @@ import type { Card } from "@/lib/types";
 export type LiveFocus = { top?: boolean; text?: string } | null;
 const SITE_W = 1280, CARD_W = 400;
 
-export function LiveWindow({ card, k, view = "site", focus, hi }: {
+export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
   card: Card | null; /** The localStorage key the preview reads (letters, digits, dashes). */ k: string;
+  /** The website page to open (the change is on it, e.g. "contact" for the address); unset = home. */ page?: string;
   view?: "site" | "card"; /** What to show after this change: the top, or the section / line with this text. */ focus?: LiveFocus; hi: boolean;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
@@ -52,7 +53,7 @@ export function LiveWindow({ card, k, view = "site", focus, hi }: {
       <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
         <div ref={box} className="overflow-auto overscroll-contain bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
           <div className="relative" style={{ width: Math.round(w * scale), height: Math.round(frameH * scale) }}>
-            <iframe ref={frame} title={hi ? "Live preview" : "Live preview"} src={`/preview/site?k=${k}${view === "card" ? "&view=card" : ""}`}
+            <iframe ref={frame} title={hi ? "Live preview" : "Live preview"} src={`/preview/site?k=${k}${view === "card" ? "&view=card" : ""}${page && view !== "card" ? `&page=${encodeURIComponent(page)}` : ""}`}
               onLoad={() => post(`preview:${k}`)} className="absolute left-0 top-0 origin-top-left" style={{ width: w, height: frameH, border: 0, transform: `scale(${scale})` }} />
           </div>
         </div>

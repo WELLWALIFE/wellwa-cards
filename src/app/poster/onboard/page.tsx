@@ -1702,7 +1702,7 @@ function Onboard() {
       </div>}
       {skipErr && <FieldErr id="skip" msg={skipErr} />}
       </>}
-      {liveView && <LiveWindow card={liveView} k="onboard-live" view={params.get("for") === "card" ? "card" : "site"} focus={liveFocus} hi={hi} />}
+      {liveView && <LiveWindow card={liveView} k="onboard-live" page={step === "where" ? liveView.pages.find((pg) => !pg.hidden && pg.slug !== "home" && pg.blocks.some((b) => b.kind === "location" || b.kind === "hours"))?.slug : undefined} view={params.get("for") === "card" ? "card" : "site"} focus={liveFocus} hi={hi} />}
 
       {step === "promote" ? (
         <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
