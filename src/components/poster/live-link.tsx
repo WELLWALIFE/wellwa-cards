@@ -8,8 +8,10 @@ import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { linkOptions, setLinkPref, type LinkBy } from "@/lib/link-pref";
 import { SITE_HOST } from "@/lib/site-url";
 
-export function LiveLink({ current, cardOnly, hi, beforeChange, onChanged }: {
+export function LiveLink({ current, cardOnly, hi, beforeChange, onChanged, bare }: {
   current: string; cardOnly?: boolean; hi: boolean;
+  /** Inside a box that already has its own heading: no white card, no title. */
+  bare?: boolean;
   /** Anything still being saved on the page goes live first, so the link change does not race it. */
   beforeChange?: () => Promise<void>;
   onChanged: (username: string) => void;
@@ -56,8 +58,8 @@ export function LiveLink({ current, cardOnly, hi, beforeChange, onChanged }: {
   if (current && !rows.some((r) => r.slug === current)) rows.unshift({ k: "business", slug: current, label: T("Now", "अभी") });
 
   return (
-    <div className="space-y-2 rounded-2xl bg-white p-3 text-left text-ink shadow-sm">
-      <p className="text-sm font-bold">{T("Choose your link", "अपना link चुनें")}</p>
+    <div className={bare ? "space-y-2" : "space-y-2 rounded-2xl bg-white p-3 text-left text-ink shadow-sm"}>
+      {!bare && <p className="text-sm font-bold">{T("Choose your link", "अपना link चुनें")}</p>}
       {rows.map((r) => {
         const on = r.slug === current;
         return (

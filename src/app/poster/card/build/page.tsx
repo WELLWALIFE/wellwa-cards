@@ -1271,58 +1271,82 @@ export default function BuildCard() {
         <div className="flex items-center gap-2">
           <button type="button" onClick={backFromDone} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         </div>
-        <section className="relative overflow-hidden rounded-3xl p-6 text-center text-white shadow-float grad-brand">
+        {/* The finished screen, in order (owner, 24 Oct 2026: "systematically, professional look"): the good news and the link, then
+            three numbered boxes — 1 choose the link, 2 finish the website, 3 grow — and Home / Edit at the foot. */}
+        <section className="relative overflow-hidden rounded-3xl px-5 py-6 text-center text-white shadow-float grad-brand">
           <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-8 h-44 w-44 rounded-full bg-white/10" />
-          <div className="relative space-y-3">
-            <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl" aria-hidden="true">🎉</span>
-            <h1 className="text-3xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
-            <p className="text-base text-white/90">{cardOnly ? T("Your digital card is live.", "आपका digital card live हो गया है।") : T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
+          <div className="relative space-y-2.5">
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl" aria-hidden="true">🎉</span>
+            <h1 className="text-2xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
+            <p className="text-sm text-white/90">{cardOnly ? T("Your card is live.", "आपका card live है।") : T("Your website and card are live.", "आपकी website और card live हैं।")}</p>
             <SiteLink href={`https://${liveLink}`} title={T("Website", "Website")} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
-            <p className="text-xs text-white/80">{cardOnly ? T("One link: share it on WhatsApp or with a QR code.", "एक ही link: WhatsApp या QR code से share करें।") : T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
-            {/* "Live करें" (owner, 24 Oct 2026): the link is chosen here, after the website is made — business name, own name, or own domain. */}
-            <LiveLink current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish}
-              onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
             <div className="grid grid-cols-2 gap-2 pt-1">
-              <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
+              <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30"><MessageCircle className="h-4 w-4" /> {T("WhatsApp", "WhatsApp")}</a>
               <button type="button" onClick={async () => { setCopied(""); try { await navigator.clipboard.writeText(`https://${liveLink}`); setCopied("ok"); setTimeout(() => setCopied(""), 2500); } catch { setCopied("fail"); } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{copied === "ok" ? <><Check className="h-4 w-4" /> {T("Copied", "Copy हो गया")}</> : T("Copy link", "Link copy करें")}</button>
             </div>
-            {copied === "fail" && <p className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy — touch and hold the link above, then copy it.", "Copy नहीं हो पाया — ऊपर के link को देर तक दबाकर copy करें।")}</p>}
+            {copied === "fail" && <p className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy — hold the link above to copy it.", "Copy नहीं हुआ — ऊपर का link दबाकर रखें।")}</p>}
           </div>
         </section>
         {bannerBlock}
-        {/* The Rs 5,999 segment (owner, 15-16 Oct 2026): offered once the basic site is final, before the to-do list. */}
-        {!cardOnly && <AdvancedEntry cardId={existing?.id} fetchState />}
-        {/* A free account's finished screen: the website is the next step up (owner, 17 Oct 2026). */}
-        {cardOnly && (
-          <Link href="/poster/plan" className="block rounded-2xl border-2 border-brand bg-brand-soft/40 p-4">
-            <p className="text-base font-bold">{T("Want a website too?", "Website भी चाहिए?")}</p>
-            <p className="mt-0.5 text-sm text-muted">{T("Standard: your own website, a new poster every day and a WhatsApp AI that answers customers. ₹2,999 a month.", "Standard: आपकी अपनी website, रोज़ नया poster और WhatsApp AI जो ग्राहकों को जवाब देता है। ₹2,999 / महीना।")}</p>
-            <span className="mt-2 inline-block rounded-full bg-brand px-3 py-1.5 text-sm font-semibold text-white">{T("See the plans", "Plans देखें")}</span>
-          </Link>
-        )}
-        <section className="space-y-2.5">
-          <div>
-            <p className="text-base font-bold">{T("Add the remaining details", "बाक़ी जानकारी जोड़ें")}</p>
-            <p className="text-xs text-muted">{cardOnly ? T("Your card is live. Add these to make it better — each change shows on your card as soon as you save. You can do it now or later.", "आपका card live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव card पर दिख जाता है। अभी करें या बाद में।") : T("Your website is live. Add these to make it better — each change shows on your website as soon as you save. You can do it now or later.", "आपकी website live है। इन्हें जोड़कर इसे और बेहतर बनाइए — save करते ही बदलाव website पर दिख जाता है। अभी करें या बाद में।")}</p>
-          </div>
-          {([
-            { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Add your products or services", "अपने products / services जोड़ें"), s: T("Name, price and a clear photo", "नाम, दाम और साफ़ photo") },
-            { href: "/poster/onboard?step=extras&part=photos&back=%2Fposter%2Fsite%3Fedit%3D1", I: Camera, t: T("Add photos and a banner", "Photos और banner जोड़ें"), s: T("Your shop, your work — or let AI make them", "आपकी दुकान, आपका काम — या AI से बनवाएँ") },
-            { href: "/poster/onboard?step=where&back=%2Fposter%2Fsite%3Fedit%3D1", I: MapPin, t: T("Pin your shop on the map", "अपनी दुकान map पर लगाएँ"), s: T("So people find your shop faster", "ताकि लोग आपकी दुकान जल्दी ढूँढ लें") },
-            { href: "/poster/onboard?step=extras&part=links&back=%2Fposter%2Fsite%3Fedit%3D1", I: Smartphone, t: T("Add UPI and social links", "UPI और social links जोड़ें"), s: T("So customers can pay and follow you", "ताकि ग्राहक pay कर सकें और आपको follow करें") },
-            { href: "/poster/testimonials", I: Star, t: T("Ask 3 customers for a review", "3 ग्राहकों से राय माँगें"), s: T("Real words build trust", "असली शब्द भरोसा बनाते हैं") },
-          ] as const).map((x) => (
-            <button key={x.href} type="button" onClick={() => router.push(x.href)} className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left shadow-sm transition active:scale-[.99]">
-              <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><x.I className="h-5 w-5" /></span>
-              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{x.t}</span><span className="block text-xs text-muted">{x.s}</span></span>
-              <ChevronRight className="h-5 w-5 shrink-0 text-muted" />
-            </button>
-          ))}
-        </section>
+
+        {(() => {
+          const boxHead = (n: number, title: string, sub: string, grad: string) => (
+            <div className={`flex items-center gap-3 px-4 py-3 text-white ${grad}`}>
+              <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-extrabold">{n}</span>
+              <div className="min-w-0"><p className="text-base font-bold leading-tight">{title}</p><p className="text-[11px] text-white/85">{sub}</p></div>
+            </div>
+          );
+          const todo = [
+            { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Products / services", "Products / services"), s: T("Name, price, photo", "नाम, दाम, photo") },
+            { href: "/poster/onboard?step=extras&part=photos&back=%2Fposter%2Fsite%3Fedit%3D1", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Yours, or made by AI", "आपकी, या AI से") },
+            { href: "/poster/onboard?step=extras&part=links&back=%2Fposter%2Fsite%3Fedit%3D1", I: Smartphone, t: T("UPI & social links", "UPI और social links"), s: T("Pay and follow", "Pay और follow") },
+            { href: "/poster/onboard?step=where&back=%2Fposter%2Fsite%3Fedit%3D1", I: MapPin, t: T("Map & timings", "Map और समय"), s: T("Easy to find you", "आसानी से मिलें") },
+            { href: "/poster/testimonials", I: Star, t: T("Customer reviews", "ग्राहकों की राय"), s: T("Builds trust", "भरोसा बढ़ता है") },
+          ] as const;
+          return (
+            <>
+              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                {boxHead(1, T("Choose your link", "अपना link चुनें"), T("Business name, your name or own domain", "Business का नाम, आपका नाम या अपना domain"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}
+                <div className="p-3">
+                  <LiveLink current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish} bare
+                    onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                {boxHead(2, cardOnly ? T("Complete your card", "Card पूरा करें") : T("Complete your website", "Website पूरी करें"), T("Add these now or later", "अभी या बाद में जोड़ें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
+                <div className="grid grid-cols-2 gap-2 p-3">
+                  {todo.map((x, i) => (
+                    <button key={x.href} type="button" onClick={() => router.push(x.href)}
+                      className={`flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-3 text-left transition active:scale-[.98] ${i === todo.length - 1 ? "col-span-2" : ""}`}>
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#2f5bf5]/10 text-[#2f5bf5]"><x.I className="h-5 w-5" /></span>
+                      <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold leading-tight">{x.t}</span><span className="block text-[11px] text-muted">{x.s}</span></span>
+                    </button>
+                  ))}
+                </div>
+              </section>
+
+              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                {boxHead(3, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
+                <div className="p-3">
+                  {/* The Rs 5,999 segment (owner, 15-16 Oct 2026) / a free account's next step up (17 Oct 2026). */}
+                  {cardOnly ? (
+                    <Link href="/poster/plan" className="flex items-center gap-3 rounded-2xl border border-border p-3">
+                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#8b3dff]/10 text-[#8b3dff]"><Globe className="h-5 w-5" /></span>
+                      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{T("Website with Standard", "Standard में website")}</span><span className="block text-[11px] text-muted">{T("Website + daily poster + WhatsApp AI · ₹2,999/month", "Website + रोज़ poster + WhatsApp AI · ₹2,999/महीना")}</span></span>
+                      <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+                    </Link>
+                  ) : <AdvancedEntry cardId={existing?.id} fetchState />}
+                </div>
+              </section>
+            </>
+          );
+        })()}
+
         <div className="grid grid-cols-2 gap-2">
-          <button type="button" onClick={() => router.push("/poster/site?edit=1")} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-4 text-base font-semibold"><Pencil className="h-5 w-5" /> {T("Edit everything", "सब edit करें")}</button>
-          <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">{T("Later", "बाद में")} <ChevronRight className="h-5 w-5" /></button>
+          <button type="button" onClick={() => router.push("/poster/site?edit=1")} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-base font-semibold"><Pencil className="h-5 w-5" /> {T("Edit", "Edit करें")}</button>
+          <button type="button" onClick={() => router.push("/poster")} className="inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card">{T("Done", "हो गया")} <ChevronRight className="h-5 w-5" /></button>
         </div>
       </div>
     );
