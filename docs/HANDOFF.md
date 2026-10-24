@@ -10,6 +10,8 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
   paragraph; ticks instead of explanations; no "how it works" essays on a screen. Applies to every new screen and every change.
 - **Ask for the least data that works** (owner, 24 Oct 2026: "jitana kam se kaam chal sake utana kam data lena chahiye"). If the AI
   can work it out (buyers, about text) or it can be added later (offer, GST, timings), it is not asked in set-up.
+- **Show every change on screen at once** (owner, 24 Oct 2026: "jo change kar raha hai usko sath ke sath dikhana chahiye"). Wherever
+  the owner picks a colour, font, banner, text or photo, a live preview on the same screen updates as they tap — no Save-then-open.
 - **Every page: a premium, professional look** (owner, 24 Oct 2026: "sabhi page ka look premium chahiye", "professional look banao").
   Rounded cards with a soft shadow, a gradient head where it fits, big clear tiles, compact fields. A form screen fits one phone
   screen with no scroll where possible. Optional fields stay closed behind a tick box and open only when ticked
