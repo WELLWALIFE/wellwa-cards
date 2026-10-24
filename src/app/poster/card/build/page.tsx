@@ -196,7 +196,8 @@ export default function BuildCard() {
   const [scale, setScale] = useState(0.28);
   // The website preview opens at phone width (owner's call, 5 Oct 2026: the 1280 px page scaled to a quarter was
   // unreadable); "Computer view" shows the scaled desktop frame as before.
-  const [desk, setDesk] = useState(false);
+  // The website preview opens in the computer view (owner, 24 Oct 2026); "Phone" switches it.
+  const [desk, setDesk] = useState(true);
   /** The "Change…" sheet: adjust this look, edit details, edit card, write again — one place instead of five paths. */
   const [more, setMore] = useState(false);
   const [viewed, setViewed] = useState<string[]>([]);          // the designs the owner has tapped
@@ -827,7 +828,7 @@ export default function BuildCard() {
       const storyLook = !v.fresh && built.site ? openingLook(threeLooks(built, built.site.style, nextLooks.length ? nextLooks : undefined), built.seo?.categoryKey) : undefined;
       const full = storyLook ? applyLook(full0, storyLook) : full0;
       // The website first (the looks are its), then the card — so the preview opens on the Website tab.
-      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab(built.site?.enabled === false && !live?.site?.enabled ? "phone" : "site"); setDesk(false); setPlans(nextLooks.length ? nextLooks : undefined);
+      setCard(full); setBuilt(built); setLiveSig(sig); setChecks(nextChecks); setMissing(nextMissing); setOff([]); setTab(built.site?.enabled === false && !live?.site?.enabled ? "phone" : "site"); setDesk(true); setPlans(nextLooks.length ? nextLooks : undefined);
       // A new build is never the card that is live, however the screen got there (Write again on a live preview,
       // ?improve=1, a restored draft): "Make it live" comes back, with its "update your live card?" question. It
       // used to stay "Live", so a paid rewrite could not be published at all — except silently, by tapping a look.
@@ -1527,19 +1528,39 @@ export default function BuildCard() {
             {tab === "site" && <button type="button" onClick={() => setDesk((d) => !d)} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold">{desk ? <><Smartphone className="h-3.5 w-3.5" /> {T("Phone", "Phone")}</> : <><Monitor className="h-3.5 w-3.5" /> {T("Computer", "Computer")}</>}</button>}
             {liveUser && <SiteLink href={`${SITE_URL}/c/${username}?view=site`} title={T("Website", "Website")} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /> {T("Live", "Live")}</SiteLink>}
           </div>
-          <div className={`grid gap-2 ${liveUser ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[auto_1fr]"}`}>
-            <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen}
-              className={`relative inline-flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-3 text-sm font-bold transition ${designOpen ? "border-brand bg-brand-soft text-brand-ink" : viewed.length === 0 ? "design-glow border-amber bg-amber text-white shadow-card" : "border-brand/60 text-brand-ink"}`}>
-              <Palette className="h-4 w-4" /> {T("See more designs", "और design देखें")}
-              <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold ${viewed.length === 0 && !designOpen ? "bg-white text-amber" : "bg-brand text-white"}`}>{Math.max(1, looks.findIndex((l) => l.key === activeLook) + 1)}/6</span>
-            </button>
+          {/* Previous / Next through the six designs right on the preview, instead of the pop-up (owner, 24 Oct 2026: "pasand nahi aaye,
+              next dabaye to next web site ka view aa jaye"), then "Yes, select this design". */}
+          {looks.length > 1 && (() => {
+            const at = Math.max(0, looks.findIndex((l) => l.key === activeLook));
+            const cur = looks[at];
+            const stepTo = (d: number) => { const n = looks[(at + d + looks.length) % looks.length]; if (n) pickLook(n.key); };
+            return (
+              <>
+              <div className="flex items-stretch gap-2">
+                <button type="button" onClick={() => stepTo(-1)} disabled={!!busy && busy !== "publish"} aria-label={T("Previous design", "पिछला design")}
+                  className="inline-flex shrink-0 items-center gap-1 rounded-xl border-2 border-border bg-surface px-3 text-sm font-bold disabled:opacity-60"><ChevronLeft className="h-5 w-5" /><span className="hidden min-[400px]:inline">{T("Previous", "पिछला")}</span></button>
+                <div className="min-w-0 flex-1 rounded-xl bg-surface2 px-2 py-1.5 text-center">
+                  <p className="text-[10px] font-bold uppercase tracking-wide text-muted">{T("Design", "Design")} {at + 1}/{looks.length}</p>
+                  <p className="truncate text-sm font-bold">{cur ? (hi ? cur.hi : cur.name) : ""}</p>
+                </div>
+                <button type="button" onClick={() => stepTo(1)} disabled={!!busy && busy !== "publish"} aria-label={T("Next design", "अगला design")}
+                  className={`inline-flex shrink-0 items-center gap-1 rounded-xl border-2 px-3 text-sm font-bold disabled:opacity-60 ${viewed.length === 0 ? "design-glow border-amber bg-amber text-white" : "border-brand/60 bg-surface text-brand-ink"}`}><span className="hidden min-[400px]:inline">{T("Next", "अगला")}</span><ChevronRight className="h-5 w-5" /></button>
+              </div>
+              <div className="flex items-center justify-between gap-2 px-1 text-xs font-semibold">
+                <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen} className="inline-flex items-center gap-1 text-muted"><Palette className="h-3.5 w-3.5" /> {designOpen ? T("Close list", "List बंद करें") : T("All 6 together", "सभी 6 एक साथ")}</button>
+                {!cardOnly && <Link href={`${ADVANCED_HREF}${existing?.id ? `?card=${encodeURIComponent(existing.id)}` : ""}`} className="inline-flex items-center gap-1 text-ai"><Sparkles className="h-3.5 w-3.5" /> {T("Premium website", "Premium website")}</Link>}
+              </div>
+              </>
+            );
+          })()}
+          <div className={`grid gap-2 ${liveUser ? "grid-cols-[1fr_auto]" : "grid-cols-1"}`}>
         {liveUser ? (
           // Already live (a design tapped goes live by itself): from Card & Website this is Done, on to the saved Card & Website
           // (replace: Back from there must not return to this finished screen); in the first flow it is Next, on to the congratulations.
           <button type="button" onClick={() => { if (improveMode) router.replace("/poster/site?edit=site&saved=1"); else { if (uid) dropKey(draftKey(uid)); doneFromPreview.current = true; setTab(cardOnly ? "phone" : "site"); setState(cardOnly ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } } }} disabled={busy === "publish"} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60"><Check className="h-5 w-5" /> {improveMode ? T("Done", "हो गया") : T("Next →", "आगे →")}</button>
         ) : (
           <button type="button" onClick={() => { if (viewed.length === 0 && !improveMode) setConfirmDesign(true); else void publish(); }} disabled={!!busy} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white disabled:opacity-60">
-            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Save and next", "Save करके आगे")}
+            {busy === "publish" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {T("Yes, select this design", "हाँ, यही design चुनें")}
           </button>
         )}
         {liveUser && <button type="button" onClick={() => { setMoreMsg(""); setMore(true); }} disabled={!!busy && busy !== "publish"} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-3 text-sm font-semibold disabled:opacity-60"><SlidersHorizontal className="h-5 w-5" /> {T("Change…", "बदलें…")}</button>}
@@ -1552,7 +1573,7 @@ export default function BuildCard() {
           <div onClick={(e) => e.stopPropagation()} role="dialog" aria-modal="true" className="w-full max-w-md space-y-3 rounded-t-2xl bg-surface p-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] shadow-float sm:rounded-2xl">
             <p className="text-lg font-bold">{T("Have you seen the other designs?", "क्या आपने बाक़ी design देखे?")}</p>
             <p className="text-sm text-muted">{T(`You are choosing “${hi ? (looks.find((l) => l.key === activeLook)?.hi ?? "") : (looks.find((l) => l.key === activeLook)?.name ?? "this design")}”. There are six designs and each one looks very different. Tap each one to see your website in it — it takes a minute.`, `आप “${looks.find((l) => l.key === activeLook)?.hi ?? "ये design"}” चुन रहे हैं। कुल छह design हैं और हर एक बहुत अलग दिखता है। हर एक पर दबाकर अपनी website उसमें देखें — एक मिनट लगता है।`)}</p>
-            <button type="button" onClick={() => { setConfirmDesign(false); setDesignOpen(true); }} className="w-full rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("See the other designs", "बाक़ी design देखें")}</button>
+            <button type="button" onClick={() => { setConfirmDesign(false); const at = Math.max(0, looks.findIndex((l) => l.key === activeLook)); const n = looks[(at + 1) % looks.length]; if (n) pickLook(n.key); }} className="w-full rounded-xl grad-brand py-3 text-base font-semibold text-white">{T("See the other designs", "बाक़ी design देखें")}</button>
             <button type="button" onClick={() => { setConfirmDesign(false); setViewed(looks.map((l) => l.key)); void publish(); }} className="w-full rounded-xl border border-border py-3 text-base font-semibold">{T("Keep this design", "यही रखें")}</button>
           </div>
         </div>
