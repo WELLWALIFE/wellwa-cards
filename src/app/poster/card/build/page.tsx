@@ -1237,7 +1237,7 @@ export default function BuildCard() {
         </div>
         <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
           <div className="px-4 pb-2 pt-3.5">
-            <p className="flex items-center gap-1.5 text-sm font-bold"><Palette className="h-4 w-4 text-brand" /> {T("Colour", "रंग")}</p>
+            <p className="flex items-center gap-1.5 text-sm font-bold"><Palette className="h-4 w-4 text-brand" /> {T("Choose your favourite colour", "अपना पसंदीदा रंग चुनें")}</p>
             <div className="-mx-1 mt-2 flex gap-3 overflow-x-auto px-1 pb-2 pt-1">
               {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => {
                 const on = (card.site?.style?.palette ?? "") === p.key;
@@ -1251,7 +1251,7 @@ export default function BuildCard() {
             </div>
           </div>
           <div className="border-t border-border px-4 pb-4 pt-3.5">
-            <p className="flex items-center gap-1.5 text-sm font-bold"><span className="grid h-4 w-4 place-items-center text-[13px] font-black leading-none text-brand">A</span> {T("Font", "अक्षर")}</p>
+            <p className="flex items-center gap-1.5 text-sm font-bold"><span className="grid h-4 w-4 place-items-center text-[13px] font-black leading-none text-brand">A</span> {T("Choose your letter style", "अपने अक्षर का style चुनें")}</p>
             <div className="mt-2 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
               {FONT_PAIRS.map((f) => {
                 const on = (card.site?.style?.font ?? "look") === f.key;
