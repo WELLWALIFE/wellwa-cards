@@ -146,99 +146,155 @@ export default function TestimonialsPage() {
   const stars = (n: number, onPick?: (v: number) => void) => (
     <span className="inline-flex gap-0.5">{[1, 2, 3, 4, 5].map((i) => <button key={i} type="button" disabled={!onPick} onClick={() => onPick?.(i)} className="p-0"><Star className={`h-5 w-5 ${i <= n ? "fill-amber-400 text-amber-400" : "text-muted"}`} /></button>)}</span>
   );
+  const hi = lang !== "en";
+  const T = (en: string, h: string) => (hi ? h : en);
+  const avg = shown.length ? (shown.reduce((n, t) => n + (t.rating || 0), 0) / shown.length) : 0;
+  const newDraft = () => { openDraft({ customer_name: "", text: "", rating: 5, city: "", photo_url: null }); setTimeout(() => formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
+  // Redesigned (owner, 24 Oct 2026: "is page ko bhi redesign kar do"): one summary on top, the reviews as cards, and one box to ask for
+  // more — the customer's number once, then WhatsApp or the Google link; the Google link folded behind its own row with 3 short steps.
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
-        {/* An open add / edit form closes first (it has its own ✕); otherwise Back = the screen the owner was just on (the Create tab, the
-            finished-website screen, the card's checklist); opened fresh, the Create tab. */}
-        <button type="button" onClick={() => (draft ? openDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold flex-1">💬 {s.title}</h1>
-        {!draft && <button type="button" onClick={() => openDraft({ customer_name: "", text: "", rating: 5, city: "", photo_url: null })} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {s.add}</button>}
+        {/* An open add / edit form closes first (it has its own ✕); otherwise Back = the screen the owner was just on. */}
+        <button type="button" onClick={() => (draft ? openDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <h1 className="min-w-0 flex-1 text-xl font-bold">{s.title}</h1>
+        {!draft && <button type="button" onClick={newDraft} className="inline-flex items-center gap-1 rounded-full grad-brand px-3.5 py-1.5 text-sm font-semibold text-white shadow-card"><Plus className="h-4 w-4" /> {s.add}</button>}
       </div>
-      <p className="text-xs text-muted">{s.hint}</p>
+
+      {/* Summary */}
+      <section className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-[#f59e0b] to-[#f97316] p-5 text-white shadow-float">
+        <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-white/15" />
+        <div className="relative flex items-center gap-4">
+          <div className="text-center">
+            <p className="text-4xl font-extrabold leading-none">{shown.length ? avg.toFixed(1) : "–"}</p>
+            <p className="mt-1 text-sm tracking-widest">{"★★★★★".slice(0, Math.round(avg) || 0)}<span className="text-white/40">{"★★★★★".slice(Math.round(avg) || 0)}</span></p>
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-lg font-bold leading-tight">{shown.length} {T(shown.length === 1 ? "review" : "reviews", "reviews")}</p>
+            <p className="text-xs text-white/90">{T("Shown on your website. On Review days they become posters.", "Website पर दिखती हैं। Review वाले दिन poster बनती हैं।")}</p>
+          </div>
+        </div>
+      </section>
+
       {draft && (
-        <div ref={formRef} className="rounded-xl border border-brand bg-brand-soft/40 p-3 space-y-3">
+        <div ref={formRef} className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
+          <p className="text-base font-bold">{draft.id ? T("Edit review", "Review बदलें") : T("Write a review", "Review लिखें")}</p>
           <div className="flex items-center gap-3">
-            <span className="h-20 w-20 rounded-full bg-surface border border-border grid place-items-center overflow-hidden shrink-0">
+            <span className="grid h-16 w-16 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-surface2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
               {draft.photo_url ? <img src={draft.photo_url} alt="" className="h-full w-full object-cover" /> : busy ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : <Camera className="h-6 w-6 text-muted" />}
             </span>
             <div className="flex-1 space-y-1.5">
-              <span className="text-sm font-semibold block">{s.photo}</span>
+              <span className="block text-xs font-semibold text-muted">{T("Customer photo · optional", "ग्राहक की photo · ज़रूरी नहीं")}</span>
               <div className="flex gap-2">
-                <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
-                  <Camera className="h-3.5 w-3.5" /> {lang === "en" ? "Camera" : "कैमरा"}
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium">
+                  <Camera className="h-3.5 w-3.5" /> {T("Camera", "कैमरा")}
                   <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
-                <label className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium cursor-pointer">
-                  <Images className="h-3.5 w-3.5" /> {lang === "en" ? "Gallery" : "गैलरी"}
+                <label className="inline-flex cursor-pointer items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-medium">
+                  <Images className="h-3.5 w-3.5" /> {T("Gallery", "गैलरी")}
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => pick(e.target.files?.[0] ?? null)} />
                 </label>
               </div>
               {photoErr && <p role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
             </div>
           </div>
-          <input ref={nameRef} className={inp} placeholder={s.name} value={draft.customer_name} onChange={(e) => { setErr(""); setDraft({ ...draft, customer_name: e.target.value }); }} />
-          <input className={inp} placeholder={s.city} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
-          <textarea ref={textRef} className={inp} rows={4} maxLength={300} placeholder={s.text} value={draft.text} onChange={(e) => { setErr(""); setDraft({ ...draft, text: e.target.value }); }} />
-          <div className="flex items-center gap-3 text-sm"><span>{s.rating}</span>{stars(draft.rating, (v) => setDraft({ ...draft, rating: v }))}<span className="text-xs text-muted">{draft.text.length}/300</span></div>
+          <div className="grid grid-cols-2 gap-2">
+            <input ref={nameRef} className={inp} placeholder={s.name} value={draft.customer_name} onChange={(e) => { setErr(""); setDraft({ ...draft, customer_name: e.target.value }); }} />
+            <input className={inp} placeholder={s.city} value={draft.city} onChange={(e) => setDraft({ ...draft, city: e.target.value })} />
+          </div>
+          <textarea ref={textRef} className={inp} rows={3} maxLength={300} placeholder={s.text} value={draft.text} onChange={(e) => { setErr(""); setDraft({ ...draft, text: e.target.value }); }} />
+          <div className="flex items-center justify-between text-sm">{stars(draft.rating, (v) => setDraft({ ...draft, rating: v }))}<span className="text-xs text-muted">{draft.text.length}/300</span></div>
           {err && <p role="alert" className="text-sm font-semibold text-danger">{err}</p>}
           <div className="flex gap-2">
-            <button type="button" onClick={() => openDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">✕</button>
+            <button type="button" onClick={() => openDraft(null)} className="rounded-xl border border-border px-4 py-2.5 text-sm">{T("Cancel", "रहने दें")}</button>
             <button type="button" onClick={save} disabled={busy} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{s.save}</button>
           </div>
         </div>
       )}
+
       {waiting.length > 0 && (
-        <div className="rounded-xl border-2 border-amber bg-amber/10 p-3 space-y-2">
-          <h2 className="text-base font-bold">⏳ {s.waiting} ({waiting.length})</h2>
-          <p className="text-xs text-muted">{s.waitingHint}</p>
+        <section className="space-y-2 rounded-3xl border-2 border-amber bg-amber/10 p-3.5">
+          <p className="text-base font-bold">⏳ {s.waiting} ({waiting.length})</p>
+          <p className="text-xs text-muted">{T("From your website. Approve to show them.", "Website से आई हैं। मंज़ूर करें तो दिखेंगी।")}</p>
           {waiting.map((t) => (
-            <div key={t.id} className="rounded-xl border border-border bg-surface p-3 space-y-2">
-              <p className="text-sm font-semibold">{t.customer_name}{t.city ? <span className="text-muted font-normal"> · {t.city}</span> : null}</p>
-              {stars(t.rating)}
-              <p className="text-sm">{t.text}</p>
+            <div key={t.id} className="space-y-2 rounded-2xl border border-border bg-surface p-3">
+              <div className="flex items-center justify-between gap-2"><p className="truncate text-sm font-semibold">{t.customer_name}{t.city ? <span className="font-normal text-muted"> · {t.city}</span> : null}</p>{stars(t.rating)}</div>
+              <p className="text-sm">“{t.text}”</p>
               <div className="flex gap-2">
                 <button type="button" onClick={() => approve(t)} className="flex-1 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">✓ {s.approve}</button>
-                <button type="button" onClick={() => remove(t)} className="rounded-xl border border-border px-4 py-2.5 text-sm"><Trash2 className="h-4 w-4" /></button>
+                <button type="button" onClick={() => remove(t)} className="rounded-xl border border-border px-4 py-2.5 text-sm" aria-label={T("Delete", "हटाएँ")}><Trash2 className="h-4 w-4" /></button>
               </div>
               {rowErr?.id === t.id && <p role="alert" className="text-sm font-semibold text-danger">{rowErr.text}</p>}
             </div>
           ))}
-        </div>
+        </section>
       )}
-      <div className="space-y-2">
-        {shown.map((t) => (
-          <div key={t.id} className="flex items-start gap-3 rounded-xl border border-border p-3">
-            <div className="h-12 w-12 rounded-full bg-surface2 overflow-hidden grid place-items-center shrink-0">{t.photo_url ? <img src={t.photo_url} alt="" className="h-full w-full object-cover" /> : "🙂"}</div>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold truncate">{t.customer_name}{t.city ? <span className="text-muted font-normal"> · {t.city}</span> : null}</p>
-              {stars(t.rating)}
-              <p className="text-xs text-muted line-clamp-2">{t.text}</p>
+
+      {/* The reviews */}
+      {shown.length > 0 ? (
+        <div className="space-y-2">
+          {shown.map((t) => (
+            <div key={t.id} className="rounded-2xl border border-border bg-surface p-3 shadow-card">
+              <div className="flex items-center gap-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-full bg-amber/15 text-base font-bold text-[#d97706]">{t.photo_url ? <img src={t.photo_url} alt="" className="h-full w-full object-cover" /> : (t.customer_name.trim()[0] ?? "🙂").toUpperCase()}</div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">{t.customer_name}{t.city ? <span className="font-normal text-muted"> · {t.city}</span> : null}</p>
+                  {stars(t.rating)}
+                </div>
+                <Link href={`/poster/video?testimonial=${t.id}`} className="rounded-lg p-2 text-brand-ink" title={T("Make a video", "Video बनाएँ")}><Clapperboard className="h-4 w-4" /></Link>
+                <button type="button" onClick={() => { openDraft({ id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url }); setTimeout(() => formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); }} className="rounded-lg px-2 py-1.5 text-xs font-semibold text-muted">{s.edit}</button>
+                <button type="button" onClick={() => remove(t)} className="rounded-lg p-2 text-muted" aria-label={T("Delete", "हटाएँ")}><Trash2 className="h-4 w-4" /></button>
+              </div>
+              <p className="mt-2 line-clamp-3 text-sm text-ink">“{t.text}”</p>
               {rowErr?.id === t.id && <p role="alert" className="mt-1 text-xs font-semibold text-danger">{rowErr.text}</p>}
             </div>
-            <Link href={`/poster/video?testimonial=${t.id}`} className="p-2 text-brand-ink" title={lang === "en" ? "Make a video from this review" : "इस review से video बनाएँ"}><Clapperboard className="h-4 w-4" /></Link>
-            <button type="button" onClick={() => { openDraft({ id: t.id, customer_name: t.customer_name, text: t.text, rating: t.rating, city: t.city ?? "", photo_url: t.photo_url }); setTimeout(() => formRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); }} className="p-2 text-muted text-xs">{s.edit}</button>
-            <button type="button" onClick={() => remove(t)} className="p-2 text-muted"><Trash2 className="h-4 w-4" /></button>
-          </div>
-        ))}
-        {shown.length === 0 && !draft && <p className="text-sm text-muted">{s.none}</p>}
-      </div>
+          ))}
+        </div>
+      ) : !draft && (
+        <button type="button" onClick={newDraft} className="flex w-full items-center gap-3 rounded-2xl border-2 border-dashed border-border p-4 text-left">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber/15 text-[#d97706]"><Star className="h-5 w-5" /></span>
+          <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{s.none}</span><span className="block text-xs text-muted">{T("A customer praised you? Write it here.", "किसी ग्राहक ने तारीफ़ की? यहाँ लिखें।")}</span></span>
+          <Plus className="h-5 w-5 shrink-0 text-brand" />
+        </button>
+      )}
 
-      <div className="rounded-xl border border-border p-3 space-y-3">
-        <h2 className="text-base font-bold">⭐ {s.askTitle}</h2>
-        <p className="text-xs text-muted">{s.askHint}</p>
-        <input className={inp} inputMode="tel" placeholder={s.phone} value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneErr(""); setGoogleErr(""); }} />
-        {phoneErr && <p role="alert" className="text-sm font-semibold text-danger">{phoneErr}</p>}
-        <button type="button" onClick={askReview} className="w-full inline-flex items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> {s.askBtn}</button>
-        <label className="block space-y-1">
-          <span className="text-sm font-semibold">{s.googleLabel}</span>
-          <input ref={googleRef} className={inp} inputMode="url" placeholder={s.googlePh} value={google} onChange={(e) => { setGoogleErr(""); saveGoogle(e.target.value.trim()); }} />
-          <span className="block text-[11px] text-muted">{s.googleHint}</span>
-        </label>
-        {googleErr && <p role="alert" className="text-sm font-semibold text-danger">{googleErr}</p>}
-        <button type="button" onClick={sendGoogle} className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border border-brand bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink ${google ? "" : "opacity-60"}`}><MessageCircle className="h-4 w-4" /> {s.googleBtn}</button>
-      </div>
-      <FinishNext hi={lang !== "en"} />
+      {/* Ask for more */}
+      <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+        <div className="flex items-center gap-3 bg-gradient-to-r from-[#16a34a] to-[#22c55e] px-4 py-3 text-white">
+          <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/25"><MessageCircle className="h-5 w-5" /></span>
+          <span className="min-w-0"><span className="block text-base font-bold leading-tight">{s.askTitle}</span><span className="block text-[11px] text-white/85">{T("The message is ready — just Send", "Message तैयार है — बस Send दबाएँ")}</span></span>
+        </div>
+        <div className="space-y-2.5 p-3.5">
+          <span className={`flex items-center gap-2 rounded-xl border bg-surface px-3 focus-within:ring-2 focus-within:ring-brand/15 ${phoneErr || googleErr ? "border-danger" : "border-border"}`}>
+            <span className="shrink-0 text-sm font-semibold text-muted">+91</span>
+            <input className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] outline-none" inputMode="tel" placeholder={s.phone} value={phone} onChange={(e) => { setPhone(e.target.value); setPhoneErr(""); setGoogleErr(""); }} />
+          </span>
+          {phoneErr && <p role="alert" className="text-xs font-semibold text-danger">{phoneErr}</p>}
+          <div className="grid grid-cols-2 gap-2">
+            <button type="button" onClick={askReview} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#16a34a] px-2 py-3 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> {T("Ask on WhatsApp", "WhatsApp पर माँगें")}</button>
+            <button type="button" onClick={sendGoogle} className={`inline-flex items-center justify-center gap-1.5 rounded-xl border-2 px-2 py-3 text-sm font-semibold ${google ? "border-[#4285f4] text-[#1a56db]" : "border-border text-muted"}`}><span className="font-extrabold text-[#4285f4]">G</span> {T("Google review", "Google review")}</button>
+          </div>
+          {googleErr && <p role="alert" className="text-xs font-semibold text-danger">{googleErr}</p>}
+          <details className="group rounded-xl bg-surface2/70">
+            <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2.5 text-sm font-semibold [&::-webkit-details-marker]:hidden">
+              <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-white text-xs font-extrabold text-[#4285f4] shadow-sm">G</span>
+              <span className="min-w-0 flex-1 truncate">{google ? `✓ ${T("Google review link added", "Google review link जुड़ा है")}` : T("Add your Google review link", "अपना Google review link जोड़ें")}</span>
+              <span className="text-xs font-semibold text-brand-ink">{google ? T("Change", "बदलें") : T("Add", "जोड़ें")}</span>
+            </summary>
+            <div className="space-y-2 px-3 pb-3">
+              <input ref={googleRef} className={inp} inputMode="url" placeholder={s.googlePh} value={google} onChange={(e) => { setGoogleErr(""); saveGoogle(e.target.value.trim()); }} />
+              <ol className="space-y-1 text-[11px] text-muted">
+                <li>1. {T("Search your business name on Google (logged in as its owner).", "Google पर अपने business का नाम search करें (मालिक वाले Gmail से)।")}</li>
+                <li>2. {T("Tap “Ask for reviews” / “Get more reviews”.", "“Ask for reviews” / “Get more reviews” दबाएँ।")}</li>
+                <li>3. {T("Copy the link and paste it here.", "Link copy करके यहाँ paste करें।")}</li>
+              </ol>
+            </div>
+          </details>
+        </div>
+      </section>
+      <FinishNext hi={hi} />
     </div>
   );
 }
