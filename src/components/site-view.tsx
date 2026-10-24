@@ -14,7 +14,6 @@ import { X, Download, Check, FileText, Copy, Play, UserPlus, CalendarClock, Mega
 import type { Card, CardBlock, CardLink, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
-import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
@@ -671,7 +670,7 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
       </BottomSheet>
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
       {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={active} hi={hiNow} />}
-      {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
+      {/* The "Ask …" AI chat is a Premium website feature only (owner, 24 Oct 2026): the Standard website has none. */}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
     </div>

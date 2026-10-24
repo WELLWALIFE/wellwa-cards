@@ -529,7 +529,8 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
       </a>
 
       {/* Floating AI chat assistant */}
-      {!expired && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
+      {/* The "Ask …" AI chat only with a Premium website switched on (owner, 24 Oct 2026: "kevel premium me hi rahega"). */}
+      {!expired && !!card.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={lang} page={active} />}
       {/* The Shubhora strip — not on the owner's own Shubhora page (that page IS the "know more"). */}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={lang} />}
