@@ -2,6 +2,7 @@
 // SEO — how the website shows on Google (owner, 14 Oct 2026: "SEO ko Card & Website page par niche ek tab banake, click kare
 // to SEO page open ho"). The same panel the full editor carries, on a page of its own: the city, the areas, the search words
 // and a live preview of the Google result; Save puts it on the live website.
+import { FinishNext } from "@/components/poster/site-finish";
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -92,6 +93,7 @@ export default function SiteSeoPage() {
           </button>
         </>
       )}
+      {card && <FinishNext hi={hi} when={!!msg} />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 // Customer testimonials: list + add/edit (→ "💬 Review" posters), and
 // "ask for a review" WhatsApp links (plain review request + Google review link).
+import { FinishNext } from "@/components/poster/site-finish";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -237,6 +238,7 @@ export default function TestimonialsPage() {
         {googleErr && <p role="alert" className="text-sm font-semibold text-danger">{googleErr}</p>}
         <button type="button" onClick={sendGoogle} className={`w-full inline-flex items-center justify-center gap-2 rounded-xl border border-brand bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink ${google ? "" : "opacity-60"}`}><MessageCircle className="h-4 w-4" /> {s.googleBtn}</button>
       </div>
+      <FinishNext hi={lang !== "en"} />
     </div>
   );
 }

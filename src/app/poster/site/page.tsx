@@ -6,6 +6,7 @@
 // (?edit=card / ?edit=site; ?edit=1 asks which), grouped by how often a thing is changed: often (offer, pop-up, products, photos),
 // sometimes (banner, name, timings…), rarely (design, pages, settings). The banner is each one's own; everything else is shared,
 // so a change made from either page shows on both.
+import { FinishBar } from "@/components/poster/site-finish";
 import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -223,6 +224,8 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
+          {/* The guided finish on top: progress and the one next step (owner, 24 Oct 2026). */}
+          <FinishBar hi={hi} />
           {/* Redesigned 24 Oct 2026 (owner: "3 alag box, achhe se — design bahut important hai"): three clear boxes — Share, Edit, Grow —
               each with a coloured head, one short line, and big icon tiles. */}
           {(() => {
@@ -373,6 +376,7 @@ export default function WebsitePage() {
                 const has = (g: { tiles: Tile[] }, t: Tool) => g.tiles.some((x) => x.tool === t);
                 return (
                   <>
+                    {!isCard && <FinishBar hi={hi} />}
                     {groups.map((g) => (
                       <section key={g.k} className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                         <div className={`px-4 py-3 text-white ${groupHead[g.k] ?? groupHead.sometimes}`}>

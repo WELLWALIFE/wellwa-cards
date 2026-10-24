@@ -12,12 +12,13 @@
 // Publishing merges the new words and pages INTO the live card (mergeBuiltCard), so the link, QR code,
 // verified badge, pixels, look and website settings all stay as they are.
 import { openPage, SiteLink } from "@/components/poster/card-sheet";
+import { FinishBar } from "@/components/poster/site-finish";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
-import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X, Eye } from "lucide-react";
+import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X, Eye } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -1334,27 +1335,10 @@ export default function BuildCard() {
               <div className="min-w-0"><p className="text-base font-bold leading-tight">{title}</p><p className="text-[11px] text-white/85">{sub}</p></div>
             </div>
           );
-          const todo = [
-            { href: "/poster/products?back=%2Fposter%2Fsite%3Fedit%3D1", I: Plus, t: T("Products / services", "Products / services"), s: T("Name, price, photo", "नाम, दाम, photo") },
-            { href: "/poster/onboard?step=extras&part=photos&back=%2Fposter%2Fsite%3Fedit%3D1", I: Camera, t: T("Photos & banner", "Photos और banner"), s: T("Yours, or made by AI", "आपकी, या AI से") },
-            { href: "/poster/onboard?step=extras&part=links&back=%2Fposter%2Fsite%3Fedit%3D1", I: Smartphone, t: T("UPI & social links", "UPI और social links"), s: T("Pay and follow", "Pay और follow") },
-            { href: "/poster/onboard?step=where&back=%2Fposter%2Fsite%3Fedit%3D1", I: MapPin, t: T("Map & timings", "Map और समय"), s: T("Easy to find you", "आसानी से मिलें") },
-            { href: "/poster/testimonials", I: Star, t: T("Customer reviews", "ग्राहकों की राय"), s: T("Builds trust", "भरोसा बढ़ता है") },
-          ] as const;
           return (
             <>
-              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-                {boxHead(1, cardOnly ? T("Complete your card", "Card पूरा करें") : T("Complete your website", "Website पूरी करें"), T("Add these now or later", "अभी या बाद में जोड़ें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
-                <div className="grid grid-cols-2 gap-2 p-3">
-                  {todo.map((x, i) => (
-                    <button key={x.href} type="button" onClick={() => router.push(x.href)}
-                      className={`flex items-center gap-2.5 rounded-2xl border border-border bg-surface p-3 text-left transition active:scale-[.98] ${i === todo.length - 1 ? "col-span-2" : ""}`}>
-                      <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#2f5bf5]/10 text-[#2f5bf5]"><x.I className="h-5 w-5" /></span>
-                      <span className="min-w-0 flex-1"><span className="block text-[13px] font-semibold leading-tight">{x.t}</span><span className="block text-[11px] text-muted">{x.s}</span></span>
-                    </button>
-                  ))}
-                </div>
-              </section>
+              {/* One box, one button: the guided finish, one step at a time (owner, 24 Oct 2026; lib/site-finish.ts). */}
+              <FinishBar hi={hi} />
 
               <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                 {boxHead(2, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}

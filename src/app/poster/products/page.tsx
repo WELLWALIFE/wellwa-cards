@@ -3,6 +3,7 @@
 // else sits under "More details". The same rows feed the V-Card, the website and the daily posters.
 // Owner's call (26 Sep 2026): two prices — the offer price and an optional MRP. When the MRP is higher, the card
 // shows it struck out next to the offer price, with "% OFF" and "You save ₹…" (card-compose / card-view).
+import { FinishNext } from "@/components/poster/site-finish";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -806,6 +807,7 @@ export default function ProductsPage() {
           {list.length === 0 && <p className="mt-1.5 text-center text-[11px] text-muted">{C(`Add ${copy.short.toLowerCase()} any time later.`, `${copy.shortHi} बाद में कभी भी जोड़ें।`)}</p>}
         </div>
       )}
+      {!draft && !bulk && <FinishNext hi={!en} />}
       {checking && <ProductCheckSheet productId={checking.id} productName={checking.name} onClose={() => { setChecking(null); load(); }} />}
     </div>
   );
