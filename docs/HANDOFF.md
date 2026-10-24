@@ -6,6 +6,8 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 - Owner: Shubhora (Wellwa Life), writes Hinglish; **reply in Devanagari Hindi** with everyday Hinglish words
   (प्राइस, डिलीवरी, डिटेल्स), brand/model/app names in English letters. Short, practical, no pure Hindi.
 - The owner is not a developer. Give commands ready to paste. The Mac user is **not a sudoer**.
+- **Every text in the app: short and simple** (owner, 24 Oct 2026: "customer badi mahabharat nahi padhta"). One short line, not a
+  paragraph; ticks instead of explanations; no "how it works" essays on a screen. Applies to every new screen and every change.
 
 ## Where things are
 - Repo on the Mac: `/Users/jsrao/Desktop/Wellwa Life/wellwa-cards`

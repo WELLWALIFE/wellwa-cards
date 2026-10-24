@@ -9,7 +9,7 @@
 // lib/live-share.ts is the server.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Eye, LoaderCircle, ShieldCheck, X } from "lucide-react";
+import { Check, Eye, LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
@@ -205,8 +205,8 @@ export function ShareScreen() {
               <div className="space-y-3">
                 <p className="rounded-xl bg-good/10 px-3 py-2.5 text-sm font-medium">
                   {isAdmin
-                    ? T("Your request has gone to the Shubhora admin. Keep this app open: they will join in a moment and see only your Shubhora screen.", "आपकी request Shubhora admin के पास पहुँच गई है। app खुला रखें: वो अभी जुड़ेंगे और सिर्फ़ आपकी Shubhora screen देखेंगे।")
-                    : T("Your link is ready and runs 30 minutes at a time (it can reconnect on the same link). Send it to whoever should watch. Your screen is being shared now.", "आपका link तैयार है, एक बार में 30 मिनट चलेगा (रुकने पर उसी link से Reconnect हो जाएगा)। जिसे दिखाना है उसे भेजें। आपकी screen अब share हो रही है।")}
+                    ? T("Request sent. Keep the app open, admin will join soon.", "Request भेज दी। App खुला रखें, admin अभी जुड़ेंगे।")
+                    : T("Link ready. Send it on WhatsApp.", "Link तैयार है। WhatsApp पर भेजें।")}
                 </p>
                 {!isAdmin && <>
                   <a href={`https://wa.me/?text=${encodeURIComponent(shareText)}`} target="_blank" rel="noopener noreferrer" onClick={() => setAsk(null)}
@@ -219,20 +219,19 @@ export function ShareScreen() {
                 </div>
               </div>
             ) : (<>
-            <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2.5 text-sm font-semibold">
-              {isAdmin
-                ? T("Only your Shubhora screen is shown to the Shubhora admin. Nothing else.", "Shubhora admin को सिर्फ़ आपकी Shubhora screen दिखेगी। और कुछ नहीं।")
-                : T("Only your Shubhora screen is shown to whoever gets the link. Nothing else.", "जिसे link मिलेगा उसे सिर्फ़ आपकी Shubhora screen दिखेगी। और कुछ नहीं।")}
-            </p>
-            <ul className="space-y-2 text-sm">
-              <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("They can only look. Nothing can be tapped, changed or sent from their side.", "वो सिर्फ़ देख सकते हैं। उनकी तरफ़ से कुछ दबाया, बदला या भेजा नहीं जा सकता।")}</li>
-              <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("No other app, no phone screen, no passwords. Fields that look like a PIN, OTP or card are hidden.", "कोई दूसरा app, phone की screen या password नहीं। PIN, OTP, card जैसे fields छिपे रहते हैं।")}</li>
-              <li className="rounded-xl bg-surface2 px-3 py-2.5">{T("It stops when you tap End, or by itself after 30 minutes. After that you do not need a new link: tap Reconnect (or they tap it on their side) and the same link runs again; you will be asked before your screen is shared again.", "ये तब रुकता है जब आप End दबाएँ, या 30 मिनट बाद अपने आप। उसके बाद नया link नहीं बनाना पड़ेगा: Reconnect दबाएँ (या सामने वाला अपनी तरफ़ दबाए) और वही link फिर चलेगा; screen दोबारा share होने से पहले आपसे पूछा जाएगा।")}</li>
+            {/* Short and simple (owner, 24 Oct 2026: "customer badi mahabharat nahi padhta"). */}
+            <ul className="space-y-1.5 text-sm">
+              {[
+                isAdmin ? T("Admin sees only your Shubhora screen", "Admin को सिर्फ़ Shubhora screen दिखेगी") : T("They see only your Shubhora screen", "सामने वाले को सिर्फ़ Shubhora screen दिखेगी"),
+                T("They can only watch, not tap", "वो सिर्फ़ देख सकते हैं, कुछ दबा नहीं सकते"),
+                T("Passwords, OTP and PIN stay hidden", "Password, OTP, PIN छुपे रहेंगे"),
+                T("30 min · stopped? tap Reconnect", "30 मिनट · रुक जाए तो Reconnect दबाएँ"),
+              ].map((x) => <li key={x} className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0 text-good" /> {x}</li>)}
             </ul>
             {err && <p className="text-xs text-danger">{err}</p>}
             {sameLink && (
               <button type="button" onClick={() => void resume(sameLink)} disabled={busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {runOut(sameLink) ? T("Reconnect on the same link (30 min)", "उसी link से Reconnect करें (30 मिनट)") : T(`Continue with the same link (${minsLeft(sameLink.expiresAt)} min left)`, `वही link जारी रखें (${minsLeft(sameLink.expiresAt)} मिनट बचे)`)}
+                {busy && <LoaderCircle className="h-4 w-4 animate-spin" />} {runOut(sameLink) ? T("Reconnect", "Reconnect करें") : T(`Continue same link (${minsLeft(sameLink.expiresAt)} min)`, `वही link चालू करें (${minsLeft(sameLink.expiresAt)} मिनट)`)}
               </button>
             )}
             <div className="grid grid-cols-2 gap-2">
@@ -241,7 +240,6 @@ export function ShareScreen() {
                 {busy && !sameLink && <LoaderCircle className="h-4 w-4 animate-spin" />} {isAdmin ? T("Send request", "request भेजें") : sameLink ? T("Make a new link", "नया link बनाएँ") : T("Make link", "link बनाएँ")}
               </button>
             </div>
-            {!isAdmin && <p className="text-[11px] leading-snug text-muted">{T("Next you choose who gets the link, on WhatsApp.", "इसके बाद आप WhatsApp पर चुनेंगे कि link किसे भेजना है।")}</p>}
             </>)}
           </div>
         </div>
@@ -291,8 +289,8 @@ export function ShareScreen() {
             <span className="min-w-0 flex-1 leading-snug">
               {note}
               {st && st.state === "paused" && <span className="block font-normal text-white/70">{runOut(st)
-                ? T("No new link needed: tap Reconnect and the same link runs for another 30 min.", "नया link नहीं चाहिए: Reconnect दबाएँ, वही link 30 मिनट और चलेगा।")
-                : T(`The same link still works for ${minsLeft(st.expiresAt)} more min. You will be asked before sharing again.`, `वही link ${minsLeft(st.expiresAt)} मिनट और चलेगा। दोबारा share करने से पहले आपसे पूछा जाएगा।`)}</span>}
+                ? T("Tap Reconnect to share again.", "फिर share करने के लिए Reconnect दबाएँ।")
+                : T(`Same link works ${minsLeft(st.expiresAt)} more min.`, `वही link ${minsLeft(st.expiresAt)} मिनट और चलेगा।`)}</span>}
               {st && st.state === "paused" && (
                 <button type="button" onClick={() => void resume(st)} disabled={busy} className="mt-1.5 inline-flex items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-[#12144a] disabled:opacity-60">
                   {busy && <LoaderCircle className="h-3.5 w-3.5 animate-spin" />} {T("Reconnect", "Reconnect करें")}
