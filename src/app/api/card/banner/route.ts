@@ -20,7 +20,7 @@ import { SITE_PALETTES } from "@/lib/site-style";
 import { categoryOf } from "@/lib/poster-categories";
 import { MAX_GALLERY_PHOTOS, MAX_WRITE_AGAIN_PHOTOS } from "@/lib/card-facts";
 import { SITE_URL } from "@/lib/site-url";
-import type { Card } from "@/lib/types";
+import type { Card, HeroSlide } from "@/lib/types";
 
 export const maxDuration = 200;
 
@@ -45,12 +45,12 @@ export async function POST(request: Request) {
 
   if (typeof b.revert === "string") {
     const job = await currentJob(key);
-    const res = job?.result as { prev?: { coverUrl?: string; heroImageUrl?: string; cardId: string } } | undefined;
+    const res = job?.result as { prev?: { coverUrl?: string; heroImageUrl?: string; slides?: HeroSlide[]; cardId: string } } | undefined;
     if (!job || job.id !== b.revert || !res?.prev) return NextResponse.json({ error: "Nothing to put back." }, { status: 400 });
     const row = await myCard(me.id, res.prev.cardId);
     if (!row) return NextResponse.json({ error: "Card not found." }, { status: 404 });
     const data = row.data as Card;
-    const next: Card = { ...data, coverUrl: res.prev.coverUrl, site: data.site ? { ...data.site, hero: data.site.hero ? { ...data.site.hero, imageUrl: res.prev.heroImageUrl } : data.site.hero } : data.site };
+    const next: Card = { ...data, coverUrl: res.prev.coverUrl, site: data.site ? { ...data.site, hero: data.site.hero ? { ...data.site.hero, imageUrl: res.prev.heroImageUrl, ...(res.prev.slides ? { slides: res.prev.slides } : {}) } : data.site.hero } : data.site };
     const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${me.id}`, { method: "PATCH", body: JSON.stringify({ data: next }) });
     await claim(key, job.id);
     return NextResponse.json({ ok: r.ok });
@@ -99,13 +99,17 @@ export async function POST(request: Request) {
     const banner = made[0], gallery = made.slice(1);
     const fresh = await myCard(me.id, row.id);
     const cur = (fresh?.data ?? data) as Card;
-    const prev = { cardId: row.id, coverUrl: cur.coverUrl, heroImageUrl: cur.site?.hero?.imageUrl };
+    const prev = { cardId: row.id, coverUrl: cur.coverUrl, heroImageUrl: cur.site?.hero?.imageUrl, slides: cur.site?.hero?.slides };
     const focus = await bannerFocus(banner).catch(() => null);
     const site = cur.site ? {
       ...cur.site,
       // The banner goes on top (owner's call, 4 Oct 2026): a hero that would not show it becomes the photo hero.
       style: { ...(cur.site.style ?? {}), ...(["photo", "editorial"].includes(cur.site.style?.hero ?? "") ? {} : { hero: "photo" as const }) },
-      hero: { ...(cur.site.hero ?? { headline: cur.company || cur.name, sub: "" }), imageUrl: banner, ...(focus ? { focus: focus.focus, textSide: focus.textSide } : {}) },
+      hero: {
+        ...(cur.site.hero ?? { headline: cur.company || cur.name, sub: "" }), imageUrl: banner, ...(focus ? { focus: focus.focus, textSide: focus.textSide } : {}),
+        // Premium's sliding banners carry their own pictures and win over the hero's: the first one (and any still on the old cover) takes the new banner.
+        ...(cur.site.hero?.slides?.length ? { slides: cur.site.hero.slides.map((sl, i) => (i === 0 || !sl.imageUrl || sl.imageUrl === cur.coverUrl || sl.imageUrl === cur.site?.hero?.imageUrl ? { ...sl, imageUrl: banner } : sl)) } : {}),
+      },
     } : cur.site;
     // Gallery pictures join the first gallery block (or the facts' photos, for the next build).
     const pages = gallery.length ? cur.pages.map((p) => ({ ...p, blocks: p.blocks.map((bl) => bl.kind === "gallery" && !p.hidden ? { ...bl, images: [...bl.images, ...gallery.filter((u) => !bl.images.some((i) => i.url === u)).map((u) => ({ url: u, color: cur.themeColor, label: "" }))].slice(0, MAX_GALLERY_PHOTOS) } : bl) })) : cur.pages;
