@@ -27,13 +27,19 @@ import { MAX_GALLERY_PHOTOS } from "@/lib/card-facts";
 import { SITE_PALETTES } from "@/lib/site-style";
 import { categoryOf } from "@/lib/poster-categories";
 import type { Card, CardBlock } from "@/lib/types";
+import { activeAdvanced } from "@/lib/site-advanced";
 
 export const maxDuration = 120;
 
 type Kind = "banner" | "about" | "gallery";
 type Scope = "card" | "site" | "";
 const BANNERS = new Set(["banner", "cardbanner", "sitebanner"]);
-const isBanner = (slot: string) => BANNERS.has(slot);
+const isBanner = (slot: string) => BANNERS.has(slot) || /^slide:[0-2]$/.test(slot);
+/** The Premium website's sliding banners (site.hero.slides, up to 3): each is its own banner place on the photos page (owner, 24 Oct 2026:
+ *  "premium me banner add karte hai to ek hi dikhai deta hai — jaha multi add ka option ho waha multi dikhane chahiye"). */
+const MAX_SLIDES = 3;
+const slideMode = (card: Card, scope: Scope) => scope !== "card" && !!card.site && (!!activeAdvanced(card.site) || (card.site.hero?.slides ?? []).length >= 2);
+const slideNo = (slot: string) => (/^slide:[0-2]$/.test(slot) ? Number(slot.slice(6)) : -1);
 const scopeOf = (v: unknown): Scope => (v === "card" || v === "site" ? v : "");
 type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: string; size: string; ours: boolean; stock: boolean };
 
@@ -47,14 +53,20 @@ const visibleBlocks = (card: Card) => card.pages.filter((p) => !p.hidden).flatMa
 /** The banner picture of one banner slot. */
 function bannerOf(card: Card, slot: string): string {
   if (slot === "cardbanner") return card.coverUrl || "";
+  const n = slideNo(slot);
+  if (n >= 0) return card.site?.hero?.slides?.[n]?.imageUrl || (n === 0 ? card.site?.hero?.imageUrl || card.coverUrl || "" : "");
   return card.site?.hero?.imageUrl || card.coverUrl || "";
 }
 function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
   const out: PhotoSlot[] = [];
   const id = scope === "card" ? "cardbanner" : scope === "site" ? "sitebanner" : "banner";
   const banner = bannerOf(card, id);
+  if (slideMode(card, scope)) {
+    const n = Math.max(1, Math.min(MAX_SLIDES, (card.site?.hero?.slides ?? []).length));
+    for (let i = 0; i < n; i++) { const u = bannerOf(card, `slide:${i}`); out.push({ id: `slide:${i}`, kind: "banner", url: u, label: `Banner ${i + 1}`, group: "", size: SIZE.banner, ours: madeByUs(u), stock: isStock(u) }); }
+  }
   // A card or website without a banner yet still gets its place (empty), so one can be put there.
-  if (banner || scope) out.push({ id, kind: "banner", url: banner, label: id === "cardbanner" ? "Card banner" : "Top banner", group: "", size: SIZE.banner, ours: madeByUs(banner), stock: isStock(banner) });
+  else if (banner || scope) out.push({ id, kind: "banner", url: banner, label: id === "cardbanner" ? "Card banner" : "Top banner", group: "", size: SIZE.banner, ours: madeByUs(banner), stock: isStock(banner) });
   for (const b of visibleBlocks(card)) {
     if (b.kind === "about" && b.imageUrl) out.push({ id: `about:${b.id}`, kind: "about", url: b.imageUrl, label: "About picture", group: "", size: SIZE.about, ours: madeByUs(b.imageUrl), stock: isStock(b.imageUrl) });
     if (b.kind === "gallery") b.images.forEach((g, i) => { if (g.url) out.push({ id: `gallery:${b.id}:${i}`, kind: "gallery", url: g.url, label: g.label || `Gallery photo ${out.filter((x) => x.kind === "gallery").length + 1}`, group: g.group ?? "", size: SIZE.gallery, ours: madeByUs(g.url), stock: isStock(g.url) }); });
@@ -65,6 +77,18 @@ function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
 const mapBlock = (card: Card, id: string, f: (b: CardBlock) => CardBlock): Card => ({ ...card, pages: card.pages.map((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? f(b) : b)) })) });
 
 function setSlot(card: Card, slot: string, url: string, focus: { focus?: string; textSide?: "left" | "right" | "center" } | null): Card | null {
+  const n = slideNo(slot);
+  if (n >= 0) {
+    if (!card.site) return null;
+    const hero = card.site.hero ?? { headline: card.company || card.name, sub: "" };
+    const head = (hero.headline || card.company || card.name || "").trim();
+    // No slides yet: the one banner showing becomes the first; a place one past the end is a new banner (up to three).
+    const slides = (hero.slides ?? []).length ? [...hero.slides!] : [{ headline: head, ...(hero.sub ? { sub: hero.sub } : {}), ...(hero.imageUrl || card.coverUrl ? { imageUrl: hero.imageUrl || card.coverUrl } : {}) }];
+    if (n > slides.length || n >= MAX_SLIDES) return null;
+    if (n === slides.length) slides.push({ headline: head || "Welcome" });
+    slides[n] = { ...slides[n], imageUrl: url };
+    return { ...card, site: { ...card.site, hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
+  }
   if (slot === "cardbanner") {
     // The card's own banner. A website that was still showing the card's picture keeps that picture (it is pinned to the website first).
     const pin = card.site && !card.site.hero?.imageUrl && card.coverUrl ? { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: card.coverUrl } } : card.site;
@@ -93,6 +117,15 @@ function setGroup(card: Card, slot: string, group: string): Card | null {
   return mapBlock(card, blockId, (b) => (b.kind === "gallery" ? { ...b, images: b.images.map((g, k) => { if (k !== i) return g; const { group: _o, ...rest } = g; void _o; return group ? { ...rest, group } : rest; }) } : b));
 }
 function removeSlot(card: Card, slot: string): Card | null {
+  const n = slideNo(slot);
+  if (n >= 0) {
+    // One banner of several comes off; the last one always stays (replace it instead).
+    const hero = card.site?.hero;
+    const slides = hero?.slides ?? [];
+    if (!card.site || !hero || slides.length < 2 || n >= slides.length) return null;
+    const left = slides.filter((_, i) => i !== n);
+    return { ...card, site: { ...card.site, hero: { ...hero, slides: left, ...(left[0]?.imageUrl ? { imageUrl: left[0].imageUrl } : {}) } } };
+  }
   const [kind, blockId, idx] = slot.split(":");
   if (kind === "about" && blockId) return mapBlock(card, blockId, (b) => (b.kind === "about" ? { ...b, imageUrl: undefined } : b));
   if (kind === "gallery" && blockId && idx !== undefined) {
@@ -199,10 +232,10 @@ export async function POST(request: Request) {
 
   // The facts keep what the website shows, so the next build starts from it.
   // The card's own banner is not a website fact (a rebuild keeps an owner's own card cover by itself, lib/card-facts.ts).
-  if (inputs.profileId && action !== "group" && slot !== "cardbanner") {
+  if (inputs.profileId && action !== "group" && slot !== "cardbanner" && !(slideNo(slot) > 0)) {
     const f = inputs.facts;
     const old = slot ? urlOf(card, slot) : "";
-    const facts = slot === "banner" || slot === "sitebanner"
+    const facts = slot === "banner" || slot === "sitebanner" || slot === "slide:0"
       ? { ...f, bannerUrl: newUrl || f.bannerUrl }
       : action === "remove" ? { ...f, photos: f.photos.filter((u) => u !== old) }
       : action === "replace" || (action === "ai" && slot) ? { ...f, photos: f.photos.includes(old) ? f.photos.map((u) => (u === old ? newUrl : u)) : [...f.photos, newUrl].slice(0, MAX_GALLERY_PHOTOS) }

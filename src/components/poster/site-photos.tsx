@@ -91,7 +91,7 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
   async function chosen(file: File | null) {
     const slot = target.current;
     if (!file) return;
-    const kind: Slot["kind"] = slot === "banner" || slot === "cardbanner" || slot === "sitebanner" ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
+    const kind: Slot["kind"] = slot === "banner" || slot === "cardbanner" || slot === "sitebanner" || slot.startsWith("slide:") ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     const key = slot ? `${slot}:replace` : "add";
     const at = slot || "add";
     if (lock.current) return;
@@ -108,7 +108,10 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
 
   if (!slots) return <div className="flex items-center gap-2 rounded-2xl border border-border p-4 text-sm text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> {T("Loading your photos…", "आपकी photos खुल रही हैं…")}</div>;
 
-  const banner = slots.find((s) => s.kind === "banner");
+  // Premium's sliding banners come as "slide:0..2" (up to three, each its own place); any other website has the one banner.
+  const banners = slots.filter((s) => s.kind === "banner");
+  const sliding = banners.some((s) => s.id.startsWith("slide:"));
+  const nextSlide = sliding && banners.length < 3 ? `slide:${banners.length}` : "";
   const about = slots.filter((s) => s.kind === "about");
   const gallery = slots.filter((s) => s.kind === "gallery");
   const groups = [...new Set(gallery.map((x) => (x.group ?? "").trim()).filter(Boolean))];
@@ -118,7 +121,7 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-xs font-semibold disabled:opacity-50";
 
   // Where the message is shown: under its tile / the Add buttons; if that tile is not on screen any more (renumbered after a refresh, filtered out), at the top instead — never nowhere.
-  const onScreen = (id: string) => id === "add" ? gallery.length < max : [banner?.id, ...about.map((x) => x.id), ...shownGallery.map((x) => x.id)].includes(id);
+  const onScreen = (id: string) => id === "add" ? gallery.length < max : [...banners.map((x) => x.id), nextSlide, ...about.map((x) => x.id), ...shownGallery.map((x) => x.id)].includes(id);
   const errHere = (id: string) => err && (err.at === id || (err.at !== "top" && id === "top" && !onScreen(err.at))) ? (
     <p ref={errRef} role="alert" className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{err.msg}</p>
   ) : null;
@@ -147,12 +150,12 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
           ) : (
             <button type="button" disabled={!!busy} onClick={() => { setHeadFor(s.id); setHeadVal(s.group ?? ""); }} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-brand-ink disabled:opacity-50"><Tag className="h-3 w-3 shrink-0" /> <span className="truncate">{s.group ? s.group : T("Add a heading", "Heading जोड़ें")}</span></button>
           ))}
-          <p className="text-sm font-semibold">{s.id === "cardbanner" ? T("Card banner (only on your phone card)", "Card का banner (सिर्फ़ phone card पर)") : s.id === "sitebanner" ? T("Website banner (only on your website)", "Website का banner (सिर्फ़ website पर)") : s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
+          <p className="text-sm font-semibold">{s.id === "cardbanner" ? T("Card banner (only on your phone card)", "Card का banner (सिर्फ़ phone card पर)") : s.id === "sitebanner" ? T("Website banner (only on your website)", "Website का banner (सिर्फ़ website पर)") : s.id.startsWith("slide:") ? `${T("Banner", "Banner")} ${Number(s.id.slice(6)) + 1}` : s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
           <p className="text-[11px] text-muted">{T("Any photo works — we fit it.", "कोई भी photo चलेगी, हम fit कर देंगे।")}</p>
           <div className="grid grid-cols-3 gap-1.5">
             <button type="button" className={btn} disabled={!!busy} onClick={() => choose(s.id)}><Camera className="h-3.5 w-3.5" /> {T("Replace", "बदलें")}</button>
             <button type="button" className={btn} disabled={!!busy} onClick={() => void run(`${s.id}:ai`, { action: "ai", slot: s.id })}><Sparkles className="h-3.5 w-3.5 text-brand" /> {T("Make by AI", "AI से बनाएँ")}</button>
-            {s.kind === "banner"
+            {s.kind === "banner" && !(s.id.startsWith("slide:") && banners.length > 1)
               ? <span />
               : <button type="button" className={`${btn} text-danger`} disabled={!!busy} onClick={() => { if (window.confirm(T("Take this photo off the website?", "इस photo को website से हटाएँ?"))) void run(`${s.id}:remove`, { action: "remove", slot: s.id }); }}><Trash2 className="h-3.5 w-3.5" /> {T("Remove", "हटाएँ")}</button>}
           </div>
@@ -171,7 +174,26 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
         : T("Banner: website only. Other photos: card + website.", "Banner: सिर्फ़ website का। बाकी photos: card + website दोनों।")}</p>}
       <p className="text-xs text-muted">{T("Tap to change. It shows on your website at once. “Make by AI” = 1 credit.", "बदलने के लिए दबाएँ, website पर तुरंत दिखेगा। “AI से बनाएँ” = 1 credit।")}</p>
       {errHere("top")}
-      {banner && <section className="space-y-2"><h3 className="text-sm font-bold">{T("Banner", "Banner")}</h3>{tile(banner)}</section>}
+      {banners.length > 0 && (
+        <section className="space-y-2">
+          <h3 className="text-sm font-bold">{sliding ? <>{T("Banners", "Banners")} <span className="font-normal text-muted">({banners.length}/3 · {T("they slide", "बदलते रहते हैं")})</span></> : T("Banner", "Banner")}</h3>
+          {banners.map((b) => tile(b))}
+          {/* One more sliding banner: the owner's photo, or one made by AI (1 credit). */}
+          {nextSlide && (
+            <div className="space-y-1.5">
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" disabled={!!busy} onClick={() => choose(nextSlide)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-3 text-sm font-semibold disabled:opacity-50">
+                  {busy === `${nextSlide}:replace` ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Add a banner", "Banner जोड़ें")}
+                </button>
+                <button type="button" disabled={!!busy} onClick={() => void run(`${nextSlide}:ai`, { action: "ai", slot: nextSlide })} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/40 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50">
+                  {busy === `${nextSlide}:ai` ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Banner by AI", "AI से banner")}
+                </button>
+              </div>
+              {errHere(nextSlide)}
+            </div>
+          )}
+        </section>
+      )}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
       <section className="space-y-2">
         <h3 className="text-sm font-bold">{T("Gallery", "Gallery")} <span className="font-normal text-muted">({gallery.length}/{max})</span></h3>
