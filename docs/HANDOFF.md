@@ -92,6 +92,10 @@ in `src/lib/ai-training.ts` (`replyLanguage`, `languageLock`, `HINDI_STYLE`).
 6. Meta App Review (docs/meta-app-review.md): 7 of 11 permissions complete on 21 Oct 2026; pending = Meta's test-call data (24 h),
    screencast Video 2 for the three comment permissions, a `metareview` test login, Submit. FB + Instagram auto-reply was switched OFF
    on 21 Oct for the recording — switch it ON again after Video 2. Details in docs/crm-pro.md section 11.
+7. Own domain fully automatic — LATER (owner, 24 Oct 2026: "baad me karege"). Today DomainConnect detects the DNS host and shows
+   its steps; the owner adds 2 records, then SSL + go-live are automatic. Options discussed: (a) buy the domain inside the app via a
+   domain reseller (100% automatic, margin; owner to choose the reseller and the price), (b) the Domain Connect standard / a paid
+   aggregator for existing domains at big registrars, (c) never ask users for registrar passwords or API keys.
 
 ## Code review, night of 22 Oct 2026
 Full review (CRM, money/auth/admin, WhatsApp/AI/bridge, public site, member app, workers). ~45 bugs fixed; tsc, eslint, bridge tests and a
