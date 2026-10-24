@@ -1,0 +1,67 @@
+"use client";
+// The live window on top of an edit screen (owner, 24 Oct 2026: "upar ek chota window jo live dikhata hai aur niche scrollable options …
+// jo change hua wo hi portion apne aap window me dikhe"). It stays under the app's top bar while the options scroll, shows the working
+// copy of the website (or the phone card) through the real renderer (/preview/site, read from localStorage under its own key), goes
+// to the part `focus` names after each change, and opens big or small with one tap. Nothing is saved from here.
+import { useEffect, useRef, useState } from "react";
+import { Maximize2, Minimize2 } from "lucide-react";
+import type { Card } from "@/lib/types";
+
+export type LiveFocus = { top?: boolean; text?: string } | null;
+const SITE_W = 1280, CARD_W = 400;
+
+export function LiveWindow({ card, k, view = "site", focus, hi }: {
+  card: Card | null; /** The localStorage key the preview reads (letters, digits, dashes). */ k: string;
+  view?: "site" | "card"; /** What to show after this change: the top, or the section / line with this text. */ focus?: LiveFocus; hi: boolean;
+}) {
+  const frame = useRef<HTMLIFrameElement>(null);
+  const box = useRef<HTMLDivElement>(null);
+  const [big, setBig] = useState(false);
+  const [scale, setScale] = useState(0.3);
+  const [frameH, setFrameH] = useState(1600);
+  const scaleRef = useRef(0.3);
+  const w = view === "card" ? CARD_W : SITE_W;
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  useEffect(() => {
+    const fit = () => { const cw = box.current?.clientWidth ?? 0; if (cw) setScale(Math.min(1, cw / w)); };
+    fit(); window.addEventListener("resize", fit); return () => window.removeEventListener("resize", fit);
+  }, [w, card]);
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const d = e.data as { type?: string; key?: string; h?: number; y?: number } | null;
+      if (!d || d.key !== k) return;
+      if (d.type === "preview-height" && typeof d.h === "number") setFrameH(Math.max(700, Math.min(20000, d.h)));
+      if (d.type === "preview-at" && typeof d.y === "number") box.current?.scrollTo({ top: d.y * scaleRef.current, behavior: "smooth" });
+    };
+    window.addEventListener("message", onMsg); return () => window.removeEventListener("message", onMsg);
+  }, [k]);
+  const post = (m: unknown) => { try { frame.current?.contentWindow?.postMessage(m, window.location.origin); } catch { /* ignore */ } };
+  // Every change: the copy to the preview, then where to look.
+  const sig = card ? JSON.stringify(card) : "";
+  const focusSig = focus ? JSON.stringify(focus) : "";
+  useEffect(() => {
+    if (!sig) return;
+    try { localStorage.setItem(k, sig); } catch { /* full or private */ }
+    post(`preview:${k}`);
+    if (focusSig) post({ type: "preview-focus", key: k, ...JSON.parse(focusSig) });
+  }, [sig, focusSig, k]);
+  if (!card) return null;
+  return (
+    <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
+      <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
+        <div ref={box} className="overflow-auto overscroll-contain bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
+          <div className="relative" style={{ width: Math.round(w * scale), height: Math.round(frameH * scale) }}>
+            <iframe ref={frame} title={hi ? "Live preview" : "Live preview"} src={`/preview/site?k=${k}${view === "card" ? "&view=card" : ""}`}
+              onLoad={() => post(`preview:${k}`)} className="absolute left-0 top-0 origin-top-left" style={{ width: w, height: frameH, border: 0, transform: `scale(${scale})` }} />
+          </div>
+        </div>
+        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● Live</span>
+        <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
+          className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
+          {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}
+        </button>
+      </div>
+    </div>
+  );
+}

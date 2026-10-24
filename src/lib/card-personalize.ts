@@ -148,18 +148,10 @@ function hoursRows(text: string): { day: string; time: string }[] {
   });
 }
 
-export async function syncCardFromSetup(s: { name: string; business: string; photo: string | null; logo: string | null; phone: string; /** A separate WhatsApp number and an optional second number (undefined = leave the card as it is). */ whatsapp?: string; phone2?: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync }) {
-  const { fetchMyCardsStrict, publishCard } = await import("@/lib/cloud");
-  let cards: Card[];
-  try { cards = await fetchMyCardsStrict(); } catch { return; }
-  if (!cards.length) return;
-  let c: Card | undefined;
-  if (cards.length > 1) {
-    const fr = await api<Partial<FactsResponse>>("/api/card/facts").catch(() => null);
-    const primary = fr?.ok ? fr.data.facts?.primaryCardId : "";
-    c = primary ? cards.find((x) => x.id === primary) : undefined;
-  } else c = cards[0];
-  if (!c || /\byour name\b/i.test(c.name ?? "")) return;
+/** What the setup's answers make of the card, without saving: the same change Save publishes, so a live window can show it while
+ *  the owner types (owner, 24 Oct 2026: "jo change kar raha hai usko sath ke sath dikhana chahiye"). */
+export type SetupApply = { name: string; business: string; photo: string | null; logo: string | null; phone: string; /** A separate WhatsApp number and an optional second number (undefined = leave the card as it is). */ whatsapp?: string; phone2?: string; oldPhoto?: string | null; oldLogo?: string | null; facts?: SetupSync };
+export function applySetup(c: Card, s: SetupApply): Card {
   const next = structuredClone(c);
   if (s.name) next.name = s.name;
   if (s.business) next.company = s.business;
@@ -212,6 +204,29 @@ export async function syncCardFromSetup(s: { name: string; business: string; pho
       mapBlocks((b) => (b.kind === "gallery" && first ? (first = false, { ...b, images: [...b.images, ...fresh.filter((u) => !b.images.some((i) => i.url === u)).map((u) => ({ url: u, color: next.themeColor, label: "" }))].slice(0, 12) }) : b));
     }
   }
+  return next;
+}
+
+/** The card the setup keeps in step (the only one, or the primary of several); null when there is none, or only an untouched draft. */
+export async function setupCard(): Promise<Card | null> {
+  const { fetchMyCardsStrict } = await import("@/lib/cloud");
+  let cards: Card[];
+  try { cards = await fetchMyCardsStrict(); } catch { return null; }
+  if (!cards.length) return null;
+  let c: Card | undefined;
+  if (cards.length > 1) {
+    const fr = await api<Partial<FactsResponse>>("/api/card/facts").catch(() => null);
+    const primary = fr?.ok ? fr.data.facts?.primaryCardId : "";
+    c = primary ? cards.find((x) => x.id === primary) : undefined;
+  } else c = cards[0];
+  return !c || /\byour name\b/i.test(c.name ?? "") ? null : c;
+}
+
+export async function syncCardFromSetup(s: SetupApply) {
+  const { publishCard } = await import("@/lib/cloud");
+  const c = await setupCard();
+  if (!c) return;
+  const next = applySetup(c, s);
   if (JSON.stringify(next) !== JSON.stringify(c)) await publishCard(next);
 }
 

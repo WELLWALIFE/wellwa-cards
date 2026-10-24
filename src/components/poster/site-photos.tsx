@@ -32,7 +32,7 @@ async function fitTo(file: File, kind: Slot["kind"]): Promise<File> {
 }
 
 /** `scope`: "card" = the phone card's own banner, "site" = the website's own banner (each has its own); every other photo is shared. */
-export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string; scope?: "card" | "site" }) {
+export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; cardId?: string; scope?: "card" | "site"; /** After a change is on the card (the live window reads it again): the slot changed, "" for an added photo. */ onChanged?: (slot: string) => void }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [slots, setSlots] = useState<Slot[] | null>(null);
   const [max, setMax] = useState(12);
@@ -80,6 +80,7 @@ export function SitePhotos({ hi, cardId, scope }: { hi: boolean; cardId?: string
         return;
       }
       if (r.data.slots) setSlots(r.data.slots);
+      onChanged?.(slot);
     } catch {
       setErr(T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"), at);
     } finally {

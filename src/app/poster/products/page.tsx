@@ -12,7 +12,9 @@ import { api, authHeaders, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { fetchMyCardsStrict } from "@/lib/cloud";
-import { syncProductsToCard } from "@/lib/card-personalize";
+import { syncProductsToCard, setupCard } from "@/lib/card-personalize";
+import { LiveWindow, type LiveFocus } from "@/components/poster/live-window";
+import type { Card as LiveCard, CardBlock as LiveBlock } from "@/lib/types";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
@@ -81,6 +83,17 @@ export default function ProductsPage() {
   const [backTo, setBackTo] = useState("");
   /** A live card exists: products added here reach the website only through Write again (the AI lays them out). */
   const [hasLive, setHasLive] = useState(false);
+  // The live window (owner, 24 Oct 2026): the website as it is after each save, opened at the products.
+  const [live, setLive] = useState<LiveCard | null>(null);
+  const [liveFocus, setLiveFocus] = useState<LiveFocus>(null);
+  async function refreshLive(name?: string) {
+    const c = await setupCard().catch(() => null);
+    if (!c) return;
+    const title = (c.pages.flatMap((pg) => pg.blocks).find((b: LiveBlock) => b.kind === "product") as { title?: string } | undefined)?.title?.trim();
+    setLive(c);
+    setLiveFocus(name?.trim() ? { text: name.trim().slice(0, 30) } : title ? { text: title } : null);
+  }
+  useEffect(() => { if (hasLive) void refreshLive(); }, [hasLive]); // eslint-disable-line react-hooks/exhaustive-deps
   /** …and its website is switched on (the builder's own "live" test): then `?make=1` opens the finished screen, not Make. */
   const [siteLive, setSiteLive] = useState(false);
   useEffect(() => { try { const q = new URLSearchParams(window.location.search); setSetupMode(q.get("setup") === "1"); const b = q.get("back") ?? ""; if (/^\/(?![/\\])[^\s]*$/.test(b)) setBackTo(b); } catch { /* ignore */ } }, []);
@@ -319,6 +332,7 @@ export default function ProductsPage() {
       // A new product saved with no picture: the note under the form offers the fix (never spends credits by itself).
       setNoPicId(!draft.id && !draft.photo_url && !draft.photos.length && r.data.product?.id ? r.data.product.id : "");
       // "Save and add another" keeps the group and brand, so a run of similar things is quick.
+      lastSaved.current = draft.name;
       if (again) newDraft({ category: draft.category, brand: draft.brand }); else setDraft(null);
       await load();
       void liveSync();
@@ -425,6 +439,8 @@ export default function ProductsPage() {
    *  a product switched off — without "Write again". Best effort, after the save. */
   // Once per visit, when the list is first read: whatever the website is missing (products that landed on a hidden page before, a failed earlier sync) is put right.
   const healed = useRef(false);
+  /** The product just saved: the live window goes to it. */
+  const lastSaved = useRef("");
   useEffect(() => { if (!healed.current && hasLive && list && list.length) { healed.current = true; void liveSync(); } }, [hasLive, list]); // eslint-disable-line react-hooks/exhaustive-deps
   async function liveSync() {
     if (!hasLive) return;
@@ -432,6 +448,8 @@ export default function ProductsPage() {
       const r = await api<{ products?: Product[] }>("/api/poster/products");
       const rows = r.ok ? (r.data.products ?? []) : [];
       if (rows.length) await syncProductsToCard(rows);
+      void refreshLive(lastSaved.current);
+      lastSaved.current = "";
     } catch { /* the Products page saved; the website follows next time */ }
   }
   /** "Add pictures to products without one": free, name-matched stock photos for up to 15 products a tap (the server never touches a
@@ -486,7 +504,7 @@ export default function ProductsPage() {
     } catch { setRowErr({ id: p.id, msg: t.error }); load(); return; }
     load();
     // Deleted → off the website: sync with the row marked off (it is no longer in the list).
-    if (hasLive) void syncProductsToCard([{ name: p.name, active: false }]);
+    if (hasLive) void syncProductsToCard([{ name: p.name, active: false }]).then(() => refreshLive());
   }
 
   if (list === null) return err ? (
@@ -518,6 +536,7 @@ export default function ProductsPage() {
   return (
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
+      {!setupMode && hasLive && <LiveWindow card={live} k="products-live" focus={liveFocus} hi={!en} />}
       {setupMode && <ProfileSteps current="products" category={category} screen="products" onBack={() => goUp("/poster/onboard?step=about")} />}
       {setupMode ? (
         /* The set-up step, plain (owner's call, 7 Oct 2026: "step 10 of 11 page bada confusing hai"): the bar above counts

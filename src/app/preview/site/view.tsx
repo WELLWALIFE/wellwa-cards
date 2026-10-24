@@ -4,6 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { SiteView } from "@/components/site-view";
+import { CardView } from "@/components/card-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
@@ -27,6 +28,11 @@ function forcedLang(): "hi" | "en" | null {
 
 /** `?page=<slug>` opens a page of the website: a card page ("products", "visit"), "updates", an about / gallery page the advanced site adds,
  *  or an item's own address ("p-kaju-katli"). The QA tooling and the editor's iframe use it; unset = the home page. */
+/** `?view=card`: the phone card instead of the website (the edit screens' live window for a card-only change). */
+function cardParam(): boolean {
+  try { return new URLSearchParams(window.location.search).get("view") === "card"; } catch { return false; }
+}
+
 function pageParam(): string | undefined {
   try { const p = new URLSearchParams(window.location.search).get("page") ?? ""; return /^[\w%-]{1,80}$/.test(p) ? decodeURIComponent(p) : undefined; } catch { return undefined; }
 }
@@ -73,6 +79,7 @@ function PreviewInner() {
   const [shot, setShot] = useState(false);
   const [lang, setLang] = useState<"hi" | "en" | null>(null);
   const [startPage, setStartPage] = useState<string | undefined>(undefined);
+  const [asCard, setAsCard] = useState(false);
   // The advanced website is several pages: the About and Gallery pages it adds, and a hidden page per item so every item opens
   // in place (the public route does the same, src/app/c/[username]/render.tsx). A basic card is passed through as it is.
   const shown = useMemo(() => {
@@ -89,6 +96,7 @@ function PreviewInner() {
     const l = forcedLang();
     setLang(l);
     setStartPage(pageParam());
+    setAsCard(cardParam());
     // useCardLang (card-view.tsx) opens in the language it last saved: the forced one is written there first, so
     // the renderer's very first paint is already in it.
     if (l) { try { localStorage.setItem("ne-card-lang", l); } catch { /* ignore */ } }
@@ -134,6 +142,7 @@ function PreviewInner() {
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
   const links = shown!.links.filter((l) => l.value.trim());
   const hasBar = links.some((l) => l.type === "phone" || l.type === "whatsapp" || l.type === "location");
+  if (asCard) return <CardView card={shown!} qr={qr} />;
   return (
     <>
       <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown!} qr={qr} free={loading || plan === "free"} initialLang={lang ?? undefined} initialPage={startPage} unlisted={shown!.pages.filter((p) => p.hidden && p.id.startsWith("adv-")).map((p) => p.slug)} />

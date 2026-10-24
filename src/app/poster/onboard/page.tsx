@@ -22,13 +22,15 @@ import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Pr
 import { dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
 import { ImageCropper } from "@/components/editor/image-cropper";
 import { CategoryPicker } from "@/components/category-picker";
-import { syncCardFromSetup, loadOwnDetails, personalize } from "@/lib/card-personalize";
+import { syncCardFromSetup, loadOwnDetails, personalize, applySetup, setupCard } from "@/lib/card-personalize";
+import { LiveWindow, type LiveFocus } from "@/components/poster/live-window";
 import { getTemplate } from "@/lib/templates";
 import { fetchMyCardsStrict, publishCard, suggestUsername } from "@/lib/cloud";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
 import { exactCategory, matchCategory } from "@/lib/category-match";
 import type { Business } from "@/lib/journey";
+import type { Card, CardBlock } from "@/lib/types";
 import { ClaimUsername } from "@/components/poster/claim-username";
 import { useT } from "@/lib/poster-i18n";
 import { useAssociate } from "@/lib/associate";
@@ -205,6 +207,16 @@ function Onboard() {
   // The profile's detail answers (card facts): step 1 adds the designation / WhatsApp, step 2 the company details.
   // Loaded with the account, saved with "Save and continue" (the facts route needs the profile to exist first).
   const [facts, setFacts] = useState<CardFacts>(() => normalizeFacts({}));
+  const [liveBase, setLiveBase] = useState<Card | null>(null);   // the live window's card (edit screens only)
+  const [liveVer, setLiveVer] = useState(0);
+  const [photoFocus, setPhotoFocus] = useState<LiveFocus>(null);
+  const liveStep = editing && (["you", "trade", "where", "about", "extras"] as string[]).includes(step) && part !== "links";
+  useEffect(() => {
+    if (!liveStep) return;
+    let off = false;
+    void setupCard().then((c) => { if (!off) setLiveBase(c); });
+    return () => { off = true; };
+  }, [liveStep, liveVer]);
   const factsDirty = useRef(false);
   const setF = (p: FactsPatch) => { factsDirty.current = true; setFacts((f) => ({ ...f, ...p, social: { ...f.social, ...(p.social ?? {}) } })); };
   // Four ways a card can lead (owner's call, 23 Sep 2026): a shop/company by its name, a professional or an agent by
@@ -1647,6 +1659,17 @@ function Onboard() {
     </div>
   );
 
+  // The live window on the edit screens (owner, 24 Oct 2026: "jo change kar raha hai usko sath ke sath dikhana chahiye"): the card as
+  // Save would make it, from what is typed right now; photos change the card at once, so the card is read again after each.
+
+  const liveView = liveBase && liveStep ? applySetup(liveBase, {
+    name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone: you.phone.replace(/\D/g, "").slice(-10),
+    oldPhoto: profile?.photo_url ?? null, oldLogo: profile?.logo_url ?? null,
+    facts: { about: (biz.about ?? "").trim(), hours: facts.hours, address: [(biz.address ?? "").trim(), (biz.city ?? "").trim()].filter(Boolean).join(", "), banner: facts.bannerUrl, photos: facts.photos },
+  }) : null;
+  const liveFocus: LiveFocus = photoFocus ?? (step === "where" && (biz.address ?? "").trim() ? { text: (biz.address ?? "").trim().slice(0, 18) }
+    : step === "about" && (biz.about ?? "").trim() ? { text: (biz.about ?? "").trim().slice(0, 24) } : { top: true });
+
   return (
     <div className="space-y-5 py-2">
       {crop && (
@@ -1672,6 +1695,7 @@ function Onboard() {
       </div>}
       {skipErr && <FieldErr id="skip" msg={skipErr} />}
       </>}
+      {liveView && <LiveWindow card={liveView} k="onboard-live" view={params.get("for") === "card" ? "card" : "site"} focus={liveFocus} hi={hi} />}
 
       {step === "promote" ? (
         <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
@@ -2119,7 +2143,13 @@ function Onboard() {
           {/* Two edit tiles share this screen: ?part=photos (the pictures) and ?part=links (payments, social, Maps); the set-up shows both. */}
           {head(editing && part === "photos" ? T("Photos & banner", "Photos और banner") : editing && part === "links" ? T("Payments & social links", "Payment और social links") : T("Photos & more", "Photos और बाकी"), editing && part === "photos" ? T("Every picture on your website.", "आपकी website की हर picture।") : editing && part === "links" ? T("UPI and social links. All optional.", "UPI और social links। सब ज़रूरी नहीं।") : T("All optional.", "सब ज़रूरी नहीं।"))}
           {/* A focused edit shows the photos that are on the website, one by one; the set-up (no website yet) asks for the banner and photos. */}
-          {editing && part !== "links" && <SitePhotos hi={hi} cardId={params.get("card") ?? undefined} scope={params.get("for") === "card" ? "card" : params.get("for") === "site" ? "site" : undefined} />}
+          {editing && part !== "links" && <SitePhotos hi={hi} cardId={params.get("card") ?? undefined} scope={params.get("for") === "card" ? "card" : params.get("for") === "site" ? "site" : undefined}
+            onChanged={(slot) => {
+              // A gallery photo (or one just added): the Photos section; anything else (the banner, the logo): the top.
+              const gTitle = (liveBase?.pages.flatMap((pg) => pg.blocks).find((b: CardBlock) => b.kind === "gallery") as { title?: string } | undefined)?.title?.trim();
+              setPhotoFocus(!slot || slot.startsWith("gallery:") ? (gTitle ? { text: gTitle } : { top: true }) : { top: true });
+              setLiveVer((n) => n + 1);
+            }} />}
           {!(editing && part === "photos") && <FactsFields group="company" only={editing ? ["q-pay", "q-social"] : ["q-photos", "q-pay", "q-social"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} />}
           {!editing && <div className="space-y-3 rounded-2xl border border-border p-4">
               {/* The website is asked on its own step; here it is only shown, with one way back to change it. */}
