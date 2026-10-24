@@ -27,6 +27,29 @@ import type { Card, CardBlock } from "@/lib/types";
 const PRICE_FALLBACK = 5999;
 /** "3 layouts per payment" (owner's rule): the server may say how many are left; this counts them on the phone when it does not. */
 const TRY_LIMIT = 3;
+
+/** "Ready for Premium?" (owner, 24 Oct 2026: products etc. first, then Premium): what the AI will have to design from, read off the
+ *  live card. Never a lock — the owner may make it anyway; each missing row opens the screen that adds it and comes back here. */
+type ReadyRow = { k: string; ok: boolean; en: string; hi: string; href: string };
+const STOCK_PIC = /^\/(art|wellwa)\/|^\/api\/stock\//;
+function readiness(card: Card): ReadyRow[] {
+  const blocks = (card.pages ?? []).flatMap((pg) => pg.blocks ?? []) as CardBlock[];
+  const items = <K extends CardBlock["kind"]>(k: K) => blocks.filter((b): b is Extract<CardBlock, { kind: K }> => b.kind === k);
+  const products = items("product").flatMap((b) => b.items ?? []).filter((x) => (x.name ?? "").trim());
+  const services = items("services").flatMap((b) => b.items ?? []).filter((x) => (x.name ?? "").trim());
+  const offer = products.length + services.length;
+  const withPhoto = products.filter((x) => x.imageUrl || (x.images ?? []).length).length;
+  const gallery = items("gallery").reduce((n, b) => n + (b.images ?? []).filter((i) => i.url).length, 0);
+  const reviews = items("testimonials").reduce((n, b) => n + (b.items ?? []).filter((x) => (x.text ?? "").trim()).length, 0);
+  const banner = !!card.coverUrl && !STOCK_PIC.test(card.coverUrl);
+  const back = encodeURIComponent("/poster/site/advanced");
+  return [
+    { k: "offer", ok: offer >= 3, en: `Products / services: ${offer}${products.length ? ` (${withPhoto} with photo)` : ""}`, hi: `Products / services: ${offer}${products.length ? ` (${withPhoto} photo के साथ)` : ""}`, href: `/poster/products?back=${back}` },
+    { k: "banner", ok: banner, en: banner ? "Your own banner" : "No banner of your own", hi: banner ? "अपना banner है" : "अपना banner नहीं है", href: `/poster/onboard?step=extras&part=photos&back=${back}` },
+    { k: "photos", ok: gallery >= 3, en: `Photos of your shop / work: ${gallery}`, hi: `दुकान / काम की photos: ${gallery}`, href: `/poster/onboard?step=extras&part=photos&back=${back}` },
+    { k: "reviews", ok: reviews >= 2, en: `Customer reviews: ${reviews}`, hi: `ग्राहकों की राय: ${reviews}`, href: "/poster/testimonials" },
+  ];
+}
 const PREVIEW_KEY = "vcard-adv-preview";
 /** A payment Razorpay took whose confirmation did not reach our server (offline at that second): kept so the next visit can confirm it
  *  instead of offering "Pay" again, which would charge twice. */
@@ -617,6 +640,29 @@ export default function AdvancedSitePage() {
           {bullets.map(([te, th]) => <li key={te} className="flex items-center gap-2 text-sm"><CheckCircle2 className="h-4 w-4 shrink-0" /> {T(te, th)}</li>)}
         </ul>
       </section>
+
+      {card && !cur?.has && (() => {
+        const rows = readiness(card);
+        const done = rows.filter((r) => r.ok).length;
+        return (
+          <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+            <div className="flex items-center justify-between gap-2 border-b border-border px-4 py-3">
+              <p className="text-sm font-bold">{T("Get ready first", "पहले ये तैयार करें")}</p>
+              <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${done === rows.length ? "bg-good/15 text-good" : "bg-amber/15 text-amber"}`}>{done}/{rows.length} {T("ready", "तैयार")}</span>
+            </div>
+            <ul className="divide-y divide-border">
+              {rows.map((r) => (
+                <li key={r.k} className="flex items-center gap-2.5 px-4 py-2.5 text-sm">
+                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[11px] font-bold ${r.ok ? "bg-good/15 text-good" : "bg-amber/15 text-amber"}`}>{r.ok ? "✓" : "!"}</span>
+                  <span className="min-w-0 flex-1">{T(r.en, r.hi)}</span>
+                  {!r.ok && <Link href={r.href} className="shrink-0 rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink">{T("Add", "जोड़ें")}</Link>}
+                </li>
+              ))}
+            </ul>
+            {done < rows.length && <p className="bg-surface2 px-4 py-2 text-[11px] text-muted">{T("More details = a better Premium website.", "जितनी ज़्यादा जानकारी, उतनी अच्छी Premium website।")}</p>}
+          </section>
+        );
+      })()}
 
       <section className={`${box} space-y-2.5`}>
         {cur?.has && (
