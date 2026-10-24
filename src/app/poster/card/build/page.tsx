@@ -17,7 +17,7 @@ import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
 import Link from "next/link";
 import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
-import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X } from "lucide-react";
+import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, MapPin, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, Star, X, Eye } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
@@ -1441,7 +1441,7 @@ export default function BuildCard() {
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-brand text-sm font-bold text-white">6</span>
               <div className="min-w-0 flex-1">
                 <p className="text-base font-bold leading-tight">{T("Select one design from six", "छह में से एक design चुनें")}</p>
-                <p className="text-xs text-muted">{T("Tap a design — your website above changes at once.", "किसी design पर दबाइए — ऊपर आपकी website तुरंत बदल जाएगी।")}</p>
+                <p className="text-xs text-muted">{T("View to see it full · Select to use it", "देखें = पूरा देखें · चुनें = लगाएँ")}</p>
               </div>
               <button type="button" onClick={() => setDesignOpen(false)} aria-label={T("Close", "बंद करें")} className="rounded-lg p-1 text-muted"><ChevronDown className="h-5 w-5" /></button>
             </div>
@@ -1457,20 +1457,21 @@ export default function BuildCard() {
               const on = activeLook === l.key;
               const p = paletteFor({ themeColor: shown.themeColor, site: { enabled: true, style: l.style } });
               return (
-                <div key={l.key} className="relative min-w-0">
-                <button type="button" onClick={() => pickLook(l.key)} aria-pressed={on}
-                  className={`w-full min-w-0 rounded-2xl border-2 p-1.5 text-left transition ${on ? "border-brand bg-brand-soft shadow-card" : "border-border bg-surface"}`}>
-                  <span className="relative grid aspect-[16/11] w-full place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>
-                    <LookGlyph k={l.key} ink={p.ink} />
-                    <span className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink">{idx + 1}</span>
-                    {on && <span className="absolute bottom-1.5 left-1.5 inline-flex items-center gap-0.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-bold text-brand-ink"><Check className="h-3 w-3" />{T("Selected", "चुना")}</span>}
-                  </span>
-                  <span className="mt-1.5 block truncate text-[13px] font-bold">{hi ? l.hi : l.name}</span>
-                  <span className="block truncate text-[11px] text-muted">{hi ? l.blurbHi : l.blurb}</span>
-                </button>
-                {/* Every one of the six designs opens as a full website in a new tab, not only the chosen one. */}
-                <button type="button" onClick={() => openLookInTab(l.key)} aria-label={T("Open this design in a new tab", "यह design नए tab में खोलें")}
-                  className="absolute right-2.5 top-2.5 grid h-6 w-6 place-items-center rounded-full bg-white/90 text-brand shadow"><ExternalLink className="h-3 w-3" /></button>
+                <div key={l.key} className={`min-w-0 overflow-hidden rounded-2xl border-2 ${on ? "border-brand bg-brand-soft shadow-card" : "border-border bg-surface"}`}>
+                  {/* Two clear buttons per design (owner, 24 Oct 2026: "view aur select likho jo user ko samajh aaye"). */}
+                  <button type="button" onClick={() => openLookInTab(l.key)} className="block w-full p-1.5 pb-1 text-left" aria-label={T(`View design ${idx + 1}`, `Design ${idx + 1} देखें`)}>
+                    <span className="relative grid aspect-[16/11] w-full place-items-center rounded-xl" style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>
+                      <LookGlyph k={l.key} ink={p.ink} />
+                      <span className="absolute left-1.5 top-1.5 grid h-5 w-5 place-items-center rounded-full bg-white/90 text-[10px] font-bold text-ink">{idx + 1}</span>
+                    </span>
+                    <span className="mt-1 block truncate text-[12px] font-bold">{hi ? l.hi : l.name}</span>
+                  </button>
+                  <div className="grid grid-cols-2 border-t border-border/70 text-[11px] font-bold">
+                    <button type="button" onClick={() => openLookInTab(l.key)} className="inline-flex items-center justify-center gap-1 py-2 text-brand-ink"><Eye className="h-3.5 w-3.5" /> {T("View", "देखें")}</button>
+                    <button type="button" onClick={() => pickLook(l.key)} aria-pressed={on} className={`inline-flex items-center justify-center gap-1 py-2 ${on ? "bg-brand text-white" : "border-l border-border/70 text-ink"}`}>
+                      <Check className="h-3.5 w-3.5" /> {on ? T("Selected", "चुना") : T("Select", "चुनें")}
+                    </button>
+                  </div>
                 </div>
               );
             })}
