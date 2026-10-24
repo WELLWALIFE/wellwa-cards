@@ -1224,38 +1224,48 @@ export default function BuildCard() {
     const goDone = () => { setState("done"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
     const restyle = (patch: Record<string, unknown>) => { const next = { ...card, site: { ...card.site!, style: { ...(card.site!.style ?? {}), ...patch } } } as Card; setCard(next); liveTap(next); };
     return (
-      <div className="space-y-4 py-2">
+      <div className="space-y-3 py-2">
+        {/* Colours and fonts, one look (owner, 24 Oct 2026: "upar ka text zaroori nahi, professional look"): title, the live preview,
+            one panel with the two choices, and Skip / Done at the foot. */}
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { doneFromPreview.current = false; setState("preview"); toTop(); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-          <h1 className="min-w-0 flex-1 text-lg font-bold">{T("Colours and fonts", "रंग और अक्षर")}</h1>
+          <h1 className="min-w-0 flex-1 text-xl font-bold tracking-tight">{T("Colours and fonts", "रंग और अक्षर")}</h1>
+          <span className="rounded-full bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-muted">{T("Optional", "ज़रूरी नहीं")}</span>
         </div>
-        <p className="text-sm text-muted">{T("Make the website match your shop. Tap a colour or a letter style — the website below changes at once. You can also skip this.", "Website को अपनी दुकान जैसा बनाएँ। कोई रंग या अक्षर दबाइए — नीचे website तुरंत बदल जाएगी। चाहें तो इसे छोड़ भी सकते हैं।")}</p>
-        <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-2xl border border-border bg-white" style={{ height: "min(50dvh, 440px)", minHeight: 300 }}>
+        <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-3xl border border-border bg-white shadow-card" style={{ height: "min(50dvh, 440px)", minHeight: 280 }}>
           <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} className="h-full w-full border-0" />
         </div>
-        <div>
-          <p className="text-sm font-semibold">{T("Colour", "रंग")}</p>
-          <div className="mt-2 flex gap-3 overflow-x-auto pb-2">
-            {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => {
-              const on = (card.site?.style?.palette ?? "") === p.key;
-              return (
-                <button key={p.key} type="button" onClick={() => restyle({ palette: p.key })} aria-pressed={on} className="flex shrink-0 flex-col items-center gap-1.5">
-                  <span className={`grid h-12 w-12 place-items-center rounded-full ring-2 ring-offset-2 ring-offset-[var(--surface)] ${on ? "ring-brand" : "ring-transparent"}`} style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>{on && <Check className="h-5 w-5" style={{ color: p.ink }} />}</span>
-                  <span className="text-[11px] text-muted">{hi ? p.hi : p.name}</span>
-                </button>
-              );
-            })}
+        <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+          <div className="px-4 pb-2 pt-3.5">
+            <p className="flex items-center gap-1.5 text-sm font-bold"><Palette className="h-4 w-4 text-brand" /> {T("Colour", "रंग")}</p>
+            <div className="-mx-1 mt-2 flex gap-3 overflow-x-auto px-1 pb-2 pt-1">
+              {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => {
+                const on = (card.site?.style?.palette ?? "") === p.key;
+                return (
+                  <button key={p.key} type="button" onClick={() => restyle({ palette: p.key })} aria-pressed={on} className="flex w-14 shrink-0 flex-col items-center gap-1.5">
+                    <span className={`grid h-11 w-11 place-items-center rounded-full shadow-card ring-2 ring-offset-2 ring-offset-[var(--surface)] transition ${on ? "ring-brand scale-105" : "ring-transparent"}`} style={{ background: `linear-gradient(135deg, ${p.deep} 0%, ${p.mid} 100%)` }}>{on && <Check className="h-5 w-5" style={{ color: p.ink }} />}</span>
+                    <span className={`w-full truncate text-center text-[11px] ${on ? "font-bold text-ink" : "text-muted"}`}>{hi ? p.hi : p.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-        <div>
-          <p className="text-sm font-semibold">{T("Letter style (font)", "अक्षर (font)")}</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {FONT_PAIRS.map((f) => {
-              const on = (card.site?.style?.font ?? "look") === f.key;
-              return <button key={f.key} type="button" onClick={() => restyle({ font: f.key === "look" ? undefined : f.key })} aria-pressed={on} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{hi ? f.hi : f.name}</button>;
-            })}
+          <div className="border-t border-border px-4 pb-4 pt-3.5">
+            <p className="flex items-center gap-1.5 text-sm font-bold"><span className="grid h-4 w-4 place-items-center text-[13px] font-black leading-none text-brand">A</span> {T("Font", "अक्षर")}</p>
+            <div className="mt-2 grid grid-cols-2 gap-2 min-[420px]:grid-cols-3">
+              {FONT_PAIRS.map((f) => {
+                const on = (card.site?.style?.font ?? "look") === f.key;
+                return (
+                  <button key={f.key} type="button" onClick={() => restyle({ font: f.key === "look" ? undefined : f.key })} aria-pressed={on}
+                    className={`flex items-center gap-2 rounded-xl border-2 px-2.5 py-2 text-left text-xs font-semibold transition ${on ? "border-brand bg-brand-soft/50 text-brand-ink" : "border-border bg-surface"}`}>
+                    <span className={`grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand text-white" : "border-border-strong"}`}>{on && <Check className="h-3 w-3" strokeWidth={3} />}</span>
+                    <span className="min-w-0 truncate">{hi ? f.hi : f.name}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        </section>
         {err && <p className="text-sm text-danger">{err}</p>}
         <div className="sticky bottom-20 z-20 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
           <button type="button" onClick={goDone} className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-base font-semibold">{T("Skip", "छोड़ें")}</button>
