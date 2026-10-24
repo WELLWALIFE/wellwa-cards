@@ -11,7 +11,9 @@ export type FeedRes = {
 };
 export type Loader = (p: { after: number; epoch: number; vid: string; ask?: boolean }) => Promise<Response>;
 
-export function ScreenFeed({ load, maxWidth = 1.25 }: { load: Loader; name?: string; maxWidth?: number }) {
+/** `fitHeight`: pixels of the window kept for things around the feed; when set, the whole screen fits the window's height too
+ *  (the admin console on a computer: owner, 24 Oct 2026 "screen puri nahi dikh rahi"). */
+export function ScreenFeed({ load, maxWidth = 1.25, fitHeight }: { load: Loader; name?: string; maxWidth?: number; fitHeight?: number }) {
   const box = useRef<HTMLDivElement>(null);
   const loadRef = useRef(load);
   const askVid = useRef("");
@@ -83,10 +85,14 @@ export function ScreenFeed({ load, maxWidth = 1.25 }: { load: Loader; name?: str
 
   // Fit the sender's screen to this phone.
   useEffect(() => {
-    const fit = () => { const w = box.current?.parentElement?.parentElement?.clientWidth ?? window.innerWidth; setScale(Math.min(maxWidth, (w - 8) / size.w)); };
+    const fit = () => {
+      const w = box.current?.parentElement?.parentElement?.clientWidth ?? window.innerWidth;
+      const byH = fitHeight !== undefined ? Math.max(200, window.innerHeight - fitHeight) / size.h : Infinity;
+      setScale(Math.min(maxWidth, (w - 8) / size.w, byH));
+    };
     fit(); window.addEventListener("resize", fit);
     return () => window.removeEventListener("resize", fit);
-  }, [size.w, maxWidth]);
+  }, [size.w, size.h, maxWidth, fitHeight]);
 
   // How long the link still lives.
   useEffect(() => {

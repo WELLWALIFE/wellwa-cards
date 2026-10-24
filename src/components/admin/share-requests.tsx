@@ -12,7 +12,7 @@ const mins = (ms: number) => Math.max(0, Math.ceil(ms / 60_000));
 function Watch({ token, name }: { token: string; name: string }) {
   const load = useCallback<Loader>(async ({ after, epoch, vid, ask }) =>
     fetch(`/api/admin/share/watch?token=${encodeURIComponent(token)}&after=${after}&epoch=${epoch}&v=${vid}${ask ? "&ask=1" : ""}`, { headers: await adminHeaders(), cache: "no-store" }), [token]);
-  return <div className="rounded-2xl bg-[#0b0e33] pt-3 text-white"><ScreenFeed load={load} name={name || "The person"} maxWidth={1} /></div>;
+  return <div className="rounded-2xl bg-[#0b0e33] pt-3 text-white"><ScreenFeed load={load} name={name || "The person"} maxWidth={1} fitHeight={250} /></div>;
 }
 
 export function ShareRequests() {
