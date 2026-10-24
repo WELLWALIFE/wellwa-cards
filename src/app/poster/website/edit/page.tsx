@@ -3,6 +3,7 @@
 // sections (order, show/hide, trust facts) and the pages shown — with a live desktop preview above the controls.
 // Everything here changes card.site.* only; the phone card, the pages and their text are untouched (those are
 // edited in the full editor). One Save writes it all through PATCH /api/site/status.
+import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -209,8 +210,8 @@ export default function WebsiteEditPage() {
         {/* Not saved yet: this opens the working copy (the same one the preview above shows), full size — the live link would still show
             the old look (owner, 23 Oct 2026: "colour change karke dekha to purana hi dikha"). */}
         {dirty
-          ? <a href={`/preview/site?k=${PREVIEW_KEY}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3.5 w-3.5" /></a>
-          : <a href={`${s.url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></a>}
+          ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3.5 w-3.5" /></SiteLink>
+          : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></SiteLink>}
       </div>
       {s.cards.length > 1 && (
         <div className="space-y-1.5">

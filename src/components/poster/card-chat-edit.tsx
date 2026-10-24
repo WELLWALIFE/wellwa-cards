@@ -2,6 +2,7 @@
 // "Change karna hai? Bolo." — the agency's revision loop without the agency (owner's call, 3 Oct 2026). The owner
 // types what to change; the AI picks checked operations (card-edits.ts); the owner sees the list of changes,
 // taps Apply, and the website is live with them. Undo brings the previous version back in one tap.
+import { SiteLink } from "@/components/poster/card-sheet";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Sparkles, Undo2, Check, X, Mic, MicOff, Globe } from "lucide-react";
 import { api } from "@/lib/poster-client";
@@ -136,7 +137,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
       {done && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm">
           <span className="font-semibold text-good">✓ {done}</span>
-          {url && <a href={`${url}?view=site`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold"><Globe className="h-3.5 w-3.5 text-brand" /> {T("Open website", "Website खोलें")}</a>}
+          {url && <SiteLink href={`${url}?view=site`} title="Website" className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold"><Globe className="h-3.5 w-3.5 text-brand" /> {T("Open website", "Website खोलें")}</SiteLink>}
           {canUndo && <button type="button" onClick={() => void undo()} disabled={!!busy} className="inline-flex items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1 text-xs font-semibold"><Undo2 className="h-3.5 w-3.5" /> {T("Undo", "वापस लो")}</button>}
           {undoErr && <p className="w-full text-sm text-danger">{undoErr}</p>}
         </div>

@@ -7,6 +7,7 @@
 // Engine: /api/card/advanced (GET state + job, POST { mode: "preview" } to start, { accept: <job> } to save, { claim: <job> } to let go).
 // Payment: /api/poster/pay/advanced (GET { allowed, reason, price }, POST order, POST { orderId, paymentId, signature } verify).
 // Every message sits right under the control that caused it.
+import { SiteLink, openPage } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -485,10 +486,10 @@ export default function AdvancedSitePage() {
                   {on && <Check className="mr-0.5 inline h-3.5 w-3.5" />}{T(`Design ${i + 1}`, `Design ${i + 1}`)}
                 </button>
                 {/* Its own key per design (owner, 20 Oct 2026): three tabs, three designs. */}
-                <a href={`/preview/site?k=${PREVIEW_KEY}-${i + 1}&shot=1`} target="_blank" rel="noreferrer" onClick={() => { if (pc) writeJson(`${PREVIEW_KEY}-${i + 1}`, { ...pc, username: "__preview" }); }}
-                  className="flex items-center justify-center gap-1 border-t border-border/70 py-1.5 text-[11px] font-semibold text-brand-ink">
+                <button type="button" onClick={() => { if (pc) writeJson(`${PREVIEW_KEY}-${i + 1}`, { ...pc, username: "__preview" }); openPage(`/preview/site?k=${PREVIEW_KEY}-${i + 1}&shot=1`, T(`Design ${i + 1}`, `Design ${i + 1}`)); }}
+                  className="flex w-full items-center justify-center gap-1 border-t border-border/70 py-1.5 text-[11px] font-semibold text-brand-ink">
                   <ExternalLink className="h-3.5 w-3.5" /> {T("Open", "खोलें")}
-                </a>
+                </button>
               </div>
             );
           })}
@@ -571,7 +572,7 @@ export default function AdvancedSitePage() {
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20" aria-hidden="true"><Sparkles className="h-7 w-7" /></span>
           <h2 className="text-2xl font-extrabold tracking-tight">{on ? T("Your advanced website is live", "आपकी advanced website live है") : T("Your basic website is back", "आपकी basic website वापस आ गई")}</h2>
           <p className="text-sm text-white/90">{on ? T("Everyone now sees the new design, on a computer and on a phone. Your card is still there with ?view=card.", "अब सब लोग नया design देखेंगे — computer पर भी और phone पर भी। आपका card ?view=card से खुलता है।") : T("Your advanced design is saved — you can turn it on again any time.", "आपका advanced design save है — जब चाहें फिर चालू करें।")}</p>
-          <a href={`https://${liveLink}?view=site`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
+          <SiteLink href={`https://${liveLink}?view=site`} title="Website" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
         </section>
         <div className={`${box} space-y-2`}>
           <AdvancedSwitch cardId={card?.id} on={on} onChanged={(s) => { if (s) setCur(s); }} />

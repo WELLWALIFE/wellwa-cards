@@ -11,6 +11,7 @@
 //
 // Publishing merges the new words and pages INTO the live card (mergeBuiltCard), so the link, QR code,
 // verified badge, pixels, look and website settings all stay as they are.
+import { openPage, SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import QRCode from "qrcode";
@@ -368,7 +369,8 @@ export default function BuildCard() {
     // preview key and the page follows its key live). A tab is a fixed picture of that design, so the six can sit side by side.
     const key = `vcard-look-${String(k).toLowerCase().replace(/[^a-z0-9]+/g, "-")}`.slice(0, 40);
     writeJson(key, { ...next, username: "__preview" });
-    window.open(liveUser && username === liveUser && next.site?.style?.blueprint === shown?.site?.style?.blueprint ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${key}`, "_blank", "noopener");
+    // On a phone it opens over the app with a Close button (a new tab had none, and Share Screen did not show it).
+    openPage(liveUser && username === liveUser && next.site?.style?.blueprint === shown?.site?.style?.blueprint ? `${SITE_URL}/c/${username}?view=site` : `/preview/site?k=${key}`, T("Website", "Website"));
   }
   const [elapsed, setElapsed] = useState(0);
   // First V-Card (owner's call, 25 Sep 2026): it goes live by itself the moment the AI finishes — no "is it live or
@@ -1275,7 +1277,7 @@ export default function BuildCard() {
             <span className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-white/20 text-3xl" aria-hidden="true">🎉</span>
             <h1 className="text-3xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
             <p className="text-base text-white/90">{cardOnly ? T("Your digital card is live.", "आपका digital card live हो गया है।") : T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
-            <a href={`https://${liveLink}`} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></a>
+            <SiteLink href={`https://${liveLink}`} title={T("Website", "Website")} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
             <p className="text-xs text-white/80">{cardOnly ? T("One link: share it on WhatsApp or with a QR code.", "एक ही link: WhatsApp या QR code से share करें।") : T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
             {/* After the site is final (owner, 15 Oct 2026): the own web address first, in plain words; changing the end of this link is the small line below it. */}
             {!cardOnly && <button type="button" onClick={() => router.push("/poster/site/link?open=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
@@ -1488,8 +1490,8 @@ export default function BuildCard() {
                 // the card opens its live page (there is no card preview outside the app, so before it is live the icon is not shown).
                 const out = k === "site" ? (liveUser ? `${SITE_URL}/c/${username}?view=site` : "") : (liveUser ? `${SITE_URL}/c/${username}?view=card` : "");
                 const openOut = () => {
-                  if (k === "site" && !liveUser) { if (shown) { writeJson(PREVIEW_KEY, { ...shown, username: "__preview" }); window.open(`/preview/site?k=${PREVIEW_KEY}`, "_blank", "noopener"); } return; }
-                  if (out) window.open(out, "_blank", "noopener");
+                  if (k === "site" && !liveUser) { if (shown) { writeJson(PREVIEW_KEY, { ...shown, username: "__preview" }); openPage(`/preview/site?k=${PREVIEW_KEY}`, T("Website", "Website")); } return; }
+                  if (out) openPage(out, k === "site" ? T("Website", "Website") : T("My card", "मेरा card"));
                 };
                 const canOpen = k === "site" ? !!(liveUser || shown) : !!liveUser;
                 return (
@@ -1501,7 +1503,7 @@ export default function BuildCard() {
               })}
             </div>
             {tab === "site" && <button type="button" onClick={() => setDesk((d) => !d)} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold">{desk ? <><Smartphone className="h-3.5 w-3.5" /> {T("Phone", "Phone")}</> : <><Monitor className="h-3.5 w-3.5" /> {T("Computer", "Computer")}</>}</button>}
-            {liveUser && <a href={`${SITE_URL}/c/${username}?view=site`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /> {T("Live", "Live")}</a>}
+            {liveUser && <SiteLink href={`${SITE_URL}/c/${username}?view=site`} title={T("Website", "Website")} className="inline-flex shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-2.5 py-2 text-xs font-semibold text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /> {T("Live", "Live")}</SiteLink>}
           </div>
           <div className={`grid gap-2 ${liveUser ? "grid-cols-[auto_1fr_auto]" : "grid-cols-[auto_1fr]"}`}>
             <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen}

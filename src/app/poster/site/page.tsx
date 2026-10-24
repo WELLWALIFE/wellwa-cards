@@ -13,7 +13,7 @@ import { createPortal } from "react-dom";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Globe, Smartphone, Pencil, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Tag, Package, Camera, Settings, Type, Clock, Store, ListChecks, User, Wallet, LayoutList, FileText, Megaphone, X, Monitor, Sparkles } from "lucide-react";
 import { PremiumCard, PremiumGate, PremiumSheet } from "@/components/poster/premium-lock";
-import { CardLink } from "@/components/poster/card-sheet";
+import { CardLink, SiteLink } from "@/components/poster/card-sheet";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
@@ -231,7 +231,7 @@ export default function WebsitePage() {
               <code className="min-w-0 flex-1 truncate text-sm font-semibold">{link.replace(/^https?:\/\//, "")}</code>
               <button type="button" onClick={() => void copy("top")} className="inline-flex items-center gap-1 rounded-lg bg-brand-soft px-2 py-1.5 text-xs font-semibold text-brand-ink" aria-label={T("Copy link", "Link copy करें")}>{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
               <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See card", "Card देखें")}><Smartphone className="h-4 w-4 text-brand" /></CardLink>
-              {!noSite && <a href={siteLink} target="_blank" rel="noreferrer" className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See website", "Website देखें")}><Monitor className="h-4 w-4 text-brand" /></a>}
+              {!noSite && <SiteLink href={siteLink} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="grid h-8 w-8 place-items-center rounded-lg border border-border" aria-label={T("See website", "Website देखें")}><Monitor className="h-4 w-4 text-brand" /></SiteLink>}
             </div>
             {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
           </div>
@@ -299,12 +299,12 @@ export default function WebsitePage() {
                 <p className="min-w-0 flex-1 text-base font-bold">{target === "card" ? T("Edit your card", "अपना card edit करें") : T("Edit your website", "अपनी website edit करें")}</p>
                 {target === "card"
                   ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See card", "Card देखें")}</CardLink>
-                  : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See website", "Website देखें")}</a>}
+                  : <SiteLink href={`${siteLink}`} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="shrink-0 text-xs font-semibold text-brand-ink underline">{T("See website", "Website देखें")}</SiteLink>}
               </div>
               <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs leading-relaxed text-ink">
                 {T("Green tag = changes on both the card and the website. The banner is separate for each.", "हरा tag = card और website दोनों में बदलेगा। Banner दोनों का अलग-अलग है।")}
               </p>
-              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is live now.", "Save हो गया। अब live है।")} {target === "card" ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="underline">{T("See it", "देखें")}</CardLink> : <a href={`${siteLink}`} target="_blank" rel="noreferrer" className="underline">{T("See it", "देखें")}</a>}</p>}
+              {saved && <p className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good">✓ {T("Saved. It is live now.", "Save हो गया। अब live है।")} {target === "card" ? <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="underline">{T("See it", "देखें")}</CardLink> : <SiteLink href={`${siteLink}`} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="underline">{T("See it", "देखें")}</SiteLink>}</p>}
               <PhotoNudge />
               {(() => {
                 const isCard = target === "card";

@@ -8,6 +8,7 @@ import { UpdateWatcher } from "@/components/update-watcher";
 import { SetupResume } from "@/components/setup-resume";
 import { HelpDock } from "@/components/poster/help-dock";
 import { ShareScreen } from "@/components/poster/share-screen";
+import { InAppViewer } from "@/components/poster/card-sheet";
 import { DemoReset } from "@/components/poster/demo-reset";
 import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
@@ -38,6 +39,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
           <HelpDock />
           {/* "Apni screen kisi ko dikhayein": a link that lets anyone watch this screen live, and only watch (opened from the Help panel). */}
           <ShareScreen />
+          <InAppViewer />
           {/* The demo account's own Reset pill (only on an account Super Admin marked as demo). */}
           <DemoReset />
           <NativeBridge />
