@@ -10,12 +10,14 @@ export const SETUP_SCREENS: Screen[] = [
   { key: "you", chapter: "you", en: "About you", hi: "आपके बारे में", blurb: "Name, mobile, photo", blurbHi: "नाम, mobile, photo" },
   { key: "promote", chapter: "you", en: "Card for", hi: "Card किसलिए", blurb: "Your business, Shubhora, or both", blurbHi: "आपका business, Shubhora, या दोनों" },
   { key: "site", chapter: "business", en: "Website", hi: "Website", blurb: "Yours, a brand's, or one like yours", blurbHi: "आपकी, brand की, या आपके जैसी" },
-  { key: "trade", chapter: "business", en: "Your business", hi: "आपका business", blurb: "Name and what you do", blurbHi: "नाम और काम" },
+  { key: "trade", chapter: "business", en: "Your business", hi: "आपका business", blurb: "Name, work, city", blurbHi: "नाम, काम, शहर" },
   { key: "details", chapter: "business", en: "About your trade", hi: "आपके काम के बारे में", blurb: "A few taps", blurbHi: "कुछ tap" },
   // Highlights were on the Products page before (owner, 6 Oct 2026: "is page ko product page se alag karo") — the Products page is products only.
   { key: "highlights", chapter: "business", en: "Highlights", hi: "खासियत", blurb: "Why customers pick you", blurbHi: "Customers आपको क्यों चुनें", later: true },   // now on the same screen as "About your trade"
-  { key: "where", chapter: "business", en: "Where & when", hi: "कहाँ और कब", blurb: "City, map, timings", blurbHi: "शहर, map, समय" },
-  { key: "about", chapter: "business", en: "About & logo", hi: "परिचय और logo", blurb: "The AI writes it for you", blurbHi: "AI आपके लिए लिखेगा" },
+  // Not screens of the walk any more (owner, 24 Oct 2026: "minimum steps"): the city, address, map and logo are on "Your business", the
+  // timings and the rest behind a tick on "About your trade", and the AI writes the About by itself. Both stay as edit screens.
+  { key: "where", chapter: "business", en: "Where & when", hi: "कहाँ और कब", blurb: "City, map, timings", blurbHi: "शहर, map, समय", later: true },
+  { key: "about", chapter: "business", en: "About & logo", hi: "परिचय और logo", blurb: "The AI writes it for you", blurbHi: "AI आपके लिए लिखेगा", later: true },
   { key: "extras", chapter: "business", en: "Photos & more", hi: "Photos और बाकी", blurb: "All optional", blurbHi: "सब optional", later: true },
   { key: "products", chapter: "products", en: "Products", hi: "Products", blurb: "What you sell or do", blurbHi: "आप क्या बेचते / करते हैं", later: true },
   { key: "make", chapter: "make", en: "Make", hi: "बनाएँ", blurb: "Your website and card", blurbHi: "आपकी website और card" },

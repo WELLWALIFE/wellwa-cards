@@ -34,6 +34,7 @@ import { SEED_KEY } from "@/lib/card-personalize";
 import { goBack } from "@/lib/nav-back";
 import { LAST_ONBOARD_SCREEN, screenHref } from "@/lib/setup-steps";
 import { getLinkPref } from "@/lib/link-pref";
+import { LiveLink } from "@/components/poster/live-link";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { dropStaleLocal } from "@/lib/local-reset";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
@@ -1279,13 +1280,9 @@ export default function BuildCard() {
             <p className="text-base text-white/90">{cardOnly ? T("Your digital card is live.", "आपका digital card live हो गया है।") : T("Your website and e-card are live.", "आपकी website और e-card live हो गए हैं।")}</p>
             <SiteLink href={`https://${liveLink}`} title={T("Website", "Website")} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
             <p className="text-xs text-white/80">{cardOnly ? T("One link: share it on WhatsApp or with a QR code.", "एक ही link: WhatsApp या QR code से share करें।") : T("One link: the website on a computer, your card on a phone.", "एक ही link: computer पर website, phone पर card।")}</p>
-            {/* After the site is final (owner, 15 Oct 2026): the own web address first, in plain words; changing the end of this link is the small line below it. */}
-            {!cardOnly && <button type="button" onClick={() => router.push("/poster/site/link?open=domain")} className="mx-auto flex w-full max-w-sm items-center gap-2.5 rounded-2xl bg-white/15 px-3.5 py-2.5 text-left ring-1 ring-white/30">
-              <Globe className="h-5 w-5 shrink-0" />
-              <span className="min-w-0 flex-1"><span className="block text-sm font-semibold leading-tight">{T("Put it on your own domain", "अपने domain पर चलाएँ")}</span><span className="block text-xs text-white/80">{T("Open it at www.yourshop.com", "www.yourshop.com पर खुले")}</span></span>
-              <ChevronRight className="h-4 w-4 shrink-0 text-white/80" />
-            </button>}
-            <button type="button" onClick={() => router.push("/poster/site/link")} className="text-xs font-semibold text-white/90 underline underline-offset-2">{T("Or change the end of this link", "या इस link का आख़िरी हिस्सा बदलें")}</button>
+            {/* "Live करें" (owner, 24 Oct 2026): the link is chosen here, after the website is made — business name, own name, or own domain. */}
+            <LiveLink current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish}
+              onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{T("Share on WhatsApp", "WhatsApp पर भेजें")}</a>
               <button type="button" onClick={async () => { setCopied(""); try { await navigator.clipboard.writeText(`https://${liveLink}`); setCopied("ok"); setTimeout(() => setCopied(""), 2500); } catch { setCopied("fail"); } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{copied === "ok" ? <><Check className="h-4 w-4" /> {T("Copied", "Copy हो गया")}</> : T("Copy link", "Link copy करें")}</button>

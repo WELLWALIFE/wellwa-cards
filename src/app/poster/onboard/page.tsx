@@ -24,8 +24,7 @@ import { ImageCropper } from "@/components/editor/image-cropper";
 import { CategoryPicker } from "@/components/category-picker";
 import { syncCardFromSetup, loadOwnDetails, personalize } from "@/lib/card-personalize";
 import { getTemplate } from "@/lib/templates";
-import { fetchMyCardsStrict, nameSlug, publishCard, suggestUsername } from "@/lib/cloud";
-import { SITE_HOST } from "@/lib/site-url";
+import { fetchMyCardsStrict, publishCard, suggestUsername } from "@/lib/cloud";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { categoryOf } from "@/lib/poster-categories";
 import { exactCategory, matchCategory } from "@/lib/category-match";
@@ -120,7 +119,7 @@ function Onboard() {
   const params = useSearchParams();
   type StepKey = Exclude<ScreenKey, "products" | "make">;
   /** ?step=business from older links opens the first business screen. */
-  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : v === "highlights" ? "details" : ((ONBOARD_SCREENS as string[]).includes(v ?? "") || v === "extras") ? (v as StepKey) : null);
+  const asStep = (v: string | null): StepKey | null => (v === "business" ? "trade" : v === "highlights" ? "details" : ((ONBOARD_SCREENS as string[]).includes(v ?? "") || v === "extras" || v === "where" || v === "about") ? (v as StepKey) : null);
   const [step, setStep] = useState<StepKey>(asStep(params.get("step")) ?? "you");
   // A partner's name is what their KYC says: shown, never edited here. The account itself says so too (read in load()), so the
   // screens that follow "About you" know at once, not after the page-wide lookup has come back.
@@ -575,30 +574,34 @@ function Onboard() {
   }
 
   /** The AI writes "About your business" from the name, the type and any notes already typed. */
-  async function writeAbout(auto = false) {
+  async function writeAbout(auto = false): Promise<string> {
     setErr(""); setAboutErr(""); clearFE("about");
-    if (!biz.name?.trim() && !biz.category) { if (!auto) setAboutErr(T("Add the business name and what you do first — the AI writes from those.", "पहले business का नाम और काम लिखें — AI उन्हीं से लिखता है।")); return; }
+    if (!biz.name?.trim() && !biz.category) { if (!auto) setAboutErr(T("Add the business name and what you do first — the AI writes from those.", "पहले business का नाम और काम लिखें — AI उन्हीं से लिखता है।")); return ""; }
     // An About the AI wrote for another name or trade is not notes to improve: it goes, and the AI starts again from the name.
     const stale = aboutIsStale(biz);
-    if (auto && (biz.about ?? "").trim() && !stale) return;
+    if (auto && (biz.about ?? "").trim() && !stale) return biz.about ?? "";
     const notes = stale ? "" : (biz.about ?? "");
     const madeFor = aboutKey(biz);
-    setBusy("about");
+    // Written in the background while another screen is open (the walk has no About screen now): that screen's buttons are not held.
+    const showBusy = !auto || stepRef.current === "about";
+    if (showBusy) setBusy("about");
     try {
       const r = await fetch("/api/ai/write", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({
         task: "about-business", input: `${notes}${biz.city ? `\nCity: ${biz.city}` : ""}`.trim(),
         company: biz.name ?? you.name, role: tradeWord(),
       }) }).then((x) => x.json()).catch(() => ({ error: "" }));
       // Never overwrite what the owner typed with canned text: no text means an honest error.
-      if (!r.text) { if (!auto) setAboutErr(hi ? "AI लिख नहीं पाया। कुछ लाइनें खुद लिख दें।" : (r.error || "The AI could not write it. Please type a few lines yourself.")); return; }
+      if (!r.text) { if (!auto) setAboutErr(hi ? "AI लिख नहीं पाया। कुछ लाइनें खुद लिख दें।" : (r.error || "The AI could not write it. Please type a few lines yourself.")); return ""; }
       const text = String(r.text).trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" ");
       // Written on its own: only into an about that is still empty (or one for another name) — never over what was typed meanwhile.
       // Marked as the AI's own only when it started from nothing: an About made from the owner's notes is theirs to keep.
       setBiz((b) => (auto && (b.about ?? "").trim() && !aboutIsStale(b) ? b : { ...b, about: text, aboutMade: notes.trim() ? undefined : { k: madeFor, h: textSum(text) } }));
+      return text;
     } catch {
       if (!auto) setAboutErr(T("The AI could not write it. Please type a few lines yourself.", "AI लिख नहीं पाया। कुछ लाइनें खुद लिख दें।"));
+      return "";
     } finally {
-      setBusy("");
+      if (showBusy) setBusy("");
     }
   }
 
@@ -810,6 +813,11 @@ function Onboard() {
     } finally { setBusy(""); }
   }
 
+  /** Save's one AI try for an empty About, and the re-run of Save once it is written. */
+  const aboutTried = useRef(false);
+  /** "About your trade": the two tick boxes for the extra questions. */
+  const [extraOpen, setExtraOpen] = useState({ hours: false, more: false });
+  const [saveGo, setSaveGo] = useState(0);
   /** The partner's "for whom" answer, written once per choice (a second Next after a link error does not save it again). */
   const promoteSaved = useRef<string>("");
   /** After the answer is saved the website part runs on the NEXT render, with the business the save may have reset. */
@@ -1025,6 +1033,10 @@ function Onboard() {
     if (opener && canGoBackInApp()) { setStep(opener); router.back(); return; }
     go(to, opener ? "replace" : "push");
   }
+  useEffect(() => {
+    if (saveGo) void save();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveGo]);
   useEffect(() => {
     if (!siteGo.n) return;
     if (siteGo.how === "without") void continueWithoutSite(); else void nextFromWebsite();
@@ -1361,12 +1373,20 @@ function Onboard() {
     if (here("trade") && !(biz.category ?? "").trim()) { fail("trade", "category", T("Choose what you do.", "अपना काम चुनें।")); return; }
     if (here("trade") && biz.category === "other" && !(biz.trade ?? "").trim()) { fail("trade", "trade", T("Write your trade in a few words, e.g. drone repair.", "अपना काम दो-तीन शब्दों में लिखें, जैसे drone repair।")); return; }
     if (here("trade") && isBiz && !bizName) { fail("trade", "bname", T(`Write your ${org.en} name.`, `अपने ${place} का नाम लिखें।`)); return; }
-    if (here("where") && biz.role !== "personal" && !city) { fail("where", "city", T("Write your city — needed even for Pan India / online.", "अपना शहर लिखें — Pan India / online में भी चाहिए।")); return; }
+    if ((editing ? step === "where" || step === "trade" : true) && biz.role !== "personal" && !city) { fail(editing ? step : "trade", "city", T("Write your city — needed even for Pan India / online.", "अपना शहर लिखें — Pan India / online में भी चाहिए।")); return; }
     // The card, the website and every customer reply are written from this (owner's call, 4 Oct 2026: mandatory).
     // Both live on the About screen: a Save from "Photos & more" has no About box under it to scroll to, so the owner is taken there.
-    if (here("about") && biz.role !== "personal" && !(biz.about ?? "").trim()) { fail("about", "about", T(`Write a line about your ${org.en} — or tap Write with AI.`, `अपने ${place} के बारे में एक लाइन लिखें — या AI से लिखवाएँ दबाएँ।`)); return; }
+    // Out of the walk (owner, 24 Oct 2026): the AI writes it on its own (one more try here); only its own edit screen insists on it.
+    if (!editing && biz.role !== "personal" && !(biz.about ?? "").trim() && !aboutTried.current && (biz.name ?? "").trim() && biz.category) {
+      aboutTried.current = true;
+      setBusy("save");
+      const t = await writeAbout(true);
+      setBusy("");
+      if (t) { setSaveGo((n) => n + 1); return; }   // saved on the next render, with the About in it
+    }
+    if (editing && step === "about" && biz.role !== "personal" && !(biz.about ?? "").trim()) { fail("about", "about", T(`Write a line about your ${org.en} — or tap Write with AI.`, `अपने ${place} के बारे में एक लाइन लिखें — या AI से लिखवाएँ दबाएँ।`)); return; }
     const gst = (biz.gstin ?? "").trim().toUpperCase();
-    if (here("about") && gst && !GSTIN.test(gst)) { fail("about", "gst", T("The GST number does not look right (15 characters, e.g. 07ABCDE1234F1Z5). Leave it empty if you don't have one.", "GST number ठीक नहीं लगता (15 अक्षर, जैसे 07ABCDE1234F1Z5)। नहीं है तो खाली छोड़ें।")); return; }
+    if (step === "about" && gst && !GSTIN.test(gst)) { fail("about", "gst", T("The GST number does not look right (15 characters, e.g. 07ABCDE1234F1Z5). Leave it empty if you don't have one.", "GST number ठीक नहीं लगता (15 अक्षर, जैसे 07ABCDE1234F1Z5)। नहीं है तो खाली छोड़ें।")); return; }
     // A UPI ID that is typed but wrong is said out loud; the server would drop it and the card would go out with no Pay button.
     // Only on the screen that HAS the UPI box (this check ran on every Save, so a wrong ID could stop a Save on a screen with no
     // UPI box at all), and whether or not UPI is ticked — the box is always there now. An EMPTY ID never stops anything.
@@ -1566,6 +1586,14 @@ function Onboard() {
       if (!(biz.category ?? "").trim()) { failField("category", T("Choose what you do — or type it if it is not in the list.", "अपना काम चुनें — list में न हो तो लिख दें।")); return; }
       if (biz.category === "other" && !(biz.trade ?? "").trim()) { failField("trade", T("Write your trade in a few words, e.g. drone repair.", "अपना काम दो-तीन शब्दों में लिखें, जैसे drone repair।")); return; }
       if (isBiz && !(biz.name ?? "").trim()) { failField("bname", T(`Write your ${org.en}'s name.`, `अपने ${place} का नाम लिखें।`)); return; }
+      // The city is on this screen now (owner, 24 Oct 2026: "business se related sab ishi page per").
+      if (biz.role !== "personal" && !(biz.city ?? "").trim()) { failField("city", T("Write your city.", "अपना शहर लिखें।")); return; }
+      // The About is written by the AI while the next screen is open — there is no About screen in the walk any more.
+      if ((biz.name ?? "").trim() && biz.category && (!(biz.about ?? "").trim() || aboutIsStale(biz)) && autoAbout.current !== aboutKey(biz)) {
+        autoAbout.current = aboutKey(biz);
+        if ((biz.about ?? "").trim()) setBiz((b) => (aboutIsStale(b) ? { ...b, about: "", aboutMade: undefined } : b));
+        void writeAbout(true);
+      }
     }
     if (step === "where" && biz.role !== "personal" && !(biz.city ?? "").trim()) { failField("city", T("Write your city — needed even for Pan India / online.", "अपना शहर लिखें — Pan India / online में भी चाहिए।")); return; }
     if (step === "about") {
@@ -1589,8 +1617,8 @@ function Onboard() {
   /** The screen's header: the title and what it is for (the bar above already counts "Step N of 11"). */
   const head = (title: string, blurb?: string, help?: HelpKey) => (
     <div>
-      <h1 className="text-2xl font-bold">{title}{help && <Help k={help} className="translate-y-0" />}</h1>
-      {blurb && <p className="mt-1 text-sm text-muted">{blurb}</p>}
+      <h1 className="text-xl font-bold tracking-tight">{title}{help && <Help k={help} className="translate-y-0" />}</h1>
+      {blurb && <p className="text-xs text-muted">{blurb}</p>}
     </div>
   );
   /** Next / Save at the foot of a business screen, with the error above it. */
@@ -1831,7 +1859,9 @@ function Onboard() {
           </button>
         </section>
       ) : step === "trade" ? (
-        <section className="space-y-4">
+        <section className="space-y-3">
+          {/* Everything about the business on one screen (owner, 24 Oct 2026): logo + name, what you do, then where it is. The link
+              (sub domain) is chosen after the website is made, on the "Live" choice of the finished screen. */}
           {(() => {
             const ownPeek = site.kind === "own" && peek.role === "own" && peek.url === cleanSiteUrl(site.url) ? peek : null;
             const filled = ownPeek?.state === "found";
@@ -1839,7 +1869,7 @@ function Onboard() {
               <div>
                 {head(T(biz.category ? `Your ${org.en}` : "Your business", biz.category ? `आपका ${org.hi}` : "आपका business"), filled
                   ? T("This came from your website — correct? Fix anything that is off.", "Website से ये मिला — सही है? गलत हो तो ठीक करें।")
-                  : T("Just two things: the name, and what you do.", "बस दो बातें: नाम, और आप क्या करते हैं।"))}
+                  : T("Name, work and city.", "नाम, काम और शहर।"))}
                 {ownPeek && ownPeek.state !== "idle" && (
                   <p className={`mt-2 flex items-start gap-1.5 rounded-xl px-3 py-2 text-xs font-semibold ${filled ? "bg-good/10 text-good" : ownPeek.state === "reading" ? "bg-surface2 text-muted" : "bg-amber/10 text-amber"}`}>
                     {ownPeek.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : filled ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
@@ -1855,13 +1885,26 @@ function Onboard() {
             );
           })()}
 
+          <div className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+          <div className="flex items-start gap-3.5 bg-gradient-to-br from-brand-soft via-brand-soft/40 to-surface px-4 py-3.5">
+            <label className="relative mt-1 shrink-0 cursor-pointer" aria-label={T("Logo", "Logo")}>
+              <span className={`grid h-16 w-16 place-items-center overflow-hidden rounded-2xl border-[3px] border-white bg-surface2 shadow-card ${photoErr?.kind === "logo" ? "ring-2 ring-danger" : ""}`}>
+                {busy === "logo" ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : biz.logo ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={biz.logo} alt="" className="h-full w-full object-contain" />
+                ) : <span className="text-[10px] font-bold uppercase tracking-wide text-muted">Logo</span>}
+              </span>
+              <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full grad-brand text-white shadow-card"><Camera className="h-3 w-3" /></span>
+              <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void choose(f, "logo"); }} />
+            </label>
+            <div className="min-w-0 flex-1">
           {/* 1 — the name first (owner's call, 4 Oct 2026): "Sharma Sweets" already says the trade, so the trade box below fills itself */}
           <label className="block text-sm font-semibold">
             {biz.role === "business" ? T(biz.category ? `${org.En} name` : "Business name", biz.category ? `${org.hi} का नाम` : "Business का नाम") : biz.role === "agent" ? T("Company / brand you represent", "आप किस company / brand के लिए काम करते हैं") : biz.role === "professional" ? T(`${org.En} / firm name`, `${org.hi} / firm का नाम`) : T("Company / organisation", "Company / संस्था")}
             {biz.role !== "business" && biz.role !== "agent" && <span className="font-normal text-muted"> ({T("optional", "optional")})</span>}<Help k="bizName" />
             <input id="ob-in-bname" value={biz.name ?? ""} onChange={(e) => { touch("name"); clearFE("bname"); setBiz((b) => guessTrade({ ...b, name: e.target.value })); }}
               onBlur={() => { if (!autoAbout.current && (biz.name ?? "").trim() && biz.category && guessHolds() && !(biz.about ?? "").trim()) { autoAbout.current = aboutKey(biz); void writeAbout(true); } }}
-              placeholder={biz.role === "business" ? `e.g. ${egName}` : biz.role === "agent" ? T("e.g. the company or brand you represent", "जैसे जिस company / brand के लिए काम करते हैं") : T(`e.g. ${egName} — or leave empty`, `जैसे ${egName} — या खाली छोड़ें`)} className={`${field} ${fe("bname") ? "border-danger" : ""}`} />
+              placeholder={biz.role === "business" ? `e.g. ${egName}` : biz.role === "agent" ? T("e.g. the company or brand you represent", "जैसे जिस company / brand के लिए काम करते हैं") : T(`e.g. ${egName} — or leave empty`, `जैसे ${egName} — या खाली छोड़ें`)} className={`${cField} ${fe("bname") ? "border-danger" : ""}`} />
             <FieldErr id="bname" msg={fe("bname")} />
             {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
               <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
@@ -1869,6 +1912,11 @@ function Onboard() {
                 <button type="button" onClick={() => { touched.current.delete("name"); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
               </span>
             )}</label>
+            <span className="mt-1 block text-[11px] text-muted">{biz.logo ? T("Tap the logo to change it", "logo बदलने के लिए उस पर दबाएँ") : site.kind === "dealer" ? T("Logo: none? the brand's is used", "Logo: नहीं है? brand का लगेगा") : T("Logo: tap the box (optional)", "Logo: box पर दबाएँ (ज़रूरी नहीं)")}</span>
+            </div>
+          </div>
+          {photoErr?.kind === "logo" && <div className="px-4"><FieldErr id="logo" msg={photoErr.msg} /></div>}
+          <div className="space-y-3 px-4 pb-4 pt-3">
           {/* 2 — what you do (decides the card, the website and the posters) */}
           <div className="block text-sm font-semibold">{T("What do you do?", "आप क्या काम करते हैं?")}<Help k="trade" />
             <CategoryPicker value={biz.category ?? ""} onChange={(k) => { touch("category"); clearFE("category"); changeTrade(k); setBiz((b) => ({ ...withCategory(b, k), trade: "" })); }} placeholder={T("Choose your type of business", "अपना काम चुनें")}
@@ -1881,7 +1929,7 @@ function Onboard() {
             <FieldErr id="category" msg={fe("category")} />
             {biz.category === "other" && (
               <label className="mt-2 block text-sm font-semibold">{T("Your trade, in your words", "आपका काम, अपने शब्दों में")} <span className="text-danger">*</span>
-                <input id="ob-in-trade" value={biz.trade ?? ""} onChange={(e) => { touch("category"); clearFE("trade"); setBiz((b) => ({ ...b, trade: e.target.value.slice(0, 40) })); }} placeholder={T("e.g. drone repair, tiffin service, event anchor", "जैसे drone repair, tiffin service, event anchor")} className={`${field} ${fe("trade") ? "border-danger" : ""}`} />
+                <input id="ob-in-trade" value={biz.trade ?? ""} onChange={(e) => { touch("category"); clearFE("trade"); setBiz((b) => ({ ...b, trade: e.target.value.slice(0, 40) })); }} placeholder={T("e.g. drone repair, tiffin service, event anchor", "जैसे drone repair, tiffin service, event anchor")} className={`${cField} ${fe("trade") ? "border-danger" : ""}`} />
                 <FieldErr id="trade" msg={fe("trade")} />
                 <span className="mt-1 block text-[11px] font-normal text-muted">{T("The website and card are written for exactly this.", "Website और card ठीक इसी के लिए लिखे जाएँगे।")}</span>
               </label>
@@ -1915,31 +1963,38 @@ function Onboard() {
             </div>
           ); })()}
 
-          {/* The card's link: business name or your name (owner's call, 25 Sep 2026). Shown when both give a link. */}
-          {(() => {
-            const nSlug = nameSlug(you.name); const bSlug = nameSlug(biz.name ?? "");
-            if (!nSlug || !bSlug || nSlug === bSlug) return null;
-            const pick = linkBy();
-            const opt = (k: "business" | "name", slug: string, label: string) => (
-              <button key={k} type="button" onClick={() => setBiz({ ...biz, linkBy: k })}
-                className={`flex w-full items-center gap-2.5 rounded-xl border-2 px-3 py-2.5 text-left ${pick === k ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full border-2 ${pick === k ? "border-brand" : "border-border-strong"}`}>{pick === k && <span className="h-2 w-2 rounded-full bg-brand" />}</span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-xs font-normal text-muted">{label}</span>
-                  <span className="block truncate text-sm font-semibold">{SITE_HOST}/c/{slug}</span>
-                </span>
-              </button>
-            );
-            return (
-              <div className="text-sm font-semibold">{T("Select your sub domain", "अपना sub domain चुनें")}<Help k="link" />
-                <div className="mt-1.5 space-y-2">
-                  {opt("business", bSlug, T("Business name", "Business का नाम"))}
-                  {opt("name", nSlug, T("Your name", "आपका नाम"))}
-                </div>
-                <p className="mt-1 text-[11px] font-normal text-muted">{T("If a link is already taken, a number is added. You can change it later.", "अगर ये link पहले से किसी का है तो आगे number जुड़ जाएगा। बाद में भी बदल सकते हैं।")}</p>
+            </div>
+          </div>
+
+          {/* 3 — where it is: the city (needed), the address and the map pin (owner, 24 Oct 2026: "business name ke baad city aur address"). */}
+          <div className="space-y-2.5 rounded-3xl border border-border bg-surface p-4 shadow-card">
+            <p className="flex items-center gap-1.5 text-sm font-bold"><MapPin className="h-4 w-4 text-brand" /> {T("Where is it?", "कहाँ है?")}</p>
+            <label className="block text-xs font-semibold text-muted">{T("City", "शहर")}{biz.role !== "personal" && <span className="text-danger"> *</span>}<Help k="city" />
+              <input id="ob-in-city" value={biz.city ?? ""} onChange={(e) => { touch("city"); clearFE("city"); setBiz({ ...biz, city: e.target.value }); }} placeholder={T("e.g. Delhi", "जैसे Delhi")} className={`${cField} ${fe("city") ? "border-danger" : ""}`} />
+              <FieldErr id="city" msg={fe("city")} /></label>
+            <label className="block text-xs font-semibold text-muted">{T("Full address", "पूरा पता")} <span className="font-normal">({T("optional", "ज़रूरी नहीं")})</span><Help k="address" />
+              <input value={biz.address ?? ""} onChange={(e) => { touch("address"); setBiz({ ...biz, address: e.target.value }); }} placeholder={T("Shop no., street, area", "Shop no., गली, इलाका")} className={cField} /></label>
+            {biz.map ? (
+              <div className="flex flex-wrap items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-xs font-semibold text-good">
+                <CheckCircle2 className="h-4 w-4" /> <span className="flex-1">{T("Pinned on the map", "Map पर pin हो गया")}</span>
+                <button type="button" onClick={pinShop} disabled={busy === "pin"} className="underline disabled:opacity-60">{busy === "pin" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : T("Pin again", "फिर से")}</button>
+                <button type="button" onClick={() => { setPinErr(""); setBiz({ ...biz, map: "" }); }} className="text-muted underline">{T("Remove", "हटाएँ")}</button>
               </div>
-            );
-          })()}
+            ) : (
+              <button type="button" onClick={pinShop} disabled={busy === "pin"} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-brand/50 bg-brand-soft/30 px-3 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-60">
+                {busy === "pin" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <MapPin className="h-4 w-4" />} {T("At my shop — pin it on the map", "दुकान पर हूँ — map पर pin करें")}
+              </button>
+            )}
+            {pinErr && <p className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-semibold text-danger">{pinErr}</p>}
+            {(!biz.map || !!pinErr) && (mapPaste.open ? (
+              <div className="space-y-1">
+                <input value={mapPaste.value} onChange={(e) => pasteMapLink(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder={T("Paste your Google Maps link", "अपना Google Maps link paste करें")} className={cField} />
+                {mapPaste.bad && <p className="text-xs font-semibold text-danger">{T("That is not a Google Maps link.", "ये Google Maps link नहीं है।")}</p>}
+              </div>
+            ) : (
+              <button type="button" onClick={() => setMapPaste((m) => ({ ...m, open: true }))} className="text-xs font-semibold text-muted underline underline-offset-2">{T("Or paste a Google Maps link", "या Google Maps link paste करें")}</button>
+            ))}
+          </div>
           {nextBar()}
         </section>
       ) : step === "details" || step === "highlights" ? (
@@ -1950,7 +2005,23 @@ function Onboard() {
             : head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
           {!!biz.category && !noDetails() && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
           <FactsFields group="products" only={["q-special", "q-customers", "q-offer"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
-          {nextBar()}
+          {/* What the old "Where & when" and "About & logo" screens asked beyond the basics, closed until ticked (owner, 24 Oct 2026). */}
+          {!editing && ([
+            { k: "hours" as const, t: T("Add opening hours / delivery", "खुलने का समय / delivery जोड़ें"), body: <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} /> },
+            { k: "more" as const, t: T("Add more (since when, post, degree)", "और जानकारी (कब से, पद, degree)"), body: <FactsFields group="company" only={biz.role === "personal" ? ["q-designation"] : ["q-since", "q-designation", "q-qual"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} /> },
+          ]).map((x) => {
+            const on = extraOpen[x.k];
+            return (
+              <div key={x.k} className={`rounded-2xl border transition-colors ${on ? "border-brand/50 bg-brand-soft/20" : "border-border bg-surface"}`}>
+                <label className="flex cursor-pointer items-center gap-2.5 px-3.5 py-3 text-sm font-semibold">
+                  <input type="checkbox" checked={on} onChange={(e) => setExtraOpen((o) => ({ ...o, [x.k]: e.target.checked }))} className="h-[18px] w-[18px] accent-[var(--color-brand)]" />
+                  <span className="flex-1">{x.t}</span>
+                </label>
+                {on && <div className="px-3.5 pb-3.5">{x.body}</div>}
+              </div>
+            );
+          })}
+          {nextBar(true)}
         </section>
       ) : step === "where" ? (
         <section className="space-y-4">
@@ -2007,7 +2078,7 @@ function Onboard() {
           </div>
           {/* The areas question is gone (owner's call, 7 Oct 2026): the city is asked right here, and "where you serve" above says how far. */}
           <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} />
-          {nextBar()}
+          {nextBar(true)}
         </section>
       ) : step === "about" ? (
         <section className="space-y-4">
