@@ -367,7 +367,9 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
       <NoticeBar card={card} hi={lang === "hi"} compact />
       <div className="rounded-none border-0 sm:rounded-[1.75rem] sm:border border-border bg-surface overflow-hidden shadow-float">
         {/* ---- Header ---- */}
-        <div className={`relative ${cfg.coverH} overflow-hidden`} style={{ background: cfg.bg }}>
+        {/* The owner's own banner is 16:9 (the crop tool and the AI banner): the header takes that shape, so it fills edge to edge with
+            no empty bands at the sides (owner, 24 Oct 2026: "card me depth bada de to pure me fit"). Template art keeps its fixed height. */}
+        <div className={`relative ${ownCover && !cfg.mobileAuto ? "aspect-[16/9]" : cfg.coverH} overflow-hidden`} style={{ background: cfg.bg }}>
           {card.coverUrl && (
             <>
               {/* The owner's banner is shown whole (object-contain). A blurred,
