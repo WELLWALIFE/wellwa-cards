@@ -117,7 +117,9 @@ function PreviewInner() {
         if (!d.top && want) {
           const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span"));
           el = all.find((x) => /^H[1-4]$/.test(x.tagName) && (x.textContent ?? "").trim().toLowerCase().includes(want))
-            ?? all.find((x) => (x.textContent ?? "").trim().toLowerCase() === want) ?? null;
+            ?? all.find((x) => (x.textContent ?? "").trim().toLowerCase() === want)
+            // The line that holds it (an address shown with its city): the shortest element whose text contains it.
+            ?? all.filter((x) => (x.textContent ?? "").toLowerCase().includes(want)).sort((a, b) => (a.textContent ?? "").length - (b.textContent ?? "").length)[0] ?? null;
           el = (el?.closest("section") as HTMLElement | null) ?? el;
         }
         const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
