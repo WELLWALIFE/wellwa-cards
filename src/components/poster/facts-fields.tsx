@@ -49,6 +49,21 @@ export function Sec({ id, title, hint, help, children }: { id?: string; title: s
   );
 }
 
+/** A question box with a coloured head (the app's premium look): a round mark, the title and one short line. Hidden like Sec when `only` leaves it out. */
+function HeadSec({ id, title, sub, grad, icon, help, children }: { id: string; title: string; sub: string; grad: string; icon: string; help?: HelpKey; children: React.ReactNode }) {
+  const only = useContext(OnlyCtx);
+  if (only && !only.includes(id)) return null;
+  return (
+    <section id={id} className="scroll-mt-4 overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+      <div className={`flex items-center gap-3 bg-gradient-to-r px-4 py-3 text-white ${grad}`}>
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white/25 text-base font-extrabold">{icon}</span>
+        <span className="min-w-0 flex-1"><span className="block text-base font-bold leading-tight">{title}{help && <Help k={help} />}</span><span className="block text-[11px] text-white/85">{sub}</span></span>
+      </div>
+      <div className="p-3.5">{children}</div>
+    </section>
+  );
+}
+
 // eslint-disable-next-line @next/next/no-img-element
 const Img = (p: { src: string; className?: string }) => <img src={p.src} alt="" className={p.className} />;
 
@@ -230,23 +245,36 @@ export function FactsFields({ group, facts, setF, hi, professional, role, hasAbo
         </div>
       </Sec>
 
-      <Sec id="q-pay" title={T("How can customers pay?", "Customer payment कैसे कर सकते हैं?")} hint={T("No bank details are asked.", "Bank details नहीं पूछी जातीं।")} help="payments">
-        <div className="flex flex-wrap gap-2">
-          {PAYMENT_CHIPS.map((c) => <button key={c} type="button" onClick={() => togglePay(c)} className={chipCls(/upi/i.test(c) ? upiOn : facts.payments.includes(c))}>{c}</button>)}
+      {/* Redesigned (owner, 24 Oct 2026: "redesign this page"): a coloured head, small tick chips, the UPI box with ₹ in front and a ✓
+          once it looks right. Nothing here is required. */}
+      <HeadSec id="q-pay" title={T("How customers pay", "ग्राहक कैसे pay करें")} sub={T("No bank details asked", "Bank details नहीं पूछी जातीं")} grad="from-[#16a34a] to-[#22c55e]" icon="₹" help="payments">
+        <div className="flex flex-wrap gap-1.5">
+          {PAYMENT_CHIPS.map((c) => {
+            const on = /upi/i.test(c) ? upiOn : facts.payments.includes(c);
+            return (
+              <button key={c} type="button" onClick={() => togglePay(c)} aria-pressed={on}
+                className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-sm font-semibold transition ${on ? "border-good bg-good/10 text-good" : "border-border bg-surface text-ink"}`}>
+                {on && <span aria-hidden="true">✓</span>}{c}
+              </button>
+            );
+          })}
         </div>
-        {/* Always on the screen (owner, 14 Oct 2026: "Add your UPI ID" led here, but the box showed only after UPI was ticked, so
-            the tap seemed to do nothing). A good ID ticks UPI by itself; no ID is fine — nothing here blocks Save. */}
-        <label className="block text-sm font-semibold">{T("Your UPI ID", "आपकी UPI ID")} <span className="font-normal text-muted">({T("optional", "ज़रूरी नहीं")})</span>
-          <input value={facts.upi} onChange={(e) => { const v = e.target.value.replace(/\s/g, ""); setF({ upi: v, ...(UPI_RE.test(v) && !upiOn ? { payments: [...facts.payments, PAYMENT_CHIPS[1]] } : {}) }); }} onBlur={() => setUpiSeen(true)}
-            inputMode="email" autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharmasweets@okhdfc", "जैसे sharmasweets@okhdfc")} className={field} />
+        <label className="mt-3 block">
+          <span className="text-xs font-semibold text-muted">{T("UPI ID", "UPI ID")} · {T("optional", "ज़रूरी नहीं")}</span>
+          <span className={`mt-1 flex items-center gap-2 rounded-xl border bg-surface px-3 ${upiBad && upiSeen ? "border-danger" : facts.upi && !upiBad ? "border-good" : "border-border"} focus-within:ring-2 focus-within:ring-brand/15`}>
+            <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-good/10 text-sm font-bold text-good">₹</span>
+            <input value={facts.upi} onChange={(e) => { const v = e.target.value.replace(/\s/g, ""); setF({ upi: v, ...(UPI_RE.test(v) && !upiOn ? { payments: [...facts.payments, PAYMENT_CHIPS[1]] } : {}) }); }} onBlur={() => setUpiSeen(true)}
+              inputMode="email" autoCapitalize="none" spellCheck={false} placeholder="name@okhdfcbank" className="min-w-0 flex-1 bg-transparent py-2.5 text-[15px] outline-none" />
+            {facts.upi && !upiBad && <span className="shrink-0 text-sm font-bold text-good">✓</span>}
+          </span>
           {upiBad && upiSeen
             ? <span className="mt-1 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold text-danger">
-                <span>{T("This does not look like a UPI ID. It looks like name@bank — e.g. sharmasweets@okhdfcbank.", "ये UPI ID नहीं लगती। UPI ID ऐसी होती है — name@bank, जैसे sharmasweets@okhdfcbank")}</span>
-                <button type="button" onClick={() => setF({ upi: "" })} className="underline">{T("No UPI ID — clear it", "UPI ID नहीं है — हटाएँ")}</button>
+                <span>{T("Looks like name@bank.", "ऐसी होती है: name@bank")}</span>
+                <button type="button" onClick={() => setF({ upi: "" })} className="underline">{T("Clear it", "हटाएँ")}</button>
               </span>
-            : <span className="mt-1 block text-xs font-normal text-muted">{upiOn && !facts.upi ? T("Add it so customers can pay you from your card. Not now? Leave it empty — add it later.", "डालें तो ग्राहक आपके card से सीधे pay कर सकेंगे। अभी नहीं है? खाली छोड़ें — बाद में जोड़ें।") : T("Looks like name@bank. Leave it empty if you have none.", "name@bank जैसी होती है। नहीं है तो खाली छोड़ें।")}</span>}
+            : <span className="mt-1 block text-[11px] text-muted">{T("Customers pay you straight from your card.", "ग्राहक आपके card से सीधे pay करेंगे।")}</span>}
         </label>
-      </Sec>
+      </HeadSec>
 
       {professional && (
         <Sec id="q-qual" title={T("Your degree / registration (optional)", "आपकी degree / registration (ज़रूरी नहीं)")} help="qualification">
@@ -254,17 +282,26 @@ export function FactsFields({ group, facts, setF, hi, professional, role, hasAbo
         </Sec>
       )}
 
-      <Sec id="q-social" title={T("Social media and Google Maps", "Social media और Google Maps")} hint={T("Optional. Paste the links you have.", "Optional। जो links हैं, paste करें।")} help="social">
-        {([["instagram", "Instagram", "instagram.com/yourshop"], ["facebook", "Facebook", "facebook.com/yourshop"], ["youtube", "YouTube", "youtube.com/@yourshop"]] as const).map(([k, l, ph]) => (
-          <label key={k} className="block text-sm font-semibold">{l}
-            <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" className={field} />
-          </label>
-        ))}
-        <label id="q-map" className="block scroll-mt-4 text-sm font-semibold">{T("Google Maps link", "Google Maps का link")}
-          <input value={facts.social.google} onChange={(e) => setF({ social: { google: e.target.value.trim() } })} placeholder="maps.app.goo.gl/…" inputMode="url" autoCapitalize="none" className={field} />
-          <span className="mt-1 block text-xs font-normal text-muted">{T("Google Maps → your shop → Share → Copy link", "Google Maps → अपनी दुकान → Share → Copy link")}</span>
-        </label>
-      </Sec>
+      <HeadSec id="q-social" title={T("Social & Google Maps", "Social और Google Maps")} sub={T("Paste the links you have", "जो links हैं, paste करें")} grad="from-[#ec4899] to-[#8b3dff]" icon="🔗" help="social">
+        <div className="space-y-2">
+          {([
+            ["instagram", "Instagram", "instagram.com/yourshop", "bg-gradient-to-br from-[#f58529] via-[#dd2a7b] to-[#8134af]", "IG"],
+            ["facebook", "Facebook", "facebook.com/yourshop", "bg-[#1877f2]", "f"],
+            ["youtube", "YouTube", "youtube.com/@yourshop", "bg-[#ff0000]", "▶"],
+            ["google", T("Google Maps", "Google Maps"), "maps.app.goo.gl/…", "bg-[#34a853]", "📍"],
+          ] as const).map(([k, l, ph, bg, mark]) => (
+            <label key={k} id={k === "google" ? "q-map" : undefined} className={`flex scroll-mt-4 items-center gap-2.5 rounded-xl border bg-surface px-2.5 py-1.5 focus-within:ring-2 focus-within:ring-brand/15 ${facts.social[k] ? "border-good/60" : "border-border"}`}>
+              <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-lg text-sm font-extrabold text-white ${bg}`} aria-hidden="true">{mark}</span>
+              <span className="min-w-0 flex-1">
+                <span className="block text-[11px] font-semibold text-muted">{l}</span>
+                <input value={facts.social[k]} onChange={(e) => setF({ social: { [k]: e.target.value.trim() } })} placeholder={ph} inputMode="url" autoCapitalize="none" spellCheck={false} className="w-full bg-transparent pb-0.5 text-[15px] outline-none" />
+              </span>
+              {facts.social[k] && <span className="shrink-0 text-sm font-bold text-good">✓</span>}
+            </label>
+          ))}
+          <p className="text-[11px] text-muted">{T("Maps link: Google Maps → your shop → Share → Copy link", "Maps link: Google Maps → अपनी दुकान → Share → Copy link")}</p>
+        </div>
+      </HeadSec>
     </OnlyCtx.Provider>
   );
 }
