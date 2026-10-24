@@ -6,7 +6,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { CalendarDays, Clapperboard, Copy, CreditCard, Flame, ImagePlus, Link2, MessageCircle, PhoneCall, Share2, Sparkles, UserPlus, Users, Check, ChevronRight, BellRing } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { fetchMyCards } from "@/lib/cloud";
+import { fetchCardDomain, fetchMyCards } from "@/lib/cloud";
 import { SITE_HOST } from "@/lib/site-url";
 
 type Counts = { due: number; unread: number; fresh: number; hot: number; calledToday: number; target: number };
@@ -25,7 +25,17 @@ export function HomeHeader({ name, hi }: { name: string; hi: boolean }) {
   const [views, setViews] = useState<number | null>(null);
   const [copied, setCopied] = useState(false);
   useEffect(() => {
-    fetchMyCards().then((cards) => { const c = cards[0]; if (c) { setLink(`${SITE_HOST}/c/${c.username}`); setViews(typeof c.views === "number" ? c.views : null); } }).catch(() => undefined);
+    // The owner's own domain when it is connected (owner, 24 Oct 2026: "apna domain le rakha hai to Shubhora wala link kyon?"); else the Shubhora link.
+    fetchMyCards().then(async (cards) => {
+      const c = cards[0];
+      if (!c) return;
+      // The card keeps a copy of its live domain (customDomain, set when the domain goes live): shown at once, then confirmed below.
+      const own = (c.customDomain ?? "").trim();
+      setLink(own ? own.replace(/^https?:\/\//, "").replace(/\/$/, "") : `${SITE_HOST}/c/${c.username}`);
+      setViews(typeof c.views === "number" ? c.views : null);
+      const d = await fetchCardDomain(c.id).catch(() => null);
+      if (d?.verified && d.domain) setLink(d.domain.replace(/^https?:\/\//, "").replace(/\/$/, ""));
+    }).catch(() => undefined);
   }, []);
   const first = (name || "").trim().split(/\s+/)[0] || "";
   const date = new Date().toLocaleDateString(hi ? "hi-IN" : "en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" });
