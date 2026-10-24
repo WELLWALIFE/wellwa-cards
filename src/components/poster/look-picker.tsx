@@ -76,7 +76,7 @@ export function LookPicker({ value, onChange, categoryKey, hi, business }: { val
           <button type="button" onClick={() => set({ hero: undefined })} className={chip(!value.hero)}>{autoLabel}</button>
           {HERO_LAYOUTS.map((h) => <button key={h.key} type="button" onClick={() => set({ hero: h.key })} className={chip(value.hero === h.key)} title={h.blurb}>{hi ? h.hi : h.name}</button>)}
         </div>
-        <p className="mt-1 text-[11px] text-muted">{value.hero ? HERO_LAYOUTS.find((h) => h.key === value.hero)?.blurb : (hi ? "Auto: product photo हो तो mosaic, आपकी photo हो तो portrait, banner हो तो photo।" : "Auto: a mosaic of product photos, your portrait, or the banner — whichever you have.")}</p>
+        <p className="mt-1 text-[11px] text-muted">{value.hero ? HERO_LAYOUTS.find((h) => h.key === value.hero)?.blurb : (hi ? "Auto: आपकी photos के हिसाब से।" : "Auto: from your photos.")}</p>
       </div>
       <div>
         <p className="text-sm font-semibold">{hi ? "कोने" : "Corners"}</p>

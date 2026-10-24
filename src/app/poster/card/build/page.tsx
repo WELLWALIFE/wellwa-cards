@@ -200,6 +200,9 @@ export default function BuildCard() {
   const [desk, setDesk] = useState(true);
   /** Make screen: the owner asked to make a new website although one is made. */
   const [remake, setRemake] = useState(false);
+  // "Website की पसंद": both boxes closed behind a tick unless already filled (owner, 24 Oct 2026: "check box me click kare to field open").
+  const [likeOpen, setLikeOpen] = useState(false);
+  const [lookOpen, setLookOpen] = useState(false);
   /** The "Change…" sheet: adjust this look, edit details, edit card, write again — one place instead of five paths. */
   const [more, setMore] = useState(false);
   const [viewed, setViewed] = useState<string[]>([]);          // the designs the owner has tapped
@@ -1867,54 +1870,60 @@ export default function BuildCard() {
           <ChevronLeft className="h-4 w-4" /> {T("Back to my website", "मेरी website पर वापस")}
         </button>
       )}
-      <p className="text-sm text-muted">{T("A website you like, and the look. Everything is optional — the AI writes the rest from your profile.", "कोई website जो पसंद हो, और look। सब optional है — बाकी AI आपकी profile से लिखता है।")}</p>
+      <p className="text-sm text-muted">{T("All optional. Skip it and the AI picks.", "सब optional है। छोड़ दें तो AI खुद चुनेगा।")}</p>
 
-      {/* Out in the open (owner's call, 1 Oct 2026): this was buried inside "More details", and the three
-          choices only appeared once a link had been typed — so hardly anyone ever found the reference-site
-          option. It is one of the most useful answers on the form: a site we can read fills the whole card,
-          and a site they merely like gives theirs that look. */}
-      <Sec id="q-site" title={T("Your website — or a website you like (optional)", "आपकी website — या कोई website जो पसंद है (ज़रूरी नहीं)")}>
-        <input value={facts.website} onChange={(e) => { setF({ website: e.target.value.trim() }); setFound(null); }} onBlur={() => void resolveSite()} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={setup?.website || T("e.g. yourbusiness.com, or just the name", "जैसे yourbusiness.com, या सिर्फ़ नाम")} className={field} />
-        {finding && <p className="mt-1 text-xs text-muted">{T(`Searching the web for “${finding}”…`, `“${finding}” की website खोजी जा रही है…`)}</p>}
-        {!finding && found && found.url && facts.website === found.url && (
-          <p className="mt-1 flex flex-wrap items-center gap-x-2 text-xs"><span className="font-semibold text-good">✓ {T("Found", "मिली")}: {found.name}</span><span className="text-muted">{found.url.replace(/^https?:\/\//, "")}</span><button type="button" onClick={() => { setF({ website: "" }); setFound(null); }} className="font-semibold text-brand-ink underline">{T("Not this one", "ये नहीं")}</button></p>
-        )}
-        {!finding && found && !found.url && facts.website === found.q && (
-          <p className="mt-1 text-xs text-amber">{T(`No website found for “${found.q}” — paste its link, or leave the box empty.`, `“${found.q}” की website नहीं मिली — उसका link डालें, या box खाली छोड़ दें।`)}</p>
-        )}
-        <p className="mt-1 text-xs text-muted">{T("Type a link, or just the name — we find the website. No website of your own? Put in one you like the look of — or a competitor’s — and we build yours in that style. Leave it empty if you would rather not.", "link लिखें, या सिर्फ़ नाम — website हम ढूँढ लेंगे। अपनी website नहीं है? कोई website डाल दें जिसका look पसंद है — या किसी competitor की — हम आपकी website उसी style में बना देंगे। न डालना हो तो खाली छोड़ दें।")}</p>
-        <div className="mt-3">
-          <p className="text-sm font-semibold">{T("This website is…", "ये website है…")}</p>
-          <div className="mt-1.5 flex flex-wrap gap-2">
-            {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
-              <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {hi ? c.th : c.t}</button>
-            ))}
+      {/* Short and closed (owner, 24 Oct 2026: "is page per bhi bahut kuch likha hai"): a tick opens each box. */}
+      <section id="q-site" className="scroll-mt-4 overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+        <label className="flex cursor-pointer items-center gap-3 bg-gradient-to-r from-[#2563eb] to-[#3b82f6] px-4 py-3 text-white">
+          <input type="checkbox" checked={likeOpen || !!facts.website} onChange={(e) => { setLikeOpen(e.target.checked); if (!e.target.checked) { setF({ website: "" }); setFound(null); } }} className="h-5 w-5 shrink-0 accent-white" />
+          <span className="min-w-0"><span className="block text-base font-bold leading-tight">{T("I like a website", "मुझे कोई website पसंद है")}</span><span className="block text-[11px] text-white/85">{T("We make yours in that style", "उसी style में आपकी बनाएँगे")}</span></span>
+        </label>
+        {(likeOpen || !!facts.website) && (
+          <div className="space-y-2 p-3">
+            <input autoFocus={likeOpen && !facts.website} value={facts.website} onChange={(e) => { setF({ website: e.target.value.trim() }); setFound(null); }} onBlur={() => void resolveSite()} autoCapitalize="none" autoCorrect="off" spellCheck={false} placeholder={setup?.website || T("Link or name", "Link या नाम")} className={field} />
+            {finding && <p className="text-xs text-muted">{T("Searching…", "खोज रहे हैं…")}</p>}
+            {!finding && found && found.url && facts.website === found.url && (
+              <p className="flex flex-wrap items-center gap-x-2 text-xs"><span className="font-semibold text-good">✓ {found.name}</span><span className="text-muted">{found.url.replace(/^https?:\/\//, "")}</span><button type="button" onClick={() => { setF({ website: "" }); setFound(null); }} className="font-semibold text-brand-ink underline">{T("Not this", "ये नहीं")}</button></p>
+            )}
+            {!finding && found && !found.url && facts.website === found.q && (
+              <p className="text-xs text-amber">{T("Not found — paste the link.", "नहीं मिली — link डालें।")}</p>
+            )}
+            <div className="flex flex-wrap gap-1.5">
+              {SITE_CARDS.filter((c) => c.k !== "none").map((c) => (
+                <button key={c.k} type="button" onClick={() => setF({ websiteRole: c.k === "none" ? "own" : c.k })} className={chip(facts.websiteRole === c.k)}>{c.e} {hi ? c.th : c.t}</button>
+              ))}
+            </div>
+            {facts.websiteRole === "dealer" && !!facts.website && (
+              facts.dealerAssertedAt
+                ? <p className="flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> {T("Authorised dealer — confirmed", "Authorised dealer — confirm")}</p>
+                : <label className="flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
+                    <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
+                    <span>{T("I am this brand’s authorised dealer and may show its photos.", "मैं इस brand का authorised dealer हूँ, इसकी photos दिखा सकता हूँ।")}</span>
+                  </label>
+            )}
           </div>
-          <p className="mt-1 text-xs text-muted">{hi ? SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takesHi : SITE_CARDS.find((c) => c.k === facts.websiteRole)?.takes}</p>
-          {facts.websiteRole === "dealer" && !!facts.website && (
-            facts.dealerAssertedAt
-              ? <p className="mt-2 flex items-center gap-1.5 text-xs font-semibold text-good"><CheckCircle2 className="h-3.5 w-3.5" /> {T("Confirmed: you are this brand’s authorised dealer / distributor.", "Confirm हो गया: आप इस brand के authorised dealer / distributor हैं।")}</p>
-              : <label className="mt-2 flex items-start gap-2.5 rounded-xl border border-border bg-surface2 px-3 py-2.5 text-sm">
-                  <input type="checkbox" checked={false} onChange={() => setF({ dealerAssertedAt: new Date().toISOString() })} className="mt-0.5 h-4 w-4" />
-                  <span>I am this brand’s authorised dealer / distributor and may show its product photos on my card. <span className="block text-xs text-muted">मैं इस brand का authorised dealer / distributor हूँ और इसके product photos अपने card पर दिखा सकता हूँ।</span></span>
-                </label>
-          )}
-        </div>
-      </Sec>
+        )}
+      </section>
 
-      <Sec id="q-look" title={T("How should your website look?", "आपकी website कैसी दिखे?")} hint={T("Auto: our designer AI picks the look from your trade and details when the website is made — a jeweller gets gold and serif, a clinic calm blue, a school warm and clear. Change anything here and your choice wins.", "Auto: website बनते समय हमारा designer AI आपके काम और details से look चुनता है — jeweller को gold और serif, clinic को शांत नीला, school को warm और साफ़। यहाँ कुछ भी बदलें, आपकी पसंद ऊपर रहेगी।")}>
-        <LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} />
-      </Sec>
+      <section id="q-look" className="scroll-mt-4 overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+        <label className="flex cursor-pointer items-center gap-3 bg-gradient-to-r from-[#8b3dff] to-[#c04ee8] px-4 py-3 text-white">
+          <input type="checkbox" checked={lookOpen || Object.keys(facts.style ?? {}).length > 0} onChange={(e) => { setLookOpen(e.target.checked); if (!e.target.checked) setF({ style: {} }); }} className="h-5 w-5 shrink-0 accent-white" />
+          <span className="min-w-0"><span className="block text-base font-bold leading-tight">{T("Choose colour & font", "रंग और font चुनें")}</span><span className="block text-[11px] text-white/85">{T("Or the AI picks for your work", "नहीं तो AI आपके काम के हिसाब से चुनेगा")}</span></span>
+        </label>
+        {(lookOpen || Object.keys(facts.style ?? {}).length > 0) && (
+          <div className="p-3"><LookPicker value={facts.style ?? {}} onChange={(style) => setF({ style })} categoryKey={setup?.category ?? ""} hi={hi} business={setup?.business || setup?.person || ""} /></div>
+        )}
+      </section>
 
       {/* Steps 2 and 3 again, folded (owner's flow, 2 Oct 2026): the company and product answers were given on
           their own screens; here they are checked, and a "Make it better" chip lands on the exact question. */}
-      <details id="q-review" ref={reviewRef} className="group rounded-2xl border border-border bg-surface2/40">
+      <details id="q-review" ref={reviewRef} className="group overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
         <summary className="flex cursor-pointer list-none items-center justify-between px-4 py-3 text-[15px] font-semibold [&::-webkit-details-marker]:hidden">
-          <span>{T("Check your details", "अपनी जानकारी देखें")} <span className="text-sm font-normal text-muted">({T("products, photos, timings, payments…", "products, photos, समय, payment…")})</span></span>
+          <span>{T("Products, photos, timings", "Products, photos, समय")} <span className="text-xs font-normal text-muted">({T("optional", "ज़रूरी नहीं")})</span></span>
           <span className="text-xs font-semibold text-brand-ink">{T("Open", "खोलें")}</span>
         </summary>
         <div className="space-y-3 border-t border-border p-3">
-      <Sec id="q-products" title={T("Your products or services", "आपके products या services")} hint={T("Add a photo, the price and the brand. Brand and price are optional.", "photo, price और brand डालें। Brand और price optional हैं।")}>
+      <Sec id="q-products" title={T("Your products or services", "आपके products या services")} hint={T("Photo and name. Price, brand optional.", "Photo और नाम। Price, brand ज़रूरी नहीं।")}>
         {rows.map((r, i) => (
           <div key={r.id ?? `new-${i}`} className="space-y-1.5 rounded-xl bg-surface2/60 p-2">
             <div className="flex items-start gap-2">
@@ -1966,9 +1975,8 @@ export default function BuildCard() {
 
       {err && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
       <button type="button" id="make" onClick={async () => { setErr(""); setMakeFrom(""); await resolveSite(); setPlan(access.subscribed ? "premium" : "standard"); cameFromForm.current = true; setState("make"); window.scrollTo({ top: 0 }); }} disabled={!!busy || !!finding} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-60">
-        {finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {finding ? T("Looking up your website…", "आपकी website खोजी जा रही है…") : T("Save and continue →", "Save करके आगे बढ़ें →")}
+        {finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Check className="h-5 w-5" />} {finding ? T("Looking up your website…", "आपकी website खोजी जा रही है…") : T("Continue →", "आगे बढ़ें →")}
       </button>
-      <p className="text-center text-xs text-muted">{T("Next: choose Free or Standard, then make it.", "आगे: Free या Standard चुनें, फिर बनाएँ।")}</p>
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
