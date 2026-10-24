@@ -31,7 +31,9 @@ const BACK_HREF: Record<ProfileStepKey, string> = {
 /** `category`: the trade, so the chapters are called what they are for that trade — Courses for a school, Menu for
  *  a restaurant. `screen`: which screen inside the chapter (the onboarding passes it; the products and make pages
  *  are one screen each). `onBack`: a screen's own back (inside the onboarding) instead of the default one. */
-export function ProfileSteps({ current, category, screen, onBack, skipped }: { current: ProfileStepKey; category?: string; screen?: ScreenKey; onBack?: () => void; skipped?: ScreenKey[] }) {
+// "Card for" is part of the Website screen now (onboard skips it always): left out of the count here too, so the Make screen does not
+// say "Step 6 of 6" right after "Step 4 of 5" (found on the live walk, 24 Oct 2026).
+export function ProfileSteps({ current, category, screen, onBack, skipped = ["promote"] }: { current: ProfileStepKey; category?: string; screen?: ScreenKey; onBack?: () => void; skipped?: ScreenKey[] }) {
   const { lang } = useT();
   const router = useRouter();
   const hi = lang === "hi";

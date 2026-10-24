@@ -135,7 +135,7 @@ export function webUrl(v: string): string {
 }
 
 /** An Instagram / Facebook / YouTube link, or a bare handle ("@sharmasweets") made into one. */
-function socialUrl(kind: "instagram" | "facebook" | "youtube", v: string): string {
+export function socialUrl(kind: "instagram" | "facebook" | "youtube", v: string): string {
   const s = (v ?? "").trim().slice(0, 300);
   if (!s || /\s/.test(s)) return "";
   if (/^https?:\/\//i.test(s)) return s;

@@ -57,6 +57,8 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads|site\/advanced)(\/|$)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
   // The Home screen of a brand-new account has its own one big button ("Make my website"): a second "Continue" bar made two buttons for one job.
   if (path === "/poster" && freeDone === 0) return null;
+  // "Website पूरी करें" has its own one-step guide: a second "Finish setup" box there named another step and covered the list (24 Oct 2026).
+  if (path === "/poster/site/next" || (typeof window !== "undefined" && new URLSearchParams(window.location.search).get("back") === "/poster/site/next")) return null;
   if (hidden || !nextFree || onSetupScreens) return null;
   const close = () => { setHidden(true); try { sessionStorage.setItem(KEY, "1"); } catch { /* private mode */ } };
   const pct = Math.round((freeDone / freeTotal) * 100);

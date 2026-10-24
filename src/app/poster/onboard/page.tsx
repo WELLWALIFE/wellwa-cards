@@ -627,6 +627,13 @@ function Onboard() {
     return editing ? SCREEN_FACT_KEYS.filter((k) => k !== "bannerUrl" && k !== "photos") : SCREEN_FACT_KEYS;
   }
   /** Step 1's fact: the WhatsApp number, only when it differs from the mobile. */
+  /** On the "UPI & social" screen only: what goes on the card's buttons (a UPI ID that does not look right is left out). */
+  function linksSync(): { upi?: string; instagram?: string; facebook?: string; youtube?: string } {
+    // Only from that screen, and only once the saved answers are loaded: an empty box from a page still loading must never take a link off.
+    if (step !== "extras" || part === "photos" || !factsLoaded.current) return {};
+    const upi = facts.upi.trim();
+    return { ...(upi && !UPI_RE.test(upi) ? {} : { upi }), instagram: facts.social.instagram ?? "", facebook: facts.social.facebook ?? "", youtube: facts.social.youtube ?? "" };
+  }
   function youFacts(): { whatsapp: string; phone2: string } {
     const mobile = you.phone.replace(/\D/g, "").slice(-10);
     const wa = you.waSame ? "" : you.whatsapp.replace(/\D/g, "").slice(-10);
@@ -1471,7 +1478,7 @@ function Onboard() {
       await syncCardFromSetup({
         name: you.name.trim(), business: bizName, photo: you.photo || null, logo: biz.logo || null, phone, ...(factsLoaded.current ? { whatsapp: youFacts().whatsapp, phone2: youFacts().phone2 } : {}),
         oldPhoto: before?.photo_url ?? null, oldLogo: before?.logo_url ?? null,
-        ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos } }),
+        ...(rebuilds ? {} : { facts: { about: (biz.about ?? "").trim(), oldAbout: atLoad.current.about, hours: facts.hours, oldHours: atLoad.current.hours, address: [(biz.address ?? "").trim(), city].filter(Boolean).join(", "), oldAddress: atLoad.current.address, map: (biz.map ?? "").trim(), ...linksSync(), banner: facts.bannerUrl, oldBanner: atLoad.current.banner, photos: facts.photos, oldPhotos: atLoad.current.photos } }),
       }).catch(() => undefined);
       clearDraft();
       if (!stillOn(from)) return;   // Back / Cancel was pressed while it saved: it is saved, and they stay where they went
@@ -1665,7 +1672,7 @@ function Onboard() {
   const liveView = liveBase && liveStep ? applySetup(liveBase, {
     name: you.name.trim(), business: (biz.name ?? "").trim(), photo: you.photo || null, logo: biz.logo || null, phone: you.phone.replace(/\D/g, "").slice(-10),
     oldPhoto: profile?.photo_url ?? null, oldLogo: profile?.logo_url ?? null,
-    facts: { about: (biz.about ?? "").trim(), hours: facts.hours, address: [(biz.address ?? "").trim(), (biz.city ?? "").trim()].filter(Boolean).join(", "), banner: facts.bannerUrl, photos: facts.photos },
+    facts: { about: (biz.about ?? "").trim(), hours: facts.hours, address: [(biz.address ?? "").trim(), (biz.city ?? "").trim()].filter(Boolean).join(", "), map: (biz.map ?? "").trim(), ...linksSync(), banner: facts.bannerUrl, photos: facts.photos },
   }) : null;
   const liveFocus: LiveFocus = photoFocus ?? (step === "where" && (biz.address ?? "").trim() ? { text: (biz.address ?? "").trim().slice(0, 18) }
     : step === "about" && (biz.about ?? "").trim() ? { text: (biz.about ?? "").trim().slice(0, 24) } : { top: true });

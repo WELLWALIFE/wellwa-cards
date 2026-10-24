@@ -9,6 +9,7 @@ import { categoryOf } from "@/lib/poster-categories";
 import type { Business } from "@/lib/journey";
 import type { FactsResponse } from "@/lib/card-facts";
 import type { Card, CardBlock, CardLink } from "@/lib/types";
+import { mapLink, socialUrl } from "@/lib/card-compose";
 
 export { isThinCard } from "@/lib/card-facts";
 
@@ -137,7 +138,7 @@ function withoutSamples(d: Partial<Card>, own: OwnDetails | null): Partial<Card>
  *  When the cards cannot be loaded (no internet), nothing is changed either. */
 /** The set-up's words and pictures that the live website shows: each one is written onto the card only when it
  *  CHANGED in this save (old → new), so a word the owner typed in the editor is never replaced by a stale set-up. */
-export type SetupSync = { about?: string; oldAbout?: string; hours?: string; oldHours?: string; address?: string; oldAddress?: string; banner?: string; oldBanner?: string; photos?: string[]; oldPhotos?: string[] };
+export type SetupSync = { about?: string; oldAbout?: string; hours?: string; oldHours?: string; address?: string; oldAddress?: string; /** The map pin / Google Maps link. */ map?: string; /** UPI and social, as typed (undefined = leave as is, "" = take off). */ upi?: string; instagram?: string; facebook?: string; youtube?: string; banner?: string; oldBanner?: string; photos?: string[]; oldPhotos?: string[] };
 
 /** "Mon–Sat 10 AM – 8 PM" → { day: "Mon–Sat", time: "10 AM – 8 PM" }; a line with no time keeps the whole line as the day. */
 function hoursRows(text: string): { day: string; time: string }[] {
@@ -194,6 +195,32 @@ export function applySetup(c: Card, s: SetupApply): Card {
     }
     if (changed(f.hours, f.oldHours)) mapBlocks((b) => (b.kind === "hours" ? { ...b, rows: hoursRows(f.hours!) } : b.kind === "appointment" ? { ...b, note: f.hours!.trim() } : b));
     if (changed(f.address, f.oldAddress)) mapBlocks((b) => (b.kind === "location" ? { ...b, address: f.address!.trim() } : b));
+    // A website made without a timings or address section (found on the live walk, 24 Oct 2026: the owner filled both and nothing showed,
+    // and "Map & timings" never turned ✓) gets one, on its Contact page (else the first page) — the same blocks a fresh build makes.
+    const shown = next.pages.filter((p) => !p.hidden);
+    const hasKind = (k: CardBlock["kind"]) => shown.some((p) => p.blocks.some((b) => b.kind === k));
+    const host = shown.find((p) => p.slug === "contact") ?? shown.find((p) => p.slug === "home") ?? shown[0];
+    const hiCard = next.language === "hi";
+    const map = (f.map ?? "").trim();
+    if (host) {
+      const at = () => { const i = host.blocks.findIndex((b) => b.kind === "contact"); return i < 0 ? host.blocks.length : i; };
+      if ((f.hours ?? "").trim() && !hasKind("hours")) host.blocks.splice(at(), 0, { id: uid(), kind: "hours", title: hiCard ? "खुलने का समय" : "Opening hours", rows: hoursRows(f.hours!) });
+      if (((f.address ?? "").trim() || map) && !hasKind("location")) host.blocks.splice(at(), 0, { id: uid(), kind: "location", title: hiCard ? "पता" : "Find us", address: (f.address ?? "").trim(), ...(map ? { mapUrl: map } : {}) });
+    }
+    if (map) mapBlocks((b) => (b.kind === "location" && b.mapUrl !== map ? { ...b, mapUrl: map } : b));
+    // UPI and social links typed on "UPI & social" reach the card's buttons (they were only read at the first build; found on the live walk).
+    const setLink = (type: CardLink["type"], label: string, value: string | undefined) => {
+      if (value === undefined) return;
+      const at = next.links.findIndex((l) => l.type === type);
+      if (!value) { if (at >= 0) next.links = next.links.filter((_, i) => i !== at); return; }
+      if (at >= 0) next.links = next.links.map((l, i) => (i === at ? { ...l, value } : l));
+      else next.links = [...next.links, { id: uid(), type, label, value }];
+    };
+    if (map) setLink("location", "Google Maps", mapLink(map) || undefined);
+    setLink("upi", "UPI", f.upi === undefined ? undefined : f.upi.trim().toLowerCase());
+    setLink("instagram", "Instagram", f.instagram === undefined ? undefined : socialUrl("instagram", f.instagram));
+    setLink("facebook", "Facebook", f.facebook === undefined ? undefined : socialUrl("facebook", f.facebook));
+    setLink("youtube", "YouTube", f.youtube === undefined ? undefined : socialUrl("youtube", f.youtube));
     if (changed(f.banner, f.oldBanner)) {
       next.coverUrl = f.banner!.trim();
       if (next.site) next.site = { ...next.site, hero: { ...(next.site.hero ?? { headline: next.company || next.name, sub: "" }), imageUrl: f.banner!.trim() } };

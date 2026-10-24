@@ -1257,8 +1257,12 @@ export default function BuildCard() {
           <h1 className="min-w-0 flex-1 text-xl font-bold tracking-tight">{T("Colours and fonts", "रंग और अक्षर")}</h1>
           <span className="rounded-full bg-surface2 px-2.5 py-1 text-[11px] font-semibold text-muted">{T("Optional", "ज़रूरी नहीं")}</span>
         </div>
-        <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-3xl border border-border bg-white shadow-card" style={{ height: "min(50dvh, 440px)", minHeight: 280 }}>
+        {/* The preview stays on top while the colours and letters below are picked (found on the live walk, 24 Oct 2026: scrolling down to the
+            colours took the website out of sight, so a tap showed nothing). */}
+        <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
+        <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-3xl border border-border bg-white shadow-card" style={{ height: "min(36svh, 340px)", minHeight: 200 }}>
           <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} className="h-full w-full border-0" />
+        </div>
         </div>
         <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
           <div className="px-4 pb-2 pt-3.5">
@@ -1348,7 +1352,7 @@ export default function BuildCard() {
         {bannerBlock}
 
         {(() => {
-          const boxHead = (n: number, title: string, sub: string, grad: string) => (
+          const boxHead = (n: React.ReactNode, title: string, sub: string, grad: string) => (
             <div className={`flex items-center gap-3 px-4 py-3 text-white ${grad}`}>
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-extrabold">{n}</span>
               <div className="min-w-0"><p className="text-base font-bold leading-tight">{title}</p><p className="text-[11px] text-white/85">{sub}</p></div>
@@ -1360,7 +1364,7 @@ export default function BuildCard() {
               <FinishBar hi={hi} />
 
               <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
-                {boxHead(2, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
+                {boxHead(<Sparkles className="h-4 w-4" />, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
                 <div className="p-3">
                   {/* The Rs 5,999 segment (owner, 15-16 Oct 2026) / a free account's next step up (17 Oct 2026). */}
                   {cardOnly ? (
