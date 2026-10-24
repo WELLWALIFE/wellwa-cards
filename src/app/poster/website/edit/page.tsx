@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2 } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -61,6 +61,24 @@ export default function WebsiteEditPage() {
   const frame = useRef<HTMLIFrameElement>(null);
   const box = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(0.3);
+  // The window on top stays put while the options under it scroll (owner, 24 Oct 2026); a tap makes it big or small again.
+  const [big, setBig] = useState(false);
+  const [frameH, setFrameH] = useState(2400);
+  const scaleRef = useRef(0.3);
+  useEffect(() => { scaleRef.current = scale; }, [scale]);
+  const focusAsk = useRef<{ top?: boolean; text?: string } | null>(null);
+  /** Show this part in the window: the top of the website, or the section / line with this text. */
+  const focus = (f: { top?: boolean; text?: string }) => { focusAsk.current = f; };
+  useEffect(() => {
+    const onMsg = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const d = e.data as { type?: string; key?: string; h?: number; y?: number } | null;
+      if (!d || d.key !== PREVIEW_KEY) return;
+      if (d.type === "preview-height" && typeof d.h === "number") setFrameH(Math.max(900, Math.min(20000, d.h)));
+      if (d.type === "preview-at" && typeof d.y === "number") box.current?.scrollTo({ top: d.y * scaleRef.current, behavior: "smooth" });
+    };
+    window.addEventListener("message", onMsg); return () => window.removeEventListener("message", onMsg);
+  }, []);
 
   const load = useCallback(async (id?: string) => {
     setErr("");
@@ -79,6 +97,8 @@ export default function WebsiteEditPage() {
     if (!card) return;
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(card)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
+    const f = focusAsk.current; focusAsk.current = null;
+    if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
   }, [card]);
   useEffect(() => {
     const fit = () => { const w = box.current?.clientWidth ?? 0; if (w) setScale(Math.min(1, w / 1280)); };
@@ -88,8 +108,8 @@ export default function WebsiteEditPage() {
   const site = card?.site ?? { enabled: true };
   const style: SiteStyle = site.style ?? {};
   const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
-  const setStyle = (patch: Partial<SiteStyle>) => set({ style: { ...style, ...patch } });
-  const setHero = (patch: Partial<Hero>) => set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch } });
+  const setStyle = (patch: Partial<SiteStyle>) => { focus({ top: true }); set({ style: { ...style, ...patch } }); };
+  const setHero = (patch: Partial<Hero>) => { focus({ top: true }); set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch } }); };
   const setHome = (patch: Partial<NonNullable<Card["site"]>["home"] & object>) => set({ home: { ...(site.home ?? {}), ...patch } });
 
   const visiblePages = useMemo(() => card ? card.pages.filter((p) => !(card.site?.hidden ?? []).includes(p.slug) && (p.slug === "home" || p.blocks.some((b) => !isEmptyBlock(b)))) : [], [card]);
@@ -104,12 +124,21 @@ export default function WebsiteEditPage() {
   const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   const pickColour = (key: string, color?: string) => {
+    focus({ top: true });
     const nextStyle = { ...style, palette: key, ...(color !== undefined ? { color } : {}) };
     if (adv) set({ style: nextStyle, advanced: { ...adv, palette: { ...(adv.palette ?? {}), key, ...(key === "brand" ? { color: color ?? style.color ?? card?.themeColor } : {}) } } as NonNullable<Card["site"]>["advanced"] });
     else set({ style: nextStyle });
   };
 
+  /** The words a section shows as its heading, to find it in the window. */
+  const secText = (key: string) => {
+    const sec = sections.find((x) => x.key === key);
+    if (!sec) return "";
+    if (sec.kind === "block") return "title" in sec.block ? (sec.block.title ?? "").trim() : "";
+    return sec.title;
+  };
   function move(key: string, dir: -1 | 1) {
+    focus({ text: secText(key) });
     const keys = sections.map((x) => x.key);
     const i = keys.indexOf(key); const j = i + dir;
     if (i < 0 || j < 0 || j >= keys.length) return;
@@ -117,11 +146,17 @@ export default function WebsiteEditPage() {
     setHome({ order: keys });
   }
   function toggleSection(key: string) {
-    const h = new Set(hiddenSections); if (h.has(key)) h.delete(key); else h.add(key);
+    const h = new Set(hiddenSections);
+    // Shown again: that section; hidden: the one now in its place.
+    const at = sections.findIndex((x) => x.key === key);
+    const near = sections.slice(at + 1).find((x) => !h.has(x.key)) ?? sections.slice(0, at).reverse().find((x) => !h.has(x.key));
+    focus(h.has(key) ? { text: secText(key) } : near ? { text: secText(near.key) } : { top: true });
+    if (h.has(key)) h.delete(key); else h.add(key);
     setHome({ hidden: [...h] });
   }
   function setStat(i: number, patch: Partial<{ value: string; label: string }>) {
     const next = stats.map((x, j) => (j === i ? { ...x, ...patch } : x));
+    focus(next[i]?.value?.trim() ? { text: next[i].value.trim() } : { top: true });
     setHome({ stats: next });
   }
 
@@ -199,7 +234,6 @@ export default function WebsiteEditPage() {
     { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
     { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
   ];
-  const PREVIEW_H = 2400;
 
   return (
     <div className="space-y-4 pb-28">
@@ -224,14 +258,23 @@ export default function WebsiteEditPage() {
 
       {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
-      <div className="overflow-hidden rounded-xl border border-border">
-        <div ref={box} className="bg-white overflow-auto" style={{ height: Math.min(560, Math.round(PREVIEW_H * scale * 0.55)) }}>
-          <div className="relative" style={{ width: Math.round(1280 * scale), height: Math.round(PREVIEW_H * scale) }}>
-            <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: PREVIEW_H, border: 0, transform: `scale(${scale})` }} />
+      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
+        <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
+          <div ref={box} className="bg-white overflow-auto overscroll-contain transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
+            <div className="relative" style={{ width: Math.round(1280 * scale), height: Math.round(frameH * scale) }}>
+              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
+            </div>
           </div>
+          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
+          <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
+            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
+            {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}
+          </button>
         </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
-          <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें — ऊपर website तुरंत बदलेगी" : "Pick a colour — the website above changes at once"}</p>
+          <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
           <div className="mt-1.5 flex gap-2.5 overflow-x-auto pb-1">
             <Swatch p={brand} on={paletteKey === "brand"} onClick={() => pickColour("brand")} label={hi ? "आपका" : "Yours"} />
             {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => pickColour(p.key)} label={hi ? p.hi : p.name} />)}
@@ -245,7 +288,6 @@ export default function WebsiteEditPage() {
           )}
         </div>
       </div>
-      <p className="-mt-2 text-[11px] text-muted">{hi ? "बदलाव Save दबाने पर live होंगे।" : "Changes go live when you tap Save."}</p>
 
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => { setNote((n) => (n?.k === "save" ? n : null)); setTab(key); }} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
@@ -313,8 +355,8 @@ export default function WebsiteEditPage() {
           <div>
             <p className="text-xs font-semibold text-muted mb-1.5">{hi ? "वेबसाइट लोगो (ऊपर और नीचे दिखेगा)" : "Website logo (shown at the top and bottom)"}</p>
             <div className="flex flex-wrap gap-2">
-              <button type="button" onClick={() => set({ logoUrl: "" })} className={`h-16 w-16 rounded-xl border-2 grid place-items-center text-[11px] ${!site.logoUrl ? "border-brand bg-brand-soft" : "border-border"}`}>{hi ? "कार्ड फ़ोटो" : "card photo"}</button>
-              {s.images.filter((im) => im.label === "Logo").map((im) => <button key={im.url} type="button" onClick={() => set({ logoUrl: im.url })} className={`h-16 w-16 rounded-xl border-2 overflow-hidden bg-white ${site.logoUrl === im.url ? "border-brand" : "border-border"}`}><Thumb src={im.url} alt="Logo" /></button>)}
+              <button type="button" onClick={() => { focus({ top: true }); set({ logoUrl: "" }); }} className={`h-16 w-16 rounded-xl border-2 grid place-items-center text-[11px] ${!site.logoUrl ? "border-brand bg-brand-soft" : "border-border"}`}>{hi ? "कार्ड फ़ोटो" : "card photo"}</button>
+              {s.images.filter((im) => im.label === "Logo").map((im) => <button key={im.url} type="button" onClick={() => { focus({ top: true }); set({ logoUrl: im.url }); }} className={`h-16 w-16 rounded-xl border-2 overflow-hidden bg-white ${site.logoUrl === im.url ? "border-brand" : "border-border"}`}><Thumb src={im.url} alt="Logo" /></button>)}
               {site.logoUrl && !s.images.some((im) => im.url === site.logoUrl) && <span className="h-16 w-16 rounded-xl border-2 border-brand overflow-hidden bg-white"><Thumb src={site.logoUrl} alt="" /></span>}
               <label className="h-16 w-16 rounded-xl border-2 border-dashed border-border grid place-items-center text-[11px] cursor-pointer">{busy === "logo" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : (hi ? "+ जोड़ें" : "+ Add")}<input type="file" accept="image/*" className="hidden" onChange={(e) => upload(e.target.files?.[0] ?? null, "logo")} /></label>
             </div>

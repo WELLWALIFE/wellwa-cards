@@ -96,7 +96,27 @@ function PreviewInner() {
     QRCode.toDataURL(SITE_URL, { width: 320, margin: 1 }).then(setQr).catch(() => setQr(""));
     const onStorage = (e: StorageEvent) => { if (e.key === key) setCard(readCard()); };
     // The editor sits in the parent window and posts after every change as well (storage events can lag).
-    const onMessage = (e: MessageEvent) => { if (e.origin === window.location.origin && e.data === `preview:${key}`) setCard(readCard()); };
+    const onMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      if (e.data === `preview:${key}`) { setCard(readCard()); return; }
+      // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
+      // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string } | null;
+      if (!d || d.type !== "preview-focus" || d.key !== key) return;
+      setTimeout(() => {
+        let el: HTMLElement | null = null;
+        const want = (d.text ?? "").trim().toLowerCase();
+        if (!d.top && want) {
+          const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span"));
+          el = all.find((x) => /^H[1-4]$/.test(x.tagName) && (x.textContent ?? "").trim().toLowerCase().includes(want))
+            ?? all.find((x) => (x.textContent ?? "").trim().toLowerCase() === want) ?? null;
+          el = (el?.closest("section") as HTMLElement | null) ?? el;
+        }
+        const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
+        try { window.parent.postMessage({ type: "preview-at", key, y }, window.location.origin); } catch { /* ignore */ }
+        if (el) { const o = el.style.outline, off = el.style.outlineOffset; el.style.outline = "4px solid #ffb400"; el.style.outlineOffset = "-4px"; setTimeout(() => { el!.style.outline = o; el!.style.outlineOffset = off; }, 1400); }
+      }, 260);
+    };
     window.addEventListener("storage", onStorage); window.addEventListener("message", onMessage);
     // The page's own height, told to the screen that frames it (the advanced-website page sizes its frame to it: no blank space under
     // the footer, no second scrollbar inside). Posted whenever the page grows or shrinks.
