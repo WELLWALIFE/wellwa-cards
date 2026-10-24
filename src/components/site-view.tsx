@@ -212,7 +212,24 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
   const hiNow = L.lang === "hi";
   // The hero, as one model (site-hero.ts): kicker, claim, one line, trust row, the two buttons, the picture — in
   // the VISITOR's language, so the language switch re-speaks it.
-  const hm = heroModel(card, L.lang);
+  // The standard website's sliding banners too (owner, 24 Oct 2026: "standard me bhi 3 banner ka option"): with 2–3 banners
+  // (site.hero.slides) the top shows each one's picture and words in turn, every few seconds; never for a visitor who asks for less motion.
+  const slides = (card.site?.hero?.slides ?? []).filter((x) => x && x.headline).slice(0, 3);
+  const [slideAt, setSlideAt] = useState(0);
+  useEffect(() => {
+    if (slides.length < 2) return;
+    try { if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return; } catch { /* old browser */ }
+    const t = window.setInterval(() => setSlideAt((i) => (i + 1) % slides.length), 5500);
+    return () => window.clearInterval(t);
+  }, [slides.length]);
+  const slide = slides.length >= 2 ? slides[slideAt % slides.length] : null;
+  const heroCard: Card = slide && card.site ? (() => {
+    const h = card.site.hero ?? { headline: "", sub: "" };
+    const img = slide.imageUrl || h.imageUrl || card.coverUrl;
+    const same = img === (h.imageUrl || card.coverUrl);
+    return { ...card, coverUrl: img, site: { ...card.site, hero: { ...h, headline: slide.headline, sub: slide.sub ?? h.sub, ...(img ? { imageUrl: img } : {}), ...(same ? {} : { focus: undefined, textSide: undefined, lqip: undefined }) } } };
+  })() : card;
+  const hm = heroModel(heroCard, L.lang);
   const trade = tradeLabel(card, hiNow);
   // The owner's logo in the nav; without one the name stands as a wordmark (the monogram never reaches the website).
   const logo = hm.logo;
@@ -438,20 +455,20 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
       <main className="relative flex-1">
         {isHome && bp === "wordmark" ? (
-          <WordmarkHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
+          <WordmarkHero card={heroCard} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "shop" ? (
-          <ShopHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento && offerNow ? { ...bento, offer: undefined } : bento}
+          <ShopHero card={heroCard} hi={L.lang === "hi"} t={t} onBook={go} facts={bento && offerNow ? { ...bento, offer: undefined } : bento}
             onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); } }} />
         ) : isHome && bp === "collage" ? (
-          <CollageHero card={card} hi={L.lang === "hi"} t={t} onBook={go} facts={bento} />
+          <CollageHero card={heroCard} hi={L.lang === "hi"} t={t} onBook={go} facts={bento} />
         ) : isHome && bp === "story" ? (
-          <PosterHero card={card} hi={L.lang === "hi"} t={t} onBook={go} />
+          <PosterHero card={heroCard} hi={L.lang === "hi"} t={t} onBook={go} />
         ) : isHome && bp === "cinematic" ? (
-          <CinematicHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
+          <CinematicHero card={heroCard} hi={L.lang === "hi"} t={t} photo={heroCard.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento?.clip : undefined} focus={heroFocus} textSide={hero?.textSide}
             phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} eyebrow={eyebrowRole} pills={[]} />
         ) : isHome && bento ? (
           <div className="relative">
-            <BentoHero card={card} hi={L.lang === "hi"} t={t} photo={heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
+            <BentoHero card={heroCard} hi={L.lang === "hi"} t={t} photo={heroCard.coverUrl || heroImg} clip={card.site?.hero?.video !== false ? bento.clip : undefined} focus={heroFocus}
               phone={phone?.value} wa={wa?.value} waHref={waHref} hours={hoursRows} rating={bento.rating} map={bento.map} offer={bento.offer} product={bento.product} onProduct={(p) => { if (isPhone()) openProduct(p); else { const slug = cardProducts(card).find((x) => x.item === p)?.slug; if (slug) go(slug); else openProduct(p); } }}
               since={sinceOf ?? undefined} booking={bento.booking} go={go} eyebrow={eyebrowRole} logo={logo} pills={[]} darkPage={false} />
           </div>

@@ -38,7 +38,8 @@ const isBanner = (slot: string) => BANNERS.has(slot) || /^slide:[0-2]$/.test(slo
 /** The Premium website's sliding banners (site.hero.slides, up to 3): each is its own banner place on the photos page (owner, 24 Oct 2026:
  *  "premium me banner add karte hai to ek hi dikhai deta hai — jaha multi add ka option ho waha multi dikhane chahiye"). */
 const MAX_SLIDES = 3;
-const slideMode = (card: Card, scope: Scope) => scope !== "card" && !!card.site && (!!activeAdvanced(card.site) || (card.site.hero?.slides ?? []).length >= 2);
+// Every website has them now, standard too (owner, 24 Oct 2026: "standard me bhi 3 banner"); the phone card keeps its one cover.
+const slideMode = (card: Card, scope: Scope) => scope !== "card" && !!card.site && (card.site.enabled !== false || !!activeAdvanced(card.site));
 const slideNo = (slot: string) => (/^slide:[0-2]$/.test(slot) ? Number(slot.slice(6)) : -1);
 const scopeOf = (v: unknown): Scope => (v === "card" || v === "site" ? v : "");
 type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: string; size: string; ours: boolean; stock: boolean };
@@ -76,7 +77,7 @@ function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
 
 const mapBlock = (card: Card, id: string, f: (b: CardBlock) => CardBlock): Card => ({ ...card, pages: card.pages.map((p) => ({ ...p, blocks: p.blocks.map((b) => (b.id === id ? f(b) : b)) })) });
 
-function setSlot(card: Card, slot: string, url: string, focus: { focus?: string; textSide?: "left" | "right" | "center" } | null): Card | null {
+function setSlot(card: Card, slot: string, url: string, focus: { focus?: string; textSide?: "left" | "right" | "center" } | null, scope: Scope = ""): Card | null {
   const n = slideNo(slot);
   if (n >= 0) {
     if (!card.site) return null;
@@ -87,7 +88,9 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     if (n > slides.length || n >= MAX_SLIDES) return null;
     if (n === slides.length) slides.push({ headline: head || "Welcome" });
     slides[n] = { ...slides[n], imageUrl: url };
-    return { ...card, site: { ...card.site, hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
+    // The first banner on a card whose cover was the same picture (one shared banner until now) keeps the card in step, as before.
+    const shared = n === 0 && scope === "" && (!card.coverUrl || card.coverUrl === (hero.imageUrl || card.coverUrl));
+    return { ...card, ...(shared ? { coverUrl: url } : {}), site: { ...card.site, hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
   }
   if (slot === "cardbanner") {
     // The card's own banner. A website that was still showing the card's picture keeps that picture (it is pinned to the website first).
@@ -200,7 +203,7 @@ export async function POST(request: Request) {
   if (action === "replace") {
     if (!url || !slot) return NextResponse.json({ error: "Nothing to put there." }, { status: 400 });
     newUrl = url;
-    next = setSlot(card, slot, url, isBanner(slot) ? await bannerFocus(url).catch(() => null) : null);
+    next = setSlot(card, slot, url, isBanner(slot) ? await bannerFocus(url).catch(() => null) : null, scope);
   } else if (action === "group") {
     next = setGroup(card, slot, group);
     if (!next) return NextResponse.json({ error: "Only gallery photos can have a heading." }, { status: 400 });
@@ -230,7 +233,7 @@ export async function POST(request: Request) {
     logImages("site-photo", IMG_MODEL, made ? 1 : 0);
     if (!made) { await refund().catch(() => undefined); return NextResponse.json({ error: "The picture could not be made. Nothing was charged." }, { status: 502 }); }
     newUrl = made;
-    next = slot ? setSlot(card, slot, made, kind === "banner" ? await bannerFocus(made).catch(() => null) : null) : addToGallery(card, made, group);
+    next = slot ? setSlot(card, slot, made, kind === "banner" ? await bannerFocus(made).catch(() => null) : null, scope) : addToGallery(card, made, group);
     if (!next) { await refund().catch(() => undefined); return NextResponse.json({ error: "This website has no gallery yet. Nothing was charged." }, { status: 400 }); }
   } else {
     return NextResponse.json({ error: "Unknown action." }, { status: 400 });
