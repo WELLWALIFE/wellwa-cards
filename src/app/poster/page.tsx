@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { usePlan } from "@/lib/plan";
-import { LoaderCircle, ChevronDown, Sparkles, CreditCard, MessageSquare, Clapperboard, Link2, Pencil, WifiOff, RotateCw } from "lucide-react";
+import { LoaderCircle, ChevronDown, Sparkles, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
 import { api, isLoggedIn, currentProfileId, setCurrentProfileId, captureRef, PERSONAS, type Profile, type Poster, type Quota } from "@/lib/poster-client";
@@ -13,8 +13,8 @@ import { PremiumCard } from "@/components/poster/premium-lock";
 import { PremiumUpgrade } from "@/components/poster/premium-upgrade";
 import { PremiumLine } from "@/components/poster/premium-line";
 import { CardRenewBanner } from "@/components/poster/card-renew-banner";
-import { Guide } from "@/components/poster/guide";
-import { useJourney } from "@/lib/journey";
+import { HomeHeader, TodayWork, QuickGrid } from "@/components/poster/home-parts";
+import { FinishBar } from "@/components/poster/site-finish";
 
 import { useT } from "@/lib/poster-i18n";
 
@@ -84,7 +84,6 @@ export default function TodayPage() {
   const [today, setToday] = useState<TodayResp | null>(null);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
-  const journey = useJourney();
   const { t, lang } = useT();
 
   const [style, setStyle] = useState<string>("");
@@ -232,105 +231,89 @@ export default function TodayPage() {
 
   const persona = PERSONAS.find((p) => p.key === profile?.persona);
   const quota = today?.quota;
+  const hi = lang !== "en";
+  // Home, redesigned (owner, 24 Oct 2026: "jo zaroori cheez honi chahiye wo add karo, professional interface"): who and when with the
+  // card link on top, today's work from the CRM, the website still to finish, today's poster, every door in one grid, the share links.
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-2">
       {/* The V-Card's year: shows only in its last 30 days, the 7-day grace and while paused. */}
       <CardRenewBanner />
-      {/* The Business side of the same account — one line, live numbers, opens the Business tab. */}
+      <HomeHeader name={profile?.name ?? ""} hi={hi} />
+      {/* A partner's team, one dark line (opens Business). */}
       <BusinessStrip />
-      {/* The three links people share most — card, LEFT join, RIGHT join — one WhatsApp tap each. */}
-      <ShareLinks compact allHref="/poster/share" />
-      {/* One tap to change the card (owner's call, 25 Sep 2026 — it used to be Home → My V-Card → Edit). */}
-      <Link href="/poster/site" className="flex items-center gap-2 rounded-xl border-2 border-brand/40 bg-brand-soft/50 px-3 py-2.5 text-sm">
-        <Pencil className="h-4 w-4 shrink-0 text-brand" />
-        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Card & Website — share, edit" : "Card और Website — share करें, बदलें"}</span>
-        <span className="text-xs font-semibold text-brand-ink">→</span>
-      </Link>
+      <TodayWork hi={hi} />
+      <FinishBar hi={hi} />
       {/* Premium, visible from the first day (owner's call, 3 Oct 2026: "subscription ka button kahin nahi tha"). */}
       {quota?.plan === "free" && <PremiumCard compact />}
       <PremiumUpgrade />
-      {/* Connections: WhatsApp, Facebook, Instagram, Google — one place, always one tap from Home. */}
-      <Link href="/poster/connect" className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-sm">
-        <Link2 className="h-4 w-4 shrink-0 text-brand" />
-        <span className="min-w-0 flex-1 truncate font-semibold">{lang === "en" ? "Connect WhatsApp · Facebook · Instagram · Google" : "WhatsApp · Facebook · Instagram · Google जोड़ें"}</span>
-        <span className="text-xs font-semibold text-brand-ink">→</span>
-      </Link>
-      <div className="inline-flex rounded-full border border-border bg-surface p-0.5 text-sm font-semibold">
-        {(["today", "tomorrow"] as const).map((k) => (
-          <button key={k} type="button" onClick={() => { if (day === k || !profile) return; setDay(k); setToday(null); setStyle(""); loadPoster(profile, false, undefined, k); }} className={`rounded-full px-3 py-1.5 ${day === k ? "grad-brand text-white" : "text-muted"}`}>{k === "today" ? (lang === "en" ? "Today" : "आज") : (lang === "en" ? "Tomorrow" : "कल")}</button>
-        ))}
-      </div>
-      {day === "tomorrow" && <p className="text-[11px] text-muted -mt-2">{lang === "en" ? "Tomorrow's poster is prepared every day at 12 noon — review or edit it here; it posts automatically at 4 AM." : "कल का पोस्टर रोज़ दोपहर 12 बजे तैयार हो जाता है — यहाँ देखें या बदलें; सुबह 4 बजे अपने-आप post होगा।"}</p>}
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-xs text-muted">{today?.date ?? ""}</p>
-          <h1 className="text-lg font-bold leading-tight">{(lang === "en" ? today?.theme?.en : today?.theme?.hi) ?? (day === "tomorrow" ? (lang === "en" ? "Tomorrow's poster" : "कल का पोस्टर") : t.todayPoster)}</h1>
+
+      {/* Today's poster */}
+      <section className="space-y-3">
+        <div className="flex items-end justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{day === "tomorrow" ? (hi ? "कल का poster" : "Tomorrow's poster") : (hi ? "आज का poster" : "Today's poster")}</p>
+            <h2 className="truncate text-lg font-bold leading-tight">{(hi ? today?.theme?.hi : today?.theme?.en) ?? (day === "tomorrow" ? (hi ? "कल का पोस्टर" : "Tomorrow's poster") : t.todayPoster)}</h2>
+          </div>
+          <div className="inline-flex shrink-0 rounded-full border border-border bg-surface p-0.5 text-xs font-semibold">
+            {(["today", "tomorrow"] as const).map((k) => (
+              <button key={k} type="button" onClick={() => { if (day === k || !profile) return; setDay(k); setToday(null); setStyle(""); loadPoster(profile, false, undefined, k); }} className={`rounded-full px-3 py-1.5 ${day === k ? "grad-brand text-white" : "text-muted"}`}>{k === "today" ? (hi ? "आज" : "Today") : (hi ? "कल" : "Tomorrow")}</button>
+            ))}
+          </div>
         </div>
         {profiles.length > 1 && (
           <div className="relative">
             <select value={profile?.id} onChange={(e) => { const p = profiles.find((x) => x.id === e.target.value)!; setProfile(p); setCurrentProfileId(p.id); setToday(null); loadPoster(p, false, undefined, day); }}
-              className="appearance-none rounded-full border border-border bg-surface pl-3 pr-8 py-1.5 text-sm font-medium">
+              className="w-full appearance-none rounded-xl border border-border bg-surface py-2 pl-3 pr-8 text-sm font-medium">
               {profiles.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
-            <ChevronDown className="h-4 w-4 absolute right-2.5 top-2 text-muted pointer-events-none" />
+            <ChevronDown className="pointer-events-none absolute right-2.5 top-2.5 h-4 w-4 text-muted" />
           </div>
         )}
-      </div>
+        {day === "tomorrow" && <p className="text-[11px] text-muted">{hi ? "सुबह 4 बजे अपने-आप post होगा। बदलना हो तो poster पर “Edit” दबाएँ।" : "Posts by itself at 4 AM. Tap Edit on the poster to change it."}</p>}
 
-      {busy && !today?.poster && (
-        <div className="rounded-2xl border border-border bg-surface2 aspect-[4/5] grid place-items-center">
-          <div className="text-center">
-            <LoaderCircle className="h-6 w-6 animate-spin text-brand mx-auto" />
-            <p className="text-sm text-muted mt-3">{t.making}</p>
+        {busy && !today?.poster && (
+          <div className="grid aspect-[4/5] place-items-center rounded-3xl border border-border bg-surface2">
+            <div className="text-center">
+              <LoaderCircle className="mx-auto h-6 w-6 animate-spin text-brand" />
+              <p className="mt-3 text-sm text-muted">{t.making}</p>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {today?.poster && (
-        <PosterCard poster={today.poster} date={today.date ?? ""} caption={shareCaption(today, profile)}
-          profile={profile} style={style || profile?.style || "classic"} restyling={restyling} plan={quota?.plan} dayOverrides={today.overrides ?? null}
-          onStyle={async (st) => { if (!profile) return; await loadPoster(profile, false, st, day); api("/api/poster/profiles", { method: "POST", json: { ...profile, style: st, layout: { ...(profile.layout ?? {}), look: st.startsWith("signature") ? (st === "signature-classic" ? "classic" : "vibrant") : "old" } } }).then((r) => { const np = (r.data as { profile?: Profile }).profile; if (np) setProfile(np); }).catch(() => {}); }}
-          onEdited={async () => { if (!profile) return; const r = await api<{ profiles: Profile[] }>("/api/poster/profiles").catch(() => null); const np = (r?.data?.profiles ?? []).find((x) => x.id === profile.id) ?? profile; setProfile(np); await loadPoster(np, true, style || np.style, day); }} />
-      )}
+        {today?.poster && (
+          <PosterCard poster={today.poster} date={today.date ?? ""} caption={shareCaption(today, profile)}
+            profile={profile} style={style || profile?.style || "classic"} restyling={restyling} plan={quota?.plan} dayOverrides={today.overrides ?? null}
+            onStyle={async (st) => { if (!profile) return; await loadPoster(profile, false, st, day); api("/api/poster/profiles", { method: "POST", json: { ...profile, style: st, layout: { ...(profile.layout ?? {}), look: st.startsWith("signature") ? (st === "signature-classic" ? "classic" : "vibrant") : "old" } } }).then((r) => { const np = (r.data as { profile?: Profile }).profile; if (np) setProfile(np); }).catch(() => {}); }}
+            onEdited={async () => { if (!profile) return; const r = await api<{ profiles: Profile[] }>("/api/poster/profiles").catch(() => null); const np = (r?.data?.profiles ?? []).find((x) => x.id === profile.id) ?? profile; setProfile(np); await loadPoster(np, true, style || np.style, day); }} />
+        )}
 
-      {today?.error === "plan" && (
-        <div className="rounded-2xl border border-brand/40 bg-brand-soft p-4">
-          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {lang === "en" ? "Daily posters are part of Standard" : "रोज़ का poster Standard plan में मिलता है"}</p>
-          <p className="text-sm text-ink mt-1">{lang === "en" ? "Your free plan includes the digital V-Card and its leads. Upgrade to get a fresh poster and status video every morning, auto-posted to WhatsApp Status, Facebook and Instagram." : "Free plan में digital V-Card और उसके leads मिलते हैं। Upgrade करें — हर सुबह नया poster और status video, WhatsApp Status, Facebook और Instagram पर अपने-आप।"}</p>
-          <div className="mt-3 flex gap-2">
-            <Link href="/poster/plan" className="inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{lang === "en" ? "Upgrade — see plans" : "Upgrade करें — plans देखें"}</Link>
-            <Link href="/poster/site" className="inline-block rounded-lg border border-border bg-surface px-4 py-2 text-sm font-semibold">{lang === "en" ? "Card & Website" : "Card और Website"}</Link>
+        {today?.error === "plan" && (
+          <div className="rounded-3xl border border-brand/40 bg-brand-soft p-4 shadow-card">
+            <p className="flex items-center gap-1.5 font-semibold text-brand-ink"><Sparkles className="h-4 w-4" /> {hi ? "रोज़ का poster Standard plan में मिलता है" : "Daily posters are part of Standard"}</p>
+            <p className="mt-1 text-sm text-ink">{hi ? "हर सुबह नया poster, Facebook, Instagram और WhatsApp Status पर अपने-आप।" : "A fresh poster every morning, posted to Facebook, Instagram and WhatsApp Status by itself."}</p>
+            <Link href="/poster/plan" className="mt-3 inline-block rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white">{hi ? "Plans देखें" : "See plans"}</Link>
           </div>
-        </div>
-      )}
-      {today?.error === "quota" && (
-        <div className="rounded-2xl border border-border bg-brand-soft p-4">
-          <p className="font-semibold text-brand-ink flex items-center gap-1.5"><Sparkles className="h-4 w-4" /> {t.quotaTitle}</p>
-          <p className="text-sm text-ink mt-1">{t.quotaSub}</p>
-          <Link href="/poster/plan" className="mt-3 inline-block rounded-lg grad-brand px-4 py-2 text-sm font-semibold text-white">{t.seePlans}</Link>
-        </div>
-      )}
-      {err && (
-        <div className="flex items-center justify-between gap-2 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2.5">
-          <p className="text-sm text-danger">{err}</p>
-          {profile && <button type="button" onClick={() => loadPoster(profile, false, undefined, day)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold"><RotateCw className="h-3.5 w-3.5" /> {lang === "en" ? "Try again" : "फिर से"}</button>}
-        </div>
-      )}
+        )}
+        {today?.error === "quota" && (
+          <div className="rounded-3xl border border-border bg-brand-soft p-4 shadow-card">
+            <p className="flex items-center gap-1.5 font-semibold text-brand-ink"><Sparkles className="h-4 w-4" /> {t.quotaTitle}</p>
+            <p className="mt-1 text-sm text-ink">{t.quotaSub}</p>
+            <Link href="/poster/plan" className="mt-3 inline-block rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white">{t.seePlans}</Link>
+          </div>
+        )}
+        {err && (
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-danger/30 bg-danger/5 px-3 py-2.5">
+            <p className="text-sm text-danger">{err}</p>
+            {profile && <button type="button" onClick={() => loadPoster(profile, false, undefined, day)} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs font-semibold"><RotateCw className="h-3.5 w-3.5" /> {hi ? "फिर से" : "Try again"}</button>}
+          </div>
+        )}
+        {today?.poster && <PremiumLine plan={quota?.plan} used={quota?.used} limit={quota?.limit ?? null} />}
+      </section>
 
-      {/* The same count as the floating setup sheet (the free steps): two different totals on one screen read as a bug. */}
-      {/* "Next:" names the step the screen it opens belongs to: the exact set-up screen the owner left, else the list of steps. */}
-      {/* "Finish setup" is the floating sheet (components/setup-resume.tsx) alone: the same card here as well read as two (owner, 20 Oct 2026). */}
-      {today?.error !== "plan" && (day === "tomorrow"
-        ? <Guide hi="ये कल का poster है — सुबह 4 बजे Facebook/Status पर अपने-आप जाएगा। कुछ बदलना हो तो poster पर “बदलें” दबाएँ।" en="This is tomorrow's poster — it goes to Facebook/Status by itself at 4 AM. To change it, tap Edit on the poster." />
-        : <Guide hi="ये आज का poster है — नीचे के हरे button से WhatsApp पर भेजें। Facebook/Status पर सुबह 4 बजे अपने-आप जाता है।" en="This is today's poster — send it on WhatsApp with the green button. It goes to Facebook/Status automatically at 4 AM." />)}
-      <div className="grid grid-cols-4 gap-2 text-center text-[11px] font-medium">
-        {[{ href: "/poster/video", l: t.quickVideo, I: Clapperboard }, { href: "/poster/calendar", l: "Calendar", I: MessageSquare }, { href: "/poster/site", l: t.quickCard, I: CreditCard }, { href: "/poster/connect", l: lang === "en" ? "Connect" : "जोड़ें", I: Link2 }].map((q) => (
-          <Link key={q.href} href={q.href} className="rounded-xl border border-border bg-surface py-2.5 flex flex-col items-center gap-1"><q.I className="h-5 w-5 text-brand" />{q.l}</Link>
-        ))}
-      </div>
-
-      {today?.poster && <PremiumLine plan={quota?.plan} used={quota?.used} limit={quota?.limit ?? null} />}
-      <p className="text-xs text-center text-faint"><span className="mr-1">{persona?.emoji}</span>{persona ? t.personas[persona.key][0] : ""} · {profile?.name}</p>
+      <QuickGrid hi={hi} />
+      {/* The three links people share most — card, LEFT join, RIGHT join — one WhatsApp tap each. */}
+      <ShareLinks compact allHref="/poster/share" />
+      <p className="text-center text-xs text-faint"><span className="mr-1">{persona?.emoji}</span>{persona ? t.personas[persona.key][0] : ""} · {profile?.name}</p>
     </div>
   );
 }
