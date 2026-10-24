@@ -27,6 +27,8 @@ import type { Card, CardBlock } from "@/lib/types";
 const PRICE_FALLBACK = 5999;
 /** "3 layouts per payment" (owner's rule): the server may say how many are left; this counts them on the phone when it does not. */
 const TRY_LIMIT = 3;
+/** The preview window's height on screen, in px. */
+const PREVIEW_BOX = 440;
 
 /** "Ready for Premium?" (owner, 24 Oct 2026: products etc. first, then Premium): what the AI will have to design from, read off the
  *  live card. Never a lock — the owner may make it anyway; each missing row opens the screen that adds it and comes back here. */
@@ -195,13 +197,6 @@ export default function AdvancedSitePage() {
   const [keepErr, setKeepErr] = useState("");
   const [doneUser, setDoneUser] = useState("");
   const [frameW, setFrameW] = useState(360);
-  /** The preview page's own height (it posts it): the frame is exactly that tall, so nothing is blank under the footer. */
-  const [frameH, setFrameH] = useState(1600);
-  useEffect(() => {
-    const on = (e: MessageEvent) => { const d = e.data as { type?: string; key?: string; h?: number }; if (e.origin === window.location.origin && d?.type === "preview-height" && d.key === PREVIEW_KEY && typeof d.h === "number" && d.h > 200) setFrameH(Math.min(20000, Math.round(d.h))); };
-    window.addEventListener("message", on);
-    return () => window.removeEventListener("message", on);
-  }, []);
   const frameBox = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
@@ -509,9 +504,15 @@ export default function AdvancedSitePage() {
       <div className="space-y-3 py-2">
         {header}
         {/* Redesigned 23 Oct 2026 (owner: every design button opens that website; a simpler page): pick a design, see it, use it. */}
-        <p className="text-xs text-muted">{T("Nothing is live yet. Pick a design, open it, then use it.", "अभी कुछ live नहीं है। Design चुनें, खोलकर देखें, फिर लगाएँ।")}</p>
 
-        {/* The three designs: tap to see it below; ↗ opens it full size in a new tab; an empty one can be made from here. */}
+
+        {/* The design, one screen of it, scrolling inside (a page-tall frame stretched a full-height hero and hid its words; 24 Oct 2026). */}
+        <div ref={frameBox} className="relative overflow-hidden rounded-2xl border border-border bg-white shadow-card" style={{ height: PREVIEW_BOX }}>
+          <iframe key={jobId} ref={frame} title={T("Premium website preview", "Premium website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`}
+            onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
+            style={{ width: 1280, height: Math.round(PREVIEW_BOX / scale), border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+        </div>
+        {/* Under the website (owner, 25 Oct 2026: "design ke teeno button site view ke niche"). The three designs: tap to see it above; ↗ opens it full size in a new tab; an empty one can be made from here. */}
         <div className="grid grid-cols-3 gap-2">
           {Array.from({ length: TRY_LIMIT }, (_, i) => designs[i]).map((d, i) => {
             const on = !!d && i === which;
@@ -545,14 +546,6 @@ export default function AdvancedSitePage() {
           </button>
         )}
         {againErr && <p className={errBox}>{againErr}</p>}
-
-        <div ref={frameBox} className="overflow-y-auto overflow-x-hidden rounded-xl border border-border bg-white" style={{ height: Math.min(frameH * scale, 400) }}>
-          <div style={{ width: "100%", height: frameH * scale, overflow: "hidden" }}>
-            <iframe key={jobId} ref={frame} title={T("Premium website preview", "Premium website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} scrolling="no"
-              onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
-              style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
-          </div>
-        </div>
 
         {/* What the AI found: the things only the owner can add come first, each with its own button; the rest the new design already
             handles. Adding them keeps THIS design — it shows the new photos / products / reviews by itself, no new design needed. */}
