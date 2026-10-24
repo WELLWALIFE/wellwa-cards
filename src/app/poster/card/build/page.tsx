@@ -1227,6 +1227,22 @@ export default function BuildCard() {
   // The finished flow (owner, 7 Oct 2026): Save and next → "Congratulations, your website and e-card are live" →
   // Edit now (Create → Card & Website → Edit) or Later (home).
   // Colours and fonts — its own step between the design and "Congratulations" (owner, 15 Oct 2026): pick or skip.
+  /** Where the owner is after the build (owner, 24 Oct 2026: "kahi koi confusion hi na rahe"): Design → Colours → Link → Ready. */
+  const afterSteps = (at: number) => {
+    const names = cardOnly ? [T("Design", "Design"), T("Link", "Link"), T("Ready", "तैयार")] : [T("Design", "Design"), T("Colours", "रंग"), T("Link", "Link"), T("Ready", "तैयार")];
+    const i = cardOnly && at > 0 ? at - 1 : at;
+    return (
+      <ol className="flex items-center gap-1" aria-label={T("Steps", "Steps")}>
+        {names.map((n, k) => (
+          <li key={n} className="flex min-w-0 flex-1 flex-col items-center gap-1">
+            <span className={`h-1.5 w-full rounded-full ${k < i ? "bg-good" : k === i ? "bg-brand" : "bg-surface2"}`} />
+            <span className={`truncate text-[10px] font-semibold ${k === i ? "text-brand-ink" : k < i ? "text-good" : "text-muted"}`}>{k < i ? "✓ " : ""}{n}</span>
+          </li>
+        ))}
+      </ol>
+    );
+  };
+
   if (state === "style" && shown && card?.site) {
     // Next is "Select your domain", then Congratulations (owner, 24 Oct 2026).
     const goDone = () => { setState("domain"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } };
@@ -1235,6 +1251,7 @@ export default function BuildCard() {
       <div className="space-y-3 py-2">
         {/* Colours and fonts, one look (owner, 24 Oct 2026: "upar ka text zaroori nahi, professional look"): title, the live preview,
             one panel with the two choices, and Skip / Done at the foot. */}
+        {afterSteps(1)}
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { doneFromPreview.current = false; setState("preview"); toTop(); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold tracking-tight">{T("Colours and fonts", "रंग और अक्षर")}</h1>
@@ -1276,7 +1293,7 @@ export default function BuildCard() {
         </section>
         {err && <p className="text-sm text-danger">{err}</p>}
         <div className="sticky bottom-20 z-20 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
-          <button type="button" onClick={goDone} className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-base font-semibold">{T("Skip", "छोड़ें")}</button>
+          <button type="button" onClick={goDone} className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-base font-semibold">{T("Keep as is", "जैसा है ठीक")}</button>
           <button type="button" onClick={goDone} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done — next", "हो गया — आगे")}</button>
         </div>
       </div>
@@ -1288,6 +1305,7 @@ export default function BuildCard() {
   if (state === "domain" && shown) {
     return (
       <div className="space-y-3 py-2">
+        {afterSteps(2)}
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => { setState(cardOnly ? "preview" : "style"); toTop(); }} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
           <h1 className="min-w-0 flex-1 text-xl font-bold tracking-tight">{T("Select your domain", "अपना domain चुनें")}</h1>
@@ -1306,6 +1324,7 @@ export default function BuildCard() {
     const liveLink = `${SITE_HOST}/c/${liveUser || username}`;
     return (
       <div className="space-y-4 py-2">
+        {afterSteps(3)}
         <div className="flex items-center gap-2">
           <button type="button" onClick={backFromDone} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         </div>
@@ -1369,6 +1388,7 @@ export default function BuildCard() {
     <div className="space-y-4 py-2">
       {/* Owner's call, 5 Oct 2026 ("site banne ke baad 3 view nahi dikh rahe, bada complicated UI"): ONE status card,
           then the three looks, then the preview — everything else goes below it or behind "Change…" / "Details". */}
+      {afterSteps(0)}
       <div className="space-y-1.5">
         <div className="flex items-center gap-2">
           <button type="button" onClick={backFromPreview} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
