@@ -12,6 +12,10 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
   can work it out (buyers, about text) or it can be added later (offer, GST, timings), it is not asked in set-up.
 - **Show every change on screen at once** (owner, 24 Oct 2026: "jo change kar raha hai usko sath ke sath dikhana chahiye"). Wherever
   the owner picks a colour, font, banner, text or photo, a live preview on the same screen updates as they tap — no Save-then-open.
+- **The flow, start to finish** (owner, 24 Oct 2026: "ek step complete ho to next jiski jarurat hai wo hi aaye"). Set-up: About you →
+  Website? → Your business → About your trade → Make (Free / Standard). After the build: Design → Colours → Link → Ready (a 4-step bar on
+  each). Then "Website पूरी करें" (/poster/site/next, lib/site-finish.ts): Products → Photos & banner → Map & timings → UPI & social →
+  Reviews → Google, one step on screen, ✓ when the card shows it, "बाद में" to skip, "हो गया, आगे" on list pages. Products are NOT in set-up.
 - **Every page: a premium, professional look** (owner, 24 Oct 2026: "sabhi page ka look premium chahiye", "professional look banao").
   Rounded cards with a soft shadow, a gradient head where it fits, big clear tiles, compact fields. A form screen fits one phone
   screen with no scroll where possible. Optional fields stay closed behind a tick box and open only when ticked
