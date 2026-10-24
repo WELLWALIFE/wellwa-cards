@@ -1546,9 +1546,8 @@ export default function BuildCard() {
                 <button type="button" onClick={() => stepTo(1)} disabled={!!busy && busy !== "publish"} aria-label={T("Next design", "अगला design")}
                   className={`inline-flex shrink-0 items-center gap-1 rounded-xl border-2 px-3 text-sm font-bold disabled:opacity-60 ${viewed.length === 0 ? "design-glow border-amber bg-amber text-white" : "border-brand/60 bg-surface text-brand-ink"}`}><span className="hidden min-[400px]:inline">{T("Next", "अगला")}</span><ChevronRight className="h-5 w-5" /></button>
               </div>
-              <div className="flex items-center justify-between gap-2 px-1 text-xs font-semibold">
+              <div className="flex items-center justify-center gap-2 px-1 text-xs font-semibold">
                 <button type="button" onClick={() => setDesignOpen((o) => !o)} aria-expanded={designOpen} className="inline-flex items-center gap-1 text-muted"><Palette className="h-3.5 w-3.5" /> {designOpen ? T("Close list", "List बंद करें") : T("All 6 together", "सभी 6 एक साथ")}</button>
-                {!cardOnly && <Link href={`${ADVANCED_HREF}${existing?.id ? `?card=${encodeURIComponent(existing.id)}` : ""}`} className="inline-flex items-center gap-1 text-ai"><Sparkles className="h-3.5 w-3.5" /> {T("Premium website", "Premium website")}</Link>}
               </div>
               </>
             );
