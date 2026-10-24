@@ -8,6 +8,10 @@ Read this first. It is the state of the project on 12 Oct 2026, written for a se
 - The owner is not a developer. Give commands ready to paste. The Mac user is **not a sudoer**.
 - **Every text in the app: short and simple** (owner, 24 Oct 2026: "customer badi mahabharat nahi padhta"). One short line, not a
   paragraph; ticks instead of explanations; no "how it works" essays on a screen. Applies to every new screen and every change.
+- **Every page: a premium, professional look** (owner, 24 Oct 2026: "sabhi page ka look premium chahiye", "professional look banao").
+  Rounded cards with a soft shadow, a gradient head where it fits, big clear tiles, compact fields. A form screen fits one phone
+  screen with no scroll where possible. Optional fields stay closed behind a tick box and open only when ticked
+  (e.g. "WhatsApp number अलग है", "एक और number जोड़ें" on About you).
 
 ## Where things are
 - Repo on the Mac: `/Users/jsrao/Desktop/Wellwa Life/wellwa-cards`

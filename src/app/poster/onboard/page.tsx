@@ -16,7 +16,7 @@
 // the poster profile (posters, card, website), the account (the AI reads "about") and the card facts.
 import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Camera, Check, CheckCircle2, ChevronLeft, Globe, Layers, LoaderCircle, MapPin, Search, Sparkles, Store, TriangleAlert } from "lucide-react";
+import { Camera, Check, CheckCircle2, ChevronLeft, Globe, Layers, LoaderCircle, Mail, MapPin, Search, Sparkles, Store, TriangleAlert, User } from "lucide-react";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { api, authHeaders, isLoggedIn, setCurrentProfileId, uploadImage, type Profile } from "@/lib/poster-client";
 import { dataUrlToFile, shrinkForCrop } from "@/lib/image-utils";
@@ -51,6 +51,8 @@ import { Help, type HelpKey } from "@/components/poster/field-help";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
 const field = `mt-1 w-full ${box}`;
+/** The compact field of "About you" (one screen, no scroll). */
+const cField = "mt-1 w-full rounded-xl border border-border bg-surface px-3.5 py-2.5 text-base font-normal text-ink outline-none focus:border-brand focus:ring-2 focus:ring-brand/15";
 const GSTIN = /^\d{2}[A-Z]{5}\d{4}[A-Z][1-9A-Z]Z[0-9A-Z]$/;
 const ABOUT_MAX_WORDS = 150;
 const words = (s: string) => s.trim().split(/\s+/).filter(Boolean).length;
@@ -267,6 +269,9 @@ function Onboard() {
    *  name or trade (aboutIsStale). Holds the name + trade it was last tried for, so one try is made per name, never a loop. */
   const autoAbout = useRef("");
   const [needEmail, setNeedEmail] = useState(false);
+  /** "Add one more number" ticked (or a second number already there). */
+  const [showP2, setShowP2] = useState(false);
+  const p2Open = showP2 || !!you.phone2;
   const [email, setEmail] = useState("");
   const [busy, setBusy] = useState("");
   const [err, setErr] = useState("");
@@ -1593,7 +1598,7 @@ function Onboard() {
       </div>
       ) : <>
       <ProfileSteps current={screenInfo.chapter === "you" ? "you" : "business"} category={biz.category} screen={step === "highlights" ? "details" : step} skipped={skipped} onBack={step !== "you" ? stepBack : undefined} />
-      <div className="flex items-center justify-between gap-3">
+      {!(next && step === "you") && <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-semibold text-muted">{next ? T("Your details are needed for the card", "Card के लिए आपकी जानकारी चाहिए") : T("Setup", "सेटअप")}</p>
         {next ? (
           <span className="text-xs text-muted">{T("Fill once. The card and website are made from these.", "एक बार भरें। Card और website इन्हीं से बनते हैं।")}</span>
@@ -1602,7 +1607,7 @@ function Onboard() {
             {busy === "skip" ? T("Opening the app…", "App खुल रहा है…") : T("Skip for now →", "अभी छोड़ें →")}
           </button>
         )}
-      </div>
+      </div>}
       {skipErr && <FieldErr id="skip" msg={skipErr} />}
       </>}
 
@@ -1743,34 +1748,65 @@ function Onboard() {
           )}
         </section>
       ) : step === "you" ? (
-        <section className="space-y-4">
+        <section className="space-y-3">
+          {/* "About you" on one screen, no scroll, a premium look (owner, 24 Oct 2026): photo + name side by side, the WhatsApp and
+              second number stay closed until their box is ticked, and every line is short. */}
           {editing
-            ? <div><h1 className="text-2xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1><p className="text-sm text-muted">{T("One save changes them everywhere — your V-Card, your posters, your login and your partner ID. Your username stays the same.", "एक बार Save करने से हर जगह बदल जाएगा — V-Card, poster, login और partner ID। Username वही रहेगा।")}</p></div>
-            : head(T("About you", "आपके बारे में"), T("Your name, number and photo. They go on your card and website.", "आपका नाम, number और photo। यही card और website पर जाएँगे।"))}
-          <label className="block text-sm font-semibold">{T("Your name", "आपका नाम")} <span className="text-danger">*</span><Help k="name" /><input id="ob-in-yname" value={you.name} onChange={(e) => { if (!associate) { clearFE("yname"); setYou({ ...you, name: e.target.value }); } }} readOnly={!!associate} placeholder={T("e.g. Rajesh Sharma", "जैसे Rajesh Sharma")} className={`${field} ${associate ? "bg-surface2 text-muted" : ""} ${fe("yname") ? "border-danger" : ""}`} />
-            <FieldErr id="yname" msg={fe("yname")} />
-            {associate && <span className="mt-1 block text-[11px] font-normal text-muted">{T("As on your partner KYC — it cannot be changed here.", "आपके partner KYC के अनुसार — यहाँ नहीं बदलेगा।")}</span>}</label>
-          <label className="block text-sm font-semibold">{T("Mobile number", "Mobile number")} <span className="text-danger">*</span><Help k="phone" /><input id="ob-in-yphone" value={you.phone} onChange={(e) => { clearFE("yphone"); setYou({ ...you, phone: e.target.value }); }} inputMode="tel" placeholder={T("10-digit mobile", "10 अंकों का mobile")} readOnly={phoneLocked} className={`${field} ${phoneLocked ? "bg-black/[.04] text-muted" : ""} ${fe("yphone") ? "border-danger" : ""}`} /><FieldErr id="yphone" msg={fe("yphone")} />{phoneLocked && <span className="mt-1 block text-xs font-normal text-muted">{T("This is your login number. It cannot be changed here.", "यह आपका login number है। यहाँ बदला नहीं जा सकता।")}</span>}</label>
-          <div className="text-sm font-semibold">
-            <label className="flex items-center gap-2"><input type="checkbox" checked={you.waSame} onChange={(e) => { clearFE("ywa"); setYou({ ...you, waSame: e.target.checked }); }} className="h-4 w-4" /> {T("WhatsApp is the same number", "WhatsApp भी यही number है")}<Help k="whatsapp" /></label>
-            {!you.waSame && <input id="ob-in-ywa" value={you.whatsapp} onChange={(e) => { clearFE("ywa"); setYou({ ...you, whatsapp: e.target.value }); }} inputMode="tel" placeholder={T("WhatsApp number (10 digits)", "WhatsApp number (10 अंक)")} className={`${field} ${fe("ywa") ? "border-danger" : ""}`} />}
-            <FieldErr id="ywa" msg={fe("ywa")} />
+            ? <h1 className="text-xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1>
+            : <div><h1 className="text-xl font-bold tracking-tight">{T("About you", "आपके बारे में")}</h1><p className="text-xs text-muted">{T("Goes on your card and website.", "यही card और website पर आएगा।")}</p></div>}
+          <div className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+            <div className="flex items-center gap-3.5 bg-gradient-to-br from-brand-soft via-brand-soft/40 to-surface px-4 py-3.5">
+              <label className="relative shrink-0 cursor-pointer" aria-label={T("Your photo", "आपकी photo")}>
+                <span className={`grid h-[72px] w-[72px] place-items-center overflow-hidden rounded-full border-[3px] border-white bg-surface2 shadow-card ${photoErr?.kind === "photo" ? "ring-2 ring-danger" : ""}`}>
+                  {busy === "photo" ? <LoaderCircle className="h-5 w-5 animate-spin text-muted" /> : you.photo ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={you.photo} alt="" className="h-full w-full object-cover" />
+                  ) : <User className="h-8 w-8 text-muted" />}
+                </span>
+                <span className="absolute -bottom-0.5 -right-0.5 grid h-7 w-7 place-items-center rounded-full grad-brand text-white shadow-card"><Camera className="h-3.5 w-3.5" /></span>
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void choose(f, "photo"); }} />
+              </label>
+              <label className="block min-w-0 flex-1 text-xs font-semibold text-muted">{T("Your name", "आपका नाम")} <span className="text-danger">*</span><Help k="name" />
+                <input id="ob-in-yname" value={you.name} onChange={(e) => { if (!associate) { clearFE("yname"); setYou({ ...you, name: e.target.value }); } }} readOnly={!!associate} placeholder={T("e.g. Rajesh Sharma", "जैसे Rajesh Sharma")} className={`${cField} ${associate ? "bg-surface2 text-muted" : ""} ${fe("yname") ? "border-danger" : ""}`} />
+                <span className="mt-1 block text-[11px] font-normal">{associate ? T("As on your KYC", "KYC के अनुसार") : you.photo ? T("Tap the photo to change it", "photo बदलने के लिए उस पर दबाएँ") : T("Photo: tap the circle (optional)", "Photo: गोले पर दबाएँ (ज़रूरी नहीं)")}</span>
+              </label>
+            </div>
+            {(fe("yname") || photoErr?.kind === "photo") && <div className="px-4"><FieldErr id="yname" msg={fe("yname")} /><FieldErr id="photo" msg={photoErr?.kind === "photo" ? photoErr.msg : ""} /></div>}
+            <div className="space-y-2.5 px-4 pb-4 pt-3">
+              <label className="block text-xs font-semibold text-muted">{T("Mobile number", "Mobile number")} <span className="text-danger">*</span><Help k="phone" />
+                <input id="ob-in-yphone" value={you.phone} onChange={(e) => { clearFE("yphone"); setYou({ ...you, phone: e.target.value }); }} inputMode="tel" placeholder={T("10-digit mobile", "10 अंकों का mobile")} readOnly={phoneLocked} className={`${cField} ${phoneLocked ? "bg-surface2 text-muted" : ""} ${fe("yphone") ? "border-danger" : ""}`} />
+                <FieldErr id="yphone" msg={fe("yphone")} />
+              </label>
+              {/* Ticked = the box opens; unticked = it stays shut (owner, 24 Oct 2026: "jab check box me click kare to field open"). */}
+              <div className={`rounded-2xl border transition-colors ${!you.waSame ? "border-brand/50 bg-brand-soft/30" : "border-border"}`}>
+                <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 text-sm font-semibold">
+                  <input type="checkbox" checked={!you.waSame} onChange={(e) => { clearFE("ywa"); setYou({ ...you, waSame: !e.target.checked }); }} className="h-[18px] w-[18px] accent-[var(--color-brand)]" />
+                  <span className="flex-1">{T("WhatsApp number is different", "WhatsApp number अलग है")}</span><Help k="whatsapp" />
+                </label>
+                {!you.waSame && <div className="px-3 pb-3"><input id="ob-in-ywa" autoFocus value={you.whatsapp} onChange={(e) => { clearFE("ywa"); setYou({ ...you, whatsapp: e.target.value }); }} inputMode="tel" placeholder={T("WhatsApp number (10 digits)", "WhatsApp number (10 अंक)")} className={`${cField} mt-0 ${fe("ywa") ? "border-danger" : ""}`} /></div>}
+                {fe("ywa") && <div className="px-3 pb-3"><FieldErr id="ywa" msg={fe("ywa")} className="mt-0" /></div>}
+              </div>
+              <div className={`rounded-2xl border transition-colors ${p2Open ? "border-brand/50 bg-brand-soft/30" : "border-border"}`}>
+                <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 text-sm font-semibold">
+                  <input type="checkbox" checked={p2Open} onChange={(e) => { clearFE("yphone2"); setShowP2(e.target.checked); if (!e.target.checked) setYou({ ...you, phone2: "" }); }} className="h-[18px] w-[18px] accent-[var(--color-brand)]" />
+                  <span className="flex-1">{T("Add one more number", "एक और number जोड़ें")}</span>
+                </label>
+                {p2Open && <div className="px-3 pb-3"><input id="ob-in-yphone2" autoFocus={showP2 && !you.phone2} value={you.phone2} onChange={(e) => { clearFE("yphone2"); setYou({ ...you, phone2: e.target.value }); }} inputMode="tel" placeholder={T("Second number (10 digits)", "दूसरा number (10 अंक)")} className={`${cField} mt-0 ${fe("yphone2") ? "border-danger" : ""}`} /><FieldErr id="yphone2" msg={fe("yphone2")} /></div>}
+              </div>
+              {needEmail ? (
+                <label className="block text-xs font-semibold text-muted">Email <span className="font-normal">({T("optional", "ज़रूरी नहीं")})</span><Help k="email" />
+                  <input id="ob-in-yemail" value={email} onChange={(e) => { clearFE("yemail"); setEmail(e.target.value.trim()); }} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharma@gmail.com", "जैसे sharma@gmail.com")} className={`${cField} ${fe("yemail") ? "border-danger" : ""}`} />
+                  <FieldErr id="yemail" msg={fe("yemail")} />
+                </label>
+              ) : email ? (
+                <p className="flex items-center gap-2 rounded-2xl bg-surface2 px-3 py-2.5 text-sm"><Mail className="h-4 w-4 shrink-0 text-muted" /><span className="min-w-0 flex-1 truncate">{email}</span><CheckCircle2 className="h-4 w-4 shrink-0 text-good" /></p>
+              ) : null}
+            </div>
           </div>
-          <label className="block text-sm font-semibold">{T("Another number", "एक और number")} <span className="font-normal text-muted">({T("optional", "optional")})</span>
-            <input id="ob-in-yphone2" value={you.phone2} onChange={(e) => { clearFE("yphone2"); setYou({ ...you, phone2: e.target.value }); }} inputMode="tel" placeholder={T("10-digit number, if you want a second one on the website", "10 अंकों का number — website पर दूसरा number चाहिए तो")} className={`${field} ${fe("yphone2") ? "border-danger" : ""}`} />
-            <FieldErr id="yphone2" msg={fe("yphone2")} />
-          </label>
-          <label className="block text-sm font-semibold">Email{!needEmail && <span className="font-normal text-muted"> ({T("from your sign-up", "sign-up से")})</span>}<Help k="email" />
-            <input id="ob-in-yemail" value={email} onChange={(e) => { clearFE("yemail"); setEmail(e.target.value.trim()); }} readOnly={!needEmail} inputMode="email" autoCapitalize="none" spellCheck={false} placeholder={T("e.g. sharma@gmail.com", "जैसे sharma@gmail.com")} className={`${field} ${needEmail ? "" : "bg-surface2 text-muted"} ${fe("yemail") ? "border-danger" : ""}`} />
-            <FieldErr id="yemail" msg={fe("yemail")} />
-            {needEmail && <span className="mt-1 block text-xs font-normal text-muted">{T("Customers can email you from your card.", "Customers card से आपको email कर सकेंगे।")}</span>}
-          </label>
-          <div><div className="flex items-center"><Photo url={you.photo} label={T("your photo", "अपनी photo")} hint={T("a clear photo of your face", "चेहरे की साफ़ photo")} round busy={busy === "photo"} onPick={(f) => choose(f, "photo")} hi={hi} /><Help k="photo" /></div>
-            <FieldErr id="photo" msg={photoErr?.kind === "photo" ? photoErr.msg : ""} /></div>
           {username === null && <ClaimUsername onDone={async () => { await bumpServerBase(true); return loadUsername(); }} />}
           {err && <p className="text-sm text-danger">{err}</p>}
           <button type="button" onClick={nextFromYou} disabled={busy === "you"}
-            className="w-full rounded-2xl grad-brand py-4 text-base font-semibold text-white disabled:opacity-70">
+            className="w-full rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card disabled:opacity-70">
             {busy === "you" ? T("Saving…", "Save हो रहा है…") : editing ? T("Save", "Save करें") : T("Next →", "आगे →")}
           </button>
         </section>
