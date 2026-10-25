@@ -12,6 +12,9 @@ import {
   Smartphone, Sparkles, Star, UserRoundPlus, Workflow,
 } from "lucide-react";
 import { SERVICES } from "@/lib/services";
+import { ALL_TEMPLATES } from "@/lib/template-catalog";
+import { NOT_PUBLIC_TEMPLATES } from "@/lib/templates";
+import { countBy, toLite } from "@/lib/template-lite";
 import { SAAS_PLANS, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
@@ -101,6 +104,12 @@ function Toast({ icon: Icon, color, title, sub, className }: { icon: typeof Bot;
 
 export default function Home() {
   const growth = SAAS_PLANS.growth;
+  // One sample website per line of work, the biggest lines first (the whole list is on /templates).
+  const tplAll = ALL_TEMPLATES.filter((t) => !t.draft && !t.brand && !NOT_PUBLIC_TEMPLATES.has(t.key) && !/direct selling|distributor/i.test(`${t.category} ${t.name}`)).map(toLite);
+  const FIRST = ["salon", "doctor", "gym", "restaurant", "real estate", "clothing", "coaching", "dentist", "grocery", "photograph", "mobile", "jewel", "electric", "cafe", "ca /", "spa"];
+  const rank = (n: string) => { const i = FIRST.findIndex((f) => n.toLowerCase().includes(f)); return i < 0 ? 99 : i; };
+  const tplCats = countBy(tplAll, "trade").sort((a, b) => rank(a.name) - rank(b.name));
+  const tplShow = tplCats.slice(0, 8).map((c) => tplAll.find((t) => t.trade === c.name)!);
   return (
     <div>
       {/* ---------------- Hero ---------------- */}
@@ -162,6 +171,37 @@ export default function Home() {
           <p className="text-xs mono uppercase tracking-wider text-faint shrink-0">Made for</p>
           <div className="flex flex-wrap gap-x-7 gap-y-2 text-sm font-medium text-muted">
             {industries.map((i) => <span key={i}>{i}</span>)}
+          </div>
+        </div>
+      </section>
+
+      {/* ---------------- Templates: the website of your own line of work ---------------- */}
+      <section className="bg-bg border-b border-border">
+        <div className="max-w-6xl mx-auto px-5 py-14 md:py-20">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-brand-ink">Ready-made websites</p>
+            <h2 className="mt-3 text-3xl md:text-4xl font-semibold tracking-tight text-balance">See a website made for your kind of business.</h2>
+            <p className="mt-3 text-muted">{tplAll.length}+ designs for {tplCats.length} lines of work. Pick yours, look at it as a real website, and make it yours in minutes.</p>
+          </div>
+          <div className="mt-6 flex flex-wrap gap-2">
+            {tplCats.slice(0, 16).map((c) => <Link key={c.name} href={`/templates?c=${encodeURIComponent(c.name)}`} className="rounded-full border border-border bg-surface px-3.5 py-1.5 text-sm font-medium text-muted hover:text-ink hover:shadow-card">{c.name}</Link>)}
+            <Link href="/templates" className="rounded-full bg-brand px-3.5 py-1.5 text-sm font-semibold text-white">All {tplAll.length} →</Link>
+          </div>
+          <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-4">
+            {tplShow.map((t) => (
+              <Link key={t.key} href={`/templates/${t.key}/site`} className="group overflow-hidden rounded-2xl border border-border bg-surface shadow-card transition-all hover:-translate-y-0.5 hover:shadow-float">
+                <div className="relative h-24 overflow-hidden md:h-28" style={{ background: `linear-gradient(135deg, ${t.accent}, ${t.accent}bb)` }}>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  {t.cover && <img src={t.cover} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover" />}
+                  <span className="absolute left-3 top-3 grid h-9 w-9 place-items-center rounded-lg bg-surface text-xl shadow-card">{t.emoji}</span>
+                </div>
+                <div className="p-3.5">
+                  <p className="truncate text-sm font-semibold">{t.trade}</p>
+                  <p className="truncate text-xs text-muted">{t.group}</p>
+                  <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold" style={{ color: t.accent }}>See website <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" /></span>
+                </div>
+              </Link>
+            ))}
           </div>
         </div>
       </section>
