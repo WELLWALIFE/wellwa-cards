@@ -192,6 +192,12 @@ export default function WebsiteEditPage() {
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
   /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
   const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
+  /** The Premium page's background: light paper or dark (a dark page drops the ivory-paper "luxe" flag). */
+  function setTone(t: "light" | "dark") {
+    if (!adv) return;
+    const { luxe: _l, ...rest } = (adv.palette ?? {}) as { luxe?: boolean } & Record<string, unknown>; void _l;
+    setAdv({ palette: t === "dark" ? { ...rest, tone: "dark" } : { ...(adv.palette ?? {}), tone: "light" } });
+  }
   const pickColour = (key: string, color?: string) => {
     focus({ top: true });
     const nextStyle = { ...style, palette: key, ...(color !== undefined ? { color } : {}) };
@@ -386,7 +392,23 @@ export default function WebsiteEditPage() {
       </div>
       {group === "design" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
-          <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
+          <div className="flex items-center justify-between gap-2 px-1">
+            <p className="flex items-center gap-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
+            {/* Background light / dark, right next to the colours (owner, 25 Oct 2026): a small two-part switch. Premium designs only. */}
+            {adv && (() => {
+              const pal = (adv.palette ?? {}) as { key?: string; tone?: string; luxe?: boolean };
+              const cur = pal.tone === "dark" ? "dark" : "light";
+              const noDark = pal.key === "ivory" || pal.key === "pearl";
+              return (
+                <div className="inline-flex rounded-full border border-border bg-surface2 p-0.5" role="group" aria-label={hi ? "Background" : "Background"}>
+                  <button type="button" onClick={() => setTone("light")} aria-pressed={cur === "light"} title={hi ? "हल्का background" : "Light background"}
+                    className={`grid h-7 w-7 place-items-center rounded-full transition ${cur === "light" ? "bg-white text-[#d97706] shadow-sm" : "text-muted"}`}><Sun className="h-4 w-4" /></button>
+                  <button type="button" onClick={() => setTone("dark")} disabled={noDark} aria-pressed={cur === "dark"} title={hi ? "गहरा background" : "Dark background"}
+                    className={`grid h-7 w-7 place-items-center rounded-full transition disabled:opacity-30 ${cur === "dark" ? "bg-[#15171c] text-white shadow-sm" : "text-muted"}`}><Moon className="h-4 w-4" /></button>
+                </div>
+              );
+            })()}
+          </div>
           <div className="mt-1.5 flex gap-2.5 overflow-x-auto pb-1">
             <Swatch p={brand} on={paletteKey === "brand"} onClick={() => pickColour("brand")} label={hi ? "आपका" : "Yours"} />
             {SITE_PALETTES.filter((p) => p.key !== "brand").map((p) => <Swatch key={p.key} p={p} on={paletteKey === p.key} onClick={() => pickColour(p.key)} label={hi ? p.hi : p.name} />)}
@@ -444,25 +466,6 @@ export default function WebsiteEditPage() {
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
               site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
           {adv ? (<>
-            {/* The page's background: light paper or dark (owner, 25 Oct 2026: "pura background black dikh raha — badal sakte hain?"). */}
-            <div>
-              <p className="text-sm font-semibold">{hi ? "Background (पीछे का रंग)" : "Background"}</p>
-              <div className="mt-2 grid grid-cols-2 gap-2">
-                {(["light", "dark"] as const).map((t) => {
-                  const pal = (adv.palette ?? {}) as { key?: string; tone?: string; luxe?: boolean };
-                  const on = (pal.tone === "dark" ? "dark" : "light") === t;
-                  const off = t === "dark" && (pal.key === "ivory" || pal.key === "pearl");
-                  return (
-                    <button key={t} type="button" disabled={off} onClick={() => { const { luxe: _l, ...rest } = pal; void _l; setAdv({ palette: t === "dark" ? { ...rest, tone: "dark" } : { ...pal, tone: "light" } }); }}
-                      className={`flex items-center gap-2 rounded-xl border p-2.5 text-sm font-semibold disabled:opacity-40 ${on ? "border-brand ring-2 ring-brand/30" : "border-border"}`}>
-                      <span className={`grid h-8 w-8 place-items-center rounded-lg ${t === "dark" ? "bg-[#15171c] text-white" : "bg-[#f7f5f0] text-[#333] ring-1 ring-border"}`}>{t === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</span>
-                      {t === "dark" ? (hi ? "गहरा (Dark)" : "Dark") : (hi ? "हल्का (Light)" : "Light")}
-                      {on && <Check className="ml-auto h-4 w-4 text-brand" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
             <div>
               <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
