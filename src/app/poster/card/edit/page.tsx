@@ -18,6 +18,7 @@ import { usePlan } from "@/lib/plan";
 import { CardLink } from "@/components/poster/card-sheet";
 import { LiveWindow } from "@/components/poster/live-window";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
+import { TabHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 
@@ -108,25 +109,29 @@ export default function CardEditPage() {
     finally { setBusy(false); }
   }
 
-  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: { key: Tab; label: string; Icon: typeof Palette }[] }[] = [
-    { key: "design", label: T("Design", "डिज़ाइन"), Icon: Paintbrush, tabs: [{ key: "look", label: T("Look & colour", "Look और रंग"), Icon: Palette }] },
+  // Each part says what it changes and where it shows (owner, 25 Oct 2026: card + website, or the card only).
+  type TabDef = { key: Tab; label: string; Icon: typeof Palette; sub: string; scope: Scope };
+  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
+    { key: "design", label: T("Design", "डिज़ाइन"), Icon: Paintbrush, tabs: [
+      { key: "look", label: T("Look & colour", "Look और रंग"), Icon: Palette, sub: T("12 looks and your colour — the website keeps its own", "12 look और आपका रंग — website का अपना अलग रहता है"), scope: "card" },
+    ] },
     { key: "content", label: T("Content", "सामग्री"), Icon: Camera, tabs: [
-      { key: "text", label: T("Text & pages", "Text और pages"), Icon: FileText },
-      { key: "photos", label: T("Photos & banner", "Photos और banner"), Icon: Camera },
-      { key: "products", label: T("Products & prices", "Products और दाम"), Icon: Package },
-      { key: "about", label: T("About & logo", "परिचय और logo"), Icon: BookUser },
-      { key: "details", label: T("What you offer", "आप क्या देते हैं"), Icon: ListChecks },
-      { key: "reviews", label: T("Reviews", "Reviews"), Icon: Star },
+      { key: "text", label: T("Text & pages", "Text और pages"), Icon: FileText, sub: T("Change any page's words, add a new page", "किसी भी page के शब्द बदलें, नया page जोड़ें"), scope: "both" },
+      { key: "photos", label: T("Photos & banner", "Photos और banner"), Icon: Camera, sub: T("The card's top picture and the photo gallery", "Card के ऊपर की picture और photo gallery"), scope: "both" },
+      { key: "products", label: T("Products & prices", "Products और दाम"), Icon: Package, sub: T("Add products, change prices, add photos", "Products जोड़ें, दाम बदलें, photo लगाएँ"), scope: "both" },
+      { key: "about", label: T("About & logo", "परिचय और logo"), Icon: BookUser, sub: T("A few lines about you, your logo", "आपके बारे में कुछ लाइनें, logo"), scope: "both" },
+      { key: "details", label: T("What you offer", "आप क्या देते हैं"), Icon: ListChecks, sub: T("Your work and why people choose you", "आपका काम और लोग आपको क्यों चुनते हैं"), scope: "both" },
+      { key: "reviews", label: T("Reviews", "Reviews"), Icon: Star, sub: T("Customer reviews and the Google review link", "ग्राहकों के reviews और Google review link"), scope: "both" },
     ] },
     { key: "contact", label: T("Contact", "संपर्क"), Icon: Phone, tabs: [
-      { key: "you", label: T("Name, number, photo", "नाम, number, photo"), Icon: User },
-      { key: "where", label: T("Timings & address", "समय और पता"), Icon: Clock },
-      { key: "links", label: T("UPI & social", "UPI और social"), Icon: Wallet },
-      { key: "buttons", label: T("Buttons (add / remove)", "Buttons (जोड़ें / हटाएँ)"), Icon: MousePointerClick },
+      { key: "you", label: T("Name, number, photo", "नाम, number, photo"), Icon: User, sub: T("Also changes on your posters", "Poster पर भी बदलेगा"), scope: "both" },
+      { key: "where", label: T("Timings & address", "समय और पता"), Icon: Clock, sub: T("City, address, map pin, opening hours", "शहर, पता, map pin, खुलने का समय"), scope: "both" },
+      { key: "links", label: T("UPI & social", "UPI और social"), Icon: Wallet, sub: T("So people can pay you and follow you", "ताकि लोग pay और follow कर सकें"), scope: "both" },
+      { key: "buttons", label: T("Buttons (add / remove)", "Buttons (जोड़ें / हटाएँ)"), Icon: MousePointerClick, sub: T("Call, WhatsApp, Email, Map … add, remove, reorder", "Call, WhatsApp, Email, Map … जोड़ें, हटाएँ, क्रम बदलें"), scope: "both" },
     ] },
     { key: "settings", label: T("Settings", "Settings"), Icon: Settings, tabs: [
-      { key: "offer", label: T("Offer / pop-up", "Offer / pop-up"), Icon: Megaphone },
-      { key: "trade", label: T("Business name & type", "Business का नाम और काम"), Icon: Store },
+      { key: "offer", label: T("Offer / pop-up", "Offer / pop-up"), Icon: Megaphone, sub: T("A line on top or a pop-up: “Diwali 20% off”", "ऊपर पट्टी या pop-up: “Diwali 20% छूट”"), scope: "both" },
+      { key: "trade", label: T("Business name & type", "Business का नाम और काम"), Icon: Store, sub: T("Your business name and what you do", "आपके business का नाम और काम"), scope: "both" },
     ] },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
@@ -170,10 +175,11 @@ export default function CardEditPage() {
           {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => pick(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
         </div>
       )}
+      {(() => { const d = TABS.find((x) => x.key === tab); return d ? <TabHead Icon={d.Icon} title={d.label} sub={d.sub} scope={d.scope} hi={hi} /> : null; })()}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {T("Saved — it is live on your card", "Save हो गया — card पर live है")}</p>}
 
       {tab === "look" && (
-        <section className="space-y-3 rounded-xl border border-border p-3">
+        <section className="space-y-3 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <p className="text-sm font-semibold">{T("Card look", "Card का look")}</p>
           <div className="grid grid-cols-3 gap-2">
             {LOOKS.map((l) => (
@@ -198,12 +204,12 @@ export default function CardEditPage() {
           onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />
       )}
       {tab === "photos" && (
-        <section className="rounded-xl border border-border p-3">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <SitePhotos hi={hi} cardId={card.id} scope="card" onChanged={() => void refresh()} />
         </section>
       )}
       {tab === "offer" && (
-        <section className="rounded-xl border border-border p-3">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <NoticeBox card={card} url={link} locked={!paid} onChanged={(c) => setCard(c)} />
         </section>
       )}

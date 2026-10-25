@@ -58,7 +58,7 @@ export default function SiteSeoPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         {/* Back = the screen the owner was just on (Card & Website, first screen or Edit); opened fresh, Card & Website. */}
-        <button type="button" onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" data-embed-hide onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Show on Google", "Google पर दिखें")}</h1>
       </div>
       <p className="text-sm text-muted">{T("Tell Google where you are and what you do. Then people who search for your work in your city can find you.", "Google को बताइए आप कहाँ हैं और क्या काम करते हैं, ताकि आपके शहर में आपका काम खोजने वाले आपको ढूँढ सकें।")}</p>

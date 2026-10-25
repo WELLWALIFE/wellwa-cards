@@ -21,13 +21,15 @@ import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
+import { TabHead, type Scope } from "@/components/poster/edit-parts";
+import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
-type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
+type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
 type Group = "design" | "content" | "contact" | "settings";
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
@@ -310,38 +312,53 @@ export default function WebsiteEditPage() {
   if (!s.hasCard) return null;
 
   // Everything about the website on this one page (owner, 25 Oct 2026: "saari cheez yahi par"), in four groups.
-  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: { key: Tab; label: string; Icon: typeof Palette }[] }[] = [
+  // Everything about the website on this one page (owner, 25 Oct 2026: "saari cheez yahi par"), in four groups. Each part says
+  // what it changes and where it shows (card + website, or the website only).
+  type TabDef = { key: Tab; label: string; Icon: typeof Palette; sub: string; scope: Scope };
+  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: TabDef[] }[] = [
     { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: [
-      { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette },
-      { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
-      { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
-      { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
+      { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette, sub: hi ? "अक्षर, background, कोने — और पसंद की site का look" : "Letters, background, corners — and copy a look you like", scope: "site" },
+      { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon, sub: hi ? "बड़ी heading, banners और ऊपर की photo" : "The big heading, the banners and the top photo", scope: "site" },
+      { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered, sub: hi ? "Home page के हिस्सों का क्रम — दिखाएँ या छुपाएँ" : "Order of the home page parts — show or hide each", scope: "site" },
+      { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files, sub: hi ? "Website पर कौन से pages दिखें" : "Which pages show on the website", scope: "site" },
     ] },
     { key: "content", label: hi ? "सामग्री" : "Content", Icon: Camera, tabs: [
-      { key: "text", label: hi ? "Text और pages" : "Text & pages", Icon: FileText },
-      { key: "photos", label: hi ? "Photos और banner" : "Photos & banners", Icon: Camera },
-      { key: "products", label: hi ? "Products और दाम" : "Products & prices", Icon: Package },
-      { key: "about", label: hi ? "परिचय और logo" : "About & logo", Icon: BookUser },
-      { key: "details", label: hi ? "आप क्या देते हैं" : "What you offer", Icon: ListChecks },
-      { key: "reviews", label: hi ? "Reviews" : "Reviews", Icon: Star },
+      { key: "text", label: hi ? "Text और pages" : "Text & pages", Icon: FileText, sub: hi ? "किसी भी page के शब्द बदलें, नया page जोड़ें" : "Change any page's words, add a new page", scope: "both" },
+      { key: "photos", label: hi ? "Photos और banner" : "Photos & banners", Icon: Camera, sub: hi ? "ऊपर के banners और photo gallery" : "Banners on top and the photo gallery", scope: "both" },
+      { key: "products", label: hi ? "Products और दाम" : "Products & prices", Icon: Package, sub: hi ? "Products जोड़ें, दाम बदलें, photo लगाएँ" : "Add products, change prices, add photos", scope: "both" },
+      { key: "about", label: hi ? "परिचय और logo" : "About & logo", Icon: BookUser, sub: hi ? "आपके बारे में कुछ लाइनें, logo" : "A few lines about you, your logo", scope: "both" },
+      { key: "details", label: hi ? "आप क्या देते हैं" : "What you offer", Icon: ListChecks, sub: hi ? "आपका काम और लोग आपको क्यों चुनते हैं" : "Your work and why people choose you", scope: "both" },
+      { key: "reviews", label: hi ? "Reviews" : "Reviews", Icon: Star, sub: hi ? "ग्राहकों के reviews और Google review link" : "Customer reviews and the Google review link", scope: "both" },
     ] },
     { key: "contact", label: hi ? "संपर्क" : "Contact", Icon: Phone, tabs: [
-      { key: "you", label: hi ? "नाम, number, photo" : "Name, number, photo", Icon: User },
-      { key: "where", label: hi ? "समय और पता" : "Timings & address", Icon: Clock },
-      { key: "links", label: hi ? "UPI और social" : "UPI & social", Icon: Wallet },
-      { key: "buttons", label: hi ? "Buttons (जोड़ें / हटाएँ)" : "Buttons (add / remove)", Icon: MousePointerClick },
+      { key: "you", label: hi ? "नाम, number, photo" : "Name, number, photo", Icon: User, sub: hi ? "Poster पर भी बदलेगा" : "Also changes on your posters", scope: "both" },
+      { key: "where", label: hi ? "समय और पता" : "Timings & address", Icon: Clock, sub: hi ? "शहर, पता, map pin, खुलने का समय" : "City, address, map pin, opening hours", scope: "both" },
+      { key: "links", label: hi ? "UPI और social" : "UPI & social", Icon: Wallet, sub: hi ? "ताकि लोग pay और follow कर सकें" : "So people can pay you and follow you", scope: "both" },
+      { key: "buttons", label: hi ? "Buttons (जोड़ें / हटाएँ)" : "Buttons (add / remove)", Icon: MousePointerClick, sub: hi ? "Call, WhatsApp, Email, Map … जोड़ें, हटाएँ, क्रम बदलें" : "Call, WhatsApp, Email, Map … add, remove, reorder", scope: "both" },
     ] },
     { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: [
-      { key: "offer", label: hi ? "Offer / pop-up" : "Offer / pop-up", Icon: Megaphone },
-      { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe },
-      { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search },
-      { key: "trade", label: hi ? "Business का नाम और काम" : "Business name & type", Icon: Store },
+      { key: "offer", label: hi ? "Offer / pop-up" : "Offer / pop-up", Icon: Megaphone, sub: hi ? "ऊपर पट्टी या pop-up: “Diwali 20% छूट”" : "A line on top or a pop-up: “Diwali 20% off”", scope: "both" },
+      { key: "website", label: hi ? "Website ON/OFF और Premium" : "Website on/off & Premium", Icon: Sparkles, sub: hi ? "Computer पर website दिखे या नहीं; Premium design" : "Show the website on computers; the Premium design", scope: "site" },
+      { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe, sub: hi ? "www.yourshop.com" : "www.yourshop.com", scope: "site" },
+      { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search, sub: hi ? "अपने शहर में Google पर मिलें" : "Be found on Google in your city", scope: "site" },
+      { key: "trade", label: hi ? "Business का नाम और काम" : "Business name & type", Icon: Store, sub: hi ? "आपके business का नाम और काम" : "Your business name and what you do", scope: "both" },
     ] },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setTab(t); };
   const embedSrc = EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
+  const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
+  async function setEnabled(on: boolean) {
+    if (!s?.hasCard) return;
+    setBusy("enabled"); setNote(null);
+    try {
+      const r = await api<{ error?: string }>("/api/site/status", { method: "PATCH", json: { card_id: s.cardId, enabled: on } });
+      if (!r.ok) { say("ref", r.data?.error || (hi ? "Save नहीं हुआ — दोबारा try करें।" : "Could not save. Try again.")); return; }
+      await refresh();
+    } catch { say("ref", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
+    finally { setBusy(""); }
+  }
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   return (
@@ -426,6 +443,7 @@ export default function WebsiteEditPage() {
       <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => pick(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
       </div>
+      {(() => { const d = TABS.find((x) => x.key === tab); return d ? <TabHead Icon={d.Icon} title={d.label} sub={d.sub} scope={d.scope} hi={hi} /> : null; })()}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {hi ? "Save हो गया — website पर live है" : "Saved — it is live on your website"}</p>}
 
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
@@ -437,17 +455,28 @@ export default function WebsiteEditPage() {
           onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />
       )}
       {tab === "photos" && (
-        <section className="rounded-xl border border-border p-3">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <SitePhotos hi={hi} cardId={s.cardId} scope="site" onChanged={() => void refresh()} />
         </section>
       )}
       {tab === "offer" && (
-        <section className="rounded-xl border border-border p-3">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard((cur) => (cur ? keepTouched(c, cur, touched.current) : c))} />
         </section>
       )}
+      {tab === "website" && (
+        <section className="space-y-3 rounded-2xl border border-border bg-surface p-3 shadow-card">
+          <label className="flex items-center justify-between gap-3 rounded-xl bg-surface2 px-3 py-2.5">
+            <span><span className="block text-sm font-semibold">{hi ? "Computer पर website" : "Website on computers"}</span>
+              <span className="text-[11px] text-muted">{siteOn ? (hi ? "ON — computer पर website, phone पर card" : "ON — website on computers, card on phones") : (hi ? "OFF — हर जगह card दिखता है" : "OFF — the card shows everywhere")}</span></span>
+            <input type="checkbox" className="h-5 w-5" checked={siteOn} disabled={busy === "enabled"} onChange={(e) => void setEnabled(e.target.checked)} />
+          </label>
+          {line("ref")}
+          <AdvancedEntry cardId={s.cardId} fetchState />
+        </section>
+      )}
       {tab === "domain" && (
-        <section className="rounded-xl border border-border p-3">
+        <section className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           {domainOk || customDomain
             ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={customDomain || undefined} />
             : <p className="text-sm text-muted">{hi ? "अपना web address (www.yourshop.com) Growth plan के साथ आता है।" : "Your own web address (www.yourshop.com) comes with the Growth plan."}</p>}
@@ -455,7 +484,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "look" && (
-        <section className="space-y-5 rounded-xl border border-border p-3">
+        <section className="space-y-5 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
           <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href={adv ? "/poster/site/advanced" : "/poster/card/build?improve=1"} className="font-semibold text-brand-ink">{adv ? (hi ? "Premium design" : "Premium design") : (hi ? "Website का design" : "Website design")}</Link>.</p>
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
@@ -517,7 +546,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "hero" && (
-        <section className="space-y-4 rounded-xl border border-border p-3">
+        <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <SlidesEditor hi={hi} card={card} images={s.images} slides={site.hero?.slides ?? []} onChange={(slides) => setHero({ slides })} cardId={s.cardId} />
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "सबसे ऊपर की बड़ी लाइन" : "Big line at the top"}</span><input value={site.hero?.headline ?? ""} onChange={(e) => setHero({ headline: e.target.value })} placeholder={s.defaults.headline} maxLength={90} className={field} /></label>
           <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "बड़ी लाइन के नीचे 1–2 लाइन" : "One or two lines under the big line"}</span><textarea value={site.hero?.sub ?? ""} onChange={(e) => setHero({ sub: e.target.value })} placeholder={s.defaults.sub} rows={2} maxLength={240} className={field} /></label>
@@ -565,7 +594,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "home" && (
-        <section className="space-y-4 rounded-xl border border-border p-3">
+        <section className="space-y-4 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <div>
             <p className="text-sm font-semibold">{hi ? "पहले पेज के हिस्से" : "Sections of the first page"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "ऊपर-नीचे करें या छुपाएँ। शब्द बदलने के लिए पूरा editor खोलें।" : "Move up or down, or hide. To change the words, open the full editor."}</p>
@@ -601,7 +630,7 @@ export default function WebsiteEditPage() {
       )}
 
       {tab === "pages" && (
-        <section className="space-y-2 rounded-xl border border-border p-3">
+        <section className="space-y-2 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
           <p className="text-sm font-semibold">{hi ? "वेबसाइट पर कौन से pages दिखें" : "Pages shown on the website"}</p>
           {s.pages.map((p) => {
             const h = new Set(site.hidden ?? []);

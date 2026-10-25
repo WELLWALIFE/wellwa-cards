@@ -156,7 +156,7 @@ export default function TestimonialsPage() {
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         {/* An open add / edit form closes first (it has its own ✕); otherwise Back = the screen the owner was just on. */}
-        <button type="button" onClick={() => (draft ? openDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
+        <button type="button" data-embed-hide onClick={() => (draft ? openDraft(null) : goBack(router, "/poster/create"))} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="min-w-0 flex-1 text-xl font-bold">{s.title}</h1>
         {!draft && <button type="button" onClick={newDraft} className="inline-flex items-center gap-1 rounded-full grad-brand px-3.5 py-1.5 text-sm font-semibold text-white shadow-card"><Plus className="h-4 w-4" /> {s.add}</button>}
       </div>

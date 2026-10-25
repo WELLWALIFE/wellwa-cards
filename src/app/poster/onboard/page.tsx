@@ -1684,7 +1684,7 @@ function Onboard() {
           onApply={(d) => upload(d, crop.kind)} onCancel={() => setCrop(null)} />
       )}
       {editing ? (
-      <div className="flex items-center justify-between gap-3">
+      <div data-embed-hide className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-1 text-xs font-semibold text-muted"><button type="button" onClick={() => { clearDraft(); goBack(router, back); }} className="-ml-1 mr-0.5 text-ink" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>{T("Edit", "बदलें")} · {step === "extras" && part === "links" ? T("UPI & social links", "UPI और social links") : step === "extras" && part === "photos" ? T("Photos & banner", "Photos और banner") : step === "details" ? T("What you offer & why people choose you", "आप क्या देते हैं और लोग आपको क्यों चुनते हैं") : hi ? screenInfo.hi : screenInfo.en}</p>
         <button type="button" onClick={() => { clearDraft(); goBack(router, back); }} className="rounded-full border border-border px-3 py-1.5 text-xs font-semibold text-muted hover:text-ink">{T("Cancel", "रहने दें")}</button>
       </div>
