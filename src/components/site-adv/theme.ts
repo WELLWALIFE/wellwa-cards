@@ -160,6 +160,8 @@ export const THEME_CSS = `
 /* ---- ink: the field the dark sections stand on (a glow of the page's own hue, never a stock gradient) ---- */
 .adv-sec[data-tone=ink]{background-image:radial-gradient(70% 90% at 100% 0%,color-mix(in oklab,var(--accent) 24%,transparent),transparent 62%),radial-gradient(55% 70% at 0% 100%,color-mix(in oklab,var(--accent-2) 14%,transparent),transparent 65%)}
 .adv-sec[data-tone=ink] :focus-visible,.hero-dark :focus-visible{outline-color:var(--hero-text)}
+/* The footer wears the website's own colour, deep (owner, 25 Oct 2026: "theme, colour kuch bhi change karo, footer black hi rahta hai"): a dark shade of the chosen hue, white letters still read. */
+.site[data-adv] #adv-footer{--hero-ink:oklch(.27 .085 var(--h));background-color:var(--hero-ink);background-image:radial-gradient(60% 80% at 100% 0%,color-mix(in oklab,var(--accent) 22%,transparent),transparent 65%)}
 /* On a light page the accent is a mid tone (about 3:1 on the ink field): inside ink it steps up to a light one, and what sits ON an accent fill turns to ink. */
 @supports (color:oklch(from red l c h)){.site[data-adv]{--accent-ink:oklch(from var(--accent) max(l,.76) c h)}.adv-sec[data-tone=ink],.hero-dark{--accent:var(--accent-ink);--on-accent:var(--hero-ink)}}
 @media (min-width:1024px){
