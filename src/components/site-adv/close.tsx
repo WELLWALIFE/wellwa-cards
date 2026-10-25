@@ -823,7 +823,7 @@ function FtQuick({ m, x, className = "" }: { m: FooterModel; x: AdvCtx; classNam
 function FtContact({ m, x, className = "" }: { m: FooterModel; x: AdvCtx; className?: string }) {
   if (!m.contact.length) return null;
   return (
-    <ul className={`ft-list ${className}`}>
+    <ul className={`ft-list ft-contact ${className}`}>
       {m.contact.map((i) => (
         <li key={i.id}>
           {i.href
@@ -1405,6 +1405,21 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-up{transform:rotate(-90deg)}
 @media (min-width:768px){.ft-legal{padding-bottom:var(--s5)}}
 
+/* ---- footer on a phone: closer and tidier (owner, 25 Oct 2026: "footer ke link bade khule khule, mobile me unmanaged") ----
+   Links sit closer (still a 34px tap row), headings nearer their lists, and the short "Explore" list shares a row with the next
+   column instead of each column taking the whole width. */
+@media (max-width:767px){
+  .ft{padding-top:2.5rem}
+  .ft-h{margin:0 0 var(--s2)}
+  .ft-list{gap:0}
+  .ft-list a,.ft-plain{padding-block:.15rem;min-height:30px}
+  .ft-blurb{margin-top:var(--s3)}
+  .ft-soc{margin-top:var(--s4)}
+  .ft-soc a{width:40px;height:40px}
+  .ft-qr{margin-top:var(--s4)}
+  .ft-legal-wrap{margin-top:var(--s6)}
+  .ft-hours{margin-top:var(--s2)}
+}
 /* ---- footer: mega ---- */
 .ft-mega{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr))}
 .ft-brand{grid-column:1/-1;min-width:0}
@@ -1412,7 +1427,8 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-qrimg{flex:none;width:72px;height:72px;padding:5px;border-radius:var(--r-img);background:#fff}
 .ft-qr .adv-btn-row{margin-top:var(--s2)}
 @media (min-width:900px){.ft-mega{grid-template-columns:1.5fr .8fr 1.1fr 1.2fr}.ft-brand{grid-column:auto}}
-@media (max-width:560px){.ft-mega>div:not(.ft-brand){grid-column:1/-1}}
+@media (max-width:767px){.ft-mega{gap:var(--s6) var(--s5)}}
+@media (max-width:560px){.ft-mega>div:has(.ft-contact){grid-column:1/-1;order:1}}
 
 /* ---- footer: minimal ---- */
 .ft-min{padding-top:clamp(2.5rem,5vw,3.5rem)}
@@ -1432,7 +1448,8 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-bw{display:grid;gap:var(--s7) var(--s6);grid-template-columns:repeat(2,minmax(0,1fr))}
 .ft-bw-lead{grid-column:1/-1}
 @media (min-width:900px){.ft-bw{grid-template-columns:1.4fr .8fr 1fr 1.1fr}.ft-bw-lead{grid-column:auto}}
-@media (max-width:560px){.ft-bw>div:not(.ft-bw-lead){grid-column:1/-1}}
+@media (max-width:767px){.ft-bw{gap:var(--s6) var(--s5)}}
+@media (max-width:560px){.ft-bw>div:has(.ft-contact){grid-column:1/-1;order:1}}
 .ft-bw .ft-soc{margin-top:var(--s4)}
 .ft-wm{margin:clamp(2.5rem,6vw,4.5rem) 0 0;padding-bottom:.06em;font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(2.4rem,min(var(--wm,12vw),var(--wmx,170px)),15rem);line-height:.86;letter-spacing:-.04em;overflow-wrap:break-word;color:var(--hero-text);opacity:.95;user-select:none;-webkit-mask-image:linear-gradient(to bottom,#000 52%,transparent 99%);mask-image:linear-gradient(to bottom,#000 52%,transparent 99%)}
 .site:lang(hi) .ft-wm{line-height:1.2;letter-spacing:0;font-weight:var(--display-w-hi)}
