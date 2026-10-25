@@ -32,7 +32,7 @@ const nextConfig: NextConfig = {
       // Every page refuses to be framed — except /preview/*, which the "Website" tab on /poster/card/build shows
       // in a same-origin iframe (DENY there = "refused to connect").
       // /templates/*/site and /templates/review (the owner's template review board, 12 Oct 2026) frame each other the same way.
-      source: "/((?!preview/|templates/|api/partner-panel|poster/(?:products|onboard|testimonials|site/seo|embed-done)(?:/|$)).*)",
+      source: "/((?!preview/|templates/|api/partner-panel|poster/(?:products|onboard|testimonials|site/seo|embed-done|d/editor)(?:/|$)).*)",
       headers: [
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "DENY" },
@@ -68,7 +68,7 @@ const nextConfig: NextConfig = {
       ],
     }, {
       // The screens Website edit shows in its own tabs (owner, 25 Oct 2026: "saari cheez ek hi page par"): this same site only.
-      source: "/poster/:p(products|onboard|testimonials|site/seo|embed-done)",
+      source: "/poster/:p(products|onboard|testimonials|site/seo|embed-done|d/editor)",
       headers: [
         { key: "X-Content-Type-Options", value: "nosniff" },
         { key: "X-Frame-Options", value: "SAMEORIGIN" },

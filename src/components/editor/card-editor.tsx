@@ -34,6 +34,7 @@ import { ShareKit } from "@/components/share-kit";
 import { SeoPanel } from "./seo-panel";
 import { useBrand, useCardHost } from "@/components/brand-context";
 import type { CardTemplateDef } from "@/lib/templates";
+import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 import {
   publishCard, isCloudConfigured, fetchMyCardStrict, getSessionUser,
   checkUsername, cleanUsername, isDefaultUsername, nameSlug, suggestUsername, type UsernameCheck,
@@ -481,6 +482,24 @@ export function CardEditor({ id }: { id: string }) {
   const current = useMemo(() => fingerprint(card), [card]);
   const status: "draft" | "live" | "changed" | "off" = !card.active ? "off" : liveBase === null ? "draft" : current === liveBase ? "live" : "changed";
   useEffect(() => { if (pub.state === "done" && status !== "live") setPub({ state: "idle" }); }, [status, pub.state]);
+  // Shown inside Website edit / Card edit (a tab "Text & pages"): the change goes to that page's live window, its Save bar saves here.
+  const [inside, setInside] = useState(false);
+  useEffect(() => { setInside(isEmbedded()); }, []);
+  useEffect(() => {
+    if (!inside) return;
+    const t = setTimeout(() => toParent({ type: "embed-live", card, focus: { top: false } }), 250);
+    return () => clearTimeout(t);
+  }, [inside, card]);
+  useEffect(() => { if (inside) toParent({ type: "embed-dirty", dirty: status === "changed" || status === "draft" || localSaveError }); }, [inside, status, localSaveError]);
+  const saveRef = useRef<() => Promise<void>>(async () => undefined);
+  useEffect(() => { saveRef.current = save; });
+  useEffect(() => {
+    if (!inside) return;
+    const on = (e: MessageEvent) => { if (e.origin === window.location.origin && e.source === window.parent && (e.data as { type?: string })?.type === "embed-save") void saveRef.current(); };
+    window.addEventListener("message", on);
+    return () => window.removeEventListener("message", on);
+  }, [inside]);
+  useEffect(() => { if (inside && pub.state === "done") toParent({ type: "embed-saved" }); if (inside && pub.state === "error" && pub.msg) toParent({ type: "embed-error", text: pub.msg }); }, [inside, pub]);
   // A failed Save's message belongs to that attempt: editing the card again retires it (the status box still says "not saved").
   useEffect(() => { setPub((p) => (p.state === "error" ? { state: "idle" } : p)); }, [current]);
 
@@ -644,7 +663,7 @@ export function CardEditor({ id }: { id: string }) {
           Shubhora app (/poster/d/editor) a wide computer screen used to squeeze the form into a sliver. */}
       <div className="@container min-w-0">
       {/* Phone width: Edit or Preview, one at a time (on a wide screen both show side by side). */}
-      <div className="@3xl:hidden mb-4 grid grid-cols-2 gap-1 rounded-xl bg-surface2 p-1">
+      <div data-embed-hide className="@3xl:hidden mb-4 grid grid-cols-2 gap-1 rounded-xl bg-surface2 p-1">
         {([["edit", L("Edit", "बदलें"), Pencil], ["preview", L("Preview", "Preview"), Eye]] as const).map(([k, label, Icon]) => (
           <button key={k} type="button" onClick={() => { setView(k); try { window.scrollTo({ top: 0, behavior: "smooth" }); } catch { /* ignore */ } }}
             className={`inline-flex items-center justify-center gap-2 rounded-lg py-2.5 text-sm font-semibold ${view === k ? "bg-surface shadow-sm text-ink" : "text-muted"}`}>
@@ -652,7 +671,7 @@ export function CardEditor({ id }: { id: string }) {
           </button>
         ))}
       </div>
-      <p className="@3xl:hidden -mt-2 mb-4 flex items-center justify-center gap-1.5 text-center text-xs text-muted">
+      <p data-embed-hide className="@3xl:hidden -mt-2 mb-4 flex items-center justify-center gap-1.5 text-center text-xs text-muted">
         {view === "edit"
           ? <>{L("Tip: in Preview, tap", "आसान तरीका: Preview में")} <span className="inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2 py-0.5 text-[10px] font-semibold text-white"><Pencil className="h-2.5 w-2.5" /> {L("Edit", "बदलें")}</span> {L("on any part to change it.", "पर tap करके कुछ भी बदलें।")}</>
           : <>{L("Tap", "जो बदलना है उस पर")} <span className="inline-flex items-center gap-1 rounded-full bg-[#12144a] px-2 py-0.5 text-[10px] font-semibold text-white"><Pencil className="h-2.5 w-2.5" /> {L("Edit", "बदलें")}</span> {L("on the part you want to change.", "tap करें।")}</>}
@@ -932,7 +951,7 @@ export function CardEditor({ id }: { id: string }) {
       </div>
       {/* Phone width: a solid bar just above the bottom tabs (owner's review, 28 Sep 2026 — the floating pill used to sit
           on top of the text people were typing). Save when needed, and the way in and out of the preview. */}
-      <div className="@3xl:hidden fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 backdrop-blur">
+      <div data-embed-hide className="@3xl:hidden fixed inset-x-0 bottom-[calc(4rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-surface/95 backdrop-blur">
         {/* A failed Save from this bar is told right here, not only in the line at the top of the page (out of sight when scrolled down). */}
         {view !== "preview" && pub.state === "error" && pub.msg && saveFrom === "bar" && <p role="alert" className="mx-auto max-w-md px-3 pt-2 text-xs font-semibold text-danger">{pub.msg}</p>}
         <div className="mx-auto flex max-w-md items-center gap-2 px-3 py-2">

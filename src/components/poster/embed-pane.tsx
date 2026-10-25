@@ -6,18 +6,27 @@ import type { Card } from "@/lib/types";
 
 export type EmbedLive = { card: Card; page?: string; focus?: { top?: boolean; text?: string } };
 
-export function EmbedPane({ src, title, onLive, onDone }: { src: string; title: string; onLive: (v: EmbedLive) => void; onDone: (saved: boolean) => void }) {
+export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onError, saveTick = 0 }: {
+  src: string; title: string; onLive: (v: EmbedLive) => void; onDone: (saved: boolean) => void;
+  /** The screen has changes not saved yet (the full editor): the page's own Save bar saves them (bumps `saveTick`). */
+  onDirty?: (dirty: boolean) => void; onSaved?: () => void; onError?: (text: string) => void; saveTick?: number;
+}) {
   const ref = useRef<HTMLIFrameElement>(null);
   const [h, setH] = useState(640);
   const [n, setN] = useState(0);
-  const cb = useRef({ onLive, onDone });
-  useEffect(() => { cb.current = { onLive, onDone }; });
+  const cb = useRef({ onLive, onDone, onDirty, onSaved, onError });
+  useEffect(() => { cb.current = { onLive, onDone, onDirty, onSaved, onError }; });
+  useEffect(() => { if (saveTick > 0) try { ref.current?.contentWindow?.postMessage({ type: "embed-save" }, window.location.origin); } catch { /* ignore */ } }, [saveTick]);
+  useEffect(() => () => cb.current.onDirty?.(false), [src]);
   useEffect(() => {
     const on = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || !ref.current || e.source !== ref.current.contentWindow) return;
       const m = e.data as { type?: string; h?: number; saved?: boolean } & Partial<EmbedLive>;
       if (m?.type === "embed-height" && typeof m.h === "number") setH(Math.max(320, Math.min(m.h, 20000)));
       else if (m?.type === "embed-live" && m.card) cb.current.onLive({ card: m.card, page: m.page, focus: m.focus });
+      else if (m?.type === "embed-dirty") cb.current.onDirty?.(!!(m as { dirty?: boolean }).dirty);
+      else if (m?.type === "embed-saved") cb.current.onSaved?.();
+      else if (m?.type === "embed-error") cb.current.onError?.(String((m as { text?: string }).text ?? ""));
       else if (m?.type === "embed-done") { cb.current.onDone(!!m.saved); setN((x) => x + 1); }   // the screen opens again, fresh
     };
     window.addEventListener("message", on);

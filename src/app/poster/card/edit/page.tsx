@@ -2,9 +2,8 @@
 // Card edit — the same one-page pattern as Website edit (owner, 25 Oct 2026: "card edit ka bhi same pattern bana do"): the phone card
 // live on top, four groups under it (Design / Content / Contact / Settings), each part opening right here. Look and colour save with
 // the Save bar; the other parts are their own screens shown inside (components/poster/embed-pane.tsx) and save by themselves.
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { BookUser, Camera, Check, ChevronLeft, Clock, ExternalLink, FileText, ListChecks, LoaderCircle, Megaphone, Package, Paintbrush, Palette, Phone, RefreshCw, Settings, Star, Store, User, Wallet } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
@@ -22,7 +21,7 @@ import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 
-type Tab = "look" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "trade";
+type Tab = "look" | "text" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "trade";
 type Group = "design" | "content" | "contact" | "settings";
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, string>> = {
@@ -52,6 +51,10 @@ export default function CardEditPage() {
   const [note, setNote] = useState<{ text: string; bad: boolean } | null>(null);
   const [embedView, setEmbedView] = useState<EmbedLive | null>(null);
   const [savedTab, setSavedTab] = useState("");
+  /** The full editor ("Text & pages") has unsaved changes: the Save bar saves them; a look change waits for it, then goes on top. */
+  const [embedDirty, setEmbedDirty] = useState(false);
+  const [saveTick, setSaveTick] = useState(0);
+  const ownAfter = useRef(false);
   const { plan, loading: planLoading } = usePlan();
   const paid = planLoading || plan !== "free";
 
@@ -108,6 +111,7 @@ export default function CardEditPage() {
   const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: { key: Tab; label: string; Icon: typeof Palette }[] }[] = [
     { key: "design", label: T("Design", "डिज़ाइन"), Icon: Paintbrush, tabs: [{ key: "look", label: T("Look & colour", "Look और रंग"), Icon: Palette }] },
     { key: "content", label: T("Content", "सामग्री"), Icon: Camera, tabs: [
+      { key: "text", label: T("Text & pages", "Text और pages"), Icon: FileText },
       { key: "photos", label: T("Photos & banner", "Photos और banner"), Icon: Camera },
       { key: "products", label: T("Products & prices", "Products और दाम"), Icon: Package },
       { key: "about", label: T("About & logo", "परिचय और logo"), Icon: BookUser },
@@ -126,7 +130,7 @@ export default function CardEditPage() {
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setEmbedView(null); setTab(t); };
-  const embedSrc = EMBED[tab];
+  const embedSrc = tab === "text" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}&back=${DONE}` : EMBED[tab];
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   return (
@@ -182,11 +186,14 @@ export default function CardEditPage() {
             ))}
           </div>
           <p className="text-xs"><b>{cur.name}</b>{hi && cur.hi ? ` · ${cur.hi}` : ""} <span className="text-muted">— {cur.blurb}</span></p>
-          <Link href={`/poster/d/editor?id=${card.id}&back=${encodeURIComponent("/poster/card/edit")}`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-ink"><FileText className="h-4 w-4" /> {T("Full editor — change any word or photo by hand", "पूरा editor — कोई भी शब्द या photo हाथ से बदलें")} →</Link>
+          <button type="button" onClick={() => { setGroup("content"); pick("text"); }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-ink"><FileText className="h-4 w-4" /> {T("Change any text, add a page", "कोई भी text बदलें, नया page जोड़ें")} →</button>
         </section>
       )}
       {embedSrc && (
         <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} onLive={setEmbedView}
+          saveTick={saveTick} onDirty={setEmbedDirty}
+          onSaved={() => { setEmbedDirty(false); setEmbedView(null); setNote({ text: T("✅ Card saved — it is live on your link.", "✅ Card save हो गया — आपके link पर live है।"), bad: false }); if (ownAfter.current) { ownAfter.current = false; void save(); } else void refresh(); }}
+          onError={(t) => { ownAfter.current = false; setNote({ text: t, bad: true }); }}
           onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />
       )}
       {tab === "photos" && (
@@ -201,12 +208,12 @@ export default function CardEditPage() {
       )}
 
       {/* Look and colour save here; the other tabs save by themselves (the bar shows there only while a look change waits). */}
-      {(group === "design" || dirty || note) && (
+      {(group === "design" || dirty || embedDirty || note) && (
         <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
           {note && <p role={note.bad ? "alert" : "status"} className={`mb-2 rounded-lg border px-3 py-2 text-xs font-semibold ${note.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-good/40 bg-good/10 text-good"}`}>{note.text}</p>}
           <div className="flex items-center gap-3">
-            <p className="flex-1 text-xs text-muted">{dirty ? T("Tap Save to put it on your card", "Save दबाएँ — तभी card पर लगेगा") : T("All saved", "सब save है")}</p>
-            <button type="button" onClick={() => void save()} disabled={busy || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "…" : T("Save", "Save करें")}</button>
+            <p className="flex-1 text-xs text-muted">{dirty || embedDirty ? T("Tap Save to put it on your card", "Save दबाएँ — तभी card पर लगेगा") : T("All saved", "सब save है")}</p>
+            <button type="button" onClick={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} disabled={busy || !(dirty || embedDirty)} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "…" : T("Save", "Save करें")}</button>
           </div>
         </div>
       )}

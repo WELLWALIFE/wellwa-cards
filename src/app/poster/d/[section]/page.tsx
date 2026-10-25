@@ -60,7 +60,7 @@ function Inner() {
   const title = section === "editor" ? (lang === "en" ? "Edit my card" : "Card बदलें") : def ? def[lang] : section;
   return (
     <div className="space-y-3">
-      <div className="flex items-center gap-2">
+      <div data-embed-hide className="flex items-center gap-2">
         {/* Back = the screen the owner was just on (the card page, Card & Website, a dashboard section). Only with no earlier screen (a link
             opened fresh): the ?back= it was opened with (Card & Website → Edit → Full editor), else the card / More. */}
         <button type="button" onClick={() => goBack(router, fallback)} className="text-muted" aria-label={lang === "en" ? "Back" : "पीछे"}><ChevronLeft className="h-5 w-5" /></button>

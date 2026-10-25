@@ -382,7 +382,7 @@ button, a[role="button"] { transition: transform 80ms ease, filter 80ms ease; }
 }
 
 /* A poster screen shown inside another (Website edit's tabs): no app bars, no outer padding, no page background. */
-html[data-embed] [data-chrome]{display:none!important}
+html[data-embed] [data-chrome],html[data-embed] [data-embed-hide]{display:none!important}
 html[data-embed] main{padding-top:.25rem!important;padding-bottom:1rem!important}
 html[data-embed],html[data-embed] body{background:transparent;min-height:0}
 html[data-embed] .min-h-screen{min-height:0!important}

@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, FileText, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -20,17 +20,19 @@ import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
+import { EmbedPane } from "@/components/poster/embed-pane";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
-type Tab = "look" | "hero" | "home" | "pages" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
+type Tab = "look" | "hero" | "home" | "pages" | "text" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
 type Group = "design" | "content" | "contact" | "settings";
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
+  text: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&back=${DONE}`,
   products: () => `/poster/products?back=${DONE}`,
   about: () => `/poster/onboard?step=about&back=${DONE}`,
   details: () => `/poster/onboard?step=details&back=${DONE}`,
@@ -79,10 +81,12 @@ export default function WebsiteEditPage() {
   const [group, setGroup] = useState<Group>("design");
   /** A screen in a tab (Products, Timings …) showing its unsaved change: the window shows that copy until it is saved. */
   const [embedView, setEmbedView] = useState<{ card: Card; page?: string; focus?: { top?: boolean; text?: string } } | null>(null);
-  const [embedKey, setEmbedKey] = useState(0);
-  const [embedH, setEmbedH] = useState(640);
   const [savedTab, setSavedTab] = useState("");
-  const embedFrame = useRef<HTMLIFrameElement>(null);
+  /** The full editor in "Text & pages" has unsaved changes: this page's Save bar saves them (saveTick tells it). */
+  const [embedDirty, setEmbedDirty] = useState(false);
+  const [saveTick, setSaveTick] = useState(0);
+  /** This page's own changes wait for the editor's Save (it writes the whole card): they go right after it, on top. */
+  const ownAfter = useRef(false);
   /** Which parts of the website this page changed and has not saved: kept when a tab's own Save brings the card back fresh. */
   const touched = useRef(new Set<string>());
   const { plan, loading: planLoading } = usePlan();
@@ -146,22 +150,6 @@ export default function WebsiteEditPage() {
       setCard((cur) => (cur ? keepTouched(fresh, cur, touched.current) : fresh));
     } catch { /* offline: the window keeps what it shows */ }
   }, [s]);
-  // Messages from the screen shown in a tab: its height, its unsaved copy for the window, and "saved" / "closed".
-  useEffect(() => {
-    const on = (e: MessageEvent) => {
-      if (e.origin !== window.location.origin || !embedFrame.current || e.source !== embedFrame.current.contentWindow) return;
-      const m = e.data as { type?: string; h?: number; card?: Card; page?: string; focus?: { top?: boolean; text?: string }; saved?: boolean };
-      if (m?.type === "embed-height" && typeof m.h === "number") setEmbedH(Math.max(320, Math.min(m.h, 20000)));
-      else if (m?.type === "embed-live" && m.card) setEmbedView({ card: m.card, page: m.page, focus: m.focus });
-      else if (m?.type === "embed-done") {
-        setEmbedView(null);
-        if (m.saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); }
-        setEmbedKey((k) => k + 1);   // the screen opens again, fresh
-      }
-    };
-    window.addEventListener("message", on);
-    return () => window.removeEventListener("message", on);
-  }, [refresh, tab]);
   useEffect(() => {
     const el = box.current;
     const fit = () => { if (!el) return; if (el.clientWidth) setScale(Math.min(1, el.clientWidth / 1280)); if (el.clientHeight) setBoxH(el.clientHeight); };
@@ -329,6 +317,7 @@ export default function WebsiteEditPage() {
       { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
     ] },
     { key: "content", label: hi ? "सामग्री" : "Content", Icon: Camera, tabs: [
+      { key: "text", label: hi ? "Text और pages" : "Text & pages", Icon: FileText },
       { key: "photos", label: hi ? "Photos और banner" : "Photos & banners", Icon: Camera },
       { key: "products", label: hi ? "Products और दाम" : "Products & prices", Icon: Package },
       { key: "about", label: hi ? "परिचय और logo" : "About & logo", Icon: BookUser },
@@ -438,8 +427,11 @@ export default function WebsiteEditPage() {
 
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
       {embedSrc && (
-        <iframe key={`${tab}-${embedKey}`} ref={embedFrame} title={TABS.find((t) => t.key === tab)?.label ?? ""} src={embedSrc}
-          className="-mx-4 block w-[calc(100%+2rem)] border-0" style={{ height: embedH }} />
+        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick}
+          onLive={setEmbedView} onDirty={setEmbedDirty}
+          onSaved={() => { setEmbedDirty(false); setEmbedView(null); if (ownAfter.current) { ownAfter.current = false; void save().then(() => refresh()); } else void refresh(); say("save", hi ? "✅ Save हो गया — website पर live है।" : "✅ Saved — it is live on your website.", false); }}
+          onError={(t) => { ownAfter.current = false; say("save", t); }}
+          onDone={(saved) => { setEmbedView(null); if (saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); } }} />
       )}
       {tab === "photos" && (
         <section className="rounded-xl border border-border p-3">
@@ -623,17 +615,17 @@ export default function WebsiteEditPage() {
               <input type="checkbox" className="h-5 w-5" checked={on} onChange={(e) => { if (e.target.checked) h.delete("updates"); else h.add("updates"); set({ hidden: [...h] }); }} />
             </label>
           ); })()}
-          <Link href={`/poster/d/editor?id=${s.cardId}&back=${encodeURIComponent("/poster/website/edit")}`} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-ink">{hi ? "टेक्स्ट / फ़ोटो / प्रोडक्ट बदलें (पूरा एडिटर)" : "Change text, photos, products (full editor)"} →</Link>
+          <button type="button" onClick={() => { setGroup("content"); pick("text"); }} className="mt-2 inline-flex items-center gap-1 text-sm font-medium text-brand-ink">{hi ? "हर page का text बदलें, नया page जोड़ें" : "Change any page's text, add a page"} →</button>
         </section>
       )}
 
       {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor). The other tabs save by themselves:
           the bar shows there only while this page's own changes wait. ---- */}
-      {(group === "design" || dirty || note?.k === "save") && <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+      {(group === "design" || dirty || embedDirty || note?.k === "save") && <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         {line("save", "mb-2")}
         <div className="flex items-center gap-3">
-          <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "Save दबाएँ — तभी website पर लगेगा" : "Tap Save to put it on your website") : (hi ? "सब सेव है" : "All saved")}</p>
-          <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
+          <p className="flex-1 text-xs text-muted">{dirty || embedDirty ? (hi ? "Save दबाएँ — तभी website पर लगेगा" : "Tap Save to put it on your website") : (hi ? "सब सेव है" : "All saved")}</p>
+          <button type="button" onClick={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} disabled={busy === "save" || !(dirty || embedDirty)} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
         </div>
       </div>}
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
