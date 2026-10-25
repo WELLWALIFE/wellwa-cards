@@ -363,8 +363,8 @@ export default function WebsiteEditPage() {
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   return (
-    <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-2">
+    <div className="-mt-10 space-y-3 pb-4">
+      <div className="flex min-h-10 items-center gap-2 pr-28">
         {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
         <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>

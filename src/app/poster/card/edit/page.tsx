@@ -141,8 +141,8 @@ export default function CardEditPage() {
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   return (
-    <div className="space-y-4 pb-4">
-      <div className="flex items-center gap-2">
+    <div className="-mt-10 space-y-3 pb-4">
+      <div className="flex min-h-10 items-center gap-2 pr-28">
         <button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Edit card", "Card edit करें")}</h1>
         <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{T("See card", "Card देखें")} <ExternalLink className="h-3.5 w-3.5" /></CardLink>
