@@ -546,6 +546,7 @@ export function CardEditor({ id }: { id: string }) {
     if (!f) return;
     focused.current = true;
     if (f === "photo" || f === "cover" || f === "tagline") { editFrom({ kind: "profile" }); return; }
+    if (f === "links") { editFrom({ kind: "links" }); return; }   // the card's buttons (Card edit / Website edit → Contact → Buttons)
     if (f === "upi" || f === "whatsapp") {
       const have = card.links.find((l) => l.type === f && l.value.trim().length > 3);
       const newId = uid();

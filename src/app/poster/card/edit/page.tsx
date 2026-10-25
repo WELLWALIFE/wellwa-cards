@@ -4,7 +4,7 @@
 // the Save bar; the other parts are their own screens shown inside (components/poster/embed-pane.tsx) and save by themselves.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { BookUser, Camera, Check, ChevronLeft, Clock, ExternalLink, FileText, ListChecks, LoaderCircle, Megaphone, Package, Paintbrush, Palette, Phone, RefreshCw, Settings, Star, Store, User, Wallet } from "lucide-react";
+import { MousePointerClick, BookUser, Camera, Check, ChevronLeft, Clock, ExternalLink, FileText, ListChecks, LoaderCircle, Megaphone, Package, Paintbrush, Palette, Phone, RefreshCw, Settings, Star, Store, User, Wallet } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { isThinCard } from "@/lib/card-personalize";
@@ -21,7 +21,7 @@ import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 
-type Tab = "look" | "text" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "trade";
+type Tab = "look" | "text" | "buttons" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "trade";
 type Group = "design" | "content" | "contact" | "settings";
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, string>> = {
@@ -122,6 +122,7 @@ export default function CardEditPage() {
       { key: "you", label: T("Name, number, photo", "नाम, number, photo"), Icon: User },
       { key: "where", label: T("Timings & address", "समय और पता"), Icon: Clock },
       { key: "links", label: T("UPI & social", "UPI और social"), Icon: Wallet },
+      { key: "buttons", label: T("Buttons (add / remove)", "Buttons (जोड़ें / हटाएँ)"), Icon: MousePointerClick },
     ] },
     { key: "settings", label: T("Settings", "Settings"), Icon: Settings, tabs: [
       { key: "offer", label: T("Offer / pop-up", "Offer / pop-up"), Icon: Megaphone },
@@ -130,7 +131,7 @@ export default function CardEditPage() {
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setEmbedView(null); setTab(t); };
-  const embedSrc = tab === "text" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}&back=${DONE}` : EMBED[tab];
+  const embedSrc = tab === "text" || tab === "buttons" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}${tab === "buttons" ? "&focus=links" : ""}&back=${DONE}` : EMBED[tab];
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   return (

@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, FileText, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -27,12 +27,13 @@ import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
-type Tab = "look" | "hero" | "home" | "pages" | "text" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
+type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
 type Group = "design" | "content" | "contact" | "settings";
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
   text: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&back=${DONE}`,
+  buttons: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&focus=links&back=${DONE}`,
   products: () => `/poster/products?back=${DONE}`,
   about: () => `/poster/onboard?step=about&back=${DONE}`,
   details: () => `/poster/onboard?step=details&back=${DONE}`,
@@ -328,6 +329,7 @@ export default function WebsiteEditPage() {
       { key: "you", label: hi ? "नाम, number, photo" : "Name, number, photo", Icon: User },
       { key: "where", label: hi ? "समय और पता" : "Timings & address", Icon: Clock },
       { key: "links", label: hi ? "UPI और social" : "UPI & social", Icon: Wallet },
+      { key: "buttons", label: hi ? "Buttons (जोड़ें / हटाएँ)" : "Buttons (add / remove)", Icon: MousePointerClick },
     ] },
     { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: [
       { key: "offer", label: hi ? "Offer / pop-up" : "Offer / pop-up", Icon: Megaphone },
