@@ -29,6 +29,8 @@ export function installNavTracker() {
 /** Is there an earlier screen of THIS app to go back to? */
 export function canGoBackInApp(): boolean {
   if (typeof window === "undefined") return false;
+  // Inside a frame (a screen shown in Website edit's tabs) Back would walk the whole tab's history: the screen's own fallback instead.
+  try { if (window.self !== window.top) return false; } catch { return false; }
   if (moves > 0) return true;
   try { return window.history.length > 1 && !!document.referrer && new URL(document.referrer).origin === window.location.origin; } catch { return false; }
 }

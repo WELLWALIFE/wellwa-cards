@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -16,13 +16,31 @@ import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
 import { HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
+import { SitePhotos } from "@/components/poster/site-photos";
+import { NoticeBox } from "@/components/poster/notice-box";
+import { DomainConnect } from "@/components/domain-connect";
+import { usePlan } from "@/lib/plan";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 
 const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
-type Tab = "look" | "hero" | "home" | "pages";
+type Tab = "look" | "hero" | "home" | "pages" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
+type Group = "design" | "content" | "contact" | "settings";
+/** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
+const DONE = "/poster/embed-done";
+const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
+  products: () => `/poster/products?back=${DONE}`,
+  about: () => `/poster/onboard?step=about&back=${DONE}`,
+  details: () => `/poster/onboard?step=details&back=${DONE}`,
+  reviews: () => `/poster/testimonials?back=${DONE}`,
+  you: () => `/poster/onboard?step=you&back=${DONE}`,
+  where: () => `/poster/onboard?step=where&back=${DONE}`,
+  links: () => `/poster/onboard?step=extras&part=links&back=${DONE}`,
+  seo: (id) => `/poster/site/seo?card=${encodeURIComponent(id)}&back=${DONE}`,
+  trade: () => `/poster/onboard?step=trade&back=${DONE}`,
+};
 
 const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
 const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`;
@@ -58,6 +76,19 @@ export default function WebsiteEditPage() {
   const [s, setS] = useState<Status | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [tab, setTab] = useState<Tab>("look");
+  const [group, setGroup] = useState<Group>("design");
+  /** A screen in a tab (Products, Timings …) showing its unsaved change: the window shows that copy until it is saved. */
+  const [embedView, setEmbedView] = useState<{ card: Card; page?: string; focus?: { top?: boolean; text?: string } } | null>(null);
+  const [embedKey, setEmbedKey] = useState(0);
+  const [embedH, setEmbedH] = useState(640);
+  const [savedTab, setSavedTab] = useState("");
+  const embedFrame = useRef<HTMLIFrameElement>(null);
+  /** Which parts of the website this page changed and has not saved: kept when a tab's own Save brings the card back fresh. */
+  const touched = useRef(new Set<string>());
+  const { plan, loading: planLoading } = usePlan();
+  const paid = planLoading || plan !== "free";
+  const [tier, setTier] = useState<string | null>(null);
+  useEffect(() => { api<{ tier?: string | null }>("/api/poster/plan").then((r) => { if (r.ok) setTier(r.data.tier ?? null); }).catch(() => undefined); }, []);
   const [busy, setBusy] = useState("");
   // ONE message at a time, tagged with the control it belongs to and shown right under that control (never a line at the top of the
   // page): "save" = in the Save bar, "ref" = under Copy look, "hero" / "logo" = under that picture row, "ai" = under the AI-photo button.
@@ -86,20 +117,51 @@ export default function WebsiteEditPage() {
       const r = await api<Status & { error?: string }>(`/api/site/status?full=1${id ? `&card=${id}` : ""}`);
       if (!r.ok) { setErr(r.data?.error || "No internet — tap to try again"); return; }
       setS(r.data);
-      if (r.data.hasCard && r.data.card) { setCard(r.data.card); setDirty(false); }
+      if (r.data.hasCard && r.data.card) { setCard(r.data.card); setDirty(false); touched.current.clear(); }
     } catch { setErr("No internet — tap to try again"); }
   }, []);
   // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace("/login?next=/poster/website/edit"); return; } load(); })(); }, [router, load]);
 
   // The live preview: the working copy goes to localStorage, the iframe (the real website renderer) re-reads it.
+  // What the window shows: this page's working copy, or a tab screen's unsaved copy with this page's own unsaved changes on it.
+  const previewPage = embedView?.page ?? "";
   useEffect(() => {
-    if (!card) return;
-    try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(card)); } catch { /* full or private */ }
+    const shown = embedView && card ? keepTouched(embedView.card, card, touched.current) : card;
+    if (!shown) return;
+    try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
-    const f = focusAsk.current; focusAsk.current = null;
+    const f = focusAsk.current ?? embedView?.focus ?? null; focusAsk.current = null;
     if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
-  }, [card]);
+  }, [card, embedView]);
+
+  /** The card again from the server (a tab's own Save changed it), with this page's unsaved changes kept on top. */
+  const refresh = useCallback(async () => {
+    if (!s?.hasCard) return;
+    try {
+      const r = await api<Status & { error?: string }>(`/api/site/status?full=1&card=${encodeURIComponent(s.cardId)}`);
+      if (!r.ok || !r.data.hasCard || !r.data.card) return;
+      setS(r.data);
+      const fresh = r.data.card;
+      setCard((cur) => (cur ? keepTouched(fresh, cur, touched.current) : fresh));
+    } catch { /* offline: the window keeps what it shows */ }
+  }, [s]);
+  // Messages from the screen shown in a tab: its height, its unsaved copy for the window, and "saved" / "closed".
+  useEffect(() => {
+    const on = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin || !embedFrame.current || e.source !== embedFrame.current.contentWindow) return;
+      const m = e.data as { type?: string; h?: number; card?: Card; page?: string; focus?: { top?: boolean; text?: string }; saved?: boolean };
+      if (m?.type === "embed-height" && typeof m.h === "number") setEmbedH(Math.max(320, Math.min(m.h, 20000)));
+      else if (m?.type === "embed-live" && m.card) setEmbedView({ card: m.card, page: m.page, focus: m.focus });
+      else if (m?.type === "embed-done") {
+        setEmbedView(null);
+        if (m.saved) { setSavedTab(tab); void refresh(); setTimeout(() => setSavedTab(""), 4000); }
+        setEmbedKey((k) => k + 1);   // the screen opens again, fresh
+      }
+    };
+    window.addEventListener("message", on);
+    return () => window.removeEventListener("message", on);
+  }, [refresh, tab]);
   useEffect(() => {
     const el = box.current;
     const fit = () => { if (!el) return; if (el.clientWidth) setScale(Math.min(1, el.clientWidth / 1280)); if (el.clientHeight) setBoxH(el.clientHeight); };
@@ -112,7 +174,7 @@ export default function WebsiteEditPage() {
 
   const site = card?.site ?? { enabled: true };
   const style: SiteStyle = site.style ?? {};
-  const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
+  const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; Object.keys(patch).forEach((k) => touched.current.add(k)); setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
   const setStyle = (patch: Partial<SiteStyle>) => { focus({ top: true }); set({ style: { ...style, ...patch } }); };
   const setHero = (patch: Partial<Hero>) => { focus({ top: true }); set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch } }); };
   const setHome = (patch: Partial<NonNullable<Card["site"]>["home"] & object>) => set({ home: { ...(site.home ?? {}), ...patch } });
@@ -185,7 +247,7 @@ export default function WebsiteEditPage() {
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
-      setDirty(false); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
+      setDirty(false); touched.current.clear(); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
@@ -209,6 +271,7 @@ export default function WebsiteEditPage() {
           ...(shape ? { shape } : {}),
         };
         setCard({ ...card, site: { ...(card.site ?? { enabled: true }), style: st, reference: r.data.site.reference, advanced: nextAdv as NonNullable<Card["site"]>["advanced"] } });
+        touched.current.add("style"); touched.current.add("advanced");
         setDirty(true);
       }
       say("ref", hi ? "✅ उस वेबसाइट का लुक कॉपी हो गया — ऊपर preview देखें।" : "✅ Copied that website's look — see the preview above.", false);
@@ -251,12 +314,38 @@ export default function WebsiteEditPage() {
   ) : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   if (!s.hasCard) return null;
 
-  const TABS: { key: Tab; label: string; Icon: typeof Palette }[] = [
-    { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette },
-    { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
-    { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
-    { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
+  // Everything about the website on this one page (owner, 25 Oct 2026: "saari cheez yahi par"), in four groups.
+  const GROUPS: { key: Group; label: string; Icon: typeof Palette; tabs: { key: Tab; label: string; Icon: typeof Palette }[] }[] = [
+    { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: [
+      { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette },
+      { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon },
+      { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered },
+      { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files },
+    ] },
+    { key: "content", label: hi ? "सामग्री" : "Content", Icon: Camera, tabs: [
+      { key: "photos", label: hi ? "Photos और banner" : "Photos & banners", Icon: Camera },
+      { key: "products", label: hi ? "Products और दाम" : "Products & prices", Icon: Package },
+      { key: "about", label: hi ? "परिचय और logo" : "About & logo", Icon: BookUser },
+      { key: "details", label: hi ? "आप क्या देते हैं" : "What you offer", Icon: ListChecks },
+      { key: "reviews", label: hi ? "Reviews" : "Reviews", Icon: Star },
+    ] },
+    { key: "contact", label: hi ? "संपर्क" : "Contact", Icon: Phone, tabs: [
+      { key: "you", label: hi ? "नाम, number, photo" : "Name, number, photo", Icon: User },
+      { key: "where", label: hi ? "समय और पता" : "Timings & address", Icon: Clock },
+      { key: "links", label: hi ? "UPI और social" : "UPI & social", Icon: Wallet },
+    ] },
+    { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: [
+      { key: "offer", label: hi ? "Offer / pop-up" : "Offer / pop-up", Icon: Megaphone },
+      { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe },
+      { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search },
+      { key: "trade", label: hi ? "Business का नाम और काम" : "Business name & type", Icon: Store },
+    ] },
   ];
+  const TABS = GROUPS.find((g) => g.key === group)!.tabs;
+  const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setTab(t); };
+  const embedSrc = EMBED[tab]?.(s.cardId);
+  const domainOk = tier === "growth" || tier === "pro";
+  const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   return (
     <div className="space-y-4 pb-28">
@@ -285,7 +374,7 @@ export default function WebsiteEditPage() {
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
           <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
             <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
-              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
+              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
           <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
@@ -295,7 +384,7 @@ export default function WebsiteEditPage() {
           </button>
         </div>
       </div>
-      <div className="overflow-hidden rounded-2xl border border-border">
+      {group === "design" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
           <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
           <div className="mt-1.5 flex gap-2.5 overflow-x-auto pb-1">
@@ -310,11 +399,43 @@ export default function WebsiteEditPage() {
             </label>
           )}
         </div>
-      </div>
+      </div>}
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => { setNote((n) => (n?.k === "save" ? n : null)); setTab(key); }} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
+      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface2 p-1">
+        {GROUPS.map((g) => (
+          <button key={g.key} type="button" onClick={() => { setGroup(g.key); pick(g.tabs[0].key); }}
+            className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-bold transition ${group === g.key ? "bg-surface text-brand-ink shadow-card" : "text-muted"}`}>
+            <g.Icon className="h-4 w-4" /> {g.label}
+          </button>
+        ))}
       </div>
+      <div className="flex gap-2 overflow-x-auto pb-1">
+        {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => pick(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
+      </div>
+      {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {hi ? "Save हो गया — website पर live है" : "Saved — it is live on your website"}</p>}
+
+      {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
+      {embedSrc && (
+        <iframe key={`${tab}-${embedKey}`} ref={embedFrame} title={TABS.find((t) => t.key === tab)?.label ?? ""} src={embedSrc}
+          className="-mx-4 block w-[calc(100%+2rem)] border-0" style={{ height: embedH }} />
+      )}
+      {tab === "photos" && (
+        <section className="rounded-xl border border-border p-3">
+          <SitePhotos hi={hi} cardId={s.cardId} scope="site" onChanged={() => void refresh()} />
+        </section>
+      )}
+      {tab === "offer" && (
+        <section className="rounded-xl border border-border p-3">
+          <NoticeBox card={card} url={s.url} locked={!paid} onChanged={(c) => setCard((cur) => (cur ? keepTouched(c, cur, touched.current) : c))} />
+        </section>
+      )}
+      {tab === "domain" && (
+        <section className="rounded-xl border border-border p-3">
+          {domainOk || customDomain
+            ? <DomainConnect cardId={s.cardId} username={s.username} initialDomain={customDomain || undefined} />
+            : <p className="text-sm text-muted">{hi ? "अपना web address (www.yourshop.com) Growth plan के साथ आता है।" : "Your own web address (www.yourshop.com) comes with the Growth plan."}</p>}
+        </section>
+      )}
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
@@ -503,14 +624,15 @@ export default function WebsiteEditPage() {
         </section>
       )}
 
-      {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor) ---- */}
-      <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+      {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor). The other tabs save by themselves:
+          the bar shows there only while this page's own changes wait. ---- */}
+      {(group === "design" || dirty || note?.k === "save") && <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         {line("save", "mb-2")}
         <div className="flex items-center gap-3">
           <p className="flex-1 text-xs text-muted">{dirty ? (hi ? "Save दबाएँ — तभी website पर लगेगा" : "Tap Save to put it on your website") : (hi ? "सब सेव है" : "All saved")}</p>
           <button type="button" onClick={save} disabled={busy === "save" || !dirty} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
         </div>
-      </div>
+      </div>}
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
@@ -560,4 +682,23 @@ function SlidesEditor({ hi, card, images, slides, onChange, cardId }: { hi: bool
       {slides.length === 1 && <p className="text-[11px] text-muted">{T("Add at least 2 to make them slide.", "बदलने के लिए कम से कम 2 banner चाहिए।")}</p>}
     </div>
   );
+}
+
+/** `fresh` (a card just saved elsewhere, or a tab's unsaved copy) with the parts of the website this page changed and has not saved
+ *  taken from `mine`. The top's words stay mine; its pictures and banners' pictures come from `fresh` (the Photos tab sets those). */
+function keepTouched(fresh: Card, mine: Card, touched: Set<string>): Card {
+  if (!touched.size) return fresh;
+  const a = (fresh.site ?? { enabled: true }) as Record<string, unknown>;
+  const b = (mine.site ?? { enabled: true }) as Record<string, unknown>;
+  const site: Record<string, unknown> = { ...a };
+  for (const k of touched) {
+    if (k === "hero") {
+      const fh = (a.hero ?? {}) as Hero, mh = (b.hero ?? {}) as Hero;
+      const fs = fh.slides ?? [], ms = mh.slides ?? [];
+      const n = Math.max(fs.length, ms.length);
+      const slides = n ? Array.from({ length: n }, (_, i) => ({ ...(fs[i] ?? {}), ...(ms[i] ?? {}), ...(fs[i]?.imageUrl ? { imageUrl: fs[i].imageUrl } : {}) }) as HeroSlide).filter((x) => x.headline !== undefined) : undefined;
+      site.hero = { ...fh, headline: mh.headline, sub: mh.sub, ctaLabel: mh.ctaLabel, ...(slides ? { slides } : {}) };
+    } else site[k] = b[k];
+  }
+  return { ...fresh, site: site as Card["site"] };
 }

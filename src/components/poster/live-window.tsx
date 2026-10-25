@@ -6,6 +6,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Maximize2, Minimize2 } from "lucide-react";
 import type { Card } from "@/lib/types";
+import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 
 export type LiveFocus = { top?: boolean; text?: string } | null;
 const SITE_W = 1280, CARD_W = 400;
@@ -38,13 +39,20 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
   // Every change: the copy to the preview, then where to look.
   const sig = card ? JSON.stringify(card) : "";
   const focusSig = focus ? JSON.stringify(focus) : "";
+  // Shown inside Website edit: that screen's own window shows the change (one window, not two).
+  const [inside, setInside] = useState(false);
+  useEffect(() => { setInside(isEmbedded()); }, []);
   useEffect(() => {
-    if (!sig) return;
+    if (!sig || !inside) return;
+    toParent({ type: "embed-live", card: JSON.parse(sig), ...(focusSig ? { focus: JSON.parse(focusSig) } : {}), ...(page ? { page } : {}), view });
+  }, [sig, focusSig, inside, page, view]);
+  useEffect(() => {
+    if (!sig || inside) return;
     try { localStorage.setItem(k, sig); } catch { /* full or private */ }
     post(`preview:${k}`);
     if (focusSig) post({ type: "preview-focus", key: k, ...JSON.parse(focusSig) });
-  }, [sig, focusSig, k]);
-  if (!card) return null;
+  }, [sig, focusSig, k, inside]);
+  if (!card || inside) return null;
   return (
     <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
       <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">

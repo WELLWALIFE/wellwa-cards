@@ -13,6 +13,7 @@ import { DemoReset } from "@/components/poster/demo-reset";
 import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
 import { BrandProvider } from "@/components/brand-context";
+import { EmbedMode } from "@/components/poster/embed-mode";
 
 export const metadata: Metadata = {
   title: "Shubhora",
@@ -32,16 +33,18 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
       <PlanProvider>
       <UiLangProvider>
         <div className="w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
-          <TopMenu />
-          <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><BackBar />{children}<SetupResume variant="float" /></main>
-          <PosterNav />
+          {/* data-chrome: hidden when this screen is shown inside another one (components/poster/embed-mode.tsx). */}
+          <EmbedMode />
+          <div data-chrome className="contents"><TopMenu /></div>
+          <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><div data-chrome className="contents"><BackBar /></div>{children}<div data-chrome className="contents"><SetupResume variant="float" /></div></main>
+          <div data-chrome className="contents"><PosterNav /></div>
           {/* One Help button on every screen, and the live-help session behind it. */}
-          <HelpDock />
+          <div data-chrome className="contents"><HelpDock /></div>
           {/* "Apni screen kisi ko dikhayein": a link that lets anyone watch this screen live, and only watch (opened from the Help panel). */}
           <ShareScreen />
           <InAppViewer />
           {/* The demo account's own Reset pill (only on an account Super Admin marked as demo). */}
-          <DemoReset />
+          <div data-chrome className="contents"><DemoReset /></div>
           <NativeBridge />
           <NavTracker />
           <UpdateWatcher />
