@@ -66,9 +66,8 @@ export default function CardEditPage() {
     const p = partParam() as Tab;
     if (p && CARD_GROUP[p]) { setGroup(CARD_GROUP[p]); setTab(p); setOpen(true); }
   }, [card]);
-  /** The look and colour before the last Save, for 10 seconds after it ("Undo"). */
+  /** The look and colour before the last Save ("Undo"): stays until the next Save or leaving (10 seconds was missed on the live check). */
   const [undo, setUndo] = useState<{ template: Card["template"]; color: string } | null>(null);
-  useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
   const [look, setLook] = useState<Card["template"] | "">("");
   const [color, setColor] = useState("");
   const [busy, setBusy] = useState(false);

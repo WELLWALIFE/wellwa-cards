@@ -109,10 +109,9 @@ export default function WebsiteEditPage() {
   const [savedTab, setSavedTab] = useState("");
   /** The full editor in "Text & pages" has unsaved changes: this page's Save bar saves them (saveTick tells it). */
   const [embedDirty, setEmbedDirty] = useState(false);
-  /** The website as it was before the last Save, for 10 seconds after it ("Undo"); the last saved one is kept to know it. */
+  /** The website as it was before the last Save ("Undo"): stays until the next Save or leaving; the last saved one is kept to know it. */
   const [undo, setUndo] = useState<Card | null>(null);
   const lastSaved = useRef<Card | null>(null);
-  useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
   const [saveTick, setSaveTick] = useState(0);
   /** This page's own changes wait for the editor's Save (it writes the whole card): they go right after it, on top. */
   const ownAfter = useRef(false);
