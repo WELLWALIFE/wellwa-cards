@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
+import { LoaderCircle, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Sun, Moon, FileText, MousePointerClick, Package, BookUser, ListChecks, Star, User, Clock, Wallet, Megaphone, Globe, Search, Store, Camera, Paintbrush, Phone, Settings } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -22,7 +22,7 @@ import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
 import { EditFocus } from "@/components/poster/edit-focus";
-import { SaveOverlay } from "@/components/poster/save-overlay";
+import { WindowBar, seeCls } from "@/components/poster/save-overlay";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
@@ -365,6 +365,11 @@ export default function WebsiteEditPage() {
   }
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
+  /** Back to the list of parts (asks first when the open part has a change not saved). */
+  const toList = () => {
+    if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
+    setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
+  };
   return (
     <div className="space-y-3 pb-4">
       <EditFocus />
@@ -386,23 +391,15 @@ export default function WebsiteEditPage() {
               <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
-          <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} aria-label={hi ? "पीछे" : "Back"} className="absolute left-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
-          {dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
-          <SaveOverlay show={(open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy === "save"} hi={hi} note={note?.k === "save" ? note : null} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} />
-          <span className="pointer-events-none absolute left-12 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
-          <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
-            className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
-            {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}
-          </button>
+          <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)} onBack={() => (open ? toList() : goBack(router, "/poster/site?edit=site"))}
+            see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
+            save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); } }} />
         </div>
       </div>
 
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
-        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={() => {
-            if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
-            setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
-          }} /> : null; })()}
+        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">

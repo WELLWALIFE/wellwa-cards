@@ -4,7 +4,7 @@
 // the Save bar; the other parts are their own screens shown inside (components/poster/embed-pane.tsx) and save by themselves.
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { MousePointerClick, BookUser, Camera, Check, ChevronLeft, Clock, ExternalLink, FileText, ListChecks, LoaderCircle, Megaphone, Package, Paintbrush, Palette, Phone, RefreshCw, Settings, Star, Store, User, Wallet } from "lucide-react";
+import { MousePointerClick, BookUser, Camera, Check, Clock, ExternalLink, FileText, ListChecks, LoaderCircle, Megaphone, Package, Paintbrush, Palette, Phone, RefreshCw, Settings, Star, Store, User, Wallet } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { isThinCard } from "@/lib/card-personalize";
@@ -18,7 +18,7 @@ import { usePlan } from "@/lib/plan";
 import { CardLink } from "@/components/poster/card-sheet";
 import { LiveWindow } from "@/components/poster/live-window";
 import { EditFocus } from "@/components/poster/edit-focus";
-import { SaveOverlay } from "@/components/poster/save-overlay";
+import { seeCls } from "@/components/poster/save-overlay";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
@@ -142,40 +142,40 @@ export default function CardEditPage() {
   const embedSrc = tab === "text" || tab === "buttons" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}${tab === "buttons" ? "&focus=links" : ""}&back=${DONE}` : EMBED[tab];
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
+  /** Back to the list of parts (asks first when the open part has a change not saved). */
+  const toList = () => {
+    if (embedDirty && !window.confirm(T("Your change is not saved. Go back without saving?", "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?"))) return;
+    setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
+  };
   return (
     <div className="space-y-3 pb-4">
       <EditFocus />
 
       <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
-        overlay={<><button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} aria-label={T("Back", "पीछे")} className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
-          <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>
-          <SaveOverlay show={(open && tab === "look") || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} /></>} />
+        bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site?edit=card")),
+          see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls}>{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>,
+          save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); } } }} />
 
 
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
-        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={() => {
-            if (embedDirty && !window.confirm(T("Your change is not saved. Go back without saving?", "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?"))) return;
-            setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
-          }} /> : null; })()}
+        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
-      {tab === "look" && (
-        <div className="space-y-2 rounded-2xl border border-border bg-surface px-2 pb-2 pt-2">
-          <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {T("Pick a colour", "रंग चुनें")}</p>
-          <div className="flex items-center gap-2.5 overflow-x-auto px-1 pb-1">
-            {Array.from(new Set([card.themeColor, ...SWATCHES])).map((sw) => (
-              <button key={sw} type="button" onClick={() => setColor(sw)} aria-label={sw}
-                className={`h-8 w-8 shrink-0 rounded-full transition-transform ${color === sw ? "scale-110 ring-2 ring-offset-2 ring-offset-surface" : ""}`} style={{ background: sw, boxShadow: color === sw ? `0 0 0 2px ${sw}` : "none" }} />
-            ))}
-            <input type="color" value={color || card.themeColor} onChange={(e) => setColor(e.target.value)} className="h-8 w-9 shrink-0 rounded border border-border bg-surface p-0.5" aria-label={T("Your own colour", "अपना रंग")} />
-          </div>
-        </div>
-      )}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {T("Saved — it is live on your card", "Save हो गया — card पर live है")}</p>}
 
       {tab === "look" && (
         <section className="space-y-3 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
-          <p className="text-sm font-semibold">{T("Card look", "Card का look")}</p>
+          <div className="space-y-2">
+            <p className="text-sm font-semibold">{T("Colour", "रंग")}</p>
+            <div className="flex items-center gap-2.5 overflow-x-auto px-1 py-1">
+              {Array.from(new Set([card.themeColor, ...SWATCHES])).map((sw) => (
+                <button key={sw} type="button" onClick={() => setColor(sw)} aria-label={sw}
+                  className={`h-8 w-8 shrink-0 rounded-full transition-transform ${color === sw ? "scale-110 ring-2 ring-offset-2 ring-offset-surface" : ""}`} style={{ background: sw, boxShadow: color === sw ? `0 0 0 2px ${sw}` : "none" }} />
+              ))}
+              <input type="color" value={color || card.themeColor} onChange={(e) => setColor(e.target.value)} className="h-8 w-9 shrink-0 rounded border border-border bg-surface p-0.5" aria-label={T("Your own colour", "अपना रंग")} />
+            </div>
+          </div>
+          <p className="pt-1 text-sm font-semibold">{T("Card look", "Card का look")}</p>
           <div className="grid grid-cols-3 gap-2">
             {LOOKS.map((l) => (
               <button key={l.key} type="button" onClick={() => setLook(l.key)} className={`overflow-hidden rounded-xl border text-left ${look === l.key ? "border-brand ring-2 ring-brand" : "border-border bg-surface"}`}>
@@ -188,7 +188,6 @@ export default function CardEditPage() {
             ))}
           </div>
           <p className="text-xs"><b>{cur.name}</b>{hi && cur.hi ? ` · ${cur.hi}` : ""} <span className="text-muted">— {cur.blurb}</span></p>
-          <button type="button" onClick={() => { setGroup("content"); pick("text"); }} className="inline-flex items-center gap-1.5 text-sm font-semibold text-brand-ink"><FileText className="h-4 w-4" /> {T("Change any text, add a page", "कोई भी text बदलें, नया page जोड़ें")} →</button>
         </section>
       )}
       {embedSrc && (
