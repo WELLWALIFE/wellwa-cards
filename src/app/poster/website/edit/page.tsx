@@ -7,7 +7,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2 } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Sparkles, ExternalLink, Eye, EyeOff, ChevronUp, ChevronDown, RefreshCw, Check, Palette, Type, LayoutTemplate, ListOrdered, Files, Link2, Image as ImageIcon, Maximize2, Minimize2, Sun, Moon } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { useT } from "@/lib/poster-i18n";
@@ -182,7 +182,7 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}) } } : {}),
-        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape } } : {}),
+        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
@@ -339,6 +339,25 @@ export default function WebsiteEditPage() {
               <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
+              </div>
+            </div>
+            {/* The page's background: light paper or dark (owner, 25 Oct 2026: "pura background black dikh raha — badal sakte hain?"). */}
+            <div>
+              <p className="text-sm font-semibold">{hi ? "Background (पीछे का रंग)" : "Background"}</p>
+              <div className="mt-2 grid grid-cols-2 gap-2">
+                {(["light", "dark"] as const).map((t) => {
+                  const pal = (adv.palette ?? {}) as { key?: string; tone?: string; luxe?: boolean };
+                  const on = (pal.tone === "dark" ? "dark" : "light") === t;
+                  const off = t === "dark" && (pal.key === "ivory" || pal.key === "pearl");
+                  return (
+                    <button key={t} type="button" disabled={off} onClick={() => { const { luxe: _l, ...rest } = pal; void _l; setAdv({ palette: t === "dark" ? { ...rest, tone: "dark" } : { ...pal, tone: "light" } }); }}
+                      className={`flex items-center gap-2 rounded-xl border p-2.5 text-sm font-semibold disabled:opacity-40 ${on ? "border-brand ring-2 ring-brand/30" : "border-border"}`}>
+                      <span className={`grid h-8 w-8 place-items-center rounded-lg ${t === "dark" ? "bg-[#15171c] text-white" : "bg-[#f7f5f0] text-[#333] ring-1 ring-border"}`}>{t === "dark" ? <Moon className="h-4 w-4" /> : <Sun className="h-4 w-4" />}</span>
+                      {t === "dark" ? (hi ? "गहरा (Dark)" : "Dark") : (hi ? "हल्का (Light)" : "Light")}
+                      {on && <Check className="ml-auto h-4 w-4 text-brand" />}
+                    </button>
+                  );
+                })}
               </div>
             </div>
           </>) : (<>

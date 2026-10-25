@@ -384,7 +384,7 @@ export type SitePatch = {
    *  with a #rrggbb colour. Applied to site.advanced.palette when the card has a Premium design. */
   advancedPalette?: { key: string; color?: string };
   /** The Premium design's own letters, top and corners (website editor, 25 Oct 2026). Checked against the lists in lib/site-advanced.ts. */
-  advancedLook?: { heading?: string; hero?: string; shape?: string };
+  advancedLook?: { heading?: string; hero?: string; shape?: string; tone?: "light" | "dark" };
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -427,6 +427,14 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
       ...(L.hero ? { hero: L.hero } : {}),
       ...(L.shape ? { shape: L.shape } : {}),
     };
+    // Background light / dark (palette.tone). Ivory and pearl stay light; a dark page drops the luxe (ivory-paper) flag.
+    const a3 = (site as { advanced: { palette?: Record<string, unknown> } & Record<string, unknown> }).advanced;
+    if (L.tone && a3.palette) {
+      const pal = { ...a3.palette } as Record<string, unknown>;
+      const tone = L.tone === "dark" && !["ivory", "pearl"].includes(String(pal.key)) ? "dark" : "light";
+      pal.tone = tone; if (tone === "dark") delete pal.luxe;
+      (site as Record<string, unknown>).advanced = { ...a3, palette: pal };
+    }
   }
   const data = { ...row.data, site };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });

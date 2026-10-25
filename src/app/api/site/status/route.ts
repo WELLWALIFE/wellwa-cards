@@ -47,11 +47,12 @@ export async function PATCH(request: Request) {
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
   if (b.advancedLook && typeof b.advancedLook === "object") {
-    const L = b.advancedLook as { heading?: unknown; hero?: unknown; shape?: unknown };
+    const L = b.advancedLook as { heading?: unknown; hero?: unknown; shape?: unknown; tone?: unknown };
     const look = {
       ...(typeof L.heading === "string" && (HEADING_FONTS as string[]).includes(L.heading) ? { heading: L.heading } : {}),
       ...(typeof L.hero === "string" && (HERO_IDS as readonly string[]).includes(L.hero) ? { hero: L.hero } : {}),
       ...(typeof L.shape === "string" && (SHAPES as readonly string[]).includes(L.shape) ? { shape: L.shape } : {}),
+      ...(L.tone === "light" || L.tone === "dark" ? { tone: L.tone as "light" | "dark" } : {}),
     };
     if (Object.keys(look).length) patch.advancedLook = look;
   }
