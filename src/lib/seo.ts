@@ -86,7 +86,10 @@ export function seoTitle(card: Card, page?: CardPage | null): string {
   if (home) {
     if (own) return cut(own, 70);
     const where = f.city ? ` in ${f.city}` : "";
-    const type = f.category && f.category.toLowerCase() !== f.business.toLowerCase() ? f.category : "";
+    // The words under the name on the card first (the share picture shows them): a title saying "Network marketing" under a picture
+    // saying "AI Business Consultant" read as two different cards (owner, 25 Oct 2026). The Google category stays in the keywords.
+    const shown = clean(card.jobTitle) || f.category;
+    const type = shown && shown.toLowerCase() !== f.business.toLowerCase() ? shown : "";
     const base = type ? `${f.business} – ${type}${where}` : `${f.business}${where}`;
     // The owner's name too, when it fits: a search for the name then finds the card.
     const person = f.person && !base.toLowerCase().includes(f.person.toLowerCase()) ? ` | ${f.person}` : "";
@@ -120,7 +123,8 @@ export function seoDescription(card: Card, page?: CardPage | null): string {
   const reach = f.phone ? ` Call or WhatsApp ${f.phone}.` : "";
   const body = page && !home ? pageText(page) : clean(card.tagline) || pageText(card.pages[0] ?? { blocks: [] } as unknown as CardPage);
   const by = f.person && f.person.toLowerCase() !== f.business.toLowerCase() ? ` by ${f.person}` : "";
-  const lead = `${f.business}${f.category && f.category.toLowerCase() !== f.business.toLowerCase() ? `, ${f.category.toLowerCase()}` : ""}${where}${home ? by : ""}.`;
+  const shown = clean(card.jobTitle) || f.category;   // the same words as under the name on the card (see seoTitle)
+  const lead = `${f.business}${shown && shown.toLowerCase() !== f.business.toLowerCase() ? `, ${shown}` : ""}${where}${home ? by : ""}.`;
   return cut(`${lead} ${body ? `${cut(body, 90)}` : ""}${areas}${reach}`.replace(/\.\./g, ".").replace(/\s+/g, " ").trim(), 160);
 }
 
