@@ -20,6 +20,7 @@ import { LiveWindow } from "@/components/poster/live-window";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { seeCls } from "@/components/poster/save-overlay";
 import { partFor, partState } from "@/lib/edit-status";
+import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
@@ -38,6 +39,11 @@ const EMBED: Partial<Record<Tab, string>> = {
   links: `/poster/onboard?step=extras&part=links&for=card&back=${DONE}`,
   trade: `/poster/onboard?step=trade&for=card&back=${DONE}`,
 };
+/** Which group each part sits in (GROUPS below), for a part opened from the address. */
+const CARD_GROUP: Partial<Record<Tab, Group>> = {
+  look: "design", text: "content", photos: "content", products: "content", about: "content", details: "content", reviews: "content",
+  you: "contact", where: "contact", links: "contact", buttons: "contact", offer: "settings", trade: "settings",
+};
 const SWATCHES = ["#2f5bf5", "#0e9e90", "#6d5cf5", "#d24b4b", "#e5673b", "#f2a33c", "#1e3a8a", "#b86a3a", "#0d9488", "#111827"];
 
 export default function CardEditPage() {
@@ -52,6 +58,14 @@ export default function CardEditPage() {
   const [open, setOpen] = useState(false);
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
+  // Opened from the Website editor's switch with a part open (?part=): that part opens here too.
+  const partDone = useRef(false);
+  useEffect(() => {
+    if (!card || partDone.current) return;
+    partDone.current = true; rememberEdit("card");
+    const p = partParam() as Tab;
+    if (p && CARD_GROUP[p]) { setGroup(CARD_GROUP[p]); setTab(p); setOpen(true); }
+  }, [card]);
   /** The look and colour before the last Save, for 10 seconds after it ("Undo"). */
   const [undo, setUndo] = useState<{ template: Card["template"]; color: string } | null>(null);
   useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
@@ -168,8 +182,12 @@ export default function CardEditPage() {
       <EditFocus />
 
       <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
-        bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site?edit=card")),
-          see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls}>{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>,
+        bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site")),
+          see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls} aria-label={T("See card", "Card देखें")}><ExternalLink className="h-4 w-4" /></CardLink>,
+          switcher: { at: "card", site: !!card.site?.enabled, onSwitch: (to) => {
+            if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave it?", "बदलाव save नहीं हुआ। छोड़ दें?"))) return;
+            rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
+          } },
           save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }, undo: undo ? () => void save(undo) : undefined } }} />
 
 

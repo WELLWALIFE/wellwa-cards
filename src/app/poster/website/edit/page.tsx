@@ -24,6 +24,7 @@ import { EmbedPane } from "@/components/poster/embed-pane";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { WindowBar, seeCls } from "@/components/poster/save-overlay";
 import { partFor, partState } from "@/lib/edit-status";
+import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
@@ -95,6 +96,14 @@ export default function WebsiteEditPage() {
   const [open, setOpen] = useState(false);
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
+  // Opened from the Card editor's switch with a part open (?part=): that part opens here too.
+  const partDone = useRef(false);
+  useEffect(() => {
+    if (!card || partDone.current) return;
+    partDone.current = true; rememberEdit("site");
+    const p = partParam();
+    if (p && TAB_GROUP[p]) { setGroup(TAB_GROUP[p]); setTab(p as Tab); setOpen(true); }
+  }, [card]);
   /** A screen in a tab (Products, Timings …) showing its unsaved change: the window shows that copy until it is saved. */
   const [embedView, setEmbedView] = useState<{ card: Card; page?: string; focus?: { top?: boolean; text?: string } } | null>(null);
   const [savedTab, setSavedTab] = useState("");
@@ -435,8 +444,12 @@ export default function WebsiteEditPage() {
               <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
-          <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)} onBack={() => (open ? toList() : goBack(router, "/poster/site?edit=site"))}
-            see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
+          <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)}
+            switcher={{ at: "site", site: true, onSwitch: (to) => {
+              if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
+              rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
+            } }} onBack={() => (open ? toList() : goBack(router, "/poster/site"))}
+            see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink>}
             save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }, undo: undo ? () => void save(undo) : undefined }} />
         </div>
       </div>

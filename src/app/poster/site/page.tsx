@@ -25,6 +25,7 @@ import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
+import { editHref, lastEdit } from "@/lib/edit-nav";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -75,13 +76,6 @@ export default function WebsitePage() {
   }
   function onEditAddress() {
     try { const q = new URLSearchParams(window.location.search); return !!q.get("edit") && q.get("share") !== "1"; } catch { return false; }
-  }
-  /** "Edit card & website" moves to the Edit address without a reload. That entry is marked (`siteDoor`): this page's first screen is the
-   *  entry right below it, so the browser's Back and the arrow are the same move (they never bounce between the two screens). */
-  function openEdit(which: Exclude<Target, "pick">) {
-    window.history.pushState({ siteDoor: 1 }, "", `/poster/site?edit=${which}`);
-    fromAddress();
-    try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
   }
   const viaDoor = () => { try { return !!(window.history.state as { siteDoor?: number } | null)?.siteDoor; } catch { return false; } };
   /** Arrived from a focused edit's Save (…?edit=1&saved=1): the entry just below this one is the Edit that edit was opened from. */
@@ -135,6 +129,15 @@ export default function WebsitePage() {
   useEffect(() => { api<{ tier?: string | null }>("/api/poster/plan").then((r) => { if (r.ok) setTier(r.data.tier ?? null); }).catch(() => undefined); }, []);
   const domainOk = tier === "growth" || tier === "pro";
   const paid = planLoading || plan !== "free";
+  // One "Edit" (owner, 26 Oct 2026: "extra steps hatao, no confusion"): the Edit address no longer shows a screen of its own with a second
+  // Edit button — it opens the editor straight away (card or website, the last one used; the editor has the Card | Website switch).
+  useEffect(() => {
+    if (panel !== "edit" || !s || planLoading) return;
+    const siteOn = s.hasCard && !!s.site?.enabled;
+    const noSiteNow = !paid && s.hasCard && !siteOn;
+    const at = noSiteNow || target === "card" ? "card" : target === "site" ? "site" : lastEdit() ?? (siteOn ? "site" : "card");
+    router.replace(editHref(at));
+  }, [panel, s, target, paid, planLoading, router]);
   // The live card, for "change something" (card-chat-edit.tsx) and the notice.
   const [card, setCard] = useState<Card | null>(null);
   useEffect(() => { if (!cardId) return; fetchMyCardsStrict().then((cs) => setCard(cs.find((c) => c.id === cardId) ?? cs[0] ?? null)).catch(() => undefined); }, [cardId]);
@@ -268,9 +271,15 @@ export default function WebsitePage() {
                 {/* 2 · Edit */}
                 <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   {head(2, T("Edit", "Edit करें"), T("Change details, photos and offers", "जानकारी, photo और offer बदलें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
-                  <div className="grid grid-cols-2 gap-2.5 p-3">
-                    <button type="button" onClick={() => openEdit("card")} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Edit card", "Card edit")}</span><span className="text-[11px] text-muted">{T("opens on a phone", "phone पर दिखता है")}</span></button>
-                    <button type="button" onClick={() => (noSite ? setPlanSheet(true) : openEdit("site"))} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit")}</span><span className="text-[11px] text-muted">{T("opens on a computer", "computer पर दिखती है")}</span></button>
+                  <div className="p-3">
+                    <Link href={editHref(noSite ? "card" : lastEdit() ?? (s.site?.enabled ? "site" : "card"))} className="flex items-center gap-3 rounded-2xl bg-brand-soft/50 p-3.5 ring-1 ring-brand/20 transition active:scale-[.98]">
+                      {icon("bg-brand", "text-white", Paintbrush)}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-base font-bold">{T("Edit card & website", "Card और website edit करें")}</span>
+                        <span className="block text-xs text-muted">{T("One place for both — see each change live", "दोनों एक ही जगह — हर बदलाव तुरंत दिखता है")}</span>
+                      </span>
+                      <ChevronLeft className="h-5 w-5 shrink-0 rotate-180 text-muted" />
+                    </Link>
                   </div>
                 </section>
 
