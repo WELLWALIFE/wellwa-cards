@@ -383,6 +383,8 @@ export type SitePatch = {
   /** The Premium website's colour (owner, 23 Oct 2026: the colour row did nothing on a Premium site): a SITE_PALETTES key or "brand"
    *  with a #rrggbb colour. Applied to site.advanced.palette when the card has a Premium design. */
   advancedPalette?: { key: string; color?: string };
+  /** The Premium design's own letters, top and corners (website editor, 25 Oct 2026). Checked against the lists in lib/site-advanced.ts. */
+  advancedLook?: { heading?: string; hero?: string; shape?: string };
 };
 export async function patchSite(userId: string, patch: SitePatch, cardId?: string) {
   const row = await myCard(userId, cardId);
@@ -415,6 +417,16 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     const pal = { ...(adv.palette ?? {}), key: patch.advancedPalette.key } as Record<string, unknown>;
     if (patch.advancedPalette.key === "brand" && patch.advancedPalette.color) pal.color = patch.advancedPalette.color; else delete pal.color;
     (site as Record<string, unknown>).advanced = { ...adv, palette: pal };
+  }
+  const adv2 = (site as { advanced?: Record<string, unknown> }).advanced;
+  if (patch.advancedLook && adv2 && typeof adv2 === "object") {
+    const L = patch.advancedLook;
+    (site as Record<string, unknown>).advanced = {
+      ...adv2,
+      ...(L.heading ? { fonts: { ...((adv2.fonts as Record<string, unknown>) ?? {}), heading: L.heading } } : {}),
+      ...(L.hero ? { hero: L.hero } : {}),
+      ...(L.shape ? { shape: L.shape } : {}),
+    };
   }
   const data = { ...row.data, site };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });

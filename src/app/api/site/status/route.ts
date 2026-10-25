@@ -1,5 +1,6 @@
 // GET (bearer) → website status for the user's card (`?full=1` adds the whole card, for the website editor's
 // live preview). PATCH { enabled?, hidden?, hideProfile?, logoUrl?, hero?, style?, home?, reference? }.
+import { HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
 import { PALETTE_KEYS } from "@/lib/site-style";
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
@@ -45,6 +46,15 @@ export async function PATCH(request: Request) {
     }).filter((x: { headline: string }) => x.headline);
   }
   const style = cleanStyle(b.style); if (style) patch.style = style;
+  if (b.advancedLook && typeof b.advancedLook === "object") {
+    const L = b.advancedLook as { heading?: unknown; hero?: unknown; shape?: unknown };
+    const look = {
+      ...(typeof L.heading === "string" && (HEADING_FONTS as string[]).includes(L.heading) ? { heading: L.heading } : {}),
+      ...(typeof L.hero === "string" && (HERO_IDS as readonly string[]).includes(L.hero) ? { hero: L.hero } : {}),
+      ...(typeof L.shape === "string" && (SHAPES as readonly string[]).includes(L.shape) ? { shape: L.shape } : {}),
+    };
+    if (Object.keys(look).length) patch.advancedLook = look;
+  }
   if (b.advancedPalette && typeof b.advancedPalette === "object") {
     const k = String((b.advancedPalette as { key?: unknown }).key ?? "");
     const col = String((b.advancedPalette as { color?: unknown }).color ?? "");

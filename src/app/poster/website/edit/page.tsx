@@ -15,6 +15,7 @@ import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
+import { HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
 
@@ -40,6 +41,16 @@ function Swatch({ p, on, onClick, label }: { p: SitePalette; on: boolean; onClic
     </button>
   );
 }
+
+/** Plain names for the Premium tops (lib/site-advanced.ts HERO_IDS), English and Hindi. */
+const ADV_HERO_NAMES: Record<string, [string, string]> = {
+  "split-frame": ["Words + framed photo", "शब्द + फ्रेम में photo"], "full-bleed": ["Full photo", "पूरी photo"],
+  "editorial-marquee": ["Big letters + moving line", "बड़े अक्षर + चलती पट्टी"], "glass-card": ["Photo + glass card", "Photo + शीशे का card"],
+  "stacked-poster": ["Centre + arch photo", "बीच में + arch photo"], "mosaic": ["Mosaic", "Mosaic"], "video-first": ["Video first", "पहले video"],
+  "centered-minimal": ["Calm, centred", "शांत, बीच में"], "diagonal": ["Slanted photo", "तिरछी photo"], "masthead": ["Magazine title", "Magazine जैसा"],
+  "kinetic-type": ["Giant headline", "बहुत बड़ी headline"], "pinned-story": ["Scroll story", "Scroll कहानी"], "parallax-collage": ["Floating collage", "तैरती photos"],
+  "product-spotlight": ["Product spotlight", "Product spotlight"],
+};
 
 export default function WebsiteEditPage() {
   const router = useRouter();
@@ -117,6 +128,8 @@ export default function WebsiteEditPage() {
   const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
   const paletteKey = adv ? (adv.palette?.key && (adv.palette.key === "brand" || SITE_PALETTES.some((p) => p.key === adv.palette?.key)) ? adv.palette.key : "brand")
     : style.palette && SITE_PALETTES.some((p) => p.key === style.palette) ? style.palette : "brand";
+  /** A change to the Premium design itself (fonts, the top, corners): shown in the window at once, saved with Save like the rest. */
+  const setAdv = (patch: Record<string, unknown>) => { if (!adv) return; focus({ top: true }); set({ advanced: { ...adv, ...patch } as NonNullable<Card["site"]>["advanced"] }); };
   const pickColour = (key: string, color?: string) => {
     focus({ top: true });
     const nextStyle = { ...style, palette: key, ...(color !== undefined ? { color } : {}) };
@@ -169,6 +182,7 @@ export default function WebsiteEditPage() {
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
         float: site.float ?? "whatsapp",
         ...(adv?.palette?.key ? { advancedPalette: { key: adv.palette.key, ...(adv.palette.color ? { color: adv.palette.color } : {}) } } : {}),
+        ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
       setDirty(false); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
@@ -182,6 +196,21 @@ export default function WebsiteEditPage() {
       const r = await api<{ ok?: boolean; site?: Card["site"]; error?: string }>("/api/site/status", { method: "PATCH", json: { card_id: s.cardId, reference: refUrl.trim() } });
       if (!r.ok || !r.data.site) { say("ref", r.data.error ?? (hi ? "वो website पढ़ी नहीं जा सकी।" : "Could not read that website.")); return; }
       if (card) setCard({ ...card, site: { ...(card.site ?? { enabled: true }), style: r.data.site.style, reference: r.data.site.reference } });
+      // A Premium website wears its own design: the copied colours, letters and corners go onto it too (owner, 25 Oct 2026: "Copy the look
+      // bhi kaam nahi kar raha" — it only changed the basic site). Saved with Save, like the rest.
+      const st = r.data.site.style ?? {};
+      if (adv && card) {
+        const head = FONT_PAIRS.find((f) => f.key === st.font)?.head;
+        const shape = st.radius === "round" ? "pill" : st.radius === "sharp" ? "sharp" : st.radius === "soft" ? "soft" : undefined;
+        const nextAdv = {
+          ...adv,
+          ...(st.palette ? { palette: { ...(adv.palette ?? {}), key: st.palette, ...(st.palette === "brand" && st.color ? { color: st.color } : {}) } } : {}),
+          ...(head && (HEADING_FONTS as string[]).includes(head) ? { fonts: { ...((adv.fonts as object) ?? {}), heading: head } } : {}),
+          ...(shape ? { shape } : {}),
+        };
+        setCard({ ...card, site: { ...(card.site ?? { enabled: true }), style: st, reference: r.data.site.reference, advanced: nextAdv as NonNullable<Card["site"]>["advanced"] } });
+        setDirty(true);
+      }
       say("ref", hi ? "✅ उस वेबसाइट का लुक कॉपी हो गया — ऊपर preview देखें।" : "✅ Copied that website's look — see the preview above.", false);
     } catch { say("ref", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
@@ -289,7 +318,30 @@ export default function WebsiteEditPage() {
 
       {tab === "look" && (
         <section className="space-y-5 rounded-xl border border-border p-3">
-          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href="/poster/card/build?improve=1" className="font-semibold text-brand-ink">{hi ? "Website का design" : "Website design"}</Link>.</p>
+          {/* A Premium website's own design lives on the Premium page (owner, 25 Oct 2026: "premium hai to premium design par jaana chahiye"). */}
+          <p className="text-[11px] text-muted">{hi ? "Design बदलना हो तो " : "To change the design, go to "}<Link href={adv ? "/poster/site/advanced" : "/poster/card/build?improve=1"} className="font-semibold text-brand-ink">{adv ? (hi ? "Premium design" : "Premium design") : (hi ? "Website का design" : "Website design")}</Link>.</p>
+          {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
+              site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
+          {adv ? (<>
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setAdv({ fonts: { ...((adv.fonts as { heading?: string; body?: string }) ?? {}), heading: f } })} className={chip((adv.fonts as { heading?: string } | undefined)?.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setAdv({ hero: h })} className={chip(adv.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
+              </div>
+            </div>
+          </>) : (<>
           <div>
             <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
             <div className="mt-2 flex flex-wrap gap-2">
@@ -312,6 +364,7 @@ export default function WebsiteEditPage() {
               {RADII.map((r) => <button key={r.key} type="button" onClick={() => setStyle({ radius: r.key })} className={chip(style.radius === r.key)}>{hi ? r.hi : r.name}</button>)}
             </div>
           </div>
+          </>)}
           <div className="rounded-lg bg-surface2 p-3">
             <p className="text-sm font-semibold flex items-center gap-1.5"><Link2 className="h-4 w-4 text-brand" /> {hi ? "किसी वेबसाइट जैसा लुक" : "Copy the look of a website you like"}</p>
             <p className="text-[11px] text-muted mt-0.5">{hi ? "सिर्फ़ उसके रंग, अक्षर और सजावट कॉपी होंगे — शब्द, photo या product नहीं। फ़्री।" : "Only its colours, letters and arrangement are copied. Never its words, photos or products. Free."}</p>
