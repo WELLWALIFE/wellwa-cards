@@ -11,7 +11,8 @@ import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 export type LiveFocus = { top?: boolean; text?: string; body?: boolean } | null;
 const SITE_W = 1280, CARD_W = 400;
 
-export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
+export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay }: {
+  /** Shown over the window, bottom left (the Save button and its message: owner, 25 Oct 2026, "save wali patti hatao"). */ overlay?: React.ReactNode;
   card: Card | null; /** The localStorage key the preview reads (letters, digits, dashes). */ k: string;
   /** The website page to open (the change is on it, e.g. "contact" for the address); unset = home. */ page?: string;
   view?: "site" | "card"; /** What to show after this change: the top, or the section / line with this text. */ focus?: LiveFocus; hi: boolean;
@@ -54,7 +55,7 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
   }, [sig, focusSig, k, inside]);
   if (!card || inside) return null;
   return (
-    <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
+    <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
       <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
         <div ref={box} className="overflow-hidden bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
           <div className="relative" style={{ width: Math.round(w * scale), height: boxH }}>
@@ -62,6 +63,7 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page }: {
               onLoad={() => post(`preview:${k}`)} className="absolute left-0 top-0 origin-top-left" style={{ width: w, height: frameH, border: 0, transform: `scale(${scale})` }} />
           </div>
         </div>
+        {overlay}
         <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● Live</span>
         <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
           className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">

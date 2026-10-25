@@ -17,6 +17,7 @@ import { cardHome, withView } from "@/lib/site-url";
 import { usePlan } from "@/lib/plan";
 import { CardLink } from "@/components/poster/card-sheet";
 import { LiveWindow } from "@/components/poster/live-window";
+import { SaveOverlay } from "@/components/poster/save-overlay";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { TabHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
@@ -140,14 +141,15 @@ export default function CardEditPage() {
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4 pb-4">
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Edit card", "Card edit करें")}</h1>
         <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{T("See card", "Card देखें")} <ExternalLink className="h-3.5 w-3.5" /></CardLink>
       </div>
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi} />
+      <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
+        overlay={<SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} />} />
 
       {group === "design" && (
         <div className="space-y-2 rounded-2xl border border-border bg-surface px-2 pb-2 pt-2">
@@ -214,16 +216,6 @@ export default function CardEditPage() {
         </section>
       )}
 
-      {/* Look and colour save here; the other tabs save by themselves (the bar shows there only while a look change waits). */}
-      {(group === "design" || dirty || embedDirty || note) && (
-        <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
-          {note && <p role={note.bad ? "alert" : "status"} className={`mb-2 rounded-lg border px-3 py-2 text-xs font-semibold ${note.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-good/40 bg-good/10 text-good"}`}>{note.text}</p>}
-          <div className="flex items-center gap-3">
-            <p className="flex-1 text-xs text-muted">{dirty || embedDirty ? T("Tap Save to put it on your card", "Save दबाएँ — तभी card पर लगेगा") : T("All saved", "सब save है")}</p>
-            <button type="button" onClick={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} disabled={busy || !(dirty || embedDirty)} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy ? "…" : T("Save", "Save करें")}</button>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

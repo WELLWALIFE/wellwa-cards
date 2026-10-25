@@ -21,6 +21,7 @@ import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
+import { SaveOverlay } from "@/components/poster/save-overlay";
 import { TabHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
@@ -362,7 +363,7 @@ export default function WebsiteEditPage() {
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   return (
-    <div className="space-y-4 pb-28">
+    <div className="space-y-4 pb-4">
       <div className="flex items-center gap-2">
         {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
         <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
@@ -384,13 +385,14 @@ export default function WebsiteEditPage() {
 
       {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
-      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
+      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
           <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
             <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
               <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
+          <SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy === "save"} hi={hi} note={note?.k === "save" ? note : null} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} />
           <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
           <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
             className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
@@ -651,15 +653,6 @@ export default function WebsiteEditPage() {
         </section>
       )}
 
-      {/* ---- save bar: above the app's bottom navigation, not over it (same as the explainer editor). The other tabs save by themselves:
-          the bar shows there only while this page's own changes wait. ---- */}
-      {(group === "design" || dirty || embedDirty || note?.k === "save") && <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
-        {line("save", "mb-2")}
-        <div className="flex items-center gap-3">
-          <p className="flex-1 text-xs text-muted">{dirty || embedDirty ? (hi ? "Save दबाएँ — तभी website पर लगेगा" : "Tap Save to put it on your website") : (hi ? "सब सेव है" : "All saved")}</p>
-          <button type="button" onClick={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} disabled={busy === "save" || !(dirty || embedDirty)} className="rounded-xl grad-brand px-6 py-3 text-sm font-semibold text-white disabled:opacity-60">{busy === "save" ? "…" : (hi ? "Save करें" : "Save")}</button>
-        </div>
-      </div>}
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );
