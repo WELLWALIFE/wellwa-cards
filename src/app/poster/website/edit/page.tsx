@@ -23,7 +23,7 @@ import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { SaveOverlay } from "@/components/poster/save-overlay";
-import { TabHead, type Scope } from "@/components/poster/edit-parts";
+import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
 import type { Card, HeroSlide, SiteStyle } from "@/lib/types";
@@ -84,6 +84,8 @@ export default function WebsiteEditPage() {
   const [card, setCard] = useState<Card | null>(null);
   const [tab, setTab] = useState<Tab>("look");
   const [group, setGroup] = useState<Group>("design");
+  /** The list of parts (false) or one part open (true). */
+  const [open, setOpen] = useState(false);
   /** A screen in a tab (Products, Timings …) showing its unsaved change: the window shows that copy until it is saved. */
   const [embedView, setEmbedView] = useState<{ card: Card; page?: string; focus?: { top?: boolean; text?: string } } | null>(null);
   const [savedTab, setSavedTab] = useState("");
@@ -386,7 +388,7 @@ export default function WebsiteEditPage() {
           </div>
           <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} aria-label={hi ? "पीछे" : "Back"} className="absolute left-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
           {dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
-          <SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy === "save"} hi={hi} note={note?.k === "save" ? note : null} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} />
+          <SaveOverlay show={(open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy === "save"} hi={hi} note={note?.k === "save" ? note : null} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} />
           <span className="pointer-events-none absolute left-12 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
           <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
             className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
@@ -394,7 +396,15 @@ export default function WebsiteEditPage() {
           </button>
         </div>
       </div>
-      {group === "design" && <div className="overflow-hidden rounded-2xl border border-border">
+
+      {!open
+        ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
+        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={() => {
+            if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
+            setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
+          }} /> : null; })()}
+      {open && (<>
+      {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">
         <div className="border-t border-border bg-surface px-2 pb-1.5 pt-2">
           <div className="flex items-center justify-between gap-2 px-1">
             <p className="flex items-center gap-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {hi ? "रंग चुनें" : "Pick a colour"}</p>
@@ -427,19 +437,6 @@ export default function WebsiteEditPage() {
           )}
         </div>
       </div>}
-
-      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface2 p-1">
-        {GROUPS.map((g) => (
-          <button key={g.key} type="button" onClick={() => { setGroup(g.key); pick(g.tabs[0].key); }}
-            className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-bold transition ${group === g.key ? "bg-surface text-brand-ink shadow-card" : "text-muted"}`}>
-            <g.Icon className="h-4 w-4" /> {g.label}
-          </button>
-        ))}
-      </div>
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => pick(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
-      </div>
-      {(() => { const d = TABS.find((x) => x.key === tab); return d ? <TabHead Icon={d.Icon} title={d.label} sub={d.sub} scope={d.scope} hi={hi} /> : null; })()}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {hi ? "Save हो गया — website पर live है" : "Saved — it is live on your website"}</p>}
 
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
@@ -647,6 +644,7 @@ export default function WebsiteEditPage() {
         </section>
       )}
 
+      </>)}
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );

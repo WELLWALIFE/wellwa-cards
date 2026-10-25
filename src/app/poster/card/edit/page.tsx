@@ -20,7 +20,7 @@ import { LiveWindow } from "@/components/poster/live-window";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { SaveOverlay } from "@/components/poster/save-overlay";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
-import { TabHead, type Scope } from "@/components/poster/edit-parts";
+import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 
@@ -38,7 +38,6 @@ const EMBED: Partial<Record<Tab, string>> = {
   trade: `/poster/onboard?step=trade&for=card&back=${DONE}`,
 };
 const SWATCHES = ["#2f5bf5", "#0e9e90", "#6d5cf5", "#d24b4b", "#e5673b", "#f2a33c", "#1e3a8a", "#b86a3a", "#0d9488", "#111827"];
-const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`;
 
 export default function CardEditPage() {
   const router = useRouter();
@@ -48,6 +47,8 @@ export default function CardEditPage() {
   const [failed, setFailed] = useState(false);
   const [group, setGroup] = useState<Group>("design");
   const [tab, setTab] = useState<Tab>("look");
+  /** The list of parts (false) or one part open (true). */
+  const [open, setOpen] = useState(false);
   const [look, setLook] = useState<Card["template"] | "">("");
   const [color, setColor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -148,9 +149,17 @@ export default function CardEditPage() {
       <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
         overlay={<><button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} aria-label={T("Back", "पीछे")} className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
           <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>
-          <SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} /></>} />
+          <SaveOverlay show={(open && tab === "look") || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} /></>} />
 
-      {group === "design" && (
+
+      {!open
+        ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
+        : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={() => {
+            if (embedDirty && !window.confirm(T("Your change is not saved. Go back without saving?", "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?"))) return;
+            setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
+          }} /> : null; })()}
+      {open && (<>
+      {tab === "look" && (
         <div className="space-y-2 rounded-2xl border border-border bg-surface px-2 pb-2 pt-2">
           <p className="flex items-center gap-1 px-1 text-[11px] font-semibold text-muted"><Palette className="h-3.5 w-3.5 text-brand" /> {T("Pick a colour", "रंग चुनें")}</p>
           <div className="flex items-center gap-2.5 overflow-x-auto px-1 pb-1">
@@ -162,21 +171,6 @@ export default function CardEditPage() {
           </div>
         </div>
       )}
-
-      <div className="grid grid-cols-4 gap-1 rounded-2xl bg-surface2 p-1">
-        {GROUPS.map((g) => (
-          <button key={g.key} type="button" onClick={() => { setGroup(g.key); pick(g.tabs[0].key); }}
-            className={`flex flex-col items-center gap-0.5 rounded-xl py-2 text-[11px] font-bold transition ${group === g.key ? "bg-surface text-brand-ink shadow-card" : "text-muted"}`}>
-            <g.Icon className="h-4 w-4" /> {g.label}
-          </button>
-        ))}
-      </div>
-      {TABS.length > 1 && (
-        <div className="flex gap-2 overflow-x-auto pb-1">
-          {TABS.map(({ key, label, Icon }) => <button key={key} type="button" onClick={() => pick(key)} className={`${chip(tab === key)} inline-flex shrink-0 items-center gap-1.5`}><Icon className="h-4 w-4" /> {label}</button>)}
-        </div>
-      )}
-      {(() => { const d = TABS.find((x) => x.key === tab); return d ? <TabHead Icon={d.Icon} title={d.label} sub={d.sub} scope={d.scope} hi={hi} /> : null; })()}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {T("Saved — it is live on your card", "Save हो गया — card पर live है")}</p>}
 
       {tab === "look" && (
@@ -215,6 +209,7 @@ export default function CardEditPage() {
         </section>
       )}
 
+      </>)}
     </div>
   );
 }
