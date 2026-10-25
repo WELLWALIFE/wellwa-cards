@@ -64,7 +64,7 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay }:
           </div>
         </div>
         {overlay}
-        <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● Live</span>
+        <span className="pointer-events-none absolute left-12 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● Live</span>
         <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
           className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
           {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}

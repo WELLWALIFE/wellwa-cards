@@ -35,7 +35,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
         <div className="w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
           {/* data-chrome: hidden when this screen is shown inside another one (components/poster/embed-mode.tsx). */}
           <EmbedMode />
-          <div data-chrome className="contents"><TopMenu /></div>
+          <div data-chrome data-topmenu className="contents"><TopMenu /></div>
           <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><div data-chrome className="contents"><BackBar /></div>{children}<div data-chrome className="contents"><SetupResume variant="float" /></div></main>
           <div data-chrome className="contents"><PosterNav /></div>
           {/* One Help button on every screen, and the live-help session behind it. */}

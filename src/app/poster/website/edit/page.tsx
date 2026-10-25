@@ -21,6 +21,7 @@ import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
 import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
+import { EditFocus } from "@/components/poster/edit-focus";
 import { SaveOverlay } from "@/components/poster/save-overlay";
 import { TabHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
@@ -363,17 +364,8 @@ export default function WebsiteEditPage() {
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   return (
-    <div className="-mt-10 space-y-3 pb-4">
-      <div className="flex min-h-10 items-center gap-2 pr-28">
-        {/* Back = the screen the owner was just on (Card & Website → Edit); opened fresh, that Edit. (It used to open /poster/website, which redirects to the first screen.) */}
-        <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} className="text-muted" aria-label={hi ? "पीछे" : "Back"}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="text-lg font-bold flex-1">{hi ? "वेबसाइट एडिट करें" : "Edit website"}</h1>
-        {/* Not saved yet: this opens the working copy (the same one the preview above shows), full size — the live link would still show
-            the old look (owner, 23 Oct 2026: "colour change karke dekha to purana hi dikha"). */}
-        {dirty
-          ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3.5 w-3.5" /></SiteLink>
-          : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3.5 w-3.5" /></SiteLink>}
-      </div>
+    <div className="space-y-3 pb-4">
+      <EditFocus />
       {s.cards.length > 1 && (
         <div className="space-y-1.5">
           <select value={s.cardId} onChange={(e) => { setNote(null); void load(e.target.value); }} className="w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm">
@@ -392,8 +384,10 @@ export default function WebsiteEditPage() {
               <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
+          <button type="button" onClick={() => goBack(router, "/poster/site?edit=site")} aria-label={hi ? "पीछे" : "Back"} className="absolute left-2 top-2 z-10 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
+          {dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
           <SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy === "save"} hi={hi} note={note?.k === "save" ? note : null} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }} />
-          <span className="pointer-events-none absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
+          <span className="pointer-events-none absolute left-12 top-3 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">● {hi ? "Live" : "Live"}</span>
           <button type="button" onClick={() => setBig((b) => !b)} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")}
             className="absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full bg-black/65 px-2.5 py-1 text-[11px] font-semibold text-white">
             {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}

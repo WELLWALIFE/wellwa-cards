@@ -17,6 +17,7 @@ import { cardHome, withView } from "@/lib/site-url";
 import { usePlan } from "@/lib/plan";
 import { CardLink } from "@/components/poster/card-sheet";
 import { LiveWindow } from "@/components/poster/live-window";
+import { EditFocus } from "@/components/poster/edit-focus";
 import { SaveOverlay } from "@/components/poster/save-overlay";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { TabHead, type Scope } from "@/components/poster/edit-parts";
@@ -141,15 +142,13 @@ export default function CardEditPage() {
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   return (
-    <div className="-mt-10 space-y-3 pb-4">
-      <div className="flex min-h-10 items-center gap-2 pr-28">
-        <button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-        <h1 className="flex-1 text-lg font-bold">{T("Edit card", "Card edit करें")}</h1>
-        <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{T("See card", "Card देखें")} <ExternalLink className="h-3.5 w-3.5" /></CardLink>
-      </div>
+    <div className="space-y-3 pb-4">
+      <EditFocus />
 
       <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
-        overlay={<SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} />} />
+        overlay={<><button type="button" onClick={() => goBack(router, "/poster/site?edit=card")} aria-label={T("Back", "पीछे")} className="absolute left-2 top-2 grid h-8 w-8 place-items-center rounded-full bg-black/65 text-white"><ChevronLeft className="h-5 w-5" /></button>
+          <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="absolute bottom-2 left-1/2 inline-flex -translate-x-1/2 items-center gap-1 rounded-full bg-black/65 px-3 py-1.5 text-[11px] font-semibold text-white">{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>
+          <SaveOverlay show={group === "design" || dirty || embedDirty} dirty={dirty || embedDirty} busy={busy} hi={hi} note={note} onSave={() => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }} /></>} />
 
       {group === "design" && (
         <div className="space-y-2 rounded-2xl border border-border bg-surface px-2 pb-2 pt-2">
