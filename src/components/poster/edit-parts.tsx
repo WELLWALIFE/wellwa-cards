@@ -32,6 +32,20 @@ export type MenuGroup<K extends string> = { key: string; label: string; tabs: Me
 const TONES: Record<string, string> = {
   design: "bg-[#efeaff] text-[#6d4fe0]", content: "bg-[#e7f0ff] text-[#2f5bf5]", contact: "bg-[#e3f7ee] text-[#109463]", settings: "bg-[#eef0f5] text-[#4b5270]",
 };
+/** What to do for an empty part, in one line (owner, 26 Oct 2026: "khali hisse ke liye aasan raasta"). */
+const EMPTY_HINT: Record<string, [string, string]> = {
+  photos: ["Add a photo of your shop or work", "अपनी दुकान या काम की photo लगाएँ"],
+  products: ["Add your first product or service", "पहला product या service जोड़ें"],
+  about: ["Let AI write two lines about you", "AI से अपने बारे में 2 लाइन लिखवाएँ"],
+  details: ["3–4 things you offer", "आप क्या देते हैं — 3-4 बातें"],
+  reviews: ["Ask for a review on WhatsApp — the message is ready", "WhatsApp पर review माँगें — message तैयार है"],
+  you: ["Add your photo and number", "अपनी photo और number लगाएँ"],
+  where: ["Add your address and opening hours", "पता और खुलने का समय लिखें"],
+  links: ["Add UPI so people can pay you", "UPI लगाएँ — लोग सीधे pay करें"],
+  buttons: ["Add Call and WhatsApp buttons", "Call और WhatsApp बटन जोड़ें"],
+  trade: ["Write your business name and work", "Business का नाम और काम लिखें"],
+  seo: ["Write your city to show on Google", "अपना शहर लिखें — Google पर दिखें"],
+};
 const tagOf = (scope: Scope, hi: boolean) => scope === "both" ? (hi ? "दोनों" : "Both") : scope === "site" ? (hi ? "Website" : "Website") : (hi ? "Card" : "Card");
 
 export function EditMenu<K extends string>({ groups, hi, onPick, showScope = true, state, what, fold = [] }: {
@@ -51,7 +65,9 @@ export function EditMenu<K extends string>({ groups, hi, onPick, showScope = tru
         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[g.key] ?? TONES.settings}`}><t.Icon className="h-[18px] w-[18px]" /></span>
         <span className="min-w-0 flex-1">
           <span className="block text-[15px] font-semibold leading-tight">{t.label}</span>
-          <span className="mt-0.5 block truncate text-xs text-muted">{t.sub}</span>
+          {st === "empty" && EMPTY_HINT[t.key]
+            ? <span className="mt-0.5 block truncate text-xs font-medium text-[#c2620a]">{hi ? EMPTY_HINT[t.key][1] : EMPTY_HINT[t.key][0]} →</span>
+            : <span className="mt-0.5 block truncate text-xs text-muted">{t.sub}</span>}
         </span>
         {st === "empty" && <span className="shrink-0 rounded-full bg-[#fff1e0] px-2 py-0.5 text-[10px] font-bold text-[#c2620a]">{hi ? "खाली" : "Empty"}</span>}
         {st === "ok" && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-good/15 text-good"><Check className="h-3 w-3" strokeWidth={3} /></span>}
@@ -72,6 +88,19 @@ export function EditMenu<K extends string>({ groups, hi, onPick, showScope = tru
           {done < all.length && <p className="mt-2 text-[11px] text-muted">{hi ? "नारंगी \"खाली\" वाले भरें — ग्राहक को पूरी जानकारी मिलेगी।" : "Fill the orange \"Empty\" ones — customers get the full picture."}</p>}
         </div>
       )}
+      {/* What is still empty, on top (owner, 26 Oct 2026: "khali wale upar"): one tap to each. */}
+      {state && (() => {
+        const todo = groups.flatMap((g) => g.tabs.filter((t) => state(t.key) === "empty").map((t) => ({ g, t })));
+        if (!todo.length) return null;
+        return (
+          <section>
+            <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-[#c2620a]">{hi ? `बाकी हैं (${todo.length})` : `Still to fill (${todo.length})`}</p>
+            <div className="divide-y divide-border overflow-hidden rounded-2xl border border-[#f5c58a] bg-[#fffaf3] shadow-card">
+              {todo.map(({ g, t }) => row(g, t))}
+            </div>
+          </section>
+        );
+      })()}
       {groups.map((g) => {
         const folded = fold.includes(g.key);
         const isOpen = !folded || opened.includes(g.key);

@@ -60,6 +60,14 @@ export default function CardEditPage() {
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
   // Opened from the Website editor's switch with a part open (?part=): that part opens here too.
+  // Closing the tab or reloading with a change not saved: the browser asks first (owner, 26 Oct 2026: "bina save kiye kaam na khoye").
+  useEffect(() => {
+    const unsaved = !!card && (look !== card.template || color !== card.themeColor || embedDirty);
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [card, look, color, embedDirty]);
   const partDone = useRef(false);
   useEffect(() => {
     if (!card || partDone.current) return;
@@ -186,7 +194,11 @@ export default function CardEditPage() {
       <EditFocus />
 
       <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
-        bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site")),
+        bar={{ onBack: () => {
+            if (open) { toList(); return; }
+            if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave without saving?", "बदलाव save नहीं हुआ। बिना save किए निकलें?"))) return;
+            goBack(router, "/poster/site");
+          },
           see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls} aria-label={T("See card", "Card देखें")}><ExternalLink className="h-4 w-4" /></CardLink>,
           history,
           switcher: { at: "card", site: !!card.site?.enabled, onSwitch: (to) => {

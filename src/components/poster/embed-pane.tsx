@@ -14,6 +14,11 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
   const ref = useRef<HTMLIFrameElement>(null);
   const [h, setH] = useState(640);
   const [n, setN] = useState(0);
+  /** The screen inside has drawn itself (its first height came): until then a light outline of a form shows, not an empty space. */
+  const [readyFor, setReadyFor] = useState("");
+  const key = `${src}-${n}`;
+  const keyRef = useRef(key);
+  useEffect(() => { keyRef.current = key; });
   const cb = useRef({ onLive, onDone, onDirty, onSaved, onError });
   useEffect(() => { cb.current = { onLive, onDone, onDirty, onSaved, onError }; });
   useEffect(() => { if (saveTick > 0) try { ref.current?.contentWindow?.postMessage({ type: "embed-save" }, window.location.origin); } catch { /* ignore */ } }, [saveTick]);
@@ -22,7 +27,7 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
     const on = (e: MessageEvent) => {
       if (e.origin !== window.location.origin || !ref.current || e.source !== ref.current.contentWindow) return;
       const m = e.data as { type?: string; h?: number; saved?: boolean } & Partial<EmbedLive>;
-      if (m?.type === "embed-height" && typeof m.h === "number") setH(Math.max(320, Math.min(m.h, 20000)));
+      if (m?.type === "embed-height" && typeof m.h === "number") { setH(Math.max(320, Math.min(m.h, 20000))); setReadyFor(keyRef.current); }
       else if (m?.type === "embed-live" && m.card) cb.current.onLive({ card: m.card, page: m.page, focus: m.focus });
       else if (m?.type === "embed-dirty") cb.current.onDirty?.(!!(m as { dirty?: boolean }).dirty);
       else if (m?.type === "embed-saved") cb.current.onSaved?.();
@@ -32,5 +37,22 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
     window.addEventListener("message", on);
     return () => window.removeEventListener("message", on);
   }, []);
-  return <iframe key={`${src}-${n}`} ref={ref} title={title} src={src} className="-mx-4 block w-[calc(100%+2rem)] border-0" style={{ height: h }} />;
+  const ready = readyFor === key;
+  return (
+    <div className="relative">
+      <iframe key={key} ref={ref} title={title} src={src} onLoad={() => setTimeout(() => setReadyFor(key), 1500)}
+        className={`-mx-4 block w-[calc(100%+2rem)] border-0 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`} style={{ height: ready ? h : 420 }} />
+      {!ready && (
+        <div className="pointer-events-none absolute inset-0 space-y-3" aria-label="Loading" role="status">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="animate-pulse space-y-2 rounded-2xl border border-border bg-surface p-4">
+              <div className="h-3 w-1/3 rounded-full bg-surface2" />
+              <div className="h-10 w-full rounded-xl bg-surface2" />
+              {i === 0 && <div className="h-20 w-full rounded-xl bg-surface2" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }

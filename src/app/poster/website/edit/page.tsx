@@ -192,6 +192,13 @@ export default function WebsiteEditPage() {
   }, [s]);
   const frameH = Math.round(boxH / scale);
 
+  // Closing the tab or reloading with a change not saved: the browser asks first (owner, 26 Oct 2026: "bina save kiye kaam na khoye").
+  useEffect(() => {
+    if (!dirty && !embedDirty) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, embedDirty]);
   // A ✏️ tapped in the preview opens that part (owner, 25 Oct 2026: "preview par tap karke edit").
   const tapState = useRef({ card, embedDirty, hi });
   useEffect(() => { tapState.current = { card, embedDirty, hi }; });
@@ -452,7 +459,11 @@ export default function WebsiteEditPage() {
             switcher={{ at: "site", site: true, onSwitch: (to) => {
               if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
               rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
-            } }} onBack={() => (open ? toList() : goBack(router, "/poster/site"))}
+            } }} onBack={() => {
+              if (open) { toList(); return; }
+              if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए निकलें?" : "Your change is not saved. Leave without saving?")) return;
+              goBack(router, "/poster/site");
+            }}
             see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}><ExternalLink className="h-4 w-4" /></SiteLink>}
             save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }, undo: undo ? () => void save(undo) : undefined }} />
         </div>

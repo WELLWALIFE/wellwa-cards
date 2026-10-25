@@ -61,3 +61,20 @@ export function partFor(c: Card, t: { kind: string; blockId?: string; text?: str
   const first = all.find((x) => x.kind === b.kind);
   return own && first?.id === b.id ? { key: own } : { key: "text", blockId: b.id };
 }
+
+/** The parts that count towards "how complete" — the same list on the Card & Website page and in both editors. */
+export const COUNTED_PARTS = ["photos", "products", "about", "details", "reviews", "you", "where", "links", "buttons", "trade"];
+export function completeness(c: Card, site: boolean): { done: number; total: number; pct: number; empty: string[] } {
+  const keys = site ? [...COUNTED_PARTS, "seo"] : COUNTED_PARTS;
+  const empty = keys.filter((k) => partState(c, k) === "empty");
+  const total = keys.length, done = total - empty.length;
+  return { done, total, pct: Math.round((done / total) * 100), empty };
+}
+
+/** A part's name for "Next: …" lines (the same words as the editor's list). */
+export const PART_NAME: Record<string, [string, string]> = {
+  photos: ["Photos & banner", "Photos और banner"], products: ["Products & prices", "Products और दाम"], about: ["About & logo", "परिचय और logo"],
+  details: ["What you offer", "आप क्या देते हैं"], reviews: ["Reviews", "Reviews"], you: ["Name, number, photo", "नाम, number, photo"],
+  where: ["Timings & address", "समय और पता"], links: ["UPI & social", "UPI और social"], buttons: ["Buttons", "Buttons"],
+  trade: ["Business name & type", "Business का नाम और काम"], seo: ["Google SEO", "Google SEO"],
+};

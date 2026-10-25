@@ -8,6 +8,8 @@ import { api } from "@/lib/poster-client";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { FINISH_HREF, finishSteps, skippedSteps, type FinishStep } from "@/lib/site-finish";
 import type { Card } from "@/lib/types";
+import { completeness, PART_NAME } from "@/lib/edit-status";
+import { editHref, lastEdit } from "@/lib/edit-nav";
 
 export const FINISH_ICON = { plus: Plus, camera: Camera, map: MapPin, phone: Smartphone, star: Star, search: Search } as const;
 
@@ -41,25 +43,29 @@ export function useFinish() {
   return { card, steps, skipped, setSkipped, done, total, next, failed, reload: load };
 }
 
-/** The box: progress, the next step's name, one button into the guided screen. Nothing when the card is not there yet. */
+/** The box: how complete, the next empty part, one tap into the editor (its list shows the empty ones on top). The same count as the
+ *  editor's (lib/edit-status.ts, owner 26 Oct 2026: "ek hi ginti"). Nothing when the card is not there yet. */
 export function FinishBar({ hi, className = "" }: { hi: boolean; className?: string }) {
   const T = (en: string, h: string) => (hi ? h : en);
-  const { steps, done, total, next } = useFinish();
-  if (!steps || !total) return null;
+  const { card } = useFinish();
+  if (!card) return null;
+  const site = !!card.site?.enabled;
+  const { done, total, pct, empty } = completeness(card, site);
   const all = done === total;
-  const pct = Math.round((done / total) * 100);
+  const what = site ? T("website", "website") : T("card", "card");
+  const nextName = empty[0] ? PART_NAME[empty[0]] : null;
   return (
-    <Link href={FINISH_HREF} className={`block overflow-hidden rounded-3xl border border-border bg-surface shadow-card transition active:scale-[.99] ${className}`}>
+    <Link href={editHref(lastEdit() ?? (site ? "site" : "card"))} className={`block overflow-hidden rounded-3xl border border-border bg-surface shadow-card transition active:scale-[.99] ${className}`}>
       <div className={`flex items-center gap-3 px-4 py-3 text-white ${all ? "bg-gradient-to-r from-[#1fb956] to-[#25D366]" : "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]"}`}>
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/25 text-sm font-extrabold">{all ? <Check className="h-5 w-5" strokeWidth={3} /> : `${pct}%`}</span>
         <span className="min-w-0 flex-1">
-          <span className="block text-base font-bold leading-tight">{all ? T("Your website is complete", "आपकी website पूरी है") : T("Complete your website", "Website पूरी करें")}</span>
-          <span className="block truncate text-[11px] text-white/90">{all ? T("All 6 done", "सभी 6 पूरे") : next ? `${T("Next", "अगला")}: ${hi ? next.hi : next.en}` : `${done}/${total} ${T("done", "पूरे")}`}</span>
+          <span className="block text-base font-bold leading-tight">{all ? T(`Your ${what} is complete`, `आपकी ${what} पूरी है`) : T(`Your ${what} is ${pct}% complete`, `आपकी ${what} ${pct}% पूरी`)}</span>
+          <span className="block truncate text-[11px] text-white/90">{all ? T(`All ${total} done`, `सभी ${total} पूरे`) : `${done}/${total} · ${T("Next", "अगला")}: ${nextName ? (hi ? nextName[1] : nextName[0]) : ""}`}</span>
         </span>
         <ChevronRight className="h-5 w-5 shrink-0" />
       </div>
       <div className="flex gap-1 px-4 py-2.5">
-        {steps.map((s) => <span key={s.key} className={`h-1.5 flex-1 rounded-full ${s.done ? "bg-good" : "bg-surface2"}`} />)}
+        {Array.from({ length: total }, (_, k) => <span key={k} className={`h-1.5 flex-1 rounded-full ${k < done ? "bg-good" : "bg-surface2"}`} />)}
       </div>
     </Link>
   );
