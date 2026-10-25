@@ -28,19 +28,25 @@ export function partState(c: Card, key: string): PartState | undefined {
   }
 }
 
+/** Blocks with a screen of their own that edits exactly that block; every other block opens the full editor right at it. */
 const BY_KIND: Partial<Record<Kind, string>> = {
-  about: "about", highlights: "details", services: "products", product: "products", showcase: "products",
-  gallery: "photos", image: "photos", carousel: "photos", testimonials: "reviews", hours: "where", location: "where", contact: "you",
+  about: "about", product: "products", testimonials: "reviews", gallery: "photos", hours: "where", location: "where",
 };
-/** The part to open for a ✏️ tapped in the preview: a card part (profile, buttons, a block) or a website section by its heading. */
-export function partFor(c: Card, t: { kind: string; blockId?: string; text?: string }, site: boolean): string {
-  if (t.kind === "profile") return "you";
-  if (t.kind === "links") return "buttons";
-  if (t.kind === "hero") return site ? "hero" : "photos";
-  if (t.kind === "footer") return "where";
+export type PartTarget = { key: string; blockId?: string };
+/** The part to open for a ✏️ tapped in the preview: a card part (profile, buttons, a block) or a website section by its heading.
+ *  A block without its own screen ("Our promise", "How to order" …) opens Text & pages scrolled to that very block. */
+export function partFor(c: Card, t: { kind: string; blockId?: string; text?: string }, site: boolean): PartTarget {
+  if (t.kind === "profile") return { key: "you" };
+  if (t.kind === "links") return { key: "buttons" };
+  if (t.kind === "hero") return { key: site ? "hero" : "photos" };
+  if (t.kind === "footer") return { key: "where" };
   const all = blocks(c);
   const norm = (x: string) => x.toLowerCase().replace(/\s+/g, " ").trim();
   const b = t.kind === "block" ? all.find((x) => x.id === t.blockId)
     : t.text ? all.find((x) => norm(x.title ?? "") === norm(t.text!)) ?? all.find((x) => x.title && norm(t.text!).includes(norm(x.title))) : undefined;
-  return (b && BY_KIND[b.kind]) || "text";
+  if (!b) return { key: "text" };
+  // Several blocks of one kind (two "highlights" lists): only the first is the one the own screen edits.
+  const own = BY_KIND[b.kind];
+  const first = all.find((x) => x.kind === b.kind);
+  return own && first?.id === b.id ? { key: own } : { key: "text", blockId: b.id };
 }

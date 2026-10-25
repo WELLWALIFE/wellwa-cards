@@ -93,6 +93,8 @@ export default function WebsiteEditPage() {
   const [group, setGroup] = useState<Group>("design");
   /** The list of parts (false) or one part open (true). */
   const [open, setOpen] = useState(false);
+  /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
+  const [atBlock, setAtBlock] = useState("");
   /** A screen in a tab (Products, Timings …) showing its unsaved change: the window shows that copy until it is saved. */
   const [embedView, setEmbedView] = useState<{ card: Card; page?: string; focus?: { top?: boolean; text?: string } } | null>(null);
   const [savedTab, setSavedTab] = useState("");
@@ -186,9 +188,10 @@ export default function WebsiteEditPage() {
       const d = e.data as { type?: string; key?: string; target?: { kind: string; blockId?: string; text?: string } } | null;
       const now = tapState.current;
       if (e.origin !== window.location.origin || d?.type !== "preview-edit" || d.key !== PREVIEW_KEY || !d.target || !now.card) return;
-      const key = partFor(now.card, d.target, true) as Tab;
+      const p = partFor(now.card, d.target, true);
+      const key = p.key as Tab;
       if (now.embedDirty && !window.confirm(now.hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
-      setEmbedDirty(false); setEmbedView(null); setGroup(TAB_GROUP[key] ?? "content"); setTab(key); setOpen(true); window.scrollTo({ top: 0 });
+      setEmbedDirty(false); setEmbedView(null); setAtBlock(p.blockId ?? ""); setGroup(TAB_GROUP[key] ?? "content"); setTab(key); setOpen(true); window.scrollTo({ top: 0 });
     };
     window.addEventListener("message", on);
     return () => window.removeEventListener("message", on);
@@ -384,7 +387,7 @@ export default function WebsiteEditPage() {
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setTab(t); };
-  const embedSrc = EMBED[tab]?.(s.cardId);
+  const embedSrc = tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
   const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
   async function setEnabled(on: boolean) {
@@ -405,7 +408,7 @@ export default function WebsiteEditPage() {
     const g = GROUPS.find((x) => x.tabs.some((t) => t.key === key));
     if (!g) return;
     if (embedDirty && key !== tab && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
-    setEmbedDirty(false); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
+    setEmbedDirty(false); setAtBlock(""); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
   };
   const toList = () => {
     if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;

@@ -542,7 +542,11 @@ export function CardEditor({ id }: { id: string }) {
   const focused = useRef(false);
   useEffect(() => {
     if (!loaded || focused.current || typeof window === "undefined") return;
-    const f = new URLSearchParams(window.location.search).get("focus") ?? "";
+    const q = new URLSearchParams(window.location.search);
+    const f = q.get("focus") ?? "";
+    // ?block=<id>: a ✏️ on that section in Card / Website edit's preview opens the editor right at it.
+    const blk = q.get("block") ?? "";
+    if (blk && card.pages.some((p) => p.blocks.some((b) => b.id === blk))) { focused.current = true; editFrom({ kind: "block", blockId: blk }); return; }
     if (!f) return;
     focused.current = true;
     if (f === "photo" || f === "cover" || f === "tagline") { editFrom({ kind: "profile" }); return; }

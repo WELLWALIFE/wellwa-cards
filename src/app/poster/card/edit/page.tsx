@@ -50,6 +50,8 @@ export default function CardEditPage() {
   const [tab, setTab] = useState<Tab>("look");
   /** The list of parts (false) or one part open (true). */
   const [open, setOpen] = useState(false);
+  /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
+  const [atBlock, setAtBlock] = useState("");
   /** The look and colour before the last Save, for 10 seconds after it ("Undo"). */
   const [undo, setUndo] = useState<{ template: Card["template"]; color: string } | null>(null);
   useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
@@ -146,16 +148,16 @@ export default function CardEditPage() {
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
   const pick = (t: Tab) => { setEmbedView(null); setTab(t); };
-  const embedSrc = tab === "text" || tab === "buttons" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}${tab === "buttons" ? "&focus=links" : ""}&back=${DONE}` : EMBED[tab];
+  const embedSrc = tab === "text" || tab === "buttons" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}${tab === "buttons" ? "&focus=links" : ""}${tab === "text" && atBlock ? `&block=${encodeURIComponent(atBlock)}` : ""}&back=${DONE}` : EMBED[tab];
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   /** Back to the list of parts (asks first when the open part has a change not saved). */
   /** Open one part (from the list or a ✏️ in the preview). */
-  const openPart = (key: string) => {
+  const openPart = (key: string, blockId = "") => {
     const g = GROUPS.find((x) => x.tabs.some((t) => t.key === key));
     if (!g) return;
     if (embedDirty && key !== tab && !window.confirm(T("Your change is not saved. Leave it?", "बदलाव save नहीं हुआ। छोड़ दें?"))) return;
-    setEmbedDirty(false); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
+    setEmbedDirty(false); setAtBlock(blockId); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
   };
   const toList = () => {
     if (embedDirty && !window.confirm(T("Your change is not saved. Go back without saving?", "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?"))) return;
@@ -165,7 +167,7 @@ export default function CardEditPage() {
     <div className="space-y-3 pb-4">
       <EditFocus />
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => openPart(partFor(shown, t, false))} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
+      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
         bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site?edit=card")),
           see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls}>{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>,
           save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }, undo: undo ? () => void save(undo) : undefined } }} />
