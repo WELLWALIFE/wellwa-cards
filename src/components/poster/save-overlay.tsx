@@ -2,7 +2,7 @@
 // The Save button and its message, over the live window's bottom-left corner (owner, 25 Oct 2026: take the save bar off the bottom,
 // give the work area the room). "Saved" goes by itself after a moment; an error stays longer.
 import { useEffect, useState } from "react";
-import { Check, ChevronLeft, Maximize2, Minimize2 } from "lucide-react";
+import { Check, ChevronLeft, Maximize2, Minimize2, RotateCcw } from "lucide-react";
 
 export function SaveOverlay({ show, dirty, busy, hi, note, onSave }: {
   show: boolean; dirty: boolean; busy: boolean; hi: boolean; note: { text: string; bad: boolean } | null; onSave: () => void;
@@ -24,7 +24,7 @@ export function SaveOverlay({ show, dirty, busy, hi, note, onSave }: {
   );
 }
 
-export type SaveProps = { show: boolean; dirty: boolean; busy: boolean; note: { text: string; bad: boolean } | null; onSave: () => void };
+export type SaveProps = { show: boolean; dirty: boolean; busy: boolean; note: { text: string; bad: boolean } | null; onSave: () => void; /** For a few seconds after a Save: put it back. */ undo?: () => void };
 
 /** The slim bar under the live window (owner, 25 Oct 2026: "aur easy aur professional"): Back on the left, then what the window is,
  *  and on the right "See it", Big / Small and Save. Nothing sits on the picture itself any more. */
@@ -45,9 +45,10 @@ export function WindowBar({ hi, onBack, see, big, onBig, save }: { hi: boolean; 
       <span className="flex-1" />
       {see}
       <button type="button" onClick={onBig} aria-label={big ? (hi ? "छोटा करें" : "Make small") : (hi ? "बड़ा करें" : "Make big")} className={icon}>{big ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}</button>
-      {save.show && (save.dirty || save.busy
+      {save.undo && !save.dirty && !save.busy && <button type="button" onClick={save.undo} className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full border border-border bg-surface px-3 text-xs font-semibold text-ink"><RotateCcw className="h-3.5 w-3.5" /> {hi ? "Undo" : "Undo"}</button>}
+      {(save.show || save.undo) && (save.dirty || save.busy
         ? <button type="button" onClick={save.onSave} disabled={save.busy} className="h-8 shrink-0 rounded-full grad-brand px-4 text-sm font-bold text-white shadow-card disabled:opacity-60">{save.busy ? "…" : hi ? "Save करें" : "Save"}</button>
-        : <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-good/10 px-3 text-[11px] font-semibold text-good"><Check className="h-3.5 w-3.5" /> {hi ? "Saved" : "Saved"}</span>)}
+        : !save.undo && <span className="inline-flex h-8 shrink-0 items-center gap-1 rounded-full bg-good/10 px-3 text-[11px] font-semibold text-good"><Check className="h-3.5 w-3.5" /> {hi ? "Saved" : "Saved"}</span>)}
     </div>
   );
 }

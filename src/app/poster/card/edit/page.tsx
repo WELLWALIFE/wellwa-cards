@@ -19,6 +19,7 @@ import { CardLink } from "@/components/poster/card-sheet";
 import { LiveWindow } from "@/components/poster/live-window";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { seeCls } from "@/components/poster/save-overlay";
+import { partFor, partState } from "@/lib/edit-status";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
@@ -49,6 +50,9 @@ export default function CardEditPage() {
   const [tab, setTab] = useState<Tab>("look");
   /** The list of parts (false) or one part open (true). */
   const [open, setOpen] = useState(false);
+  /** The look and colour before the last Save, for 10 seconds after it ("Undo"). */
+  const [undo, setUndo] = useState<{ template: Card["template"]; color: string } | null>(null);
+  useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
   const [look, setLook] = useState<Card["template"] | "">("");
   const [color, setColor] = useState("");
   const [busy, setBusy] = useState(false);
@@ -98,16 +102,19 @@ export default function CardEditPage() {
   const shown: Card = { ...base, template: (look || base.template) as Card["template"], themeColor: color || base.themeColor, avatarColor: color || base.avatarColor };
   const link = cardHome(card.username, card.customDomain);
 
-  async function save() {
+  async function save(back?: { template: Card["template"]; color: string }) {
     if (!card) return;
-    setBusy(true); setNote(null);
+    setBusy(true); setNote(null); setUndo(null);
     try {
       const m = await fetchMine().catch(() => null);   // the latest card: a tab may have saved something since this page opened
       const latest = m && m !== "thin" ? m : card;
-      const next: Card = { ...latest, template: (look || latest.template) as Card["template"], themeColor: color, avatarColor: color };
+      const t = back?.template ?? ((look || latest.template) as Card["template"]), c = back?.color ?? color;
+      const next: Card = { ...latest, template: t, themeColor: c, avatarColor: c };
       const r = await publishCard(next);
       if (!r.ok) { setNote({ text: r.error || T("Could not save. Try again.", "Save नहीं हुआ। दोबारा try करें।"), bad: true }); return; }
-      setCard(next); setNote({ text: T("✅ Card saved — it is live on your link.", "✅ Card save हो गया — आपके link पर live है।"), bad: false });
+      setCard(next); setLook(t); setColor(c);
+      setNote({ text: back ? T("↩️ Put back as it was.", "↩️ पहले जैसा कर दिया।") : T("✅ Card saved — it is live on your link.", "✅ Card save हो गया — आपके link पर live है।"), bad: false });
+      if (!back && (latest.template !== t || latest.themeColor !== c)) setUndo({ template: latest.template, color: latest.themeColor });
     } catch { setNote({ text: T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"), bad: true }); }
     finally { setBusy(false); }
   }
@@ -143,6 +150,13 @@ export default function CardEditPage() {
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
   /** Back to the list of parts (asks first when the open part has a change not saved). */
+  /** Open one part (from the list or a ✏️ in the preview). */
+  const openPart = (key: string) => {
+    const g = GROUPS.find((x) => x.tabs.some((t) => t.key === key));
+    if (!g) return;
+    if (embedDirty && key !== tab && !window.confirm(T("Your change is not saved. Leave it?", "बदलाव save नहीं हुआ। छोड़ दें?"))) return;
+    setEmbedDirty(false); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
+  };
   const toList = () => {
     if (embedDirty && !window.confirm(T("Your change is not saved. Go back without saving?", "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?"))) return;
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
@@ -151,14 +165,14 @@ export default function CardEditPage() {
     <div className="space-y-3 pb-4">
       <EditFocus />
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
+      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => openPart(partFor(shown, t, false))} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
         bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site?edit=card")),
           see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls}>{T("See card", "Card देखें")} <ExternalLink className="h-3 w-3" /></CardLink>,
-          save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); } } }} />
+          save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }, undo: undo ? () => void save(undo) : undefined } }} />
 
 
       {!open
-        ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
+        ? <EditMenu groups={GROUPS} hi={hi} what="card" state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {T("Saved — it is live on your card", "Save हो गया — card पर live है")}</p>}

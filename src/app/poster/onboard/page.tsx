@@ -1638,7 +1638,8 @@ function Onboard() {
   /** The screen's header: the number, the title, what it is for. */
   /** The screen's header: the title and what it is for (the bar above already counts "Step N of 11"). */
   const head = (title: string, blurb?: string, help?: HelpKey) => (
-    <div>
+    // Inside Card / Website edit the part's own head already says this (data-embed-hide).
+    <div data-embed-hide>
       <h1 className="text-xl font-bold tracking-tight">{title}{help && <Help k={help} className="translate-y-0" />}</h1>
       {blurb && <p className="text-xs text-muted">{blurb}</p>}
     </div>
@@ -1834,8 +1835,8 @@ function Onboard() {
           {/* "About you" on one screen, no scroll, a premium look (owner, 24 Oct 2026): photo + name side by side, the WhatsApp and
               second number stay closed until their box is ticked, and every line is short. */}
           {editing
-            ? <h1 className="text-xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1>
-            : <div><h1 className="text-xl font-bold tracking-tight">{T("About you", "आपके बारे में")}</h1><p className="text-xs text-muted">{T("Goes on your card and website.", "यही card और website पर आएगा।")}</p></div>}
+            ? <h1 data-embed-hide className="text-xl font-bold">{T("Your name and mobile", "आपका नाम और मोबाइल")}</h1>
+            : <div data-embed-hide><h1 className="text-xl font-bold tracking-tight">{T("About you", "आपके बारे में")}</h1><p className="text-xs text-muted">{T("Goes on your card and website.", "यही card और website पर आएगा।")}</p></div>}
           <div className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
             <div className="flex items-center gap-3.5 bg-gradient-to-br from-brand-soft via-brand-soft/40 to-surface px-4 py-3.5">
               <label className="relative shrink-0 cursor-pointer" aria-label={T("Your photo", "आपकी photo")}>

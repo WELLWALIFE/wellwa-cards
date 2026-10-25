@@ -4,7 +4,7 @@
 import { useEffect, useMemo, useState } from "react";
 import QRCode from "qrcode";
 import { SiteView } from "@/components/site-view";
-import { CardView } from "@/components/card-view";
+import { CardView, type EditTarget } from "@/components/card-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
@@ -32,6 +32,12 @@ function forcedLang(): "hi" | "en" | null {
 function cardParam(): boolean {
   try { return new URLSearchParams(window.location.search).get("view") === "card"; } catch { return false; }
 }
+
+/** `?tap=1`: the edit screens' window — every part carries a small ✏️ Edit that tells the editor which part to open. */
+function tapParam(): boolean {
+  try { return new URLSearchParams(window.location.search).get("tap") === "1"; } catch { return false; }
+}
+const tellEdit = (key: string, target: unknown) => { try { window.parent.postMessage({ type: "preview-edit", key, target }, window.location.origin); } catch { /* ignore */ } };
 
 function pageParam(): string | undefined {
   try { const p = new URLSearchParams(window.location.search).get("page") ?? ""; return /^[\w%-]{1,80}$/.test(p) ? decodeURIComponent(p) : undefined; } catch { return undefined; }
@@ -80,6 +86,7 @@ function PreviewInner() {
   const [lang, setLang] = useState<"hi" | "en" | null>(null);
   const [startPage, setStartPage] = useState<string | undefined>(undefined);
   const [asCard, setAsCard] = useState(false);
+  const [tap, setTap] = useState(false);
   // The advanced website is several pages: the About and Gallery pages it adds, and a hidden page per item so every item opens
   // in place (the public route does the same, src/app/c/[username]/render.tsx). A basic card is passed through as it is.
   const shown = useMemo(() => {
@@ -97,6 +104,7 @@ function PreviewInner() {
     setLang(l);
     setStartPage(pageParam());
     setAsCard(cardParam());
+    setTap(tapParam());
     // useCardLang (card-view.tsx) opens in the language it last saved: the forced one is written there first, so
     // the renderer's very first paint is already in it.
     if (l) { try { localStorage.setItem("ne-card-lang", l); } catch { /* ignore */ } }
@@ -141,13 +149,41 @@ function PreviewInner() {
     return () => { window.removeEventListener("storage", onStorage); window.removeEventListener("message", onMessage); ro?.disconnect(); clearInterval(tick); };
   }, []);
 
+  // The website in the edit window: a ✏️ on each section (sized for the scaled-down window). Tapping it names the section by its
+  // heading; the editor finds the part (owner, 25 Oct 2026: "preview par tap karke edit").
+  useEffect(() => {
+    if (!tap || asCard || !card) return;
+    const css = "position:absolute;top:18px;right:18px;z-index:60;font:700 34px/1 system-ui,sans-serif;padding:16px 30px;border-radius:999px;border:0;background:rgba(18,20,74,.92);color:#fff;box-shadow:0 8px 24px rgba(0,0,0,.25);cursor:pointer";
+    const add = () => {
+      const secs = Array.from(document.querySelectorAll<HTMLElement>("section, header, footer")).filter((el) => !el.parentElement?.closest("section") && el.offsetHeight > 120);
+      secs.forEach((el, i) => {
+        if (el.querySelector(":scope > [data-pv-chip]")) return;
+        if (getComputedStyle(el).position === "static") el.style.position = "relative";
+        const b = document.createElement("button");
+        b.type = "button"; b.dataset.pvChip = "1"; b.textContent = "✏️ Edit"; b.style.cssText = css;
+        b.onclick = (e) => {
+          e.preventDefault(); e.stopPropagation();
+          const isTop = el.tagName === "HEADER" || el.id === "adv-hero" || (i === 0 && !!el.querySelector("h1"));
+          const head = el.querySelector("h2, h3")?.textContent?.trim() ?? "";
+          tellEdit(storageKey(), el.tagName === "FOOTER" ? { kind: "footer" } : isTop ? { kind: "hero" } : { kind: "text", text: head });
+        };
+        el.appendChild(b);
+      });
+    };
+    const t = setTimeout(add, 400);
+    const mo = new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(add, 300); });
+    let tm = setTimeout(() => undefined, 0);
+    mo.observe(document.body, { childList: true, subtree: true });
+    return () => { clearTimeout(t); clearTimeout(tm); mo.disconnect(); document.querySelectorAll("[data-pv-chip]").forEach((x) => x.remove()); };
+  }, [tap, asCard, card]);
+
   if (card === undefined) return null;
   if (!card) return <div className="flex-1 grid min-h-screen place-items-center text-center text-muted">Nothing to preview</div>;
   // The key re-mounts the renderer when a new card arrives, so its page and language state start fresh.
   // The editor's preview re-renders in place (the key would reset the page and scroll on every keystroke).
   const links = shown!.links.filter((l) => l.value.trim());
   const hasBar = links.some((l) => l.type === "phone" || l.type === "whatsapp" || l.type === "location");
-  if (asCard) return <CardView card={shown!} qr={qr} />;
+  if (asCard) return <CardView card={shown!} qr={qr} {...(tap ? { onEdit: (t: EditTarget) => tellEdit(storageKey(), t), editLabel: "Edit" } : {})} />;
   return (
     <>
       <SiteView key={editor ? "editor" : `${card.id}-${card.username}`} card={shown!} qr={qr} free={loading || plan === "free"} initialLang={lang ?? undefined} initialPage={startPage} unlisted={shown!.pages.filter((p) => p.hidden && p.id.startsWith("adv-")).map((p) => p.slug)} />

@@ -23,6 +23,7 @@ import { usePlan } from "@/lib/plan";
 import { EmbedPane } from "@/components/poster/embed-pane";
 import { EditFocus } from "@/components/poster/edit-focus";
 import { WindowBar, seeCls } from "@/components/poster/save-overlay";
+import { partFor, partState } from "@/lib/edit-status";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
@@ -32,7 +33,13 @@ const PREVIEW_KEY = "site-edit";
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; slides?: HeroSlide[] };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; site: Card["site"] | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string }; card?: Card };
 type Tab = "look" | "hero" | "home" | "pages" | "text" | "buttons" | "website" | "photos" | "products" | "about" | "details" | "reviews" | "you" | "where" | "links" | "offer" | "domain" | "seo" | "trade";
-type Group = "design" | "content" | "contact" | "settings";
+type Group = "design" | "content" | "contact" | "settings" | "more";
+/** Which group each part sits in (the list's GROUPS, for a part opened from the preview). */
+const TAB_GROUP: Record<string, Group> = {
+  look: "design", hero: "design", text: "content", photos: "content", products: "content", about: "content", details: "content", reviews: "content",
+  you: "contact", where: "contact", links: "contact", buttons: "contact", offer: "settings", website: "settings", trade: "settings",
+  home: "more", pages: "more", seo: "more", domain: "more",
+};
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
@@ -91,6 +98,10 @@ export default function WebsiteEditPage() {
   const [savedTab, setSavedTab] = useState("");
   /** The full editor in "Text & pages" has unsaved changes: this page's Save bar saves them (saveTick tells it). */
   const [embedDirty, setEmbedDirty] = useState(false);
+  /** The website as it was before the last Save, for 10 seconds after it ("Undo"); the last saved one is kept to know it. */
+  const [undo, setUndo] = useState<Card | null>(null);
+  const lastSaved = useRef<Card | null>(null);
+  useEffect(() => { if (!undo) return; const t = setTimeout(() => setUndo(null), 10000); return () => clearTimeout(t); }, [undo]);
   const [saveTick, setSaveTick] = useState(0);
   /** This page's own changes wait for the editor's Save (it writes the whole card): they go right after it, on top. */
   const ownAfter = useRef(false);
@@ -128,7 +139,7 @@ export default function WebsiteEditPage() {
       const r = await api<Status & { error?: string }>(`/api/site/status?full=1${id ? `&card=${id}` : ""}`);
       if (!r.ok) { setErr(r.data?.error || "No internet — tap to try again"); return; }
       setS(r.data);
-      if (r.data.hasCard && r.data.card) { setCard(r.data.card); setDirty(false); touched.current.clear(); }
+      if (r.data.hasCard && r.data.card) { setCard(r.data.card); lastSaved.current = r.data.card; setDirty(false); touched.current.clear(); }
     } catch { setErr("No internet — tap to try again"); }
   }, []);
   // Replace, not push: Back from the login page must not land here again and bounce straight back to it.
@@ -167,6 +178,21 @@ export default function WebsiteEditPage() {
   }, [s]);
   const frameH = Math.round(boxH / scale);
 
+  // A ✏️ tapped in the preview opens that part (owner, 25 Oct 2026: "preview par tap karke edit").
+  const tapState = useRef({ card, embedDirty, hi });
+  useEffect(() => { tapState.current = { card, embedDirty, hi }; });
+  useEffect(() => {
+    const on = (e: MessageEvent) => {
+      const d = e.data as { type?: string; key?: string; target?: { kind: string; blockId?: string; text?: string } } | null;
+      const now = tapState.current;
+      if (e.origin !== window.location.origin || d?.type !== "preview-edit" || d.key !== PREVIEW_KEY || !d.target || !now.card) return;
+      const key = partFor(now.card, d.target, true) as Tab;
+      if (now.embedDirty && !window.confirm(now.hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
+      setEmbedDirty(false); setEmbedView(null); setGroup(TAB_GROUP[key] ?? "content"); setTab(key); setOpen(true); window.scrollTo({ top: 0 });
+    };
+    window.addEventListener("message", on);
+    return () => window.removeEventListener("message", on);
+  }, []);
   const site = card?.site ?? { enabled: true };
   const style: SiteStyle = site.style ?? {};
   const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; Object.keys(patch).forEach((k) => touched.current.add(k)); setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
@@ -230,9 +256,13 @@ export default function WebsiteEditPage() {
     setHome({ stats: next });
   }
 
-  async function save() {
+  async function save(from?: Card) {
     if (!card || !s?.hasCard) return;
-    setBusy("save"); setNote(null);
+    const c = from ? { ...card, site: from.site } : card;
+    const site = c.site ?? { enabled: true };
+    const adv = (site as { advancedOn?: boolean }).advancedOn !== false && site.advanced ? site.advanced as { palette?: { key?: string; color?: string } } & Record<string, unknown> : null;
+    const before = lastSaved.current;
+    setBusy("save"); setNote(null); setUndo(null);
     try {
       const r = await api<{ ok?: boolean; error?: string }>("/api/site/status", { method: "PATCH", json: {
         card_id: s.cardId,
@@ -248,7 +278,9 @@ export default function WebsiteEditPage() {
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
-      setDirty(false); touched.current.clear(); say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false);
+      setDirty(false); touched.current.clear(); lastSaved.current = c;
+      if (from) { setCard((cur) => (cur ? { ...cur, site: from.site } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
+      else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); }
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
     finally { setBusy(""); }
   }
@@ -323,8 +355,6 @@ export default function WebsiteEditPage() {
     { key: "design", label: hi ? "डिज़ाइन" : "Design", Icon: Paintbrush, tabs: [
       { key: "look", label: hi ? "अक्षर और look" : "Letters & look", Icon: Palette, sub: hi ? "अक्षर, background, कोने — और पसंद की site का look" : "Letters, background, corners — and copy a look you like", scope: "site" },
       { key: "hero", label: hi ? "ऊपर का हिस्सा" : "Top of page", Icon: ImageIcon, sub: hi ? "बड़ी heading, banners और ऊपर की photo" : "The big heading, the banners and the top photo", scope: "site" },
-      { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered, sub: hi ? "Home page के हिस्सों का क्रम — दिखाएँ या छुपाएँ" : "Order of the home page parts — show or hide each", scope: "site" },
-      { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files, sub: hi ? "Website पर कौन से pages दिखें" : "Which pages show on the website", scope: "site" },
     ] },
     { key: "content", label: hi ? "सामग्री" : "Content", Icon: Camera, tabs: [
       { key: "text", label: hi ? "Text और pages" : "Text & pages", Icon: FileText, sub: hi ? "किसी भी page के शब्द बदलें, नया page जोड़ें" : "Change any page's words, add a new page", scope: "both" },
@@ -343,9 +373,13 @@ export default function WebsiteEditPage() {
     { key: "settings", label: hi ? "Settings" : "Settings", Icon: Settings, tabs: [
       { key: "offer", label: hi ? "Offer / pop-up" : "Offer / pop-up", Icon: Megaphone, sub: hi ? "ऊपर पट्टी या pop-up: “Diwali 20% छूट”" : "A line on top or a pop-up: “Diwali 20% off”", scope: "both" },
       { key: "website", label: hi ? "Website ON/OFF और Premium" : "Website on/off & Premium", Icon: Sparkles, sub: hi ? "Computer पर website दिखे या नहीं; Premium design" : "Show the website on computers; the Premium design", scope: "site" },
-      { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe, sub: hi ? "www.yourshop.com" : "www.yourshop.com", scope: "site" },
-      { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search, sub: hi ? "अपने शहर में Google पर मिलें" : "Be found on Google in your city", scope: "site" },
       { key: "trade", label: hi ? "Business का नाम और काम" : "Business name & type", Icon: Store, sub: hi ? "आपके business का नाम और काम" : "Your business name and what you do", scope: "both" },
+    ] },
+    { key: "more", label: hi ? "और" : "More", Icon: Settings, tabs: [
+      { key: "home", label: hi ? "हिस्से" : "Sections", Icon: ListOrdered, sub: hi ? "Home page के हिस्सों का क्रम — दिखाएँ या छुपाएँ" : "Order of the home page parts — show or hide each", scope: "site" },
+      { key: "pages", label: hi ? "Pages" : "Pages", Icon: Files, sub: hi ? "Website पर कौन से pages दिखें" : "Which pages show on the website", scope: "site" },
+      { key: "seo", label: hi ? "Google SEO" : "Google SEO", Icon: Search, sub: hi ? "अपने शहर में Google पर मिलें" : "Be found on Google in your city", scope: "site" },
+      { key: "domain", label: hi ? "अपना web address" : "Own web address", Icon: Globe, sub: hi ? "www.yourshop.com" : "www.yourshop.com", scope: "site" },
     ] },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
@@ -366,6 +400,13 @@ export default function WebsiteEditPage() {
   const customDomain = (s as { customDomain?: string }).customDomain ?? "";
 
   /** Back to the list of parts (asks first when the open part has a change not saved). */
+  /** Open one part (from the list or a ✏️ in the preview). */
+  const openPart = (key: string) => {
+    const g = GROUPS.find((x) => x.tabs.some((t) => t.key === key));
+    if (!g) return;
+    if (embedDirty && key !== tab && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
+    setEmbedDirty(false); setGroup(g.key); pick(key as Tab); setOpen(true); window.scrollTo({ top: 0 });
+  };
   const toList = () => {
     if (embedDirty && !window.confirm(hi ? "बदलाव save नहीं हुआ। बिना save किए वापस जाएँ?" : "Your change is not saved. Go back without saving?")) return;
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
@@ -388,17 +429,17 @@ export default function WebsiteEditPage() {
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
           <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
             <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
-              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
+              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
           <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)} onBack={() => (open ? toList() : goBack(router, "/poster/site?edit=site"))}
             see={dirty ? <SiteLink href={`/preview/site?k=${PREVIEW_KEY}`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "बदलाव देखें" : "See changes"} <ExternalLink className="h-3 w-3" /></SiteLink> : <SiteLink href={`${s.url}?view=site`} title={hi ? "Website" : "Website"} className={seeCls}>{hi ? "लाइव देखें" : "See it live"} <ExternalLink className="h-3 w-3" /></SiteLink>}
-            save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); } }} />
+            save={{ show: (open && ["look", "hero", "home", "pages"].includes(tab)) || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy === "save", note: note?.k === "save" ? note : null, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else if (dirty) void save(); }, undo: undo ? () => void save(undo) : undefined }} />
         </div>
       </div>
 
       {!open
-        ? <EditMenu groups={GROUPS} hi={hi} onPick={(g, k) => { setGroup(g as Group); pick(k); setOpen(true); window.scrollTo({ top: 0 }); }} />
+        ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["more"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
       {open && (<>
       {tab === "look" && <div className="overflow-hidden rounded-2xl border border-border">

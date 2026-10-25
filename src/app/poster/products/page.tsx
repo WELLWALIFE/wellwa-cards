@@ -550,8 +550,8 @@ export default function ProductsPage() {
       ) : (
         <div className="flex items-center gap-2">
           <button type="button" data-embed-hide onClick={() => goUp("/poster/create")} className="text-muted" aria-label={C("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
-          <h1 className="flex-1 text-xl font-bold tracking-tight">{C(copy.title, copy.titleHi)}</h1>
-          {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
+          <h1 data-embed-hide className="flex-1 text-xl font-bold tracking-tight">{C(copy.title, copy.titleHi)}</h1>
+          {!draft && <button type="button" disabled={locked} onClick={() => { setForBrand(false); newDraft(); }} className="ml-auto inline-flex items-center gap-1 rounded-full grad-brand px-3 py-1.5 text-sm font-semibold text-white disabled:opacity-60"><Plus className="h-4 w-4" /> {C(copy.add, copy.addHi)}</button>}
         </div>
       )}
       {!setupMode && <Guide hi={copy.guideHi} en={copy.guide} />}

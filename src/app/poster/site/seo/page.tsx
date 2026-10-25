@@ -56,7 +56,7 @@ export default function SiteSeoPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
+      <div data-embed-hide className="flex items-center gap-2">
         {/* Back = the screen the owner was just on (Card & Website, first screen or Edit); opened fresh, Card & Website. */}
         <button type="button" data-embed-hide onClick={() => goBack(router, "/poster/site")} className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex-1 text-lg font-bold">{T("Show on Google", "Google पर दिखें")}</h1>

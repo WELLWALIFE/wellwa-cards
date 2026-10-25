@@ -1,7 +1,8 @@
 "use client";
 // The head of each part on Website edit / Card edit (owner, 25 Oct 2026: "pura professional design"): the part's name, one line on
 // what it changes, and where the change shows — on both, the website only, or the card only.
-import { ChevronLeft, ChevronRight, type LucideIcon } from "lucide-react";
+import { useState } from "react";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, MoreHorizontal, type LucideIcon } from "lucide-react";
 
 export type Scope = "both" | "site" | "card";
 
@@ -33,28 +34,66 @@ const TONES: Record<string, string> = {
 };
 const tagOf = (scope: Scope, hi: boolean) => scope === "both" ? (hi ? "दोनों" : "Both") : scope === "site" ? (hi ? "Website" : "Website") : (hi ? "Card" : "Card");
 
-export function EditMenu<K extends string>({ groups, hi, onPick, showScope = true }: { groups: MenuGroup<K>[]; hi: boolean; onPick: (group: string, key: K) => void; showScope?: boolean }) {
+export function EditMenu<K extends string>({ groups, hi, onPick, showScope = true, state, what, fold = [] }: {
+  groups: MenuGroup<K>[]; hi: boolean; onPick: (group: string, key: K) => void; showScope?: boolean;
+  /** Filled or empty, per part (lib/edit-status.ts): a ✓ or an orange "Empty", and the score on top. */ state?: (key: K) => "ok" | "empty" | undefined;
+  /** "card" / "website": the word in the score line. */ what?: string;
+  /** Groups shown closed under one "More" row (the rarely used parts). */ fold?: string[];
+}) {
+  const [opened, setOpened] = useState<string[]>([]);
+  const all = groups.flatMap((g) => g.tabs.map((t) => state?.(t.key))).filter(Boolean);
+  const done = all.filter((x) => x === "ok").length;
+  const pct = all.length ? Math.round((done / all.length) * 100) : 0;
+  const row = (g: MenuGroup<K>, t: MenuPart<K>) => {
+    const st = state?.(t.key);
+    return (
+      <button key={t.key} type="button" onClick={() => onPick(g.key, t.key)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-surface2">
+        <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[g.key] ?? TONES.settings}`}><t.Icon className="h-[18px] w-[18px]" /></span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-[15px] font-semibold leading-tight">{t.label}</span>
+          <span className="mt-0.5 block truncate text-xs text-muted">{t.sub}</span>
+        </span>
+        {st === "empty" && <span className="shrink-0 rounded-full bg-[#fff1e0] px-2 py-0.5 text-[10px] font-bold text-[#c2620a]">{hi ? "खाली" : "Empty"}</span>}
+        {st === "ok" && <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-good/15 text-good"><Check className="h-3 w-3" strokeWidth={3} /></span>}
+        {!st && showScope && t.scope !== "both" && <span className="shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-[10px] font-semibold text-muted">{tagOf(t.scope, hi)}</span>}
+        <ChevronRight className="h-4 w-4 shrink-0 text-faint" />
+      </button>
+    );
+  };
   return (
     <div className="space-y-4">
-      {groups.map((g) => (
-        <section key={g.key}>
-          <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-faint">{g.label}</p>
-          <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
-            {g.tabs.map((t) => (
-              <button key={t.key} type="button" onClick={() => onPick(g.key, t.key)} className="flex w-full items-center gap-3 px-3.5 py-3 text-left transition active:bg-surface2">
-                <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES[g.key] ?? TONES.settings}`}><t.Icon className="h-[18px] w-[18px]" /></span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-[15px] font-semibold leading-tight">{t.label}</span>
-                  <span className="mt-0.5 block truncate text-xs text-muted">{t.sub}</span>
-                </span>
-                {showScope && t.scope !== "both" && <span className="shrink-0 rounded-full bg-surface2 px-2 py-0.5 text-[10px] font-semibold text-muted">{tagOf(t.scope, hi)}</span>}
-                <ChevronRight className="h-4 w-4 shrink-0 text-faint" />
-              </button>
-            ))}
+      {all.length > 0 && (
+        <div className="rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+          <div className="flex items-baseline justify-between gap-2">
+            <p className="text-sm font-bold">{hi ? `आपका ${what ?? "card"} ${pct}% पूरा` : `Your ${what ?? "card"} is ${pct}% complete`}</p>
+            <p className="text-xs font-semibold text-muted">{done}/{all.length}</p>
           </div>
-        </section>
-      ))}
-      <p className="px-1 text-center text-[11px] text-faint">{hi ? "हर बदलाव ऊपर की window में तुरंत दिखता है" : "Every change shows in the window above right away"}</p>
+          <div className="mt-2 h-2 overflow-hidden rounded-full bg-surface2"><div className="h-full rounded-full grad-brand transition-all" style={{ width: `${pct}%` }} /></div>
+          {done < all.length && <p className="mt-2 text-[11px] text-muted">{hi ? "नारंगी \"खाली\" वाले भरें — ग्राहक को पूरी जानकारी मिलेगी।" : "Fill the orange \"Empty\" ones — customers get the full picture."}</p>}
+        </div>
+      )}
+      {groups.map((g) => {
+        const folded = fold.includes(g.key);
+        const isOpen = !folded || opened.includes(g.key);
+        return (
+          <section key={g.key}>
+            <p className="mb-1.5 px-1 text-[11px] font-bold uppercase tracking-wider text-faint">{g.label}</p>
+            <div className="divide-y divide-border overflow-hidden rounded-2xl border border-border bg-surface shadow-card">
+              {isOpen
+                ? g.tabs.map((t) => row(g, t))
+                : <button type="button" onClick={() => setOpened((o) => [...o, g.key])} className="flex w-full items-center gap-3 px-3.5 py-3 text-left">
+                    <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${TONES.settings}`}><MoreHorizontal className="h-[18px] w-[18px]" /></span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[15px] font-semibold leading-tight">{hi ? "और options दिखाएँ" : "Show more options"}</span>
+                      <span className="mt-0.5 block truncate text-xs text-muted">{g.tabs.map((t) => t.label).join(" · ")}</span>
+                    </span>
+                    <ChevronDown className="h-4 w-4 shrink-0 text-faint" />
+                  </button>}
+            </div>
+          </section>
+        );
+      })}
+      <p className="px-1 text-center text-[11px] text-faint">{hi ? "हर बदलाव ऊपर की window में तुरंत दिखता है · Preview में ✏️ दबाकर भी खोलें" : "Every change shows in the window above · or tap ✏️ in the preview"}</p>
     </div>
   );
 }
