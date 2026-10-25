@@ -35,6 +35,7 @@ import { SeoPanel } from "./seo-panel";
 import { useBrand, useCardHost } from "@/components/brand-context";
 import type { CardTemplateDef } from "@/lib/templates";
 import { isEmbedded, toParent } from "@/components/poster/embed-mode";
+import { mergeCard } from "@/lib/card-merge";
 import {
   publishCard, isCloudConfigured, fetchMyCardStrict, getSessionUser,
   checkUsername, cleanUsername, isDefaultUsername, nameSlug, suggestUsername, type UsernameCheck,
@@ -176,6 +177,8 @@ function useDragReorder<T>(items: T[], commit: (next: T[]) => void) {
 export function CardEditor({ id }: { id: string }) {
   const router = useRouter();
   const initial = useMemo(() => (id === "new" ? blankCard(uid()) : blankCard(id)), [id]);
+  /** The card as the server had it when this editor opened (or last saved): a Save sends only what changed since (lib/card-merge.ts). */
+  const serverBase = useRef<Card | null>(null);
   const [card, setCard] = useState<Card>(initial);
   const [tab, setTab] = useState<Tab>("content");
   const [activePage, setActivePage] = useState(initial.pages[0]?.id ?? "");
@@ -294,6 +297,7 @@ export function CardEditor({ id }: { id: string }) {
         if (cancelled) return;
         if (!mine) { setLoadErr("missing"); setLoaded(true); return; }
         if (mine) {
+          serverBase.current = mine;
           setCard(mine);
           setActivePage(mine.pages[0]?.id ?? "");
           // A local draft is only trusted if it was started from THIS cloud
@@ -446,9 +450,20 @@ export function CardEditor({ id }: { id: string }) {
                 }
               }
               const wasLive = liveBase !== null;
+              // Only what was changed HERE goes over the card as it is now on the server (owner, 25 Oct 2026): a design, a product or a
+              // photo saved meanwhile in another tab or phone is kept, not rolled back by this whole-card Save.
+              if (wasLive && serverBase.current) {
+                try {
+                  const me = await getSessionUser();
+                  const now = me ? await fetchMyCardStrict(card.id, me.id) : null;
+                  if (now) toPublish = mergeCard(now, serverBase.current, toPublish);
+                } catch { /* offline: publish fails below with its own message */ }
+              }
               const res = await publishCard(toPublish);
               if (res.ok) {
                 const saved = { ...toPublish, username: res.username || toPublish.username };
+                serverBase.current = saved;
+                if (fingerprint(saved) !== fingerprint(card)) setCard(saved);   // what came from elsewhere shows here too
                 if (saved.username !== card.username) patch({ username: saved.username });
                 setLiveBase(fingerprint(saved));
                 setSavedUser(saved.username);
