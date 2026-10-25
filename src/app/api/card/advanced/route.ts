@@ -158,6 +158,8 @@ export async function POST(request: Request) {
     let result0: Awaited<ReturnType<typeof designAdvanced>>;
     try { result0 = await designAdvanced(data, { userId: me.id, cardId: row.id, wish, bump, previous: await seenSpecs(me.id, row.id), step }); }
     catch (e) { await refund?.().catch(() => undefined); throw e; }   // a design that did not come out costs nothing
+    // A new design starts on a light background (owner, 25 Oct 2026: "default light"); Dark is one tap in Website edit → Background.
+    if (result0.spec?.palette) result0.spec.palette.tone = "light";
     // The sliding top banners come with the design (owner, 23 Oct 2026) when the card has none yet; owner-made ones are kept.
     const hasSlides = (data.site?.hero?.slides ?? []).length >= 2;
     const slides = hasSlides ? null : await writeSlides(data, true).catch(() => null);

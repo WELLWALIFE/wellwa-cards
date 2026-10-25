@@ -323,24 +323,6 @@ export default function WebsiteEditPage() {
           {/* Premium: the letters, the top and the corners are the Premium design's own (spec.fonts / spec.hero / spec.shape) — the basic
               site's choices below never reached it, so a tap changed nothing (owner, 25 Oct 2026). */}
           {adv ? (<>
-            <div>
-              <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setAdv({ fonts: { ...((adv.fonts as { heading?: string; body?: string }) ?? {}), heading: f } })} className={chip((adv.fonts as { heading?: string } | undefined)?.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setAdv({ hero: h })} className={chip(adv.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
-              </div>
-            </div>
-            <div>
-              <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
-              <div className="mt-2 flex flex-wrap gap-2">
-                {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
-              </div>
-            </div>
             {/* The page's background: light paper or dark (owner, 25 Oct 2026: "pura background black dikh raha — badal sakte hain?"). */}
             <div>
               <p className="text-sm font-semibold">{hi ? "Background (पीछे का रंग)" : "Background"}</p>
@@ -358,6 +340,24 @@ export default function WebsiteEditPage() {
                     </button>
                   );
                 })}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {hi ? "अक्षर (font)" : "Letter style (font)"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setAdv({ fonts: { ...((adv.fonts as { heading?: string; body?: string }) ?? {}), heading: f } })} className={chip((adv.fonts as { heading?: string } | undefined)?.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {hi ? "ऊपर का हिस्सा कैसा सजे" : "How the top of the page is arranged"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setAdv({ hero: h })} className={chip(adv.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
+              </div>
+            </div>
+            <div>
+              <p className="text-sm font-semibold">{hi ? "कोने (गोल या सीधे)" : "Corners (round or straight)"}</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setAdv({ shape: sh })} className={chip(adv.shape === sh)}>{sh === "sharp" ? (hi ? "शार्प" : "Sharp") : sh === "soft" ? (hi ? "सॉफ्ट" : "Soft") : (hi ? "राउंड" : "Round")}</button>)}
               </div>
             </div>
           </>) : (<>
