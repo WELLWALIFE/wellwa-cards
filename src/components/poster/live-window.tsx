@@ -8,13 +8,14 @@ import { Maximize2, Minimize2 } from "lucide-react";
 import type { Card } from "@/lib/types";
 import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 import { WindowBar, type EditSwitch, type SaveProps } from "@/components/poster/save-overlay";
+import type { EditHistory } from "@/lib/use-edit-history";
 
 export type LiveFocus = { top?: boolean; text?: string; body?: boolean } | null;
 const SITE_W = 1280, CARD_W = 400;
 
 export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, bar, onEditTarget }: {
   /** The ✏️ Edit chips in the preview: which part was tapped (preview/site/view.tsx). */ onEditTarget?: (target: { kind: string; blockId?: string; text?: string }) => void;
-  /** The bar under the window: Back, See it, Big, Save (edit screens). */ bar?: { onBack: () => void; see: React.ReactNode; save: SaveProps; switcher?: EditSwitch };
+  /** The bar under the window: Back, See it, Big, Save (edit screens). */ bar?: { onBack: () => void; see: React.ReactNode; save: SaveProps; switcher?: EditSwitch; history?: EditHistory };
   /** Shown over the window, bottom left (the Save button and its message: owner, 25 Oct 2026, "save wali patti hatao"). */ overlay?: React.ReactNode;
   card: Card | null; /** The localStorage key the preview reads (letters, digits, dashes). */ k: string;
   /** The website page to open (the change is on it, e.g. "contact" for the address); unset = home. */ page?: string;
@@ -85,7 +86,7 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, b
           {big ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />} {big ? (hi ? "छोटा" : "Small") : (hi ? "बड़ा" : "Big")}
         </button>
         </>}
-        {bar && <WindowBar hi={hi} onBack={bar.onBack} see={bar.see} big={big} onBig={() => setBig((b) => !b)} save={bar.save} switcher={bar.switcher} />}
+        {bar && <WindowBar hi={hi} onBack={bar.onBack} see={bar.see} big={big} onBig={() => setBig((b) => !b)} save={bar.save} switcher={bar.switcher} history={bar.history} />}
       </div>
     </div>
   );

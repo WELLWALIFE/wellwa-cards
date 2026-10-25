@@ -25,6 +25,7 @@ import { EditFocus } from "@/components/poster/edit-focus";
 import { WindowBar, seeCls } from "@/components/poster/save-overlay";
 import { partFor, partState } from "@/lib/edit-status";
 import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
+import { useEditHistory } from "@/lib/use-edit-history";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { AdvancedEntry } from "@/components/poster/advanced-entry";
 import { homeSections, sectionLabel, trustFacts, isEmptyBlock } from "@/lib/site-home";
@@ -129,6 +130,9 @@ export default function WebsiteEditPage() {
   const line = (k: "save" | "ref" | "hero" | "logo" | "ai", cls = "") => note?.k === k ? <p role={note.bad ? "alert" : "status"} className={`rounded-lg border px-3 py-2 text-xs font-semibold ${note.bad ? "border-danger/40 bg-danger/10 text-danger" : "border-good/40 bg-good/10 text-good"} ${cls}`}>{note.text}</p> : null;
   const [err, setErr] = useState("");
   const [dirty, setDirty] = useState(false);
+  /** ↶ ↷ on the bar: each change on this screen is a step; loading or a Save starts afresh. */
+  const [histReset, setHistReset] = useState(0);
+  const history = useEditHistory(card ? JSON.stringify(card.site ?? null) : null, (v) => { setCard((cur) => (cur ? { ...cur, site: JSON.parse(v) as Card["site"] } : cur)); setDirty(true); }, `${card?.id ?? ""}-${histReset}`);
   const [refUrl, setRefUrl] = useState("");
   const [unlock, setUnlock] = useState(false);
   const access = useAiAccess();
@@ -289,7 +293,7 @@ export default function WebsiteEditPage() {
         ...(adv ? { advancedLook: { heading: (adv.fonts as { heading?: string } | undefined)?.heading, hero: adv.hero, shape: adv.shape, tone: (adv.palette as { tone?: string } | undefined)?.tone } } : {}),
       } });
       if (!r.ok) { say("save", r.data.error ?? (hi ? "Save नहीं हुआ। दोबारा try करें।" : "Could not save.")); return; }
-      setDirty(false); touched.current.clear(); lastSaved.current = c;
+      setDirty(false); touched.current.clear(); lastSaved.current = c; setHistReset((n) => n + 1);
       if (from) { setCard((cur) => (cur ? { ...cur, site: from.site } : from)); say("save", hi ? "↩️ पहले जैसा कर दिया।" : "↩️ Put back as it was.", false); }
       else { say("save", hi ? "✅ वेबसाइट सेव हो गई — लाइव लिंक पर दिखेगी।" : "✅ Website saved — it is live on your link.", false); if (before) setUndo(before); }
     } catch { say("save", hi ? "Internet नहीं है — दोबारा try करें।" : "No internet — please try again."); }
@@ -444,6 +448,7 @@ export default function WebsiteEditPage() {
             </div>
           </div>
           <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)}
+            history={history}
             switcher={{ at: "site", site: true, onSwitch: (to) => {
               if ((dirty || embedDirty) && !window.confirm(hi ? "बदलाव save नहीं हुआ। छोड़ दें?" : "Your change is not saved. Leave it?")) return;
               rememberEdit(to); router.replace(editHref(to, open ? tab : ""));

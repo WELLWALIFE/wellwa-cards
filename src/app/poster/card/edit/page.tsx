@@ -21,6 +21,7 @@ import { EditFocus } from "@/components/poster/edit-focus";
 import { seeCls } from "@/components/poster/save-overlay";
 import { partFor, partState } from "@/lib/edit-status";
 import { editHref, partParam, rememberEdit } from "@/lib/edit-nav";
+import { useEditHistory } from "@/lib/use-edit-history";
 import { EmbedPane, type EmbedLive } from "@/components/poster/embed-pane";
 import { EditMenu, PartHead, type Scope } from "@/components/poster/edit-parts";
 import { SitePhotos } from "@/components/poster/site-photos";
@@ -70,6 +71,9 @@ export default function CardEditPage() {
   const [undo, setUndo] = useState<{ template: Card["template"]; color: string } | null>(null);
   const [look, setLook] = useState<Card["template"] | "">("");
   const [color, setColor] = useState("");
+  /** ↶ ↷ on the bar: each look / colour tap is a step; a Save starts afresh. */
+  const [histReset, setHistReset] = useState(0);
+  const history = useEditHistory(card ? JSON.stringify({ look, color }) : null, (v) => { const o = JSON.parse(v) as { look: Card["template"] | ""; color: string }; setLook(o.look); setColor(o.color); }, `${card?.id ?? ""}-${histReset}`);
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState<{ text: string; bad: boolean } | null>(null);
   const [embedView, setEmbedView] = useState<EmbedLive | null>(null);
@@ -130,6 +134,7 @@ export default function CardEditPage() {
       setCard(next); setLook(t); setColor(c);
       setNote({ text: back ? T("↩️ Put back as it was.", "↩️ पहले जैसा कर दिया।") : T("✅ Card saved — it is live on your link.", "✅ Card save हो गया — आपके link पर live है।"), bad: false });
       if (!back && (latest.template !== t || latest.themeColor !== c)) setUndo({ template: latest.template, color: latest.themeColor });
+      setHistReset((n) => n + 1);
     } catch { setNote({ text: T("No internet — please try again.", "Internet नहीं है — दोबारा try करें।"), bad: true }); }
     finally { setBusy(false); }
   }
@@ -183,6 +188,7 @@ export default function CardEditPage() {
       <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
         bar={{ onBack: () => (open ? toList() : goBack(router, "/poster/site")),
           see: <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className={seeCls} aria-label={T("See card", "Card देखें")}><ExternalLink className="h-4 w-4" /></CardLink>,
+          history,
           switcher: { at: "card", site: !!card.site?.enabled, onSwitch: (to) => {
             if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave it?", "बदलाव save नहीं हुआ। छोड़ दें?"))) return;
             rememberEdit(to); router.replace(editHref(to, open ? tab : ""));
