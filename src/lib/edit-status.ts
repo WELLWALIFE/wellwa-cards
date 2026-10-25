@@ -32,6 +32,17 @@ export function partState(c: Card, key: string): PartState | undefined {
 const BY_KIND: Partial<Record<Kind, string>> = {
   about: "about", product: "products", testimonials: "reviews", gallery: "photos", hours: "where", location: "where",
 };
+/** A website section the site draws by itself (not one of the card's blocks): known by the words of its heading. */
+const WORDS: [RegExp, string][] = [
+  [/visit|find us|locat|address|direction|map|timing|hours|open|पता|समय|मिलें/i, "where"],
+  [/review|tell others|testimonial|customers say|rating|feedback|राय|समीक्षा/i, "reviews"],
+  [/photo|gallery|तस्वीर|फ़ोटो/i, "photos"],
+  [/product|price|menu|shop|catalog|दाम|सामान/i, "products"],
+  [/about|story|who we are|परिचय|हमारे बारे/i, "about"],
+  [/talk|contact|call|reach|get in touch|whatsapp|enquir|बात|संपर्क/i, "you"],
+];
+const byWords = (text: string) => WORDS.find(([re]) => re.test(text))?.[1];
+
 export type PartTarget = { key: string; blockId?: string };
 /** The part to open for a ✏️ tapped in the preview: a card part (profile, buttons, a block) or a website section by its heading.
  *  A block without its own screen ("Our promise", "How to order" …) opens Text & pages scrolled to that very block. */
@@ -44,7 +55,7 @@ export function partFor(c: Card, t: { kind: string; blockId?: string; text?: str
   const norm = (x: string) => x.toLowerCase().replace(/\s+/g, " ").trim();
   const b = t.kind === "block" ? all.find((x) => x.id === t.blockId)
     : t.text ? all.find((x) => norm(x.title ?? "") === norm(t.text!)) ?? all.find((x) => x.title && norm(t.text!).includes(norm(x.title))) : undefined;
-  if (!b) return { key: "text" };
+  if (!b) return { key: (t.text && byWords(t.text)) || "text" };
   // Several blocks of one kind (two "highlights" lists): only the first is the one the own screen edits.
   const own = BY_KIND[b.kind];
   const first = all.find((x) => x.kind === b.kind);
