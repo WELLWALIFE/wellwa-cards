@@ -8,6 +8,7 @@ import { getBrowserSupabase } from "./supabase/browser";
 import { attribution } from "./track";
 import type { Card } from "./types";
 import { safeColor } from "./looks";
+import { pinSiteColour } from "./site-style";
 
 export function isCloudConfigured(): boolean {
   return getBrowserSupabase() !== null;
@@ -274,7 +275,7 @@ export async function publishCard(card: Card): Promise<PublishResult> {
   // the old one live instead of moving it.
   const { data: mine, error: mineError } = await sb
     .from("cards")
-    .select("id, username")
+    .select("id, username, theme_color")
     .eq("owner_id", auth.user.id)
     .order("created_at", { ascending: false });
   // Without the list we cannot tell an update from a new card: stop rather than insert a duplicate.
@@ -288,6 +289,12 @@ export async function publishCard(card: Card): Promise<PublishResult> {
     // One account = one website and one card (owner, 14 Oct 2026): a card that matches none of the account's cards still
     // lands on the account's own one, never as a second.
     (mine ?? [])[0];
+
+  // A new card colour does not recolour the website (each has its own; owner, 25 Oct 2026).
+  const oldColor = (existing as { theme_color?: string | null } | undefined)?.theme_color ?? "";
+  if (existing && oldColor && materialized.site && safeColor(oldColor).toLowerCase() !== materialized.themeColor.toLowerCase()) {
+    materialized = { ...materialized, site: pinSiteColour(materialized.site, safeColor(oldColor)) };
+  }
 
   const row = {
     ...(existing ? { id: existing.id } : {}),

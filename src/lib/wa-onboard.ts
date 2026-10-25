@@ -28,6 +28,7 @@ import { mergeBuiltCard, type BuildResponse } from "@/lib/card-facts";
 import { threeLooks, applyLook, fitLooks, type Look, type LookPlan } from "@/lib/site-looks";
 import { applyEdits } from "@/lib/card-edits";
 import { editOpsFor, type EditLang } from "@/lib/card-edit-ai";
+import { pinSiteColour } from "@/lib/site-style";
 import { screenshotCard } from "@/lib/render-page";
 import { rateLimited } from "@/lib/api-security";
 import type { Card, CardBlock, CardPage } from "@/lib/types";
@@ -334,10 +335,12 @@ async function liveCard(uid: string, cardId?: string): Promise<Card | null> {
 /** The card row as the app's publishCard writes it (cloud.ts), with the service role. */
 async function publish(uid: string, card: Card): Promise<boolean> {
   const safe = (c: string | undefined, d = "#6d28d9") => (/^#[0-9a-f]{6}$/i.test(c ?? "") ? (c as string) : d);
-  const data: Card = { ...card, themeColor: safe(card.themeColor), avatarColor: safe(card.avatarColor, safe(card.themeColor)) };
-  const row = { owner_id: uid, username: card.username, name: data.name, job_title: data.jobTitle, company: data.company, tagline: data.tagline, about: data.about, theme_color: data.themeColor, avatar_url: data.avatarUrl ?? null, cover_url: data.coverUrl ?? null, active: data.active, data };
+  let data: Card = { ...card, themeColor: safe(card.themeColor), avatarColor: safe(card.avatarColor, safe(card.themeColor)) };
   // One account = one card: a card with a new id still goes onto the account's own card.
-  const existing = one(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${uid}&id=eq.${card.id}&select=id`)) ?? one(await restAsService<{ id: string }[]>(`cards?owner_id=eq.${uid}&order=created_at.desc&limit=1&select=id`));
+  const existing = one(await restAsService<{ id: string; theme_color: string | null }[]>(`cards?owner_id=eq.${uid}&id=eq.${card.id}&select=id,theme_color`)) ?? one(await restAsService<{ id: string; theme_color: string | null }[]>(`cards?owner_id=eq.${uid}&order=created_at.desc&limit=1&select=id,theme_color`));
+  // A new card colour does not recolour the website (each has its own; owner, 25 Oct 2026).
+  if (existing?.theme_color && data.site && existing.theme_color.toLowerCase() !== data.themeColor.toLowerCase()) data = { ...data, site: pinSiteColour(data.site, existing.theme_color) };
+  const row = { owner_id: uid, username: card.username, name: data.name, job_title: data.jobTitle, company: data.company, tagline: data.tagline, about: data.about, theme_color: data.themeColor, avatar_url: data.avatarUrl ?? null, cover_url: data.coverUrl ?? null, active: data.active, data };
   const r = existing
     ? await restAsService(`cards?id=eq.${existing.id}&owner_id=eq.${uid}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify(row) })
     : await restAsService("cards", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ id: card.id, ...row }) });

@@ -218,6 +218,22 @@ export function brandPalette(color: string): SitePalette {
   };
 }
 
+/** The card's colour is changing from `oldColor`: a website that took its colour from the card ("Yours" with no colour of its own)
+ *  keeps `oldColor` from now on — the card and the website are coloured separately (owner, 25 Oct 2026: "colour alag alag hi rahne do"). */
+export function pinSiteColour(site: Card["site"], oldColor: string): Card["site"] {
+  const old = hex6(oldColor);
+  if (!site || !old) return site;
+  let out = site;
+  const st = site.style ?? {};
+  const named = SITE_PALETTES.some((p) => p.key === st.palette && p.key !== "brand");
+  if (!named && !hex6(st.color)) out = { ...out, style: { ...st, color: old } };
+  const adv = out.advanced as { palette?: { key?: string; color?: string } } | undefined;
+  if (adv?.palette && (adv.palette.key === "brand" || !SITE_PALETTES.some((p) => p.key === adv.palette?.key)) && !hex6(adv.palette.color)) {
+    out = { ...out, advanced: { ...adv, palette: { ...adv.palette, color: old } } as NonNullable<Card["site"]>["advanced"] };
+  }
+  return out;
+}
+
 /** The palette a card's website uses: the chosen key, else its brand colour. */
 export function paletteFor(card: Pick<Card, "themeColor" | "site">): SitePalette {
   const st = card.site?.style;

@@ -406,7 +406,8 @@ export default function WebsiteEditPage() {
             <label className="mt-0.5 inline-flex items-center gap-2 px-1 text-[11px] text-muted">
               <input type="color" value={style.color || card.themeColor || "#0e9e90"} onChange={(e) => pickColour("brand", e.target.value)} className="h-6 w-9 rounded border border-border bg-surface p-0.5" />
               {hi ? "अपना रंग" : "Your own colour"}
-              {style.color && <button type="button" onClick={() => setStyle({ color: undefined })} className="underline">{hi ? "कार्ड जैसा" : "Same as the card"}</button>}
+              {/* Copies the card's colour once; the two stay separate after (owner, 25 Oct 2026). */}
+              {card.themeColor && (style.color || "").toLowerCase() !== card.themeColor.toLowerCase() && <button type="button" onClick={() => pickColour("brand", card.themeColor)} className="underline">{hi ? "कार्ड वाला रंग लें" : "Use the card's colour"}</button>}
             </label>
           )}
         </div>
