@@ -12,6 +12,10 @@ import "server-only";
 //     the SAME link can "Reconnect" — the viewer taps Reconnect (or the sender taps it), the sender is asked on their phone, and on yes the same link
 //     gets another 30 minutes. Inside a turn the same link can be sharing, paused (the sender tapped Stop, or left the app) and sharing again; the
 //     sender is always asked before it starts again.
+//   • Help by tapping (owner, 25 Oct 2026: "franchise aur admin ko edit ke rights — user ke haath mein option"): only when the SENDER switches
+//     it on (on by default in the dialog, one tap turns it off, any time). Then a viewer may send taps, typed words, a scroll or Back; they wait
+//     here and the sender's app takes them with its next push and does them itself — never in a password / OTP / PIN / bank field, never on the
+//     sharing controls. Switched off, nothing is queued and anything waiting is dropped.
 //   • Nothing is stored on disk: it lives in this server's memory only, and is gone at the end (or at a restart).
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 
@@ -29,7 +33,11 @@ type Share = {
   events: { i: number; e: Ev }[]; nextI: number; epoch: number; meta: Ev | null; bytes: number;
   width: number; height: number;
   viewers: Map<string, number>; waiters: Set<() => void>;
+  control: boolean; cmds: Cmd[];
 };
+/** One thing a helper does on the sender's screen (rrweb node ids from the replay; lib/share-control on the phone does it). */
+export type Cmd = { t: "click"; id: number } | { t: "input"; id: number; value: string } | { t: "scroll"; dy: number } | { t: "back" };
+const MAX_CMDS = 40;
 
 export const LINK_MS = 30 * 60_000;        // how long one sharing turn lives (from creation, and again from each reconnect after it ran out)
 const RECONNECT_MS = 24 * 60 * 60_000;     // after a turn ran out, the same link can still reconnect for this long, then it is over
@@ -99,6 +107,7 @@ export function createShare(uid: string, kind: ShareKind = "link", who: { name: 
   shares.set(token, {
     token, secretHash: hash(secret), uid, kind, who, at: now, expiresAt: now + LINK_MS, lastBeat: now, paused: null, ended: null, endedAt: 0, knockAt: 0,
     events: [], nextI: 1, epoch: 1, meta: null, bytes: 0, width: 390, height: 844, viewers: new Map(), waiters: new Set(),
+    control: false, cmds: [],
   });
   return { token, secret, expiresAt: now + LINK_MS };
 }
@@ -133,7 +142,7 @@ export function knock(s: Share): boolean {
 /** What the sender's own app is told about its link: whether somebody is waiting for it to start sharing again. */
 export function senderView(s: Share) {
   const viewers = viewerCount(s);
-  return { token: s.token, kind: s.kind, state: s.ended ? "ended" : s.paused ? "paused" : "live", why: s.ended ?? s.paused ?? null, expiresAt: s.expiresAt, viewers, knockAt: s.knockAt, waiting: !!s.paused && !s.ended && viewers > 0 };
+  return { token: s.token, kind: s.kind, state: s.ended ? "ended" : s.paused ? "paused" : "live", why: s.ended ?? s.paused ?? null, expiresAt: s.expiresAt, viewers, knockAt: s.knockAt, waiting: !!s.paused && !s.ended && viewers > 0, control: s.control };
 }
 
 /** The sender's batch of screen events. Returns how many are watching, and whether the link has ended or been paused. */
@@ -159,15 +168,40 @@ export function pushEvents(s: Share, events: unknown[]): { viewers: number; ende
   return { viewers: viewerCount(s), ended: s.ended, paused: s.paused, expiresAt: s.expiresAt };
 }
 
+/** The sender allows (or stops) help by tapping. Off drops whatever was waiting. */
+export function setControl(s: Share, on: boolean) {
+  if (s.control === on) return;
+  s.control = on; if (!on) s.cmds = [];
+  wake(s);
+}
+/** A helper's taps / words, kept for the sender's next push. Only while the sender allows it and the screen is being shared. */
+export function addCmds(s: Share, list: unknown[]): number {
+  if (!s.control || s.ended || s.paused) return 0;
+  let n = 0;
+  for (const raw of list.slice(0, 10)) {
+    const c = raw as Record<string, unknown>;
+    const id = Number(c?.id);
+    let cmd: Cmd | null = null;
+    if (c?.t === "click" && Number.isInteger(id) && id > 0) cmd = { t: "click", id };
+    else if (c?.t === "input" && Number.isInteger(id) && id > 0 && typeof c.value === "string") cmd = { t: "input", id, value: c.value.slice(0, 1000) };
+    else if (c?.t === "scroll" && Number.isFinite(Number(c.dy))) cmd = { t: "scroll", dy: Math.max(-3000, Math.min(3000, Math.round(Number(c.dy)))) };
+    else if (c?.t === "back") cmd = { t: "back" };
+    if (cmd && s.cmds.length < MAX_CMDS) { s.cmds.push(cmd); n++; }
+  }
+  return n;
+}
+/** What the sender's app is to do now (and forgets them here). */
+export function takeCmds(s: Share): Cmd[] { const c = s.cmds; s.cmds = []; return s.control ? c : []; }
+
 /** The sender tapped Stop: sharing stops now. The link stays so it can be started again. */
 export function stopShare(s: Share) { pause(s, "stopped"); }
 /** Gives the link up altogether. */
 export function closeShare(s: Share) { finish(s, "closed"); }
 
-export type WatchResult = { status: "live" | "paused" | "ended" | "full"; why?: PauseReason | EndReason; epoch: number; reset: boolean; events: Ev[]; next: number; width: number; height: number; viewers: number; expiresAt: number };
+export type WatchResult = { status: "live" | "paused" | "ended" | "full"; why?: PauseReason | EndReason; epoch: number; reset: boolean; events: Ev[]; next: number; width: number; height: number; viewers: number; expiresAt: number; control: boolean };
 /** What a viewer has not seen yet. Waits (long poll) until there is something, the link changes, or `waitMs` runs out. */
 export async function watch(s: Share, viewerId: string, after: number, epoch: number, waitMs: number, ask = false): Promise<WatchResult> {
-  const base = () => ({ epoch: s.epoch, reset: false, events: [] as Ev[], next: after, width: s.width, height: s.height, viewers: viewerCount(s), expiresAt: s.expiresAt });
+  const base = () => ({ epoch: s.epoch, reset: false, events: [] as Ev[], next: after, width: s.width, height: s.height, viewers: viewerCount(s), expiresAt: s.expiresAt, control: s.control });
   if (!s.viewers.has(viewerId) && viewerCount(s) >= MAX_VIEWERS) return { status: "full", ...base() };
   const isNew = !s.viewers.has(viewerId);
   s.viewers.set(viewerId, Date.now());
@@ -179,7 +213,7 @@ export async function watch(s: Share, viewerId: string, after: number, epoch: nu
     const first = s.events[0]?.i ?? s.nextI;
     const reset = epoch !== s.epoch || after < first - 1;
     const list = (reset ? s.events : s.events.filter((x) => x.i > after)).map((x) => x.e);
-    return { status: s.paused ? "paused" : "live", ...(s.paused ? { why: s.paused } : {}), epoch: s.epoch, reset, events: list, next: s.nextI - 1, width: s.width, height: s.height, viewers: viewerCount(s), expiresAt: s.expiresAt };
+    return { status: s.paused ? "paused" : "live", ...(s.paused ? { why: s.paused } : {}), epoch: s.epoch, reset, events: list, next: s.nextI - 1, width: s.width, height: s.height, viewers: viewerCount(s), expiresAt: s.expiresAt, control: s.control };
   };
   let r = snap();
   if (r.status !== "ended" && !r.events.length && !r.reset && waitMs > 0) {

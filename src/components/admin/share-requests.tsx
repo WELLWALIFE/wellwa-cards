@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Eye, Smartphone } from "lucide-react";
 import { adminHeaders } from "@/lib/admin-client";
-import { ScreenFeed, type Loader } from "@/components/share/screen-feed";
+import { ScreenFeed, type Controller, type Loader } from "@/components/share/screen-feed";
 
 type Req = { token: string; name: string; phone: string; since: number; expiresAt: number; state: "live" | "paused"; why: string | null; viewers: number; idleMs: number };
 const mins = (ms: number) => Math.max(0, Math.ceil(ms / 60_000));
@@ -12,7 +12,12 @@ const mins = (ms: number) => Math.max(0, Math.ceil(ms / 60_000));
 function Watch({ token, name }: { token: string; name: string }) {
   const load = useCallback<Loader>(async ({ after, epoch, vid, ask }) =>
     fetch(`/api/admin/share/watch?token=${encodeURIComponent(token)}&after=${after}&epoch=${epoch}&v=${vid}${ask ? "&ask=1" : ""}`, { headers: await adminHeaders(), cache: "no-store" }), [token]);
-  return <div className="rounded-2xl bg-[#0b0e33] pt-3 text-white"><ScreenFeed load={load} name={name || "The person"} maxWidth={1} fitHeight={250} /></div>;
+  // Help by tapping: only when the person allowed it on their phone (lib/live-share.ts).
+  const control = useCallback<Controller>(async (cmds) => {
+    const r = await fetch("/api/share/control", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token, cmds }), cache: "no-store" });
+    return r.ok;
+  }, [token]);
+  return <div className="rounded-2xl bg-[#0b0e33] pt-3 text-white"><ScreenFeed load={load} name={name || "The person"} maxWidth={1} fitHeight={250} control={control} /></div>;
 }
 
 export function ShareRequests() {

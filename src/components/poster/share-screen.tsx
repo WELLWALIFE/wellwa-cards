@@ -9,7 +9,7 @@
 // lib/live-share.ts is the server.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Check, Eye, LoaderCircle, ShieldCheck, X } from "lucide-react";
+import { Check, Eye, Hand, LoaderCircle, ShieldCheck, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
@@ -42,6 +42,44 @@ export function ShareScreen() {
   const buffer = useRef<unknown[]>([]);
   const timers = useRef<ReturnType<typeof setInterval>[]>([]);
   const dismissed = useRef(0);
+  // Help by tapping (owner, 25 Oct 2026): the person decides — on by default in the dialog, one tap turns it off (or on) while sharing.
+  const [allow, setAllow] = useState(true);
+  const allowRef = useRef(true);
+  useEffect(() => { allowRef.current = allow; }, [allow]);
+  const [acted, setActed] = useState(0);
+  const flash = () => { setActed(Date.now()); setTimeout(() => setActed(0), 3500); };
+  const mirror = useRef<{ getNode: (id: number) => Node | null } | null>(null);
+
+  /** Does what the helper asked, here, on this screen — never in a secret field, never on the sharing controls. */
+  function run(cmds: unknown[]) {
+    if (!allowRef.current || !Array.isArray(cmds)) return;
+    for (const raw of cmds.slice(0, 20)) {
+      const c = raw as { t?: string; id?: number; value?: string; dy?: number };
+      try {
+        if (c.t === "scroll") { window.scrollBy({ top: Number(c.dy) || 0, behavior: "smooth" }); flash(); continue; }
+        if (c.t === "back") { window.history.back(); flash(); continue; }
+        const node = typeof c.id === "number" ? mirror.current?.getNode(c.id) : null;
+        const el = (node && node.nodeType === 1 ? node : node?.parentElement) as HTMLElement | null;
+        if (!el || el.closest("[data-share-block]")) continue;
+        const desc = `${el.getAttribute("name") ?? ""} ${el.id ?? ""} ${el.getAttribute("autocomplete") ?? ""} ${el.getAttribute("placeholder") ?? ""} ${el.getAttribute("aria-label") ?? ""}`;
+        const secret = (el as HTMLInputElement).type === "password" || SECRET_FIELD.test(desc);
+        if (c.t === "click") {
+          if (secret) continue;
+          el.focus?.({ preventScroll: true });
+          el.click();
+          flash();
+        } else if (c.t === "input" && typeof c.value === "string") {
+          if (secret || !(el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement)) continue;
+          // React keeps its own copy of the value: set it the way a keyboard would, then tell React.
+          const proto = el instanceof HTMLTextAreaElement ? HTMLTextAreaElement.prototype : HTMLInputElement.prototype;
+          Object.getOwnPropertyDescriptor(proto, "value")?.set?.call(el, c.value);
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+          flash();
+        }
+      } catch { /* one that cannot be done is skipped */ }
+    }
+  }
 
   useEffect(() => {
     const open = (e: Event) => { setErr(""); setAsk((e as CustomEvent<{ kind?: ShareKind }>).detail?.kind === "admin" ? "admin" : "link"); };
@@ -63,9 +101,10 @@ export function ShareScreen() {
     const events = buffer.current; buffer.current = [];
     try {
       // keepalive is only for the tiny "end" message: a keepalive request may not carry more than 64 KB, and the first picture of a screen is several times that.
-      const r = await fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: l.token, secret: l.secret, events, ...(extra ?? {}) }), keepalive: !!extra?.end, cache: "no-store" });
-      const j = (await r.json().catch(() => ({}))) as { viewers?: number; ended?: string; paused?: string };
+      const r = await fetch("/api/share/push", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ token: l.token, secret: l.secret, events, control: allowRef.current, ...(extra ?? {}) }), keepalive: !!extra?.end, cache: "no-store" });
+      const j = (await r.json().catch(() => ({}))) as { viewers?: number; ended?: string; paused?: string; cmds?: unknown[] };
       if (typeof j.viewers === "number") setViewers(j.viewers);
+      if (j.cmds?.length) run(j.cmds);
       if (j.ended) { halt(false); setNote(j.ended === "expired" ? T("This link is over. Please make a new one.", "ये link खत्म हो गया। नया link बनाएँ।") : T("Sharing has ended.", "sharing बंद हो गई।")); }
       else if (j.paused === "expired") { halt(false); setNote(T("The 30 minutes are over, so sharing stopped.", "30 मिनट पूरे हो गए, इसलिए sharing रुक गई।")); void refresh(); }
       else if (j.paused === "stopped" || r.status === 403) { halt(false); void refresh(); }
@@ -97,6 +136,7 @@ export function ShareScreen() {
   async function begin(l: Live) {
     liveRef.current = l; setLive(l); setNote(""); setSt(null);
     const { record } = await import("rrweb");
+    mirror.current = record.mirror;
     let gotPicture: () => void = () => undefined;
     const picture = new Promise<void>((res) => { gotPicture = res; });
     stopRec.current = record({
@@ -110,6 +150,8 @@ export function ShareScreen() {
     }) as (() => void) | undefined;
     timers.current.push(setInterval(() => { if (buffer.current.length) void push(); }, FLUSH_MS));
     timers.current.push(setInterval(() => { void push(); }, BEAT_MS));
+    // While help by tapping is on, ask for the helper's taps every second (even when nothing on the screen moved).
+    timers.current.push(setInterval(() => { if (allowRef.current && !buffer.current.length) void push(); }, 1000));
     // The first complete picture of the screen is sent BEFORE the link is handed out, so whoever opens it sees the screen at once (when the app goes to
     // WhatsApp the page is in the background and cannot draw a picture until the person is back).
     await Promise.race([picture, new Promise((res) => setTimeout(res, 4000))]);
@@ -223,11 +265,15 @@ export function ShareScreen() {
             <ul className="space-y-1.5 text-sm">
               {[
                 isAdmin ? T("Admin sees only your Shubhora screen", "Admin को सिर्फ़ Shubhora screen दिखेगी") : T("They see only your Shubhora screen", "सामने वाले को सिर्फ़ Shubhora screen दिखेगी"),
-                T("They can only watch, not tap", "वो सिर्फ़ देख सकते हैं, कुछ दबा नहीं सकते"),
+                allow ? T("They can tap and type for you (you can stop it any time)", "वो आपकी जगह दबा और लिख सकते हैं (आप कभी भी बंद कर सकते हैं)") : T("They can only watch, not tap", "वो सिर्फ़ देख सकते हैं, कुछ दबा नहीं सकते"),
                 T("Passwords, OTP and PIN stay hidden", "Password, OTP, PIN छुपे रहेंगे"),
                 T("30 min · stopped? tap Reconnect", "30 मिनट · रुक जाए तो Reconnect दबाएँ"),
               ].map((x) => <li key={x} className="flex items-center gap-2"><Check className="h-4 w-4 shrink-0 text-good" /> {x}</li>)}
             </ul>
+            <label className="flex items-center justify-between gap-3 rounded-xl border border-border bg-surface2 px-3 py-2.5">
+              <span className="flex items-center gap-2 text-sm font-semibold"><Hand className="h-4 w-4 text-brand" /> {T("Let them tap & type for me", "उन्हें मेरी जगह दबाने और लिखने दें")}</span>
+              <input type="checkbox" className="h-5 w-5" checked={allow} onChange={(e) => setAllow(e.target.checked)} />
+            </label>
             {err && <p className="text-xs text-danger">{err}</p>}
             {sameLink && (
               <button type="button" onClick={() => void resume(sameLink)} disabled={busy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
@@ -254,7 +300,7 @@ export function ShareScreen() {
               {st.kind === "admin"
                 ? T("The Shubhora admin is waiting to see your screen.", "Shubhora admin आपकी screen देखने के लिए इंतज़ार कर रहे हैं।")
                 : T("Somebody has opened your link and is waiting to see your screen.", "किसी ने आपका link खोला है और आपकी screen देखने का इंतज़ार कर रहे हैं।")}
-              {" "}{T("They will see only your Shubhora screen, and can only look.", "उन्हें सिर्फ़ आपकी Shubhora screen दिखेगी, और वो सिर्फ़ देख सकते हैं।")}
+              {" "}{allow ? T("They will see only your Shubhora screen, and can tap and type for you (stop it any time).", "उन्हें सिर्फ़ आपकी Shubhora screen दिखेगी, और वो आपकी जगह दबा-लिख सकेंगे (कभी भी बंद कर सकते हैं)।") : T("They will see only your Shubhora screen, and can only look.", "उन्हें सिर्फ़ आपकी Shubhora screen दिखेगी, और वो सिर्फ़ देख सकते हैं।")}
             </p>
             {err && <p className="text-xs text-danger">{err}</p>}
             <div className="grid grid-cols-2 gap-2">
@@ -274,8 +320,11 @@ export function ShareScreen() {
             <Eye className="h-4 w-4 shrink-0 text-[#ffd54a]" />
             <span className="min-w-0 flex-1 leading-snug">
               {viewers > 0 ? (live.kind === "admin" ? T("Shubhora admin is watching your screen", "Shubhora admin आपकी screen देख रहे हैं") : T(`${viewers} watching your screen`, `${viewers} लोग आपकी screen देख रहे हैं`)) : (live.kind === "admin" ? T("Request sent. Waiting for the admin.", "request भेज दी। admin का इंतज़ार।") : T("Screen sharing is on. Nobody has opened the link yet.", "screen share चालू है। अभी किसी ने link नहीं खोला।"))}
-              <span className="block font-normal text-white/70">{T(`${minsLeft(live.expiresAt)} min left`, `${minsLeft(live.expiresAt)} मिनट बचे`)}</span>
+              <span className="block font-normal text-white/70">{acted ? T("They just tapped for you", "उन्होंने अभी आपकी screen पर दबाया") : T(`${minsLeft(live.expiresAt)} min left`, `${minsLeft(live.expiresAt)} मिनट बचे`)}</span>
             </span>
+            <button type="button" onClick={() => { setAllow((a) => !a); setTimeout(() => void push(), 50); }} className={`shrink-0 inline-flex items-center gap-1 rounded-lg px-2 py-1 ${allow ? "bg-[#ffd54a] text-[#12144a]" : "bg-white/15 text-white"}`}>
+              <Hand className="h-3.5 w-3.5" /> {allow ? T("Tap: ON", "Control ON") : T("Tap: OFF", "Control OFF")}
+            </button>
             {live.kind === "link" && <button type="button" onClick={() => void copy()} className="shrink-0 underline">{copied ? T("Copied", "copy हुआ") : T("Copy link", "link copy")}</button>}
             <button type="button" onClick={() => { halt(true); setNote(T("Sharing stopped.", "sharing बंद हो गई।")); }} className="shrink-0 rounded-lg bg-white px-2.5 py-1 text-[#12144a]">{T("End", "बंद करें")}</button>
           </div>
