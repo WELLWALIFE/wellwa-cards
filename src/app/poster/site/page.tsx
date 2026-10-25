@@ -379,21 +379,21 @@ export default function WebsitePage() {
                 return (
                   <>
                     {!isCard && <FinishBar hi={hi} />}
-                    {!isCard && (
-                      <Link href="/poster/website/edit" className="relative block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2f5bf5] to-[#7b5cff] p-5 text-white shadow-float transition active:scale-[.99]">
+                    {(
+                      <Link href={isCard ? "/poster/card/edit" : "/poster/website/edit"} className="relative block overflow-hidden rounded-3xl bg-gradient-to-br from-[#2f5bf5] to-[#7b5cff] p-5 text-white shadow-float transition active:scale-[.99]">
                         <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-8 h-28 w-28 rounded-full bg-white/10" />
                         <span className="relative flex items-center gap-3">
                           <span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/20"><Paintbrush className="h-6 w-6" /></span>
-                          <span className="min-w-0 flex-1"><span className="block text-lg font-extrabold leading-tight">{T("Edit website", "Website edit करें")}</span>
+                          <span className="min-w-0 flex-1"><span className="block text-lg font-extrabold leading-tight">{isCard ? T("Edit card", "Card edit करें") : T("Edit website", "Website edit करें")}</span>
                             <span className="block text-xs text-white/85">{T("Everything in one place — design, photos, products, contact, settings. See each change live.", "सब कुछ एक जगह — design, photos, products, संपर्क, settings। हर बदलाव live दिखेगा।")}</span></span>
                           <ChevronLeft className="h-5 w-5 shrink-0 rotate-180" />
                         </span>
                       </Link>
                     )}
-                    {!isCard && !allTiles && (
+                    {!allTiles && (
                       <button type="button" onClick={() => setAllTiles(true)} className="w-full rounded-2xl border border-border py-2.5 text-xs font-semibold text-muted">{T("Open one thing at a time ▾", "एक-एक करके खोलें ▾")}</button>
                     )}
-                    {(isCard || allTiles) && groups.map((g) => (
+                    {allTiles && groups.map((g) => (
                       <section key={g.k} className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                         <div className={`px-4 py-3 text-white ${groupHead[g.k] ?? groupHead.sometimes}`}>
                           <h2 className="text-base font-bold leading-tight">{g.title}</h2>
