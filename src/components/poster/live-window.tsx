@@ -8,7 +8,7 @@ import { Maximize2, Minimize2 } from "lucide-react";
 import type { Card } from "@/lib/types";
 import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 
-export type LiveFocus = { top?: boolean; text?: string } | null;
+export type LiveFocus = { top?: boolean; text?: string; body?: boolean } | null;
 const SITE_W = 1280, CARD_W = 400;
 
 export function LiveWindow({ card, k, view = "site", focus, hi, page }: {

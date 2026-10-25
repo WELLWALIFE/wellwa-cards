@@ -109,7 +109,7 @@ function PreviewInner() {
       if (e.data === `preview:${key}`) { setCard(readCard()); return; }
       // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
       // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
-      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string } | null;
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean } | null;
       if (!d || d.type !== "preview-focus" || d.key !== key) return;
       setTimeout(() => {
         let el: HTMLElement | null = null;
@@ -122,6 +122,8 @@ function PreviewInner() {
             ?? all.filter((x) => (x.textContent ?? "").toLowerCase().includes(want)).sort((a, b) => (a.textContent ?? "").length - (b.textContent ?? "").length)[0] ?? null;
           el = (el?.closest("section") as HTMLElement | null) ?? el;
         }
+        // The look picker: a look is mostly the header's edge, the fonts and the boxes, so show the end of the header with the first boxes under it.
+        if (d.body) { el = null; const first = document.querySelector<HTMLElement>(".look-sec"); if (first) { const y0 = Math.max(0, first.getBoundingClientRect().top + window.scrollY - 230); try { window.scrollTo({ top: y0, behavior: "smooth" }); } catch { window.scrollTo(0, y0); } return; } }
         const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
         // The editor's window is one screen of this page: the page itself scrolls to the part.
         try { window.scrollTo({ top: y, behavior: "smooth" }); } catch { window.scrollTo(0, y); }
