@@ -170,11 +170,13 @@ function PreviewInner() {
         el.appendChild(b);
       });
     };
+    add();
     const t = setTimeout(add, 400);
     const mo = new MutationObserver(() => { clearTimeout(tm); tm = setTimeout(add, 300); });
     let tm = setTimeout(() => undefined, 0);
     mo.observe(document.body, { childList: true, subtree: true });
-    return () => { clearTimeout(t); clearTimeout(tm); mo.disconnect(); document.querySelectorAll("[data-pv-chip]").forEach((x) => x.remove()); };
+    // The ✏️ stay through a re-render (they went for a moment after every change, owner's live check 25 Oct 2026).
+    return () => { clearTimeout(t); clearTimeout(tm); mo.disconnect(); };
   }, [tap, asCard, card]);
 
   if (card === undefined) return null;
