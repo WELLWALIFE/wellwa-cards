@@ -11,7 +11,7 @@ import {
   Languages, LoaderCircle, UserPlus, Settings, ArrowRight, Home, Images, HelpCircle, Phone, Wrench, Info, Compass, LayoutTemplate, Sparkles as SparklesIcon, Pencil,
   TrendingUp, Briefcase, IndianRupee, Quote } from "lucide-react";
 import { lookOf, lookCss, lookFontHref } from "@/lib/looks";
-import { siteDesign } from "@/lib/site-style";
+import { oklchVars, siteDesign } from "@/lib/site-style";
 import { faqLayout, galleryLayout, servicesLayout } from "@/lib/site-layout";
 import type { Card, CardBlock, CardImage, CardPage, CardTemplate } from "@/lib/types";
 import { LinkIcon, linkHref } from "@/components/link-icon";
@@ -362,7 +362,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
     {!onEdit && <NoticePopup card={card} theme={theme} active={active} hi={lang === "hi"} />}
     {/* The look: fonts + palette + corners for everything inside this card (see src/lib/looks.ts). */}
     {fontHref && <><link rel="preconnect" href="https://fonts.googleapis.com" /><link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" /><link rel="stylesheet" href={fontHref} /></>}
-    <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) + `[data-look="${look.key}"]{${design.vars}} [data-look="${look.key}"] h1,[data-look="${look.key}"] h2{font-weight:var(--head-w)}` }} />
+    <style dangerouslySetInnerHTML={{ __html: lookCss(look, theme) + `[data-look="${look.key}"]{${design.vars}${look.tone === "dark" ? ";" + oklchVars(design.palette.h, "dark", { c: design.palette.c }) : ""}} [data-look="${look.key}"] h1,[data-look="${look.key}"] h2{font-weight:var(--head-w)}` }} />
     <div className="mx-auto w-full max-w-md animate-rise" data-look={look.key} data-tone={look.tone}>
       <NoticeBar card={card} hi={lang === "hi"} compact />
       <div className="rounded-none border-0 sm:rounded-[1.75rem] sm:border border-border bg-surface overflow-hidden shadow-float">
