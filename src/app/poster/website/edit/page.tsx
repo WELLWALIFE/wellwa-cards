@@ -45,7 +45,7 @@ const TAB_GROUP: Record<string, Group> = {
 /** Tabs whose own screen is shown inside this one (a frame): it saves by itself and tells this page (components/poster/embed-mode.tsx). */
 const DONE = "/poster/embed-done";
 const EMBED: Partial<Record<Tab, (cardId: string) => string>> = {
-  text: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&back=${DONE}`,
+  text: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&only=pages&back=${DONE}`,
   buttons: (id) => `/poster/d/editor?id=${encodeURIComponent(id)}&focus=links&back=${DONE}`,
   products: () => `/poster/products?back=${DONE}`,
   about: () => `/poster/onboard?step=about&back=${DONE}`,
@@ -170,6 +170,12 @@ export default function WebsiteEditPage() {
     const f = focusAsk.current ?? embedView?.focus ?? null; focusAsk.current = null;
     if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
   }, [card, embedView]);
+
+  // A part opened: the window goes to the section it changes (back to the top on the list).
+  useEffect(() => {
+    const t = setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...(open ? { part: tab } : { top: true }) }, window.location.origin); } catch { /* ignore */ } }, 350);
+    return () => clearTimeout(t);
+  }, [open, tab]);
 
   /** The card again from the server (a tab's own Save changed it), with this page's unsaved changes kept on top. */
   const refresh = useCallback(async () => {

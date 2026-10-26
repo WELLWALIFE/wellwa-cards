@@ -193,7 +193,7 @@ export default function CardEditPage() {
     <div className="space-y-3 pb-4">
       <EditFocus />
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (tab === "look" ? { body: true } : { top: true })} hi={hi}
+      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={embedView?.focus ?? (!open ? { top: true } : tab === "look" ? { body: true } : { part: tab })} hi={hi}
         bar={{ onBack: () => {
             if (open) { toList(); return; }
             if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave without saving?", "बदलाव save नहीं हुआ। बिना save किए निकलें?"))) return;

@@ -33,6 +33,15 @@ function cardParam(): boolean {
   try { return new URLSearchParams(window.location.search).get("view") === "card"; } catch { return false; }
 }
 
+/** Which section a part of the editor changes, by its heading (lib/edit-status.ts has the same parts). */
+const PART_RX: Record<string, RegExp> = {
+  products: /product|price|menu|treatment|catalog|shop|दाम|सामान/i,
+  reviews: /review|testimonial|customers say|tell others|rating|राय|समीक्षा/i,
+  about: /about|story|who we are|परिचय|हमारे बारे/i,
+  details: /offer|why|promise|choose|what we do|service|आप क्या|क्यों/i,
+  where: /visit|find us|locat|address|timing|hours|contact|पता|समय/i,
+  photos: /photo|gallery|तस्वीर|फ़ोटो/i,
+};
 /** `?tap=1`: the edit screens' window — every part carries a small ✏️ Edit that tells the editor which part to open. */
 function tapParam(): boolean {
   try { return new URLSearchParams(window.location.search).get("tap") === "1"; } catch { return false; }
@@ -117,11 +126,20 @@ function PreviewInner() {
       if (e.data === `preview:${key}`) { setCard(readCard()); return; }
       // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
       // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
-      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean } | null;
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string } | null;
       if (!d || d.type !== "preview-focus" || d.key !== key) return;
       setTimeout(() => {
         let el: HTMLElement | null = null;
         const want = (d.text ?? "").trim().toLowerCase();
+        // A part of the editor opened (owner, 26 Oct 2026: "niche edit karne par screen me wahi space dikhe"): the section it changes.
+        if (d.part && !want) {
+          const rx = PART_RX[d.part];
+          if (rx) {
+            const heads = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,.look-title"));
+            const h = heads.find((x) => rx.test((x.textContent ?? "").trim()));
+            el = (h?.closest("section") as HTMLElement | null) ?? h ?? null;
+          } else if (d.part === "links" || d.part === "you" && !document.querySelector("[data-look]")) el = document.querySelector<HTMLElement>("footer");
+        }
         if (!d.top && want) {
           const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span"));
           el = all.find((x) => /^H[1-4]$/.test(x.tagName) && (x.textContent ?? "").trim().toLowerCase().includes(want))

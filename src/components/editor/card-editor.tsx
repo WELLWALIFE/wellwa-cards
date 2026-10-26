@@ -341,6 +341,9 @@ export function CardEditor({ id }: { id: string }) {
       try {
         const raw = localStorage.getItem(key);
         if (!raw) return;
+        // Inside Card / Website edit an old unsaved draft would open as "Changes not saved" with nothing changed on screen
+        // (found on the live check, 26 Oct 2026): there the card starts as it is live; the page warns before anything is left unsaved.
+        if (isEmbedded()) { localStorage.removeItem(key); localStorage.removeItem(`${key}:draft-base`); return; }
         if (base !== undefined) {
           const draftBase = localStorage.getItem(`${key}:draft-base`);
           if (draftBase !== base) {
@@ -500,6 +503,9 @@ export function CardEditor({ id }: { id: string }) {
   // Shown inside Website edit / Card edit (a tab "Text & pages"): the change goes to that page's live window, its Save bar saves here.
   const [inside, setInside] = useState(false);
   useEffect(() => { setInside(isEmbedded()); }, []);
+  /** ?only=pages — Website edit's "Text & pages": the pages and their sections only; the card's photo, name and shape are card things. */
+  const [onlyPages, setOnlyPages] = useState(false);
+  useEffect(() => { try { setOnlyPages(new URLSearchParams(window.location.search).get("only") === "pages"); } catch { /* ignore */ } }, []);
   useEffect(() => {
     if (!inside) return;
     const t = setTimeout(() => toParent({ type: "embed-live", card, focus: { top: false } }), 250);
@@ -638,7 +644,7 @@ export function CardEditor({ id }: { id: string }) {
   return (
     <div className="space-y-5 min-w-0 max-w-full overflow-x-hidden">
       {/* Name of the card + its link. Inside the app the page above already has a back arrow, so no second one. */}
-      <div className="flex items-center gap-3 min-w-0">
+      <div data-embed-hide className="flex items-center gap-3 min-w-0">
         {!inApp && <Link href="/cards" className="text-muted hover:text-ink shrink-0"><ArrowLeft className="h-5 w-5" /></Link>}
         <div className="min-w-0 flex-1">
           <h1 className="text-lg font-semibold tracking-tight truncate">{(card.lead === "business" && card.company?.trim() ? card.company : card.name) || L("My card", "मेरा card")}</h1>
@@ -653,7 +659,8 @@ export function CardEditor({ id }: { id: string }) {
 
       {/* ONE box, ONE button (owner's call, 25 Sep 2026 — simple enough for a child): what the card is right now,
           and "Save". Live and nothing changed → the button rests as "Saved". */}
-      <div className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${localSaveError ? "border-danger/40 bg-danger/10" : status === "live" ? "border-good/40 bg-good/10" : "border-amber/50 bg-amber/10"}`}>
+      {/* Inside Card / Website edit the bar above has Save (and says when something is not saved): this box would be a second one. */}
+      <div data-embed-hide className={`flex items-center gap-3 rounded-2xl border px-3 py-2.5 ${localSaveError ? "border-danger/40 bg-danger/10" : status === "live" ? "border-good/40 bg-good/10" : "border-amber/50 bg-amber/10"}`}>
         {localSaveError ? <AlertCircle className="h-6 w-6 shrink-0 text-danger" />
           : status === "live" ? <CheckCircle2 className="h-6 w-6 shrink-0 text-good" />
           : status === "changed" ? <CircleDot className="h-6 w-6 shrink-0 text-amber" />
@@ -701,7 +708,7 @@ export function CardEditor({ id }: { id: string }) {
         <div className={`min-w-0 ${view === "preview" ? "hidden @3xl:block" : ""}`}>
           {/* tab bar — the same pill style as the pages on the card: the open tab tinted, the others outlined */}
           {/* Four equal tiles, all visible at once (a scrolling pill row hid "More" off the edge). */}
-          <div className="mb-4 grid grid-cols-4 gap-2">
+          <div data-embed-hide className="mb-4 grid grid-cols-4 gap-2">
             {tabs.map((t) => {
               const on = tab === t.id;
               return (
@@ -717,7 +724,7 @@ export function CardEditor({ id }: { id: string }) {
           {/* ---- CONTENT ---- */}
           {tab === "content" && (
             <div className="space-y-6">
-              <Panel id="ed-profile" title={L("Your photo & name", "आपकी photo और नाम")}>
+              {!onlyPages && <Panel id="ed-profile" title={L("Your photo & name", "आपकी photo और नाम")}>
                 <div className="grid @xl:grid-cols-2 gap-4">
                   <div>
                     <span className="text-[13px] font-medium mb-1 block text-muted">{L("Profile photo", "आपकी photo / logo")}</span>
@@ -762,7 +769,7 @@ export function CardEditor({ id }: { id: string }) {
                     placeholder="One short line about what you do"
                   />
                 </Field>
-              </Panel>
+              </Panel>}
 
               {/* Every page of the card, one after the other (owner's call, 28 Sep 2026: only the open page's text used to
                   show — people thought the rest was missing). Each page: its name, arrows, bin, then its sections. */}
