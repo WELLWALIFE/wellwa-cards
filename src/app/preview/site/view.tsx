@@ -131,15 +131,6 @@ function PreviewInner() {
       setTimeout(() => {
         let el: HTMLElement | null = null;
         const want = (d.text ?? "").trim().toLowerCase();
-        // A part of the editor opened (owner, 26 Oct 2026: "niche edit karne par screen me wahi space dikhe"): the section it changes.
-        if (d.part && !want) {
-          const rx = PART_RX[d.part];
-          if (rx) {
-            const heads = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,.look-title"));
-            const h = heads.find((x) => rx.test((x.textContent ?? "").trim()));
-            el = (h?.closest("section") as HTMLElement | null) ?? h ?? null;
-          } else if (d.part === "links" || d.part === "you" && !document.querySelector("[data-look]")) el = document.querySelector<HTMLElement>("footer");
-        }
         if (!d.top && want) {
           const all = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,h4,b,strong,dt,dd,p,span"));
           el = all.find((x) => /^H[1-4]$/.test(x.tagName) && (x.textContent ?? "").trim().toLowerCase().includes(want))
@@ -147,6 +138,15 @@ function PreviewInner() {
             // The line that holds it (an address shown with its city): the shortest element whose text contains it.
             ?? all.filter((x) => (x.textContent ?? "").toLowerCase().includes(want)).sort((a, b) => (a.textContent ?? "").length - (b.textContent ?? "").length)[0] ?? null;
           el = (el?.closest("section") as HTMLElement | null) ?? el;
+        }
+        // A part of the editor opened, or its words were not found (owner, 26 Oct 2026: "niche edit karne par screen me wahi space dikhe"): the section it changes.
+        if (!el && d.part) {
+          const rx = PART_RX[d.part];
+          if (rx) {
+            const heads = Array.from(document.querySelectorAll<HTMLElement>("h1,h2,h3,.look-title"));
+            const h = heads.find((x) => rx.test((x.textContent ?? "").trim()));
+            el = (h?.closest("section") as HTMLElement | null) ?? h ?? null;
+          } else if (d.part === "links" || d.part === "you" && !document.querySelector("[data-look]")) el = document.querySelector<HTMLElement>("footer");
         }
         // The look picker: a look is mostly the header's edge, the fonts and the boxes, so show the end of the header with the first boxes under it.
         if (d.body) { el = null; const first = document.querySelector<HTMLElement>(".look-sec"); if (first) { const y0 = Math.max(0, first.getBoundingClientRect().top + window.scrollY - 230); try { window.scrollTo({ top: y0, behavior: "smooth" }); } catch { window.scrollTo(0, y0); } return; } }

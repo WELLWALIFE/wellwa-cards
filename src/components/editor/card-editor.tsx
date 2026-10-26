@@ -775,7 +775,7 @@ export function CardEditor({ id }: { id: string }) {
                   show — people thought the rest was missing). Each page: its name, arrows, bin, then its sections. */}
               <div id="ed-pages" className="scroll-mt-28 rounded-2xl border border-border bg-surface p-3 shadow-card">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-sm font-semibold">{L("Pages on your card", "Card के pages")} <span className="font-normal text-muted">({card.pages.length})</span></h2>
+                  <h2 className="text-sm font-semibold">{onlyPages ? L("Pages", "Pages") : L("Pages on your card", "Card के pages")} <span className="font-normal text-muted">({card.pages.length})</span></h2>
                   <button className="ed-add !w-auto" onClick={addPage}><Plus className="h-3.5 w-3.5" /> {L("Add page", "Page जोड़ें")}</button>
                 </div>
                 <p className="mt-1 text-xs text-muted">{L("Tap a page name to jump to it. Below, every page's text and photos are open for editing.", "Page के नाम पर tap करके वहाँ जाएँ। नीचे हर page के शब्द और photo बदल सकते हैं।")}</p>

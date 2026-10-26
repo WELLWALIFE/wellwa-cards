@@ -167,9 +167,11 @@ export default function WebsiteEditPage() {
     if (!shown) return;
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
-    const f = focusAsk.current ?? embedView?.focus ?? null; focusAsk.current = null;
+    // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
+    const ef = open ? { ...(embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
+    const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
     if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
-  }, [card, embedView]);
+  }, [card, embedView, open, tab]);
 
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
