@@ -48,6 +48,7 @@ import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeEmail, looks
 import { ONBOARD_SCREENS, SETUP_HOME, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { tradeQuestionsFor } from "@/lib/trade-questions";
+import { isEmbedded } from "@/components/poster/embed-mode";
 import { Help, type HelpKey } from "@/components/poster/field-help";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
@@ -450,7 +451,9 @@ function Onboard() {
         // Only a draft typed over THIS server version comes back; one from before a reset or another phone's save is thrown away.
         const serverAt = Date.parse(String(data.user?.updated_at ?? "")) || 0;
         serverBase.current = Math.max(serverBase.current, serverAt);   // never back to an older version than the first look at the account has seen
-        const fresh = d?.v === 2 && d.base === serverAt && Date.now() - (d.at ?? 0) < 7 * 86_400_000;
+        // Inside Card / Website edit a part opens as it is saved, never over an old draft from another screen (live check 26 Oct 2026:
+        // "What you offer" came up with another trade's choices for a few seconds).
+        const fresh = !isEmbedded() && d?.v === 2 && d.base === serverAt && Date.now() - (d.at ?? 0) < 7 * 86_400_000;
         if (d && !fresh) { try { localStorage.removeItem(key); } catch { /* ignore */ } }
         if (d && fresh) {
           if (d.site?.kind) setSite(d.site);
