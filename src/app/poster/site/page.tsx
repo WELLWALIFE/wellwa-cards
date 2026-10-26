@@ -11,7 +11,7 @@ import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Paintbrush, Copy, Share2, Search, Monitor, Sparkles } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Copy, Share2, Search, Monitor, Sparkles } from "lucide-react";
 import { PremiumCard, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink, SiteLink } from "@/components/poster/card-sheet";
 import { api, isLoggedIn } from "@/lib/poster-client";
@@ -229,15 +229,12 @@ export default function WebsitePage() {
                 {/* 2 · Edit */}
                 <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   {head(2, T("Edit", "Edit करें"), T("Change details, photos and offers", "जानकारी, photo और offer बदलें"), "bg-gradient-to-r from-[#2f5bf5] to-[#5b7cff]")}
-                  <div className="p-3">
-                    <Link href={editHref(noSite ? "card" : lastEdit() ?? (s.site?.enabled ? "site" : "card"))} className="flex items-center gap-3 rounded-2xl bg-brand-soft/50 p-3.5 ring-1 ring-brand/20 transition active:scale-[.98]">
-                      {icon("bg-brand", "text-white", Paintbrush)}
-                      <span className="min-w-0 flex-1">
-                        <span className="block text-base font-bold">{T("Edit card & website", "Card और website edit करें")}</span>
-                        <span className="block text-xs text-muted">{T("One place for both — see each change live", "दोनों एक ही जगह — हर बदलाव तुरंत दिखता है")}</span>
-                      </span>
-                      <ChevronLeft className="h-5 w-5 shrink-0 rotate-180 text-muted" />
-                    </Link>
+                  {/* Two doors, straight into the editor (owner, 26 Oct 2026); inside, the Card | Website switch moves between them. */}
+                  <div className="grid grid-cols-2 gap-2.5 p-3">
+                    <Link href={editHref("card")} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Edit card", "Card edit करें")}</span><span className="text-[11px] leading-tight text-muted">{T("Your phone card", "आपका phone card")}</span></Link>
+                    {noSite
+                      ? <button type="button" onClick={() => setPlanSheet(true)} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit करें")}</span><span className="text-[11px] leading-tight text-muted">{T("Get a website", "Website पाएँ")}</span></button>
+                      : <Link href={editHref("site")} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit करें")}</span><span className="text-[11px] leading-tight text-muted">{T("Your website", "आपकी website")}</span></Link>}
                   </div>
                 </section>
 
