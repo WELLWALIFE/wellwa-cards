@@ -126,7 +126,7 @@ function PreviewInner() {
       if (e.data === `preview:${key}`) { setCard(readCard()); return; }
       // The editor asks to show the part just changed (owner, 24 Oct 2026: "jo change hua wo hi portion apne aap window me dikhe"):
       // after the new paint, find it (the top, or a heading / line with that text), tell the editor where it is and mark it for a moment.
-      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string } | null;
+      const d = e.data as { type?: string; key?: string; top?: boolean; text?: string; body?: boolean; part?: string; quiet?: boolean } | null;
       if (!d || d.type !== "preview-focus" || d.key !== key) return;
       setTimeout(() => {
         let el: HTMLElement | null = null;
@@ -153,7 +153,7 @@ function PreviewInner() {
         const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
         // The editor's window is one screen of this page: the page itself scrolls to the part.
         try { window.scrollTo({ top: y, behavior: "smooth" }); } catch { window.scrollTo(0, y); }
-        if (el) { const o = el.style.outline, off = el.style.outlineOffset; el.style.outline = "4px solid #ffb400"; el.style.outlineOffset = "-4px"; setTimeout(() => { el!.style.outline = o; el!.style.outlineOffset = off; }, 1400); }
+        if (el && !d.quiet) { const o = el.style.outline, off = el.style.outlineOffset; el.style.outline = "4px solid #ffb400"; el.style.outlineOffset = "-4px"; setTimeout(() => { el!.style.outline = o; el!.style.outlineOffset = off; }, 1400); }
       }, 260);
     };
     window.addEventListener("storage", onStorage); window.addEventListener("message", onMessage);

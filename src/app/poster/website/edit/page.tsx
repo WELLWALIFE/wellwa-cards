@@ -97,6 +97,8 @@ export default function WebsiteEditPage() {
   const [open, setOpen] = useState(false);
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
+  /** The section the owner has scrolled to inside Text & pages: the window follows it (and opens its page). */
+  const [sync, setSync] = useState<{ text: string; page?: string } | null>(null);
   // Opened from the Card editor's switch with a part open (?part=): that part opens here too.
   const partDone = useRef(false);
   useEffect(() => {
@@ -161,17 +163,17 @@ export default function WebsiteEditPage() {
 
   // The live preview: the working copy goes to localStorage, the iframe (the real website renderer) re-reads it.
   // What the window shows: this page's working copy, or a tab screen's unsaved copy with this page's own unsaved changes on it.
-  const previewPage = embedView?.page ?? "";
+  const previewPage = sync && open ? (sync.page && sync.page !== "home" ? sync.page : "") : embedView?.page ?? "";
   useEffect(() => {
     const shown = embedView && card ? keepTouched(embedView.card, card, touched.current) : card;
     if (!shown) return;
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify(shown)); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
     // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
-    const ef = open ? { ...(embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
+    const ef = open ? { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
     const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
     if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
-  }, [card, embedView, open, tab]);
+  }, [card, embedView, open, tab, sync]);
 
   // A part opened: the window goes to the section it changes (back to the top on the list).
   useEffect(() => {
@@ -413,7 +415,7 @@ export default function WebsiteEditPage() {
     ] },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
-  const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setTab(t); };
+  const pick = (t: Tab) => { setNote((n) => (n?.k === "save" ? n : null)); setEmbedView(null); setSync(null); setTab(t); };
   const embedSrc = tab === "text" && atBlock ? `${EMBED.text!(s.cardId)}&block=${encodeURIComponent(atBlock)}` : EMBED[tab]?.(s.cardId);
   const domainOk = tier === "growth" || tier === "pro";
   const siteOn = !!(s.site?.enabled ?? card.site?.enabled);
@@ -518,7 +520,7 @@ export default function WebsiteEditPage() {
 
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
       {embedSrc && (
-        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick}
+        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={setSync}
           onLive={setEmbedView} onDirty={setEmbedDirty}
           onSaved={() => { setEmbedDirty(false); setEmbedView(null); if (ownAfter.current) { ownAfter.current = false; void save().then(() => refresh()); } else void refresh(); say("save", hi ? "✅ Save हो गया — website पर live है।" : "✅ Saved — it is live on your website.", false); }}
           onError={(t) => { ownAfter.current = false; say("save", t); }}

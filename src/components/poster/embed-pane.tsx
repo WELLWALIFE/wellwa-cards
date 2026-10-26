@@ -6,7 +6,8 @@ import type { Card } from "@/lib/types";
 
 export type EmbedLive = { card: Card; page?: string; focus?: { top?: boolean; text?: string } };
 
-export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onError, saveTick = 0 }: {
+export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onError, saveTick = 0, onSync }: {
+  /** The section the owner has scrolled to in the screen (its [data-sync-text]), so the window above can follow. */ onSync?: (at: { text: string; page?: string }) => void;
   src: string; title: string; onLive: (v: EmbedLive) => void; onDone: (saved: boolean) => void;
   /** The screen has changes not saved yet (the full editor): the page's own Save bar saves them (bumps `saveTick`). */
   onDirty?: (dirty: boolean) => void; onSaved?: () => void; onError?: (text: string) => void; saveTick?: number;
@@ -19,8 +20,30 @@ export function EmbedPane({ src, title, onLive, onDone, onDirty, onSaved, onErro
   const key = `${src}-${n}`;
   const keyRef = useRef(key);
   useEffect(() => { keyRef.current = key; });
-  const cb = useRef({ onLive, onDone, onDirty, onSaved, onError });
-  useEffect(() => { cb.current = { onLive, onDone, onDirty, onSaved, onError }; });
+  const cb = useRef({ onLive, onDone, onDirty, onSaved, onError, onSync });
+  useEffect(() => { cb.current = { onLive, onDone, onDirty, onSaved, onError, onSync }; });
+  // Scrolling the screen moves the window to the same section (owner, 26 Oct 2026: "niche scroll kare to upar ki screen bhi scroll ho").
+  // The frame is as tall as its screen, so the page scrolls: the section whose top has passed the line under the window is the one.
+  useEffect(() => {
+    let last = "", t = 0;
+    const check = () => {
+      t = 0;
+      const f = ref.current, doc = f?.contentDocument;
+      if (!f || !doc || !cb.current.onSync) return;
+      const top = f.getBoundingClientRect().top, line = window.innerHeight * 0.55;
+      const all = Array.from(doc.querySelectorAll<HTMLElement>("[data-sync-text]"));
+      let at: HTMLElement | null = null;
+      for (const el of all) { if (top + el.getBoundingClientRect().top <= line) at = el; else break; }
+      const text = at?.dataset.syncText?.trim() ?? "";
+      const key = at ? `${at.id}|${text}` : "";
+      if (!at || !text || key === last) return;
+      last = key;
+      cb.current.onSync({ text, page: at.dataset.syncPage });
+    };
+    const on = () => { if (!t) t = window.setTimeout(check, 180); };
+    window.addEventListener("scroll", on, { passive: true });
+    return () => { window.removeEventListener("scroll", on); if (t) clearTimeout(t); };
+  }, []);
   useEffect(() => { if (saveTick > 0) try { ref.current?.contentWindow?.postMessage({ type: "embed-save" }, window.location.origin); } catch { /* ignore */ } }, [saveTick]);
   useEffect(() => () => cb.current.onDirty?.(false), [src]);
   useEffect(() => {

@@ -1062,7 +1062,7 @@ function PageSections({ page, index, total, L, onRename, onMove, onRemove, onBlo
       </div>
       <div className="space-y-3">
         {page.blocks.map((b, i) => (
-          <div key={b.id} id={`ed-block-${b.id}`} {...dnd.drop(i)} className={`scroll-mt-28 transition-shadow ${dnd.over === i ? "rounded-xl ring-1 ring-brand ring-dashed" : ""}`}>
+          <div key={b.id} id={`ed-block-${b.id}`} data-sync-text={"title" in b ? b.title ?? "" : ""} data-sync-page={page.slug} {...dnd.drop(i)} className={`scroll-mt-28 transition-shadow ${dnd.over === i ? "rounded-xl ring-1 ring-brand ring-dashed" : ""}`}>
             <BlockEditor block={b} onChange={(nb) => update(b.id, nb)} onRemove={() => remove(b.id)} onMoveUp={() => move(i, -1)} onMoveDown={() => move(i, 1)}
               canUp={i > 0} canDown={i < page.blocks.length - 1} dragHandleProps={dnd.handle(i)} />
           </div>

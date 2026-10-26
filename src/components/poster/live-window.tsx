@@ -10,7 +10,7 @@ import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 import { WindowBar, type EditSwitch, type SaveProps } from "@/components/poster/save-overlay";
 import type { EditHistory } from "@/lib/use-edit-history";
 
-export type LiveFocus = { top?: boolean; text?: string; body?: boolean; /** The section an editor part changes. */ part?: string } | null;
+export type LiveFocus = { top?: boolean; text?: string; body?: boolean; /** The section an editor part changes. */ part?: string; /** No highlight (following the editor's scroll). */ quiet?: boolean } | null;
 const SITE_W = 1280, CARD_W = 400;
 
 export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, bar, onEditTarget }: {

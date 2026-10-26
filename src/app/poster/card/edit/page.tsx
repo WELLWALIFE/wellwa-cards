@@ -59,6 +59,8 @@ export default function CardEditPage() {
   const [open, setOpen] = useState(false);
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
+  /** The section the owner has scrolled to inside Text & pages: the window follows it. */
+  const [sync, setSync] = useState<{ text: string; page?: string } | null>(null);
   // Opened from the Website editor's switch with a part open (?part=): that part opens here too.
   const partDone = useRef(false);
   useEffect(() => {
@@ -173,7 +175,7 @@ export default function CardEditPage() {
     ] },
   ];
   const TABS = GROUPS.find((g) => g.key === group)!.tabs;
-  const pick = (t: Tab) => { setEmbedView(null); setTab(t); };
+  const pick = (t: Tab) => { setEmbedView(null); setSync(null); setTab(t); };
   const embedSrc = tab === "text" || tab === "buttons" ? `/poster/d/editor?id=${encodeURIComponent(card.id)}${tab === "buttons" ? "&focus=links" : ""}${tab === "text" && atBlock ? `&block=${encodeURIComponent(atBlock)}` : ""}&back=${DONE}` : EMBED[tab];
   const cur = LOOKS.find((l) => l.key === look) ?? LOOKS[0];
 
@@ -193,7 +195,7 @@ export default function CardEditPage() {
     <div className="space-y-3 pb-4">
       <EditFocus />
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={!open ? (embedView?.focus ?? { top: true }) : tab === "look" ? { body: true } : { ...(embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab }} hi={hi}
+      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={!open ? (embedView?.focus ?? { top: true }) : tab === "look" ? { body: true } : { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab }} hi={hi}
         bar={{ onBack: () => {
             if (open) { toList(); return; }
             if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave without saving?", "बदलाव save नहीं हुआ। बिना save किए निकलें?"))) return;
@@ -242,7 +244,7 @@ export default function CardEditPage() {
         </section>
       )}
       {embedSrc && (
-        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} onLive={setEmbedView}
+        <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} onLive={setEmbedView} onSync={setSync}
           saveTick={saveTick} onDirty={setEmbedDirty}
           onSaved={() => { setEmbedDirty(false); setEmbedView(null); setNote({ text: T("✅ Card saved — it is live on your link.", "✅ Card save हो गया — आपके link पर live है।"), bad: false }); if (ownAfter.current) { ownAfter.current = false; void save(); } else void refresh(); }}
           onError={(t) => { ownAfter.current = false; setNote({ text: t, bad: true }); }}
