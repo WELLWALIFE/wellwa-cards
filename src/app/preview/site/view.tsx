@@ -153,6 +153,12 @@ function PreviewInner() {
         const y = el ? Math.max(0, el.getBoundingClientRect().top + window.scrollY - 12) : 0;
         // The editor's window is one screen of this page: the page itself scrolls to the part.
         try { window.scrollTo({ top: y, behavior: "smooth" }); } catch { window.scrollTo(0, y); }
+        // A re-render of the page right after (a new copy of the card, a page change) can put it back on top: go again, once,
+        // to wherever the part is by then (live check 26 Oct 2026: the window stayed on the header).
+        if (el) setTimeout(() => {
+          const y2 = Math.max(0, el!.getBoundingClientRect().top + window.scrollY - 12);
+          if (el!.isConnected && Math.abs(window.scrollY - y2) > 40) window.scrollTo(0, y2);
+        }, 900);
         if (el && !d.quiet) { const o = el.style.outline, off = el.style.outlineOffset; el.style.outline = "4px solid #ffb400"; el.style.outlineOffset = "-4px"; setTimeout(() => { el!.style.outline = o; el!.style.outlineOffset = off; }, 1400); }
       }, 260);
     };

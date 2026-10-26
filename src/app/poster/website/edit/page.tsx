@@ -163,6 +163,8 @@ export default function WebsiteEditPage() {
 
   // The live preview: the working copy goes to localStorage, the iframe (the real website renderer) re-reads it.
   // What the window shows: this page's working copy, or a tab screen's unsaved copy with this page's own unsaved changes on it.
+  /** The last place asked of the window: asked again when the window loads afresh (another page of the website). */
+  const lastFocus = useRef<Record<string, unknown> | null>(null);
   const previewPage = sync && open ? (sync.page && sync.page !== "home" ? sync.page : "") : embedView?.page ?? "";
   useEffect(() => {
     const shown = embedView && card ? keepTouched(embedView.card, card, touched.current) : card;
@@ -172,7 +174,7 @@ export default function WebsiteEditPage() {
     // A part's screen that only says "the top" (most do) leaves the window on the section that part changes.
     const ef = open ? { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab } : embedView?.focus ?? null;
     const f = focusAsk.current ?? ef ?? null; focusAsk.current = null;
-    if (f) try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ }
+    if (f) { lastFocus.current = f; try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }
   }, [card, embedView, open, tab, sync]);
 
   // A part opened: the window goes to the section it changes (back to the top on the list).
@@ -461,7 +463,7 @@ export default function WebsiteEditPage() {
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
           <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
             <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
-              <iframe ref={frame} title="Website preview" src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
+              <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
           </div>
           <WindowBar hi={hi} big={big} onBig={() => setBig((b) => !b)}
