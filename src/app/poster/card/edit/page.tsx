@@ -60,14 +60,6 @@ export default function CardEditPage() {
   /** Text & pages opened from a ✏️ on one section: the editor starts right at it. */
   const [atBlock, setAtBlock] = useState("");
   // Opened from the Website editor's switch with a part open (?part=): that part opens here too.
-  // Closing the tab or reloading with a change not saved: the browser asks first (owner, 26 Oct 2026: "bina save kiye kaam na khoye").
-  useEffect(() => {
-    const unsaved = !!card && (look !== card.template || color !== card.themeColor || embedDirty);
-    if (!unsaved) return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [card, look, color, embedDirty]);
   const partDone = useRef(false);
   useEffect(() => {
     if (!card || partDone.current) return;
@@ -88,6 +80,14 @@ export default function CardEditPage() {
   const [savedTab, setSavedTab] = useState("");
   /** The full editor ("Text & pages") has unsaved changes: the Save bar saves them; a look change waits for it, then goes on top. */
   const [embedDirty, setEmbedDirty] = useState(false);
+  // Closing the tab or reloading with a change not saved: the browser asks first (owner, 26 Oct 2026: "bina save kiye kaam na khoye").
+  useEffect(() => {
+    const unsaved = !!card && (look !== card.template || color !== card.themeColor || embedDirty);
+    if (!unsaved) return;
+    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [card, look, color, embedDirty]);
   const [saveTick, setSaveTick] = useState(0);
   const ownAfter = useRef(false);
   const { plan, loading: planLoading } = usePlan();
