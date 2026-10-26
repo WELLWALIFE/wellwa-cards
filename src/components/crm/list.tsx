@@ -5,11 +5,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, Plus, Phone, MessageCircle, Columns3, List, LoaderCircle, PhoneCall, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Pipeline, AddLead } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick, Stars, starsOf, shownTags } from "@/components/crm/shared";
 import { STAGE_LABEL } from "@/components/crm/i18n";
 
-type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string; tag: string };
-const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "", tag: "" };
+type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string; tag: string; stars: number };
+const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "", tag: "", stars: 0 };
 
 export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[]) => void }) {
   const { L, ctx, as, openCustomer, startCall, version } = useShell();
@@ -50,8 +50,9 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
         {ctx.role !== "agent" && <button type="button" onClick={() => setAdding(true)} className="grad-brand rounded-xl p-2 text-white" aria-label={L.addLead}><Plus className="h-4 w-4" /></button>}
       </div>
       <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-0.5 [scrollbar-width:none]">
-        <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned && !qy.tag} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
+        <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned && !qy.tag && !qy.stars} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
         <Chip on={qy.due === "any"} onClick={() => toggle("due", "any")}>⏰ {L.filterDue}</Chip>
+        <Chip on={qy.stars === 1} onClick={() => toggle("stars", 1)}>⭐ {L.hi ? "स्टार वाले" : "Starred"}</Chip>
         <Chip on={qy.idle === 7} onClick={() => toggle("idle", 7)}>{L.filterIdle}</Chip>
         {(ctx.agents.length > 0 || as) && <Chip on={qy.assigned === "me"} onClick={() => toggle("assigned", "me")}>👤 {L.mine}</Chip>}
         {Object.keys(STAGE_LABEL).map((s) => <Chip key={s} on={qy.stage === s} onClick={() => toggle("stage", s)}>{STAGE_LABEL[s][L.lang]}</Chip>)}
@@ -98,8 +99,10 @@ function Row({ l, onOpen, onCall, selected, onToggle }: { l: LeadPro; onOpen: ()
           <p className={`truncate text-xs ${l.unread ? "text-ink" : "text-muted"}`}>{l.ai_next || l.message || l.ai_intent || l.city || "—"}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1">
             <StagePill status={l.status} hi={L.hi} />
-            {l.kind === "customer" && <span className="rounded-full bg-good/15 px-1.5 py-0.5 text-[10px] text-good">★</span>}
-            {(l.tags ?? []).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
+            {l.kind === "customer" && <span className="rounded-full bg-good/15 px-1.5 py-0.5 text-[10px] font-semibold text-good">✓ {L.hi ? "ग्राहक" : "Customer"}</span>}
+            {starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}
+            <span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span>
+            {shownTags(l.tags).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
             {due && <span className={`ml-auto text-[10px] font-medium ${due === "overdue" ? "text-danger" : due === "today" ? "text-lead" : "text-muted"}`}>⏰ {due === "overdue" ? L.overdueTag : due === "today" ? L.todayTag : ago(l.next_follow_up, L.hi)}</span>}
             {l.unread > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">{l.unread}</span>}
           </div>

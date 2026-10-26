@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Phone, MessageCircle, Check, LoaderCircle, PhoneCall, ChevronDown } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, waLink, telLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task, waClick } from "@/components/crm/shared";
+import { useShell, waLink, telLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task, waClick, Stars, starsOf } from "@/components/crm/shared";
 import type { CallListItem } from "@/components/crm/call";
 
 type Item = { lead: LeadPro; task?: Task; booking?: { id: string; service: string; starts_at: string }; why: string };
@@ -80,7 +80,7 @@ function Row({ x, sub, onOpen, onCall, onDone }: { x: Item; sub: string; onOpen:
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{l.name || l.phone}{l.unread > 0 && <span className="ml-1.5 rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">{l.unread}</span>}</p>
           <p className="truncate text-[11px] text-muted">{sub}</p>
-          <div className="mt-0.5"><StagePill status={l.status} hi={L.hi} /></div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5"><StagePill status={l.status} hi={L.hi} />{starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}<span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span></div>
         </div>
       </button>
       {l.phone && <button type="button" onClick={onCall} className="rounded-lg bg-brand-soft p-2 text-brand-ink" aria-label={L.call}><Phone className="h-4 w-4" /></button>}

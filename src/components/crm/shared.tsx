@@ -85,3 +85,58 @@ export async function loadWorkspace(as: string | null): Promise<Workspace | null
   const r = await api<Workspace & { error?: string }>(`/api/crm/workspace?x=1${as ? `&as=${as}` : ""}`);
   return r.ok ? r.data : null;
 }
+
+/* ---------------- stars (owner, 26 Oct 2026: "star dena") ---------------- */
+/** 0–5 stars, kept as one tag star:N on the lead (no new column). */
+export const STAR_TAG = /^star:([1-5])$/;
+export const starsOf = (tags?: string[] | null) => { for (const t of tags ?? []) { const m = STAR_TAG.exec(t); if (m) return Number(m[1]); } return 0; };
+/** Tags as the owner wrote them: the stars tag is shown as stars, never as #star:3. */
+export const shownTags = (tags?: string[] | null) => (tags ?? []).filter((t) => !STAR_TAG.test(t));
+export function Stars({ value, onChange, size = 18, hi }: { value: number; onChange?: (n: number) => void; size?: number; hi?: boolean }) {
+  return (
+    <span className="inline-flex items-center gap-0.5" role={onChange ? "radiogroup" : "img"} aria-label={`${value}/5 ${hi ? "स्टार" : "stars"}`}>
+      {[1, 2, 3, 4, 5].map((n) => {
+        const on = n <= value;
+        const star = <svg viewBox="0 0 24 24" width={size} height={size} aria-hidden="true"><path d="M12 2.8l2.8 5.9 6.4.8-4.7 4.4 1.2 6.4L12 17.2l-5.7 3.1 1.2-6.4L2.8 9.5l6.4-.8z" fill={on ? "#f5b301" : "none"} stroke={on ? "#f5b301" : "currentColor"} strokeWidth="1.6" strokeLinejoin="round" /></svg>;
+        return onChange
+          ? <button key={n} type="button" role="radio" aria-checked={value === n} aria-label={`${n}`} onClick={(e) => { e.stopPropagation(); onChange(value === n ? 0 : n); }} className="text-faint transition active:scale-90">{star}</button>
+          : <span key={n} className={on ? "" : "text-faint"}>{star}</span>;
+      })}
+    </span>
+  );
+}
+
+/* ---------------- the last call, first (owner, 26 Oct 2026: "last call kab ki thi, us time kya note add kiya tha — wo jyada zaruri") ---------------- */
+export type LastCall = { at: string; outcome: string; seconds: number; note: string; direction?: string } | null;
+export function LastCallBox({ call, note, hi, outcomeLabel }: { call: LastCall; note?: { text: string; at: string } | null; hi: boolean; outcomeLabel: (o: string) => string }) {
+  const mins = call && call.seconds > 0 ? `${Math.floor(call.seconds / 60)}:${String(call.seconds % 60).padStart(2, "0")} min` : "";
+  const dayOf = (d: Date) => d.toLocaleDateString("en-CA", { timeZone: IST });
+  const rel = (iso: string) => {
+    const days = Math.round((Date.parse(dayOf(new Date())) - Date.parse(dayOf(new Date(iso)))) / 864e5);
+    return days <= 0 ? (hi ? "आज" : "today") : days === 1 ? (hi ? "कल" : "yesterday") : hi ? `${days} दिन पहले` : `${days} days ago`;
+  };
+  const when = (iso: string) => `${rel(iso)} · ${new Date(iso).toLocaleDateString(hi ? "hi-IN" : "en-IN", { timeZone: IST, day: "numeric", month: "short" })}, ${fmtTime(iso, hi)}`;
+  const laterNote = note && (!call || note.at > call.at) ? note : null;
+  return (
+    <div className="space-y-2">
+      <div className="rounded-xl border border-brand/20 bg-brand-soft/40 px-3 py-2.5">
+        <p className="flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-brand-ink">📞 {hi ? "पिछली call" : "Last call"}</p>
+        {call ? (
+          <>
+            <p className="mt-0.5 text-sm font-semibold text-ink">{when(call.at)}</p>
+            <p className="text-xs text-muted">{outcomeLabel(call.outcome)}{mins ? ` · ${mins}` : ""}</p>
+            {call.note?.trim()
+              ? <p className="mt-1.5 whitespace-pre-line rounded-lg bg-surface px-2.5 py-1.5 text-sm text-ink">📝 {call.note.trim().slice(0, 400)}</p>
+              : <p className="mt-1 text-xs italic text-faint">{hi ? "उस call पर कोई note नहीं लिखा" : "No note on that call"}</p>}
+          </>
+        ) : <p className="mt-0.5 text-sm text-muted">{hi ? "अभी तक कोई call नहीं की" : "Not called yet"}</p>}
+      </div>
+      {laterNote && (
+        <div className="rounded-xl border border-amber/30 bg-amber/10 px-3 py-2">
+          <p className="text-[11px] font-bold uppercase tracking-wide text-ink">📝 {hi ? "बाद का note" : "Later note"} <span className="font-normal normal-case text-muted">· {ago(laterNote.at, hi)}</span></p>
+          <p className="whitespace-pre-line text-sm text-ink">{laterNote.text.slice(0, 300)}</p>
+        </div>
+      )}
+    </div>
+  );
+}

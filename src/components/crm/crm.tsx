@@ -92,7 +92,7 @@ export function CrmInbox() {
 
   const patchLocal = useCallback((l: Lead) => setLeads((xs) => (xs ?? []).map((x) => (x.id === l.id ? { ...x, ...l } : x))), []);
 
-  const allTags = useMemo(() => { const m = new Map<string, number>(); for (const l of leads ?? []) for (const t of l.tags ?? []) m.set(t, (m.get(t) ?? 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map((e) => e[0]); }, [leads]);
+  const allTags = useMemo(() => { const m = new Map<string, number>(); for (const l of leads ?? []) for (const t of (l.tags ?? []).filter((x) => !/^star:[1-5]$/.test(x))) m.set(t, (m.get(t) ?? 0) + 1); return [...m.entries()].sort((a, b) => b[1] - a[1]).slice(0, 8).map((e) => e[0]); }, [leads]);
 
   const stats = useMemo(() => {
     const xs = leads ?? []; const m0 = new Date(); m0.setDate(1); m0.setHours(0, 0, 0, 0);
@@ -247,7 +247,7 @@ function Row({ l, onClick }: { l: Lead; onClick: () => void }) {
           <div className="mt-1 flex flex-wrap items-center gap-1">
             <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-semibold ${st.cls}`}>{st.label}</span>
             {l.ai_intent && <span className="rounded-full bg-ai/10 px-1.5 py-0.5 text-[10px] font-medium text-ai">✦ {l.ai_intent}</span>}
-            {(l.tags ?? []).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
+            {(l.tags ?? []).filter((t) => !/^star:[1-5]$/.test(t)).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
             {l.assigned_to && <span className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">@{agentName(l.assigned_to)}</span>}
             {due && <span className={`ml-auto inline-flex items-center gap-0.5 text-[10px] font-medium ${due === "overdue" ? "text-danger" : due === "today" ? "text-lead" : "text-muted"}`}><CalendarClock className="h-3 w-3" />{due === "later" ? ago(l.next_follow_up) : due}</span>}
           </div>

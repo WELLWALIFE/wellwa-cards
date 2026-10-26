@@ -7,7 +7,7 @@ import { ArrowLeft, Phone, MessageCircle, CalendarClock, StickyNote, CalendarPlu
 import Link from "next/link";
 import { api } from "@/lib/poster-client";
 import { Thread, STAGES } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call, waClick, openWhatsAppChat } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call, waClick, openWhatsAppChat, Stars, starsOf, shownTags, STAR_TAG, LastCallBox } from "@/components/crm/shared";
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 import { TaskSheet, TaskRow } from "@/components/crm/tasks";
 import { SalesTab, SaleSheet } from "@/components/crm/sales";
@@ -81,6 +81,10 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
         </div>
         <button type="button" onClick={() => setSheet("stage")} className="shrink-0"><StagePill status={l.status} hi={L.hi} /></button>
       </div>
+      <div className="flex items-center gap-2 pl-12">
+        <Stars value={starsOf(l.tags)} hi={L.hi} onChange={(n) => void patch({ rating: n })} />
+        <span className="text-[11px] text-faint">{L.hi ? "स्टार दें" : "Give stars"}</span>
+      </div>
       {/* the customer's chat in the WhatsApp app itself, and the number into the phone book */}
       {waDigits.length >= 11 && (
         <div className="flex gap-2 text-xs font-semibold">
@@ -112,6 +116,11 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
           <button key={a.k} type="button" onClick={a.f} className="flex flex-col items-center gap-0.5 rounded-xl border border-border bg-surface py-2"><a.I className={`h-4 w-4 ${a.cls}`} />{a.t}</button>
         ))}
       </div>
+      {/* The last call and its note, before anything else (owner, 26 Oct 2026). */}
+      {(() => {
+        const c = [...(data?.calls ?? [])].sort((a, b) => (a.started_at < b.started_at ? 1 : -1))[0];
+        return <LastCallBox call={c ? { at: c.started_at, outcome: c.outcome, seconds: c.seconds, note: c.note ?? "" } : null} hi={L.hi} outcomeLabel={(o) => OUTCOME_LABEL[o]?.[L.lang] ?? o} />;
+      })()}
 
       {(l.tags ?? []).includes("personal") && !(l.tags ?? []).includes("not-personal") && (
         <div className="space-y-2 rounded-xl border border-ai/30 bg-ai/5 px-3 py-2 text-xs">
@@ -203,12 +212,12 @@ function Activity({ items, openTasks, onChanged }: { items: TimelineItem[]; open
 
 function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, unknown>) => Promise<boolean> }) {
   const { L } = useShell();
-  const [f, setF] = useState({ name: lead.name, alt_phone: lead.alt_phone ?? "", business: lead.business ?? "", city: lead.city, address: lead.address ?? "", pincode: lead.pincode ?? "", email: lead.email ?? "", birthday: lead.birthday ?? "", anniversary: lead.anniversary ?? "", lang: lead.lang ?? "", budget: lead.budget_paise ? String(lead.budget_paise / 100) : "", value: lead.value_paise ? String(lead.value_paise / 100) : "", tags: lead.tags ?? [], notes: lead.notes, lost_reason: lead.lost_reason, opted_out: !!lead.opted_out });
+  const [f, setF] = useState({ name: lead.name, alt_phone: lead.alt_phone ?? "", business: lead.business ?? "", city: lead.city, address: lead.address ?? "", pincode: lead.pincode ?? "", email: lead.email ?? "", birthday: lead.birthday ?? "", anniversary: lead.anniversary ?? "", lang: lead.lang ?? "", budget: lead.budget_paise ? String(lead.budget_paise / 100) : "", value: lead.value_paise ? String(lead.value_paise / 100) : "", tags: shownTags(lead.tags), notes: lead.notes, lost_reason: lead.lost_reason, opted_out: !!lead.opted_out });
   const [tag, setTag] = useState(""); const [busy, setBusy] = useState(false); const [ok, setOk] = useState(false);
   const addTag = () => { const t = tag.trim().replace(/^#/, "").slice(0, 24); if (t && !f.tags.includes(t)) setF({ ...f, tags: [...f.tags, t] }); setTag(""); };
   async function save() {
     setBusy(true); setOk(false);
-    const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: f.tags, notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
+    const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: [...f.tags, ...(lead.tags ?? []).filter((t) => STAR_TAG.test(t))], notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
     setBusy(false); setOk(done);
   }
   const row = (k: keyof typeof f, label: string, type = "text", ph?: string) => <label className="text-xs text-muted">{label}<input type={type} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className={inputCls} /></label>;

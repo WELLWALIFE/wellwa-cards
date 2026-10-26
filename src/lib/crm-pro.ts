@@ -59,7 +59,7 @@ export async function savePrefs(ownerId: string, patch: Partial<CrmPrefs>): Prom
 }
 
 /* ---------------- list ---------------- */
-export type ListQuery = { q?: string; stage?: string; kind?: string; tag?: string; source?: string; assigned?: string; city?: string; due?: string; idle?: number; sort?: string; page?: number };
+export type ListQuery = { q?: string; stage?: string; kind?: string; tag?: string; /** At least this many stars (tags star:1..star:5). */ stars?: number; source?: string; assigned?: string; city?: string; due?: string; idle?: number; sort?: string; page?: number };
 export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: LeadPro[]; page: number; more: boolean }> {
   const page = Math.max(0, qy.page ?? 0), size = 50;
   const f: string[] = [scopeFilter(scope)];
@@ -77,7 +77,8 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
   if (qy.stage) f.push(`status=eq.${enc(qy.stage)}`);
   if (qy.kind) f.push(`kind=eq.${enc(qy.kind)}`);
   if (qy.tag) f.push(`tags=cs.${enc(`{${qy.tag.replace(/[{}",\\]/g, "")}}`)}`);
-  if (qy.tag !== PERSONAL_TAG && !q) f.push(NOT_PERSONAL_LEADS);   // personal chats only under their own filter (a search still finds them)
+  if (qy.tag !== PERSONAL_TAG && !q) f.push(NOT_PERSONAL_LEADS);
+  if (qy.stars && qy.stars >= 1 && qy.stars <= 5) f.push(`tags=ov.${enc(`{${[1, 2, 3, 4, 5].filter((n) => n >= qy.stars!).map((n) => `star:${n}`).join(",")}}`)}`);   // personal chats only under their own filter (a search still finds them)
   if (qy.source) f.push(`source=eq.${enc(qy.source)}`);
   if (qy.city) f.push(`city=ilike.${enc(qy.city)}`);
   if (qy.assigned === "me") f.push(`assigned_to=eq.${scope.userId}`);

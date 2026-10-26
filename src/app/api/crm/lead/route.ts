@@ -1,6 +1,6 @@
 // POST (bearer) { name, phone, city?, tags?, note? } → create a lead by hand (owner/manager).
 // POST { leads: [{name, phone, city, tags, note}] } → bulk import (owner), skips numbers already present.
-// PATCH { id, as?, status?, tags?, notes?, next_follow_up?, value_paise?, lost_reason?, name?, city?, note?, assigned_to? }
+// PATCH { id, as?, status?, tags?, rating? (0-5 stars), notes?, next_follow_up?, value_paise?, lost_reason?, name?, city?, note?, assigned_to? }
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser, restAsService } from "@/lib/poster-server";
 import { STAGES, LEAD_COLS, addEvent, leadById, resolveScope, agentsFor, type LeadRow } from "@/lib/crm-server";
@@ -60,6 +60,12 @@ export async function PATCH(request: Request) {
   const events: [string, string][] = [];
   if (typeof b.status === "string" && (STAGES as readonly string[]).includes(b.status) && b.status !== before.status) { patch.status = b.status; events.push(["status", `Stage → ${b.status.replace("_", " ")}`]); }
   const tags = cleanTags(b.tags); if (tags) patch.tags = tags;
+  // Stars (owner, 26 Oct 2026: "star dena"): 0–5, kept as one tag star:N so no new column is needed.
+  if (typeof b.rating === "number" && b.rating >= 0 && b.rating <= 5) {
+    const r = Math.round(b.rating);
+    const base = ((patch.tags as string[] | undefined) ?? before.tags ?? []).filter((t: string) => !/^star:[1-5]$/.test(t));
+    patch.tags = r ? [...base, `star:${r}`].slice(-12) : base;
+  }
   if (S(b.notes, 4000) !== undefined) patch.notes = S(b.notes, 4000);
   if (S(b.name, 80) !== undefined) patch.name = S(b.name, 80);
   if (S(b.city, 60) !== undefined) patch.city = S(b.city, 60);

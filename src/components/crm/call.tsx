@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles, ClipboardPaste, UserPlus, X, AlertTriangle, ChevronDown, Search } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, type LeadPro, type Task, waClick } from "@/components/crm/shared";
+import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick, Stars, starsOf, LastCallBox, type LastCall } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
 export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean; callId?: string };
@@ -182,15 +182,20 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
   const { L, as, startCall, openCustomer } = useShell();
   const [i, setI] = useState(0);
   const [done, setDone] = useState<Set<string>>(new Set());
-  const [msgs, setMsgs] = useState<{ direction: string; text: string; sent_at: string }[] | null>(null);
   const [note, setNote] = useState<{ text: string; at: string; call: boolean } | null>(null);
+  const [lastCall, setLastCall] = useState<LastCall>(null);
+  const [loaded, setLoaded] = useState("");
+  /** Stars set here, before the list reloads (owner, 26 Oct 2026: "star dena"). */
+  const [stars, setStars] = useState<Record<string, number>>({});
   const cur = items[i];
   useEffect(() => {
-    setMsgs(null); setNote(null);
+    setNote(null); setLastCall(null); setLoaded("");
     if (!cur) return;
     let dead = false;
     // ?as= so a team workspace reads the owner's thread (without it the lead is "not found" for an agent / manager).
-    api<{ messages?: { direction: string; text: string; sent_at: string }[]; lastNote?: { text: string; at: string; call: boolean } | null }>(`/api/crm/thread?lead=${cur.lead.id}${as ? `&as=${as}` : ""}`).then((r) => { if (!dead) { setMsgs(r.ok ? (r.data.messages ?? []).slice(-2) : []); setNote(r.ok ? r.data.lastNote ?? null : null); } }).catch(() => { if (!dead) setMsgs([]); });
+    api<{ lastNote?: { text: string; at: string; call: boolean } | null; lastCall?: LastCall }>(`/api/crm/thread?lead=${cur.lead.id}${as ? `&as=${as}` : ""}`)
+      .then((r) => { if (dead) return; setNote(r.ok ? r.data.lastNote ?? null : null); setLastCall(r.ok ? r.data.lastCall ?? null : null); setLoaded(cur.lead.id); })
+      .catch(() => { if (!dead) setLoaded(cur.lead.id); });
     return () => { dead = true; };
   }, [cur, as]);
   if (!cur) return (
@@ -208,29 +213,25 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
       <div className="rounded-2xl border border-border bg-surface p-4">
         <button type="button" onClick={() => openCustomer(l.id)} className="flex w-full items-center gap-3 text-left">
           <Avatar name={l.name} phone={l.phone} size={12} />
-          <div className="min-w-0 flex-1"><p className="truncate text-lg font-bold text-ink">{l.name || l.phone}</p><p className="text-xs text-muted">{l.phone}{l.city ? ` · ${l.city}` : ""}{l.business ? ` · ${l.business}` : ""}</p><div className="mt-1 flex items-center gap-1.5"><StagePill status={l.status} hi={L.hi} />{l.score >= 70 && <span className="text-[10px]">🔥</span>}</div></div>
+          <div className="min-w-0 flex-1"><p className="truncate text-lg font-bold text-ink">{l.name || l.phone}</p><p className="text-xs text-muted">{l.name ? l.phone : ""}{l.city ? ` · ${l.city}` : ""}{l.business ? ` · ${l.business}` : ""}</p><div className="mt-1 flex items-center gap-1.5"><StagePill status={l.status} hi={L.hi} />{l.score >= 70 && <span className="text-[10px]">🔥</span>}</div></div>
         </button>
-        <p className="mt-3 rounded-xl bg-lead/10 px-3 py-2 text-xs font-semibold text-lead">⏰ {cur.why}{cur.task ? ` · ${fmtWhen(cur.task.due_at, L.hi)}` : ""}</p>
-        {(l.ai_summary || l.ai_next || l.message) && (
-          <div className="mt-3 rounded-xl bg-ai/5 px-3 py-2 text-xs">
-            <p className="mb-1 flex items-center gap-1 font-semibold text-ai"><Sparkles className="h-3.5 w-3.5" /> {L.talkingPoints}</p>
-            {l.ai_summary && <p className="text-ink">{l.ai_summary}</p>}
-            {l.ai_next && <p className="text-ink"><b>→</b> {l.ai_next}</p>}
-            {!l.ai_summary && l.message && <p className="text-ink">“{l.message}”</p>}
-          </div>
-        )}
-        {/* The last note, typed or spoken (owner, 24 Oct 2026): what was said last time, before this call. */}
-        {(note || l.notes?.trim()) && (
-          <div className="mt-3 rounded-xl border border-amber/30 bg-amber/10 px-3 py-2 text-xs">
-            <p className="mb-0.5 font-semibold text-ink">📝 {L.hi ? (note?.call ? "पिछली call का note" : "आखिरी note") : (note?.call ? "Note from the last call" : "Last note")}{note ? <span className="font-normal text-muted"> · {ago(note.at, L.hi)}</span> : null}</p>
-            <p className="whitespace-pre-line text-ink">{(note?.text ?? l.notes ?? "").slice(0, 300)}</p>
-          </div>
-        )}
-        {msgs && msgs.length > 0 && (
-          <div className="mt-3 space-y-1">
-            <p className="text-[11px] font-semibold text-muted">{L.lastMessages}</p>
-            {msgs.map((m, k) => <p key={k} className={`rounded-xl px-3 py-1.5 text-xs ${m.direction === "in" ? "bg-surface2 text-ink" : "bg-brand-soft text-brand-ink"}`}>{m.text.slice(0, 160)}</p>)}
-          </div>
+        <div className="mt-2 flex items-center gap-2 pl-[3.75rem]">
+          <Stars value={stars[l.id] ?? starsOf(l.tags)} hi={L.hi} onChange={(n) => {
+            setStars((x) => ({ ...x, [l.id]: n }));
+            void api("/api/crm/lead", { method: "PATCH", json: { id: l.id, as: as ?? undefined, rating: n } }).then((r) => { if (!r.ok) setStars((x) => { const y = { ...x }; delete y[l.id]; return y; }); });
+          }} />
+          <span className="text-[11px] text-faint">{L.hi ? "ज़रूरी हो तो स्टार दें" : "Star the important ones"}</span>
+        </div>
+        {/* Why this call now (a follow-up that is due), only when there is something to say. */}
+        {(cur.why?.trim() || cur.task) && <p className="mt-3 rounded-xl bg-lead/10 px-3 py-2 text-xs font-semibold text-lead">⏰ {cur.why}{cur.task ? `${cur.why?.trim() ? " · " : ""}${fmtWhen(cur.task.due_at, L.hi)}` : ""}</p>}
+        {/* The last call and its note come first (owner, 26 Oct 2026); the WhatsApp chat is one tap away on the WhatsApp button. */}
+        <div className="mt-3">
+          {loaded === l.id
+            ? <LastCallBox call={lastCall} note={note && !note.call ? { text: note.text, at: note.at } : null} hi={L.hi} outcomeLabel={(o) => OUTCOME_LABEL[o]?.[L.lang] ?? o} />
+            : <div className="h-20 animate-pulse rounded-xl bg-surface2" />}
+        </div>
+        {l.ai_next && (
+          <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-ai/5 px-3 py-2 text-xs text-ink"><Sparkles className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ai" /> <span><b className="text-ai">{L.hi ? "अगला कदम:" : "Next step:"}</b> {l.ai_next}</span></p>
         )}
         <div className="mt-4 grid grid-cols-3 gap-2">
           <button type="button" onClick={() => startCall(l, advance)} className="grad-brand inline-flex items-center justify-center gap-2 rounded-xl py-3 text-sm font-semibold text-white"><Phone className="h-4 w-4" /> {L.call}</button>
