@@ -60,6 +60,11 @@ export async function PATCH(request: Request) {
   const events: [string, string][] = [];
   if (typeof b.status === "string" && (STAGES as readonly string[]).includes(b.status) && b.status !== before.status) { patch.status = b.status; events.push(["status", `Stage → ${b.status.replace("_", " ")}`]); }
   const tags = cleanTags(b.tags); if (tags) patch.tags = tags;
+  // Hot / warm / cold set by the owner (owner, 26 Oct 2026): one tag temp:…; "" clears it.
+  if (typeof b.temp === "string" && ["hot", "warm", "cold", ""].includes(b.temp)) {
+    const base = ((patch.tags as string[] | undefined) ?? before.tags ?? []).filter((t: string) => !/^temp:(hot|warm|cold)$/.test(t));
+    patch.tags = b.temp ? [...base, `temp:${b.temp}`].slice(-12) : base;
+  }
   // Stars (owner, 26 Oct 2026: "star dena"): 0–5, kept as one tag star:N so no new column is needed.
   if (typeof b.rating === "number" && b.rating >= 0 && b.rating <= 5) {
     const r = Math.round(b.rating);

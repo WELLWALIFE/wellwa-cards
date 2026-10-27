@@ -24,7 +24,7 @@ const STR = {
     openTasks: "बाकी tasks", doneTasks: "हो चुके",
     callOutcome: "Call कैसी रही?", connected: "बात हुई", noAnswer: "नहीं उठाया", busy: "Busy", switchedOff: "बंद था", wrongNumber: "गलत नंबर", callBack: "बाद में call", duration: "कितनी देर", callNote: "क्या बात हुई", callNotePh: "जैसे: demo Sunday को, price पूछा", speak: "बोलकर लिखें", listening: "सुन रहा हूँ…",
     nextStep: "अगला step", sendWa: "अभी WhatsApp भेजें", waMissedYou: "\"call किया था\" message", moveStage: "Stage बदलें", saveCall: "Call सेव करें", callLogged: "Call सेव हो गई", dialHint: "अपने फ़ोन से call करें:", copied: "Copy हो गया",
-    callList: "Call list", callListEmpty: "अभी कोई call बाकी नहीं 👍", talkingPoints: "बात के points", lastMessages: "पिछले message",
+    callList: "Call की सूची", callListEmpty: "अभी कोई call बाकी नहीं 👍", talkingPoints: "बात के points", lastMessages: "पिछले message",
     calendarEmpty: "इस दिन कुछ नहीं।", bookings: "Bookings", tasks: "Tasks",
     stCalling: "Calling", stAskOutcome: "Call के बाद पूछें \"क्या हुआ?\"", stRetry: "नहीं उठाया → इतने मिनट बाद फिर call याद दिलाएँ", stMissedWa: "नहीं उठाया → यह WhatsApp भेज दो", stTarget: "रोज़ के call का लक्ष्य (0 = नहीं)",
     stTeam: "Team inbox", stTemplates: "Quick replies", stBot: "Menu bot", stIntegrations: "Integrations", stImport: "Leads import", stExport: "CSV export", stJoin: "किसी की team join करें", stAutomations: "Automations", stAutoSoon: "बाकी automations (नए lead पर task, birthday wish, रोज़ की summary) अगले update में।",

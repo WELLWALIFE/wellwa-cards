@@ -4,15 +4,17 @@
 import { useCallback, useEffect, useState } from "react";
 import { Phone, MessageCircle, Check, LoaderCircle, PhoneCall, ChevronDown } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, waLink, telLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task, waClick, Stars, starsOf } from "@/components/crm/shared";
+import { useShell, waLink, telLink, Avatar, StagePill, fmtTime, fmtWhen, ago, type LeadPro, type Task, waClick, Stars, starsOf, previewOf, tempOf, TempPill } from "@/components/crm/shared";
 import type { CallListItem } from "@/components/crm/call";
+import { OUTCOME_LABEL } from "@/components/crm/i18n";
 
 type Item = { lead: LeadPro; task?: Task; booking?: { id: string; service: string; starts_at: string }; why: string };
 type Today = { overdue: Item[]; due: Item[]; unread: Item[]; fresh: Item[]; bookings: Item[]; callbacks: Item[]; cold: Item[]; counts: { due: number; unread: number; fresh: number; hot: number; calledToday: number; target: number } };
 
 export function TodayScreen({ onCallList, firstName }: { onCallList: (items: CallListItem[]) => void; firstName: string }) {
-  const { L, as, openCustomer, startCall, version } = useShell();
+  const { L, as, openCustomer, startCall, version, reload } = useShell();
   const [d, setD] = useState<Today | null>(null);
+  const [readBusy, setReadBusy] = useState(false);
   const [err, setErr] = useState("");
   const [open, setOpen] = useState<Record<string, boolean>>({});
   /** The moment of the last load (refreshed every 30 s): what counts as "its time has come". */
@@ -37,6 +39,9 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
   const nextLater = laterToday.map((x) => x.task!.due_at).sort()[0];
   const total = d.overdue.length + d.due.length + d.unread.length + d.fresh.length + d.bookings.length + d.callbacks.length + d.cold.length;
   const date = new Date().toLocaleDateString(L.hi ? "hi-IN" : "en-IN", { timeZone: "Asia/Kolkata", weekday: "long", day: "numeric", month: "long" });
+  const preview = (l: LeadPro) => previewOf(l, L.hi, (o) => OUTCOME_LABEL[o]?.[L.lang] ?? o);
+  /** Starred and hot first in a section (owner, 26 Oct 2026: "Hot / zaruri upar"). */
+  const rank = (l: LeadPro) => starsOf(l.tags) * 10 + (tempOf(l) === "hot" ? 5 : tempOf(l) === "warm" ? 2 : 0);
   const sec = (k: string, title: string, items: Item[], tone?: string, render?: (x: Item) => string) => items.length === 0 ? null : (
     <section key={k} className="overflow-hidden rounded-2xl border border-border bg-surface">
       <button type="button" onClick={() => setOpen((o) => ({ ...o, [k]: !(o[k] ?? true) }))} className={`flex w-full items-center gap-2 px-3 py-2 text-left text-xs font-bold uppercase tracking-wide ${tone ?? "text-muted"}`}>{title}<span className="rounded-full bg-surface2 px-1.5 text-[10px] text-ink">{items.length}</span><ChevronDown className={`ml-auto h-4 w-4 transition ${(open[k] ?? true) ? "" : "-rotate-90"}`} /></button>
@@ -60,11 +65,18 @@ export function TodayScreen({ onCallList, firstName }: { onCallList: (items: Cal
       {total === 0 && <p className="rounded-2xl border border-dashed border-border p-8 text-center text-sm text-muted">{L.allClear}</p>}
       {sec("overdue", L.overdue, d.overdue, "text-danger", (x) => `${x.task?.title || x.why} · ${fmtWhen(x.task!.due_at, L.hi)}`)}
       {sec("due", L.dueToday, d.due, "text-lead", (x) => `${x.task?.title || x.why} · ${fmtTime(x.task!.due_at, L.hi)}`)}
-      {sec("unread", L.unreadChats, d.unread, undefined, (x) => x.lead.message || x.why)}
-      {sec("fresh", L.freshLeads, d.fresh, undefined, (x) => `${x.lead.message || x.lead.ai_intent || x.lead.source} · ${ago(x.lead.created_at, L.hi)}`)}
+      {d.unread.length > 0 && (
+        <div className="flex items-center justify-between gap-2 px-1 text-[11px] text-muted">
+          <span>{L.hi ? "⭐ स्टार और 🔥 Hot वाले ऊपर" : "⭐ Starred and 🔥 Hot first"}</span>
+          <button type="button" disabled={readBusy} onClick={async () => { setReadBusy(true); try { const r = await api("/api/crm/read-all", { method: "POST", json: { as: as ?? undefined } }); if (r.ok) reload(); } finally { setReadBusy(false); } }}
+            className="rounded-full border border-border bg-surface px-2.5 py-1 font-semibold text-ink disabled:opacity-50">✓ {L.hi ? "सब पढ़ा हुआ करें" : "Mark all read"}</button>
+        </div>
+      )}
+      {sec("unread", L.unreadChats, [...d.unread].sort((a, b) => rank(b.lead) - rank(a.lead)), undefined, (x) => preview(x.lead))}
+      {sec("fresh", L.freshLeads, d.fresh, undefined, (x) => `${preview(x.lead)} · ${ago(x.lead.created_at, L.hi)}`)}
       {sec("bookings", L.todaysBookings, d.bookings, undefined, (x) => `${x.booking?.service || ""} · ${x.booking ? fmtTime(x.booking.starts_at, L.hi) : ""}`)}
       {sec("callbacks", L.callbacks, d.callbacks, undefined)}
-      {sec("cold", L.goingCold, d.cold, undefined, (x) => `${x.why || ""} · ${ago(x.lead.last_activity_at, L.hi)}`)}
+      {sec("cold", L.goingCold, d.cold, undefined, (x) => `${preview(x.lead)} · ${ago(x.lead.last_activity_at, L.hi)}`)}
     </div>
   );
 }
@@ -80,7 +92,7 @@ function Row({ x, sub, onOpen, onCall, onDone }: { x: Item; sub: string; onOpen:
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-ink">{l.name || l.phone}{l.unread > 0 && <span className="ml-1.5 rounded-full bg-brand px-1.5 text-[10px] font-bold text-white">{l.unread}</span>}</p>
           <p className="truncate text-[11px] text-muted">{sub}</p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-1.5"><StagePill status={l.status} hi={L.hi} />{starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}<span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span></div>
+          <div className="mt-0.5 flex flex-wrap items-center gap-1.5"><StagePill status={l.status} hi={L.hi} /><TempPill temp={tempOf(l)} hi={L.hi} />{starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}<span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span></div>
         </div>
       </button>
       {l.phone && <button type="button" onClick={onCall} className="rounded-lg bg-brand-soft p-2 text-brand-ink" aria-label={L.call}><Phone className="h-4 w-4" /></button>}

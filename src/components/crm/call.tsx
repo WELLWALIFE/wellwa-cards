@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Phone, MessageCircle, LoaderCircle, Mic, Check, Copy, SkipForward, Sparkles, ClipboardPaste, UserPlus, X, AlertTriangle, ChevronDown, Search } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick, Stars, starsOf, LastCallBox, type LastCall } from "@/components/crm/shared";
+import { useShell, quickMoments, telLink, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, type LeadPro, type Task, waClick, Stars, starsOf, LastCallBox, type LastCall, TempPill, tempOf, nextTemp, type Temp, TEMP_LOOK } from "@/components/crm/shared";
 import { OUTCOME_LABEL, STAGE_LABEL } from "@/components/crm/i18n";
 
 export type PendingCall = { leadId: string; name: string; phone: string; status: string; startedAt: number; onLogged?: boolean; callId?: string };
@@ -72,6 +72,10 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
   const [nextKey, setNextKey] = useState<string>("");
   const [customNext, setCustomNext] = useState("");
   const [stage, setStage] = useState<string>("");
+  /** How warm the customer is, and stars — set right after the call (owner, 26 Oct 2026); unchanged unless tapped. */
+  const [temp, setTemp] = useState<Temp | null>(null);
+  const [rating, setRating] = useState<number | null>(null);
+  const [more, setMore] = useState(false);
   const [sendWa, setSendWa] = useState(false);
   const [waText, setWaText] = useState("");
   const [busy, setBusy] = useState(false);
@@ -114,6 +118,7 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
     const r = await api<{ error?: string; sent?: boolean | null }>("/api/crm/calls", { method: "POST", json: body }).catch(() => null);
     setBusy(false);
     if (!r || !r.ok) { setErr(r?.data.error || L.failed); return; }
+    if (temp !== null || rating !== null) await api("/api/crm/lead", { method: "PATCH", json: { id: pending.leadId, as: as ?? undefined, ...(temp !== null ? { temp } : {}), ...(rating !== null ? { rating } : {}) } }).catch(() => null);
     writePending(null); dropUnlogged(pending); onSaved?.(); reload(); onClose();
   }
   const hasSpeech = typeof window !== "undefined" && !!((window as unknown as { webkitSpeechRecognition?: unknown }).webkitSpeechRecognition || (window as unknown as { SpeechRecognition?: unknown }).SpeechRecognition);
@@ -152,13 +157,25 @@ export function CallOutcomeSheet({ pending, onClose, onSaved, dialHint }: { pend
             {nextKey === "custom" && <input type="datetime-local" value={customNext} onChange={(e) => setCustomNext(e.target.value)} className={inputCls + " mt-1.5"} />}
           </div>
         )}
-        {outcome && outcome !== "not_interested" && (
+        {outcome && outcome !== "wrong_number" && outcome !== "not_interested" && (
+          <div>
+            <div className="mb-1 text-xs text-muted">{L.hi ? "ग्राहक कैसा लगा?" : "How keen is the customer?"}</div>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(["hot", "warm", "cold"] as const).map((t) => <Chip key={t} on={temp === t} onClick={() => setTemp(temp === t ? null : t)}>{TEMP_LOOK[t].icon} {L.hi ? TEMP_LOOK[t].hi : TEMP_LOOK[t].en}</Chip>)}
+              <span className="ml-1"><Stars value={rating ?? 0} onChange={(n) => setRating(n)} size={20} hi={L.hi} /></span>
+            </div>
+          </div>
+        )}
+        {outcome && outcome !== "not_interested" && !more && !stage && !sendWa && (
+          <button type="button" onClick={() => setMore(true)} className="text-xs font-semibold text-brand-ink">{L.hi ? "+ Stage बदलें / WhatsApp भेजें" : "+ Change stage / send WhatsApp"}</button>
+        )}
+        {outcome && outcome !== "not_interested" && (more || !!stage) && (
           <div>
             <div className="mb-1 text-xs text-muted">{L.moveStage}</div>
             <div className="flex flex-wrap gap-1.5">{["contacted", "interested", "follow_up", "converted", "lost"].map((s) => <Chip key={s} on={stage === s} onClick={() => setStage(stage === s ? "" : s)} tone={s === "converted" ? "good" : s === "lost" ? "danger" : "brand"}>{STAGE_LABEL[s][L.lang]}</Chip>)}</div>
           </div>
         )}
-        {outcome && outcome !== "connected" && outcome !== "wrong_number" && outcome !== "not_interested" && (
+        {outcome && outcome !== "connected" && outcome !== "wrong_number" && outcome !== "not_interested" && (more || sendWa) && (
           <div className="rounded-xl border border-border p-2.5">
             <label className="flex items-center gap-2 text-xs font-semibold text-ink"><input type="checkbox" checked={sendWa} disabled={ws.wa !== "connected"} onChange={(e) => { setSendWa(e.target.checked); if (!waText) setWaText(missedText); }} /> {L.sendWa} · {L.waMissedYou}</label>
             {ws.wa !== "connected" && <p className="mt-1 text-[11px] text-muted">{L.waNotLinked}</p>}
@@ -187,6 +204,7 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
   const [loaded, setLoaded] = useState("");
   /** Stars set here, before the list reloads (owner, 26 Oct 2026: "star dena"). */
   const [stars, setStars] = useState<Record<string, number>>({});
+  const [temps, setTemps] = useState<Record<string, Temp>>({});
   const cur = items[i];
   useEffect(() => {
     setNote(null); setLastCall(null); setLoaded("");
@@ -220,7 +238,11 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
             setStars((x) => ({ ...x, [l.id]: n }));
             void api("/api/crm/lead", { method: "PATCH", json: { id: l.id, as: as ?? undefined, rating: n } }).then((r) => { if (!r.ok) setStars((x) => { const y = { ...x }; delete y[l.id]; return y; }); });
           }} />
-          <span className="text-[11px] text-faint">{L.hi ? "ज़रूरी हो तो स्टार दें" : "Star the important ones"}</span>
+          <TempPill hi={L.hi} temp={temps[l.id] ?? tempOf(l)} onClick={() => {
+            const n = nextTemp(temps[l.id] ?? tempOf(l));
+            setTemps((x) => ({ ...x, [l.id]: n }));
+            void api("/api/crm/lead", { method: "PATCH", json: { id: l.id, as: as ?? undefined, temp: n } }).then((r) => { if (!r.ok) setTemps((x) => { const y = { ...x }; delete y[l.id]; return y; }); });
+          }} />
         </div>
         {/* Why this call now (a follow-up that is due), only when there is something to say. */}
         {(cur.why?.trim() || cur.task) && <p className="mt-3 rounded-xl bg-lead/10 px-3 py-2 text-xs font-semibold text-lead">⏰ {cur.why}{cur.task ? `${cur.why?.trim() ? " · " : ""}${fmtWhen(cur.task.due_at, L.hi)}` : ""}</p>}

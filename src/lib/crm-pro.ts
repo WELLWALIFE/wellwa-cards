@@ -10,6 +10,8 @@ export const PRO_COLS = `${LEAD_COLS},kind,alt_phone,business,address,pincode,bi
 export type LeadPro = LeadRow & {
   kind: "lead" | "customer" | "lost"; alt_phone: string; business: string; address: string; pincode: string; birthday: string | null; anniversary: string | null;
   lang: string; product_ids: string[]; budget_paise: number; last_activity_at: string; last_call_at: string | null; calls_count: number; opted_out: boolean;
+  /** Filled for lists (enrich): the customer's own last WhatsApp line (not ours), and the last call's outcome and note. */
+  last_in?: { text: string; at: string } | null; last_call?: { at: string; outcome: string; note: string } | null;
 };
 export const TASK_KINDS = ["call", "whatsapp", "visit", "meeting", "other"] as const;
 export type TaskKind = (typeof TASK_KINDS)[number];
@@ -91,7 +93,26 @@ export async function listLeads(scope: Scope, qy: ListQuery): Promise<{ leads: L
   if (qy.idle && qy.idle > 0) f.push(`last_activity_at=lt.${enc(new Date(Date.now() - qy.idle * 86400000).toISOString())}`, OPEN);
   const order = qy.sort === "newest" ? "created_at.desc" : qy.sort === "followup" ? "next_follow_up.asc.nullslast,last_activity_at.desc" : qy.sort === "value" ? "value_paise.desc,last_activity_at.desc" : qy.sort === "score" ? "score.desc,last_activity_at.desc" : "last_activity_at.desc";
   const rows = list(await restAsService<LeadPro[]>(`leads?${f.join("&")}&select=${PRO_COLS}&order=${order}&limit=${size + 1}&offset=${page * size}`));
-  return { leads: rows.slice(0, size), page, more: rows.length > size };
+  return { leads: await enrichLeads(scope.ownerId, rows.slice(0, size)), page, more: rows.length > size };
+}
+
+
+/* ---------------- what a list row shows (owner, 26 Oct 2026: "jo customer ne kaha / last call ka note", not our own auto message) ---------------- */
+/** Adds each lead's last inbound WhatsApp line and its last call (outcome + note): two reads for the whole page. */
+export async function enrichLeads(ownerId: string, leads: LeadPro[]): Promise<LeadPro[]> {
+  if (!leads.length) return leads;
+  const phones = [...new Set(leads.map((l) => l.phone).filter(Boolean))].slice(0, 120);
+  const ids = leads.map((l) => l.id).filter((id) => isUuid(id)).slice(0, 120);
+  const inList = (xs: string[]) => xs.map((x) => `"${x.replace(/"/g, "")}"`).join(",");
+  const [msgs, calls] = await Promise.all([
+    phones.length ? restAsService<{ phone: string; text: string; sent_at: string }[]>(`wa_messages?owner_id=eq.${ownerId}&direction=eq.in&phone=in.(${enc(inList(phones))})&text=neq.&select=phone,text,sent_at&order=sent_at.desc&limit=${Math.min(1500, phones.length * 12)}`).catch(() => null) : null,
+    ids.length ? restAsService<{ lead_id: string; started_at: string; outcome: string; note: string | null }[]>(`crm_calls?owner_id=eq.${ownerId}&lead_id=in.(${ids.join(",")})&select=lead_id,started_at,outcome,note&order=started_at.desc&limit=${Math.min(1500, ids.length * 10)}`).catch(() => null) : null,
+  ]);
+  const lastIn = new Map<string, { text: string; at: string }>();
+  for (const m of msgs ? list(msgs) : []) if (!lastIn.has(m.phone)) lastIn.set(m.phone, { text: (m.text ?? "").slice(0, 160), at: m.sent_at });
+  const lastCall = new Map<string, { at: string; outcome: string; note: string }>();
+  for (const c of calls ? list(calls) : []) if (!lastCall.has(c.lead_id)) lastCall.set(c.lead_id, { at: c.started_at, outcome: c.outcome, note: (c.note ?? "").slice(0, 160) });
+  return leads.map((l) => ({ ...l, last_in: lastIn.get(l.phone) ?? null, last_call: lastCall.get(l.id) ?? null }));
 }
 
 /* ---------------- today ---------------- */
@@ -143,6 +164,10 @@ export async function today(scope: Scope): Promise<Today> {
   }
   const coldItems = list(cold).map((lead) => ({ lead, why: lead.ai_next || lead.ai_intent || "" }));
   const hot = (await restAsService<{ id: string }[]>(`leads?${sf}&score=gte.70&${OPEN}&select=id&limit=200`)).data?.length ?? 0;
+  // One enrich for every lead on the screen (a lead in two sections is the same object).
+  const all = [...overdue, ...due, ...unreadItems, ...freshItems, ...bookingItems, ...callbacks, ...coldItems];
+  const rich = new Map((await enrichLeads(scope.ownerId, [...new Map(all.filter((x) => isUuid(x.lead.id)).map((x) => [x.lead.id, x.lead])).values()])).map((l) => [l.id, l]));
+  for (const x of all) { const r = rich.get(x.lead.id); if (r) x.lead = r; }
   return { overdue, due, unread: unreadItems, fresh: freshItems, bookings: bookingItems, callbacks, cold: coldItems, counts: { due: overdue.length + due.length, unread: unreadItems.reduce((n, x) => n + (x.lead.unread || 0), 0), fresh: freshItems.length, hot, calledToday: list(calls).length, target: prefs.call_target } };
 }
 

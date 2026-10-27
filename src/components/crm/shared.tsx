@@ -6,7 +6,7 @@ import { api } from "@/lib/poster-client";
 import type { Ctx, Wa, Team, Agent, Lead } from "@/components/crm/crm";
 import type { CrmStrings } from "@/components/crm/i18n";
 
-export type LeadPro = Lead & { kind: "lead" | "customer" | "lost"; alt_phone: string; business: string; address: string; pincode: string; birthday: string | null; anniversary: string | null; lang: string; product_ids: string[]; budget_paise: number; last_activity_at: string; last_call_at: string | null; calls_count: number; opted_out?: boolean };
+export type LeadPro = Lead & { kind: "lead" | "customer" | "lost"; alt_phone: string; business: string; address: string; pincode: string; birthday: string | null; anniversary: string | null; lang: string; product_ids: string[]; budget_paise: number; last_activity_at: string; last_call_at: string | null; calls_count: number; opted_out?: boolean; last_in?: { text: string; at: string } | null; last_call?: { at: string; outcome: string; note: string } | null };
 export type Task = { id: string; lead_id: string | null; assigned_to: string | null; kind: "call" | "whatsapp" | "visit" | "meeting" | "other"; title: string; text: string; due_at: string; remind_at: string | null; done_at: string | null; outcome: string; source: string; created_at: string };
 export type Call = { id: string; lead_id: string | null; agent_id: string | null; direction: "out" | "in"; channel: string; status: string; started_at: string; seconds: number; outcome: string; note: string; recording_url: string | null };
 export type Prefs = { ask_outcome: boolean; retry_after_min: number; missed_call_wa: boolean; missed_call_text: string; auto_task_new_lead: boolean; daily_summary: boolean; birthday_wish: boolean; stale_days: number; round_robin: boolean; call_target: number };
@@ -91,7 +91,7 @@ export async function loadWorkspace(as: string | null): Promise<Workspace | null
 export const STAR_TAG = /^star:([1-5])$/;
 export const starsOf = (tags?: string[] | null) => { for (const t of tags ?? []) { const m = STAR_TAG.exec(t); if (m) return Number(m[1]); } return 0; };
 /** Tags as the owner wrote them: the stars tag is shown as stars, never as #star:3. */
-export const shownTags = (tags?: string[] | null) => (tags ?? []).filter((t) => !STAR_TAG.test(t));
+export const shownTags = (tags?: string[] | null) => (tags ?? []).filter((t) => !STAR_TAG.test(t) && !/^temp:(hot|warm|cold)$/.test(t));
 export function Stars({ value, onChange, size = 18, hi }: { value: number; onChange?: (n: number) => void; size?: number; hi?: boolean }) {
   return (
     <span className="inline-flex items-center gap-0.5" role={onChange ? "radiogroup" : "img"} aria-label={`${value}/5 ${hi ? "स्टार" : "stars"}`}>
@@ -140,3 +140,33 @@ export function LastCallBox({ call, note, hi, outcomeLabel }: { call: LastCall; 
     </div>
   );
 }
+
+/** One line under a name in the lists (owner, 26 Oct 2026): what the customer last said, or the last call's note — whichever is newer —
+ *  never our own automatic message. */
+export function previewOf(l: Pick<LeadPro, "last_in" | "last_call" | "ai_next" | "city" | "source" | "message">, hi: boolean, outcome?: (o: string) => string): string {
+  const c = l.last_call, m = l.last_in;
+  if (c && (!m || c.at >= m.at)) return `📞 ${c.note?.trim() || (outcome ? outcome(c.outcome) : c.outcome)}`;
+  if (m) return `💬 ${m.text}`;
+  if (l.ai_next) return `✨ ${l.ai_next}`;
+  return l.city || (hi ? "अभी कोई बात नहीं" : "No conversation yet");
+}
+
+/* ---------------- hot / warm / cold (owner, 26 Oct 2026) ---------------- */
+export const TEMP_TAG = /^temp:(hot|warm|cold)$/;
+export type Temp = "hot" | "warm" | "cold" | "";
+/** Set by the owner (tag temp:…); without one, the AI's score ≥ 70 counts as hot. */
+export const tempOf = (l: { tags?: string[] | null; score?: number }): Temp => { for (const t of l.tags ?? []) { const m = TEMP_TAG.exec(t); if (m) return m[1] as Temp; } return (l.score ?? 0) >= 70 ? "hot" : ""; };
+export const TEMP_LOOK: Record<Exclude<Temp, "">, { icon: string; en: string; hi: string; cls: string }> = {
+  hot: { icon: "🔥", en: "Hot", hi: "Hot", cls: "bg-danger/10 text-danger border-danger/30" },
+  warm: { icon: "☀️", en: "Warm", hi: "Warm", cls: "bg-amber/15 text-[#b45309] border-amber/40" },
+  cold: { icon: "❄️", en: "Cold", hi: "Cold", cls: "bg-brand-soft text-brand-ink border-brand/20" },
+};
+export function TempPill({ temp, hi, onClick }: { temp: Temp; hi: boolean; onClick?: () => void }) {
+  if (!temp && !onClick) return null;
+  const t = temp ? TEMP_LOOK[temp] : null;
+  const body = <>{t ? `${t.icon} ${hi ? t.hi : t.en}` : (hi ? "+ Hot/Warm/Cold" : "+ Hot/Warm/Cold")}</>;
+  const cls = `inline-flex items-center rounded-full border px-1.5 py-0.5 text-[10px] font-semibold ${t ? t.cls : "border-dashed border-border text-muted"}`;
+  return onClick ? <button type="button" onClick={(e) => { e.stopPropagation(); onClick(); }} className={cls}>{body}</button> : <span className={cls}>{body}</span>;
+}
+/** Hot → Warm → Cold → none. */
+export const nextTemp = (t: Temp): Temp => (t === "" ? "hot" : t === "hot" ? "warm" : t === "warm" ? "cold" : "");

@@ -5,8 +5,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Search, X, Plus, Phone, MessageCircle, Columns3, List, LoaderCircle, PhoneCall, SlidersHorizontal, CheckSquare, Square } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { Pipeline, AddLead } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick, Stars, starsOf, shownTags } from "@/components/crm/shared";
-import { STAGE_LABEL } from "@/components/crm/i18n";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, ago, isPast, isToday, CLOSED, type LeadPro, waClick, Stars, starsOf, shownTags, previewOf, TempPill, tempOf, TEMP_LOOK } from "@/components/crm/shared";
+import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 
 type Q = { q: string; stage: string; kind: string; assigned: string; due: string; idle: number; sort: string; tag: string; stars: number };
 const EMPTY: Q = { q: "", stage: "", kind: "", assigned: "", due: "", idle: 0, sort: "", tag: "", stars: 0 };
@@ -22,6 +22,9 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
   const [filters, setFilters] = useState(false);
   const [sel, setSel] = useState<Set<string> | null>(null);   // null = not selecting
   const [err, setErr] = useState("");
+  /** The same person saved twice (owner's live check, 26 Oct 2026: one number showed twice): a line on top to merge them. */
+  const [dups, setDups] = useState(0);
+  useEffect(() => { if (ctx.role === "agent") return; api<{ groups?: unknown[] }>(`/api/crm/duplicates${as ? `?as=${as}` : ""}`).then((r) => setDups(r.ok ? r.data.groups?.length ?? 0 : 0)).catch(() => undefined); }, [as, ctx.role, version]);
   const seq = useRef(0);
   const load = useCallback(async (p: number, append: boolean) => {
     const my = ++seq.current;
@@ -53,6 +56,7 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
         <Chip on={!qy.stage && !qy.kind && !qy.due && !qy.idle && !qy.assigned && !qy.tag && !qy.stars} onClick={() => setQy({ ...EMPTY, q: qy.q, sort: qy.sort })}>{L.all}</Chip>
         <Chip on={qy.due === "any"} onClick={() => toggle("due", "any")}>⏰ {L.filterDue}</Chip>
         <Chip on={qy.stars === 1} onClick={() => toggle("stars", 1)}>⭐ {L.hi ? "स्टार वाले" : "Starred"}</Chip>
+        {(["hot", "warm", "cold"] as const).map((t) => <Chip key={t} on={qy.tag === `temp:${t}`} onClick={() => toggle("tag", `temp:${t}`)}>{TEMP_LOOK[t].icon} {L.hi ? TEMP_LOOK[t].hi : TEMP_LOOK[t].en}</Chip>)}
         <Chip on={qy.idle === 7} onClick={() => toggle("idle", 7)}>{L.filterIdle}</Chip>
         {(ctx.agents.length > 0 || as) && <Chip on={qy.assigned === "me"} onClick={() => toggle("assigned", "me")}>👤 {L.mine}</Chip>}
         {Object.keys(STAGE_LABEL).map((s) => <Chip key={s} on={qy.stage === s} onClick={() => toggle("stage", s)}>{STAGE_LABEL[s][L.lang]}</Chip>)}
@@ -65,6 +69,12 @@ export function CustomersList({ onCallThese }: { onCallThese: (leads: LeadPro[])
           {ctx.role !== "agent" && ctx.agents.length > 0 && <div className="flex flex-wrap items-center gap-1.5"><span className="text-muted">{L.assigned}:</span><Chip on={qy.assigned === "none"} onClick={() => toggle("assigned", "none")}>{L.unassigned}</Chip>{ctx.agents.map((a) => <Chip key={a.id} on={qy.assigned === a.id} onClick={() => toggle("assigned", a.id)}>@{a.name}</Chip>)}</div>}
           <div className="flex flex-wrap items-center gap-1.5"><span className="text-muted">{L.sort}:</span>{([["", L.sortActivity], ["newest", L.sortNewest], ["followup", L.sortFollowup], ["value", L.sortValue], ["score", L.sortScore]] as const).map(([k, t]) => <Chip key={k} on={qy.sort === k} onClick={() => set({ sort: k })}>{t}</Chip>)}</div>
         </div>
+      )}
+      {dups > 0 && (
+        <a href="/poster/crm?s=settings" className="flex items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs font-semibold text-ink">
+          <span>⚠️ {L.hi ? `${dups} ग्राहक दो बार save हैं` : `${dups} customers are saved twice`}</span>
+          <span className="ml-auto text-brand-ink">{L.hi ? "जोड़ें →" : "Merge →"}</span>
+        </a>
       )}
       {err && <p className="text-xs text-danger">{err}</p>}
       {leads === null ? <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>
@@ -93,13 +103,14 @@ function Row({ l, onOpen, onCall, selected, onToggle }: { l: LeadPro; onOpen: ()
     <li className={`flex items-center gap-2 px-2.5 py-2.5 ${selected ? "bg-brand-soft/40" : ""}`}>
       {selected !== undefined && <button type="button" onClick={onToggle} className="shrink-0 text-brand-ink" aria-label="select">{selected ? <CheckSquare className="h-5 w-5" /> : <Square className="h-5 w-5 text-faint" />}</button>}
       <button type="button" onClick={selected !== undefined ? onToggle : onOpen} className="flex min-w-0 flex-1 items-start gap-3 text-left">
-        <div className="relative"><Avatar name={l.name} phone={l.phone} size={11} />{l.score >= 70 && open && <span className="absolute -right-0.5 -top-0.5 text-[10px]">🔥</span>}</div>
+        <Avatar name={l.name} phone={l.phone} size={11} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline gap-2"><span className={`truncate text-sm ${l.unread ? "font-bold" : "font-semibold"} text-ink`}>{l.name || l.phone || "—"}</span><span className="ml-auto shrink-0 text-[11px] text-faint">{ago(l.last_activity_at || l.created_at, L.hi)}</span></div>
-          <p className={`truncate text-xs ${l.unread ? "text-ink" : "text-muted"}`}>{l.ai_next || l.message || l.ai_intent || l.city || "—"}</p>
+          <p className={`truncate text-xs ${l.unread ? "text-ink" : "text-muted"}`}>{previewOf(l, L.hi, (o) => OUTCOME_LABEL[o]?.[L.lang] ?? o)}</p>
           <div className="mt-1 flex flex-wrap items-center gap-1">
             <StagePill status={l.status} hi={L.hi} />
             {l.kind === "customer" && <span className="rounded-full bg-good/15 px-1.5 py-0.5 text-[10px] font-semibold text-good">✓ {L.hi ? "ग्राहक" : "Customer"}</span>}
+            {open && <TempPill temp={tempOf(l)} hi={L.hi} />}
             {starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}
             <span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span>
             {shownTags(l.tags).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}

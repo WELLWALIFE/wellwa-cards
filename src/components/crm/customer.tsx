@@ -7,7 +7,7 @@ import { ArrowLeft, Phone, MessageCircle, CalendarClock, StickyNote, CalendarPlu
 import Link from "next/link";
 import { api } from "@/lib/poster-client";
 import { Thread, STAGES } from "@/components/crm/crm";
-import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call, waClick, openWhatsAppChat, Stars, starsOf, shownTags, STAR_TAG, LastCallBox } from "@/components/crm/shared";
+import { useShell, waLink, inputCls, Chip, Avatar, StagePill, BottomSheet, fmtWhen, ago, rupees, isPast, CLOSED, type LeadPro, type Task, type Call, waClick, openWhatsAppChat, Stars, starsOf, shownTags, STAR_TAG, TEMP_TAG, LastCallBox, TempPill, tempOf, nextTemp } from "@/components/crm/shared";
 import { STAGE_LABEL, OUTCOME_LABEL } from "@/components/crm/i18n";
 import { TaskSheet, TaskRow } from "@/components/crm/tasks";
 import { SalesTab, SaleSheet } from "@/components/crm/sales";
@@ -83,7 +83,7 @@ export function CustomerScreen({ id, onBack, initialTab = "chat" }: { id: string
       </div>
       <div className="flex items-center gap-2 pl-12">
         <Stars value={starsOf(l.tags)} hi={L.hi} onChange={(n) => void patch({ rating: n })} />
-        <span className="text-[11px] text-faint">{L.hi ? "स्टार दें" : "Give stars"}</span>
+        <TempPill hi={L.hi} temp={tempOf(l)} onClick={() => void patch({ temp: nextTemp(tempOf(l)) })} />
       </div>
       {/* the customer's chat in the WhatsApp app itself, and the number into the phone book */}
       {waDigits.length >= 11 && (
@@ -217,7 +217,7 @@ function Details({ lead, onSave }: { lead: LeadPro; onSave: (p: Record<string, u
   const addTag = () => { const t = tag.trim().replace(/^#/, "").slice(0, 24); if (t && !f.tags.includes(t)) setF({ ...f, tags: [...f.tags, t] }); setTag(""); };
   async function save() {
     setBusy(true); setOk(false);
-    const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: [...f.tags, ...(lead.tags ?? []).filter((t) => STAR_TAG.test(t))], notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
+    const done = await onSave({ name: f.name, alt_phone: f.alt_phone, business: f.business, city: f.city, address: f.address, pincode: f.pincode, email: f.email, birthday: f.birthday || null, anniversary: f.anniversary || null, lang: f.lang, budget_paise: Math.round((parseFloat(f.budget) || 0) * 100), value_paise: Math.round((parseFloat(f.value) || 0) * 100), tags: [...f.tags, ...(lead.tags ?? []).filter((t) => STAR_TAG.test(t) || TEMP_TAG.test(t))], notes: f.notes, lost_reason: f.lost_reason, opted_out: f.opted_out });
     setBusy(false); setOk(done);
   }
   const row = (k: keyof typeof f, label: string, type = "text", ph?: string) => <label className="text-xs text-muted">{label}<input type={type} value={String(f[k] ?? "")} onChange={(e) => setF({ ...f, [k]: e.target.value })} placeholder={ph} className={inputCls} /></label>;
