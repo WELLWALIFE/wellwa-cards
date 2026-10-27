@@ -1,6 +1,6 @@
 "use client";
 // Video — the simple door (owner, 20 Oct 2026: "video wala part bahut mushkil hai; bilkul simple, jo koi bhi bana sake").
-// Two big buttons, nothing to compare: a free Reel in one tap, or a Video ad in one tap. The old hub with every
+// Two big buttons, nothing to compare: a free Reel in one tap, or a Product video in one tap. The old hub with every
 // kind, its lengths, credits and times lives on at /poster/videos/all behind one small link.
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -24,14 +24,14 @@ export default function VideoDoor() {
         <h1 className="flex-1 text-lg font-bold">Video</h1>
         {credits !== null && <span className="inline-flex items-center gap-1.5 rounded-full bg-surface2 px-3 py-1.5 text-xs font-semibold"><Coins className="h-3.5 w-3.5 text-brand" /> {credits} credits</span>}
       </div>
-      <p className="text-sm text-muted">{hi ? "Ek tap me video. Shabd, awaaz, music — sab hum laga denge." : "A video in one tap. We write the words and add the voice and music."}</p>
+      <p className="text-sm text-muted">{hi ? "एक tap में video। शब्द, आवाज़, music — सब हम लगा देंगे। बनने के बाद 🚀 Boost से Facebook / Instagram पर चला सकते हैं।" : "A video in one tap. We write the words and add the voice and music. Once made, 🚀 Boost runs it on Facebook / Instagram."}</p>
 
       <Link href="/poster/reel" className="block rounded-2xl border-2 border-brand bg-brand-soft p-4">
         <div className="flex items-center gap-3">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-brand"><Camera className="h-7 w-7" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-bold">{hi ? "Reel banao" : "Make a Reel"} <span className="ml-1 rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-semibold text-good">FREE</span></p>
-            <p className="text-sm text-muted">{hi ? "15 second ki reel, 2 minute me · WhatsApp Status, Instagram, Facebook" : "A 15-second reel in about 2 minutes · WhatsApp Status, Instagram, Facebook"}</p>
+            <p className="text-[17px] font-bold">{hi ? "Reel बनाओ" : "Make a Reel"} <span className="ml-1 rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-semibold text-good">FREE</span></p>
+            <p className="text-sm text-muted">{hi ? "आपके business के बारे में 15 सेकंड की reel, 2 मिनट में · WhatsApp Status, Instagram, Facebook" : "A 15-second reel about your business in about 2 minutes · WhatsApp Status, Instagram, Facebook"}</p>
           </div>
           <ChevronRight className="h-6 w-6 shrink-0 text-brand" />
         </div>
@@ -41,17 +41,17 @@ export default function VideoDoor() {
         <div className="flex items-center gap-3">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><Clapperboard className="h-7 w-7" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-bold">{hi ? "Video ad banao" : "Make a Video ad"} <span className="ml-1 rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-semibold text-muted">{adCost} credits</span></p>
-            <p className="text-sm text-muted">{hi ? "Aapke product ki photo ke saath 10 second ka ad · Facebook / Instagram ads ke liye" : "A 10-second ad around your product photo · for Facebook / Instagram ads"}</p>
+            <p className="text-[17px] font-bold">{hi ? "Product video बनाओ" : "Make a Product video"} <span className="ml-1 rounded-full bg-surface2 px-2 py-0.5 text-[11px] font-semibold text-muted">{adCost} credits</span></p>
+            <p className="text-sm text-muted">{hi ? "एक product की photo के साथ 10 सेकंड का video · बेचने और Boost करने के लिए" : "A 10-second video around one product photo · to sell it, and to Boost"}</p>
           </div>
           <ChevronRight className="h-6 w-6 shrink-0 text-muted" />
         </div>
       </Link>
 
       <Link href="/poster/videos/all" className="flex items-center gap-2 rounded-xl border border-dashed border-border p-3 text-sm text-muted">
-        <SlidersHorizontal className="h-4 w-4 shrink-0" /> {hi ? "Aur tarike: apne shabdon se video, lamba video (5–10 min), lambai aur style khud chunein" : "More ways: a video from your own words, a long video (5–10 min), choose the length and style yourself"}
+        <SlidersHorizontal className="h-4 w-4 shrink-0" /> {hi ? "और तरीके: अपने शब्दों से video, लंबा video (5–10 मिनट), लंबाई और style खुद चुनें" : "More ways: a video from your own words, a long video (5–10 min), choose the length and style yourself"}
       </Link>
-      <p className="text-[11px] text-muted">{hi ? "Jo video fail ho, uske credits poore wapas." : "A video that fails is refunded in full."}</p>
+      <p className="text-[11px] text-muted">{hi ? "जो video न बने, उसके पूरे credits वापस।" : "A video that fails is refunded in full."}</p>
     </div>
   );
 }

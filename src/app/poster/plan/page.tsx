@@ -171,7 +171,7 @@ function MyPlan() {
         <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.monthly}</p><p className="text-xs text-muted">Bonus credits this month</p></div>
         <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.packs}</p><p className="text-xs text-muted">Credits you bought (never expire)</p></div>
       </div>}
-      {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)}. Unused ones do not carry over. Bonus credits are always used first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Video ad →</Link></p>}
+      {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)}. Unused ones do not carry over. Bonus credits are always used first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Product video →</Link></p>}
 
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
       <div className="space-y-3">

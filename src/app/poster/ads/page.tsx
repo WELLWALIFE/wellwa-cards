@@ -119,7 +119,14 @@ export default function AdsPage() {
       if (p.city) api<{ results: { key: string; name: string; region: string; type: string }[] }>(`/api/ads/search?kind=city&q=${encodeURIComponent(p.city)}`).then((r) => { const c = r.data.results?.[0]; if (c) setTargeting((t) => (t.cities.length ? t : { ...t, cities: [{ key: c.key, name: c.name, radius: 25, type: c.type === "region" ? "region" : "city" }] })); }).catch(() => {});
     }
     api<{ products?: Product[] }>("/api/poster/products").then((r) => setProducts((r.data.products ?? []).slice(0, 12))).catch(() => {});
-    fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((r) => setVideos(((r.jobs ?? []) as Job[]).filter((j) => j.status === "done" && j.output_url).slice(0, 8))).catch(() => {});
+    // "🚀 Boost करें" under a finished video lands here as ?job=<id> — that video is already picked.
+    const want = new URLSearchParams(window.location.search).get("job");
+    fetch("/api/media/jobs", { cache: "no-store" }).then((x) => x.json()).then((r) => {
+      const all = ((r.jobs ?? []) as Job[]).filter((j) => j.status === "done" && j.output_url);
+      const hit = want ? all.find((j) => j.id === want) : undefined;
+      setVideos(hit ? [hit, ...all.filter((j) => j.id !== hit.id)].slice(0, 8) : all.slice(0, 8));
+      if (hit) { setTab("new"); setStep(0); setCreative({ kind: "video", url: hit.output_url!, thumbUrl: p?.logo_url ?? undefined, label: hit.input?.title || hit.input?.product || "Video" }); }
+    }).catch(() => {});
   })(); }, [router, loadAccounts, loadMine]);
 
   // city search (typed)

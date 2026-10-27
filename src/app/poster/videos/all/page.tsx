@@ -26,7 +26,7 @@ export default function VideoHub() {
       get: hi ? "10–30 sec ki reel, 9:16" : "A 10–30 sec reel, 9:16", len: "10 · 15 · 20 · 30 sec",
       cost: hi ? "Free (stock clips) · AI scene 1 credit/scene" : "Free with stock clips · AI scene 1 credit each", time: "~2 min",
       best: hi ? "Roz ki Reels aur Stories" : "Daily Reels and Stories" },
-    { href: "/poster/video", I: Clapperboard, t: "Video ad", tag: "AI",
+    { href: "/poster/video", I: Clapperboard, t: "Product video", tag: "AI",
       s: hi ? "AI script likhta hai, aapke product ki photo ke saath ad" : "AI writes the script; an ad around your product photo",
       get: hi ? "Reel / Post / YouTube size, voice + music" : "Reel / Post / YouTube sizes, voice + music", len: `${AD_LENGTHS.join(" · ")} sec`,
       cost: hi ? `${min}–${max} credits (${adCredits(10)} per 10 sec) · Realistic ${adCredits(REALISTIC_MAX_LENGTH)} tak` : `${min}–${max} credits (${adCredits(10)} per 10 sec) · Realistic up to ${adCredits(REALISTIC_MAX_LENGTH)}`, time: "2–5 min",

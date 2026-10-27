@@ -385,7 +385,7 @@ function VideoTabInner() {
     <div className="space-y-4">
       {checking && productId && <ProductCheckSheet productId={productId} productName={products.find((x) => x.id === productId)?.name ?? "product"} langs={[f.lang]} onClose={() => { setChecking(false); loadProducts(); }} />}
       <div className="flex items-center justify-between gap-2">
-        <h1 className="text-lg font-bold flex items-center gap-1.5"><Sparkles className="h-5 w-5 text-brand" /> Video ad</h1>
+        <h1 className="text-lg font-bold flex items-center gap-1.5"><Sparkles className="h-5 w-5 text-brand" /> Product video</h1>
         <div className="flex items-center gap-1.5 shrink-0">
           {credits !== null && <span className="text-xs rounded-full bg-surface2 px-2.5 py-1 font-semibold">{credits} credits</span>}
           <button type="button" onClick={() => setShowPacks((v) => !v)} className="rounded-full border border-brand px-2.5 py-1 text-xs font-semibold text-brand-ink">{showPacks ? (hi ? "बंद करें" : "Close") : "+ Credits"}</button>
@@ -755,5 +755,5 @@ function ActorGrid({ selected, onPick }: { selected: string; onPick: (a: Actor &
 }
 
 export default function VideoTab() {
-  return <AiPageGate title="Video ad" reason="Turn your product into a ready video ad with AI voice and music."><VideoTabInner /></AiPageGate>;
+  return <AiPageGate title="Product video" reason="Turn your product into a ready video ad with AI voice and music."><VideoTabInner /></AiPageGate>;
 }

@@ -41,7 +41,7 @@ export default function ReportPage() {
             {tile(hi ? "Posts हुईं" : "Posts published", d.report.posts.facebook + d.report.posts.instagram + d.report.posts.whatsapp, `FB ${d.report.posts.facebook} · IG ${d.report.posts.instagram} · Status ${d.report.posts.whatsapp}`)}
             {tile(hi ? "Facebook reach" : "Facebook reach", d.report.reach === null ? "—" : d.report.reach.toLocaleString("en-IN"))}
             {tile(hi ? "नई leads" : "New leads", d.report.leads, `hot ${d.report.leadsHot}`)}
-            {tile(hi ? "Video ads" : "Video ads", d.report.videos)}
+            {tile(hi ? "Product videos" : "Product videos", d.report.videos)}
             {tile(hi ? "Bot ने सीखा" : "Bot learned", d.report.learned)}
           </div>
           <p className="text-xs text-muted">{hi ? `आगे ${d.report.calendarPlanned} दिन planned हैं। हर महीने की 1 तारीख को ये report आपके WhatsApp पर भी आएगी।` : `${d.report.calendarPlanned} days planned ahead. This report is also sent to your WhatsApp on the 1st of every month.`}</p>

@@ -501,7 +501,7 @@ export default function TextToVideo() {
       )}
 
       <p className="text-center text-xs text-muted">
-        Want the AI to write the words for you? Try <Link href="/poster/video" className="font-semibold text-brand-ink">Video ad →</Link>
+        Want the AI to write the words for you? Try <Link href="/poster/video" className="font-semibold text-brand-ink">Product video →</Link>
       </p>
     </div>
   );
