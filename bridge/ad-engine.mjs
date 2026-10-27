@@ -447,3 +447,32 @@ export async function heroStill({ bg, cut, photo, fmt = "reel" }) {
   const s0 = await standOn(base0, prod, W, H, { box: { w: Math.round(W * 0.74), h: Math.round(H * 0.36) }, bottomY: Math.round(H * 0.69) });
   return await sharp(base0).composite(s0.layers).jpeg({ quality: 92 }).toBuffer();
 }
+
+/** The "Live शुरुआत" hook made on our own server — no AI, ₹0 (owner, 28 Oct 2026: "jo hook Gemini se banwaya wo to hum
+ *  apne aap se bhi bana sakte hai"; Gemini's 3 s also bent the machine). A fast eased push-in on the product standing in
+ *  its room, a light sweep across it, rising golden particles, and a whoosh into a soft low hit. Writes an mp4 with sound. */
+export async function motionHook(ffmpeg, still, outFile, { fmt = "reel", sec = 3, seed = 7 } = {}) {
+  const { w: W, h: H } = FORMATS[fmt]; const dir = path.dirname(outFile);
+  const base = path.join(dir, "hook-still.png"), sweep = path.join(dir, "hook-sweep.png"), dust = path.join(dir, "hook-dust.png");
+  await sharp(still).resize(W, H, { fit: "cover" }).png().toFile(base);
+  // a soft diagonal light band
+  const sw = Math.round(W * 0.55);
+  await sharp(Buffer.from(`<svg width="${sw}" height="${H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#fff" stop-opacity="0"/><stop offset="0.5" stop-color="#fff" stop-opacity="0.38"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="${sw}" height="${H}" fill="url(#g)" transform="skewX(-18) translate(${Math.round(H * 0.32)},0)"/></svg>`)).png().toFile(sweep);
+  // golden particles on a tall transparent sheet that drifts upwards
+  let x = seed; const rnd = () => ((x = (x * 48271) % 2147483647) / 2147483647);
+  let dots = ""; for (let i = 0; i < 70; i++) { const r = 3 + rnd() * 9; dots += `<circle cx="${(rnd() * W).toFixed(0)}" cy="${(rnd() * H * 1.6).toFixed(0)}" r="${r.toFixed(1)}" fill="#ffd98a" opacity="${(0.35 + rnd() * 0.6).toFixed(2)}"/>`; }
+  await sharp(Buffer.from(`<svg width="${W}" height="${Math.round(H * 1.6)}" xmlns="http://www.w3.org/2000/svg"><defs><filter id="b"><feGaussianBlur stdDeviation="2.2"/></filter></defs><g filter="url(#b)">${dots}</g></svg>`)).png().toFile(dust);
+  const F = Math.round(sec * FPS);
+  const fc = [
+    `[0:v]scale=${W * 2}:${H * 2},zoompan=z='1+0.16*pow(on/${F},0.7)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${F}:s=${W}x${H}:fps=${FPS},format=rgba[bg]`,
+    `[1:v]format=rgba[sw]`, `[2:v]format=rgba[du]`,
+    `[bg][sw]overlay=x='-w+(W+w)*min(max((t-0.5)/1.5,0),1)':y=0:shortest=0[b1]`,
+    `[b1][du]overlay=x=0:y='-${Math.round(H * 0.25)}-t*90':shortest=0,eq=contrast=1.06:saturation=1.08,fade=t=in:st=0:d=0.25,format=yuv420p[v]`,
+    // whoosh (filtered noise swelling in) + a soft low hit as the camera settles
+    `anoisesrc=d=${sec}:c=pink:a=0.5,highpass=f=350,lowpass=f=2800,afade=t=in:st=0:d=1.3,afade=t=out:st=1.5:d=${(sec - 1.5).toFixed(2)},volume=0.55[n]`,
+    `sine=f=58:d=${sec},afade=t=in:st=1.45:d=0.04,afade=t=out:st=1.5:d=${(sec - 1.6).toFixed(2)},volume=0.9[h]`,
+    `[n][h]amix=inputs=2:normalize=0,aresample=48000,aformat=channel_layouts=stereo[a]`,
+  ].join(";");
+  await ffmpeg(["-y", "-loglevel", "error", "-loop", "1", "-t", String(sec), "-i", base, "-loop", "1", "-t", String(sec), "-i", sweep, "-loop", "1", "-t", String(sec), "-i", dust, "-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-t", String(sec), "-r", String(FPS), "-c:v", "libx264", "-preset", "medium", "-crf", "18", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", outFile]);
+  return outFile;
+}

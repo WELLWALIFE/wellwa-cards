@@ -1095,8 +1095,15 @@ async function withHook(adFile, fmt, inp, photos, dir, jobId, pro = null) {
       const prompt = `A 3-second premium TV-commercial opening shot that stops the scroll: the product shown in the reference image(s) <IMAGE_REF_0>, alone and beautifully lit in a luxury modern Indian ${/water|ioniz|purif|kitchen|food|cook/i.test(`${inp.category} ${inp.product}`) ? "kitchen" : "home"}. A slow cinematic push-in, a soft light sweep gliding across the product's front, floating golden bokeh particles, shallow depth of field, rich contrast. The product stays exactly as in the reference images — same shape, colours, screen and logo. Nothing flows from anywhere except the product's own outlet; no other tap or appliance. No on-screen text. Audio: a deep cinematic whoosh rising into a soft music hit; no speech.`;
       // First frame = the ad's own first room with the product standing in it, so the hook flows into the pictures.
       const first = pro?.bgs?.[0] ? await AD_ENGINE.heroStill({ bg: pro.bgs[0], cut: pro.cut, photo: photos[0], fmt }).catch(() => null) : null;
+      // Our own hook by default — eased push-in, light sweep, golden particles, whoosh — ₹0 and the product never bends.
+      // HOOK_AI=1 on the server brings back the Gemini-filmed hook.
+      if (process.env.HOOK_AI !== "1") {
+        const still = first || (photos[0] ? await sharp(photos[0]).resize(W, H, { fit: "contain", background: "#111" }).jpeg().toBuffer() : null);
+        if (still) await AD_ENGINE.motionHook(ffArr, still, raw, { fmt, sec: 3 });
+      }
       const fprompt = "A 3-second premium TV-commercial opening shot that starts exactly on the given image: a slow cinematic push-in towards the product, a soft light sweep gliding across its front, floating golden bokeh particles, gentle parallax in the background. The product stays exactly as in the first frame — same shape, colours, screen and logo; nothing new appears; no text. Audio: a deep cinematic whoosh rising into a soft music hit; no speech.";
-      if (first) await omniI2V({ key: GEMINI, imageBuf: first, prompt: fprompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
+      if (existsSync(raw)) { /* made above */ }
+      else if (first) await omniI2V({ key: GEMINI, imageBuf: first, prompt: fprompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
       else await omniI2V({ key: GEMINI, refs: photos.slice(0, 3), prompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
     }
     const hasA = await new Promise((res) => execFile(FFMPEG, ["-hide_banner", "-i", raw], (e, so, se) => res(/Stream #.*Audio:/.test(String(se)))));
@@ -1298,7 +1305,7 @@ async function processAd(job) {
           out = await captioned(out, fmt, v.lines, v.tag);
           // "Live शुरुआत": a 3-second Gemini video in front of the picture ad (owner, 27 Oct 2026 — the cheap hybrid:
           // pictures + zoom + voice for the body, real AI motion only where attention is won or lost).
-          if (inp.tier === "template" && inp.hook && GEMINI) out = await withHook(out, fmt, inp, photos, dir, job.id, pro);
+          if (inp.tier === "template" && inp.hook) out = await withHook(out, fmt, inp, photos, dir, job.id, pro);
         }
         outputs[`${fmt}${v.tag}`] = await upload(out, `ai-media/${job.owner_id}/ad-${job.id}-${fmt}${v.tag}.mp4`);
       }

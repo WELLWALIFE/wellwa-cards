@@ -418,7 +418,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             </div>
 
             {!real && <label className="flex items-center justify-between gap-3 rounded-2xl border border-ai/30 bg-ai-soft/30 p-3">
-              <span className="min-w-0"><span className="block text-sm font-semibold">⚡ {hi ? "Live शुरुआत" : "Live opening"}</span><span className="block text-[11px] text-muted">{hi ? "पहले 3 सेकंड Gemini की असली हिलती video — फिर तस्वीरें, आवाज़ और music। लोग scroll करते हुए रुकते हैं।" : "The first 3 seconds are a real Gemini video — then pictures, voice and music. It stops the scroll."}</span></span>
+              <span className="min-w-0"><span className="block text-sm font-semibold">⚡ {hi ? "Live शुरुआत" : "Live opening"}</span><span className="block text-[11px] text-muted">{hi ? "पहले 3 सेकंड: camera product की ओर तेज़ी से बढ़ता है, रोशनी की चमक, सुनहरे कण और whoosh — लोग scroll करते हुए रुकते हैं। Free." : "First 3 seconds: a fast push-in on the product, a light sweep, golden particles and a whoosh — it stops the scroll. Free."}</span></span>
               <button type="button" role="switch" aria-checked={hook} onClick={() => setHook((x) => !x)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${hook ? "bg-ai" : "bg-border-strong"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${hook ? "left-[22px]" : "left-0.5"}`} /></button>
             </label>}
             {errBox}
