@@ -23,7 +23,7 @@ import { fileURLToPath } from "node:url";
 import sharp from "sharp";
 import { renderAd, renderScene, defaultScript, FORMATS as AD_FORMATS, CTA_LABELS } from "./ad-engine.mjs";
 import * as AD_ENGINE from "./ad-engine.mjs";
-import { renderRealisticAd } from "./realistic-engine.mjs";
+import { renderRealisticAd, omniI2V } from "./realistic-engine.mjs";
 import { renderPresenterAd } from "./presenter-engine.mjs";
 import { wordCues, renderCuePngs, burnCaptions, reframe } from "./caption-engine.mjs";
 import * as CAPTION from "./caption-engine.mjs";
@@ -1085,6 +1085,26 @@ async function proBackgrounds(inp, dir) {
   return out.filter(Boolean);
 }
 
+/** The 3-second hook: Gemini Omni films the product (its photos as references), then it is cut in front of the ad.
+ *  Any failure leaves the ad as it was — the hook can only add, never break a paid video. */
+async function withHook(adFile, fmt, inp, photos, dir, jobId) {
+  try {
+    const { w: W, h: H } = AD_FORMATS[fmt] ?? AD_FORMATS.reel;
+    const raw = path.join(dir, `hook-${fmt}.mp4`);
+    if (!existsSync(raw)) {
+      const prompt = `A 3-second premium TV-commercial opening shot that stops the scroll: the product shown in the reference image(s) <IMAGE_REF_0>, alone and beautifully lit in a luxury modern Indian ${/water|ioniz|purif|kitchen|food|cook/i.test(`${inp.category} ${inp.product}`) ? "kitchen" : "home"}. A slow cinematic push-in, a soft light sweep gliding across the product's front, floating golden bokeh particles, shallow depth of field, rich contrast. The product stays exactly as in the reference images — same shape, colours, screen and logo. Nothing flows from anywhere except the product's own outlet; no other tap or appliance. No on-screen text. Audio: a deep cinematic whoosh rising into a soft music hit; no speech.`;
+      await omniI2V({ key: GEMINI, refs: photos.slice(0, 3), prompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
+    }
+    const hasA = await new Promise((res) => execFile(FFMPEG, ["-hide_banner", "-i", raw], (e, so, se) => res(/Stream #.*Audio:/.test(String(se)))));
+    const out = adFile.replace(/\.mp4$/, "-hook.mp4");
+    const fc = `[0:v]trim=0:3,setpts=PTS-STARTPTS,scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS},format=yuv420p,setsar=1[hv];` +
+      (hasA ? `[0:a]atrim=0:3,asetpts=PTS-STARTPTS,aresample=48000,aformat=channel_layouts=stereo,apad=whole_dur=3[ha];` : `anullsrc=r=48000:cl=stereo,atrim=0:3[ha];`) +
+      `[1:v]scale=${W}:${H},fps=${FPS},format=yuv420p,setsar=1[mv];[1:a]aresample=48000,aformat=channel_layouts=stereo[ma];[hv][ha][mv][ma]concat=n=2:v=1:a=1[v][a]`;
+    await ffArr(["-y", "-loglevel", "error", "-i", raw, "-i", adFile, "-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "160k", "-movflags", "+faststart", out]);
+    return existsSync(out) ? out : adFile;
+  } catch (e) { console.error(`[ad] ${jobId.slice(0, 8)} hook skipped:`, e instanceof Error ? e.message : e); return adFile; }
+}
+
 async function processAd(job) {
   const dir = path.join(os.tmpdir(), `ad-${job.id}`);
   const markSpent = spendMarker(job);
@@ -1270,6 +1290,9 @@ async function processAd(job) {
           if (v.tag) { const renamed = out.replace(/\.mp4$/, `${v.tag}.mp4`); renameSync(out, renamed); out = renamed; }
           if (single) base = out;   // the other ratios are reframed from the clean master, not from the captioned file
           out = await captioned(out, fmt, v.lines, v.tag);
+          // "Live शुरुआत": a 3-second Gemini video in front of the picture ad (owner, 27 Oct 2026 — the cheap hybrid:
+          // pictures + zoom + voice for the body, real AI motion only where attention is won or lost).
+          if (inp.tier === "template" && inp.hook && GEMINI) out = await withHook(out, fmt, inp, photos, dir, job.id);
         }
         outputs[`${fmt}${v.tag}`] = await upload(out, `ai-media/${job.owner_id}/ad-${job.id}-${fmt}${v.tag}.mp4`);
       }

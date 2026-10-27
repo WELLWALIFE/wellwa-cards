@@ -79,6 +79,8 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const [length, setLength] = useState(10); const [look, setLook] = useState("bold"); const [voiceStyle, setVoiceStyle] = useState("warmf"); const [music, setMusic] = useState("upbeat-corporate"); const [subs, setSubs] = useState(!real);
   // Pro video is a cinematic film with its own music (like the Gemini-app ads); a Hindi voice-over is optional.
   const [vo, setVo] = useState(!real);
+  // Product video "Live शुरुआत": 3 seconds of real Gemini video before the picture ad (the cheap hybrid).
+  const [hook, setHook] = useState(true);
   const [photos, setPhotos] = useState<string[]>([]);
   const [more, setMore] = useState(false);
   const [stillBusy, setStillBusy] = useState<Record<number, boolean>>({}); const [stillErr, setStillErr] = useState<Record<number, string>>({}); const [allVoices, setAllVoices] = useState(false); const [editing, setEditing] = useState(false);
@@ -174,7 +176,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     if (!idem.current) { try { idem.current = crypto.randomUUID(); } catch { idem.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`; } }
     setErr(""); setNeedCredits(null); setBusy("create");
     try {
-      const r = await post("/api/media/ad", { ...base(), idem: idem.current, photos, logoUrl: brand.logo, headline: plan.headline, features: (plan.features ?? []).slice(0, 4), script: [...plan.scenes.map((s) => s.text), plan.cta], scenes: plan.scenes, cta: plan.cta, caption: plan.caption, voice: vo, voiceStyle, template: look, music, captions: subs && vo ? "words" : "off", variants: 1, ...(real ? { cinematic: true } : {}) });
+      const r = await post("/api/media/ad", { ...base(), idem: idem.current, photos, logoUrl: brand.logo, headline: plan.headline, features: (plan.features ?? []).slice(0, 4), script: [...plan.scenes.map((s) => s.text), plan.cta], scenes: plan.scenes, cta: plan.cta, caption: plan.caption, voice: vo, voiceStyle, template: look, music, captions: subs && vo ? "words" : "off", variants: 1, ...(real ? { cinematic: true } : { hook }) });
       if (!r.ok) {
         setErr(String(r.data.error ?? "") || (r.status === 0 ? (hi ? "Server तक नहीं पहुँचे। Internet देखकर दोबारा दबाएँ — दो बार पैसे नहीं कटेंगे।" : "We could not reach the server. Check your internet and tap again — you will not be charged twice.") : (hi ? "Video शुरू नहीं हो पाई। फिर try करें।" : "Could not start the video. Please try again.")));
         if (r.status === 402) setNeedCredits(Math.max(1, Number(r.data.cost) || cost));
@@ -415,6 +417,10 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
               </div>}
             </div>
 
+            {!real && <label className="flex items-center justify-between gap-3 rounded-2xl border border-ai/30 bg-ai-soft/30 p-3">
+              <span className="min-w-0"><span className="block text-sm font-semibold">⚡ {hi ? "Live शुरुआत" : "Live opening"}</span><span className="block text-[11px] text-muted">{hi ? "पहले 3 सेकंड Gemini की असली हिलती video — फिर तस्वीरें, आवाज़ और music। लोग scroll करते हुए रुकते हैं।" : "The first 3 seconds are a real Gemini video — then pictures, voice and music. It stops the scroll."}</span></span>
+              <button type="button" role="switch" aria-checked={hook} onClick={() => setHook((x) => !x)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${hook ? "bg-ai" : "bg-border-strong"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${hook ? "left-[22px]" : "left-0.5"}`} /></button>
+            </label>}
             {errBox}
             {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
             {real && Object.values(stillBusy).some(Boolean) && <p className="text-center text-xs font-semibold text-brand-ink">{hi ? "Storyboard की तस्वीरें बन रही हैं… पसंद न आए तो “नई” दबाएँ — पैसे अभी नहीं कटे।" : "Making the storyboard pictures… tap Redo on any you do not like — nothing is charged yet."}</p>}

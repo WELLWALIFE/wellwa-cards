@@ -61,6 +61,8 @@ export async function POST(request: Request) {
     // Pro video, the Gemini-style film: 10-second generations with their own cuts, the product photos as references,
     // titles over the hero frame instead of a card (owner, 27 Oct 2026).
     cinematic: tier === "realistic" && b.cinematic === true,
+    // Product video "Live शुरुआत": a 3-second Gemini video in front of the picture ad.
+    hook: tier === "template" && b.hook === true,
     variants: Number(b.variants) === 3 && (b.tier === "template" || b.tier === "realistic") ? 3 : 1,
   };
   // Never sell what we do not render: the realistic pipeline always makes exactly one video
