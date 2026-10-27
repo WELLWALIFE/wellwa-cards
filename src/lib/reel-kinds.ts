@@ -1,5 +1,4 @@
-// The kinds of reel — chosen once on /poster/reel; the Advanced page (/poster/reel/pro) reads the same list,
-// so the names never differ between the two pages (owner, 27 Oct 2026).
+// The kinds of reel — one list for /poster/reel (owner, 27 Oct 2026), so a name never differs between screens.
 export const REEL_KINDS = [
   { k: "tip", e: "💡", hi: "काम की बात", en: "Useful tip", dhi: "लोग save करें", den: "People save it", music: "calm-ambient" },
   { k: "offer", e: "🎉", hi: "Offer", en: "Offer", dhi: "आज का offer", den: "Today's offer", music: "energetic-promo" },
