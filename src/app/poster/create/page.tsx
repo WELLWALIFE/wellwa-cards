@@ -39,7 +39,7 @@ function CreateHubInner() {
       { href: "/poster/text-video", I: Wand2, t: hi ? "अपने शब्दों से" : "From your own words", s: hi ? "10 सेकंड से 10 मिनट तक · 20 credits से" : "10 seconds to 10 minutes · from 20 credits" },
       { href: "/poster/explainer", I: Film, t: hi ? "लंबा video (5–10 मिनट)" : "Long video (5–10 minutes)", s: hi ? "1 मिनट के 10 credits (कम से कम 20)" : "10 credits a minute (at least 20)" },
     ] },
-    { key: "ads", I: Megaphone, t: hi ? "Ads" : "Ads", s: hi ? "Facebook / Instagram पर ad — 5 आसान कदम, आपके अपने ad account से" : "Ads on Facebook and Instagram — 5 easy steps, paid from your own ad account", href: "/poster/ads", items: [] },
+    { key: "ads", I: Megaphone, t: "Ads Boost", s: hi ? "Facebook / Instagram पर ad — 5 आसान कदम, आपके अपने ad account से" : "Ads on Facebook and Instagram — 5 easy steps, paid from your own ad account", href: "/poster/ads", items: [] },
     // The logo studio (/poster/brand) is parked — owner's call, 22 Sep 2026: the results were not good enough to show. The page still works by URL.
     { key: "brand", I: Palette, t: "Brand", s: hi ? "Product की photos और मेरे products" : "Product photos and my products", items: [
       { href: "/poster/photoshoot", I: Camera, t: "Product photoshoot", s: hi ? "1 photo से 4 अच्छी photos" : "1 photo becomes 4 good photos", tag: "AI" },

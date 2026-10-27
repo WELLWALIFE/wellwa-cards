@@ -250,7 +250,7 @@ export default function AdsPage() {
   const header = (
     <div className="flex items-center gap-2">
       <button type="button" onClick={back} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
-      <h1 className="text-lg font-bold flex-1">{hi ? "Facebook / Instagram ads" : "Facebook / Instagram ads"}</h1>
+      <h1 className="text-lg font-bold flex-1">Ads Boost <span className="text-sm font-medium text-muted">· Facebook / Instagram</span></h1>
       <div className="flex rounded-full border border-border p-0.5 text-xs font-semibold">
         {(["new", "mine"] as Tab[]).map((k) => <button key={k} type="button" onClick={() => { if (k === "new" && done) reset(); setTab(k); if (k === "mine") loadMine(); }} className={`rounded-full px-3 py-1.5 ${tab === k ? "grad-brand text-white" : "text-muted"}`}>{k === "new" ? (hi ? "नई ad" : "New ad") : (hi ? "मेरी ads" : "My ads")}</button>)}
       </div>
