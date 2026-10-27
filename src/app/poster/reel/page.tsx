@@ -59,7 +59,7 @@ export default function Reel() {
   const [kind, setKind] = useState<ReelKind>("tip");
   const [business, setBusiness] = useState(""); const [category, setCategory] = useState(""); const [phone, setPhone] = useState(""); const [brandName, setBrandName] = useState("");
   // Who the reel says it is from (owner, 27 Oct 2026: "company Licure Technology, but I promote the brand AlkaFresh").
-  const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true); const [ownName, setOwnName] = useState(false);
+  const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true); const [logos, setLogos] = useState<{ url: string; label: string }[]>([]); const [ownName, setOwnName] = useState(false);
   const [productId, setProductId] = useState(""); const [products, setProducts] = useState<MyProduct[]>([]);
   const [note, setNote] = useState("");
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
@@ -102,7 +102,11 @@ export default function Reel() {
     try { saved = JSON.parse(localStorage.getItem("reel.identity") || "{}"); } catch { /* private window */ }
     const firstBrand = (pr?.data.products ?? []).map((x) => (x.brand ?? "").trim()).find(Boolean);
     setBrandName(saved.name || firstBrand || p?.name || "");
-    if (saved.logo) setLogoUrl(saved.logo);
+    // Every logo already in the app; the saved choice if it is still one of them (or was uploaded here), else the first.
+    const found = (await api<{ logos?: { url: string; label: string }[] }>("/api/poster/logos").catch(() => null))?.data.logos ?? [];
+    const all = saved.logo && !found.some((x) => x.url === saved.logo) ? [{ url: saved.logo, label: "Logo" }, ...found] : found;
+    setLogos(all);
+    setLogoUrl(saved.logo || all[0]?.url || p?.logo_url || "");
     if (typeof saved.useLogo === "boolean") setUseLogo(saved.useLogo);
     quota();
     // Change & make again: a made reel's words, straight at step 2.
@@ -134,7 +138,7 @@ export default function Reel() {
   const pickName = (n: string) => { setBrandName(n); remember({ name: n }); };
   async function addLogo(file: File | null) {
     if (!file) return; setBusy("img"); setErr("");
-    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); remember({ logo: u, useLogo: true }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
+    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); setLogos((l) => [{ url: u, label: "Logo" }, ...l]); remember({ logo: u, useLogo: true }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
     catch { setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
     finally { setBusy(""); }
   }
@@ -302,14 +306,17 @@ export default function Reel() {
             </div>
             <div>
               <p className={label}>{num(4)} {hi ? "Reel पर आपकी पहचान" : "Your name on the reel"}</p>
-              <div className="flex items-start gap-3">
-                {/* The logo: on every scene's corner and big on the closing card. Tap to switch it off or on. */}
-                <div className="shrink-0 text-center">
-                  {logoUrl ? <button type="button" onClick={() => { setUseLogo((x) => !x); remember({ useLogo: !useLogo }); }} aria-pressed={useLogo} className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 ${useLogo ? "border-brand" : "border-border opacity-50"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />{useLogo && <Check className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-brand p-0.5 text-white" />}</button>
-                    : <label className="grid h-16 w-16 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface2 text-[11px] text-muted">{busy === "img" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span><ImagePlus className="mx-auto h-4 w-4" />Logo</span>}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>}
-                  {logoUrl && <label className="mt-1 block cursor-pointer text-[11px] font-semibold text-brand-ink">{busy === "img" ? "…" : hi ? "बदलें" : "Change"}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>}
+              <div className="space-y-3">
+                {/* The logo — picked from the ones already in the app (profiles, website, brand, Brand kit); upload only if none fits. */}
+                <div>
+                  <p className="mb-1.5 text-[11px] text-muted">{hi ? "Logo — हर scene के कोने में और आख़िर में बड़ा" : "Logo — in every scene's corner and big at the end"}</p>
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {logos.map((l) => { const on = useLogo && logoUrl === l.url; return <button key={l.url} type="button" title={l.label} onClick={() => { setLogoUrl(l.url); setUseLogo(true); remember({ logo: l.url, useLogo: true }); }} className={`relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 ${on ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={l.url} alt={l.label} className="max-h-full max-w-full object-contain" />{on && <Check className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-brand p-0.5 text-white" />}</button>; })}
+                    <label className="grid h-14 w-14 shrink-0 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface2 text-center text-[10px] leading-tight text-muted">{busy === "img" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span><ImagePlus className="mx-auto h-4 w-4" />{hi ? "नया" : "New"}</span>}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>
+                    {logos.length > 0 && <button type="button" onClick={() => { setUseLogo(false); remember({ useLogo: false }); }} className={`grid h-14 shrink-0 place-items-center rounded-xl border-2 px-3 text-[11px] ${!useLogo ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border text-muted"}`}>{hi ? "बिना logo" : "No logo"}</button>}
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1 space-y-1.5">
+                <div className="space-y-1.5">
                   <p className="text-[11px] text-muted">{hi ? "कौन-सा नाम बोला और दिखाया जाए?" : "Which name to say and show?"}</p>
                   <div className="flex flex-wrap gap-1.5">
                     {names.map((n) => <button key={n} type="button" onClick={() => { pickName(n); setOwnName(false); }} className={small(brandName === n && !ownName)}>{n}{n === firm && names.length > 1 ? <span className="font-normal text-muted"> · {hi ? "कंपनी" : "company"}</span> : ""}</button>)}
