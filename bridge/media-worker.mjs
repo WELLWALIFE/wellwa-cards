@@ -1087,13 +1087,17 @@ async function proBackgrounds(inp, dir) {
 
 /** The 3-second hook: Gemini Omni films the product (its photos as references), then it is cut in front of the ad.
  *  Any failure leaves the ad as it was — the hook can only add, never break a paid video. */
-async function withHook(adFile, fmt, inp, photos, dir, jobId) {
+async function withHook(adFile, fmt, inp, photos, dir, jobId, pro = null) {
   try {
     const { w: W, h: H } = AD_FORMATS[fmt] ?? AD_FORMATS.reel;
     const raw = path.join(dir, `hook-${fmt}.mp4`);
     if (!existsSync(raw)) {
       const prompt = `A 3-second premium TV-commercial opening shot that stops the scroll: the product shown in the reference image(s) <IMAGE_REF_0>, alone and beautifully lit in a luxury modern Indian ${/water|ioniz|purif|kitchen|food|cook/i.test(`${inp.category} ${inp.product}`) ? "kitchen" : "home"}. A slow cinematic push-in, a soft light sweep gliding across the product's front, floating golden bokeh particles, shallow depth of field, rich contrast. The product stays exactly as in the reference images — same shape, colours, screen and logo. Nothing flows from anywhere except the product's own outlet; no other tap or appliance. No on-screen text. Audio: a deep cinematic whoosh rising into a soft music hit; no speech.`;
-      await omniI2V({ key: GEMINI, refs: photos.slice(0, 3), prompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
+      // First frame = the ad's own first room with the product standing in it, so the hook flows into the pictures.
+      const first = pro?.bgs?.[0] ? await AD_ENGINE.heroStill({ bg: pro.bgs[0], cut: pro.cut, photo: photos[0], fmt }).catch(() => null) : null;
+      const fprompt = "A 3-second premium TV-commercial opening shot that starts exactly on the given image: a slow cinematic push-in towards the product, a soft light sweep gliding across its front, floating golden bokeh particles, gentle parallax in the background. The product stays exactly as in the first frame — same shape, colours, screen and logo; nothing new appears; no text. Audio: a deep cinematic whoosh rising into a soft music hit; no speech.";
+      if (first) await omniI2V({ key: GEMINI, imageBuf: first, prompt: fprompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
+      else await omniI2V({ key: GEMINI, refs: photos.slice(0, 3), prompt, outFile: raw, ratio: fmt === "wide" ? "16:9" : "9:16", sec: 3, log: (m) => console.log(`[ad] ${jobId.slice(0, 8)} hook ${m}`) });
     }
     const hasA = await new Promise((res) => execFile(FFMPEG, ["-hide_banner", "-i", raw], (e, so, se) => res(/Stream #.*Audio:/.test(String(se)))));
     const out = adFile.replace(/\.mp4$/, "-hook.mp4");
@@ -1165,6 +1169,8 @@ async function processAd(job) {
         // The number is shown big on the closing card; read aloud digit by digit it took 6 seconds of a 10-second
         // ad (27 Oct 2026). Spoken lines never carry it — the plan is told so, this is the safety net.
         if (inp.tier !== "testimonial") lines[i] = speakable(lines[i]);
+        // the closing card shows a NUMBER: a line that says "link on screen" is wrong (27 Oct 2026)
+        if (inp.phone && !inp.website && i === lines.length - 1) lines[i] = lines[i].replace(/\blink\b/gi, "number").replace(/लिंक/g, "number");
         if (inp.voice !== false) { try { sec = await ttsLine(lines[i], w, inp.voiceStyle || "warm", inp.lang); wavs.push(w); } catch (e) { console.error("[ad] tts", e.message, "line:", JSON.stringify(lines[i]).slice(0, 160)); } }
         voLines.push({ text: lines[i], sec, caption: wordCaps ? "" : (captions?.[i] ?? lines[i]), visual: planScenes?.[i]?.visual, motion: planScenes?.[i]?.motion, still: planScenes?.[i]?.still, wav: wavs.includes(w) ? w : null });
         await prog({ progress: { text: `Recording the voice (${i + 1} of ${lines.length})…` } });
@@ -1266,7 +1272,7 @@ async function processAd(job) {
     for (const v of variants) {
       // __jobId seeds the card decoration per job; __deliver tells the engine whether IT
       // must carry the delivery encode (no captions follow) or leave an intermediate.
-      const vInp = { ...inp, template: v.template, music: v.musicKey, __jobId: job.id, __deliver: !willCaption(v.lines) };
+      const vInp = { ...inp, template: v.template, music: v.musicKey, __jobId: job.id, __deliver: !willCaption(v.lines), __titles: !!pro };
       const vMusic = v.musicKey ? musicFile(v.musicKey) : music;
       const single = inp.tier === "realistic" || inp.tier === "presenter";
       let base = null; // the generated ratio for single-generation tiers — kept UNCAPTIONED
@@ -1292,7 +1298,7 @@ async function processAd(job) {
           out = await captioned(out, fmt, v.lines, v.tag);
           // "Live शुरुआत": a 3-second Gemini video in front of the picture ad (owner, 27 Oct 2026 — the cheap hybrid:
           // pictures + zoom + voice for the body, real AI motion only where attention is won or lost).
-          if (inp.tier === "template" && inp.hook && GEMINI) out = await withHook(out, fmt, inp, photos, dir, job.id);
+          if (inp.tier === "template" && inp.hook && GEMINI) out = await withHook(out, fmt, inp, photos, dir, job.id, pro);
         }
         outputs[`${fmt}${v.tag}`] = await upload(out, `ai-media/${job.owner_id}/ad-${job.id}-${fmt}${v.tag}.mp4`);
       }

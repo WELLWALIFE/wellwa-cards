@@ -330,6 +330,17 @@ export async function renderProScene(file, { kind, fmt, tpl, inp, cut, photo, bg
   // background: the AI room (or the product photo blurred) — cover, never stretched
   let bgBuf = bg ? await sharp(bg).resize(W, H, { fit: "cover" }).toBuffer() : photo ? await sharp(photo).resize(W, H, { fit: "cover" }).blur(30).modulate({ brightness: 0.8 }).toBuffer() : null;
   if (!bgBuf) bgBuf = await sharp(Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.bg[0]}"/><stop offset="1" stop-color="${T.bg[1]}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>`)).png().toBuffer();
+  // Product video closing (owner, 27 Oct 2026: same finish as the cinematic Pro video): the product standing in its room,
+  // the gold title on top and the lower-third with logo and number — no white card.
+  if (kind === "cta" && inp.__titles) {
+    const base0 = await sharp(bgBuf).resize(W, H, { fit: "cover" }).modulate({ brightness: 0.9 }).png().toBuffer();
+    const layers0 = [];
+    if (cut) { const s0 = await standOn(base0, cut, W, H, { box: { w: Math.round(W * 0.62), h: Math.round(H * 0.32) }, bottomY: Math.round(H * 0.72) }); layers0.push(...s0.layers); }
+    const tPng = file.replace(/\.png$/, "-titles.png");
+    await renderEndTitle(tPng, { W, H, inp, logo });
+    await sharp(base0).composite([...layers0, { input: tPng, left: 0, top: 0 }]).png().toFile(file);
+    return;
+  }
   if (kind === "cta") bgBuf = await sharp(bgBuf).blur(18).modulate({ brightness: 0.55 }).toBuffer();
   const layers = []; let svg = "";
   // shade at the top for the words, and at the bottom for the moving captions
@@ -423,4 +434,16 @@ export async function renderEndTitle(file, { W, H, inp, logo }) {
   if (phone) svg += `<text x="${tx}" y="${bandY + Math.round(bandH * 0.8)}" font-family="${LAT}" font-size="${base(0.05)}" font-weight="900" fill="#ffffff" letter-spacing="1">${esc(phone)}</text>`;
   const over = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`);
   await sharp({ create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: over, left: 0, top: 0 }, ...imgs]).png().toFile(file);
+}
+
+/** A clean first frame for the "Live शुरुआत" hook: the product standing in the first AI room, no words — so the
+ *  3-second Gemini shot flows straight into the picture ad that follows (27 Oct 2026: the hook's room did not match). */
+export async function heroStill({ bg, cut, photo, fmt = "reel" }) {
+  const { w: W, h: H } = FORMATS[fmt];
+  const base0 = bg ? await sharp(bg).resize(W, H, { fit: "cover" }).png().toBuffer() : null;
+  if (!base0) return null;
+  const prod = cut || (photo ? await sharp(photo).resize(Math.round(W * 0.6), Math.round(H * 0.34), { fit: "inside" }).png().toBuffer() : null);
+  if (!prod) return null;
+  const s0 = await standOn(base0, prod, W, H, { box: { w: Math.round(W * 0.74), h: Math.round(H * 0.36) }, bottomY: Math.round(H * 0.69) });
+  return await sharp(base0).composite(s0.layers).jpeg({ quality: 92 }).toBuffer();
 }
