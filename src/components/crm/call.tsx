@@ -245,7 +245,7 @@ export function CallList({ items, onExit }: { items: CallListItem[]; onExit: () 
           }} />
         </div>
         {/* Why this call now (a follow-up that is due), only when there is something to say. */}
-        {(cur.why?.trim() || cur.task) && <p className="mt-3 rounded-xl bg-lead/10 px-3 py-2 text-xs font-semibold text-lead">⏰ {cur.why}{cur.task ? `${cur.why?.trim() ? " · " : ""}${fmtWhen(cur.task.due_at, L.hi)}` : ""}</p>}
+        {((cur.why?.trim() && cur.why.trim() !== (l.ai_next ?? "").trim()) || cur.task) && <p className="mt-3 rounded-xl bg-lead/10 px-3 py-2 text-xs font-semibold text-lead">⏰ {cur.why}{cur.task ? `${cur.why?.trim() ? " · " : ""}${fmtWhen(cur.task.due_at, L.hi)}` : ""}</p>}
         {/* The last call and its note come first (owner, 26 Oct 2026); the WhatsApp chat is one tap away on the WhatsApp button. */}
         <div className="mt-3">
           {loaded === l.id
