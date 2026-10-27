@@ -98,15 +98,16 @@ export default function Reel() {
     const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
     if (p) { setBusiness(p.name); setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); setLogoUrl(p.logo_url || ""); }
     // The last name / logo choice comes back; else the products' brand (the name customers know), else the firm.
-    let saved: { name?: string; logo?: string; useLogo?: boolean } = {};
+    let saved: { name?: string; logo?: string; useLogo?: boolean; uploads?: string[] } = {};
     try { saved = JSON.parse(localStorage.getItem("reel.identity") || "{}"); } catch { /* private window */ }
     const firstBrand = (pr?.data.products ?? []).map((x) => (x.brand ?? "").trim()).find(Boolean);
     setBrandName(saved.name || firstBrand || p?.name || "");
     // Every logo already in the app; the saved choice if it is still one of them (or was uploaded here), else the first.
     const found = (await api<{ logos?: { url: string; label: string }[] }>("/api/poster/logos").catch(() => null))?.data.logos ?? [];
-    const all = saved.logo && !found.some((x) => x.url === saved.logo) ? [{ url: saved.logo, label: "Logo" }, ...found] : found;
+    const mine = (saved.uploads ?? []).filter((u) => !found.some((x) => x.url === u)).map((u) => ({ url: u, label: "Logo" }));
+    const all = [...found, ...mine];
     setLogos(all);
-    setLogoUrl(saved.logo || all[0]?.url || p?.logo_url || "");
+    setLogoUrl(all.some((x) => x.url === saved.logo) ? saved.logo! : all[0]?.url || "");
     if (typeof saved.useLogo === "boolean") setUseLogo(saved.useLogo);
     quota();
     // Change & make again: a made reel's words, straight at step 2.
@@ -134,11 +135,11 @@ export default function Reel() {
   const product = products.find((p) => p.id === productId);
   const making = jobs.some(busyJob);
   const over = left === 0;
-  const remember = (x: { name?: string; logo?: string; useLogo?: boolean }) => { try { const o = JSON.parse(localStorage.getItem("reel.identity") || "{}"); localStorage.setItem("reel.identity", JSON.stringify({ ...o, ...x })); } catch { /* ignore */ } };
+  const remember = (x: { name?: string; logo?: string; useLogo?: boolean; uploads?: string[] }) => { try { const o = JSON.parse(localStorage.getItem("reel.identity") || "{}"); localStorage.setItem("reel.identity", JSON.stringify({ ...o, ...x })); } catch { /* ignore */ } };
   const pickName = (n: string) => { setBrandName(n); remember({ name: n }); };
   async function addLogo(file: File | null) {
     if (!file) return; setBusy("img"); setErr("");
-    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); setLogos((l) => [{ url: u, label: "Logo" }, ...l]); remember({ logo: u, useLogo: true }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
+    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); setLogos((l) => [{ url: u, label: "Logo" }, ...l]); remember({ logo: u, useLogo: true, uploads: [u, ...logos.map((x) => x.url)].slice(0, 6) }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
     catch { setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
     finally { setBusy(""); }
   }
