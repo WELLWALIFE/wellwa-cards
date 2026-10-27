@@ -139,7 +139,7 @@ export async function processStockReel(job, H) {
     }
     for (let i = 0; i < n; i++) {
       const out = path.join(dir, `s-${i}.mp4`); const d = slots[i] + XF; const sc = scenes[i];
-      const ov = path.join(dir, `ov-${i}.png`); await captionOverlay(ov, { W, H: Hh, text: "", brand: inp.brandName || "", logo: logoBuf, card: String(sc.caption_text || "").trim().split(/\s+/).slice(0, 6).join(" ") });
+      const ov = path.join(dir, `ov-${i}.png`); await captionOverlay(ov, { W, H: Hh, text: "", brand: inp.brandName || "", logo: logoBuf, card: inp.headings === true ? String(sc.caption_text || "").trim().split(/\s+/).slice(0, 6).join(" ") : "" /* no heading on the clips unless asked (owner, 27 Oct 2026) */ });
       let img = sc.image ? await H.fetchPhoto(String(sc.image).split("?")[0]) : null;
       let aiMade = false;
       if (!img && sc.source === "ai") { // AI scene: one generated photo of Indian people / places for this line, then a slow camera move (no AI video)

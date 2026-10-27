@@ -20,7 +20,7 @@ import { ReelMaking } from "@/components/poster/reel-making";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
-type Job = { id: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null; input?: { tier?: string; product?: string; caption?: string; duration_sec?: number; topic?: string; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string } };
+type Job = { id: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null; input?: { tier?: string; product?: string; caption?: string; duration_sec?: number; topic?: string; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string; captions?: string } };
 type MyProduct = { id: string; name: string; brand?: string | null; category?: string; photo_url?: string | null; photos?: { url: string; role?: string }[] };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 // A dropped mobile connection makes fetch() reject; without the catch the button would spin for ever.
@@ -114,21 +114,11 @@ export default function Reel() {
     const editId = q.get("edit");
     if (editId) {
       const r = await fetch(`/api/media/jobs?id=${encodeURIComponent(editId)}`, { cache: "no-store" }).then((x) => x.json()).catch(() => ({}));
-      const inp = (r.job as Job | undefined)?.input;
-      if (inp?.scenes?.length) {
-        const scenes = inp.scenes.map((x) => ({ ...x, source: x.source ?? (x.image ? "image" : "auto") })) as Scene[];
-        setPlan({ title: inp.product || "Reel", scenes, cta: inp.cta ?? "", caption: inp.caption ?? "" });
-        if (inp.lang) setLang(inp.lang);
-        if (inp.length) setLength(Number(inp.length));
-        if (inp.voiceStyle) setVoiceStyle(inp.voiceStyle);
-        if (inp.music !== undefined) setMusic(inp.music);
-        if (inp.product) setBusiness(inp.product);
-        setGallery([...new Set(scenes.map((s) => s.image).filter(Boolean))].slice(0, 8));
-        setEditing(true); setStage("review");
-      }
+      if (r.job) openEdit(r.job as Job);
     }
     if (q.get("tab") === "mine") setTab("mine");
     setReady(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on open; openEdit only sets state
   })(); }, [router]);
   useEffect(() => { if (!jobs.some(busyJob)) return; const t = setInterval(refresh, 5000); return () => clearInterval(t); }, [jobs]);
 
@@ -180,6 +170,22 @@ export default function Reel() {
       if (typeof r.data.left_today === "number") setLeft(r.data.left_today);
       setTrackId(String(r.data.jobId ?? "")); setStage("track"); await refresh(); toTop();
     } finally { setBusy(""); }
+  }
+  /** Change & make again (owner, 27 Oct 2026: "reel banane ke baad agar user edit karna chahe"): a made reel's
+   *  words, picture choices, voice, music and subtitles come back at step 2, right here — no reload. */
+  function openEdit(j: Job) {
+    const inp = j.input;
+    if (!inp?.scenes?.length) { setRowMsg((m) => ({ ...m, [j.id]: { t: hi ? "इस reel के शब्द save नहीं हैं — नई reel बनाइए।" : "This reel's words were not saved — please make a new one.", ok: false } })); return; }
+    const scenes = inp.scenes.map((x) => ({ ...x, source: x.source ?? (x.image ? "image" : "auto") })) as Scene[];
+    setPlan({ title: inp.product || "Reel", scenes, cta: inp.cta ?? "", caption: inp.caption ?? "" });
+    if (inp.lang) setLang(inp.lang);
+    if (inp.length) setLength(Number(inp.length));
+    if (inp.voiceStyle) setVoiceStyle(inp.voiceStyle);
+    if (inp.music !== undefined) setMusic(inp.music);
+    setSubs(inp.captions !== "off");
+    if (inp.product) setBusiness(inp.product);
+    setGallery((g) => [...new Set([...scenes.map((s) => s.image).filter(Boolean), ...g])].slice(0, 8));
+    setEditing(true); setErr(""); setTab("make"); setStage("review"); toTop();
   }
   function again() { setStage("choose"); setPlan(null); setTrackId(""); setNote(""); setErr(""); setEditing(false); setMore(false); toTop(); }
   function relength(n: number) { if (n === length || busy) return; setLength(n); writeWords(n); }
@@ -260,7 +266,7 @@ export default function Reel() {
       </>)}
       {rowMsg[j.id] && <p className={`text-xs font-semibold ${rowMsg[j.id].ok ? "text-good" : "text-danger"}`}>{rowMsg[j.id].t}</p>}
       {!busyJob(j) && !big && <div className="flex items-center justify-between">
-        {!!j.input?.scenes?.length ? <a href={`/poster/reel?edit=${j.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Pencil className="h-3.5 w-3.5" /> {hi ? "बदलकर फिर बनाओ" : "Change & make again"}</a> : <span />}
+        {!!j.input?.scenes?.length ? <button type="button" onClick={() => openEdit(j)} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Pencil className="h-3.5 w-3.5" /> {hi ? "Edit — बदलकर फिर बनाओ" : "Edit — change & make again"}</button> : <span />}
         <button type="button" onClick={() => stopOrDelete(j)} disabled={acting === j.id + "x"} className="inline-flex items-center gap-1 text-xs text-muted disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>
       </div>}
     </div>
@@ -346,13 +352,12 @@ export default function Reel() {
 
             <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
               <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">{hi ? "Reel में यह बोला जाएगा" : "The reel will say"}</p><button type="button" onClick={() => writeWords()} disabled={busy !== ""} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink disabled:opacity-50"><RotateCw className={`h-3.5 w-3.5 ${busy === "plan" ? "animate-spin" : ""}`} /> {hi ? "नए शब्द" : "New words"}</button></div>
-              <p className="-mt-2 text-[11px] text-muted">{hi ? "किसी भी line पर tap करके बदलें। नीचे की पट्टी screen पर लिखी दिखेगी।" : "Tap any line to change it. The strip below each line is shown on screen."}</p>
+              <p className="-mt-2 text-[11px] text-muted">{hi ? "किसी भी line पर tap करके बदलें।" : "Tap any line to change it."}</p>
               <div className={`space-y-2 ${busy === "plan" ? "opacity-40" : ""}`}>
                 {plan.scenes.map((s, i) => (
                   <div key={i} className="rounded-xl border border-border p-2.5 focus-within:border-brand">
                     <div className="mb-1 flex items-center justify-between gap-2"><span className="text-[11px] font-bold text-brand-ink">Scene {i + 1}</span>{s.image ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={s.image} alt="" className="h-6 w-6 rounded object-cover" /> : <span className="text-[10px] text-muted">{s.source === "ai" ? "✨ AI" : s.source === "stock" ? "🎞 Clip" : "⚡"}</span>}</div>
                     <textarea rows={2} value={s.text} onChange={(e) => setScene(i, { text: e.target.value })} className="w-full resize-none bg-transparent text-[15px] leading-snug outline-none" />
-                    <input value={s.caption_text} onChange={(e) => setScene(i, { caption_text: e.target.value })} aria-label={hi ? "Screen पर" : "On screen"} className="mt-1 w-full rounded-md bg-surface2 px-2 py-1 text-xs font-semibold outline-none" />
                   </div>
                 ))}
                 <div className="rounded-xl border border-dashed border-border p-2.5 focus-within:border-brand"><span className="text-[11px] font-bold text-muted">{hi ? "आख़िरी line" : "Closing line"}</span><input value={plan.cta} onChange={(e) => setPlan({ ...plan, cta: e.target.value })} className="w-full bg-transparent text-[15px] outline-none" /></div>
@@ -411,6 +416,7 @@ export default function Reel() {
 
         {stage === "track" && (<>
           {tracked ? reelCard(tracked, true) : <div className="grid place-items-center py-16"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}
+          {tracked && !busyJob(tracked) && !!tracked.input?.scenes?.length && <button type="button" onClick={() => openEdit(tracked)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-border px-4 py-3 text-base font-semibold"><Pencil className="h-5 w-5" /> {hi ? "Edit करें — शब्द, आवाज़, music बदलकर फिर बनाओ" : "Edit — change words, voice, music and make again"}</button>}
           {tracked && !busyJob(tracked) && <button type="button" onClick={again} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border-2 border-brand px-4 py-3 text-base font-bold text-brand-ink"><Plus className="h-5 w-5" /> {hi ? "एक और reel बनाओ" : "Make another reel"}</button>}
           {tracked?.status === "failed" && plan && <button type="button" onClick={() => setStage("review")} className="w-full text-sm font-semibold text-brand-ink">{hi ? "उन्हीं शब्दों से फिर कोशिश करें →" : "Try again with the same words →"}</button>}
         </>)}
