@@ -73,13 +73,16 @@ export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", s
 /** Google's video model since Veo 3.1 was retired on the API (27 Oct 2026: "models/veo-3.1-fast-generate-preview is no
  *  longer available … use models/gemini-omni-1.1-flash"). Image-to-video through the Interactions API: the first frame
  *  is our still with the real product; 3-10 s at 720p with its own sound; ~$0.10 a second. Writes the mp4 to outFile. */
+// TESTING (owner, 27 Oct 2026): 360p clips cost about a third of 720p. Put back to "720p" before launch,
+// or set REAL_VIDEO_RES on the server. The clip is scaled up to 1080×1920 when it is joined.
+const REAL_RES = process.env.REAL_VIDEO_RES || "360p";
 export async function omniI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 8, log = () => {} }) {
   const model = process.env.REAL_VIDEO_MODEL || "gemini-omni-1.1-flash";
   const BASE = "https://generativelanguage.googleapis.com/v1beta";
   const H = { "x-goog-api-key": key, "Content-Type": "application/json" };
   const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
   const text = `${prompt}\nThe clip is exactly ${sec} seconds long and starts on the given image as its first frame.`;
-  const body = { model, input: [{ type: "image", data: jpg.toString("base64"), mime_type: "image/jpeg" }, { type: "text", text }], response_format: { type: "video", aspect_ratio: ratio === "16:9" ? "16:9" : "9:16", delivery: "uri" }, background: false, store: false, stream: false };
+  const body = { model, input: [{ type: "image", data: jpg.toString("base64"), mime_type: "image/jpeg" }, { type: "text", text }], response_format: { type: "video", aspect_ratio: ratio === "16:9" ? "16:9" : "9:16", resolution: REAL_RES, delivery: "uri" }, background: false, store: false, stream: false };
   let res, j;
   for (let a = 0; ; a++) {
     res = await fetch(`${BASE}/interactions`, { method: "POST", headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(11 * 60_000) });
