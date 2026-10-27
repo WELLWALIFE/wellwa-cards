@@ -36,7 +36,7 @@ function CreateHubInner() {
     { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel (free), Product video या असली Pro video — शब्द, आवाज़, music सब तैयार" : "A Reel (free), a Product video or a real Pro video — words, voice and music all done", href: "/poster/videos", items: [
       { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "एक tap में reel — शब्द, clips, आवाज़, music सब तैयार — free" : "One tap — words, clips, voice and music all done — free", tag: "FREE" },
       { href: "/poster/video", I: Clapperboard, t: "Product video", s: hi ? "आपके product की photo, AI वाले कमरे में · 20 credits" : "Your product photo in an AI-made room · 20 credits", tag: "AI" },
-      { href: "/poster/video/real", I: Clapperboard, t: "Pro video", s: hi ? "असली video — AI हर scene film करता है, आपके product के साथ · 20 credits से" : "A real video — AI films every scene with your product · from 20 credits", tag: "PRO" },
+      { href: "/poster/video/real", I: Clapperboard, t: "Pro video", s: hi ? "असली video — AI हर scene film करता है, आपके product के साथ · 50 credits से" : "A real video — AI films every scene with your product · from 50 credits", tag: "PRO" },
       { href: "/poster/text-video", I: Wand2, t: hi ? "अपने शब्दों से" : "From your own words", s: hi ? "10 सेकंड से 10 मिनट तक · 20 credits से" : "10 seconds to 10 minutes · from 20 credits" },
       { href: "/poster/explainer", I: Film, t: hi ? "लंबा video (5–10 मिनट)" : "Long video (5–10 minutes)", s: hi ? "1 मिनट के 10 credits (कम से कम 20)" : "10 credits a minute (at least 20)" },
     ] },

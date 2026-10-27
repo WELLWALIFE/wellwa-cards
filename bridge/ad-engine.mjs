@@ -310,6 +310,9 @@ export async function cutout(buf) {
   } catch { return null; }
 }
 
+/** A logo without its empty margins (a wordmark in a big white file became a tiny mark). */
+export async function trimLogo(buf) { try { return await sharp(buf).trim({ threshold: 12 }).toBuffer(); } catch { return buf; } }
+
 /** A product standing on the background: soft contact shadow under it. */
 async function standOn(bgJpg, product, W, H, { box, bottomY }) {
   const p = await sharp(product).resize(box.w, box.h, { fit: "inside" }).png().toBuffer(); const m = await sharp(p).metadata();
@@ -352,15 +355,15 @@ export async function renderProScene(file, { kind, fmt, tpl, inp, cut, photo, bg
     }
     // the logo mark (or the name) in the top corner, like a TV channel
     if (logo) {
-      const lh = Math.round(H * 0.035), pad = Math.round(lh * 0.25);
-      const lg = await sharp(logo).resize({ height: lh, width: Math.round(W * 0.24), fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
+      const lh = Math.round(H * 0.05), pad = Math.round(lh * 0.25);
+      const lg = await sharp(await trimLogo(logo)).resize({ height: lh, width: Math.round(W * 0.34), fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
       const plate = await sharp(Buffer.from(`<svg width="${m.width + pad * 2}" height="${m.height + pad * 2}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" rx="${Math.round((m.height + pad * 2) * 0.22)}" fill="#fff" fill-opacity="0.94"/></svg>`)).composite([{ input: lg, left: pad, top: pad }]).png().toBuffer();
       layers.push({ input: plate, left: Math.round(W * 0.05), top: Math.round(H * 0.035) });
     } else if (brand) svg += `<text x="${Math.round(W * 0.05)}" y="${Math.round(H * 0.06)}" font-family="${fam(brand)}" font-size="${base(0.035)}" font-weight="800" fill="#fff" letter-spacing="2">${esc(brand)}</text>`;
   } else {
     // closing card: big logo on a white card, the name, the action and the number
     const cw = Math.round(W * 0.8), cx = Math.round((W - cw) / 2);
-    const lg = logo ? await sharp(logo).resize({ width: Math.round(cw * 0.7), height: Math.round(H * 0.12), fit: "inside" }).png().toBuffer() : null; const lm = lg ? await sharp(lg).metadata() : null;
+    const lg = logo ? await sharp(await trimLogo(logo)).resize({ width: Math.round(cw * 0.78), height: Math.round(H * 0.14), fit: "inside" }).png().toBuffer() : null; const lm = lg ? await sharp(lg).metadata() : null;
     // the card's height first, so it can sit a little above the middle of the screen
     const est = base(0.06) + (lm ? lm.height + base(0.05) : 0) + base(logo ? 0.05 : 0.08) + base(0.05) + base(0.045) + base(0.04) + (phone ? base(0.13) : 0) + base(0.06);
     const cy = Math.max(Math.round(H * 0.12), Math.round((H - est) / 2 - H * 0.06));

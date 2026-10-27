@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft, ChevronRight, Camera, Clapperboard, Coins, SlidersHorizontal } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
-import { adCredits } from "@/lib/media/ad-pricing";
+import { adCredits, proCredits } from "@/lib/media/ad-pricing";
 
 export default function VideoDoor() {
   const router = useRouter();
@@ -53,7 +53,7 @@ export default function VideoDoor() {
         <div className="flex items-center gap-3">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-ai"><Clapperboard className="h-7 w-7" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-bold">{hi ? "Pro video — असली video" : "Pro video — a real video"} <span className="ml-1 rounded-full bg-ai/10 px-2 py-0.5 text-[11px] font-semibold text-ai">PRO · {adCost} credits</span></p>
+            <p className="text-[17px] font-bold">{hi ? "Pro video — असली video" : "Pro video — a real video"} <span className="ml-1 rounded-full bg-ai/10 px-2 py-0.5 text-[11px] font-semibold text-ai">PRO · {proCredits(10)} credits</span></p>
             <p className="text-sm text-muted">{hi ? "AI हर scene film करता है — लोग, घर और आपका असली product, हिलते हुए · 5–12 मिनट" : "AI films every scene — people, a home and your real product, moving · 5–12 minutes"}</p>
           </div>
           <ChevronRight className="h-6 w-6 shrink-0 text-ai" />

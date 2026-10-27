@@ -19,11 +19,11 @@ import { api, isLoggedIn, shareFile, downloadPoster, LANGS } from "@/lib/poster-
 import { AddCredits } from "@/components/poster/add-credits";
 import { goBack } from "@/lib/nav-back";
 import { useT } from "@/lib/poster-i18n";
-import { adCredits } from "@/lib/media/ad-pricing";
+import { adCredits, proCredits } from "@/lib/media/ad-pricing";
 import { ReelMaking } from "@/components/poster/reel-making";
 import { BrandPick, type BrandChoice } from "@/components/poster/brand-pick";
 
-type Scene = { text: string; caption_text: string; visual: string; motion: string };
+type Scene = { text: string; caption_text: string; visual: string; motion: string; still?: string };
 type Plan = { headline: string; scenes: Scene[]; cta: string; caption: string; features: string[]; voice?: string; music?: string; template?: string };
 type Job = { id: string; kind: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null;
   input?: { tier?: string; product?: string; offer?: string; caption?: string; outputs?: Record<string, string>; script?: string[]; headline?: string; features?: string[]; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string; template?: string; captions?: string; photos?: string[] } };
@@ -71,7 +71,8 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const [plan, setPlan] = useState<Plan | null>(null);
   const [length, setLength] = useState(10); const [look, setLook] = useState("bold"); const [voiceStyle, setVoiceStyle] = useState("warmf"); const [music, setMusic] = useState("upbeat-corporate"); const [subs, setSubs] = useState(true);
   const [photos, setPhotos] = useState<string[]>([]);
-  const [more, setMore] = useState(false); const [allVoices, setAllVoices] = useState(false); const [editing, setEditing] = useState(false);
+  const [more, setMore] = useState(false);
+  const [stillBusy, setStillBusy] = useState<Record<number, boolean>>({}); const [stillErr, setStillErr] = useState<Record<number, string>>({}); const [allVoices, setAllVoices] = useState(false); const [editing, setEditing] = useState(false);
   const audio = useRef<HTMLAudioElement | null>(null); const [playing, setPlaying] = useState("");
   // step 3 / 4 and shared
   const [trackId, setTrackId] = useState("");
@@ -108,7 +109,8 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const chosen = products.find((p) => p.id === productId);
   const name = (chosen?.name || product).trim();
   const making = jobs.some(busyJob);
-  const cost = adCredits(length);
+  const price = (n: number) => (real ? proCredits(n) : adCredits(n));
+  const cost = price(length);
   const brands = [...new Set(products.map((p) => (p.brand ?? "").trim()).filter(Boolean))];
   const base = (len = length) => ({ product: name, category: chosen?.category || category, goal: "leads", audience: "", lang, length: len, tone: "warm", offer: offer || chosen?.offer || "", phone, brandName: brand.name || firm, website: "", notes: "", tier, formats: ["reel"], ...(real ? {} : { product_id: productId || undefined }) });
 
@@ -122,6 +124,9 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
       const p = await post("/api/media/ad-plan", { ...base(len), features: [], photo: chosen?.photo_url || undefined });
       if (!p.ok) { setErr(p.status === 0 ? (hi ? "Internet नहीं है — फिर try करें।" : "No internet — please try again.") : (hi ? "शब्द नहीं लिखे जा सके। फिर try करें।" : "Could not write the words. Please try again.")); return; }
       const pl = p.data.plan as Plan; setPlan(pl); setEditing(false);
+      const ph = chosen ? [...new Set([...(chosen.photo_url ? [chosen.photo_url] : []), ...(real ? (chosen.photos ?? []).filter((x) => x.role !== "context").map((x) => x.url) : [])])].slice(0, real ? 5 : 1) : [];
+      // Pro video: the storyboard — one picture per shot, made now, seen and changed before anything is paid.
+      if (real) void storyboard(pl.scenes, ph);
       if (stage !== "review") {
         // The AI's own suggestions for look, voice and music, changeable under "और बदलें".
         if (pl.template && LOOKS.some(([k]) => k === pl.template)) setLook(pl.template);
@@ -166,6 +171,19 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     setEditing(true); setErr(""); setTab("make"); setStage("review"); toTop();
   }
   function again() { setStage("choose"); setPlan(null); setTrackId(""); setOffer(""); setErr(""); setEditing(false); setMore(false); toTop(); }
+  async function makeStill(i: number, visual: string, ph: string[]) {
+    setStillBusy((m) => ({ ...m, [i]: true }));
+    try {
+      const r = await post("/api/media/ad-stills", { visual, photos: ph });
+      if (r.ok && typeof r.data.url === "string") setPlan((p) => (p ? { ...p, scenes: p.scenes.map((x, k) => (k === i ? { ...x, still: String(r.data.url) } : x)) } : p));
+      else setStillErr((m) => ({ ...m, [i]: String(r.data.error ?? "") || (hi ? "तस्वीर नहीं बनी — फिर दबाएँ।" : "Could not make the picture — tap again.") }));
+    } finally { setStillBusy((m) => ({ ...m, [i]: false })); }
+  }
+  async function storyboard(scenes: Scene[], ph: string[]) {
+    setStillErr({});
+    const queue = scenes.map((x, i) => ({ i, v: x.visual })).filter((x) => x.v);
+    await Promise.all([0, 1].map(async () => { while (queue.length) { const q = queue.shift()!; await makeStill(q.i, q.v, ph); } }));
+  }
   function relength(n: number) { if (n === length || busy) return; setLength(n); writeWords(n); }
   const setScene = (i: number, p: Partial<Scene>) => plan && setPlan({ ...plan, scenes: plan.scenes.map((s, k) => (k === i ? { ...s, ...p } : s)) });
   function hear(key: string, url: string) {
@@ -298,8 +316,19 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                 {plan.scenes.map((s, i) => (
                   <div key={i} className="rounded-xl border border-border p-2.5 focus-within:border-brand">
                     <span className="text-[11px] font-bold text-brand-ink">Scene {i + 1}</span>
-                    <textarea rows={2} value={s.text} onChange={(e) => setScene(i, { text: e.target.value })} className="w-full resize-none bg-transparent text-[15px] leading-snug outline-none" />
-                    {real && <label className="mt-1 block rounded-md bg-surface2 px-2 py-1.5"><span className="block text-[10px] font-semibold text-muted">🎥 {hi ? "क्या दिखेगा (English में, AI के लिए)" : "What we see (for the AI)"}</span><textarea rows={2} value={s.visual} onChange={(e) => setScene(i, { visual: e.target.value })} className="w-full resize-none bg-transparent text-xs leading-snug outline-none" /></label>}
+                    <div className="flex gap-2.5">
+                      {/* The storyboard picture — the first frame the AI films from. */}
+                      {real && <div className="w-20 shrink-0 space-y-1 text-center">
+                        <div className="relative grid aspect-[9/16] w-20 place-items-center overflow-hidden rounded-lg border border-border bg-surface2">
+                          {s.still ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={s.still} alt="" className={`h-full w-full object-cover ${stillBusy[i] ? "opacity-40" : ""}`} /> : null}
+                          {stillBusy[i] ? <LoaderCircle className="absolute h-5 w-5 animate-spin text-brand" /> : !s.still ? <span className="px-1 text-[10px] text-muted">{hi ? "तस्वीर" : "Picture"}</span> : null}
+                        </div>
+                        <button type="button" disabled={!!stillBusy[i]} onClick={() => makeStill(i, s.visual, photos)} className="inline-flex items-center gap-0.5 text-[10px] font-semibold text-brand-ink disabled:opacity-50"><RotateCw className="h-3 w-3" /> {s.still ? (hi ? "नई" : "Redo") : (hi ? "बनाओ" : "Make")}</button>
+                      </div>}
+                      <textarea rows={real ? 4 : 2} value={s.text} onChange={(e) => setScene(i, { text: e.target.value })} className="min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-snug outline-none" />
+                    </div>
+                    {real && stillErr[i] && <p className="mt-1 text-[11px] font-semibold text-danger">{stillErr[i]}</p>}
+                    {real && <label className="mt-1 block rounded-md bg-surface2 px-2 py-1.5"><span className="block text-[10px] font-semibold text-muted">🎥 {hi ? "क्या दिखेगा (English में, AI के लिए) — बदलकर “नई” दबाएँ" : "What we see (for the AI) — change it, then tap Redo"}</span><textarea rows={2} value={s.visual} onChange={(e) => setScene(i, { visual: e.target.value })} className="w-full resize-none bg-transparent text-xs leading-snug outline-none" /></label>}
                   </div>
                 ))}
                 <div className="rounded-xl border border-dashed border-border p-2.5 focus-within:border-brand"><span className="text-[11px] font-bold text-muted">{hi ? "आख़िरी line" : "Closing line"}</span><input value={plan.cta} onChange={(e) => setPlan({ ...plan, cta: e.target.value })} className="w-full bg-transparent text-[15px] outline-none" /></div>
@@ -309,7 +338,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             <div className="rounded-2xl border border-border bg-surface">
               <button type="button" onClick={() => setMore((x) => !x)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold"><span>{hi ? "और बदलें" : "More options"} <span className="font-normal text-muted">— {hi ? "लंबाई, look, आवाज़, music" : "length, look, voice, music"}</span></span><ChevronDown className={`h-4 w-4 shrink-0 transition ${more ? "rotate-180" : ""}`} /></button>
               {more && <div className="space-y-4 border-t border-border p-4">
-                <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "लंबाई" : "Length"} <span className="font-normal">{hi ? "(बदलने पर शब्द फिर लिखे जाएँगे)" : "(rewrites the words)"}</span></p><div className="flex gap-1.5">{LENGTHS.map((n) => <button key={n} type="button" onClick={() => relength(n)} className={small(length === n)}>{n} {hi ? "सेकंड" : "s"} · {adCredits(n)}</button>)}</div></div>
+                <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "लंबाई" : "Length"} <span className="font-normal">{hi ? "(बदलने पर शब्द फिर लिखे जाएँगे)" : "(rewrites the words)"}</span></p><div className="flex gap-1.5">{LENGTHS.map((n) => <button key={n} type="button" onClick={() => relength(n)} className={small(length === n)}>{n} {hi ? "सेकंड" : "s"} · {price(n)}</button>)}</div></div>
                 <div><p className="mb-1.5 text-xs font-semibold text-muted">Look</p><div className="flex flex-wrap gap-1.5">{LOOKS.map(([k, h, e]) => <button key={k} type="button" onClick={() => setLook(k)} className={small(look === k)}>{hi ? h : e}</button>)}</div></div>
                 <div>
                   <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "आवाज़ — tap करके सुनें" : "Voice — tap to hear"}</p>
@@ -333,7 +362,8 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
 
             {errBox}
             {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
-            <button type="button" onClick={make} disabled={busy !== "" || making} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक video पहले से बन रही है" : "A video is already being made") : `${hi ? "Video बनाओ" : "Make my video"} · ${cost} credits`}</button>
+            {real && Object.values(stillBusy).some(Boolean) && <p className="text-center text-xs font-semibold text-brand-ink">{hi ? "Storyboard की तस्वीरें बन रही हैं… पसंद न आए तो “नई” दबाएँ — पैसे अभी नहीं कटे।" : "Making the storyboard pictures… tap Redo on any you do not like — nothing is charged yet."}</p>}
+            <button type="button" onClick={make} disabled={busy !== "" || making || (real && Object.values(stillBusy).some(Boolean))} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक video पहले से बन रही है" : "A video is already being made") : `${hi ? "Video बनाओ" : "Make my video"} · ${cost} credits`}</button>
             <p className="-mt-2 text-center text-[11px] text-muted">{hi ? `${length} सेकंड · Reel size · ${real ? "5–12" : "2–5"} मिनट · न बने तो पूरे credits वापस` : `${length} seconds · Reel size · ${real ? "5–12" : "2–5"} minutes · refunded in full if it fails`}{credits !== null ? ` · ${hi ? "आपके पास" : "you have"} ${credits}` : ""}</p>
           </div>
         )}

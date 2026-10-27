@@ -13,6 +13,12 @@ export function adCredits(lengthSec: number): number {
   return Math.max(20, Math.ceil(lengthSec / 5) * 10);
 }
 
+/** Pro video (AI films every scene — Veo, ~₹75-80 a 6-second shot) — owner's price, 27 Oct 2026:
+ *  10 s → 50, 20 s → 80, 30 s → 110 credits. */
+export function proCredits(lengthSec: number): number {
+  return lengthSec <= 10 ? 50 : lengthSec <= 20 ? 80 : 110;
+}
+
 /** Credit packs sold in-app (paise). Subscribers pay ₹10 a credit (less on big packs). */
 export const CREDIT_PACKS = [{ credits: 50, paise: 50000 }, { credits: 100, paise: 95000 }, { credits: 300, paise: 270000 }] as const;
 /** Pay-as-you-go (no subscription): same credit cost per action, but about ₹15 a credit, with a small starter pack. */

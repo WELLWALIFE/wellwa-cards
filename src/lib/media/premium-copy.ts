@@ -6,7 +6,7 @@
 //   - one smooth camera move + one small action per shot for the video model.
 // Any failure returns null and the first plan is used unchanged — this pass can only make it better, never block it.
 
-type Scene = { text: string; caption_text?: string; visual?: string; motion?: string };
+type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string };
 export type PolishPlan = { headline?: string; scenes: Scene[]; cta?: string; caption?: string };
 export type PolishBrief = { product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
 
@@ -40,34 +40,48 @@ Bad → good (Hindi):
 "दुकान और घर दोनों के लिए बेहतरीन और भरोसेमंद hydration।" → "हर घूँट हल्का, ताज़ा — और पूरे परिवार के लिए।"
 "अभी व्हाट्सएप करें 9876543210 पर और आर्डर बुक करें।" → "आज ही WhatsApp कीजिए — number स्क्रीन पर है।"
 
-${real ? `THE PICTURES (one per scene; first an image model draws the still, then a video model animates it)
-- "visual": one English paragraph a cinematographer would write: shot size + angle; the product described exactly as in the photo; where it stands; who is there and what they do (Indian people, natural, candid); the setting (a premium modern Indian home or a fitting real place); lighting (soft window light / warm golden hour / clean studio rim light); lens and depth of field (e.g. 50mm, shallow depth, creamy bokeh); colour mood. Photorealistic, high-end TV commercial, 9:16 vertical. No text, no logos, no captions anywhere.
-- The product is the hero and fully visible in EVERY shot. Shot plan: 1 = hero shot of the product alone, beautifully lit; 2 = close-up of a hand using it the way it is really used; later = a family moment with the product clearly in frame.
-- "motion": ONE smooth camera move + ONE small natural action, slow and premium, 8 seconds, e.g. "slow dolly-in towards the panel while a finger gently taps the display and it lights up" or "gentle orbit around the machine as clear water pours from the spout into a glass". No cuts, no zooming text, the product never changes shape.
+${real ? `THE FILM (a Pro video: an image model draws each shot's first frame from the product photo, then Google Veo animates it for 6 seconds)
+Work like a commercial director with a shot list. First write two bibles that are repeated WORD FOR WORD in every shot, so the whole ad looks like one film:
+- "product_bible": one precise English sentence describing THIS product exactly as in the photo — type, shape, colours, materials, the panel/screen and what is lit on it, buttons, spout/hose or other parts, logo position. Example style: "a wall-mounted water ionizer with a glossy black frame, a brushed-silver front, a vertical black touch display glowing soft blue with white icons, and a curved chrome swivel spout on top".
+- "set_bible": one English sentence for the one location and light used in every shot — e.g. "a premium modern Indian kitchen with white marble counters, warm wooden cabinets and brass utensils, soft morning sunlight from a window on the left, warm cinematic colour grade".
+Then for every scene a shot card:
+- "shot": shot size + lens + angle, e.g. "Medium close-up, 50mm lens, eye level, shallow depth of field".
+- "still": what is in the FIRST frame — where the product stands, who is there (Indian, natural, candid) and what they are doing at that moment. The product is fully visible and the hero.
+- "action": exactly ONE small natural action over the 6 seconds, written with time beats, e.g. "0-2s the camera settles; 2-4s a finger lightly taps the display and it glows brighter; 4-6s clear water starts to flow from the spout into a glass". Choose actions that really happen with this product.
+- "camera": exactly ONE smooth move — slow dolly-in, gentle orbit, slow tilt down, rack focus, or a locked-off shot.
+- "keep": the continuity rules for this shot — what must NOT change, e.g. "the display stays lit the whole time; the product keeps its exact shape, colours and position; nothing new appears; no text appears".
+Shot plan: 1 = the product alone, hero lighting, a slow push-in; 2 = a hand using it the way it is really used; later = a family moment with the product clearly in frame. Never show it as a bottle, box or package unless it is one. Never let a touch switch something off.
 ` : `- Keep "visual" and "motion" short English notes (they are not filmed for this video type).
 `}
 CURRENT PLAN (improve it; keep exactly ${n} scenes):
 ${JSON.stringify({ headline: plan.headline, scenes: plan.scenes.map((s) => ({ text: s.text, caption_text: s.caption_text ?? "", visual: s.visual ?? "", motion: s.motion ?? "" })), cta: plan.cta, caption: plan.caption })}
 
-JSON shape: {"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`;
+JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
   try {
     const parts: unknown[] = [];
     if (photo) parts.push({ inlineData: { mimeType: photo.mime, data: photo.data } });
     parts.push({ text: prompt });
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
       method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.8, maxOutputTokens: 4096 } }),
+      body: JSON.stringify({ contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0.8, maxOutputTokens: 6000 } }),
       signal: AbortSignal.timeout(45_000),
     });
     const j = await r.json().catch(() => ({}));
-    const out = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}") as PolishPlan;
+    const out = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}") as PolishPlan & { product_bible?: string; set_bible?: string; scenes: (Scene & { shot?: string; still?: string; action?: string; camera?: string; keep?: string })[] };
+    const pb = String(out.product_bible ?? "").trim().slice(0, 400), sb = String(out.set_bible ?? "").trim().slice(0, 400);
     if (!Array.isArray(out.scenes) || out.scenes.length !== n) return null;
     const clean = (s: unknown, max: number) => String(s ?? "").replace(/\+?\d[\d\s-]{5,}\d/g, "").replace(/\s{2,}/g, " ").trim().slice(0, max);
     const scenes = out.scenes.map((s, i) => ({
       text: clean(s.text, 200) || plan.scenes[i].text,
       caption_text: clean(s.caption_text, 60),
-      visual: String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "",
-      motion: String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "",
+      // Pro video: the prompts are COMPOSED here from the bibles and the shot card, so the product and the set are
+      // described word for word the same in every shot, and every motion prompt carries its continuity rules.
+      visual: real && s.still
+        ? `${s.shot ?? "Medium shot, 50mm lens"}. ${s.still} The product: ${pb || b.product}. Setting: ${sb || "a premium modern Indian home, soft natural light"}. Premium TV commercial, photorealistic, cinematic lighting, shallow depth of field, 9:16 vertical. No text, no letters, no logos, no watermark.`.slice(0, 1400)
+        : String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "",
+      motion: real && s.action
+        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. Smooth, slow, premium TV-commercial motion, no cuts.`.slice(0, 1200)
+        : String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "",
     }));
     if (scenes.some((s) => !s.text)) return null;
     return { headline: clean(out.headline, 60) || plan.headline, scenes, cta: clean(out.cta, 200) || plan.cta, caption: String(out.caption ?? "").trim().slice(0, 600) || plan.caption };

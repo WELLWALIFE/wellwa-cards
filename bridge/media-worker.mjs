@@ -514,7 +514,7 @@ async function reuseScene(inp, i, outFile) {
 /* ---------------- providers ---------------- */
 const VEO_CLIP_SEC = 8;
 // Seconds of each Pro-video clip that are used: Veo makes 8 s (6 s is its best part), Kling 5 s.
-const REAL_SHOT_SEC = GEMINI && process.env.REAL_VIDEO !== "kling" ? 6 : 5;
+const REAL_SHOT_SEC = GEMINI && process.env.REAL_VIDEO !== "kling" ? 5.6 : 5; // Veo clips are 6 s (paid per second), Kling 5 s
 
 async function veoClip(prompt, outFile, refs = []) {
   // referenceImages (max 3, type "asset") keep the owner's real product and
@@ -1146,7 +1146,7 @@ async function processAd(job) {
         // ad (27 Oct 2026). Spoken lines never carry it — the plan is told so, this is the safety net.
         if (inp.tier !== "testimonial") lines[i] = speakable(lines[i]);
         if (inp.voice !== false) { try { sec = await ttsLine(lines[i], w, inp.voiceStyle || "warm", inp.lang); wavs.push(w); } catch (e) { console.error("[ad] tts", e.message, "line:", JSON.stringify(lines[i]).slice(0, 160)); } }
-        voLines.push({ text: lines[i], sec, caption: wordCaps ? "" : (captions?.[i] ?? lines[i]), visual: planScenes?.[i]?.visual, motion: planScenes?.[i]?.motion, wav: wavs.includes(w) ? w : null });
+        voLines.push({ text: lines[i], sec, caption: wordCaps ? "" : (captions?.[i] ?? lines[i]), visual: planScenes?.[i]?.visual, motion: planScenes?.[i]?.motion, still: planScenes?.[i]?.still, wav: wavs.includes(w) ? w : null });
         await prog({ progress: { text: `Recording the voice (${i + 1} of ${lines.length})…` } });
       }
       // A line whose TTS failed used to be skipped silently: the ad still went
@@ -1263,7 +1263,7 @@ async function processAd(job) {
           // realistic + presenter buy their clips from fal — money leaves here
           if (single) await markSpent();
           out = inp.tier === "realistic"
-            ? await renderRealisticAd(dir, { ...vInp, __shot: REAL_SHOT_SEC }, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr, gemini: geminiJson, falKey: env.FAL_KEY, geminiKey: GEMINI, renderScene }, v.lines, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
+            ? await renderRealisticAd(dir, { ...vInp, __shot: REAL_SHOT_SEC }, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr, gemini: geminiJson, falKey: env.FAL_KEY, geminiKey: GEMINI, fetchPhoto, renderScene }, v.lines, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
             : inp.tier === "presenter"
             ? await renderPresenterAd(dir, { ...vInp, ctaText: v.lines?.[v.lines.length - 1]?.text || "" }, { presenterPhoto, voWav: v.voWav, logo, music: vMusic }, { ffmpeg: ffArr, falKey: env.FAL_KEY, renderScene }, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
             : await renderAd(dir, fmt, vInp, { photo, photos, logo, voWav: v.voWav, music: vMusic, ...(pro ? { pro: true, cut: pro.cut, bgs: pro.bgs } : {}) }, { ffmpeg: ffArr }, v.lines, kinds);

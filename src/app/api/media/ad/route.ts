@@ -2,7 +2,7 @@
 import { NextResponse } from "next/server";
 import { requireUser, sameOrigin, workerAlive, WORKER_DOWN } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
-import { adCredits, AD_LENGTHS, REALISTIC_MAX_LENGTH } from "@/lib/media/ad-pricing";
+import { adCredits, proCredits, AD_LENGTHS, REALISTIC_MAX_LENGTH } from "@/lib/media/ad-pricing";
 import { VOICE_KEYS } from "@/lib/media/voices";
 import { scriptFromPlan, identityPhotos } from "@/lib/media/ad-v2";
 import { sanitizeShot } from "@/lib/media/ad-planner";
@@ -55,7 +55,7 @@ export async function POST(request: Request) {
     voice: b.voice !== false,
     voiceStyle: VOICE_KEYS.includes(b.voiceStyle) ? b.voiceStyle : "warm",
     script: Array.isArray(b.script) ? b.script.map((l: unknown) => S(l, 200)).filter(Boolean).slice(0, 7) : undefined,
-    scenes: Array.isArray(b.scenes) ? b.scenes.slice(0, 6).map((sc: Record<string, unknown>) => ({ text: S(sc?.text, 200), caption_text: S(sc?.caption_text, 80), visual: S(sc?.visual, 600), motion: S(sc?.motion, 300) })).filter((sc: { text: string }) => sc.text) : undefined,
+    scenes: Array.isArray(b.scenes) ? b.scenes.slice(0, 6).map((sc: Record<string, unknown>) => ({ text: S(sc?.text, 200), caption_text: S(sc?.caption_text, 80), visual: S(sc?.visual, 1400), motion: S(sc?.motion, 1200), ...(typeof sc?.still === "string" && /^https:\/\/[^/]+\/storage\/v1\/object\/public\/media\/ai-media\//.test(sc.still) && sc.still.length < 400 ? { still: sc.still } : {}) })).filter((sc: { text: string }) => sc.text) : undefined,
     caption: S(b.caption, 600),
     captions: b.captions === "off" ? "off" : "words",
     variants: Number(b.variants) === 3 && (b.tier === "template" || b.tier === "realistic") ? 3 : 1,
@@ -139,7 +139,7 @@ export async function POST(request: Request) {
   const { count } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", session.user.id).in("status", ["queued", "running"]);
   if ((count ?? 0) > 0) return NextResponse.json({ error: "A video is already being made — please wait for it to finish." }, { status: 429 });
 
-  const cost = Math.ceil(adCredits(input.length) * (input.variants === 3 ? 1.5 : 1)); // 3 variations = +50%
+  const cost = input.tier === "realistic" ? proCredits(input.length) : Math.ceil(adCredits(input.length) * (input.variants === 3 ? 1.5 : 1)); // 3 variations = +50%
   // The job id exists before the charge so every ledger row carries it (idempotent refunds, per-job accounting).
   const id = crypto.randomUUID();
   const { error: spendErr } = await admin.rpc("spend_credits", { p_user: session.user.id, p_amount: cost, p_reason: "ad-builder", p_ref: id });

@@ -40,14 +40,16 @@ export async function sceneImage({ gemini, photo, photos = [], logo, brief, rati
 /** Google Veo image-to-video (owner, 27 Oct 2026: "jo jayada perfect bane wo tarika"): the first frame IS our still with
  *  the real product, so the product cannot change; Veo adds the cinematic motion (push-in, hands, pouring water).
  *  8-second clips; ~$0.15 a second on the fast model. Writes the mp4 to outFile. */
-export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", log = () => {} }) {
+export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 6, log = () => {} }) {
   const model = process.env.REAL_VEO_MODEL || "veo-3.1-fast-generate-preview";
   const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
-  const body = { instances: [{ prompt, image: { bytesBase64Encoded: jpg.toString("base64"), mimeType: "image/jpeg" } }], parameters: { aspectRatio: ratio === "16:9" ? "16:9" : "9:16", durationSeconds: 8, personGeneration: "allow_adult" } };
+  const body = { instances: [{ prompt, image: { bytesBase64Encoded: jpg.toString("base64"), mimeType: "image/jpeg" } }], parameters: { aspectRatio: ratio === "16:9" ? "16:9" : "9:16", durationSeconds: sec, personGeneration: "allow_adult" } };
   let start;
   for (let a = 0; ; a++) {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning`, { method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
     start = await res.json().catch(() => ({}));
+    // A model that only takes 8-second clips says so: ask again for 8 (paid by the second, so 6 is cheaper when allowed).
+    if (!start.name && body.parameters.durationSeconds !== 8 && /duration/i.test(JSON.stringify(start.error ?? ""))) { body.parameters.durationSeconds = 8; log("veo: 6 s not allowed here, using 8 s"); continue; }
     if (start.name || res.status !== 429 || a >= 3) break;
     log("veo rate-limited, waiting 30s"); await new Promise((r) => setTimeout(r, 30_000));
   }
@@ -66,6 +68,24 @@ export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", l
     return;
   }
   throw new Error("veo timeout");
+}
+
+/** Quality check of a finished clip (owner, 27 Oct 2026: "ionizer on karte hi light off ho gai"): the last moment of
+ *  the clip is compared with the product photo and the shot's continuity rules. {ok:false} → the clip is made once more. */
+export async function clipOk({ gemini, ffmpeg, clip, dir, i, refPhoto, keep }) {
+  try {
+    const f = path.join(dir, `qc-${i}.jpg`);
+    await ffmpeg(["-y", "-loglevel", "error", "-sseof", "-0.6", "-i", clip, "-frames:v", "1", "-q:v", "3", f]);
+    if (!fs.existsSync(f)) return { ok: true, why: "no frame" };
+    const img = (buf) => ({ inlineData: { mimeType: "image/jpeg", data: buf.toString("base64") } });
+    const parts = [];
+    if (refPhoto) parts.push(img(await sharp(refPhoto).resize(640, 640, { fit: "inside" }).jpeg().toBuffer()));
+    parts.push(img(fs.readFileSync(f)));
+    parts.push({ text: `The first image is the real product. The second is the LAST frame of an ad clip. Answer ONLY JSON {"ok":true|false,"why":"<8 words>"}. ok is false if: the product is missing, broken, melted, duplicated or clearly a different product; a screen or light that should be on is now dark (rule: ${keep || "lights stay on"}); hands or faces are deformed; or readable garbage text appears. Small changes of angle or light are fine.` });
+    const j = await gemini("gemini-3.5-flash", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 200 } });
+    const r = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}");
+    return { ok: r.ok !== false, why: String(r.why ?? "") };
+  } catch { return { ok: true, why: "qc skipped" }; }
 }
 
 /** Kling I2V via fal queue. Returns the mp4 URL. duration "5" | "10". */
@@ -98,8 +118,9 @@ export async function captionOverlay(file, { W, H, text, brand, card = "", botto
   let mark = null;
   if (logo) {
     try {
-      const lh = Math.round(H * 0.04), maxW = Math.round(W * 0.26), pad = Math.round(lh * 0.22);
-      const lg = await sharp(logo).resize({ height: lh, width: maxW, fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
+      const lh = Math.round(H * 0.055), maxW = Math.round(W * 0.36), pad = Math.round(lh * 0.22);
+      // trimmed first: a logo file with wide empty margins came out as a tiny unreadable mark (27 Oct 2026)
+      const lg = await sharp(await sharp(logo).trim({ threshold: 12 }).toBuffer().catch(() => logo)).resize({ height: lh, width: maxW, fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
       const pw = m.width + pad * 2, ph = m.height + pad * 2;
       const plate = await sharp(Buffer.from(`<svg width="${pw}" height="${ph}" xmlns="http://www.w3.org/2000/svg"><rect width="${pw}" height="${ph}" rx="${Math.round(ph * 0.22)}" fill="#fff" fill-opacity="0.92"/></svg>`)).composite([{ input: lg, left: pad, top: pad }]).png().toBuffer();
       mark = { input: plate, left: SAFE.side(W), top: SAFE.top(H), h: ph };
@@ -159,11 +180,25 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
     // cached across variations of the same job (same scenes, different words/music)
     let img;
     if (fs.existsSync(imgFile)) { img = fs.readFileSync(imgFile); log(`scene ${i} image cached`); }
+    else if (voLines[i]?.still && helpers.fetchPhoto && (img = await helpers.fetchPhoto(voLines[i].still))) { fs.writeFileSync(imgFile, img); log(`scene ${i} still from the storyboard`); }
     else { img = await sceneImage({ gemini: helpers.gemini, photo: all[i % all.length], photos: all, logo: assets.logo, brief: shots[i].img, ratio }); fs.writeFileSync(imgFile, img); log(`scene ${i} image ok`); }
     if (fs.existsSync(rawOf(i))) { log(`clip ${i} cached`); return; }
     // Veo first (cinematic, product locked by the first frame); Kling on fal when Veo is not set up or refuses the scene.
     if (helpers.geminiKey && process.env.REAL_VIDEO !== "kling") {
-      try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, no text appears.`, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) }); log(`clip ${i} veo ok`); return; }
+      try {
+        const vprompt = /Keep:/.test(shots[i].motion) ? shots[i].motion : `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, any screen or light on it stays on, no text appears.`;
+        const keep = (shots[i].motion.match(/Keep: ([^.]*)/) ?? [])[1] ?? "";
+        await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: vprompt, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });
+        // One automatic re-take when the check fails — paid by us, never by the owner.
+        const qc = await clipOk({ gemini: helpers.gemini, ffmpeg: helpers.ffmpeg, clip: rawOf(i), dir, i, refPhoto: all[0], keep });
+        if (!qc.ok) {
+          log(`clip ${i} failed the check (${qc.why}) — one re-take`);
+          const first = rawOf(i) + ".first.mp4"; fs.renameSync(rawOf(i), first);
+          try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: vprompt, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] retake ${m}`) }); }
+          catch { fs.renameSync(first, rawOf(i)); }
+        }
+        log(`clip ${i} veo ok`); return;
+      }
       catch (e) { log(`clip ${i} veo failed (${e instanceof Error ? e.message : e}) — trying Kling`); if (!helpers.falKey) throw e; }
     }
     const url = await klingClip({ falKey: helpers.falKey, imageBuf: await sharp(img).resize({ width: 1080 }).jpeg({ quality: 92 }).toBuffer(), prompt: shots[i].motion, duration: "5", log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });

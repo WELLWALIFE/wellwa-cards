@@ -40,7 +40,7 @@ export async function POST(request: Request) {
   if (brief.tier === "realistic" && brief.length > REALISTIC_MAX_LENGTH) brief.length = REALISTIC_MAX_LENGTH;
   if (!brief.product) return NextResponse.json({ error: "Enter the product name." }, { status: 400 });
   const scenes = brief.tier === "realistic"
-    ? (brief.length <= 10 ? 2 : brief.length <= 20 ? 4 : 6)
+    ? (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : 5) // Pro video shots are ~5.6 s each (Veo 6-second clips)
     : (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : brief.length <= 30 ? 4 : brief.length <= 45 ? 5 : 6);
 
   const admin = getAdminSupabase();

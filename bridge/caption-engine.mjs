@@ -65,10 +65,16 @@ export function wordCues(lines, { perGroup = 3 } = {}) {
     const total = weights.reduce((a, b) => a + b, 0);
     let t = l.start;
     const times = words.map((w, i) => { const d = (weights[i] / total) * l.sec; const c = { start: t, end: t + d }; t += d; return c; });
-    // groups of ≤perGroup words, never across the line
-    for (let g = 0; g < words.length; g += perGroup) {
-      const grp = words.slice(g, g + perGroup);
-      for (let k = 0; k < grp.length; k++) cues.push({ words: grp, hi: k, start: times[g + k].start, end: times[g + k].end });
+    // Groups follow the sentence (owner, 27 Oct 2026: subtitles broke mid-phrase, "का होना बहुत"): split at
+    // punctuation first, then cut each phrase into EVEN groups of at most perGroup+1 words — never a lone last word.
+    const max = perGroup + 1; const groups = []; let cur = [];
+    words.forEach((w, i) => { cur.push(i); if (/[,।.!?…—:;]$/.test(w) || i === words.length - 1) { groups.push(cur); cur = []; } });
+    for (const ph of groups) {
+      const parts = Math.ceil(ph.length / max), size = Math.ceil(ph.length / parts);
+      for (let g = 0; g < ph.length; g += size) {
+        const idx = ph.slice(g, g + size); const grp = idx.map((i) => words[i]);
+        idx.forEach((wi, k) => cues.push({ words: grp, hi: k, start: times[wi].start, end: times[wi].end }));
+      }
     }
   }
   // avoid zero-length / overlapping windows (a line that runs longer than its scene slot pushes the next line, never hides it)
