@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, Check, Copy, ChevronDown, Pencil, RotateCw, ImagePlus, Plus, ArrowRight } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, Check, Copy, ChevronDown, Pencil, RotateCw, ImagePlus, Plus, ArrowRight, Play, Pause } from "lucide-react";
 import { api, isLoggedIn, shareFile, downloadPoster, uploadImage, LANGS } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
@@ -32,7 +32,10 @@ const post = (body: unknown): Promise<Reply> =>
 const MAIN_LANGS = ["hi", "hinglish", "en"];
 const MUSIC = ["", "calm-ambient", "upbeat-corporate", "inspiring-motivational", "energetic-promo", "indian-sitar", "festive-diwali"];
 const MUSIC_NAMES: Record<string, [string, string]> = { "": ["कोई नहीं", "None"], "calm-ambient": ["शांत", "Calm"], "upbeat-corporate": ["खुशनुमा", "Lively"], "inspiring-motivational": ["जोश भरा", "Inspiring"], "energetic-promo": ["तेज़", "Energetic"], "indian-sitar": ["सितार", "Sitar"], "festive-diwali": ["त्योहार", "Festive"] };
-const VOICES: [string, string, string][] = [["warmf", "महिला · मीठी", "Woman · warm"], ["youthful", "महिला · युवा", "Woman · young"], ["warm", "पुरुष · मीठी", "Man · warm"], ["clear", "पुरुष · साफ़", "Man · clear"]];
+// Every voice has a short sample at /voices/<key>.mp3 (public/voices); the first four are shown, the rest on "और".
+const VOICES: [string, string, string][] = [["warmf", "महिला · मीठी", "Woman · warm"], ["youthful", "महिला · युवा", "Woman · young"], ["warm", "पुरुष · मीठी", "Man · warm"], ["clear", "पुरुष · साफ़", "Man · clear"],
+  ["calm", "महिला · शांत", "Woman · calm"], ["soft", "महिला · कोमल", "Woman · soft"], ["lively", "महिला · जोशीली", "Woman · lively"], ["mature", "महिला · अनुभवी", "Woman · mature"], ["gentle", "महिला · धीमी", "Woman · gentle"],
+  ["deep", "पुरुष · भारी", "Man · deep"], ["friendly", "पुरुष · दोस्ताना", "Man · friendly"], ["smooth", "पुरुष · मुलायम", "Man · smooth"], ["expert", "पुरुष · जानकार", "Man · expert"]];
 // The stages bridge/stock-reel.mjs reports: queued → voice → clips → assemble → done.
 const STEPS = [{ k: "voice", hi: "आवाज़", en: "Voice" }, { k: "clips", hi: "Clips", en: "Clips" }, { k: "assemble", hi: "जोड़ना", en: "Join" }, { k: "done", hi: "तैयार", en: "Ready" }];
 const MONEY_BACK = "Your credits have been returned.";
@@ -62,7 +65,10 @@ export default function Reel() {
   // step 2
   const [plan, setPlan] = useState<Plan | null>(null);
   const [length, setLength] = useState(15); const [voiceStyle, setVoiceStyle] = useState("warmf"); const [music, setMusic] = useState("calm-ambient");
-  const [gallery, setGallery] = useState<string[]>([]); const [more, setMore] = useState(false); const [editing, setEditing] = useState(false);
+  const [gallery, setGallery] = useState<string[]>([]); const [more, setMore] = useState(false);
+  // Hear before choosing (owner, 27 Oct 2026): one player for voice samples and music; tapping a chip picks it and plays it.
+  const audio = useRef<HTMLAudioElement | null>(null); const [playing, setPlaying] = useState(""); const [allVoices, setAllVoices] = useState(false);
+  const [subs, setSubs] = useState(true); /* the moving words (subtitles) under the picture */ const [editing, setEditing] = useState(false);
   // step 3 / 4
   const [trackId, setTrackId] = useState("");
   // shared
@@ -132,7 +138,7 @@ export default function Reel() {
     finally { setBusy(""); }
   }
   const names = [...new Set([product?.brand ?? "", ...products.map((x) => x.brand ?? ""), firm, brandName].map((x) => x.trim()).filter(Boolean))].slice(0, 5);
-  const form = (len = length) => ({ type: kind, logoUrl: useLogo ? logoUrl : "", business: product?.name || brandName || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, product_id: productId });
+  const form = (len = length) => ({ type: kind, logoUrl: useLogo ? logoUrl : "", business: product?.name || brandName || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, captions: subs ? "words" : "off", product_id: productId });
 
   /** Step 1 → 2: the AI writes the words; nothing is made yet. */
   async function writeWords(len = length) {
@@ -189,6 +195,13 @@ export default function Reel() {
   async function download(j: Job) { setActing(j.id + "d"); const ok = await downloadPoster(j.output_url!, `reel-${j.id.slice(0, 8)}.mp4`); setRowMsg((m) => ({ ...m, [j.id]: ok ? { t: hi ? "Phone में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Save नहीं हुई — फिर try करें" : "Could not save — try again", ok: false } })); setActing(""); }
   async function copyCaption(j: Job) { try { await navigator.clipboard.writeText(j.input?.caption ?? ""); setCopied(j.id); setTimeout(() => setCopied(""), 1500); } catch { /* ignore */ } }
 
+  function hear(key: string, url: string) {
+    if (!audio.current) { audio.current = new Audio(); audio.current.onended = () => setPlaying(""); }
+    if (playing === key) { audio.current.pause(); setPlaying(""); return; }
+    audio.current.src = url; audio.current.currentTime = 0;
+    audio.current.play().then(() => setPlaying(key)).catch(() => setPlaying(""));
+  }
+  useEffect(() => () => { audio.current?.pause(); }, []);
   if (!ready) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const inp = "w-full rounded-xl border border-border bg-surface px-3 py-3 text-[15px] outline-none focus:border-brand";
   const chip = (on: boolean) => `shrink-0 rounded-full border px-3.5 py-2 text-sm ${on ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`;
@@ -341,8 +354,18 @@ export default function Reel() {
               <button type="button" onClick={() => setMore((x) => !x)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold"><span>{hi ? "और बदलें" : "More options"} <span className="font-normal text-muted">— {hi ? "लंबाई, आवाज़, music, photos" : "length, voice, music, photos"}</span></span><ChevronDown className={`h-4 w-4 shrink-0 transition ${more ? "rotate-180" : ""}`} /></button>
               {more && <div className="space-y-4 border-t border-border p-4">
                 <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "लंबाई" : "Length"} <span className="font-normal">{hi ? "(बदलने पर शब्द फिर लिखे जाएँगे)" : "(rewrites the words)"}</span></p><div className="flex gap-1.5">{[10, 15, 20, 30].map((n) => <button key={n} type="button" onClick={() => relength(n)} className={small(length === n)}>{n} {hi ? "सेकंड" : "s"}</button>)}</div></div>
-                <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "आवाज़" : "Voice"}</p><div className="flex flex-wrap gap-1.5">{VOICES.map(([v, h, e]) => <button key={v} type="button" onClick={() => setVoiceStyle(v)} className={small(voiceStyle === v)}>{hi ? h : e}</button>)}</div></div>
-                <div><p className="mb-1.5 text-xs font-semibold text-muted">Music</p><div className="flex flex-wrap gap-1.5">{MUSIC.map((m) => <button key={m || "none"} type="button" onClick={() => setMusic(m)} className={small(music === m)}>{(MUSIC_NAMES[m] ?? [m, m])[hi ? 0 : 1]}</button>)}</div></div>
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "आवाज़ — tap करके सुनें" : "Voice — tap to hear"}</p>
+                  <div className="flex flex-wrap gap-1.5">{(allVoices ? VOICES : VOICES.slice(0, 4).concat(VOICES.slice(4).filter(([v]) => v === voiceStyle))).map(([v, h, e]) => <button key={v} type="button" onClick={() => { setVoiceStyle(v); hear(`v-${v}`, `/voices/${v}.mp3`); }} className={`${small(voiceStyle === v)} inline-flex items-center gap-1.5`}>{playing === `v-${v}` ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}{hi ? h : e}</button>)}{!allVoices && <button type="button" onClick={() => setAllVoices(true)} className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted">{hi ? "और आवाज़ें…" : "more…"}</button>}</div>
+                </div>
+                <div>
+                  <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Music — tap करके सुनें" : "Music — tap to hear"}</p>
+                  <div className="flex flex-wrap gap-1.5">{MUSIC.map((m) => <button key={m || "none"} type="button" onClick={() => { setMusic(m); if (m) hear(`m-${m}`, `/api/media/music/${m}`); else { audio.current?.pause(); setPlaying(""); } }} className={`${small(music === m)} inline-flex items-center gap-1.5`}>{m ? (playing === `m-${m}` ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />) : null}{(MUSIC_NAMES[m] ?? [m, m])[hi ? 0 : 1]}</button>)}</div>
+                </div>
+                <label className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <span className="min-w-0"><span className="block text-sm font-semibold">{hi ? "चलते शब्द (subtitles)" : "Moving words (subtitles)"}</span><span className="block text-[11px] text-muted">{hi ? "जो बोला जा रहा है, वह नीचे लिखा आता है" : "What is said appears at the bottom"}</span></span>
+                  <button type="button" role="switch" aria-checked={subs} onClick={() => setSubs((x) => !x)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${subs ? "bg-brand" : "bg-border-strong"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${subs ? "left-[22px]" : "left-0.5"}`} /></button>
+                </label>
                 <div>
                   <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "अपनी photos — नीचे किसी scene में लगाएँ" : "Your photos — use one in a scene below"}</p>
                   <div className="flex gap-2 overflow-x-auto pb-1">
