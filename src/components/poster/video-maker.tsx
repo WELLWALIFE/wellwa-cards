@@ -243,7 +243,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
           : <><p className="text-xs text-brand-ink">{j.progress?.text || (hi ? "बन रही है…" : "Making…")}</p>{!!j.input?.script?.length && <p className="rounded-lg bg-surface2 p-2 text-xs text-muted">{j.input.script.join(" ")}</p>}</>}
         <button type="button" onClick={() => stopOrDelete(j)} disabled={acting === j.id + "x"} className="w-full rounded-lg border border-danger/60 px-3 py-2.5 text-sm font-semibold text-danger disabled:opacity-60">{hi ? "रोक दें" : "Stop"}</button>
       </>)}
-      {j.status === "failed" && <p className="text-sm text-danger">{failLine(j.error, hi)}</p>}
+      {j.status === "failed" && <><p className="text-sm text-danger">{failLine(j.error, hi)}</p>{j.error && <details className="text-[11px] text-muted"><summary className="cursor-pointer">{hi ? "तकनीकी कारण (support के लिए)" : "Technical reason (for support)"}</summary><span className="break-words">{j.error}</span></details>}</>}
       {j.status === "done" && urlOf(j) && (<>
         <video src={urlOf(j)} controls playsInline preload={big ? "auto" : "metadata"} className={`mx-auto aspect-[9/16] rounded-xl bg-black ${big ? "max-h-[70dvh]" : "max-h-[55dvh]"}`} />
         <div className="flex gap-2">

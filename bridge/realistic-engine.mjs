@@ -101,7 +101,7 @@ export async function klingClip({ falKey, imageBuf, prompt, duration = "5", log 
     await new Promise((r) => setTimeout(r, 6000));
     const st = await fetch(statusUrl, { headers }).then((r) => r.json()).catch(() => ({}));
     log(`kling ${sj.request_id.slice(0, 8)} ${st.status}${st.queue_position != null ? " q" + st.queue_position : ""}`);
-    if (st.status === "COMPLETED") { const res = await fetch(resultUrl, { headers }).then((r) => r.json()); const url = res.video?.url; if (!url) throw new Error("fal: no video"); return url; }
+    if (st.status === "COMPLETED") { const res = await fetch(resultUrl, { headers }).then((r) => r.json()); const url = res.video?.url; if (!url) throw new Error("fal: no video — " + JSON.stringify(res).slice(0, 160)); return url; }
     if (st.status === "FAILED" || st.status === "ERROR") throw new Error("fal failed: " + JSON.stringify(st).slice(0, 200));
   }
   throw new Error("fal timeout");
@@ -184,25 +184,34 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
     else { img = await sceneImage({ gemini: helpers.gemini, photo: all[i % all.length], photos: all, logo: assets.logo, brief: shots[i].img, ratio }); fs.writeFileSync(imgFile, img); log(`scene ${i} image ok`); }
     if (fs.existsSync(rawOf(i))) { log(`clip ${i} cached`); return; }
     // Veo first (cinematic, product locked by the first frame); Kling on fal when Veo is not set up or refuses the scene.
+    // The failed Pro video of 27 Oct 2026 ("fal: no video") said nothing about WHY Veo failed first. Now: Veo with the
+    // full director prompt → Veo with a short plain prompt → Kling with the short prompt; every reason is kept and
+    // a final failure carries all of them, so the owner's screen and the log both say what really happened.
+    const errs = [];
+    const short = String(shots[i].motion).split(/Keep:/)[0].replace(/\s+/g, " ").trim().slice(0, 450) + " Photorealistic, smooth cinematic camera, the product stays exactly as in the first frame, no text.";
     if (helpers.geminiKey && process.env.REAL_VIDEO !== "kling") {
-      try {
-        const vprompt = /Keep:/.test(shots[i].motion) ? shots[i].motion : `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, any screen or light on it stays on, no text appears.`;
-        const keep = (shots[i].motion.match(/Keep: ([^.]*)/) ?? [])[1] ?? "";
-        await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: vprompt, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });
-        // One automatic re-take when the check fails — paid by us, never by the owner.
-        const qc = await clipOk({ gemini: helpers.gemini, ffmpeg: helpers.ffmpeg, clip: rawOf(i), dir, i, refPhoto: all[0], keep });
-        if (!qc.ok) {
-          log(`clip ${i} failed the check (${qc.why}) — one re-take`);
-          const first = rawOf(i) + ".first.mp4"; fs.renameSync(rawOf(i), first);
-          try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: vprompt, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] retake ${m}`) }); }
-          catch { fs.renameSync(first, rawOf(i)); }
-        }
-        log(`clip ${i} veo ok`); return;
+      const vprompt = /Keep:/.test(shots[i].motion) ? shots[i].motion : `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, any screen or light on it stays on, no text appears.`;
+      const keep = (shots[i].motion.match(/Keep: ([^.]*)/) ?? [])[1] ?? "";
+      for (const [tag, pr] of [["full", vprompt], ["short", short]]) {
+        try {
+          await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] veo ${tag}: ${m}`) });
+          // One automatic re-take when the check fails — paid by us, never by the owner.
+          const qc = await clipOk({ gemini: helpers.gemini, ffmpeg: helpers.ffmpeg, clip: rawOf(i), dir, i, refPhoto: all[0], keep });
+          if (!qc.ok) {
+            log(`clip ${i} failed the check (${qc.why}) — one re-take`);
+            const first = rawOf(i) + ".first.mp4"; fs.renameSync(rawOf(i), first);
+            try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] retake ${m}`) }); }
+            catch { fs.renameSync(first, rawOf(i)); }
+          }
+          log(`clip ${i} veo ok (${tag} prompt)`); return;
+        } catch (e) { const m = e instanceof Error ? e.message : String(e); errs.push(`veo ${tag}: ${m}`); log(`clip ${i} veo ${tag} failed: ${m}`); }
       }
-      catch (e) { log(`clip ${i} veo failed (${e instanceof Error ? e.message : e}) — trying Kling`); if (!helpers.falKey) throw e; }
     }
-    const url = await klingClip({ falKey: helpers.falKey, imageBuf: await sharp(img).resize({ width: 1080 }).jpeg({ quality: 92 }).toBuffer(), prompt: shots[i].motion, duration: "5", log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });
-    fs.writeFileSync(rawOf(i), Buffer.from(await (await fetch(url)).arrayBuffer()));
+    if (!helpers.falKey) throw new Error(errs.join(" | ").slice(0, 280) || "no video model set up");
+    try {
+      const url = await klingClip({ falKey: helpers.falKey, imageBuf: await sharp(img).resize({ width: 1080 }).jpeg({ quality: 92 }).toBuffer(), prompt: short, duration: "5", log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });
+      fs.writeFileSync(rawOf(i), Buffer.from(await (await fetch(url)).arrayBuffer()));
+    } catch (e) { errs.push(`kling: ${e instanceof Error ? e.message : e}`); throw new Error(errs.join(" | ").slice(0, 280)); }
     log(`clip ${i} downloaded`);
   }
   const queue = shots.map((_, i) => i);
