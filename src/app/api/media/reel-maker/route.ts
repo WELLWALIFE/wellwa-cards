@@ -24,7 +24,19 @@ export async function POST(request: Request) {
   let facts: ProductFacts | null = null;
   if (typeof b.product_id === "string" && /^[0-9a-f-]{36}$/i.test(b.product_id)) { const { data } = await admin.from("poster_products").select("facts").eq("id", b.product_id).eq("user_id", uid).single(); if ((data?.facts as ProductFacts)?.v === 1) facts = data!.facts as ProductFacts; }
 
+  // Today's free reels, counted from midnight in India (IST), not UTC — the owner's "today".
+  const madeToday = async () => {
+    const ist = new Date(Date.now() + 330 * 60_000); ist.setUTCHours(0, 0, 0, 0); const from = new Date(ist.getTime() - 330 * 60_000);
+    const { count } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", uid).eq("kind", "ad").eq("input->>tier", "stock").gte("created_at", from.toISOString());
+    return count ?? 0;
+  };
+  const LIMIT = { error: `You have made ${DAILY_FREE} reels today. Come back tomorrow.`, code: "daily_limit", left_today: 0 };
+  // The screen shows "2 of 3 left today" before the owner taps, and greys the button at 0.
+  if (b.action === "quota") return NextResponse.json({ left_today: Math.max(0, DAILY_FREE - (await madeToday())), daily: DAILY_FREE });
+
   if (b.action === "plan") {
+    // Checked before the AI writes anything: no words written for a reel that cannot be made.
+    if ((await madeToday()) >= DAILY_FREE) return NextResponse.json(LIMIT, { status: 429 });
     if (rateLimited(clientKey(request, `reel-plan:${uid}`), 30, 10 * 60_000)) return NextResponse.json({ error: "Please wait a moment and try again." }, { status: 429 });
     const type = TYPES[String(b.type)] ? String(b.type) : "tip";
     const prompt = `You write short vertical Reels for an Indian small business. Write ONE ${length}-second reel. Return ONLY JSON.
@@ -49,9 +61,8 @@ JSON: {"title":"<max 6 words>","scenes":[{"text":"","text_en":"","caption_text":
     if (!scenes.length) return NextResponse.json({ error: "Write the script first." }, { status: 400 });
     const { count: active } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", uid).in("status", ["queued", "running"]);
     if ((active ?? 0) > 0) return NextResponse.json({ error: "A video is already being made — please wait for it to finish." }, { status: 429 });
-    const day = new Date(); day.setUTCHours(0, 0, 0, 0);
-    const { count: today } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", uid).eq("kind", "ad").eq("input->>tier", "stock").gte("created_at", day.toISOString());
-    if ((today ?? 0) >= DAILY_FREE) return NextResponse.json({ error: `You have made ${DAILY_FREE} reels today. Come back tomorrow.` }, { status: 429 });
+    const today = await madeToday();
+    if (today >= DAILY_FREE) return NextResponse.json(LIMIT, { status: 429 });
     const input = { tier: "stock", product: S(b.title, 60) || S(b.business, 60) || "Reel", topic: S(b.topic, 300), scenes, cta: S(b.cta, 200), caption: S(b.caption, 600), lang, length, voice: b.voice !== false, voiceStyle: VOICE_KEYS.includes(b.voiceStyle) ? b.voiceStyle : "warm", music: /^[a-z0-9-]{0,40}$/i.test(String(b.music ?? "")) ? String(b.music ?? "") : "", captions: b.captions === "off" ? "off" : "words", template: "clean", brandName: S(b.brandName, 40), phone: S(b.phone, 20), website: S(b.website, 60), logoUrl: okUrl(b.logoUrl) ? b.logoUrl : "", formats: ["reel"], glossary: facts?.pronunciations?.[lang] ?? null };
     // "auto" scenes may become AI scenes (when no fitting stock clip exists): reserve their credits if the balance allows; unused ones are returned.
     const fixedAi = scenes.filter((x: { source: string }) => x.source === "ai").length; const autoN = scenes.filter((x: { source: string }) => x.source === "auto").length;
@@ -72,7 +83,7 @@ JSON: {"title":"<max 6 words>","scenes":[{"text":"","text_en":"","caption_text":
       console.error("[reel-maker] queue insert failed", id, error);
       return NextResponse.json({ error: cost > 0 ? "The reel could not be started. Your credits have been returned." : "The reel could not be started. Please try again." }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, jobId: job.id, charged: cost, left_today: DAILY_FREE - (today ?? 0) - 1 });
+    return NextResponse.json({ ok: true, jobId: job.id, charged: cost, left_today: Math.max(0, DAILY_FREE - today - 1) });
   }
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
 }
