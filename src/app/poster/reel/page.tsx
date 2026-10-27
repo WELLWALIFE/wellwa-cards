@@ -43,6 +43,7 @@ function failLine(raw: string | null | undefined, hi: boolean): string {
   const e = String(raw ?? "").toLowerCase();
   if (e.includes("cancel")) return hi ? "आपने ये reel रोक दी। बचे credits वापस आ गए।" : "You stopped this reel. Any credits we did not use have been returned.";
   if (/tts|voice|speech|audio/.test(e)) return hi ? "आवाज़ record नहीं हो पाई। Credits वापस आ गए।" : `The voice could not be recorded. ${MONEY_BACK}`;
+  if (/upload/.test(e)) return hi ? "Reel बन गई थी, पर save नहीं हो पाई। “बदलकर फिर बनाओ” से उन्हीं शब्दों से फिर बनाइए।" : "The reel was made but could not be saved. Use “Change & make again” to make it with the same words.";
   if (/clip|stock|image|photo|veo|kling|fal|pexels/.test(e)) return hi ? "एक scene की picture नहीं मिली। Credits वापस आ गए।" : `We could not get a picture for one scene. ${MONEY_BACK}`;
   return hi ? "Reel बन नहीं पाई। Credits वापस आ गए।" : `The reel could not be finished. ${MONEY_BACK}`;
 }
@@ -320,7 +321,8 @@ export default function Reel() {
               <p className="mt-2 text-[11px] text-muted">{useLogo && logoUrl ? (hi ? `हर scene के कोने में logo · आख़िर में logo + ${brandName || "नाम"}${phone ? " + 📞" : ""}` : `Logo in every scene's corner · at the end: logo + ${brandName || "name"}${phone ? " + 📞" : ""}`) : (hi ? `हर scene के कोने में “${brandName || "नाम"}” · आख़िर में नाम${phone ? " + 📞" : ""}` : `“${brandName || "name"}” in every scene's corner · name at the end${phone ? " + 📞" : ""}`)}</p>
             </div>
             {errBox}{overBox}
-            {making && <button type="button" onClick={() => setTab("mine")} className="w-full rounded-xl bg-brand-soft px-3 py-2.5 text-sm font-semibold text-brand-ink">{hi ? "एक reel अभी बन रही है — देखें →" : "A reel is being made — see it →"}</button>}
+            {/* A reel already on its way: one tap opens its live screen (step 3), not a list. */}
+            {(() => { const b = jobs.find(busyJob); if (!b) return null; const st = STEPS.find((x) => x.k === b.stage); return <button type="button" onClick={() => { setTrackId(b.id); setStage("track"); toTop(); }} className="flex w-full items-center gap-2 rounded-xl bg-brand-soft px-3 py-2.5 text-left text-sm font-semibold text-brand-ink"><LoaderCircle className="h-4 w-4 shrink-0 animate-spin" /><span className="flex-1">{hi ? `एक reel बन रही है${st && b.status === "running" ? ` · ${st.hi}` : ""}` : `A reel is being made${st && b.status === "running" ? ` · ${st.en}` : ""}`}</span><span>{hi ? "देखें →" : "See →"}</span></button>; })()}
             <button type="button" onClick={() => writeWords()} disabled={busy !== "" || over} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "plan" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {hi ? "शब्द लिख रहे हैं…" : "Writing the words…"}</> : over ? (hi ? "कल फिर बनाएँ" : "Come back tomorrow") : <>{hi ? "आगे — शब्द देखो" : "Next — see the words"} <ArrowRight className="h-5 w-5" /></>}</button>
           </div>
         )}

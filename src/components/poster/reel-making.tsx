@@ -66,7 +66,7 @@ export function ReelMaking({ stage, startedAt, scenes, title, hi }: { stage?: st
           <div className="grad-brand h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
           <div className="reel-sheen absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
         </div>
-        <p className="text-xs text-muted">{secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
+        <p className="text-xs text-muted">{secs > 480 ? (hi ? "यह reel अटक गई लगती है। नीचे “रोक दें” दबाकर फिर बनाइए — credits वापस आ जाएँगे।" : "This reel seems stuck. Tap “Stop” below and make it again — credits come back.") : secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
       </div>
 
       {/* A tip that changes */}

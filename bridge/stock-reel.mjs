@@ -211,8 +211,14 @@ export async function processStockReel(job, H) {
       const capped = path.join(dir, "reel-cap.mp4"); await burnCaptions(H.ffArr, out, capped, cues, { W, H: Hh }); out = capped;
     }
     const key = `ai-media/${job.owner_id}/reel-${job.id}.mp4`;
-    const up = await fetch(`${H.SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { apikey: H.SUPA_KEY, Authorization: `Bearer ${H.SUPA_KEY}`, "Cache-Control": "max-age=31536000", "Content-Type": "video/mp4", "x-upsert": "true" }, body: fs.readFileSync(out) });
-    if (!up.ok) throw new Error("upload failed");
+    // A finished reel must not be lost to one bad moment on the network (27 Oct 2026: a reel failed with
+    // "upload failed" at the very end). Three tries, a short wait between; the storage's own words go to the log.
+    let up = null, why = "";
+    for (let a = 1; a <= 3; a++) {
+      try { up = await fetch(`${H.SUPA_URL}/storage/v1/object/media/${key}`, { method: "POST", headers: { apikey: H.SUPA_KEY, Authorization: `Bearer ${H.SUPA_KEY}`, "Cache-Control": "max-age=31536000", "Content-Type": "video/mp4", "x-upsert": "true" }, body: fs.readFileSync(out), signal: AbortSignal.timeout(120000) }); if (up.ok) break; why = `${up.status} ${(await up.text().catch(() => "")).slice(0, 120)}`; } catch (e) { why = e instanceof Error ? e.message : String(e); up = null; }
+      log(`upload try ${a} failed: ${why}`); if (a < 3) await new Promise((r) => setTimeout(r, a * 3000));
+    }
+    if (!up?.ok) throw new Error(`upload failed: ${why}`.slice(0, 200));
     const url = `${H.SUPA_URL}/storage/v1/object/public/media/${key}?v=${Date.now()}`;
     // Return the reserved AI credits we did not use — but ONLY if this PATCH really
     // moved the row. A reel the owner stopped is no longer `running`: the cancel route
