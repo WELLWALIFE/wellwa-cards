@@ -69,6 +69,8 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   // Pro video: how the product is really operated (owner, 27 Oct 2026: "display se nahi chalta, button se chalta hai").
   // The AI never guesses this; it is remembered per product on this phone.
   const [usage, setUsage] = useState("");
+  // The owner's own words (owner, 27 Oct 2026: "user kuch text likhe, AI usko perfect likhe, user check kare, phir bane").
+  const [notes, setNotes] = useState(""); const [polishing, setPolishing] = useState(false);
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
   // step 2
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -115,7 +117,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const price = (n: number) => (real ? proCredits(n) : adCredits(n));
   const cost = price(length);
   const brands = [...new Set(products.map((p) => (p.brand ?? "").trim()).filter(Boolean))];
-  const base = (len = length) => ({ product: name, category: chosen?.category || category, goal: "leads", audience: "", lang, length: len, tone: "warm", offer: offer || chosen?.offer || "", phone, brandName: brand.name || firm, website: "", notes: "", tier, formats: ["reel"], ...(real ? {} : { product_id: productId || undefined }) });
+  const base = (len = length) => ({ product: name, category: chosen?.category || category, goal: "leads", audience: "", lang, length: len, tone: "warm", offer: offer || chosen?.offer || "", phone, brandName: brand.name || firm, website: "", notes: notes.trim(), tier, formats: ["reel"], ...(real ? {} : { product_id: productId || undefined }) });
 
   /** Step 1 → 2: the AI writes the words; nothing is charged yet. */
   async function writeWords(len = length) {
@@ -186,6 +188,18 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     setStillErr({});
     const queue = scenes.map((x, i) => ({ i, v: x.visual })).filter((x) => x.v);
     await Promise.all([0, 1].map(async () => { while (queue.length) { const q = queue.shift()!; await makeStill(q.i, q.v, ph); } }));
+  }
+  /** ✨ The owner's lines (typed or edited) made premium by the AI — same meaning, better words; the owner checks again. */
+  async function polish() {
+    if (!plan || polishing) return;
+    setPolishing(true); setErr("");
+    try {
+      const r = await post("/api/media/ad-plan", { ...base(), polish_only: true, plan, photo: chosen?.photo_url || undefined, ...(real && usage.trim() ? { usage: usage.trim() } : {}) });
+      if (!r.ok) { setErr(String(r.data.error ?? "") || (hi ? "AI अभी सुधार नहीं पाया — फिर दबाएँ।" : "The AI could not polish it — tap again.")); return; }
+      const np = r.data.plan as Plan;
+      setPlan(np);
+      if (real) void storyboard(np.scenes, photos); // the pictures follow the new shots
+    } finally { setPolishing(false); }
   }
   function relength(n: number) { if (n === length || busy) return; setLength(n); writeWords(n); }
   const setScene = (i: number, p: Partial<Scene>) => plan && setPlan({ ...plan, scenes: plan.scenes.map((s, k) => (k === i ? { ...s, ...p } : s)) });
@@ -284,6 +298,11 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                 <p className="text-xs text-muted">{hi ? <>Video में product की photo चाहिए? पहले <Link href="/poster/products" className="underline">Products</Link> में product जोड़ें।</> : <>Want your photo in the video? Add the product under <Link href="/poster/products" className="underline">Products</Link> first.</>}</p>
               </>)}
             </div>
+            <div>
+              <p className={label}><span className="grid h-5 w-5 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">✎</span> {hi ? "अपनी बात लिखें" : "Say it in your words"} <span className="font-normal text-muted">{hi ? "(ज़रूरी नहीं)" : "(optional)"}</span></p>
+              <textarea rows={3} maxLength={600} className={inp} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder={hi ? "जैसे: दिवाली पर 40% छूट, घर के पूरे परिवार के लिए साफ़ alkaline पानी, 2005 से भरोसा…" : "e.g. 40% off this Diwali, clean alkaline water for the whole family, trusted since 2005…"} />
+              <p className="mt-1 text-[11px] text-muted">{hi ? "जैसे भी लिखें — AI इसे premium ad की भाषा में लिखेगा, फिर आप देखकर ठीक करेंगे।" : "Write it any way — the AI turns it into premium ad words, then you check it."}</p>
+            </div>
             {real && <div>
               <p className={label}><span className="grid h-5 w-5 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">i</span> {hi ? "यह कैसे चलता है?" : "How is it used?"} <span className="font-normal text-muted">{hi ? "(ज़रूरी नहीं)" : "(optional)"}</span></p>
               <input className={inp} value={usage} maxLength={200} onChange={(e) => { setUsage(e.target.value); try { if (productId) localStorage.setItem(`pro.usage.${productId}`, e.target.value); } catch { /* private window */ } }} placeholder={hi ? "जैसे: सामने का button दबाने पर pipe से पानी आता है" : "e.g. press the front button and water comes from the pipe"} />
@@ -317,9 +336,9 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             </div>
 
             <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-              <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">{hi ? "Video में यह बोला जाएगा" : "The video will say"}</p><button type="button" onClick={() => writeWords()} disabled={busy !== ""} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink disabled:opacity-50"><RotateCw className={`h-3.5 w-3.5 ${busy === "plan" ? "animate-spin" : ""}`} /> {hi ? "नए शब्द" : "New words"}</button></div>
-              <p className="-mt-2 text-[11px] text-muted">{hi ? "किसी भी line पर tap करके बदलें।" : "Tap any line to change it."}</p>
-              <div className={`space-y-2 ${busy === "plan" ? "opacity-40" : ""}`}>
+              <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">{hi ? "Video में यह बोला जाएगा" : "The video will say"}</p><div className="flex items-center gap-3"><button type="button" onClick={polish} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 rounded-full bg-ai-soft px-2.5 py-1 text-xs font-semibold text-ai disabled:opacity-50">{polishing ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : "✨"} {hi ? "AI से सुधारो" : "Polish with AI"}</button><button type="button" onClick={() => writeWords()} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink disabled:opacity-50"><RotateCw className={`h-3.5 w-3.5 ${busy === "plan" ? "animate-spin" : ""}`} /> {hi ? "नए शब्द" : "New words"}</button></div></div>
+              <p className="-mt-2 text-[11px] text-muted">{hi ? "किसी भी line को अपने शब्दों में बदलें, फिर “✨ AI से सुधारो” — मतलब वही रहेगा, शब्द premium हो जाएँगे।" : "Change any line in your own words, then “✨ Polish with AI” — same meaning, premium words."}</p>
+              <div className={`space-y-2 ${busy === "plan" || polishing ? "opacity-40" : ""}`}>
                 <div className="rounded-xl border border-brand/30 bg-brand-soft/30 p-2.5 focus-within:border-brand"><span className="text-[11px] font-bold text-brand-ink">{hi ? "मुख्य line (screen पर बड़ी)" : "Headline (big on screen)"}</span><input value={plan.headline} onChange={(e) => setPlan({ ...plan, headline: e.target.value })} className="w-full bg-transparent text-[15px] font-semibold outline-none" /></div>
                 {plan.scenes.map((s, i) => (
                   <div key={i} className="rounded-xl border border-border p-2.5 focus-within:border-brand">
@@ -371,7 +390,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             {errBox}
             {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
             {real && Object.values(stillBusy).some(Boolean) && <p className="text-center text-xs font-semibold text-brand-ink">{hi ? "Storyboard की तस्वीरें बन रही हैं… पसंद न आए तो “नई” दबाएँ — पैसे अभी नहीं कटे।" : "Making the storyboard pictures… tap Redo on any you do not like — nothing is charged yet."}</p>}
-            <button type="button" onClick={make} disabled={busy !== "" || making || (real && Object.values(stillBusy).some(Boolean))} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक video पहले से बन रही है" : "A video is already being made") : `${hi ? "Video बनाओ" : "Make my video"} · ${cost} credits`}</button>
+            <button type="button" onClick={make} disabled={busy !== "" || making || polishing || (real && Object.values(stillBusy).some(Boolean))} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक video पहले से बन रही है" : "A video is already being made") : `${hi ? "Video बनाओ" : "Make my video"} · ${cost} credits`}</button>
             <p className="-mt-2 text-center text-[11px] text-muted">{hi ? `${length} सेकंड · Reel size · ${real ? "5–12" : "2–5"} मिनट · न बने तो पूरे credits वापस` : `${length} seconds · Reel size · ${real ? "5–12" : "2–5"} minutes · refunded in full if it fails`}{credits !== null ? ` · ${hi ? "आपके पास" : "you have"} ${credits}` : ""}</p>
           </div>
         )}

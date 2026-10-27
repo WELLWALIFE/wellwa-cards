@@ -8,7 +8,7 @@
 
 type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string };
 export type PolishPlan = { headline?: string; scenes: Scene[]; cta?: string; caption?: string };
-export type PolishBrief = { usage?: string; product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
+export type PolishBrief = { own?: string; ownLines?: boolean; usage?: string; product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
 
 const MODEL = "gemini-3.5-flash";
 
@@ -21,7 +21,7 @@ export async function polishPlan(key: string, plan: PolishPlan, b: PolishBrief, 
 Rewrite this ${b.length}-second vertical product ad so it feels like a premium Indian TV commercial. Return ONLY JSON.
 
 PRODUCT: ${b.product}${b.category ? ` (${b.category})` : ""}${b.brand ? ` · brand "${b.brand}"` : ""}${b.offer ? ` · offer: ${b.offer}` : ""}
-${b.facts ? `TRUE FACTS (use only these, never invent): ${b.facts}\n` : ""}${photo ? "The attached photo IS the product. Look at it closely: describe its real shape, colours, materials, panel/buttons and parts in every picture prompt so the video shows exactly this product.\n" : ""}LANGUAGE of every spoken line, the headline and captions: ${b.langRule}
+${b.own ? `THE OWNER'S OWN WORDS — what they want to say. Keep their meaning, their facts and their order; make the wording premium and natural; never add a claim they did not make:\n"${b.own}"\n` : ""}${b.ownLines ? "The CURRENT PLAN below was written or edited by the owner: polish the wording and timing of every line but keep what each line says.\n" : ""}${b.facts ? `TRUE FACTS (use only these, never invent): ${b.facts}\n` : ""}${photo ? "The attached photo IS the product. Look at it closely: describe its real shape, colours, materials, panel/buttons and parts in every picture prompt so the video shows exactly this product.\n" : ""}LANGUAGE of every spoken line, the headline and captions: ${b.langRule}
 
 THE COPY (spoken lines)
 - Sound like a real person talking warmly to one family member — not an announcer, not a brochure. Everyday words people actually say at home.

@@ -39,6 +39,14 @@ export async function POST(request: Request) {
   };
   if (brief.tier === "realistic" && brief.length > REALISTIC_MAX_LENGTH) brief.length = REALISTIC_MAX_LENGTH;
   if (!brief.product) return NextResponse.json({ error: "Enter the product name." }, { status: 400 });
+  // "✨ AI से सुधारो" (owner, 27 Oct 2026: the owner writes, the AI makes it perfect, the owner checks, then it is made):
+  // the owner's current lines are polished — nothing new is planned.
+  if (b.polish_only && b.plan && Array.isArray(b.plan.scenes) && b.plan.scenes.length) {
+    const cur = { headline: S(b.plan.headline, 80), cta: S(b.plan.cta, 200), caption: S(b.plan.caption, 600), scenes: (b.plan.scenes as Record<string, unknown>[]).slice(0, 6).map((x) => ({ text: S(x.text, 240), caption_text: S(x.caption_text, 80), visual: S(x.visual, 1400), motion: S(x.motion, 1200) })) };
+    const better = await polishPlan(key, cur, { own: brief.notes, ownLines: true, usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal }, await photoFor(b.photo));
+    if (!better) return NextResponse.json({ error: "The AI could not polish it right now — please try again." }, { status: 502 });
+    return NextResponse.json({ plan: { ...b.plan, ...better } });
+  }
   const scenes = brief.tier === "realistic"
     ? (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : 5) // Pro video shots are ~5.6 s each (Veo 6-second clips)
     : (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : brief.length <= 30 ? 4 : brief.length <= 45 ? 5 : 6);
@@ -61,7 +69,7 @@ export async function POST(request: Request) {
       const best = scripts[0].script;
       const plan = { headline: best.headline, scenes: best.scenes.map((x) => ({ text: x.text, caption_text: x.caption, visual: "", motion: "" })), cta: best.cta.text, caption: best.post_caption, features: best.features, voice: best.voice, music: best.music, template: best.template, questions: best.questions };
       // The premium copywriter + director pass (owner, 27 Oct 2026); the first plan stays if it fails.
-      const better = await polishPlan(key, plan, { usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: JSON.stringify(pf).slice(0, 1500) }, await photoFor(b.photo));
+      const better = await polishPlan(key, plan, { own: brief.notes, usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: JSON.stringify(pf).slice(0, 1500) }, await photoFor(b.photo));
       if (better) Object.assign(plan, better, { scenes: better.scenes.map((x) => ({ text: x.text, caption_text: x.caption_text ?? "", visual: x.visual ?? "", motion: x.motion ?? "" })) });
       return NextResponse.json({ plan, scripts, brief, storyboard, facts_version: prod?.facts_version ?? 0 });
     }
@@ -106,7 +114,7 @@ JSON shape:
     const plan = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}");
     if (!Array.isArray(plan.scenes) || !plan.scenes.length) throw new Error("no scenes");
     plan.scenes = plan.scenes.slice(0, scenes);
-    const better = await polishPlan(key, plan, { usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: facts.slice(0, 1500) }, await photoFor(b.photo));
+    const better = await polishPlan(key, plan, { own: brief.notes, usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: facts.slice(0, 1500) }, await photoFor(b.photo));
     if (better) Object.assign(plan, better);
     return NextResponse.json({ plan, brief, storyboard });
   } catch { return NextResponse.json({ error: "The AI plan could not be made — please try again." }, { status: 502 }); }
