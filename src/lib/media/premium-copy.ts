@@ -43,6 +43,7 @@ Bad → good (Hindi):
 ${real ? `THE FILM (a Pro video: an image model draws each shot's first frame from the product photo, then Google Veo films ONE continuous 8-second shot from it, with its own sound — like the best AI ads made in the Gemini app: one flowing camera move, rich detail, real light, real sound, no cuts inside a shot)
 Work like a commercial director with a shot list. First write two bibles that are repeated WORD FOR WORD in every shot, so the whole ad looks like one film:
 - "product_bible": one precise English sentence describing THIS product exactly as in the photo — type, shape, colours, materials, the panel/screen and what is lit on it, buttons, spout/hose or other parts, logo position. Example style: "a wall-mounted water ionizer with a glossy black frame, a brushed-silver front, a vertical black touch display glowing soft blue with white icons, and a curved chrome swivel spout on top".
+- "output_bible": one English sentence saying EXACTLY where anything comes OUT of this product, as seen in the photo — e.g. "water comes out only from the open tip of its own curved chrome spout on top, straight down into a glass held under it". If nothing comes out of it, say what its visible result is instead. Water, steam or light never comes from anywhere else, and there is never a second tap, faucet, sink or machine in the frame.
 - "set_bible": one English sentence for the one location and light used in every shot — e.g. "a premium modern Indian kitchen with white marble counters, warm wooden cabinets and brass utensils, soft morning sunlight from a window on the left, warm cinematic colour grade".
 Then for every scene a shot card:
 - "shot": shot size + lens + angle, e.g. "Medium close-up, 50mm lens, eye level, shallow depth of field".
@@ -58,7 +59,7 @@ HOW IT IS OPERATED: ${b.usage ? `the owner says: "${b.usage}" — show it EXACTL
 CURRENT PLAN (improve it; keep exactly ${n} scenes):
 ${JSON.stringify({ headline: plan.headline, scenes: plan.scenes.map((s) => ({ text: s.text, caption_text: s.caption_text ?? "", visual: s.visual ?? "", motion: s.motion ?? "" })), cta: plan.cta, caption: plan.caption })}
 
-JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":"","sound":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
+JSON shape: ${real ? `{"headline":"","product_bible":"","output_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":"","sound":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
   try {
     const parts: unknown[] = [];
     if (photo) parts.push({ inlineData: { mimeType: photo.mime, data: photo.data } });
@@ -71,6 +72,10 @@ JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":
     const j = await r.json().catch(() => ({}));
     const out = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}") as PolishPlan & { product_bible?: string; set_bible?: string; scenes: (Scene & { shot?: string; still?: string; action?: string; camera?: string; keep?: string })[] };
     const pb = String(out.product_bible ?? "").trim().slice(0, 400), sb = String(out.set_bible ?? "").trim().slice(0, 400);
+    // Where water (or anything) comes out — repeated in every picture and every motion prompt (owner, 27 Oct 2026: the
+    // video added its own kitchen faucet and the water came from there, not from the ionizer's pipe).
+    const ob = String((out as { output_bible?: string }).output_bible ?? "").trim().slice(0, 300) || "Anything that flows comes only out of the product's own outlet";
+    const NO_TAP = "There is NO other tap, faucet, sink spout or appliance anywhere in the frame";
     if (!Array.isArray(out.scenes) || out.scenes.length !== n) return null;
     const clean = (s: unknown, max: number) => String(s ?? "").replace(/\+?\d[\d\s-]{5,}\d/g, "").replace(/\s{2,}/g, " ").trim().slice(0, max);
     const scenes = out.scenes.map((s, i) => ({
@@ -79,10 +84,10 @@ JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":
       // Pro video: the prompts are COMPOSED here from the bibles and the shot card, so the product and the set are
       // described word for word the same in every shot, and every motion prompt carries its continuity rules.
       visual: real && s.still
-        ? `${s.shot ?? "Medium shot, 50mm lens"}. ${s.still} The product: ${pb || b.product}. Setting: ${sb || "a premium modern Indian home, soft natural light"}. Premium TV commercial, photorealistic, cinematic lighting, shallow depth of field, 9:16 vertical. No text, no letters, no logos, no watermark.`.slice(0, 1400)
+        ? `${s.shot ?? "Medium shot, 50mm lens"}. ${s.still} The product: ${pb || b.product}. Setting: ${sb || "a premium modern Indian home, soft natural light"}. ${ob}. ${NO_TAP}. Premium TV commercial, photorealistic, cinematic lighting, shallow depth of field, 9:16 vertical. No text, no letters, no logos, no watermark.`.slice(0, 1400)
         : String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "",
       motion: real && s.action
-        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. One continuous take, smooth and slow, premium TV-commercial look, photorealistic, natural skin and real reflections, no cuts. Audio: ${s.sound || "soft premium music bed with gentle natural ambience"}; no speech, no singing, no voice-over.`.slice(0, 1600)
+        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} ${ob}; it never comes from anywhere else. ${NO_TAP}, and none appears. Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. One continuous take, smooth and slow, premium TV-commercial look, photorealistic, natural skin and real reflections, no cuts. Audio: ${s.sound || "soft premium music bed with gentle natural ambience"}; no speech, no singing, no voice-over.`.slice(0, 1600)
         : String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "",
     }));
     if (scenes.some((s) => !s.text)) return null;

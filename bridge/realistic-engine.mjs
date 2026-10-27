@@ -28,7 +28,7 @@ export async function sceneImage({ gemini, photo, photos = [], logo, brief, rati
   // The logo is NOT given to the picture model any more: it drew it as a watermark on every scene. The logo mark is
   // laid on top later, sharp and the right size (27 Oct 2026).
   void logo; const parts = refs.map((b) => img(b, "image/png"));
-  const prompt = `Photorealistic advertising still (${ratio}) featuring the product shown in the first ${refs.length} reference image${refs.length > 1 ? "s (same product, different angles)" : ""}. Premium TV-commercial look: cinematic lighting, shallow depth of field, the product the hero of the frame and sharp. STRICT: the product must look EXACTLY like the reference — same shape, colours, panel, buttons, hose; one unit only. Scene: ${brief}. ALL PEOPLE ARE INDIAN (South Asian features, Indian clothing/home). Natural skin, realistic lighting, 35mm photo look. ABSOLUTELY NO TEXT, letters, numbers, captions or watermarks anywhere.`;
+  const prompt = `Photorealistic advertising still (${ratio}) featuring the product shown in the first ${refs.length} reference image${refs.length > 1 ? "s (same product, different angles)" : ""}. Premium TV-commercial look: cinematic lighting, shallow depth of field, the product the hero of the frame and sharp. STRICT: the product must look EXACTLY like the reference — same shape, colours, panel, buttons, hose; one unit only. Scene: ${brief}. ALL PEOPLE ARE INDIAN (South Asian features, Indian clothing/home). Natural skin, realistic lighting, 35mm photo look. No second tap, faucet, sink spout or other appliance anywhere in the frame — only this one product. ABSOLUTELY NO TEXT, letters, numbers, captions or watermarks anywhere.`;
   for (let t = 0; t < 2; t++) {
     const j = await gemini(IMG_MODEL, { contents: [{ parts: [...parts, { text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } });
     const p = (j.candidates?.[0]?.content?.parts ?? []).find((x) => x.inlineData?.data);
@@ -128,7 +128,7 @@ export async function clipOk({ gemini, ffmpeg, clip, dir, i, refPhoto, keep }) {
     const parts = [];
     if (refPhoto) parts.push(img(await sharp(refPhoto).resize(640, 640, { fit: "inside" }).jpeg().toBuffer()));
     parts.push(img(fs.readFileSync(f)));
-    parts.push({ text: `The first image is the real product. The second is the LAST frame of an ad clip. Answer ONLY JSON {"ok":true|false,"why":"<8 words>"}. ok is false if: the product is missing, broken, melted, duplicated or clearly a different product; a screen or light that should be on is now dark (rule: ${keep || "lights stay on"}); hands or faces are deformed; or readable garbage text appears. Small changes of angle or light are fine.` });
+    parts.push({ text: `The first image is the real product. The second is the LAST frame of an ad clip. Answer ONLY JSON {"ok":true|false,"why":"<8 words>"}. ok is false if: the product is missing, broken, melted, duplicated or clearly a different product; water or anything else flows from somewhere other than the product's own outlet (e.g. a separate kitchen tap or faucet appears); a screen or light that should be on is now dark (rule: ${keep || "lights stay on"}); hands or faces are deformed; or readable garbage text appears. Small changes of angle or light are fine.` });
     const j = await gemini("gemini-3.5-flash", { contents: [{ parts }], generationConfig: { responseMimeType: "application/json", temperature: 0, maxOutputTokens: 200 } });
     const r = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}");
     return { ok: r.ok !== false, why: String(r.why ?? "") };
@@ -237,7 +237,9 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
     const errs = [];
     const short = String(shots[i].motion).split(/Keep:/)[0].replace(/\s+/g, " ").trim().slice(0, 450) + " Photorealistic, smooth cinematic camera, the product stays exactly as in the first frame, no text.";
     if (helpers.geminiKey && process.env.REAL_VIDEO !== "kling") {
-      const vprompt = /Keep:/.test(shots[i].motion) ? shots[i].motion : `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, any screen or light on it stays on, no text appears.`;
+      // Safety net for every clip, old plans included: nothing flows from a tap the model invents.
+      const NO_TAP = " Anything that flows comes ONLY out of the product's own outlet/spout; no other tap, faucet or sink appears at any moment.";
+      const vprompt = NO_TAP.trim() + " " + (/Keep:/.test(shots[i].motion) ? shots[i].motion : `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, any screen or light on it stays on, no text appears.`);
       const keep = (shots[i].motion.match(/Keep: ([^.]*)/) ?? [])[1] ?? "";
       for (const [tag, pr] of [["full", vprompt], ["short", short]]) {
         try {
