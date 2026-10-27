@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { FORMATS } from "./ad-engine.mjs";
+import { FORMATS, renderProScene } from "./ad-engine.mjs";
 import { FPS, SAFE, INTERMEDIATE, DELIVERY_V, DELIVERY_A, MASTER_AF, DUCK, MUSIC_VOL, MUSIC_SOLO } from "./caption-engine.mjs";
 
 const FAL = "https://queue.fal.run";
@@ -25,14 +25,47 @@ const b64 = (buf, mime = "image/png") => `data:${mime};base64,${buf.toString("ba
 export async function sceneImage({ gemini, photo, photos = [], logo, brief, ratio = "9:16" }) {
   const img = (buf, mime) => ({ inlineData: { mimeType: mime, data: buf.toString("base64") } });
   const refs = [photo, ...photos.filter((p) => p !== photo)].filter(Boolean).slice(0, 3);
-  const parts = refs.map((b) => img(b, "image/png")); if (logo) parts.push(img(logo, "image/png"));
-  const prompt = `Photorealistic advertising still (${ratio}) featuring the product shown in the first ${refs.length} reference image${refs.length > 1 ? "s (same product, different angles)" : ""}${logo ? " and the brand logo from the LAST reference image small in a corner" : ""}. STRICT: the product must look EXACTLY like the reference — same shape, colours, panel, buttons, hose; one unit only. Scene: ${brief}. ALL PEOPLE ARE INDIAN (South Asian features, Indian clothing/home). Natural skin, realistic lighting, 35mm photo look. ABSOLUTELY NO TEXT, letters, numbers, captions or watermarks anywhere.`;
+  // The logo is NOT given to the picture model any more: it drew it as a watermark on every scene. The logo mark is
+  // laid on top later, sharp and the right size (27 Oct 2026).
+  void logo; const parts = refs.map((b) => img(b, "image/png"));
+  const prompt = `Photorealistic advertising still (${ratio}) featuring the product shown in the first ${refs.length} reference image${refs.length > 1 ? "s (same product, different angles)" : ""}. Premium TV-commercial look: cinematic lighting, shallow depth of field, the product the hero of the frame and sharp. STRICT: the product must look EXACTLY like the reference — same shape, colours, panel, buttons, hose; one unit only. Scene: ${brief}. ALL PEOPLE ARE INDIAN (South Asian features, Indian clothing/home). Natural skin, realistic lighting, 35mm photo look. ABSOLUTELY NO TEXT, letters, numbers, captions or watermarks anywhere.`;
   for (let t = 0; t < 2; t++) {
     const j = await gemini(IMG_MODEL, { contents: [{ parts: [...parts, { text: prompt }] }], generationConfig: { responseModalities: ["IMAGE"], imageConfig: { aspectRatio: ratio } } });
     const p = (j.candidates?.[0]?.content?.parts ?? []).find((x) => x.inlineData?.data);
     if (p) return Buffer.from(p.inlineData.data, "base64");
   }
   throw new Error("scene image failed");
+}
+
+/** Google Veo image-to-video (owner, 27 Oct 2026: "jo jayada perfect bane wo tarika"): the first frame IS our still with
+ *  the real product, so the product cannot change; Veo adds the cinematic motion (push-in, hands, pouring water).
+ *  8-second clips; ~$0.15 a second on the fast model. Writes the mp4 to outFile. */
+export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", log = () => {} }) {
+  const model = process.env.REAL_VEO_MODEL || "veo-3.1-fast-generate-preview";
+  const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
+  const body = { instances: [{ prompt, image: { bytesBase64Encoded: jpg.toString("base64"), mimeType: "image/jpeg" } }], parameters: { aspectRatio: ratio === "16:9" ? "16:9" : "9:16", durationSeconds: 8, personGeneration: "allow_adult" } };
+  let start;
+  for (let a = 0; ; a++) {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:predictLongRunning`, { method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" }, body: JSON.stringify(body), signal: AbortSignal.timeout(60_000) });
+    start = await res.json().catch(() => ({}));
+    if (start.name || res.status !== 429 || a >= 3) break;
+    log("veo rate-limited, waiting 30s"); await new Promise((r) => setTimeout(r, 30_000));
+  }
+  if (!start.name) throw new Error("veo start: " + JSON.stringify(start.error ?? start).slice(0, 160));
+  const t0 = Date.now();
+  while (Date.now() - t0 < 12 * 60_000) {
+    await new Promise((r) => setTimeout(r, 12_000));
+    const op = await fetch(`https://generativelanguage.googleapis.com/v1beta/${start.name}`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(30_000) }).then((r) => r.json()).catch(() => ({}));
+    if (!op.done) { log("veo working…"); continue; }
+    if (op.error) throw new Error("veo failed: " + JSON.stringify(op.error).slice(0, 160));
+    const gen = op.response?.generateVideoResponse ?? {};
+    const uri = gen.generatedSamples?.[0]?.video?.uri;
+    if (!uri) throw Object.assign(new Error("veo returned no video: " + JSON.stringify(gen.raiMediaFilteredReasons ?? op.response ?? {}).slice(0, 160)), { veoFiltered: true });
+    const vid = await fetch(uri, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(120_000) });
+    fs.writeFileSync(outFile, Buffer.from(await vid.arrayBuffer()));
+    return;
+  }
+  throw new Error("veo timeout");
 }
 
 /** Kling I2V via fal queue. Returns the mp4 URL. duration "5" | "10". */
@@ -100,6 +133,7 @@ export async function captionOverlay(file, { W, H, text, brand, card = "", botto
  * voLines: [{text, sec}] one per scene (+1 for CTA). Returns mp4 path.
  */
 export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log = () => {}, fmt = "reel") {
+  const SHOT = Number(inp.__shot) || 5; // seconds of each clip used (Veo makes 8, Kling 5)
   const { w: W, h: H } = FORMATS[fmt] ?? FORMATS.reel;
   const ratio = GEMINI_RATIO[fmt] ?? "9:16";
   const v2 = inp.__v2 ?? null; // pipeline 2: stills + raw clips are already in `dir`; scene lengths follow the voice
@@ -127,6 +161,11 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
     if (fs.existsSync(imgFile)) { img = fs.readFileSync(imgFile); log(`scene ${i} image cached`); }
     else { img = await sceneImage({ gemini: helpers.gemini, photo: all[i % all.length], photos: all, logo: assets.logo, brief: shots[i].img, ratio }); fs.writeFileSync(imgFile, img); log(`scene ${i} image ok`); }
     if (fs.existsSync(rawOf(i))) { log(`clip ${i} cached`); return; }
+    // Veo first (cinematic, product locked by the first frame); Kling on fal when Veo is not set up or refuses the scene.
+    if (helpers.geminiKey && process.env.REAL_VIDEO !== "kling") {
+      try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: `${shots[i].motion}. Photorealistic premium TV commercial, smooth cinematic camera, the product stays exactly as in the first frame, no text appears.`, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) }); log(`clip ${i} veo ok`); return; }
+      catch (e) { log(`clip ${i} veo failed (${e instanceof Error ? e.message : e}) — trying Kling`); if (!helpers.falKey) throw e; }
+    }
     const url = await klingClip({ falKey: helpers.falKey, imageBuf: await sharp(img).resize({ width: 1080 }).jpeg({ quality: 92 }).toBuffer(), prompt: shots[i].motion, duration: "5", log: (m) => log(`[${i + 1}/${shots.length}] ${m}`) });
     fs.writeFileSync(rawOf(i), Buffer.from(await (await fetch(url)).arrayBuffer()));
     log(`clip ${i} downloaded`);
@@ -137,16 +176,19 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   for (let i = 0; i < shots.length; i++) {
     const raw = rawOf(i);
     const ov = path.join(dir, `cap-${i}-${fmt}-${inp.template || "t"}${v2 ? "-k" : ""}.png`);
-    await captionOverlay(ov, { W, H, text: inp.captions === "off" && !v2 ? (voLines[i]?.caption || voLines[i]?.text || "") : "", brand: inp.brandName || "", card: v2 ? voLines[i]?.caption || "" : "" }); // pipeline 2: keyword card on top + word captions below
+    await captionOverlay(ov, { W, H, logo: assets.logo || null, text: inp.captions === "off" && !v2 ? (voLines[i]?.caption || voLines[i]?.text || "") : "", brand: inp.brandName || "", card: v2 ? voLines[i]?.caption || "" : "" }); // pipeline 2: keyword card on top + word captions below
     const out = path.join(dir, `clip-${i}.mp4`);
-    await helpers.ffmpeg(["-y", "-loglevel", "error", ...(v2 ? ["-ss", "0.4", "-t", (v2.slots[i] + 0.4).toFixed(2)] : []), "-i", raw, "-i", ov, "-filter_complex", `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS}[v];[v][1:v]overlay=0:0,format=yuv420p[o]`, "-map", "[o]", "-an", ...INTERMEDIATE, out]);
+    await helpers.ffmpeg(["-y", "-loglevel", "error", ...(v2 ? ["-ss", "0.4", "-t", (v2.slots[i] + 0.4).toFixed(2)] : ["-ss", "0.2", "-t", (SHOT + 0.2).toFixed(2)]), "-i", raw, "-i", ov, "-filter_complex", `[0:v]${v2 ? "" : "tpad=stop_mode=clone:stop_duration=1.5,"}scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS}[v];[v][1:v]overlay=0:0,format=yuv420p[o]`, "-map", "[o]", "-an", ...INTERMEDIATE, out]);
     clips.push(out); log(`clip ${i} ready`);
   }
   // CTA end card (template engine's cta scene) held for the last voice line
   const cta = path.join(dir, "cta.png");
-  await helpers.renderScene(cta, { kind: "cta", fmt, tpl: inp.template || "bold", inp: { ...inp, ctaText: voLines[nClips]?.text || voLines[voLines.length - 1]?.text || "" }, photo: null, logo: assets.logo, caption: "" });
+  // The closing card stands on the last scene, blurred: big logo, the name and the number (the PRO card).
+  const lastStill = path.join(dir, `scene-${nClips - 1}-${fmt}.png`);
+  try { await renderProScene(cta, { kind: "cta", fmt, tpl: inp.template || "bold", inp, bg: fs.existsSync(lastStill) ? fs.readFileSync(lastStill) : null, logo: assets.logo }); }
+  catch { await helpers.renderScene(cta, { kind: "cta", fmt, tpl: inp.template || "bold", inp: { ...inp, ctaText: voLines[nClips]?.text || voLines[voLines.length - 1]?.text || "" }, photo: null, logo: assets.logo, caption: "" }); }
   const ctaSec = v2 ? v2.ctaSlot : Math.max(3, (voLines[nClips]?.sec ?? 0) + 0.6);
-  const durs = [...clips.map((_, i) => (v2 ? v2.slots[i] + 0.4 : 5)), ctaSec];
+  const durs = [...clips.map((_, i) => (v2 ? v2.slots[i] + 0.4 : SHOT)), ctaSec];
   const N = clips.length;
   const args = ["-y", "-loglevel", "error"];
   clips.forEach((c) => args.push("-i", c));

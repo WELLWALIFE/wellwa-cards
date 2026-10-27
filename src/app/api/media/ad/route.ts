@@ -27,7 +27,8 @@ export async function POST(request: Request) {
   const idem = S(b.idem, 40);
   const okUrl = (u: unknown) => typeof u === "string" && /^https:\/\//.test(u) && u.length < 400;
   const tier = ["realistic", "presenter", "testimonial"].includes(b.tier) ? b.tier : "template";
-  if ((tier === "realistic" || tier === "presenter") && !process.env.FAL_KEY) return NextResponse.json({ error: "This video type is not set up yet (fal.ai key missing)." }, { status: 503 });
+  // A Pro (realistic) video is filmed by Veo (Gemini key) and falls back to Kling (fal key); the presenter needs fal.
+  if ((tier === "presenter" && !process.env.FAL_KEY) || (tier === "realistic" && !process.env.FAL_KEY && !process.env.GEMINI_API_KEY)) return NextResponse.json({ error: "This video type is not set up yet (fal.ai key missing)." }, { status: 503 });
   const testimonial = tier === "testimonial" && b.testimonial && typeof b.testimonial === "object"
     ? { text: S((b.testimonial as Record<string, unknown>).text, 320), customer_name: S((b.testimonial as Record<string, unknown>).customer_name, 60), city: S((b.testimonial as Record<string, unknown>).city, 40), rating: Math.max(1, Math.min(5, Number((b.testimonial as Record<string, unknown>).rating) || 5)) }
     : null;
