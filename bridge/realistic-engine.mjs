@@ -322,7 +322,7 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   }
   if (inp.cinematic) {
     // The film plays to the end — no white card. The titles fade in over the hero frame of the last cut.
-    const N = clips.length, TITLE = 2.8;
+    const N = clips.length, TITLE = 2.2; // the titles arrive with the hero frame (the last ~2 s), not over the water shot
     const total = clips.length * SHOT - 0.4 * (N - 1);
     const endPng = path.join(dir, `end-${fmt}.png`);
     await renderEndTitle(endPng, { W, H, inp, logo: assets.logo });

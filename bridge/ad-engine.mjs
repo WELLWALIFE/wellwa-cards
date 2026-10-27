@@ -401,8 +401,9 @@ export async function renderEndTitle(file, { W, H, inp, logo }) {
   let svg = `<defs><linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
     <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f5d78e"/><stop offset="0.5" stop-color="#fff1c9"/><stop offset="1" stop-color="#d9a441"/></linearGradient></defs>
     <rect width="${W}" height="${Math.round(H * 0.34)}" fill="url(#top)"/>`;
-  const bs = Math.min(base(0.105), Math.floor((W * 0.86) / Math.max(4, brand.length * 0.62)));
-  svg += `<text x="${W / 2}" y="${Math.round(H * 0.12) + bs}" text-anchor="middle" font-family="${tfont}" font-size="${bs}" font-weight="900" letter-spacing="${hasDev(brand) ? 0 : 3}" fill="url(#gold)">${esc(hasDev(brand) ? brand : brand.toUpperCase())}</text>`;
+  // Bold capitals are wide (~0.72 em each, plus the letter-spacing): "LICURE TECHNOLOGY" ran off both edges (27 Oct 2026).
+  const bs = Math.min(base(0.095), Math.floor((W * 0.84) / Math.max(4, brand.length * (hasDev(brand) ? 0.62 : 0.74))));
+  svg += `<text x="${W / 2}" y="${Math.round(H * 0.12) + bs}" text-anchor="middle" font-family="${tfont}" font-size="${bs}" font-weight="900" letter-spacing="${hasDev(brand) ? 0 : Math.round(bs * 0.04)}" textLength="${brand.length > 12 ? Math.round(W * 0.84) : ""}" lengthAdjust="spacingAndGlyphs" fill="url(#gold)">${esc(hasDev(brand) ? brand : brand.toUpperCase())}</text>`.replace(' textLength="" lengthAdjust="spacingAndGlyphs"', "");
   if (line) { const { lines, size } = fit(line, 30, base(0.042), 2); svg += textBlock(lines, W / 2, Math.round(H * 0.12) + bs + base(0.07), size, { fill: "#ffffff", anchor: "middle", weight: 600, family: lfont }); }
   // the lower-third
   svg += `<rect x="${base(0.05)}" y="${bandY}" width="${W - base(0.1)}" height="${bandH}" rx="${Math.round(bandH * 0.22)}" fill="#0b1220" fill-opacity="0.78"/>`;
