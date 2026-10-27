@@ -11,7 +11,7 @@ import type { ProductFacts } from "@/lib/media/product-facts";
 export const maxDuration = 60;
 const S = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const TYPES: Record<string, string> = { tip: "a useful tip or fact the audience will want to save and share (education first, product last)", benefit: "one clear benefit of the product or service in everyday life", offer: "the owner's offer, stated plainly with urgency (only the offer text given — never invent one)", review: "a happy-customer story told in third person (no invented names or numbers)", festival: "a warm festival greeting that gently connects to the business", story: "a short relatable everyday story that ends with the business as the answer" };
-const DAILY_FREE = 3;
+const DAILY_FREE = 50; // TESTING (owner, 27 Oct 2026): put back to 3 before launch
 const AI_SCENE_CREDITS = 1; // one generated picture ≈ ₹6 → 1 credit; stock clips and own images stay free
 
 export async function POST(request: Request) {
