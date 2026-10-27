@@ -2,13 +2,13 @@
 // "Your name on the video" — the logo (from the ones already in the app, or a new one) and the name to say and show.
 // Same block, same words as the Reel page (owner, 27 Oct 2026: "ek ko samjhne ke baad dusra easy lage"); the choice is
 // shared with the Reel page through the same saved key.
-import { useEffect, useState } from "react";
-import { Check, ImagePlus, LoaderCircle } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { Check, ImagePlus, LoaderCircle, X } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 
 export type BrandChoice = { name: string; logo: string };
-type Saved = { name?: string; logo?: string; useLogo?: boolean; uploads?: string[] };
+type Saved = { name?: string; logo?: string; useLogo?: boolean; uploads?: string[]; custom?: string[] };
 const KEY = "reel.identity";
 const read = (): Saved => { try { return JSON.parse(localStorage.getItem(KEY) || "{}"); } catch { return {}; } };
 const save = (x: Saved) => { try { localStorage.setItem(KEY, JSON.stringify({ ...read(), ...x })); } catch { /* private window */ } };
@@ -16,7 +16,9 @@ const save = (x: Saved) => { try { localStorage.setItem(KEY, JSON.stringify({ ..
 export function BrandPick({ hi, firm, brands, phone, onChange, corner = true }: { hi: boolean; firm: string; brands: string[]; phone: string; onChange: (c: BrandChoice) => void; corner?: boolean }) {
   const [logos, setLogos] = useState<{ url: string; label: string }[]>([]);
   const [logo, setLogo] = useState(""); const [useLogo, setUseLogo] = useState(true);
-  const [name, setName] = useState(""); const [own, setOwn] = useState(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
+  const [name, setName] = useState(""); const [own, setOwn] = useState(false);
+  // Names the owner typed are kept as their own chips (owner, 27 Oct 2026: "ek baar brand name save kar de to wo save hi rahna chahiye").
+  const [custom, setCustom] = useState<string[]>([]); const [draft, setDraft] = useState(""); const picked = useRef(false); const [busy, setBusy] = useState(false); const [err, setErr] = useState("");
 
   useEffect(() => { (async () => {
     const s = read();
@@ -25,10 +27,11 @@ export function BrandPick({ hi, firm, brands, phone, onChange, corner = true }: 
     setLogos(all);
     setLogo(all.some((x) => x.url === s.logo) ? s.logo! : all[0]?.url || "");
     if (typeof s.useLogo === "boolean") setUseLogo(s.useLogo);
-    setName((n) => n || s.name || "");
+    setCustom(s.custom ?? []);
+    if (s.name) { picked.current = true; setName(s.name); }
   })(); }, []);
-  // First brand of the products, else the firm, until the owner picks.
-  useEffect(() => { if (!name && (brands[0] || firm)) setName(brands[0] || firm); }, [brands, firm, name]);
+  // Only once, on open: the products' brand, else the firm — never again after the owner picks or clears.
+  useEffect(() => { if (!picked.current && (brands[0] || firm)) { picked.current = true; setName((n) => n || brands[0] || firm); } }, [brands, firm]);
   useEffect(() => { onChange({ name, logo: useLogo ? logo : "" }); }, [name, logo, useLogo, onChange]);
 
   async function add(file: File | null) {
@@ -37,7 +40,13 @@ export function BrandPick({ hi, firm, brands, phone, onChange, corner = true }: 
     catch { setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
     finally { setBusy(false); }
   }
-  const names = [...new Set([...brands, firm, name].map((x) => (x ?? "").trim()).filter(Boolean))].slice(0, 5);
+  const names = [...new Set([...custom, ...brands, firm].map((x) => (x ?? "").trim()).filter(Boolean))].slice(0, 8);
+  function keep() {
+    const n = draft.trim(); if (!n) return;
+    const next = [n, ...custom.filter((x) => x !== n)].slice(0, 6);
+    setCustom(next); setName(n); setOwn(false); setDraft(""); save({ custom: next, name: n });
+  }
+  function drop(n: string) { const next = custom.filter((x) => x !== n); setCustom(next); save({ custom: next }); if (name === n) { const f = brands[0] || firm || ""; setName(f); save({ name: f }); } }
   const small = (on: boolean) => `shrink-0 rounded-full border px-3 py-1.5 text-xs ${on ? "border-brand bg-brand-soft text-brand-ink font-semibold" : "border-border"}`;
   return (
     <div className="space-y-3">
@@ -53,10 +62,10 @@ export function BrandPick({ hi, firm, brands, phone, onChange, corner = true }: 
       <div className="space-y-1.5">
         <p className="text-[11px] text-muted">{hi ? "कौन-सा नाम बोला और दिखाया जाए?" : "Which name to say and show?"}</p>
         <div className="flex flex-wrap gap-1.5">
-          {names.map((n) => <button key={n} type="button" onClick={() => { setName(n); setOwn(false); save({ name: n }); }} className={small(name === n && !own)}>{n}{n === firm && names.length > 1 ? <span className="font-normal text-muted"> · {hi ? "कंपनी" : "company"}</span> : ""}</button>)}
+          {names.map((n) => <span key={n} className={`${small(name === n && !own)} inline-flex items-center gap-1`}><button type="button" onClick={() => { setName(n); setOwn(false); save({ name: n }); }}>{n}{n === firm && names.length > 1 ? <span className="font-normal text-muted"> · {hi ? "कंपनी" : "company"}</span> : ""}</button>{custom.includes(n) && <button type="button" aria-label={hi ? "हटाएँ" : "Remove"} onClick={() => drop(n)} className="text-muted"><X className="h-3 w-3" /></button>}</span>)}
           <button type="button" onClick={() => setOwn(true)} className={`${small(own)} border-dashed`}>+ {hi ? "दूसरा" : "Other"}</button>
         </div>
-        {own && <input autoFocus className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-brand" maxLength={40} placeholder={hi ? "जैसे: AlkaFresh" : "e.g. AlkaFresh"} value={name} onChange={(e) => { setName(e.target.value); save({ name: e.target.value }); }} />}
+        {own && <div className="flex gap-2"><input autoFocus className="min-w-0 flex-1 rounded-xl border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-brand" maxLength={40} placeholder={hi ? "जैसे: AlkaFresh" : "e.g. AlkaFresh"} value={draft} onChange={(e) => setDraft(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); keep(); } }} /><button type="button" onClick={keep} disabled={!draft.trim()} className="shrink-0 rounded-xl bg-brand px-4 text-sm font-semibold text-white disabled:opacity-40">{hi ? "Save" : "Save"}</button></div>}
       </div>
       <p className="text-[11px] text-muted">{useLogo && logo ? (hi ? `${corner ? "कोने में logo · " : ""}आख़िर में logo + ${name || "नाम"}${phone ? " + 📞" : ""}` : `${corner ? "Logo in the corner · " : ""}At the end: logo + ${name || "name"}${phone ? " + 📞" : ""}`) : (hi ? `आख़िर में ${name || "नाम"}${phone ? " + 📞" : ""}` : `At the end: ${name || "name"}${phone ? " + 📞" : ""}`)}</p>
     </div>

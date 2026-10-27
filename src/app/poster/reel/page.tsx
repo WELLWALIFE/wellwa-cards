@@ -6,7 +6,7 @@
 //   3. Making: the worker's stages (voice → clips → join → ready); the screen may be closed.
 //   4. Ready: the reel big, with WhatsApp / Download / Boost / caption copy / make another.
 // "मेरी reels" is its own tab. ?edit=<jobId> opens a made reel's words at step 2 (Change & make again).
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, Check, Copy, ChevronDown, Pencil, RotateCw, ImagePlus, Plus, ArrowRight, Play, Pause } from "lucide-react";
@@ -17,6 +17,7 @@ import { goBack } from "@/lib/nav-back";
 import { useT } from "@/lib/poster-i18n";
 import { REEL_KINDS as KINDS, type ReelKind } from "@/lib/reel-kinds";
 import { ReelMaking } from "@/components/poster/reel-making";
+import { BrandPick, type BrandChoice } from "@/components/poster/brand-pick";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
@@ -60,7 +61,7 @@ export default function Reel() {
   const [kind, setKind] = useState<ReelKind>("tip");
   const [business, setBusiness] = useState(""); const [category, setCategory] = useState(""); const [phone, setPhone] = useState(""); const [brandName, setBrandName] = useState("");
   // Who the reel says it is from (owner, 27 Oct 2026: "company Licure Technology, but I promote the brand AlkaFresh").
-  const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true); const [logos, setLogos] = useState<{ url: string; label: string }[]>([]); const [ownName, setOwnName] = useState(false);
+  const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true);
   const [productId, setProductId] = useState(""); const [products, setProducts] = useState<MyProduct[]>([]);
   const [note, setNote] = useState("");
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
@@ -82,6 +83,8 @@ export default function Reel() {
   const [acting, setActing] = useState(""); const [rowMsg, setRowMsg] = useState<Record<string, { t: string; ok: boolean }>>({});
   const [copied, setCopied] = useState("");
   const topRef = useRef<HTMLDivElement | null>(null);
+  // The logo and the name come from the same picker as the Product / Pro video (one place, remembered).
+  const onBrand = useCallback((c: BrandChoice) => { setBrandName(c.name); setLogoUrl(c.logo); setUseLogo(!!c.logo); }, []);
 
   async function refresh() { const r = await fetch("/api/media/jobs?kind=ad", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})); setJobs(((r.jobs ?? []) as Job[]).filter((j) => j.input?.tier === "stock")); if (typeof r.credits === "number") setCredits(r.credits); }
   async function quota() { const q = await post({ action: "quota" }); if (q.ok && typeof q.data.left_today === "number") { setLeft(q.data.left_today); setDaily(Number(q.data.daily) || 3); } }
@@ -99,18 +102,7 @@ export default function Reel() {
     // The business name, phone and trade come from the profile — nothing to type on a normal day.
     const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
     if (p) { setBusiness(p.name); setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); setLogoUrl(p.logo_url || ""); }
-    // The last name / logo choice comes back; else the products' brand (the name customers know), else the firm.
-    let saved: { name?: string; logo?: string; useLogo?: boolean; uploads?: string[] } = {};
-    try { saved = JSON.parse(localStorage.getItem("reel.identity") || "{}"); } catch { /* private window */ }
-    const firstBrand = (pr?.data.products ?? []).map((x) => (x.brand ?? "").trim()).find(Boolean);
-    setBrandName(saved.name || firstBrand || p?.name || "");
-    // Every logo already in the app; the saved choice if it is still one of them (or was uploaded here), else the first.
-    const found = (await api<{ logos?: { url: string; label: string }[] }>("/api/poster/logos").catch(() => null))?.data.logos ?? [];
-    const mine = (saved.uploads ?? []).filter((u) => !found.some((x) => x.url === u)).map((u) => ({ url: u, label: "Logo" }));
-    const all = [...found, ...mine];
-    setLogos(all);
-    setLogoUrl(all.some((x) => x.url === saved.logo) ? saved.logo! : all[0]?.url || "");
-    if (typeof saved.useLogo === "boolean") setUseLogo(saved.useLogo);
+    // The logo and the name are chosen in <BrandPick> (shared with the videos, remembered on this phone).
     quota();
     // Change & make again: a made reel's words, straight at step 2.
     const editId = q.get("edit");
@@ -146,15 +138,6 @@ export default function Reel() {
   const product = products.find((p) => p.id === productId);
   const making = jobs.some(busyJob);
   const over = left === 0;
-  const remember = (x: { name?: string; logo?: string; useLogo?: boolean; uploads?: string[] }) => { try { const o = JSON.parse(localStorage.getItem("reel.identity") || "{}"); localStorage.setItem("reel.identity", JSON.stringify({ ...o, ...x })); } catch { /* ignore */ } };
-  const pickName = (n: string) => { setBrandName(n); remember({ name: n }); };
-  async function addLogo(file: File | null) {
-    if (!file) return; setBusy("img"); setErr("");
-    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); setLogos((l) => [{ url: u, label: "Logo" }, ...l]); remember({ logo: u, useLogo: true, uploads: [u, ...logos.map((x) => x.url)].slice(0, 6) }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
-    catch { setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
-    finally { setBusy(""); }
-  }
-  const names = [...new Set([product?.brand ?? "", ...products.map((x) => x.brand ?? ""), firm, brandName].map((x) => x.trim()).filter(Boolean))].slice(0, 5);
   const form = (len = length) => ({ type: kind, logoUrl: useLogo ? logoUrl : "", business: product?.name || brandName || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, captions: subs ? "words" : "off", product_id: productId });
 
   /** Step 1 → 2: the AI writes the words; nothing is made yet. */
@@ -334,26 +317,7 @@ export default function Reel() {
             </div>
             <div>
               <p className={label}>{num(4)} {hi ? "Reel पर आपकी पहचान" : "Your name on the reel"}</p>
-              <div className="space-y-3">
-                {/* The logo — picked from the ones already in the app (profiles, website, brand, Brand kit); upload only if none fits. */}
-                <div>
-                  <p className="mb-1.5 text-[11px] text-muted">{hi ? "Logo — हर scene के कोने में और आख़िर में बड़ा" : "Logo — in every scene's corner and big at the end"}</p>
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {logos.map((l) => { const on = useLogo && logoUrl === l.url; return <button key={l.url} type="button" title={l.label} onClick={() => { setLogoUrl(l.url); setUseLogo(true); remember({ logo: l.url, useLogo: true }); }} className={`relative grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 ${on ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={l.url} alt={l.label} className="max-h-full max-w-full object-contain" />{on && <Check className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-brand p-0.5 text-white" />}</button>; })}
-                    <label className="grid h-14 w-14 shrink-0 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface2 text-center text-[10px] leading-tight text-muted">{busy === "img" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span><ImagePlus className="mx-auto h-4 w-4" />{hi ? "नया" : "New"}</span>}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>
-                    {logos.length > 0 && <button type="button" onClick={() => { setUseLogo(false); remember({ useLogo: false }); }} className={`grid h-14 shrink-0 place-items-center rounded-xl border-2 px-3 text-[11px] ${!useLogo ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border text-muted"}`}>{hi ? "बिना logo" : "No logo"}</button>}
-                  </div>
-                </div>
-                <div className="space-y-1.5">
-                  <p className="text-[11px] text-muted">{hi ? "कौन-सा नाम बोला और दिखाया जाए?" : "Which name to say and show?"}</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {names.map((n) => <button key={n} type="button" onClick={() => { pickName(n); setOwnName(false); }} className={small(brandName === n && !ownName)}>{n}{n === firm && names.length > 1 ? <span className="font-normal text-muted"> · {hi ? "कंपनी" : "company"}</span> : ""}</button>)}
-                    <button type="button" onClick={() => setOwnName(true)} className={`${small(ownName)} border-dashed`}>+ {hi ? "दूसरा" : "Other"}</button>
-                  </div>
-                  {ownName && <input autoFocus className={`${inp} py-2 text-sm`} maxLength={40} placeholder={hi ? "जैसे: AlkaFresh" : "e.g. AlkaFresh"} value={brandName} onChange={(e) => pickName(e.target.value)} />}
-                </div>
-              </div>
-              <p className="mt-2 text-[11px] text-muted">{useLogo && logoUrl ? (hi ? `हर scene के कोने में logo · आख़िर में logo + ${brandName || "नाम"}${phone ? " + 📞" : ""}` : `Logo in every scene's corner · at the end: logo + ${brandName || "name"}${phone ? " + 📞" : ""}`) : (hi ? `हर scene के कोने में “${brandName || "नाम"}” · आख़िर में नाम${phone ? " + 📞" : ""}` : `“${brandName || "name"}” in every scene's corner · name at the end${phone ? " + 📞" : ""}`)}</p>
+              <BrandPick hi={hi} firm={firm} brands={[...(product?.brand ? [product.brand] : []), ...products.map((x) => (x.brand ?? "").trim()).filter(Boolean)]} phone={phone} onChange={onBrand} />
             </div>
             {errBox}{overBox}
             {/* A reel already on its way: one tap opens its live screen (step 3), not a list. */}
