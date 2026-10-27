@@ -59,7 +59,20 @@ export async function klingClip({ falKey, imageBuf, prompt, duration = "5", log 
  * Both sit inside the platform safe area: the chip clears the WhatsApp Status
  * progress bar and sender name, the caption clears the Reels username strip.
  */
-export async function captionOverlay(file, { W, H, text, brand, card = "", bottom }) {
+export async function captionOverlay(file, { W, H, text, brand, card = "", bottom, logo = null }) {
+  // A logo, when the owner has one, replaces the name chip: a small mark on a white plate in the same top corner,
+  // like a TV channel's (owner, 27 Oct 2026: "name aur brand ki jagah logo"). The name chip stays the fallback.
+  let mark = null;
+  if (logo) {
+    try {
+      const lh = Math.round(H * 0.04), maxW = Math.round(W * 0.26), pad = Math.round(lh * 0.22);
+      const lg = await sharp(logo).resize({ height: lh, width: maxW, fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
+      const pw = m.width + pad * 2, ph = m.height + pad * 2;
+      const plate = await sharp(Buffer.from(`<svg width="${pw}" height="${ph}" xmlns="http://www.w3.org/2000/svg"><rect width="${pw}" height="${ph}" rx="${Math.round(ph * 0.22)}" fill="#fff" fill-opacity="0.92"/></svg>`)).composite([{ input: lg, left: pad, top: pad }]).png().toBuffer();
+      mark = { input: plate, left: SAFE.side(W), top: SAFE.top(H), h: ph };
+      brand = "";
+    } catch { mark = null; }
+  }
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;");
   const DEV = "Noto Sans Devanagari, Noto Sans Gujarati, Noto Sans Gurmukhi, Noto Sans Bengali, Noto Sans Tamil, Noto Sans Telugu, Noto Sans Kannada, Noto Sans Malayalam, Noto Sans Oriya, Liberation Sans, DejaVu Sans, sans-serif";
   const words = String(text).split(/\s+/); const lines = []; let cur = "";
@@ -74,9 +87,10 @@ export async function captionOverlay(file, { W, H, text, brand, card = "", botto
   ${brand ? `<rect x="${chipX}" y="${chipY}" rx="18" width="${Math.min(W * 0.6, brand.length * fs_ * 0.62 + 40)}" height="${fs_ + 22}" fill="#000" fill-opacity="0.35"/><text x="${chipX + 20}" y="${chipY + fs_ + 2}" font-family="${DEV}" font-size="${fs_ * 0.8}" font-weight="700" fill="#fff">${esc(brand)}</text>` : ""}
   ${hasText ? `<rect x="${W * 0.06}" y="${y0}" rx="22" width="${W * 0.88}" height="${boxH}" fill="#000" fill-opacity="0.45"/>` : ""}
   ${!hasText ? "" : lines.map((l, i) => `<text x="${W / 2}" y="${y0 + 18 + (i + 1) * lh - lh * 0.3}" text-anchor="middle" font-family="${DEV}" font-size="${fs_}" font-weight="700" fill="#fff">${esc(l)}</text>`).join("")}
-  ${card ? (() => { const c = String(card).trim(); const cf = Math.round(W * 0.06); const cw = Math.min(W * 0.9, c.length * cf * 0.6 + 56); const cy = Math.round(H * 0.2); return `<rect x="${(W - cw) / 2}" y="${cy - cf}" rx="${cf * 0.4}" width="${cw}" height="${cf * 1.7}" fill="#ffffff" fill-opacity="0.92"/><text x="${W / 2}" y="${cy + cf * 0.22}" text-anchor="middle" font-family="${DEV}" font-size="${cf}" font-weight="800" fill="#0f172a">${esc(c)}</text>`; })() : ""}
+  ${card ? (() => { const c = String(card).trim(); const cf = Math.round(W * 0.06); const cw = Math.min(W * 0.9, c.length * cf * 0.6 + 56); const cy = Math.round(Math.max(H * 0.2, mark ? mark.top + mark.h + cf * 1.6 : 0)); return `<rect x="${(W - cw) / 2}" y="${cy - cf}" rx="${cf * 0.4}" width="${cw}" height="${cf * 1.7}" fill="#ffffff" fill-opacity="0.92"/><text x="${W / 2}" y="${cy + cf * 0.22}" text-anchor="middle" font-family="${DEV}" font-size="${cf}" font-weight="800" fill="#0f172a">${esc(c)}</text>`; })() : ""}
   </svg>`;
-  await sharp(Buffer.from(svg)).png().toFile(file);
+  const img = sharp(Buffer.from(svg));
+  await (mark ? img.composite([{ input: mark.input, left: mark.left, top: mark.top }]) : img).png().toFile(file);
 }
 
 /**

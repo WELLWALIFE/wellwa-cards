@@ -149,7 +149,11 @@ export async function renderScene(file, { kind, fmt, tpl, inp, photo, logo, capt
     if (who) body += `<text x="${W / 2}" y="${afterY + base(0.1)}" text-anchor="middle" font-family="${fam(who)}" font-size="${base(0.045)}" font-weight="700" fill="${T.sub}">${esc(who)}</text>`;
   }
   if (kind === "cta") {
-    if (logo) { const l = await fitPhoto(logo, Math.round(W * 0.3), Math.round(H * 0.14)); const m = await sharp(l).metadata(); imgs.push({ input: l, left: Math.round((W - m.width) / 2), top: Math.round(H * 0.14) }); }
+    if (logo) {
+      const l = await fitPhoto(logo, Math.round(W * 0.3), Math.round(H * 0.14)); const m = await sharp(l).metadata(); imgs.push({ input: l, left: Math.round((W - m.width) / 2), top: Math.round(H * 0.14) });
+      // Logo + the name people know, together on the closing card (the no-phone, no-line card below draws its own).
+      if (brand && (phone || inp.website || inp.ctaText)) body += textBlock([String(brand).slice(0, 28)], W / 2, H * 0.14 + m.height + base(0.07), base(0.05), { fill: T.text, anchor: "middle", weight: 900 });
+    }
     else if (brand) {
       // auto-fit: long firm names ("Wellwa Life India Pvt Ltd") wrap to 2 lines and shrink so they never run off the card
       const bl = fit(brand, wrapN(tall ? 16 : 26), base(0.07), 2).lines;

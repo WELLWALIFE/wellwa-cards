@@ -21,7 +21,7 @@ import { ReelMaking } from "@/components/poster/reel-making";
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
 type Job = { id: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null; input?: { tier?: string; product?: string; caption?: string; duration_sec?: number; topic?: string; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string } };
-type MyProduct = { id: string; name: string; category?: string; photo_url?: string | null; photos?: { url: string; role?: string }[] };
+type MyProduct = { id: string; name: string; brand?: string | null; category?: string; photo_url?: string | null; photos?: { url: string; role?: string }[] };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 // A dropped mobile connection makes fetch() reject; without the catch the button would spin for ever.
 const post = (body: unknown): Promise<Reply> =>
@@ -54,6 +54,8 @@ export default function Reel() {
   // step 1
   const [kind, setKind] = useState<ReelKind>("tip");
   const [business, setBusiness] = useState(""); const [category, setCategory] = useState(""); const [phone, setPhone] = useState(""); const [brandName, setBrandName] = useState("");
+  // Who the reel says it is from (owner, 27 Oct 2026: "company Licure Technology, but I promote the brand AlkaFresh").
+  const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true); const [ownName, setOwnName] = useState(false);
   const [productId, setProductId] = useState(""); const [products, setProducts] = useState<MyProduct[]>([]);
   const [note, setNote] = useState("");
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
@@ -82,12 +84,19 @@ export default function Reel() {
     const [, pr, pp] = await Promise.all([
       refresh(),
       api<{ products?: MyProduct[] }>("/api/poster/products").catch(() => null),
-      api<{ profiles?: { name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string }[] }>("/api/poster/profiles").catch(() => null),
+      api<{ profiles?: { name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string; logo_url?: string | null }[] }>("/api/poster/profiles").catch(() => null),
     ]);
     setProducts(pr?.data.products ?? []);
     // The business name, phone and trade come from the profile — nothing to type on a normal day.
     const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
-    if (p) { setBusiness(p.name); setBrandName(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); }
+    if (p) { setBusiness(p.name); setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); setLogoUrl(p.logo_url || ""); }
+    // The last name / logo choice comes back; else the products' brand (the name customers know), else the firm.
+    let saved: { name?: string; logo?: string; useLogo?: boolean } = {};
+    try { saved = JSON.parse(localStorage.getItem("reel.identity") || "{}"); } catch { /* private window */ }
+    const firstBrand = (pr?.data.products ?? []).map((x) => (x.brand ?? "").trim()).find(Boolean);
+    setBrandName(saved.name || firstBrand || p?.name || "");
+    if (saved.logo) setLogoUrl(saved.logo);
+    if (typeof saved.useLogo === "boolean") setUseLogo(saved.useLogo);
     quota();
     // Change & make again: a made reel's words, straight at step 2.
     const editId = q.get("edit");
@@ -114,7 +123,16 @@ export default function Reel() {
   const product = products.find((p) => p.id === productId);
   const making = jobs.some(busyJob);
   const over = left === 0;
-  const form = (len = length) => ({ type: kind, business: product?.name || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, product_id: productId });
+  const remember = (x: { name?: string; logo?: string; useLogo?: boolean }) => { try { const o = JSON.parse(localStorage.getItem("reel.identity") || "{}"); localStorage.setItem("reel.identity", JSON.stringify({ ...o, ...x })); } catch { /* ignore */ } };
+  const pickName = (n: string) => { setBrandName(n); remember({ name: n }); };
+  async function addLogo(file: File | null) {
+    if (!file) return; setBusy("img"); setErr("");
+    try { const u = await uploadImage(await compressToFile(file, "logo.png", 800, 1, "png"), "logo"); if (u) { setLogoUrl(u); setUseLogo(true); remember({ logo: u, useLogo: true }); } else setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
+    catch { setErr(hi ? "Logo नहीं जुड़ा। फिर try करें।" : "Could not add the logo."); }
+    finally { setBusy(""); }
+  }
+  const names = [...new Set([product?.brand ?? "", ...products.map((x) => x.brand ?? ""), firm, brandName].map((x) => x.trim()).filter(Boolean))].slice(0, 5);
+  const form = (len = length) => ({ type: kind, logoUrl: useLogo ? logoUrl : "", business: product?.name || brandName || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, product_id: productId });
 
   /** Step 1 → 2: the AI writes the words; nothing is made yet. */
   async function writeWords(len = length) {
@@ -260,13 +278,33 @@ export default function Reel() {
             </div>
             <div className="space-y-2">
               <p className={label}>{num(2)} {products.length > 0 ? (hi ? "किसके बारे में?" : "Which product?") : (hi ? "कुछ ख़ास?" : "Anything to add?")}</p>
-              {products.length > 0 && <select value={productId} onChange={(e) => setProductId(e.target.value)} className={inp}><option value="">{hi ? "मेरा पूरा business" : "My business in general"}</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
+              {products.length > 0 && <select value={productId} onChange={(e) => { setProductId(e.target.value); const b = products.find((x) => x.id === e.target.value)?.brand?.trim(); if (b) setBrandName(b); }} className={inp}><option value="">{hi ? "मेरा पूरा business" : "My business in general"}</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
               {!business && !productId && <input className={inp} placeholder={hi ? "Business का नाम" : "Business name"} value={business} onChange={(e) => { setBusiness(e.target.value); setBrandName(e.target.value); setErr(""); }} />}
               <input className={inp} value={note} onChange={(e) => setNote(e.target.value)} placeholder={kind === "offer" ? (hi ? "Offer लिखें — जैसे: 20% छूट" : "Your offer — e.g. 20% off") : (hi ? "कुछ ख़ास कहना है? (ज़रूरी नहीं)" : "Anything to add? (optional)")} />
             </div>
             <div>
               <p className={label}>{num(3)} {hi ? "भाषा" : "Language"}</p>
               <div className="flex flex-wrap gap-1.5">{langs.map((l) => <button key={l.key} type="button" onClick={() => setLang(l.key)} className={chip(lang === l.key)}>{l.label}</button>)}{!moreLangs && <button type="button" onClick={() => setMoreLangs(true)} className="rounded-full border border-dashed border-border px-3.5 py-2 text-sm text-muted">{hi ? "और भाषाएँ…" : "more…"}</button>}</div>
+            </div>
+            <div>
+              <p className={label}>{num(4)} {hi ? "Reel पर आपकी पहचान" : "Your name on the reel"}</p>
+              <div className="flex items-start gap-3">
+                {/* The logo: on every scene's corner and big on the closing card. Tap to switch it off or on. */}
+                <div className="shrink-0 text-center">
+                  {logoUrl ? <button type="button" onClick={() => { setUseLogo((x) => !x); remember({ useLogo: !useLogo }); }} aria-pressed={useLogo} className={`relative grid h-16 w-16 place-items-center overflow-hidden rounded-xl border-2 bg-white p-1 ${useLogo ? "border-brand" : "border-border opacity-50"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={logoUrl} alt="Logo" className="max-h-full max-w-full object-contain" />{useLogo && <Check className="absolute right-0.5 top-0.5 h-3.5 w-3.5 rounded-full bg-brand p-0.5 text-white" />}</button>
+                    : <label className="grid h-16 w-16 cursor-pointer place-items-center rounded-xl border-2 border-dashed border-border bg-surface2 text-[11px] text-muted">{busy === "img" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <span><ImagePlus className="mx-auto h-4 w-4" />Logo</span>}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>}
+                  {logoUrl && <label className="mt-1 block cursor-pointer text-[11px] font-semibold text-brand-ink">{busy === "img" ? "…" : hi ? "बदलें" : "Change"}<input type="file" accept="image/*" className="hidden" onChange={(e) => addLogo(e.target.files?.[0] ?? null)} /></label>}
+                </div>
+                <div className="min-w-0 flex-1 space-y-1.5">
+                  <p className="text-[11px] text-muted">{hi ? "कौन-सा नाम बोला और दिखाया जाए?" : "Which name to say and show?"}</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {names.map((n) => <button key={n} type="button" onClick={() => { pickName(n); setOwnName(false); }} className={small(brandName === n && !ownName)}>{n}{n === firm && names.length > 1 ? <span className="font-normal text-muted"> · {hi ? "कंपनी" : "company"}</span> : ""}</button>)}
+                    <button type="button" onClick={() => setOwnName(true)} className={`${small(ownName)} border-dashed`}>+ {hi ? "दूसरा" : "Other"}</button>
+                  </div>
+                  {ownName && <input autoFocus className={`${inp} py-2 text-sm`} maxLength={40} placeholder={hi ? "जैसे: AlkaFresh" : "e.g. AlkaFresh"} value={brandName} onChange={(e) => pickName(e.target.value)} />}
+                </div>
+              </div>
+              <p className="mt-2 text-[11px] text-muted">{useLogo && logoUrl ? (hi ? `हर scene के कोने में logo · आख़िर में logo + ${brandName || "नाम"}${phone ? " + 📞" : ""}` : `Logo in every scene's corner · at the end: logo + ${brandName || "name"}${phone ? " + 📞" : ""}`) : (hi ? `हर scene के कोने में “${brandName || "नाम"}” · आख़िर में नाम${phone ? " + 📞" : ""}` : `“${brandName || "name"}” in every scene's corner · name at the end${phone ? " + 📞" : ""}`)}</p>
             </div>
             {errBox}{overBox}
             {making && <button type="button" onClick={() => setTab("mine")} className="w-full rounded-xl bg-brand-soft px-3 py-2.5 text-sm font-semibold text-brand-ink">{hi ? "एक reel अभी बन रही है — देखें →" : "A reel is being made — see it →"}</button>}

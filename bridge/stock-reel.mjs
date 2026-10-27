@@ -126,6 +126,7 @@ export async function processStockReel(job, H) {
     // 2. pictures: the owner's image if the scene has one, else a stock clip
     await patch({ stage: "clips", progress: { text: "Finding clips…" } });
     const used = new Set(); const credits = []; const clips = [];
+    const logoBuf = inp.logoUrl ? await H.fetchPhoto(inp.logoUrl) : null; // the mark on every scene and the end card
     // AUTO: one consistent look. Find a genuinely fitting stock clip for EVERY open scene; if even one scene has none, make all of them AI scenes.
     const open = scenes.map((sc, i) => i).filter((i) => !scenes[i].image && (scenes[i].source ?? "auto") === "auto");
     const picked = new Map(); let aiUsed = 0;
@@ -138,7 +139,7 @@ export async function processStockReel(job, H) {
     }
     for (let i = 0; i < n; i++) {
       const out = path.join(dir, `s-${i}.mp4`); const d = slots[i] + XF; const sc = scenes[i];
-      const ov = path.join(dir, `ov-${i}.png`); await captionOverlay(ov, { W, H: Hh, text: "", brand: inp.brandName || "", card: String(sc.caption_text || "").trim().split(/\s+/).slice(0, 6).join(" ") });
+      const ov = path.join(dir, `ov-${i}.png`); await captionOverlay(ov, { W, H: Hh, text: "", brand: inp.brandName || "", logo: logoBuf, card: String(sc.caption_text || "").trim().split(/\s+/).slice(0, 6).join(" ") });
       let img = sc.image ? await H.fetchPhoto(String(sc.image).split("?")[0]) : null;
       let aiMade = false;
       if (!img && sc.source === "ai") { // AI scene: one generated photo of Indian people / places for this line, then a slow camera move (no AI video)
@@ -174,7 +175,7 @@ export async function processStockReel(job, H) {
       await patch({ progress: { text: `Building the scenes (${i + 1}/${n})…` } });
     }
     // 3. CTA card + voice track + assembly
-    const cta = path.join(dir, "cta.png"); const logo = inp.logoUrl ? await H.fetchPhoto(inp.logoUrl) : null;
+    const cta = path.join(dir, "cta.png"); const logo = logoBuf;
     await H.renderScene(cta, { kind: "cta", fmt: "reel", tpl: inp.template || "clean", inp: { ...inp, ctaText: lines[n] || "" }, photo: null, logo, caption: "" });
     // The end card has its own slot, whether or not the owner wrote a closing line.
     // `lines` drops an empty CTA (.filter(Boolean)), so slots[n] only exists when
