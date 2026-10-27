@@ -6,28 +6,31 @@ import { useEffect, useState } from "react";
 import { Mic, Film, Sparkles, Hourglass } from "lucide-react";
 
 type Scene = { text: string; caption_text?: string };
-const EST = 120; // seconds a 15-second reel usually takes
-const STAGE = { queued: 0, voice: 1, clips: 2, assemble: 3, done: 4 } as const;
+// About how long a 15-second reel takes; a product video (photo scenes) takes longer.
+const EST_REEL = 120, EST_AD = 210;
+// Reel worker: voice → clips → assemble. Product-video worker: voice → scenes → captions → upload.
+const STAGE: Record<string, number> = { queued: 0, voice: 1, clips: 2, scenes: 2, assemble: 3, captions: 3, upload: 3, done: 4 };
 const TIPS_HI = [
   "तैयार होते ही WhatsApp Status पर लगाइए — सबसे पहले आपके ग्राहक देखेंगे।",
-  "Caption copy करके Instagram पर reel के साथ डालिए।",
-  "🚀 Boost से reel आपके शहर के नए लोगों तक पहुँचती है।",
+  "Caption copy करके Instagram पर video के साथ डालिए।",
+  "🚀 Boost से video आपके शहर के नए लोगों तक पहुँचती है।",
   "हफ़्ते में 3-4 reels — लोग आपको याद रखते हैं।",
-  "आप यह screen बंद कर सकते हैं — reel “मेरी reels” में मिल जाएगी।",
+  "आप यह screen बंद कर सकते हैं — बनते ही यहीं मिल जाएगी।",
 ];
 const TIPS_EN = [
   "Put it on your WhatsApp Status as soon as it is ready — your customers see it first.",
   "Copy the caption and post it with the reel on Instagram.",
   "🚀 Boost takes the reel to new people in your town.",
   "3-4 reels a week — people remember you.",
-  "You can close this screen — the reel will be in “My reels”.",
+  "You can close this screen — it will be here when ready.",
 ];
 
-export function ReelMaking({ stage, startedAt, scenes, title, hi }: { stage?: string | null; startedAt: string; scenes: Scene[]; title: string; hi: boolean }) {
+export function ReelMaking({ stage, startedAt, scenes, title, hi, kind = "reel" }: { stage?: string | null; startedAt: string; scenes: Scene[]; title: string; hi: boolean; kind?: "reel" | "video" }) {
+  const EST = kind === "video" ? EST_AD : EST_REEL;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const secs = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
-  const at = STAGE[(stage ?? "queued") as keyof typeof STAGE] ?? 0;
+  const at = STAGE[stage ?? "queued"] ?? 0;
   // Time moves the bar smoothly; the worker's stage never lets it fall behind. Never 100 until it is done.
   const pct = Math.min(96, Math.max(at * 22 + 4, Math.round((secs / EST) * 92)));
   const leftS = Math.max(10, EST - secs);
@@ -35,7 +38,7 @@ export function ReelMaking({ stage, startedAt, scenes, title, hi }: { stage?: st
   const line = lines[Math.floor(secs / 3) % lines.length];
   const tips = hi ? TIPS_HI : TIPS_EN;
   const tip = tips[Math.floor(secs / 6) % tips.length];
-  const say = at <= 0 ? (hi ? "शुरू हो रही है…" : "Starting…") : at === 1 ? (hi ? "आवाज़ record हो रही है…" : "Recording the voice…") : at === 2 ? (hi ? "हर line के लिए video ढूँढ रहे हैं…" : "Finding a clip for every line…") : (hi ? "Music और शब्द जोड़ रहे हैं…" : "Adding music and words…");
+  const say = at <= 0 ? (hi ? "शुरू हो रही है…" : "Starting…") : at === 1 ? (hi ? "आवाज़ record हो रही है…" : "Recording the voice…") : at === 2 ? (kind === "video" ? (hi ? "आपके product की photo से scenes बना रहे हैं…" : "Making the scenes from your product photo…") : (hi ? "हर line के लिए video ढूँढ रहे हैं…" : "Finding a clip for every line…")) : (hi ? "Music और शब्द जोड़ रहे हैं…" : "Adding music and words…");
   const Icon = at <= 0 ? Hourglass : at === 1 ? Mic : at === 2 ? Film : Sparkles;
 
   return (
@@ -66,7 +69,7 @@ export function ReelMaking({ stage, startedAt, scenes, title, hi }: { stage?: st
           <div className="grad-brand h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
           <div className="reel-sheen absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
         </div>
-        <p className="text-xs text-muted">{secs > 480 ? (hi ? "यह reel अटक गई लगती है। नीचे “रोक दें” दबाकर फिर बनाइए — credits वापस आ जाएँगे।" : "This reel seems stuck. Tap “Stop” below and make it again — credits come back.") : secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
+        <p className="text-xs text-muted">{secs > (kind === "video" ? 600 : 480) ? (hi ? `यह ${kind === "video" ? "video" : "reel"} अटक गई लगती है। नीचे “रोक दें” दबाकर फिर बनाइए — credits वापस आ जाएँगे।` : "This one seems stuck. Tap “Stop” below and make it again — credits come back.") : secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
       </div>
 
       {/* A tip that changes */}
