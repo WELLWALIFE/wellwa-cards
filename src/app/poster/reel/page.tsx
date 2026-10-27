@@ -2,15 +2,17 @@
 // Reel — the one-tap screen (owner, 20 Oct 2026: "bahut complicated hai; jo koi bhi bana sake, bilkul simple").
 // Pick what the reel is about, tap Make. The words, the clips, the voice, the captions and the music are all chosen
 // for the owner; the finished reel appears below with Share and Download. Every choice the old screen offered
-// (scenes, own photos, AI pictures, voice, music, length) lives on at /poster/reel/pro behind one small link.
+// (scenes, own photos, AI pictures, voice, music, length) lives on at /poster/reel/pro behind one small link, which
+// carries these choices along so that page never asks them again.
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, SlidersHorizontal, Check, Copy, ChevronDown } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, SlidersHorizontal, Check, Copy, ChevronDown, Pencil } from "lucide-react";
 import { api, isLoggedIn, shareFile, downloadPoster, LANGS } from "@/lib/poster-client";
 import { AddCredits } from "@/components/poster/add-credits";
 import { goBack } from "@/lib/nav-back";
 import { useT } from "@/lib/poster-i18n";
+import { REEL_KINDS as KINDS, type ReelKind } from "@/lib/reel-kinds";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
@@ -23,13 +25,6 @@ const post = (body: unknown): Promise<Reply> =>
     .then(async (r) => ({ ok: r.ok, status: r.status, data: (await r.json().catch(() => ({}))) as Record<string, unknown> }))
     .catch(() => ({ ok: false, status: 0, data: {} as Record<string, unknown> }));
 
-// Four kinds, each with its own music; the other two (customer story, everyday story) stay on the advanced screen.
-const KINDS = [
-  { k: "tip", e: "💡", hi: "काम की बात", en: "A useful tip", dhi: "एक tip जो लोग save करें", den: "A tip people save and share", music: "calm-ambient" },
-  { k: "offer", e: "🎉", hi: "Offer", en: "Offer", dhi: "आज का offer, आज ही क्यों", den: "Your offer, and why today", music: "energetic-promo" },
-  { k: "benefit", e: "⭐", hi: "हम क्यों", en: "Why us", dhi: "हमसे लेने की एक साफ़ वजह", den: "One clear reason to buy from you", music: "upbeat-corporate" },
-  { k: "festival", e: "🪔", hi: "त्योहार", en: "Festival", dhi: "शुभकामनाएँ, आपके नाम से", den: "A festival wish from your business", music: "festive-diwali" },
-] as const;
 const MAIN_LANGS = ["hi", "hinglish", "en"];
 const MONEY_BACK = "Your credits have been returned.";
 function failLine(raw: string | null | undefined, hi: boolean): string {
@@ -44,7 +39,7 @@ export default function Reel() {
   const router = useRouter();
   const { lang: ui } = useT(); const hi = ui !== "en";
   const [ready, setReady] = useState(false);
-  const [kind, setKind] = useState<(typeof KINDS)[number]["k"]>("tip");
+  const [kind, setKind] = useState<ReelKind>("tip");
   const [business, setBusiness] = useState(""); const [category, setCategory] = useState(""); const [phone, setPhone] = useState(""); const [brandName, setBrandName] = useState("");
   const [productId, setProductId] = useState(""); const [products, setProducts] = useState<MyProduct[]>([]);
   const [note, setNote] = useState("");
@@ -62,7 +57,13 @@ export default function Reel() {
   async function refresh() { const r = await fetch("/api/media/jobs?kind=ad", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})); setJobs(((r.jobs ?? []) as Job[]).filter((j) => j.input?.tier === "stock")); if (typeof r.credits === "number") setCredits(r.credits); }
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/reel"); return; }
-    setReady(true); refresh(); quota();
+    // Back from the Advanced page: the same choices, not a blank form.
+    const q = new URLSearchParams(window.location.search);
+    const k = KINDS.find((x) => x.k === q.get("type")); if (k) setKind(k.k);
+    if (q.get("pid")) setProductId(q.get("pid")!); if (q.get("note")) setNote(q.get("note")!);
+    if (q.get("lang") && LANGS.some((l) => l.key === q.get("lang"))) setLang(q.get("lang")!);
+    setReady(true); await refresh(); quota();
+    if (q.get("made")) setTimeout(() => listRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 300);
     api<{ products?: MyProduct[] }>("/api/poster/products").then((r) => setProducts(r.data.products ?? [])).catch(() => {});
     // The business name, phone and trade come from the profile — nothing to type on a normal day.
     api<{ profiles?: { name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string }[] }>("/api/poster/profiles").then((r) => { const p = (r.data.profiles ?? []).find((x) => x.is_default) ?? r.data.profiles?.[0]; if (p) { setBusiness((x) => x || p.name); setBrandName((x) => x || p.name); setPhone((x) => x || p.phone || ""); setCategory((x) => x || p.category || ""); } }).catch(() => {});
@@ -111,6 +112,8 @@ export default function Reel() {
   const num = (n: number) => <span className="grid h-5 w-5 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">{n}</span>;
   const langs = LANGS.filter((l) => moreLangs || MAIN_LANGS.includes(l.key) || l.key === lang);
   const over = left === 0;
+  // The Advanced page gets these choices — it never asks them again (owner, 27 Oct 2026).
+  const proHref = `/poster/reel/pro?${new URLSearchParams({ type: kind, lang, ...(productId ? { pid: productId } : {}), ...(note.trim() ? { note: note.trim() } : {}) }).toString()}`;
   // The four steps the worker reports (bridge/stock-reel.mjs): queued → voice → clips → assemble → done.
   const STEPS = [{ k: "voice", hi: "आवाज़", en: "Voice" }, { k: "clips", hi: "Clips", en: "Clips" }, { k: "assemble", hi: "जोड़ना", en: "Join" }, { k: "done", hi: "तैयार", en: "Ready" }];
   const stepAt = (j: Job) => Math.max(0, STEPS.findIndex((x) => x.k === j.stage));
@@ -123,18 +126,18 @@ export default function Reel() {
         <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> {hi ? "Reel बनाएँ" : "Make a Reel"}</h1>
         {left !== null && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${over ? "bg-amber-soft text-amber" : "bg-good/10 text-good"}`}>{over ? (hi ? "आज की free reels खत्म" : "No free reels left today") : hi ? `आज ${left}/${daily} free बाकी` : `${left} of ${daily} free left today`}</span>}
       </div>
-      <p className="text-sm text-muted">{hi ? "बस चुनिए किस बारे में — शब्द, video, आवाज़ और music हम लगा देंगे। 15 सेकंड की reel, लगभग 2 मिनट में।" : "Just choose what it is about — we write the words and add the video, voice and music. A 15-second reel in about 2 minutes."}</p>
+      <p className="text-sm text-muted">{hi ? "चुनिए, बाक़ी हम करेंगे — शब्द, video, आवाज़, music। 15 सेकंड, 2 मिनट में।" : "You choose, we do the rest — words, video, voice, music. 15 seconds, ready in 2 minutes."}</p>
 
       <div className="space-y-5 rounded-2xl border border-border bg-surface p-4">
         <div>
           <p className={label}>{num(1)} {hi ? "किस बारे में?" : "What is it about?"}</p>
-          <div className="grid grid-cols-2 gap-2">{KINDS.map((k) => <button key={k.k} type="button" onClick={() => setKind(k.k)} className={`relative rounded-xl border-2 p-3 text-left transition ${kind === k.k ? "border-brand bg-brand-soft" : "border-border"}`}>{kind === k.k && <Check className="absolute right-2 top-2 h-4 w-4 text-brand" />}<span className="block text-2xl">{k.e}</span><span className="mt-1 block text-[15px] font-semibold">{hi ? k.hi : k.en}</span><span className="block text-xs text-muted">{hi ? k.dhi : k.den}</span></button>)}</div>
+          <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">{KINDS.map((k) => <button key={k.k} type="button" onClick={() => setKind(k.k)} className={`relative rounded-xl border-2 p-2.5 text-left transition ${kind === k.k ? "border-brand bg-brand-soft" : "border-border"}`}>{kind === k.k && <Check className="absolute right-2 top-2 h-4 w-4 text-brand" />}<span className="block text-xl">{k.e}</span><span className="mt-1 block text-sm font-semibold leading-tight">{hi ? k.hi : k.en}</span><span className="block text-[11px] text-muted">{hi ? k.dhi : k.den}</span></button>)}</div>
         </div>
         <div className="space-y-2">
-          <p className={label}>{num(2)} {products.length > 0 ? (hi ? "किसकी बात?" : "About what?") : (hi ? "कुछ ख़ास कहना है?" : "Anything to add?")}</p>
+          <p className={label}>{num(2)} {products.length > 0 ? (hi ? "किसके बारे में?" : "Which product?") : (hi ? "कुछ ख़ास?" : "Anything to add?")}</p>
           {products.length > 0 && <select value={productId} onChange={(e) => setProductId(e.target.value)} className={inp}><option value="">{hi ? "मेरा पूरा business" : "My business in general"}</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>}
           {!business && !productId && <input ref={nameRef} className={inp} placeholder={hi ? "Business का नाम" : "Business name"} value={business} onChange={(e) => { setBusiness(e.target.value); setBrandName(e.target.value); setErr(""); }} />}
-          <input className={inp} value={note} onChange={(e) => setNote(e.target.value)} placeholder={kind === "offer" ? (hi ? "Offer लिखें — जैसे: इस हफ़्ते 20% छूट" : "Your offer — e.g. 20% off this week") : (hi ? "कुछ ख़ास कहना हो तो लिखें (ज़रूरी नहीं)" : "Anything special to say? (optional)")} />
+          <input className={inp} value={note} onChange={(e) => setNote(e.target.value)} placeholder={kind === "offer" ? (hi ? "Offer लिखें — जैसे: 20% छूट" : "Your offer — e.g. 20% off") : (hi ? "कुछ ख़ास कहना है? (ज़रूरी नहीं)" : "Anything to add? (optional)")} />
         </div>
         <div>
           <p className={label}>{num(3)} {hi ? "भाषा" : "Language"}</p>
@@ -149,13 +152,13 @@ export default function Reel() {
           <Link href="/poster/video" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "Product video बनाएँ →" : "Make a Product video →"}</Link>
         </div>}
         {/* Above the Make button, where it is seen (owner, 27 Oct 2026: it was hidden at the foot of the page). */}
-        <Link href="/poster/reel/pro" className="flex items-center gap-3 rounded-xl border border-brand/25 bg-brand-soft/40 p-3 text-sm">
+        <Link href={proHref} aria-disabled={over} className="flex items-center gap-3 rounded-xl border border-brand/25 bg-brand-soft/40 p-3 text-sm">
           <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-surface text-brand"><SlidersHorizontal className="h-4 w-4" /></span>
-          <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{hi ? "खुद चुनना है?" : "Want to choose yourself?"}</span><span className="block text-xs text-muted">{hi ? "Scenes, अपनी photos, आवाज़, music — Advanced" : "Scenes, your photos, voice, music — Advanced"}</span></span>
+          <span className="min-w-0 flex-1"><span className="block font-semibold text-ink">{hi ? "खुद बदलना है?" : "Want to change things?"}</span><span className="block text-xs text-muted">{hi ? "शब्द, photos, आवाज़, music — इन्हीं choices के साथ" : "Words, photos, voice, music — with these choices"}</span></span>
           <ChevronLeft className="h-4 w-4 shrink-0 rotate-180 text-muted" />
         </Link>
         <button type="button" onClick={make} disabled={busy !== "" || making || over} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "plan" ? (hi ? "शब्द लिख रहे हैं…" : "Writing the words…") : busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक reel बन रही है…" : "A reel is being made…") : over ? (hi ? "कल फिर बनाएँ" : "Come back tomorrow") : (hi ? "Reel बनाओ" : "Make my reel")}</button>
-        <p className="text-center text-[11px] text-muted">{hi ? "Ready clips के साथ free · AI picture लगे तो 1 credit/scene, बचे वापस" : "Free with ready-made clips · an AI picture costs 1 credit per scene, unused ones come back"}</p>
+        <p className="text-center text-[11px] text-muted">{hi ? "Clips के साथ free · AI picture लगे तो 1 credit" : "Free with clips · an AI picture is 1 credit"}</p>
       </div>
 
       <div ref={listRef} className="scroll-mt-4" />
@@ -185,7 +188,10 @@ export default function Reel() {
             </div>}
           </>)}
           {rowMsg[j.id] && <p className={`text-xs font-semibold ${rowMsg[j.id].ok ? "text-good" : "text-danger"}`}>{rowMsg[j.id].t}</p>}
-          {j.status !== "queued" && j.status !== "running" && <button type="button" onClick={() => stopOrDelete(j)} disabled={acting === j.id + "x"} className="inline-flex items-center gap-1 text-xs text-muted disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>}
+          {j.status !== "queued" && j.status !== "running" && <div className="flex items-center justify-between">
+            {!!j.input?.scenes?.length ? <Link href={`/poster/reel/pro?edit=${j.id}`} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink"><Pencil className="h-3.5 w-3.5" /> {hi ? "बदलकर फिर बनाओ" : "Change & make again"}</Link> : <span />}
+            <button type="button" onClick={() => stopOrDelete(j)} disabled={acting === j.id + "x"} className="inline-flex items-center gap-1 text-xs text-muted disabled:opacity-60"><Trash2 className="h-3.5 w-3.5" /> Delete</button>
+          </div>}
         </div>))}</div>
       {jobs.length > 3 && <button type="button" onClick={() => setShowAll((x) => !x)} className="flex w-full items-center justify-center gap-1 rounded-xl border border-border py-2.5 text-sm font-semibold text-muted"><ChevronDown className={`h-4 w-4 transition ${showAll ? "rotate-180" : ""}`} /> {showAll ? (hi ? "कम दिखाएँ" : "Show less") : hi ? `सभी reels देखें (${jobs.length})` : `See all reels (${jobs.length})`}</button>}
     </div>
