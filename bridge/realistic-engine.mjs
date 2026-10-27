@@ -70,6 +70,53 @@ export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", s
   throw new Error("veo timeout");
 }
 
+/** Google's video model since Veo 3.1 was retired on the API (27 Oct 2026: "models/veo-3.1-fast-generate-preview is no
+ *  longer available … use models/gemini-omni-1.1-flash"). Image-to-video through the Interactions API: the first frame
+ *  is our still with the real product; 3-10 s at 720p with its own sound; ~$0.10 a second. Writes the mp4 to outFile. */
+export async function omniI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 8, log = () => {} }) {
+  const model = process.env.REAL_VIDEO_MODEL || "gemini-omni-1.1-flash";
+  const BASE = "https://generativelanguage.googleapis.com/v1beta";
+  const H = { "x-goog-api-key": key, "Content-Type": "application/json" };
+  const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
+  const text = `${prompt}\nThe clip is exactly ${sec} seconds long and starts on the given image as its first frame.`;
+  const body = { model, input: [{ type: "image", data: jpg.toString("base64"), mime_type: "image/jpeg" }, { type: "text", text }], response_format: { type: "video", aspect_ratio: ratio === "16:9" ? "16:9" : "9:16", delivery: "uri" }, background: false, store: false, stream: false };
+  let res, j;
+  for (let a = 0; ; a++) {
+    res = await fetch(`${BASE}/interactions`, { method: "POST", headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(11 * 60_000) });
+    j = await res.json().catch(() => ({}));
+    // a field this API version does not know (background / store / stream / delivery) → ask again without it
+    const bad = !res.ok && res.status === 400 ? ["background", "store", "stream"].filter((k) => k in body && JSON.stringify(j).includes(k)) : [];
+    if (bad.length && a < 3) { bad.forEach((k) => delete body[k]); log(`retrying without ${bad.join(", ")}`); continue; }
+    if (!res.ok && res.status === 400 && body.response_format.delivery && /delivery/.test(JSON.stringify(j)) && a < 3) { delete body.response_format.delivery; continue; }
+    if (res.status !== 429 || a >= 3) break;
+    log("video model busy, waiting 30s"); await new Promise((r) => setTimeout(r, 30_000));
+  }
+  if (!res.ok) throw new Error(`${model}: ${JSON.stringify(j.error ?? j).slice(0, 220)}`);
+  // still running? (a background answer) — wait for it
+  const t0 = Date.now();
+  while (j?.id && j.status && !["completed", "failed", "cancelled"].includes(j.status) && Date.now() - t0 < 12 * 60_000) {
+    await new Promise((r) => setTimeout(r, 10_000)); log(`${model} ${j.status}…`);
+    j = await fetch(`${BASE}/interactions/${j.id}`, { headers: H, signal: AbortSignal.timeout(120_000) }).then((r) => r.json()).catch(() => j);
+  }
+  if (j?.status === "failed" || j?.status === "cancelled") throw new Error(`${model} ${j.status}: ${JSON.stringify(j.error ?? j).slice(0, 220)}`);
+  // the video part, wherever it sits (steps[].content / outputs / output_video)
+  const find = (o, d = 0) => { if (!o || typeof o !== "object" || d > 8) return null; if ((o.type === "video" || String(o.mime_type ?? o.mimeType ?? "").startsWith("video/")) && (o.data || o.uri)) return o; for (const v of Array.isArray(o) ? o : Object.values(o)) { const f = find(v, d + 1); if (f) return f; } return null; };
+  const v = find(j);
+  if (!v) throw Object.assign(new Error(`${model} returned no video: ${JSON.stringify(j).slice(0, 220)}`), { veoFiltered: true });
+  if (v.data) { fs.writeFileSync(outFile, Buffer.from(v.data, "base64")); return; }
+  const fileId = String(v.uri).split("/files/")[1]?.split(/[?:]/)[0];
+  if (!fileId) { const r = await fetch(v.uri, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(180_000) }); fs.writeFileSync(outFile, Buffer.from(await r.arrayBuffer())); return; }
+  for (let k = 0; k < 60; k++) {
+    const f = await fetch(`${BASE}/files/${fileId}`, { headers: H, signal: AbortSignal.timeout(30_000) }).then((r) => r.json()).catch(() => ({}));
+    if (f.state === "ACTIVE") break;
+    if (f.state === "FAILED") throw new Error(`${model}: the video file failed`);
+    await new Promise((r) => setTimeout(r, 5000));
+  }
+  const dl = await fetch(`${BASE}/files/${fileId}:download?alt=media`, { headers: { "x-goog-api-key": key }, signal: AbortSignal.timeout(180_000) });
+  if (!dl.ok) throw new Error(`${model}: download ${dl.status}`);
+  fs.writeFileSync(outFile, Buffer.from(await dl.arrayBuffer()));
+}
+
 /** Quality check of a finished clip (owner, 27 Oct 2026: "ionizer on karte hi light off ho gai"): the last moment of
  *  the clip is compared with the product photo and the shot's continuity rules. {ok:false} → the clip is made once more. */
 export async function clipOk({ gemini, ffmpeg, clip, dir, i, refPhoto, keep }) {
@@ -194,17 +241,17 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
       const keep = (shots[i].motion.match(/Keep: ([^.]*)/) ?? [])[1] ?? "";
       for (const [tag, pr] of [["full", vprompt], ["short", short]]) {
         try {
-          await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] veo ${tag}: ${m}`) });
+          await (process.env.REAL_VIDEO === "veo" ? veoI2V : omniI2V)({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] video ${tag}: ${m}`) });
           // One automatic re-take when the check fails — paid by us, never by the owner.
           const qc = await clipOk({ gemini: helpers.gemini, ffmpeg: helpers.ffmpeg, clip: rawOf(i), dir, i, refPhoto: all[0], keep });
           if (!qc.ok) {
             log(`clip ${i} failed the check (${qc.why}) — one re-take`);
             const first = rawOf(i) + ".first.mp4"; fs.renameSync(rawOf(i), first);
-            try { await veoI2V({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] retake ${m}`) }); }
+            try { await (process.env.REAL_VIDEO === "veo" ? veoI2V : omniI2V)({ key: helpers.geminiKey, imageBuf: img, prompt: pr, outFile: rawOf(i), ratio, log: (m) => log(`[${i + 1}/${shots.length}] retake ${m}`) }); }
             catch { fs.renameSync(first, rawOf(i)); }
           }
-          log(`clip ${i} veo ok (${tag} prompt)`); return;
-        } catch (e) { const m = e instanceof Error ? e.message : String(e); errs.push(`veo ${tag}: ${m}`); log(`clip ${i} veo ${tag} failed: ${m}`); }
+          log(`clip ${i} video ok (${tag} prompt)`); return;
+        } catch (e) { const m = e instanceof Error ? e.message : String(e); errs.push(`video ${tag}: ${m}`); log(`clip ${i} video ${tag} failed: ${m}`); }
       }
     }
     if (!helpers.falKey) throw new Error(errs.join(" | ").slice(0, 280) || "no video model set up");
