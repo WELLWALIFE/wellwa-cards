@@ -16,6 +16,7 @@ import { AddCredits } from "@/components/poster/add-credits";
 import { goBack } from "@/lib/nav-back";
 import { useT } from "@/lib/poster-i18n";
 import { REEL_KINDS as KINDS, type ReelKind } from "@/lib/reel-kinds";
+import { ReelMaking } from "@/components/poster/reel-making";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
@@ -199,10 +200,11 @@ export default function Reel() {
     <div key={j.id} className="space-y-3 rounded-2xl border border-border bg-surface p-3">
       <div className="flex items-start justify-between gap-2"><div className="min-w-0"><b className="block truncate text-sm">{j.input?.product ?? "Reel"}</b><span className="text-[11px] text-muted">{when(j.created_at)}{j.input?.duration_sec ? ` · ${Math.round(j.input.duration_sec)} ${hi ? "सेकंड" : "s"}` : ""}</span></div><span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${j.status === "done" ? "bg-good/10 text-good" : j.status === "failed" ? "bg-danger/10 text-danger" : "bg-brand-soft text-brand-ink"}`}>{j.status === "done" ? (hi ? "✓ तैयार" : "✓ ready") : j.status === "failed" ? (hi ? "नहीं बनी" : "not made") : (hi ? "बन रही है" : "Making")}</span></div>
       {busyJob(j) && (<>
-        {big && <div className="grid place-items-center gap-2 py-6"><Clapperboard className="h-10 w-10 animate-pulse text-brand" /><p className="text-sm font-semibold">{hi ? "आपकी reel बन रही है…" : "Your reel is being made…"}</p></div>}
+        {big ? <ReelMaking stage={j.status === "running" ? j.stage : "queued"} startedAt={j.created_at} scenes={j.input?.scenes ?? []} title={j.input?.product ?? "Reel"} hi={hi} /> : <>
         <div className="grid grid-cols-4 gap-1.5">{STEPS.map((st, n) => { const at = Math.max(0, STEPS.findIndex((x) => x.k === j.stage)); const on = j.status === "running" && n <= at; return <div key={st.k} className="space-y-1"><div className={`h-1.5 rounded-full ${on ? (n === at ? "animate-pulse bg-brand" : "bg-brand") : "bg-surface2"}`} /><p className={`text-center text-[10px] ${on ? "font-semibold text-brand-ink" : "text-muted"}`}>{hi ? st.hi : st.en}</p></div>; })}</div>
         {!!j.input?.scenes?.length && <p className="rounded-lg bg-surface2 p-2 text-xs text-muted">{j.input.scenes.map((s) => s.text).join(" ")}</p>}
         <p className="text-xs text-muted">{hi ? "लगभग 2 मिनट। Screen बंद कर सकते हैं — reel “मेरी reels” में आ जाएगी।" : "About 2 minutes. You can close this screen — the reel will be in “My reels”."}</p>
+        </>}
         <button type="button" onClick={() => stopOrDelete(j)} disabled={acting === j.id + "x"} className="w-full rounded-lg border border-danger/60 px-3 py-2.5 text-sm font-semibold text-danger disabled:opacity-60">{hi ? "रोक दें" : "Stop"}</button>
       </>)}
       {j.status === "failed" && <p className="text-sm text-danger">{failLine(j.error, hi)}</p>}

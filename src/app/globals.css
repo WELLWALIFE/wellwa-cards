@@ -388,3 +388,18 @@ html[data-edit-focus]:not([data-embed]) main{padding-top:calc(max(0.4rem, env(sa
 html[data-embed] main{padding-top:.25rem!important;padding-bottom:1rem!important}
 html[data-embed],html[data-embed] body{background:transparent;min-height:0}
 html[data-embed] .min-h-screen{min-height:0!important}
+
+/* Reel being made (owner, 27 Oct 2026: "something moving") — a live phone that never sits still. */
+@keyframes reel-pan { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+@keyframes reel-eq { 0%, 100% { transform: scaleY(0.25); } 50% { transform: scaleY(1); } }
+@keyframes reel-film { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes reel-line { from { opacity: 0; transform: translateY(10px) scale(0.97); } to { opacity: 1; transform: none; } }
+@keyframes reel-spark { 0% { opacity: 0; transform: translateY(0) scale(0.6); } 30% { opacity: 1; } 100% { opacity: 0; transform: translateY(-60px) scale(1.1); } }
+@keyframes reel-sheen { from { transform: translateX(-120%); } to { transform: translateX(220%); } }
+.reel-pan { background-size: 300% 300%; animation: reel-pan 8s ease infinite; }
+.reel-eq { transform-origin: bottom; animation: reel-eq 0.9s ease-in-out infinite; }
+.reel-film { animation: reel-film 6s linear infinite; }
+.reel-line { animation: reel-line 0.5s cubic-bezier(0.2, 0.7, 0.2, 1) both; }
+.reel-spark { animation: reel-spark 2.6s ease-out infinite; }
+.reel-sheen { animation: reel-sheen 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .reel-pan, .reel-eq, .reel-film, .reel-spark, .reel-sheen { animation: none; } }
