@@ -7,7 +7,7 @@ import { Mic, Film, Sparkles, Hourglass } from "lucide-react";
 
 type Scene = { text: string; caption_text?: string };
 // About how long a 15-second reel takes; a product video (photo scenes) takes longer.
-const EST_REEL = 120, EST_AD = 210;
+const EST_REEL = 120, EST_AD = 210, EST_REAL = 540; // a Pro video films every scene with AI: the slow one
 // Reel worker: voice → clips → assemble. Product-video worker: voice → scenes → captions → upload.
 const STAGE: Record<string, number> = { queued: 0, voice: 1, clips: 2, scenes: 2, assemble: 3, captions: 3, upload: 3, done: 4 };
 const TIPS_HI = [
@@ -25,8 +25,8 @@ const TIPS_EN = [
   "You can close this screen — it will be here when ready.",
 ];
 
-export function ReelMaking({ stage, startedAt, scenes, title, hi, kind = "reel" }: { stage?: string | null; startedAt: string; scenes: Scene[]; title: string; hi: boolean; kind?: "reel" | "video" }) {
-  const EST = kind === "video" ? EST_AD : EST_REEL;
+export function ReelMaking({ stage, startedAt, scenes, title, hi, kind = "reel" }: { stage?: string | null; startedAt: string; scenes: Scene[]; title: string; hi: boolean; kind?: "reel" | "video" | "real" }) {
+  const EST = kind === "real" ? EST_REAL : kind === "video" ? EST_AD : EST_REEL;
   const [now, setNow] = useState(() => Date.now());
   useEffect(() => { const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, []);
   const secs = Math.max(0, Math.round((now - new Date(startedAt).getTime()) / 1000));
@@ -38,7 +38,7 @@ export function ReelMaking({ stage, startedAt, scenes, title, hi, kind = "reel" 
   const line = lines[Math.floor(secs / 3) % lines.length];
   const tips = hi ? TIPS_HI : TIPS_EN;
   const tip = tips[Math.floor(secs / 6) % tips.length];
-  const say = at <= 0 ? (hi ? "शुरू हो रही है…" : "Starting…") : at === 1 ? (hi ? "आवाज़ record हो रही है…" : "Recording the voice…") : at === 2 ? (kind === "video" ? (hi ? "आपके product की photo से scenes बना रहे हैं…" : "Making the scenes from your product photo…") : (hi ? "हर line के लिए video ढूँढ रहे हैं…" : "Finding a clip for every line…")) : (hi ? "Music और शब्द जोड़ रहे हैं…" : "Adding music and words…");
+  const say = at <= 0 ? (hi ? "शुरू हो रही है…" : "Starting…") : at === 1 ? (hi ? "आवाज़ record हो रही है…" : "Recording the voice…") : at === 2 ? (kind === "real" ? (hi ? "AI हर scene की video film कर रहा है… यह सबसे लंबा step है" : "The AI is filming every scene… the longest step") : kind === "video" ? (hi ? "आपके product की photo से scenes बना रहे हैं…" : "Making the scenes from your product photo…") : (hi ? "हर line के लिए video ढूँढ रहे हैं…" : "Finding a clip for every line…")) : (hi ? "Music और शब्द जोड़ रहे हैं…" : "Adding music and words…");
   const Icon = at <= 0 ? Hourglass : at === 1 ? Mic : at === 2 ? Film : Sparkles;
 
   return (
@@ -69,7 +69,7 @@ export function ReelMaking({ stage, startedAt, scenes, title, hi, kind = "reel" 
           <div className="grad-brand h-full rounded-full transition-[width] duration-1000 ease-linear" style={{ width: `${pct}%` }} />
           <div className="reel-sheen absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/50 to-transparent" />
         </div>
-        <p className="text-xs text-muted">{secs > (kind === "video" ? 600 : 480) ? (hi ? `यह ${kind === "video" ? "video" : "reel"} अटक गई लगती है। नीचे “रोक दें” दबाकर फिर बनाइए — credits वापस आ जाएँगे।` : "This one seems stuck. Tap “Stop” below and make it again — credits come back.") : secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
+        <p className="text-xs text-muted">{secs > (kind === "real" ? 1800 : kind === "video" ? 600 : 480) ? (hi ? `यह ${kind === "reel" ? "reel" : "video"} अटक गई लगती है। नीचे “रोक दें” दबाकर फिर बनाइए — credits वापस आ जाएँगे।` : "This one seems stuck. Tap “Stop” below and make it again — credits come back.") : secs > EST + 60 ? (hi ? "आज थोड़ा ज़्यादा समय लग रहा है — बस आने वाली है।" : "Taking a little longer today — almost there.") : hi ? `लगभग ${leftS > 60 ? `${Math.ceil(leftS / 60)} मिनट` : `${leftS} सेकंड`} बाकी` : `About ${leftS > 60 ? `${Math.ceil(leftS / 60)} min` : `${leftS} s`} left`}</p>
       </div>
 
       {/* A tip that changes */}
