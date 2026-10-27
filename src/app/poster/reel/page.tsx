@@ -22,6 +22,7 @@ type Scene = { text: string; caption_text: string; search: string; image: string
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
 type Job = { id: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null; input?: { tier?: string; product?: string; caption?: string; duration_sec?: number; topic?: string; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string; captions?: string } };
 type MyProduct = { id: string; name: string; brand?: string | null; category?: string; photo_url?: string | null; photos?: { url: string; role?: string }[] };
+type ReelDraft = { at: number; stage: "choose" | "review" | "track"; kind: ReelKind; productId: string; note: string; lang: string; length: number; voiceStyle: string; music: string; subs: boolean; gallery: string[]; plan: Plan | null; editing: boolean; trackId: string };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 // A dropped mobile connection makes fetch() reject; without the catch the button would spin for ever.
 const post = (body: unknown): Promise<Reply> =>
@@ -69,6 +70,7 @@ export default function Reel() {
   const [gallery, setGallery] = useState<string[]>([]); const [more, setMore] = useState(false);
   // Hear before choosing (owner, 27 Oct 2026): one player for voice samples and music; tapping a chip picks it and plays it.
   const audio = useRef<HTMLAudioElement | null>(null); const [playing, setPlaying] = useState(""); const [allVoices, setAllVoices] = useState(false);
+  const [draftReady, setDraftReady] = useState(false);
   const [subs, setSubs] = useState(true); /* the moving words (subtitles) under the picture */ const [editing, setEditing] = useState(false);
   // step 3 / 4
   const [trackId, setTrackId] = useState("");
@@ -117,9 +119,28 @@ export default function Reel() {
       if (r.job) openEdit(r.job as Job);
     }
     if (q.get("tab") === "mine") setTab("mine");
+    // Where the owner left off comes back after a refresh (owner, 27 Oct 2026). A "Change & make again" link wins.
+    if (!editId) try {
+      const d = JSON.parse(localStorage.getItem("reel.draft") || "null") as ReelDraft | null;
+      if (d && Date.now() - (d.at || 0) < 3 * 86400_000) {
+        if (d.kind && KINDS.some((x) => x.k === d.kind)) setKind(d.kind);
+        if (d.productId && (pr?.data.products ?? []).some((x) => x.id === d.productId)) setProductId(d.productId);
+        setNote(d.note ?? ""); if (d.lang) setLang(d.lang); if (d.length) setLength(d.length); if (d.voiceStyle) setVoiceStyle(d.voiceStyle); if (d.music !== undefined) setMusic(d.music); if (typeof d.subs === "boolean") setSubs(d.subs);
+        if (d.gallery) setGallery(d.gallery); if (d.editing) setEditing(true);
+        if (d.plan?.scenes?.length) { setPlan(d.plan); if (d.stage === "review" || d.stage === "track") setStage(d.stage); }
+        if (d.stage === "track" && d.trackId) setTrackId(d.trackId);
+      }
+    } catch { /* private window */ }
+    setDraftReady(true);
     setReady(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on open; openEdit only sets state
   })(); }, [router]);
+  // Every change is kept on this phone, so a refresh never sends the owner back to step 1.
+  useEffect(() => {
+    if (!draftReady) return;
+    const t = setTimeout(() => { try { localStorage.setItem("reel.draft", JSON.stringify({ at: Date.now(), stage, kind, productId, note, lang, length, voiceStyle, music, subs, gallery, plan, editing, trackId } satisfies ReelDraft)); } catch { /* full or private */ } }, 400);
+    return () => clearTimeout(t);
+  }, [draftReady, stage, kind, productId, note, lang, length, voiceStyle, music, subs, gallery, plan, editing, trackId]);
   useEffect(() => { if (!jobs.some(busyJob)) return; const t = setInterval(refresh, 5000); return () => clearInterval(t); }, [jobs]);
 
   const product = products.find((p) => p.id === productId);
@@ -187,7 +208,7 @@ export default function Reel() {
     setGallery((g) => [...new Set([...scenes.map((s) => s.image).filter(Boolean), ...g])].slice(0, 8));
     setEditing(true); setErr(""); setTab("make"); setStage("review"); toTop();
   }
-  function again() { setStage("choose"); setPlan(null); setTrackId(""); setNote(""); setErr(""); setEditing(false); setMore(false); toTop(); }
+  function again() { setStage("choose"); setPlan(null); setTrackId(""); setNote(""); setErr(""); setEditing(false); setMore(false); try { localStorage.removeItem("reel.draft"); } catch { /* private window */ } toTop(); }
   function relength(n: number) { if (n === length || busy) return; setLength(n); writeWords(n); }
   const setScene = (i: number, p: Partial<Scene>) => plan && setPlan({ ...plan, scenes: plan.scenes.map((s, k) => (k === i ? { ...s, ...p } : s)) });
   async function addImage(file: File | null) {

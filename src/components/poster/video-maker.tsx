@@ -28,6 +28,7 @@ type Plan = { headline: string; scenes: Scene[]; cta: string; caption: string; f
 type Job = { id: string; kind: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null;
   input?: { tier?: string; product?: string; offer?: string; caption?: string; outputs?: Record<string, string>; script?: string[]; headline?: string; features?: string[]; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string; template?: string; captions?: string; photos?: string[] } };
 type MyProduct = { id: string; name: string; photo_url: string | null; category?: string; offer?: string; brand?: string | null; photos?: { url: string; role?: string }[] };
+type Draft = { at: number; stage: "choose" | "review" | "track"; productId: string; product: string; offer: string; notes: string; usage: string; lang: string; length: number; look: string; voiceStyle: string; music: string; subs: boolean; photos: string[]; plan: Plan | null; editing: boolean; trackId: string };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 const LENGTHS = [10, 20, 30];
 const MAIN_LANGS = ["hi", "hinglish", "en"];
@@ -69,6 +70,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   // Pro video: how the product is really operated (owner, 27 Oct 2026: "display se nahi chalta, button se chalta hai").
   // The AI never guesses this; it is remembered per product on this phone.
   const [usage, setUsage] = useState("");
+  const DRAFT = `video.draft.${tier}`; const [draftReady, setDraftReady] = useState(false);
   // The owner's own words (owner, 27 Oct 2026: "user kuch text likhe, AI usko perfect likhe, user check kare, phir bane").
   const [notes, setNotes] = useState(""); const [polishing, setPolishing] = useState(false);
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
@@ -106,10 +108,30 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     const l = pr?.data.products ?? []; setProducts(l); if (l.length === 1) { setProductId(l[0].id); try { setUsage(localStorage.getItem(`pro.usage.${l[0].id}`) ?? ""); } catch { /* private window */ } }
     const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
     if (p) { setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); }
+    // Where the owner left off comes back after a refresh (owner, 27 Oct 2026: "jitna ban jaaye utna save hona chahiye").
+    try {
+      const d = JSON.parse(localStorage.getItem(DRAFT) || "null") as Draft | null;
+      if (d && Date.now() - (d.at || 0) < 3 * 86400_000) {
+        if (d.productId && l.some((x) => x.id === d.productId)) setProductId(d.productId);
+        setProduct(d.product ?? ""); setOffer(d.offer ?? ""); setNotes(d.notes ?? ""); setUsage(d.usage ?? ""); if (d.lang) setLang(d.lang);
+        if (d.length) setLength(d.length); if (d.look) setLook(d.look); if (d.voiceStyle) setVoiceStyle(d.voiceStyle); if (d.music !== undefined) setMusic(d.music); if (typeof d.subs === "boolean") setSubs(d.subs);
+        if (d.photos) setPhotos(d.photos); if (d.editing) setEditing(true);
+        if (d.plan?.scenes?.length) { setPlan(d.plan); if (d.stage === "review" || d.stage === "track") setStage(d.stage); }
+        if (d.stage === "track" && d.trackId) setTrackId(d.trackId);
+      }
+    } catch { /* private window */ }
+    setDraftReady(true);
     setReady(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on open
   })(); }, [router]);
   useEffect(() => { if (!jobs.some(busyJob)) return; const t = setInterval(refresh, 5000); return () => clearInterval(t); }, [jobs]);
   useEffect(() => () => { audio.current?.pause(); }, []);
+  // Every change is kept on this phone, so a refresh or a closed tab never loses the words, the pictures or the step.
+  useEffect(() => {
+    if (!draftReady) return;
+    const t = setTimeout(() => { try { localStorage.setItem(DRAFT, JSON.stringify({ at: Date.now(), stage, productId, product, offer, notes, usage, lang, length, look, voiceStyle, music, subs, photos, plan, editing, trackId } satisfies Draft)); } catch { /* full or private */ } }, 400);
+    return () => clearTimeout(t);
+  }, [draftReady, DRAFT, stage, productId, product, offer, notes, usage, lang, length, look, voiceStyle, music, subs, photos, plan, editing, trackId]);
 
   const chosen = products.find((p) => p.id === productId);
   const name = (chosen?.name || product).trim();
@@ -175,7 +197,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     setSubs(inp.captions !== "off"); setPhotos(inp.photos ?? []);
     setEditing(true); setErr(""); setTab("make"); setStage("review"); toTop();
   }
-  function again() { setStage("choose"); setPlan(null); setTrackId(""); setOffer(""); setErr(""); setEditing(false); setMore(false); toTop(); }
+  function again() { setStage("choose"); setPlan(null); setTrackId(""); setOffer(""); setNotes(""); setErr(""); setEditing(false); setMore(false); try { localStorage.removeItem(DRAFT); } catch { /* private window */ } toTop(); }
   async function makeStill(i: number, visual: string, ph: string[]) {
     setStillBusy((m) => ({ ...m, [i]: true }));
     try {
