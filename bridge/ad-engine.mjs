@@ -350,7 +350,22 @@ export async function renderProScene(file, { kind, fmt, tpl, inp, cut, photo, bg
   if (kind !== "cta") {
     // the product, standing in the room
     const prod = cut || (photo ? await sharp(photo).resize(Math.round(W * 0.6), Math.round(H * 0.34), { fit: "inside" }).png().toBuffer().catch(() => null) : null);
-    if (prod) { const s = await standOn(bgBuf, prod, W, H, { box: { w: Math.round(W * (kind === "hook" ? 0.74 : 0.66)), h: Math.round(H * (kind === "hook" ? 0.36 : 0.32)) }, bottomY: Math.round(H * 0.69) }); layers.push(...s.layers); }
+    // Every scene a different FRAMING of the one room (owner, 28 Oct 2026: "teeno image lagbhag ek jaisi"): the hook is
+    // the wide hero, the product scene a close-up on its front (the room melts into bokeh), the offer/features scene a
+    // smaller product low in the frame under a big message.
+    if (prod && kind === "product") {
+      bgBuf = await sharp(bgBuf).resize(W, H, { fit: "cover" }).blur(9).toBuffer();
+      const pw = Math.round(W * 1.18); const big = await sharp(prod).resize({ width: pw }).png().toBuffer(); const bm = await sharp(big).metadata();
+      const vis = await sharp(big).extract({ left: Math.max(0, Math.round((bm.width - W) / 2)), top: 0, width: Math.min(bm.width, W), height: Math.min(bm.height, Math.round(H * 0.6)) }).png().toBuffer(); const vm = await sharp(vis).metadata();
+      // the cut edge melts away instead of ending in a hard line
+      const mask = Buffer.from(`<svg width="${vm.width}" height="${vm.height}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="m" x1="0" y1="0" x2="0" y2="1"><stop offset="0.72" stop-color="#fff"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#m)"/></svg>`);
+      const soft = await sharp(vis).composite([{ input: mask, blend: "dest-in" }]).png().toBuffer();
+      layers.push({ input: soft, left: Math.round((W - vm.width) / 2), top: Math.round(H * 0.3) });
+    } else if (prod) {
+      const small = kind === "features" || kind === "offer";
+      const s = await standOn(bgBuf, prod, W, H, { box: { w: Math.round(W * (kind === "hook" ? 0.74 : small ? 0.5 : 0.66)), h: Math.round(H * (kind === "hook" ? 0.36 : small ? 0.26 : 0.32)) }, bottomY: Math.round(H * (small ? 0.74 : 0.69)) });
+      layers.push(...s.layers);
+    }
     // words on top
     const top = kind === "hook" ? (inp.headline || inp.product) : kind === "offer" && inp.offer ? inp.offer : (line || inp.product);
     const { lines, size } = fit(top, kind === "hook" ? 14 : 18, base(kind === "hook" ? 0.105 : 0.08), 3);

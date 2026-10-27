@@ -1080,7 +1080,9 @@ async function proBackgrounds(inp, dir) {
     : "light wooden side table in a bright modern Indian living room";
   const festive = inp.template === "festive" ? " Soft diya lights and marigold flowers far in the blurred background." : "";
   const base = `Photorealistic product-photography background: an EMPTY ${place}. The lower-middle of the frame is a flat empty surface where a product will be placed later — nothing on it. Shallow depth of field, the background softly blurred, premium advertising look, clean and uncluttered.${festive} No people, no products, no text, no logos, no packaging.`;
-  const prompts = [`${base} Bright soft morning window light, eye-level camera.`, `${base} Warm golden evening light, slightly closer, slightly lower camera angle.`];
+  // ONE room is enough: the scenes differ by framing (wide hero, close-up, low under the offer), not by a second near-identical
+  // picture (owner, 28 Oct 2026). Saves ~₹3 a video.
+  const prompts = [`${base} Bright soft morning window light, eye-level camera.`];
   const out = await Promise.all(prompts.map(async (pr, i) => { const f = path.join(dir, `room-${i}.jpg`); try { await scenePhoto(pr, f); return readFileSync(f); } catch (e) { console.error("[ad] room", e.message); return null; } }));
   return out.filter(Boolean);
 }
