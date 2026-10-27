@@ -40,7 +40,7 @@ export async function sceneImage({ gemini, photo, photos = [], logo, brief, rati
 /** Google Veo image-to-video (owner, 27 Oct 2026: "jo jayada perfect bane wo tarika"): the first frame IS our still with
  *  the real product, so the product cannot change; Veo adds the cinematic motion (push-in, hands, pouring water).
  *  8-second clips; ~$0.15 a second on the fast model. Writes the mp4 to outFile. */
-export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 6, log = () => {} }) {
+export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 8, log = () => {} }) {
   const model = process.env.REAL_VEO_MODEL || "veo-3.1-fast-generate-preview";
   const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
   const body = { instances: [{ prompt, image: { bytesBase64Encoded: jpg.toString("base64"), mimeType: "image/jpeg" } }], parameters: { aspectRatio: ratio === "16:9" ? "16:9" : "9:16", durationSeconds: sec, personGeneration: "allow_adult" } };
@@ -218,6 +218,24 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   }
   // CTA end card (template engine's cta scene) held for the last voice line
   const cta = path.join(dir, "cta.png");
+  // Veo films with sound (ambience, the splash of water, a music bed). That sound becomes the bed under the voice,
+  // like the Gemini-app ads; a clip without sound (Kling) leaves the chosen music in place.
+  let bed = null;
+  if (!v2) {
+    try {
+      const wavs = [];
+      for (let i = 0; i < shots.length; i++) {
+        const w = path.join(dir, `bed-${i}-${fmt}.wav`);
+        await helpers.ffmpeg(["-y", "-loglevel", "error", "-ss", "0.2", "-t", (SHOT + 0.2).toFixed(2), "-i", rawOf(i), "-vn", "-ac", "2", "-ar", "48000", w]);
+        if (fs.existsSync(w) && fs.statSync(w).size > 20000) wavs.push(w);
+      }
+      if (wavs.length === shots.length) {
+        bed = path.join(dir, `bed-${fmt}.wav`);
+        await helpers.ffmpeg(["-y", "-loglevel", "error", ...wavs.flatMap((w) => ["-i", w]), "-filter_complex", `${wavs.map((_, i) => `[${i}:a]`).join("")}concat=n=${wavs.length}:v=0:a=1[a]`, "-map", "[a]", bed]);
+        log("veo sound used as the bed");
+      }
+    } catch (e) { bed = null; log(`no veo sound bed (${e instanceof Error ? e.message : e})`); }
+  }
   // The closing card stands on the last scene, blurred: big logo, the name and the number (the PRO card).
   const lastStill = path.join(dir, `scene-${nClips - 1}-${fmt}.png`);
   try { await renderProScene(cta, { kind: "cta", fmt, tpl: inp.template || "bold", inp, bg: fs.existsSync(lastStill) ? fs.readFileSync(lastStill) : null, logo: assets.logo }); }
@@ -230,19 +248,21 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   args.push("-loop", "1", "-t", ctaSec.toFixed(2), "-i", cta);
   const CTA_IDX = N;
   if (assets.voWav) args.push("-i", assets.voWav);
-  if (assets.music) args.push("-stream_loop", "-1", "-i", assets.music);
+  const musicIn = bed || assets.music;
+  if (musicIn) args.push(...(bed ? [] : ["-stream_loop", "-1"]), "-i", musicIn);
   let fc = clips.map((_, i) => `[${i}:v]fps=${FPS},format=yuv420p[v${i}];`).join("") + `[${CTA_IDX}:v]scale=${W}:${H},zoompan=z='min(zoom+0.0008,1.08)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${Math.round(ctaSec * FPS)}:s=${W}x${H}:fps=${FPS},format=yuv420p[v${CTA_IDX}];`;
   let last = "v0", off = 0, total = durs.reduce((a, b) => a + b, 0) - 0.4 * N;
   for (let i = 1; i <= N; i++) { off += durs[i - 1] - 0.4; fc += `[${last}][v${i}]xfade=transition=fade:duration=0.4:offset=${off.toFixed(2)}[x${i}];`; last = `x${i}`; }
   fc += `[${last}]fade=t=out:st=${(total - 0.6).toFixed(2)}:d=0.6[vout];`;
   // Audio is FINISHED here: the caption burn that follows copies it untouched,
   // so the duck and the -14 LUFS master have to happen on this pass.
-  const vi = N + 1, mi = N + 1 + (assets.voWav ? 1 : 0);
+  const vi = N + 1, mi = N + 1 + (assets.voWav ? 1 : 0); // mi = the bed: Veo's own sound, or the chosen music
   const S = "aresample=48000,aformat=channel_layouts=stereo";
   const fadeOut = `afade=t=out:st=${Math.max(0, total - 1.5).toFixed(2)}:d=1.5`;
-  if (assets.voWav && assets.music) fc += `[${vi}:a]${S},apad=whole_dur=${total.toFixed(2)},asplit=2[vo1][vo2];[${mi}:a]${S},volume=${MUSIC_VOL},${fadeOut}[bg];[bg][vo1]${DUCK}[bgd];[vo2][bgd]amix=inputs=2:duration=first:normalize=0,${MASTER_AF}[aout]`;
+  // the Veo bed is real ambience + music, mixed a little louder than a stock track; it ends with the CTA card (apad)
+  if (assets.voWav && musicIn) fc += `[${vi}:a]${S},apad=whole_dur=${total.toFixed(2)},asplit=2[vo1][vo2];[${mi}:a]${S},${bed ? `apad=whole_dur=${total.toFixed(2)},volume=0.55` : `volume=${MUSIC_VOL}`},${fadeOut}[bg];[bg][vo1]${DUCK}[bgd];[vo2][bgd]amix=inputs=2:duration=first:normalize=0,${MASTER_AF}[aout]`;
   else if (assets.voWav) fc += `[${vi}:a]${S},apad=whole_dur=${total.toFixed(2)},${MASTER_AF}[aout]`;
-  else if (assets.music) fc += `[${mi}:a]${S},volume=${MUSIC_SOLO},${fadeOut},${MASTER_AF}[aout]`;
+  else if (musicIn) fc += `[${mi}:a]${S},${bed ? `apad=whole_dur=${total.toFixed(2)},` : ""}volume=${MUSIC_SOLO},${fadeOut},${MASTER_AF}[aout]`;
   else fc += `anullsrc=r=48000:cl=stereo[aout]`; // digital silence: loudnorm would try to lift it by +70 dB
   const fcFile = path.join(dir, "real-filter.txt"); fs.writeFileSync(fcFile, fc);
   const out = path.join(dir, `ad-${fmt}.mp4`);

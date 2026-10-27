@@ -48,7 +48,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ plan: { ...b.plan, ...better } });
   }
   const scenes = brief.tier === "realistic"
-    ? (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : 5) // Pro video shots are ~5.6 s each (Veo 6-second clips)
+    ? (brief.length <= 10 ? 1 : brief.length <= 20 ? 2 : 3) // Pro video: one continuous 8-second Veo take per scene (~7.6 s used)
     : (brief.length <= 10 ? 2 : brief.length <= 20 ? 3 : brief.length <= 30 ? 4 : brief.length <= 45 ? 5 : 6);
 
   const admin = getAdminSupabase();

@@ -6,7 +6,7 @@
 //   - one smooth camera move + one small action per shot for the video model.
 // Any failure returns null and the first plan is used unchanged — this pass can only make it better, never block it.
 
-type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string };
+type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string; sound?: string };
 export type PolishPlan = { headline?: string; scenes: Scene[]; cta?: string; caption?: string };
 export type PolishBrief = { own?: string; ownLines?: boolean; usage?: string; product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
 
@@ -15,7 +15,7 @@ const MODEL = "gemini-3.5-flash";
 export async function polishPlan(key: string, plan: PolishPlan, b: PolishBrief, photo?: { mime: string; data: string } | null): Promise<PolishPlan | null> {
   const n = plan.scenes.length;
   const real = b.tier === "realistic";
-  const secPerLine = real ? 5.5 : Math.max(2.5, b.length / (n + 1));
+  const secPerLine = real ? 7 : Math.max(2.5, b.length / (n + 1));
   const words = Math.max(5, Math.round(secPerLine * 2.2)); // natural Hindi ad speech ≈ 2.2 words a second
   const prompt = `You are two people at a top Indian ad agency: a senior copywriter who writes premium TV commercials, and a commercial film director.
 Rewrite this ${b.length}-second vertical product ad so it feels like a premium Indian TV commercial. Return ONLY JSON.
@@ -40,24 +40,25 @@ Bad → good (Hindi):
 "दुकान और घर दोनों के लिए बेहतरीन और भरोसेमंद hydration।" → "हर घूँट हल्का, ताज़ा — और पूरे परिवार के लिए।"
 "अभी व्हाट्सएप करें 9876543210 पर और आर्डर बुक करें।" → "आज ही WhatsApp कीजिए — number स्क्रीन पर है।"
 
-${real ? `THE FILM (a Pro video: an image model draws each shot's first frame from the product photo, then Google Veo animates it for 6 seconds)
+${real ? `THE FILM (a Pro video: an image model draws each shot's first frame from the product photo, then Google Veo films ONE continuous 8-second shot from it, with its own sound — like the best AI ads made in the Gemini app: one flowing camera move, rich detail, real light, real sound, no cuts inside a shot)
 Work like a commercial director with a shot list. First write two bibles that are repeated WORD FOR WORD in every shot, so the whole ad looks like one film:
 - "product_bible": one precise English sentence describing THIS product exactly as in the photo — type, shape, colours, materials, the panel/screen and what is lit on it, buttons, spout/hose or other parts, logo position. Example style: "a wall-mounted water ionizer with a glossy black frame, a brushed-silver front, a vertical black touch display glowing soft blue with white icons, and a curved chrome swivel spout on top".
 - "set_bible": one English sentence for the one location and light used in every shot — e.g. "a premium modern Indian kitchen with white marble counters, warm wooden cabinets and brass utensils, soft morning sunlight from a window on the left, warm cinematic colour grade".
 Then for every scene a shot card:
 - "shot": shot size + lens + angle, e.g. "Medium close-up, 50mm lens, eye level, shallow depth of field".
 - "still": what is in the FIRST frame — where the product stands, who is there (Indian, natural, candid) and what they are doing at that moment. The product is fully visible and the hero.
-- "action": exactly ONE small natural action over the 6 seconds, written with time beats, e.g. "0-2s the camera settles; 2-4s a hand places a glass under the spout; 4-6s clear water starts to flow into the glass". Choose actions that really happen with this product.
-- "camera": exactly ONE smooth move — slow dolly-in, gentle orbit, slow tilt down, rack focus, or a locked-off shot.
+- "action": the 8-second shot as THREE beats in one flowing take, rich and sensory, e.g. "0-3s soft morning light drifts across the kitchen as the camera glides towards the machine, steam rising from a chai cup in the background; 3-6s a hand places a crystal glass under the chrome spout and clear water begins to flow, catching the light; 6-8s the camera settles on the glass filling, tiny bubbles sparkling, the product sharp and beautiful behind it". Only actions that really happen with this product.
+- "camera": ONE continuous premium move for the whole take — slow dolly-in, gentle arc/orbit, slow crane down, or a slider move with a rack focus at the end.
+- "sound": the shot's sound design in English (Veo makes it): ambience + real sounds + music mood, e.g. "gentle morning kitchen ambience, the soft splash of water into glass, a warm piano-and-strings music bed". NO speech, NO singing, NO voice-over (the voice is added later).
 - "keep": the continuity rules for this shot — what must NOT change, e.g. "the display stays lit the whole time; the product keeps its exact shape, colours and position; nothing new appears; no text appears".
-Shot plan: 1 = the product alone, hero lighting, a slow push-in; 2 = a hand using it the way it is really used; later = a family moment with the product clearly in frame. Never show it as a bottle, box or package unless it is one. Never let a touch switch something off.
+Shot plan by count — 1 shot: start on the product as the hero and end on the result of using it, in the same take; 2 shots: (1) the product as the hero, (2) it in use with a family moment; 3 shots: hero → in use (close-up) → family moment. The product is clearly in frame in every shot. Never show it as a bottle, box or package unless it is one. Never let a touch switch something off.
 HOW IT IS OPERATED: ${b.usage ? `the owner says: "${b.usage}" — show it EXACTLY this way and no other way.` : "you do not know how it is switched on or controlled, so NEVER show anyone pressing, tapping or touching its controls or screen — show the result instead (water flowing, a glass filling, a family drinking)."}
 ` : `- Keep "visual" and "motion" short English notes (they are not filmed for this video type).
 `}
 CURRENT PLAN (improve it; keep exactly ${n} scenes):
 ${JSON.stringify({ headline: plan.headline, scenes: plan.scenes.map((s) => ({ text: s.text, caption_text: s.caption_text ?? "", visual: s.visual ?? "", motion: s.motion ?? "" })), cta: plan.cta, caption: plan.caption })}
 
-JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
+JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":"","sound":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
   try {
     const parts: unknown[] = [];
     if (photo) parts.push({ inlineData: { mimeType: photo.mime, data: photo.data } });
@@ -81,7 +82,7 @@ JSON shape: ${real ? `{"headline":"","product_bible":"","set_bible":"","scenes":
         ? `${s.shot ?? "Medium shot, 50mm lens"}. ${s.still} The product: ${pb || b.product}. Setting: ${sb || "a premium modern Indian home, soft natural light"}. Premium TV commercial, photorealistic, cinematic lighting, shallow depth of field, 9:16 vertical. No text, no letters, no logos, no watermark.`.slice(0, 1400)
         : String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "",
       motion: real && s.action
-        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. Smooth, slow, premium TV-commercial motion, no cuts.`.slice(0, 1200)
+        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. One continuous take, smooth and slow, premium TV-commercial look, photorealistic, natural skin and real reflections, no cuts. Audio: ${s.sound || "soft premium music bed with gentle natural ambience"}; no speech, no singing, no voice-over.`.slice(0, 1600)
         : String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "",
     }));
     if (scenes.some((s) => !s.text)) return null;
