@@ -66,6 +66,9 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const [category, setCategory] = useState(""); const [phone, setPhone] = useState(""); const [firm, setFirm] = useState("");
   const [brand, setBrand] = useState<BrandChoice>({ name: "", logo: "" });
   const [offer, setOffer] = useState("");
+  // Pro video: how the product is really operated (owner, 27 Oct 2026: "display se nahi chalta, button se chalta hai").
+  // The AI never guesses this; it is remembered per product on this phone.
+  const [usage, setUsage] = useState("");
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
   // step 2
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -98,7 +101,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
       api<{ products?: MyProduct[] }>("/api/poster/products").catch(() => null),
       api<{ profiles?: { name: string; phone?: string; is_default?: boolean; category?: string }[] }>("/api/poster/profiles").catch(() => null),
     ]);
-    const l = pr?.data.products ?? []; setProducts(l); if (l.length === 1) setProductId(l[0].id);
+    const l = pr?.data.products ?? []; setProducts(l); if (l.length === 1) { setProductId(l[0].id); try { setUsage(localStorage.getItem(`pro.usage.${l[0].id}`) ?? ""); } catch { /* private window */ } }
     const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
     if (p) { setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); }
     setReady(true);
@@ -121,7 +124,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     if (real && !chosen?.photo_url) { setErr(hi ? "Pro video में AI आपका असली product दिखाता है — इसके लिए product की photo चाहिए। Products में photo जोड़कर उसे चुनें।" : "The Pro video shows your real product — it needs the product's photo. Add a photo under Products and choose it."); return; }
     setErr(""); setNeedCredits(null); setBusy("plan");
     try {
-      const p = await post("/api/media/ad-plan", { ...base(len), features: [], photo: chosen?.photo_url || undefined });
+      const p = await post("/api/media/ad-plan", { ...base(len), features: [], photo: chosen?.photo_url || undefined, ...(real && usage.trim() ? { usage: usage.trim() } : {}) });
       if (!p.ok) { setErr(p.status === 0 ? (hi ? "Internet नहीं है — फिर try करें।" : "No internet — please try again.") : (hi ? "शब्द नहीं लिखे जा सके। फिर try करें।" : "Could not write the words. Please try again.")); return; }
       const pl = p.data.plan as Plan; setPlan(pl); setEditing(false);
       const ph = chosen ? [...new Set([...(chosen.photo_url ? [chosen.photo_url] : []), ...(real ? (chosen.photos ?? []).filter((x) => x.role !== "context").map((x) => x.url) : [])])].slice(0, real ? 5 : 1) : [];
@@ -273,7 +276,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             <div className="space-y-2">
               <p className={label}>{num(1)} {hi ? "किस product का video?" : "Which product?"}</p>
               {products.length > 0 ? (<>
-                <select value={productId} onChange={(e) => { setProductId(e.target.value); setErr(""); }} className={inp}><option value="">{hi ? "Product चुनें…" : "Choose a product…"}</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
+                <select value={productId} onChange={(e) => { setProductId(e.target.value); setErr(""); try { setUsage(localStorage.getItem(`pro.usage.${e.target.value}`) ?? ""); } catch { /* private window */ } }} className={inp}><option value="">{hi ? "Product चुनें…" : "Choose a product…"}</option>{products.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}</select>
                 {chosen?.photo_url && /* eslint-disable-next-line @next/next/no-img-element */ <img src={chosen.photo_url} alt={chosen.name} className="h-20 w-20 rounded-xl border border-border bg-white object-contain" />}
                 {!productId && <input className={inp} placeholder={hi ? "…या नाम लिखें" : "…or type a name"} value={product} onChange={(e) => { setProduct(e.target.value); setErr(""); }} />}
               </>) : (<>
@@ -281,6 +284,11 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                 <p className="text-xs text-muted">{hi ? <>Video में product की photo चाहिए? पहले <Link href="/poster/products" className="underline">Products</Link> में product जोड़ें।</> : <>Want your photo in the video? Add the product under <Link href="/poster/products" className="underline">Products</Link> first.</>}</p>
               </>)}
             </div>
+            {real && <div>
+              <p className={label}><span className="grid h-5 w-5 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">i</span> {hi ? "यह कैसे चलता है?" : "How is it used?"} <span className="font-normal text-muted">{hi ? "(ज़रूरी नहीं)" : "(optional)"}</span></p>
+              <input className={inp} value={usage} maxLength={200} onChange={(e) => { setUsage(e.target.value); try { if (productId) localStorage.setItem(`pro.usage.${productId}`, e.target.value); } catch { /* private window */ } }} placeholder={hi ? "जैसे: सामने का button दबाने पर pipe से पानी आता है" : "e.g. press the front button and water comes from the pipe"} />
+              <p className="mt-1 text-[11px] text-muted">{hi ? "AI video में product वैसे ही चलाएगा। खाली छोड़ें तो कोई button या screen नहीं दबाएगा — सिर्फ़ नतीजा दिखाएगा (जैसे पानी भरना)।" : "The AI will use it exactly this way. Left empty, nobody presses anything — it shows the result (like water filling a glass)."}</p>
+            </div>}
             <div>
               <p className={label}>{num(2)} {hi ? "कोई offer?" : "Any offer?"}</p>
               <input className={inp} value={offer} onChange={(e) => setOffer(e.target.value)} placeholder={hi ? "जैसे: इस हफ़्ते 20% छूट (ज़रूरी नहीं)" : "e.g. 20% off this week (optional)"} />

@@ -61,7 +61,7 @@ export async function POST(request: Request) {
       const best = scripts[0].script;
       const plan = { headline: best.headline, scenes: best.scenes.map((x) => ({ text: x.text, caption_text: x.caption, visual: "", motion: "" })), cta: best.cta.text, caption: best.post_caption, features: best.features, voice: best.voice, music: best.music, template: best.template, questions: best.questions };
       // The premium copywriter + director pass (owner, 27 Oct 2026); the first plan stays if it fails.
-      const better = await polishPlan(key, plan, { product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: JSON.stringify(pf).slice(0, 1500) }, await photoFor(b.photo));
+      const better = await polishPlan(key, plan, { usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: JSON.stringify(pf).slice(0, 1500) }, await photoFor(b.photo));
       if (better) Object.assign(plan, better, { scenes: better.scenes.map((x) => ({ text: x.text, caption_text: x.caption_text ?? "", visual: x.visual ?? "", motion: x.motion ?? "" })) });
       return NextResponse.json({ plan, scripts, brief, storyboard, facts_version: prod?.facts_version ?? 0 });
     }
@@ -91,7 +91,7 @@ RULES
 - NEVER put the phone number (or any of its digits) in a spoken line: it is shown big on the end card. The CTA says the action only, e.g. "अभी WhatsApp करें" / "Call or WhatsApp us today".
 - ${brief.brand ? `Write the brand name exactly as "${brief.brand}" (Latin letters, same spelling) everywhere — in the headline and inside Hindi or other-script lines too. Never transliterate it.` : "Brand and product names stay in Latin letters, never transliterated."}
 - Scene 1 shows the product and hooks in the first 2 seconds; keep the headline max 5 words.
-${brief.tier === "realistic" ? `- PRO VIDEO SHOTS (a premium TV commercial, the product is the hero in EVERY shot): scene 1 = a hero shot of the product alone in a premium modern Indian home (marble, warm light), camera slowly pushing in; scene 2 = a close-up of a hand using the product exactly as it is used in real life (e.g. touching its control panel, water pouring from its outlet into a glass); later scenes = a happy Indian family enjoying the result with the product clearly visible. The product is the machine in the owner's photos — never a bottle, box or package unless it IS one. "motion" = one cinematic camera move + one small natural action (slow dolly-in, gentle orbit, rack focus, water pouring, a finger tapping the panel).
+${brief.tier === "realistic" ? `- PRO VIDEO SHOTS (a premium TV commercial, the product is the hero in EVERY shot): scene 1 = a hero shot of the product alone in a premium modern Indian home (marble, warm light), camera slowly pushing in; scene 2 = a close-up of a hand using the product exactly as it is used in real life (${S(b.usage, 200) ? `operated exactly as the owner says: "${S(b.usage, 200)}"` : "never pressing or touching its controls — show the result: water pouring from its outlet into a glass"}); later scenes = a happy Indian family enjoying the result with the product clearly visible. The product is the machine in the owner's photos — never a bottle, box or package unless it IS one. "motion" = one cinematic camera move + one small natural action (slow dolly-in, gentle orbit, rack focus, water pouring, a finger tapping the panel).
 ` : ""}- "visual": ENGLISH image-generation prompt for ONE photorealistic shot — real Indian people/home/shop, specific framing and light, the product clearly present, no text on screen. "motion": ENGLISH one-line camera/subject motion for a 5-second clip.
 - "caption_text": the on-screen caption for that scene in the brief's language (max 8 words).
 - "features": 4 punchy 2-3 word ENGLISH benefit labels for icons.
@@ -106,7 +106,7 @@ JSON shape:
     const plan = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}");
     if (!Array.isArray(plan.scenes) || !plan.scenes.length) throw new Error("no scenes");
     plan.scenes = plan.scenes.slice(0, scenes);
-    const better = await polishPlan(key, plan, { product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: facts.slice(0, 1500) }, await photoFor(b.photo));
+    const better = await polishPlan(key, plan, { usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: facts.slice(0, 1500) }, await photoFor(b.photo));
     if (better) Object.assign(plan, better);
     return NextResponse.json({ plan, brief, storyboard });
   } catch { return NextResponse.json({ error: "The AI plan could not be made — please try again." }, { status: 502 }); }

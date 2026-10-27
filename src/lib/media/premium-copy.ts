@@ -8,7 +8,7 @@
 
 type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string };
 export type PolishPlan = { headline?: string; scenes: Scene[]; cta?: string; caption?: string };
-export type PolishBrief = { product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
+export type PolishBrief = { usage?: string; product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
 
 const MODEL = "gemini-3.5-flash";
 
@@ -47,10 +47,11 @@ Work like a commercial director with a shot list. First write two bibles that ar
 Then for every scene a shot card:
 - "shot": shot size + lens + angle, e.g. "Medium close-up, 50mm lens, eye level, shallow depth of field".
 - "still": what is in the FIRST frame — where the product stands, who is there (Indian, natural, candid) and what they are doing at that moment. The product is fully visible and the hero.
-- "action": exactly ONE small natural action over the 6 seconds, written with time beats, e.g. "0-2s the camera settles; 2-4s a finger lightly taps the display and it glows brighter; 4-6s clear water starts to flow from the spout into a glass". Choose actions that really happen with this product.
+- "action": exactly ONE small natural action over the 6 seconds, written with time beats, e.g. "0-2s the camera settles; 2-4s a hand places a glass under the spout; 4-6s clear water starts to flow into the glass". Choose actions that really happen with this product.
 - "camera": exactly ONE smooth move — slow dolly-in, gentle orbit, slow tilt down, rack focus, or a locked-off shot.
 - "keep": the continuity rules for this shot — what must NOT change, e.g. "the display stays lit the whole time; the product keeps its exact shape, colours and position; nothing new appears; no text appears".
 Shot plan: 1 = the product alone, hero lighting, a slow push-in; 2 = a hand using it the way it is really used; later = a family moment with the product clearly in frame. Never show it as a bottle, box or package unless it is one. Never let a touch switch something off.
+HOW IT IS OPERATED: ${b.usage ? `the owner says: "${b.usage}" — show it EXACTLY this way and no other way.` : "you do not know how it is switched on or controlled, so NEVER show anyone pressing, tapping or touching its controls or screen — show the result instead (water flowing, a glass filling, a family drinking)."}
 ` : `- Keep "visual" and "motion" short English notes (they are not filmed for this video type).
 `}
 CURRENT PLAN (improve it; keep exactly ${n} scenes):
