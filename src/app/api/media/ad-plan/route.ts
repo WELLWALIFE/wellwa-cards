@@ -1,5 +1,6 @@
 // Ad Builder — AI production plan from a structured brief. The user reviews
 // the plan once; the engines then render exactly what was approved.
+import { polishPlan, photoFor } from "@/lib/media/premium-copy";
 import { NextResponse } from "next/server";
 import { requireUser, rateLimited, clientKey, workerAlive } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
@@ -59,6 +60,9 @@ export async function POST(request: Request) {
       if (!scripts.length) return NextResponse.json({ error: "Could not write scripts — try again." }, { status: 502 });
       const best = scripts[0].script;
       const plan = { headline: best.headline, scenes: best.scenes.map((x) => ({ text: x.text, caption_text: x.caption, visual: "", motion: "" })), cta: best.cta.text, caption: best.post_caption, features: best.features, voice: best.voice, music: best.music, template: best.template, questions: best.questions };
+      // The premium copywriter + director pass (owner, 27 Oct 2026); the first plan stays if it fails.
+      const better = await polishPlan(key, plan, { product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: JSON.stringify(pf).slice(0, 1500) }, await photoFor(b.photo));
+      if (better) Object.assign(plan, better, { scenes: better.scenes.map((x) => ({ text: x.text, caption_text: x.caption_text ?? "", visual: x.visual ?? "", motion: x.motion ?? "" })) });
       return NextResponse.json({ plan, scripts, brief, storyboard, facts_version: prod?.facts_version ?? 0 });
     }
   }
@@ -102,6 +106,8 @@ JSON shape:
     const plan = JSON.parse(j.candidates?.[0]?.content?.parts?.[0]?.text ?? "{}");
     if (!Array.isArray(plan.scenes) || !plan.scenes.length) throw new Error("no scenes");
     plan.scenes = plan.scenes.slice(0, scenes);
+    const better = await polishPlan(key, plan, { product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal, facts: facts.slice(0, 1500) }, await photoFor(b.photo));
+    if (better) Object.assign(plan, better);
     return NextResponse.json({ plan, brief, storyboard });
   } catch { return NextResponse.json({ error: "The AI plan could not be made — please try again." }, { status: 502 }); }
 }

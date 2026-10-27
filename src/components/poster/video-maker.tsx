@@ -119,7 +119,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     if (real && !chosen?.photo_url) { setErr(hi ? "Pro video में AI आपका असली product दिखाता है — इसके लिए product की photo चाहिए। Products में photo जोड़कर उसे चुनें।" : "The Pro video shows your real product — it needs the product's photo. Add a photo under Products and choose it."); return; }
     setErr(""); setNeedCredits(null); setBusy("plan");
     try {
-      const p = await post("/api/media/ad-plan", { ...base(len), features: [] });
+      const p = await post("/api/media/ad-plan", { ...base(len), features: [], photo: chosen?.photo_url || undefined });
       if (!p.ok) { setErr(p.status === 0 ? (hi ? "Internet नहीं है — फिर try करें।" : "No internet — please try again.") : (hi ? "शब्द नहीं लिखे जा सके। फिर try करें।" : "Could not write the words. Please try again.")); return; }
       const pl = p.data.plan as Plan; setPlan(pl); setEditing(false);
       if (stage !== "review") {
