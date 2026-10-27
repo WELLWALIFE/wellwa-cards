@@ -84,6 +84,9 @@ Extra notes from owner: ${brief.notes || "-"}${facts}
 
 RULES
 - Exactly ${scenes} scenes + a final CTA line. Each spoken line about ${Math.round((brief.length * 2.3) / (scenes + 1))} words (±3); total spoken words ≈ ${Math.round(brief.length * 2.3)}. Scene 1 must hook in 2 seconds (a question, a number, a pain). Only the final "cta" line may mention calling/WhatsApp/the phone number (and only if a phone number was given) — the scene lines must stay focused on the product/benefit/story and must NOT repeat a call-to-action.
+- NEVER put the phone number (or any of its digits) in a spoken line: it is shown big on the end card. The CTA says the action only, e.g. "अभी WhatsApp करें" / "Call or WhatsApp us today".
+- ${brief.brand ? `Write the brand name exactly as "${brief.brand}" (Latin letters, same spelling) everywhere — in the headline and inside Hindi or other-script lines too. Never transliterate it.` : "Brand and product names stay in Latin letters, never transliterated."}
+- Scene 1 shows the product and hooks in the first 2 seconds; keep the headline max 5 words.
 - "visual": ENGLISH image-generation prompt for ONE photorealistic shot — real Indian people/home/shop, specific framing and light, the product clearly present, no text on screen. "motion": ENGLISH one-line camera/subject motion for a 5-second clip.
 - "caption_text": the on-screen caption for that scene in the brief's language (max 8 words).
 - "features": 4 punchy 2-3 word ENGLISH benefit labels for icons.

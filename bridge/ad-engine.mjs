@@ -234,7 +234,8 @@ export async function renderAd(dir, fmt, inp, assets, helpers, voLines, kinds = 
   for (let i = 0; i < kinds.length; i++) {
     const f = path.join(dir, `${fmt}-${i}.png`);
     const ph = assets.photos?.length ? assets.photos[i % assets.photos.length] : assets.photo;
-    await renderScene(f, { kind: kinds[i], fmt, tpl: inp.template, inp, photo: ph, logo: assets.logo, caption: voLines[i]?.caption ?? voLines[i]?.text });
+    if (assets.pro) await renderProScene(f, { kind: kinds[i], fmt, tpl: inp.template, inp, cut: assets.cut, photo: ph, bg: assets.bgs?.length ? assets.bgs[i % assets.bgs.length] : null, logo: assets.logo, line: inp.scenes?.[i]?.caption_text || "" });
+    else await renderScene(f, { kind: kinds[i], fmt, tpl: inp.template, inp, photo: ph, logo: assets.logo, caption: voLines[i]?.caption ?? voLines[i]?.text });
     files.push(f);
   }
   const durs = kinds.map((_, i) => Math.max(2.2, (voLines[i]?.sec ?? 0) + 0.5));
@@ -271,4 +272,115 @@ export async function renderAd(dir, fmt, inp, assets, helpers, voLines, kinds = 
   args.push("-filter_complex_script", fcFile, "-map", "[vout]", "-map", "[aout]", "-t", total.toFixed(2), "-r", String(fps), ...(deliver ? DELIVERY_V : INTERMEDIATE), ...DELIVERY_A, out);
   await helpers.ffmpeg(args);
   return out;
+}
+
+/* ------------------------------------------------------------------------------------------------
+ * PRO LOOK (owner, 27 Oct 2026: "isko profactional video maker banao").
+ * The product is cut out of its photo (a plain studio background → transparent, free, no AI) and
+ * stood on a real-looking AI background (an empty counter / table in an Indian home — the product is
+ * never redrawn by AI, so it stays exactly the owner's). Big type on top, a logo mark in the corner,
+ * and a closing card with a big logo, the name and the number. Falls back to the template look.
+ * ---------------------------------------------------------------------------------------------- */
+
+/** Background → transparent when the photo has a plain light background touching its edges (most product
+ *  shots). Flood-fills from the border so white parts INSIDE the product stay. Null when the border is busy. */
+export async function cutout(buf) {
+  try {
+    const img = sharp(buf).rotate().resize(1000, 1000, { fit: "inside", withoutEnlargement: true }).ensureAlpha();
+    const { data, info } = await img.raw().toBuffer({ resolveWithObject: true });
+    const { width: w, height: h } = info; const at = (x, y) => (y * w + x) * 4;
+    // the border colour: the median-ish of the edge pixels; must be light and even
+    const edge = []; for (let x = 0; x < w; x += 4) edge.push(at(x, 0), at(x, h - 1)); for (let y = 0; y < h; y += 4) edge.push(at(0, y), at(w - 1, y));
+    const avg = [0, 1, 2].map((c) => edge.reduce((a, i) => a + data[i + c], 0) / edge.length);
+    const near = (i, tol) => Math.abs(data[i] - avg[0]) + Math.abs(data[i + 1] - avg[1]) + Math.abs(data[i + 2] - avg[2]) < tol;
+    if (avg[0] + avg[1] + avg[2] < 560 || edge.filter((i) => near(i, 60)).length / edge.length < 0.85) return null;
+    const seen = new Uint8Array(w * h); const q = [];
+    const push = (x, y) => { const k = y * w + x; if (!seen[k] && near(k * 4, 70)) { seen[k] = 1; q.push(k); } };
+    for (let x = 0; x < w; x++) { push(x, 0); push(x, h - 1); } for (let y = 0; y < h; y++) { push(0, y); push(w - 1, y); }
+    while (q.length) { const k = q.pop(); const x = k % w, y = (k / w) | 0; if (x > 0) push(x - 1, y); if (x < w - 1) push(x + 1, y); if (y > 0) push(x, y - 1); if (y < h - 1) push(x, y + 1); }
+    let kept = 0, x0 = w, y0 = h, x1 = -1, y1 = -1;
+    for (let k = 0; k < w * h; k++) {
+      if (seen[k]) { data[k * 4 + 3] = 0; continue; }
+      kept++; const x = k % w, y = (k / w) | 0; if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+      // a soft 1px edge: a kept pixel next to a removed one is half see-through, so it does not look cut with scissors
+      if ((x > 0 && seen[k - 1]) || (x < w - 1 && seen[k + 1]) || (y > 0 && seen[k - w]) || (y < h - 1 && seen[k + w])) data[k * 4 + 3] = 150;
+    }
+    if (kept < w * h * 0.05 || kept > w * h * 0.97) return null; // nothing left, or nothing removed
+    return await sharp(data, { raw: { width: w, height: h, channels: 4 } }).extract({ left: x0, top: y0, width: x1 - x0 + 1, height: y1 - y0 + 1 }).png().toBuffer();
+  } catch { return null; }
+}
+
+/** A product standing on the background: soft contact shadow under it. */
+async function standOn(bgJpg, product, W, H, { box, bottomY }) {
+  const p = await sharp(product).resize(box.w, box.h, { fit: "inside" }).png().toBuffer(); const m = await sharp(p).metadata();
+  const left = Math.round((W - m.width) / 2), top = Math.round(bottomY - m.height);
+  const sw = Math.round(m.width * 0.9), sh = Math.round(m.width * 0.12);
+  const shadow = await sharp(Buffer.from(`<svg width="${sw}" height="${sh}" xmlns="http://www.w3.org/2000/svg"><ellipse cx="${sw / 2}" cy="${sh / 2}" rx="${sw / 2}" ry="${sh / 2}" fill="#000" fill-opacity="0.45"/></svg>`)).blur(12).png().toBuffer();
+  return { layers: [{ input: shadow, left: Math.round((W - sw) / 2), top: Math.round(bottomY - sh * 0.55) }, { input: p, left, top }], top };
+}
+
+/** One PRO scene (PNG at W×H). kind: hook | product | features | offer | cta. */
+export async function renderProScene(file, { kind, fmt, tpl, inp, cut, photo, bg, logo, line }) {
+  const { w: W, h: H } = FORMATS[fmt]; const T = TEMPLATES[tpl] ?? TEMPLATES.bold;
+  const tall = H >= W; const base = (s) => Math.round((tall ? W : H) * s);
+  const brand = String(inp.brandName || "").slice(0, 30); const phone = String(inp.phone || "");
+  // background: the AI room (or the product photo blurred) — cover, never stretched
+  let bgBuf = bg ? await sharp(bg).resize(W, H, { fit: "cover" }).toBuffer() : photo ? await sharp(photo).resize(W, H, { fit: "cover" }).blur(30).modulate({ brightness: 0.8 }).toBuffer() : null;
+  if (!bgBuf) bgBuf = await sharp(Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.bg[0]}"/><stop offset="1" stop-color="${T.bg[1]}"/></linearGradient></defs><rect width="100%" height="100%" fill="url(#g)"/></svg>`)).png().toBuffer();
+  if (kind === "cta") bgBuf = await sharp(bgBuf).blur(18).modulate({ brightness: 0.55 }).toBuffer();
+  const layers = []; let svg = "";
+  // shade at the top for the words, and at the bottom for the moving captions
+  svg += `<defs><linearGradient id="t" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.62"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient><linearGradient id="b" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient></defs>`;
+  if (kind !== "cta") svg += `<rect width="${W}" height="${Math.round(H * 0.36)}" fill="url(#t)"/><rect y="${Math.round(H * 0.66)}" width="${W}" height="${Math.round(H * 0.34)}" fill="url(#b)"/>`;
+  const shadowText = (lines, y, size, weight = 900, fill = "#fff") => lines.map((l, i) => { const yy = (y + i * size * 1.15).toFixed(0); return `<text x="${W / 2}" y="${yy}" text-anchor="middle" font-family="${fam(l)}" font-size="${size}" font-weight="${weight}" fill="#000" fill-opacity="0.35" transform="translate(0,4)">${esc(l)}</text><text x="${W / 2}" y="${yy}" text-anchor="middle" font-family="${fam(l)}" font-size="${size}" font-weight="${weight}" fill="${fill}">${esc(l)}</text>`; }).join("");
+  if (kind !== "cta") {
+    // the product, standing in the room
+    const prod = cut || (photo ? await sharp(photo).resize(Math.round(W * 0.6), Math.round(H * 0.34), { fit: "inside" }).png().toBuffer().catch(() => null) : null);
+    if (prod) { const s = await standOn(bgBuf, prod, W, H, { box: { w: Math.round(W * (kind === "hook" ? 0.74 : 0.66)), h: Math.round(H * (kind === "hook" ? 0.36 : 0.32)) }, bottomY: Math.round(H * 0.69) }); layers.push(...s.layers); }
+    // words on top
+    const top = kind === "hook" ? (inp.headline || inp.product) : kind === "offer" && inp.offer ? inp.offer : (line || inp.product);
+    const { lines, size } = fit(top, kind === "hook" ? 14 : 18, base(kind === "hook" ? 0.105 : 0.08), 3);
+    const y0 = Math.round(H * 0.12) + size;
+    if (kind === "offer" && inp.offer) {
+      const bw = Math.round(W * 0.84), bh = Math.round(lines.length * size * 1.15 + base(0.12));
+      svg += `<rect x="${(W - bw) / 2}" y="${Math.round(H * 0.1)}" width="${bw}" height="${bh}" rx="${base(0.04)}" fill="${T.accent}"/>`;
+      svg += `<text x="${W / 2}" y="${Math.round(H * 0.1) + base(0.06)}" text-anchor="middle" font-family="${LAT}" font-size="${base(0.035)}" font-weight="800" letter-spacing="6" fill="${T.bg[0]}">${inp.lang === "en" ? "SPECIAL OFFER" : "ख़ास ऑफ़र"}</text>`;
+      svg += lines.map((l, i) => `<text x="${W / 2}" y="${(Math.round(H * 0.1) + base(0.06) + size * 1.1 * (i + 1)).toFixed(0)}" text-anchor="middle" font-family="${fam(l)}" font-size="${size}" font-weight="900" fill="${T.bg[0]}">${esc(l)}</text>`).join("");
+    } else {
+      svg += shadowText(lines, y0, size);
+      svg += `<rect x="${W / 2 - 50}" y="${y0 + (lines.length - 1) * size * 1.15 + base(0.035)}" width="100" height="8" rx="4" fill="${T.accent}"/>`;
+    }
+    // the logo mark (or the name) in the top corner, like a TV channel
+    if (logo) {
+      const lh = Math.round(H * 0.035), pad = Math.round(lh * 0.25);
+      const lg = await sharp(logo).resize({ height: lh, width: Math.round(W * 0.24), fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
+      const plate = await sharp(Buffer.from(`<svg width="${m.width + pad * 2}" height="${m.height + pad * 2}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" rx="${Math.round((m.height + pad * 2) * 0.22)}" fill="#fff" fill-opacity="0.94"/></svg>`)).composite([{ input: lg, left: pad, top: pad }]).png().toBuffer();
+      layers.push({ input: plate, left: Math.round(W * 0.05), top: Math.round(H * 0.035) });
+    } else if (brand) svg += `<text x="${Math.round(W * 0.05)}" y="${Math.round(H * 0.06)}" font-family="${fam(brand)}" font-size="${base(0.035)}" font-weight="800" fill="#fff" letter-spacing="2">${esc(brand)}</text>`;
+  } else {
+    // closing card: big logo on a white card, the name, the action and the number
+    const cw = Math.round(W * 0.8), cx = Math.round((W - cw) / 2);
+    const lg = logo ? await sharp(logo).resize({ width: Math.round(cw * 0.7), height: Math.round(H * 0.12), fit: "inside" }).png().toBuffer() : null; const lm = lg ? await sharp(lg).metadata() : null;
+    // the card's height first, so it can sit a little above the middle of the screen
+    const est = base(0.06) + (lm ? lm.height + base(0.05) : 0) + base(logo ? 0.05 : 0.08) + base(0.05) + base(0.045) + base(0.04) + (phone ? base(0.13) : 0) + base(0.06);
+    const cy = Math.max(Math.round(H * 0.12), Math.round((H - est) / 2 - H * 0.06));
+    let y = cy + base(0.06);
+    const inner = [];
+    if (lg && lm) { inner.push({ input: lg, left: Math.round((W - lm.width) / 2), top: y }); y += lm.height + base(0.05); }
+    const nameSize = base(logo ? 0.05 : 0.08);
+    const nameY = y + nameSize; y = nameY + base(0.05);
+    const label = CTA_LABELS[inp.lang] ?? CTA_LABELS.en;
+    const labelY = y + base(0.045); y = labelY + base(0.04);
+    const pillY = y, pillH = phone ? base(0.13) : 0; y += pillH + base(0.06);
+    const ch = y - cy;
+    svg += `<rect x="${cx}" y="${cy}" width="${cw}" height="${ch}" rx="${base(0.05)}" fill="#fff"/>`;
+    if (brand) svg += `<text x="${W / 2}" y="${nameY}" text-anchor="middle" font-family="${fam(brand)}" font-size="${nameSize}" font-weight="900" fill="#0b1220">${esc(brand)}</text>`;
+    svg += `<text x="${W / 2}" y="${labelY}" text-anchor="middle" font-family="${fam(label)}" font-size="${base(0.045)}" font-weight="700" fill="#475569">${esc(label)}</text>`;
+    if (phone) { const pw = Math.round(cw * 0.82); svg += `<rect x="${(W - pw) / 2}" y="${pillY}" width="${pw}" height="${pillH}" rx="${pillH / 2}" fill="#25D366"/><text x="${W / 2}" y="${pillY + pillH * 0.66}" text-anchor="middle" font-family="${LAT}" font-size="${base(0.062)}" font-weight="900" fill="#fff">${esc(phone)}</text>`; }
+    layers.push(...inner);
+  }
+  const overlay = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`);
+  // svg (shades, words) goes between the background and the product only for the shades; the words must be on top,
+  // so: background → shades+words svg → product layers → (words again are not needed: product sits below them)
+  await sharp(bgBuf).composite([{ input: overlay, left: 0, top: 0 }, ...layers]).png().toFile(file);
 }

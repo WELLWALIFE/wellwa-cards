@@ -1062,6 +1062,27 @@ function templateKinds(n, hasOffer) {
   return out;
 }
 
+/** A spoken line without phone numbers (7+ digits, spaces/dashes allowed) and the little word left dangling after one. */
+function speakable(line) {
+  const t = String(line ?? "").replace(/\+?\d[\d\s-]{5,}\d/g, " ").replace(/\s+(पर|par|on|at)\s*([।.!,])/giu, "$2").replace(/\s+(पर|par)\s+(और|aur)\s+/giu, " और ").replace(/\s{2,}/g, " ").replace(/\s+([।.!,])/g, "$1").trim();
+  return t || String(line ?? "");
+}
+/** Two empty rooms for the PRO look, chosen by the trade; the product is composited in later, never drawn by AI. */
+async function proBackgrounds(inp, dir) {
+  if (!GEMINI) return [];
+  const what = `${inp.category || ""} ${inp.product || ""}`.toLowerCase();
+  const place = /water|purif|ioniz|ro\b|kitchen|food|mixer|cook|oil|spice|masala|tea|coffee/.test(what) ? "white marble kitchen counter in a bright modern Indian kitchen"
+    : /beauty|skin|cosmetic|hair|cream|soap|perfume|salon/.test(what) ? "clean bathroom vanity shelf with soft towels in the background"
+    : /phone|mobile|laptop|electronic|gadget|computer|speaker/.test(what) ? "minimal wooden work desk near a window"
+    : /cloth|saree|fashion|shoe|bag|jewel/.test(what) ? "elegant boutique display table"
+    : "light wooden side table in a bright modern Indian living room";
+  const festive = inp.template === "festive" ? " Soft diya lights and marigold flowers far in the blurred background." : "";
+  const base = `Photorealistic product-photography background: an EMPTY ${place}. The lower-middle of the frame is a flat empty surface where a product will be placed later — nothing on it. Shallow depth of field, the background softly blurred, premium advertising look, clean and uncluttered.${festive} No people, no products, no text, no logos, no packaging.`;
+  const prompts = [`${base} Bright soft morning window light, eye-level camera.`, `${base} Warm golden evening light, slightly closer, slightly lower camera angle.`];
+  const out = await Promise.all(prompts.map(async (pr, i) => { const f = path.join(dir, `room-${i}.jpg`); try { await scenePhoto(pr, f); return readFileSync(f); } catch (e) { console.error("[ad] room", e.message); return null; } }));
+  return out.filter(Boolean);
+}
+
 async function processAd(job) {
   const dir = path.join(os.tmpdir(), `ad-${job.id}`);
   const markSpent = spendMarker(job);
@@ -1119,6 +1140,9 @@ async function processAd(job) {
       for (let i = 0; i < lines.length; i++) {
         const w = path.join(dir, `vo-${i}.wav`);
         let sec = 0;
+        // The number is shown big on the closing card; read aloud digit by digit it took 6 seconds of a 10-second
+        // ad (27 Oct 2026). Spoken lines never carry it — the plan is told so, this is the safety net.
+        if (inp.tier !== "testimonial") lines[i] = speakable(lines[i]);
         if (inp.voice !== false) { try { sec = await ttsLine(lines[i], w, inp.voiceStyle || "warm", inp.lang); wavs.push(w); } catch (e) { console.error("[ad] tts", e.message, "line:", JSON.stringify(lines[i]).slice(0, 160)); } }
         voLines.push({ text: lines[i], sec, caption: wordCaps ? "" : (captions?.[i] ?? lines[i]), visual: planScenes?.[i]?.visual, motion: planScenes?.[i]?.motion, wav: wavs.includes(w) ? w : null });
         await prog({ progress: { text: `Recording the voice (${i + 1} of ${lines.length})…` } });
@@ -1164,6 +1188,15 @@ async function processAd(job) {
     const photos = []; for (const u of (Array.isArray(inp.photos) ? inp.photos.slice(0, 5) : [])) { const b = await fetchPhoto(u); if (b) photos.push(b); }
     const photo = photos[0] ?? null;
     const logo = inp.logoUrl ? await fetchPhoto(inp.logoUrl) : null;
+    // PRO look for the product video (owner, 27 Oct 2026): the product cut out of its photo and stood in a real-looking
+    // room (AI draws only the empty room, never the product), big type, a logo mark. ~₹3 per room picture.
+    let pro = null;
+    if (inp.tier === "template" && inp.look !== "classic" && photo) {
+      await prog({ stage: "scenes", progress: { text: "Setting up your product…" } });
+      const [cut, bgs] = await Promise.all([AD_ENGINE.cutout(photo), proBackgrounds(inp, dir)]);
+      pro = { cut, bgs };
+      console.log(`[ad] ${job.id.slice(0, 8)} pro look: cut-out ${cut ? "yes" : "no"}, rooms ${bgs.length}`);
+    }
     const music = musicFile(inp.music);
     // Every tier can ship in all three ratios: template/testimonial re-render per ratio (cheap);
     // realistic/presenter generate ONCE (first ratio) and the others are reframed from it.
@@ -1230,7 +1263,7 @@ async function processAd(job) {
             ? await renderRealisticAd(dir, vInp, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr, gemini: geminiJson, falKey: env.FAL_KEY, renderScene }, v.lines, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
             : inp.tier === "presenter"
             ? await renderPresenterAd(dir, { ...vInp, ctaText: v.lines?.[v.lines.length - 1]?.text || "" }, { presenterPhoto, voWav: v.voWav, logo, music: vMusic }, { ffmpeg: ffArr, falKey: env.FAL_KEY, renderScene }, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
-            : await renderAd(dir, fmt, vInp, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr }, v.lines, kinds);
+            : await renderAd(dir, fmt, vInp, { photo, photos, logo, voWav: v.voWav, music: vMusic, ...(pro ? { pro: true, cut: pro.cut, bgs: pro.bgs } : {}) }, { ffmpeg: ffArr }, v.lines, kinds);
           if (v.tag) { const renamed = out.replace(/\.mp4$/, `${v.tag}.mp4`); renameSync(out, renamed); out = renamed; }
           if (single) base = out;   // the other ratios are reframed from the clean master, not from the captioned file
           out = await captioned(out, fmt, v.lines, v.tag);
