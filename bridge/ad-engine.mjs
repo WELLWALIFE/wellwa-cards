@@ -387,3 +387,39 @@ export async function renderProScene(file, { kind, fmt, tpl, inp, cut, photo, bg
   // so: background → shades+words svg → product layers → (words again are not needed: product sits below them)
   await sharp(bgBuf).composite([{ input: overlay, left: 0, top: 0 }, ...layers]).png().toFile(file);
 }
+
+/** The closing titles of a CINEMATIC Pro video (owner, 27 Oct 2026: "Gemini jaisi ad"): no white card — the brand's
+ *  name and one line in the top third of the hero shot, and a slim lower-third with the logo, the name and the number.
+ *  A transparent W×H PNG laid over the last seconds of the film. */
+export async function renderEndTitle(file, { W, H, inp, logo }) {
+  const brand = String(inp.brandName || inp.product || "").slice(0, 32);
+  const line = String(inp.headline || "").slice(0, 60);
+  const phone = String(inp.phone || "");
+  const base = (s) => Math.round(W * s);
+  const tfont = fam(brand), lfont = fam(line);
+  const bandH = Math.round(H * 0.105), bandY = H - bandH - Math.round(H * 0.06);
+  let svg = `<defs><linearGradient id="top" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#000" stop-opacity="0.55"/><stop offset="1" stop-color="#000" stop-opacity="0"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f5d78e"/><stop offset="0.5" stop-color="#fff1c9"/><stop offset="1" stop-color="#d9a441"/></linearGradient></defs>
+    <rect width="${W}" height="${Math.round(H * 0.34)}" fill="url(#top)"/>`;
+  const bs = Math.min(base(0.105), Math.floor((W * 0.86) / Math.max(4, brand.length * 0.62)));
+  svg += `<text x="${W / 2}" y="${Math.round(H * 0.12) + bs}" text-anchor="middle" font-family="${tfont}" font-size="${bs}" font-weight="900" letter-spacing="${hasDev(brand) ? 0 : 3}" fill="url(#gold)">${esc(hasDev(brand) ? brand : brand.toUpperCase())}</text>`;
+  if (line) { const { lines, size } = fit(line, 30, base(0.042), 2); svg += textBlock(lines, W / 2, Math.round(H * 0.12) + bs + base(0.07), size, { fill: "#ffffff", anchor: "middle", weight: 600, family: lfont }); }
+  // the lower-third
+  svg += `<rect x="${base(0.05)}" y="${bandY}" width="${W - base(0.1)}" height="${bandH}" rx="${Math.round(bandH * 0.22)}" fill="#0b1220" fill-opacity="0.78"/>`;
+  svg += `<rect x="${base(0.05)}" y="${bandY}" width="${base(0.012)}" height="${bandH}" rx="3" fill="url(#gold)"/>`;
+  const imgs = [];
+  let tx = base(0.1);
+  if (logo) {
+    try {
+      const lh = Math.round(bandH * 0.62), pad = Math.round(lh * 0.18);
+      const lg = await sharp(await trimLogo(logo)).resize({ height: lh - pad * 2, width: base(0.26), fit: "inside" }).png().toBuffer(); const m = await sharp(lg).metadata();
+      const plate = await sharp(Buffer.from(`<svg width="${m.width + pad * 2}" height="${m.height + pad * 2}" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" rx="${Math.round(pad * 1.2)}" fill="#fff"/></svg>`)).composite([{ input: lg, left: pad, top: pad }]).png().toBuffer();
+      imgs.push({ input: plate, left: tx, top: Math.round(bandY + (bandH - (m.height + pad * 2)) / 2) }); tx += m.width + pad * 2 + base(0.04);
+    } catch { /* no logo */ }
+  }
+  const label = CTA_LABELS[inp.lang] ?? CTA_LABELS.en;
+  svg += `<text x="${tx}" y="${bandY + Math.round(bandH * 0.42)}" font-family="${fam(label)}" font-size="${base(0.032)}" font-weight="600" fill="#cbd5e1">${esc(label)}</text>`;
+  if (phone) svg += `<text x="${tx}" y="${bandY + Math.round(bandH * 0.8)}" font-family="${LAT}" font-size="${base(0.05)}" font-weight="900" fill="#ffffff" letter-spacing="1">${esc(phone)}</text>`;
+  const over = Buffer.from(`<svg width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg">${svg}</svg>`);
+  await sharp({ create: { width: W, height: H, channels: 4, background: { r: 0, g: 0, b: 0, alpha: 0 } } }).composite([{ input: over, left: 0, top: 0 }, ...imgs]).png().toFile(file);
+}

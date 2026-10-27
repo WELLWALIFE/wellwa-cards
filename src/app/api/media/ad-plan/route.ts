@@ -42,7 +42,7 @@ export async function POST(request: Request) {
   // "✨ AI से सुधारो" (owner, 27 Oct 2026: the owner writes, the AI makes it perfect, the owner checks, then it is made):
   // the owner's current lines are polished — nothing new is planned.
   if (b.polish_only && b.plan && Array.isArray(b.plan.scenes) && b.plan.scenes.length) {
-    const cur = { headline: S(b.plan.headline, 80), cta: S(b.plan.cta, 200), caption: S(b.plan.caption, 600), scenes: (b.plan.scenes as Record<string, unknown>[]).slice(0, 6).map((x) => ({ text: S(x.text, 240), caption_text: S(x.caption_text, 80), visual: S(x.visual, 1400), motion: S(x.motion, 1200) })) };
+    const cur = { headline: S(b.plan.headline, 80), cta: S(b.plan.cta, 200), caption: S(b.plan.caption, 600), scenes: (b.plan.scenes as Record<string, unknown>[]).slice(0, 6).map((x) => ({ text: S(x.text, 240), caption_text: S(x.caption_text, 80), visual: S(x.visual, 1400), motion: S(x.motion, 2600) })) };
     const better = await polishPlan(key, cur, { own: brief.notes, ownLines: true, usage: S(b.usage, 200), product: brief.product, category: brief.category, brand: brief.brand, offer: brief.offer, lang: brief.lang, langRule: LANG_RULE[brief.lang], length: brief.length, tier: brief.tier, goal: brief.goal }, await photoFor(b.photo));
     if (!better) return NextResponse.json({ error: "The AI could not polish it right now — please try again." }, { status: 502 });
     return NextResponse.json({ plan: { ...b.plan, ...better } });

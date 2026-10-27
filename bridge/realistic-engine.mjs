@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
-import { FORMATS, renderProScene } from "./ad-engine.mjs";
+import { FORMATS, renderProScene, renderEndTitle } from "./ad-engine.mjs";
 import { FPS, SAFE, INTERMEDIATE, DELIVERY_V, DELIVERY_A, MASTER_AF, DUCK, MUSIC_VOL, MUSIC_SOLO } from "./caption-engine.mjs";
 
 const FAL = "https://queue.fal.run";
@@ -76,13 +76,16 @@ export async function veoI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", s
 // TESTING (owner, 27 Oct 2026): 360p clips cost about a third of 720p. Put back to "720p" before launch,
 // or set REAL_VIDEO_RES on the server. The clip is scaled up to 1080×1920 when it is joined.
 const REAL_RES = process.env.REAL_VIDEO_RES || "360p";
-export async function omniI2V({ key, imageBuf, prompt, outFile, ratio = "9:16", sec = 8, log = () => {} }) {
+export async function omniI2V({ key, imageBuf, refs = null, prompt, outFile, ratio = "9:16", sec = 8, log = () => {} }) {
   const model = process.env.REAL_VIDEO_MODEL || "gemini-omni-1.1-flash";
   const BASE = "https://generativelanguage.googleapis.com/v1beta";
   const H = { "x-goog-api-key": key, "Content-Type": "application/json" };
-  const jpg = await sharp(imageBuf).jpeg({ quality: 92 }).toBuffer();
-  const text = `${prompt}\nThe clip is exactly ${sec} seconds long and starts on the given image as its first frame.`;
-  const body = { model, input: [{ type: "image", data: jpg.toString("base64"), mime_type: "image/jpeg" }, { type: "text", text }], response_format: { type: "video", aspect_ratio: ratio === "16:9" ? "16:9" : "9:16", resolution: REAL_RES, delivery: "uri" }, background: false, store: false, stream: false };
+  // refs = the product's own photos as REFERENCES (cinematic: the model frames every cut itself); else a first frame.
+  const imgs = refs?.length ? refs.slice(0, 3) : [imageBuf];
+  const parts = [];
+  for (const b of imgs) parts.push({ type: "image", data: (await sharp(b).rotate().resize(1280, 1280, { fit: "inside", withoutEnlargement: true }).jpeg({ quality: 90 }).toBuffer()).toString("base64"), mime_type: "image/jpeg" });
+  const text = refs?.length ? `${prompt}\nThe video is ${sec} seconds long.` : `${prompt}\nThe clip is exactly ${sec} seconds long and starts on the given image as its first frame.`;
+  const body = { model, input: [...parts, { type: "text", text }], response_format: { type: "video", aspect_ratio: ratio === "16:9" ? "16:9" : "9:16", resolution: REAL_RES, delivery: "uri" }, background: false, store: false, stream: false };
   let res, j;
   for (let a = 0; ; a++) {
     res = await fetch(`${BASE}/interactions`, { method: "POST", headers: H, body: JSON.stringify(body), signal: AbortSignal.timeout(11 * 60_000) });
@@ -224,8 +227,28 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   // ad take 20-25 min. Overlays are quick and stay sequential.
   const all = assets.photos?.length ? assets.photos : [assets.photo];
   const rawOf = (i) => path.join(dir, `clip-${i}-${fmt}-raw.mp4`);
+  async function makeFilm(i) {
+    const errs = [];
+      // CINEMATIC (owner, 27 Oct 2026 — "Gemini jaisi ad"): one 10-second generation with its own quick cuts, the product
+      // photos as references. Same retry ladder: full prompt → short prompt; the check re-takes once.
+      const shortC = String(shots[i].motion).replace(/\s+/g, " ").slice(0, 700);
+      for (const [tag, pr] of [["full", shots[i].motion], ["short", shortC]]) {
+        try {
+          await omniI2V({ key: helpers.geminiKey, refs: all, prompt: pr, outFile: rawOf(i), ratio, sec: Math.round(SHOT + 0.2), log: (m) => log(`[${i + 1}/${shots.length}] film ${tag}: ${m}`) });
+          const qc = await clipOk({ gemini: helpers.gemini, ffmpeg: helpers.ffmpeg, clip: rawOf(i), dir, i, refPhoto: all[0], keep: "" });
+          if (!qc.ok) {
+            log(`film ${i} failed the check (${qc.why}) — one re-take`);
+            const first = rawOf(i) + ".first.mp4"; fs.renameSync(rawOf(i), first);
+            try { await omniI2V({ key: helpers.geminiKey, refs: all, prompt: pr, outFile: rawOf(i), ratio, sec: Math.round(SHOT + 0.2), log: (m) => log(`[${i + 1}] retake ${m}`) }); } catch { fs.renameSync(first, rawOf(i)); }
+          }
+          log(`film ${i} ok (${tag})`); return;
+        } catch (e) { const m = e instanceof Error ? e.message : String(e); errs.push(`film ${tag}: ${m}`); log(`film ${i} ${tag} failed: ${m}`); }
+      }
+      throw new Error(errs.join(" | ").slice(0, 280));
+      }
   async function makeRaw(i) {
     if (v2) { if (!fs.existsSync(rawOf(i))) throw new Error(`clip ${i} missing`); return; }
+    if (inp.cinematic) return makeFilm(i);
     const imgFile = path.join(dir, `scene-${i}-${fmt}.png`);
     // cached across variations of the same job (same scenes, different words/music)
     let img;
@@ -272,7 +295,7 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
   for (let i = 0; i < shots.length; i++) {
     const raw = rawOf(i);
     const ov = path.join(dir, `cap-${i}-${fmt}-${inp.template || "t"}${v2 ? "-k" : ""}.png`);
-    await captionOverlay(ov, { W, H, logo: assets.logo || null, text: inp.captions === "off" && !v2 ? (voLines[i]?.caption || voLines[i]?.text || "") : "", brand: inp.brandName || "", card: v2 ? voLines[i]?.caption || "" : "" }); // pipeline 2: keyword card on top + word captions below
+    await captionOverlay(ov, { W, H, logo: inp.cinematic ? null : assets.logo || null, text: inp.cinematic ? "" : inp.captions === "off" && !v2 ? (voLines[i]?.caption || voLines[i]?.text || "") : "", brand: inp.cinematic ? "" : inp.brandName || "", card: v2 ? voLines[i]?.caption || "" : "" }); // pipeline 2: keyword card on top + word captions below
     const out = path.join(dir, `clip-${i}.mp4`);
     await helpers.ffmpeg(["-y", "-loglevel", "error", ...(v2 ? ["-ss", "0.4", "-t", (v2.slots[i] + 0.4).toFixed(2)] : ["-ss", "0.2", "-t", (SHOT + 0.2).toFixed(2)]), "-i", raw, "-i", ov, "-filter_complex", `[0:v]${v2 ? "" : "tpad=stop_mode=clone:stop_duration=1.5,"}scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},fps=${FPS}[v];[v][1:v]overlay=0:0,format=yuv420p[o]`, "-map", "[o]", "-an", ...INTERMEDIATE, out]);
     clips.push(out); log(`clip ${i} ready`);
@@ -296,6 +319,36 @@ export async function renderRealisticAd(dir, inp, assets, helpers, voLines, log 
         log("veo sound used as the bed");
       }
     } catch (e) { bed = null; log(`no veo sound bed (${e instanceof Error ? e.message : e})`); }
+  }
+  if (inp.cinematic) {
+    // The film plays to the end — no white card. The titles fade in over the hero frame of the last cut.
+    const N = clips.length, TITLE = 2.8;
+    const total = clips.length * SHOT - 0.4 * (N - 1);
+    const endPng = path.join(dir, `end-${fmt}.png`);
+    await renderEndTitle(endPng, { W, H, inp, logo: assets.logo });
+    const args = ["-y", "-loglevel", "error"]; clips.forEach((c) => args.push("-i", c));
+    args.push("-loop", "1", "-t", total.toFixed(2), "-i", endPng);
+    const E = N;
+    if (assets.voWav) args.push("-i", assets.voWav);
+    const musicIn = bed || assets.music; if (musicIn) args.push(...(bed ? [] : ["-stream_loop", "-1"]), "-i", musicIn);
+    let fc = clips.map((_, i) => `[${i}:v]fps=${FPS},format=yuv420p,settb=AVTB[v${i}];`).join("");
+    let last = "v0", off = 0;
+    for (let i = 1; i < N; i++) { off += SHOT - 0.4; fc += `[${last}][v${i}]xfade=transition=fade:duration=0.4:offset=${off.toFixed(2)}[x${i}];`; last = `x${i}`; }
+    const t0 = Math.max(0, total - TITLE);
+    fc += `[${E}:v]format=rgba,fade=t=in:st=${t0.toFixed(2)}:d=0.6:alpha=1[ttl];[${last}][ttl]overlay=0:0:enable='gte(t,${t0.toFixed(2)})',fade=t=out:st=${(total - 0.4).toFixed(2)}:d=0.4,format=yuv420p[vout];`;
+    const vi = N + 1, mi = N + 1 + (assets.voWav ? 1 : 0);
+    const S = "aresample=48000,aformat=channel_layouts=stereo";
+    const fadeOut = `afade=t=out:st=${Math.max(0, total - 1.2).toFixed(2)}:d=1.2`;
+    // the film's own sound is the soundtrack; a voice-over (if the owner asked for one) sits on top, the film ducked under it
+    if (assets.voWav && musicIn) fc += `[${vi}:a]${S},apad=whole_dur=${total.toFixed(2)},asplit=2[vo1][vo2];[${mi}:a]${S},apad=whole_dur=${total.toFixed(2)},volume=${bed ? 0.7 : MUSIC_VOL},${fadeOut}[bg];[bg][vo1]${DUCK}[bgd];[vo2][bgd]amix=inputs=2:duration=first:normalize=0,${MASTER_AF}[aout]`;
+    else if (assets.voWav) fc += `[${vi}:a]${S},apad=whole_dur=${total.toFixed(2)},${MASTER_AF}[aout]`;
+    else if (musicIn) fc += `[${mi}:a]${S},apad=whole_dur=${total.toFixed(2)},${bed ? "volume=1.0" : `volume=${MUSIC_SOLO}`},${fadeOut},${MASTER_AF}[aout]`;
+    else fc += `anullsrc=r=48000:cl=stereo[aout]`;
+    const fcFile = path.join(dir, "cine-filter.txt"); fs.writeFileSync(fcFile, fc);
+    const out = path.join(dir, `ad-${fmt}.mp4`);
+    const deliver = inp.__deliver ?? (inp.captions === "off" || !voLines.some((l) => l?.sec > 0));
+    await helpers.ffmpeg([...args, "-filter_complex_script", fcFile, "-map", "[vout]", "-map", "[aout]", "-t", total.toFixed(2), "-r", String(FPS), ...(deliver ? DELIVERY_V : INTERMEDIATE), ...DELIVERY_A, out]);
+    return out;
   }
   // The closing card stands on the last scene, blurred: big logo, the name and the number (the PRO card).
   const lastStill = path.join(dir, `scene-${nClips - 1}-${fmt}.png`);

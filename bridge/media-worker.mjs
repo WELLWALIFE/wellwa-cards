@@ -1158,7 +1158,7 @@ async function processAd(job) {
       }
       // scene i audio must start when scene i starts → pad each line to its scene duration; also gives caption timing
       const nClips = inp.tier === "realistic" ? Math.max(1, voLines.length - 1) : 0;
-      const SHOT = REAL_SHOT_SEC;
+      const SHOT = inp.cinematic ? 9.8 : REAL_SHOT_SEC; // cinematic: one 10-second film per scene
       const sceneDur = (l, i, n) => inp.tier === "realistic" ? (i < nClips ? SHOT - (i < n - 1 ? 0.4 : 0) : Math.max(3, l.sec + 0.6)) : Math.max(2.2, l.sec + 0.5) - (i < n - 1 ? 0.3 : 0);
       const withStarts = (ls) => { let t = 0; return ls.map((l, i) => { const o = { ...l, start: t }; t += sceneDur(l, i, ls.length); return o; }); };
       const buildVo = async (ls, tag) => {
@@ -1263,7 +1263,7 @@ async function processAd(job) {
           // realistic + presenter buy their clips from fal — money leaves here
           if (single) await markSpent();
           out = inp.tier === "realistic"
-            ? await renderRealisticAd(dir, { ...vInp, __shot: REAL_SHOT_SEC }, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr, gemini: geminiJson, falKey: env.FAL_KEY, geminiKey: GEMINI, fetchPhoto, renderScene }, v.lines, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
+            ? await renderRealisticAd(dir, { ...vInp, __shot: inp.cinematic ? 9.8 : REAL_SHOT_SEC }, { photo, photos, logo, voWav: v.voWav, music: vMusic }, { ffmpeg: ffArr, gemini: geminiJson, falKey: env.FAL_KEY, geminiKey: GEMINI, fetchPhoto, renderScene }, v.lines, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
             : inp.tier === "presenter"
             ? await renderPresenterAd(dir, { ...vInp, ctaText: v.lines?.[v.lines.length - 1]?.text || "" }, { presenterPhoto, voWav: v.voWav, logo, music: vMusic }, { ffmpeg: ffArr, falKey: env.FAL_KEY, renderScene }, (m) => console.log(`[ad] ${job.id.slice(0, 8)} ${m}`), fmt)
             : await renderAd(dir, fmt, vInp, { photo, photos, logo, voWav: v.voWav, music: vMusic, ...(pro ? { pro: true, cut: pro.cut, bgs: pro.bgs } : {}) }, { ffmpeg: ffArr }, v.lines, kinds);

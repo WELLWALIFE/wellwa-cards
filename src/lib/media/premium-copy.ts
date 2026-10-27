@@ -6,7 +6,8 @@
 //   - one smooth camera move + one small action per shot for the video model.
 // Any failure returns null and the first plan is used unchanged — this pass can only make it better, never block it.
 
-type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string; sound?: string };
+type Cut = { t?: string; shot?: string; action?: string; vfx?: string };
+type Scene = { text: string; caption_text?: string; visual?: string; motion?: string; shot?: string; still?: string; action?: string; camera?: string; keep?: string; sound?: string; cuts?: Cut[] };
 export type PolishPlan = { headline?: string; scenes: Scene[]; cta?: string; caption?: string };
 export type PolishBrief = { own?: string; ownLines?: boolean; usage?: string; product: string; category?: string; brand?: string; offer?: string; lang: string; langRule: string; length: number; tier: string; goal?: string; facts?: string };
 
@@ -40,26 +41,23 @@ Bad → good (Hindi):
 "दुकान और घर दोनों के लिए बेहतरीन और भरोसेमंद hydration।" → "हर घूँट हल्का, ताज़ा — और पूरे परिवार के लिए।"
 "अभी व्हाट्सएप करें 9876543210 पर और आर्डर बुक करें।" → "आज ही WhatsApp कीजिए — number स्क्रीन पर है।"
 
-${real ? `THE FILM (a Pro video: an image model draws each shot's first frame from the product photo, then Google Veo films ONE continuous 8-second shot from it, with its own sound — like the best AI ads made in the Gemini app: one flowing camera move, rich detail, real light, real sound, no cuts inside a shot)
-Work like a commercial director with a shot list. First write two bibles that are repeated WORD FOR WORD in every shot, so the whole ad looks like one film:
-- "product_bible": one precise English sentence describing THIS product exactly as in the photo — type, shape, colours, materials, the panel/screen and what is lit on it, buttons, spout/hose or other parts, logo position. Example style: "a wall-mounted water ionizer with a glossy black frame, a brushed-silver front, a vertical black touch display glowing soft blue with white icons, and a curved chrome swivel spout on top".
-- "output_bible": one English sentence saying EXACTLY where anything comes OUT of this product, as seen in the photo — e.g. "water comes out only from the open tip of its own curved chrome spout on top, straight down into a glass held under it". If nothing comes out of it, say what its visible result is instead. Water, steam or light never comes from anywhere else, and there is never a second tap, faucet, sink or machine in the frame.
-- "set_bible": one English sentence for the one location and light used in every shot — e.g. "a premium modern Indian kitchen with white marble counters, warm wooden cabinets and brass utensils, soft morning sunlight from a window on the left, warm cinematic colour grade".
-Then for every scene a shot card:
-- "shot": shot size + lens + angle, e.g. "Medium close-up, 50mm lens, eye level, shallow depth of field".
-- "still": what is in the FIRST frame — where the product stands, who is there (Indian, natural, candid) and what they are doing at that moment. The product is fully visible and the hero.
-- "action": the 8-second shot as THREE beats in one flowing take, rich and sensory, e.g. "0-3s soft morning light drifts across the kitchen as the camera glides towards the machine, steam rising from a chai cup in the background; 3-6s a hand places a crystal glass under the chrome spout and clear water begins to flow, catching the light; 6-8s the camera settles on the glass filling, tiny bubbles sparkling, the product sharp and beautiful behind it". Only actions that really happen with this product.
-- "camera": ONE continuous premium move for the whole take — slow dolly-in, gentle arc/orbit, slow crane down, or a slider move with a rack focus at the end.
-- "sound": the shot's sound design in English (Veo makes it): ambience + real sounds + music mood, e.g. "gentle morning kitchen ambience, the soft splash of water into glass, a warm piano-and-strings music bed". NO speech, NO singing, NO voice-over (the voice is added later).
-- "keep": the continuity rules for this shot — what must NOT change, e.g. "the display stays lit the whole time; the product keeps its exact shape, colours and position; nothing new appears; no text appears".
-Shot plan by count — 1 shot: start on the product as the hero and end on the result of using it, in the same take; 2 shots: (1) the product as the hero, (2) it in use with a family moment; 3 shots: hero → in use (close-up) → family moment. The product is clearly in frame in every shot. Never show it as a bottle, box or package unless it is one. Never let a touch switch something off.
+${real ? `THE FILM (a Pro video made like the best Gemini-app ads: Google's video model films each scene as ONE 10-second commercial with its OWN quick cuts — wide, macro, slow-motion — using the product photos as references, with its own music and sound. It must feel like a premium TV commercial, not a slideshow.)
+First write the bibles, repeated WORD FOR WORD in every scene so the ad is one film:
+- "product_bible": one precise English sentence describing THIS product exactly as in the photo — type, shape, colours, materials, the panel/screen and what is lit on it, buttons, spout/hose or other parts, the logo text and where it sits. Example style: "a wall-mounted water ionizer with a glossy black frame, a brushed-silver front, a vertical black touch display glowing soft blue with white icons, and a curved chrome swivel spout on top".
+- "output_bible": one English sentence saying EXACTLY where anything comes OUT of this product, as seen in the photo — e.g. "water comes out only from the open tip of its own curved chrome spout on top". Water, steam or light never comes from anywhere else, and there is never a second tap, faucet, sink or machine in the frame.
+- "set_bible": one English sentence for the one location and light used in every cut — e.g. "a luxury modern Indian kitchen with white marble, dark wood and warm under-cabinet lights, soft window light, rich cinematic contrast".
+Then for every scene (each scene = one 10-second film):
+- "cuts": 4 to 6 quick cuts that together last 10 seconds, each {"t":"0-2s","shot":"<shot size + lens + camera move>","action":"<what happens>","vfx":"<premium visual effect, or empty>"}. Vary the shot sizes like a real commercial: an establishing wide shot, macro close-ups of the product's details, the product in use, a slow-motion moment of the result (e.g. water pouring into a glass in slow motion), and a hero shot. Premium effects in the style of a tech commercial: soft glowing light along the product's edges, subtle holographic light lines, a glowing ring when a control lights up, floating golden bokeh particles, slow motion. Effects never change the product.
+- In the LAST scene, the final cut (about 2.5 s) is a still, clean HERO FRAME: the product with its result beside it (e.g. a full glass of water), beautifully lit, with EMPTY space in the top third — the brand title is added there later.
+- "sound": the film's sound design in English: a premium music bed (e.g. "modern cinematic piano with soft strings and a deep pulse") + real sounds (e.g. "the splash of water, a soft UI chime when the display lights up"). NO speech, NO singing, NO voice-over.
 HOW IT IS OPERATED: ${b.usage ? `the owner says: "${b.usage}" — show it EXACTLY this way and no other way.` : "you do not know how it is switched on or controlled, so NEVER show anyone pressing, tapping or touching its controls or screen — show the result instead (water flowing, a glass filling, a family drinking)."}
+The spoken "text" lines are an OPTIONAL Hindi voice-over the owner may add — keep them short; the film must tell the story on its own without words.
 ` : `- Keep "visual" and "motion" short English notes (they are not filmed for this video type).
 `}
 CURRENT PLAN (improve it; keep exactly ${n} scenes):
 ${JSON.stringify({ headline: plan.headline, scenes: plan.scenes.map((s) => ({ text: s.text, caption_text: s.caption_text ?? "", visual: s.visual ?? "", motion: s.motion ?? "" })), cta: plan.cta, caption: plan.caption })}
 
-JSON shape: ${real ? `{"headline":"","product_bible":"","output_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","shot":"","still":"","action":"","camera":"","keep":"","sound":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
+JSON shape: ${real ? `{"headline":"","product_bible":"","output_bible":"","set_bible":"","scenes":[{"text":"","caption_text":"","cuts":[{"t":"","shot":"","action":"","vfx":""}],"sound":""}],"cta":"","caption":""}` : `{"headline":"","scenes":[{"text":"","caption_text":"","visual":"","motion":""}],"cta":"","caption":""}`}`;
   try {
     const parts: unknown[] = [];
     if (photo) parts.push({ inlineData: { mimeType: photo.mime, data: photo.data } });
@@ -83,12 +81,20 @@ JSON shape: ${real ? `{"headline":"","product_bible":"","output_bible":"","set_b
       caption_text: clean(s.caption_text, 60),
       // Pro video: the prompts are COMPOSED here from the bibles and the shot card, so the product and the set are
       // described word for word the same in every shot, and every motion prompt carries its continuity rules.
-      visual: real && s.still
-        ? `${s.shot ?? "Medium shot, 50mm lens"}. ${s.still} The product: ${pb || b.product}. Setting: ${sb || "a premium modern Indian home, soft natural light"}. ${ob}. ${NO_TAP}. Premium TV commercial, photorealistic, cinematic lighting, shallow depth of field, 9:16 vertical. No text, no letters, no logos, no watermark.`.slice(0, 1400)
-        : String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "",
-      motion: real && s.action
-        ? `${s.camera ?? "Slow dolly-in"}. ${s.action} ${ob}; it never comes from anywhere else. ${NO_TAP}, and none appears. Keep: ${s.keep ?? "the product keeps its exact shape, colours and lights"}; ${pb ? `it is always ${pb}` : "the product never changes"}; any screen or light on it stays on; nothing new appears; no text appears. One continuous take, smooth and slow, premium TV-commercial look, photorealistic, natural skin and real reflections, no cuts. Audio: ${s.sound || "soft premium music bed with gentle natural ambience"}; no speech, no singing, no voice-over.`.slice(0, 1600)
-        : String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "",
+      // Pro video (cinematic): the scene's 10-second film prompt is COMPOSED here from the bibles and the cut list, so the
+      // product, its outlet and the set read word for word the same in every film.
+      ...(() => {
+        const cuts = (Array.isArray(s.cuts) ? s.cuts : []).filter((c) => c && (c.action || c.shot)).slice(0, 6);
+        if (!real || !cuts.length) return { visual: String(s.visual ?? "").trim().slice(0, 900) || plan.scenes[i].visual || "", motion: String(s.motion ?? "").trim().slice(0, 300) || plan.scenes[i].motion || "" };
+        const last = i === n - 1;
+        const list = cuts.map((c) => `[${c.t || ""}] ${c.shot || ""} — ${c.action || ""}${c.vfx ? ` (${c.vfx})` : ""}`.trim()).join("\n");
+        const motion = `A premium 10-second TV commercial for the product shown in the reference image(s) <IMAGE_REF_0>, in ${cuts.length} quick cuts with varied shot sizes and smooth cinematic transitions:
+${list}
+The product is always exactly ${pb || b.product} — the same shape, colours, screen and logo as in the reference images in every cut. ${ob}. ${NO_TAP}.
+Setting: ${sb || "a luxury modern Indian home, soft window light"}. Look: high-end tech commercial, dramatic soft light, rich contrast, shallow depth of field, subtle glowing light effects and floating golden bokeh particles, slow motion on the water.${last ? " The final cut is a clean, still hero frame of the product with its result beside it, beautifully lit, with empty space in the top third." : ""}
+No on-screen text, captions or subtitles; no logos other than the one printed on the product. Audio: ${s.sound || "a modern cinematic music bed with soft natural sounds"}; no speech, no voice-over, no singing.`.slice(0, 2400);
+        return { visual: `${cuts[0].shot || ""} — ${cuts[0].action || ""}`.slice(0, 400), motion };
+      })(),
     }));
     if (scenes.some((s) => !s.text)) return null;
     return { headline: clean(out.headline, 60) || plan.headline, scenes, cta: clean(out.cta, 200) || plan.cta, caption: String(out.caption ?? "").trim().slice(0, 600) || plan.caption };

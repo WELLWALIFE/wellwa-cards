@@ -76,7 +76,9 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
   // step 2
   const [plan, setPlan] = useState<Plan | null>(null);
-  const [length, setLength] = useState(10); const [look, setLook] = useState("bold"); const [voiceStyle, setVoiceStyle] = useState("warmf"); const [music, setMusic] = useState("upbeat-corporate"); const [subs, setSubs] = useState(true);
+  const [length, setLength] = useState(10); const [look, setLook] = useState("bold"); const [voiceStyle, setVoiceStyle] = useState("warmf"); const [music, setMusic] = useState("upbeat-corporate"); const [subs, setSubs] = useState(!real);
+  // Pro video is a cinematic film with its own music (like the Gemini-app ads); a Hindi voice-over is optional.
+  const [vo, setVo] = useState(!real);
   const [photos, setPhotos] = useState<string[]>([]);
   const [more, setMore] = useState(false);
   const [stillBusy, setStillBusy] = useState<Record<number, boolean>>({}); const [stillErr, setStillErr] = useState<Record<number, string>>({}); const [allVoices, setAllVoices] = useState(false); const [editing, setEditing] = useState(false);
@@ -153,7 +155,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
       const pl = p.data.plan as Plan; setPlan(pl); setEditing(false);
       const ph = chosen ? [...new Set([...(chosen.photo_url ? [chosen.photo_url] : []), ...(real ? (chosen.photos ?? []).filter((x) => x.role !== "context").map((x) => x.url) : [])])].slice(0, real ? 5 : 1) : [];
       // Pro video: the storyboard — one picture per shot, made now, seen and changed before anything is paid.
-      if (real) void storyboard(pl.scenes, ph);
+      void ph; // Pro video (cinematic): the model frames every cut from the product photos — no storyboard pictures to make
       if (stage !== "review") {
         // The AI's own suggestions for look, voice and music, changeable under "और बदलें".
         if (pl.template && LOOKS.some(([k]) => k === pl.template)) setLook(pl.template);
@@ -172,7 +174,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
     if (!idem.current) { try { idem.current = crypto.randomUUID(); } catch { idem.current = `${Date.now()}-${Math.random().toString(36).slice(2)}`; } }
     setErr(""); setNeedCredits(null); setBusy("create");
     try {
-      const r = await post("/api/media/ad", { ...base(), idem: idem.current, photos, logoUrl: brand.logo, headline: plan.headline, features: (plan.features ?? []).slice(0, 4), script: [...plan.scenes.map((s) => s.text), plan.cta], scenes: plan.scenes, cta: plan.cta, caption: plan.caption, voice: true, voiceStyle, template: look, music, captions: subs ? "words" : "off", variants: 1 });
+      const r = await post("/api/media/ad", { ...base(), idem: idem.current, photos, logoUrl: brand.logo, headline: plan.headline, features: (plan.features ?? []).slice(0, 4), script: [...plan.scenes.map((s) => s.text), plan.cta], scenes: plan.scenes, cta: plan.cta, caption: plan.caption, voice: vo, voiceStyle, template: look, music, captions: subs && vo ? "words" : "off", variants: 1, ...(real ? { cinematic: true } : {}) });
       if (!r.ok) {
         setErr(String(r.data.error ?? "") || (r.status === 0 ? (hi ? "Server तक नहीं पहुँचे। Internet देखकर दोबारा दबाएँ — दो बार पैसे नहीं कटेंगे।" : "We could not reach the server. Check your internet and tap again — you will not be charged twice.") : (hi ? "Video शुरू नहीं हो पाई। फिर try करें।" : "Could not start the video. Please try again.")));
         if (r.status === 402) setNeedCredits(Math.max(1, Number(r.data.cost) || cost));
@@ -220,7 +222,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
       if (!r.ok) { setErr(String(r.data.error ?? "") || (hi ? "AI अभी सुधार नहीं पाया — फिर दबाएँ।" : "The AI could not polish it — tap again.")); return; }
       const np = r.data.plan as Plan;
       setPlan(np);
-      if (real) void storyboard(np.scenes, photos); // the pictures follow the new shots
+      
     } finally { setPolishing(false); }
   }
   function relength(n: number) { if (n === length || busy) return; setLength(n); writeWords(n); }
@@ -358,7 +360,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
             </div>
 
             <div className="space-y-3 rounded-2xl border border-border bg-surface p-4">
-              <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">{hi ? "Video में यह बोला जाएगा" : "The video will say"}</p><div className="flex items-center gap-3"><button type="button" onClick={polish} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 rounded-full bg-ai-soft px-2.5 py-1 text-xs font-semibold text-ai disabled:opacity-50">{polishing ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : "✨"} {hi ? "AI से सुधारो" : "Polish with AI"}</button><button type="button" onClick={() => writeWords()} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink disabled:opacity-50"><RotateCw className={`h-3.5 w-3.5 ${busy === "plan" ? "animate-spin" : ""}`} /> {hi ? "नए शब्द" : "New words"}</button></div></div>
+              <div className="flex items-center justify-between gap-2"><p className="text-sm font-bold">{real && !vo ? (hi ? "Film के scenes (voice-over बंद है)" : "The film's scenes (voice-over off)") : hi ? "Video में यह बोला जाएगा" : "The video will say"}</p><div className="flex items-center gap-3"><button type="button" onClick={polish} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 rounded-full bg-ai-soft px-2.5 py-1 text-xs font-semibold text-ai disabled:opacity-50">{polishing ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : "✨"} {hi ? "AI से सुधारो" : "Polish with AI"}</button><button type="button" onClick={() => writeWords()} disabled={busy !== "" || polishing} className="inline-flex items-center gap-1 text-xs font-semibold text-brand-ink disabled:opacity-50"><RotateCw className={`h-3.5 w-3.5 ${busy === "plan" ? "animate-spin" : ""}`} /> {hi ? "नए शब्द" : "New words"}</button></div></div>
               <p className="-mt-2 text-[11px] text-muted">{hi ? "किसी भी line को अपने शब्दों में बदलें, फिर “✨ AI से सुधारो” — मतलब वही रहेगा, शब्द premium हो जाएँगे।" : "Change any line in your own words, then “✨ Polish with AI” — same meaning, premium words."}</p>
               <div className={`space-y-2 ${busy === "plan" || polishing ? "opacity-40" : ""}`}>
                 <div className="rounded-xl border border-brand/30 bg-brand-soft/30 p-2.5 focus-within:border-brand"><span className="text-[11px] font-bold text-brand-ink">{hi ? "मुख्य line (screen पर बड़ी)" : "Headline (big on screen)"}</span><input value={plan.headline} onChange={(e) => setPlan({ ...plan, headline: e.target.value })} className="w-full bg-transparent text-[15px] font-semibold outline-none" /></div>
@@ -367,7 +369,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                     <span className="text-[11px] font-bold text-brand-ink">Scene {i + 1}</span>
                     <div className="flex gap-2.5">
                       {/* The storyboard picture — the first frame the AI films from. */}
-                      {real && <div className="w-20 shrink-0 space-y-1 text-center">
+                      {false && real && <div className="w-20 shrink-0 space-y-1 text-center">
                         <div className="relative grid aspect-[9/16] w-20 place-items-center overflow-hidden rounded-lg border border-border bg-surface2">
                           {s.still ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={s.still} alt="" className={`h-full w-full object-cover ${stillBusy[i] ? "opacity-40" : ""}`} /> : null}
                           {stillBusy[i] ? <LoaderCircle className="absolute h-5 w-5 animate-spin text-brand" /> : !s.still ? <span className="px-1 text-[10px] text-muted">{hi ? "तस्वीर" : "Picture"}</span> : null}
@@ -377,7 +379,7 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                       <textarea rows={real ? 4 : 2} value={s.text} onChange={(e) => setScene(i, { text: e.target.value })} className="min-w-0 flex-1 resize-none bg-transparent text-[15px] leading-snug outline-none" />
                     </div>
                     {real && stillErr[i] && <p className="mt-1 text-[11px] font-semibold text-danger">{stillErr[i]}</p>}
-                    {real && <label className="mt-1 block rounded-md bg-surface2 px-2 py-1.5"><span className="block text-[10px] font-semibold text-muted">🎥 {hi ? "क्या दिखेगा (English में, AI के लिए) — बदलकर “नई” दबाएँ" : "What we see (for the AI) — change it, then tap Redo"}</span><textarea rows={2} value={s.visual} onChange={(e) => setScene(i, { visual: e.target.value })} className="w-full resize-none bg-transparent text-xs leading-snug outline-none" /></label>}
+                    {real && <label className="mt-1 block rounded-md bg-surface2 px-2 py-1.5"><span className="block text-[10px] font-semibold text-muted">🎬 {hi ? "Film के shots (English में, AI के लिए) — बदल सकते हैं" : "The film's shots (for the AI) — you can change them"}</span><textarea rows={6} value={s.motion} onChange={(e) => setScene(i, { motion: e.target.value })} className="w-full resize-y bg-transparent text-xs leading-snug outline-none" /></label>}
                   </div>
                 ))}
                 <div className="rounded-xl border border-dashed border-border p-2.5 focus-within:border-brand"><span className="text-[11px] font-bold text-muted">{hi ? "आख़िरी line" : "Closing line"}</span><input value={plan.cta} onChange={(e) => setPlan({ ...plan, cta: e.target.value })} className="w-full bg-transparent text-[15px] outline-none" /></div>
@@ -397,10 +399,14 @@ export function VideoMaker({ tier = "template" }: { tier?: "template" | "realist
                   <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Music — tap करके सुनें" : "Music — tap to hear"}</p>
                   <div className="flex flex-wrap gap-1.5">{MUSIC.map((m) => <button key={m || "none"} type="button" onClick={() => { setMusic(m); if (m) hear(`m-${m}`, `/api/media/music/${m}`); else { audio.current?.pause(); setPlaying(""); } }} className={`${small(music === m)} inline-flex items-center gap-1.5`}>{m ? (playing === `m-${m}` ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />) : null}{(MUSIC_NAMES[m] ?? [m, m])[hi ? 0 : 1]}</button>)}</div>
                 </div>
-                <label className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                {real && <label className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+                  <span className="min-w-0"><span className="block text-sm font-semibold">{hi ? "हिंदी voice-over" : "Hindi voice-over"}</span><span className="block text-[11px] text-muted">{hi ? "बंद: Gemini-ads जैसी — सिर्फ़ music और असली आवाज़ें। चालू: ऊपर लिखी lines बोली जाएँगी।" : "Off: like the Gemini ads — music and real sounds only. On: the lines above are spoken."}</span></span>
+                  <button type="button" role="switch" aria-checked={vo} onClick={() => setVo((x) => !x)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${vo ? "bg-brand" : "bg-border-strong"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${vo ? "left-[22px]" : "left-0.5"}`} /></button>
+                </label>}
+                {vo && <label className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                   <span className="min-w-0"><span className="block text-sm font-semibold">{hi ? "चलते शब्द (subtitles)" : "Moving words (subtitles)"}</span><span className="block text-[11px] text-muted">{hi ? "जो बोला जा रहा है, वह नीचे लिखा आता है" : "What is said appears at the bottom"}</span></span>
                   <button type="button" role="switch" aria-checked={subs} onClick={() => setSubs((x) => !x)} className={`relative h-6 w-11 shrink-0 rounded-full transition ${subs ? "bg-brand" : "bg-border-strong"}`}><span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-all ${subs ? "left-[22px]" : "left-0.5"}`} /></button>
-                </label>
+                </label>}
                 <Link href="/poster/video/pro" className="flex items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-brand" />
                   <span className="min-w-0 flex-1"><span className="block font-semibold">{real ? (hi ? "Presenter, ग्राहक review" : "Presenter, customer review") : (hi ? "Presenter, ग्राहक review, और choices" : "Presenter, customer review, more choices")}</span><span className="block text-[11px] text-muted">{hi ? "Pro screen — ज़्यादा choices" : "Pro screen — more choices"}</span></span>

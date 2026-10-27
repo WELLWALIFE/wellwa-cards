@@ -55,9 +55,12 @@ export async function POST(request: Request) {
     voice: b.voice !== false,
     voiceStyle: VOICE_KEYS.includes(b.voiceStyle) ? b.voiceStyle : "warm",
     script: Array.isArray(b.script) ? b.script.map((l: unknown) => S(l, 200)).filter(Boolean).slice(0, 7) : undefined,
-    scenes: Array.isArray(b.scenes) ? b.scenes.slice(0, 6).map((sc: Record<string, unknown>) => ({ text: S(sc?.text, 200), caption_text: S(sc?.caption_text, 80), visual: S(sc?.visual, 1400), motion: S(sc?.motion, 1200), ...(typeof sc?.still === "string" && /^https:\/\/[^/]+\/storage\/v1\/object\/public\/media\/ai-media\//.test(sc.still) && sc.still.length < 400 ? { still: sc.still } : {}) })).filter((sc: { text: string }) => sc.text) : undefined,
+    scenes: Array.isArray(b.scenes) ? b.scenes.slice(0, 6).map((sc: Record<string, unknown>) => ({ text: S(sc?.text, 200), caption_text: S(sc?.caption_text, 80), visual: S(sc?.visual, 1400), motion: S(sc?.motion, 2600), ...(typeof sc?.still === "string" && /^https:\/\/[^/]+\/storage\/v1\/object\/public\/media\/ai-media\//.test(sc.still) && sc.still.length < 400 ? { still: sc.still } : {}) })).filter((sc: { text: string }) => sc.text) : undefined,
     caption: S(b.caption, 600),
     captions: b.captions === "off" ? "off" : "words",
+    // Pro video, the Gemini-style film: 10-second generations with their own cuts, the product photos as references,
+    // titles over the hero frame instead of a card (owner, 27 Oct 2026).
+    cinematic: tier === "realistic" && b.cinematic === true,
     variants: Number(b.variants) === 3 && (b.tier === "template" || b.tier === "realistic") ? 3 : 1,
   };
   // Never sell what we do not render: the realistic pipeline always makes exactly one video
