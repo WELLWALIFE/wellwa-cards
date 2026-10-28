@@ -114,10 +114,14 @@ export default function WebsitePage() {
     router.replace(editHref(at));
   }, [panel, s, target, paid, planLoading, router]);
   const [copied, setCopied] = useState(false);
+  /** Their OWN website (the "I already have my own website" box): Share → Website and "See website" use it (owner, 28 Oct 2026). */
+  const [ownSite, setOwnSite] = useState("");
+  const [siteCopied, setSiteCopied] = useState(false);
   /** The one address shown, copied, shared and opened: the owner's own domain when connected, else the Shubhora link. */
   const link = s?.hasCard ? (s.customDomain ? `https://${s.customDomain}` : s.url) : "";
   /** The website link: on the owner's own domain the plain address IS the website (proxy.ts); the Shubhora link needs ?view=site. */
-  const siteLink = s?.hasCard && s.customDomain ? link : withView(link, "site");
+  const siteLink = ownSite || (s?.hasCard && s.customDomain ? link : withView(link, "site"));
+  async function copySite() { setCopyFail(null); try { await navigator.clipboard.writeText(ownSite); setSiteCopied(true); setTimeout(() => setSiteCopied(false), 2000); } catch { setCopyFail("top"); } }
   async function copy(where: "top" | "share") { if (!s || !s.hasCard) return; setCopyFail(null); try { await navigator.clipboard.writeText(link); setCopied(true); setTimeout(() => setCopied(false), 2000); } catch { setCopyFail(where); } }
   function shareCard() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `नमस्ते! ये मेरा digital card है — contact, products और बाकी सब एक tap में: ${withView(link, "card")}` : `Hello! Here is my digital card — contact, products and more in one tap: ${withView(link, "card")}`)}`, "_blank", "noopener"); }
   function shareSite() { if (!s || !s.hasCard) return; window.open(`https://wa.me/?text=${encodeURIComponent(hi ? `हमारी website देखें — products, services और हमारे बारे में सब कुछ: ${siteLink}` : `See our website — products, services and all about us: ${siteLink}`)}`, "_blank", "noopener"); }
@@ -207,20 +211,30 @@ export default function WebsitePage() {
                 <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   {head(1, T("Share", "Share करें"), T("Send to customers on WhatsApp", "ग्राहकों को WhatsApp पर भेजें"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}
                   <div className="space-y-3 p-3">
-                    <div className={`grid gap-2.5 ${noSite ? "grid-cols-2" : "grid-cols-3"}`}>
+                    <div className={`grid gap-2.5 ${noSite && !ownSite ? "grid-cols-2" : "grid-cols-3"}`}>
                       <button type="button" onClick={shareCard} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Card", "Card")}</span></button>
-                      {!noSite && <button type="button" onClick={shareSite} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Globe)}<span className="text-sm font-bold">{T("Website", "Website")}</span></button>}
+                      {(!noSite || !!ownSite) && <button type="button" onClick={shareSite} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Globe)}<span className="text-sm font-bold">{T("Website", "Website")}</span></button>}
                       <Link href="/poster/share" className={`${tile} bg-surface2 ring-1 ring-border`}>{icon("bg-white", "text-ink", Share2)}<span className="text-sm font-bold">{T("QR code", "QR code")}</span></Link>
                     </div>
                     <div className="flex items-center gap-2 rounded-2xl bg-surface2 py-1.5 pl-3 pr-1.5">
-                      <Globe className="h-4 w-4 shrink-0 text-brand" />
+                      {ownSite ? <Smartphone className="h-4 w-4 shrink-0 text-brand" /> : <Globe className="h-4 w-4 shrink-0 text-brand" />}
                       <code className="min-w-0 flex-1 truncate text-[13px] font-semibold">{link.replace(/^https?:\/\//, "")}</code>
                       <button type="button" onClick={() => void copy("top")} className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-brand-ink shadow-sm" aria-label={T("Copy link", "Link copy करें")}>{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
                     </div>
+                    {ownSite && (
+                      <div className="flex items-center gap-2 rounded-2xl bg-surface2 py-1.5 pl-3 pr-1.5">
+                        <Globe className="h-4 w-4 shrink-0 text-brand" />
+                        <code className="min-w-0 flex-1 truncate text-[13px] font-semibold">{ownSite.replace(/^https?:\/\//, "").replace(/\/$/, "")}</code>
+                        <button type="button" onClick={() => void copySite()} className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-brand-ink shadow-sm" aria-label={T("Copy website link", "Website link copy करें")}>{siteCopied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {siteCopied ? T("Copied", "Copy हुआ") : "Copy"}</button>
+                      </div>
+                    )}
+                    {ownSite && <p className="px-1 text-[11px] text-muted">{T("Top: your card's link. Below: your own website — the Website button and the AI use it.", "ऊपर: आपके card का link। नीचे: आपकी अपनी website — Website button और AI यही देते हैं।")}</p>}
                     {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
                     <div className="grid grid-cols-2 gap-2 text-xs font-semibold">
                       <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Smartphone className="h-4 w-4 text-brand" /> {T("See card", "Card देखें")}</CardLink>
-                      {noSite
+                      {ownSite
+                        ? <a href={ownSite} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("See website", "Website देखें")}</a>
+                        : noSite
                         ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
                         : <SiteLink href={siteLink} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("See website", "Website देखें")}</SiteLink>}
                     </div>
@@ -249,7 +263,7 @@ export default function WebsitePage() {
                 </section>
 
                 {/* Already has a website and wants only the package (owner, 28 Oct 2026): their site on the card and in the AI's replies. */}
-                <OwnSiteByCard cardId={cardId} />
+                <OwnSiteByCard cardId={cardId} onSite={setOwnSite} />
               </div>
             );
           })()}

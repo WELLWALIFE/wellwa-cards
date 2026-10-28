@@ -166,7 +166,8 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
 }
 
 /** The same website row on a page that only knows the card's id (Card & Website hub): loads the card, then the box. */
-export function OwnSiteByCard({ cardId }: { cardId: string }) {
+/** onSite: the owner's own website (full https link, "" when none) — the hub's Share box uses it for "Website". */
+export function OwnSiteByCard({ cardId, onSite }: { cardId: string; onSite?: (url: string) => void }) {
   const [card, setCard] = useState<Card | null>(null);
   useEffect(() => {
     if (!cardId) return;
@@ -174,5 +175,7 @@ export function OwnSiteByCard({ cardId }: { cardId: string }) {
     fetchMyCardsStrict().then((all) => { if (!off) setCard(all.find((c) => c.id === cardId) ?? null); }).catch(() => undefined);
     return () => { off = true; };
   }, [cardId]);
+  const own = (card?.botSite ?? "").trim();
+  useEffect(() => { onSite?.(own ? (/^https?:\/\//i.test(own) ? own : `https://${own}`) : ""); }, [own, onSite]);
   return card ? <BotSiteBox card={card} siteOnly onChanged={setCard} /> : null;
 }
