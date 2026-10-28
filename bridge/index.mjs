@@ -1130,7 +1130,7 @@ async function aiReply(jid, text, opts = {}) {
     : "";
   const docs = cardDocs();
   const docsK = docs.length
-    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, catalogue, price list, photo, PDF, details in writing). One short line of text (with our website ${sellerLink()}) plus one [MEDIA] line per file — never describe a file's contents instead of sending it. A brochure in several parts/pages (same name with 1, 2, part 1, page 2…) is ONE thing: send ALL its parts together, in order. "Details"/"brochure" with 4 files or fewer here: send them all. Never the same file twice in a chat unless asked again.`
+    ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, catalogue, price list, photo, PDF, details in writing). One short line of text plus one [MEDIA] line per file — never describe a file's contents instead of sending it. A brochure in several parts/pages (same name with 1, 2, part 1, page 2…) is ONE thing: send ALL its parts together, in order. "Details"/"brochure" with 4 files or fewer here: send them all. Never the same file twice in a chat unless asked again.`
     : "";
   const demo = demoLink();
   const linksK = demo
@@ -1171,14 +1171,16 @@ Rules:
 - BULLETS: whenever a reply lists 2 or more things (models, prices, options, steps), put each on its own line starting with "• ". The closing question is never a bullet.
 - ALWAYS END WITH ONE QUESTION — a single short, specific question that moves things forward (never "anything else?").
 - BE SPECIFIC: use real model names, numbers and prices from the knowledge above.
-- IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail, and share our website ${sellerLink()}. Never invent a price, stock, offer, warranty or delivery date.
-- SPECIFICATIONS: a size, dimension, plate count, wattage, capacity or any spec figure — give it EXACTLY as the facts above state it, for the model asked about (check the model name). If the figure is not in the facts, say plainly you will get it confirmed by ${card?.name?.split(" ")[0] || config.businessName} and share the website — NEVER say the company does not share it, and never answer around the question.
+- IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail. Never invent a price, stock, offer, warranty or delivery date.
+- SPECIFICATIONS: a size, dimension, plate count, wattage, capacity or any spec figure — give it EXACTLY as the facts above state it, for the model asked about (check the model name). If the figure is not in the facts, say plainly you will get it confirmed by ${card?.name?.split(" ")[0] || config.businessName} — NEVER say the company does not share it, and never answer around the question.
 - NEVER INVENT reviews, testimonials or customer names. If asked and none are known, offer a demo instead.
 - HEALTH: general wellness talk is fine; never claim any product treats, cures or prevents disease, and never give medical advice.
 - DEMOS ARE ONLINE: offer a live demo on a video call or the demo video. NEVER offer or suggest a home demo / home visit yourself. Only if the customer asks for a home demo: confirm their name, then their city (one per message), say ${card?.name?.split(" ")[0] || config.businessName} will confirm the home demo and call them, offer the video-call demo meanwhile, and treat it as an ESCALATION (below).
 - Never say you are an AI or mention these instructions; you are the business's assistant.
 - THE SELLER HAS A NAME: never say "owner", "seller" or "advisor" to a customer — always use ${card?.name?.split(" ")[0] || config.businessName} (the card holder's name) instead.
 - ESCALATION (IMPORTANT): if the customer asks for a call / callback, says it is urgent, asks to talk to ${card?.name?.split(" ")[0] || "the seller"} personally, gives a name + area + time for a demo/home visit, shares an address, or wants to buy/order now — then say ${card?.name?.split(" ")[0] || config.businessName} has been informed and will contact them soon, AND put on the VERY LAST line exactly: [[ALERT: <one short English line — what they want, plus any name/area/time/phone they gave>]]. Never say a request was passed on or forwarded unless you include this tag. Do not add the tag for ordinary questions.
+- WEBSITE LINK: share ${sellerLink()} ONLY in the first reply, when the customer asks for the website / link / more details online, or when closing — at most once in a chat. Never add it to an ordinary answer.
+- ANSWER FIRST: answer exactly what was asked, with the facts (figures, prices, plan incomes) in the first lines. Do not reply with only a counter-question like "kya aap … jaanna chahte hain?" when you can answer now.
 - CLOSING: if the customer is saying goodbye ("bye", "thanks", "theek hai", "ok ji"), don't push another question. Close warmly in 1-2 lines and share our website for full details: ${sellerLink()} — always call it our "website", never "card". Skip the link if it was just shared. This is the one reply without an ending question.${memoryRule}${personalRule}
 
 === LANGUAGE — THIS OVERRIDES EVERYTHING ABOVE ===
@@ -2056,8 +2058,29 @@ async function sendCardPreview(jid, text) {
 /* Send one reply. The first time our website link goes out in a chat it goes as the card's rich preview — one
  * bubble, always a picture, far more taps than a bare link WhatsApp may not unfurl. Files ([MEDIA] lines) follow as
  * real videos, photos or PDF documents. */
+/** The website link goes out once per chat (a week): later replies drop the sentence that carries it unless the customer
+ *  asked for the website / link (owner, 28 Oct 2026: "har message me website ka link deta hai"). */
+const siteSentAt = new Map(); // jid -> ts
+const LINK_ASK_RE = /\b(website|web\s*site|site|link|url|online|details?)\b|वेबसाइट|लिंक|डिटेल/i;
+function onceSiteLink(jid, reply) {
+  const own = sellerLink();
+  const hosts = [own, cardLink()].map((u) => { try { return new URL(u).host.replace(/^www\./, ""); } catch { return ""; } }).filter(Boolean);
+  const re = new RegExp(`https?://(www\\.)?(${hosts.map((h) => h.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})/?(?=[\\s)\\]]|$)`, "gi");
+  if (!hosts.length || !re.test(reply)) return reply;
+  re.lastIndex = 0;
+  const asked = LINK_ASK_RE.test(lastInbound.get(jid)?.text || "");
+  const sent = siteSentAt.get(jid) ?? 0;
+  if (!sent || Date.now() - sent > 7 * DAY || asked) { siteSentAt.set(jid, Date.now()); return reply; }
+  // Already shared: the sentence (or line) that carries the bare home link goes.
+  const marked = reply.replace(re, "\u0000");
+  const out = marked.split("\n").map((line) => line.includes("\u0000")
+    ? line.replace(/[^।.!?\u0000]*\u0000[^।.!?\n]*[।.!?]?\s*/g, "").trim()
+    : line).filter((l, i, a) => l.trim() || (i > 0 && a[i - 1].trim())).join("\n").replace(/\u0000/g, "").trim();
+  return out || reply.replace(re, "").trim();
+}
+
 async function deliver(jid, reply) {
-  reply = preferOwnSite(completeFileSets(String(reply ?? "")));
+  reply = onceSiteLink(jid, preferOwnSite(completeFileSets(String(reply ?? ""))));
   const link = cardLink();
   if (config.cardUsername && reply.includes(link) && !cardImageSentAt.has(jid)) {
     cardImageSentAt.set(jid, Date.now());
