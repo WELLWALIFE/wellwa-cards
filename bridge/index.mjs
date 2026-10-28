@@ -1133,9 +1133,14 @@ async function aiReply(jid, text, opts = {}) {
     ? `\n\nFILES YOU CAN SEND (as a real WhatsApp photo or document — put the URL alone on its own line as "[MEDIA] <url>"):\n${docs.map((d) => `- ${d.title}: ${d.url}`).join("\n")}\nSend a file only when the customer asks for it (details, specifications, brochure, catalogue, price list, photo, PDF, details in writing). One short line of text plus one [MEDIA] line per file — never describe a file's contents instead of sending it. A brochure in several parts/pages (same name with 1, 2, part 1, page 2…) is ONE thing: send ALL its parts together, in order. "Details"/"brochure" with 4 files or fewer here: send them all. Never the same file twice in a chat unless asked again.`
     : "";
   const demo = demoLink();
-  const linksK = demo
-    ? `\n\nDEMO VIDEO (owner's call): ${demo.label}: ${demo.url}\nWhenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share this link with one short line ("ये रहा demo video 👇", the URL on its own line, NOT as [MEDIA]), then offer the next step (a live demo on a video call, or the order — never a home visit). Once per chat unless they ask again; never in a bare greeting.`
+  // Every link the owner added (registration, plan video, product videos, Facebook page…): shared when the customer asks for what its name says.
+  const allLinks = (card?.botFiles ?? []).filter((f) => f?.kind === "link" && /^https?:\/\//i.test(f.url || "") && f.url !== demo?.url);
+  const moreK = allLinks.length
+    ? `\n\nLINKS YOU CAN SHARE (the URL on its own line inside your text, never as [MEDIA]; real links only):\n${allLinks.map((f) => `- ${f.label}: ${f.url}`).join("\n")}\nShare a link when the customer asks for what its name says or it clearly fits — e.g. the registration / joining link when they want to join or register, the plan video together with the plan when they ask about the business plan or income, a product video when they ask about that product, the Facebook / Instagram / YouTube page when they ask for it. One link at a time, once per chat unless asked again; never in a bare greeting.`
     : "";
+  const linksK = moreK + (demo
+    ? `\n\nDEMO VIDEO (owner's call): ${demo.label}: ${demo.url}\nWhenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share this link with one short line ("ये रहा demo video 👇", the URL on its own line, NOT as [MEDIA]), then offer the next step (a live demo on a video call, or the order — never a home visit). Once per chat unless they ask again; never in a bare greeting.`
+    : "");
   // A Shubhora partner's notes lose the old frozen copy of Shubhora's facts (the current ones are above).
   const notes = shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || "");
   const knowledge = notes
@@ -1915,7 +1920,9 @@ function ensureDocs(reply) {
 /** The owner's demo video link (a bot file of kind "link" on Card & Website), or null. */
 function demoLink() {
   const links = (cardContext?.data?.botFiles ?? []).filter((f) => f?.kind === "link" && /^https?:\/\//i.test(f.url || ""));
-  return links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`)) ?? links[0] ?? null;
+  // A demo link only — never the registration link or the plan video (owner, 28 Oct 2026: many kinds of links now).
+  const other = /plan|regist|join|signup|facebook|instagram|business|income|opportunit/i;
+  return links.find((f) => /demo|डेमो/i.test(f.label)) ?? links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`) && !other.test(f.label)) ?? null;
 }
 const DEMO_RE = /\b(demo|demu|trial|try|dikhao|dikhaye|dikhaiye|dekhna|kaise\s+(kaam|chalta|use)|how\s+(does\s+)?it\s+works?|how\s+to\s+use|working|video)\b|डेमो|डेमू|दिखाओ|दिखाइए|दिखाएँ|देखना|कैसे\s+(काम|चलता|यूज़|इस्तेमाल)|वीडियो/i;
 /** Demo talk and the AI did not share the demo video → add it, once per chat (owner's call, 11 Oct 2026). */

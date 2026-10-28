@@ -109,16 +109,32 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
       if (await saveFiles([...files, { label, url, kind }].slice(0, 12))) setFMsg(T("✅ फ़ाइल जुड़ गई — नाम ठीक कर लें ताकि बॉट सही फ़ाइल चुने।", "✅ File added — fix its name so the bot picks the right one."));
     } finally { setFileBusy(false); if (imgRef.current) imgRef.current.value = ""; if (pdfRef.current) pdfRef.current.value = ""; }
   }
-  /** A demo video on YouTube (or any page): the bot shares the link when a customer talks about a demo. */
+  /** Links the AI may share (owner, 28 Oct 2026): demo video, registration, plan video, product videos, Facebook / Instagram / YouTube
+   *  pages… The name says when: the AI shares a link when the customer asks for what its name says. */
+  const LINK_KINDS: { en: string; hi: string; name: string }[] = [
+    { en: "Demo video", hi: "Demo video", name: "Demo video" },
+    { en: "Registration link", hi: "Registration link", name: "Registration link" },
+    { en: "Plan video", hi: "Plan video", name: "Business plan video" },
+    { en: "Product video", hi: "Product video", name: "Product video" },
+    { en: "Facebook page", hi: "Facebook page", name: "Facebook page" },
+    { en: "Instagram", hi: "Instagram", name: "Instagram page" },
+    { en: "YouTube channel", hi: "YouTube channel", name: "YouTube channel" },
+    { en: "Other", hi: "दूसरा", name: "" },
+  ];
+  const [linkOpen, setLinkOpen] = useState(false);
+  const [linkName, setLinkName] = useState(""); const [linkUrl, setLinkUrl] = useState("");
   async function addLink() {
-    const raw = (prompt(T("वीडियो / पेज का लिंक (जैसे YouTube demo video):", "Link of the video / page (e.g. YouTube demo video):")) ?? "").trim();
     setFErr(""); setFMsg("");
-    if (!raw) return;
+    const raw = linkUrl.trim(); const label = linkName.trim().slice(0, 60);
+    if (!label) { setFErr(T("लिंक का नाम लिखें — जैसे Registration link, Plan video।", "Name the link — e.g. Registration link, Plan video.")); return; }
+    if (!raw) { setFErr(T("लिंक डालें।", "Put the link.")); return; }
     const url = /^https?:\/\//i.test(raw) ? raw : `https://${raw}`;
     try { new URL(url); } catch { setFErr(T("लिंक सही नहीं है।", "That link is not valid.")); return; }
     if (files.some((f) => f.url === url)) { setFErr(T("यह लिंक पहले से जुड़ा है।", "That link is already added.")); return; }
-    const isVideo = /youtu\.be|youtube\.com|vimeo\.com|instagram\.com\/reel|facebook\.com.*video/i.test(url);
-    if (await saveFiles([...files, { label: isVideo ? "Demo video" : "Link", url, kind: "link" as const }].slice(0, 12))) setFMsg(T("✅ लिंक जुड़ गया — ग्राहक demo की बात करे तो बॉट यही भेजेगा। नाम में \"demo\" रहने दें।", "✅ Link added — when a customer talks about a demo the bot shares it. Keep \"demo\" in its name."));
+    if (await saveFiles([...files, { label, url, kind: "link" as const }].slice(0, 12))) {
+      setLinkOpen(false); setLinkName(""); setLinkUrl("");
+      setFMsg(T(`✅ "${label}" जुड़ गया — ग्राहक इसकी बात करेगा तो AI यही link भेजेगा।`, `✅ "${label}" added — the AI shares it when a customer asks for it.`));
+    }
   }
   async function renameFile(url: string) {
     const label = (labels[url] ?? "").trim().slice(0, 60);
@@ -172,8 +188,8 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
         {nErr && <p className="mt-2 text-xs font-medium text-danger">{nErr}</p>}
       </div>}
       {!siteOnly && <div className="mt-4 border-t border-border pt-3">
-        <p className="text-sm font-semibold leading-tight">{T("बॉट जो फ़ाइलें भेज सके", "Files the bot can send")}</p>
-        <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। YouTube demo video का लिंक जोड़ें तो ग्राहक demo की बात करते ही बॉट वो भेज देगा। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Add a YouTube demo video link and the bot shares it whenever a customer talks about a demo. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
+        <p className="text-sm font-semibold leading-tight">{T("AI जो फ़ाइलें और links भेज सके", "Files and links the AI can send")}</p>
+        <p className="mt-0.5 text-xs text-muted">{T("Brochure, PDF, price list — ग्राहक \"details bhejo\" कहे तो AI सही फ़ाइल भेजेगा। Links भी जोड़ें: demo video, registration link, plan video, product video, Facebook / Instagram page — ग्राहक जिसकी बात करेगा, AI वही link भेजेगा। एक brochure के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें।", "Brochure, PDF, price list — when a customer asks for details the AI sends the right file. Add links too: demo video, registration link, plan video, product video, Facebook / Instagram page — the AI shares the one the customer asks about. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\".")}</p>
         {files.length > 0 && (
           <ul className="mt-2 space-y-1.5">
             {files.map((f) => (
@@ -192,10 +208,23 @@ export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = fals
         <div className="mt-2 flex flex-wrap gap-2">
           <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => imgRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50">{fileBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5" />} {T("फ़ोटो / पेज जोड़ें", "Add photo / page")}</button>
           <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => pdfRef.current?.click()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"><FileText className="h-3.5 w-3.5" /> {T("PDF जोड़ें", "Add PDF")}</button>
-          <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => void addLink()} className="inline-flex items-center gap-1.5 rounded-full border border-border px-3 py-1.5 text-xs font-semibold disabled:opacity-50"><PlaySquare className="h-3.5 w-3.5" /> {T("Demo video लिंक (YouTube)", "Demo video link (YouTube)")}</button>
+          <button type="button" disabled={fileBusy || files.length >= 12} onClick={() => { setLinkOpen((o) => !o); setFErr(""); }} className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold disabled:opacity-50 ${linkOpen ? "border-brand bg-brand-soft text-brand-ink" : "border-border"}`}><Link2 className="h-3.5 w-3.5" /> {T("Link जोड़ें (video, registration, Facebook…)", "Add a link (video, registration, Facebook…)")}</button>
           <input ref={imgRef} type="file" accept="image/*" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "image")} />
           <input ref={pdfRef} type="file" accept="application/pdf" className="hidden" onChange={(e) => void addFile(e.target.files?.[0] ?? null, "pdf")} />
         </div>
+        {linkOpen && (
+          <div className="mt-2 space-y-2 rounded-xl border border-border bg-bg p-2.5">
+            <div className="flex flex-wrap gap-1.5">
+              {LINK_KINDS.map((k) => <button key={k.en} type="button" onClick={() => setLinkName(k.name)} className={`rounded-full border px-2.5 py-1 text-[11px] ${linkName === k.name && k.name ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border"}`}>{hi ? k.hi : k.en}</button>)}
+            </div>
+            <input value={linkName} onChange={(e) => setLinkName(e.target.value)} maxLength={60} placeholder={T("नाम — जैसे Aura Maxx demo video", "Name — e.g. Aura Maxx demo video")} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-brand" />
+            <div className="flex gap-2">
+              <input value={linkUrl} onChange={(e) => setLinkUrl(e.target.value)} inputMode="url" autoCapitalize="none" spellCheck={false} placeholder="https://…" className="min-w-0 flex-1 rounded-lg border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-brand" />
+              <button type="button" onClick={() => void addLink()} disabled={fileBusy} className="shrink-0 rounded-lg grad-brand px-4 text-sm font-semibold text-white disabled:opacity-50">{T("जोड़ें", "Add")}</button>
+            </div>
+            <p className="text-[11px] text-muted">{T("नाम साफ़ रखें — AI नाम देखकर तय करता है कि कब कौन-सा link भेजना है।", "Keep the name clear — the AI picks the link by its name.")}</p>
+          </div>
+        )}
         {fMsg && <p className="mt-2 text-xs font-medium text-good">{fMsg}</p>}
         {fErr && <p className="mt-2 text-xs font-medium text-danger">{fErr}</p>}
       </div>}

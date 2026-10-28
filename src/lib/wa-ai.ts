@@ -45,7 +45,9 @@ export const DEMO_RE = /\b(demo|demu|trial|try|dikhao|dikhaye|dikhaiye|dekhna|ka
 /** The owner's demo video link (a botFiles entry of kind "link"), or null. */
 export function demoLink(files: NonNullable<Card["botFiles"]> | undefined): { label: string; url: string } | null {
   const links = (files ?? []).filter((f) => f.kind === "link" && /^https?:\/\//i.test(f.url));
-  return links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`)) ?? links[0] ?? null;
+  // A demo link only — never the registration link or the plan video (owner, 28 Oct 2026: many kinds of links now).
+  const other = /plan|regist|join|signup|facebook|instagram|business|income|opportunit/i;
+  return links.find((f) => /demo|डेमो/i.test(f.label)) ?? links.find((f) => /demo|video|youtu/i.test(`${f.label} ${f.url}`) && !other.test(f.label)) ?? null;
 }
 /** The customer asked about a demo and the AI did not share the demo video: add it (owner's call, 11 Oct 2026:
  *  "jab user demo ki baat kare to usko online demo video send kare"). `shared`: it already went out in this chat. */
@@ -136,6 +138,7 @@ ${(card.botFiles ?? []).filter((f) => f.kind !== "link").map((f) => `- ${f.label
 
 ` : `LINKS YOU CAN SHARE (write the URL inside your text, on its own line, never as [MEDIA]; real links only):
 ${(card.botFiles ?? []).filter((f) => f.kind === "link").map((f) => `- ${f.label}: ${f.url}`).join("\n")}
+Share a link when the customer asks for what its name says or it clearly fits (registration / joining link to join, the plan video with the business plan, a product video for that product, the Facebook / Instagram page when asked). One at a time, once per chat unless asked again.
 DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see it working, asks how it works or how to use it, compares, or hesitates before buying — share the demo video link with one short line ("ये रहा demo video 👇"), then offer the next step (a live demo on a video call, or the order). Never offer a home visit yourself; if the customer asks for one, confirm their name and city, say ${card.name.split(" ")[0]} will confirm it, and add the ALERT line. Share it once per chat unless they ask again; never in a bare greeting.
 
 ` : ""}THIS SELLER'S WEBSITE (always call it the "website" when talking to the customer): ${sellerSiteUrl(card, brand)}${card.botSite?.trim() ? `
