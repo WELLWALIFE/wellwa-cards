@@ -176,3 +176,68 @@ export async function readOwnSite(raw: string): Promise<{ url: string; text: str
   more.forEach((r, i) => { if (r && !seen.has(r.summary) && new URL(r.url).origin === origin) { seen.add(r.summary); parts.push(`[${paths[i]} page]\n${r.summary}`); } });
   return { url: home.url, text: parts.join("\n\n").slice(0, 7000) };
 }
+
+/** The full words of one page for the assistant's knowledge: headings, paragraphs, list items, and every table / spec row
+ *  as "label: value" — readReference's summary keeps only headings and a few lines, so a product's specifications
+ *  (plate size, warranty, wattage…) never reached the AI (owner, 28 Oct 2026: "plate size kya hai" — the AI dodged). */
+export function pageWords(html: string): string {
+  let h = html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/style>|<noscript[\s\S]*?<\/noscript>|<svg[\s\S]*?<\/svg>|<header[\s\S]*?<\/header>|<footer[\s\S]*?<\/footer>/gi, " ");
+  // Table rows and definition lists: one "label: value" line each.
+  h = h.replace(/<tr[^>]*>([\s\S]*?)<\/tr>/gi, (_m, row: string) => `\n${[...row.matchAll(/<t[hd][^>]*>([\s\S]*?)<\/t[hd]>/gi)].map((c) => clean(c[1])).filter(Boolean).join(": ")}\n`);
+  h = h.replace(/<dt[^>]*>([\s\S]*?)<\/dt>\s*<dd[^>]*>([\s\S]*?)<\/dd>/gi, (_m, a: string, b: string) => `\n${clean(a)}: ${clean(b)}\n`);
+  h = h.replace(/<h[1-4][^>]*>([\s\S]*?)<\/h[1-4]>/gi, (_m, t: string) => `\n## ${clean(t)}\n`);
+  h = h.replace(/<li[^>]*>([\s\S]*?)<\/li>/gi, (_m, t: string) => `\n- ${clean(t)}\n`);
+  h = h.replace(/<\/(p|div|section|article|span|dd|dt|label|button|a)>|<br\s*\/?>/gi, "\n");
+  const lines = clean(h.replace(/\n/g, " \u0001 ")).split("\u0001").map((l) => l.trim()).filter((l) => l.length > 1);
+  // Spec grids built from <div>s come out as a label line then a value line: kept as they are, next to each other.
+  const out: string[] = [];
+  for (const l of lines) if (out[out.length - 1] !== l) out.push(l);
+  return out.join("\n");
+}
+
+/** The business's whole website for the assistant: the home page, the pages its sitemap and links name (product pages
+ *  first), each page's full words. ~20 pages, ~60k characters. */
+export async function readSiteDeep(raw: string): Promise<{ url: string; text: string; pages: number } | null> {
+  const first = await fetchPublic(raw, "html").catch(() => null);
+  if (!first) return null;
+  const homeUrl = first.url;
+  const origin = new URL(homeUrl).origin;
+  const homeHtml = (await htmlOf(homeUrl, first.body.toString("utf8")).catch(() => null)) ?? first.body.toString("utf8");
+  const found = new Set<string>();
+  const add = (href: string) => {
+    try {
+      const u = new URL(href, homeUrl);
+      if (u.origin !== origin) return;
+      if (/\.(jpe?g|png|gif|webp|svg|pdf|zip|mp4|css|js|xml|ico)$/i.test(u.pathname)) return;
+      if (/\/(login|signin|signup|register|cart|checkout|account|wp-admin|admin|privacy|terms|cookie)/i.test(u.pathname)) return;
+      u.hash = ""; u.search = "";
+      const s = u.toString().replace(/\/$/, "");
+      if (s !== homeUrl.replace(/\/$/, "")) found.add(s);
+    } catch { /* not a link */ }
+  };
+  for (const m of homeHtml.matchAll(/<a[^>]+href=["']([^"'#]+)["']/gi)) add(m[1]);
+  const map = await fetchPublic(`${origin}/sitemap.xml`, "xml", 1_000_000).catch(() => null);
+  if (map) for (const m of map.body.toString("utf8").matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) add(m[1]);
+  const rank = (u: string) => (/\/products?\/[^/]+/i.test(u) ? 0 : /product|model|compare|spec|technolog|price|faq|support|about|contact|service/i.test(u) ? 1 : 2);
+  const list = [...found].sort((a, b) => rank(a) - rank(b) || a.length - b.length).slice(0, 20);
+  const parts: string[] = [`[Home page ${homeUrl}]\n${pageWords(homeHtml).slice(0, 6000)}`];
+  for (let i = 0; i < list.length; i += 4) {
+    const got = await Promise.all(list.slice(i, i + 4).map(async (u) => {
+      const p = await fetchPublic(u, "html").catch(() => null);
+      if (!p) return null;
+      const html = (await htmlOf(p.url, p.body.toString("utf8")).catch(() => null)) ?? p.body.toString("utf8");
+      const words = pageWords(html);
+      return words.length > 80 ? `[Page ${new URL(p.url).pathname}]\n${words.slice(0, 6000)}` : null;
+    }));
+    for (const g of got) if (g) parts.push(g);
+    if (parts.join("\n\n").length > 60_000) break;
+  }
+  // Lines every page repeats (menus, footers) once only: on the home page AND on most other pages. Not the spec labels
+  // the product pages share ("Plate dimensions"), which the home page does not carry.
+  const seen = new Map<string, number>();
+  for (const p of parts) for (const l of new Set(p.split("\n"))) seen.set(l, (seen.get(l) ?? 0) + 1);
+  const onHome = new Set(parts[0].split("\n"));
+  const common = new Set([...seen].filter(([l, n]) => onHome.has(l) && n >= Math.max(3, Math.ceil(parts.length * 0.6)) && !l.startsWith("[")).map(([l]) => l));
+  const text = parts.map((p, i) => (i === 0 ? p : p.split("\n").filter((l) => !common.has(l)).join("\n"))).join("\n\n").slice(0, 60_000);
+  return text.trim().length > 80 ? { url: homeUrl, text, pages: parts.length } : null;
+}

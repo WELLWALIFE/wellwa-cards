@@ -362,7 +362,7 @@ export function buildTrainingBlock(l: AiLayers, trade: keyof typeof CARD_DEFAULT
   }
   if (l.cardKnowledge?.trim()) {
     parts.push(
-      `\nTHIS SELLER'S OWN NOTES (highest priority — if these disagree with anything above, these win):\n${l.cardKnowledge.trim().slice(0, 6000)}`,
+      `\nTHIS SELLER'S OWN NOTES (highest priority — if these disagree with anything above, these win):\n${l.cardKnowledge.trim().slice(0, 20000)}`,
     );
   } else if (!l.brandKnowledge?.trim()) {
     parts.push(`\nABOUT THIS SELLER: ${fallback.knowledge}`);

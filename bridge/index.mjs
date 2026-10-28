@@ -1139,7 +1139,7 @@ async function aiReply(jid, text, opts = {}) {
   // A Shubhora partner's notes lose the old frozen copy of Shubhora's facts (the current ones are above).
   const notes = shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || "");
   const knowledge = notes
-    ? `\n\nTHIS SELLER'S OWN NOTES (highest priority — these win over anything above${shubhora ? ", except Shubhora's official prices, plans and rules" : ""}):\n${notes.slice(0, 6000)}`
+    ? `\n\nTHIS SELLER'S OWN NOTES (highest priority — these win over anything above${shubhora ? ", except Shubhora's official prices, plans and rules" : ""}):\n${notes.slice(0, 20000)}`
     : "";
 
   const h = opts.history ? opts.history.map(({ role, content }) => ({ role, content })) : (history.get(jid) ?? []);
@@ -1172,6 +1172,7 @@ Rules:
 - ALWAYS END WITH ONE QUESTION — a single short, specific question that moves things forward (never "anything else?").
 - BE SPECIFIC: use real model names, numbers and prices from the knowledge above.
 - IF YOU DON'T KNOW: you may answer from general knowledge, but say the owner will confirm the exact detail, and share our website ${sellerLink()}. Never invent a price, stock, offer, warranty or delivery date.
+- SPECIFICATIONS: a size, dimension, plate count, wattage, capacity or any spec figure — give it EXACTLY as the facts above state it, for the model asked about (check the model name). If the figure is not in the facts, say plainly you will get it confirmed by ${card?.name?.split(" ")[0] || config.businessName} and share the website — NEVER say the company does not share it, and never answer around the question.
 - NEVER INVENT reviews, testimonials or customer names. If asked and none are known, offer a demo instead.
 - HEALTH: general wellness talk is fine; never claim any product treats, cures or prevents disease, and never give medical advice.
 - DEMOS ARE ONLINE: offer a live demo on a video call or the demo video. NEVER offer or suggest a home demo / home visit yourself. Only if the customer asks for a home demo: confirm their name, then their city (one per message), say ${card?.name?.split(" ")[0] || config.businessName} will confirm the home demo and call them, offer the video-call demo meanwhile, and treat it as an ESCALATION (below).

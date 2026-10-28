@@ -7,7 +7,7 @@
 // text is passed through unchanged.
 
 import { geminiComplete } from "@/lib/gemini";
-import { readOwnSite } from "@/lib/reference-site";
+import { readOwnSite, readSiteDeep } from "@/lib/reference-site";
 import { clientKey, rateLimited, requireUser, sameOrigin } from "@/lib/api-security";
 
 type Body = { pdfBase64?: string; filename?: string; text?: string; url?: string };
@@ -16,6 +16,11 @@ const INSTRUCTION = `You are building a knowledge base for a sales/support chatb
 From the document, extract ALL useful facts a customer or prospect might ask about, as clean plain text.
 Organise under short headings when helpful: Products, Prices/Offers, Key Benefits, How it works, Warranty/Support, FAQs, Business/Compensation (if any).
 Keep it factual and concise. Do NOT invent anything not in the document. Return only the knowledge text, no preamble.`;
+
+/** A website has every model's full specification table: the assistant must be able to answer "plate size kya hai" exactly. */
+const SITE_EXTRA = `For a website: under "Products", give EVERY product / model its own block — name, price if shown, its page path, and EVERY
+specification row exactly as written, one per line as "label: value" (sizes, dimensions, plates, wattage, capacity, modes, warranty,
+pH / ORP ranges…). Never merge models, never round or drop a figure. Keep the whole answer under 14,000 characters.`;
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return Response.json({ error: "forbidden" }, { status: 403 });
@@ -41,12 +46,13 @@ export async function POST(request: Request) {
     const raw = String(body.url).trim();
     if (!/^(https?:\/\/)?[a-z0-9.-]+\.[a-z]{2,}/i.test(raw)) return Response.json({ error: "Enter the website address, e.g. alkafresh.in" }, { status: 400 });
     if (!key) return Response.json({ error: "Reading a website needs the AI key. You can paste its text instead." }, { status: 400 });
-    const site = await readOwnSite(raw).catch(() => null);
+    // Every page (products first) with its full words and spec tables; the short 6-page read only when that fails.
+    const site = (await readSiteDeep(raw).catch(() => null)) ?? (await readOwnSite(raw).catch(() => null));
     if (!site || site.text.trim().length < 80) return Response.json({ error: "Could not read that website (it may block robots or be built only in JavaScript). Paste its text instead." }, { status: 422 });
     try {
       const { text: knowledge, blocked } = await geminiComplete({
-        apiKey: key, maxOutputTokens: 2500, tag: "ai-train:site",
-        contents: [{ role: "user", parts: [{ text: `${INSTRUCTION}\n\nThe document is the text of the business's own website ${site.url}:\n\n${site.text.slice(0, 60_000)}` }] }],
+        apiKey: key, maxOutputTokens: 8000, tag: "ai-train:site",
+        contents: [{ role: "user", parts: [{ text: `${INSTRUCTION}\n${SITE_EXTRA}\n\nThe document is the text of the business's own website ${site.url}:\n\n${site.text.slice(0, 60_000)}` }] }],
       });
       if (blocked || !knowledge) return Response.json({ error: "Could not distil that website. Paste its text instead." }, { status: 422 });
       return Response.json({ knowledge, url: site.url });

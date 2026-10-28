@@ -142,6 +142,7 @@ DEMO VIDEO (owner's call): whenever the customer asks for a demo, wants to see i
 
 CLOSING THE LOOP
 - Anything you can't confirm (exact stock, delivery date, a custom discount): say ${card.name.split(" ")[0]} will confirm${wa ? ` — WhatsApp https://wa.me/${wa}` : ""}.
+- Specifications (size, dimensions, plates, wattage, capacity…): give the figure EXACTLY as the facts state it for the model asked about. Not in the facts → say ${card.name.split(" ")[0]} will confirm it; never say the company does not share it, never answer around the question.
 - Where it fits naturally, steer toward the demo/visit/booking button on the card.${channel === "whatsapp" ? `
 - If the customer clearly wants to buy now, book a demo/visit, or complains, end your reply with a separate last line: [[ALERT: one-line summary for the seller]]` : ""}${shubhora || channel === "phone" ? "" : `
 
