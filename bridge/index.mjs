@@ -1538,6 +1538,16 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
   // "generic": this card's own assistant, with memory and the personal filter.
   const q = quickRead(text);
   const flags = await leadFlags(jid).catch(() => ({ notPersonal: false }));
+  // A chat opened from a Facebook / Instagram ad (or the ad's ready text "Can I get more info on this?") is a customer, never a
+  // personal or social chat — even from a number that chatted before (owner, 28 Oct 2026: "facebook lead aayi, koi reply nahi").
+  const adLead = !!fromAd || AD_OPENER_RE.test(text);
+  if (adLead) {
+    flags.notPersonal = true;
+    q.business = true;
+    if (q.kind === "social") q.kind = "business";
+    forwarded = false;
+    if (st.personalAt) console.log(`[v2] ${jid}: ad lead — personal mark ignored`);
+  }
   if (flags.notPersonal && st.personalAt) { delete st.personalAt; agentState[jid] = { ...st, updatedAt: Date.now() }; saveAgentState(); }
   if (st.personalAt && !q.business) { stopFollowups(jid); console.log(`[v2] ${jid}: personal contact — silent`); return; }
   if (forwarded && !q.business) { console.log(`[v2] ${jid}: forwarded — silent`); return; }
@@ -1737,7 +1747,8 @@ async function startWhatsApp() {
         if (await aiStopped(jid).catch(() => false)) { stopFollowups(jid); console.log(`[wa] ${jid} is "not interested" in the CRM — no reply`); continue; }
         // New AI (switch in Super Admin): null = everything as before.
         const mode = agentMode();
-        const personalContact = Boolean(mode && agentState[jid]?.personalAt);
+        // A message from a Facebook / Instagram ad is a customer even if this number was once marked personal.
+        const personalContact = Boolean(mode && agentState[jid]?.personalAt) && !isFromAd(m.message);
         let raw = extractText(m.message);
         if (raw) lastInbound.set(jid, { text: raw, at: Date.now() });
         if (!raw) {
@@ -1851,7 +1862,7 @@ async function startWhatsApp() {
         if (await runFlow(jid, name, text, firstContact).catch((e) => { console.error("[flow]", e?.message ?? e); return false; })) { console.log(`[flow] handled ${jid}: ${text.slice(0, 30)}`); continue; }
         const botOut = firstContact && AD_OPENER_RE.test(text)
           ? adOpenerReply(jid, name)
-          : await buildReply(jid, text, { personalCheck: !(await leadFlags(jid).catch(() => ({ notPersonal: false }))).notPersonal, known: knownBefore, saved: savedName(jid) });
+          : await buildReply(jid, text, { personalCheck: !isFromAd(m.message) && !(await leadFlags(jid).catch(() => ({ notPersonal: false }))).notPersonal, known: knownBefore, saved: savedName(jid) });
         // The AI flags "needs the seller now" moments with a trailing
         // [[ALERT: …]] line; strip it and ping the card holder for real.
         let { reply, alert } = splitAlert(botOut, text);
