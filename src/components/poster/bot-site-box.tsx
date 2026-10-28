@@ -11,6 +11,9 @@ import type { Card } from "@/lib/types";
 
 type BotFile = NonNullable<Card["botFiles"]>[number];
 
+const SITE_BLOCK = /\n\n(?=--- From my website: )/;
+const ownNotes = (k: string | undefined) => (k ?? "").split(SITE_BLOCK).filter((b) => !b.startsWith("--- From my website: ")).join("\n\n").trim();
+const siteNotes = (k: string | undefined) => (k ?? "").split(SITE_BLOCK).filter((b) => b.startsWith("--- From my website: ")).join("\n\n").trim();
 const strip = (u: string) => u.replace(/^https?:\/\//i, "").replace(/\/$/, "");
 
 /** The card's Website button pointed at their own site (owner, 28 Oct 2026: "card me bhi uski website ka link ho"). */
@@ -65,6 +68,21 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
     if (!p.ok) { setErr(p.error); return; }
     setUrl(""); onChanged?.(next);
     setMsg(T("बॉट अब Shubhora कार्ड का लिंक देगा।", "The bot sends your Shubhora card link again."));
+  }
+
+  /* ---- the owner's own notes for the AI (prices, specifications, business plan, FAQs) — owner, 28 Oct 2026: "AI ko train karo" ---- */
+  const [notes, setNotes] = useState(ownNotes(card.botKnowledge));
+  const [nBusy, setNBusy] = useState(false); const [nMsg, setNMsg] = useState(""); const [nErr, setNErr] = useState("");
+  useEffect(() => { setNotes(ownNotes(card.botKnowledge)); }, [card.botKnowledge]);
+  async function saveNotes() {
+    setNBusy(true); setNMsg(""); setNErr("");
+    const site = siteNotes(card.botKnowledge);
+    const next: Card = { ...card, botKnowledge: [notes.trim(), site].filter(Boolean).join("\n\n") || undefined };
+    const p = await publishCard(next);
+    setNBusy(false);
+    if (!p.ok) { setNErr(p.error || T("सेव नहीं हुआ — फिर try करें।", "Could not save — try again.")); return; }
+    onChanged?.(next);
+    setNMsg(T("✅ सेव हो गया। AI अब यही जानकारी इस्तेमाल करेगा (WhatsApp पर 5 मिनट में)।", "✅ Saved. The AI uses this now (on WhatsApp within 5 minutes)."));
   }
 
   /* ---- files the bot may send (brochure pages, spec sheets, price list, PDF) ---- */
@@ -133,6 +151,17 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
       )}
       {msg && <p className="mt-2 text-xs font-medium text-good">{msg}</p>}
       {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
+      {!siteOnly && <div className="mt-4 border-t border-border pt-3">
+        <p className="text-sm font-semibold leading-tight">{T("AI को खुद सिखाएँ", "Teach the AI yourself")}</p>
+        <p className="mt-0.5 text-xs text-muted">{T("Price, हर model की specification (size, plates…), business plan, आम सवाल-जवाब — जो यहाँ लिखेंगे, AI सबसे पहले यही मानेगा।", "Prices, every model's specifications (size, plates…), the business plan, common questions — the AI trusts what you write here first.")}</p>
+        <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} maxLength={20000} placeholder={T("जैसे: Aura Maxx — 8 plates, plate size 65 x 156 mm, customer price ₹1,50,000…", "e.g. Aura Maxx — 8 plates, plate size 65 x 156 mm, customer price ₹1,50,000…")} className="mt-2 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />
+        <div className="mt-1.5 flex items-center gap-2">
+          <button type="button" onClick={() => void saveNotes()} disabled={nBusy || notes.trim() === ownNotes(card.botKnowledge)} className="rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{nBusy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : T("सेव करें", "Save")}</button>
+          <span className="text-[11px] text-muted">{notes.length.toLocaleString("en-IN")} / 20,000</span>
+        </div>
+        {nMsg && <p className="mt-2 text-xs font-medium text-good">{nMsg}</p>}
+        {nErr && <p className="mt-2 text-xs font-medium text-danger">{nErr}</p>}
+      </div>}
       {!siteOnly && <div className="mt-4 border-t border-border pt-3">
         <p className="text-sm font-semibold leading-tight">{T("बॉट जो फ़ाइलें भेज सके", "Files the bot can send")}</p>
         <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। YouTube demo video का लिंक जोड़ें तो ग्राहक demo की बात करते ही बॉट वो भेज देगा। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Add a YouTube demo video link and the bot shares it whenever a customer talks about a demo. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
