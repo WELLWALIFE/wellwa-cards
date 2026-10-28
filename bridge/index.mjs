@@ -1111,7 +1111,7 @@ async function aiReply(jid, text, opts = {}) {
   // Everything on the card and website, as plain text (card-digest.mjs): products with prices, services, FAQ,
   // timings, address, offers, reviews — the bot is trained by the card itself, nothing to type again.
   const cardInfo = card
-    ? `EVERYTHING ON THIS BUSINESS'S CARD AND WEBSITE (facts — always true, answer from these first):\n${cardDigest(card, { maxChars: 9000 })}`
+    ? `EVERYTHING ON THIS BUSINESS'S CARD AND WEBSITE (facts — always true, answer from these first):\n${cardDigest(ownCard(card), { maxChars: 9000 })}`
     : `Business: ${config.businessName}`;
   // Card > Brand > Platform, same order the website chat uses.
   const brand = effectiveBrand(card);
@@ -1233,7 +1233,7 @@ async function followupMessage(entry, jid) {
     shubhora ? ownNotes(card?.botKnowledge) : (card?.botKnowledge?.trim() || ""),
     shubhora ? shubhoraTraining(shubhoraOverride).brand_knowledge.slice(0, 5000) : "",
     platformKnowledge.knowledge || "",
-    card ? `On the card / website:\n${cardDigest(card, { maxChars: 4000 })}` : "",
+    card ? `On the card / website:\n${cardDigest(ownCard(card), { maxChars: 4000 })}` : "",
   ].filter(Boolean).join("\n\n");
   const persona = card?.botPersona?.trim() || (shubhora ? shubhoraTraining(shubhoraOverride).brand_persona : "") || platformKnowledge.persona || "";
   // What the business offers and what to invite people to — a Shubhora partner sells Shubhora, not water ionizers.
@@ -1946,15 +1946,24 @@ function completeFileSets(reply) {
   lines.splice(last + 1, 0, ...add);
   return lines.join("\n");
 }
+/** The owner's OWN business pages: a "both" card also carries the Shubhora partner page (slug "shubhora"), which belongs to
+ *  the Shubhora side only — its facts and its business-plan PDF must never reach the owner's own customers (owner, 28 Oct 2026:
+ *  "AI ne Shubhora ke business plan ki PDF send ki"). A card that IS a Shubhora card keeps everything. */
+function ownCard(card) {
+  if (!card || isShubhoraCard(card)) return card;
+  const pages = (card.pages ?? []).filter((p) => p?.slug !== "shubhora" && !p?.hidden);
+  return { ...card, pages };
+}
 function cardDocs() {
-  const pages = cardContext?.data?.pages ?? [];
+  const pages = ownCard(cardContext?.data)?.pages ?? [];
   const origin = cardLink().replace(/\/c\/[^/]+$/, "");
   const out = [];
   // Files the owner added under "AI bot" on Card & Website (brochure pages, spec sheets, PDFs) — sent as a photo or a
   // named document by sendMediaList, by extension.
   for (const f of cardContext?.data?.botFiles ?? []) if (f?.url && f?.label && f.kind !== "link") out.push({ title: `${f.label} (${f.kind || "file"})`, url: f.url });
   for (const p of pages) for (const b of p.blocks ?? []) {
-    if (b.kind === "pdf" && b.fileUrl && /\.pdf(\?|$)/i.test(b.fileUrl)) {
+    // A Shubhora PDF left on an owner's own page (an old seller template) is not this business's document either.
+    if (b.kind === "pdf" && b.fileUrl && /\.pdf(\?|$)/i.test(b.fileUrl) && (isShubhoraCard(cardContext?.data) || !/shubhora/i.test(`${b.fileUrl} ${b.title ?? ""} ${b.fileLabel ?? ""}`))) {
       const url = /^https?:/i.test(b.fileUrl) ? b.fileUrl : origin + (b.fileUrl.startsWith("/") ? "" : "/") + b.fileUrl;
       out.push({ title: b.title || b.fileLabel, url });
     }

@@ -115,7 +115,8 @@ export function buildSystem(
     : `You are the assistant on ${card.name}'s digital business card (${card.company}).`;
   // What the visitor is actually reading. Normally the whole card, so a question about products can be
   // answered from the home page; on a page that must stand alone (Shubhora), only that page.
-  const content = opts.onlyPage ? [opts.onlyPage] : card.pages.filter((p) => !p.hidden);
+  // The Shubhora partner page of a "both" card is the Shubhora side's: never part of the owner's own business answers.
+  const content = opts.onlyPage ? [opts.onlyPage] : card.pages.filter((p) => !p.hidden && (shubhora || p.slug !== "shubhora"));
   return `${where}
 
 ${buildTrainingBlock(layers, trade)}${adminK}
