@@ -595,6 +595,21 @@ async function refreshBrand() {
 async function refreshCard() {
   if (!SUPA_URL || !SUPA_KEY) return;
   try {
+    // The card this number was linked with is gone (deleted, or the card made again under a new username such as
+    // "…-limi2"): without this the worker kept looking for the old username, had no card at all — no CRM lead was
+    // saved and the AI answered without the business (owner, 28 Oct 2026: "crm me kuch nahi aa raha"). The owner's
+    // first live card takes over.
+    if (config.cardUsername && TENANT_ID !== "legacy") {
+      const chk = await fetch(
+        `${SUPA_URL}/rest/v1/cards?select=id&username=eq.${encodeURIComponent(config.cardUsername)}&owner_id=eq.${encodeURIComponent(TENANT_ID)}&active=eq.true`,
+        { headers: { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}` } },
+      ).catch(() => null);
+      const rows = chk && chk.ok ? await chk.json().catch(() => null) : null;
+      if (Array.isArray(rows) && rows.length === 0) {
+        console.log(`[wa] card /${config.cardUsername} not found for this owner — switching to the owner's live card`);
+        config.cardUsername = "";
+      }
+    }
     if (!config.cardUsername && TENANT_ID !== "legacy") {
       const first = await fetch(
         `${SUPA_URL}/rest/v1/cards?select=id,owner_id,username,data,active&owner_id=eq.${encodeURIComponent(TENANT_ID)}&active=eq.true&order=created_at.asc&limit=1`,
