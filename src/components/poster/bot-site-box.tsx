@@ -25,7 +25,9 @@ function withWebsiteLink(card: Card, site: string): Card {
 }
 
 /** siteOnly: just the website row (the Card & Website page), without the files the bot can send. */
-export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; onChanged?: (c: Card) => void; siteOnly?: boolean }) {
+/** siteOnly: just the website row (Card & Website). trainOnly: just what the AI is taught and may send (AI Training page) —
+ *  the website itself is set on Card & Website (owner, 28 Oct 2026: "ye to website wala lag raha hai"). */
+export function BotSiteBox({ card, onChanged, siteOnly = false, trainOnly = false }: { card: Card; onChanged?: (c: Card) => void; siteOnly?: boolean; trainOnly?: boolean }) {
   const { lang } = useT();
   const hi = lang === "hi";
   const T = (h: string, e: string) => (hi ? h : e);
@@ -132,6 +134,12 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
 
   return (
     <section className="rounded-2xl border border-border bg-surface p-3.5">
+      {trainOnly ? (
+        <p className="flex flex-wrap items-center gap-x-1.5 text-xs text-muted">
+          <Link2 className="h-3.5 w-3.5 text-brand" /> {T("AI ग्राहकों को यह link भेजता है:", "The AI sends customers:")} <b className="text-ink">{set ? strip(card.botSite ?? "") : T("आपका card", "your card")}</b>
+          <a href="/poster/site" className="ml-auto font-semibold text-brand-ink underline">{T("बदलें", "Change")}</a>
+        </p>
+      ) : <>
       <div className="flex items-start gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ai/10 text-ai"><Bot className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
@@ -151,7 +159,8 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
       )}
       {msg && <p className="mt-2 text-xs font-medium text-good">{msg}</p>}
       {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
-      {!siteOnly && <div className="mt-4 border-t border-border pt-3">
+      </>}
+      {!siteOnly && <div className={trainOnly ? "mt-3" : "mt-4 border-t border-border pt-3"}>
         <p className="text-sm font-semibold leading-tight">{T("AI को खुद सिखाएँ", "Teach the AI yourself")}</p>
         <p className="mt-0.5 text-xs text-muted">{T("Price, हर model की specification (size, plates…), business plan, आम सवाल-जवाब — जो यहाँ लिखेंगे, AI सबसे पहले यही मानेगा।", "Prices, every model's specifications (size, plates…), the business plan, common questions — the AI trusts what you write here first.")}</p>
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={8} maxLength={20000} placeholder={T("जैसे: Aura Maxx — 8 plates, plate size 65 x 156 mm, customer price ₹1,50,000…", "e.g. Aura Maxx — 8 plates, plate size 65 x 156 mm, customer price ₹1,50,000…")} className="mt-2 w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand" />

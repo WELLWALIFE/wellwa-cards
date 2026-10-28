@@ -6,7 +6,7 @@ import { SiteLink } from "@/components/poster/card-sheet";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Sparkles, Undo2, Check, X, Mic, MicOff, Globe } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { publishCard } from "@/lib/cloud";
+import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { applyEdits, type EditOp } from "@/lib/card-edits";
 import { useT } from "@/lib/poster-i18n";
 import type { Card } from "@/lib/types";
@@ -158,4 +158,16 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
       {!done && undoErr && <p className="text-sm text-danger">{undoErr}</p>}
     </section>
   );
+}
+
+/** The same box on a page that only knows the card's id (Card & Website hub). */
+export function ChatEditByCard({ cardId, locked, url }: { cardId: string; locked?: boolean; url?: string }) {
+  const [card, setCard] = useState<Card | null>(null);
+  useEffect(() => {
+    if (!cardId) return;
+    let off = false;
+    fetchMyCardsStrict().then((all) => { if (!off) setCard(all.find((c) => c.id === cardId) ?? null); }).catch(() => undefined);
+    return () => { off = true; };
+  }, [cardId]);
+  return card ? <CardChatEdit card={card} locked={locked} url={url} onChanged={setCard} /> : null;
 }

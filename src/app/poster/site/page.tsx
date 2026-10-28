@@ -8,6 +8,7 @@
 // so a change made from either page shows on both.
 import { FinishBar } from "@/components/poster/site-finish";
 import { OwnSiteByCard } from "@/components/poster/bot-site-box";
+import { ChatEditByCard } from "@/components/poster/card-chat-edit";
 import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -251,6 +252,15 @@ export default function WebsitePage() {
                       ? <button type="button" onClick={() => setPlanSheet(true)} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit करें")}</span><span className="text-[11px] leading-tight text-muted">{T("Get a website", "Website पाएँ")}</span></button>
                       : <Link href={editHref("site")} className={`${tile} bg-brand-soft/50 ring-1 ring-brand/20`}>{icon("bg-brand", "text-white", Monitor)}<span className="text-sm font-bold">{T("Edit website", "Website edit करें")}</span><span className="text-[11px] leading-tight text-muted">{T("Your website", "आपकी website")}</span></Link>}
                   </div>
+                </section>
+
+                {/* Moved here from AI Training (owner, 28 Oct 2026: "ye to website edit option hai"): change the website by talking, or write it again. */}
+                <section className="space-y-2.5 rounded-3xl border border-border bg-surface p-3 shadow-card">
+                  <ChatEditByCard cardId={cardId} locked={!paid} url={link} />
+                  <Link href="/poster/card/build?improve=1&ask=1" className="flex w-full items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 text-left">
+                    <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><Sparkles className="h-5 w-5" /></span>
+                    <span className="min-w-0 flex-1"><b className="block text-sm">{T("Write the whole website again with AI", "पूरी website AI से दोबारा लिखवाएँ")}</b><span className="block text-xs text-muted">{T("New words and a new look from your latest details.", "आपकी ताज़ा जानकारी से नए शब्द और नया look।")}</span></span>
+                  </Link>
                 </section>
 
                 {/* 3 · Grow: Google SEO, and the Premium website (Rs 5,999; every card, partner cards too — owner, 23 Oct 2026) */}

@@ -6,13 +6,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Bot, ChevronRight, LoaderCircle, MessageCircle, Mic, Sparkles } from "lucide-react";
+import { Bot, ChevronRight, LoaderCircle, MessageCircle } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
-import { usePlan } from "@/lib/plan";
 import { BotSiteBox } from "@/components/poster/bot-site-box";
-import { CardChatEdit } from "@/components/poster/card-chat-edit";
 import type { Card } from "@/lib/types";
 
 type Status = { hasCard: boolean; cardId?: string; url?: string; error?: string };
@@ -21,8 +19,6 @@ export default function AiTrainingPage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
   const T = (en: string, h: string) => (hi ? h : en);
-  const { plan, loading: planLoading } = usePlan();
-  const paid = planLoading || plan !== "free";
   const [status, setStatus] = useState<Status | null>(null);
   const [card, setCard] = useState<Card | null>(null);
   const [err, setErr] = useState("");
@@ -64,33 +60,19 @@ export default function AiTrainingPage() {
       ) : (
         <>
           <section>
-            {sec(1, T("What your AI bot knows and sends", "आपका AI bot क्या जानता और भेजता है"), T("Your own website, brochures, price lists, a demo video.", "आपकी अपनी website, brochure, price list, demo video।"))}
-            <BotSiteBox card={card} onChanged={(c) => { setCard(c); void load(); }} />
+            {sec(1, T("What your AI knows and sends", "आपका AI क्या जानता और भेजता है"), T("Prices, specifications, your business plan, brochures, a demo video.", "Price, specification, business plan, brochure, demo video।"))}
+            <BotSiteBox card={card} trainOnly onChanged={(c) => { setCard(c); void load(); }} />
           </section>
 
           <section>
-            {sec(2, T("Change your website by talking", "बोलकर website बदलें"), T("Say what you want to change, in your own words. You see the changes before they go on your website.", "अपने शब्दों में बताइए क्या बदलना है। Website पर लगने से पहले आपको बदलाव दिखते हैं।"))}
-            <CardChatEdit card={card} locked={!paid} url={status.url ?? ""} onChanged={(c) => { setCard(c); void load(); }} />
-          </section>
-
-          <section>
-            {sec(3, T("WhatsApp AI replies", "WhatsApp पर AI के जवाब"), T("Link your number once; the AI answers your customers there.", "अपना number एक बार जोड़िए; AI वहीं ग्राहकों को जवाब देगा।"))}
+            {sec(2, T("WhatsApp AI replies", "WhatsApp पर AI के जवाब"), T("Link your number once; the AI answers your customers there.", "अपना number एक बार जोड़िए; AI वहीं ग्राहकों को जवाब देगा।"))}
             <Link href="/poster/connect" className={row}>
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><MessageCircle className="h-5 w-5" /></span>
               <span className="min-w-0 flex-1"><b className="block text-sm">{T("Link WhatsApp and turn on AI replies", "WhatsApp जोड़ें और AI जवाब चालू करें")}</b><span className="block text-xs text-muted">{T("Also Facebook, Instagram and Google live in Connections.", "Facebook, Instagram और Google भी Connections में हैं।")}</span></span>
               <ChevronRight className="h-5 w-5 text-muted" />
             </Link>
           </section>
-
-          <section>
-            {sec(4, T("Write the whole website again", "पूरी website दोबारा लिखवाएँ"), T("New words and a new look from your latest details.", "आपकी ताज़ा जानकारी से नए शब्द और नया look।"))}
-            <Link href="/poster/card/build?improve=1&ask=1" className={row}>
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-brand-soft text-brand"><Sparkles className="h-5 w-5" /></span>
-              <span className="min-w-0 flex-1"><b className="block text-sm">{T("Write again with AI", "AI से दोबारा लिखवाएँ")}</b><span className="block text-xs text-muted">{T("Premium: new words, a new look, new photos if you want.", "Premium: नए शब्द, नया look, चाहें तो नई photos।")}</span></span>
-              <ChevronRight className="h-5 w-5 text-muted" />
-            </Link>
-          </section>
-          <p className="flex items-center gap-1.5 text-[11px] text-muted"><Mic className="h-3.5 w-3.5" /> {T("Tip: the mic in step 2 types what you say.", "टिप: दूसरे हिस्से का mic आपकी बोली हुई बात लिख देता है।")}</p>
+          <p className="text-[11px] text-muted">{T("Changing the website (by talking, or writing it again) is on Card & Website.", "Website बदलना (बोलकर, या दोबारा लिखवाना) Card & Website में है।")} <a href="/poster/site" className="font-semibold text-brand-ink underline">{T("Open", "खोलें")}</a></p>
         </>
       )}
     </div>
