@@ -4,7 +4,7 @@
 // what the site says (read into the card's knowledge base here, saved to the live card at once).
 import { useEffect, useRef, useState } from "react";
 import { Bot, Check, FileText, ImagePlus, Link2, LoaderCircle, PlaySquare, Trash2 } from "lucide-react";
-import { publishCard } from "@/lib/cloud";
+import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { uploadImage, uploadPdf } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import type { Card } from "@/lib/types";
@@ -163,4 +163,16 @@ export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; 
       </div>}
     </section>
   );
+}
+
+/** The same website row on a page that only knows the card's id (Card & Website hub): loads the card, then the box. */
+export function OwnSiteByCard({ cardId }: { cardId: string }) {
+  const [card, setCard] = useState<Card | null>(null);
+  useEffect(() => {
+    if (!cardId) return;
+    let off = false;
+    fetchMyCardsStrict().then((all) => { if (!off) setCard(all.find((c) => c.id === cardId) ?? null); }).catch(() => undefined);
+    return () => { off = true; };
+  }, [cardId]);
+  return card ? <BotSiteBox card={card} siteOnly onChanged={setCard} /> : null;
 }

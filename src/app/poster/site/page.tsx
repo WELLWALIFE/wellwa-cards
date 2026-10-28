@@ -7,6 +7,7 @@
 // sometimes (banner, name, timings…), rarely (design, pages, settings). The banner is each one's own; everything else is shared,
 // so a change made from either page shows on both.
 import { FinishBar } from "@/components/poster/site-finish";
+import { OwnSiteByCard } from "@/components/poster/bot-site-box";
 import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
@@ -246,6 +247,9 @@ export default function WebsitePage() {
                     <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} bg-ai-soft/50 ring-1 ring-ai/30`}>{icon("bg-ai", "text-white", Sparkles)}<span className="text-sm font-bold text-ai">{T("Premium website", "Premium website")}</span><span className="text-[11px] text-muted">{T("made by AI for you", "AI से खास design")}</span></Link>
                   </div>
                 </section>
+
+                {/* Already has a website and wants only the package (owner, 28 Oct 2026): their site on the card and in the AI's replies. */}
+                <OwnSiteByCard cardId={cardId} />
               </div>
             );
           })()}
