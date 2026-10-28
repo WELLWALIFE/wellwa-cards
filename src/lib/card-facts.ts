@@ -423,6 +423,8 @@ export function mergeBuiltCard(existing: Card | null, built: TemplateCard, opts:
     gstin: built.gstin,
     language: built.language,
     botKnowledge: taught.length ? [knowledge, ...taught].filter(Boolean).join("\n\n") : knowledge,
+    // The owner's own website for the assistant: one set by hand stays; else the one this build was made from.
+    botSite: existing.botSite?.trim() ? existing.botSite : built.botSite,
     avatarUrl: built.avatarUrl ?? keptAvatar,
     avatarShape: built.avatarUrl ? built.avatarShape : keptAvatar ? existing.avatarShape : undefined,
     coverUrl: ownCover ? keptCover : (built.coverUrl ?? keptCover),

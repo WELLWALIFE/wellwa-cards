@@ -1916,6 +1916,13 @@ function Onboard() {
                       : T("Could not read it — fill these in; the website is read again when the card is built.", "पढ़ नहीं पाए — ये भर दें; website card बनाते समय फिर पढ़ी जाएगी।")}</span>
                   </p>
                 )}
+                {/* Their own website stays theirs (owner, 28 Oct 2026: "AI uski website hi send kare, card me bhi uski website ka link ho"). */}
+                {site.kind === "own" && !!cleanSiteUrl(site.url) && (
+                  <p className="mt-2 flex items-start gap-1.5 rounded-xl bg-ai/10 px-3 py-2 text-xs text-ink">
+                    <Globe className="mt-0.5 h-3.5 w-3.5 shrink-0 text-ai" />
+                    <span>{T(`${hostOf(site.url)} stays your website: a Website button on your card, and the AI sends customers this link. Change it any time in Card & Website.`, `${hostOf(site.url)} आपकी website रहेगी: card पर Website button, और AI ग्राहकों को यही link भेजेगा। बाद में Card & Website में बदल सकते हैं।`)}</span>
+                  </p>
+                )}
                 {site.kind === "dealer" && peek.state === "found" && peek.url === cleanSiteUrl(site.url) && peek.data?.name && (
                   <p className="mt-2 rounded-xl bg-surface2 px-3 py-2 text-xs text-muted">{T("Brand", "Brand")}: <b className="text-ink">{peek.data.name}</b>{peek.data.products ? ` · ${peek.data.products} products ${T("will come across as MRP", "MRP के साथ आएँगे")}` : ""} — {T("below, your OWN shop's name and city.", "नीचे अपनी दुकान का नाम और शहर।")}</p>
                 )}

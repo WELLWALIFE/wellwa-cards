@@ -554,6 +554,10 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // refresh: the owner's existing card comes along and only its empty parts are filled (see mergeRefresh).
   const current = b.refresh === true && b.current && typeof b.current === "object" && Array.isArray((b.current as { pages?: unknown }).pages) ? (b.current as Parameters<typeof mergeRefresh>[0]) : null;
   let built = current ? mergeRefresh(current, card) : card;
+  // Their OWN website (not a dealer's brand site, not a reference): the assistant sends customers that link (owner,
+  // 28 Oct 2026: "AI uski website hi send kare"). A site already set by hand in Train AI stays.
+  const ownLink = role === "own" && website && !isShubhoraHost(website) ? (/^https?:\/\//i.test(website) ? website : `https://${website}`) : "";
+  if (ownLink && !built.botSite?.trim()) built = { ...built, botSite: ownLink };
   // "Write again" without new words: the current card's words and pages stayed (mergeRefresh); the look and the
   // layout the owner asked for come from the fresh plan all the same.
   if (fresh && current && built.site && card.site) {

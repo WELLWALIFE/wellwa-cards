@@ -1,4 +1,5 @@
 "use client";
+import { BotSiteBox } from "@/components/poster/bot-site-box";
 // "My V-Card" tab: share, QR and views of the owner's card. No real card yet → "Make your V-Card"
 // (/poster/card/build), which makes it from the setup details. A failed load never counts as "no card".
 import { withView } from "@/lib/site-url";
@@ -313,6 +314,8 @@ export default function CardTab() {
           <p className="text-[11px] text-muted mt-2">{url.replace("https://", "")}</p>
         </div>
       )}
+      {/* Already has a website and wants only the package (owner, 28 Oct 2026): their site on the card and in the AI's replies. */}
+      <BotSiteBox card={card} siteOnly onChanged={(c) => setCard(c)} />
       {/* Own domain — free for the card too (yourbusiness.com opens this card). */}
       <details className="rounded-2xl border border-border p-4" open={domainOpen} onToggle={(e) => setDomainOpen((e.target as HTMLDetailsElement).open)}>
         <summary className="cursor-pointer text-sm font-semibold inline-flex items-center gap-1.5"><Globe className="h-4 w-4 text-brand" /> {domain ? (lang === "hi" ? `आपका web address: ${domain}` : `Your web address: ${domain}`) : (lang === "hi" ? "अपना web address जोड़ें (yourbusiness.com)" : "Use your own web address (yourbusiness.com)")}</summary>

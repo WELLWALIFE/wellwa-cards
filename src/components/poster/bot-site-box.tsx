@@ -13,7 +13,16 @@ type BotFile = NonNullable<Card["botFiles"]>[number];
 
 const strip = (u: string) => u.replace(/^https?:\/\//i, "").replace(/\/$/, "");
 
-export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Card) => void }) {
+/** The card's Website button pointed at their own site (owner, 28 Oct 2026: "card me bhi uski website ka link ho"). */
+function withWebsiteLink(card: Card, site: string): Card {
+  const links = card.links ?? [];
+  const i = links.findIndex((l) => l.type === "website");
+  const next = i >= 0 ? links.map((l, j) => (j === i ? { ...l, value: site } : l)) : [...links, { id: `website-${Date.now().toString(36)}`, type: "website" as const, label: "Website", value: site }];
+  return { ...card, links: next };
+}
+
+/** siteOnly: just the website row (the Card & Website page), without the files the bot can send. */
+export function BotSiteBox({ card, onChanged, siteOnly = false }: { card: Card; onChanged?: (c: Card) => void; siteOnly?: boolean }) {
   const { lang } = useT();
   const hi = lang === "hi";
   const T = (h: string, e: string) => (hi ? h : e);
@@ -39,11 +48,11 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
       const site = String(d.url || raw);
       const header = `--- From my website: ${strip(site)} ---`;
       const kept = (card.botKnowledge ?? "").split(/\n\n(?=--- From my website: )/).filter((b) => !b.startsWith("--- From my website: ")).join("\n\n").trim();
-      const next: Card = { ...card, botSite: site, botKnowledge: `${kept ? kept + "\n\n" : ""}${header}\n${String(d.knowledge).trim()}` };
+      const next: Card = { ...withWebsiteLink(card, /^https?:\/\//i.test(site) ? site : `https://${site}`), botSite: site, botKnowledge: `${kept ? kept + "\n\n" : ""}${header}\n${String(d.knowledge).trim()}` };
       const p = await publishCard(next);
       if (!p.ok) { setErr(p.error); return; }
       onChanged?.(next);
-      setMsg(T(`✅ हो गया। बॉट अब ${strip(site)} का लिंक देगा और उसी से जवाब देगा।`, `✅ Done. The bot now sends ${strip(site)} and answers from it.`));
+      setMsg(T(`✅ हो गया। Card पर Website button ${strip(site)} खोलेगा, और AI ग्राहकों को यही link देगा और इसी से जवाब देगा।`, `✅ Done. The card's Website button opens ${strip(site)}, and the AI sends customers this link and answers from it.`));
     } catch { setErr(T("वेबसाइट पढ़ नहीं पाया — फिर try करें।", "Could not read the website — try again.")); }
     finally { setBusy(""); }
   }
@@ -108,8 +117,8 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
       <div className="flex items-start gap-2.5">
         <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-ai/10 text-ai"><Bot className="h-5 w-5" /></span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight">{T("AI बॉट: मेरी अपनी वेबसाइट", "AI bot: my own website")}</p>
-          <p className="mt-0.5 text-xs text-muted">{T("अपनी वेबसाइट हो तो यहाँ लिखें। बॉट ग्राहकों को यही लिंक देगा (कार्ड का नहीं) और उसी से जवाब देगा।", "Have your own website? Put it here. The bot sends customers this link (not the card) and answers from it.")}</p>
+          <p className="text-sm font-semibold leading-tight">{T("मेरी पहले से अपनी website है", "I already have my own website")}</p>
+          <p className="mt-0.5 text-xs text-muted">{T("Link डालें — card पर Website button इसी को खोलेगा, और AI ग्राहकों को यही link भेजेगा और इसी से जवाब देगा।", "Put the link — the card's Website button opens it, and the AI sends customers this link and answers from it.")}</p>
         </div>
       </div>
       <div className="mt-3 flex gap-2">
@@ -124,7 +133,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
       )}
       {msg && <p className="mt-2 text-xs font-medium text-good">{msg}</p>}
       {err && <p className="mt-2 text-xs font-medium text-danger">{err}</p>}
-      <div className="mt-4 border-t border-border pt-3">
+      {!siteOnly && <div className="mt-4 border-t border-border pt-3">
         <p className="text-sm font-semibold leading-tight">{T("बॉट जो फ़ाइलें भेज सके", "Files the bot can send")}</p>
         <p className="mt-0.5 text-xs text-muted">{T("ब्रोशर के पेज, स्पेसिफ़िकेशन, प्राइस-लिस्ट, PDF — ग्राहक \"details bhejo\" कहे तो बॉट सही फ़ाइल भेजेगा (WhatsApp पर फ़ोटो/डॉक्यूमेंट की तरह)। 4 या कम फ़ाइलें हों तो सब एक साथ जाती हैं। YouTube demo video का लिंक जोड़ें तो ग्राहक demo की बात करते ही बॉट वो भेज देगा। एक ब्रोशर के कई पेज हों तो नाम \"Brochure 1\", \"Brochure 2\" रखें — वे हमेशा साथ जाएँगे।", "Brochure pages, spec sheets, a price list, a PDF — when a customer asks for details the bot sends the right one (as a photo / document on WhatsApp). With 4 files or fewer, all go together. Add a YouTube demo video link and the bot shares it whenever a customer talks about a demo. Name a multi-page brochure \"Brochure 1\", \"Brochure 2\" — its pages always go together.")}</p>
         {files.length > 0 && (
@@ -151,7 +160,7 @@ export function BotSiteBox({ card, onChanged }: { card: Card; onChanged?: (c: Ca
         </div>
         {fMsg && <p className="mt-2 text-xs font-medium text-good">{fMsg}</p>}
         {fErr && <p className="mt-2 text-xs font-medium text-danger">{fErr}</p>}
-      </div>
+      </div>}
     </section>
   );
 }
