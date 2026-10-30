@@ -1,30 +1,36 @@
-// The shop's items, their measurement fields, the kinds of work and the unit (bearer; ?as= / body.as).
-//   GET → { setup, canEdit }      PUT { setup } → { setup }   (owner / manager)
+// The shop's setup: items (measurement fields, usual work, steps), kinds of work, unit, the flow (steps and their person),
+// auto start, and the staff's rights (bearer; ?as= / body.as).
+//   GET → { setup, canEdit, me, people }   people: who a step can go to (staff logins "a:<id>", karigars "k:<id>")
+//   PUT { setup } → { setup }   ("setup" right; the staff's rights need the "staff" right and are otherwise kept as they were)
 import { NextResponse } from "next/server";
-import { userFromRequest } from "@/lib/poster-server";
-import { addonGate } from "@/lib/addons-server";
-import { resolveScope } from "@/lib/crm-server";
-import { jobSetup, saveJobSetup } from "@/lib/jobs-server";
+import { restAsService } from "@/lib/poster-server";
+import { denied, has, jobsCtx, saveJobSetup } from "@/lib/jobs-server";
 import { cleanSetup } from "@/lib/jobs";
 
+const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
+
 export async function GET(request: Request) {
-  const me = await userFromRequest(request);
-  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const scope = await resolveScope(me, new URL(request.url).searchParams.get("as"));
-  if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
-  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
-  return NextResponse.json({ setup: await jobSetup(scope.ownerId), canEdit: scope.role !== "agent" });
+  const c = await jobsCtx(request, new URL(request.url).searchParams.get("as")); if (!c.ok) return c.res;
+  const { scope, setup, access } = c;
+  const [ag, ks] = await Promise.all([
+    restAsService<{ id: string; name: string; phone: string; agent_user_id: string | null; active: boolean }[]>(`crm_agents?owner_id=eq.${scope.ownerId}&active=is.true&select=id,name,phone,agent_user_id,active&order=created_at`),
+    restAsService<{ id: string; name: string; skill: string; active: boolean }[]>(`job_karigars?owner_id=eq.${scope.ownerId}&active=is.true&select=id,name,skill,active&order=name`),
+  ]);
+  const people = [
+    ...list(ag).map((a) => ({ who: `a:${a.id}`, name: a.name || a.phone, kind: "staff" as const, title: setup.staff[a.id]?.title ?? "", joined: !!a.agent_user_id })),
+    ...list(ks).map((k) => ({ who: `k:${k.id}`, name: k.name, kind: "karigar" as const, title: k.skill, joined: true })),
+  ];
+  return NextResponse.json({ setup, canEdit: has(access, "setup"), me: { ...access, userId: scope.userId }, people });
 }
 
 export async function PUT(request: Request) {
-  const me = await userFromRequest(request);
-  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const b = await request.json().catch(() => ({}));
-  const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
-  if (!scope || scope.role === "agent") return NextResponse.json({ error: "Only the owner or a manager can change the setup." }, { status: 403 });
-  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
+  const c = await jobsCtx(request, typeof b.as === "string" ? b.as : null); if (!c.ok) return c.res;
+  const { scope, setup: before, access } = c;
+  if (!has(access, "setup")) return denied("change the setup");
   const setup = cleanSetup(b.setup);
   if (!setup.items.length) return NextResponse.json({ error: "Keep at least one item." }, { status: 400 });
+  if (!has(access, "staff")) setup.staff = before.staff;
   if (!(await saveJobSetup(scope.ownerId, setup))) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
   return NextResponse.json({ setup });
 }

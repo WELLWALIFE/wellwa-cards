@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ChevronDown, ChevronUp, LoaderCircle, Pencil, Plus, X } from "lucide-react";
 import { api } from "@/lib/poster-client";
-import { DEFAULT_SETUP, STATUS_LABEL, fieldsFor, itemTypeOf, type JobSetup, type JobStatus, type Measurement } from "@/lib/jobs";
+import { DEFAULT_SETUP, fieldsFor, itemTypeOf, stepLabel, stepTone, type JobAccess, type JobSetup, type JobStatus, type Measurement } from "@/lib/jobs";
 
 export const WS_KEY = "akp-crm-ws";   // the same choice as the Customers (CRM) screen
 export type Team = { owner_id: string; role: "agent" | "manager"; owner_name: string };
@@ -12,7 +12,14 @@ export type Member = { id: string; name: string; role: "agent" | "manager" };
 
 /** Which shop the person is working in: their own (as = null) or one they joined. */
 export function useWorkspace() {
-  const [as, setAsState] = useState<string | null>(() => { try { return localStorage.getItem(WS_KEY); } catch { return null; } });
+  // A link from a work message carries ?as=<shop> — open that shop.
+  const [as, setAsState] = useState<string | null>(() => {
+    try {
+      const u = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("as") : null;
+      if (u && /^[0-9a-f-]{36}$/i.test(u)) { localStorage.setItem(WS_KEY, u); return u; }
+      return localStorage.getItem(WS_KEY);
+    } catch { return null; }
+  });
   const [teams, setTeams] = useState<Team[]>([]);
   useEffect(() => { (async () => {
     const r = await api<{ teams?: Team[] }>(`/api/crm/workspace${as ? `?as=${as}` : ""}`);
@@ -34,10 +41,12 @@ export function WorkspaceSwitch({ as, setAs, teams, hi }: { as: string | null; s
   );
 }
 
-export function StatusBadge({ status, hi }: { status: JobStatus; hi: boolean }) {
-  const s = STATUS_LABEL[status];
-  return <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${s.tone}`}>{hi ? s.hi : s.en}</span>;
+export function StatusBadge({ status, hi, setup }: { status: JobStatus; hi: boolean; setup?: JobSetup | null }) {
+  return <span className={`inline-flex shrink-0 items-center rounded-full px-2.5 py-1 text-[11px] font-bold ${stepTone(setup, status)}`}>{stepLabel(setup, status, hi)}</span>;
 }
+/** What the person may do here (the server checks again). */
+export type Me = JobAccess & { userId: string };
+export type Person = { who: string; name: string; kind: "staff" | "karigar"; title: string; joined: boolean };
 
 const dateOf = (iso: string) => new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
 
@@ -71,19 +80,26 @@ export function Fold({ title, icon, summary, open, onToggle, hi, right, children
 export function useJobSetup(q: string, initial?: JobSetup | null) {
   const [setup, setSetup] = useState<JobSetup>(initial ?? DEFAULT_SETUP);
   const [canEdit, setCanEdit] = useState(false);
-  useEffect(() => { (async () => {
-    const r = await api<{ setup: JobSetup; canEdit: boolean }>(`/api/jobs/setup${q ? `?${q}` : ""}`, { fresh: true });
-    if (r.ok) { setSetup(r.data.setup); setCanEdit(r.data.canEdit); }
-  })(); }, [q]);
+  const [me, setMe] = useState<Me | null>(null);
+  const [people, setPeople] = useState<Person[]>([]);
+  const [loaded, setLoaded] = useState(false);
+  const [error, setError] = useState("");
+  const reload = useCallback(async () => {
+    const r = await api<{ setup: JobSetup; canEdit: boolean; me: Me; people: Person[]; error?: string }>(`/api/jobs/setup${q ? `?${q}` : ""}`, { fresh: true });
+    if (r.ok) { setSetup(r.data.setup); setCanEdit(r.data.canEdit); setMe(r.data.me); setPeople(r.data.people ?? []); setError(""); }
+    else setError(r.data?.error || "Could not load.");
+    setLoaded(true);
+  }, [q]);
+  useEffect(() => { void reload(); }, [reload]);
   const save = useCallback(async (next: JobSetup) => {
     setSetup(next);
-    const r = await api<{ setup?: JobSetup }>("/api/jobs/setup", { method: "PUT", json: { as: new URLSearchParams(q).get("as") || undefined, setup: next } });
+    const r = await api<{ setup?: JobSetup; error?: string }>("/api/jobs/setup", { method: "PUT", json: { as: new URLSearchParams(q).get("as") || undefined, setup: next } });
     if (r.ok && r.data.setup) setSetup(r.data.setup);
-    return r.ok;
+    return r.ok ? "" : r.data.error || "Could not save.";
   }, [q]);
   const addItem = useCallback((name: string) => {
     const n = name.trim(); if (!n || itemTypeOf(setup, n)) return;
-    void save({ ...setup, items: [...setup.items, { name: n, fields: [] }] });
+    void save({ ...setup, items: [...setup.items, { name: n, fields: [], work: "" }] });
   }, [setup, save]);
   const addWork = useCallback((name: string) => {
     const n = name.trim(); if (!n || setup.works.some((w) => w.toLowerCase() === n.toLowerCase())) return;
@@ -96,7 +112,7 @@ export function useJobSetup(q: string, initial?: JobSetup | null) {
       : [...setup.items, { name: item.trim(), fields: [f] }];
     void save({ ...setup, items });
   }, [setup, save]);
-  return { setup, canEdit, save, addItem, addWork, addField };
+  return { setup, canEdit, me, people, loaded, error, reload, save, addItem, addWork, addField };
 }
 export type SetupApi = ReturnType<typeof useJobSetup>;
 

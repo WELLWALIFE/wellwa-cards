@@ -7,10 +7,10 @@ import { useParams, useRouter } from "next/navigation";
 import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Ruler, StickyNote } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
-import { FLOW, STATUS_LABEL, receiptMessage, rupees, type JobEvent, type JobRow, type JobSetup, type JobStatus, type Karigar, type Measurement } from "@/lib/jobs";
-import { Fold, MeasureForm, MeasurementView, PickChips, StatusBadge, useJobSetup, useWorkspace, type Member } from "@/components/orders/orders-common";
+import { can, nextStep, receiptMessage, rupees, stepLabel, type JobEvent, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
+import { Fold, MeasureForm, MeasurementView, PickChips, StatusBadge, useJobSetup, useWorkspace, type Me, type Member } from "@/components/orders/orders-common";
 
-type Detail = { job: JobRow; events: JobEvent[]; measurement: Measurement | null; measurements: Measurement[]; karigars: Karigar[]; team: Member[]; role: "owner" | "manager" | "agent"; setup: JobSetup; shop: string; error?: string };
+type Detail = { job: JobRow; events: JobEvent[]; measurement: Measurement | null; measurements: Measurement[]; karigars: Karigar[]; team: Member[]; role: "owner" | "manager" | "agent"; me: Me; setup: JobSetup; shop: string; flow: string[]; error?: string };
 type Notice = { sent: boolean; link: string; error?: string } | null;
 type Panel = "" | "cloth_out" | "cloth_in" | "payment" | "note" | "measure" | "change" | "edit";
 
@@ -24,6 +24,7 @@ export default function JobPage() {
   const [err, setErr] = useState("");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState<Notice>(null);
+  const [told, setTold] = useState("");
   const [panel, setPanel] = useState<Panel>("");
   const [form, setForm] = useState({ karigar_id: "", pieces: "", meters: "", amount: "", note: "" });
   const [edit, setEdit] = useState({ customer_name: "", customer_phone: "", item: "", work: "", qty: "1", amount: "", due_date: "", details: "" });
@@ -31,7 +32,7 @@ export default function JobPage() {
   const setup = useJobSetup(ws.q, d?.setup ?? null);
 
   const load = useCallback(async () => {
-    if (!(await isLoggedIn())) { router.replace(`/login?next=/poster/orders/${id}`); return; }
+    if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(location.pathname + location.search)}`); return; }
     const r = await api<Detail>(`/api/jobs/${id}${ws.q ? `?${ws.q}` : ""}`, { fresh: true });
     if (!r.ok) { setErr(r.data?.error || T("Could not load.", "Load नहीं हुआ।")); return; }
     setErr(""); setD(r.data);
@@ -41,24 +42,32 @@ export default function JobPage() {
 
   async function act(action: string, extra: Record<string, unknown> = {}) {
     setBusy(action); setErr("");
-    const r = await api<{ job?: JobRow; notice?: Notice; error?: string }>(`/api/jobs/${id}`, { method: "PATCH", json: { as: ws.as || undefined, action, ...extra } });
+    const r = await api<{ job?: JobRow; notice?: Notice; told?: string; error?: string }>(`/api/jobs/${id}`, { method: "PATCH", json: { as: ws.as || undefined, action, ...extra } });
     setBusy("");
     if (!r.ok) { setErr(r.data.error || T("Could not save.", "सेव नहीं हुआ।")); return false; }
     if (r.data.notice !== undefined) setNotice(r.data.notice ?? null);
+    setTold(r.data.told ?? "");
     await load();
     return true;
   }
 
   if (!d) return err ? <p className="py-16 text-center text-sm text-danger">{err}</p> : <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const { job } = d;
-  const boss = d.role !== "agent";
-  const idx = FLOW.indexOf(job.status);
-  const next = job.status !== "cancelled" && idx >= 0 && idx < FLOW.length - 1 ? FLOW[idx + 1] : null;
+  const me = d.me;
+  const boss = can(me, "money");
+  const flow = d.flow;
+  const idx = flow.indexOf(job.status);
+  const next = nextStep(flow, job.status);
+  const nextWho = (() => {
+    const st = d.setup.steps.find((x) => x.key === next);
+    return st?.who ? setup.people.find((p) => p.who === st.who)?.name ?? "" : "";
+  })();
+  const mineNow = job.assigned_to === me.userId;
   const karigar = d.karigars.find((k) => k.id === job.karigar_id);
   const tailor = d.team.find((m) => m.id === job.assigned_to);
   const due = Math.max(0, job.amount_paise - job.advance_paise);
   const field = "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand";
-  const L = (s: JobStatus) => (hi ? STATUS_LABEL[s].hi : STATUS_LABEL[s].en);
+  const L = (s: string) => stepLabel(d.setup, s, hi);
   const card = "space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card";
   const lab = "text-[11px] font-semibold text-muted";
   const others = d.measurements.filter((m) => m.id !== job.measurement_id);
@@ -68,7 +77,7 @@ export default function JobPage() {
       <div className="flex items-center gap-2">
         <Link href="/poster/orders" className="text-muted" aria-label={T("Back", "पीछे")}><ChevronLeft className="h-5 w-5" /></Link>
         <h1 className="flex-1 text-lg font-bold">#{job.number} · {job.customer_name}</h1>
-        <StatusBadge status={job.status} hi={hi} />
+        <StatusBadge status={job.status} hi={hi} setup={d.setup} />
       </div>
 
       <section className={card}>
@@ -76,12 +85,12 @@ export default function JobPage() {
         {job.details && <p className="whitespace-pre-wrap text-sm text-muted">{job.details}</p>}
         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
           <p><span className="block text-[11px] text-muted">{T("Due", "देना है")}</span><b>{job.due_date ? new Date(`${job.due_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}</b></p>
-          <p><span className="block text-[11px] text-muted">{T("Charge", "Charge")}</span><b>{rupees(job.amount_paise)}</b></p>
-          <p><span className="block text-[11px] text-muted">{T("Paid", "मिला")}</span><b>{rupees(job.advance_paise)}</b></p>
-          <p><span className="block text-[11px] text-muted">{T("Balance", "बाकी")}</span><b className={due > 0 ? "text-amber-700" : ""}>{rupees(due)}</b></p>
+          {boss && <p><span className="block text-[11px] text-muted">{T("Charge", "Charge")}</span><b>{rupees(job.amount_paise)}</b></p>}
+          {boss && <p><span className="block text-[11px] text-muted">{T("Paid", "मिला")}</span><b>{rupees(job.advance_paise)}</b></p>}
+          {boss && <p><span className="block text-[11px] text-muted">{T("Balance", "बाकी")}</span><b className={due > 0 ? "text-amber-700" : ""}>{rupees(due)}</b></p>}
         </div>
         <div className="flex flex-wrap gap-2">
-          <button type="button" onClick={() => { if (panel === "edit") { setPanel(""); return; } setEdit({ customer_name: job.customer_name, customer_phone: job.customer_phone.replace(/^\+91/, ""), item: job.item, work: job.work, qty: String(job.qty || 1), amount: job.amount_paise ? String(job.amount_paise / 100) : "", due_date: job.due_date ?? "", details: job.details }); setPanel("edit"); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Pencil className="h-3.5 w-3.5" /> {T("Edit order", "Order बदलें")}</button>
+          {can(me, "edit") && <button type="button" onClick={() => { if (panel === "edit") { setPanel(""); return; } setEdit({ customer_name: job.customer_name, customer_phone: job.customer_phone.replace(/^\+91/, ""), item: job.item, work: job.work, qty: String(job.qty || 1), amount: job.amount_paise ? String(job.amount_paise / 100) : "", due_date: job.due_date ?? "", details: job.details }); setPanel("edit"); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Pencil className="h-3.5 w-3.5" /> {T("Edit order", "Order बदलें")}</button>}
           {job.customer_phone && <a href={`https://wa.me/${job.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(receiptMessage([job], d.shop))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> {T("Send slip", "Slip भेजें")}</a>}
         </div>
         {panel === "edit" && (
@@ -119,14 +128,15 @@ export default function JobPage() {
       <section className={card}>
         <p className="text-sm font-bold">{T("Status", "काम कहाँ तक")}</p>
         <div className="flex flex-wrap gap-1.5">
-          {FLOW.map((s, i) => {
+          {flow.map((s, i) => {
             const done = job.status !== "cancelled" && i <= idx;
-            return <button key={s} type="button" disabled={!!busy || s === job.status} onClick={() => void act("status", { status: s })} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${done ? "border-emerald-600 bg-emerald-50 font-semibold text-emerald-800" : "border-border bg-surface"} ${s === job.status ? "ring-2 ring-emerald-500" : ""}`}>{done && <Check className="h-3 w-3" />}{L(s)}</button>;
+            const allowed = can(me, "edit") || s === next;
+            return <button key={s} type="button" disabled={!!busy || s === job.status || !allowed} onClick={() => { if (s === next || confirm(T(`Move this job to “${L(s)}”?`, `यह job “${L(s)}” पर ले जाएँ?`))) void act("status", { status: s }); }} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${done ? "border-emerald-600 bg-emerald-50 font-semibold text-emerald-800" : "border-border bg-surface"} ${s === job.status ? "ring-2 ring-emerald-500" : ""}`}>{done && <Check className="h-3 w-3" />}{L(s)}</button>;
           })}
         </div>
         {next && (
           <button type="button" disabled={!!busy} onClick={() => void act("status", { status: next })} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
-            {busy === "status" && <LoaderCircle className="h-4 w-4 animate-spin" />}{T("Mark", "करें:")} {L(next)}{next === "ready" ? T(" — and tell the customer on WhatsApp", " — ग्राहक को WhatsApp पर बताएँ") : ""}
+            {busy === "status" && <LoaderCircle className="h-4 w-4 animate-spin" />}{job.status === "received" ? T("Start", "शुरू करें") : T("Done", "हो गया")} → {L(next)}{nextWho ? ` (${nextWho})` : ""}{next === "ready" ? T(" — and tell the customer on WhatsApp", " — ग्राहक को WhatsApp पर बताएँ") : ""}
           </button>
         )}
         {notice && (notice.sent
@@ -135,13 +145,16 @@ export default function JobPage() {
         {job.status === "ready" && !notice && (
           <button type="button" disabled={!!busy} onClick={() => void act("notify")} className="text-xs font-semibold text-brand-ink underline">{job.notified_at ? T("Send the ready message again", "Ready message फिर भेजें") : T("Send the ready message on WhatsApp", "Ready message WhatsApp पर भेजें")}</button>
         )}
-        {boss && job.status !== "cancelled" && job.status !== "delivered" && <button type="button" disabled={!!busy} onClick={() => { if (confirm(T("Cancel this job?", "यह job रद्द करें?"))) void act("status", { status: "cancelled" }); }} className="text-xs text-muted underline">{T("Cancel job", "Job रद्द करें")}</button>}
+        {told && <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">📲 {told}</p>}
+        {!job.assigned_to && setup.people.length > 0 && d.setup.steps.some((x) => x.key === job.status) && !can(me, "assign") && <button type="button" disabled={!!busy} onClick={() => void act("take")} className="w-full rounded-xl border border-brand px-4 py-2.5 text-sm font-semibold text-brand-ink">{T("I'll do this", "यह काम मैं करूँगा")}</button>}
+        {mineNow && job.status !== "delivered" && job.status !== "cancelled" && <p className="text-center text-[11px] font-semibold text-emerald-700">{T("This job is with you", "यह काम आपके पास है")}</p>}
+        {can(me, "cancel") && job.status !== "cancelled" && job.status !== "delivered" && <button type="button" disabled={!!busy} onClick={() => { if (confirm(T("Cancel this job?", "यह job रद्द करें?"))) void act("status", { status: "cancelled" }); }} className="text-xs text-muted underline">{T("Cancel job", "Job रद्द करें")}</button>}
       </section>
 
       {/* Who has it. */}
       <section className={card}>
         <p className="text-sm font-bold">{T("Who has it", "किसके पास है")}</p>
-        {boss ? (
+        {can(me, "assign") ? (
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="text-[11px] font-semibold text-muted">{T("Karigar", "कारीगर")}
               <select className={field} value={job.karigar_id ?? ""} onChange={(e) => void act("assign", { karigar_id: e.target.value || null })}>
@@ -161,7 +174,7 @@ export default function JobPage() {
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => { setPanel(panel === "cloth_out" ? "" : "cloth_out"); setForm({ ...form, karigar_id: job.karigar_id ?? "" }); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><ArrowUpRight className="h-3.5 w-3.5" /> {T("Cloth given", "कपड़ा दिया")}</button>
           <button type="button" onClick={() => { setPanel(panel === "cloth_in" ? "" : "cloth_in"); setForm({ ...form, karigar_id: job.karigar_id ?? "" }); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><ArrowDownLeft className="h-3.5 w-3.5" /> {T("Cloth taken back", "कपड़ा वापस लिया")}</button>
-          <button type="button" onClick={() => setPanel(panel === "payment" ? "" : "payment")} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><IndianRupee className="h-3.5 w-3.5" /> {T("Payment", "पैसे मिले")}</button>
+          {boss && <button type="button" onClick={() => setPanel(panel === "payment" ? "" : "payment")} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><IndianRupee className="h-3.5 w-3.5" /> {T("Payment", "पैसे मिले")}</button>}
           <button type="button" onClick={() => setPanel(panel === "note" ? "" : "note")} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><StickyNote className="h-3.5 w-3.5" /> {T("Note", "Note")}</button>
         </div>
         {(panel === "cloth_out" || panel === "cloth_in") && (
@@ -196,15 +209,15 @@ export default function JobPage() {
       {/* The measurements the tailor cuts from: change (a new copy, the old stays), take new, or attach an older one. */}
       <Fold hi={hi} icon={<Ruler className="h-4 w-4 text-brand" />} title={T("Measurements", "नाप")} open={fold.measure} onToggle={() => setFold({ ...fold, measure: !fold.measure })}
         summary={d.measurement ? `${d.measurement.garment} · ${new Date(d.measurement.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : T("None attached", "कोई नाप नहीं जुड़ा")}
-        right={panel !== "measure" && panel !== "change" ? <button type="button" onClick={() => { setFold({ ...fold, measure: true }); setPanel("measure"); }} className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" />{T("New", "नया")}</button> : null}>
+        right={can(me, "measure") && panel !== "measure" && panel !== "change" ? <button type="button" onClick={() => { setFold({ ...fold, measure: true }); setPanel("measure"); }} className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" />{T("New", "नया")}</button> : null}>
         {panel === "change" && d.measurement
           ? <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} item={job.item} setup={setup} from={d.measurement} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />
-          : d.measurement ? <MeasurementView m={d.measurement} hi={hi} onEdit={() => setPanel("change")} />
+          : d.measurement ? <MeasurementView m={d.measurement} hi={hi} onEdit={can(me, "measure") ? () => setPanel("change") : undefined} />
           : panel !== "measure" && <p className="text-sm text-muted">{T("No measurement attached to this job.", "इस job से कोई नाप नहीं जुड़ा।")}</p>}
         {panel === "measure" && <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} item={job.item} setup={setup} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />}
         {others.length > 0 && (
           <Fold hi={hi} tone="inner" icon={<History className="h-4 w-4 text-muted" />} title={`${T("Older measurements", "पुराने नाप")} (${others.length})`} open={fold.older} onToggle={() => setFold({ ...fold, older: !fold.older })}>
-            {others.map((m) => <MeasurementView key={m.id} m={m} hi={hi} action={<button type="button" disabled={!!busy} onClick={() => void act("edit", { measurement_id: m.id })} className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold">{T("Use for this job", "इस job में लगाएँ")}</button>} />)}
+            {others.map((m) => <MeasurementView key={m.id} m={m} hi={hi} action={can(me, "measure") && <button type="button" disabled={!!busy} onClick={() => void act("edit", { measurement_id: m.id })} className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold">{T("Use for this job", "इस job में लगाएँ")}</button>} />)}
           </Fold>
         )}
       </Fold>
@@ -217,7 +230,7 @@ export default function JobPage() {
           {[...d.events].reverse().map((e) => (
             <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3 text-sm">
               <span className="min-w-0 flex-1">
-                <b>{e.kind === "status" ? L(e.status as JobStatus) : e.kind === "cloth_out" ? T("Cloth given", "कपड़ा दिया") : e.kind === "cloth_in" ? T("Cloth taken back", "कपड़ा वापस") : e.kind === "payment" ? `${T("Payment", "पैसे मिले")} ${rupees(e.amount_paise ?? 0)}` : e.kind === "assign" ? T("Assigned", "सौंपा") : e.kind === "notify" ? T("WhatsApp sent", "WhatsApp भेजा") : e.kind === "created" ? T("Order booked", "Order बना") : T("Note", "Note")}</b>
+                <b>{e.kind === "status" ? L(e.status) : e.kind === "cloth_out" ? T("Cloth given", "कपड़ा दिया") : e.kind === "cloth_in" ? T("Cloth taken back", "कपड़ा वापस") : e.kind === "payment" ? `${T("Payment", "पैसे मिले")} ${rupees(e.amount_paise ?? 0)}` : e.kind === "assign" ? T("Assigned", "सौंपा") : e.kind === "notify" ? T("WhatsApp sent", "WhatsApp भेजा") : e.kind === "created" ? T("Order booked", "Order बना") : T("Note", "Note")}</b>
                 {(e.karigar || e.pieces || e.meters) && <span className="text-muted"> · {[e.karigar, e.pieces ? `${e.pieces} pcs` : "", e.meters ? `${e.meters} m` : ""].filter(Boolean).join(" · ")}</span>}
                 {e.note && e.kind !== "notify" && <span className="block whitespace-pre-wrap text-xs text-muted">{e.note}</span>}
               </span>

@@ -4,10 +4,8 @@
 //   POST { customer_phone?, customer_name?, person?, garment, unit?, values, notes?, job_id?, base_id? } → { measurement }
 //   (job_id: the job this measurement is for — it is linked to that job; without a mobile number a job is needed)
 import { NextResponse } from "next/server";
-import { userFromRequest, restAsService } from "@/lib/poster-server";
-import { addonGate } from "@/lib/addons-server";
-import { resolveScope } from "@/lib/crm-server";
-import { isUuid, jobById, logEvent, measureRow, personName } from "@/lib/jobs-server";
+import { restAsService } from "@/lib/poster-server";
+import { denied, has, isUuid, jobById, jobsCtx, logEvent, measureRow, personName } from "@/lib/jobs-server";
 import { cleanPhone, type Measurement } from "@/lib/jobs";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -15,12 +13,9 @@ const txt = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
 const MCOLS = "id,customer_phone,customer_name,garment,unit,values:sizes,notes,taken_by_name,created_at";
 
 export async function GET(request: Request) {
-  const me = await userFromRequest(request);
-  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const p = new URL(request.url).searchParams;
-  const scope = await resolveScope(me, p.get("as"));
-  if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
-  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
+  const c = await jobsCtx(request, p.get("as")); if (!c.ok) return c.res;
+  const { scope } = c;
   const phone = cleanPhone(p.get("phone"));
   if (!phone) return NextResponse.json({ measurements: [] });
   const r = await restAsService<Measurement[]>(`job_measurements?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&select=${MCOLS}&order=created_at.desc&limit=40`);
@@ -28,13 +23,11 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const me = await userFromRequest(request);
-  if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const b = await request.json().catch(() => ({}));
-  const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
-  if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
-  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
-  const job = isUuid(b.job_id) ? await jobById(scope, b.job_id) : null;
+  const c = await jobsCtx(request, typeof b.as === "string" ? b.as : null); if (!c.ok) return c.res;
+  const { me, scope, access, setup } = c;
+  if (!has(access, "measure")) return denied("take measurements");
+  const job = isUuid(b.job_id) ? await jobById(scope, access, b.job_id, setup) : null;
   if (b.job_id && !job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
   const phone = cleanPhone(b.customer_phone) || job?.customer_phone || "";
   if (!phone && !job) return NextResponse.json({ error: "The customer's 10-digit mobile number is needed to keep the measurements." }, { status: 400 });

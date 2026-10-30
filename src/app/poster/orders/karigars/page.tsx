@@ -55,7 +55,7 @@ export default function KarigarsPage() {
         </div>
         {err && <p className="text-xs font-semibold text-danger">{err}</p>}
         <button type="button" onClick={() => void add()} disabled={busy || !f.name.trim()} className="inline-flex items-center gap-1 rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"><Plus className="h-4 w-4" /> {T("Add", "जोड़ें")}</button>
-        <p className="text-[11px] text-muted">{T("Tailors who should use the app themselves join from Customers → Settings → Team (they get a join code).", "जो tailor खुद app चलाएँगे, वे Customers → Settings → Team से join code लेकर जुड़ते हैं।")}</p>
+        <p className="text-[11px] text-muted">{T("Tailors and masters who use the app themselves are added in Orders → Staff & logins.", "जो tailor / master खुद app चलाएँगे, उन्हें Orders → Staff · login में जोड़ें।")}</p>
       </section>
       <ul className="space-y-2">
         {ks.map((k) => {
