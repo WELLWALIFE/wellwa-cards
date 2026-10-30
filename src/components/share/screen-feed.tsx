@@ -31,6 +31,11 @@ export function ScreenFeed({ load, maxWidth = 1.25, fitHeight, control }: { load
   const [canCtl, setCanCtl] = useState(false);
   const [typing, setTyping] = useState<{ id: number; value: string; label: string } | null>(null);
   const [ctlMsg, setCtlMsg] = useState("");
+  // Full screen (owner, 31 Oct 2026: "mobile par user ki screen bahut chhoti dikh rahi hai — full screen dikhani chahiye"): the feed fills the
+  // whole phone (turned sideways when their screen is wide, where the phone allows), and +/− zooms in with a finger to move around.
+  const [full, setFull] = useState(false);
+  const [zoom, setZoom] = useState(1);
+  const [portrait, setPortrait] = useState(true);
   type Rp = { iframe: HTMLIFrameElement; getMirror: () => { getId: (n: Node) => number } };
   const rp = useRef<Rp | null>(null);
 
@@ -93,16 +98,45 @@ export function ScreenFeed({ load, maxWidth = 1.25, fitHeight, control }: { load
     return () => { stop = true; cur.r?.destroy(); };
   }, []);
 
-  // Fit the sender's screen to this phone.
+  // Fit the sender's screen to this phone (full screen: the whole window, both ways), then the zoom on top.
   useEffect(() => {
     const fit = () => {
+      setPortrait(window.innerHeight >= window.innerWidth);
+      if (full) {
+        const fitAll = Math.min((window.innerWidth - 4) / size.w, (window.innerHeight - 56) / size.h);
+        setScale(fitAll * zoom);
+        return;
+      }
       const w = box.current?.parentElement?.parentElement?.clientWidth ?? window.innerWidth;
       const byH = fitHeight !== undefined ? Math.max(200, window.innerHeight - fitHeight) / size.h : Infinity;
-      setScale(Math.min(maxWidth, (w - 8) / size.w, byH));
+      setScale(Math.min(maxWidth, (w - 8) / size.w, byH) * zoom);
     };
-    fit(); window.addEventListener("resize", fit);
-    return () => window.removeEventListener("resize", fit);
-  }, [size.w, size.h, maxWidth, fitHeight]);
+    fit();
+    window.addEventListener("resize", fit);
+    window.addEventListener("orientationchange", fit);
+    document.addEventListener("fullscreenchange", fit);
+    return () => { window.removeEventListener("resize", fit); window.removeEventListener("orientationchange", fit); document.removeEventListener("fullscreenchange", fit); };
+  }, [size.w, size.h, maxWidth, fitHeight, full, zoom]);
+
+  // Leaving the phone's own full screen (the Back key) leaves ours too.
+  useEffect(() => {
+    const off = () => { if (!document.fullscreenElement) { setFull(false); setZoom(1); } };
+    document.addEventListener("fullscreenchange", off);
+    return () => document.removeEventListener("fullscreenchange", off);
+  }, []);
+  type Orient = { lock?: (o: string) => Promise<void>; unlock?: () => void };
+  async function enterFull() {
+    setFull(true); setZoom(1);
+    try { await document.documentElement.requestFullscreen?.(); } catch { /* the overlay still fills the window */ }
+    // A wide screen (a computer) reads best with the phone turned sideways.
+    if (size.w > size.h) { try { await (screen.orientation as unknown as Orient)?.lock?.("landscape"); } catch { /* not every phone allows it */ } }
+  }
+  function exitFull() {
+    setFull(false); setZoom(1);
+    try { (screen.orientation as unknown as Orient)?.unlock?.(); } catch { /* ignore */ }
+    if (document.fullscreenElement) void document.exitFullscreen().catch(() => undefined);
+  }
+  const zoomBy = (d: number) => setZoom((z) => Math.min(4, Math.max(1, Math.round((z + d) * 4) / 4)));
 
   // How long the link still lives.
   useEffect(() => {
@@ -168,16 +202,37 @@ export function ScreenFeed({ load, maxWidth = 1.25, fitHeight, control }: { load
     : state === "connecting" || !seen ? "Connecting…" : "";
   const dim = state === "paused" || state === "ended" || state === "notfound" || state === "full";
   const ctl = !!control && canCtl && state === "live" && seen;
+  const badge = <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${state === "live" && seen ? "bg-[#25d366]/20 text-[#7dffb0]" : "bg-white/10 text-white/70"}`}>{state === "live" && seen ? "● Live" : state === "connecting" ? "Connecting" : "Not live"}</span>;
+  const tool = "grid h-9 min-w-9 place-items-center rounded-xl bg-white/10 px-2.5 text-sm font-bold text-white";
   return (
     <>
-      <div className="mx-auto flex max-w-md justify-end px-4 pb-2">
-        <span className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${state === "live" && seen ? "bg-[#25d366]/20 text-[#7dffb0]" : "bg-white/10 text-white/70"}`}>{state === "live" && seen ? "● Live" : state === "connecting" ? "Connecting" : "Not live"}</span>
-      </div>
-      <div className="mx-auto flex max-w-md justify-center overflow-hidden px-1 pb-4">
-        <div style={{ width: size.w * scale, height: size.h * scale, userSelect: "none" }} className={`relative overflow-hidden rounded-2xl bg-white ${dim ? "opacity-30" : ""} ${ctl ? "ring-2 ring-[#ffd54a]" : ""}`}>
-          <div ref={box} style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: "top left", pointerEvents: "none" }} />
-          {ctl && <div className="absolute inset-0 cursor-pointer" onClick={onTap} onWheel={(e) => { if (Math.abs(e.deltaY) > 30) void send([{ t: "scroll", dy: Math.round(e.deltaY / scale) }], "Scrolled"); }} />}
+      {!full && (
+        <div className="mx-auto flex max-w-md items-center justify-end gap-2 px-4 pb-2">
+          <button type="button" onClick={() => void enterFull()} className="rounded-full bg-white px-3 py-1 text-[11px] font-bold text-[#12144a]">⛶ Full screen · बड़ा करें</button>
+          {badge}
         </div>
+      )}
+      {/* The same feed box in both views: rrweb draws into it, so it is never unmounted — only its frame changes. */}
+      <div className={full ? "fixed inset-0 z-[100] flex flex-col bg-black" : "contents"}>
+        {full && (
+          <div className="flex h-14 shrink-0 items-center gap-2 px-3">
+            {badge}
+            <span className="flex-1" />
+            <button type="button" onClick={() => zoomBy(-0.5)} disabled={zoom <= 1} className={`${tool} disabled:opacity-30`} aria-label="Zoom out">−</button>
+            <button type="button" onClick={() => setZoom(1)} className={tool}>{Math.round(zoom * 100)}%</button>
+            <button type="button" onClick={() => zoomBy(0.5)} disabled={zoom >= 4} className={`${tool} disabled:opacity-30`} aria-label="Zoom in">+</button>
+            <button type="button" onClick={exitFull} className="rounded-xl bg-white px-3 py-2 text-sm font-bold text-[#12144a]">✕ Close</button>
+          </div>
+        )}
+        <div className={full ? "flex flex-1 overflow-auto" : "mx-auto flex max-w-md justify-center overflow-hidden px-1 pb-4"}>
+          <div style={{ width: size.w * scale, height: size.h * scale, userSelect: "none" }} onClick={!ctl && !full ? () => void enterFull() : undefined}
+            className={`relative overflow-hidden bg-white ${full ? "m-auto shrink-0" : "rounded-2xl"} ${!ctl && !full ? "cursor-zoom-in" : ""} ${dim ? "opacity-30" : ""} ${ctl ? "ring-2 ring-[#ffd54a]" : ""}`}>
+            <div ref={box} style={{ width: size.w, height: size.h, transform: `scale(${scale})`, transformOrigin: "top left", pointerEvents: "none" }} />
+            {ctl && <div className="absolute inset-0 cursor-pointer" onClick={onTap} onWheel={(e) => { if (Math.abs(e.deltaY) > 30) void send([{ t: "scroll", dy: Math.round(e.deltaY / scale) }], "Scrolled"); }} />}
+          </div>
+        </div>
+        {full && size.w > size.h && portrait && <p className="shrink-0 px-4 py-2 text-center text-xs font-semibold text-[#ffd54a]">📱 Phone ko tircha (sideways) karein — screen aur badi dikhegi · या + दबाकर zoom करें</p>}
+        {full && msg && <p className="shrink-0 px-4 py-2 text-center text-xs text-white/80">{msg}</p>}
       </div>
       {ctl && (
         <div className="mx-auto max-w-md space-y-2 px-4 pb-3">
