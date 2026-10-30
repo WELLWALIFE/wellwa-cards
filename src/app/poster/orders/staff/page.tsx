@@ -53,7 +53,7 @@ export default function StaffPage() {
   useEffect(() => { void load(); }, [load]);
 
   const link = (m: Member) => `${location.origin}/poster/orders/join?code=${m.code}`;
-  const invite = (m: Member) => `https://wa.me/${m.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`नमस्ते ${m.name} 🙏\nआपको हमारी दुकान के Orders app में जोड़ा गया है (${m.title || "Staff"})।\n\n1. यह link खोलें: ${link(m)}\n2. अपने mobile नंबर से login करें\n3. आपका दिया हुआ काम वहीं दिखेगा, और नया काम आने पर notification आएगा।\n\nJoin code: ${m.code}`)}`;
+  const invite = (m: Member) => `https://wa.me/${m.phone.replace(/\D/g, "")}?text=${encodeURIComponent(`नमस्ते ${m.name} 🙏\nआपको हमारी दुकान के Orders app में जोड़ा गया है (${m.title || "Staff"})।\n\n1. यह link खोलें: ${link(m)}\n2. पहली बार हैं तो “अपना login बनाएँ” दबाकर अपने mobile नंबर से login बनाएँ (पहले से Shubhora login है तो login करें)\n3. आपका दिया हुआ काम वहीं दिखेगा, और नया काम आने पर notification आएगा।\n4. बाद में सीधे खोलें: ${location.origin}/poster/orders\n\nJoin code: ${m.code}`)}`;
 
   async function create() {
     setErr(""); setBusy("add");

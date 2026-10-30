@@ -19,6 +19,13 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
+  // A staff invite carries ?next=/poster/orders/join?code=… — a new person signs up (as an app user, not a partner) and lands there too.
+  const [signupHref, setSignupHref] = useState("/signup");
+  useEffect(() => {
+    const n = new URLSearchParams(window.location.search).get("next") || "";
+    if (/^\/poster\/orders\/join\?code=[A-Z0-9]{4,12}$/i.test(n)) setSignupHref(`/signup?kind=consumer&next=${encodeURIComponent(n)}`);
+  }, []);
+
   // ?next=… — where to land after login (a card's gear icon, the Business section, the partner panel hand-off).
   // Only same-site paths are honoured; a query string is allowed (e.g. /api/partner-panel?next=/team).
   function nextPath(): string {
@@ -115,7 +122,7 @@ export default function LoginPage() {
           )}
         </form>
         <p className="text-center text-sm text-muted mt-5">
-          New to Shubhora? <Link href="/signup" className="text-brand-ink font-medium">Create your account</Link>
+          New to Shubhora? <Link href={signupHref} className="text-brand-ink font-medium">Create your account</Link>
         </p>
       </div>
     </div>

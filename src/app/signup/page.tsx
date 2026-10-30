@@ -33,6 +33,11 @@ function age(d: string): number | null {
   return a;
 }
 
+/** A same-site path to go to after sign-up (the staff invite); "" for anything else. */
+function safeNext(n: string | null): string {
+  return n && /^\/poster\/orders\/join\?code=[A-Z0-9]{4,12}$/i.test(n) ? n : "";
+}
+
 export default function SignupPage() {
   return <Suspense fallback={<div className="flex-1 grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><SignupInner /></Suspense>;
 }
@@ -200,7 +205,9 @@ function SignupInner() {
       // Congratulations, then the profile (owner's call, 2 Oct 2026): the plan is chosen at "Make", not before.
       // "Start with Standard / Premium" (?plan=…): the payment opens next, then the card set-up.
       const wanted = params.get("plan");
-      router.replace(wanted === "premium" || wanted === "standard" ? `/poster/start-plan?plan=${wanted}` : "/poster/welcome");
+      // A shop's staff invite (?next=/poster/orders/join?code=…): straight to joining the shop, not the business set-up.
+      const nx = safeNext(params.get("next"));
+      router.replace(nx ? nx : wanted === "premium" || wanted === "standard" ? `/poster/start-plan?plan=${wanted}` : "/poster/welcome");
     } else {
       setBusy(false);
       setCheckEmail(true); // email confirmation is enabled on the project
@@ -337,7 +344,7 @@ function SignupInner() {
 
         </form>
         <p className="text-center text-sm text-muted mt-5">
-          Already have an account? <Link href={params.get("plan") === "premium" || params.get("plan") === "standard" ? `/login?next=${encodeURIComponent(`/poster/start-plan?plan=${params.get("plan")}`)}` : "/login"} className="text-brand-ink font-medium">Log in</Link>
+          Already have an account? <Link href={safeNext(params.get("next")) ? `/login?next=${encodeURIComponent(safeNext(params.get("next")))}` : params.get("plan") === "premium" || params.get("plan") === "standard" ? `/login?next=${encodeURIComponent(`/poster/start-plan?plan=${params.get("plan")}`)}` : "/login"} className="text-brand-ink font-medium">Log in</Link>
         </p>
       </div>
     </div>
