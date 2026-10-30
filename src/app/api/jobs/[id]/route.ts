@@ -10,8 +10,8 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { addonGate } from "@/lib/addons-server";
 import { resolveScope, agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
-import { isUuid, jobById, logEvent, notifyReady, personName, setStatus } from "@/lib/jobs-server";
-import { JOB_COLS, JOB_STATUSES, toPaise, type JobEvent, type JobRow, type JobStatus, type Karigar, type Measurement } from "@/lib/jobs";
+import { isUuid, jobById, jobSetup, logEvent, notifyReady, personName, setStatus, shopName } from "@/lib/jobs-server";
+import { JOB_COLS, JOB_STATUSES, cleanPhone, rupees, toPaise, type JobEvent, type JobRow, type JobStatus, type Karigar, type Measurement } from "@/lib/jobs";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 const txt = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -26,19 +26,21 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const job = await jobById(scope, id);
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
-  const [events, karigars, team, ms] = await Promise.all([
+  const [events, karigars, team, ms, setup, shop] = await Promise.all([
     restAsService<JobEvent[]>(`job_events?job_id=eq.${job.id}&owner_id=eq.${scope.ownerId}&select=id,job_id,kind,status,karigar_id,karigar,pieces,meters,amount_paise,note,by_name,at&order=at`),
     restAsService<Karigar[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active&order=name`),
     agentsFor(me.token, scope.ownerId, scope.role === "agent" ? "manager" : scope.role).catch(() => []),
     job.customer_phone
       ? restAsService<Measurement[]>(`job_measurements?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(job.customer_phone)}&select=${MCOLS}&order=created_at.desc&limit=20`)
       : Promise.resolve({ data: [] as Measurement[] }),
+    jobSetup(scope.ownerId),
+    shopName(scope.ownerId),
   ]);
   const measurements = list(ms);
   let measurement = measurements.find((m) => m.id === job.measurement_id) ?? null;
   if (!measurement && job.measurement_id) measurement = list(await restAsService<Measurement[]>(`job_measurements?id=eq.${job.measurement_id}&owner_id=eq.${scope.ownerId}&select=${MCOLS}`))[0] ?? null;
   return NextResponse.json({
-    job, events: list(events), measurement, measurements, karigars: list(karigars), role: scope.role,
+    job, events: list(events), measurement, measurements, karigars: list(karigars), role: scope.role, setup, shop,
     team: team.filter((a) => a.agent_user_id && a.active).map((a) => ({ id: a.agent_user_id as string, name: a.name || a.phone || "Team member", role: a.role })),
   });
 }
@@ -114,14 +116,27 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       return NextResponse.json({ job: notice.sent ? { ...job, notified_at: new Date().toISOString() } : job, notice });
     }
     case "edit": {
+      // Anything on the job card can be corrected; the history says what changed.
       const patch: Record<string, unknown> = {};
-      if ("due_date" in b) patch.due_date = typeof b.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.due_date) ? b.due_date : null;
-      if ("details" in b) patch.details = txt(b.details, 1000);
-      if ("measurement_id" in b) patch.measurement_id = isUuid(b.measurement_id) ? b.measurement_id : null;
-      if ("amount" in b && boss) patch.amount_paise = toPaise(b.amount);
+      const said: string[] = [];
+      const fmtDate = (v: unknown) => (typeof v === "string" && v ? new Date(`${v}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—");
+      if ("due_date" in b) { patch.due_date = typeof b.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.due_date) ? b.due_date : null; if (patch.due_date !== job.due_date) said.push(`Due ${fmtDate(job.due_date)} → ${fmtDate(patch.due_date)}`); }
+      if ("details" in b) { patch.details = txt(b.details, 1000); if (patch.details !== job.details) said.push("Details changed"); }
+      if ("item" in b) { patch.item = txt(b.item, 60); if (patch.item !== job.item) said.push(`Item: ${patch.item || "—"}`); }
+      if ("work" in b) { patch.work = txt(b.work, 60); if (patch.work !== job.work) said.push(`Work: ${patch.work || "—"}`); }
+      if ("qty" in b) { patch.qty = Math.max(1, Math.min(99, Number(b.qty) || 1)); if (patch.qty !== job.qty) said.push(`Pieces: ${patch.qty}`); }
+      if ("customer_name" in b) { const n = txt(b.customer_name, 80); if (!n) return NextResponse.json({ error: "Write the customer's name." }, { status: 400 }); patch.customer_name = n; if (n !== job.customer_name) said.push(`Name: ${n}`); }
+      if ("customer_phone" in b) {
+        const p = b.customer_phone ? cleanPhone(b.customer_phone) : "";
+        if (b.customer_phone && !p) return NextResponse.json({ error: "That mobile number does not look right (10 digits)." }, { status: 400 });
+        patch.customer_phone = p; if (p !== job.customer_phone) said.push(`Mobile: ${p || "—"}`);
+      }
+      if ("measurement_id" in b) { patch.measurement_id = isUuid(b.measurement_id) ? b.measurement_id : null; if (patch.measurement_id !== job.measurement_id) said.push("Measurement attached"); }
+      if ("amount" in b && boss) { patch.amount_paise = toPaise(b.amount); if (patch.amount_paise !== job.amount_paise) said.push(`Charge: ${rupees(patch.amount_paise as number)}`); }
       if (!Object.keys(patch).length) return NextResponse.json({ job });
       const next = await update(patch);
       if (!next) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
+      if (said.length) await logEvent(scope, job.id, { kind: "note", note: `Edited — ${said.join(" · ")}` }, byName);
       return NextResponse.json({ job: next });
     }
     default:

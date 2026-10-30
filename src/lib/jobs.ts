@@ -33,6 +33,37 @@ export const MEASURE_FIELDS: Record<string, string[]> = {
 };
 export const MEASURE_GARMENTS = Object.keys(MEASURE_FIELDS);
 
+/** The shop's own lists (owner, 30 Oct 2026: "kaise aur kya-kya measurement karna hai, wo account decide kare"): the items it
+ *  takes, the measurement fields of each (none = no measurement, e.g. Saree fall-pico), the kinds of work, and the unit.
+ *  Kept in owner_prefs.crm.jobSetup; the defaults below until the shop changes them (Orders → Setup, or "+ New" while booking). */
+export type ItemType = { name: string; fields: string[] };
+export type JobSetup = { items: ItemType[]; works: string[]; unit: "inch" | "cm" };
+export const DEFAULT_SETUP: JobSetup = {
+  items: ITEM_PICKS.map((name) => ({ name, fields: MEASURE_FIELDS[name] ?? [] })),
+  works: [...WORK_PICKS],
+  unit: "inch",
+};
+const nm = (v: unknown, n = 40) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
+const uniq = (xs: string[]) => { const seen = new Set<string>(); return xs.filter((x) => { const k = x.toLowerCase(); if (!x || seen.has(k)) return false; seen.add(k); return true; }); };
+/** A setup from anything (the stored JSON, a request body): trimmed, de-duplicated, capped. */
+export function cleanSetup(raw: unknown): JobSetup {
+  const o = raw && typeof raw === "object" ? raw as Partial<Record<keyof JobSetup, unknown>> : null;
+  if (!o || !Array.isArray(o.items)) return DEFAULT_SETUP;
+  const names = new Set<string>();
+  const items: ItemType[] = [];
+  for (const it of o.items.slice(0, 60)) {
+    const name = nm((it as ItemType)?.name);
+    if (!name || names.has(name.toLowerCase())) continue;
+    names.add(name.toLowerCase());
+    const fields = Array.isArray((it as ItemType).fields) ? uniq((it as ItemType).fields.slice(0, 40).map((f) => nm(f, 30))) : [];
+    items.push({ name, fields });
+  }
+  const works = Array.isArray(o.works) ? uniq(o.works.slice(0, 60).map((w) => nm(w))) : DEFAULT_SETUP.works;
+  return { items, works, unit: o.unit === "cm" ? "cm" : "inch" };
+}
+export const itemTypeOf = (s: JobSetup, item: string) => s.items.find((i) => i.name.toLowerCase() === item.trim().toLowerCase()) ?? null;
+export const fieldsFor = (s: JobSetup, item: string) => itemTypeOf(s, item)?.fields ?? [];
+
 export type JobRow = {
   id: string; owner_id: string; number: number; order_ref: string;
   customer_name: string; customer_phone: string; item: string; work: string; details: string;
@@ -59,6 +90,20 @@ export function cleanPhone(v: unknown): string {
 }
 export const rupees = (paise: number) => `₹${Math.round((paise || 0) / 100).toLocaleString("en-IN")}`;
 export const toPaise = (v: unknown) => { const n = Number(String(v ?? "").replace(/[^\d.]/g, "")); return Number.isFinite(n) && n > 0 ? Math.round(n * 100) : 0; };
+
+/** The order slip the customer gets on WhatsApp when the order is booked (sent by the person from their phone). */
+export function receiptMessage(jobs: Pick<JobRow, "customer_name" | "item" | "work" | "number" | "qty" | "amount_paise" | "advance_paise" | "due_date">[], shop: string): string {
+  if (!jobs.length) return "";
+  const lines = jobs.map((j) => `• #${j.number} ${[j.item, j.work].filter(Boolean).join(" · ")}${j.qty > 1 ? ` × ${j.qty}` : ""}${j.amount_paise ? ` — ${rupees(j.amount_paise)}` : ""}`);
+  const total = jobs.reduce((a, j) => a + (j.amount_paise || 0), 0), adv = jobs.reduce((a, j) => a + (j.advance_paise || 0), 0);
+  const due = jobs.map((j) => j.due_date).filter(Boolean).sort()[0];
+  return [
+    `नमस्ते ${jobs[0].customer_name || "जी"} 🙏`, `${shop || "हमारी दुकान"} में आपका order बुक हो गया है:`, ...lines,
+    total ? `कुल: ${rupees(total)}${adv ? ` · Advance: ${rupees(adv)} · बाकी: ${rupees(Math.max(0, total - adv))}` : ""}` : "",
+    due ? `देने की तारीख: ${new Date(`${due}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}` : "",
+    "तैयार होते ही हम आपको WhatsApp पर बताएँगे। धन्यवाद!",
+  ].filter(Boolean).join("\n");
+}
 
 /** The customer's "ready" message. */
 export function readyMessage(job: Pick<JobRow, "customer_name" | "item" | "work" | "number" | "amount_paise" | "advance_paise">, shop: string): string {

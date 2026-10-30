@@ -6,7 +6,7 @@ import { restAsService } from "@/lib/poster-server";
 import { bridge, ownerPlanExpiry, type Scope } from "@/lib/crm-server";
 import { businessContext } from "@/lib/reviews-server";
 import { cloudAccount, sendCloud } from "@/lib/wa-cloud";
-import { JOB_COLS, readyMessage, type JobRow, type JobStatus } from "@/lib/jobs";
+import { DEFAULT_SETUP, JOB_COLS, cleanSetup, readyMessage, type JobRow, type JobSetup, type JobStatus } from "@/lib/jobs";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 export const isUuid = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
@@ -72,4 +72,36 @@ export async function notifyReady(scope: Scope, job: JobRow, byName: string): Pr
   if (!r.ok) return { sent: false, link, error: r.data.error === "not connected" ? "The shop's WhatsApp is not linked — send it yourself with the button." : "WhatsApp could not send right now — send it yourself with the button." };
   await mark();
   return { sent: true, link };
+}
+
+/** The shop's items, measurement fields and kinds of work (owner_prefs.crm.jobSetup), or the defaults. */
+export async function jobSetup(ownerId: string): Promise<JobSetup> {
+  const r = list(await restAsService<{ crm: Record<string, unknown> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`))[0];
+  return r?.crm?.jobSetup ? cleanSetup(r.crm.jobSetup) : DEFAULT_SETUP;
+}
+export async function saveJobSetup(ownerId: string, setup: JobSetup): Promise<boolean> {
+  const crm = list(await restAsService<{ crm: Record<string, unknown> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`))[0]?.crm ?? {};
+  const r = await restAsService("owner_prefs", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ owner_id: ownerId, crm: { ...crm, jobSetup: cleanSetup(setup) }, updated_at: new Date().toISOString() }) });
+  return r.ok;
+}
+/** The shop's name for the customer's messages. */
+export async function shopName(ownerId: string): Promise<string> {
+  return (await businessContext(ownerId).catch(() => null))?.name ?? "";
+}
+
+/** One measurement row from a request body ({ garment, unit, values, notes, person }); null when nothing was filled. */
+export function measureRow(scope: Scope, b: Record<string, unknown>, phone: string, fallbackName: string, byName: string): Record<string, unknown> | null {
+  const txt = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
+  const values: Record<string, string> = {};
+  if (b.values && typeof b.values === "object") {
+    for (const [k, v] of Object.entries(b.values as Record<string, unknown>).slice(0, 50)) {
+      const key = txt(k, 40), val = txt(v, 20);
+      if (key && val) values[key] = val;
+    }
+  }
+  if (!Object.keys(values).length && !txt(b.notes, 5)) return null;
+  return {
+    owner_id: scope.ownerId, customer_phone: phone, customer_name: txt(b.person, 80) || fallbackName, garment: txt(b.garment, 40) || "Other",
+    unit: b.unit === "cm" ? "cm" : "inch", sizes: values, notes: txt(b.notes, 500), taken_by: scope.userId, taken_by_name: byName,
+  };
 }

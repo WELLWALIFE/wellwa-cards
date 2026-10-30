@@ -7,7 +7,7 @@ import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { addonGate } from "@/lib/addons-server";
 import { resolveScope, agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
-import { isUuid, logEvent, nextNumber, personName } from "@/lib/jobs-server";
+import { isUuid, jobSetup, logEvent, measureRow, nextNumber, personName, shopName } from "@/lib/jobs-server";
 import { JOB_COLS, JOB_STATUSES, cleanPhone, toPaise, type JobRow, type Karigar } from "@/lib/jobs";
 
 const enc = encodeURIComponent;
@@ -37,16 +37,17 @@ export async function GET(request: Request) {
   }
   if (ors.length === 1) f.push(`or=(${ors[0]})`);
   else if (ors.length > 1) f.push(`and=(${ors.map((o) => `or(${o})`).join(",")})`);
-  const [jobs, karigars, team, all] = await Promise.all([
+  const [jobs, karigars, team, all, setup] = await Promise.all([
     restAsService<JobRow[]>(`job_orders?${f.join("&")}&select=${JOB_COLS}&order=created_at.desc&limit=300`),
     restAsService<Karigar[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active&order=name`),
     agentsFor(me.token, scope.ownerId, scope.role === "agent" ? "manager" : scope.role).catch(() => []),
     restAsService<{ status: string }[]>(`job_orders?owner_id=eq.${scope.ownerId}${scope.role === "agent" ? `&or=(assigned_to.eq.${scope.userId},created_by.eq.${scope.userId})` : ""}&select=status&limit=5000`),
+    jobSetup(scope.ownerId),
   ]);
   const counts: Record<string, number> = {};
   for (const r of list(all)) counts[r.status] = (counts[r.status] ?? 0) + 1;
   return NextResponse.json({
-    jobs: list(jobs), role: scope.role, karigars: list(karigars), counts,
+    jobs: list(jobs), role: scope.role, karigars: list(karigars), counts, setup,
     team: team.filter((a) => a.agent_user_id && a.active).map((a) => ({ id: a.agent_user_id as string, name: a.name || a.phone || "Team member", role: a.role })),
   });
 }
@@ -73,6 +74,15 @@ export async function POST(request: Request) {
   let number = await nextNumber(scope.ownerId);
   for (const it of items) {
     const assigned = scope.role !== "agent" && isUuid(it.assigned_to) && (await isTeamMember(scope.ownerId, it.assigned_to)) ? it.assigned_to : scope.role === "agent" ? scope.userId : null;
+    // The measurement taken while booking (items[].measure): saved first, so the job is cut from it.
+    let measurementId: string | null = isUuid(it.measurement_id) ? it.measurement_id : null;
+    if (it.measure && typeof it.measure === "object") {
+      const mrow = measureRow(scope, { garment: it.item, ...it.measure }, customer_phone, customer_name, byName);
+      if (mrow) {
+        const mr = await restAsService<{ id: string }[]>(`job_measurements?select=id`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(mrow) });
+        measurementId = list(mr)[0]?.id ?? measurementId;
+      }
+    }
     const amount = toPaise(it.amount);
     const adv = Math.min(advanceLeft, amount || advanceLeft); advanceLeft -= adv;
     const row = {
@@ -81,7 +91,7 @@ export async function POST(request: Request) {
       qty: Math.max(1, Math.min(99, Number(it.qty) || 1)), due_date: due,
       amount_paise: amount, advance_paise: adv,
       karigar_id: isUuid(it.karigar_id) && karigarIds.has(it.karigar_id) ? it.karigar_id : null,
-      assigned_to: assigned, measurement_id: isUuid(it.measurement_id) ? it.measurement_id : null, created_by: me.id,
+      assigned_to: assigned, measurement_id: measurementId, created_by: me.id,
     };
     // Two people saving at the same moment can take the same number: try the next one.
     let saved: JobRow | null = null;
@@ -96,5 +106,5 @@ export async function POST(request: Request) {
     made.push(saved);
     number += 1;
   }
-  return NextResponse.json({ jobs: made });
+  return NextResponse.json({ jobs: made, shop: await shopName(scope.ownerId) });
 }

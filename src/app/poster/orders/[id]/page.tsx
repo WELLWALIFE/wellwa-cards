@@ -4,15 +4,15 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, IndianRupee, LoaderCircle, MessageCircle, Phone, Ruler, StickyNote } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Ruler, StickyNote } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
-import { FLOW, STATUS_LABEL, rupees, type JobEvent, type JobRow, type JobStatus, type Karigar, type Measurement } from "@/lib/jobs";
-import { MeasureForm, MeasurementView, StatusBadge, useWorkspace, type Member } from "@/components/orders/orders-common";
+import { FLOW, STATUS_LABEL, receiptMessage, rupees, type JobEvent, type JobRow, type JobSetup, type JobStatus, type Karigar, type Measurement } from "@/lib/jobs";
+import { Fold, MeasureForm, MeasurementView, PickChips, StatusBadge, useJobSetup, useWorkspace, type Member } from "@/components/orders/orders-common";
 
-type Detail = { job: JobRow; events: JobEvent[]; measurement: Measurement | null; measurements: Measurement[]; karigars: Karigar[]; team: Member[]; role: "owner" | "manager" | "agent"; error?: string };
+type Detail = { job: JobRow; events: JobEvent[]; measurement: Measurement | null; measurements: Measurement[]; karigars: Karigar[]; team: Member[]; role: "owner" | "manager" | "agent"; setup: JobSetup; shop: string; error?: string };
 type Notice = { sent: boolean; link: string; error?: string } | null;
-type Panel = "" | "cloth_out" | "cloth_in" | "payment" | "note" | "measure";
+type Panel = "" | "cloth_out" | "cloth_in" | "payment" | "note" | "measure" | "change" | "edit";
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
@@ -26,6 +26,9 @@ export default function JobPage() {
   const [notice, setNotice] = useState<Notice>(null);
   const [panel, setPanel] = useState<Panel>("");
   const [form, setForm] = useState({ karigar_id: "", pieces: "", meters: "", amount: "", note: "" });
+  const [edit, setEdit] = useState({ customer_name: "", customer_phone: "", item: "", work: "", qty: "1", amount: "", due_date: "", details: "" });
+  const [fold, setFold] = useState({ measure: true, older: false, history: true });
+  const setup = useJobSetup(ws.q, d?.setup ?? null);
 
   const load = useCallback(async () => {
     if (!(await isLoggedIn())) { router.replace(`/login?next=/poster/orders/${id}`); return; }
@@ -57,6 +60,8 @@ export default function JobPage() {
   const field = "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand";
   const L = (s: JobStatus) => (hi ? STATUS_LABEL[s].hi : STATUS_LABEL[s].en);
   const card = "space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card";
+  const lab = "text-[11px] font-semibold text-muted";
+  const others = d.measurements.filter((m) => m.id !== job.measurement_id);
 
   return (
     <div className="space-y-4 pb-12">
@@ -75,6 +80,33 @@ export default function JobPage() {
           <p><span className="block text-[11px] text-muted">{T("Paid", "मिला")}</span><b>{rupees(job.advance_paise)}</b></p>
           <p><span className="block text-[11px] text-muted">{T("Balance", "बाकी")}</span><b className={due > 0 ? "text-amber-700" : ""}>{rupees(due)}</b></p>
         </div>
+        <div className="flex flex-wrap gap-2">
+          <button type="button" onClick={() => { if (panel === "edit") { setPanel(""); return; } setEdit({ customer_name: job.customer_name, customer_phone: job.customer_phone.replace(/^\+91/, ""), item: job.item, work: job.work, qty: String(job.qty || 1), amount: job.amount_paise ? String(job.amount_paise / 100) : "", due_date: job.due_date ?? "", details: job.details }); setPanel("edit"); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Pencil className="h-3.5 w-3.5" /> {T("Edit order", "Order बदलें")}</button>
+          {job.customer_phone && <a href={`https://wa.me/${job.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(receiptMessage([job], d.shop))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> {T("Send slip", "Slip भेजें")}</a>}
+        </div>
+        {panel === "edit" && (
+          <div className="space-y-2 rounded-xl bg-bg p-3">
+            <div className="grid grid-cols-2 gap-2">
+              <label className={lab}>{T("Customer", "ग्राहक")}<input className={field} value={edit.customer_name} onChange={(e) => setEdit({ ...edit, customer_name: e.target.value })} /></label>
+              <label className={lab}>{T("Mobile", "मोबाइल")}<input className={field} inputMode="numeric" value={edit.customer_phone} onChange={(e) => setEdit({ ...edit, customer_phone: e.target.value })} /></label>
+            </div>
+            <p className={lab}>{T("Item", "Item")}</p>
+            <PickChips hi={hi} options={setup.setup.items.map((x) => x.name)} value={edit.item} onPick={(v) => setEdit({ ...edit, item: v })} onAdd={setup.canEdit ? setup.addItem : undefined} newLabel={T("Item name", "Item का नाम")} />
+            <p className={lab}>{T("Work", "काम")}</p>
+            <PickChips hi={hi} options={setup.setup.works} value={edit.work} onPick={(v) => setEdit({ ...edit, work: v })} onAdd={setup.canEdit ? setup.addWork : undefined} newLabel={T("Work", "काम")} />
+            <div className="grid grid-cols-3 gap-2">
+              <label className={lab}>{T("Pieces", "Pieces")}<input className={field} inputMode="numeric" value={edit.qty} onChange={(e) => setEdit({ ...edit, qty: e.target.value })} /></label>
+              {boss && <label className={lab}>{T("Charge ₹", "Charge ₹")}<input className={field} inputMode="decimal" value={edit.amount} onChange={(e) => setEdit({ ...edit, amount: e.target.value })} /></label>}
+              <label className={lab}>{T("Due", "देना है")}<input type="date" className={field} value={edit.due_date} onChange={(e) => setEdit({ ...edit, due_date: e.target.value })} /></label>
+            </div>
+            <textarea className={field} rows={2} value={edit.details} onChange={(e) => setEdit({ ...edit, details: e.target.value })} placeholder={T("Details", "Detail")} />
+            <div className="flex gap-2">
+              <button type="button" disabled={!!busy} onClick={async () => { const { amount, ...rest } = edit; if (await act("edit", boss ? { ...rest, amount } : rest)) setPanel(""); }} className="rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50">{T("Save changes", "बदलाव सेव करें")}</button>
+              <button type="button" onClick={() => setPanel("")} className="rounded-xl border border-border px-4 py-2.5 text-sm">{T("Cancel", "रहने दें")}</button>
+            </div>
+            <p className="text-[11px] text-muted">{T("Payments are added with “Payment” below; every change is written in the history.", "पैसे नीचे “पैसे मिले” से जोड़ें; हर बदलाव history में लिखा जाता है।")}</p>
+          </div>
+        )}
         {job.customer_phone && (
           <div className="flex flex-wrap gap-2">
             <a href={`tel:${job.customer_phone}`} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Phone className="h-3.5 w-3.5" /> {job.customer_phone}</a>
@@ -161,26 +193,26 @@ export default function JobPage() {
         )}
       </section>
 
-      {/* The measurements the tailor cuts from. */}
-      <section className={card}>
-        <div className="flex items-center justify-between"><p className="flex items-center gap-1.5 text-sm font-bold"><Ruler className="h-4 w-4 text-brand" /> {T("Measurements", "नाप")}</p>
-          {job.customer_phone && panel !== "measure" && <button type="button" onClick={() => setPanel("measure")} className="text-xs font-semibold text-brand-ink underline">+ {T("Take new", "नया नाप")}</button>}</div>
-        {d.measurement ? <MeasurementView m={d.measurement} hi={hi} /> : <p className="text-sm text-muted">{T("No measurement attached to this job.", "इस job से कोई नाप नहीं जुड़ा।")}</p>}
-        {d.measurements.length > 0 && (
-          <select className={field} value={job.measurement_id ?? ""} onChange={(e) => void act("edit", { measurement_id: e.target.value || null })}>
-            <option value="">{T("Attach a saved measurement…", "Saved नाप जोड़ें…")}</option>
-            {d.measurements.map((m) => <option key={m.id} value={m.id}>{m.garment} · {new Date(m.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" })}{m.taken_by_name ? ` · ${m.taken_by_name}` : ""}</option>)}
-          </select>
+      {/* The measurements the tailor cuts from: change (a new copy, the old stays), take new, or attach an older one. */}
+      <Fold hi={hi} icon={<Ruler className="h-4 w-4 text-brand" />} title={T("Measurements", "नाप")} open={fold.measure} onToggle={() => setFold({ ...fold, measure: !fold.measure })}
+        summary={d.measurement ? `${d.measurement.garment} · ${new Date(d.measurement.created_at).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}` : T("None attached", "कोई नाप नहीं जुड़ा")}
+        right={panel !== "measure" && panel !== "change" ? <button type="button" onClick={() => { setFold({ ...fold, measure: true }); setPanel("measure"); }} className="inline-flex items-center gap-0.5 text-xs font-semibold text-brand-ink"><Plus className="h-3.5 w-3.5" />{T("New", "नया")}</button> : null}>
+        {panel === "change" && d.measurement
+          ? <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} item={job.item} setup={setup} from={d.measurement} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />
+          : d.measurement ? <MeasurementView m={d.measurement} hi={hi} onEdit={() => setPanel("change")} />
+          : panel !== "measure" && <p className="text-sm text-muted">{T("No measurement attached to this job.", "इस job से कोई नाप नहीं जुड़ा।")}</p>}
+        {panel === "measure" && <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} item={job.item} setup={setup} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />}
+        {others.length > 0 && (
+          <Fold hi={hi} tone="inner" icon={<History className="h-4 w-4 text-muted" />} title={`${T("Older measurements", "पुराने नाप")} (${others.length})`} open={fold.older} onToggle={() => setFold({ ...fold, older: !fold.older })}>
+            {others.map((m) => <MeasurementView key={m.id} m={m} hi={hi} action={<button type="button" disabled={!!busy} onClick={() => void act("edit", { measurement_id: m.id })} className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold">{T("Use for this job", "इस job में लगाएँ")}</button>} />)}
+          </Fold>
         )}
-        {!job.customer_phone && <p className="text-xs text-muted">{T("Add the customer's mobile to keep measurements.", "नाप save करने के लिए ग्राहक का मोबाइल चाहिए।")}</p>}
-        {panel === "measure" && <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />}
-      </section>
+      </Fold>
 
       {err && <p className="text-sm font-semibold text-danger">{err}</p>}
 
       {/* Everything that happened. */}
-      <section className={card}>
-        <p className="text-sm font-bold">{T("History", "पूरा हिसाब")}</p>
+      <Fold hi={hi} icon={<History className="h-4 w-4 text-brand" />} title={T("History", "पूरा हिसाब")} summary={`${d.events.length} ${T("entries", "entries")}`} open={fold.history} onToggle={() => setFold({ ...fold, history: !fold.history })}>
         <ol className="space-y-2">
           {[...d.events].reverse().map((e) => (
             <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3 text-sm">
@@ -193,7 +225,7 @@ export default function JobPage() {
             </li>
           ))}
         </ol>
-      </section>
+      </Fold>
     </div>
   );
 }
