@@ -15,6 +15,7 @@ import {
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { displayLogin } from "@/lib/phone";
+import { ADDONS } from "@/lib/addons";
 
 /** Mobile sign-ups log in with an internal address (p91…@phone.…) — show their mobile number instead, never that address. */
 const mobileLogin = (email?: string) => /@phone\./i.test(email ?? "");
@@ -51,6 +52,7 @@ type User = {
   associate?: string;
   /** partner (also a partner ID) · pending (came from the website with no sponsor: waiting for review) · consumer (uses the app only). */
   accountKind?: "partner" | "pending" | "consumer";
+  addons?: string[];
   joined: string;
   lastSeen?: string;
   cards: number;
@@ -167,6 +169,15 @@ export default function AdminUsers() {
       headers: await adminHeaders(),
       body: JSON.stringify({ id: u.id, plan }),
     });
+  }
+
+  /** Advanced feature (owner, 30 Oct 2026): switched on only after the customisation is paid. */
+  async function toggleAddon(u: User, key: string, label: string) {
+    const on = !(u.addons ?? []).includes(key);
+    if (!confirm(on ? `Switch ON "${label}" for ${who(u)}?\n\nDo this after the customisation is paid. Their team (tailors) gets it too.` : `Switch OFF "${label}" for ${who(u)}? Their data stays; the screens close.`)) return;
+    const r = await fetch("/api/admin/users/addons", { method: "POST", headers: await adminHeaders(), body: JSON.stringify({ id: u.id, key, on }) });
+    if (!r.ok) { alert((await r.json().catch(() => ({}))).error || "Failed"); return; }
+    setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, addons: on ? [...(x.addons ?? []), key] : (x.addons ?? []).filter((k) => k !== key) } : x)));
   }
 
   async function toggleSuspend(u: User) {
@@ -469,6 +480,16 @@ export default function AdminUsers() {
                         <Coins className="h-3 w-3 text-amber-500" /> {u.credits ?? 0}
                       </button>
                     </div>
+                    {acct && ADDONS.map((ad) => {
+                      const on = (u.addons ?? []).includes(ad.key);
+                      return (
+                        <button key={ad.key} onClick={() => toggleAddon(u, ad.key, ad.en)} disabled={!live}
+                          title="Advanced feature — switch on after the customisation is paid"
+                          className={`mt-1 block rounded-md px-1.5 py-0.5 text-[10px] font-semibold disabled:opacity-40 ${on ? "bg-good/15 text-good" : "border border-border text-muted hover:bg-surface2"}`}>
+                          {ad.emoji} {ad.en.split(" ")[0]}: {on ? "ON" : "off"}
+                        </button>
+                      );
+                    })}
                   </td>
                   <td className="px-4 py-3">
                     {u.plan === "free" ? (

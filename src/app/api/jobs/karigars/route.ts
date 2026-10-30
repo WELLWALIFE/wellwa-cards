@@ -3,6 +3,7 @@
 //   POST { name, phone?, skill? } → { karigar }          PATCH { id, name?, phone?, skill?, active? } → { karigar }
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
+import { addonGate } from "@/lib/addons-server";
 import { resolveScope } from "@/lib/crm-server";
 import { isUuid } from "@/lib/jobs-server";
 import { cleanPhone, type Karigar } from "@/lib/jobs";
@@ -15,6 +16,7 @@ export async function GET(request: Request) {
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const scope = await resolveScope(me, new URL(request.url).searchParams.get("as"));
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const [ks, ev, open] = await Promise.all([
     restAsService<Karigar[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active&order=name`),
     scope.role === "agent" ? Promise.resolve({ data: [] }) : restAsService<{ karigar_id: string | null; kind: string; pieces: number | null; meters: number | null }[]>(`job_events?owner_id=eq.${scope.ownerId}&kind=in.(cloth_out,cloth_in)&karigar_id=not.is.null&select=karigar_id,kind,pieces,meters&limit=20000`),
@@ -38,6 +40,7 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope || scope.role === "agent") return NextResponse.json({ error: "Only the owner or a manager can add karigars." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const name = txt(b.name, 60);
   if (!name) return NextResponse.json({ error: "Write the karigar's name." }, { status: 400 });
   const r = await restAsService<Karigar[]>("job_karigars?select=id,name,phone,skill,active", {
@@ -55,6 +58,7 @@ export async function PATCH(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope || scope.role === "agent" || !isUuid(b.id)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const patch: Record<string, unknown> = {};
   if ("name" in b && txt(b.name, 60)) patch.name = txt(b.name, 60);
   if ("phone" in b) patch.phone = cleanPhone(b.phone);

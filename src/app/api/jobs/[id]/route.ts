@@ -7,6 +7,7 @@
 //     payment  { amount, note? }            note { note }      notify {}      edit { due_date?, amount?, details?, measurement_id? }
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
+import { addonGate } from "@/lib/addons-server";
 import { resolveScope, agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
 import { isUuid, jobById, logEvent, notifyReady, personName, setStatus } from "@/lib/jobs-server";
@@ -22,6 +23,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const scope = await resolveScope(me, new URL(request.url).searchParams.get("as"));
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const job = await jobById(scope, id);
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
   const [events, karigars, team, ms] = await Promise.all([
@@ -48,6 +50,7 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const job = await jobById(scope, id);
   if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
   const byName = (await personName(me.id)) || (scope.role === "owner" ? "Owner" : "Team");

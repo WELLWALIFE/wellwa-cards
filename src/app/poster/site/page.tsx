@@ -8,6 +8,7 @@
 // so a change made from either page shows on both.
 import { FinishBar } from "@/components/poster/site-finish";
 import { OwnSiteByCard } from "@/components/poster/bot-site-box";
+import { AdvancedFeatures } from "@/components/poster/advanced-features";
 import { ChatEditByCard } from "@/components/poster/card-chat-edit";
 import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
@@ -271,6 +272,9 @@ export default function WebsitePage() {
                     <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} bg-ai-soft/50 ring-1 ring-ai/30`}>{icon("bg-ai", "text-white", Sparkles)}<span className="text-sm font-bold text-ai">{T("Premium website", "Premium website")}</span><span className="text-[11px] text-muted">{T("made by AI for you", "AI से खास design")}</span></Link>
                   </div>
                 </section>
+
+                {/* 4 · Advanced features (owner, 30 Oct 2026): after the website, only on Premium and only for the kinds of business they suit. */}
+                <AdvancedFeatures hi={hi} />
 
                 {/* Already has a website and wants only the package (owner, 28 Oct 2026): their site on the card and in the AI's replies. */}
                 <OwnSiteByCard cardId={cardId} onSite={setOwnSite} />

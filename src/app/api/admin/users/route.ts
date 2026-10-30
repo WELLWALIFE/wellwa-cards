@@ -40,7 +40,7 @@ type AuthUser = {
   created_at?: string;
   last_sign_in_at?: string | null;
   user_metadata?: Record<string, unknown>;
-  app_metadata?: { provider?: string; providers?: string[]; account_kind?: string };
+  app_metadata?: { provider?: string; providers?: string[]; account_kind?: string; addons?: Record<string, { on?: boolean }> };
 };
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com";
 
@@ -101,6 +101,8 @@ export async function GET(request: Request) {
         name: (u.user_metadata?.name as string) || (u.user_metadata?.full_name as string) || pr?.full_name || pp.find((x) => x.is_default)?.name || pp[0]?.name || (u.email ?? "").split("@")[0] || (u.phone ? `+${u.phone}` : "user"),
         associate: (u.user_metadata?.associate_id as string) || "",
         accountKind: kindOf(u.app_metadata),
+        // Advanced features switched on for this account (see src/lib/addons.ts)
+        addons: Object.entries(u.app_metadata?.addons ?? {}).filter(([, v]) => v?.on === true).map(([k]) => k),
         joined: (u.created_at ?? "").slice(0, 10),
         joinedAt: u.created_at ?? "",
         lastSeen: u.last_sign_in_at ? u.last_sign_in_at.slice(0, 10) : "",

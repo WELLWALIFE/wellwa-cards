@@ -4,6 +4,7 @@
 //          karigar_id?, assigned_to?, measurement_id? }] } → { jobs } (one job card per item, one shared order_ref)
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
+import { addonGate } from "@/lib/addons-server";
 import { resolveScope, agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
 import { isUuid, logEvent, nextNumber, personName } from "@/lib/jobs-server";
@@ -19,6 +20,7 @@ export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   const scope = await resolveScope(me, p.get("as"));
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const f = [`owner_id=eq.${scope.ownerId}`];
   const ors: string[] = [];   // PostgREST takes one "or" per query: two are joined under "and"
   if (scope.role === "agent") ors.push(`assigned_to.eq.${scope.userId},created_by.eq.${scope.userId}`);
@@ -55,6 +57,7 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const customer_name = txt(b.customer_name, 80);
   const customer_phone = cleanPhone(b.customer_phone);
   if (!customer_name) return NextResponse.json({ error: "Write the customer's name." }, { status: 400 });

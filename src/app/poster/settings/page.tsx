@@ -17,6 +17,7 @@ import { endPartnerSession } from "@/lib/logout";
 import { SAAS_PLANS, type SaasTier } from "@/lib/billing";
 import { usernameOk, INTRODUCER_KEY, INTRODUCER_LEG_KEY } from "@/lib/username";
 import { ClaimUsername } from "@/components/poster/claim-username";
+import { AdvancedFeatures } from "@/components/poster/advanced-features";
 
 type Partner = { code: string; username: string | null; status: "red" | "green"; subValidUntil: string | null; team: number; teamGreen: number; directs: number; walletPaise: number | null; renewalsDue: number };
 type Account = { username: string | null; referralCode: string | null; cardSlug?: string | null; partner: Partner | null };
@@ -227,10 +228,10 @@ export default function SettingsPage() {
 
       <AddCredits />
 
+      <AdvancedFeatures hi={!en} />
       <section className="space-y-2 text-sm">
         <p className="text-sm font-semibold">{en ? "My business" : "मेरा business"}</p>
         <Link href="/poster/profiles" className="block rounded-xl border border-border p-3">👤 {t.profilesLang} <span className="block text-[11px] text-muted">{en ? "Name, photo, number, kind of poster and language" : "नाम, फ़ोटो, नंबर, poster की किस्म और भाषा"}</span></Link>
-        <Link href="/poster/orders" className="block rounded-xl border border-border p-3">🧵 {en ? "Orders & job cards" : "Orders · Silai (job card)"} <span className="block text-[11px] text-muted">{en ? "Alteration and stitching orders, measurements, karigars and cloth given / taken back — the customer gets a WhatsApp when it is ready" : "Alteration और सिलाई के order, नाप, कारीगर और कपड़े का लेन-देन — तैयार होते ही ग्राहक को WhatsApp"}</span></Link>
         <Link href="/poster/products" className="block rounded-xl border border-border p-3">📦 {t.productsTitle} <span className="block text-[11px] text-muted">{en ? "Products shown on your daily posters" : "जो product रोज़ के poster पर आएँगे"}</span></Link>
         <Link href="/poster/social" className="block rounded-xl border border-border p-3">📣 {en ? "Posting on social media" : "Social media पर post करना"} <span className="block text-[11px] text-muted">{en ? "Facebook, Instagram, WhatsApp Status — posts go out by themselves, and you can see how they did" : "Facebook, Instagram, WhatsApp Status — post अपने-आप जाते हैं, और कैसा चला यह भी देख सकते हैं"}</span></Link>
         <Link href="/poster/setup" className="block rounded-xl border border-border p-3">✅ {en ? "Setup checklist" : "Setup की list"} <span className="block text-[11px] text-muted">{en ? "See what is still left to do" : "देखें अभी क्या-क्या करना बाकी है"}</span></Link>

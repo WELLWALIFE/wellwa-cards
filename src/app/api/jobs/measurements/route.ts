@@ -3,6 +3,7 @@
 //   (job_id: the job this measurement is for — it is linked to that job)
 import { NextResponse } from "next/server";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
+import { addonGate } from "@/lib/addons-server";
 import { resolveScope } from "@/lib/crm-server";
 import { isUuid, jobById, logEvent, personName } from "@/lib/jobs-server";
 import { cleanPhone, type Measurement } from "@/lib/jobs";
@@ -17,6 +18,7 @@ export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   const scope = await resolveScope(me, p.get("as"));
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const phone = cleanPhone(p.get("phone"));
   if (!phone) return NextResponse.json({ measurements: [] });
   const r = await restAsService<Measurement[]>(`job_measurements?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&select=${MCOLS}&order=created_at.desc&limit=30`);
@@ -29,6 +31,7 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const scope = await resolveScope(me, typeof b.as === "string" ? b.as : null);
   if (!scope) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return gate;
   const phone = cleanPhone(b.customer_phone);
   if (!phone) return NextResponse.json({ error: "The customer's 10-digit mobile number is needed to keep the measurements." }, { status: 400 });
   const values: Record<string, string> = {};
