@@ -78,11 +78,13 @@ export default function OrdersPage() {
         <WorkspaceSwitch as={ws.as} setAs={ws.setAs} teams={ws.teams} hi={hi} />
         {can(me, "book") && <button type="button" onClick={() => { setCreating(true); setBooked(null); }} className="inline-flex items-center gap-1 rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white"><Plus className="h-4 w-4" /> {T("New order", "नया order")}</button>}
       </div>
+      {!(can(me, "assign") || can(me, "staff") || can(me, "setup")) && <Link href="/help/orders" className="inline-block text-xs font-semibold text-brand-ink underline">📖 {T("How to use Orders", "Orders कैसे चलाएँ")}</Link>}
       {(can(me, "assign") || can(me, "staff") || can(me, "setup")) && (
         <div className="flex flex-wrap gap-2">
           {can(me, "staff") && <Link href="/poster/orders/staff" className={btn}><UserCog className="h-4 w-4" /> {T("Staff & logins", "Staff · login")}</Link>}
           {can(me, "assign") && <Link href="/poster/orders/karigars" className={btn}><Users className="h-4 w-4" /> {T("Karigars", "कारीगर")}</Link>}
           {can(me, "setup") && <Link href="/poster/orders/setup" className={btn}><Settings2 className="h-4 w-4" /> {T("Setup & flow", "Setup · Flow")}</Link>}
+          <Link href="/help/orders" className={btn}>📖 {T("How it works", "कैसे चलाएँ")}</Link>
         </div>
       )}
 
