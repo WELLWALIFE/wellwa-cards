@@ -10,6 +10,7 @@ import { BookOpen, Check, ChevronRight, Lock, MessageCircle, Sparkles } from "lu
 import { api } from "@/lib/poster-client";
 import { ADDONS, addonWaText, type AddonsAnswer } from "@/lib/addons";
 import { waLink } from "@/lib/site-brand";
+import { CUSTOM_DAYS } from "@/lib/site-ready";
 import { ADVANCED_HREF } from "@/components/poster/advanced-entry";
 
 export function AdvancedFeatures({ hi, className = "" }: { hi: boolean; className?: string }) {
@@ -55,7 +56,7 @@ export function AdvancedFeatures({ hi, className = "" }: { hi: boolean; classNam
             <>
               <a href={waLink(addonWaText(a, true))} target="_blank" rel="noopener noreferrer" className={primary}><MessageCircle className="h-4 w-4" /> {T("Get it customised — ask the price", "अपने हिसाब से बनवाएँ — price पूछें")}</a>
               <Link href={a.guide} className={secondary}><BookOpen className="h-3.5 w-3.5 text-brand" /> {T("See how it works", "कैसे चलता है, देखें")}</Link>
-              <p className="text-center text-[10px] text-muted">{T("Set up for your shop by Shubhora · charged separately", "Shubhora आपकी दुकान के लिए set करेगा · charge अलग से")}</p>
+              <p className="text-center text-[10px] text-muted">{T(`Set up for your shop by Shubhora within ${CUSTOM_DAYS} days · charged separately`, `Shubhora आपकी दुकान के लिए ${CUSTOM_DAYS} दिन में set करेगा · charge अलग से`)}</p>
             </>
           ) : (
             <>
@@ -65,7 +66,7 @@ export function AdvancedFeatures({ hi, className = "" }: { hi: boolean; classNam
                 <Link href={a.guide} className={secondary}><BookOpen className="h-3.5 w-3.5 text-brand" /> {T("How it works", "कैसे चलता है")}</Link>
                 <a href={waLink(addonWaText(a, false))} target="_blank" rel="noopener noreferrer" className={secondary}><MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> {T("Ask the price", "Price पूछें")}</a>
               </div>
-              <p className="text-center text-[10px] text-muted">{T("Comes with Premium · customised for your shop · charged separately", "Premium के साथ · आपकी दुकान के हिसाब से · charge अलग से")}</p>
+              <p className="text-center text-[10px] text-muted">{T(`Comes with Premium · set up for your shop within ${CUSTOM_DAYS} days · charged separately`, `Premium के साथ · ${CUSTOM_DAYS} दिन में आपकी दुकान के लिए set · charge अलग से`)}</p>
             </>
           )}
         </div>

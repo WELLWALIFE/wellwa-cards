@@ -22,6 +22,7 @@ import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
+import { publicCard, sitePending } from "@/lib/site-ready";
 import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
@@ -41,12 +42,13 @@ async function loadCard(username: string) {
   const raw = cloud ?? (getPublicSupabase() ? null : getCardByUsername(username));
   // The stored JSON is read as it is: a row saved half-way (no pages, a page with no blocks, no links) must still open,
   // not answer 500 on `card.pages.find` / `card.links.find` further down.
-  const card: Card | null = raw ? {
+  // The waiting time (src/lib/site-ready.ts): until the website's moment, visitors get the card; until the Premium design's, the basic website.
+  const card: Card | null = raw ? publicCard({
     ...raw,
     pages: (Array.isArray(raw.pages) ? raw.pages : []).filter((p) => p && typeof p.slug === "string").map((p) => ({ ...p, blocks: (Array.isArray(p.blocks) ? p.blocks : []).filter(Boolean).map(withLists) })),
     links: Array.isArray(raw.links) ? raw.links : [],
     ...Object.fromEntries((["name", "company", "jobTitle", "tagline", "about"] as const).map((k) => [k, typeof raw[k] === "string" ? raw[k] : ""])),
-  } : null;
+  }) : null;
   // The ADVANCED website is a whole website: it adds the About and Gallery pages the card has the material for but no page of
   // (src/lib/site-advanced.ts), so each has its own address, title and description like any other page.
   return card && activeAdvanced(card.site, card.username) ? withAdvancedPages(card) : card;
@@ -184,7 +186,7 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // An ADVANCED website (Rs 5,999) is built for the phone as much as the desktop (owner, 16 Oct 2026): a phone gets it too.
   // The free plan is the digital card only (owner, 16 Oct 2026): ?view=site opens the website only when the card has one switched on
   // (every website made before this stays as it was), when the owner is on a paid plan (their own previews), or on a partner's card.
-  const siteAllowed = !!card.site?.enabled || !expired || !!brand;
+  const siteAllowed = (!!card.site?.enabled || !expired || !!brand) && !sitePending(stored.site);
   // On the member's own domain (proxy.ts sets x-own-domain) the plain address is the website on every screen, a phone too;
   // ?view=card (kept for the visit in the "sv" cookie) is the card (owner, 23 Oct 2026).
   const ownDomain = hdrs.get("x-own-domain") === "1";

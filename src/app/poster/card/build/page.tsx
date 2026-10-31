@@ -50,6 +50,7 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
 import { LookTweaks } from "@/components/poster/look-tweaks";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
+import { readyIn, readyText, sitePending } from "@/lib/site-ready";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
 const field = `mt-1 w-full ${box}`;
@@ -1052,6 +1053,9 @@ export default function BuildCard() {
       // already live is put back the same way, with its tab left however the owner had it.
       const addShubhora = (alsoShubhora || keepShubhora) && !hasShubhoraPage(out);
       if (addShubhora) out = withShubhoraPage(out, { visible: keepShubhora && shubhoraVisible });
+      // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): a website made for the FIRST time goes live by itself 24 hours from
+      // now and is promised within 24–48; the card is live at once. A card that already had its website on (improve, rebuild) is not held.
+      if (out.site?.enabled && !existing?.site?.enabled && !out.site.readyAt) out = { ...out, site: { ...out.site, readyAt: readyIn() } };
       const r = await publishCard(out);
       if (!r.ok) { setErr(r.error); return; }
       void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: null } }).catch(() => undefined);
@@ -1327,6 +1331,7 @@ export default function BuildCard() {
   if (state === "done" && shown) {
     // The own domain when it is live (owner, 24 Oct 2026: "apna domain hai to Shubhora ka link kyon?").
     const liveLink = cardHomeShown(liveUser || username, (card ?? existing)?.customDomain);
+    const wait = sitePending(existing?.site);
     return (
       <div className="space-y-4 py-2">
         {afterSteps(3)}
@@ -1339,10 +1344,13 @@ export default function BuildCard() {
           <div aria-hidden="true" className="pointer-events-none absolute -left-10 -top-10 h-40 w-40 rounded-full bg-white/10" />
           <div aria-hidden="true" className="pointer-events-none absolute -bottom-12 -right-8 h-44 w-44 rounded-full bg-white/10" />
           <div className="relative space-y-2.5">
-            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl" aria-hidden="true">🎉</span>
-            <h1 className="text-2xl font-extrabold tracking-tight">{T("Congratulations!", "बधाई हो!")}</h1>
-            <p className="text-sm text-white/90">{cardOnly ? T("Your card is live.", "आपका card live है।") : T("Your website and card are live.", "आपकी website और card live हैं।")}</p>
-            <SiteLink href={`https://${liveLink}`} title={T("Website", "Website")} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
+            <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20 text-2xl" aria-hidden="true">{wait ? "🛠️" : "🎉"}</span>
+            <h1 className="text-2xl font-extrabold tracking-tight">{wait ? T("Your website is being made", "आपकी website बन रही है") : T("Congratulations!", "बधाई हो!")}</h1>
+            <p className="text-sm text-white/90">{wait
+              ? T("Shubhora is preparing it. Ready within 24–48 hours; we will WhatsApp you the moment it is live. Your card is live right now:", "Shubhora इसे तैयार कर रहा है। 24–48 घंटे में तैयार — live होते ही WhatsApp आएगा। आपका card अभी से live है:")
+              : cardOnly ? T("Your card is live.", "आपका card live है।") : T("Your website and card are live.", "आपकी website और card live हैं।")}</p>
+            <SiteLink href={`https://${liveLink}${wait ? "?view=card" : ""}`} title={wait ? T("Card", "Card") : T("Website", "Website")} className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><Globe className="h-4 w-4 shrink-0 text-brand" /> <span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
+            {wait && <p className="text-xs text-white/80">{T("Website", "Website")} {readyText(wait, hi)} · {T("Everything you add below goes into it.", "नीचे जो भी जोड़ेंगे, उसमें आ जाएगा।")}</p>}
             <div className="grid grid-cols-2 gap-2 pt-1">
               <a href={`https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${liveLink}`)}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30"><MessageCircle className="h-4 w-4" /> {T("WhatsApp", "WhatsApp")}</a>
               <button type="button" onClick={async () => { setCopied(""); try { await navigator.clipboard.writeText(`https://${liveLink}`); setCopied("ok"); setTimeout(() => setCopied(""), 2500); } catch { setCopied("fail"); } }} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-white/15 py-2.5 text-sm font-semibold ring-1 ring-white/30">{copied === "ok" ? <><Check className="h-4 w-4" /> {T("Copied", "Copy हो गया")}</> : T("Copy link", "Link copy करें")}</button>

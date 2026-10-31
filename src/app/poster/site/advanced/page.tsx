@@ -701,8 +701,12 @@ export default function AdvancedSitePage() {
         {header}
         <section className="space-y-3 rounded-3xl p-6 text-center text-white shadow-float grad-brand">
           <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-white/20" aria-hidden="true"><Sparkles className="h-7 w-7" /></span>
-          <h2 className="text-2xl font-extrabold tracking-tight">{on ? T("Your Premium website is live", "आपकी Premium website live है") : T("Your old website is back", "आपकी पुरानी website वापस आ गई")}</h2>
-          <p className="text-sm text-white/90">{on ? T("Live on phone and computer.", "Phone और computer, दोनों पर live।") : T("The Premium design stays saved.", "Premium design save रहेगा।")}</p>
+          <h2 className="text-2xl font-extrabold tracking-tight">{on ? (cur?.readyAt ? T("Your Premium website is being prepared", "आपकी Premium website तैयार हो रही है") : T("Your Premium website is live", "आपकी Premium website live है")) : T("Your old website is back", "आपकी पुरानी website वापस आ गई")}</h2>
+          <p className="text-sm text-white/90">{on
+            ? (cur?.readyAt
+              ? T("Shubhora is putting it live within 24–48 hours; we will WhatsApp you the moment it is up. Until then your link shows what it showed before.", "Shubhora इसे 24–48 घंटे में live करेगा; live होते ही WhatsApp आएगा। तब तक आपके link पर पहले वाली चीज़ दिखेगी।")
+              : T("Live on phone and computer.", "Phone और computer, दोनों पर live।"))
+            : T("The Premium design stays saved.", "Premium design save रहेगा।")}</p>
           <SiteLink href={`https://${liveLink}?view=site`} title="Website" className="inline-flex max-w-full items-center gap-1.5 rounded-full bg-white px-4 py-2 text-sm font-semibold text-ink shadow-sm"><span className="truncate">{liveLink}</span> <ExternalLink className="h-3.5 w-3.5 shrink-0 text-muted" /></SiteLink>
         </section>
         <div className={`${box} space-y-2`}>

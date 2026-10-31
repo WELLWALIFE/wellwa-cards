@@ -23,6 +23,7 @@ import { usePlan } from "@/lib/plan";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { ADVANCED_HREF, fetchAdvancedState, type AdvState } from "@/components/poster/advanced-entry";
 import { editHref, lastEdit } from "@/lib/edit-nav";
+import { advancedPending, readyText, sitePending } from "@/lib/site-ready";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -171,6 +172,9 @@ export default function WebsitePage() {
   // The free plan is the digital card only (owner, 16 Oct 2026): a free account whose website is not on is offered Standard, not a website.
   // A free account that already has its website on is left exactly as it was.
   const noSite = !paid && s.hasCard && !s.site?.enabled;
+  /** The waiting time (lib/site-ready.ts): the website is being made — visitors get the card until its moment. */
+  const making = s.hasCard ? sitePending(s.site) : null;
+  const makingAdv = s.hasCard && !making ? advancedPending(s.site) : null;
 
   return (
     <div className="space-y-4">
@@ -202,6 +206,15 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
+          {(making || makingAdv) && (
+            <section className="flex items-start gap-3 rounded-2xl border border-amber/40 bg-amber/10 p-3.5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber/20 text-xl" aria-hidden="true">🛠️</span>
+              <span className="min-w-0 flex-1">
+                <b className="block text-sm">{making ? T("Your website is being made", "आपकी website बन रही है") : T("Your Premium website is being prepared", "आपकी Premium website तैयार हो रही है")}</b>
+                <span className="block text-xs text-muted">{T("Ready within 24–48 hours", "24–48 घंटे में तैयार")} · {readyText((making ?? makingAdv)!, hi)}. {T("We will WhatsApp you the moment it is live.", "Live होते ही WhatsApp आएगा।")} {making ? T("Your card is live now; everything you add meanwhile goes into the website.", "आपका card अभी से live है; इस बीच जो जोड़ेंगे, website में आ जाएगा।") : T("Until then your link shows the website it showed before.", "तब तक link पर पहले वाली website दिखेगी।")}</span>
+              </span>
+            </section>
+          )}
           {/* The guided finish on top: progress and the one next step (owner, 24 Oct 2026). */}
           <FinishBar hi={hi} />
           {/* Redesigned 24 Oct 2026 (owner: "3 alag box, achhe se — design bahut important hai"): three clear boxes — Share, Edit, Grow —
@@ -221,9 +234,9 @@ export default function WebsitePage() {
                 <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   {head(1, T("Share", "Share करें"), T("Send to customers on WhatsApp", "ग्राहकों को WhatsApp पर भेजें"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}
                   <div className="space-y-3 p-3">
-                    <div className={`grid gap-2.5 ${noSite && !ownSite ? "grid-cols-2" : "grid-cols-3"}`}>
+                    <div className={`grid gap-2.5 ${(noSite || making) && !ownSite ? "grid-cols-2" : "grid-cols-3"}`}>
                       <button type="button" onClick={shareCard} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Smartphone)}<span className="text-sm font-bold">{T("Card", "Card")}</span></button>
-                      {(!noSite || !!ownSite) && <button type="button" onClick={shareSite} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Globe)}<span className="text-sm font-bold">{T("Website", "Website")}</span></button>}
+                      {((!noSite && !making) || !!ownSite) && <button type="button" onClick={shareSite} className={`${tile} bg-[#25D366]/10 ring-1 ring-[#25D366]/30`}>{icon("bg-[#25D366]", "text-white", Globe)}<span className="text-sm font-bold">{T("Website", "Website")}</span></button>}
                       <Link href="/poster/share" className={`${tile} bg-surface2 ring-1 ring-border`}>{icon("bg-white", "text-ink", Share2)}<span className="text-sm font-bold">{T("QR code", "QR code")}</span></Link>
                     </div>
                     <div className="flex items-center gap-2 rounded-2xl bg-surface2 py-1.5 pl-3 pr-1.5">
@@ -244,6 +257,8 @@ export default function WebsitePage() {
                       <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Smartphone className="h-4 w-4 text-brand" /> {T("See card", "Card देखें")}</CardLink>
                       {ownSite
                         ? <a href={ownSite} target="_blank" rel="noopener noreferrer" className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("See website", "Website देखें")}</a>
+                        : making
+                        ? <span className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-dashed border-border py-2 text-muted"><Monitor className="h-4 w-4" /> {T("Website: being made", "Website: बन रही है")}</span>
                         : noSite
                         ? <button type="button" onClick={() => setPlanSheet(true)} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("Get a website", "Website पाएँ")}</button>
                         : <SiteLink href={siteLink} appHref={s.hasCard ? `/c/${s.username}?view=site` : undefined} title={T("Website", "Website")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2"><Monitor className="h-4 w-4 text-brand" /> {T("See website", "Website देखें")}</SiteLink>}

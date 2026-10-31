@@ -312,6 +312,12 @@ export interface Card {
     /** The ADVANCED website (the Rs 5,999 segment, src/lib/site-advanced.ts): a per-business layout spec. When present and
      *  valid the public site draws it (src/components/site-adv) instead of a blueprint; the basic design stays stored. */
     advanced?: AdvancedSpec;
+    /** The waiting time (src/lib/site-ready.ts): the website shows to visitors from this moment (set on the first build); the first
+     *  Premium design shows from `advancedReadyAt`. Cleared by the hourly cron once it has told the owner. */
+    readyAt?: string;
+    advancedReadyAt?: string;
+    /** Set by the cron when it sent the "your website is live" message, so it is sent once. */
+    liveToldAt?: string;
   };
   /** A notice — news, an offer, a closure — on the website and card (src/lib/notice.ts); `pastNotices` to re-use. */
   notice?: CardNotice;

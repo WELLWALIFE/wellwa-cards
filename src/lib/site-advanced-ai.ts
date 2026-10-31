@@ -1,4 +1,5 @@
 import "server-only";
+import { advancedPending } from "@/lib/site-ready";
 // The ADVANCED redesign engine (the Rs 5,999 "Make advanced website" button, owner 15-16 Oct 2026: "AI present website ka
 // review karega aur design ko new look dega - more attractive, modern, premium; har kisi ka layout bilkul different").
 //
@@ -693,5 +694,5 @@ export function revertAdvanced(card: Card): Card {
 /** What the hub shows about a card's advanced state. */
 export function advancedState(card: Card) {
   const site = card.site as AdvancedSite | undefined;
-  return { has: !!site?.advanced, on: !!site?.advancedOn, archetype: site?.advanced?.archetype ?? null, at: site?.advancedMeta?.at ?? null, round: site?.advancedMeta?.round ?? 0 };
+  return { has: !!site?.advanced, on: !!site?.advancedOn, archetype: site?.advanced?.archetype ?? null, at: site?.advancedMeta?.at ?? null, round: site?.advancedMeta?.round ?? 0, readyAt: advancedPending(site)?.toISOString() ?? null };
 }

@@ -28,6 +28,7 @@ import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
+import { readyIn, sitePending } from "@/lib/site-ready";
 
 // The designs an owner has already made for a card: kept on disk (lib/adv-designs.ts), so "Try another layout" is measured against them,
 // an earlier one can be put live, and a closed screen or a restart never loses a design that was paid for.
@@ -128,7 +129,13 @@ export async function POST(request: Request) {
     }
     const clean = cleanResult(res, fresh);
     if (!clean) return NextResponse.json({ error: "That preview could not be read. Please make it again." }, { status: 400 });
-    const next = withSlides(applyAdvanced(fresh, clean), Array.isArray(res.slides) ? res.slides as HeroSlide[] : null);
+    let next = withSlides(applyAdvanced(fresh, clean), Array.isArray(res.slides) ? res.slides as HeroSlide[] : null);
+    // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): the FIRST Premium design goes live by itself in 24 hours (with the basic
+    // website when that one is still in its own wait); a later design of an account that already has one shows at once.
+    if (!fresh.site?.advanced && next.site) {
+      const at = sitePending(fresh.site)?.toISOString() ?? readyIn();
+      next = { ...next, site: { ...next.site, advancedReadyAt: at } };
+    }
     const r = await save(row.id, me.id, next);
     if (!r.ok) return NextResponse.json({ error: "Could not save your advanced website. Please try again." }, { status: 500 });
     if (job) await claim(key, job.id);

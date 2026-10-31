@@ -8,7 +8,7 @@ import { ChevronRight, LoaderCircle, Sparkles } from "lucide-react";
 import { api } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 
-export type AdvState = { has: boolean; on: boolean; archetype: string | null; at: string | null; round: number };
+export type AdvState = { has: boolean; on: boolean; archetype: string | null; at: string | null; round: number; /** the moment the first Premium design shows to visitors, while that is still ahead (lib/site-ready.ts) */ readyAt?: string | null };
 type StateResponse = { current?: AdvState | null; error?: string };
 
 /** What the advanced website is on this card right now; null while unknown (offline, logged out). */
@@ -83,7 +83,7 @@ export function AdvancedEntry({ cardId, fetchState = false, className = "" }: { 
               ? T("Included in your plan · AI designs it in 1–2 minutes · see it, then put it live", "आपके plan में शामिल · AI 1–2 मिनट में design करेगा · देखें, फिर live करें")
               : has
               ? (st?.on
-                ? T("It is live on your link. Tap to design it again.", "ये आपके link पर live है। दोबारा design करने के लिए दबाएँ।")
+                ? (st.readyAt ? T("Being prepared — live within 24–48 hours. Tap to see it.", "तैयार हो रही है — 24–48 घंटे में live। देखने के लिए दबाएँ।") : T("It is live on your link. Tap to design it again.", "ये आपके link पर live है। दोबारा design करने के लिए दबाएँ।"))
                 : T("Saved, but your basic website is showing. Tap to see it.", "Save है, पर अभी आपकी basic website दिख रही है। देखने के लिए दबाएँ।"))
               : T("A new look made only for your business", "सिर्फ़ आपके business के लिए नया look")}
           </span>
