@@ -15,7 +15,7 @@ import { goBack } from "@/lib/nav-back";
 import { SITE_PHOTO_CREDITS } from "@/lib/site-pricing";
 import { CreditPrice, UnlockDialog, useAiAccess } from "@/lib/ai-access";
 import { SITE_PALETTES, FONT_PAIRS, HERO_LAYOUTS, RADII, brandPalette, type SitePalette } from "@/lib/site-style";
-import { HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
+import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES } from "@/lib/site-advanced";
 import { SitePhotos } from "@/components/poster/site-photos";
 import { NoticeBox } from "@/components/poster/notice-box";
 import { DomainConnect } from "@/components/domain-connect";
@@ -76,15 +76,6 @@ function Swatch({ p, on, onClick, label }: { p: SitePalette; on: boolean; onClic
   );
 }
 
-/** Plain names for the Premium tops (lib/site-advanced.ts HERO_IDS), English and Hindi. */
-const ADV_HERO_NAMES: Record<string, [string, string]> = {
-  "split-frame": ["Words + framed photo", "शब्द + फ्रेम में photo"], "full-bleed": ["Full photo", "पूरी photo"],
-  "editorial-marquee": ["Big letters + moving line", "बड़े अक्षर + चलती पट्टी"], "glass-card": ["Photo + glass card", "Photo + शीशे का card"],
-  "stacked-poster": ["Centre + arch photo", "बीच में + arch photo"], "mosaic": ["Mosaic", "Mosaic"], "video-first": ["Video first", "पहले video"],
-  "centered-minimal": ["Calm, centred", "शांत, बीच में"], "diagonal": ["Slanted photo", "तिरछी photo"], "masthead": ["Magazine title", "Magazine जैसा"],
-  "kinetic-type": ["Giant headline", "बहुत बड़ी headline"], "pinned-story": ["Scroll story", "Scroll कहानी"], "parallax-collage": ["Floating collage", "तैरती photos"],
-  "product-spotlight": ["Product spotlight", "Product spotlight"],
-};
 
 export default function WebsiteEditPage() {
   const router = useRouter();

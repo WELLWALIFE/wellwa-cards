@@ -11,7 +11,7 @@ import { SiteLink, openPage } from "@/components/poster/card-sheet";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, CheckCircle2, ChevronDown, ChevronLeft, CircleDashed, ExternalLink, LoaderCircle, Plus, Sparkles } from "lucide-react";
+import { Check, CheckCircle2, ChevronDown, ChevronLeft, CircleDashed, ExternalLink, LayoutTemplate, LoaderCircle, Plus, Sparkles, Type } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
@@ -21,7 +21,7 @@ import { cardHomeShown } from "@/lib/site-url";
 import { AdvancedSwitch, type AdvState } from "@/components/poster/advanced-entry";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import { UnlockDialog } from "@/lib/ai-access";
-import type { AdvancedSpec } from "@/lib/site-advanced";
+import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, SHAPE_NAMES, type AdvancedSpec } from "@/lib/site-advanced";
 import type { Card, CardBlock } from "@/lib/types";
 
 // advanced-access.ts carries ADVANCED_PRICE_RUPEES but is server-only, so this client page cannot import it: the price shown is the
@@ -72,6 +72,7 @@ type Result = {
 type JobView = { job: string; state: "running" | "done" | "failed"; stage: Stage; elapsed: number; claimed: boolean; status?: number; result?: unknown };
 type EngineGet = Partial<JobView> & { job?: string | null; access?: { allowed: boolean; reason?: string }; current?: AdvState | null; error?: string; /** Every design already made for this card, kept on the server. */ designs?: Result[] };
 /** One design's handle: its job, or (a kept design) its seed. */
+const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medium transition ${on ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface text-ink hover:bg-surface2"}`;
 const seedKey = (r: Result) => `seed:${r.spec?.seed ?? ""}`;
 type PayStatus = { allowed?: boolean; reason?: string | null; price?: number; triesLeft?: number; selling?: boolean; error?: string };
 type Step = "load" | "none" | "intro" | "running" | "preview" | "done" | "kept";
@@ -192,6 +193,10 @@ export default function AdvancedSitePage() {
   const [designs, setDesigns] = useState<{ job: string; res: Result }[]>([]);
   const [openFound, setOpenFound] = useState(false);
   const [openChanges, setOpenChanges] = useState(false);
+  // The owner's own touches on the design on screen (owner, 31 Oct 2026: "font aur upar ka hissa premium mein bhi"): the letters, the top,
+  // the corners. They change the preview at once and go with "Use design" (the server merges them into the saved spec).
+  const [tweak, setTweak] = useState<{ heading?: string; hero?: string; shape?: string }>({});
+  const [openTweak, setOpenTweak] = useState(false);
   const [acceptBusy, setAcceptBusy] = useState(false);
   const [needCredits, setNeedCredits] = useState(false);
   const [acceptErr, setAcceptErr] = useState("");
@@ -397,7 +402,7 @@ export default function AdvancedSitePage() {
     setAcceptBusy(true); setAcceptErr("");
     try {
       // The design on screen: the current job, or an earlier one of this round (by its seed).
-      const r = await api<{ ok?: boolean; error?: string; current?: AdvState; username?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: jobId, acceptSeed: result?.spec?.seed } });
+      const r = await api<{ ok?: boolean; error?: string; current?: AdvState; username?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, accept: jobId, acceptSeed: result?.spec?.seed, ...(tweak.heading || tweak.hero || tweak.shape ? { tweak } : {}) } });
       if (!r.ok) { setAcceptErr(r.status === 400 ? T("That preview is no longer there. Please make it again.", "वो preview अब नहीं है। दोबारा बनाएँ।") : srv(r.data.error, T("Could not save your Premium website. Please try again.", "आपकी Premium website save नहीं हुई। दोबारा try करें।"))); return; }
       if (r.data.current) setCur(r.data.current);
       setDoneUser(r.data.username || card.username); dropKey(PREVIEW_KEY); setStep("done");
@@ -418,7 +423,12 @@ export default function AdvancedSitePage() {
   }
 
   /* ---- the preview frame: the real desktop renderer, scaled to the phone's width ---- */
-  const previewCard = useMemo(() => (card && result?.spec ? withAdvanced(card, result) : null), [card, result]);
+  const tweaked = useMemo<Result | null>(() => {
+    if (!result?.spec) return result;
+    const sp = result.spec;
+    return { ...result, spec: { ...sp, ...(tweak.hero ? { hero: tweak.hero as AdvancedSpec["hero"] } : {}), ...(tweak.shape ? { shape: tweak.shape as AdvancedSpec["shape"] } : {}), fonts: { ...sp.fonts, ...(tweak.heading ? { heading: tweak.heading } : {}) } } };
+  }, [result, tweak]);
+  const previewCard = useMemo(() => (card && tweaked?.spec ? withAdvanced(card, tweaked) : null), [card, tweaked]);
   useEffect(() => {
     if (step !== "preview" || !previewCard) return;
     writeJson(PREVIEW_KEY, { ...previewCard, username: "__preview" });
@@ -533,7 +543,7 @@ export default function AdvancedSitePage() {
             const pc = card ? withAdvanced(card, d.res) : null;
             return (
               <div key={i} className={`overflow-hidden rounded-xl border-2 ${on ? "border-brand bg-brand-soft/60" : "border-border bg-surface"}`}>
-                <button type="button" onClick={() => { setJobId(d.job); setResult(d.res); setAcceptErr(""); }} className={`block w-full px-1 pt-2 pb-1 text-xs font-bold ${on ? "text-brand-ink" : ""}`}>
+                <button type="button" onClick={() => { setJobId(d.job); setResult(d.res); setTweak({}); setAcceptErr(""); }} className={`block w-full px-1 pt-2 pb-1 text-xs font-bold ${on ? "text-brand-ink" : ""}`}>
                   {on && <Check className="mr-0.5 inline h-3.5 w-3.5" />}{T(`Design ${i + 1}`, `Design ${i + 1}`)}
                 </button>
                 {/* Its own key per design (owner, 20 Oct 2026): three tabs, three designs. */}
@@ -558,6 +568,46 @@ export default function AdvancedSitePage() {
           </button>
         )}
         {againErr && <p className={errBox}>{againErr}</p>}
+
+        {/* The owner's touches on this design: letters, the top, the corners. The preview above changes at once. */}
+        {(() => {
+          const sp = tweaked?.spec; if (!sp) return null;
+          const n = (tweak.heading ? 1 : 0) + (tweak.hero ? 1 : 0) + (tweak.shape ? 1 : 0);
+          return (
+            <section className="rounded-2xl border border-border bg-surface">
+              <button type="button" onClick={() => setOpenTweak((v) => !v)} className={fold} aria-expanded={openTweak}>
+                <span className="flex items-center gap-2"><Type className="h-4 w-4 text-brand" /> {T("Font · top of the page · corners", "Font · ऊपर का हिस्सा · कोने")}{n > 0 && <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-bold text-brand-ink">{n}</span>}</span>
+                <ChevronDown className={`h-4 w-4 shrink-0 text-muted transition ${openTweak ? "rotate-180" : ""}`} />
+              </button>
+              {openTweak && (
+                <div className="space-y-4 border-t border-border px-4 py-3">
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-1.5"><Type className="h-4 w-4 text-brand" /> {T("Letter style (font)", "अक्षर (font)")}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {HEADING_FONTS.map((f) => <button key={f} type="button" onClick={() => setTweak((t) => ({ ...t, heading: f }))} className={chip(sp.fonts.heading === f)} style={{ fontFamily: `"${f}", Inter, sans-serif` }}>{f}</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold flex items-center gap-1.5"><LayoutTemplate className="h-4 w-4 text-brand" /> {T("How the top of the page is arranged", "ऊपर का हिस्सा कैसा सजे")}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {HERO_IDS.map((h) => <button key={h} type="button" onClick={() => setTweak((t) => ({ ...t, hero: h }))} className={chip(sp.hero === h)}>{(ADV_HERO_NAMES[h] ?? [h, h])[hi ? 1 : 0]}</button>)}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold">{T("Corners (round or straight)", "कोने (गोल या सीधे)")}</p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {SHAPES.map((sh) => <button key={sh} type="button" onClick={() => setTweak((t) => ({ ...t, shape: sh }))} className={chip(sp.shape === sh)}>{(SHAPE_NAMES[sh] ?? [sh, sh])[hi ? 1 : 0]}</button>)}
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-[11px] text-muted">{T("See it above. Saved with \"Use design\". Later: Website edit → Look.", "ऊपर देखें। \"Design लगाएँ\" के साथ save होगा। बाद में: Website edit → Look.")}</p>
+                    {n > 0 && <button type="button" onClick={() => setTweak({})} className="shrink-0 text-xs font-semibold text-brand-ink">{T("Reset", "वापस")}</button>}
+                  </div>
+                </div>
+              )}
+            </section>
+          );
+        })()}
 
         {/* What the AI found: the things only the owner can add come first, each with its own button; the rest the new design already
             handles. Adding them keeps THIS design — it shows the new photos / products / reviews by itself, no new design needed. */}

@@ -10,7 +10,7 @@
 //        seedBump (number): designs already looked at, so a new preview is a different composition from the last.
 //        preview (default) saves nothing: the finished job's `result` is { spec, copy, critique, diff, source, round } for the
 //        owner to look at; apply saves it at once. Each is limited to 8 starts an hour.
-// POST (bearer) { accept: <job id> }       → the owner liked the preview: it is saved (no second AI run) and switched on.
+// POST (bearer) { accept: <job id>, acceptSeed?, tweak?: { heading?, hero?, shape? } } → the owner liked the preview: it is saved (no second AI run) and switched on; tweak = their font / top / corners.
 // POST (bearer) { toggle: true | false }   → show the advanced website / the basic one (both stay stored).
 // POST (bearer) { revert: true }           → the basic website for good: the owner's own words back, every advanced field removed.
 // POST (bearer) { claim: <job id> }        → the phone has taken that finished job.
@@ -119,6 +119,13 @@ export async function POST(request: Request) {
     if (!res) return NextResponse.json({ error: "That preview is no longer there. Please make it again." }, { status: 400 });
     // Saved onto the card as it is NOW (the owner may have edited it while looking at the preview).
     const fresh = (await myCard(me.id, row.id))?.data ?? data;
+    // The owner's touches on the preview (font, top, corners; the Premium page's fold): merged into the spec, validated with the rest.
+    const tw = b.tweak && typeof b.tweak === "object" ? b.tweak as { heading?: unknown; hero?: unknown; shape?: unknown } : null;
+    if (tw && res.spec && typeof res.spec === "object") {
+      const sp = res.spec as Record<string, unknown>;
+      const fonts = sp.fonts && typeof sp.fonts === "object" ? sp.fonts as Record<string, unknown> : {};
+      res = { ...res, spec: { ...sp, ...(typeof tw.hero === "string" ? { hero: tw.hero } : {}), ...(typeof tw.shape === "string" ? { shape: tw.shape } : {}), ...(typeof tw.heading === "string" ? { fonts: { ...fonts, heading: tw.heading } } : {}) } };
+    }
     const clean = cleanResult(res, fresh);
     if (!clean) return NextResponse.json({ error: "That preview could not be read. Please make it again." }, { status: 400 });
     const next = withSlides(applyAdvanced(fresh, clean), Array.isArray(res.slides) ? res.slides as HeroSlide[] : null);

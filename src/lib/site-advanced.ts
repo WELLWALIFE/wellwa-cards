@@ -204,6 +204,17 @@ export const ADV_FONTS: Record<string, AdvFont> = {
   "Inter": { kind: "sans", w: 600 },
 };
 export const HEADING_FONTS = Object.keys(ADV_FONTS);
+/** Plain names for the Premium tops (HERO_IDS), English and Hindi: the Premium page and Website edit → Look show the same words. */
+export const ADV_HERO_NAMES: Record<string, [string, string]> = {
+  "split-frame": ["Words + framed photo", "शब्द + फ्रेम में photo"], "full-bleed": ["Full photo", "पूरी photo"],
+  "editorial-marquee": ["Big letters + moving line", "बड़े अक्षर + चलती पट्टी"], "glass-card": ["Photo + glass card", "Photo + शीशे का card"],
+  "stacked-poster": ["Centre + arch photo", "बीच में + arch photo"], "mosaic": ["Mosaic", "Mosaic"], "video-first": ["Video first", "पहले video"],
+  "centered-minimal": ["Calm, centred", "शांत, बीच में"], "diagonal": ["Slanted photo", "तिरछी photo"], "masthead": ["Magazine title", "Magazine जैसा"],
+  "kinetic-type": ["Giant headline", "बहुत बड़ी headline"], "pinned-story": ["Scroll story", "Scroll कहानी"], "parallax-collage": ["Floating collage", "तैरती photos"],
+  "product-spotlight": ["Product spotlight", "Product spotlight"],
+};
+export const SHAPE_NAMES: Record<string, [string, string]> = { sharp: ["Sharp", "शार्प"], soft: ["Soft", "सॉफ्ट"], pill: ["Round", "राउंड"] };
+
 /** Faces that carry body text (400 + a bold). */
 export const BODY_FONTS = ["Inter", "Manrope", "DM Sans", "Mukta"] as const;
 export const SERIF_HEADINGS = HEADING_FONTS.filter((f) => ADV_FONTS[f].kind === "serif");
