@@ -2,6 +2,7 @@
 // claw back with a negative amount) credits.
 
 import { NextResponse } from "next/server";
+import { requireAdmin, audit, userInScope } from "@/lib/admin-v2";
 import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 
 export async function GET(request: Request) {
@@ -21,7 +22,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  if (!(await adminAllowed(request))) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.plan", { sensitive: true }); if (!g.ok) return g.res;
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
 
   const b = await request.json().catch(() => ({}));
@@ -30,6 +31,8 @@ export async function POST(request: Request) {
   if (!userId || !amount || Math.abs(amount) > 100000) {
     return NextResponse.json({ error: "userId and a non-zero amount are required." }, { status: 400 });
   }
+  if (!(await userInScope(g.me, userId))) return NextResponse.json({ error: "That user is outside your scope." }, { status: 403 });
+  await audit(g.me, "user.credits", { type: "user", id: userId, after: { amount } }, request);
   const r = await fetch(`${SUPA_URL}/rest/v1/rpc/grant_credits`, {
     method: "POST", headers: serviceHeaders(),
     body: JSON.stringify({ p_user: userId, p_amount: amount, p_reason: "admin-grant", p_ref: null }),

@@ -1,7 +1,8 @@
 // Super-admin: one user's complete profile (auth identity, plan, cards, leads,
 // poster profiles, payments, credits, connected services). Tokens/secrets are
 // never returned — only whether a service is connected.
-import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
+import { serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
+import { requireAdmin, userInScope } from "@/lib/admin-v2";
 
 const BRIDGE = "http://127.0.0.1:8787";
 type Row = Record<string, unknown>;
@@ -11,7 +12,8 @@ async function rows(path: string, h: Record<string, string>): Promise<Row[]> {
 }
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.view"); if (!g.ok) return g.res;
+  if (!(await userInScope(g.me, (await ctx.params).id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
   const { id } = await ctx.params;
   if (!/^[0-9a-f-]{36}$/i.test(id)) return Response.json({ error: "bad id" }, { status: 400 });

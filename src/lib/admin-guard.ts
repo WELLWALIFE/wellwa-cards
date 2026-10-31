@@ -9,7 +9,9 @@ import { verifyAdminToken, type AdminScope } from "./admin-token";
 
 export type { AdminScope };
 
-export const SUPA_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+import { identify as identifyV2 } from "./admin-v2";
+import { SUPA_URL, serviceHeaders, serviceConfigured } from "./service";
+export { SUPA_URL, serviceHeaders, serviceConfigured };
 
 /** What the x-admin-key header grants, and who it says is holding it. */
 function keyHolder(request: Request): { scope: AdminScope; sub: string } | null {
@@ -57,7 +59,11 @@ export function adminKeyOk(request: Request): boolean {
  *  /api/admin route keeps meaning "the platform owner only". */
 export async function adminAllowed(request: Request): Promise<boolean> {
   if (passwordOk(request)) return true;
-  return ownerTokenOk(request);
+  if (await ownerTokenOk(request)) return true;
+  // Admin v2 (31 Oct 2026): a Super Admin or Admin login opens every legacy route too; finer roles only the routes
+  // that check their rights with requireAdmin().
+  const me = await identifyV2(request).catch(() => null);
+  return !!me && (me.role === "super_admin" || me.role === "admin");
 }
 
 /** Who is calling and how much they may do: "all" for the owner, "support" for a Staff Admin member sent
@@ -67,6 +73,9 @@ export async function adminIdentity(request: Request): Promise<{ scope: AdminSco
   const fromKey = keyHolder(request);
   if (fromKey?.scope === "all") return fromKey;
   if (await ownerTokenOk(request)) return { scope: "all", sub: "owner" };
+  const me = await identifyV2(request).catch(() => null);
+  if (me && (me.role === "super_admin" || me.role === "admin")) return { scope: "all", sub: me.email || me.name };
+  if (me && me.rights.includes("support.live")) return { scope: "support", sub: me.name || me.email };
   return fromKey;                                  // support-scoped, or null
 }
 
@@ -78,18 +87,4 @@ export async function adminScope(request: Request): Promise<AdminScope | null> {
 export async function adminAllowedFor(request: Request, need: AdminScope): Promise<boolean> {
   const have = await adminScope(request);
   return have === "all" || have === need;
-}
-
-/** Service-role Supabase REST/Auth caller (server-side only — never expose). */
-export function serviceHeaders() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
-  return {
-    apikey: key,
-    Authorization: `Bearer ${key}`,
-    "Content-Type": "application/json",
-  };
-}
-
-export function serviceConfigured() {
-  return Boolean(SUPA_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
 }

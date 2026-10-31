@@ -2,6 +2,7 @@
 // ADVANCED_SITE_OPEN=1 lets reviewers in free; ADVANCED_SITE_SELL=1 lets the order be created (default: closed, 503).
 // GET → {allowed, reason, price, openForReview}; POST {} → Razorpay order; POST {orderId,paymentId,signature} → verify + grant.
 import { NextResponse } from "next/server";
+import { franchiseEarning } from "@/lib/franchise-server";
 import crypto from "node:crypto";
 import { userFromRequest, restAsService } from "@/lib/poster-server";
 import { ADVANCED_PRICE_PAISE, ADVANCED_UPGRADE_PAISE, advancedPriceFor, isAdvancedAllowed, readAdvancedMeta, grantAdvanced } from "@/lib/advanced-access";
@@ -63,5 +64,6 @@ export async function POST(request: Request) {
   // Partner Plan v3: the Standard → Premium difference is an upgrade on the partner side too (1 PV more into the tree,
   // the daily cap doubles). Logged, never a failed payment: the website is already granted.
   if (Number(o.amount) === ADVANCED_UPGRADE_PAISE) await reportPaidToPartner(me.id, { totalPaise: Number(o.amount), tier: "upgrade", ref: paymentId }).catch(() => undefined);
+  await franchiseEarning(me.id, { paise: Number(o.amount), ref: paymentId, what: "Premium website" });
   return NextResponse.json({ ok: true });
 }

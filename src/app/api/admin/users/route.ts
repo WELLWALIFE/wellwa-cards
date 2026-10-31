@@ -5,7 +5,9 @@
 // Every call must carry the super-admin password in x-admin-key.
 
 import { kindOf } from "@/lib/account-kind";
-import { adminAllowed, serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
+import { serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
+import { requireAdmin, audit, scopeOf, userInScope } from "@/lib/admin-v2";
+import { svc } from "@/lib/service";
 import { partnerCall } from "@/lib/partner-link";
 
 /** One partner ID as the partner panel reports it (action "members"). */
@@ -45,8 +47,11 @@ type AuthUser = {
 const SITE = process.env.NEXT_PUBLIC_SITE_URL || "https://shubhora.com";
 
 export async function GET(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.view"); if (!g.ok) return g.res;
+  const { me } = g;
   if (!serviceConfigured()) return Response.json({ users: [], configured: false });
+  // A franchise login sees only the users of its franchise (Admin v2); nobody else's, and no partner-panel-only IDs.
+  const scope = scopeOf(me);
 
   try {
     const h = serviceHeaders();
@@ -56,13 +61,16 @@ export async function GET(request: Request) {
       fetch(`${SUPA_URL}/rest/v1/subscriptions?select=*`, { headers: h, cache: "no-store" }).catch(() => null),
       fetch(`${SUPA_URL}/rest/v1/user_credits?select=user_id,balance`, { headers: h, cache: "no-store" }).catch(() => null),
       fetch(`${SUPA_URL}/rest/v1/poster_profiles?select=user_id,name,phone,is_default`, { headers: h, cache: "no-store" }).catch(() => null),
-      fetch(`${SUPA_URL}/rest/v1/profiles?select=id,username,full_name,plan,plan_expires_at,poster_plan,poster_plan_expires_at`, { headers: h, cache: "no-store" }).catch(() => null),
-      partnerCall<{ members?: PartnerRow[] }>("members", {}, 15000),
+      fetch(`${SUPA_URL}/rest/v1/profiles?select=id,username,full_name,plan,plan_expires_at,poster_plan,poster_plan_expires_at,franchise_id`, { headers: h, cache: "no-store" }).catch(() => null),
+      scope ? Promise.resolve({ ok: false, status: 0, data: { error: "scoped" } } as Awaited<ReturnType<typeof partnerCall<{ members?: PartnerRow[] }>>>) : partnerCall<{ members?: PartnerRow[] }>("members", {}, 15000),
     ]);
+    const franchises = new Map((await svc<{ id: string; code: string }[]>("franchises?select=id,code")).data?.map((f) => [f.id, f.code]) ?? []);
     const partners: PartnerRow[] = pm.ok && Array.isArray(pm.data.members) ? pm.data.members : [];
     const partnerByUser = new Map(partners.filter((p) => p.suiteUserId).map((p) => [p.suiteUserId as string, p]));
     const pprofiles: { user_id: string; name: string; phone: string | null; is_default: boolean }[] = ppRes && ppRes.ok ? await ppRes.json() : [];
-    const profileRows: { id: string; username?: string | null; full_name: string | null; plan: string; plan_expires_at: string | null; poster_plan: string | null; poster_plan_expires_at: string | null }[] = prRes && prRes.ok ? await prRes.json() : [];
+    const profileRowsAll: { id: string; username?: string | null; full_name: string | null; plan: string; plan_expires_at: string | null; poster_plan: string | null; poster_plan_expires_at: string | null; franchise_id?: string | null }[] = prRes && prRes.ok ? await prRes.json() : [];
+    const inScope = new Set(profileRowsAll.filter((p) => !scope || (scope !== "none" && p.franchise_id === scope)).map((p) => p.id));
+    const profileRows = profileRowsAll;
 
     const cards: { id: string; username: string; owner_id: string; active: boolean; data?: { plan?: string } }[] =
       cRes.ok ? await cRes.json() : [];
@@ -70,7 +78,7 @@ export async function GET(request: Request) {
       sRes && sRes.ok ? await sRes.json() : [];
     const credits: { user_id: string; balance: number }[] = crRes && crRes.ok ? await crRes.json() : [];
 
-    const users = authUsers.map((u) => {
+    const users = authUsers.filter((u) => !scope || inScope.has(u.id)).map((u) => {
       const mine = cards.filter((c) => c.owner_id === u.id);
       const sub = subs.find((s) => (s.owner_id ?? s.user_id) === u.id);
       const plan = sub?.plan ?? mine[0]?.data?.plan ?? "free";
@@ -101,6 +109,8 @@ export async function GET(request: Request) {
         name: (u.user_metadata?.name as string) || (u.user_metadata?.full_name as string) || pr?.full_name || pp.find((x) => x.is_default)?.name || pp[0]?.name || (u.email ?? "").split("@")[0] || (u.phone ? `+${u.phone}` : "user"),
         associate: (u.user_metadata?.associate_id as string) || "",
         accountKind: kindOf(u.app_metadata),
+        franchiseId: pr?.franchise_id ?? null,
+        franchise: pr?.franchise_id ? franchises.get(pr.franchise_id) ?? "" : "",
         // Advanced features switched on for this account (see src/lib/addons.ts)
         addons: Object.entries(u.app_metadata?.addons ?? {}).filter(([, v]) => v?.on === true).map(([k]) => k),
         joined: (u.created_at ?? "").slice(0, 10),
@@ -121,7 +131,7 @@ export async function GET(request: Request) {
     // Partner IDs with no app account — the company's root ID, and any ID made by hand in Staff Admin. Listed too
     // (owner's call, 24 Sep 2026: "every user, even the root ID"), marked so nobody tries app actions on them.
     const known = new Set(authUsers.map((u) => u.id));
-    const partnerOnly = partners.filter((p) => !p.suiteUserId || !known.has(p.suiteUserId)).map((p) => ({
+    const partnerOnly = (scope ? [] : partners.filter((p) => !p.suiteUserId || !known.has(p.suiteUserId))).map((p) => ({
       id: `partner:${p.code}`,
       kind: "partner" as const,
       username: p.username,
@@ -151,6 +161,7 @@ export async function GET(request: Request) {
       users: [...users, ...partnerOnly].sort((a, b) => (b.joinedAt || "").localeCompare(a.joinedAt || "")),
       configured: true, subsTable: Boolean(sRes && sRes.ok),
       partnerLinked: pm.ok, partnerError: pm.ok ? null : pm.data.error ?? `status ${pm.status}`,
+      me: { role: me.role, rights: me.rights, franchise: me.franchise }, franchises: [...franchises.entries()].map(([id, code]) => ({ id, code })),
     });
   } catch (e) {
     return Response.json({ error: e instanceof Error ? e.message : "failed" }, { status: 500 });
@@ -160,10 +171,12 @@ export async function GET(request: Request) {
 /** POST { action: "login_as", id } → for email accounts a one-click magic link (open it in a private window);
  *  for phone-only accounts a temporary password is set and returned (log in with phone + that password). */
 export async function POST(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.login_as", { sensitive: true }); if (!g.ok) return g.res;
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
-  const b = (await request.json().catch(() => ({}))) as { action?: string; id?: string };
+  const b = (await request.json().catch(() => ({}))) as { action?: string; id?: string; reason?: string };
   if (b.action !== "login_as" || !b.id) return Response.json({ error: "bad request" }, { status: 400 });
+  if (!(await userInScope(g.me, b.id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
+  await audit(g.me, "user.login_as", { type: "user", id: b.id, note: String(b.reason ?? "").slice(0, 200) }, request);
   const h = serviceHeaders();
   const ur = await fetch(`${SUPA_URL}/auth/v1/admin/users/${b.id}`, { headers: h, cache: "no-store" });
   if (!ur.ok) return Response.json({ error: "user not found" }, { status: 404 });
@@ -187,13 +200,18 @@ export async function POST(request: Request) {
 }
 
 export async function PATCH(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
-  if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
-
-  const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = (await request.json()) as {
+  const body = (await request.json().catch(() => ({}))) as {
     id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean; mobile?: string;
   };
+  const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = body;
+  // Which right the change needs (Admin v2): the plan / card years → users.plan; block → users.block; the rest → users.edit.
+  const need = plan || cardYears !== undefined ? "users.plan" : typeof suspend === "boolean" ? "users.block" : "users.edit";
+  const g = await requireAdmin(request, need, { sensitive: typeof suspend === "boolean" || !!password || !!email }); if (!g.ok) return g.res;
+  if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
+  if (!(await userInScope(g.me, id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
+  const { password: _pw, ...logged } = body; void _pw;
+  await audit(g.me, plan ? "user.plan" : cardYears !== undefined ? "user.card_years" : typeof suspend === "boolean" ? (suspend ? "user.block" : "user.unblock") : mobile !== undefined ? "user.mobile" : typeof demo === "boolean" ? "user.demo" : password ? "user.password" : "user.edit", { type: "user", id, after: logged }, request);
   if (plan && !["free", "pro", "team"].includes(plan)) return Response.json({ error: "unknown plan" }, { status: 400 });
 
   const h = serviceHeaders();
@@ -310,11 +328,14 @@ export async function PATCH(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.delete", { sensitive: true }); if (!g.ok) return g.res;
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
 
   const { id } = (await request.json()) as { id?: string };
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
+  if (!(await userInScope(g.me, id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
+  const who = (await svc<{ full_name: string | null; username: string | null }[]>(`profiles?id=eq.${id}&select=full_name,username&limit=1`)).data?.[0];
+  await audit(g.me, "user.delete", { type: "user", id, label: who ? `${who.full_name ?? ""} @${who.username ?? ""}` : "" }, request);
 
   try {
     const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${id}`, {

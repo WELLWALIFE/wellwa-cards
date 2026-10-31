@@ -1,4 +1,5 @@
 import "server-only";
+import { franchiseEarning } from "@/lib/franchise-server";
 // Growth by autopay — Razorpay Subscriptions with a UPI Autopay (PhonePe, Google Pay, Paytm, …) or card mandate
 // (owner's call, 27 Sep 2026: Growth is taken only this way). One Razorpay plan "Shubhora Growth — ₹2,999 a month" is
 // found or made once; each customer gets a subscription on it. Every debit — the first one at checkout, and each month
@@ -105,6 +106,7 @@ export async function applyAutopayCharge(ownerId: string, p: { paymentId: string
   // Every month's debit is Growth business for the partner panel — the first as a new sale, later ones as renewals
   // (the panel tells them apart). Logged, never shown as a failed payment.
   await reportPaidToPartner(ownerId, { totalPaise: p.amount, tier: AUTOPAY_TIER, ref: p.paymentId }).catch(() => undefined);
+  await franchiseEarning(ownerId, { paise: p.amount, ref: p.paymentId, what: premiumFirst ? "Premium (autopay)" : "Standard (autopay)" });
   const until = data.expires ? new Date(data.expires).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
   await notify(ownerId, "payment", {
     title: "Payment received",

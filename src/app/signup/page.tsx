@@ -38,6 +38,9 @@ function safeNext(n: string | null): string {
   return n && /^\/poster\/orders\/join\?code=[A-Z0-9]{4,12}$/i.test(n) ? n : "";
 }
 
+const FRANCHISE_KEY = "shubhora-franchise";
+const readFranchise = () => { try { return localStorage.getItem(FRANCHISE_KEY) ?? undefined; } catch { return undefined; } };
+
 export default function SignupPage() {
   return <Suspense fallback={<div className="flex-1 grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>}><SignupInner /></Suspense>;
 }
@@ -69,6 +72,9 @@ function SignupInner() {
   // Who this sign-up is for (owner, 17 Oct 2026): from a join link (a sponsor) it is a partner sign-up; straight from the website, or from the /start link
   // (?kind=consumer), there is no sponsor, nothing about the partner programme is shown, and no partner ID is made.
   const consumerLink = params.get("kind") === "consumer";
+  // A franchise's link (?f=CODE): remembered until the account is made, then sent with the username so the account joins that franchise.
+  const franchiseCode = (params.get("f") ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
+  useEffect(() => { try { if (franchiseCode) localStorage.setItem(FRANCHISE_KEY, franchiseCode); } catch { /* private mode */ } }, [franchiseCode]);
   const [sponsored, setSponsored] = useState(false);
   const handleRef = useRef<string>("");
   const legRef = useRef<"L" | "R" | "">("");   // side from the link (partner panel's left / right links)
@@ -194,14 +200,14 @@ function SignupInner() {
       const auth = { Authorization: `Bearer ${data.session.access_token}` };
       // The username + introducer + partner account, in one call. A clash here (someone took the name a second ago)
       // is shown; the account itself already exists, so the person just picks another name.
-      const r = await fetch("/api/account", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ username, by: consumerLink ? undefined : by || handleRef.current || undefined, leg: legRef.current || undefined, kind: consumerLink ? "consumer" : undefined }) });
+      const r = await fetch("/api/account", { method: "POST", headers: { ...auth, "content-type": "application/json" }, body: JSON.stringify({ username, by: consumerLink ? undefined : by || handleRef.current || undefined, leg: legRef.current || undefined, kind: consumerLink ? "consumer" : undefined, franchise: franchiseCode || readFranchise() }) });
       const j = (await r.json().catch(() => ({}))) as { ok?: boolean; error?: string };
       if (!r.ok && r.status === 409) { setBusy(false); setCheck({ state: "bad", reason: "Taken — try another" }); setError(j.error || "That username was just taken — choose another and press Create again."); return; }
       // Signed up on a white-label partner's domain? Attach them to that partner.
       await fetch("/api/join", { method: "POST", headers: auth }).catch(() => {});
       // Free credits to try the AI tools, then the plan, then the one-minute setup.
       await fetch("/api/welcome", { method: "POST", headers: auth }).catch(() => {});
-      try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); } catch { /* ignore */ }
+      try { localStorage.removeItem(INTRODUCER_KEY); localStorage.removeItem(INTRODUCER_LEG_KEY); localStorage.removeItem(FRANCHISE_KEY); } catch { /* ignore */ }
       // Congratulations, then the profile (owner's call, 2 Oct 2026): the plan is chosen at "Make", not before.
       // "Start with Standard / Premium" (?plan=…): the payment opens next, then the card set-up.
       const wanted = params.get("plan");

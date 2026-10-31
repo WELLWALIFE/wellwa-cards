@@ -212,3 +212,23 @@ Owner: "video wala part bahut mushkil hai — bilkul simple, jo koi bhi bana sak
 ## Rules for commits
 - Branch `claude/dreamy-faraday-0864zl` only. Clear messages. No model names in code or commits.
 - Keep comments in the codebase's voice (why, dated owner decisions), no hype.
+
+
+## Admin v2 (31 Oct 2026) — one professional admin panel
+Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchise". Built as a new shell over the existing pages.
+- **Login**: `/admin/login` — the app's own Supabase login (e-mail / mobile + password) + TOTP 2-step (Supabase MFA; **the owner must
+  switch TOTP on in Supabase → Authentication → Multi-factor**). Password-unlock is gone from the UI; `SUPER_ADMIN_PASSWORD` stays only as a
+  break-glass x-admin-key (logged as "Emergency password"). The owner e-mails (lib/owner-emails.ts) are seeded as Super Admin on first use.
+- **Rights & roles**: `src/lib/admin-rights.ts` (26 rights, roles super_admin/admin/support/sales/content/franchise/custom, MENU by right).
+  Server: `src/lib/admin-v2.ts` — `identify()`, `requireAdmin(req, right, {sensitive})`, `audit()`, `getSettings()`; `adminAllowed()` (legacy
+  routes) now also accepts super_admin/admin logins. New routes under `/api/admin/v2/*` (me, staff, audit, dashboard, franchises, settings,
+  search, system). Legacy users routes check rights + franchise scope + write audit lines.
+- **Franchises**: `franchises`, `profiles.franchise_id`, `franchise_ledger`, `payouts` (migration **0078**). Sign-up link `/start?f=CODE`
+  (→ `/api/account` `franchise`). Commission on every verified payment (`franchiseEarning()` in billing/verify, autopay, pay/advanced):
+  first payment % / renewal % per franchise (defaults in Platform settings). Payout: request → approve → paid (UTR) → ledger line.
+  A franchise login = admin_users row with role franchise + franchise_id: same panel, only its users (`scopeOf` / `userInScope`).
+- **Pages**: dashboard (real counts + server health), Staff & roles, Audit log, Franchises (+ Payouts tab), franchise detail, My earnings
+  (franchise), Platform settings, System health, Security (2-step, password, log out everywhere). Old partner-panel staff page →
+  `/admin/partner-staff`. Shared UI: `src/components/admin/ui.tsx`.
+- **Owner to do**: run 0078; enable TOTP in Supabase; log in at /admin/login with the owner account; set up 2-step; then Settings → require
+  2-step for everyone. Left for later phases: Users page redesign (notes, timeline), billing/invoices, support tickets, reports, feature flags.

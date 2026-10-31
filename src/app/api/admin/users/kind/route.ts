@@ -4,7 +4,8 @@
 //   POST { op: "make-partner", id, sponsor, leg, parent? } → a partner ID is made with that sponsor and place (left/right under `parent`,
 //                                                           anywhere in the tree) and tied to the account, which becomes a partner
 // An account that already has a partner ID is not touched here (unlink it first, in the Users page).
-import { adminAllowed, serviceConfigured, serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
+import { serviceConfigured, serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
+import { requireAdmin, audit } from "@/lib/admin-v2";
 import { kindOf } from "@/lib/account-kind";
 import { setAccountKind } from "@/lib/account-kind-server";
 import { makePartnerId, partnerCall } from "@/lib/partner-link";
@@ -12,9 +13,10 @@ import { makePartnerId, partnerCall } from "@/lib/partner-link";
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export async function POST(request: Request) {
-  if (!(await adminAllowed(request))) return Response.json({ error: "unauthorized" }, { status: 401 });
+  const g = await requireAdmin(request, "users.edit", { sensitive: true }); if (!g.ok) return g.res;
   if (!serviceConfigured()) return Response.json({ error: "not configured" }, { status: 503 });
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  await audit(g.me, "user.kind", { type: "user", id: String(b.id ?? ""), after: b }, request);
   const op = String(b.op ?? "");
   const id = String(b.id ?? "");
   if (!UUID.test(id)) return Response.json({ error: "bad account" }, { status: 400 });

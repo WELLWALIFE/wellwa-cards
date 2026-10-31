@@ -53,6 +53,8 @@ type User = {
   /** partner (also a partner ID) · pending (came from the website with no sponsor: waiting for review) · consumer (uses the app only). */
   accountKind?: "partner" | "pending" | "consumer";
   addons?: string[];
+  franchiseId?: string | null;
+  franchise?: string;
   joined: string;
   lastSeen?: string;
   cards: number;
@@ -98,6 +100,10 @@ export default function AdminUsers() {
   const [partnerNote, setPartnerNote] = useState("");
   const [view, setView] = useState<View>("all");
   const [q, setQ] = useState("");
+  // Admin v2: the franchise filter (a franchise login is already limited to its own users by the server).
+  const [franchises, setFranchises] = useState<{ id: string; code: string }[]>([]);
+  const [fr, setFr] = useState("");
+  const [meFr, setMeFr] = useState<{ code: string } | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
   const [viewingCredits, setViewingCredits] = useState<User | null>(null);
 
@@ -109,6 +115,8 @@ export default function AdminUsers() {
       const d = await r.json().catch(() => ({}));
       if (r.ok && d.configured && Array.isArray(d.users)) {
         setUsers(d.users);
+        setFranchises(Array.isArray(d.franchises) ? d.franchises : []);
+        setMeFr(d.me?.franchise ?? null);
         setLive(true);
         setPartnerNote(d.partnerLinked === false ? `Partner IDs could not be loaded (${d.partnerError ?? "partner panel not reachable"}) — app accounts only.` : "");
       } else {
@@ -296,7 +304,7 @@ export default function AdminUsers() {
         : view === "review" ? isAccount(u) && u.accountKind === "pending"
         : view === "consumers" ? isAccount(u) && u.accountKind === "consumer"
         : view === "check" ? twins.has(u.id) || mixed(u)
-        : u.plan !== "free");
+        : u.plan !== "free").filter((u) => !fr || (fr === "none" ? !u.franchiseId : u.franchiseId === fr));
     if (!s) return inView;
     // A number typed in any form (+91 87082 75430, 8708275430, 75430) matches every mobile the account is known by.
     const sd = s.replace(/\D/g, "").replace(/^91(?=\d{10}$)/, "");
@@ -306,7 +314,7 @@ export default function AdminUsers() {
       (u.usernames ?? []).some((n) => n.toLowerCase().includes(s)) ||
       (sd.length >= 4 && (u.phones ?? []).some((d) => d.includes(sd))),
     );
-  }, [users, q, view, twins]);
+  }, [users, q, view, twins, fr]);
 
   const accounts = users.filter(isAccount);
   const partnerIds = users.filter((u) => u.partner);
@@ -385,6 +393,14 @@ export default function AdminUsers() {
             </button>
           );
         })}
+        {!meFr && franchises.length > 0 && (
+          <select value={fr} onChange={(e) => setFr(e.target.value)} className="rounded-full border border-border bg-surface px-3 py-1.5 text-xs font-semibold text-muted outline-none">
+            <option value="">Franchise: all</option>
+            <option value="none">No franchise</option>
+            {franchises.map((f) => <option key={f.id} value={f.id}>{f.code}</option>)}
+          </select>
+        )}
+        {meFr && <span className="self-center rounded-full bg-brand-soft px-3 py-1.5 text-xs font-semibold text-brand-ink">Franchise {meFr.code} · your users only</span>}
         <span className="self-center text-xs text-faint ml-1">{shown.length} shown</span>
       </div>
 
@@ -418,6 +434,7 @@ export default function AdminUsers() {
                       {!acct && <span className="rounded bg-surface2 px-1.5 py-0.5 text-[10px] font-semibold text-muted">no app login</span>}
                     </div>
                     {u.username && <p className="text-xs font-semibold text-ink mono">@{u.username}</p>}
+                    {u.franchise && <p className="text-[10px] font-semibold text-violet-700">Franchise {u.franchise}</p>}
                     <p className="text-xs text-muted mono">{mobileLogin(u.email) ? <>{loginOf(u.email)}{u.contactEmail ? ` · ${u.contactEmail}` : ""}</> : <>{u.email || "—"}{u.phone ? ` · +${u.phone.replace(/^\+/, "")}` : ""}</>}</p>
                     <p className="text-[11px] text-faint">{mobileLogin(u.email) ? "signed up with mobile" : u.provider ? `via ${u.provider}` : ""}{u.posterProfiles?.length ? ` · profiles: ${u.posterProfiles.join(", ")}` : ""}{u.posterPlan && u.posterPlan !== "free" ? ` · poster ${u.posterPlan}` : ""}</p>
                     {acct ? (

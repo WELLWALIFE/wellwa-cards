@@ -18,6 +18,7 @@ import { cleanAccountUsername, usernameOk } from "@/lib/username";
 import { setAccountKind } from "@/lib/account-kind-server";
 import type { AccountKind } from "@/lib/account-kind";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
+import { attachFranchise } from "@/lib/franchise-server";
 
 async function saveMeta(userId: string, patch: Record<string, unknown>) {
   const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${userId}`, { headers: serviceHeaders(), cache: "no-store" });
@@ -111,7 +112,9 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  const b = (await request.json().catch(() => ({}))) as { username?: unknown; by?: unknown; leg?: unknown; kind?: unknown; action?: unknown; dob?: unknown; gender?: unknown; agree?: unknown };
+  const b = (await request.json().catch(() => ({}))) as { username?: unknown; by?: unknown; leg?: unknown; kind?: unknown; action?: unknown; dob?: unknown; gender?: unknown; agree?: unknown; franchise?: unknown };
+  // The franchise whose link / code brought this person (shubhora.com/start?f=CODE): the account joins it once (Admin v2, 31 Oct 2026).
+  if (typeof b.franchise === "string" && b.franchise.trim()) await attachFranchise(me.id, b.franchise).catch(() => undefined);
 
   if (b.action === "auto") {
     const p = await profile(me.token, me.id);

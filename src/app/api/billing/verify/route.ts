@@ -2,6 +2,7 @@
 // the signature matches; the client then records the plan via record_payment.
 
 import { notify } from "@/lib/notify";
+import { franchiseEarning } from "@/lib/franchise-server";
 import crypto from "node:crypto";
 import Razorpay from "razorpay";
 import { createClient as createAdminClient } from "@supabase/supabase-js";
@@ -75,6 +76,8 @@ export async function POST(request: Request) {
     // A payment already applied (the same verify sent twice, or a page reload) is not reported or announced again.
     const replayed = (data as { replayed?: boolean } | null)?.replayed === true;
     if (tier && !card && !replayed) await reportPaidToPartner(session.user.id, { totalPaise: amount, tier, ref: razorpay_payment_id }).catch(() => undefined);
+    // The user's franchise (if any) earns its commission on every payment, once (src/lib/franchise-server.ts).
+    if (!replayed) await franchiseEarning(session.user.id, { paise: amount, ref: razorpay_payment_id, what: card ? "V-Card renewal" : tier || plan });
     const until = card && data?.expires ? new Date(String(data.expires)).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric", timeZone: "Asia/Kolkata" }) : "";
     if (!replayed) await notify(session.user.id, "payment", card
       ? { title: "V-Card renewed", body: `Thank you. Your V-Card is active${until ? ` till ${until}` : " for one more year"}.`, path: "/poster/plan", ref: razorpay_payment_id }
