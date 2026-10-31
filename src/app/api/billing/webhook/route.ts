@@ -9,6 +9,7 @@
 // the truth (active, stopped from the UPI app, failing …). A debit that fails simply adds no month — the plan ends as usual.
 // Always answers 200 for what it has understood or safely ignored — Razorpay retries anything else.
 import crypto from "node:crypto";
+import { requestByCode, settleRequest } from "@/lib/payments-server";
 import { AUTOPAY_TIER, applyAutopayCharge, saveAutopay } from "@/lib/autopay";
 
 type Entity = Record<string, unknown> & { id?: string; notes?: Record<string, string> | null };
@@ -28,6 +29,17 @@ export async function POST(request: Request) {
   let ev: Event;
   try { ev = JSON.parse(raw) as Event; } catch { return Response.json({ ok: true, ignored: "bad json" }); }
   const name = String(ev.event ?? "");
+  // A flexible payment request (/pay/<code>, src/lib/payments-server.ts) paid while the pay page's own verify never arrived
+  // (phone closed): the captured payment settles it here; a settled one answers "replayed".
+  if (name === "payment.captured") {
+    const pay = ev.payload?.payment?.entity;
+    const code = String(pay?.notes?.flex ?? "");
+    if (!pay?.id || !code) return Response.json({ ok: true, ignored: "not a flex payment" });
+    const req = await requestByCode(code);
+    if (!req || String(pay.notes?.owner_id ?? "") !== req.owner_id || Number(pay.amount) !== req.amount_paise) return Response.json({ ok: true, ignored: "flex payment does not match" });
+    const s = await settleRequest(req, { paymentId: String(pay.id), orderId: String(pay.order_id ?? ""), amount: Number(pay.amount) });
+    return Response.json({ ok: true, event: name, flex: code, applied: s.ok ? s.applied : null, replayed: s.ok ? s.replayed : null, error: s.ok ? undefined : s.error });
+  }
   const sub = ev.payload?.subscription?.entity;
   if (!name.startsWith("subscription.") || !sub?.id) return Response.json({ ok: true, ignored: name || "no event" });
   const owner = String(sub.notes?.owner_id ?? "");

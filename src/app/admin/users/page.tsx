@@ -14,6 +14,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { PaymentRequestModal } from "@/components/admin/payment-request";
 import { displayLogin } from "@/lib/phone";
 import { ADDONS } from "@/lib/addons";
 
@@ -106,6 +107,8 @@ export default function AdminUsers() {
   const [meFr, setMeFr] = useState<{ code: string } | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
   const [viewingCredits, setViewingCredits] = useState<User | null>(null);
+  /** "Payment link" for one user (owner, 1 Nov 2026): any agreed amount — plan months, advance, custom. */
+  const [payFor, setPayFor] = useState<User | null>(null);
 
   // Real data only: an error is shown as an error, never replaced by sample users.
   const load = useCallback(async () => {
@@ -496,6 +499,10 @@ export default function AdminUsers() {
                         className="inline-flex items-center gap-0.5 text-[11px] font-medium text-muted hover:text-ink disabled:opacity-40" title="Balance & history">
                         <Coins className="h-3 w-3 text-amber-500" /> {u.credits ?? 0}
                       </button>
+                      <button onClick={() => setPayFor(u)} disabled={!live || !acct}
+                        className="inline-flex items-center gap-0.5 text-[11px] font-medium text-brand-ink hover:underline disabled:opacity-40" title="Make a payment link — any amount, plan or advance">
+                        ₹ link
+                      </button>
                     </div>
                     {acct && ADDONS.map((ad) => {
                       const on = (u.addons ?? []).includes(ad.key);
@@ -606,6 +613,7 @@ export default function AdminUsers() {
       {viewingCredits && (
         <CreditsHistory user={viewingCredits} onClose={() => setViewingCredits(null)} />
       )}
+      <PaymentRequestModal user={payFor ? { id: payFor.id, name: who(payFor), phone: payFor.phone ?? null } : null} onClose={() => setPayFor(null)} />
 
       {editingPartner && (
         <EditPartnerOnly

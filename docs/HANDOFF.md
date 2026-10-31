@@ -159,6 +159,20 @@ that replaces the blueprint on EVERY page of a card with a valid `site.advanced`
   user does not have (404), so those lines stay English in the preview; all fixed UI text is bilingual. (5) Tap targets: a few secondary text links are under 44px on phones (the breadcrumb "Home" / "होम" is 18px wide, a footer "Visit" 26px, item-title links inside cards that also have a larger arrow button). (6) The redesign is still
   closed by default (flags above); no live Razorpay run.
 
+## Flexible payments (1 Nov 2026)
+Owner: "payment Standard package se alag ho sakti hai — admin / franchise payment link banaye; user khud bhi advance / booking de paaye, admin
+ko kuch na bhejna pade". Migration **0079** (`payment_requests`, `advance_ledger`, `apply_flex_plan(N months)`, `use_advance_for_plan`,
+`advance_balance`; tested on local Postgres). `lib/payments.ts` (shape, labels, link) + `lib/payments-server.ts` (create / settle / balance).
+- A request = kind `plan` (tier growth|premium × months, ANY amount) | `advance` (money kept on the account) | `custom` (recorded only), with a
+  link `/pay/<code>` (`app/pay/[code]`, must be logged in as that account). `/api/pay/[code]` GET/POST order+verify; Razorpay notes `flex=<code>`;
+  the webhook settles `payment.captured` with that note if verify never came. settleRequest: claim by unique payment_id → apply (plan: rpc +
+  grantAdvanced for premium + partner BV; advance: ledger) → franchiseEarning → notify. Idempotent ("replayed").
+- Admin v2: right `payments.request` (franchise role has it, scope applies) → `/admin/payments` (list, New link with user search, cancel) and
+  "₹ link" on each Users row (`components/admin/payment-request.tsx`: plan / advance / custom, list price shown with % off).
+- User: plan page `FlexPayments` — requests waiting (pay here), advance balance (+ "Standard N months" from balance when enough, rpc
+  use_advance_for_plan), "Pay a different amount" (own advance request, ₹100+). Premium cannot be taken from balance (its first month is a mandate).
+- Not run against live Razorpay yet (no real money through the new routes). Needs 0079 in Supabase before deploy.
+
 ## The app on a computer (1 Nov 2026)
 Owner: "desktop par website ki tarah khule, mobile par app ki tarah". Below 1024px nothing changed (phone column, bottom tab bar). At lg:
 `components/poster/nav.tsx` draws a 260px sidebar (logo, the five sections, Quick open, and the account foot = the phone's round account

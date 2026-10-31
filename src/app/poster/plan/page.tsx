@@ -12,6 +12,7 @@ import { TalkToUs } from "@/components/talk-to-us";
 import { packsFor } from "@/lib/media/ad-pricing";
 import { SubscribeButton } from "@/components/subscribe-button";
 import { CardRenewButton } from "@/components/card-renew-button";
+import { FlexPayments } from "@/components/poster/flex-payments";
 
 type Res = {
   tier: SaasTier | null; state: "none" | "active" | "grace" | "expired"; expires_at: string | null; days_left: number;
@@ -172,6 +173,9 @@ function MyPlan() {
         <div className="rounded-xl border border-border p-3"><p className="text-2xl font-bold tabular-nums">{r.credits.packs}</p><p className="text-xs text-muted">Credits you bought (never expire)</p></div>
       </div>}
       {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)}. Unused ones do not carry over. Bonus credits are always used first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Product video →</Link></p>}
+
+      {/* Flexible payments (owner, 1 Nov 2026): requests made for this account, the advance balance, "pay a different amount". */}
+      {!welcome && <FlexPayments onChanged={() => void load()} />}
 
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
       <p className="rounded-xl border border-good/30 bg-good/10 px-3 py-2 text-xs text-ink"><b>{NO_LOCK_IN.short}.</b> {NO_LOCK_IN.en.replace(/^No lock-in\. /, "")}</p>

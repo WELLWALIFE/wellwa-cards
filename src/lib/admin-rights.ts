@@ -4,7 +4,7 @@
 import type { LucideIcon } from "lucide-react";
 import {
   LayoutDashboard, Users, Store, UserCog, ScrollText, IndianRupee, CreditCard, Wallet, Headset, LayoutTemplate, Image as ImageIcon,
-  Building2, Sparkles, Bot, Bell, Globe, Settings, Network, Activity, SlidersHorizontal, ShieldCheck,
+  Building2, Sparkles, Bot, Bell, Globe, Settings, Network, Activity, SlidersHorizontal, ShieldCheck, Link2,
 } from "lucide-react";
 
 export const RIGHTS = [
@@ -23,6 +23,7 @@ export const RIGHTS = [
   { key: "franchises.payouts",group: "Franchise", label: "Approve and pay franchise payouts" },
   { key: "billing.view",      group: "Money",     label: "See payments and revenue" },
   { key: "billing.manage",    group: "Money",     label: "Manual payments, refunds, funds" },
+  { key: "payments.request",  group: "Money",     label: "Make payment links for a user (any amount, plan or advance)" },
   { key: "plans.manage",      group: "Money",     label: "Plans, pricing and offers" },
   { key: "content.manage",    group: "Content",   label: "Templates, banners, site settings" },
   { key: "brands.manage",     group: "Content",   label: "White label brands" },
@@ -44,9 +45,9 @@ export const ROLES: { key: Role; label: string; hint: string; rights: Right[] }[
   { key: "super_admin", label: "Super Admin", hint: "Everything. The company owner only.", rights: ALL_RIGHTS },
   { key: "admin", label: "Admin", hint: "Runs the platform day to day; cannot change platform settings or keys.", rights: ALL_RIGHTS.filter((r) => r !== "settings.manage") },
   { key: "support", label: "Support", hint: "Helps users: sees them, live help, notes, tickets. No money.", rights: ["users.view", "support.live", "support.notes", "support.tickets"] },
-  { key: "sales", label: "Sales / Accounts", hint: "Plans, payments, franchises' numbers. Cannot delete or block.", rights: ["users.view", "users.plan", "billing.view", "billing.manage", "franchises.view", "reports.view", "support.notes"] },
+  { key: "sales", label: "Sales / Accounts", hint: "Plans, payments, franchises' numbers. Cannot delete or block.", rights: ["users.view", "users.plan", "billing.view", "billing.manage", "franchises.view", "reports.view", "support.notes", "payments.request"] },
   { key: "content", label: "Content", hint: "Templates, banners, AI, announcements, white label.", rights: ["content.manage", "brands.manage", "ai.manage", "notifications.send"] },
-  { key: "franchise", label: "Franchise", hint: "Their own users only: see, help, notes, earnings and payouts.", rights: ["users.view", "support.live", "support.notes", "franchises.view", "billing.view", "reports.view"] },
+  { key: "franchise", label: "Franchise", hint: "Their own users only: see, help, notes, earnings and payouts.", rights: ["users.view", "support.live", "support.notes", "franchises.view", "billing.view", "payments.request", "reports.view"] },
   { key: "custom", label: "Custom", hint: "Tick exactly what this person may do.", rights: [] },
 ];
 export const roleLabel = (r: string) => ROLES.find((x) => x.key === r)?.label ?? r;
@@ -64,6 +65,7 @@ export const MENU: { title: string; items: MenuItem[] }[] = [
   { title: "Money", items: [
     { href: "/admin/earnings", label: "My earnings", icon: IndianRupee, right: "franchises.view", franchise: true },
     { href: "/admin/plans", label: "Plans & pricing", icon: SlidersHorizontal, right: "plans.manage" },
+    { href: "/admin/payments", label: "Payment links", icon: Link2, right: "payments.request", franchise: true },
     { href: "/admin/wallets", label: "Funds", icon: Wallet, right: "billing.manage" },
   ] },
   { title: "Content", items: [
