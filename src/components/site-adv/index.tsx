@@ -18,6 +18,7 @@ import { ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang,
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
+import { INSTALL_APP_CSS, InstallSiteApp } from "@/components/site-adv/install-app";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
 import { activeNotice } from "@/lib/notice";
 import { Pic } from "@/components/pic";
@@ -226,7 +227,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
 
   return (
     <TranslateCtx.Provider value={t}>
-      <style dangerouslySetInnerHTML={{ __html: `${SMART_CSS}${HERO_CSS}.site[data-adv]{${advancedVars(card, spec)}}${ADV_BASE_CSS}${CHROME_CSS}${NAV_CSS}${PAGES_CSS}${VARIANT_CSS}` }} />
+      <style dangerouslySetInnerHTML={{ __html: `${SMART_CSS}${HERO_CSS}.site[data-adv]{${advancedVars(card, spec)}}${ADV_BASE_CSS}${CHROME_CSS}${NAV_CSS}${PAGES_CSS}${VARIANT_CSS}${INSTALL_APP_CSS}` }} />
       <div ref={rootRef} lang={L.lang} className="site min-h-screen flex flex-col" data-adv="" data-motion={spec.motion} data-shape={spec.shape} data-density={spec.density} data-page={route.kind === "page" ? route.entry.role : route.kind}>
         <a href="#adv-main" className="nv-skip" onClick={(e) => { e.preventDefault(); const m = document.getElementById("adv-main"); m?.focus({ preventScroll: true }); m?.scrollIntoView({ block: "start" }); }}>{hi ? "सीधे कंटेंट पर जाएँ" : "Skip to content"}</a>
         {barLive && !barClosed && (
@@ -259,6 +260,9 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
             : <AdvPageBody route={route} {...bodyProps} />}
         </main>
         {slot("footer", drawn.length)}
+        {/* The Premium website as the business's own app (owner, 31 Oct 2026): under the footer on the live site (not in previews), the
+            browser's install box or the home-screen steps. The manifest comes with the page (app/c/[username]/render.tsx). */}
+        {linkBase !== undefined && !free && <InstallSiteApp name={t(c.name)} hi={hi} accent="var(--accent)" onTrack={(k) => track(k)} />}
 
         {/* The sticky action bar on phones: on the home page in only once the hero has scrolled away; an item's page leads with the item. */}
         <MobileBar x={x} shown={!isHome || pastHero} lead={item ? { title: t(item.item.name), price: itemPrice || undefined, waText: x.hi ? `नमस्ते ${c.name}, मुझे "${t(item.item.name)}"${itemPrice ? ` (${itemPrice})` : ""} के बारे में जानकारी चाहिए।` : `Hi ${c.name}, I saw your website — I'd like to know more about "${item.item.name}"${itemPrice ? ` (${itemPrice})` : ""}.` } : undefined} />

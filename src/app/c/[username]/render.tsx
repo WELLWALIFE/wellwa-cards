@@ -125,6 +125,12 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
     robots: { index: card.active !== false && !!activeAdvanced(card.site, card.username) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
+    // The Premium website is installable as the business's own app (owner, 31 Oct 2026): its manifest and Apple's home-screen icon.
+    ...(activeAdvanced(card.site, card.username) ? {
+      manifest: `/c/${card.username}/manifest.webmanifest`,
+      appleWebApp: { capable: true, title: (card.company || card.name || "").slice(0, 30), statusBarStyle: "default" as const },
+      icons: { ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icon: card.site?.logoUrl || card.avatarUrl! } : {}), apple: `/c/${card.username}/app-icon?s=180` },
+    } : {}),
     ...(card.seo?.googleVerify ? { verification: { google: card.seo.googleVerify.replace(/^.*content="([^"]+)".*$/, "$1").trim() } } : {}),
   };
 }
