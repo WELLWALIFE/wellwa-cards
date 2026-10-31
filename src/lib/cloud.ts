@@ -247,7 +247,9 @@ export type PublishResult =
   | { ok: true; username: string }
   | { ok: false; error: string };
 
-export async function publishCard(card: Card): Promise<PublishResult> {
+/** `freshSite`: the website is being made anew from a template (the set-up's Shubhora card over an older card of another business): the old
+ *  card's colour is not pinned onto it. */
+export async function publishCard(card: Card, opts: { freshSite?: boolean } = {}): Promise<PublishResult> {
   const sb = getBrowserSupabase();
   if (!sb) return { ok: false, error: "Cloud not configured yet." };
   const { data: auth, error: authError } = await sb.auth.getUser();
@@ -292,7 +294,7 @@ export async function publishCard(card: Card): Promise<PublishResult> {
 
   // A new card colour does not recolour the website (each has its own; owner, 25 Oct 2026).
   const oldColor = (existing as { theme_color?: string | null } | undefined)?.theme_color ?? "";
-  if (existing && oldColor && materialized.site && safeColor(oldColor).toLowerCase() !== materialized.themeColor.toLowerCase()) {
+  if (!opts.freshSite && existing && oldColor && materialized.site && safeColor(oldColor).toLowerCase() !== materialized.themeColor.toLowerCase()) {
     materialized = { ...materialized, site: pinSiteColour(materialized.site, safeColor(oldColor)) };
   }
 

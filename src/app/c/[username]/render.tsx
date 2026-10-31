@@ -49,9 +49,12 @@ async function loadCard(username: string) {
     links: Array.isArray(raw.links) ? raw.links : [],
     ...Object.fromEntries((["name", "company", "jobTitle", "tagline", "about"] as const).map((k) => [k, typeof raw[k] === "string" ? raw[k] : ""])),
   }) : null;
+  // A Shubhora seller card is the curated template, never a Premium layout (a spec left over from the business the card was before
+  // would draw the Shubhora posters as a tailor's gallery — seen 31 Oct 2026). The spec stays stored; it is simply not drawn here.
+  const shown = card && card.site?.advanced && isShubhoraSellerCard(card) ? { ...card, site: { ...card.site, advancedOn: false } } : card;
   // The ADVANCED website is a whole website: it adds the About and Gallery pages the card has the material for but no page of
   // (src/lib/site-advanced.ts), so each has its own address, title and description like any other page.
-  return card && activeAdvanced(card.site, card.username) ? withAdvancedPages(card) : card;
+  return shown && activeAdvanced(shown.site, shown.username) ? withAdvancedPages(shown) : shown;
 }
 
 /** The product or service at this address: a product's own page, and on an advanced website a service's as well. */

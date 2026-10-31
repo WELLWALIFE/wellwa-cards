@@ -767,11 +767,14 @@ function Onboard() {
         // code is the owner's own setting and stays.
         // The partner's website is the Shubhora pages of this template (owner, 19 Oct 2026: "sirf card banata hai, website nahi"):
         // switched ON here, so a computer opens it as the website, "My website" is in Share Links and the set-up step counts as done.
+        // The website is the template's, whole (31 Oct 2026: a demo switched from a tailor's card kept that card's Premium layout, brown
+        // palette and "Clothes stitched just right for you" under the Shubhora name): nothing of the old card's site — its design, its
+        // Premium spec and backup words, its waiting time — comes along. The old card's colour is not pinned on it either (freshSite).
         const card = { ...(existingCard ?? {}), ...data, id: existingCard?.id ?? Math.random().toString(36).slice(2, 10), username: handle, active: true,
-          site: { ...(existingCard?.site ?? {}), ...(data.site ?? {}), enabled: true },
+          site: { ...(data.site ?? {}), enabled: true },
           seoTitle: data.seoTitle ?? "", seoDescription: data.seoDescription ?? "",
           seo: { ...(data.seo ?? {}), ...(existingCard?.seo?.googleVerify ? { googleVerify: existingCard.seo.googleVerify } : {}) } } as Parameters<typeof publishCard>[0];
-        const r = await publishCard(card);
+        const r = await publishCard(card, { freshSite: true });
         // Replace: the Shubhora card now exists — Back must not land on this question to be answered (and published) again. It lands on
         // Card & Website with a "ready" note (owner, 19 Oct 2026: straight into the editor felt like nothing had been made), not the raw editor.
         if (r.ok) { router.replace("/poster/site?made=shubhora"); return; }
