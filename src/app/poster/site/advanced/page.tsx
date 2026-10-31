@@ -29,6 +29,9 @@ import type { Card, CardBlock } from "@/lib/types";
 const PRICE_FALLBACK = 5999;
 /** "3 layouts per payment" (owner's rule): the server may say how many are left; this counts them on the phone when it does not. */
 const TRY_LIMIT = 3;
+/** How many designs the screen can hold (lib/adv-designs.ts keeps the same number): every one made stays pickable (owner, 31 Oct 2026). */
+const MAX_DESIGNS = 12;
+const RUPEES_PER_CREDIT = 15;
 /** The preview window's height on screen, in px. */
 const PREVIEW_BOX = 440;
 
@@ -208,7 +211,7 @@ export default function AdvancedSitePage() {
   const frameBox = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
-  useEffect(() => { mounted.current = true; return () => { mounted.current = false; run.current += 1; dropKey(PREVIEW_KEY); for (let i = 1; i <= TRY_LIMIT; i++) dropKey(`${PREVIEW_KEY}-${i}`); }; }, []);
+  useEffect(() => { mounted.current = true; return () => { mounted.current = false; run.current += 1; dropKey(PREVIEW_KEY); for (let i = 1; i <= MAX_DESIGNS; i++) dropKey(`${PREVIEW_KEY}-${i}`); }; }, []);
   useEffect(() => { if (step !== "running") return; const t = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(t); }, [step]);
 
   // A payment that is already on the account needs no confirming any more.
@@ -244,7 +247,7 @@ export default function AdvancedSitePage() {
     const t = readTries(mine.id);
     if (!t.jobs.includes(v.job)) { t.n += 1; t.jobs.push(v.job); writeTries(mine.id, t); }
     setUsed(t.n); setJobId(v.job); setResult(res); setAcceptErr(""); setAgainErr(""); setKeepErr("");
-    setDesigns((d) => (d.some((x) => x.job === v.job || (!!res.spec?.seed && x.res.spec?.seed === res.spec.seed)) ? d.map((x) => (x.res.spec?.seed === res.spec?.seed ? { job: v.job, res } : x)) : [...d, { job: v.job, res }].slice(-TRY_LIMIT)));
+    setDesigns((d) => (d.some((x) => x.job === v.job || (!!res.spec?.seed && x.res.spec?.seed === res.spec.seed)) ? d.map((x) => (x.res.spec?.seed === res.spec?.seed ? { job: v.job, res } : x)) : [...d, { job: v.job, res }].slice(-MAX_DESIGNS)));
     setOpenFound(false); setOpenChanges(false);
     setStep("preview");
     try { window.scrollTo({ top: 0 }); } catch { /* ignore */ }
@@ -490,7 +493,7 @@ export default function AdvancedSitePage() {
         <div className="grid place-items-center gap-2 text-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-ai" />
           <p className="text-lg font-bold">{T("Your Premium website is being made", "आपकी Premium website बन रही है")}</p>
-          <p className="text-xs text-muted">{T("About 2 minutes", "लगभग 2 मिनट")} · {clock}{used ? ` · ${T(`design ${used + 1} of ${TRY_LIMIT}`, `design ${used + 1} / ${TRY_LIMIT}`)}` : ""}</p>
+          <p className="text-xs text-muted">{T("About 2 minutes", "लगभग 2 मिनट")} · {clock}{used ? ` · ${used < TRY_LIMIT ? T(`design ${used + 1} of ${TRY_LIMIT}`, `design ${used + 1} / ${TRY_LIMIT}`) : T(`design ${used + 1}`, `design ${used + 1}`)}` : ""}</p>
         </div>
         <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
           {steps.map(([k, label]) => {
@@ -529,8 +532,9 @@ export default function AdvancedSitePage() {
             style={{ width: 1280, height: Math.round(PREVIEW_BOX / scale), border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
         </div>
         {/* Under the website (owner, 25 Oct 2026: "design ke teeno button site view ke niche"). The three designs: tap to see it above; ↗ opens it full size in a new tab; an empty one can be made from here. */}
+        {/* EVERY design made is shown (owner, 31 Oct 2026): a 4th, 5th … sits in the same grid; empty slots only up to the payment's three. */}
         <div className="grid grid-cols-3 gap-2">
-          {Array.from({ length: TRY_LIMIT }, (_, i) => designs[i]).map((d, i) => {
+          {Array.from({ length: Math.max(TRY_LIMIT, designs.length) }, (_, i) => designs[i]).map((d, i) => {
             const on = !!d && i === which;
             if (!d) return (
               <button key={i} type="button" disabled={!!startBusy || remaining <= 0 || i !== designs.length} onClick={() => start("again")}
@@ -563,9 +567,12 @@ export default function AdvancedSitePage() {
         )}
         {/* The payment's designs are used: another one is always possible for credits (owner, 25 Oct 2026). */}
         {remaining <= 0 && (
-          <button type="button" onClick={() => start("again", true)} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/40 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-50">
-            {startBusy === "again" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T(`New design · ${DESIGN_CREDITS} credits`, `नया design · ${DESIGN_CREDITS} credits`)}
-          </button>
+          <div className="space-y-1">
+            <button type="button" onClick={() => start("again", true)} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/40 py-2.5 text-sm font-semibold text-brand-ink disabled:opacity-50">
+              {startBusy === "again" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T(`New design · ${DESIGN_CREDITS} credits`, `नया design · ${DESIGN_CREDITS} credits`)}
+            </button>
+            <p className="text-center text-[11px] text-muted">{T(`Your ${TRY_LIMIT} included designs are used · each new one is ${DESIGN_CREDITS} credits (about ₹${DESIGN_CREDITS * RUPEES_PER_CREDIT}). Every design you make stays here to pick from.`, `आपके ${TRY_LIMIT} design पूरे हुए · हर नया design ${DESIGN_CREDITS} credits (लगभग ₹${DESIGN_CREDITS * RUPEES_PER_CREDIT})। बने हुए सारे design यहीं रहते हैं, कोई भी चुनें।`)}</p>
+          </div>
         )}
         {againErr && <p className={errBox}>{againErr}</p>}
 
@@ -813,7 +820,7 @@ export default function AdvancedSitePage() {
                 {startBusy === "make" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T(`Make a new design · ${DESIGN_CREDITS} credits`, `नया design बनाएँ · ${DESIGN_CREDITS} credits`)}
               </button>
             )}
-            <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`Your ${TRY_LIMIT} designs are used. More with credits.`, `आपके ${TRY_LIMIT} design इस्तेमाल हो गए। आगे credits से।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} designs left`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी`)}</p>
+            <p className="text-center text-xs text-muted">{remaining <= 0 ? T(`Your ${TRY_LIMIT} included designs are used · a new one is ${DESIGN_CREDITS} credits (about ₹${DESIGN_CREDITS * RUPEES_PER_CREDIT}).`, `आपके ${TRY_LIMIT} design पूरे हुए · नया design ${DESIGN_CREDITS} credits (लगभग ₹${DESIGN_CREDITS * RUPEES_PER_CREDIT})।`) : T(`1–2 minutes · ${remaining} of ${TRY_LIMIT} included designs left · after that ${DESIGN_CREDITS} credits each`, `1–2 मिनट · ${TRY_LIMIT} में से ${remaining} design बाकी · उसके बाद हर design ${DESIGN_CREDITS} credits`)}</p>
             {startErr && <p className={errBox}>{startErr}</p>}
           </div>
         ) : !pending && (!selling || closedReason === "flag" || closedReason === "closed" || closedReason === "off") ? (

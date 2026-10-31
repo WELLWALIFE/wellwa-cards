@@ -8,7 +8,9 @@ import path from "node:path";
 
 type Obj = Record<string, unknown>;
 const DIR = path.join(process.cwd(), ".card-jobs");
-const KEEP = 3;
+// Every design made is kept and shown (owner, 31 Oct 2026: "4th, 5th, 6th bhi dikhni chahiye, user koi bhi chune"), up to 12 — older ones
+// drop off the far end.
+const KEEP = 12;
 const g = globalThis as unknown as { __advDesigns?: Map<string, Obj[]> };
 const mem = (g.__advDesigns ??= new Map());
 const fileOf = (k: string) => path.join(DIR, `adv-${k.replace(/[^a-zA-Z0-9-]/g, "")}.json`);
