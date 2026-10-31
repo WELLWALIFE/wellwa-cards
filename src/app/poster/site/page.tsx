@@ -21,7 +21,7 @@ import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
-import { ADVANCED_HREF } from "@/components/poster/advanced-entry";
+import { ADVANCED_HREF, fetchAdvancedState, type AdvState } from "@/components/poster/advanced-entry";
 import { editHref, lastEdit } from "@/lib/edit-nav";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
@@ -106,6 +106,14 @@ export default function WebsitePage() {
   }, []);
   const { plan, loading: planLoading } = usePlan();
   const paid = planLoading || plan !== "free";
+  /** The Premium website on this card (the Grow tile says live / waiting / upgrade instead of one fixed line — owner, 31 Oct 2026). */
+  const [adv, setAdv] = useState<AdvState | null>(null);
+  const [advPaid, setAdvPaid] = useState(false);
+  useEffect(() => {
+    if (!cardId) return;
+    void fetchAdvancedState(cardId).then(setAdv);
+    void api<{ allowed?: boolean }>("/api/poster/pay/advanced").then((r) => setAdvPaid(!!(r.ok && r.data.allowed === true))).catch(() => undefined);
+  }, [cardId]);
   // One "Edit" (owner, 26 Oct 2026: "extra steps hatao, no confusion"): the Edit address no longer shows a screen of its own with a second
   // Edit button — it opens the editor straight away (card or website, the last one used; the editor has the Card | Website switch).
   useEffect(() => {
@@ -269,7 +277,7 @@ export default function WebsitePage() {
                   {head(3, T("Grow", "आगे बढ़ें"), T("Get found on Google, look premium", "Google पर दिखें, premium दिखें"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}
                   <div className="grid grid-cols-2 gap-2.5 p-3">
                     <Link href={`/poster/site/seo${cardId ? `?card=${cardId}` : ""}`} className={`${tile} bg-surface2 ring-1 ring-border`}>{icon("bg-white", "text-brand", Search)}<span className="text-sm font-bold">{T("Google SEO", "Google SEO")}</span><span className="text-[11px] text-muted">{T("show up in search", "search में आएँ")}</span></Link>
-                    <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} bg-ai-soft/50 ring-1 ring-ai/30`}>{icon("bg-ai", "text-white", Sparkles)}<span className="text-sm font-bold text-ai">{T("Premium website", "Premium website")}</span><span className="text-[11px] text-muted">{T("made by AI for you", "AI से खास design")}</span></Link>
+                    <Link href={`${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`} className={`${tile} bg-ai-soft/50 ring-1 ring-ai/30`}>{icon("bg-ai", "text-white", Sparkles)}<span className="text-sm font-bold text-ai">{adv?.has ? T("Premium website", "Premium website") : advPaid ? T("Make Premium website", "Premium website बनाएँ") : T("Upgrade to Premium", "Premium में upgrade")}</span><span className="text-[11px] text-muted">{adv?.has ? (adv.on ? T("live · change design", "live · design बदलें") : T("saved · not showing", "save है · अभी बंद")) : advPaid ? T("in your plan · 1–2 min", "आपके plan में · 1–2 मिनट") : T("a design made by AI for you", "AI से खास design")}</span></Link>
                   </div>
                 </section>
 

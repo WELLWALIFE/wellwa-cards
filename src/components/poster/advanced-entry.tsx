@@ -54,32 +54,41 @@ export function AdvancedEntry({ cardId, fetchState = false, className = "" }: { 
   const { lang } = useT(); const hi = lang !== "en";
   const T = (en: string, h: string) => (hi ? h : en);
   const [st, setSt] = useState<AdvState | null>(null);
-  const load = useCallback(() => { void fetchAdvancedState(cardId).then(setSt); }, [cardId]);
+  /** Premium is paid on this account (the Premium page's own rule): with no design yet, the card is the next step, not an offer. */
+  const [paid, setPaid] = useState(false);
+  const load = useCallback(() => {
+    void fetchAdvancedState(cardId).then(setSt);
+    void api<{ allowed?: boolean }>("/api/poster/pay/advanced").then((r) => { if (r.ok && r.data.allowed === true) setPaid(true); }).catch(() => undefined);
+  }, [cardId]);
   useEffect(() => { if (fetchState) load(); }, [fetchState, load]);
 
   const href = `${ADVANCED_HREF}${cardId ? `?card=${encodeURIComponent(cardId)}` : ""}`;
   const has = !!st?.has;
+  // Paid, nothing made yet (owner, 31 Oct 2026: a Premium customer should go straight on to the Premium design): the loud version.
+  const waiting = paid && !has;
   return (
     <section className={`space-y-2 ${className}`}>
-      <Link href={href} className="relative flex w-full items-center gap-3 overflow-hidden rounded-2xl border-2 border-ai/40 bg-surface p-3.5 text-left shadow-sm transition active:scale-[.99]">
-        <span aria-hidden="true" className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-ai/10" />
-        <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-ai-soft text-ai"><Sparkles className="h-5 w-5" /></span>
+      <Link href={href} className={`relative flex w-full items-center gap-3 overflow-hidden rounded-2xl p-3.5 text-left shadow-sm transition active:scale-[.99] ${waiting ? "grad-brand text-white shadow-card" : "border-2 border-ai/40 bg-surface"}`}>
+        <span aria-hidden="true" className={`pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full ${waiting ? "bg-white/15" : "bg-ai/10"}`} />
+        <span className={`relative grid h-11 w-11 shrink-0 place-items-center rounded-xl ${waiting ? "bg-white/20 text-white" : "bg-ai-soft text-ai"}`}><Sparkles className="h-5 w-5" /></span>
         <span className="relative min-w-0 flex-1">
           <span className="flex flex-wrap items-center gap-1.5">
             <span className="text-base font-bold leading-tight">
-              {has ? T("Your Premium website", "आपकी Premium website") : T("Make a Premium website", "Premium website बनवाएँ")}
+              {waiting ? T("Make my Premium website now", "अब मेरी Premium website बनाएँ") : has ? T("Your Premium website", "आपकी Premium website") : T("Make a Premium website", "Premium website बनवाएँ")}
             </span>
-            <span className="rounded-full bg-ai-soft px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide text-ai">{T("Premium", "Premium")}</span>
+            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold uppercase tracking-wide ${waiting ? "bg-white/25 text-white" : "bg-ai-soft text-ai"}`}>{T("Premium", "Premium")}</span>
           </span>
-          <span className="mt-0.5 block text-xs leading-snug text-muted">
-            {has
+          <span className={`mt-0.5 block text-xs leading-snug ${waiting ? "text-white/90" : "text-muted"}`}>
+            {waiting
+              ? T("Included in your plan · AI designs it in 1–2 minutes · see it, then put it live", "आपके plan में शामिल · AI 1–2 मिनट में design करेगा · देखें, फिर live करें")
+              : has
               ? (st?.on
                 ? T("It is live on your link. Tap to design it again.", "ये आपके link पर live है। दोबारा design करने के लिए दबाएँ।")
                 : T("Saved, but your basic website is showing. Tap to see it.", "Save है, पर अभी आपकी basic website दिख रही है। देखने के लिए दबाएँ।"))
               : T("A new look made only for your business", "सिर्फ़ आपके business के लिए नया look")}
           </span>
         </span>
-        <ChevronRight className="relative h-5 w-5 shrink-0 text-muted" />
+        <ChevronRight className={`relative h-5 w-5 shrink-0 ${waiting ? "text-white/90" : "text-muted"}`} />
       </Link>
       {has && <AdvancedSwitch cardId={cardId} on={!!st?.on} onChanged={(s) => { if (s) setSt(s); else load(); }} className="px-1" />}
     </section>

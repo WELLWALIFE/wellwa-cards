@@ -1,5 +1,6 @@
 // The "Advanced features" box (bearer). GET → AddonsAnswer (src/lib/addons.ts): which advanced features this account
-// may see (Premium + its kind of business, or already switched on), and whether a shop it works in has Orders on.
+// may see (its kind of business, on any plan — the box asks a Standard account to upgrade — or already switched on), and
+// whether a shop it works in has Orders on.
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { memberships } from "@/lib/crm-server";
@@ -17,7 +18,7 @@ export async function GET(request: Request) {
   const list: AddonsAnswer["list"] = [];
   for (const a of ADDONS) {
     const on = flags[a.key]?.on === true;
-    const fits = on || (premium && (await fitsBusiness(me.id, a)));
+    const fits = on || (await fitsBusiness(me.id, a));
     if (on || fits) list.push({ key: a.key, on, fits });
   }
   let teamOrders = false;

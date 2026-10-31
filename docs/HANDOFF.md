@@ -159,6 +159,15 @@ that replaces the blueprint on EVERY page of a card with a valid `site.advanced`
   user does not have (404), so those lines stay English in the preview; all fixed UI text is bilingual. (5) Tap targets: a few secondary text links are under 44px on phones (the breadcrumb "Home" / "होम" is 18px wide, a footer "Visit" 26px, item-title links inside cards that also have a larger arrow button). (6) The redesign is still
   closed by default (flags above); no live Razorpay run.
 
+## Advanced features (add-on modules, 30-31 Oct 2026)
+Modules customised for one kind of business and paid separately (`src/lib/addons.ts`: ADDONS — Orders · Silai first; `addons-server.ts`:
+flags in auth `app_metadata.addons`, `premiumActive`, `fitsBusiness`, `addonGate`; Super Admin → Users → "🧵 Orders" toggle). The box
+(`components/poster/advanced-features.tsx`, on Card & Website and Settings) is shown to EVERY account whose business fits (owner, 31 Oct 2026:
+Standard and Premium both see it); three states per module: ON → open; Premium but off → "ask the price" (WhatsApp) + guide; not Premium →
+"Upgrade to Premium" (→ /poster/site/advanced) + guide + price. Using a module still needs the flag ON (addonGate). Guide: `/help/orders`.
+Premium page (`/poster/site/advanced`): fold "Font · top of the page · corners" under the three designs, sent as `tweak` with accept.
+`AdvancedEntry` on the congratulations screen turns into the loud "Make my Premium website now" when Premium is paid and no design exists.
+
 ## Plans and pricing (owner's structure, 16 Oct 2026)
 Owner's words: Free = the digital card only; Standard Rs 2,999 a month; Premium Rs 5,999 for the FIRST month only, then Rs 2,999 a month;
 Custom Solutions (any software or automation, price on request). Never write Rs 5,999 as if it were monthly.
