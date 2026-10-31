@@ -186,7 +186,7 @@ export default function WebsitePage() {
       {justMade && s.hasCard && (
         <section className="rounded-2xl border border-good/40 bg-good/10 p-4">
           <p className="flex items-center gap-2 text-base font-bold"><Check className="h-5 w-5 text-good" /> {T("Your Shubhora card and website are ready", "आपका Shubhora card और website तैयार है")}</p>
-          <p className="mt-1 text-sm text-muted">{T("One link: on a phone it opens as your card, on a computer as your website. Share it below, or tap Edit to put your own photo and words on it.", "एक link: phone पर card खुलता है, computer पर website। नीचे से share करें, या Edit दबाकर अपनी photo और बातें डालें।")}</p>
+          <p className="mt-1 text-sm text-muted">{T("Share them below on WhatsApp. Tap Edit to add your photo and your words.", "नीचे से WhatsApp पर share करें। Edit दबाकर अपनी photo और बातें डालें।")}</p>
         </section>
       )}
       {!s.hasCard ? (

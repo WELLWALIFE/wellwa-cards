@@ -188,7 +188,7 @@ export default function CardTab() {
       {published && (
         <div className="rounded-2xl border-2 border-good/40 bg-good/10 p-4 space-y-3">
           <p className="flex items-center gap-2 text-lg font-bold"><CheckCircle2 className="h-6 w-6 text-good" /> {lang === "hi" ? "आपका digital card अब online है" : "Your digital card is online now"}</p>
-          <p className="text-sm text-muted">{lang === "hi" ? "एक ही link: computer पर website, phone पर card। Share करें, या Card & Website से बदलें।" : "One link: people see your website on a computer and your card on a phone. Share it, or change it from Card & Website."}</p>
+          <p className="text-sm text-muted">{lang === "hi" ? "Live है। Share करें, या Card & Website से बदलें।" : "Live. Share it, or change it from Card & Website."}</p>
           <Link href="/poster/site" className="w-full inline-flex items-center justify-center gap-2 rounded-xl border border-border bg-surface px-4 py-3 text-base font-semibold">
             <Globe className="h-5 w-5" /> {lang === "hi" ? "अपनी website देखें" : "See your website"}
           </Link>

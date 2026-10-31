@@ -1415,10 +1415,10 @@ export default function BuildCard() {
           <span>
             {liveUser
               ? cardOnly
-                ? T("Live. One link: your card opens everywhere. Share it on WhatsApp or with a QR code.", "Live। एक ही link: आपका card हर जगह खुलता है। WhatsApp या QR code से share करें।")
+                ? T("Live. Share your card on WhatsApp or with a QR code.", "Live। अपना card WhatsApp या QR code से share करें।")
               : isStory
-                ? T("Live. One link — it opens as the website on phones too.", "Live। एक ही link — phone पर भी website ही खुलती है।")
-                : T("Live. One link: the website on a computer, your card on a phone.", "Live। एक ही link: computer पर website, phone पर card।")
+                ? T("Live. The website opens on phones too.", "Live। Website phone पर भी खुलती है।")
+                : T("Live. Share the card and the website on WhatsApp or with a QR code.", "Live। Card और website WhatsApp या QR code से share करें।")
               : busy === "publish"
                 ? T("Making it live…", "Live किया जा रहा है…")
                 : checks.length > 0
