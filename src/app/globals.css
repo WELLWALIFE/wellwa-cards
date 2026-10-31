@@ -410,11 +410,15 @@ html[data-embed] .min-h-screen{min-height:0!important}
    (the first "start" screen) keep the phone column on a computer too (:has). Fixed bars that sat over the phone column (.app-bar) move
    with the page column; the ones that sat above the tab bar (.app-bar-up) come down to the foot, the tab bar being gone. */
 @media (min-width: 1024px) {
-  .app-shell:has(.app-side) .app-col { align-self: stretch; max-width: none; width: auto; margin-left: 240px; border-left: 0; border-right: 0; background: var(--bg); }
+  .app-shell:has(.app-side) .app-col { align-self: stretch; max-width: none; width: auto; margin-left: 260px; border-left: 0; border-right: 0; background: var(--bg); }
   .app-shell:has(.app-side) .app-main { padding-left: 40px; padding-right: 40px; padding-bottom: 48px; }
-  .app-shell:has(.app-side) .app-page { max-width: 960px; margin: 0 auto; }
-  .app-shell:has(.app-side) .app-bar { left: calc(240px + (100vw - 240px) / 2) !important; max-width: 960px; }
-  .app-shell:has(.app-side) .app-bar.inset-x-0 { left: 240px !important; right: 0; }
+  .app-shell:has(.app-side) .app-page { max-width: 1040px; margin: 0 auto; }
+  .app-shell:has(.app-side) .app-bar { left: calc(260px + (100vw - 260px) / 2) !important; max-width: 1040px; }
+  .app-shell:has(.app-side) .app-bar.inset-x-0 { left: 260px !important; right: 0; }
   .app-shell:has(.app-side) .app-bar-up { bottom: 16px !important; margin-bottom: 0 !important; }
-  .app-shell:has(.app-side) .app-pin { left: 252px !important; }
+  .app-shell:has(.app-side) .app-pin { left: 272px !important; }
+  /* The website previews (Website edit, Premium page) fill the height beside their controls. */
+  .app-shell:has(.app-side) .pv-box, .app-shell:has(.app-side) .adv-pv { --pv-h: calc(100vh - 120px); }
+  /* The account button at the top right is the sidebar's job on a computer. */
+  .app-shell:has(.app-side) [data-topmenu] { display: none; }
 }

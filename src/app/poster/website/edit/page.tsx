@@ -437,7 +437,8 @@ export default function WebsiteEditPage() {
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
   };
   return (
-    <div className="space-y-3 pb-4">
+    // Computer (lg): the live preview stays on the left, tall and sticky; the controls on the right (app shell, 1 Nov 2026).
+    <div className="space-y-3 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_420px] lg:items-start lg:gap-6 lg:space-y-0">
       <EditFocus />
       {s.cards.length > 1 && (
         <div className="space-y-1.5">
@@ -450,9 +451,9 @@ export default function WebsiteEditPage() {
 
       {/* ---- live preview (the real website renderer, scaled to fit), with the colours right under it (owner, 23 Oct 2026: "colour
           wali patti website ke just neeche — wahi colour badle aur site dikh jaaye") ---- */}
-      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
+      <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1 lg:top-6! lg:col-start-1 lg:row-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
         <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
-          <div ref={box} className="bg-white overflow-hidden transition-[height] duration-300" style={{ height: big ? "68svh" : "32svh" }}>
+          <div ref={box} className="pv-box bg-white overflow-hidden transition-[height] duration-300" style={{ height: `var(--pv-h, ${big ? "68svh" : "32svh"})` }}>
             <div className="relative" style={{ width: Math.round(1280 * scale), height: boxH }}>
               <iframe ref={frame} title="Website preview" onLoad={() => { const f = lastFocus.current; if (f) setTimeout(() => { try { frame.current?.contentWindow?.postMessage({ type: "preview-focus", key: PREVIEW_KEY, ...f }, window.location.origin); } catch { /* ignore */ } }, 600); }} src={`/preview/site?k=${PREVIEW_KEY}&tap=1${previewPage ? `&page=${encodeURIComponent(previewPage)}` : ""}`} className="absolute left-0 top-0 origin-top-left" style={{ width: 1280, height: frameH, border: 0, transform: `scale(${scale})` }} />
             </div>
@@ -472,6 +473,7 @@ export default function WebsiteEditPage() {
         </div>
       </div>
 
+      <div className="space-y-3 lg:col-start-2 lg:min-w-0">
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} what="website" fold={["more"]} state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
@@ -717,6 +719,7 @@ export default function WebsiteEditPage() {
       )}
 
       </>)}
+      </div>
       {unlock && <UnlockDialog reason="Make good-looking AI photos for your website." onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
   );

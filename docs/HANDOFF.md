@@ -159,6 +159,16 @@ that replaces the blueprint on EVERY page of a card with a valid `site.advanced`
   user does not have (404), so those lines stay English in the preview; all fixed UI text is bilingual. (5) Tap targets: a few secondary text links are under 44px on phones (the breadcrumb "Home" / "होम" is 18px wide, a footer "Visit" 26px, item-title links inside cards that also have a larger arrow button). (6) The redesign is still
   closed by default (flags above); no live Razorpay run.
 
+## The app on a computer (1 Nov 2026)
+Owner: "desktop par website ki tarah khule, mobile par app ki tarah". Below 1024px nothing changed (phone column, bottom tab bar). At lg:
+`components/poster/nav.tsx` draws a 260px sidebar (logo, the five sections, Quick open, and the account foot = the phone's round account
+button: settings, plan, connections, share links, language, log out); `app/poster/layout.tsx` + `globals.css .app-shell` turn the column into
+a 1040px page beside it, scoped with `:has(.app-side)` (the start screen keeps the phone column); `[data-topmenu]` is hidden at lg; fixed bars
+carry `.app-bar` (follow the page column) / `.app-bar-up` (drop to the foot) / `.app-pin` (demo pill). Two-column pages at lg: Home (poster
+right, sticky), Card & Website (boxes in two columns), Website edit (preview left tall via `--pv-h`, controls right), Premium page (design left,
+controls right; the frame scales to the measured box height), Create (3 tiles a row). Other screens are the phone layout at page width — if
+one reads badly on a computer, give it its own lg layout the same way.
+
 ## Advanced features (add-on modules, 30-31 Oct 2026)
 Modules customised for one kind of business and paid separately (`src/lib/addons.ts`: ADDONS — Orders · Silai first; `addons-server.ts`:
 flags in auth `app_metadata.addons`, `premiumActive`, `fitsBusiness`, `addonGate`; Super Admin → Users → "🧵 Orders" toggle). The box

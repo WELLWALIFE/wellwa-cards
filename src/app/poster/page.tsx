@@ -235,7 +235,8 @@ export default function TodayPage() {
   // Home, redesigned (owner, 24 Oct 2026: "jo zaroori cheez honi chahiye wo add karo, professional interface"): who and when with the
   // card link on top, today's work from the CRM, the website still to finish, today's poster, every door in one grid, the share links.
   return (
-    <div className="space-y-4 pb-2">
+    // Computer (lg): two columns — today's poster stays on the right, the rest flows down the left (app shell, 1 Nov 2026).
+    <div className="space-y-4 pb-2 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-x-8 lg:gap-y-4 lg:space-y-0">
       {/* The V-Card's year: shows only in its last 30 days, the 7-day grace and while paused. */}
       <CardRenewBanner />
       <HomeHeader name={profile?.name ?? ""} hi={hi} />
@@ -248,7 +249,7 @@ export default function TodayPage() {
       <PremiumUpgrade />
 
       {/* Today's poster */}
-      <section className="space-y-3">
+      <section className="space-y-3 lg:sticky lg:top-6 lg:col-start-2 lg:row-start-1 lg:row-span-[30]">
         <div className="flex items-end justify-between gap-2">
           <div className="min-w-0">
             <p className="text-[11px] font-semibold uppercase tracking-wider text-muted">{day === "tomorrow" ? (hi ? "कल का poster" : "Tomorrow's poster") : (hi ? "आज का poster" : "Today's poster")}</p>

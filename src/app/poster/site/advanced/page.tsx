@@ -208,6 +208,8 @@ export default function AdvancedSitePage() {
   const [keepErr, setKeepErr] = useState("");
   const [doneUser, setDoneUser] = useState("");
   const [frameW, setFrameW] = useState(360);
+  /** The preview box's real height (taller on a computer, CSS --pv-h): the frame inside is scaled to fill it. */
+  const [frameHt, setFrameHt] = useState(PREVIEW_BOX);
   const frameBox = useRef<HTMLDivElement>(null);
   const frame = useRef<HTMLIFrameElement>(null);
 
@@ -440,7 +442,7 @@ export default function AdvancedSitePage() {
   useEffect(() => {
     const el = frameBox.current;
     if (step !== "preview" || !el) return;
-    const fit = () => setFrameW(el.clientWidth || 360);
+    const fit = () => { setFrameW(el.clientWidth || 360); setFrameHt(el.clientHeight || PREVIEW_BOX); };
     fit();
     const ro = new ResizeObserver(fit); ro.observe(el);
     return () => ro.disconnect();
@@ -519,18 +521,20 @@ export default function AdvancedSitePage() {
     const which = Math.max(0, designs.findIndex((d) => d.job === jobId));
     const fold = "flex w-full items-center justify-between gap-2 px-4 py-3 text-left text-sm font-bold";
     return (
-      <div className="space-y-3 py-2">
-        {header}
+      // Computer (lg): the design on the left, big and sticky; the designs, touches, findings and buttons on the right (app shell, 1 Nov 2026).
+      <div className="space-y-3 py-2 lg:grid lg:grid-cols-[minmax(0,1fr)_400px] lg:items-start lg:gap-6 lg:space-y-0">
+        <div className="lg:col-span-2">{header}</div>
         {needCredits && <UnlockDialog reason={T(`A new design uses ${DESIGN_CREDITS} credits.`, `नए design में ${DESIGN_CREDITS} credits लगते हैं।`)} onClose={() => setNeedCredits(false)} />}
         {/* Redesigned 23 Oct 2026 (owner: every design button opens that website; a simpler page): pick a design, see it, use it. */}
 
 
         {/* The design, one screen of it, scrolling inside (a page-tall frame stretched a full-height hero and hid its words; 24 Oct 2026). */}
-        <div ref={frameBox} className="relative overflow-hidden rounded-2xl border border-border bg-white shadow-card" style={{ height: PREVIEW_BOX }}>
+        <div ref={frameBox} className="adv-pv relative overflow-hidden rounded-2xl border border-border bg-white shadow-card lg:sticky lg:top-6 lg:col-start-1 lg:row-start-2 lg:row-span-[40]" style={{ height: `var(--pv-h, ${PREVIEW_BOX}px)` }}>
           <iframe key={jobId} ref={frame} title={T("Premium website preview", "Premium website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`}
             onLoad={() => { try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }}
-            style={{ width: 1280, height: Math.round(PREVIEW_BOX / scale), border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
+            style={{ width: 1280, height: Math.round(frameHt / scale), border: 0, transform: `scale(${scale})`, transformOrigin: "top left" }} />
         </div>
+        <div className="space-y-3 lg:col-start-2 lg:min-w-0">
         {/* Under the website (owner, 25 Oct 2026: "design ke teeno button site view ke niche"). The three designs: tap to see it above; ↗ opens it full size in a new tab; an empty one can be made from here. */}
         {/* EVERY design made is shown (owner, 31 Oct 2026): a 4th, 5th … sits in the same grid; empty slots only up to the payment's three. */}
         <div className="grid grid-cols-3 gap-2">
@@ -696,6 +700,7 @@ export default function AdvancedSitePage() {
           </section>
         )}
 
+        </div>
       </div>
     );
   }

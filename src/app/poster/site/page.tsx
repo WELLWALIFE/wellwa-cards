@@ -229,7 +229,7 @@ export default function WebsitePage() {
               </div>
             );
             return (
-              <div className="space-y-4">
+              <div className="space-y-4 lg:grid lg:grid-cols-2 lg:items-start lg:gap-5 lg:space-y-0">
                 {/* 1 · Share */}
                 <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                   {head(1, T("Share", "Share करें"), T("Send to customers on WhatsApp", "ग्राहकों को WhatsApp पर भेजें"), "bg-gradient-to-r from-[#1fb956] to-[#25D366]")}

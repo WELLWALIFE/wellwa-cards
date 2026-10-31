@@ -75,7 +75,7 @@ function CreateHubInner() {
     <div className="space-y-3">
       <h1 className="text-lg font-bold">{hi ? "बनाएँ" : "Create"}</h1>
       <Guide hi="छह चीज़ें बना सकते हैं — poster, video, ads, brand, AI training, card। रोज़ का poster अपने-आप बन जाता है। बाकी जब चाहें बनाएँ।" en="You can make six things: poster, video, ads, brand, AI training and card. Your daily poster makes itself. Make the rest whenever you like." />
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {doors.map((d) => (
           <button key={d.key} type="button" onClick={() => router.push(d.href ?? `/poster/create?door=${d.key}&from=hub`)} className="flex flex-col items-start gap-2 rounded-2xl border border-border bg-surface p-4 text-left">
             <span className="h-11 w-11 rounded-full bg-brand-soft text-brand grid place-items-center"><d.I className="h-6 w-6" /></span>
