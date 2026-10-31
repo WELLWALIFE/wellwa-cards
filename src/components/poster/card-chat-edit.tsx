@@ -3,6 +3,7 @@
 // types what to change; the AI picks checked operations (card-edits.ts); the owner sees the list of changes,
 // taps Apply, and the website is live with them. Undo brings the previous version back in one tap.
 import { SiteLink } from "@/components/poster/card-sheet";
+import { editExamples } from "@/lib/edit-examples";
 import { useEffect, useRef, useState } from "react";
 import { LoaderCircle, Sparkles, Undo2, Check, X, Mic, MicOff, Globe } from "lucide-react";
 import { api } from "@/lib/poster-client";
@@ -70,9 +71,8 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
     try { r.start(); } catch { setListening(false); setSpeakErr(T("Could not start the microphone. Please type it.", "microphone शुरू नहीं हुआ। टाइप करें।")); }
   }
 
-  const EXAMPLES = hi
-    ? ["fees wala section hata do", "about me likho ki hum CBSE school hain", "reviews ko upar le jao", "look thoda premium karo"]
-    : ["remove the offer section", "say in the about that we are CBSE affiliated", "move reviews above the FAQ", "make the look more premium"];
+  // What an owner of THIS trade really changes (owner, 31 Oct 2026: a CBSE line made no sense on a shop's card) — lib/edit-examples.ts.
+  const EXAMPLES = editExamples(card, hi);
 
   async function ask() {
     if (locked) { setSheet(true); return; }
@@ -126,7 +126,7 @@ export function CardChatEdit({ card, onChanged, locked = false, url, autoFocus }
         {EXAMPLES.map((e) => <button key={e} type="button" onClick={() => setText(e)} className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px]">{e}</button>)}
       </div>
       <div className="flex gap-2">
-        <textarea ref={box} id="ai-edit-box" value={text} onChange={(e) => { setText(e.target.value); if (err) setErr(""); }} rows={2} placeholder={listening ? T("Listening… say what to change", "सुन रहे हैं… बोलें क्या बदलना है") : T("e.g. remove the offer section, and write CBSE in the about", "जैसे offer section हटा दो, और about में CBSE लिखो")} className={`w-full rounded-xl border bg-surface px-3 py-2 text-sm outline-none focus:border-brand ${listening ? "border-brand" : "border-border"}`} />
+        <textarea ref={box} id="ai-edit-box" value={text} onChange={(e) => { setText(e.target.value); if (err) setErr(""); }} rows={2} placeholder={listening ? T("Listening… say what to change", "सुन रहे हैं… बोलें क्या बदलना है") : T(`e.g. ${EXAMPLES[0]}`, `जैसे: ${EXAMPLES[0]}`)} className={`w-full rounded-xl border bg-surface px-3 py-2 text-sm outline-none focus:border-brand ${listening ? "border-brand" : "border-border"}`} />
         <div className="flex shrink-0 flex-col justify-end gap-1.5">
           {canSpeak && <button type="button" onClick={speak} disabled={!!busy} aria-label={listening ? T("Stop", "रोकें") : T("Speak", "बोलें")} aria-pressed={listening} className={`inline-flex items-center justify-center gap-1 rounded-xl border px-3 py-2 text-sm font-semibold ${listening ? "border-danger bg-danger/10 text-danger" : "border-brand/40 bg-surface text-brand-ink"}`}>{listening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />} {listening ? T("Stop", "रोकें") : T("Speak", "बोलें")}</button>}
           <button type="button" onClick={() => void ask()} disabled={!!busy} className="inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">{busy === "ask" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Go", "करो")}</button>
