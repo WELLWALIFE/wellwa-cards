@@ -3,6 +3,7 @@
 // that says what the Standard plan gives and takes the person to the plan (owner's call, 3 Oct 2026: locks on the item,
 // never on the whole page, never in the middle of the set-up).
 import { useState } from "react";
+import { NO_LOCK_IN } from "@/lib/billing";
 import Link from "next/link";
 import { Lock, Sparkles, X } from "lucide-react";
 import { useT } from "@/lib/poster-i18n";
@@ -28,7 +29,7 @@ export function PremiumSheet({ feature, onClose }: { feature?: string; onClose: 
           <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl grad-brand text-white"><Sparkles className="h-5 w-5" /></span>
           <div className="min-w-0 flex-1">
             <p className="text-lg font-bold">{feature ? (hi ? `${feature} — Standard में` : `${feature} — with Standard`) : "Standard"}</p>
-            <p className="text-xs text-muted">{hi ? "₹2,999 / महीना (GST सहित) · कभी भी बंद करें" : "₹2,999 a month, GST included · cancel any time"}</p>
+            <p className="text-xs text-muted">{hi ? `₹2,999 / महीना (GST सहित) · ${NO_LOCK_IN.shortHi}` : `₹2,999 a month, GST included · ${NO_LOCK_IN.short}`}</p>
           </div>
           <button type="button" onClick={onClose} aria-label="Close" className="grid h-9 w-9 place-items-center rounded-lg text-muted hover:bg-surface2"><X className="h-5 w-5" /></button>
         </div>

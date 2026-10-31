@@ -41,6 +41,14 @@ export const FREE_PLAN_TERM = "Free for 1 year, then ₹1,499 a year · Standard
 /** The V-Card after its free year (owner's call, 27 Sep 2026): ₹1,499 incl. GST for one more year. When the year ends the
  *  card keeps working `graceDays` more days, then its link shows "Card renew karein" until it is renewed (nothing is
  *  deleted). Not partner business: no BV — /api/billing/verify never reports it to the partner panel. */
+/** The one line that goes wherever a monthly price is shown (owner, 31 Oct 2026: it must never read as "pay every month or lose it").
+ *  What really happens when a plan stops (HANDOFF "When a plan stops"): the card and the website keep working; the monthly services pause. */
+export const NO_LOCK_IN = {
+  en: "No lock-in. Pay month by month, stop whenever you like: your card and your website stay live on the same link. Only the monthly services — daily posters, the AI assistant, ads — pause until you start again.",
+  hi: "कोई lock-in नहीं। महीने-महीने pay करें, जब चाहें रोक दें: आपका card और website उसी link पर live रहते हैं। सिर्फ़ महीने वाली सेवाएँ — रोज़ का poster, AI assistant, ads — रुकती हैं, जब तक आप दोबारा शुरू न करें।",
+  short: "No lock-in · your card and website stay live even if you pause",
+  shortHi: "कोई lock-in नहीं · रोकने पर भी card और website live रहते हैं",
+};
 export const CARD_RENEWAL = { amount: 149900, label: "V-Card renewal", years: 1, graceDays: 7 };
 /** The third plan (owner's call, 25 Sep 2026): anything beyond Growth — any software, customization or automation —
  *  is built for the customer, priced on request, with a dedicated manager. "Contact us" instead of a price.

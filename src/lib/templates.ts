@@ -953,7 +953,10 @@ const vcardReseller: CardTemplateDef = {
     verified: false,
     avatarUrl: "/art/brand/shubhora-logo.png",
     avatarShape: "square",
-    coverUrl: "/art/brand/shubhora-banner.png",
+    // The hero picture is drawn for this layout (scripts/shubhora-art.mjs → public/art/shubhora/hero.jpg: brand gradient, a phone on the right,
+    // no words), so the headline sits on its left and nothing clashes — the old poster banner carried its own big words under the headline
+    // (31 Oct 2026). Every partner's website is complete as it is, nothing to upload.
+    coverUrl: "/art/shubhora/hero.jpg",
     // The tone comes from Shubhora's own persona (bridge/shubhora-kb.mjs) — a partner can write their own here.
     botPersona: "",
     // Shubhora's own facts are NOT copied into the card any more (owner's call, 24 Sep 2026): the assistant reads
@@ -962,7 +965,12 @@ const vcardReseller: CardTemplateDef = {
     kb: "shubhora",
     botKnowledge: "",
     // The website this card opens as on a computer (promoteShubhora switches it on): its own first line, never the trade fallback.
-    site: { enabled: true, hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link." } },
+    site: {
+      enabled: true,
+      hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%" },
+      // The big-photo top: the drawn banner fills it, words on the left (the picture's empty side).
+      style: { hero: "photo" },
+    },
     popup: {
       enabled: true,
       title: "Make free card",
@@ -1147,7 +1155,7 @@ const vcardReseller: CardTemplateDef = {
             items: [
               {
                 name: "Free — for 1 year",
-                images: ["/api/stock/demo/shubhora-plan-free-v3.jpg"],
+                images: ["/art/shubhora/plan-free.jpg"],
                 price: "FREE",
                 badge: "Worth ₹1,499",
                 desc: "A complete digital V-Card worth ₹1,499, free for you for 1 year — on your own link. No card details, no hidden charge.",
@@ -1166,10 +1174,10 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Standard",
-                images: ["/api/stock/demo/shubhora-plan-growth-v2.jpg"],
+                images: ["/art/shubhora/plan-standard.jpg"],
                 price: "₹2,999 / month",
                 badge: "Recommended",
-                desc: "Everything needed to run one business online: the website, daily posters, Meta Ads and the WhatsApp AI assistant.",
+                desc: "Everything needed to run one business online: the website, daily posters, Meta Ads and the WhatsApp AI assistant. No lock-in: pause any month and your card and website stay live on the same link.",
                 features: [
                   "Digital business card on one link",
                   "Standard website (up to 5 pages)",
@@ -1191,10 +1199,10 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Premium",
-                images: ["/api/stock/demo/shubhora-plan-growth-v2.jpg"],
+                images: ["/art/shubhora/plan-premium.jpg"],
                 price: "₹5,999 first month only, then ₹2,999 / month",
                 badge: "Most popular",
-                desc: "Everything in Standard, plus a multi-page Premium website and Google SEO. One autopay: ₹5,999 for the first month only, then ₹2,999 a month.",
+                desc: "Everything in Standard, plus a multi-page Premium website and Google SEO. ₹5,999 for the first month only, then ₹2,999 a month. No lock-in: your card and website stay live even if you pause.",
                 features: [
                   "Everything in Standard",
                   "Premium website, multiple pages",
@@ -1210,7 +1218,7 @@ const vcardReseller: CardTemplateDef = {
               },
               {
                 name: "Custom Solutions",
-                images: ["/api/stock/demo/shubhora-plan-custom-v2.jpg"],
+                images: ["/art/shubhora/plan-custom.jpg"],
                 price: "On request",
                 badge: "Any software",
                 desc: "Need something built around the way your business works? Shubhora designs, builds and runs it for you: every kind of software and automation, priced on request, with a dedicated manager. Tell us what you need and we send you a clear quote.",
@@ -1309,10 +1317,7 @@ const vcardReseller: CardTemplateDef = {
         id: "p5", slug: "contact", label: "Contact",
         blocks: [
           { id: uid("vc", 1), kind: "about", title: "About me", body: "I am a Shubhora partner. I help shops, clinics, agents and professionals near me move from a paper visiting card to a digital V-Card — and I set it up with you, on your phone, free." },
-          { id: uid("vc", 2), kind: "hours", title: "When you can reach me", rows: [
-            { day: "Monday – Saturday", time: "10:00 – 19:00" },
-            { day: "Sunday", time: "On WhatsApp" },
-          ] },
+          // No hours block: a partner is reached on WhatsApp any time, and the sample hours put a "Closed · opens Mon" chip on the hero (31 Oct 2026).
           // Empty until the owner's city goes in (set-up fills it); an empty address shows nothing.
           { id: uid("vc", 3), kind: "location", title: "Where I am", address: "" },
           { id: uid("vc", 4), kind: "contact", title: "Send me a message", note: "I usually reply within a few hours — WhatsApp is fastest." },

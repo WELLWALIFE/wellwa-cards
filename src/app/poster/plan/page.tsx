@@ -7,7 +7,7 @@ import { LoaderCircle, Check, ChevronLeft, Sparkles, AlertTriangle } from "lucid
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
-import { SAAS_PLANS, PREMIUM, PREMIUM_ITEMS, PREMIUM_FIRST_PAISE, PREMIUM_EXTRA_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
+import { NO_LOCK_IN, SAAS_PLANS, PREMIUM, PREMIUM_ITEMS, PREMIUM_FIRST_PAISE, PREMIUM_EXTRA_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, CARD_RENEWAL, PRO_CUSTOM, type SaasTier } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { packsFor } from "@/lib/media/ad-pricing";
 import { SubscribeButton } from "@/components/subscribe-button";
@@ -174,6 +174,7 @@ function MyPlan() {
       {!welcome && <p className="text-xs text-muted">{on && r.expires_at ? <>Bonus credits end on {d(r.expires_at)}. Unused ones do not carry over. Bonus credits are always used first. </> : <>No plan yet — bought credits never expire. </>}<Link href="/poster/video" className="underline">Use them in Product video →</Link></p>}
 
       <h2 className="pt-2 text-sm font-bold">{welcome ? "Paid plans" : on ? "Change plan" : "Plans"}</h2>
+      <p className="rounded-xl border border-good/30 bg-good/10 px-3 py-2 text-xs text-ink"><b>{NO_LOCK_IN.short}.</b> {NO_LOCK_IN.en.replace(/^No lock-in\. /, "")}</p>
       <div className="space-y-3">
         {/* Sold here: Standard, Premium and Custom Solutions (owner, 16 Oct 2026). Starter and Pro are no longer offered;
             someone already on one of them still sees their own running plan and can renew it. */}

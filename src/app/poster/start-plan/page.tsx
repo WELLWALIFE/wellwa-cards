@@ -5,7 +5,7 @@ import { Suspense, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { SubscribeButton } from "@/components/subscribe-button";
-import { PREMIUM_FIRST_PAISE, SAAS_PLANS, rupees } from "@/lib/billing";
+import { PREMIUM_FIRST_PAISE, SAAS_PLANS, rupees, NO_LOCK_IN } from "@/lib/billing";
 
 function StartPlan() {
   const router = useRouter();
@@ -19,7 +19,7 @@ function StartPlan() {
       <p className="text-sm text-muted">
         {premium
           ? `${rupees(PREMIUM_FIRST_PAISE)} for the first month only, then ${rupees(SAAS_PLANS.growth.amount)} a month from the 2nd month.`
-          : `${rupees(SAAS_PLANS.growth.amount)} a month.`} GST included.
+          : `${rupees(SAAS_PLANS.growth.amount)} a month.`} GST included. {NO_LOCK_IN.short}.
       </p>
       <SubscribeButton tier="growth" premium={premium} onDone={() => router.replace("/poster/onboard")} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
         {premium ? "Pay and start Premium" : "Pay and start Standard"}

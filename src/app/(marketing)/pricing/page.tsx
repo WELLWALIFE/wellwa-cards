@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Check } from "lucide-react";
-import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { SAAS_PLANS, PREMIUM, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM, NO_LOCK_IN } from "@/lib/billing";
 import { TalkToUs } from "@/components/talk-to-us";
 import { CREDIT_PACKS, PAYG_PACKS } from "@/lib/media/ad-pricing";
 import { WELCOME_CREDITS } from "@/lib/site-pricing";
@@ -55,6 +55,7 @@ export default function PricingPage() {
         <span className="mono text-xs uppercase tracking-wide text-faint">Pricing</span>
         <h1 className="mt-3 text-balance text-3xl font-semibold tracking-tight md:text-5xl">One subscription. Your whole online presence.</h1>
         <p className="mx-auto mt-4 max-w-2xl text-lg text-muted">{SUITE} replaces the designer, the social media person and the person who answers WhatsApp. Start free with your digital card — free for 1 year, no card details needed; upgrade any time.</p>
+        <p className="mx-auto mt-3 max-w-2xl rounded-full border border-good/30 bg-good/10 px-4 py-1.5 text-sm text-ink">{NO_LOCK_IN.en}</p>
       </section>
 
       <section className="mx-auto max-w-6xl px-5 pb-6">
