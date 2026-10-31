@@ -173,6 +173,8 @@ export default function BuildCard() {
   // free plan, Premium for the paid one — and the build starts from there, never by itself.
   const [, setPlan] = useState<"standard" | "premium">("standard");
   const [uid, setUid] = useState("");
+  /** A demo account (Super Admin → Users → Demo): no waiting time, the website shows at once (owner, 31 Oct 2026). */
+  const [demo, setDemo] = useState(false);
   /** The person chose "Both — my business and Shubhora" at set-up: their own card is built exactly as usual,
    *  and the Shubhora page is added to it (its own hidden link) when it is published. */
   const [alsoShubhora, setAlsoShubhora] = useState(false);
@@ -444,6 +446,7 @@ export default function BuildCard() {
       // the OLD trade's, and go before anything below reads them.
       dropStaleLocal(who?.data.user);
       setAlsoShubhora(!!who?.data.user?.user_metadata?.also_shubhora);
+      setDemo(who?.data.user?.user_metadata?.is_demo === true);
       // "Make my V-Card again with AI" asks for a NEW card, so any saved preview is thrown away first.
       let again = false;
       // ?flow=1 — step 4 of the profile: the form opens, nothing is built until step 5. ?make=1 — straight to step 5.
@@ -1055,7 +1058,7 @@ export default function BuildCard() {
       if (addShubhora) out = withShubhoraPage(out, { visible: keepShubhora && shubhoraVisible });
       // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): a website made for the FIRST time goes live by itself 24 hours from
       // now and is promised within 24–48; the card is live at once. A card that already had its website on (improve, rebuild) is not held.
-      if (out.site?.enabled && !existing?.site?.enabled && !out.site.readyAt) out = { ...out, site: { ...out.site, readyAt: readyIn() } };
+      if (out.site?.enabled && !existing?.site?.enabled && !out.site.readyAt && !demo) out = { ...out, site: { ...out.site, readyAt: readyIn() } };
       const r = await publishCard(out);
       if (!r.ok) { setErr(r.error); return; }
       void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: null } }).catch(() => undefined);

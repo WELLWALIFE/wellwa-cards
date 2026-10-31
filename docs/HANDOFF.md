@@ -175,7 +175,7 @@ same moment as the website's when that one is still waiting) show to visitors on
 (enabled=false / advancedOn=false for the visitor's copy; `?view=site` too). The card is live at once; in-app previews (/preview/site) are not held;
 improve / rebuild / later designs are not held. Hourly cron `/api/cron/site-live` (scripts/site-live.sh, deploy.sh writes /etc/cron.d/shubhora-site-live)
 clears the fields and sends "your website is live" (push + WhatsApp, `website_ready`). Screens: congratulations (build), Card & Website strip, Premium done,
-AdvancedEntry; Advanced features say "within 7 days". The copy says "Shubhora is preparing it", never "our team is working" (nobody is).
+AdvancedEntry; Advanced features say "within 7 days". A DEMO account (user_metadata.is_demo) is never held (build page + accept route, `site-ready-server.ts`). The copy says "Shubhora is preparing it", never "our team is working" (nobody is).
 
 ## Plans and pricing (owner's structure, 16 Oct 2026)
 Owner's words: Free = the digital card only; Standard Rs 2,999 a month; Premium Rs 5,999 for the FIRST month only, then Rs 2,999 a month;

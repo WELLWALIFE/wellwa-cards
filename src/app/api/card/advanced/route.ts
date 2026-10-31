@@ -28,7 +28,8 @@ import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
-import { readyIn, sitePending } from "@/lib/site-ready";
+import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
+
 
 // The designs an owner has already made for a card: kept on disk (lib/adv-designs.ts), so "Try another layout" is measured against them,
 // an earlier one can be put live, and a closed screen or a restart never loses a design that was paid for.
@@ -132,7 +133,7 @@ export async function POST(request: Request) {
     let next = withSlides(applyAdvanced(fresh, clean), Array.isArray(res.slides) ? res.slides as HeroSlide[] : null);
     // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): the FIRST Premium design goes live by itself in 24 hours (with the basic
     // website when that one is still in its own wait); a later design of an account that already has one shows at once.
-    if (!fresh.site?.advanced && next.site) {
+    if (!fresh.site?.advanced && next.site && !(await isDemoAccount(me.id))) {
       const at = sitePending(fresh.site)?.toISOString() ?? readyIn();
       next = { ...next, site: { ...next.site, advancedReadyAt: at } };
     }
