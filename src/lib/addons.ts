@@ -33,7 +33,8 @@ export const ADDONS: Addon[] = [
     ],
     guide: "/help/orders",
     categories: ["tailor", "textile", "garments"],
-    words: /tailor|boutique|saree|sari\b|silai|stitch|garment|cloth|fashion|lehenga|blouse|textile|alteration|kurti|suit|dress|साड़ी|सिलाई|टेलर|बुटीक|कपड़े/i,
+    // Whole words only: "dress" must not match "address", "suit" not "suitable" (1 Nov 2026).
+    words: /\b(tailors?|boutiques?|sarees?|sari|silai|stitch(ing|es)?|garments?|clothing|clothes|fashion|lehengas?|blouses?|textiles?|alterations?|kurtis?|suits?|dress(es)?|dress\s*designer)\b|साड़ी|सिलाई|टेलर|बुटीक|कपड़े/i,
   },
 ];
 
