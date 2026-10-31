@@ -416,9 +416,13 @@ html[data-embed] .min-h-screen{min-height:0!important}
   .app-shell:has(.app-side) .app-bar { left: calc(260px + (100vw - 260px) / 2) !important; max-width: 1040px; }
   .app-shell:has(.app-side) .app-bar.inset-x-0 { left: 260px !important; right: 0; }
   .app-shell:has(.app-side) .app-bar-up { bottom: 16px !important; margin-bottom: 0 !important; }
-  .app-shell:has(.app-side) .app-pin { left: 272px !important; }
+  /* The demo pill sits in the sidebar, beside the logo, not over the page. */
+  .app-shell:has(.app-side) .app-pin { left: 152px !important; top: 24px !important; }
+  /* Forms and settings read better narrower (components/poster/desktop-width.tsx marks those routes). */
+  .app-shell:has(.app-side) .app-col[data-narrow] .app-page, .app-shell:has(.app-side) .app-col[data-narrow] .app-bar { max-width: 760px; }
   /* The website previews (Website edit, Premium page) fill the height beside their controls. */
   .app-shell:has(.app-side) .pv-box, .app-shell:has(.app-side) .adv-pv { --pv-h: calc(100vh - 120px); }
+  .app-shell:has(.app-side) .build-pv { --build-pv: 58vh; max-width: 520px; }
   /* The account button at the top right is the sidebar's job on a computer. */
   .app-shell:has(.app-side) [data-topmenu] { display: none; }
 }

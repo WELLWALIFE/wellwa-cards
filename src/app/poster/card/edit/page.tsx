@@ -192,10 +192,11 @@ export default function CardEditPage() {
     setEmbedDirty(false); setEmbedView(null); setOpen(false); window.scrollTo({ top: 0 });
   };
   return (
-    <div className="space-y-3 pb-4">
+    // Computer (lg): the card's live window on the left, tall and sticky; the controls on the right (app shell, 1 Nov 2026).
+    <div className="space-y-3 pb-4 lg:grid lg:grid-cols-[minmax(0,1fr)_440px] lg:items-start lg:gap-6 lg:space-y-0">
       <EditFocus />
 
-      <LiveWindow card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={!open ? (embedView?.focus ?? { top: true }) : tab === "look" ? { body: true } : { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab }} hi={hi}
+      <LiveWindow side card={shown} k="card-edit-live" view="card" onEditTarget={(t) => { const p = partFor(shown, t, false); openPart(p.key, p.blockId); }} focus={!open ? (embedView?.focus ?? { top: true }) : tab === "look" ? { body: true } : { ...(sync ? { text: sync.text, quiet: true } : embedView?.focus && !embedView.focus.top ? embedView.focus : {}), part: tab }} hi={hi}
         bar={{ onBack: () => {
             if (open) { toList(); return; }
             if ((dirty || embedDirty) && !window.confirm(T("Your change is not saved. Leave without saving?", "बदलाव save नहीं हुआ। बिना save किए निकलें?"))) return;
@@ -210,6 +211,7 @@ export default function CardEditPage() {
           save: { show: (open && tab === "look") || dirty || embedDirty, dirty: dirty || embedDirty, busy: busy, note: note, onSave: () => { if (embedDirty) { setNote(null); ownAfter.current = dirty; setSaveTick((n) => n + 1); } else void save(); }, undo: undo ? () => void save(undo) : undefined } }} />
 
 
+      <div className="space-y-3 lg:col-start-2 lg:min-w-0">
       {!open
         ? <EditMenu groups={GROUPS} hi={hi} what="card" state={(k) => partState(card, k)} onPick={(_g, k) => openPart(k)} />
         : (() => { const d = TABS.find((x) => x.key === tab); return d ? <PartHead part={d} group={group} hi={hi} onBack={toList} /> : null; })()}
@@ -262,6 +264,7 @@ export default function CardEditPage() {
       )}
 
       </>)}
+      </div>
     </div>
   );
 }

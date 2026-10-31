@@ -13,7 +13,8 @@ import type { EditHistory } from "@/lib/use-edit-history";
 export type LiveFocus = { top?: boolean; text?: string; body?: boolean; /** The section an editor part changes. */ part?: string; /** No highlight (following the editor's scroll). */ quiet?: boolean } | null;
 const SITE_W = 1280, CARD_W = 400;
 
-export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, bar, onEditTarget }: {
+export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, bar, onEditTarget, side = false }: {
+  /** On a computer the window is the left column of a two-column edit screen: sticky, as tall as the screen (globals.css --pv-h). */ side?: boolean;
   /** The ✏️ Edit chips in the preview: which part was tapped (preview/site/view.tsx). */ onEditTarget?: (target: { kind: string; blockId?: string; text?: string }) => void;
   /** The bar under the window: Back, See it, Big, Save (edit screens). */ bar?: { onBack: () => void; see: React.ReactNode; save: SaveProps; switcher?: EditSwitch; history?: EditHistory };
   /** Shown over the window, bottom left (the Save button and its message: owner, 25 Oct 2026, "save wali patti hatao"). */ overlay?: React.ReactNode;
@@ -70,9 +71,9 @@ export function LiveWindow({ card, k, view = "site", focus, hi, page, overlay, b
   }, [k]);
   if (!card || inside) return null;
   return (
-    <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
+    <div className={`sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1 ${side ? "lg:top-6! lg:col-start-1 lg:row-start-1 lg:row-span-[40] lg:mx-0 lg:bg-transparent lg:px-0 lg:pb-0 lg:pt-0" : ""}`} style={{ top: "calc(env(safe-area-inset-top) + var(--help-banner, 0px))" }}>
       <div className="relative overflow-hidden rounded-2xl border border-border shadow-card">
-        <div ref={box} className="overflow-hidden bg-white transition-[height] duration-300" style={{ height: big ? "68svh" : "30svh" }}>
+        <div ref={box} className={`${side ? "pv-box " : ""}overflow-hidden bg-white transition-[height] duration-300`} style={{ height: side ? `var(--pv-h, ${big ? "68svh" : "30svh"})` : big ? "68svh" : "30svh" }}>
           <div className="relative" style={{ width: Math.round(w * scale), height: boxH }}>
             <iframe ref={frame} title={hi ? "Live preview" : "Live preview"} src={`/preview/site?k=${k}${view === "card" ? "&view=card" : ""}${onEditTarget ? "&tap=1" : ""}${page && view !== "card" ? `&page=${encodeURIComponent(page)}` : ""}`}
               onLoad={() => post(`preview:${k}`)} className="absolute left-0 top-0 origin-top-left" style={{ width: w, height: frameH, border: 0, transform: `scale(${scale})` }} />

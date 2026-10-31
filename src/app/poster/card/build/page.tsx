@@ -1267,7 +1267,7 @@ export default function BuildCard() {
         {/* The preview stays on top while the colours and letters below are picked (found on the live walk, 24 Oct 2026: scrolling down to the
             colours took the website out of sight, so a tap showed nothing). */}
         <div className="sticky z-10 -mx-4 bg-surface px-4 pb-2 pt-1" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}>
-        <div className="mx-auto w-full max-w-[390px] overflow-hidden rounded-3xl border border-border bg-white shadow-card" style={{ height: "min(36svh, 340px)", minHeight: 200 }}>
+        <div className="build-pv mx-auto w-full max-w-[390px] overflow-hidden rounded-3xl border border-border bg-white shadow-card" style={{ height: "var(--build-pv, min(36svh, 340px))", minHeight: 200 }}>
           <iframe ref={previewFrame} title="Website preview" src="/preview/site" onLoad={() => { try { previewFrame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ } }} className="h-full w-full border-0" />
         </div>
         </div>
@@ -1303,7 +1303,7 @@ export default function BuildCard() {
           </div>
         </section>
         {err && <p className="text-sm text-danger">{err}</p>}
-        <div className="sticky bottom-20 z-20 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
+        <div className="sticky bottom-20 lg:bottom-4 z-20 grid grid-cols-[auto_1fr] gap-2 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
           <button type="button" onClick={goDone} className="inline-flex items-center justify-center rounded-xl border border-border px-5 py-3 text-base font-semibold">{T("Keep as is", "जैसा है ठीक")}</button>
           <button type="button" onClick={goDone} className="inline-flex items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done — next", "हो गया — आगे")}</button>
         </div>
@@ -1324,7 +1324,7 @@ export default function BuildCard() {
         <p className="-mt-1 text-xs text-muted">{T("People open your website and card at this address.", "लोग इसी address पर आपकी website और card खोलेंगे।")}</p>
         <DomainPick current={liveUser || username} cardOnly={cardOnly} hi={hi} beforeChange={settlePublish}
           onChanged={(u) => { setLiveUser(u); setCard((c) => (c ? { ...c, username: u } : c)); }} />
-        <div className="sticky bottom-20 z-20 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
+        <div className="sticky bottom-20 lg:bottom-4 z-20 rounded-2xl border border-border bg-surface p-2.5 shadow-float">
           <button type="button" onClick={() => { setState("done"); toTop(); }} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3 text-base font-semibold text-white"><Check className="h-5 w-5" /> {T("Done — next", "हो गया — आगे")}</button>
         </div>
       </div>
@@ -1502,7 +1502,7 @@ export default function BuildCard() {
 
       {/* The bottom bar (owner, 15 Oct 2026: "website upar, baaki sab buttons Save and next wale bar me, bottom se khulne wala"): Website | Card,
           Computer view, the six designs (opens upward, the website above stays visible and changes as you tap) and Save and next. */}
-      <div className="sticky bottom-20 z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-float">
+      <div className="sticky bottom-20 lg:bottom-4 z-20 overflow-hidden rounded-2xl border border-border bg-surface shadow-float">
         {/* The error sits INSIDE the bar, right above Save and next / the designs it belongs to — the page behind is long, so a line in the page flow was often off-screen. */}
         {err && <p ref={errRef} role="alert" className="border-b border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
         {designOpen && looks.length > 0 && shown.site && (

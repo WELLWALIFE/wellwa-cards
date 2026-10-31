@@ -14,6 +14,7 @@ import { UiLangProvider } from "@/lib/poster-i18n";
 import { PlanProvider } from "@/lib/plan";
 import { BrandProvider } from "@/components/brand-context";
 import { EmbedMode } from "@/components/poster/embed-mode";
+import { DesktopWidth } from "@/components/poster/desktop-width";
 
 export const metadata: Metadata = {
   title: "Shubhora",
@@ -37,6 +38,7 @@ export default function PosterLayout({ children }: { children: React.ReactNode }
         <div className="app-col w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
           {/* data-chrome: hidden when this screen is shown inside another one (components/poster/embed-mode.tsx). */}
           <EmbedMode />
+          <DesktopWidth />
           <div data-chrome data-topmenu className="contents"><TopMenu /></div>
           <main className="app-main flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><div className="app-page"><div data-chrome className="contents"><BackBar /></div>{children}</div><div data-chrome className="contents"><SetupResume variant="float" /></div></main>
           <div data-chrome className="contents"><PosterNav /></div>
