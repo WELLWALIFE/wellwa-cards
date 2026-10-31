@@ -101,7 +101,7 @@ export default function LooksGallery() {
         <CardView key={`${sel.key}-${color}`} card={shown} qr={qr} expired />
       </div>
 
-      <div className="fixed inset-x-0 bottom-16 z-40 mx-auto max-w-md px-4">
+      <div className="app-bar app-bar-up fixed inset-x-0 bottom-16 z-40 mx-auto max-w-md px-4">
         {err && <p role="alert" className="mb-2 rounded-xl border border-danger/40 bg-surface px-3 py-2 text-sm text-danger">{err}</p>}
         <button type="button" disabled={busy || isOn} onClick={() => apply(sel)} className="w-full rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-float disabled:opacity-70">
           {busy ? (hi ? "लग रहा है…" : "Applying…") : isOn ? (hi ? "यही look लगा है ✓" : "This look is on ✓") : (hi ? `यही look लगाएँ — ${sel.name}` : `Use this look — ${sel.name}`)}

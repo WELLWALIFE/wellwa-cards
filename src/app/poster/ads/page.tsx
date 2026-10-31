@@ -544,7 +544,7 @@ export default function AdsPage() {
       )}
 
       {/* footer buttons */}
-      <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+      <div className="app-bar app-bar-up fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
         {whyNot && <p className="mb-2 text-xs font-semibold text-danger">{whyNot}</p>}
         {step < 4 ? (
           <div className="flex gap-2">

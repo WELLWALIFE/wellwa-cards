@@ -40,12 +40,12 @@ export function DemoReset() {
   return (
     <>
     <button type="button" onClick={reset} disabled={busy} title={T("Demo account — wipe everything and start fresh", "Demo account — सब मिटाकर नए सिरे से शुरू करें")}
-      className="fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#b91c1c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
+      className="app-pin fixed z-[100] inline-flex items-center gap-1 rounded-full bg-[#b91c1c] px-2.5 py-1 text-[11px] font-semibold text-white shadow-xl disabled:opacity-60"
       style={{ top: "calc(8px + env(safe-area-inset-top))", left: "max(8px, calc(50% - 14rem + 8px))" }}>
       {busy ? T("Resetting…", "Reset हो रहा है…") : T("🧹 Reset demo", "🧹 Demo reset")}
     </button>
     {note && (
-      <p role="alert" className="fixed z-[100] max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger shadow-xl"
+      <p role="alert" className="app-pin fixed z-[100] max-w-[min(20rem,calc(100vw-1rem))] rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger shadow-xl"
         style={{ top: "calc(40px + env(safe-area-inset-top))", left: "max(8px, calc(50% - 14rem + 8px))" }}>{note}</p>
     )}
     </>

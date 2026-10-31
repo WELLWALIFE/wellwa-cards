@@ -305,7 +305,7 @@ function EditorInner() {
           {needCredits !== null && <AddCredits onDone={() => { setNeedCredits(null); setApplyErr(""); load(); }} />}
 
           {/* Above the app's bottom navigation, not over it. */}
-          <div className="fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 p-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+          <div className="app-bar app-bar-up fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 p-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
             <div className="flex items-center gap-3">
               <div className="min-w-0 flex-1 text-xs">
                 <p className="font-semibold">{summary.changes ? `${summary.changes} change${summary.changes === 1 ? "" : "s"}` : "No changes yet"}</p>

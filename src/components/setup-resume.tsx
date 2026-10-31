@@ -99,7 +99,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
     <>
       <div className="h-28" aria-hidden />
       {/* pr-16 leaves the bottom-right corner to the Help button (components/poster/help-dock.tsx). */}
-      <div className="fixed left-1/2 z-30 w-full max-w-md -translate-x-1/2 pl-3 pr-16" style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}>
+      <div className="app-bar app-bar-up fixed left-1/2 z-30 w-full max-w-md -translate-x-1/2 pl-3 pr-16" style={{ bottom: "calc(64px + env(safe-area-inset-bottom))" }}>
         <div className="rounded-2xl border border-brand/30 bg-surface p-2.5 shadow-float">
           <div className="flex items-center gap-2.5">
             <Ring pct={pct} label={T("done", "पूरा")} />

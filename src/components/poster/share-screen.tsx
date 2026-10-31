@@ -315,7 +315,7 @@ export function ShareScreen() {
 
       {/* While it runs, the sender always sees that it runs, how many are watching, the time left, and a way to end it. */}
       {live && (
-        <div data-share-block className="fixed left-1/2 z-[65] w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 0.4rem)" }}>
+        <div data-share-block className="app-bar fixed left-1/2 z-[65] w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 0.4rem)" }}>
           <div className="flex items-center gap-2 rounded-xl border border-border bg-[#12144a] px-3 py-2 text-xs font-semibold text-white shadow-card">
             <Eye className="h-4 w-4 shrink-0 text-[#ffd54a]" />
             <span className="min-w-0 flex-1 leading-snug">
@@ -333,7 +333,7 @@ export function ShareScreen() {
 
       {/* A short notice after it ended, saying what still works. */}
       {!live && note && (
-        <div data-share-block className="fixed left-1/2 z-[65] w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 0.4rem)" }}>
+        <div data-share-block className="app-bar fixed left-1/2 z-[65] w-full max-w-md -translate-x-1/2 px-3" style={{ top: "calc(max(0.6rem, env(safe-area-inset-top)) + 0.4rem)" }}>
           <div className="flex items-start gap-2 rounded-xl border border-border bg-[#12144a] px-3 py-2 text-xs font-semibold text-white shadow-card">
             <span className="min-w-0 flex-1 leading-snug">
               {note}

@@ -48,7 +48,7 @@ function CreateHubInner() {
     ] },
     // AI Training: everything that teaches or drives the AI, in one place (owner, 14 Oct 2026).
     { key: "ai", I: Bot, t: "AI Training", s: hi ? "AI को सिखाएँ: अपनी website, files, WhatsApp के जवाब, और बोलकर website बदलें" : "Teach your AI about your business: website, files, WhatsApp replies. Change your website by speaking", href: "/poster/ai", items: [] },
-    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "एक link — computer पर website, phone पर card · share करें, बदलें" : "One link: a website on computers, a card on phones. Share it, change it", items: [] },
+    { key: "card", I: CreditCard, href: "/poster/site", t: hi ? "Card & Website" : "Card & Website", s: hi ? "आपका card और website · share करें, बदलें" : "Your card and your website. Share them, change them", items: [] },
   ];
 
   // Only a door that lists its own choices can be open; one that opens a page (Video, Ads, AI Training, Card) never is.

@@ -403,3 +403,18 @@ html[data-embed] .min-h-screen{min-height:0!important}
 .reel-spark { animation: reel-spark 2.6s ease-out infinite; }
 .reel-sheen { animation: reel-sheen 1.6s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .reel-pan, .reel-eq, .reel-film, .reel-spark, .reel-sheen { animation: none; } }
+
+/* ---- The app on a computer (owner, 31 Oct 2026: "desktop par website ki tarah khule, mobile par app ki tarah") ----
+   app/poster/layout.tsx: .app-shell > .app-col > .app-main > .app-page; components/poster/nav.tsx draws .app-side (the sidebar) at lg.
+   Below 1024px nothing here applies: the phone column and the bottom tab bar stay exactly as they were. Screens without the sidebar
+   (the first "start" screen) keep the phone column on a computer too (:has). Fixed bars that sat over the phone column (.app-bar) move
+   with the page column; the ones that sat above the tab bar (.app-bar-up) come down to the foot, the tab bar being gone. */
+@media (min-width: 1024px) {
+  .app-shell:has(.app-side) .app-col { align-self: stretch; max-width: none; width: auto; margin-left: 240px; border-left: 0; border-right: 0; background: var(--bg); }
+  .app-shell:has(.app-side) .app-main { padding-left: 40px; padding-right: 40px; padding-bottom: 48px; }
+  .app-shell:has(.app-side) .app-page { max-width: 960px; margin: 0 auto; }
+  .app-shell:has(.app-side) .app-bar { left: calc(240px + (100vw - 240px) / 2) !important; max-width: 960px; }
+  .app-shell:has(.app-side) .app-bar.inset-x-0 { left: 240px !important; right: 0; }
+  .app-shell:has(.app-side) .app-bar-up { bottom: 16px !important; margin-bottom: 0 !important; }
+  .app-shell:has(.app-side) .app-pin { left: 252px !important; }
+}

@@ -28,15 +28,17 @@ export const viewport: Viewport = { themeColor: "#2f5bf5", width: "device-width"
 // A phone-shaped, standalone shell: no marketing nav, bottom tab bar, safe-area padding.
 export default function PosterLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex-1 flex flex-col items-center" style={{ background: "var(--bg)" }}>
+    // .app-shell (globals.css): a phone column everywhere; on a computer (≥1024px) the sidebar (components/poster/nav.tsx) on the left and
+    // the page at full width beside it (owner, 31 Oct 2026: "desktop par website ki tarah, mobile par app ki tarah").
+    <div className="app-shell flex-1 flex flex-col items-center" style={{ background: "var(--bg)" }}>
       <BrandProvider brand={null}>
       <PlanProvider>
       <UiLangProvider>
-        <div className="w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
+        <div className="app-col w-full max-w-md flex-1 flex flex-col min-h-screen bg-surface sm:border-x border-border relative">
           {/* data-chrome: hidden when this screen is shown inside another one (components/poster/embed-mode.tsx). */}
           <EmbedMode />
           <div data-chrome data-topmenu className="contents"><TopMenu /></div>
-          <main className="flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><div data-chrome className="contents"><BackBar /></div>{children}<div data-chrome className="contents"><SetupResume variant="float" /></div></main>
+          <main className="app-main flex-1 pb-24 px-4 pt-4" style={{ paddingTop: "calc(max(0.6rem, env(safe-area-inset-top)) + 2.9rem + var(--help-banner, 0px))" }}><div className="app-page"><div data-chrome className="contents"><BackBar /></div>{children}</div><div data-chrome className="contents"><SetupResume variant="float" /></div></main>
           <div data-chrome className="contents"><PosterNav /></div>
           {/* One Help button on every screen, and the live-help session behind it. */}
           <div data-chrome className="contents"><HelpDock /></div>
