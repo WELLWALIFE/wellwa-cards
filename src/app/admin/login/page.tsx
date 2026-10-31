@@ -7,6 +7,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, KeyRound, LoaderCircle, Lock, ShieldCheck } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { inputCls } from "@/components/admin/ui";
+import { GoogleButton } from "@/components/google-button";
 
 const loginAddress = (login: string) => {
   const s = login.trim().toLowerCase();
@@ -100,6 +101,7 @@ function LoginForm() {
         <button type="submit" disabled={busy} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg grad-brand text-sm font-semibold text-white disabled:opacity-60">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}{step === "login" ? "Log in" : "Verify"}
         </button>
+        {step === "login" && <GoogleButton label="Continue with Google" next={next} />}
         {step === "login"
           ? <p className="text-center text-xs text-muted"><Link href="/forgot" className="font-semibold text-brand-ink">Forgot password?</Link></p>
           : <p className="text-center text-xs text-muted">Lost the app? Ask the Super Admin to reset your 2-step under Staff & roles.</p>}

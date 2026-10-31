@@ -38,7 +38,9 @@ export default function StartPage() {
       // A new account: congratulations, then the five profile steps; everyone else: the app (never the desktop
       // dashboard — owner's call, 2 Oct 2026).
       if (w?.fresh) { router.replace("/poster/welcome"); return; }
-      router.replace("/poster");
+      // ?next=/admin… (the admin panel's Google button): back to the panel, not the app.
+      const nx = new URLSearchParams(window.location.search).get("next") || "";
+      router.replace(/^\/admin(\/[a-zA-Z0-9/_-]*)?$/.test(nx) ? `${nx}?login=1` : "/poster");
     })();
   }, [router]);
 

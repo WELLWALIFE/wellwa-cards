@@ -48,7 +48,7 @@ async function sha256Hex(s: string) {
   return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
 }
 
-export function GoogleButton({ label = "Continue with Google", divider = true }: { label?: string; divider?: boolean }) {
+export function GoogleButton({ label = "Continue with Google", divider = true, next = "" }: { label?: string; divider?: boolean; next?: string }) {
   const sb = getBrowserSupabase();
   const router = useRouter();
   const [on, setOn] = useState(false);
@@ -76,7 +76,7 @@ export function GoogleButton({ label = "Continue with Google", divider = true }:
           const { error } = await sb.auth.signInWithIdToken({ provider: "google", token: resp.credential, nonce: raw });
           if (error) { setBusy(false); setErr(error.message); return; }
           // Same landing as the redirect flow: welcome for new accounts, then setup or the app.
-          router.replace("/auth/start");
+          router.replace(next ? `/auth/start?next=${encodeURIComponent(next)}` : "/auth/start");
         },
       });
       box.current.replaceChildren();                // render once, even if the effect runs again
@@ -85,7 +85,7 @@ export function GoogleButton({ label = "Continue with Google", divider = true }:
       setNative(true);
     })();
     return () => { cancelled = true; };
-  }, [on, sb, label, router]);
+  }, [on, sb, label, router, next]);
 
   if (!sb || !on) return null;
 
@@ -94,7 +94,7 @@ export function GoogleButton({ label = "Continue with Google", divider = true }:
     // /auth/start gives new accounts their welcome (credits + email) and opens the setup; others go to the app.
     const { error } = await sb!.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: `${window.location.origin}/auth/start` },
+      options: { redirectTo: `${window.location.origin}/auth/start${next ? `?next=${encodeURIComponent(next)}` : ""}` },
     });
     if (error) setErr(error.message);
   }
