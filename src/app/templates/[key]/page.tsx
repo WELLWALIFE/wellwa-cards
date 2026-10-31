@@ -1,9 +1,9 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Sparkles } from "lucide-react";
 import { NOT_PUBLIC_TEMPLATES, type CardTemplateDef } from "@/lib/templates";
-import { findTemplate } from "@/lib/template-catalog";
+import { findTemplate, TRADE_TEMPLATES } from "@/lib/template-catalog";
 import { getPublicSupabase } from "@/lib/supabase/public";
 import { qrDataUrl } from "@/lib/qr";
 import { CardView } from "@/components/card-view";
@@ -49,7 +49,16 @@ export default async function TemplatePreview({
 }: { params: Promise<{ key: string }> }) {
   const { key } = await params;
   const tpl = await loadTemplate(key);
-  if (!tpl) notFound();
+  if (!tpl) {
+    // An older hand-written template whose trade now has released designs is a draft (template-catalog.ts), but its address is
+    // still printed on every partner's website (the "Templates by profession" gallery) — it opens the trade's first released
+    // design instead of a 404 (seen 31 Oct 2026: doctor-clinic, restaurant-cafe, salon-spa).
+    const old = findTemplate(key);
+    const trade = old?.data.seo?.categoryKey ?? key.split("-")[0];
+    const next = old && !old.brand && !NOT_PUBLIC_TEMPLATES.has(key) ? TRADE_TEMPLATES.find((t) => !t.draft && (t.data.seo?.categoryKey ?? t.key.split("-")[0]) === trade) : undefined;
+    if (next) redirect(`/templates/${next.key}`);
+    notFound();
+  }
 
   // A template isn't a card — fill in the identity fields so it can render.
   const card: Card = {
