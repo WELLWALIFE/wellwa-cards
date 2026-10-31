@@ -2,7 +2,7 @@
 // Reset button (owner's call, 2 Oct 2026: a demo account that anyone can wipe back to fresh after a demo).
 // Wipes what the member MADE and keeps who they ARE:
 //   removed: V-Cards (and their links, sections, leads, domains), poster profiles (posters, calendar, card facts),
-//            products, testimonials, social / Google / WhatsApp connections and their history, CRM, media jobs,
+//            products, testimonials, social / Google / WhatsApp connections and their history, CRM, media jobs, Orders · Silai,
 //            the WhatsApp link on the bridge, and the business details saved with the login.
 //   kept:    the login, the username, name and mobile, the partner ID and team, the plan, credits and wallet.
 // The account is stamped data_cleared_at so the owner's phone drops its own copies of the old answers.
@@ -19,6 +19,9 @@ const TABLES: [string, string][] = [
   ["wa_flows", "owner_id"], ["wa_cloud_accounts", "owner_id"], ["crm_outbox", "owner_id"], ["crm_integrations", "owner_id"],
   ["crm_agents", "owner_id"], ["bot_learning", "user_id"], ["media_jobs", "owner_id"],
   ["poster_offers", "user_id"], ["ad_campaigns", "user_id"],
+  // Orders · Silai (migration 0076; the demo kept "Naveen" and "jai" after a reset, 31 Oct 2026) and the shop's own settings (owner_prefs:
+  // the job set-up, CRM preferences) — made by the member, so they go too.
+  ["job_events", "owner_id"], ["job_orders", "owner_id"], ["job_measurements", "owner_id"], ["job_karigars", "owner_id"], ["owner_prefs", "owner_id"],
 ];
 // Saved with the login by the setup; the rest of user_metadata (name, mobile, DOB, introducer, partner code, the
 // demo flag) stays. home_city / home_address and whatsapp are profile step 1's answers, so they go too.
