@@ -10,6 +10,7 @@
 // fonts, hero layout, corners — comes from card.site.style (src/lib/site-style.ts), with the card's colour and
 // look as the fallback, so a website that never chose a style still wears its brand colour.
 import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { firstSentence } from "@/lib/first-sentence";
 import { X, Download, Check, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardLink, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
 import { ContactForm, AppointmentBlock, ImageLightbox, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
@@ -48,6 +49,7 @@ import { AdvancedSite } from "@/components/site-adv";
 import { activeAdvanced } from "@/lib/site-advanced";
 
 /** The designer's section layouts (card.site.style.layouts), read by the section components below. */
+
 const LayoutCtx = createContext<SiteLayouts | undefined>(undefined);
 /** The page's blueprint (docs/website-looks-v2.md): sections draw themselves a little differently on each. */
 const BlueprintCtx = createContext<BlueprintKey | undefined>(undefined);
@@ -441,7 +443,10 @@ export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage,
 
       {offerNow && (
         <div ref={annRef} className="site-ann" role="note">
-          <span>{t(offerNow.title ? `${offerNow.title}: ${offerNow.text}` : offerNow.text)}</span>
+          {/* One short line (owner, 31 Oct 2026: a strip that ran to five lines on a phone): the title and the first sentence; the whole
+              offer is in the Offer section below, and the link opens it on WhatsApp. */}
+          <span className="site-ann-full">{t(offerNow.title ? `${offerNow.title}: ${offerNow.text}` : offerNow.text)}</span>
+          <span className="site-ann-short">{t(offerNow.title ? `${offerNow.title}: ${firstSentence(offerNow.text)}` : firstSentence(offerNow.text))}</span>
           {wa && <a href={waHref(offerNow.title || offerNow.text)} target="_blank" rel="noreferrer" onClick={() => trackClick(card.username, "site-offer-strip")}>{hiLang ? "यह ऑफ़र WhatsApp पर पाएँ" : t("Get this offer on WhatsApp")}</a>}
         </div>
       )}
@@ -809,6 +814,8 @@ const VIEW_CSS = `
 .site header.site-head.glass{background:color-mix(in srgb,var(--paper) 99%,transparent)}
 .site .site-ann{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:9px 16px;background:var(--accent);color:var(--on-accent);font-size:13px;line-height:1.35;text-align:center}
 .site .site-ann a{color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap}
+.site .site-ann .site-ann-short{display:none}
+@media (max-width:640px){.site .site-ann{padding:8px 14px;font-size:12.5px}.site .site-ann .site-ann-full{display:none}.site .site-ann .site-ann-short{display:inline}}
 .site .bulk-banner{display:grid;gap:var(--s5);align-items:center;padding:var(--s6) var(--s5);border-radius:var(--r-tile);background:var(--p-soft);border:1px solid var(--line)}
 .site .bulk-banner .lede{margin-top:var(--s3);max-width:46ch}
 @media (min-width:768px){.site .bulk-banner{grid-template-columns:1fr auto;padding:var(--s7)}}

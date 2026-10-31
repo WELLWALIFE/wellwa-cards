@@ -10,6 +10,7 @@
 // SiteView has already counted the visit, saved the introducer and owns which page is open (`page`) and how a page is opened
 // (`goto`, which also pushes the address), so none of that is repeated here.
 import { Fragment, createElement, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { firstSentence } from "@/lib/first-sentence";
 import { HeroSlides } from "@/components/site-adv/hero-slides";
 import { Megaphone, X } from "lucide-react";
 import type { Card } from "@/lib/types";
@@ -60,6 +61,8 @@ export type AdvancedSiteProps = {
 const CHROME_CSS = `
 .site[data-adv]{overflow-x:clip}
 .adv-ann{display:flex;flex-wrap:wrap;align-items:center;justify-content:center;gap:4px 14px;padding:9px 16px;background:var(--accent);color:var(--on-accent);font-size:13px;line-height:1.35;text-align:center}
+.adv-ann .adv-ann-short{display:none}
+@media (max-width:640px){.adv-ann{padding:8px 14px;font-size:12.5px}.adv-ann .adv-ann-full{display:none}.adv-ann .adv-ann-short{display:inline}}
 .adv-ann a{display:inline-flex;align-items:center;min-height:32px;color:inherit;font-weight:700;text-decoration:underline;text-underline-offset:3px;white-space:nowrap;padding:12px 0;margin:-12px 0}
 .adv-ann button{min-width:36px;min-height:36px}
 .adv-ann button{position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:0;color:inherit;padding:6px;cursor:pointer;opacity:.85}
@@ -235,7 +238,8 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
         )}
         {c.offer && (
           <div className="adv-ann" role="note">
-            <span>{t(c.offer.title ? `${c.offer.title}: ${c.offer.text}` : c.offer.text)}</span>
+            <span className="adv-ann-full">{t(c.offer.title ? `${c.offer.title}: ${c.offer.text}` : c.offer.text)}</span>
+            <span className="adv-ann-short">{t(c.offer.title ? `${c.offer.title}: ${firstSentence(c.offer.text)}` : firstSentence(c.offer.text))}</span>
             {wa && <a href={waHref(c.offer.title || c.offer.text)} target="_blank" rel="noreferrer" onClick={() => track("offer-strip")}>{hi ? "यह ऑफ़र WhatsApp पर पाएँ" : t("Get this offer on WhatsApp")}</a>}
           </div>
         )}

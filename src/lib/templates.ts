@@ -1015,7 +1015,7 @@ const vcardReseller: CardTemplateDef = {
             { name: "AI Studio (Standard)", desc: "Product photoshoots, 10–60 second video ads, reels and explainer videos from your own text — with credits, only when you need them." },
           ] },
           { id: uid("vh", 6), kind: "testimonials", title: "What card owners say", items: [] },
-          { id: uid("vh", 7), kind: "offer", title: "Start free", text: "Your digital V-Card is worth ₹1,499 — and free for you for 1 year. No card details, no hidden charge. Add Standard whenever you want the website, the AI assistant and daily posters.", code: "", expires: "" },
+          { id: uid("vh", 7), kind: "offer", title: "Free V-Card", text: "Worth ₹1,499, free for 1 year. No card details, no hidden charge.", code: "", expires: "" },
           { id: uid("vh", 8), kind: "contact", title: "Ask me anything", note: "Tell me what work you do — I will make a demo card with your name and send you the link." },
         ],
       },
