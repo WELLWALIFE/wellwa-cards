@@ -967,6 +967,9 @@ const vcardReseller: CardTemplateDef = {
     // The website this card opens as on a computer (promoteShubhora switches it on): its own first line, never the trade fallback.
     site: {
       enabled: true,
+      // The website's header carries the Shubhora logo, not the partner's name (owner, 31 Oct 2026); the same file the app's own
+      // Shubhora strip shows (components/shubhora-bar.tsx). The partner's name stays on the card and in the hero's kicker.
+      logoUrl: "/art/brand/shubhora-logo.png",
       hero: { headline: "Your whole business on one link", sub: "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.", textSide: "left", focus: "15% 50%" },
       // The big-photo top: the drawn banner fills it, words on the left (the picture's empty side).
       style: { hero: "photo" },
