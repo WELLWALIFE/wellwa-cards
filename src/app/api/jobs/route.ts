@@ -83,14 +83,23 @@ export async function POST(request: Request) {
   const items = (Array.isArray(b.items) ? b.items : []).slice(0, 20).filter((i: Record<string, unknown>) => txt(i?.item, 60) || txt(i?.work, 60));
   if (!items.length) return NextResponse.json({ error: "Add at least one item." }, { status: 400 });
   const due = typeof b.due_date === "string" && /^\d{4}-\d{2}-\d{2}$/.test(b.due_date) ? b.due_date : null;
-  const karigarIds = new Set(list(await restAsService<{ id: string }[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id`)).map((k) => k.id));
-  const byName = (await personName(me.id)) || (scope.role === "owner" ? "Owner" : "Team");
+  // Everything the loop needs, fetched together (each awaited query is a ~300 ms trip).
+  const [kRows, name0, number0, shop] = await Promise.all([
+    restAsService<{ id: string }[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id`),
+    personName(me.id),
+    nextNumber(scope.ownerId),
+    shopName(scope.ownerId),
+  ]);
+  const karigarIds = new Set(list(kRows).map((k) => k.id));
+  const byName = name0 || (scope.role === "owner" ? "Owner" : "Team");
   const order_ref = `O${Date.now().toString(36).toUpperCase()}`;
   const money = has(access, "money"), assign = has(access, "assign");
   let advanceLeft = money ? toPaise(b.advance) : 0;
   const made: JobRow[] = [];
   const told: string[] = [];
-  let number = await nextNumber(scope.ownerId);
+  let number = number0;
+  let t = Date.now();   // explicit event times, so the history reads created → advance → step even though the rows are written together
+  const at = () => new Date((t += 2)).toISOString();
   for (const it of items) {
     const chosen = assign && isUuid(it.assigned_to) && (await isTeamMember(scope.ownerId, it.assigned_to)) ? it.assigned_to : null;
     const karigar = assign && isUuid(it.karigar_id) && karigarIds.has(it.karigar_id) ? it.karigar_id : null;
@@ -122,17 +131,16 @@ export async function POST(request: Request) {
       if (!saved) { if (r.status === 409 || /duplicate|unique/i.test(r.text)) number += 1; else return NextResponse.json({ error: /job_orders/.test(r.text) ? "Orders are not set up yet — run migration 0076 in Supabase." : "Could not save the order. Please try again." }, { status: 502 }); }
     }
     if (!saved) return NextResponse.json({ error: "Could not save the order. Please try again." }, { status: 502 });
-    await logEvent(scope, saved.id, { kind: "created", status: "received", note: [saved.item, saved.work].filter(Boolean).join(" · ") }, byName);
-    if (adv > 0) await logEvent(scope, saved.id, { kind: "payment", amount_paise: adv, note: "Advance" }, byName);
+    const events: Promise<void>[] = [logEvent(scope, saved.id, { kind: "created", status: "received", at: at(), note: [saved.item, saved.work].filter(Boolean).join(" · ") }, byName)];
+    if (adv > 0) events.push(logEvent(scope, saved.id, { kind: "payment", amount_paise: adv, at: at(), note: "Advance" }, byName));
     // Auto start: straight to the item's first step; that step's person (or the one chosen here) gets it and is told.
     const first = flowFor(setup, saved.item)[1];
-    if (setup.autoStart && first && first !== "ready") {
-      const r = await moveTo(scope, setup, saved, first, byName, { assign: !chosen && !karigar });
-      if (r.job) saved = r.job;
-      if (r.told) told.push(`#${saved.number}: ${r.told}`);
-    }
+    const start = setup.autoStart && first && first !== "ready" ? moveTo(scope, setup, saved, first, byName, { assign: !chosen && !karigar, at: at() }) : null;
+    const [r] = await Promise.all([start, ...events]);
+    if (r?.job) saved = r.job;
+    if (r?.told) told.push(`#${saved.number}: ${r.told}`);
     made.push(forView(access, saved));
     number += 1;
   }
-  return NextResponse.json({ jobs: made, told, shop: await shopName(scope.ownerId) });
+  return NextResponse.json({ jobs: made, told, shop });
 }

@@ -28,7 +28,8 @@ export default function OrdersPage() {
   const [busy, setBusy] = useState("");
 
   useEffect(() => { (async () => { if (!(await isLoggedIn())) { router.replace(`/login?next=${encodeURIComponent(location.pathname + location.search)}`); return; } setReady(true); })(); }, [router]);
-  const load = useCallback(async () => {
+  // Not "fresh": the same list asked for twice within seconds (the first screen settles its tab) is one request; any save empties that memory.
+  const load = useCallback(async (fresh = false) => {
     const p = new URLSearchParams(ws.q);
     if (filter === "mine") { p.set("mine", "1"); p.set("status", "open"); }
     else if (filter === "pool") p.set("pool", "1");
@@ -36,7 +37,7 @@ export default function OrdersPage() {
     else if (filter && filter !== "all") p.set("status", filter);
     else if (!filter) p.set("status", "open");
     if (q.trim()) p.set("q", q.trim());
-    const r = await api<ListAnswer>(`/api/jobs?${p}`, { fresh: true });
+    const r = await api<ListAnswer>(`/api/jobs?${p}`, fresh ? { fresh: true } : undefined);
     if (!r.ok) { setErr(r.data?.error || T("Could not load. Please try again.", "Load नहीं हुआ। फिर try करें।")); return; }
     setErr(""); setData(r.data);
     // The first screen: staff see their work; the counter sees what is due today (else everything in work).
@@ -99,7 +100,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {creating && data && <NewOrder hi={hi} q={ws.q} data={data} onClose={() => setCreating(false)} onSaved={(jobs, shop, told) => { setCreating(false); setBooked({ jobs, shop, told }); void load(); setTimeout(() => void load(), 1500); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      {creating && data && <NewOrder hi={hi} q={ws.q} data={data} onClose={() => setCreating(false)} onSaved={(jobs, shop, told) => { setCreating(false); setBooked({ jobs, shop, told }); void load(); setTimeout(() => void load(true), 1500); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
       {booked && <Booked hi={hi} {...booked} onClose={() => setBooked(null)} />}
 
       {/* Today at a glance — late in red, first. */}

@@ -78,8 +78,12 @@ export { isPermErr };
 
 /** What the AI knows about this business when drafting a reply. */
 export async function businessContext(userId: string): Promise<{ name: string; tagline: string; phone: string; lang: string; knowledge: string }> {
-  const prof = (await restAsService<{ name: string; tagline: string | null; phone: string | null; lang: string }[]>(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1&select=name,tagline,phone,lang`)).data?.[0];
-  const card = (await restAsService<{ data: { company?: string; tagline?: string; about?: string; botKnowledge?: string } }[]>(`cards?owner_id=eq.${userId}&order=created_at.desc&limit=1&select=data`)).data?.[0]?.data;
+  const [pr, cr] = await Promise.all([
+    restAsService<{ name: string; tagline: string | null; phone: string | null; lang: string }[]>(`poster_profiles?user_id=eq.${userId}&order=is_default.desc,created_at&limit=1&select=name,tagline,phone,lang`),
+    restAsService<{ data: { company?: string; tagline?: string; about?: string; botKnowledge?: string } }[]>(`cards?owner_id=eq.${userId}&order=created_at.desc&limit=1&select=data`),
+  ]);
+  const prof = pr.data?.[0];
+  const card = cr.data?.[0]?.data;
   return {
     name: prof?.tagline || card?.company || prof?.name || "our business",
     tagline: card?.tagline ?? "",

@@ -15,17 +15,34 @@ import { SITE_URL } from "@/lib/site-url";
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 export const isUuid = (v: unknown): v is string => typeof v === "string" && /^[0-9a-f-]{36}$/i.test(v);
 
+/* Speed (owner, 1 Nov 2026: "slow nahi chalna chahiye"): the database is in another region, so every awaited query is ~300 ms. What
+ * rarely changes — a person's name, the shop's name — is remembered for a few minutes; what each call needs is fetched together. */
+const memo = new Map<string, { v: unknown; until: number }>();
+async function remember<T>(key: string, ttlMs: number, get: () => Promise<T>): Promise<T> {
+  const hit = memo.get(key);
+  if (hit && hit.until > Date.now()) return hit.v as T;
+  const v = await get();
+  memo.set(key, { v, until: Date.now() + ttlMs });
+  if (memo.size > 5000) for (const [k, x] of memo) { if (x.until <= Date.now()) memo.delete(k); if (memo.size <= 4000) break; }
+  return v;
+}
 /** The person's own name for the history ("Ramesh (tailor)"). */
 export async function personName(userId: string): Promise<string> {
-  const p = list(await restAsService<{ full_name: string | null }[]>(`profiles?id=eq.${userId}&select=full_name&limit=1`))[0];
-  return (p?.full_name || "").trim().slice(0, 60);
+  return remember(`name:${userId}`, 5 * 60_000, async () => {
+    const p = list(await restAsService<{ full_name: string | null }[]>(`profiles?id=eq.${userId}&select=full_name&limit=1`))[0];
+    return (p?.full_name || "").trim().slice(0, 60);
+  });
 }
 
 /** The person's rights in this shop: the owner all; a staff login what Orders → Staff gave it (a CRM manager with
  *  nothing set there gets all, an agent with nothing set books and measures). */
 export async function accessOf(scope: Scope, setup: JobSetup): Promise<JobAccess> {
-  if (scope.role === "owner") return { title: "Owner", rights: ALL_RIGHTS, agentId: null, owner: true };
+  if (scope.role === "owner") return accessFrom(scope, setup, null);
   const row = list(await restAsService<{ id: string; name: string }[]>(`crm_agents?owner_id=eq.${scope.ownerId}&agent_user_id=eq.${scope.userId}&active=is.true&select=id,name&limit=1`))[0];
+  return accessFrom(scope, setup, row ?? null);
+}
+function accessFrom(scope: Scope, setup: JobSetup, row: { id: string; name: string } | null): JobAccess {
+  if (scope.role === "owner") return { title: "Owner", rights: ALL_RIGHTS, agentId: null, owner: true };
   const st = row ? setup.staff[row.id] : undefined;
   const rights: Right[] = st ? st.rights : scope.role === "manager" ? ALL_RIGHTS : ["book", "measure"];
   return { title: st?.title || (scope.role === "manager" ? "Manager" : "Staff"), rights, agentId: row?.id ?? null, owner: false };
@@ -109,7 +126,7 @@ export async function tellPerson(scope: Scope, setup: JobSetup, job: JobRow, p: 
 
 /** Move a job to a step. The step's person (if set, and `assign` is true) gets the job and is told; at "ready" the
  *  customer is told (unless notifyCustomer is false). Returns the job, the customer notice and who was told. */
-export async function moveTo(scope: Scope, setup: JobSetup, job: JobRow, status: string, byName: string, o: { note?: string; assign?: boolean; notifyCustomer?: boolean } = {}) {
+export async function moveTo(scope: Scope, setup: JobSetup, job: JobRow, status: string, byName: string, o: { note?: string; assign?: boolean; notifyCustomer?: boolean; at?: string } = {}) {
   const patch: Record<string, unknown> = { status, updated_at: new Date().toISOString() };
   if (status === "delivered") patch.delivered_at = new Date().toISOString();
   const step = setup.steps.find((x) => x.key === status);
@@ -128,8 +145,10 @@ export async function moveTo(scope: Scope, setup: JobSetup, job: JobRow, status:
     if (!who && next.karigar_id) who = await personOf(scope.ownerId, `k:${next.karigar_id}`);
   }
   const told = who && step && (who.kind === "k" || who.userId !== scope.userId) ? await tellPerson(scope, setup, next, who) : "";
-  await logEvent(scope, job.id, { kind: "status", status, note: [o.note, told].filter(Boolean).join(" · ") }, byName);
-  const notice = status === "ready" && o.notifyCustomer !== false ? await notifyReady(scope, next, byName) : null;
+  const [, notice] = await Promise.all([
+    logEvent(scope, job.id, { kind: "status", status, ...(o.at ? { at: o.at } : {}), note: [o.note, told].filter(Boolean).join(" · ") }, byName),
+    status === "ready" && o.notifyCustomer !== false ? notifyReady(scope, next, byName) : Promise.resolve(null),
+  ]);
   return { job: notice?.sent ? { ...next, notified_at: new Date().toISOString() } : next, notice, told };
 }
 
@@ -148,17 +167,21 @@ export async function notifyReady(scope: Scope, job: JobRow, byName: string): Pr
 
 /** The shop's items, measurement fields and kinds of work (owner_prefs.crm.jobSetup), or the defaults. */
 export async function jobSetup(ownerId: string): Promise<JobSetup> {
-  const r = list(await restAsService<{ crm: Record<string, unknown> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`))[0];
-  return r?.crm?.jobSetup ? cleanSetup(r.crm.jobSetup) : DEFAULT_SETUP;
+  // Read on every Orders call; the app runs as ONE process (ecosystem.config.cjs), so a save below drops it for everyone at once.
+  return remember(`setup:${ownerId}`, 60_000, async () => {
+    const r = list(await restAsService<{ crm: Record<string, unknown> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`))[0];
+    return r?.crm?.jobSetup ? cleanSetup(r.crm.jobSetup) : DEFAULT_SETUP;
+  });
 }
 export async function saveJobSetup(ownerId: string, setup: JobSetup): Promise<boolean> {
   const crm = list(await restAsService<{ crm: Record<string, unknown> | null }[]>(`owner_prefs?owner_id=eq.${ownerId}&select=crm`))[0]?.crm ?? {};
   const r = await restAsService("owner_prefs", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify({ owner_id: ownerId, crm: { ...crm, jobSetup: cleanSetup(setup) }, updated_at: new Date().toISOString() }) });
+  memo.delete(`setup:${ownerId}`);
   return r.ok;
 }
 /** The shop's name for the customer's messages. */
 export async function shopName(ownerId: string): Promise<string> {
-  return (await businessContext(ownerId).catch(() => null))?.name ?? "";
+  return remember(`shop:${ownerId}`, 2 * 60_000, async () => (await businessContext(ownerId).catch(() => null))?.name ?? "");
 }
 
 /** One measurement row from a request body ({ garment, unit, values, notes, person }); null when nothing was filled. */
@@ -185,8 +208,13 @@ export async function jobsCtx(request: Request, as: string | null): Promise<
   if (!me) return { ok: false, res: NextResponse.json({ error: "Please log in." }, { status: 401 }) };
   const scope = await resolveScope(me, as);
   if (!scope) return { ok: false, res: NextResponse.json({ error: "Not allowed." }, { status: 403 }) };
-  const gate = await addonGate(scope.ownerId, "orders"); if (gate) return { ok: false, res: gate };
-  const setup = await jobSetup(scope.ownerId);
-  return { ok: true, me, scope, setup, access: await accessOf(scope, setup) };
+  // The gate, the setup and the staff row together: one trip instead of three.
+  const [gate, setup, staffRow] = await Promise.all([
+    addonGate(scope.ownerId, "orders"),
+    jobSetup(scope.ownerId),
+    scope.role === "owner" ? Promise.resolve(null) : restAsService<{ id: string; name: string }[]>(`crm_agents?owner_id=eq.${scope.ownerId}&agent_user_id=eq.${scope.userId}&active=is.true&select=id,name&limit=1`).then((r) => list(r)[0] ?? null),
+  ]);
+  if (gate) return { ok: false, res: gate };
+  return { ok: true, me, scope, setup, access: accessFrom(scope, setup, staffRow) };
 }
 export const denied = (what: string) => NextResponse.json({ error: `You do not have the right to ${what}. Ask the owner (Orders → Staff).` }, { status: 403 });
