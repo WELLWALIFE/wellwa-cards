@@ -7,6 +7,7 @@
 import { serviceConfigured, serviceHeaders, SUPA_URL } from "@/lib/admin-guard";
 import { requireAdmin, audit } from "@/lib/admin-v2";
 import { kindOf } from "@/lib/account-kind";
+import { franchiseOf } from "@/lib/franchise-server";
 import { setAccountKind } from "@/lib/account-kind-server";
 import { makePartnerId, partnerCall } from "@/lib/partner-link";
 
@@ -33,6 +34,8 @@ export async function POST(request: Request) {
     return Response.json({ ok: true, kind: op });
   }
   if (op === "make-partner") {
+    // A franchise's user stays out of the partner programme (owner, 1 Nov 2026).
+    if (await franchiseOf(id).catch(() => null)) return Response.json({ error: "This account belongs to a franchise. Franchise users are not part of the partner programme." }, { status: 409 });
     const sponsor = String(b.sponsor ?? "").trim();
     const leg = String(b.leg ?? "").toUpperCase() === "R" ? "R" : String(b.leg ?? "").toUpperCase() === "L" ? "L" : "";
     const parent = String(b.parent ?? "").trim();

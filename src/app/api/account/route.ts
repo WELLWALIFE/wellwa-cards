@@ -16,6 +16,7 @@ import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { partnerCall, partnerLinked, registerPartner, type PartnerSummary } from "@/lib/partner-link";
 import { cleanAccountUsername, usernameOk } from "@/lib/username";
 import { setAccountKind } from "@/lib/account-kind-server";
+import { franchiseOf } from "@/lib/franchise-server";
 import type { AccountKind } from "@/lib/account-kind";
 import { SUPA_URL, serviceHeaders } from "@/lib/admin-guard";
 import { attachFranchise } from "@/lib/franchise-server";
@@ -115,6 +116,8 @@ export async function POST(request: Request) {
   const b = (await request.json().catch(() => ({}))) as { username?: unknown; by?: unknown; leg?: unknown; kind?: unknown; action?: unknown; dob?: unknown; gender?: unknown; agree?: unknown; franchise?: unknown };
   // The franchise whose link / code brought this person (shubhora.com/start?f=CODE): the account joins it once (Admin v2, 31 Oct 2026).
   if (typeof b.franchise === "string" && b.franchise.trim()) await attachFranchise(me.id, b.franchise).catch(() => undefined);
+  // Owner, 1 Nov 2026: a franchise's user is a CONSUMER whatever link they came by — no partner programme, no team, no Business tab.
+  if (await franchiseOf(me.id).catch(() => null)) b.kind = "consumer";
 
   if (b.action === "auto") {
     const p = await profile(me.token, me.id);

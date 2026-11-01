@@ -283,6 +283,9 @@ Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchi
   (→ `/api/account` `franchise`). Commission on every verified payment (`franchiseEarning()` in billing/verify, autopay, pay/advanced):
   first payment % / renewal % per franchise (defaults in Platform settings). Payout: request → approve → paid (UTR) → ledger line.
   A franchise login = admin_users row with role franchise + franchise_id: same panel, only its users (`scopeOf` / `userInScope`).
+  **No partner programme for franchises** (owner, 1 Nov 2026 "franchise mein MLM nahi"): a user under a franchise is a CONSUMER whatever link
+  they came by (`/api/account` forces kind consumer when `franchiseOf()`), Admin cannot "Make partner ID" for them (kind route), and the
+  franchise's own panel shows no Partner ID column / views / stats (`meFr` in admin/users).
 - **Pages**: dashboard (real counts + server health), Staff & roles, Audit log, Franchises (+ Payouts tab), franchise detail, My earnings
   (franchise), Platform settings, System health, Security (2-step, password, log out everywhere). Old partner-panel staff page →
   `/admin/partner-staff`. Shared UI: `src/components/admin/ui.tsx`.

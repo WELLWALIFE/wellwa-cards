@@ -28,6 +28,12 @@ export async function attachFranchise(userId: string, code: string): Promise<{ o
   return list(r).length ? { ok: true, franchise: fr } : { ok: false, reason: "already has a franchise" };
 }
 
+/** Is this account under a franchise? (Owner, 1 Nov 2026: franchise users never see the partner programme — they are consumers.) */
+export async function franchiseOf(userId: string): Promise<string | null> {
+  const prof = list(await svc<{ franchise_id: string | null }[]>(`profiles?id=eq.${userId}&select=franchise_id&limit=1`))[0];
+  return prof?.franchise_id ?? null;
+}
+
 /** Called after every verified payment: the user's franchise earns its percent (first payment % or renewal %). Once per payment ref. */
 export async function franchiseEarning(userId: string, p: { paise: number; ref: string; what?: string }): Promise<void> {
   try {

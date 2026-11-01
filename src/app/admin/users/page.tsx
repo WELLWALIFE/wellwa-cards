@@ -341,10 +341,10 @@ export default function AdminUsers() {
               Create app logins ({users.filter((u) => !isAccount(u) && u.partner && !u.partner.isRoot).length})
             </button>
           )}
-          <button onClick={repairLinks} disabled={!live} title="Make every app account show the partner ID it is really tied to"
+          {!meFr && <button onClick={repairLinks} disabled={!live} title="Make every app account show the partner ID it is really tied to"
             className="rounded-lg border border-border bg-surface px-3 py-2 text-xs font-semibold hover:bg-surface2 disabled:opacity-40">
             Fix ID links{users.some(mixed) ? ` (${users.filter(mixed).length})` : ""}
-          </button>
+          </button>}
           <button onClick={load} className="ed-icon" title="Refresh" aria-label="Refresh">
             {loading ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
           </button>
@@ -376,18 +376,18 @@ export default function AdminUsers() {
       <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
         <Stat label="Everyone listed" value={users.length} on={view === "all"} onClick={() => pick("all")} />
         <Stat label="App accounts" value={accounts.length} on={view === "accounts"} onClick={() => pick("accounts")} />
-        <Stat label="Partner IDs" value={partnerIds.length} on={view === "ids" || view === "green"} onClick={() => pick("ids")}
+        {!meFr && <Stat label="Partner IDs" value={partnerIds.length} on={view === "ids" || view === "green"} onClick={() => pick("ids")}
           extra={<button type="button" onClick={(e) => { e.stopPropagation(); pick("green"); }}
             className={`ml-1.5 rounded-full px-2 py-0.5 text-xs font-semibold ${view === "green" ? "bg-good text-white" : "bg-good/10 text-good hover:bg-good/20"}`}>
-            {partnerIds.filter((u) => u.partner?.status === "green").length} green</button>} />
-        <Stat label="To review" value={accounts.filter((u) => u.accountKind === "pending").length} on={view === "review"} onClick={() => pick("review")} hint="From the website, no sponsor" />
-        <Stat label="Consumers" value={accounts.filter((u) => u.accountKind === "consumer").length} on={view === "consumers"} onClick={() => pick("consumers")} hint="App only" />
+            {partnerIds.filter((u) => u.partner?.status === "green").length} green</button>} />}
+        {!meFr && <Stat label="To review" value={accounts.filter((u) => u.accountKind === "pending").length} on={view === "review"} onClick={() => pick("review")} hint="From the website, no sponsor" />}
+        {!meFr && <Stat label="Consumers" value={accounts.filter((u) => u.accountKind === "consumer").length} on={view === "consumers"} onClick={() => pick("consumers")} hint="App only" />}
         <Stat label="Paid plan" value={accounts.filter((u) => u.plan !== "free").length} on={view === "paid"} onClick={() => pick("paid")} />
         <Stat label="MRR (est.)" value={`₹${revenue.toLocaleString("en-IN")}`} accent on={false} onClick={() => pick("paid")} hint="Paid accounts" />
       </div>
 
       <div ref={listTop} className="flex flex-wrap gap-2 scroll-mt-20">
-        {VIEWS.map((v) => {
+        {VIEWS.filter((v) => !meFr || !["ids", "partner", "green", "red", "review", "consumers"].includes(v.id)).map((v) => {
           const on = view === v.id;
           return (
             <button key={v.id} onClick={() => setView(v.id)}
@@ -413,7 +413,7 @@ export default function AdminUsers() {
             <thead>
               <tr className="text-left text-faint mono text-xs uppercase tracking-wide border-b border-border">
                 <th className="px-4 py-3 font-semibold">User</th>
-                <th className="px-4 py-3 font-semibold">Partner ID</th>
+                {!meFr && <th className="px-4 py-3 font-semibold">Partner ID</th>}
                 <th className="px-4 py-3 font-semibold">Plan</th>
                 <th className="px-4 py-3 font-semibold">Subscription</th>
                 <th className="px-4 py-3 font-semibold">Cards</th>
@@ -448,7 +448,7 @@ export default function AdminUsers() {
                       </>
                     ) : null}
                   </td>
-                  <td className="px-4 py-3">
+                  {!meFr && <td className="px-4 py-3">
                     {p ? (
                       <div className="text-xs space-y-0.5">
                         <div className="flex items-center gap-1.5">
@@ -478,7 +478,7 @@ export default function AdminUsers() {
                         )}
                       </div>
                     )}
-                  </td>
+                  </td>}
                   <td className="px-4 py-3">
                     <select
                       value={u.plan}
