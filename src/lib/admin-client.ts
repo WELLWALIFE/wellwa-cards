@@ -3,14 +3,14 @@
 // (Authorization: Bearer — src/lib/admin-v2.ts reads it; x-owner-token is the same token for the older routes) and, when a
 // partner-panel handoff or the emergency password put one there, x-admin-key.
 import { useCallback, useEffect, useState } from "react";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import type { AdminMe } from "@/lib/admin-rights";
 
 export async function adminHeaders(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { const k = sessionStorage.getItem("ne-admin-key") ?? ""; if (k) h["x-admin-key"] = k; } catch { /* private mode */ }
   try {
-    const { data } = (await getBrowserSupabase()?.auth.getSession()) ?? { data: { session: null } };
+    const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) { h.Authorization = `Bearer ${data.session.access_token}`; h["x-owner-token"] = data.session.access_token; }
   } catch { /* signed out */ }
   return h;

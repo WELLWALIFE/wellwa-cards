@@ -10,13 +10,13 @@ import Link from "next/link";
 import { displayLogin } from "@/lib/phone";
 import { BadgeCheck, Ban, CircleCheck, ExternalLink, LoaderCircle, Search } from "lucide-react";
 import { adminCards, type AdminCardRow } from "@/lib/admin-data";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 
 async function adminHeaders(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
   try {
-    const sb = getBrowserSupabase();
+    const sb = getAdminSupabase();
     const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
   } catch { /* ignore */ }
@@ -42,7 +42,7 @@ export default function AdminCards() {
   // Load real published cards from Supabase; fall back to sample rows.
   useEffect(() => {
     (async () => {
-      const sb = getBrowserSupabase();
+      const sb = getAdminSupabase();
       if (!sb) return;
       const { data } = await sb
         .from("cards")

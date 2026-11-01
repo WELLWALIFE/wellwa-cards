@@ -8,7 +8,7 @@ import {
   UserCog, RefreshCw, LoaderCircle, KeyRound, Power, History, Copy, Check, X, ShieldCheck, ShieldOff, LogOut, Plus, AlertTriangle, Crown, ExternalLink,
 } from "lucide-react";
 import { PARTNER_URL } from "@/lib/site-url";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 
 type Staff = {
   id: number; username: string; name: string; role: string; active: boolean; twoStep: boolean; created: string;
@@ -34,7 +34,7 @@ async function headers(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
   try {
-    const { data } = (await getBrowserSupabase()?.auth.getSession()) ?? { data: { session: null } };
+    const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
   } catch { /* ignore */ }
   return h;

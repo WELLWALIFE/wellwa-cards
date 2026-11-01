@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Check, Loader2, Bot, MessageCircle, Send } from "lucide-react";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { savePlatformSettings } from "@/lib/admin-client";
 import { DEFAULT_PLATFORM_RULES } from "@/lib/ai-training";
 import { TrainAiPanel } from "@/components/editor/ai-fields";
@@ -102,7 +102,7 @@ export default function AdminAi() {
 
   useEffect(() => {
     (async () => {
-      const sb = getBrowserSupabase();
+      const sb = getAdminSupabase();
       if (!sb) { setLoading(false); return; }
       const { data } = await sb
         .from("platform_settings")

@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Wallet, LoaderCircle, Check, X, AlertCircle, ArrowDownRight, ArrowUpRight } from "lucide-react";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 
 const rupees = (p: number) => `₹${(p / 100).toLocaleString("en-IN", { maximumFractionDigits: 2 })}`;
 
@@ -13,7 +13,7 @@ async function adminHeaders(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
   try {
-    const sb = getBrowserSupabase();
+    const sb = getAdminSupabase();
     const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
   } catch { /* ignore */ }

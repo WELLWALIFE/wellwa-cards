@@ -4,7 +4,7 @@
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { KeyRound, LogOut, ShieldCheck, ShieldOff, Smartphone } from "lucide-react";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { adminApi, useAdminMe } from "@/lib/admin-client";
 import { Btn, Card, CopyBtn, Field, PageHeader, Spinner, inputCls, toast } from "@/components/admin/ui";
 
@@ -26,7 +26,7 @@ function SecurityInner() {
   const [err, setErr] = useState("");
 
   const load = useCallback(async () => {
-    const sb = getBrowserSupabase(); if (!sb) return;
+    const sb = getAdminSupabase(); if (!sb) return;
     const f = await sb.auth.mfa.listFactors();
     setFactors((f.data?.all ?? []) as Factor[]);
     const a = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -40,7 +40,7 @@ function SecurityInner() {
 
   async function startEnroll() {
     setErr(""); setBusy("enroll");
-    const sb = getBrowserSupabase()!;
+    const sb = getAdminSupabase()!;
     for (const f of (factors ?? []).filter((x) => x.status !== "verified")) await sb.auth.mfa.unenroll({ factorId: f.id }).catch(() => undefined);
     const { data, error } = await sb.auth.mfa.enroll({ factorType: "totp", friendlyName: "Shubhora Admin" });
     setBusy("");
@@ -51,7 +51,7 @@ function SecurityInner() {
     e.preventDefault(); if (!enroll) return;
     const c = code.replace(/\D/g, ""); if (c.length !== 6) { setErr("The code has 6 digits."); return; }
     setErr(""); setBusy("verify");
-    const { error } = await getBrowserSupabase()!.auth.mfa.challengeAndVerify({ factorId: enroll.id, code: c });
+    const { error } = await getAdminSupabase()!.auth.mfa.challengeAndVerify({ factorId: enroll.id, code: c });
     setBusy("");
     if (error) { setErr("That code did not match. Scan again or try the current code."); return; }
     setEnroll(null); setCode(""); toast("2-step verification is on."); await load(); done();
@@ -60,7 +60,7 @@ function SecurityInner() {
     e.preventDefault();
     const c = code.replace(/\D/g, ""); if (c.length !== 6) { setErr("The code has 6 digits."); return; }
     setErr(""); setBusy("verify");
-    const { error } = await getBrowserSupabase()!.auth.mfa.challengeAndVerify({ factorId: verified[0].id, code: c });
+    const { error } = await getAdminSupabase()!.auth.mfa.challengeAndVerify({ factorId: verified[0].id, code: c });
     setBusy("");
     if (error) { setErr("That code did not match."); return; }
     setCode(""); await load(); done();
@@ -68,7 +68,7 @@ function SecurityInner() {
   async function removeMfa() {
     if (!confirm("Switch 2-step off for your login? You can set it up again any time.")) return;
     setBusy("remove");
-    const sb = getBrowserSupabase()!;
+    const sb = getAdminSupabase()!;
     for (const f of factors ?? []) { const { error } = await sb.auth.mfa.unenroll({ factorId: f.id }); if (error) { setBusy(""); setErr(error.message.includes("AAL2") || error.message.includes("aal2") ? "Enter your current code first (below), then remove." : error.message); return; } }
     setBusy(""); toast("2-step switched off.", "info"); await load(); bump();
   }
@@ -77,14 +77,14 @@ function SecurityInner() {
     if (pw.a.length < 10) { setErr("Use at least 10 characters."); return; }
     if (pw.a !== pw.b) { setErr("The two passwords differ."); return; }
     setBusy("pw");
-    const { error } = await getBrowserSupabase()!.auth.updateUser({ password: pw.a });
+    const { error } = await getAdminSupabase()!.auth.updateUser({ password: pw.a });
     if (error) { setBusy(""); setErr(error.message.includes("AAL2") || error.message.includes("aal2") ? "Enter your 2-step code first (above), then change the password." : error.message); return; }
     await adminApi("/api/admin/v2/me", { method: "PATCH", json: { password_changed: true } });
     setBusy(""); setPw({ a: "", b: "" }); toast("Password changed."); done();
   }
   async function logoutEverywhere() {
     if (!confirm("Log out of every device and browser (this one too)?")) return;
-    await getBrowserSupabase()!.auth.signOut({ scope: "global" });
+    await getAdminSupabase()!.auth.signOut({ scope: "global" });
     router.replace("/admin/login");
   }
 

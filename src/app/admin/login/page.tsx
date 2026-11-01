@@ -5,6 +5,7 @@ import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, KeyRound, LoaderCircle, Lock, ShieldCheck } from "lucide-react";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { inputCls } from "@/components/admin/ui";
 import { GoogleButton } from "@/components/google-button";
@@ -31,22 +32,25 @@ function LoginForm() {
   const [err, setErr] = useState("");
   const [checking, setChecking] = useState(true);
 
-  const [other, setOther] = useState("");   // an app login that is not an admin (e.g. the demo account) is signed in here
+  const [other, setOther] = useState("");   // who is signed in to the APP in this browser (stays signed in)
 
-  // Already logged in as an admin → straight to the panel. Logged in as a plain app user (owner, 1 Nov 2026: the demo account was signed in and
-  // /admin ↔ /admin/login bounced for ever) → the form, with a note; the admin login below replaces that session.
+  // Already logged in to the PANEL (its own session, lib/supabase/admin-browser.ts) → straight in. The app's login in this browser
+  // (the demo account, a customer) is a different session: it is only named here and stays signed in (owner, 2 Nov 2026).
   useEffect(() => { (async () => {
-    const sb = getBrowserSupabase();
+    const app = (await getBrowserSupabase()?.auth.getSession().catch(() => null))?.data.session;
+    if (app) setOther(app.user.email ?? app.user.user_metadata?.display_name ?? "an app account");
+    const sb = getAdminSupabase();
     const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
     if (!data.session) { setChecking(false); return; }
     const r = await fetch("/api/admin/v2/me", { headers: { authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" }).catch(() => null);
     if (r?.ok || r?.status === 403) { router.replace(next); return; }
-    setOther(data.session.user.email ?? data.session.user.user_metadata?.display_name ?? "an app account");
+    // the panel's session is not an admin (or expired): forget it here only, the app is untouched
+    await sb?.auth.signOut({ scope: "local" }).catch(() => undefined);
     setChecking(false);
   })(); }, [next, router]);
 
   async function afterLogin() {
-    const sb = getBrowserSupabase()!;
+    const sb = getAdminSupabase()!;
     const { data } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.nextLevel === "aal2" && data.currentLevel !== "aal2") {
       const f = await sb.auth.mfa.listFactors();
@@ -60,7 +64,7 @@ function LoginForm() {
     const email = loginAddress(login);
     if (!email) { setErr("Write your e-mail or 10-digit mobile."); return; }
     if (!pw) { setErr("Write your password."); return; }
-    const sb = getBrowserSupabase(); if (!sb) { setErr("Login is not available right now."); return; }
+    const sb = getAdminSupabase(); if (!sb) { setErr("Login is not available right now."); return; }
     setBusy(true);
     const { error } = await sb.auth.signInWithPassword({ email, password: pw });
     if (error) { setBusy(false); setErr(/invalid/i.test(error.message) ? "Wrong e-mail / mobile or password." : /rate|too many/i.test(error.message) ? "Too many tries. Wait a few minutes." : error.message); return; }
@@ -68,7 +72,7 @@ function LoginForm() {
   }
   async function verify(e: React.FormEvent) {
     e.preventDefault(); setErr("");
-    const sb = getBrowserSupabase()!;
+    const sb = getAdminSupabase()!;
     const c = code.replace(/\D/g, "");
     if (c.length !== 6) { setErr("The code has 6 digits."); return; }
     setBusy(true);
@@ -104,7 +108,7 @@ function LoginForm() {
               <input autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setErr(""); }} className={`${inputCls} text-center text-xl tracking-[0.4em]`} placeholder="••••••" /></label>
           </>
         )}
-        {other && !err && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">You are signed in to the app as <b>{other.replace(/@phone\.shubhora\.com$/, "")}</b>, which is not an admin login. Log in with your admin account below — that signs the app account out of this browser.</p>}
+        {other && !err && <p className="rounded-lg bg-surface2 px-3 py-2 text-xs text-muted">The app in this browser is signed in as <b className="text-ink">{other.replace(/@phone\.(shubhora\.com|neuraledge\.me)$/, "")}</b>. It stays signed in — the panel has its own login.</p>}
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">{err}</p>}
         <button type="submit" disabled={busy} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg grad-brand text-sm font-semibold text-white disabled:opacity-60">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}{step === "login" ? "Log in" : "Verify"}

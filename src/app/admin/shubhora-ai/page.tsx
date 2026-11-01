@@ -6,7 +6,7 @@
 // the card chat reads it on every question). An empty box means the built-in text (bridge/shubhora-kb.mjs).
 import { useEffect, useRef, useState } from "react";
 import { BellRing, Check, FileText, FlaskConical, Loader2, MessageCircle, Power, RotateCcw, Send, Sparkles } from "lucide-react";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { savePlatformSettings } from "@/lib/admin-client";
 import { SHUBHORA_FAQ, SHUBHORA_KNOWLEDGE, SHUBHORA_PERSONA } from "../../../../bridge/shubhora-kb.mjs";
 
@@ -23,7 +23,7 @@ export default function ShubhoraAi() {
 
   useEffect(() => {
     (async () => {
-      const sb = getBrowserSupabase();
+      const sb = getAdminSupabase();
       if (!sb) { setLoading(false); return; }
       const { data, error } = await sb.from("platform_settings").select("shubhora_persona, shubhora_knowledge, shubhora_faq").eq("id", 1).maybeSingle();
       if (error) setErr("Run supabase/migrations/0055_shubhora_ai.sql in Supabase once — until then the built-in text is used and edits cannot be saved.");
@@ -38,7 +38,7 @@ export default function ShubhoraAi() {
 
   async function save(values: Fields | null) {
     setSaving(true); setErr(""); setNote("");
-    const sb = getBrowserSupabase();
+    const sb = getAdminSupabase();
     if (!sb) { setErr("Supabase is not connected."); setSaving(false); return; }
     // Text equal to the built-in is stored as empty, so a later built-in update (a deploy) still reaches it.
     const v = values ?? { persona: "", knowledge: "", faq: "" };
@@ -161,7 +161,7 @@ async function adminHeaders(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
   try {
-    const { data } = (await getBrowserSupabase()?.auth.getSession()) ?? { data: { session: null } };
+    const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
   } catch { /* ignore */ }
   return h;
@@ -178,7 +178,7 @@ function AiSwitch() {
 
   useEffect(() => {
     (async () => {
-      const sb = getBrowserSupabase();
+      const sb = getAdminSupabase();
       if (!sb) return;
       const { data, error } = await sb.from("platform_settings").select("ai_v2").eq("id", 1).maybeSingle();
       if (error) { setMissing(true); setValue("off"); return; }

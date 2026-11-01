@@ -9,7 +9,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Bell, ChevronDown, LogOut, Menu, Search, ShieldAlert, ShieldCheck, Store, X, Command, Headset, UserRound } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PartnerAdminButton } from "@/components/partner-admin-button";
-import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { adminApi, useAdminMe } from "@/lib/admin-client";
 import { MENU, menuFor, roleLabel, type AdminMe } from "@/lib/admin-rights";
 import { Avatar, Spinner, ToastHost } from "@/components/admin/ui";
@@ -133,7 +133,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   }, []);
   const logout = useCallback(async () => {
     try { sessionStorage.removeItem("ne-admin-key"); sessionStorage.removeItem("ne-admin-scope"); sessionStorage.removeItem("ne-admin-who"); } catch { /* ignore */ }
-    try { await getBrowserSupabase()?.auth.signOut(); } catch { /* ignore */ }
+    try { await getAdminSupabase()?.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
     router.replace("/admin/login");
   }, [router]);
 
