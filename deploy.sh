@@ -96,6 +96,9 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-booking-reminders || printf '%s\n' 
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-advanced-expiry || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 5 * * * root bash $APP/scripts/advanced-expiry.sh >> /var/log/shubhora-advanced-expiry.log 2>&1' > /etc/cron.d/shubhora-advanced-expiry && chmod 644 /etc/cron.d/shubhora-advanced-expiry"
 # Website waiting time (lib/site-ready.ts): the "your website is live" message, hourly at :20. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-site-live || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '20 * * * * root bash $APP/scripts/site-live.sh >> /var/log/shubhora-site-live.log 2>&1' > /etc/cron.d/shubhora-site-live && chmod 644 /etc/cron.d/shubhora-site-live"
+# Ads v2 (1 Nov 2026): every hour at :35 the campaigns' status / spend from Meta + the owner's live / rejected / ending / ended messages;
+# 20:00 IST (14:30 UTC) the "today's ads" line. One cron file, written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-ads-sync || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '35 * * * * root bash $APP/scripts/ads-sync.sh hourly >> /var/log/shubhora-ads-sync.log 2>&1' '30 14 * * * root bash $APP/scripts/ads-sync.sh daily >> /var/log/shubhora-ads-sync.log 2>&1' > /etc/cron.d/shubhora-ads-sync && chmod 644 /etc/cron.d/shubhora-ads-sync"
 # Premium websites tell the search engines (IndexNow) when their pages change, hourly. One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-indexnow || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '10 * * * * root bash $APP/scripts/indexnow.sh >> /var/log/shubhora-indexnow.log 2>&1' > /etc/cron.d/shubhora-indexnow && chmod 644 /etc/cron.d/shubhora-indexnow"
 # CRM Pro automations (docs/crm-pro.md): 09:00 IST birthday wishes + "going cold" nudge, 20:00 IST daily summary. Written once.

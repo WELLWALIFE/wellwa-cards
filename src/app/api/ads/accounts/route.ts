@@ -3,6 +3,7 @@
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { fbAccount, adAccounts, chooseAdAccount, isPermissionError, pageWhatsApp } from "@/lib/ads-server";
+import { billingUrl, NEW_AD_ACCOUNT_URL } from "@/lib/ads-shared";
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
@@ -12,7 +13,9 @@ export async function GET(request: Request) {
   try {
     const [accounts, pageWa] = await Promise.all([adAccounts(fb), pageWhatsApp(fb)]);
     const selected = fb.ad_account_id && accounts.some((a) => a.id === fb.ad_account_id) ? fb.ad_account_id : (accounts.find((a) => a.ok)?.id ?? accounts[0]?.id ?? "");
-    return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts, selected, permission: "ok", pageWhatsapp: pageWa === null ? null : pageWa.slice(-10) });
+    // v2: where to add the money (Meta's billing hub for THAT account) and whether a way to pay is on it yet.
+    const withPay = accounts.map((a) => ({ ...a, hasFunding: !!a.funding, billingUrl: billingUrl(a.id) }));
+    return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts: withPay, selected, permission: "ok", pageWhatsapp: pageWa === null ? null : pageWa.slice(-10), newAccountUrl: NEW_AD_ACCOUNT_URL });
   } catch (e) {
     const msg = (e as Error).message;
     return NextResponse.json({ connected: true, page: fb.name, picture: fb.picture, accounts: [], selected: "", permission: isPermissionError(msg) ? "missing" : "error", error: msg.slice(0, 200) });

@@ -206,6 +206,32 @@ Undo (owner, 1 Nov 2026 "galat ho jaye to"): a cancelled job can be deleted (`DE
 a karigar is edited / deleted when no job is with them (`DELETE /api/jobs/karigars?id=`); a measurement not on any job is deleted
 (`DELETE /api/jobs/measurements?id=`). Speed: flags / setup / names / shop name are remembered in-process (one pm2 app process), see jobs-server.ts.
 
+## Ads v2 — Facebook / Instagram ads made perfect (1 Nov 2026)
+Owner: "ad chalne wale part ko perfect aur professional banao; payment ka option kya rahega Meta ka?" Decision (owner said "jo best lage wo karo"):
+**the money for ads goes to Facebook from the user's OWN ad account** (UPI prepaid or card in Meta's Payment settings) — Shubhora never holds ad
+money, never pays Meta for a user, no GST-on-ad-spend headache. "Shubhora managed ads" (we run it from our account, the user pays us through the
+advance wallet / a payment link) is Batch 2, a Premium service, NOT built. Pieces (migration **0082** must run before deploy):
+- `lib/ads-shared.ts`: `billingUrl / managerUrl / NEW_AD_ACCOUNT_URL`, `adStateOf` (running · scheduled · review · rejected · paused · ended · issue),
+  `friendlyAdError` (Meta error → plain Hindi/English + what to do), `costPer`, `startAtFor(day)` (10:00 IST). `lib/ads-image.ts`: `fitAdImage`
+  — the poster is CONTAINED over a blurred copy in 1:1 (feeds/auto) or 9:16 (stories) with sharp; nothing is cropped. `social-server.uploadAdImage`
+  takes a Buffer too.
+- `lib/ads-server.ts`: `createAd` schedules (`startAt` ≥ 5 min ahead, else now + 10 min; PAUSED unless startNow), uses the fitted picture,
+  returns start/end; `updateCampaign` (daily budget / end time PATCH on the ad set) → `/api/ads/update`; `liveCampaigns(.., preset)` also reads
+  the ad set's budget + dates and `ad_review_feedback`. `/api/ads/accounts` adds `hasFunding`, `billingUrl`, `newAccountUrl`; `/api/ads/create`
+  gates on the plan (free: one ad to try; 402 after) and saves the v2 columns.
+- `lib/ads-sync.ts` + `/api/cron/ads-sync` (`scripts/ads-sync.sh hourly|daily`; deploy.sh writes /etc/cron.d/shubhora-ads-sync: `35 * * * *` and
+  `30 14 * * *` UTC = 8 pm IST): every open campaign is read from Meta hourly; the row keeps status / reason / spend / results; the owner is told
+  ONCE per turn (`ad_update` notify, ref `ad:live|rejected|ending|ended:<row>`): went live · not approved (+ Meta's reason) · ends tomorrow · ended
+  (numbers + run again); the daily one sums today's spend per running ad. Gone from Meta → `ended_at` after a day. Log `/var/log/shubhora-ads-sync.log`.
+- `bridge/index.mjs` `markAdLead`: a WhatsApp message that arrives from an ad (ctwa context) tags the lead `facebook-ad`, `src facebook_ad`,
+  `leads.ad_title`; the CRM list shows "📣 From Facebook ad".
+- Page `app/poster/ads/page.tsx` (desktop two columns, sticky "Your ad" summary): payment card when the account has no funding (3 steps + "Open
+  Payment settings" + "Check again"), "make an ad account" steps when there is none, schedule chips (today / tomorrow / pick a day), placement
+  ratio preview, friendly errors; My ads: totals strip, state badges, "Why Facebook stopped it" box, per-result cost, Pause/Start, "Money / days"
+  edit (budget + extend end), "Run again" (prefills the wizard from the old row). Rendered locally with mocked APIs (Playwright), not run against
+  Meta live: **ads_management / ads_read App Review is still pending** (owner's task, docs/meta-app-review.md) — until approved only the app's
+  testers/admins can really create ads.
+
 ## Website waiting time (31 Oct 2026)
 Owner: "user ko lagna chahiye ki kaam mein time lagta hai — 24–48 hr, customised 1 week, 24 hr baad auto". `src/lib/site-ready.ts`: a website made for
 the FIRST time (card/build publish, `site.readyAt = now + 24h`) and the FIRST Premium design (`site.advancedReadyAt`, accept in /api/card/advanced; the

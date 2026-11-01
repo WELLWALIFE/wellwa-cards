@@ -4,7 +4,7 @@
 import { useEffect } from "react";
 import { usePathname } from "next/navigation";
 
-const NARROW = /^\/poster\/(onboard|setup|plan|start-plan|settings|more|profiles|calendar|brand|testimonials|connect|share|welcome|guide|learn|report|seo|site\/seo|site\/link|photos|photoshoot|text-video|explainer|reel|video|videos|ads|ai|d\b)/;
+const NARROW = /^\/poster\/(onboard|setup|plan|start-plan|settings|more|profiles|calendar|brand|testimonials|connect|share|welcome|guide|learn|report|seo|site\/seo|site\/link|photos|photoshoot|text-video|explainer|reel|video|videos|ai|d\b)/;
 
 export function DesktopWidth() {
   const p = usePathname() || "";

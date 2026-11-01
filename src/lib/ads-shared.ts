@@ -37,3 +37,74 @@ export function waMismatchText(msg: string): string | null {
   if (!m) return null;
   return `WhatsApp ads open the WhatsApp number linked to your Facebook Page (+91 ${m[1]}), not the number typed here. Use +91 ${m[1]} for this ad, or link the other number to the Page first (Facebook Page → Settings → Linked accounts → WhatsApp). / WhatsApp ad हमेशा Facebook Page से जुड़े नंबर (+91 ${m[1]}) पर खुलता है। इसी नंबर से ad बनाएँ, या पहले Page की Settings → Linked accounts → WhatsApp में दूसरा नंबर जोड़ें।`;
 }
+
+/* ---------------- Ads v2 (owner, 1 Nov 2026: "perfect aur professional") ---------------- */
+
+/** Meta's own pages for an ad account: where the money comes from, and the account itself. */
+export const billingUrl = (acct: string) => `https://business.facebook.com/billing_hub/payment_settings/?asset_id=${acct.replace(/^act_/, "")}`;
+export const managerUrl = (acct: string, campaignId?: string) => `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace(/^act_/, "")}${campaignId ? `&selected_campaign_ids=${campaignId}` : ""}`;
+export const NEW_AD_ACCOUNT_URL = "https://business.facebook.com/settings/ad-accounts";
+
+/** The one word for where an ad stands, from what Meta last said and our own record. */
+export type AdState = "running" | "scheduled" | "review" | "rejected" | "paused" | "ended" | "issue";
+export function adStateOf(o: { effective_status?: string | null; status?: string | null; start_time?: string | null; end_time?: string | null; ended_at?: string | null }, now = Date.now()): AdState {
+  const eff = String(o.effective_status ?? "").toUpperCase();
+  const set = String(o.status ?? "").toUpperCase();
+  const end = o.end_time ? Date.parse(o.end_time) : NaN;
+  if (o.ended_at || eff === "COMPLETED" || eff === "ARCHIVED" || eff === "DELETED" || (Number.isFinite(end) && end < now)) return "ended";
+  if (eff === "DISAPPROVED" || eff === "WITH_ISSUES") return eff === "DISAPPROVED" ? "rejected" : "issue";
+  if (eff === "PENDING_REVIEW" || eff === "IN_PROCESS" || eff === "PREAPPROVED") return "review";
+  if (eff === "PAUSED" || /_PAUSED$/.test(eff) || (!eff && set === "PAUSED")) return "paused";
+  const start = o.start_time ? Date.parse(o.start_time) : NaN;
+  if (set === "ACTIVE" && Number.isFinite(start) && start > now + 60_000) return "scheduled";
+  if (eff === "ACTIVE" || set === "ACTIVE") return "running";
+  return "paused";
+}
+export const AD_STATE_TEXT: Record<AdState, { en: string; hi: string; cls: string }> = {
+  running:   { en: "Running",       hi: "चल रही है",        cls: "bg-good/15 text-good" },
+  scheduled: { en: "Starts later",  hi: "बाद में शुरू होगी",  cls: "bg-blue-100 text-blue-800" },
+  review:    { en: "In review",     hi: "Facebook जाँच रहा है", cls: "bg-amber-100 text-amber-800" },
+  rejected:  { en: "Not approved",  hi: "मंज़ूर नहीं हुई",     cls: "bg-danger/10 text-danger" },
+  issue:     { en: "Needs a fix",   hi: "ठीक करना है",       cls: "bg-amber-100 text-amber-800" },
+  paused:    { en: "Paused",        hi: "रुकी हुई",          cls: "bg-surface2 text-muted" },
+  ended:     { en: "Ended",         hi: "ख़त्म",             cls: "bg-surface2 text-muted" },
+};
+
+/** Meta's error lines, in the owner's words. The raw line stays in the API answer for support. */
+export function friendlyAdError(raw: string, hi: boolean): string {
+  const m = raw || "";
+  const t = (en: string, h: string) => (hi ? h : en);
+  if (/funding|payment method|no payment|billing|unsettled|account_status|account (is )?(disabled|closed)|spend cap|payment.*(fail|declin)|insufficient/i.test(m) && !/permission/i.test(m))
+    return t("Facebook could not take money from this ad account: add or fix the payment method (UPI / card) in Payment settings, then try again.", "Facebook इस ad account से पैसा नहीं ले पाया — Payment settings में UPI / card जोड़ें या ठीक करें, फिर दोबारा कोशिश करें।");
+  if (/permission|ads_management|ads_read|\(#200\)|\(#10\)|not authorized|does not have the capability/i.test(m))
+    return t("Facebook has not allowed ads for this login yet. Connections → remove Facebook → connect again and say yes to 'Manage ads'.", "Facebook ने इस login को अभी ads की इजाज़त नहीं दी। Connections → Facebook हटाएँ → फिर जोड़ें और 'Manage ads' को हाँ कहें।");
+  if (/session has expired|token|OAuthException.*expired|\(#190\)/i.test(m))
+    return t("Your Facebook connection has expired. Connections → connect Facebook again.", "आपका Facebook connection expire हो गया। Connections → Facebook फिर से जोड़ें।");
+  if (/image.*(small|size|dimension)|minimum.*(width|height)|too small/i.test(m))
+    return t("The picture is too small for an ad. Use at least 1080 × 1080 pixels.", "Photo ad के लिए छोटी है — कम से कम 1080 × 1080 pixel की लगाएँ।");
+  if (/video/i.test(m) && /(process|format|codec|could not)/i.test(m))
+    return t("Facebook could not use this video. Try an MP4 under 60 MB, 9:16 or 1:1.", "Facebook यह video नहीं ले पाया — 60 MB से छोटी MP4, 9:16 या 1:1 आज़माएँ।");
+  if (/WA_NOT_LINKED|WA_NUMBER_MISMATCH/.test(m)) return m;
+  if (/text.*(too long|exceed)|character limit/i.test(m))
+    return t("The ad text is too long. Shorten the text or the heading.", "Ad का text लंबा है — text या हेडिंग छोटी करें।");
+  if (/rate limit|too many calls|\(#17\)|\(#4\)|\(#32\)|\(#613\)/i.test(m))
+    return t("Facebook is busy right now. Wait a minute and try again.", "Facebook अभी व्यस्त है — एक मिनट रुककर फिर कोशिश करें।");
+  if (/policy|disapprov|prohibited|not approved/i.test(m))
+    return t("Facebook did not approve this ad (its rules). Change the words or the picture and try again.", "Facebook ने यह ad मंज़ूर नहीं की (उसके नियम)। शब्द या photo बदलकर फिर कोशिश करें।");
+  if (/timeout|aborted|network|fetch failed|ECONN/i.test(m))
+    return t("Facebook did not answer in time. Try again in a moment.", "Facebook ने समय पर जवाब नहीं दिया — थोड़ी देर में फिर कोशिश करें।");
+  if (/Invalid parameter/i.test(m) && /target|geo|location|age/i.test(m))
+    return t("Facebook did not accept the audience (town / age). Change it a little and try again.", "Facebook ने यह audience (शहर / उम्र) नहीं मानी — थोड़ा बदलकर फिर कोशिश करें।");
+  return m.length > 220 ? `${m.slice(0, 220)}…` : m;
+}
+
+/** "₹12 per chat" — null when nothing came in yet. */
+export const costPer = (spend: number, results: number) => (results > 0 && spend > 0 ? Math.round(spend / results) : null);
+
+/** Today / tomorrow / a chosen day, 10:00 IST, as ISO (an ad set start time). */
+export function startAtFor(day: string | null | undefined): string | null {
+  if (!day || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return null;
+  const todayIst = new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+  if (day <= todayIst) return null;                                   // today or earlier → "now"
+  return new Date(`${day}T10:00:00+05:30`).toISOString();
+}

@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, ChevronRight, Megaphone, MessageCircle, Phone, Globe, Check, Sparkles, Play, Pause, ExternalLink, RefreshCw, MapPin, X, Image as ImageIcon, Film, Upload, AlertTriangle, Wallet } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Megaphone, MessageCircle, Phone, Globe, Check, Sparkles, Play, Pause, ExternalLink, RefreshCw, MapPin, X, Image as ImageIcon, Film, Upload, AlertTriangle, Wallet, CalendarDays, RotateCcw, SlidersHorizontal, CreditCard } from "lucide-react";
 import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { captureThumbFromUrl, captureVideoThumb, listUploadedVideos, uploadVideo, uploadVideoThumb, videoFileProblem, videoFrameSrc, type UploadedVideo } from "@/lib/video-upload";
@@ -13,7 +13,7 @@ import { useT } from "@/lib/poster-i18n";
 import { Guide } from "@/components/poster/guide";
 import { goBack } from "@/lib/nav-back";
 import { usePlan } from "@/lib/plan";
-import { AD_BUDGET, GOALS, roughResults } from "@/lib/ads-shared";
+import { AD_BUDGET, GOALS, roughResults, adStateOf, AD_STATE_TEXT, friendlyAdError, costPer, NEW_AD_ACCOUNT_URL, managerUrl } from "@/lib/ads-shared";
 import type { AdGoal, AdTargeting, AdAccountInfo, CampaignRow, CampaignLive } from "@/lib/ads-server";
 
 type Profile = { id: string; name: string; tagline?: string | null; phone?: string | null; city?: string | null; category?: string; lang?: string; logo_url?: string | null; is_default?: boolean; card_facts?: { primaryCardId?: string } | null };
@@ -21,7 +21,8 @@ type Poster = { id: string; for_date: string; title: string; url: string; video_
 type Product = { id: string; name: string; photo_url: string | null; photos?: { url: string }[]; price?: string; offer?: string };
 type Job = { id: string; kind?: string; status: string; output_url: string | null; created_at: string; input?: { title?: string; product?: string; tier?: string; outputs?: Record<string, string> } };
 type Creative = { kind: "image" | "video"; url: string; thumbUrl?: string; label: string };
-type Accounts = { connected: boolean; page?: string; picture?: string | null; accounts: AdAccountInfo[]; selected: string; permission: "ok" | "missing" | "none" | "error"; error?: string; pageWhatsapp?: string | null };
+type AcctV2 = AdAccountInfo & { hasFunding?: boolean; billingUrl?: string };
+type Accounts = { connected: boolean; page?: string; picture?: string | null; accounts: AcctV2[]; selected: string; permission: "ok" | "missing" | "none" | "error"; error?: string; pageWhatsapp?: string | null; newAccountUrl?: string };
 type Tab = "new" | "mine";
 
 const field = "mt-1 w-full rounded-lg border border-border bg-surface px-3 py-2.5 text-sm outline-none focus:border-brand";
@@ -29,6 +30,11 @@ const chip = (on: boolean) => `rounded-full border px-3 py-1.5 text-sm font-medi
 const abs = (u: string) => (u.startsWith("http") ? u : `${typeof window !== "undefined" ? window.location.origin : ""}${u}`);
 const inr = (n: number) => `₹${Math.round(n).toLocaleString("en-IN")}`;
 const errBox = "rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger";
+const todayIst = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+const plusDays = (n: number) => new Date(Date.now() + n * 86400_000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+/** The new end after "+N days" — counted from the present end, or from today when it is already past. */
+const extendedEnd = (end: string | null | undefined, extra: number) => { const now = new Date().getTime(); const cur = end ? Date.parse(end) : NaN; return dayText(new Date(Math.max(Number.isFinite(cur) ? cur : now, now) + extra * 86400_000).toISOString()); };
+const dayText = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "");
 
 export default function AdsPage() {
   const router = useRouter();
@@ -49,6 +55,10 @@ export default function AdsPage() {
   const [placements, setPlacements] = useState<"auto" | "feeds" | "stories">("auto");
   const [daily, setDaily] = useState<number>(AD_BUDGET.defaultDaily);
   const [days, setDays] = useState(5);
+  const [startDate, setStartDate] = useState("");          // "" = as soon as it is switched on; else YYYY-MM-DD (10:00 IST)
+  // My ads → "Change money / days" panel for one ad (Ads v2).
+  const [editing, setEditing] = useState<{ id: string; daily: number; extend: number } | null>(null);
+  const [editErr, setEditErr] = useState("");
   const [copy, setCopy] = useState({ primaryText: "", headline: "", description: "" });
   const [link, setLink] = useState("");
   const [phone, setPhone] = useState("");
@@ -79,7 +89,7 @@ export default function AdsPage() {
 
   const loadAccounts = useCallback(async () => {
     setChkMsg("");
-    try { const r = await api<Accounts>("/api/ads/accounts"); if (r.ok) setAcc(r.data); else setChkMsg(hiRef.current ? "अभी देख नहीं पाए। थोड़ी देर बाद फिर कोशिश करें।" : "Could not check just now. Please try again in a little while."); }
+    try { const r = await api<Accounts>("/api/ads/accounts"); if (r.ok) setAcc({ ...r.data, accounts: Array.isArray(r.data?.accounts) ? r.data.accounts : [] }); else setChkMsg(hiRef.current ? "अभी देख नहीं पाए। थोड़ी देर बाद फिर कोशिश करें।" : "Could not check just now. Please try again in a little while."); }
     catch { setChkMsg(hiRef.current ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
   }, []);
   const loadMine = useCallback(async () => {
@@ -196,16 +206,17 @@ export default function AdsPage() {
   async function create(startNow: boolean) {
     if (!creative || creating.current) return;
     const total = daily * days;
-    if (startNow && !confirm(hi ? `Ad अभी शुरू हो जाएगी। Facebook आपके ad account से रोज़ ${inr(daily)} तक लेगा, ${days} दिन में ज़्यादा से ज़्यादा ${inr(total)}। शुरू करें?` : `The ad will start now. Facebook will take up to ${inr(daily)} a day from your ad account, at most ${inr(total)} in ${days} days. Start?`)) return;
+    const when = startDate && startDate > todayIst() ? (hi ? `${dayText(`${startDate}T10:00:00+05:30`)} सुबह 10 बजे से` : `from ${dayText(`${startDate}T10:00:00+05:30`)}, 10 am`) : (hi ? "अभी" : "now");
+    if (startNow && !confirm(hi ? `Ad ${when} शुरू होगी। Facebook आपके ad account से रोज़ ${inr(daily)} तक लेगा, ${days} दिन में ज़्यादा से ज़्यादा ${inr(total)}। शुरू करें?` : `The ad starts ${when}. Facebook will take up to ${inr(daily)} a day from your ad account, at most ${inr(total)} in ${days} days. Start?`)) return;
     creating.current = true; setBusy("create"); setCreateErr(""); setStErr(null);
     // the error lands right above the Save / Start buttons; the preview above them is long, so bring it into view
     const fail = (t: string) => { setCreateErr(t); window.setTimeout(() => createErrRef.current?.scrollIntoView({ block: "center", behavior: "smooth" }), 60); };
     try {
       const r = await api<{ ok?: boolean; managerUrl?: string; status?: string; row?: { id: string }; error?: string }>("/api/ads/create", { method: "POST", json: {
         name: copy.headline, goal, creative: { kind: creative.kind, url: abs(creative.url), thumbUrl: creative.thumbUrl ? abs(creative.thumbUrl) : undefined },
-        primary_text: copy.primaryText, headline: copy.headline, description: copy.description, link, phone, daily_rupees: daily, days, targeting, placements, start_now: startNow,
+        primary_text: copy.primaryText, headline: copy.headline, description: copy.description, link, phone, daily_rupees: daily, days, targeting, placements, start_now: startNow, start_date: startDate || undefined,
       } });
-      if (!r.ok) { fail(r.data.error ?? (hi ? "Ad नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the ad. Please try again.")); return; }
+      if (!r.ok) { fail(r.data.error ? friendlyAdError(r.data.error, hi) : (hi ? "Ad नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the ad. Please try again.")); return; }
       setDone({ managerUrl: r.data.managerUrl ?? "", status: r.data.status ?? "PAUSED", id: r.data.row?.id });
       loadMine();
     } catch { fail(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
@@ -216,12 +227,34 @@ export default function AdsPage() {
     setBusy(`st-${id}`); setStErr(null);
     try {
       const r = await api<{ ok?: boolean; error?: string }>("/api/ads/status", { method: "POST", json: { id, status } });
-      if (!r.ok) { setStErr({ id, text: r.data.error ?? (hi ? "बदल नहीं पाए। फिर से कोशिश करें।" : "Could not change it. Please try again.") }); return false; }
+      if (!r.ok) { setStErr({ id, text: r.data.error ? friendlyAdError(r.data.error, hi) : (hi ? "बदल नहीं पाए। फिर से कोशिश करें।" : "Could not change it. Please try again.") }); return false; }
       loadMine(); return true;
     } catch { setStErr({ id, text: hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again." }); return false; }
     finally { setBusy(""); }
   }
-  function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setUpErr(""); setCopyErr(""); setCreateErr(""); setStErr(null); setOffer(""); }
+  function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setUpErr(""); setCopyErr(""); setCreateErr(""); setStErr(null); setOffer(""); setStartDate(""); }
+  /** "Run again" (Ads v2): the same picture, goal, audience and words come back into the wizard at the money step — new dates, one check, go. */
+  function runAgain(c: CampaignRow) {
+    reset();
+    if (c.creative_url) setCreative({ kind: c.creative_kind === "video" ? "video" : "image", url: c.creative_url, thumbUrl: c.thumb_url ?? undefined, label: c.name });
+    setGoal(c.goal);
+    if (c.targeting && typeof c.targeting === "object") setTargeting({ cities: c.targeting.cities ?? [], ageMin: c.targeting.ageMin ?? 21, ageMax: c.targeting.ageMax ?? 60, gender: c.targeting.gender ?? "all", interests: c.targeting.interests ?? [] });
+    setPlacements(c.placements === "feeds" || c.placements === "stories" ? c.placements : "auto");
+    setDaily(Math.max(AD_BUDGET.minDaily, Math.round(c.daily_paise / 100))); setDays(Math.min(AD_BUDGET.maxDays, Math.max(1, c.days || 5)));
+    setCopy({ primaryText: c.primary_text ?? "", headline: c.headline ?? "", description: c.description ?? "" });
+    if (c.link) setLink(c.link); if (c.phone) { setPhone(c.phone); setPhoneLocked(false); }
+    setTab("new"); setStep(3); window.scrollTo({ top: 0, behavior: "smooth" });
+  }
+  async function saveEdit() {
+    if (!editing) return;
+    setBusy(`ed-${editing.id}`); setEditErr("");
+    try {
+      const r = await api<{ ok?: boolean; error?: string }>("/api/ads/update", { method: "POST", json: { id: editing.id, daily_rupees: editing.daily, ...(editing.extend ? { extend_days: editing.extend } : {}) } });
+      if (!r.ok) { setEditErr(r.data.error ? friendlyAdError(r.data.error, hi) : (hi ? "बदल नहीं पाए।" : "Could not change it.")); return; }
+      setEditing(null); await loadMine();
+    } catch { setEditErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
+    finally { setBusy(""); }
+  }
   // Moving between steps: a message about one step's action must not show under another step's buttons.
   function goStep(n: number) { setStep(n); setUpErr(""); setCopyErr(""); setCreateErr(""); }
   function pickCreative(c: Creative, pid?: string) { setCreative(c); setUpErr(""); if (pid !== undefined) setProductId(pid); }
@@ -289,9 +322,15 @@ export default function AdsPage() {
       {header}
       <section className="rounded-2xl border border-border p-4 space-y-3">
         <p className="flex items-center gap-2 text-base font-bold"><Wallet className="h-5 w-5 text-brand" /> {hi ? "Ad account नहीं मिला" : "No ad account found"}</p>
-        <p className="text-sm text-muted">{hi ? "इस Facebook login पर कोई ad account नहीं है। Meta Business Suite → Ads Manager में ad account बनाएँ, पैसे देने का तरीका (card या UPI) जोड़ें, फिर यहाँ 'फिर से देखें' दबाएँ।" : "This Facebook login has no ad account yet. Make one in Meta Business Suite → Ads Manager and add a way to pay (card or UPI). Then tap 'Check again' here."}</p>
+        <p className="text-sm text-muted">{hi ? "इस Facebook login पर अभी कोई ad account नहीं है। 3 minute का काम, एक बार:" : "This Facebook login has no ad account yet. A one-time, 3-minute job:"}</p>
+        <ol className="space-y-1.5 text-sm">
+          {(hi
+            ? ["नीचे 'Ad account बनाएँ' दबाएँ → Meta Business Settings खुलेगा → Add → Create a new ad account।", "नाम कुछ भी (जैसे दुकान का नाम), समय India, currency INR।", "Payment: UPI (prepaid) या card जोड़ें — UPI में पहले ₹500–1,000 डाल दें।", "वापस आकर 'फिर से देखें' दबाएँ।"]
+            : ["Tap 'Create ad account' below → Meta Business Settings opens → Add → Create a new ad account.", "Any name (your shop's), time zone India, currency INR.", "Payment: add UPI (prepaid) or a card — with UPI, put in ₹500–1,000 first.", "Come back and tap 'Check again'."]
+          ).map((t, i) => <li key={i} className="flex gap-2"><span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-brand-soft text-[11px] font-bold text-brand-ink">{i + 1}</span><span>{t}</span></li>)}
+        </ol>
         <div className="flex flex-wrap gap-2">
-          <a href="https://business.facebook.com/adsmanager" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">Ads Manager <ExternalLink className="h-4 w-4" /></a>
+          <a href={acc.newAccountUrl || NEW_AD_ACCOUNT_URL} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white">{hi ? "Ad account बनाएँ" : "Create ad account"} <ExternalLink className="h-4 w-4" /></a>
           <button type="button" onClick={loadAccounts} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Check again"}</button>
         </div>
         {chkMsg && <p className="text-sm font-semibold text-danger">{chkMsg}</p>}
@@ -319,6 +358,13 @@ export default function AdsPage() {
       {outerErr && <p className={errBox}>{outerErr}</p>}
     </section>
   );
+  // Ads v2: every ad with its one-word state, running first; the totals across all of them.
+  const adRows = (mine?.campaigns ?? []).map((c) => {
+    const l: CampaignLive | undefined = mine!.live[c.campaign_id] ?? ((c.synced_at || c.ended_at) ? { campaign_id: c.campaign_id, status: c.status, effective_status: c.effective_status ?? c.status, spend: (c.spend_paise ?? 0) / 100, impressions: 0, reach: c.reach ?? 0, clicks: 0, results: c.results ?? 0, resultLabel: c.result_label ?? "clicks", chats: c.result_label === "chats" ? c.results ?? 0 : 0, linkClicks: c.result_label === "clicks" ? c.results ?? 0 : 0, start: c.start_time ?? undefined, stop: c.end_time ?? undefined, feedback: c.review_feedback ?? undefined } : undefined);
+    return { c, l, state: adStateOf({ effective_status: l?.effective_status ?? c.effective_status, status: l?.status ?? c.status, start_time: l?.start ?? c.start_time, end_time: l?.stop ?? c.end_time, ended_at: c.ended_at }) }; });
+  const stateOrder: Record<string, number> = { running: 0, review: 1, scheduled: 2, issue: 3, rejected: 4, paused: 5, ended: 6 };
+  adRows.sort((a, b) => stateOrder[a.state] - stateOrder[b.state] || b.c.created_at.localeCompare(a.c.created_at));
+  const adTot = adRows.reduce((t, r) => ({ spend: t.spend + (r.l?.spend ?? 0), chats: t.chats + (r.l?.chats ?? 0), clicks: t.clicks + (r.l?.linkClicks ?? r.l?.clicks ?? 0), reach: t.reach + (r.l?.reach ?? 0), running: t.running + (r.state === "running" ? 1 : 0) }), { spend: 0, chats: 0, clicks: 0, reach: 0, running: 0 });
   if (tab === "mine") return (
     <div className="space-y-4">
       {header}
@@ -329,41 +375,79 @@ export default function AdsPage() {
         : null}
       {mine && mine.campaigns.length > 0 && (
           <div className="space-y-3">
-            {mine.liveError && <p className="text-xs text-muted flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> {hi ? "Facebook से अभी के आँकड़े नहीं मिले — थोड़ी देर बाद फिर देखें।" : "Could not get the latest numbers from Facebook. Please check again in a little while."}</p>}
-            {mine.campaigns.map((c) => {
-              const l = mine.live[c.campaign_id];
-              const active = (l?.effective_status ?? c.status) === "ACTIVE";
+            {mine.liveError && <p className="text-xs text-muted flex items-center gap-1"><AlertTriangle className="h-3.5 w-3.5" /> {hi ? "Facebook से अभी के आँकड़े नहीं मिले — पिछली बार के दिख रहे हैं।" : "Could not get the latest numbers from Facebook — showing the last known ones."}</p>}
+            {/* All ads together (Ads v2) */}
+            <div className="grid grid-cols-4 gap-2 text-center">
+              {[[hi ? "चल रही" : "Running", String(adTot.running)], [hi ? "कुल खर्च" : "Spent in all", inr(adTot.spend)], [hi ? "लोगों तक" : "People reached", adTot.reach.toLocaleString("en-IN")], [adTot.chats ? (hi ? "WhatsApp chats" : "WhatsApp chats") : (hi ? "Link clicks" : "Link clicks"), (adTot.chats || adTot.clicks).toLocaleString("en-IN")]].map(([k, v]) => <div key={k} className="rounded-xl border border-border bg-surface px-1 py-2"><p className="text-base font-extrabold">{v}</p><p className="text-[10px] text-muted">{k}</p></div>)}
+            </div>
+            <div className="space-y-3 lg:grid lg:grid-cols-2 lg:gap-3 lg:space-y-0">
+            {adRows.map(({ c, l, state }) => {
               const eff = (l?.effective_status ?? c.status).replace(/^(ADSET|CAMPAIGN|AD)_PAUSED$/, "PAUSED");
               // Start / Pause follows what the campaign is SET to, not what it is doing now: a started ad that is still
               // "in review" (or waiting for its start time) will spend once Facebook lets it, so it must offer Pause.
               const switchedOn = (l?.status ?? c.status) === "ACTIVE" && eff !== "PAUSED";
               const G = GOALS.find((g) => g.key === c.goal);
+              const st = AD_STATE_TEXT[state];
+              const results = l?.chats || l?.linkClicks || l?.clicks || 0;
+              const cp = costPer(l?.spend ?? 0, results);
+              const ended = state === "ended";
+              const isEditing = editing?.id === c.id;
               return (
-                <section key={c.id} className="rounded-2xl border border-border p-3 space-y-2">
+                <section key={c.id} className={`rounded-2xl border p-3 space-y-2 ${state === "rejected" || state === "issue" ? "border-danger/40" : "border-border"} ${ended ? "opacity-80" : ""}`}>
                   <div className="flex items-start gap-3">
-                    {c.creative_url && (c.creative_kind === "video" ? <span className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-black text-white"><Film className="h-6 w-6" /></span> : /* eslint-disable-next-line @next/next/no-img-element */ <img src={c.creative_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover bg-surface2" />)}
+                    {c.creative_url && (c.creative_kind === "video" ? (c.thumb_url ? /* eslint-disable-line @next/next/no-img-element */ <img src={c.thumb_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover bg-black" /> : <span className="grid h-16 w-16 shrink-0 place-items-center rounded-xl bg-black text-white"><Film className="h-6 w-6" /></span>) : <img src={c.creative_url} alt="" className="h-16 w-16 shrink-0 rounded-xl object-cover bg-surface2" />)}
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-semibold">{c.name}</p>
-                      <p className="text-xs text-muted">{hi ? G?.hi : G?.en} · {inr(c.daily_paise / 100)}/{hi ? "दिन" : "day"} {c.days ? ` · ${c.days} ${hi ? "दिन" : "days"}` : ""} · {new Date(c.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</p>
-                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${active ? "bg-good/15 text-good" : eff === "PAUSED" ? "bg-surface2 text-muted" : "bg-amber-100 text-amber-800"}`}>{active ? (hi ? "चल रही है" : "Running") : eff === "PAUSED" ? (hi ? "रुकी हुई" : "Paused") : eff.replace(/_/g, " ").toLowerCase()}</span>
+                      <p className="text-xs text-muted">{hi ? G?.hi : G?.en} · {inr((l?.dailyPaise ?? c.daily_paise) / 100)}/{hi ? "दिन" : "day"}{c.days ? ` · ${c.days} ${hi ? "दिन" : "days"}` : ""}</p>
+                      <p className="text-[11px] text-muted">
+                        {ended ? `${hi ? "चली" : "Ran"} ${dayText(l?.start ?? c.start_time ?? c.created_at)} – ${dayText(l?.stop ?? c.end_time ?? c.ended_at)}`
+                          : state === "scheduled" ? `${hi ? "शुरू" : "Starts"} ${dayText(l?.start ?? c.start_time)}${(l?.stop ?? c.end_time) ? ` · ${hi ? "तक" : "till"} ${dayText(l?.stop ?? c.end_time)}` : ""}`
+                          : (l?.stop ?? c.end_time) ? `${hi ? "ख़त्म" : "Ends"} ${dayText(l?.stop ?? c.end_time)}` : new Date(c.created_at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}
+                      </p>
+                      <span className={`mt-1 inline-block rounded-full px-2 py-0.5 text-[11px] font-semibold ${st.cls}`}>{hi ? st.hi : st.en}</span>
                     </div>
                   </div>
+                  {(state === "rejected" || state === "issue") && (
+                    <p className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2 text-xs text-ink">
+                      <b>{hi ? "Facebook ने क्यों रोका:" : "Why Facebook stopped it:"}</b> {l?.feedback || c.review_feedback || (hi ? "कारण नहीं बताया — Ads Manager में देखें।" : "No reason given — see Ads Manager.")}
+                      <span className="block text-muted">{hi ? "कोई पैसा नहीं लगा। शब्द या photo बदलकर 'फिर से चलाएँ'।" : "Nothing was charged. Change the words or the picture and 'Run again'."}</span>
+                    </p>
+                  )}
                   <div className="grid grid-cols-4 gap-2 text-center">
-                    {[[hi ? "खर्च" : "Spent", inr(l?.spend ?? 0)], [hi ? "लोगों तक" : "People reached", (l?.reach ?? 0).toLocaleString("en-IN")], c.goal === "whatsapp" ? [hi ? "WhatsApp chats" : "WhatsApp chats", (l?.chats ?? 0).toLocaleString("en-IN")] : [hi ? "बार दिखी" : "Times shown", (l?.impressions ?? 0).toLocaleString("en-IN")], [hi ? "Link clicks" : "Link clicks", (l?.linkClicks ?? l?.clicks ?? 0).toLocaleString("en-IN")]].map(([k, v]) => <div key={k} className="rounded-lg bg-surface2 px-1 py-2"><p className="text-sm font-bold">{v}</p><p className="text-[10px] text-muted">{k}</p></div>)}
+                    {[[hi ? "खर्च" : "Spent", inr(l?.spend ?? 0)], [hi ? "लोगों तक" : "People reached", (l?.reach ?? 0).toLocaleString("en-IN")], c.goal === "whatsapp" ? [hi ? "WhatsApp chats" : "WhatsApp chats", (l?.chats ?? 0).toLocaleString("en-IN")] : [hi ? "Link clicks" : "Link clicks", (l?.linkClicks ?? l?.clicks ?? 0).toLocaleString("en-IN")], [hi ? "प्रति नतीजा" : "Per result", cp ? `₹${cp}` : "—"]].map(([k, v]) => <div key={k} className="rounded-lg bg-surface2 px-1 py-2"><p className="text-sm font-bold">{v}</p><p className="text-[10px] text-muted">{k}</p></div>)}
                   </div>
-                  <div className="flex gap-2">
-                    {switchedOn
+                  <div className="flex flex-wrap gap-2">
+                    {ended || state === "rejected" ? (
+                      <button type="button" onClick={() => runAgain(c)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white"><RotateCcw className="h-4 w-4" /> {hi ? "फिर से चलाएँ" : "Run again"}</button>
+                    ) : switchedOn
                       ? <button type="button" disabled={busy === `st-${c.id}`} onClick={() => setStatus(c.id, "PAUSED")} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold disabled:opacity-60"><Pause className="h-4 w-4" /> {hi ? "रोकें" : "Pause"}</button>
-                      : <button type="button" disabled={busy === `st-${c.id}`} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr(c.daily_paise / 100)} तक लेगा।` : `Start this ad? Facebook will take up to ${inr(c.daily_paise / 100)} a day.`)) setStatus(c.id, "ACTIVE"); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Play className="h-4 w-4" /> {hi ? "शुरू करें" : "Start"}</button>}
-                    <a href={`https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${c.ad_account.replace("act_", "")}&selected_campaign_ids=${c.campaign_id}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold">Ads Manager <ExternalLink className="h-3.5 w-3.5" /></a>
+                      : <button type="button" disabled={busy === `st-${c.id}`} onClick={() => { if (confirm(hi ? `Ad शुरू करें? Facebook रोज़ ${inr((l?.dailyPaise ?? c.daily_paise) / 100)} तक लेगा।` : `Start this ad? Facebook will take up to ${inr((l?.dailyPaise ?? c.daily_paise) / 100)} a day.`)) setStatus(c.id, "ACTIVE"); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-2.5 text-sm font-semibold text-white disabled:opacity-60"><Play className="h-4 w-4" /> {hi ? "शुरू करें" : "Start"}</button>}
+                    {!ended && state !== "rejected" && <button type="button" onClick={() => { setEditErr(""); setEditing(isEditing ? null : { id: c.id, daily: Math.round((l?.dailyPaise ?? c.daily_paise) / 100), extend: 0 }); }} className={`inline-flex items-center gap-1 rounded-xl border px-3 py-2.5 text-sm font-semibold ${isEditing ? "border-brand bg-brand-soft text-brand-ink" : "border-border"}`}><SlidersHorizontal className="h-4 w-4" /> {hi ? "पैसे / दिन" : "Money / days"}</button>}
+                    {!ended && <button type="button" onClick={() => runAgain(c)} title={hi ? "इसी जैसी नई ad" : "A new ad like this one"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold"><RotateCcw className="h-4 w-4" /></button>}
+                    <a href={managerUrl(c.ad_account, c.campaign_id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2.5 text-sm font-semibold" title="Ads Manager"><ExternalLink className="h-3.5 w-3.5" /></a>
                   </div>
+                  {isEditing && editing && (
+                    <div className="space-y-2 rounded-xl bg-surface2 p-3">
+                      <p className="text-xs font-semibold">{hi ? "रोज़ का खर्च" : "Spend each day"} <span className="font-normal text-muted">{inr(editing.daily)}</span></p>
+                      <div className="flex flex-wrap gap-1.5">{[100, 200, 300, 500, 1000].map((v) => <button key={v} type="button" onClick={() => setEditing({ ...editing, daily: v })} className={chip(editing.daily === v)}>{inr(v)}</button>)}<input type="number" min={AD_BUDGET.minDaily} max={AD_BUDGET.maxDaily} value={editing.daily} onChange={(e) => setEditing({ ...editing, daily: Math.min(AD_BUDGET.maxDaily, Math.max(0, Number(e.target.value) || 0)) })} className={`${field} mt-0 max-w-[7rem]`} /></div>
+                      <p className="text-xs font-semibold">{hi ? "दिन बढ़ाएँ" : "Extend by"}{(l?.stop ?? c.end_time) ? <span className="font-normal text-muted"> · {hi ? "अभी ख़त्म" : "now ends"} {dayText(l?.stop ?? c.end_time)}</span> : null}</p>
+                      <div className="flex flex-wrap gap-1.5">{[0, 3, 7, 14].map((v) => <button key={v} type="button" onClick={() => setEditing({ ...editing, extend: v })} className={chip(editing.extend === v)}>{v === 0 ? (hi ? "वही रहने दें" : "Keep") : `+${v} ${hi ? "दिन" : "days"}`}</button>)}</div>
+                      <p className="text-[11px] text-muted">{hi ? `बदलाव के बाद: रोज़ ${inr(editing.daily)} तक${editing.extend ? `, ${extendedEnd(l?.stop ?? c.end_time, editing.extend)} तक` : ""}।` : `After the change: up to ${inr(editing.daily)} a day${editing.extend ? `, till ${extendedEnd(l?.stop ?? c.end_time, editing.extend)}` : ""}.`}</p>
+                      {editErr && <p className={errBox}>{editErr}</p>}
+                      <div className="flex gap-2">
+                        <button type="button" disabled={busy === `ed-${c.id}` || editing.daily < AD_BUDGET.minDaily} onClick={() => void saveEdit()} className="inline-flex items-center gap-1 rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy === `ed-${c.id}` ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} {hi ? "बदलें" : "Save change"}</button>
+                        <button type="button" onClick={() => setEditing(null)} className="rounded-xl border border-border px-4 py-2 text-sm">{hi ? "रहने दें" : "Cancel"}</button>
+                      </div>
+                    </div>
+                  )}
                   {stErr?.id === c.id && <p className={errBox}>{stErr.text}</p>}
                 </section>
               );
             })}
-            <p className="text-[11px] text-muted">{hi ? "ये आँकड़े Facebook से आते हैं, कुछ मिनट पुराने हो सकते हैं। नई ad पर 'in review' दिख सकता है — Facebook आम तौर पर 24 घंटे में मंज़ूर कर देता है।" : "These numbers come from Facebook and may be a few minutes old. A new ad may say 'in review'. Facebook usually says yes within 24 hours."}</p>
+            </div>
+            <p className="text-[11px] text-muted">{hi ? "आँकड़े Facebook से आते हैं (हर घंटे ताज़ा)। नई ad पर 'Facebook जाँच रहा है' दिखता है — आम तौर पर 24 घंटे में मंज़ूरी; live, रुकने या ख़त्म होने पर आपको WhatsApp / notification मिलेगा।" : "Numbers come from Facebook (refreshed hourly). A new ad shows 'In review' — usually approved within 24 hours; you get a WhatsApp / notification when it goes live, is stopped or ends."}</p>
           </div>
-        )}
+      )}
       {mine && importBox}
     </div>
   );
@@ -394,13 +478,27 @@ export default function AdsPage() {
       {header}
       {!paid && <p className="rounded-lg bg-[#12144a] px-3 py-2 text-xs text-white">{hi ? "Ads बनाना Standard plan में आता है — पहली ad free में आज़माएँ। Facebook का ad खर्च आपके अपने ad account से ही कटता है।" : "Making ads comes with the Standard plan. Try your first ad free. The ad money is always taken from your own ad account."}</p>}
       <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs">
-        {acc.picture ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand"><Megaphone className="h-4 w-4" /></span>}
+        {acc.picture ? /* eslint-disable-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand"><Megaphone className="h-4 w-4" /></span>}
         <span className="min-w-0 flex-1 truncate"><b>{acc.page}</b> · {selectedAcct ? `${selectedAcct.name}${selectedAcct.ok ? "" : (hi ? " (बंद है / payment बाकी)" : " (switched off / payment due)")}` : ""}</span>
         {acc.accounts.length > 1 && <select value={acc.selected} onChange={async (e) => { const v = e.target.value; setAcctErr(""); try { const r = await api("/api/ads/accounts", { method: "POST", json: { ad_account: v } }); if (!r.ok) { setAcctErr(hi ? "यह ad account नहीं बदल पाए। फिर से कोशिश करें।" : "Could not switch the ad account. Please try again."); return; } setAcc({ ...acc, selected: v }); } catch { setAcctErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); } }} className="max-w-[40%] rounded-lg border border-border bg-surface px-2 py-1 text-xs">{acc.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>}
       </div>
       {acctErr && <p className={errBox}>{acctErr}</p>}
-      {selectedAcct && !selectedAcct.ok && <p className="flex items-start gap-1.5 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900"><AlertTriangle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {hi ? "यह ad account अभी चालू नहीं है (पैसे देने का तरीका या जाँच बाकी है)। Ads Manager में ठीक करें, वरना ad नहीं चलेगी।" : "This ad account is not active yet (a way to pay or a check is still pending). Fix it in Ads Manager, or the ad will not run."}</p>}
+      {selectedAcct && (!selectedAcct.ok || selectedAcct.hasFunding === false) && (
+        <section className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-amber-950">
+          <p className="flex items-center gap-2 text-sm font-bold"><CreditCard className="h-4 w-4" /> {selectedAcct.hasFunding === false ? (hi ? "पहले पैसे देने का तरीका जोड़ें" : "Add a way to pay first") : (hi ? "यह ad account अभी चालू नहीं है" : "This ad account is not active yet")}</p>
+          <p className="text-xs">{selectedAcct.hasFunding === false
+            ? (hi ? "Facebook ad का पैसा सीधे आपके ad account से लेता है। इस account में अभी UPI / card नहीं जुड़ा — ad बन तो जाएगी, पर चलेगी नहीं। 2 minute:" : "Facebook takes the ad money straight from your ad account. This account has no UPI / card yet — the ad can be saved, but it will not run. Two minutes:")
+            : (hi ? "पैसे देने का तरीका या Facebook की जाँच बाकी है। नीचे खोलकर ठीक करें, फिर 'फिर से देखें'।" : "A way to pay or a Facebook check is still pending. Open it below and fix it, then 'Check again'.")}</p>
+          {selectedAcct.hasFunding === false && <ol className="space-y-1 text-xs">{(hi ? ["नीचे 'Payment settings' खोलें → Add payment method।", "UPI चुनें (prepaid — पहले ₹500–1,000 डालें) या card।", "वापस आकर 'फिर से देखें'।"] : ["Open 'Payment settings' below → Add payment method.", "Choose UPI (prepaid — put in ₹500–1,000 first) or a card.", "Come back and tap 'Check again'."]).map((t, i) => <li key={i} className="flex gap-2"><span className="font-bold">{i + 1}.</span><span>{t}</span></li>)}</ol>}
+          <div className="flex flex-wrap gap-2">
+            <a href={selectedAcct.billingUrl || managerUrl(selectedAcct.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 rounded-xl bg-amber-600 px-3 py-2 text-xs font-semibold text-white">{hi ? "Payment settings खोलें" : "Open Payment settings"} <ExternalLink className="h-3.5 w-3.5" /></a>
+            <button type="button" onClick={loadAccounts} className="inline-flex items-center gap-1 rounded-xl border border-amber-400 px-3 py-2 text-xs font-semibold"><RefreshCw className="h-3.5 w-3.5" /> {hi ? "फिर से देखें" : "Check again"}</button>
+          </div>
+        </section>
+      )}
 
+      <div className="lg:grid lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start lg:gap-6">
+      <div className="space-y-4">
       {/* steps */}
       <div className="grid grid-cols-5 gap-1">{STEPS.map((t, i) => <button key={t} type="button" disabled={i > step} onClick={() => i <= step && goStep(i)} className={`h-9 rounded-lg text-xs font-bold ${i === step ? "grad-brand text-white" : i < step ? "bg-brand-soft text-brand-ink" : "bg-surface2 text-muted"}`}>{i + 1}</button>)}</div>
       <p className="text-sm font-semibold">{step + 1}/5 · {STEPS[step]}</p>
@@ -408,9 +506,9 @@ export default function AdsPage() {
       {step === 0 && (
         <section className="space-y-4">
           <Guide hi="वही poster या video चुनें जो आप लोगों को दिखाना चाहते हैं। Product की अपनी photo या कोई नई photo भी चलेगी।" en="Pick the poster or video you want people to see. A product photo or a new photo also works." />
-          {posters.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरे posters" : "My posters"}</p><div className="flex gap-2 overflow-x-auto pb-1">{posters.map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.url, label: p.title })} className={`h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border-2 ${creative?.url === p.url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.url} alt={p.title} className="h-full w-full object-cover" /></button>)}</div></div>}
-          {products.some((p) => p.photo_url) && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Product की photos" : "Product photos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{products.filter((p) => p.photo_url).map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.photo_url!, label: p.name }, p.id)} className={`h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${creative?.url === p.photo_url ? "border-brand" : "border-border"}`}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={p.photo_url!} alt={p.name} className="h-full w-full object-contain" /></button>)}</div></div>}
-          {uploads.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी चढ़ाई हुई videos" : "My uploaded videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{uploads.map((v) => <button key={v.url} type="button" onClick={() => pickUploaded(v)} className={`relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-black ${creative?.url === v.url ? "border-brand" : "border-transparent"}`}>{v.thumbUrl ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={v.thumbUrl} alt="" className="h-full w-full object-cover" /> : <video src={videoFrameSrc(v.url)} muted playsInline preload="metadata" className="h-full w-full object-cover" />}<span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[9px] text-white">{new Date(v.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span></button>)}</div></div>}
+          {posters.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरे posters" : "My posters"}</p><div className="flex gap-2 overflow-x-auto pb-1">{posters.map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.url, label: p.title })} className={`h-28 w-[88px] shrink-0 overflow-hidden rounded-xl border-2 ${creative?.url === p.url ? "border-brand" : "border-border"}`}>{/* eslint-disable-line @next/next/no-img-element */}<img src={p.url} alt={p.title} className="h-full w-full object-cover" /></button>)}</div></div>}
+          {products.some((p) => p.photo_url) && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "Product की photos" : "Product photos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{products.filter((p) => p.photo_url).map((p) => <button key={p.id} type="button" onClick={() => pickCreative({ kind: "image", url: p.photo_url!, label: p.name }, p.id)} className={`h-24 w-24 shrink-0 overflow-hidden rounded-xl border-2 bg-white ${creative?.url === p.photo_url ? "border-brand" : "border-border"}`}>{/* eslint-disable-line @next/next/no-img-element */}<img src={p.photo_url!} alt={p.name} className="h-full w-full object-contain" /></button>)}</div></div>}
+          {uploads.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी चढ़ाई हुई videos" : "My uploaded videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{uploads.map((v) => <button key={v.url} type="button" onClick={() => pickUploaded(v)} className={`relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-black ${creative?.url === v.url ? "border-brand" : "border-transparent"}`}>{v.thumbUrl ? /* eslint-disable-line @next/next/no-img-element */ <img src={v.thumbUrl} alt="" className="h-full w-full object-cover" /> : <video src={videoFrameSrc(v.url)} muted playsInline preload="metadata" className="h-full w-full object-cover" />}<span className="absolute bottom-1 right-1 rounded bg-black/60 px-1 text-[9px] text-white">{new Date(v.at).toLocaleDateString("en-IN", { day: "2-digit", month: "short" })}</span></button>)}</div></div>}
           {videos.length > 0 && <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "मेरी videos" : "My videos"}</p><div className="flex gap-2 overflow-x-auto pb-1">{videos.map((j) => <button key={j.id} type="button" onClick={() => pickCreative({ kind: "video", url: j.output_url!, thumbUrl: profile?.logo_url ?? undefined, label: j.input?.title || j.input?.product || "Video" })} className={`relative h-28 w-20 shrink-0 overflow-hidden rounded-xl border-2 bg-black text-white ${creative?.url === j.output_url ? "border-brand" : "border-transparent"}`}><video src={videoFrameSrc(j.output_url!)} muted playsInline preload="metadata" className="h-full w-full object-cover" /><span className="absolute inset-x-0 bottom-0 line-clamp-2 bg-black/60 px-1 py-0.5 text-[9px] leading-tight">{j.input?.title || j.input?.product || new Date(j.created_at).toLocaleDateString("en-IN")}</span></button>)}</div></div>}
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "up" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Upload className="h-5 w-5 text-brand" />} {hi ? "अपनी photo डालें (1080×1080 या 1080×1350 सबसे अच्छी)" : "Add your own photo (1080×1080 or 1080×1350 is best)"}<input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; upload(f); }} /></label>
           <label className="flex cursor-pointer items-center gap-3 rounded-xl border border-dashed border-border p-3 text-sm">{busy === "upv" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Film className="h-5 w-5 text-brand" />} {busy === "upv" ? `${hi ? "Video चढ़ रही है" : "Uploading video"} ${vidPct}%` : (hi ? "अपनी video डालें (MP4/MOV, 60 MB तक, 9:16 या 1:1 सबसे अच्छी)" : "Add your own video (MP4/MOV, up to 60 MB, 9:16 or 1:1 is best)")}<input type="file" accept="video/mp4,video/quicktime,.mp4,.mov" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void uploadVid(f); }} /></label>
@@ -495,11 +593,20 @@ export default function AdsPage() {
           <div>
             <p className="text-sm font-semibold">{hi ? "रोज़ का खर्च" : "Spend each day"} <span className="font-normal text-muted">{inr(daily)}/{hi ? "दिन" : "day"}</span></p>
             <div className="mt-1.5 flex flex-wrap gap-2">{[100, 200, 300, 500, 1000].map((v) => <button key={v} type="button" onClick={() => setDaily(v)} className={chip(daily === v)}>{inr(v)}</button>)}</div>
-            <input type="number" min={AD_BUDGET.minDaily} max={AD_BUDGET.maxDaily} value={daily} onChange={(e) => setDaily(Math.min(AD_BUDGET.maxDaily, Math.max(0, Number(e.target.value) || 0)))} className={`${field} w-40`} />
+            <input type="number" min={AD_BUDGET.minDaily} max={AD_BUDGET.maxDaily} value={daily} onChange={(e) => setDaily(Math.min(AD_BUDGET.maxDaily, Math.max(0, Number(e.target.value) || 0)))} className={`${field} max-w-[10rem]`} />
           </div>
           <div>
             <p className="text-sm font-semibold">{hi ? "कितने दिन" : "How many days"} <span className="font-normal text-muted">{days}</span></p>
             <div className="mt-1.5 flex flex-wrap gap-2">{[3, 5, 7, 14, 30].map((v) => <button key={v} type="button" onClick={() => setDays(v)} className={chip(days === v)}>{v} {hi ? "दिन" : "days"}</button>)}</div>
+          </div>
+          <div>
+            <p className="text-sm font-semibold flex items-center gap-1.5"><CalendarDays className="h-4 w-4 text-brand" /> {hi ? "कब से" : "From when"}</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <button type="button" onClick={() => setStartDate("")} className={chip(!startDate)}>{hi ? "जैसे ही शुरू करें" : "As soon as I start it"}</button>
+              <button type="button" onClick={() => setStartDate(plusDays(1))} className={chip(startDate === plusDays(1))}>{hi ? "कल सुबह 10 बजे" : "Tomorrow 10 am"}</button>
+              <input type="date" min={plusDays(1)} max={plusDays(60)} value={startDate && startDate !== plusDays(1) ? startDate : ""} onChange={(e) => setStartDate(e.target.value)} className={`${field} mt-0 w-auto`} aria-label={hi ? "तारीख चुनें" : "Pick a date"} />
+            </div>
+            {startDate && <p className="mt-1 text-xs text-muted">{hi ? `${dayText(`${startDate}T10:00:00+05:30`)} सुबह 10 बजे शुरू, ${days} दिन चलेगी — Facebook तब तक पैसा नहीं लेगा।` : `Starts ${dayText(`${startDate}T10:00:00+05:30`)} at 10 am and runs ${days} days — Facebook takes nothing until then.`}</p>}
           </div>
           <div className="rounded-2xl border border-border p-4">
             <p className="text-xs text-muted">{hi ? "कुल खर्च (ज़्यादा से ज़्यादा)" : "Total you can spend (at most)"}</p>
@@ -527,15 +634,22 @@ export default function AdsPage() {
               {copyErr && <p className={errBox}>{copyErr}</p>}
               {/* the ad as Facebook shows it */}
               <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-border bg-white text-[#050505] shadow-card">
-                <div className="flex items-center gap-2 px-3 pt-3">{acc.picture ? /* eslint-disable-next-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-9 w-9 rounded-full" /> : <span className="h-9 w-9 rounded-full bg-gray-200" />}<div className="leading-tight"><p className="text-sm font-semibold">{acc.page}</p><p className="text-[11px] text-gray-500">Sponsored · 🌐</p></div></div>
+                <div className="flex items-center gap-2 px-3 pt-3">{acc.picture ? /* eslint-disable-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-9 w-9 rounded-full" /> : <span className="h-9 w-9 rounded-full bg-gray-200" />}<div className="leading-tight"><p className="text-sm font-semibold">{acc.page}</p><p className="text-[11px] text-gray-500">Sponsored · 🌐</p></div></div>
                 <p className="whitespace-pre-line px-3 py-2 text-sm">{copy.primaryText}</p>
-                {creative?.kind === "video" ? <div className="grid aspect-square place-items-center bg-black text-white"><Play className="h-12 w-12" /></div> : creative && /* eslint-disable-next-line @next/next/no-img-element */ <img src={creative.url} alt="" className="aspect-square w-full object-cover" />}
+                {creative?.kind === "video" ? <div className={`grid ${placements === "stories" ? "aspect-[9/16]" : "aspect-square"} place-items-center bg-black text-white`}><Play className="h-12 w-12" /></div> : creative && (
+                  <div className={`relative w-full overflow-hidden ${placements === "stories" ? "aspect-[9/16]" : "aspect-square"}`} style={{ backgroundImage: `url(${creative.url})`, backgroundSize: "cover", backgroundPosition: "center" }}>
+                    <div className="absolute inset-0 backdrop-blur-xl bg-black/15" />
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={creative.url} alt="" className="relative h-full w-full object-contain" />
+                  </div>
+                )}
                 <div className="flex items-center gap-3 bg-gray-100 px-3 py-2.5"><div className="min-w-0 flex-1"><p className="truncate text-[11px] uppercase text-gray-500">{goal === "whatsapp" ? "wa.me" : (link || "shubhora.com").replace(/^https?:\/\//, "").split("/")[0]}</p><p className="truncate text-sm font-semibold">{copy.headline}</p>{copy.description && <p className="truncate text-xs text-gray-500">{copy.description}</p>}</div><span className="shrink-0 rounded-md bg-gray-200 px-3 py-1.5 text-sm font-semibold">{goal === "whatsapp" ? "WhatsApp" : goal === "calls" ? "Call now" : "Learn more"}</span></div>
               </div>
               <div className="rounded-2xl border border-border p-3 text-sm space-y-1">
                 <p><b>{hi ? "मक़सद:" : "Goal:"}</b> {hi ? goalMeta.hi : goalMeta.en}{goal !== "website" ? ` · ${phone}` : ""}</p>
                 <p><b>{hi ? "कौन देखे:" : "Who sees it:"}</b> {audienceLine}</p>
                 <p><b>{hi ? "खर्च:" : "Spending:"}</b> {inr(daily)}/{hi ? "दिन" : "day"} × {days} {hi ? "दिन" : "days"} = {hi ? "ज़्यादा से ज़्यादा" : "at most"} {inr(daily * days)}</p>
+                <p><b>{hi ? "कब:" : "When:"}</b> {startDate ? `${dayText(`${startDate}T10:00:00+05:30`)} 10 am` : (hi ? "शुरू करते ही" : "as soon as it is started")} · {placements === "stories" ? (hi ? "Stories / Reels (9:16)" : "Stories / Reels (9:16)") : placements === "feeds" ? "Feed (1:1)" : (hi ? "Facebook + Instagram (1:1)" : "Facebook + Instagram (1:1)")}</p>
               </div>
             </>
           )}
@@ -543,8 +657,32 @@ export default function AdsPage() {
         </section>
       )}
 
+      </div>
+      {/* On a computer (Ads v2): what the ad is so far, always in view on the right. */}
+      <aside className="hidden lg:block sticky top-4 space-y-3">
+        <div className="rounded-2xl border border-border bg-surface p-3 space-y-2">
+          <p className="text-xs font-bold uppercase tracking-wide text-muted">{hi ? "आपकी ad" : "Your ad"}</p>
+          {step === 4 ? null : creative ? (creative.kind === "video"
+            ? <div className={`grid ${placements === "stories" ? "aspect-[9/16] max-h-72 mx-auto" : "aspect-square"} w-full place-items-center overflow-hidden rounded-xl bg-black text-white`}>{creative.thumbUrl ? /* eslint-disable-line @next/next/no-img-element */ <img src={creative.thumbUrl} alt="" className="h-full w-full object-cover opacity-80" /> : <Play className="h-10 w-10" />}</div>
+            : <div className={`relative overflow-hidden rounded-xl ${placements === "stories" ? "aspect-[9/16] max-h-80 mx-auto" : "aspect-square"}`} style={{ backgroundImage: `url(${creative.url})`, backgroundSize: "cover", backgroundPosition: "center" }}><div className="absolute inset-0 backdrop-blur-xl bg-black/15" />{/* eslint-disable-line @next/next/no-img-element */}<img src={creative.url} alt="" className="relative h-full w-full object-contain" /></div>)
+            : <div className="grid aspect-square place-items-center rounded-xl border border-dashed border-border text-xs text-muted">{hi ? "पहले photo या video चुनें" : "Pick a photo or video first"}</div>}
+          <dl className="space-y-1 text-xs">
+            <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "Button" : "Button"}</dt><dd className="text-right font-semibold">{hi ? goalMeta.hi : goalMeta.en}{goal !== "website" && phone ? ` · ${phone}` : ""}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "कौन देखे" : "Who sees it"}</dt><dd className="text-right font-semibold">{audienceLine}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "खर्च" : "Spending"}</dt><dd className="text-right font-semibold">{inr(daily)}/{hi ? "दिन" : "day"} × {days} = {inr(daily * days)}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "कब" : "When"}</dt><dd className="text-right font-semibold">{startDate ? `${dayText(`${startDate}T10:00:00+05:30`)} 10 am` : (hi ? "शुरू करते ही" : "when started")}</dd></div>
+            <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "कहाँ" : "Where"}</dt><dd className="text-right font-semibold">{placements === "stories" ? "Stories / Reels · 9:16" : placements === "feeds" ? "Feed · 1:1" : "FB + IG · 1:1"}</dd></div>
+            {est?.daily ? <div className="flex justify-between gap-2"><dt className="text-muted">{hi ? "पहुँच / दिन" : "Reach / day"}</dt><dd className="text-right font-semibold">~{est.daily.toLocaleString("en-IN")}</dd></div> : null}
+          </dl>
+          {copy.headline && <p className="rounded-lg bg-surface2 px-2 py-1.5 text-xs"><b>{copy.headline}</b>{copy.description ? ` · ${copy.description}` : ""}</p>}
+        </div>
+        <p className="px-1 text-[11px] text-muted">{hi ? "पैसा Facebook आपके ad account से लेता है; हम बनाते, चलाते और रोकते हैं। Ad बनने के बाद भी पैसे / दिन बदल सकते हैं।" : "Facebook takes the money from your ad account; we make, run and pause. Money and days can be changed after the ad is made too."}</p>
+      </aside>
+      </div>
+
       {/* footer buttons */}
       <div className="app-bar app-bar-up fixed bottom-[64px] left-1/2 z-20 w-full max-w-md -translate-x-1/2 border-t border-border bg-surface/95 px-4 py-3 backdrop-blur" style={{ marginBottom: "env(safe-area-inset-bottom)" }}>
+        <div className="lg:max-w-[calc(100%-364px)]">{/* under the left column on a computer; the summary sits to the right */}
         {whyNot && <p className="mb-2 text-xs font-semibold text-danger">{whyNot}</p>}
         {step < 4 ? (
           <div className="flex gap-2">
@@ -555,9 +693,10 @@ export default function AdsPage() {
           <div className="flex gap-2">
             <button type="button" onClick={() => goStep(3)} aria-label={hi ? "पीछे" : "Back"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
             <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(false)} className="flex-1 rounded-xl border border-brand px-3 py-3 text-sm font-semibold text-brand-ink disabled:opacity-40">{busy === "create" ? "…" : (hi ? "सेव करें, शुरू न करें" : "Save, do not start")}</button>
-            <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(true)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy === "create" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {hi ? "अभी शुरू करें" : "Start now"}</button>
+            <button type="button" disabled={!canNext || busy === "create"} onClick={() => create(true)} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white disabled:opacity-40">{busy === "create" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} {startDate ? (hi ? "तय करें" : "Schedule it") : (hi ? "अभी शुरू करें" : "Start now")}</button>
           </div>
         )}
+        </div>
       </div>
     </div>
   );

@@ -113,7 +113,8 @@ function Row({ l, onOpen, onCall, selected, onToggle }: { l: LeadPro; onOpen: ()
             {open && <TempPill temp={tempOf(l)} hi={L.hi} />}
             {starsOf(l.tags) > 0 && <Stars value={starsOf(l.tags)} size={11} />}
             <span className="text-[10px] text-faint">📞 {l.last_call_at ? ago(l.last_call_at, L.hi) : (L.hi ? "call नहीं की" : "not called")}</span>
-            {shownTags(l.tags).slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
+            {(l.tags ?? []).includes("facebook-ad") && <span className="rounded-full bg-[#1877F2]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#1877F2]">📣 {L.hi ? "Facebook ad से" : "From Facebook ad"}</span>}
+            {shownTags(l.tags).filter((t) => t !== "facebook-ad").slice(0, 2).map((t) => <span key={t} className="rounded-full bg-surface2 px-1.5 py-0.5 text-[10px] text-muted">#{t}</span>)}
             {due && <span className={`ml-auto text-[10px] font-medium ${due === "overdue" ? "text-danger" : due === "today" ? "text-lead" : "text-muted"}`}>⏰ {due === "overdue" ? L.overdueTag : due === "today" ? L.todayTag : ago(l.next_follow_up, L.hi)}</span>}
             {l.unread > 0 && <span className="grid h-4 min-w-4 place-items-center rounded-full bg-brand px-1 text-[10px] font-bold text-white">{l.unread}</span>}
           </div>

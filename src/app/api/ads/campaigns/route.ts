@@ -27,7 +27,14 @@ export async function GET(request: Request) {
   const shown = rows.filter((r) => {
     const st = (live[r.campaign_id]?.status ?? r.status ?? "").toUpperCase();
     if (st === "DELETED" || st === "ARCHIVED") return false;
+    // v2: an ended ad stays in the list with the numbers the sync kept (Meta still lists it; if it was deleted there, it goes).
     return !(gone.has(r.campaign_id) && new Date(r.created_at).getTime() < fresh);
   });
+  // The live answer is the fresh truth; the row's synced copy fills in when Meta did not answer (liveError) — the list never goes blank.
+  for (const r of shown) {
+    if (!live[r.campaign_id] && (r.synced_at || r.ended_at)) {
+      live[r.campaign_id] = { campaign_id: r.campaign_id, status: r.status, effective_status: r.effective_status ?? r.status, spend: (r.spend_paise ?? 0) / 100, impressions: 0, reach: r.reach ?? 0, clicks: 0, results: r.results ?? 0, resultLabel: r.result_label ?? "clicks", chats: r.result_label === "chats" ? r.results ?? 0 : 0, linkClicks: r.result_label === "clicks" ? r.results ?? 0 : 0, start: r.start_time ?? undefined, stop: r.end_time ?? undefined, feedback: r.review_feedback ?? undefined };
+    }
+  }
   return NextResponse.json({ campaigns: shown, live, liveError, managerUrl: shown[0] ? `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${shown[0].ad_account.replace("act_", "")}` : "" });
 }

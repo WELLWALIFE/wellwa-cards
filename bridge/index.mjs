@@ -1426,6 +1426,30 @@ function isFromAd(msg) {
   return Boolean(ci?.externalAdReply || ci?.conversionSource || ci?.entryPointConversionSource || ci?.ctwaClid);
 }
 
+/** Ads v2 (1 Nov 2026): a chat that opened from a Facebook / Instagram ad is tagged "facebook-ad" on its CRM lead (and src), so the owner
+ *  sees which customers the ad brought — the ad's own title, when WhatsApp passes it, goes into the lead's message once. */
+async function markAdLead(jid, msg) {
+  if (!cardContext || !SUPA_URL || !SUPA_KEY) return;
+  try {
+    const pn = await phoneOf(jid);
+    const phone = pn ? "+" + pn : jid;
+    const headers = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json" };
+    const read = () => fetch(`${SUPA_URL}/rest/v1/leads?owner_id=eq.${cardContext.owner_id}&phone=eq.${encodeURIComponent(phone)}&select=id,tags,src`, { headers }).then((r) => (r.ok ? r.json() : [])).catch(() => []);
+    let rows = await read();
+    if (!Array.isArray(rows) || !rows.length) { await new Promise((r) => setTimeout(r, 4000)); rows = await read(); }
+    const ad = contextOf(msg)?.externalAdReply;
+    const title = String(ad?.title || ad?.body || "").trim().slice(0, 80);
+    for (const row of Array.isArray(rows) ? rows : []) {
+      const tags = Array.isArray(row.tags) ? row.tags : [];
+      if (tags.includes("facebook-ad") && row.src === "facebook_ad") continue;
+      const body = { tags: tags.includes("facebook-ad") ? tags : [...tags, "facebook-ad"], src: "facebook_ad", ...(title ? { ad_title: title } : {}) };
+      let r = await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify(body) }).catch(() => null);
+      // an older database without the ad_title column: tag and src still go
+      if (r && !r.ok && title) r = await fetch(`${SUPA_URL}/rest/v1/leads?id=eq.${row.id}`, { method: "PATCH", headers: { ...headers, Prefer: "return=minimal" }, body: JSON.stringify({ tags: body.tags, src: "facebook_ad" }) }).catch(() => null);
+    }
+  } catch { /* best effort */ }
+}
+
 /** WhatsApp settings → "Never auto-reply to these numbers" (family, friends). Matched on the last 10 digits. */
 /** Personal numbers removed from the CRM in the app (CRM → "Personal number", owner_prefs.crm.blocked; owner, 23 Oct 2026):
  *  last 10 digits, read every minute. Kept on failure, so a database hiccup never lets the bot answer family. */
@@ -1519,7 +1543,7 @@ async function lookupCard(username) {
   } catch { return null; }
 }
 
-async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd }) {
+async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd, rawMsg }) {
   const st = agentState[jid] || {};
   if (mode === "shubhora") {
     const history = await loadHistory(jid, waId);
@@ -1550,6 +1574,7 @@ async function handleV2(mode, { jid, name, text, waId, known, forwarded, fromAd 
   // personal or social chat — even from a number that chatted before (owner, 28 Oct 2026: "facebook lead aayi, koi reply nahi").
   const adLead = !!fromAd || AD_OPENER_RE.test(text);
   if (adLead) {
+    if (fromAd) setTimeout(() => { markAdLead(jid, rawMsg).catch(() => {}); }, 6000);   // after the lead row exists (the message log makes it)
     flags.notPersonal = true;
     q.business = true;
     if (q.kind === "social") q.kind = "business";
@@ -1858,7 +1883,7 @@ async function startWhatsApp() {
           if (!replyOk) { if (!personalContact) saveLead(jid, name, text); continue; }
           const pj = phoneJidOf(jid);
           const known = knownBefore || Boolean(people.hist[jid] || (pj && (people.hist[pj] || (pj !== jid && knownContacts[pj]))));
-          await handleV2(mode, { jid, name, text, waId: m.key?.id, known, forwarded: isForwarded(m.message), fromAd: isFromAd(m.message) });
+          await handleV2(mode, { jid, name, text, waId: m.key?.id, known, forwarded: isForwarded(m.message), fromAd: isFromAd(m.message), rawMsg: m.message });
           continue;
         }
 

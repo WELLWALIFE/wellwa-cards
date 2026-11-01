@@ -8,6 +8,7 @@ import { discardCampaign, graph, graphStep, listAccounts, uploadAdImage, type Ac
 import { restAsService } from "@/lib/poster-server";
 import { geminiComplete } from "@/lib/gemini";
 import { SITE_URL } from "@/lib/site-url";
+import { fitAdImage, ratioFor } from "@/lib/ads-image";
 
 export type AdGoal = "whatsapp" | "calls" | "website";
 export type AdTargeting = {
@@ -28,6 +29,8 @@ export type AdSpec = {
   targeting: AdTargeting;
   startNow: boolean;
   placements: "auto" | "feeds" | "stories";
+  /** A later first day (ISO; owner, 1 Nov 2026) — else the ad starts as soon as it is switched on. */
+  startAt?: string | null;
 };
 export type AdAccountInfo = { id: string; name: string; status: number; currency: string; spent: string; funding: string; ok: boolean };
 
@@ -156,7 +159,6 @@ export async function pageWhatsApp(fb: AccountRow): Promise<string | null> {
   }
   return null; // could not read it (permission / network): unknown, not "none"
 }
-const last10 = (s: string) => s.replace(/\D/g, "").slice(-10);
 
 async function uploadVideo(acct: string, ut: string, fileUrl: string, name: string): Promise<string> {
   const v = await graphStep<{ id: string }>("video upload", `${acct}/advideos`, { file_url: fileUrl, name, access_token: ut }, "POST");
@@ -172,7 +174,7 @@ async function uploadVideo(acct: string, ut: string, fileUrl: string, name: stri
 }
 
 /** Creates campaign → ad set → creative → ad on the owner's ad account. PAUSED unless startNow. */
-export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccount: string; campaignId: string; adsetId: string; adId: string; creativeId: string; managerUrl: string; status: string }> {
+export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccount: string; campaignId: string; adsetId: string; adId: string; creativeId: string; managerUrl: string; status: string; startTime: string; endTime: string }> {
   const ut = fb.user_token; if (!ut) throw new Error("Reconnect Facebook to allow ads.");
   if (!fb.page_id) throw new Error("Connect a Facebook Page first.");
   const acct = await currentAdAccount(fb);
@@ -189,7 +191,9 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
   const cta = spec.goal === "whatsapp" ? { type: "WHATSAPP_MESSAGE", value: { app_destination: "WHATSAPP" } } : spec.goal === "calls" ? { type: "CALL_NOW", value: { link: `tel:+91${digits}` } } : { type: "LEARN_MORE", value: { link } };
   const status = spec.startNow ? "ACTIVE" : "PAUSED";
   const name = `${CAMPAIGN_PREFIX}${S(spec.name, 60)}`;
-  const start = new Date(Date.now() + 10 * 60_000), end = new Date(start.getTime() + spec.days * 86400_000);
+  const later = spec.startAt ? Date.parse(spec.startAt) : NaN;
+  const start = Number.isFinite(later) && later > Date.now() + 5 * 60_000 ? new Date(later) : new Date(Date.now() + 10 * 60_000);
+  const end = new Date(start.getTime() + spec.days * 86400_000);
 
   const camp = await graphStep<{ id: string }>("campaign", `${acct}/campaigns`, { name, objective: objectiveFor(spec.goal), status, special_ad_categories: "[]", is_adset_budget_sharing_enabled: "false", access_token: ut }, "POST");
   const adset = await graphStep<{ id: string }>("ad set", `${acct}/adsets`, {
@@ -210,12 +214,26 @@ export async function createAd(fb: AccountRow, spec: AdSpec): Promise<{ adAccoun
     const thumb = spec.creative.thumbUrl || `${SITE_URL}/og-shubhora.jpg`;
     creativeId = (await graphStep<{ id: string }>("video creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, video_data: { video_id: videoId, image_url: thumb, message, title: S(spec.headline, 40), link_description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   } else {
-    const hash = await uploadAdImage(acct, ut, spec.creative.url);
+    // The picture in the placement's shape, nothing cut (ads-image.ts); the original is sent if the fitting fails.
+    const fitted = await fitAdImage(spec.creative.url, ratioFor(spec.placements)).catch(() => null);
+    const hash = await uploadAdImage(acct, ut, fitted ?? spec.creative.url);
     creativeId = (await graphStep<{ id: string }>("creative", `${acct}/adcreatives`, { name: `${name} · creative`, object_story_spec: JSON.stringify({ page_id: fb.page_id, link_data: { image_hash: hash, link, message, name: S(spec.headline, 40), description: S(spec.description, 30), call_to_action: cta } }), access_token: ut }, "POST")).id;
   }
   const ad = await graphStep<{ id: string }>("ad", `${acct}/ads`, { name, adset_id: adset.id, creative: JSON.stringify({ creative_id: creativeId }), status, access_token: ut }, "POST");
-  return { adAccount: acct, campaignId: camp.id, adsetId: adset.id, adId: ad.id, creativeId, managerUrl: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace("act_", "")}`, status };
+  return { adAccount: acct, campaignId: camp.id, adsetId: adset.id, adId: ad.id, creativeId, managerUrl: `https://adsmanager.facebook.com/adsmanager/manage/campaigns?act=${acct.replace("act_", "")}`, status, startTime: start.toISOString(), endTime: end.toISOString() };
   } catch (e) { await discardCampaign(ut, camp.id); throw e; }
+}
+
+/** The owner changes the money or the days of an ad that exists (owner, 1 Nov 2026): the ad set's daily budget and end time. */
+export async function updateCampaign(fb: AccountRow, row: Pick<CampaignRow, "campaign_id" | "adset_id">, o: { dailyPaise?: number; endTime?: string }): Promise<void> {
+  const ut = fb.user_token; if (!ut) throw new Error("Reconnect Facebook to allow ads.");
+  let adsetId = row.adset_id;
+  if (!adsetId) adsetId = (await graphStep<{ data: { id: string }[] }>("ad sets", `${row.campaign_id}/adsets`, { access_token: ut, fields: "id", limit: "1" })).data?.[0]?.id ?? null;
+  if (!adsetId) throw new Error("This campaign has no ad set to change.");
+  const patch: Record<string, string> = { access_token: ut };
+  if (o.dailyPaise) patch.daily_budget = String(o.dailyPaise);
+  if (o.endTime) patch.end_time = new Date(o.endTime).toISOString();
+  await graphStep("ad set", `${adsetId}`, patch, "POST");
 }
 
 /** Start / pause a whole campaign. A campaign saved as "do not start" has its ad set and ad PAUSED too, and Meta does
@@ -250,32 +268,53 @@ export async function setCampaignStatus(fb: AccountRow, campaignId: string, stat
   await graphStep("campaign", `${campaignId}`, { status, access_token: ut }, "POST");
 }
 
-export type CampaignRow = { id: string; user_id: string; ad_account: string; campaign_id: string; adset_id: string | null; ad_id: string | null; name: string; goal: AdGoal; creative_url: string | null; creative_kind: string | null; primary_text: string | null; headline: string | null; daily_paise: number; days: number; status: string; created_at: string };
-export type CampaignLive = { campaign_id: string; status: string; effective_status: string; spend: number; impressions: number; reach: number; clicks: number; results: number; resultLabel: string; chats?: number; linkClicks?: number; start?: string; stop?: string };
+export type CampaignRow = {
+  id: string; user_id: string; ad_account: string; campaign_id: string; adset_id: string | null; ad_id: string | null; name: string; goal: AdGoal;
+  creative_url: string | null; creative_kind: string | null; primary_text: string | null; headline: string | null; daily_paise: number; days: number; status: string; created_at: string;
+  // v2 (migration 0082)
+  targeting?: AdTargeting | null; placements?: string | null; description?: string | null; link?: string | null; phone?: string | null; thumb_url?: string | null;
+  start_time?: string | null; end_time?: string | null; effective_status?: string | null; review_feedback?: string | null;
+  spend_paise?: number; reach?: number; results?: number; result_label?: string | null; synced_at?: string | null; told?: Record<string, string> | null; ended_at?: string | null;
+};
+export type CampaignLive = { campaign_id: string; status: string; effective_status: string; spend: number; impressions: number; reach: number; clicks: number; results: number; resultLabel: string; chats?: number; linkClicks?: number; start?: string; stop?: string; dailyPaise?: number; feedback?: string };
 
 /** Live numbers for the owner's campaigns (spend, people reached, clicks, results). */
-export async function liveCampaigns(fb: AccountRow, acct: string, ids: string[]): Promise<Record<string, CampaignLive>> {
+export async function liveCampaigns(fb: AccountRow, acct: string, ids: string[], preset: "maximum" | "today" | "yesterday" = "maximum"): Promise<Record<string, CampaignLive>> {
   const ut = fb.user_token; const out: Record<string, CampaignLive> = {};
   if (!ut || !ids.length) return out;
-  const r = await graph<{ data: { id: string; status: string; effective_status: string; start_time?: string; stop_time?: string; insights?: { data: { spend: string; impressions: string; reach: string; clicks: string; actions?: { action_type: string; value: string }[] }[] } }[] }>(`${acct}/campaigns`, {
+  type AdsetLite = { id: string; daily_budget?: string; start_time?: string; end_time?: string };
+  const r = await graph<{ data: { id: string; status: string; effective_status: string; start_time?: string; stop_time?: string; adsets?: { data: AdsetLite[] }; insights?: { data: { spend: string; impressions: string; reach: string; clicks: string; actions?: { action_type: string; value: string }[] }[] } }[] }>(`${acct}/campaigns`, {
     access_token: ut, limit: "50",
-    fields: "id,status,effective_status,start_time,stop_time,insights.date_preset(maximum){spend,impressions,reach,clicks,actions}",
+    // The dates and the budget live on the ad set (that is where createAd puts them); the campaign's own are usually empty.
+    fields: `id,status,effective_status,start_time,stop_time,adsets.limit(1){id,daily_budget,start_time,end_time},insights.date_preset(${preset}){spend,impressions,reach,clicks,actions}`,
     filtering: JSON.stringify([{ field: "id", operator: "IN", value: ids }]),
   });
   // The ad's own effective status is the truth about delivery: a campaign can be ACTIVE while its ad set or ad is
-  // still PAUSED (Ads Manager: "Ad set off"), and the ad is also where "in review" / "disapproved" show up.
+  // still PAUSED (Ads Manager: "Ad set off"), and the ad is also where "in review" / "disapproved" show up — with Meta's reason.
   const adState: Record<string, string> = {};
+  const feedback: Record<string, string> = {};
   try {
-    const a = await graph<{ data: { campaign_id: string; effective_status: string }[] }>(`${acct}/ads`, { access_token: ut, limit: "100", fields: "campaign_id,effective_status", filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: ids }]) });
-    for (const x of a.data ?? []) if (!adState[x.campaign_id] || x.effective_status === "ACTIVE") adState[x.campaign_id] = x.effective_status;
+    type AdLite = { campaign_id: string; effective_status: string; ad_review_feedback?: { global?: Record<string, string>; placement_specific?: Record<string, Record<string, string>> } };
+    const a = await graph<{ data: AdLite[] }>(`${acct}/ads`, { access_token: ut, limit: "100", fields: "campaign_id,effective_status,ad_review_feedback", filtering: JSON.stringify([{ field: "campaign.id", operator: "IN", value: ids }]) });
+    for (const x of a.data ?? []) {
+      if (!adState[x.campaign_id] || x.effective_status === "ACTIVE") adState[x.campaign_id] = x.effective_status;
+      const g = x.ad_review_feedback?.global ?? {};
+      const lines = Object.values(g).filter((v) => typeof v === "string") as string[];
+      if (lines.length) feedback[x.campaign_id] = lines.join(" ").slice(0, 500);
+    }
   } catch { /* the campaign status is still shown */ }
   for (const c of r.data ?? []) {
     const i = c.insights?.data?.[0];
+    const s = c.adsets?.data?.[0];
     const act = (t: string) => Number(i?.actions?.find((a) => a.action_type === t)?.value ?? 0);
     const chats = act("onsite_conversion.messaging_conversation_started_7d");
     const results = chats || act("link_click") || Number(i?.clicks ?? 0);
     const eff = c.effective_status === "ACTIVE" && adState[c.id] && adState[c.id] !== "ACTIVE" ? adState[c.id] : c.effective_status;
-    out[c.id] = { campaign_id: c.id, status: c.status, effective_status: eff, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0), results, resultLabel: chats ? "chats" : "clicks", chats, linkClicks: act("link_click"), start: c.start_time, stop: c.stop_time };
+    out[c.id] = {
+      campaign_id: c.id, status: c.status, effective_status: eff, spend: Number(i?.spend ?? 0), impressions: Number(i?.impressions ?? 0), reach: Number(i?.reach ?? 0), clicks: Number(i?.clicks ?? 0),
+      results, resultLabel: chats ? "chats" : "clicks", chats, linkClicks: act("link_click"),
+      start: s?.start_time ?? c.start_time, stop: s?.end_time ?? c.stop_time, dailyPaise: s?.daily_budget ? Number(s.daily_budget) : undefined, feedback: feedback[c.id],
+    };
   }
   return out;
 }

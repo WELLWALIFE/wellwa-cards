@@ -3,8 +3,10 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { discardCampaign } from "@/lib/social-server";
-import { fbAccount, createAd, saveCampaign, isPermissionError, type AdGoal } from "@/lib/ads-server";
-import { cleanTargeting, AD_BUDGET, waMismatchText } from "@/lib/ads-shared";
+import { fbAccount, createAd, saveCampaign, isPermissionError, myCampaigns, type AdGoal } from "@/lib/ads-server";
+import { cleanTargeting, AD_BUDGET, waMismatchText, startAtFor } from "@/lib/ads-shared";
+import { standardRunning } from "@/lib/advanced-access";
+import { ownerPlanExpiry } from "@/lib/crm-server";
 
 export const maxDuration = 120;
 const https = (u: unknown) => (typeof u === "string" && /^https:\/\/.{5,600}$/.test(u) ? u : "");
@@ -16,6 +18,11 @@ export async function POST(request: Request) {
   const b = await request.json().catch(() => ({}));
   const fb = await fbAccount(me.id);
   if (!fb) return NextResponse.json({ error: "Connect a Facebook Page first (Connections)." }, { status: 400 });
+  // Ads come with the Standard plan; the first ad is free to try (the screen says so). Checked here, not only in the screen.
+  if (!(await standardRunning(me.id)) && !(await ownerPlanExpiry(me.id))) {
+    const made = await myCampaigns(me.id);
+    if (made.length >= 1) return NextResponse.json({ error: "Your first ad was free. To make more, take the Standard plan (My plan) — the ad money itself always goes to Facebook from your own ad account.", code: "plan" }, { status: 402 });
+  }
   const goal: AdGoal = ["whatsapp", "calls", "website"].includes(b.goal) ? b.goal : "whatsapp";
   const url = https(b.creative?.url), thumbUrl = https(b.creative?.thumbUrl);
   if (!url) return NextResponse.json({ error: "Pick a picture or a video for the ad." }, { status: 400 });
@@ -33,6 +40,7 @@ export async function POST(request: Request) {
     link: https(b.link), phone, dailyPaise: dailyRupees * 100, days,
     targeting: cleanTargeting(b.targeting), startNow: b.start_now === true,
     placements: (b.placements === "feeds" || b.placements === "stories" ? b.placements : "auto") as "auto" | "feeds" | "stories",
+    startAt: startAtFor(typeof b.start_date === "string" ? b.start_date : null),
   };
   try {
     const r = await createAd(fb, spec);
@@ -40,6 +48,9 @@ export async function POST(request: Request) {
       user_id: me.id, ad_account: r.adAccount, campaign_id: r.campaignId, adset_id: r.adsetId, ad_id: r.adId, creative_id: r.creativeId,
       name: spec.name, goal, creative_url: url, creative_kind: spec.creative.kind, primary_text: primaryText, headline,
       daily_paise: spec.dailyPaise, days, status: r.status, targeting: spec.targeting,
+      // v2 (0082): what the owner chose and the dates, so "run again", "extend" and the sync have everything.
+      placements: spec.placements, description: spec.description || null, link: spec.link || null, phone: phone || null, thumb_url: thumbUrl || null,
+      start_time: r.startTime, end_time: r.endTime, effective_status: r.status, told: {},
     });
     if (!row) {
       // Without our record the ad would not show under "My ads" and could not be paused from the app: take it back.

@@ -62,10 +62,15 @@ export function authDialogUrl(state: string): string {
 type G = Record<string, unknown>;
 /** An ad image goes up as bytes, not as a URL: the `url` way needs Marketing API standard access and fails with
  *  "(#3) Application does not have the capability" on a development-tier app (21 Oct 2026). Returns the image hash. */
-export async function uploadAdImage(acct: string, ut: string, imageUrl: string): Promise<string> {
-  const r = await fetch(imageUrl, { cache: "no-store" });
-  if (!r.ok) throw new Error(`image: could not read the picture (${r.status})`);
-  const bytes = Buffer.from(await r.arrayBuffer()).toString("base64");
+export async function uploadAdImage(acct: string, ut: string, image: string | Buffer): Promise<string> {
+  let buf: Buffer;
+  if (Buffer.isBuffer(image)) buf = image;
+  else {
+    const r = await fetch(image, { cache: "no-store" });
+    if (!r.ok) throw new Error(`image: could not read the picture (${r.status})`);
+    buf = Buffer.from(await r.arrayBuffer());
+  }
+  const bytes = buf.toString("base64");
   const img = await graphStep<{ images: Record<string, { hash: string }> }>("image", `${acct}/adimages`, { bytes, access_token: ut }, "POST");
   const hash = Object.values(img.images ?? {})[0]?.hash;
   if (!hash) throw new Error("image: Facebook could not read the picture.");
