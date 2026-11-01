@@ -157,7 +157,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const securityOnly = status === "mfa" || status === "password";
   const here = ALL.find((i) => isActive(i.href, path)) ?? (path.startsWith("/admin/security") ? { label: "Security", href: "/admin/security" } : path.startsWith("/admin/users/") ? { label: "User", href: "/admin/users" } : path.startsWith("/admin/franchises/") ? { label: "Franchise", href: "/admin/franchises" } : ALL[0]);
   const group = MENU.find((g) => g.items.some((i) => i.href === here.href))?.title;
-  const alerts = (all?.alerts.payouts ?? 0) + (all?.alerts.pending ?? 0);
+  const apps = all?.alerts.applications ?? 0;
+  const alerts = (all?.alerts.payouts ?? 0) + (all?.alerts.pending ?? 0) + apps;
   const needMfa = !!me && me.via === "session" && !me.mfaEnrolled && !path.startsWith("/admin/security");
 
   return (
@@ -195,7 +196,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
             </button>
           )}
           {!securityOnly && alerts > 0 && (
-            <Link href={me?.franchise ? "/admin/earnings" : "/admin/franchises?tab=payouts"} className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-ink" title={`${alerts} payout${alerts === 1 ? "" : "s"} waiting`}>
+            <Link href={me?.franchise ? "/admin/earnings" : apps > 0 && apps >= alerts - apps ? "/admin/franchises?tab=applications" : "/admin/franchises?tab=payouts"} className="relative grid h-9 w-9 place-items-center rounded-lg border border-border text-ink" title={[apps ? `${apps} franchise application${apps === 1 ? "" : "s"}` : "", alerts - apps ? `${alerts - apps} payout${alerts - apps === 1 ? "" : "s"} waiting` : ""].filter(Boolean).join(" · ")}>
               <Bell className="h-4 w-4" /><span className="absolute -right-1 -top-1 grid h-4 min-w-4 place-items-center rounded-full bg-red-600 px-1 text-[10px] font-bold text-white">{alerts}</span>
             </Link>
           )}

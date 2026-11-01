@@ -6,16 +6,18 @@ import { useSearchParams } from "next/navigation";
 import { Plus, Store, Wallet } from "lucide-react";
 import { adminApi, fmtDate, useAdminMe } from "@/lib/admin-client";
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
+import { FranchiseApplications } from "@/components/admin/franchise-applications";
 
 type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[] };
 type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; franchise: { id: string; code: string; name: string; bank: Record<string, string> } | null };
 type Settings = { first: number; renewal: number; canActivate: boolean; payoutMin: number };
-type Tab = "list" | "payouts";
+type Tab = "list" | "payouts" | "applications";
 
 function FranchisesInner() {
   const params = useSearchParams();
   const { me } = useAdminMe();
-  const [tab, setTab] = useState<Tab>(params.get("tab") === "payouts" ? "payouts" : "list");
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "payouts" ? "payouts" : params.get("tab") === "applications" ? "applications" : "list");
+  const [newApps, setNewApps] = useState(0);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
   const [payouts, setPayouts] = useState<{ open: Payout[]; done: Payout[] } | null>(null);
@@ -34,7 +36,8 @@ function FranchisesInner() {
     if (!r.ok) { setErr(r.data.error || "Could not load."); setRows([]); return; }
     setRows(r.data.franchises); setSettings(r.data.settings); setErr("");
     if (canPay) { const p = await adminApi<{ open: Payout[]; done: Payout[] }>("/api/admin/v2/franchises?payouts=1"); if (p.ok) setPayouts(p.data); }
-  }, [canPay]);
+    if (!me?.franchise) { const a = await adminApi<{ applications: { status: string }[] }>("/api/admin/v2/franchise-applications?status=new"); if (a.ok) setNewApps(a.data.applications.length); }
+  }, [canPay, me?.franchise]);
   useEffect(() => { void load(); }, [load]);
 
   async function create() {
@@ -67,7 +70,7 @@ function FranchisesInner() {
         <Stat label="Earned in all" value={money(totals.earned)} icon={Wallet} tone="good" />
         <Stat label="Owed (balances)" value={money(totals.balance)} hint={payouts ? `${payouts.open.length} payout${payouts.open.length === 1 ? "" : "s"} waiting` : ""} icon={Wallet} tone={payouts?.open.length ? "warn" : "neutral"} />
       </div>
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "list", label: "All franchises", count: rows?.length }, ...(canPay ? [{ key: "payouts" as Tab, label: "Payouts to pay", count: payouts?.open.length }] : [])]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "list", label: "All franchises", count: rows?.length }, ...(canPay ? [{ key: "payouts" as Tab, label: "Payouts to pay", count: payouts?.open.length }] : []), ...(me?.franchise ? [] : [{ key: "applications" as Tab, label: "Applications", count: newApps }])]} />
 
       {tab === "list" && (rows === null ? <Spinner /> : rows.length === 0 ? <Empty icon={Store} title="No franchise yet" sub="Create the first one: a code, the owner's details and the commission. Then create its login and share its sign-up link." action={canManage ? <Btn variant="primary" icon={Plus} onClick={() => setAdding(true)}>New franchise</Btn> : undefined} /> : (
         <Card pad={false} actions={<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter…" className={`${inputCls} h-8 w-44 text-xs`} />} title={`${list.length} franchise${list.length === 1 ? "" : "s"}`}>
@@ -120,6 +123,8 @@ function FranchisesInner() {
           </Card>
         </div>
       )}
+
+      {tab === "applications" && <FranchiseApplications canManage={canManage} codes={(rows ?? []).map((r) => r.code)} defaults={settings ? { first: settings.first, renewal: settings.renewal, canActivate: settings.canActivate } : null} onApproved={() => void load()} />}
 
       <Modal open={adding} onClose={() => setAdding(false)} title="New franchise" sub="The code goes in their sign-up link (shubhora.com/start?f=CODE). Short, in capitals, e.g. JAIPUR01." width="max-w-2xl"
         footer={<><Btn onClick={() => setAdding(false)}>Cancel</Btn><Btn variant="primary" loading={busy} disabled={!form.code || !form.name || !form.phone} onClick={() => void create()}>Create franchise</Btn></>}>

@@ -148,6 +148,10 @@ export default function PricingPage() {
           <p className="mt-4 text-sm text-muted">Subscriber credit packs never expire: {CREDIT_PACKS.map((c) => `${c.credits} for ${rupees(c.paise)}`).join(" · ")}.</p>
           <p className="mt-2 text-sm text-muted">No subscription? Use the AI tools pay-as-you-go: {PAYG_PACKS.map((c) => `${c.credits} credits for ${rupees(c.paise)}`).join(" · ")}. {WELCOME_CREDITS > 0 ? ` New accounts get ${WELCOME_CREDITS} free credits to try them.` : ""}</p>
         </div>
+        <div className="mt-10 rounded-2xl border border-border bg-surface p-5 md:p-6 flex flex-wrap items-center justify-between gap-4">
+          <div><p className="font-semibold">Want to sell Shubhora in your city?</p><p className="text-sm text-muted">Become a franchise: your territory, commission on every payment your customers make, your own panel.</p></div>
+          <Link href="/franchise" className="inline-flex items-center gap-2 rounded-xl border border-brand/40 bg-brand-soft px-4 py-2.5 text-sm font-semibold text-brand-ink hover:bg-brand-soft/70">Become a franchise →</Link>
+        </div>
         <p className="mt-8 text-center text-xs text-faint">Prices in Indian rupees, including {GST_PCT}% GST. The free digital card is free for its first year, then ₹1,499 a year (included in Standard). Custom Solutions are quoted per requirement. Cancel any time; the plan runs to the end of the paid month. See our <Link href="/refund" className="underline">refund policy</Link> and <Link href="/terms" className="underline">terms</Link>.</p>
       </section>
     </div>

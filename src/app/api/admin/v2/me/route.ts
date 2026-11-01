@@ -17,10 +17,12 @@ export async function GET(request: Request) {
     await svc(`admin_users?id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ last_login_at: new Date().toISOString(), last_ip: ip }) });
     await audit(me, "admin.login", { type: "staff", id: me.id, label: me.email, note: need ? `pending: ${need}` : "" }, request);
   }
-  const alerts = { payouts: 0, pending: 0 };
+  const alerts = { payouts: 0, pending: 0, applications: 0 };
   if (!need) {
     if (me.rights.includes("franchises.payouts")) alerts.payouts = await svcCount("payouts?status=eq.requested&select=id");
     else if (me.franchise) alerts.payouts = await svcCount(`payouts?franchise_id=eq.${me.franchise.id}&status=in.(requested,approved)&select=id`);
+    // New franchise applications from the website wait for whoever manages franchises.
+    if (!me.franchise && me.rights.includes("franchises.manage")) alerts.applications = await svcCount("franchise_applications?status=eq.new&select=id");
   }
   const { franchiseId: _f, ...pub } = me; void _f;
   return Response.json({ me: pub, need, settings: { enforce_mfa: s.enforce_mfa }, alerts });

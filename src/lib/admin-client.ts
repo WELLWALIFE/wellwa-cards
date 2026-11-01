@@ -40,7 +40,7 @@ export async function savePlatformSettings(row: Record<string, string>): Promise
   return r.ok ? null : r.data.error || `Could not save (${r.status}).`;
 }
 
-export type MeAnswer = { me: AdminMe; need: null | "mfa_required" | "password_change_required"; settings: { enforce_mfa: boolean }; alerts: { payouts: number; pending: number } };
+export type MeAnswer = { me: AdminMe; need: null | "mfa_required" | "password_change_required"; settings: { enforce_mfa: boolean }; alerts: { payouts: number; pending: number; applications?: number } };
 /** Who is logged in to the panel, from /api/admin/v2/me (shared by the shell and the pages). */
 export function useAdminMe() {
   const [me, setMe] = useState<MeAnswer | null>(null);

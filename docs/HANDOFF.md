@@ -284,6 +284,12 @@ Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchi
   first payment % / renewal % per franchise (defaults in Platform settings) — always on the amount WITHOUT GST (owner, 1 Nov 2026:
   `net = paise / 1.18`; `base_paise` in the ledger is the net amount and the note shows the working). Payout: request → approve → paid (UTR) → ledger line.
   A franchise login = admin_users row with role franchise + franchise_id: same panel, only its users (`scopeOf` / `userInScope`).
+  **Become a franchise** (owner, 1 Nov 2026 "professional tarika"): `/franchise` (marketing page + `FranchiseApplyForm`, offer / steps / FAQ
+  from `src/lib/franchise-apply.ts`) → `POST /api/franchise/apply` (same-origin, rate-limited, honeypot, one open application per mobile per
+  30 days) → `franchise_applications` (migration **0080**) + push/WhatsApp to every Super Admin. Admin → Franchises → **Applications** tab
+  (`components/admin/franchise-applications.tsx`, `/api/admin/v2/franchise-applications` GET/PATCH/POST): notes, contacted, reject, or
+  **Approve** = franchise row + Franchise-role login (temporary password shown once) + welcome message (login, sign-up link, commission) to
+  send on WhatsApp. Bell alert counts new applications. Link in the footer and a CTA on /pricing (the top nav was too crowded).
   **No partner programme for franchises** (owner, 1 Nov 2026 "franchise mein MLM nahi"): a user under a franchise is a CONSUMER whatever link
   they came by (`/api/account` forces kind consumer when `franchiseOf()`), Admin cannot "Make partner ID" for them (kind route), and the
   franchise's own panel shows no Partner ID column / views / stats (`meFr` in admin/users).

@@ -21,7 +21,7 @@ const cols = [
   },
   {
     title: "Company",
-    links: [["About us", "/about"], ["Our work", "/work"], ["Contact", "/contact"], ["Company information", "/company"], ["Partner programme", "/partners/legal/disclosures"], ["Staff Admin login", "/partners/admin/login"], ["Super Admin login", "/admin"]],
+    links: [["About us", "/about"], ["Our work", "/work"], ["Contact", "/contact"], ["Become a franchise", "/franchise"], ["Company information", "/company"], ["Partner programme", "/partners/legal/disclosures"], ["Staff Admin login", "/partners/admin/login"], ["Admin & franchise login", "/admin/login"]],
   },
   {
     title: "Policies",
