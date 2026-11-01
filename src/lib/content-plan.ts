@@ -139,9 +139,9 @@ Rules:
 - Other dates: kind from [${allowedKinds.join(", ")}]; focus from [${focusText}]. Vary the kinds across the week; never two identical ideas in a row; each product at most once a week.
 - kind "product" / "offer" MUST carry a product_id from the list; kind "offer" only with a real offer written above (quote it exactly). Never invent prices, discounts, awards, years or numbers.
 - "tip": one useful thing a customer of this trade should know. "trust"/"testimonial": why people rely on this business (use the USPs). "about": the people, the craft, the shop, the day's work. "greeting": a thought for the day that touches the trade lightly.
-- title: the poster's heading, ≤ 34 characters, ${lang}, no emoji, no business name (the name is printed by the design). sub: ≤ 40 characters, one line under the heading. custom: a third short line ≤ 50 characters ONLY for an offer or a price (else "").
+- title: the poster's heading, ≤ 34 characters, ${lang}, no emoji, no business name (the name is printed by the design). sub: ≤ 40 characters, one line under the heading. custom: ONLY on an "offer" day, the offer exactly as written above (≤ 50 characters); on every other day "" — never a price, never "only ₹…".
 - hook: the idea in one short line (${lang}). caption: 2–3 short lines in ${lang}, warm and professional, at most 2 emoji, no phone number, no link, no hashtags (code adds those). hashtags: 5, mixing the trade, the city and the topic. why: one sentence on why this post helps, in ${lang}.
-- Tone: ${b.tone.length ? b.tone.map((t) => TONES.find((x) => x.key === t)?.en ?? t).join(", ") : "warm, trusted"}. Write every business and product name exactly as given (never transliterate).`;
+- Tone: ${b.tone.length ? b.tone.map((t) => TONES.find((x) => x.key === t)?.en ?? t).join(", ") : "warm, trusted"}. Write every business and product name exactly as given (never transliterate), and keep English product / tech words in Roman letters (WhatsApp, AI, Google, website, app) even inside a Hindi line.`;
   const user = `Business: ${b.name}${b.tagline ? ` — ${b.tagline}` : ""}
 Trade: ${cat ? `${cat.en} (${cat.hi})` : b.category || "small business"}${b.city ? ` · City: ${b.city}` : ""}
 Who buys: ${b.audience || "local customers"}
@@ -175,7 +175,10 @@ function readDays(text: string, c: Ctx, dates: string[]): Map<string, PlanDay> {
     const overrides: PlanDay["overrides"] = {};
     if (shortLine(d.title, 34)) overrides.title = shortLine(d.title, 34);
     if (shortLine(d.sub, 40)) overrides.sub = shortLine(d.sub, 40);
-    if ((kind === "offer" || kind === "product") && shortLine(d.custom, 50)) overrides.custom = shortLine(d.custom, 50);
+    // The third line is ONLY a real offer the owner wrote (on the poster it becomes the "today's offer" badge). A price or a made-up
+    // "only ₹…" on a plain product day read as an offer that does not exist (seen live, 2 Nov 2026) — so product days get none.
+    const realOffer = kind === "offer" && (c.offers.length > 0 || c.products.some((p) => p.id === product_id && p.offer));
+    if (realOffer && shortLine(d.custom, 50)) overrides.custom = shortLine(d.custom, 50);
     const brief = cleanBrief({ focus: d.focus, hook: d.hook, caption: d.caption, hashtags: cleanTags(d.hashtags), why: d.why, at: new Date().toISOString() });
     if (!brief.focus) brief.focus = FOCUS.find((f) => f.kinds.includes(kind))?.key;
     out.set(date, { for_date: date, kind, product_id, overrides, brief });
