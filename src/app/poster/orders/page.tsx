@@ -99,7 +99,7 @@ export default function OrdersPage() {
         </div>
       )}
 
-      {creating && data && <NewOrder hi={hi} q={ws.q} data={data} onClose={() => setCreating(false)} onSaved={(jobs, shop, told) => { setCreating(false); setBooked({ jobs, shop, told }); void load(); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
+      {creating && data && <NewOrder hi={hi} q={ws.q} data={data} onClose={() => setCreating(false)} onSaved={(jobs, shop, told) => { setCreating(false); setBooked({ jobs, shop, told }); void load(); setTimeout(() => void load(), 1500); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
       {booked && <Booked hi={hi} {...booked} onClose={() => setBooked(null)} />}
 
       {/* Today at a glance — late in red, first. */}
