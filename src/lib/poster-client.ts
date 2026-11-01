@@ -4,7 +4,7 @@
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 export type Persona = "business" | "personal" | "home" | "community" | "student" | "professional";
-export type Layout = { title?: string; sub?: string; custom?: string; accent?: string; nameSize?: "S" | "M" | "L"; photoSide?: "right"; hideLine?: boolean; hidePhone?: boolean; hideLogo?: boolean; hidePhoto?: boolean; showName?: boolean; showLine?: boolean; showPhone?: boolean; showPhoto?: boolean; voice?: { on?: boolean; gender?: string; by?: string }; artGroup?: string; varyStyle?: boolean; autoStatusVideo?: boolean; look?: "vibrant" | "classic" | "old"; usps?: string[] };
+export type Layout = { title?: string; sub?: string; custom?: string; accent?: string; nameSize?: "S" | "M" | "L"; photoSide?: "right"; hideLine?: boolean; hidePhone?: boolean; hideLogo?: boolean; hidePhoto?: boolean; showName?: boolean; showLine?: boolean; showPhone?: boolean; showPhoto?: boolean; voice?: { on?: boolean; gender?: string; by?: string }; artGroup?: string; varyStyle?: boolean; autoStatusVideo?: boolean; look?: "vibrant" | "classic" | "old"; usps?: string[]; tone?: string[]; audience?: string; palette?: string[] };
 export type Party = { name: string; symbol_url: string; slogan: string; colors: string[]; leaders: { name: string; photo_url: string }[] };
 export type Profile = {
   id: string; persona: Persona; name: string; tagline: string | null; phone: string | null; city: string | null;

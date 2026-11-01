@@ -44,8 +44,15 @@ export function statusCaption(caption, { phone = "", link = "", join = "", lang 
  * kind: "product" (product / plan poster), "card" (the weekly visiting-card poster) or "" (greeting / festival).
  * product: { name, price, benefits[], offer } — the product that is ON the poster.
  */
-export async function writeCaption({ key = "", name = "", tagline = "", phone = "", lang = "hi", theme = "", offer = "", product = null, link = "", join = "", kind = "" } = {}) {
+export async function writeCaption({ key = "", name = "", tagline = "", phone = "", lang = "hi", theme = "", offer = "", product = null, link = "", join = "", kind = "", brief = null, tone = [], audience = "" } = {}) {
   const who = `${name || ""}${tagline && tagline !== name ? ` — ${tagline}` : ""}`.trim();
+  // Month plan v2 (1 Nov 2026): the day already has its caption from the plan (the owner may have edited it) — that text goes
+  // out as it is, with the footer; no second AI write that would say something else than what the owner approved.
+  if (brief && Array.isArray(brief.lines) && brief.lines.length) {
+    const lines = brief.lines.map(cleanLine).filter(Boolean).slice(0, 4);
+    const tags = [...new Set((Array.isArray(brief.hashtags) ? brief.hashtags : []).map((t) => `#${String(t).replace(/^#+/, "").replace(/[^\p{L}\p{M}\p{N}_]/gu, "")}`).filter((t) => t.length > 2 && t.length <= 32))].slice(0, 6);
+    if (lines.length) return [lines.join("\n"), captionFooter({ phone, link, join, lang }), tags.join(" ")].filter((x) => x && x.trim()).join("\n\n");
+  }
   const isProduct = kind === "product" || (!kind && !!product?.name);
   // only a real amount goes in as a price — "On request — contact us" read as "… — Price: On request — contact us"
   const price = isProduct && /\d/.test(String(product?.price ?? "")) ? priceText(product?.price) : "";
@@ -59,7 +66,7 @@ export async function writeCaption({ key = "", name = "", tagline = "", phone = 
       : [`${theme ? `${theme} — ` : ""}${who}`];
   const compose = (lines, tags) => [lines.join("\n"), captionFooter({ phone, link, join, lang }), tags.join(" ")].filter((x) => x && x.trim()).join("\n\n");
   if (!key) return compose(fallback, []);
-  const brief = isProduct
+  const task = isProduct
     ? `The poster advertises this product / plan, sold by the seller below:
 Name: ${product.name}
 ${price ? `Price: ${price}\n` : ""}${benefits.length ? `Benefits: ${benefits.join("; ")}\n` : ""}${product.offer ? `Its offer: ${product.offer}\n` : ""}Write 2 short, attractive lines that make a customer want it: name it, give one or two of the real benefits above, and the price or offer if one is given (quote numbers exactly as written).`
@@ -67,8 +74,8 @@ ${price ? `Price: ${price}\n` : ""}${benefits.length ? `Benefits: ${benefits.joi
       ? "The poster shows the seller's digital visiting card: one link with call, WhatsApp, location, photos and products. Write 2 short lines inviting people to open the card and save the number."
       : `The poster is a greeting. Theme: ${theme}. Write 2 short, warm lines for the day that also remind people of the seller.`;
   const prompt = `Write a social-media caption in ${LANG(lang)} for a poster.
-${brief}
-Seller: ${who}
+${task}
+Seller: ${who}${Array.isArray(tone) && tone.length ? `\nBrand tone: ${tone.join(", ")}` : ""}${audience ? `\nWho buys: ${audience}` : ""}
 ${dayOffer ? `Today's offer (quote it exactly as written): "${dayOffer}"` : "There is no other offer or discount — do not invent one."}
 Rules: professional and warm; at most 2 emoji; no medical or income claims; no invented prices or numbers. Write every brand, business and product name exactly as it is written above — same letters, same spelling (never transliterate it). No phone number, no link and no hashtags inside "lines".
 Return JSON only: {"lines": ["first line", "second line"], "hashtags": ["#one", "#two", "#three", "#four", "#five"]}`;

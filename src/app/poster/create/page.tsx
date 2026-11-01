@@ -28,7 +28,8 @@ function CreateHubInner() {
   const doors: Door[] = [
     { key: "poster", I: Sparkles, t: hi ? "Poster & Status" : "Poster & Status", s: hi ? "रोज़ का poster और 15 सेकंड का video status — free" : "A new poster every day and a 15-second video for Status — free", items: [
       { href: "/poster", I: Sparkles, t: hi ? "आज का poster" : "Today's poster", s: hi ? "रोज़ अपने-आप बनता है — देखें, WhatsApp या Status पर भेजें" : "Made for you every day. Look at it and send it on WhatsApp or Status", tag: "FREE" },
-      { href: "/poster/calendar", I: CalendarDays, t: hi ? "महीने का plan" : "Plan for the month", s: hi ? "पूरे महीने के posts एक साथ तय करें" : "Choose the posts for the whole month at once" },
+      { href: "/poster/calendar", I: CalendarDays, t: hi ? "महीने का plan" : "Plan for the month", s: hi ? "AI पूरे महीने के posts लिखता है — poster के शब्द, caption, hashtags; आप बदलें" : "The AI writes the month's posts — poster words, caption, hashtags; you change any" },
+      { href: "/poster/brand/setup", I: Palette, t: hi ? "मेरा brand" : "My brand", s: hi ? "रंग, अंदाज़, भाषा, ग्राहक — हर poster और caption इसी से" : "Colours, tone, language, customers — every poster and caption follows it" },
       { href: "/poster/testimonials", I: MessageSquareQuote, t: hi ? "ग्राहकों के reviews" : "Customer reviews", s: hi ? "Reviews माँगें और उनसे poster बनाएँ" : "Ask customers for reviews and make posters from them" },
       { href: "/poster/social", I: Share2, t: hi ? "अपने-आप post" : "Post by itself", s: hi ? "Facebook, Instagram, Status — रोज़ सुबह 4 बजे अपने-आप" : "Facebook, Instagram, Status — every morning at 4 AM, by itself", paid: true },
     ] },

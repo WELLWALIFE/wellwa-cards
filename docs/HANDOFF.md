@@ -206,6 +206,27 @@ Undo (owner, 1 Nov 2026 "galat ho jaye to"): a cancelled job can be deleted (`DE
 a karigar is edited / deleted when no job is with them (`DELETE /api/jobs/karigars?id=`); a measurement not on any job is deleted
 (`DELETE /api/jobs/measurements?id=`). Speed: flags / setup / names / shop name are remembered in-process (one pm2 app process), see jobs-server.ts.
 
+## Brand + Month plan v2 (2 Nov 2026)
+Owner, after looking at a content app (Scalio) from inside: "copy nahi karna, us se best banana hai" — chose "brand setup + month plan" in one go.
+Migration **0083** (`poster_calendar.brief jsonb`, day kinds + tip / trust / about) must run before deploy.
+- `lib/brand-plan.ts` (isomorphic): TONES, FOCUS, DAY_KINDS + KIND_TEXT, DayBrief + cleanBrief, palette presets, `brandReady`.
+- Brand lives on the poster profile: `layout.accent / palette / tone / audience / usps` (+ name, tagline, lang, category, city, logo);
+  photos in `card_facts.photos`. `/api/poster/brand` GET (`?suggest=1`: logo colour + AI tone / audience / USPs / tagline, only fills
+  empty fields) and POST. `cleanLayout` in /api/poster/profiles keeps tone / audience / palette. Page `/poster/brand/setup` (website
+  "Read" via /api/site/peek, logo, colours, tone, language, customers, why-us, photos, live preview tile; "Plan my month").
+- `lib/content-plan.ts`: `brandSnapshot`, `suggestBrand`, `draftMonth` (two parallel gemini calls, one per half month; every posting
+  day gets overrides.title / sub / custom for the POSTER + brief caption / hashtags / hook / why; festivals from the engine's occasions;
+  only the owner's products and offers — nothing invented; anything the AI misses falls back to the old weekly mix), `redraftDay`.
+- `/api/poster/calendar`: actions `plan` (8/day), `post` (owner edits words / kind / product / style / voice / music; clears that day's
+  stored caption), `redo` (new idea with the owner's hint, 60/day); GET returns brief + the month's posters + planReady.
+- The plan reaches the output: Signature posters now draw `layout.title / sub` (engine); the file name carries a hash of the day's words
+  (changed words = new poster); the caption writer takes the day's brief as written (+ phone / card-link footer) and the brand's tone /
+  audience otherwise — in the 4 AM auto-post (`prepareDay`, reads without `brief` until 0083 runs) and the app's posting (`ensurePosterCaption`).
+- Free accounts may preview the first three planned posts (`/api/poster/today?preview=1&sample=1`, watermarked, never saved or posted).
+- `/poster/calendar` rewritten: brand strip, plan card (focus chips, posts a week), stats, "Next 3 posts" previews, list + calendar grid,
+  post sheet (real poster preview, heading, line, offer line, caption with copy, hashtags, why, New idea, style / voice / music), offers.
+  Create → Poster door: new "Month plan" text + "My brand". Rendered with mocked APIs; the live AI plan was not run here.
+
 ## Ads v2 — Facebook / Instagram ads made perfect (1 Nov 2026)
 Owner: "ad chalne wale part ko perfect aur professional banao; payment ka option kya rahega Meta ka?" Decision (owner said "jo best lage wo karo"):
 **the money for ads goes to Facebook from the user's OWN ad account** (UPI prepaid or card in Meta's Payment settings) — Shubhora never holds ad

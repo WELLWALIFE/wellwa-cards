@@ -34,8 +34,12 @@ async function rest(q, init) { const r = await fetch(`${SUPA}/rest/v1/${q}`, { .
 async function graph(p, params) { const r = await fetch(`${GRAPH}/${p}`, { method: "POST", body: new URLSearchParams(params) }); const j = await r.json().catch(() => ({})); if (j.error) { const e = new Error(j.error.message); e.code = j.error.code; throw e; } return j; }
 /** Caption for a post: the shared writer in poster-caption.mjs (the app's own posts use the same one) — the selling
  *  lines about the day's product / plan, then the number and the owner's V-Card link, then hashtags. */
-async function genCaption({ name, tagline, phone, lang, theme, offer = "", product = null, link = "", join = "", kind = "" }) {
-  return writeCaption({ key: GEMINI_KEY, name, tagline, phone, lang, theme, offer, product, link, join, kind });
+async function genCaption({ name, tagline, phone, lang, theme, offer = "", product = null, link = "", join = "", kind = "", brief = null, layout = null }) {
+  // Month plan v2: the day's planned caption (lines + hashtags) goes out as written; the brand's tone and audience steer the AI otherwise.
+  const b = brief && typeof brief === "object" && typeof brief.caption === "string" && brief.caption.trim()
+    ? { lines: brief.caption.split("\n").map((l) => l.trim()).filter(Boolean), hashtags: Array.isArray(brief.hashtags) ? brief.hashtags : [] } : null;
+  const L = layout && typeof layout === "object" ? layout : {};
+  return writeCaption({ key: GEMINI_KEY, name, tagline, phone, lang, theme, offer, product, link, join, kind, brief: b, tone: Array.isArray(L.tone) ? L.tone : [], audience: typeof L.audience === "string" ? L.audience : "" });
 }
 /** The owner's joining link (their account username): "make your free card" under every post. "" when the account
  *  has no username yet. */
@@ -108,7 +112,10 @@ async function publish(a, url, caption) {
  *  redo: make the product poster again (see --redo-products below); every other profile is skipped (null). */
 async function prepareDay(userId, prof, date, paid, { redo = false } = {}) {
   const theme = themeFor(date);
-  const cal = (await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}&select=kind,product_id,overrides`))?.[0];
+  // (brief needs migration 0083 — before it runs, the day is read without it rather than lost)
+  let calRows = await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}&select=kind,product_id,overrides,brief`);
+  if (!Array.isArray(calRows)) calRows = await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}&select=kind,product_id,overrides`);
+  const cal = Array.isArray(calRows) ? calRows[0] : undefined;
   const offers = await rest(`poster_offers?user_id=eq.${userId}&active=is.true&starts=lte.${date}&ends=gte.${date}&select=text,starts,ends,scope,product_ids,categories,active`);
   if (cal?.kind === "skip") { console.log(`  skip ${prof.name}: calendar skip`); return null; }
   let testimonial = null;
@@ -165,7 +172,7 @@ async function prepareDay(userId, prof, date, paid, { redo = false } = {}) {
   const cardLinkFix = (c) => { if (!c || !link?.url) return c; const base = link.url.split("?")[0]; return c.includes(link.url) || !c.includes(base) ? c : c.split(base).join(link.url); };
   const fixedCap = cardLinkFix(storedCap);
   if (fixedCap !== storedCap && poster?.id && !custom && !redo) await rest(`posters?id=eq.${poster.id}`, { method: "PATCH", body: JSON.stringify({ caption: fixedCap }) });
-  const caption = (fixedCap && !custom && !redo) ? fixedCap : await genCaption({ name: prof.name, tagline: prof.tagline, phone: prof.phone, lang: prof.lang, theme: theme.hi, offer: custom, product: kind === "product" ? dayProd : null, link: link?.url ?? "", join, kind });
+  const caption = (fixedCap && !custom && !redo) ? fixedCap : await genCaption({ name: prof.name, tagline: prof.tagline, phone: prof.phone, lang: prof.lang, theme: theme.hi, offer: custom, product: kind === "product" ? dayProd : null, link: link?.url ?? "", join, kind, brief: kind === "card" ? null : cal?.brief, layout: prof.layout });
   if ((!storedCap || redo) && poster?.id) await rest(`posters?id=eq.${poster.id}`, { method: "PATCH", body: JSON.stringify({ caption }) });
   // dayProd = the product ON the poster (none on a visiting-card day), for the status video's voice
   // cal travels with the day: main() marks the calendar entry done after posting. (It read a `cal` that only existed

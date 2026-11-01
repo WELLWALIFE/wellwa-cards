@@ -458,10 +458,16 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // stock photo earlier today keep their old file names and are simply not picked up again.
   const sTag = stock && stockFitsOccasion(themeFor(dateStr)) ? `-s${stock.kind.slice(0, 3)}` : "";
   const vTag = card ? "-vc" : "";
+  // The day's own words (month plan / "Only today" edit): a short hash of them in the file name, so changed words make a new
+  // poster instead of returning yesterday's file of the same day and style.
+  const L0 = profile.layout && typeof profile.layout === "object" ? profile.layout : {};
+  const words0 = `${L0.title || ""}|${typeof L0.sub === "string" ? L0.sub : ""}|${custom || ""}`;
+  let wh = 5381; for (let i = 0; i < words0.length; i++) wh = ((wh * 33) ^ words0.charCodeAt(i)) >>> 0;
+  const hTag = words0 !== "||" ? `-h${wh.toString(36).slice(0, 6)}` : "";
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
-  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${sigLook ? `-sig${sigLook[0]}2` : "-t3"}${watermark ? "-w" : ""}.jpg`);
+  const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${hTag}${sigLook ? `-sig${sigLook[0]}2` : "-t3"}${watermark ? "-w" : ""}.jpg`);
   if (fs.existsSync(out) && !force) return out;
   // Signature draws its own page from a real photo + the layout code, so it never needs (or pays for) the day's base art;
   // only when it cannot render does the day fall through to the original styles below.
@@ -1149,6 +1155,15 @@ async function renderSignaturePoster(out, dateStr, profile, { look, theme, produ
       if (occasion) h2 = customLine;
       else { h0 = badge ? SIG_TAG[L2].offer : h0; h1 = customLine; h2 = lines.h2 && lines.h2 !== customLine ? lines.h2 : tagline; }
     }
+  }
+  // The day's own heading / small line (the month plan writes them, the owner may edit them): they win over the engine's
+  // own words, except on a customer-review day (the review is the heading). A heading that is just the business name again
+  // is ignored — the design prints the name already.
+  if (kind !== "testimonial") {
+    const ownTitle = String(layout.title || "").trim().slice(0, 40), ownSub = typeof layout.sub === "string" ? layout.sub.trim().slice(0, 48) : "";
+    const isName = (s) => s.toLowerCase() === String(profile.name || "").trim().toLowerCase();
+    if (ownTitle && !isName(ownTitle)) { if (h1 && h1 !== ownTitle && !occasion && !customLine) h0 = h0 || tag; h1 = ownTitle; }
+    if (ownSub) h2 = ownSub;
   }
 
   // picture: the product's own photo on a product day, else a landscape stock photo of the TRADE (the poster is the

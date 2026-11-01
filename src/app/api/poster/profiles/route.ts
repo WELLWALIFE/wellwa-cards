@@ -1,5 +1,6 @@
 // GET  → my poster profiles       POST → create / update one
 import { NextResponse } from "next/server";
+import { isTone } from "@/lib/brand-plan";
 import { userFromRequest, restAsUser, restAsService, type PosterProfile } from "@/lib/poster-server";
 
 const PERSONAS = new Set(["business", "personal", "home", "community", "student", "professional"]);
@@ -29,6 +30,12 @@ function cleanLayout(v: unknown) {
   const usps = (Array.isArray(l.usps) ? l.usps : []).map((u) => (typeof u === "string" ? u : u && typeof u === "object" ? `${S((u as Record<string, unknown>).label, 22)}|${S((u as Record<string, unknown>).sub, 22)}` : "")).map((u) => u.split("|").map((x) => x.trim().slice(0, 22)).slice(0, 2).join("|").replace(/\|$/, "")).filter((u) => u && u !== "|").slice(0, 5);
   if (usps.length) out.usps = usps;
   if (l.autoStatusVideo === false) out.autoStatusVideo = false;
+  // Brand (1 Nov 2026, /poster/brand/setup): tone chips, who buys, up to three colours — kept through every profile save.
+  const tone = (Array.isArray(l.tone) ? l.tone : []).map(String).filter(isTone).slice(0, 3);
+  if (tone.length) out.tone = tone;
+  if (S(l.audience, 120)) out.audience = S(l.audience, 120);
+  const palette = (Array.isArray(l.palette) ? l.palette : []).map(String).filter((c) => HEX.test(c)).slice(0, 3);
+  if (palette.length) out.palette = palette;
   const vc = l.voice as Record<string, unknown> | undefined;
   if (vc && typeof vc === "object") out.voice = { on: vc.on === true, gender: ["female", "female2", "male", "male2"].includes(String(vc.gender)) ? String(vc.gender) : "female", ...(vc.by === "user" ? { by: "user" } : {}) };
   return out;

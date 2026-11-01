@@ -260,7 +260,7 @@ export async function ensureStatusVideo(userId: string, posterId: string): Promi
 }
 
 type CaptionWriter = {
-  writeCaption: (o: { key?: string; name?: string; tagline?: string; phone?: string; lang?: string; theme?: string; offer?: string; product?: { name?: string; price?: string; benefits?: string[]; offer?: string } | null; link?: string; join?: string; kind?: string }) => Promise<string>;
+  writeCaption: (o: { key?: string; name?: string; tagline?: string; phone?: string; lang?: string; theme?: string; offer?: string; product?: { name?: string; price?: string; benefits?: string[]; offer?: string } | null; link?: string; join?: string; kind?: string; brief?: { lines: string[]; hashtags: string[] } | null; tone?: string[]; audience?: string }) => Promise<string>;
   captionFooter: (o: { phone?: string; link?: string; join?: string; lang?: string }) => string;
   /** The caption for WhatsApp: hashtags removed, "my card" and "make your free card" links always there. */
   statusCaption: (caption: string, o: { phone?: string; link?: string; join?: string; lang?: string }) => string;
@@ -297,10 +297,22 @@ export async function cardLinkFor(userId: string, primaryCardId?: string | null)
 /** Post caption for a poster (cached on the row): the selling lines about the day's product / plan, the number and the
  *  owner's V-Card link, then hashtags — the same writer as the auto-post. ₹~0.05 via flash-lite. */
 export async function ensurePosterCaption(posterId: string, ctx: { name: string; tagline?: string | null; phone?: string | null; lang?: string | null; theme: string; product?: { name?: string; price?: string; benefits?: string[]; offer?: string } | null; offer?: string; link?: string; join?: string; kind?: string }): Promise<string> {
-  const row = (await restAsService<{ caption: string | null; title: string }[]>(`posters?id=eq.${posterId}&select=caption,title`)).data?.[0];
+  const row = (await restAsService<{ caption: string | null; title: string; profile_id: string; for_date: string }[]>(`posters?id=eq.${posterId}&select=caption,title,profile_id,for_date`)).data?.[0];
   if (row?.caption) return row.caption;
+  // Month plan v2: the day's planned caption (the owner may have edited it) and the brand's tone / audience.
+  let brief: { lines: string[]; hashtags: string[] } | null = null; let tone: string[] = []; let audience = "";
+  if (row?.profile_id && ctx.kind !== "card") {
+    const [cal, prof] = await Promise.all([
+      restAsService<{ brief?: { caption?: string; hashtags?: string[] } }[]>(`poster_calendar?profile_id=eq.${row.profile_id}&for_date=eq.${row.for_date}&select=brief`),
+      restAsService<{ layout?: { tone?: string[]; audience?: string } | null }[]>(`poster_profiles?id=eq.${row.profile_id}&select=layout`),
+    ]);
+    const b = cal.ok ? cal.data?.[0]?.brief : undefined;
+    if (b?.caption?.trim()) brief = { lines: b.caption.split("\n").map((l) => l.trim()).filter(Boolean), hashtags: Array.isArray(b.hashtags) ? b.hashtags : [] };
+    const L = prof.data?.[0]?.layout ?? {};
+    tone = Array.isArray(L.tone) ? L.tone : []; audience = typeof L.audience === "string" ? L.audience : "";
+  }
   const w = await posterCaptionWriter();
-  const caption = await w.writeCaption({ key: process.env.GEMINI_API_KEY ?? "", name: ctx.name, tagline: ctx.tagline ?? "", phone: ctx.phone ?? "", lang: ctx.lang ?? "hi", theme: ctx.theme, offer: ctx.offer ?? "", product: ctx.product ?? null, link: ctx.link ?? "", join: ctx.join ?? "", kind: ctx.kind ?? (ctx.product?.name ? "product" : "") });
+  const caption = await w.writeCaption({ key: process.env.GEMINI_API_KEY ?? "", name: ctx.name, tagline: ctx.tagline ?? "", phone: ctx.phone ?? "", lang: ctx.lang ?? "hi", theme: ctx.theme, offer: ctx.offer ?? "", product: ctx.product ?? null, link: ctx.link ?? "", join: ctx.join ?? "", kind: ctx.kind ?? (ctx.product?.name ? "product" : ""), brief, tone, audience });
   await restAsService(`posters?id=eq.${posterId}`, { method: "PATCH", body: JSON.stringify({ caption }) });
   return caption;
 }

@@ -2,6 +2,7 @@
 // Renders lazily (shared base art + personal layer), records the poster row,
 // enforces the free-plan weekly quota.
 import { NextResponse } from "next/server";
+import { rateLimited } from "@/lib/api-security";
 import { userFromRequest, ownProfile, posterQuota, istDate, posterEngine, restAsService, OUT_URL, dayPlan, cardLinkFor, joinLinkFor, posterVersion } from "@/lib/poster-server";
 
 export async function GET(request: Request) {
@@ -18,13 +19,21 @@ export async function GET(request: Request) {
     `posters?profile_id=eq.${profile.id}&for_date=eq.${date}&select=id,url,title,occasion_slug,shares,style,video_url,caption`,
   );
   const quota = await posterQuota(me.token, me.id);
-  if (quota.plan === "free") return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
+  // The month plan's "see it first" (1 Nov 2026): a free account may SEE the first three planned posters of its plan — drawn
+  // with the Shubhora mark, never saved as a poster, never posted. Paid plans see every day.
+  const sample = q.get("sample") === "1" && q.get("preview") === "1" && quota.plan === "free";
+  if (sample) {
+    if (rateLimited(`poster-sample:${me.id}`, 12, 24 * 3600_000)) return NextResponse.json({ error: "plan", quota, message: "Free previews for today are done. The Standard plan shows every day of the plan." }, { status: 402 });
+    const first = (await restAsService<{ for_date: string }[]>(`poster_calendar?profile_id=eq.${profile.id}&for_date=gte.${istDate()}&kind=neq.skip&order=for_date&limit=3&select=for_date`)).data ?? [];
+    if (!first.some((r) => r.for_date === date)) return NextResponse.json({ error: "plan", quota, message: "The free plan shows the first three posts of your plan. The Standard plan shows every day." }, { status: 402 });
+  }
+  if (quota.plan === "free" && !sample) return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
   // The owner's V-Card: its link goes on the poster and with every share; on Sundays the poster IS the card.
   const link = await cardLinkFor(me.id, (profile as unknown as { card_facts?: { primaryCardId?: string } | null }).card_facts?.primaryCardId);
   const card_url = link?.url ?? "";
   const force = q.get("force") === "1";
   const preview = q.get("preview") === "1"; // calendar "next 7 days": render only, no quota, no posters row (paid plans)
-  if (preview && quota.plan === "free") return NextResponse.json({ error: "plan", message: "Preview of upcoming posters is part of the Personal / Business plan." }, { status: 402 });
+  if (preview && quota.plan === "free" && !sample) return NextResponse.json({ error: "plan", message: "Preview of upcoming posters is part of the Personal / Business plan." }, { status: 402 });
   // style: ?style= (chip tap) beats the profile's saved style; a different style re-renders without spending quota
   const STYLE_KEYS = ["signature", "signature-classic", "classic", "bold", "clean", "festive", "minimal", "traditional"];
   const eng0 = await posterEngine();
@@ -54,7 +63,7 @@ export async function GET(request: Request) {
     const allProducts = (await restAsService<Record<string, unknown>[]>(`poster_products?user_id=eq.${me.id}&brand_id=is.null&active=eq.true&order=sort,created_at&select=*`)).data ?? [];
     const roster = cal?.kind && cal.kind !== "auto" ? String(cal.kind) : profile.mode === "product" ? (theme0.kind === "occasion" ? "festival" : "product") : eng.rosterKind(theme0, date, { hasProducts: allProducts.length > 0 });
     const wantProduct = roster === "product" || roster === "benefit" || roster === "offer";
-    const stockKind = roster === "testimonial" ? "greeting" : roster;
+    const stockKind = ["testimonial", "trust", "about"].includes(roster) ? "greeting" : roster;
     // testimonial day: pick one of the user's approved reviews by day index; none → normal poster
     let testimonial: Record<string, unknown> | null = null;
     if (cal?.kind === "testimonial") {
