@@ -5,8 +5,11 @@ export type FranchiseApplication = {
   id: string; name: string; phone: string; email: string; company: string; city: string; state: string; area: string;
   background: string; reach: string; source: string; status: ApplicationStatus; note: string; franchise_id: string | null;
   decided_by: string | null; decided_at: string | null; created_at: string; updated_at: string;
+  /** The mobile already had a Shubhora login when they applied: their existing password stays (no hash was kept). */
+  has_account: boolean;
 };
-export const APP_COLS = "id,name,phone,email,company,city,state,area,background,reach,source,status,note,franchise_id,decided_by,decided_at,created_at,updated_at";
+export const APP_COLS = "id,name,phone,email,company,city,state,area,background,reach,source,status,note,franchise_id,decided_by,decided_at,created_at,updated_at,has_account";
+export const PASSWORD_MIN = 8;
 
 export const STATUS_LABEL: Record<ApplicationStatus, { label: string; tone: "warn" | "brand" | "good" | "danger" }> = {
   new: { label: "New", tone: "warn" }, contacted: { label: "Contacted", tone: "brand" }, approved: { label: "Approved", tone: "good" }, rejected: { label: "Rejected", tone: "danger" },

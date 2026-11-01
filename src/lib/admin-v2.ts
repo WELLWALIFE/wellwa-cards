@@ -222,9 +222,9 @@ export function tempPassword(): string {
   return `${words[Math.floor(Math.random() * words.length)]}-${crypto.randomBytes(3).toString("hex")}-${Math.floor(100 + Math.random() * 900)}`;
 }
 /** Makes the login (e-mail confirmed, a temporary password) or sets a new temporary password on an existing one. */
-export async function createOrResetAuthUser(email: string, name: string, phone: string): Promise<{ id: string; password: string; created: boolean } | { error: string }> {
+export async function createOrResetAuthUser(email: string, name: string, phone: string, chosen?: string): Promise<{ id: string; password: string; created: boolean } | { error: string }> {
   const h = serviceHeaders();
-  const password = tempPassword();
+  const password = chosen && chosen.length >= 8 ? chosen : tempPassword();
   const have = await findAuthUser(email);
   if (have) {
     const r = await fetch(`${SUPA_URL}/auth/v1/admin/users/${have.id}`, { method: "PUT", headers: h, body: JSON.stringify({ password }) });
@@ -235,6 +235,18 @@ export async function createOrResetAuthUser(email: string, name: string, phone: 
   const j = (await r.json().catch(() => ({}))) as { id?: string; msg?: string; message?: string };
   if (!r.ok || !j.id) return { error: j.msg || j.message || "Could not create the login." };
   return { id: j.id, password, created: true };
+}
+/** The login with a password the person chose themselves (kept only as a bcrypt hash — GoTrue takes `password_hash`). An account that
+ *  already exists for that address keeps its own password. */
+export async function createAuthUserWithHash(email: string, name: string, phone: string, passwordHash: string): Promise<{ id: string; created: boolean } | { error: string }> {
+  const have = await findAuthUser(email);
+  if (have) return { id: have.id, created: false };
+  if (!/^\$2[aby]\$\d\d\$/.test(passwordHash)) return { error: "No password was set in the application." };
+  const body = { email, password_hash: passwordHash, email_confirm: true, user_metadata: { full_name: name, display_name: name, ...(phone ? { phone } : {}) } };
+  const r = await fetch(`${SUPA_URL}/auth/v1/admin/users`, { method: "POST", headers: serviceHeaders(), body: JSON.stringify(body) });
+  const j = (await r.json().catch(() => ({}))) as { id?: string; msg?: string; message?: string };
+  if (!r.ok || !j.id) return { error: j.msg || j.message || "Could not create the login." };
+  return { id: j.id, created: true };
 }
 /** Removes every 2-step factor of an account (they set it up again on next login). */
 export async function resetFactors(userId: string): Promise<boolean> {

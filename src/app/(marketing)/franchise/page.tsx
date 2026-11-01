@@ -29,6 +29,7 @@ export default function FranchisePage() {
               <a href="#apply" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white hover:opacity-95">Apply now — 2 minutes</a>
               <a href={waLink("Hi Shubhora, I want to know about the franchise.")} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold hover:bg-surface2"><MessageCircle className="h-4 w-4 text-[#25D366]" /> Ask on WhatsApp</a>
             </div>
+            <p className="mt-4 text-sm text-muted">Already a franchise? <Link href="/admin/login" className="font-semibold text-brand-ink underline">Log in to your panel</Link> with your mobile number.</p>
             <dl className="mt-10 grid grid-cols-3 gap-4 max-w-md">
               {[["₹0", "stock or office"], ["1 city", "exclusive to you"], ["Life", "of every customer, commission"]].map(([v, l]) => (
                 <div key={l} className="rounded-xl border border-border bg-surface p-3"><dt className="text-xl font-semibold">{v}</dt><dd className="text-xs text-muted">{l}</dd></div>

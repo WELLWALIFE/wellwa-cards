@@ -3,7 +3,8 @@
 // The same component serves the admin (/admin/franchises/[id]) and the franchise itself (/admin/earnings, `mine`).
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Link2, MessageCircle, Plus, Save, Search, UserPlus, Users } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Link2, MessageCircle, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { adminApi, ago, fmtDate, useAdminMe } from "@/lib/admin-client";
 import { Badge, Btn, Card, CopyBtn, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 
@@ -25,6 +26,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
   const [form, setForm] = useState<Partial<Fr> | null>(null);
   const [busy, setBusy] = useState("");
   const [confirm, dialog] = useConfirm();
+  const router = useRouter();
   const canManage = !!me?.rights.includes("franchises.manage") && !mine;
   const canPay = !!me?.rights.includes("franchises.payouts") && !mine;
 
@@ -39,6 +41,24 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
     if (!r.ok) { toast(r.data.error || "Could not do that.", "err"); return false; }
     toast(ok); await load(); return true;
   }, [id, load]);
+
+  /** Gone for good — after typing the code (owner, 1 Nov 2026: "confirmation pop up ke saath"). */
+  async function removeFranchise() {
+    if (!d) return;
+    const f = d.franchise;
+    const owed = d.balance.balance - d.balance.pending;
+    const ok = await confirm({
+      title: `Delete franchise ${f.code}?`, danger: true, ok: "Delete for good", ask: f.code,
+      body: <div className="space-y-1 text-sm"><p>{f.name}{f.city ? ` · ${f.city}` : ""} — <b>{d.users.length}</b> user{d.users.length === 1 ? "" : "s"}, earned <b>{money(d.balance.earned)}</b>, balance <b>{money(d.balance.balance)}</b>.</p>{owed > 0 && <p className="font-semibold text-danger">₹{Math.round(owed / 100).toLocaleString("en-IN")} is still owed to this franchise and will not be payable after deletion.</p>}<p className="text-muted">Its account and payouts are deleted; its users stay in the app without a franchise; its logins are switched off. This cannot be undone — type the code to confirm.</p></div>,
+    });
+    if (!ok) return;
+    setBusy("delete");
+    const r = await adminApi<{ ok?: boolean }>(`/api/admin/v2/franchises/${id}`, { method: "DELETE" });
+    setBusy("");
+    if (!r.ok) { toast(r.data.error || "Could not delete.", "err"); return; }
+    toast(`Franchise ${f.code} deleted.`);
+    router.replace("/admin/franchises");
+  }
 
   if (err) return <ErrorBox>{err}</ErrorBox>;
   if (!d || !form) return <Spinner />;
@@ -106,6 +126,12 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
               <Field key={k} label={l}><input className={inputCls} value={form.bank?.[k] ?? ""} onChange={(e) => setForm({ ...form, bank: { ...(form.bank ?? {}), [k]: e.target.value } })} /></Field>
             ))}
           </div>
+          {canManage && (
+            <div className="mt-5 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-danger/30 bg-danger/5 p-3 text-xs text-muted">
+              <span><b className="text-ink">Delete this franchise.</b> Its account and payouts go for good; its users stay in the app (no franchise); its logins are switched off. Prefer <b>Status: ended</b> to keep the record.</span>
+              <Btn size="sm" variant="danger" icon={Trash2} loading={busy === "delete"} onClick={() => void removeFranchise()}>Delete franchise</Btn>
+            </div>
+          )}
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl bg-bg p-3 text-xs text-muted"><Link2 className="h-4 w-4 text-brand" /> Sign-up link: <span className="font-mono text-ink">{d.signupLink}</span><CopyBtn text={d.signupLink} /> <span>Users who sign up through it (or enter the code) belong to this franchise.</span></div>
         </Card>
       )}
@@ -239,21 +265,34 @@ function PayoutsTab({ d, mine, canPay, act, confirm }: { d: Detail; mine: boolea
 }
 
 function CreateLogin({ franchise, onDone }: { franchise: Fr; onDone: () => void }) {
+  // Owner, 1 Nov 2026: no generated passwords — the admin sets the first password here (agreed with the franchise on the phone);
+  // the franchise changes it at the first login. Normally a franchise comes through the website form and sets its own.
   const [open, setOpen] = useState(false); const [login, setLogin] = useState(franchise.phone || franchise.email || ""); const [name, setName] = useState(franchise.name); const [busy, setBusy] = useState(false);
-  const [secret, setSecret] = useState<{ password: string } | null>(null);
+  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [show, setShow] = useState(false);
+  const [made, setMade] = useState<{ created: boolean } | null>(null);
+  const bad = pw.length < 8 ? "At least 8 characters." : pw !== pw2 ? "The two passwords do not match." : "";
   return (
     <>
       <Btn size="sm" variant="primary" icon={Plus} onClick={() => setOpen(true)}>Create login</Btn>
-      <Modal open={open} onClose={() => { setOpen(false); setSecret(null); }} title={`Login for ${franchise.code}`} sub="A Franchise-role login tied to this franchise. The temporary password is shown once." width="max-w-md"
-        footer={secret ? <Btn variant="primary" onClick={() => { setOpen(false); setSecret(null); onDone(); }}>Done</Btn> : <><Btn onClick={() => setOpen(false)}>Cancel</Btn><Btn variant="primary" loading={busy} onClick={async () => { setBusy(true); const r = await adminApi<{ password?: string }>("/api/admin/v2/staff", { json: { login, name, role: "franchise", franchise_id: franchise.id } }); setBusy(false); if (!r.ok) { toast(r.data.error || "Could not create.", "err"); return; } setSecret({ password: r.data.password ?? "" }); }}>Create</Btn></>}>
-        {secret ? (
+      <Modal open={open} onClose={() => { setOpen(false); setMade(null); }} title={`Login for ${franchise.code}`} sub="A Franchise-role login tied to this franchise. Set the first password here; they change it at the first login." width="max-w-md"
+        footer={made ? <Btn variant="primary" onClick={() => { setOpen(false); setMade(null); onDone(); }}>Done</Btn> : <><Btn onClick={() => setOpen(false)}>Cancel</Btn><Btn variant="primary" loading={busy} disabled={!!bad || !login.trim() || !name.trim()} onClick={async () => { setBusy(true); const r = await adminApi<{ created?: boolean }>("/api/admin/v2/staff", { json: { login, name, role: "franchise", franchise_id: franchise.id, password: pw } }); setBusy(false); if (!r.ok) { toast(r.data.error || "Could not create.", "err"); return; } setMade({ created: r.data.created !== false }); setPw(""); setPw2(""); }}>Create</Btn></>}>
+        {made ? (
           <div className="space-y-3 text-sm">
             <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Login</p><p className="font-semibold">{login}</p></div>
-            <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Temporary password</p><p className="font-mono text-lg font-semibold">{secret.password || "(existing account — password unchanged)"}</p></div>
-            <CopyBtn size="md" text={`Shubhora Franchise panel\nLogin: ${location.origin}/admin/login\nUser: ${login}\nTemporary password: ${secret.password}\nChange it at first login and set up 2-step.`} label="Copy message" />
+            <p className="text-muted">{made.created ? "Login made with the password you set." : "This mobile already had a Shubhora account — the password you typed was set on it."} Tell them in your own words; nothing is sent by itself.</p>
+            <CopyBtn size="md" text={`Shubhora Franchise panel\nLogin: ${location.origin}/admin/login\nUser: ${login}\nPassword: (as agreed on the phone)\nAt the first login set up 2-step verification.`} label="Copy message" />
           </div>
         ) : (
-          <div className="space-y-3"><Field label="Name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field><Field label="Login: mobile or e-mail"><input className={inputCls} value={login} onChange={(e) => setLogin(e.target.value)} /></Field></div>
+          <div className="space-y-3">
+            <Field label="Name"><input className={inputCls} value={name} onChange={(e) => setName(e.target.value)} /></Field>
+            <Field label="Login: mobile or e-mail"><input className={inputCls} value={login} onChange={(e) => setLogin(e.target.value)} /></Field>
+            <div className="grid grid-cols-2 gap-3">
+              <Field label="First password" hint="At least 8 characters."><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+              <Field label="Again"><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+            </div>
+            <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords</label>
+            {pw && bad && <p className="text-xs font-semibold text-danger">{bad}</p>}
+          </div>
         )}
       </Modal>
     </>

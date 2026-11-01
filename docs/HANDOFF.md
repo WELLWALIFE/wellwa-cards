@@ -288,8 +288,13 @@ Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchi
   from `src/lib/franchise-apply.ts`) → `POST /api/franchise/apply` (same-origin, rate-limited, honeypot, one open application per mobile per
   30 days) → `franchise_applications` (migration **0080**) + push/WhatsApp to every Super Admin. Admin → Franchises → **Applications** tab
   (`components/admin/franchise-applications.tsx`, `/api/admin/v2/franchise-applications` GET/PATCH/POST): notes, contacted, reject, or
-  **Approve** = franchise row + Franchise-role login (temporary password shown once) + welcome message (login, sign-up link, commission) to
-  send on WhatsApp. Bell alert counts new applications. Link in the footer and a CTA on /pricing (the top nav was too crowded).
+  **Approve** = franchise row + Franchise-role login + welcome message (login, sign-up link, commission) to send on WhatsApp. The applicant
+  sets the panel password IN THE FORM (owner: "generate wala hata do"): kept as a bcrypt hash (`bcryptjs`, migration **0081**
+  `password_hash`, `has_account`), the login is created with GoTrue admin `password_hash` and the hash is wiped; a mobile that already has a
+  Shubhora account keeps its own password (`has_account`). Manual "Create login" on a franchise page: the admin types the first password
+  (`/api/admin/v2/staff` POST `password`). Bell alert counts new applications. Link in the footer and a CTA on /pricing.
+  **Delete a franchise**: `DELETE /api/admin/v2/franchises/[id]` (manage, sensitive) — typed-code confirm on the franchise page; ledger and
+  payouts cascade, users stay (franchise_id null), its logins are switched off; audit keeps the row.
   **No partner programme for franchises** (owner, 1 Nov 2026 "franchise mein MLM nahi"): a user under a franchise is a CONSUMER whatever link
   they came by (`/api/account` forces kind consumer when `franchiseOf()`), Admin cannot "Make partner ID" for them (kind route), and the
   franchise's own panel shows no Partner ID column / views / stats (`meFr` in admin/users).

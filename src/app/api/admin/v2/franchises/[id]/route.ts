@@ -5,6 +5,8 @@
 //        { op: "payout_request", amount, note? }                           (the franchise itself, or "franchises.payouts")
 //        { op: "payout_decide", payout_id, status: approved|rejected|paid, utr?, note? }   ("franchises.payouts")
 //        { op: "adjustment", amount (+/−), note }                            ("franchises.payouts")
+//   DELETE → the franchise, its ledger and payouts are removed for good; its users stay (franchise_id → null); its logins are switched off
+//            ("franchises.manage", sensitive; owner, 1 Nov 2026 "delete ka option, confirmation ke saath")
 import { requireAdmin, audit, getSettings, userInScope } from "@/lib/admin-v2";
 import { svc, svcCount } from "@/lib/service";
 import { franchiseBalance, franchisePatch, FR_COLS, type FranchiseRow } from "@/lib/franchise-server";
@@ -134,4 +136,22 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
     default:
       return Response.json({ error: "Unknown action." }, { status: 400 });
   }
+}
+
+export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const g = await requireAdmin(request, "franchises.manage", { sensitive: true }); if (!g.ok) return g.res;
+  const { me } = g;
+  const { id } = await ctx.params;
+  if (me.franchise) return Response.json({ error: "A franchise cannot delete itself." }, { status: 403 });
+  const fr = await load(id); if (!fr) return Response.json({ error: "Franchise not found." }, { status: 404 });
+  const bal = await franchiseBalance(fr.id);
+  const users = await svcCount(`profiles?franchise_id=eq.${fr.id}&select=id`);
+  // Its logins lose the panel (switched off, not deleted: the audit trail keeps who they were).
+  await svc(`admin_users?franchise_id=eq.${fr.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ active: false, franchise_id: null, updated_at: new Date().toISOString() }) });
+  await svc(`franchise_applications?franchise_id=eq.${fr.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ franchise_id: null, note: `Franchise ${fr.code} deleted on ${new Date().toISOString().slice(0, 10)}` }) }).catch(() => undefined);
+  // The row: the ledger and payouts go with it (cascade); users and logins are set to null by the database.
+  const r = await svc(`franchises?id=eq.${fr.id}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  if (!r.ok) return Response.json({ error: "Could not delete. Please try again." }, { status: 502 });
+  await audit(me, "franchise.delete", { type: "franchise", id: fr.id, label: `${fr.code} · ${fr.name}`, before: { ...fr, users, balance_paise: bal.balance, earned_paise: bal.earned }, note: `users kept: ${users}; balance at deletion ${bal.balance}` }, request);
+  return Response.json({ ok: true, users });
 }

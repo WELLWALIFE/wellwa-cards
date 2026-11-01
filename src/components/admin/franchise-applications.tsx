@@ -9,7 +9,7 @@ import { Badge, Btn, Card, CopyBtn, Empty, Field, Modal, Table, Toggle, inputCls
 import { STATUS_LABEL, type ApplicationStatus, type FranchiseApplication } from "@/lib/franchise-apply";
 
 type Filter = ApplicationStatus | "all";
-type Approved = { franchise: { id: string; code: string; name: string; phone: string }; login: string; password: string; created: boolean; loginError: string; message: string };
+type Approved = { franchise: { id: string; code: string; name: string; phone: string }; login: string; created: boolean; hasAccount: boolean; loginError: string; message: string };
 const ten = (p: string) => p.replace(/\D/g, "").slice(-10);
 const wa = (phone: string, text: string) => `https://wa.me/91${ten(phone)}?text=${encodeURIComponent(text)}`;
 
@@ -99,13 +99,13 @@ export function FranchiseApplications({ canManage, codes, defaults, onApproved }
 
       {approving && <ApproveModal app={approving} codes={codes} defaults={defaults} onClose={() => setApproving(null)} onDone={(r) => { setApproving(null); setDone(r); void load(); onApproved(); }} />}
       {done && (
-        <Modal open title={`${done.franchise.code} is live`} sub={`${done.franchise.name} — send them the welcome message now; the temporary password is shown only here.`} width="max-w-xl" onClose={() => setDone(null)}
+        <Modal open title={`${done.franchise.code} is live`} sub={`${done.franchise.name} — send them the welcome message now.`} width="max-w-xl" onClose={() => setDone(null)}
           footer={<Btn variant="primary" onClick={() => setDone(null)}>Done</Btn>}>
           <div className="space-y-3 text-sm">
             {done.loginError ? <p className="rounded-xl border border-amber-400/60 bg-amber-50 px-3 py-2 text-amber-900"><b>Login not made:</b> {done.loginError}</p> : (
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Login</p><p className="font-semibold">{done.login}</p></div>
-                <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Temporary password</p><p className="font-mono text-lg font-semibold">{done.password || "(unchanged)"}</p></div>
+                <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Password</p><p className="text-sm font-semibold">{done.hasAccount ? "Their existing Shubhora password" : "The one they set in the application"}</p></div>
               </div>
             )}
             <pre className="whitespace-pre-wrap rounded-xl border border-border bg-surface p-3 text-xs leading-relaxed">{done.message}</pre>
@@ -138,14 +138,14 @@ function ApproveModal({ app, codes, defaults, onClose, onDone }: { app: Franchis
       footer={<><Btn onClick={onClose}>Cancel</Btn><Btn variant="primary" icon={Check} loading={busy} disabled={!/^[A-Z0-9]{3,16}$/.test(f.code) || !f.login} onClick={() => void go()}>Approve & create login</Btn></>}>
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Franchise code" hint="Goes in their sign-up link. Cannot be changed later."><input className={`${inputCls} font-mono uppercase`} value={f.code} onChange={(e) => setF({ ...f, code: e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16) })} /></Field>
-        <Field label="Panel login (mobile or e-mail)" hint="They log in at /admin/login with this and the temporary password."><input className={inputCls} value={f.login} onChange={(e) => setF({ ...f, login: e.target.value })} /></Field>
+        <Field label="Panel login (mobile or e-mail)" hint={app.has_account ? "This mobile already has a Shubhora account — they log in with that password." : "They log in at /admin/login with this and the password they set in the application."}><input className={inputCls} value={f.login} onChange={(e) => setF({ ...f, login: e.target.value })} /></Field>
         <Field label="Territory"><input className={inputCls} value={f.area} onChange={(e) => setF({ ...f, area: e.target.value })} /></Field>
         <Field label="Company / firm"><input className={inputCls} value={f.company} onChange={(e) => setF({ ...f, company: e.target.value })} /></Field>
         <Field label="Commission, first payment (%)" hint="Of the amount without GST."><input type="number" min={0} max={100} step={0.5} className={inputCls} value={f.commission_first_pct} onChange={(e) => setF({ ...f, commission_first_pct: e.target.value })} /></Field>
         <Field label="Commission, renewals (%)"><input type="number" min={0} max={100} step={0.5} className={inputCls} value={f.commission_renewal_pct} onChange={(e) => setF({ ...f, commission_renewal_pct: e.target.value })} /></Field>
         <div className="sm:col-span-2"><Toggle on={f.can_activate} onChange={(v) => setF({ ...f, can_activate: v })} label="May activate plans for its users" hint="For payments the franchise takes by hand. Can be changed later." /></div>
       </div>
-      <p className="mt-3 text-xs text-muted">On Approve: the franchise is created (active), a Franchise-role login is made with a temporary password, and a welcome message with the login, the sign-up link and the commission is ready to send on WhatsApp.</p>
+      <p className="mt-3 text-xs text-muted">On Approve: the franchise is created (active), its login is made with the password the applicant chose, and a welcome message with the login, the sign-up link and the commission is ready to send on WhatsApp.</p>
     </Modal>
   );
 }

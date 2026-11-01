@@ -54,7 +54,9 @@ export async function POST(request: Request) {
   const franchise_id = role === "franchise" ? (isUuid(b.franchise_id) ? b.franchise_id : null) : null;
   if (role === "franchise" && !franchise_id) return Response.json({ error: "Pick the franchise this login belongs to." }, { status: 400 });
   const phone = /^p91(\d{10})@phone\./.test(email) ? email.slice(3, 13) : String(b.phone ?? "").replace(/\D/g, "").slice(-10);
-  const auth = await createOrResetAuthUser(email, name, phone);
+  // A first password the admin typed (franchise logins; owner, 1 Nov 2026) — else a temporary one is generated and returned once.
+  const chosen = typeof b.password === "string" && b.password.length >= 8 ? b.password : undefined;
+  const auth = await createOrResetAuthUser(email, name, phone, chosen);
   if ("error" in auth) return Response.json({ error: auth.error }, { status: 502 });
   const have = await adminRow(auth.id);
   if (have) return Response.json({ error: `${have.name || have.email} already has admin access (${have.role}). Change it in the list.` }, { status: 409 });
@@ -65,7 +67,7 @@ export async function POST(request: Request) {
   if (!member) return Response.json({ error: /admin_users/.test(r.text) ? "Admin v2 is not set up yet — run migration 0078 in Supabase." : "Could not save." }, { status: 502 });
   if (franchise_id) await svc(`franchises?id=eq.${franchise_id}&owner_user_id=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_user_id: auth.id }) });
   await audit(me, "staff.create", { type: "staff", id: member.id, label: `${name} <${email}>`, after: { role, rights, franchise_id } }, request);
-  return Response.json({ member: view(member), password: auth.password, created: auth.created });
+  return Response.json({ member: view(member), password: chosen ? "" : auth.password, created: auth.created });
 }
 
 export async function PATCH(request: Request) {

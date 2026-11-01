@@ -2,9 +2,10 @@
 //   GET  ?status=new|contacted|approved|rejected|all → { applications }                      ("franchises.view"; not for a franchise login)
 //   PATCH { id, status?: new|contacted|rejected, note? } → { application }                   ("franchises.manage")
 //   POST  { id, code, login?, commission_first_pct?, commission_renewal_pct?, can_activate?, company?, email?, area?, city?, state? }
-//         → approve: the franchise row, its Franchise-role login (temporary password, shown once), the application marked approved
-//         → { franchise, login, password, created, message }                                  ("franchises.manage", sensitive)
-import { requireAdmin, audit, getSettings, createOrResetAuthUser, loginAddress, adminRow, ADMIN_COLS, type AdminRow } from "@/lib/admin-v2";
+//         → approve: the franchise row, its Franchise-role login with the password the applicant chose in the form (bcrypt hash, 0081;
+//           an existing Shubhora account keeps its own password), the application marked approved
+//         → { franchise, login, created, hasAccount, loginError, message }                     ("franchises.manage", sensitive)
+import { requireAdmin, audit, getSettings, createAuthUserWithHash, loginAddress, adminRow, ADMIN_COLS, type AdminRow } from "@/lib/admin-v2";
 import { ROLES } from "@/lib/admin-rights";
 import { svc } from "@/lib/service";
 import { cleanCode, franchisePatch, FR_COLS, type FranchiseRow } from "@/lib/franchise-server";
@@ -75,35 +76,39 @@ export async function POST(request: Request) {
   }
   await audit(me, "franchise.create", { type: "franchise", id: fr.id, label: `${fr.code} · ${fr.name}`, after: row, note: `approved application ${app.id}` }, request);
 
-  // 2 · its login (Franchise role), a temporary password shown once; an existing app account with that mobile gets a new temporary password
+  // 2 · its login (Franchise role) with the password they chose in the application; a mobile that already had a Shubhora login keeps its password
   const phone = /^p91(\d{10})@phone\./.test(login) ? login.slice(3, 13) : app.phone.replace(/\D/g, "").slice(-10);
-  const auth = await createOrResetAuthUser(login, app.name, phone);
-  let password = "", created = false, loginError = "";
+  const secret = list(await svc<{ password_hash: string }[]>(`franchise_applications?id=eq.${app.id}&select=password_hash&limit=1`))[0]?.password_hash ?? "";
+  const auth = await createAuthUserWithHash(login, app.name, phone, secret);
+  let created = false, loginError = "";
   if ("error" in auth) loginError = auth.error;
   else {
     const have = await adminRow(auth.id);
     if (have) loginError = `${have.name || have.email} already has admin access (${have.role}) — give them this franchise under Staff & roles.`;
     else {
-      const member = list(await svc<AdminRow[]>(`admin_users?select=${ADMIN_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ id: auth.id, email: login, name: app.name, phone, role: "franchise", rights: ROLES.find((r) => r.key === "franchise")!.rights, franchise_id: fr.id, active: true, must_change_password: true, created_by: me.id || null }) }))[0];
+      const member = list(await svc<AdminRow[]>(`admin_users?select=${ADMIN_COLS}`, { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify({ id: auth.id, email: login, name: app.name, phone, role: "franchise", rights: ROLES.find((r) => r.key === "franchise")!.rights, franchise_id: fr.id, active: true, must_change_password: false, created_by: me.id || null }) }))[0];
       if (!member) loginError = "Could not make the login — make it under Logins on the franchise page.";
       else {
-        password = auth.password; created = auth.created;
+        created = auth.created;
         await svc(`franchises?id=eq.${fr.id}&owner_user_id=is.null`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_user_id: auth.id }) });
         await audit(me, "staff.create", { type: "staff", id: member.id, label: `${app.name} <${login}>`, after: { role: "franchise", franchise_id: fr.id } }, request);
       }
     }
   }
+  // The hash has done its work: it is not kept.
+  await svc(`franchise_applications?id=eq.${app.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ password_hash: "" }) });
 
   // 3 · the application is done
   await svc(`franchise_applications?id=eq.${app.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status: "approved", franchise_id: fr.id, decided_by: me.id || null, decided_at: new Date().toISOString(), updated_at: new Date().toISOString() }) });
   await audit(me, "franchise_application.approved", { type: "franchise", id: app.id, label: `${app.name} · ${app.city}`, after: { franchise_id: fr.id, code } }, request);
 
   const shownLogin = /^p91(\d{10})@phone\./.test(login) ? login.slice(3, 13) : login;
+  const hasAccount = !("error" in auth) && !auth.created;
   const message = [
     `Namaste ${app.name.split(" ")[0]} ji 🙏`, `Welcome to the Shubhora franchise family — *${fr.code}* (${[fr.area || fr.city, fr.state].filter(Boolean).join(", ")}) is yours.`, "",
-    `*Your franchise panel*`, `${SITE_URL}/admin/login`, `User: ${shownLogin}`, password ? `Temporary password: ${password}` : "(password unchanged — use your existing one)", "At the first login set your own password and 2-step verification.", "",
+    `*Your franchise panel*`, `${SITE_URL}/admin/login`, `User: ${shownLogin}`, hasAccount ? "Password: the one of your Shubhora account" : "Password: the one you set in your application", "At the first login, set up 2-step verification (authenticator app).", "",
     `*Your sign-up link* — every business that joins through it is your customer:`, `${SITE_URL}/start?f=${fr.code}`, "",
     `Commission: ${fr.commission_first_pct}% on the first payment, ${fr.commission_renewal_pct}% on renewals (on the amount without GST). Earnings and payouts show in your panel.`,
   ].join("\n");
-  return Response.json({ franchise: fr, login: shownLogin, password, created, loginError, message });
+  return Response.json({ franchise: fr, login: shownLogin, created, hasAccount, loginError, message });
 }
