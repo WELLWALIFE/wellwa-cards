@@ -281,7 +281,8 @@ Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchi
   search, system). Legacy users routes check rights + franchise scope + write audit lines.
 - **Franchises**: `franchises`, `profiles.franchise_id`, `franchise_ledger`, `payouts` (migration **0078**). Sign-up link `/start?f=CODE`
   (→ `/api/account` `franchise`). Commission on every verified payment (`franchiseEarning()` in billing/verify, autopay, pay/advanced):
-  first payment % / renewal % per franchise (defaults in Platform settings). Payout: request → approve → paid (UTR) → ledger line.
+  first payment % / renewal % per franchise (defaults in Platform settings) — always on the amount WITHOUT GST (owner, 1 Nov 2026:
+  `net = paise / 1.18`; `base_paise` in the ledger is the net amount and the note shows the working). Payout: request → approve → paid (UTR) → ledger line.
   A franchise login = admin_users row with role franchise + franchise_id: same panel, only its users (`scopeOf` / `userInScope`).
   **No partner programme for franchises** (owner, 1 Nov 2026 "franchise mein MLM nahi"): a user under a franchise is a CONSUMER whatever link
   they came by (`/api/account` forces kind consumer when `franchiseOf()`), Admin cannot "Make partner ID" for them (kind route), and the

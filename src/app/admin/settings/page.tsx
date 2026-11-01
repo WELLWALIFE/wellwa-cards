@@ -33,7 +33,7 @@ export default function SettingsPage() {
           <Toggle on={s.signup_alert} onChange={(v) => void save({ signup_alert: v })} disabled={busy} label="E-mail the company inbox on every new sign-up" hint="The registration alert that goes to support@shubhora.com." />
         </div>
       </Card>
-      <Card title={<span className="flex items-center gap-2"><Store className="h-4 w-4 text-brand" /> Franchise defaults</span>} sub="What a new franchise starts with; each franchise can be changed on its own page.">
+      <Card title={<span className="flex items-center gap-2"><Store className="h-4 w-4 text-brand" /> Franchise defaults</span>} sub="What a new franchise starts with; each franchise can be changed on its own page. Commission is always a percent of the amount WITHOUT GST (₹2,999 paid → on ₹2,541).">
         <form onSubmit={(e) => { e.preventDefault(); void save({ commission_first_pct: s.commission_first_pct, commission_renewal_pct: s.commission_renewal_pct, payout_min_paise: s.payout_min_paise }); }} className="grid gap-3 sm:grid-cols-3">
           <Field label="Commission on the first payment (%)"><input type="number" min={0} max={100} step={0.5} className={inputCls} value={s.commission_first_pct} onChange={(e) => setS({ ...s, commission_first_pct: Number(e.target.value) })} /></Field>
           <Field label="Commission on renewals (%)"><input type="number" min={0} max={100} step={0.5} className={inputCls} value={s.commission_renewal_pct} onChange={(e) => setS({ ...s, commission_renewal_pct: Number(e.target.value) })} /></Field>

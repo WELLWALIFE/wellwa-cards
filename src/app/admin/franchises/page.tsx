@@ -58,7 +58,7 @@ function FranchisesInner() {
 
   return (
     <div className="space-y-5">
-      <PageHeader title="Franchises" sub="Channel partners who bring users. Each has a code and a sign-up link; every payment by their users earns them a commission."
+      <PageHeader title="Franchises" sub="Channel partners who bring users. Each has a code and a sign-up link; every payment by their users earns them a commission — a percent of the amount without GST."
         actions={canManage ? <Btn variant="primary" icon={Plus} onClick={() => setAdding(true)}>New franchise</Btn> : undefined} />
       {err && <ErrorBox>{err}</ErrorBox>}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">

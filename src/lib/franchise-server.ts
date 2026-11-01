@@ -1,4 +1,5 @@
 import "server-only";
+import { GST_PCT } from "@/lib/billing";
 // Franchises (owner, 31 Oct 2026): a user belongs to the franchise whose link / code they signed up with (profiles.franchise_id),
 // and every payment that user makes earns the franchise its commission — written here, once per payment, into franchise_ledger.
 // Money never moves from the app: the ledger is the account, a payout is paid by hand and marked paid with its UTR.
@@ -44,11 +45,13 @@ export async function franchiseEarning(userId: string, p: { paise: number; ref: 
     if (!fr || fr.status !== "active") return;
     const earlier = await svcCount(`franchise_ledger?franchise_id=eq.${fr.id}&user_id=eq.${userId}&kind=eq.earning&select=id`);
     const pct = Number(earlier === 0 ? fr.commission_first_pct : fr.commission_renewal_pct);
-    const amount = Math.round((p.paise * pct) / 100);
+    // Owner, 1 Nov 2026: the percent is always on the amount WITHOUT GST — the tax part of a payment is the government's, not revenue.
+    const net = Math.round(p.paise / (1 + GST_PCT / 100));
+    const amount = Math.round((net * pct) / 100);
     if (amount <= 0) return;
     await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
-      franchise_id: fr.id, user_id: userId, kind: "earning", amount_paise: amount, base_paise: p.paise, pct, payment_ref: p.ref,
-      note: `${earlier === 0 ? "First payment" : "Renewal"}${p.what ? ` · ${p.what}` : ""}`,
+      franchise_id: fr.id, user_id: userId, kind: "earning", amount_paise: amount, base_paise: net, pct, payment_ref: p.ref,
+      note: `${earlier === 0 ? "First payment" : "Renewal"}${p.what ? ` · ${p.what}` : ""} · ${pct}% of ₹${Math.round(net / 100).toLocaleString("en-IN")} (₹${Math.round(p.paise / 100).toLocaleString("en-IN")} less ${GST_PCT}% GST)`,
     }) });   // a second copy of the same payment hits the unique index and is simply refused
   } catch { /* never fails a payment */ }
 }
