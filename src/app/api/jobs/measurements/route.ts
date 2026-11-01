@@ -3,6 +3,7 @@
 //   GET ?phone= → { measurements }
 //   POST { customer_phone?, customer_name?, person?, garment, unit?, values, notes?, job_id?, base_id? } → { measurement }
 //   (job_id: the job this measurement is for — it is linked to that job; without a mobile number a job is needed)
+//   DELETE ?id= → { ok }   a wrong measurement ("measure" right) — refused while a job is cut from it
 import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { denied, has, isUuid, jobById, jobsCtx, logEvent, measureRow, personName } from "@/lib/jobs-server";
@@ -52,4 +53,18 @@ export async function POST(request: Request) {
     await logEvent(scope, job.id, { kind: "note", note: isUuid(b.base_id) ? `Measurement changed (${m.garment}) — the old one is kept in history` : `Measurement noted (${m.garment})` }, byName);
   }
   return NextResponse.json({ measurement: m });
+}
+
+export async function DELETE(request: Request) {
+  const p = new URL(request.url).searchParams;
+  const c = await jobsCtx(request, p.get("as")); if (!c.ok) return c.res;
+  const { scope, access } = c;
+  if (!has(access, "measure")) return denied("remove measurements");
+  const id = p.get("id");
+  if (!isUuid(id)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const used = list(await restAsService<{ number: number }[]>(`job_orders?owner_id=eq.${scope.ownerId}&measurement_id=eq.${id}&select=number&limit=5`));
+  if (used.length) return NextResponse.json({ error: `Job #${used.map((j) => j.number).join(", #")} is cut from this measurement. Attach another one to the job first (or take a new one).` }, { status: 409 });
+  const r = await restAsService(`job_measurements?id=eq.${id}&owner_id=eq.${scope.ownerId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  if (!r.ok) return NextResponse.json({ error: "Could not remove. Please try again." }, { status: 502 });
+  return NextResponse.json({ ok: true });
 }

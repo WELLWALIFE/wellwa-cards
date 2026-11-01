@@ -200,7 +200,7 @@ export const JOB_COLS = "id,owner_id,number,order_ref,customer_name,customer_pho
 export type JobEvent = {
   id: string; job_id: string; kind: "created" | "status" | "assign" | "cloth_out" | "cloth_in" | "payment" | "note" | "notify";
   status: string; karigar_id: string | null; karigar: string; pieces: number | null; meters: number | null;
-  amount_paise: number | null; note: string; by_name: string; at: string;
+  amount_paise: number | null; note: string; by_name: string; by_user?: string | null; at: string;
 };
 export type Karigar = { id: string; name: string; phone: string; skill: string; active: boolean };
 export type Measurement = { id: string; customer_phone: string; customer_name: string; garment: string; unit: "inch" | "cm"; values: Record<string, string>; notes: string; taken_by_name: string; created_at: string };

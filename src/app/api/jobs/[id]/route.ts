@@ -3,6 +3,9 @@
 //   PATCH { action, … } →
 //     status   { status, note?, collect? }  (ready → { notify:true } also sends the customer's WhatsApp; delivered + collect: the balance taken at hand-over)
 //     photos   { photos: string[] }          (photos of the cloth / design — files this person uploaded; "edit" right, or the one who booked it)
+//     undo     { event_id }                  a wrong entry (owner, 1 Nov 2026): a payment is reversed by a minus line ("money"); a note /
+//                                            cloth given / cloth taken back line is removed ("edit", or the person who wrote it)
+//   DELETE → a CANCELLED job and its history, for good ("cancel" right)
 //     assign   { karigar_id?, assigned_to? } ("assign" right; the person is told)
 //     cloth_out / cloth_in { karigar_id?, pieces?, meters?, note? }  — cloth given to / taken back from a karigar
 //     payment  { amount, note? }   note { note }   notify {}   take {} (a staff login picks an open job)
@@ -27,7 +30,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const job = await jobById(scope, access, id, setup);
   if (!job) return NextResponse.json({ error: "Job not found (or it is not given to you)." }, { status: 404 });
   const [events, karigars, team, ms, shop] = await Promise.all([
-    restAsService<JobEvent[]>(`job_events?job_id=eq.${job.id}&owner_id=eq.${scope.ownerId}&select=id,job_id,kind,status,karigar_id,karigar,pieces,meters,amount_paise,note,by_name,at&order=at`),
+    restAsService<JobEvent[]>(`job_events?job_id=eq.${job.id}&owner_id=eq.${scope.ownerId}&select=id,job_id,kind,status,karigar_id,karigar,pieces,meters,amount_paise,note,by_name,by_user,at&order=at`),
     restAsService<Karigar[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active&order=name`),
     agentsFor(me.token, scope.ownerId, scope.role === "agent" ? "manager" : scope.role).catch(() => []),
     job.customer_phone
@@ -137,6 +140,25 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       if (photos.length !== (job.photos?.length ?? 0)) await logEvent(scope, job.id, { kind: "note", note: photos.length > (job.photos?.length ?? 0) ? "Photo added" : "Photo removed" }, byName);
       return out(next);
     }
+    case "undo": {
+      if (!isUuid(b.event_id)) return NextResponse.json({ error: "Which entry?" }, { status: 400 });
+      const ev = list(await restAsService<(JobEvent & { by_user: string | null })[]>(`job_events?id=eq.${b.event_id}&job_id=eq.${job.id}&owner_id=eq.${scope.ownerId}&select=id,kind,amount_paise,note,by_user,karigar&limit=1`))[0];
+      if (!ev) return NextResponse.json({ error: "Entry not found." }, { status: 404 });
+      if (ev.kind === "payment") {
+        if (!boss) return denied("change payments");
+        const amt = ev.amount_paise ?? 0;
+        if (!amt || /^Correction/.test(ev.note)) return NextResponse.json({ error: "This line cannot be undone." }, { status: 400 });
+        const next = await update({ advance_paise: Math.max(0, (job.advance_paise || 0) - amt) });
+        await logEvent(scope, job.id, { kind: "payment", amount_paise: -amt, note: `Correction — ${rupees(amt)} entered by mistake (${ev.note || "payment"})` }, byName);
+        return out(next ?? job);
+      }
+      if (ev.kind === "note" || ev.kind === "cloth_out" || ev.kind === "cloth_in") {
+        if (!has(access, "edit") && ev.by_user !== scope.userId) return denied("remove this entry");
+        await restAsService(`job_events?id=eq.${ev.id}&owner_id=eq.${scope.ownerId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+        return out(job);
+      }
+      return NextResponse.json({ error: "Only payments, notes and cloth entries can be undone." }, { status: 400 });
+    }
     case "note": {
       const note = txt(b.note, 1000);
       if (!note) return NextResponse.json({ error: "Write the note." }, { status: 400 });
@@ -176,4 +198,18 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
     default:
       return NextResponse.json({ error: "Unknown action." }, { status: 400 });
   }
+}
+
+/** A cancelled job is removed for good, with its history — a booking made by mistake. Delivered or running jobs cannot be deleted. */
+export async function DELETE(request: Request, ctx: { params: Promise<{ id: string }> }) {
+  const { id } = await ctx.params;
+  const c = await jobsCtx(request, new URL(request.url).searchParams.get("as")); if (!c.ok) return c.res;
+  const { scope, setup, access } = c;
+  if (!has(access, "cancel")) return denied("delete orders");
+  const job = await jobById(scope, access, id, setup);
+  if (!job) return NextResponse.json({ error: "Job not found." }, { status: 404 });
+  if (job.status !== "cancelled") return NextResponse.json({ error: "Cancel the job first; a cancelled job can then be deleted." }, { status: 409 });
+  const r = await restAsService(`job_orders?id=eq.${job.id}&owner_id=eq.${scope.ownerId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  if (!r.ok) return NextResponse.json({ error: "Could not delete. Please try again." }, { status: 502 });
+  return NextResponse.json({ ok: true });
 }

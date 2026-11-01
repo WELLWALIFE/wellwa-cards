@@ -201,6 +201,10 @@ Today (due today + late, red) · In work (steps as sub-chips) · Ready · Paymen
 (`/api/jobs?view=today|pending`, counts today/late/pending/pendingPaise). Job card: photos, "Print tag", hand-over asks for the balance first
 (`PATCH status delivered + collect` → payment event then the move), a reminder when delivered with money still due. `/poster/orders/slip?ids=…`:
 printable tag / full slip per job (measurement on it). Setup: usual days (shop + per item).
+Undo (owner, 1 Nov 2026 "galat ho jaye to"): a cancelled job can be deleted (`DELETE /api/jobs/[id]`, "cancel" right) or brought back
+("edit"); a payment is reversed with a minus line (`PATCH undo {event_id}`, "money"); a note / cloth line is removed ("edit" or its writer);
+a karigar is edited / deleted when no job is with them (`DELETE /api/jobs/karigars?id=`); a measurement not on any job is deleted
+(`DELETE /api/jobs/measurements?id=`). Speed: flags / setup / names / shop name are remembered in-process (one pm2 app process), see jobs-server.ts.
 
 ## Website waiting time (31 Oct 2026)
 Owner: "user ko lagna chahiye ki kaam mein time lagta hai — 24–48 hr, customised 1 week, 24 hr baad auto". `src/lib/site-ready.ts`: a website made for

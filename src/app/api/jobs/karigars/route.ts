@@ -1,6 +1,7 @@
 // Karigars (outside workers without the app) of a shop (bearer; ?as= / body.as).
 //   GET → { karigars, ledger }  ledger: per karigar the pieces / metres given and taken back, and the open jobs they hold
 //   POST { name, phone?, skill? } → { karigar }          PATCH { id, name?, phone?, skill?, active? } → { karigar }
+//   DELETE ?id= → { ok }   (owner, 1 Nov 2026 "galat ho jaye to": only when no open job is with them; past entries keep the name)
 import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { denied, has, isUuid, jobsCtx } from "@/lib/jobs-server";
@@ -60,4 +61,19 @@ export async function PATCH(request: Request) {
   const k = list(await restAsService<Karigar[]>(`job_karigars?id=eq.${b.id}&owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(patch) }))[0];
   if (!k) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
   return NextResponse.json({ karigar: k });
+}
+
+export async function DELETE(request: Request) {
+  const p = new URL(request.url).searchParams;
+  const c = await jobsCtx(request, p.get("as")); if (!c.ok) return c.res;
+  const { scope, access } = c;
+  if (!has(access, "assign")) return denied("remove karigars");
+  const id = p.get("id");
+  if (!isUuid(id)) return NextResponse.json({ error: "Not allowed." }, { status: 403 });
+  const open = list(await restAsService<{ number: number }[]>(`job_orders?owner_id=eq.${scope.ownerId}&karigar_id=eq.${id}&status=not.in.(delivered,cancelled)&select=number&limit=5`));
+  if (open.length) return NextResponse.json({ error: `${open.length} job${open.length > 1 ? "s are" : " is"} still with this karigar (#${open.map((j) => j.number).join(", #")}). Move or finish them first, or use Stop.` }, { status: 409 });
+  // The name on old history lines stays (job_events.karigar is text); the links go null by themselves.
+  const r = await restAsService(`job_karigars?id=eq.${id}&owner_id=eq.${scope.ownerId}`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  if (!r.ok) return NextResponse.json({ error: "Could not remove. Please try again." }, { status: 502 });
+  return NextResponse.json({ ok: true });
 }

@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ChevronLeft, LoaderCircle, Phone, Plus } from "lucide-react";
+import { Check, ChevronLeft, LoaderCircle, Pencil, Phone, Plus, Trash2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import type { Karigar } from "@/lib/jobs";
@@ -41,6 +41,24 @@ export default function KarigarsPage() {
     await api("/api/jobs/karigars", { method: "PATCH", json: { as: ws.as || undefined, id: k.id, active: !k.active } });
     void load();
   }
+  // A wrong name or number is corrected here; a karigar added by mistake is removed (only while no job is with them).
+  const [edit, setEdit] = useState<{ id: string; name: string; phone: string; skill: string } | null>(null);
+  async function saveEdit() {
+    if (!edit) return;
+    setErr(""); setBusy(true);
+    const r = await api<{ error?: string }>("/api/jobs/karigars", { method: "PATCH", json: { as: ws.as || undefined, ...edit } });
+    setBusy(false);
+    if (!r.ok) { setErr(r.data.error || T("Could not save.", "सेव नहीं हुआ।")); return; }
+    setEdit(null); void load();
+  }
+  async function remove(k: Karigar) {
+    if (!confirm(T(`Remove ${k.name} from the list? Old entries keep the name.`, `${k.name} को list से हटाएँ? पुरानी entries में नाम रहेगा।`))) return;
+    setErr("");
+    const p = new URLSearchParams(ws.q); p.set("id", k.id);
+    const r = await api<{ error?: string }>(`/api/jobs/karigars?${p}`, { method: "DELETE" });
+    if (!r.ok) { setErr(r.data.error || T("Could not remove.", "हटा नहीं पाए।")); return; }
+    void load();
+  }
   const field = "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand";
   if (!ks) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   return (
@@ -63,11 +81,22 @@ export default function KarigarsPage() {
           const pcs = l.piecesOut - l.piecesIn, mtr = Math.round((l.metersOut - l.metersIn) * 100) / 100;
           return (
             <li key={k.id} className={`rounded-2xl border border-border bg-surface p-4 shadow-card ${k.active ? "" : "opacity-60"}`}>
-              <div className="flex flex-wrap items-center gap-2">
-                <b className="flex-1 text-sm">{k.name}{k.skill && <span className="font-normal text-muted"> · {k.skill}</span>}</b>
-                {k.phone && <a href={`tel:${k.phone}`} className="inline-flex items-center gap-1 text-xs text-brand-ink"><Phone className="h-3.5 w-3.5" /> {k.phone}</a>}
-                <button type="button" onClick={() => void toggle(k)} className="text-xs text-muted underline">{k.active ? T("Stop", "बंद करें") : T("Start again", "फिर चालू")}</button>
-              </div>
+              {edit?.id === k.id ? (
+                <div className="grid gap-2 sm:grid-cols-[1fr_1fr_1fr_auto]">
+                  <input className={field} value={edit.name} onChange={(e) => setEdit({ ...edit, name: e.target.value })} placeholder={T("Name", "नाम")} />
+                  <input className={field} value={edit.phone} inputMode="numeric" onChange={(e) => setEdit({ ...edit, phone: e.target.value })} placeholder={T("Mobile", "मोबाइल")} />
+                  <input className={field} value={edit.skill} onChange={(e) => setEdit({ ...edit, skill: e.target.value })} placeholder={T("Work", "काम")} />
+                  <span className="flex gap-1"><button type="button" disabled={busy || !edit.name.trim()} onClick={() => void saveEdit()} className="inline-flex items-center gap-1 rounded-xl bg-brand px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Check className="h-3.5 w-3.5" />{T("Save", "सेव")}</button><button type="button" onClick={() => setEdit(null)} className="rounded-xl border border-border px-3 py-2 text-xs">{T("Cancel", "रहने दें")}</button></span>
+                </div>
+              ) : (
+                <div className="flex flex-wrap items-center gap-2">
+                  <b className="flex-1 text-sm">{k.name}{k.skill && <span className="font-normal text-muted"> · {k.skill}</span>}</b>
+                  {k.phone && <a href={`tel:${k.phone}`} className="inline-flex items-center gap-1 text-xs text-brand-ink"><Phone className="h-3.5 w-3.5" /> {k.phone}</a>}
+                  <button type="button" onClick={() => setEdit({ id: k.id, name: k.name, phone: k.phone.replace(/^\+91/, ""), skill: k.skill })} aria-label={T("Edit", "बदलें")} className="inline-flex items-center gap-1 text-xs text-muted"><Pencil className="h-3.5 w-3.5" /></button>
+                  <button type="button" onClick={() => void toggle(k)} className="text-xs text-muted underline">{k.active ? T("Stop", "बंद करें") : T("Start again", "फिर चालू")}</button>
+                  {l.openJobs === 0 && <button type="button" onClick={() => void remove(k)} aria-label={T("Remove", "हटाएँ")} className="inline-flex items-center gap-1 text-xs text-danger"><Trash2 className="h-3.5 w-3.5" /></button>}
+                </div>
+              )}
               <div className="mt-2 grid grid-cols-3 gap-2 text-center text-xs">
                 <p className="rounded-xl bg-bg p-2"><b className="block text-base">{l.openJobs}</b>{T("jobs with them", "job उनके पास")}</p>
                 <p className="rounded-xl bg-bg p-2"><b className={`block text-base ${pcs > 0 ? "text-amber-700" : ""}`}>{pcs}</b>{T("pieces still out", "pieces अभी बाहर")}</p>

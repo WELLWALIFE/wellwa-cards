@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Printer, Ruler, StickyNote } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Printer, Ruler, StickyNote, Trash2, Undo2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { balanceOf, can, fmtDay, isLate, nextStep, receiptMessage, rupees, stepLabel, type JobEvent, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
@@ -52,6 +52,22 @@ export default function JobPage() {
     return true;
   }
 
+  /** A cancelled job, gone for good (a booking made by mistake). */
+  async function deleteJob() {
+    if (!d || !confirm(T(`Delete job #${d.job.number} and its history for good?`, `Job #${d.job.number} और उसकी history हमेशा के लिए मिटा दें?`))) return;
+    setBusy("delete");
+    const r = await api<{ error?: string }>(`/api/jobs/${id}${ws.q ? `?${ws.q}` : ""}`, { method: "DELETE" });
+    setBusy("");
+    if (!r.ok) { setErr(r.data.error || T("Could not delete.", "मिटा नहीं पाए।")); return; }
+    router.replace("/poster/orders");
+  }
+  async function removeMeasurement(mid: string) {
+    if (!confirm(T("Remove this measurement?", "यह नाप हटा दें?"))) return;
+    const p = new URLSearchParams(ws.q); p.set("id", mid);
+    const r = await api<{ error?: string }>(`/api/jobs/measurements?${p}`, { method: "DELETE" });
+    if (!r.ok) { setErr(r.data.error || T("Could not remove.", "हटा नहीं पाए।")); return; }
+    await load();
+  }
   if (!d) return err ? <p className="py-16 text-center text-sm text-danger">{err}</p> : <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const { job } = d;
   const me = d.me;
@@ -179,6 +195,12 @@ export default function JobPage() {
         {!job.assigned_to && setup.people.length > 0 && d.setup.steps.some((x) => x.key === job.status) && !can(me, "assign") && <button type="button" disabled={!!busy} onClick={() => void act("take")} className="w-full rounded-xl border border-brand px-4 py-2.5 text-sm font-semibold text-brand-ink">{T("I'll do this", "यह काम मैं करूँगा")}</button>}
         {mineNow && job.status !== "delivered" && job.status !== "cancelled" && <p className="text-center text-[11px] font-semibold text-emerald-700">{T("This job is with you", "यह काम आपके पास है")}</p>}
         {can(me, "cancel") && job.status !== "cancelled" && job.status !== "delivered" && <button type="button" disabled={!!busy} onClick={() => { if (confirm(T("Cancel this job?", "यह job रद्द करें?"))) void act("status", { status: "cancelled" }); }} className="text-xs text-muted underline">{T("Cancel job", "Job रद्द करें")}</button>}
+        {can(me, "cancel") && job.status === "cancelled" && (
+          <div className="flex flex-wrap items-center gap-3">
+            {can(me, "edit") && <button type="button" disabled={!!busy} onClick={() => void act("status", { status: "received" })} className="text-xs font-semibold text-brand-ink underline">{T("Cancelled by mistake? Bring it back", "गलती से रद्द हुआ? वापस लाएँ")}</button>}
+            <button type="button" disabled={!!busy} onClick={() => void deleteJob()} className="inline-flex items-center gap-1 text-xs text-danger underline"><Trash2 className="h-3.5 w-3.5" /> {T("Delete this job for good", "यह job हमेशा के लिए मिटाएँ")}</button>
+          </div>
+        )}
       </section>
 
       {/* Who has it. */}
@@ -247,7 +269,7 @@ export default function JobPage() {
         {panel === "measure" && <MeasureForm hi={hi} q={ws.q} phone={job.customer_phone} name={job.customer_name} jobId={job.id} item={job.item} setup={setup} onSaved={() => { setPanel(""); void load(); }} onCancel={() => setPanel("")} />}
         {others.length > 0 && (
           <Fold hi={hi} tone="inner" icon={<History className="h-4 w-4 text-muted" />} title={`${T("Older measurements", "पुराने नाप")} (${others.length})`} open={fold.older} onToggle={() => setFold({ ...fold, older: !fold.older })}>
-            {others.map((m) => <MeasurementView key={m.id} m={m} hi={hi} action={can(me, "measure") && <button type="button" disabled={!!busy} onClick={() => void act("edit", { measurement_id: m.id })} className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold">{T("Use for this job", "इस job में लगाएँ")}</button>} />)}
+            {others.map((m) => <MeasurementView key={m.id} m={m} hi={hi} action={can(me, "measure") && <><button type="button" disabled={!!busy} onClick={() => void act("edit", { measurement_id: m.id })} className="rounded-lg border border-border bg-surface px-2 py-1 text-[11px] font-semibold">{T("Use for this job", "इस job में लगाएँ")}</button><button type="button" onClick={() => void removeMeasurement(m.id)} aria-label={T("Remove", "हटाएँ")} className="text-muted"><Trash2 className="h-3.5 w-3.5" /></button></>} />)}
           </Fold>
         )}
       </Fold>
@@ -260,11 +282,15 @@ export default function JobPage() {
           {[...d.events].reverse().map((e) => (
             <li key={e.id} className="flex gap-3 border-l-2 border-border pl-3 text-sm">
               <span className="min-w-0 flex-1">
-                <b>{e.kind === "status" ? L(e.status) : e.kind === "cloth_out" ? T("Cloth given", "कपड़ा दिया") : e.kind === "cloth_in" ? T("Cloth taken back", "कपड़ा वापस") : e.kind === "payment" ? `${T("Payment", "पैसे मिले")} ${rupees(e.amount_paise ?? 0)}` : e.kind === "assign" ? T("Assigned", "सौंपा") : e.kind === "notify" ? T("WhatsApp sent", "WhatsApp भेजा") : e.kind === "created" ? T("Order booked", "Order बना") : T("Note", "Note")}</b>
+                <b>{e.kind === "status" ? L(e.status) : e.kind === "cloth_out" ? T("Cloth given", "कपड़ा दिया") : e.kind === "cloth_in" ? T("Cloth taken back", "कपड़ा वापस") : e.kind === "payment" ? ((e.amount_paise ?? 0) < 0 ? `${T("Payment undone", "Payment वापस")} −${rupees(-(e.amount_paise ?? 0))}` : `${T("Payment", "पैसे मिले")} ${rupees(e.amount_paise ?? 0)}`) : e.kind === "assign" ? T("Assigned", "सौंपा") : e.kind === "notify" ? T("WhatsApp sent", "WhatsApp भेजा") : e.kind === "created" ? T("Order booked", "Order बना") : T("Note", "Note")}</b>
                 {(e.karigar || e.pieces || e.meters) && <span className="text-muted"> · {[e.karigar, e.pieces ? `${e.pieces} pcs` : "", e.meters ? `${e.meters} m` : ""].filter(Boolean).join(" · ")}</span>}
                 {e.note && e.kind !== "notify" && <span className="block whitespace-pre-wrap text-xs text-muted">{e.note}</span>}
               </span>
-              <span className="shrink-0 text-right text-[11px] text-muted">{new Date(e.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}{e.by_name && <span className="block">{e.by_name}</span>}</span>
+              <span className="shrink-0 text-right text-[11px] text-muted">{new Date(e.at).toLocaleString("en-IN", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}{e.by_name && <span className="block">{e.by_name}</span>}
+                {((e.kind === "payment" && boss && (e.amount_paise ?? 0) > 0) || ((e.kind === "note" || e.kind === "cloth_out" || e.kind === "cloth_in") && (can(me, "edit") || e.by_user === me.userId))) && (
+                  <button type="button" disabled={!!busy} onClick={() => { if (confirm(e.kind === "payment" ? T(`Undo this payment of ${rupees(e.amount_paise ?? 0)}? A correction line is added.`, `${rupees(e.amount_paise ?? 0)} की यह payment गलत थी? एक correction line जुड़ेगी।`) : T("Remove this entry?", "यह entry हटाएँ?"))) void act("undo", { event_id: e.id }); }} className="mt-0.5 inline-flex items-center gap-0.5 text-[11px] text-muted underline"><Undo2 className="h-3 w-3" />{e.kind === "payment" ? T("Wrong", "गलत थी") : T("Remove", "हटाएँ")}</button>
+                )}
+              </span>
             </li>
           ))}
         </ol>

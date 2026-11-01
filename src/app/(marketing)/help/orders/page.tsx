@@ -190,6 +190,11 @@ export default function OrdersGuidePage() {
             ["Customer ka mobile nahi hai", "Order ban jayega, bas slip aur Ready ka WhatsApp nahi jayega."],
             ["Ek item ke step alag chahiye", "Setup · Flow → Items → us item ke “इस item के step”."],
             ["Staff ne kaam chhod diya", "Staff page par “Login बंद करें” ya “हटाएँ”; purana kaam history mein rehta hai. Us step par naya aadmi chunein."],
+            ["Galti se order ban gaya", "Job card par “Job रद्द करें”, phir “हमेशा के लिए मिटाएँ”. Galti se रद्द hua ho to “वापस लाएँ”."],
+            ["Paise galat likh diye", "Job card → History → us payment ke saamne “गलत थी” — ek correction line judti hai, baaki apne-aap theek."],
+            ["Galat note / kapda diya-liya likha", "History mein us line ke saamne “हटाएँ”."],
+            ["Karigar ka naam / number galat", "Karigars page par pencil se badlein; galti se juda ho to 🗑 (jab tak koi job us par na ho)."],
+            ["Galat naap", "Job card → पुराने नाप → 🗑. Jo naap kisi job par laga hai wo nahi hat-ta — pehle naya naap lagayein."],
           ].map(([q, a]) => (
             <details key={q} className="group rounded-2xl border border-border bg-bg px-4 py-3">
               <summary className="flex cursor-pointer list-none items-center justify-between gap-2 text-sm font-semibold">{q}<ChevronRight className="h-4 w-4 shrink-0 text-muted transition group-open:rotate-90" /></summary>
