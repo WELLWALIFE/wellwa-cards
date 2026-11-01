@@ -82,7 +82,7 @@ function FranchisesInner() {
                 <td className={`${td} tabular-nums text-emerald-700`}>{money(r.earned)}</td>
                 <td className={`${td} tabular-nums font-semibold`}>{money(r.balance)}{r.pendingPayouts > 0 && <span className="block text-[10px] font-normal text-amber-700">{money(r.pendingPayouts)} requested</span>}</td>
                 <td className={`${td} text-xs text-muted`}>{r.commission_first_pct}% / {r.commission_renewal_pct}%</td>
-                <td className={td}>{r.logins.length ? <Badge tone={r.logins.some((l) => l.active) ? "good" : "danger"}>{r.logins.length} login{r.logins.length === 1 ? "" : "s"}</Badge> : <Badge tone="warn">no login</Badge>}</td>
+                <td className={td}>{r.logins.length ? <Badge tone={r.logins.some((l) => l.active) ? "good" : "danger"}>{r.logins.length} login{r.logins.length === 1 ? "" : "s"}</Badge> : <Link href={`/admin/franchises/${r.id}?tab=logins`} className="inline-flex items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:bg-amber-100">no login · create →</Link>}</td>
                 <td className={td}><Badge tone={r.status === "active" ? "good" : r.status === "paused" ? "warn" : "danger"} dot>{r.status}</Badge></td>
               </tr>
             ))}

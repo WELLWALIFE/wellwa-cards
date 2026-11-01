@@ -20,7 +20,8 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
   const { me } = useAdminMe();
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState("");
-  const [tab, setTab] = useState<Tab>("overview");
+  // ?tab=logins opens the Logins tab straight away (the list's "no login · create" link).
+  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
   const [form, setForm] = useState<Partial<Fr> | null>(null);
   const [busy, setBusy] = useState("");
   const [confirm, dialog] = useConfirm();
@@ -60,6 +61,12 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         sub={<>Franchise code <b className="font-mono text-ink">{f.code}</b>{f.company ? ` · ${f.company}` : ""}{f.city ? ` · ${f.city}` : ""} · commission {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal</>}
         actions={<><CopyBtn size="md" text={d.signupLink} label="Copy sign-up link" /><a href={share} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> Share on WhatsApp</a></>} />
 
+      {!mine && canManage && d.logins.length === 0 && (
+        <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          <span className="flex-1"><b>Step 2 — give the franchise its login.</b> Without it {f.name.split(" ")[0]} cannot open the panel. Create it, then send the message (link, user, temporary password) on WhatsApp.</span>
+          <Btn size="sm" variant="primary" icon={Plus} onClick={() => setTab("logins")}>Create login</Btn>
+        </div>
+      )}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="Users" value={d.users.length} hint={`${d.users.filter((u) => planOf(u) !== "free").length} on a paid plan`} icon={Users} />
         <Stat label="Earned this month" value={money(d.balance.thisMonth)} hint={`${money(d.balance.earned)} in all`} icon={ArrowDownLeft} tone="good" />
