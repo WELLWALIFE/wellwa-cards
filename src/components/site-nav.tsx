@@ -8,15 +8,15 @@ import { InstallAppButton } from "./install-app";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 
-// `wide`: shown in the header only from 1280px; on 1024–1279px laptops these stay in the menu (the header has no room for ten items).
-const links: { href: string; label: string; wide?: boolean }[] = [
+// `from`: xl = in the header from 1280px; menu = never in the header (the 1152px row has no room), only in the phone menu and the footer.
+const links: { href: string; label: string; from?: "xl" | "menu" }[] = [
   { href: "/", label: "Home" },
   { href: "/features", label: "Business Suite" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/templates", label: "Templates", wide: true },
-  { href: "/solutions", label: "Solutions" },
-  { href: "/work", label: "Work", wide: true },
-  { href: "/about", label: "About" },
+  { href: "/templates", label: "Templates", from: "menu" },
+  { href: "/solutions", label: "Solutions", from: "xl" },
+  { href: "/work", label: "Work", from: "menu" },
+  { href: "/about", label: "About", from: "xl" },
   { href: "/franchise", label: "Franchise" },
   { href: "/contact", label: "Contact" },
 ];
@@ -28,7 +28,9 @@ export function SiteNav() {
   return (
     <header className="sticky top-0 z-20 border-b border-border bg-surface/85 backdrop-blur">
       <div className="max-w-6xl mx-auto h-16 px-5 flex items-center justify-between">
-        <Logo />
+        {/* The wordmark never shrinks (1 Nov 2026: at 1440px it was cut to "Shubh" behind Home); the menu grows with the screen instead:
+            lg = the five that matter, xl + Solutions/About; Templates/Work stay in the footer and the phone menu. */}
+        <div className="shrink-0"><Logo /></div>
 
         <nav className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => {
@@ -37,7 +39,7 @@ export function SiteNav() {
               <Link
                 key={l.href}
                 href={l.href}
-                className={`${l.wide ? "hidden xl:inline-flex" : "inline-flex"} whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
+                className={`${l.from === "menu" ? "hidden" : l.from === "xl" ? "hidden xl:inline-flex" : "inline-flex"} whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
                   active ? "text-brand-ink bg-brand-soft" : "text-muted hover:text-ink hover:bg-surface2"
                 }`}
               >
@@ -47,10 +49,10 @@ export function SiteNav() {
           })}
         </nav>
 
-        <div className="hidden lg:flex items-center gap-2">
+        <div className="hidden lg:flex shrink-0 items-center gap-2">
           <ThemeToggle />
-          {/* The app (owner's call, 24 Sep 2026): one-tap "Install app" (PWA) at the very top of every public page. */}
-          <InstallAppButton variant="nav" />
+          {/* The app (owner's call, 24 Sep 2026): one-tap "Install app" (PWA) at the very top of every public page (from xl; on a laptop it is in the menu row below). */}
+          <span className="hidden xl:inline-flex"><InstallAppButton variant="nav" /></span>
           <Link href="/login" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-ink">
             Log in
           </Link>
