@@ -109,7 +109,7 @@ export function InstallAppButton({ variant = "nav", className = "" }: { variant?
     variant === "hero" ? "inline-flex items-center justify-center gap-2 rounded-xl bg-brand px-6 py-4 text-lg font-semibold text-white hover:opacity-90"
     : variant === "navMobile" ? "inline-flex items-center gap-1 rounded-lg bg-brand px-2.5 py-1.5 text-xs font-semibold text-white"
     : variant === "card" ? "flex w-full items-center justify-between rounded-2xl border border-brand/40 bg-brand-soft/40 p-4 text-left"
-    : "inline-flex items-center gap-1.5 rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink hover:bg-brand-soft/70";
+    : "inline-flex items-center gap-1.5 whitespace-nowrap rounded-lg border border-brand/40 bg-brand-soft px-3 py-2 text-sm font-semibold text-brand-ink hover:bg-brand-soft/70";
   return (
     <>
       <button type="button" onClick={env === "installed" ? () => setHelp(true) : click} className={`${cls} ${className}`}>

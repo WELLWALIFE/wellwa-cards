@@ -8,14 +8,16 @@ import { InstallAppButton } from "./install-app";
 import { Logo } from "./logo";
 import { ThemeToggle } from "./theme-toggle";
 
-const links = [
+// `wide`: shown in the header only from 1280px; on 1024–1279px laptops these stay in the menu (the header has no room for ten items).
+const links: { href: string; label: string; wide?: boolean }[] = [
   { href: "/", label: "Home" },
   { href: "/features", label: "Business Suite" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/templates", label: "Templates" },
+  { href: "/templates", label: "Templates", wide: true },
   { href: "/solutions", label: "Solutions" },
-  { href: "/work", label: "Work" },
+  { href: "/work", label: "Work", wide: true },
   { href: "/about", label: "About" },
+  { href: "/franchise", label: "Franchise" },
   { href: "/contact", label: "Contact" },
 ];
 
@@ -28,14 +30,14 @@ export function SiteNav() {
       <div className="max-w-6xl mx-auto h-16 px-5 flex items-center justify-between">
         <Logo />
 
-        <nav className="hidden md:flex items-center gap-1">
+        <nav className="hidden lg:flex items-center gap-0.5">
           {links.map((l) => {
             const active = l.href === "/" ? pathname === "/" : pathname.startsWith(l.href);
             return (
               <Link
                 key={l.href}
                 href={l.href}
-                className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                className={`${l.wide ? "hidden xl:inline-flex" : "inline-flex"} whitespace-nowrap rounded-lg px-2.5 py-2 text-sm font-medium transition-colors ${
                   active ? "text-brand-ink bg-brand-soft" : "text-muted hover:text-ink hover:bg-surface2"
                 }`}
               >
@@ -45,19 +47,19 @@ export function SiteNav() {
           })}
         </nav>
 
-        <div className="hidden md:flex items-center gap-2">
+        <div className="hidden lg:flex items-center gap-2">
           <ThemeToggle />
           {/* The app (owner's call, 24 Sep 2026): one-tap "Install app" (PWA) at the very top of every public page. */}
           <InstallAppButton variant="nav" />
-          <Link href="/login" className="rounded-lg px-3.5 py-2 text-sm font-medium text-muted hover:text-ink">
+          <Link href="/login" className="whitespace-nowrap rounded-lg px-3 py-2 text-sm font-medium text-muted hover:text-ink">
             Log in
           </Link>
-          <Link href="/signup" className="rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white hover:opacity-90">
+          <Link href="/signup" className="whitespace-nowrap rounded-lg bg-brand px-3.5 py-2 text-sm font-medium text-white hover:opacity-90">
             Start free
           </Link>
         </div>
 
-        <div className="md:hidden flex items-center gap-2">
+        <div className="lg:hidden flex items-center gap-2">
           <InstallAppButton variant="navMobile" />
           <button className="text-ink" onClick={() => setOpen((o) => !o)} aria-label="Menu">
             {open ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -66,7 +68,7 @@ export function SiteNav() {
       </div>
 
       {open && (
-        <div className="md:hidden border-t border-border bg-surface px-5 py-3 space-y-1">
+        <div className="lg:hidden border-t border-border bg-surface px-5 py-3 space-y-1">
           {links.map((l) => (
             <Link
               key={l.href}
