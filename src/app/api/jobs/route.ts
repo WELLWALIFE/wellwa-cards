@@ -1,5 +1,7 @@
 // Orders & job cards (bearer; ?as= / body.as for a team workspace — the shop's staff logins).
-//   GET  ?status=&q=&karigar=&phone=&mine=1&pool=1 (pool: waiting on a step with nobody on it) → { jobs, role, me (rights), karigars, team, counts, setup }
+//   GET  ?status=&q=&karigar=&phone=&mine=1&pool=1&view=today|pending → { jobs, role, me (rights), karigars, team, counts, setup }
+//        pool: waiting on a step with nobody on it · view=today: due today or late (open) · view=pending: money still to come
+//        counts: per status + mine, pool, today, late, pending, pendingPaise
 //   POST { customer_name, customer_phone, due_date?, advance?, details?, items: [{ item, work, details?, qty?, amount?,
 //          karigar_id?, assigned_to?, measurement_id?, measure? }] } → { jobs, shop }
 //        (one job card per item, one shared order_ref; with "Auto start" each goes to its first step and that step's person is told)
@@ -8,7 +10,8 @@ import { restAsService } from "@/lib/poster-server";
 import { agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
 import { denied, forView, has, isUuid, jobsCtx, logEvent, measureRow, moveTo, nextNumber, ownFilter, personName, poolSteps, shopName } from "@/lib/jobs-server";
-import { JOB_COLS, cleanPhone, flowFor, isStatus, toPaise, type JobRow, type Karigar } from "@/lib/jobs";
+import { JOB_COLS, cleanPhone, flowFor, isDueToday, isLate, isPending, isStatus, toPaise, todayIso, type JobRow, type Karigar } from "@/lib/jobs";
+import { isOwnMedia } from "@/lib/card-inputs";
 
 const enc = encodeURIComponent;
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -26,7 +29,10 @@ export async function GET(request: Request) {
   const pool = poolSteps(setup);
   if (p.get("pool") === "1") f.push("assigned_to=is.null", `status=in.(${pool.join(",") || "none"})`);
   const status = p.get("status");
-  if (status === "open") f.push("status=not.in.(delivered,cancelled)");
+  const view = p.get("view");
+  if (view === "today") f.push("status=not.in.(ready,delivered,cancelled)", `due_date=lte.${todayIso()}`);
+  else if (view === "pending") f.push("status=neq.cancelled", "amount_paise=gt.0");
+  else if (status === "open") f.push("status=not.in.(delivered,cancelled)");
   else if (isStatus(setup, status)) f.push(`status=eq.${status}`);
   const karigar = p.get("karigar"); if (isUuid(karigar)) f.push(`karigar_id=eq.${karigar}`);
   const phone = cleanPhone(p.get("phone")); if (phone) f.push(`customer_phone=eq.${enc(phone)}`);
@@ -42,16 +48,25 @@ export async function GET(request: Request) {
     restAsService<JobRow[]>(`job_orders?${f.join("&")}&select=${JOB_COLS}&order=created_at.desc&limit=300`),
     restAsService<Karigar[]>(`job_karigars?owner_id=eq.${scope.ownerId}&select=id,name,phone,skill,active&order=name`),
     agentsFor(me.token, scope.ownerId, scope.role === "agent" ? "manager" : scope.role).catch(() => []),
-    restAsService<{ status: string }[]>(`job_orders?owner_id=eq.${scope.ownerId}${has(access, "all_jobs") ? "" : `&or=(${own})`}&select=status&limit=5000`),
+    restAsService<Pick<JobRow, "status" | "due_date" | "amount_paise" | "advance_paise">[]>(`job_orders?owner_id=eq.${scope.ownerId}${has(access, "all_jobs") ? "" : `&or=(${own})`}&select=status,due_date,amount_paise,advance_paise&limit=5000`),
     restAsService<{ id: string }[]>(`job_orders?owner_id=eq.${scope.ownerId}&assigned_to=eq.${scope.userId}&status=not.in.(ready,delivered,cancelled)&select=id&limit=500`),
     pool.length ? restAsService<{ id: string }[]>(`job_orders?owner_id=eq.${scope.ownerId}&assigned_to=is.null&status=in.(${pool.join(",")})&select=id&limit=500`) : Promise.resolve({ data: [] as { id: string }[] }),
   ]);
-  const counts: Record<string, number> = {};
-  for (const r of list(all)) counts[r.status] = (counts[r.status] ?? 0) + 1;
+  const counts: Record<string, number> = { today: 0, late: 0, pending: 0, pendingPaise: 0 };
+  const today = todayIso();
+  for (const r of list(all)) {
+    counts[r.status] = (counts[r.status] ?? 0) + 1;
+    if (isLate(r, today)) counts.late += 1; else if (isDueToday(r, today)) counts.today += 1;
+    if (has(access, "money") && isPending(r)) { counts.pending += 1; counts.pendingPaise += r.amount_paise - r.advance_paise; }
+  }
   counts.mine = list(mine).length;
   counts.pool = list(open).length;
+  // Late first, then by date; a view of the money shows only what is still to come.
+  let rows = list(jobs);
+  if (view === "pending") rows = rows.filter(isPending);
+  if ((view || status) && status !== "delivered") rows.sort((a, b) => Number(isLate(b, today)) - Number(isLate(a, today)) || (a.due_date ?? "9").localeCompare(b.due_date ?? "9") || b.created_at.localeCompare(a.created_at));
   return NextResponse.json({
-    jobs: list(jobs).map((j) => forView(access, j)), role: scope.role, me: { ...access, userId: scope.userId }, karigars: list(karigars), counts, setup,
+    jobs: rows.map((j) => forView(access, j)), role: scope.role, me: { ...access, userId: scope.userId }, karigars: list(karigars), counts, setup,
     team: team.filter((a) => a.agent_user_id && a.active).map((a) => ({ id: a.agent_user_id as string, name: a.name || a.phone || "Team member", role: a.role })),
   });
 }
@@ -96,6 +111,8 @@ export async function POST(request: Request) {
       qty: Math.max(1, Math.min(99, Number(it.qty) || 1)), due_date: due,
       amount_paise: amount, advance_paise: adv, karigar_id: karigar, assigned_to: chosen,
       measurement_id: measurementId, created_by: me.id,
+      // Photos of the cloth / the design (owner, 1 Nov 2026): only files this person uploaded to our media bucket, ≤ 6.
+      photos: (Array.isArray(it.photos) ? it.photos : []).filter((u: unknown) => isOwnMedia(u, me.id)).slice(0, 6),
     };
     // Two people saving at the same moment can take the same number: try the next one.
     let saved: JobRow | null = null;

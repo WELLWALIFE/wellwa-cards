@@ -1,9 +1,9 @@
 "use client";
 // Shared bits of the Orders screens: the workspace (own shop, or a shop the person joined as a tailor — the CRM team),
 // the status badge, the fold-away card, the shop's setup and the measurement editor.
-import { useCallback, useEffect, useState } from "react";
-import { ChevronDown, ChevronUp, LoaderCircle, Pencil, Plus, X } from "lucide-react";
-import { api } from "@/lib/poster-client";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Camera, ChevronDown, ChevronUp, LoaderCircle, Pencil, Plus, X } from "lucide-react";
+import { api, uploadImage } from "@/lib/poster-client";
 import { DEFAULT_SETUP, fieldsFor, itemTypeOf, stepLabel, stepTone, type JobAccess, type JobSetup, type JobStatus, type Measurement } from "@/lib/jobs";
 
 export const WS_KEY = "akp-crm-ws";   // the same choice as the Customers (CRM) screen
@@ -249,6 +249,59 @@ export function MeasureForm({ hi, q, phone, name, jobId, item, setup, from, onSa
         <button type="button" onClick={() => void save()} disabled={busy || !garment || !draftFilled(draft)} className="inline-flex items-center gap-1.5 rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">{busy && <LoaderCircle className="h-4 w-4 animate-spin" />}{hi ? "नाप सेव करें" : "Save measurement"}</button>
         {onCancel && <button type="button" onClick={onCancel} className="rounded-xl border border-border px-4 py-2 text-sm">{hi ? "रहने दें" : "Cancel"}</button>}
       </div>
+    </div>
+  );
+}
+
+/** Photos of the cloth / the design (owner, 1 Nov 2026): the phone's camera or gallery, ≤ 6, shown as thumbnails. The karigar sees
+ *  on the job card exactly what the customer gave and what she wants. */
+export function JobPhotos({ photos, onChange, hi, max = 6, small = false }: { photos: string[]; onChange?: (next: string[]) => void; hi: boolean; max?: number; small?: boolean }) {
+  const [busy, setBusy] = useState(0);
+  const [err, setErr] = useState("");
+  const [big, setBig] = useState("");
+  const ref = useRef<HTMLInputElement>(null);
+  const size = small ? "h-14 w-14" : "h-20 w-20";
+  async function add(files: FileList | null) {
+    if (!files?.length || !onChange) return;
+    setErr("");
+    const room = Math.max(0, max - photos.length);
+    const picked = Array.from(files).slice(0, room);
+    if (!picked.length) { setErr(hi ? `ज़्यादा से ज़्यादा ${max} photo` : `Up to ${max} photos`); return; }
+    setBusy(picked.length);
+    const urls: string[] = [];
+    for (const f of picked) { const u = await uploadImage(f, "wide").catch(() => null); if (u) urls.push(u); setBusy((n) => n - 1); }
+    setBusy(0);
+    if (urls.length < picked.length) setErr(hi ? "कोई photo upload नहीं हुई — फिर try करें।" : "A photo did not upload — try again.");
+    if (urls.length) onChange([...photos, ...urls]);
+    if (ref.current) ref.current.value = "";
+  }
+  if (!photos.length && !onChange) return null;
+  return (
+    <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-2">
+        {photos.map((u) => (
+          <span key={u} className={`relative ${size} shrink-0 overflow-hidden rounded-xl border border-border bg-bg`}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <button type="button" onClick={() => setBig(u)} className="h-full w-full"><img src={u} alt="" className="h-full w-full object-cover" /></button>
+            {onChange && <button type="button" onClick={() => onChange(photos.filter((x) => x !== u))} aria-label="Remove" className="absolute right-0.5 top-0.5 grid h-5 w-5 place-items-center rounded-full bg-black/60 text-white"><X className="h-3 w-3" /></button>}
+          </span>
+        ))}
+        {busy > 0 && <span className={`grid ${size} place-items-center rounded-xl border border-dashed border-border`}><LoaderCircle className="h-4 w-4 animate-spin text-muted" /></span>}
+        {onChange && photos.length < max && (
+          <button type="button" onClick={() => ref.current?.click()} className={`grid ${size} place-items-center rounded-xl border border-dashed border-brand bg-surface text-brand-ink`} aria-label={hi ? "Photo जोड़ें" : "Add a photo"}>
+            <span className="flex flex-col items-center gap-0.5 text-[10px] font-semibold"><Camera className="h-5 w-5" />{photos.length ? "" : hi ? "Photo" : "Photo"}</span>
+          </button>
+        )}
+      </div>
+      {onChange && <input ref={ref} type="file" accept="image/*" multiple className="hidden" onChange={(e) => void add(e.target.files)} />}
+      {err && <p className="text-[11px] font-semibold text-danger">{err}</p>}
+      {big && (
+        <div className="fixed inset-0 z-[70] grid place-items-center bg-black/85 p-4" role="dialog" onClick={() => setBig("")}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={big} alt="" className="max-h-[90vh] max-w-full rounded-xl object-contain" />
+          <button type="button" aria-label="Close" className="absolute right-4 top-4 grid h-9 w-9 place-items-center rounded-full bg-white/20 text-white"><X className="h-5 w-5" /></button>
+        </div>
+      )}
     </div>
   );
 }

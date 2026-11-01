@@ -143,12 +143,12 @@ export default function OrdersGuidePage() {
       <Sec id="book" n={4} title="Roz ka kaam — order book karna" lead="Ek order 1–2 minute mein; har hissa “छोटा करें” se band karke aage badh sakte hain.">
         <Steps items={[
           <>Orders → <B>“+ नया order”</B>.</>,
-          <><B>Customer</B> — naam aur mobile. Purana customer ho to naam aur saved naap apne aap aa jaate hain.</>,
+          <><B>Customer</B> — pehle mobile. Purana customer ho to naam, pichhle order, purana baaki aur saved naap apne aap aa jaate hain.</>,
           <><B>Item</B> chunein — uska aam kaam apne aap chun jata hai aur <B>naap khul jata hai</B>: “पिछला नाप वही” / “पिछला बदलकर” / “नया नाप” / “ऊपर वाले जैसा” / “बाद में”. Kisi aur ka naap ho to “किसका नाप?” mein naam.</>,
-          <>Detail (rang, design, lining), <B>Charge ₹</B>, <B>Pieces</B>. Usi customer ka aur saman ho to <B>“+ एक और item”</B>.</>,
-          <><B>Delivery और पैसे</B> — tareekh (2 / 3 / 5 / 7 / 10 / 15 din) aur advance; kul, advance, baaki khud dikhta hai.</>,
+          <><B>Photo</B> — kapde / design ki photo camera se (6 tak), Detail (rang, lining), <B>Charge ₹</B>, <B>Pieces</B>. Usi customer ka aur saman ho to <B>“+ एक और item”</B>.</>,
+          <><B>Delivery और पैसे</B> — tareekh Setup ke “आम समय” se khud bhar jaati hai (badal sakte hain: 2 / 3 / 5 / 7 / 10 / 15 din) aur advance; kul, advance, baaki khud dikhta hai.</>,
           <><B>“देखें और order बुक करें”</B> — review mein sab ek baar dikhta hai: <B>बदलें</B> · <B>रद्द करें</B> · <B>पक्का करें</B>.</>,
-          <>Job number (#101…) aata hai, kis-kis ko message gaya dikhta hai, aur <B>“ग्राहक को slip WhatsApp करें”</B>.</>,
+          <>Job number (#101…) aata hai, kis-kis ko message gaya dikhta hai, <B>“ग्राहक को slip WhatsApp करें”</B> aur <B>“Slip / tag print करें”</B> — chhota tag kapde par pin karne ke liye (naap bhi us par).</>,
         ]} />
       </Sec>
 

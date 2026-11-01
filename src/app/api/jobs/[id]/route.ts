@@ -1,7 +1,8 @@
 // One job card (bearer; ?as= / body.as for a team workspace).
 //   GET → { job, events, measurement, measurements, karigars, team, role }
 //   PATCH { action, … } →
-//     status   { status, note? }            (ready → { notify:true } also sends the customer's WhatsApp)
+//     status   { status, note?, collect? }  (ready → { notify:true } also sends the customer's WhatsApp; delivered + collect: the balance taken at hand-over)
+//     photos   { photos: string[] }          (photos of the cloth / design — files this person uploaded; "edit" right, or the one who booked it)
 //     assign   { karigar_id?, assigned_to? } ("assign" right; the person is told)
 //     cloth_out / cloth_in { karigar_id?, pieces?, meters?, note? }  — cloth given to / taken back from a karigar
 //     payment  { amount, note? }   note { note }   notify {}   take {} (a staff login picks an open job)
@@ -13,6 +14,7 @@ import { agentsFor } from "@/lib/crm-server";
 import { isTeamMember } from "@/lib/crm-pro";
 import { denied, forView, has, isUuid, jobById, jobsCtx, logEvent, moveTo, notifyReady, personName, personOf, shopName, tellPerson } from "@/lib/jobs-server";
 import { JOB_COLS, cleanPhone, flowFor, isStatus, nextStep, rupees, toPaise, type JobEvent, type JobRow, type Karigar, type Measurement } from "@/lib/jobs";
+import { isOwnMedia } from "@/lib/card-inputs";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
 const txt = (v: unknown, n: number) => String(v ?? "").trim().slice(0, n);
@@ -67,7 +69,14 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       // Done with my step → the next one (and its person is told). Going back or jumping needs "edit".
       const flow = flowFor(setup, job.item, job.status);
       if (status !== "cancelled" && status !== nextStep(flow, job.status) && !has(access, "edit")) return denied("move an order back or skip steps");
-      const r = await moveTo(scope, setup, job, status, byName, { note: txt(b.note, 300), notifyCustomer: b.notify !== false });
+      // Handed over and the balance taken in the same tap (owner, 1 Nov 2026).
+      let cur = job;
+      const collect = status === "delivered" && boss ? toPaise(b.collect) : 0;
+      if (collect) {
+        cur = (await update({ advance_paise: (job.advance_paise || 0) + collect })) ?? job;
+        await logEvent(scope, job.id, { kind: "payment", amount_paise: collect, note: txt(b.collect_note, 120) || "Balance at delivery" }, byName);
+      }
+      const r = await moveTo(scope, setup, cur, status, byName, { note: txt(b.note, 300), notifyCustomer: b.notify !== false });
       if (!r.job) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
       return out(r.job, { notice: r.notice, told: r.told });
     }
@@ -119,6 +128,14 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
       const next = await update({ advance_paise: (job.advance_paise || 0) + amount });
       await logEvent(scope, job.id, { kind: "payment", amount_paise: amount, note: txt(b.note, 200) || "Payment" }, byName);
       return out(next ?? job);
+    }
+    case "photos": {
+      if (!has(access, "edit") && job.created_by !== scope.userId) return denied("change orders");
+      const photos = (Array.isArray(b.photos) ? b.photos : []).filter((u: unknown) => isOwnMedia(u, me.id) || (Array.isArray(job.photos) && job.photos.includes(u as string))).slice(0, 6);
+      const next = await update({ photos });
+      if (!next) return NextResponse.json({ error: "Could not save. Please try again." }, { status: 502 });
+      if (photos.length !== (job.photos?.length ?? 0)) await logEvent(scope, job.id, { kind: "note", note: photos.length > (job.photos?.length ?? 0) ? "Photo added" : "Photo removed" }, byName);
+      return out(next);
     }
     case "note": {
       const note = txt(b.note, 1000);

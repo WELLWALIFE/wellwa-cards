@@ -4,15 +4,15 @@
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Ruler, StickyNote } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Check, ChevronLeft, History, IndianRupee, LoaderCircle, MessageCircle, Pencil, Phone, Plus, Printer, Ruler, StickyNote } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
-import { can, nextStep, receiptMessage, rupees, stepLabel, type JobEvent, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
-import { Fold, MeasureForm, MeasurementView, PickChips, StatusBadge, useJobSetup, useWorkspace, type Me, type Member } from "@/components/orders/orders-common";
+import { balanceOf, can, fmtDay, isLate, nextStep, receiptMessage, rupees, stepLabel, type JobEvent, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
+import { Fold, JobPhotos, MeasureForm, MeasurementView, PickChips, StatusBadge, useJobSetup, useWorkspace, type Me, type Member } from "@/components/orders/orders-common";
 
 type Detail = { job: JobRow; events: JobEvent[]; measurement: Measurement | null; measurements: Measurement[]; karigars: Karigar[]; team: Member[]; role: "owner" | "manager" | "agent"; me: Me; setup: JobSetup; shop: string; flow: string[]; error?: string };
 type Notice = { sent: boolean; link: string; error?: string } | null;
-type Panel = "" | "cloth_out" | "cloth_in" | "payment" | "note" | "measure" | "change" | "edit";
+type Panel = "" | "cloth_out" | "cloth_in" | "payment" | "note" | "measure" | "change" | "edit" | "deliver";
 
 export default function JobPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,6 +29,7 @@ export default function JobPage() {
   const [form, setForm] = useState({ karigar_id: "", pieces: "", meters: "", amount: "", note: "" });
   const [edit, setEdit] = useState({ customer_name: "", customer_phone: "", item: "", work: "", qty: "1", amount: "", due_date: "", details: "" });
   const [fold, setFold] = useState({ measure: true, older: false, history: true });
+  const [collect, setCollect] = useState("");
   const setup = useJobSetup(ws.q, d?.setup ?? null);
 
   const load = useCallback(async () => {
@@ -65,7 +66,14 @@ export default function JobPage() {
   const mineNow = job.assigned_to === me.userId;
   const karigar = d.karigars.find((k) => k.id === job.karigar_id);
   const tailor = d.team.find((m) => m.id === job.assigned_to);
-  const due = Math.max(0, job.amount_paise - job.advance_paise);
+  const due = balanceOf(job);
+  const late = isLate(job);
+  const canPhotos = can(me, "edit") || job.created_by === me.userId;
+  /** The next step. Hand-over with money still due asks for it first (owner, 1 Nov 2026) — one tap: "Collected ₹X, delivered". */
+  function goNext(to: string) {
+    if (to === "delivered" && boss && due > 0) { setCollect(String(due / 100)); setPanel("deliver"); return; }
+    void act("status", { status: to });
+  }
   const field = "w-full rounded-xl border border-border bg-bg px-3 py-2.5 text-sm outline-none focus:border-brand";
   const L = (s: string) => stepLabel(d.setup, s, hi);
   const card = "space-y-3 rounded-2xl border border-border bg-surface p-4 shadow-card";
@@ -84,7 +92,7 @@ export default function JobPage() {
         <p className="text-base font-bold">{[job.item, job.work].filter(Boolean).join(" · ") || T("Order", "Order")}{job.qty > 1 ? ` × ${job.qty}` : ""}</p>
         {job.details && <p className="whitespace-pre-wrap text-sm text-muted">{job.details}</p>}
         <div className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
-          <p><span className="block text-[11px] text-muted">{T("Due", "देना है")}</span><b>{job.due_date ? new Date(`${job.due_date}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short" }) : "—"}</b></p>
+          <p><span className="block text-[11px] text-muted">{T("Due", "देना है")}</span><b className={late ? "text-danger" : ""}>{fmtDay(job.due_date)}{late ? ` · ${T("late", "देर")}` : ""}</b></p>
           {boss && <p><span className="block text-[11px] text-muted">{T("Charge", "Charge")}</span><b>{rupees(job.amount_paise)}</b></p>}
           {boss && <p><span className="block text-[11px] text-muted">{T("Paid", "मिला")}</span><b>{rupees(job.advance_paise)}</b></p>}
           {boss && <p><span className="block text-[11px] text-muted">{T("Balance", "बाकी")}</span><b className={due > 0 ? "text-amber-700" : ""}>{rupees(due)}</b></p>}
@@ -92,7 +100,14 @@ export default function JobPage() {
         <div className="flex flex-wrap gap-2">
           {can(me, "edit") && <button type="button" onClick={() => { if (panel === "edit") { setPanel(""); return; } setEdit({ customer_name: job.customer_name, customer_phone: job.customer_phone.replace(/^\+91/, ""), item: job.item, work: job.work, qty: String(job.qty || 1), amount: job.amount_paise ? String(job.amount_paise / 100) : "", due_date: job.due_date ?? "", details: job.details }); setPanel("edit"); }} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Pencil className="h-3.5 w-3.5" /> {T("Edit order", "Order बदलें")}</button>}
           {job.customer_phone && <a href={`https://wa.me/${job.customer_phone.replace(/\D/g, "")}?text=${encodeURIComponent(receiptMessage([job], d.shop))}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> {T("Send slip", "Slip भेजें")}</a>}
+          <Link href={`/poster/orders/slip?ids=${job.id}`} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-2 text-xs font-semibold"><Printer className="h-3.5 w-3.5" /> {T("Print tag", "Tag print")}</Link>
         </div>
+        {(job.photos?.length > 0 || canPhotos) && (
+          <div>
+            <p className="mb-1 text-[11px] font-semibold text-muted">📷 {T("Photos of the cloth / design", "कपड़े / design की photo")}</p>
+            <JobPhotos hi={hi} photos={job.photos ?? []} onChange={canPhotos ? (photos) => void act("photos", { photos }) : undefined} />
+          </div>
+        )}
         {panel === "edit" && (
           <div className="space-y-2 rounded-xl bg-bg p-3">
             <div className="grid grid-cols-2 gap-2">
@@ -131,13 +146,27 @@ export default function JobPage() {
           {flow.map((s, i) => {
             const done = job.status !== "cancelled" && i <= idx;
             const allowed = can(me, "edit") || s === next;
-            return <button key={s} type="button" disabled={!!busy || s === job.status || !allowed} onClick={() => { if (s === next || confirm(T(`Move this job to “${L(s)}”?`, `यह job “${L(s)}” पर ले जाएँ?`))) void act("status", { status: s }); }} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${done ? "border-emerald-600 bg-emerald-50 font-semibold text-emerald-800" : "border-border bg-surface"} ${s === job.status ? "ring-2 ring-emerald-500" : ""}`}>{done && <Check className="h-3 w-3" />}{L(s)}</button>;
+            return <button key={s} type="button" disabled={!!busy || s === job.status || !allowed} onClick={() => { if (s === next) goNext(s); else if (confirm(T(`Move this job to “${L(s)}”?`, `यह job “${L(s)}” पर ले जाएँ?`))) { if (s === "delivered") goNext(s); else void act("status", { status: s }); } }} className={`inline-flex items-center gap-1 rounded-full border px-3 py-1.5 text-xs ${done ? "border-emerald-600 bg-emerald-50 font-semibold text-emerald-800" : "border-border bg-surface"} ${s === job.status ? "ring-2 ring-emerald-500" : ""}`}>{done && <Check className="h-3 w-3" />}{L(s)}</button>;
           })}
         </div>
         {next && (
-          <button type="button" disabled={!!busy} onClick={() => void act("status", { status: next })} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
-            {busy === "status" && <LoaderCircle className="h-4 w-4 animate-spin" />}{job.status === "received" ? T("Start", "शुरू करें") : T("Done", "हो गया")} → {L(next)}{nextWho ? ` (${nextWho})` : ""}{next === "ready" ? T(" — and tell the customer on WhatsApp", " — ग्राहक को WhatsApp पर बताएँ") : ""}
+          <button type="button" disabled={!!busy} onClick={() => goNext(next)} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-50">
+            {busy === "status" && <LoaderCircle className="h-4 w-4 animate-spin" />}{job.status === "received" ? T("Start", "शुरू करें") : next === "delivered" ? T("Handed over", "ग्राहक को दे दिया") : T("Done", "हो गया")} → {L(next)}{nextWho ? ` (${nextWho})` : ""}{next === "ready" ? T(" — and tell the customer on WhatsApp", " — ग्राहक को WhatsApp पर बताएँ") : next === "delivered" && boss && due > 0 ? ` · ${T("balance", "बाकी")} ${rupees(due)}` : ""}
           </button>
+        )}
+        {panel === "deliver" && (
+          <div className="space-y-2 rounded-xl border border-amber-300 bg-amber-50 p-3">
+            <p className="text-sm font-bold text-amber-900">{T("Balance to take", "बाकी पैसे लेने हैं")}: {rupees(due)}</p>
+            <div className="grid grid-cols-[1fr_auto] gap-2">
+              <label className="text-[11px] font-semibold text-amber-900">{T("Received now ₹", "अभी मिले ₹")}<input className={field} inputMode="decimal" value={collect} onChange={(e) => setCollect(e.target.value)} /></label>
+              <label className="text-[11px] font-semibold text-amber-900">{T("How", "कैसे")}<select className={field} value={form.note} onChange={(e) => setForm({ ...form, note: e.target.value })}><option value="">—</option><option>Cash</option><option>UPI</option><option>Card</option></select></label>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={!!busy} onClick={async () => { if (await act("status", { status: "delivered", collect, collect_note: form.note })) { setPanel(""); setCollect(""); setForm({ ...form, note: "" }); } }} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-50"><Check className="h-4 w-4" /> {T(`Received ${collect ? `₹${collect}` : ""} · delivered`, `₹${collect || "0"} मिले · दे दिया`)}</button>
+              <button type="button" disabled={!!busy} onClick={async () => { if (confirm(T(`Hand over with ${rupees(due)} still due?`, `${rupees(due)} बाकी रखकर दे दें?`)) && (await act("status", { status: "delivered" }))) setPanel(""); }} className="rounded-xl border border-amber-300 bg-white px-4 py-2.5 text-sm font-semibold text-amber-900">{T("Deliver, take later", "दे दो, पैसे बाद में")}</button>
+              <button type="button" onClick={() => setPanel("")} className="px-2 text-sm text-muted">{T("Cancel", "रहने दें")}</button>
+            </div>
+          </div>
         )}
         {notice && (notice.sent
           ? <p className="rounded-xl bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-800">✅ {T("The customer got the WhatsApp message.", "ग्राहक को WhatsApp message चला गया।")}</p>
@@ -145,6 +174,7 @@ export default function JobPage() {
         {job.status === "ready" && !notice && (
           <button type="button" disabled={!!busy} onClick={() => void act("notify")} className="text-xs font-semibold text-brand-ink underline">{job.notified_at ? T("Send the ready message again", "Ready message फिर भेजें") : T("Send the ready message on WhatsApp", "Ready message WhatsApp पर भेजें")}</button>
         )}
+        {job.status === "delivered" && boss && due > 0 && panel !== "payment" && <button type="button" onClick={() => setPanel("payment")} className="w-full rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-900">⚠ {T(`Delivered — ${rupees(due)} still to come. Tap when it is received.`, `दे दिया — ${rupees(due)} अभी बाकी। मिलते ही यहाँ दबाएँ।`)}</button>}
         {told && <p className="rounded-xl bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-900">📲 {told}</p>}
         {!job.assigned_to && setup.people.length > 0 && d.setup.steps.some((x) => x.key === job.status) && !can(me, "assign") && <button type="button" disabled={!!busy} onClick={() => void act("take")} className="w-full rounded-xl border border-brand px-4 py-2.5 text-sm font-semibold text-brand-ink">{T("I'll do this", "यह काम मैं करूँगा")}</button>}
         {mineNow && job.status !== "delivered" && job.status !== "cancelled" && <p className="text-center text-[11px] font-semibold text-emerald-700">{T("This job is with you", "यह काम आपके पास है")}</p>}

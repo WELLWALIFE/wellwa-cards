@@ -15,11 +15,21 @@ const MCOLS = "id,customer_phone,customer_name,garment,unit,values:sizes,notes,t
 export async function GET(request: Request) {
   const p = new URL(request.url).searchParams;
   const c = await jobsCtx(request, p.get("as")); if (!c.ok) return c.res;
-  const { scope } = c;
+  const { scope, access } = c;
   const phone = cleanPhone(p.get("phone"));
-  if (!phone) return NextResponse.json({ measurements: [] });
-  const r = await restAsService<Measurement[]>(`job_measurements?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&select=${MCOLS}&order=created_at.desc&limit=40`);
-  return NextResponse.json({ measurements: list(r) });
+  if (!phone) return NextResponse.json({ measurements: [], customer: null });
+  // The customer too (owner, 1 Nov 2026: the mobile first — the name and the last orders come up by themselves).
+  const [r, jr] = await Promise.all([
+    restAsService<Measurement[]>(`job_measurements?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&select=${MCOLS}&order=created_at.desc&limit=40`),
+    restAsService<{ customer_name: string; item: string; work: string; number: number; created_at: string; status: string; amount_paise: number; advance_paise: number }[]>(`job_orders?owner_id=eq.${scope.ownerId}&customer_phone=eq.${encodeURIComponent(phone)}&status=neq.cancelled&select=customer_name,item,work,number,created_at,status,amount_paise,advance_paise&order=created_at.desc&limit=50`),
+  ]);
+  const jobs = list(jr);
+  const customer = jobs[0] ? {
+    name: jobs[0].customer_name, orders: jobs.length,
+    last: `#${jobs[0].number} ${[jobs[0].item, jobs[0].work].filter(Boolean).join(" · ")}`, lastAt: jobs[0].created_at,
+    pendingPaise: !has(access, "money") ? 0 : jobs.reduce((a, j) => a + Math.max(0, (j.amount_paise || 0) - (j.advance_paise || 0)), 0),
+  } : null;
+  return NextResponse.json({ measurements: list(r), customer });
 }
 
 export async function POST(request: Request) {

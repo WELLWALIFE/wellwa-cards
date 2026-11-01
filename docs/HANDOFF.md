@@ -192,6 +192,16 @@ Standard and Premium both see it); three states per module: ON → open; Premium
 Premium page (`/poster/site/advanced`): fold "Font · top of the page · corners" under the three designs, sent as `tweak` with accept.
 `AdvancedEntry` on the congratulations screen turns into the loud "Make my Premium website now" when Premium is paid and no design exists.
 
+## Orders · Silai — easier counter (1 Nov 2026)
+Owner: "aur easy aur professional". `src/lib/jobs.ts`: `JobSetup.dueDays` (usual delivery time, default 7; `ItemType.days` per item; `daysFor`),
+`isLate / isDueToday / isPending / balanceOf / fmtDay / isoPlus`. New order: mobile first → `/api/jobs/measurements?phone=` also answers
+`customer` (name, orders, last, pendingPaise) → name autofills; photos of the cloth per item (`JobPhotos` in orders-common, `uploadImage(…,"wide")`,
+saved in `job_orders.photos`, only the uploader's own media); the date starts at the shop's days (item days win until set by hand). List: tabs
+Today (due today + late, red) · In work (steps as sub-chips) · Ready · Payment due · Delivered · All, a 3–4 tile "today" strip, late first
+(`/api/jobs?view=today|pending`, counts today/late/pending/pendingPaise). Job card: photos, "Print tag", hand-over asks for the balance first
+(`PATCH status delivered + collect` → payment event then the move), a reminder when delivered with money still due. `/poster/orders/slip?ids=…`:
+printable tag / full slip per job (measurement on it). Setup: usual days (shop + per item).
+
 ## Website waiting time (31 Oct 2026)
 Owner: "user ko lagna chahiye ki kaam mein time lagta hai — 24–48 hr, customised 1 week, 24 hr baad auto". `src/lib/site-ready.ts`: a website made for
 the FIRST time (card/build publish, `site.readyAt = now + 24h`) and the FIRST Premium design (`site.advancedReadyAt`, accept in /api/card/advanced; the

@@ -81,6 +81,10 @@ export default function OrdersSetupPage() {
           {fixed(`${s.steps.length + 3}. ${stepLabel(s, "delivered", hi)}`, T("handed over", "ग्राहक को दे दिया"))}
         </ol>
         {(staff.length === 0 || karigars.length === 0) && <p className="text-[11px] text-muted">{staff.length === 0 && <Link href="/poster/orders/staff" className="font-semibold text-brand-ink underline">{T("Add staff logins", "Staff login बनाएँ")}</Link>}{staff.length === 0 && karigars.length === 0 ? " · " : ""}{karigars.length === 0 && <Link href="/poster/orders/karigars" className="font-semibold text-brand-ink underline">{T("Add karigars", "कारीगर जोड़ें")}</Link>}</p>}
+        <div className="flex items-center justify-between gap-3 rounded-xl bg-bg p-3 text-sm">
+          <span><b>{T("Usual delivery time", "आम तौर पर कितने दिन में देते हैं")}</b><span className="block text-xs text-muted">{T("A new order's date is filled with this; it can be changed on the order. 0 = ask every time.", "नया order इसी तारीख से भरेगा; order पर बदल सकते हैं। 0 = हर बार पूछे।")}</span></span>
+          <label className="flex shrink-0 items-center gap-1.5 text-sm"><input className={`${field} w-16 text-center`} inputMode="numeric" value={s.dueDays} onChange={(e) => change({ ...s, dueDays: Math.max(0, Math.min(90, Math.round(Number(e.target.value) || 0))) })} /> {T("days", "दिन")}</label>
+        </div>
         <label className="flex items-start gap-2 rounded-xl bg-bg p-3 text-sm">
           <input type="checkbox" className="mt-0.5" checked={s.autoStart} onChange={(e) => change({ ...s, autoStart: e.target.checked })} />
           <span><b>{T("Start by itself", "अपने-आप शुरू")}</b><span className="block text-xs text-muted">{T("A booked order goes straight to its first step and that person is told. Off: it waits at Received until someone taps Start.", "Order बुक होते ही पहले step पर चला जाए और उस व्यक्ति को बता दिया जाए। बंद: Received पर रुकेगा, कोई “शुरू करें” दबाए तब।")}</span></span>
@@ -94,17 +98,22 @@ export default function OrdersSetupPage() {
           return (
             <Fold key={it.name} hi={hi} tone="inner" open={openItem === it.name} onToggle={() => setOpenItem(openItem === it.name ? "" : it.name)}
               icon={<Ruler className={`h-4 w-4 ${it.fields.length ? "text-brand" : "text-muted"}`} />} title={it.name}
-              summary={[it.work, steps.map((k) => stepLabel(s, k, hi)).join(" → "), it.fields.length ? `${it.fields.length} ${T("measurements", "नाप")}` : T("no measurement", "नाप नहीं")].filter(Boolean).join(" · ")}
+              summary={[it.work, it.days ? `${it.days} ${T("days", "दिन")}` : "", steps.map((k) => stepLabel(s, k, hi)).join(" → "), it.fields.length ? `${it.fields.length} ${T("measurements", "नाप")}` : T("no measurement", "नाप नहीं")].filter(Boolean).join(" · ")}
               right={<span className="flex gap-1">
                 <button type="button" className={small} disabled={i === 0} onClick={() => change({ ...s, items: move(s.items, i, -1) })} aria-label="Up"><ArrowUp className="h-3.5 w-3.5" /></button>
                 <button type="button" className={small} disabled={i === s.items.length - 1} onClick={() => change({ ...s, items: move(s.items, i, 1) })} aria-label="Down"><ArrowDown className="h-3.5 w-3.5" /></button>
               </span>}>
-              <label className="block text-[11px] font-semibold text-muted">{T("Usual work (picked by itself)", "आम काम (अपने-आप चुना जाएगा)")}
-                <select className={field} value={it.work ?? ""} onChange={(e) => setItem(it.name, { work: e.target.value })}>
-                  <option value="">—</option>
-                  {s.works.map((w) => <option key={w} value={w}>{w}</option>)}
-                </select>
-              </label>
+              <div className="grid grid-cols-[1fr_auto] gap-2">
+                <label className="block text-[11px] font-semibold text-muted">{T("Usual work (picked by itself)", "आम काम (अपने-आप चुना जाएगा)")}
+                  <select className={field} value={it.work ?? ""} onChange={(e) => setItem(it.name, { work: e.target.value })}>
+                    <option value="">—</option>
+                    {s.works.map((w) => <option key={w} value={w}>{w}</option>)}
+                  </select>
+                </label>
+                <label className="block text-[11px] font-semibold text-muted">{T("Days", "दिन")}
+                  <input className={`${field} w-20 text-center`} inputMode="numeric" placeholder={String(s.dueDays || "")} value={it.days || ""} onChange={(e) => setItem(it.name, { days: Math.max(0, Math.min(90, Math.round(Number(e.target.value) || 0))) })} />
+                </label>
+              </div>
               <div className="space-y-1">
                 <p className="text-[11px] font-semibold text-muted">{T("Steps for this item", "इस item के step")}</p>
                 <div className="flex flex-wrap gap-1.5">

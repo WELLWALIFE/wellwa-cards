@@ -72,12 +72,15 @@ export type StaffAccess = { title: string; rights: Right[] };
 /** The shop's own lists (owner, 30 Oct 2026: "kaise aur kya-kya measurement karna hai, wo account decide kare"): the items it
  *  takes with their measurement fields, usual work and steps; the kinds of work; the unit; the flow; the staff's rights.
  *  Kept in owner_prefs.crm.jobSetup; the defaults below until the shop changes them. */
-export type ItemType = { name: string; fields: string[]; work?: string; steps?: string[] };
+/** days: this item's usual delivery time (0 / missing → the shop's dueDays). */
+export type ItemType = { name: string; fields: string[]; work?: string; steps?: string[]; days?: number };
 export type JobSetup = {
   items: ItemType[]; works: string[]; unit: "inch" | "cm";
   steps: FlowStep[];
   /** A booked order goes straight to the first step and its person is told. */
   autoStart: boolean;
+  /** The usual delivery time (owner, 1 Nov 2026): a new order's date is filled with it; 0 = ask every time. */
+  dueDays: number;
   /** Rights per staff login, keyed by the team row id (crm_agents.id). */
   staff: Record<string, StaffAccess>;
 };
@@ -89,8 +92,9 @@ export const DEFAULT_STEPS: FlowStep[] = [
 ];
 export const DEFAULT_SETUP: JobSetup = {
   items: ITEM_PICKS.map((name) => ({ name, fields: MEASURE_FIELDS[name] ?? [], work: DEFAULT_WORK[name] ?? "", steps: DEFAULT_ITEM_STEPS[name] ?? ["cutting", "stitching", "finishing"] })),
-  works: [...WORK_PICKS], unit: "inch", steps: DEFAULT_STEPS, autoStart: true, staff: {},
+  works: [...WORK_PICKS], unit: "inch", steps: DEFAULT_STEPS, autoStart: true, dueDays: 7, staff: {},
 };
+const days = (v: unknown, fallback: number) => { const n = Math.round(Number(v)); return Number.isFinite(n) && n >= 0 && n <= 90 ? n : fallback; };
 const nm = (v: unknown, n = 40) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const uniq = (xs: string[]) => { const seen = new Set<string>(); return xs.filter((x) => { const k = x.toLowerCase(); if (!x || seen.has(k)) return false; seen.add(k); return true; }); };
 /** A key for a new step's name ("Hand work" → "hand_work"), not one of the fixed ones or one in use. */
@@ -123,7 +127,8 @@ export function cleanSetup(raw: unknown): JobSetup {
     names.add(name.toLowerCase());
     const fields = Array.isArray(x.fields) ? uniq(x.fields.slice(0, 40).map((f) => nm(f, 30))) : [];
     const itemSteps = Array.isArray(x.steps) ? x.steps.filter((k) => keys.includes(k)) : undefined;
-    items.push({ name, fields, work: nm(x.work ?? DEFAULT_WORK[name] ?? ""), ...(itemSteps ? { steps: itemSteps } : {}) });
+    const d = days(x.days, 0);
+    items.push({ name, fields, work: nm(x.work ?? DEFAULT_WORK[name] ?? ""), ...(itemSteps ? { steps: itemSteps } : {}), ...(d ? { days: d } : {}) });
   }
   const works = Array.isArray(o.works) ? uniq(o.works.slice(0, 60).map((w) => nm(w))) : DEFAULT_SETUP.works;
   const staff: Record<string, StaffAccess> = {};
@@ -133,11 +138,24 @@ export function cleanSetup(raw: unknown): JobSetup {
       staff[id] = { title: nm(v?.title, 40), rights: Array.isArray(v?.rights) ? v.rights.filter((r): r is Right => (ALL_RIGHTS as string[]).includes(r)) : [] };
     }
   }
-  return { items, works, unit: o.unit === "cm" ? "cm" : "inch", steps, autoStart: o.autoStart !== false, staff };
+  return { items, works, unit: o.unit === "cm" ? "cm" : "inch", steps, autoStart: o.autoStart !== false, dueDays: days(o.dueDays, 7), staff };
 }
 export const itemTypeOf = (s: JobSetup, item: string) => s.items.find((i) => i.name.toLowerCase() === item.trim().toLowerCase()) ?? null;
 export const fieldsFor = (s: JobSetup, item: string) => itemTypeOf(s, item)?.fields ?? [];
 export const workFor = (s: JobSetup, item: string) => itemTypeOf(s, item)?.work ?? "";
+/** The usual delivery time of an item: its own days, else the shop's (0 = none). */
+export const daysFor = (s: JobSetup, item: string) => itemTypeOf(s, item)?.days || s.dueDays || 0;
+/** Today in the shop's calendar (IST), as YYYY-MM-DD. */
+export const todayIso = () => new Date().toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+export const isoPlus = (d: number) => new Date(Date.now() + d * 86400_000).toLocaleDateString("en-CA", { timeZone: "Asia/Kolkata" });
+export const OPEN_END = ["ready", "delivered", "cancelled"];
+/** Past its date and still not ready. */
+export const isLate = (j: Pick<JobRow, "due_date" | "status">, today = todayIso()) => !!j.due_date && j.due_date < today && !OPEN_END.includes(j.status);
+export const isDueToday = (j: Pick<JobRow, "due_date" | "status">, today = todayIso()) => j.due_date === today && !OPEN_END.includes(j.status);
+export const balanceOf = (j: Pick<JobRow, "amount_paise" | "advance_paise">) => Math.max(0, (j.amount_paise || 0) - (j.advance_paise || 0));
+/** Money still to come: a charge was set and not all of it is in (cancelled jobs never count). */
+export const isPending = (j: Pick<JobRow, "amount_paise" | "advance_paise" | "status">) => j.status !== "cancelled" && j.amount_paise > 0 && balanceOf(j) > 0;
+export const fmtDay = (iso: string | null | undefined, year = false) => (iso ? new Date(`${iso}T00:00:00`).toLocaleDateString("en-IN", { day: "numeric", month: "short", ...(year ? { year: "numeric" } : {}) }) : "—");
 
 /** A job's whole flow: received → its item's steps (all the shop's steps when the item has none set) → ready → delivered. */
 export function flowFor(s: JobSetup, item: string, current?: string): string[] {
