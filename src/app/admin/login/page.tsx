@@ -31,11 +31,18 @@ function LoginForm() {
   const [err, setErr] = useState("");
   const [checking, setChecking] = useState(true);
 
-  // Already logged in → straight to the panel (the shell decides whether this account is an admin).
+  const [other, setOther] = useState("");   // an app login that is not an admin (e.g. the demo account) is signed in here
+
+  // Already logged in as an admin → straight to the panel. Logged in as a plain app user (owner, 1 Nov 2026: the demo account was signed in and
+  // /admin ↔ /admin/login bounced for ever) → the form, with a note; the admin login below replaces that session.
   useEffect(() => { (async () => {
     const sb = getBrowserSupabase();
     const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session) router.replace(next); else setChecking(false);
+    if (!data.session) { setChecking(false); return; }
+    const r = await fetch("/api/admin/v2/me", { headers: { authorization: `Bearer ${data.session.access_token}` }, cache: "no-store" }).catch(() => null);
+    if (r?.ok || r?.status === 403) { router.replace(next); return; }
+    setOther(data.session.user.email ?? data.session.user.user_metadata?.display_name ?? "an app account");
+    setChecking(false);
   })(); }, [next, router]);
 
   async function afterLogin() {
@@ -97,6 +104,7 @@ function LoginForm() {
               <input autoFocus inputMode="numeric" autoComplete="one-time-code" value={code} onChange={(e) => { setCode(e.target.value.replace(/\D/g, "").slice(0, 6)); setErr(""); }} className={`${inputCls} text-center text-xl tracking-[0.4em]`} placeholder="••••••" /></label>
           </>
         )}
+        {other && !err && <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">You are signed in to the app as <b>{other.replace(/@phone\.shubhora\.com$/, "")}</b>, which is not an admin login. Log in with your admin account below — that signs the app account out of this browser.</p>}
         {err && <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-semibold text-red-700 dark:bg-red-950/40 dark:text-red-300">{err}</p>}
         <button type="submit" disabled={busy} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg grad-brand text-sm font-semibold text-white disabled:opacity-60">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}{step === "login" ? "Log in" : "Verify"}
