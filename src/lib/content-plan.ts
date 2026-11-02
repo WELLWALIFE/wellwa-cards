@@ -78,6 +78,20 @@ const shortLine = (v: unknown, n: number) => { const t = clampStr(v, 400); if (t
 const daysOf = (month: string) => { const [y, m] = month.split("-").map(Number); const out: string[] = []; for (let d = 1; d <= new Date(y, m, 0).getDate(); d++) out.push(`${y}-${String(m).padStart(2, "0")}-${String(d).padStart(2, "0")}`); return out; };
 const dow = (d: string) => (new Date(d + "T00:00:00Z").getUTCDay() + 6) % 7; // Mon = 0
 const WEEKDAY = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+// A day's words that name a weekday must name ITS weekday (seen live, 2 Nov 2026: "संडे का मजेदार नाश्ता" planned on a Saturday).
+// Each list is Mon..Sun in one way of writing it; a wrong one is swapped for the right one in the same way of writing.
+const DAY_WORDS: string[][] = [
+  ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+  ["सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"],
+  ["मंडे", "ट्यूज़डे", "वेडनेसडे", "थर्सडे", "फ्राइडे", "सैटरडे", "संडे"],
+];
+function rightWeekday(text: string, date: string): string {
+  if (!text) return text;
+  const want = dow(date);
+  let out = text;
+  for (const list of DAY_WORDS) list.forEach((w, i) => { if (i !== want) out = out.replace(new RegExp(w, "gi"), list[want]); });
+  return out;
+}
 
 async function loadCtx(userId: string, b: BrandSnapshot, month: string, focus: string[], perWeek: number): Promise<Ctx> {
   let products = (await restAsService<Prod[]>(`poster_products?user_id=eq.${userId}&brand_id=is.null&active=eq.true&order=sort,created_at&select=id,name,offer,category,price,benefits&limit=40`)).data ?? [];
@@ -141,6 +155,8 @@ Rules:
 - "tip": one useful thing a customer of this trade should know. "trust"/"testimonial": why people rely on this business (use the USPs). "about": the people, the craft, the shop, the day's work. "greeting": a thought for the day that touches the trade lightly.
 - title: the poster's heading, ≤ 34 characters, ${lang}, no emoji, no business name (the name is printed by the design). sub: ≤ 40 characters, one line under the heading. custom: ONLY on an "offer" day, the offer exactly as written above (≤ 50 characters); on every other day "" — never a price, never "only ₹…".
 - hook: the idea in one short line (${lang}). caption: 2–3 short lines in ${lang}, warm and professional, at most 2 emoji, no phone number, no link, no hashtags (code adds those). hashtags: 5, mixing the trade, the city and the topic. why: one sentence on why this post helps, in ${lang}.
+- Do not write the business name in title, sub, hook or caption (the poster carries it and the post goes out from the business's own page); say "we" / "हम" / "हमारे यहाँ".
+- Never name a weekday (Monday, Sunday, सोमवार, संडे…) unless it is that date's own weekday as listed below; better not to name days at all.
 - Tone: ${b.tone.length ? b.tone.map((t) => TONES.find((x) => x.key === t)?.en ?? t).join(", ") : "warm, trusted"}. Write every business and product name exactly as given (never transliterate), and keep English product / tech words in Roman letters (WhatsApp, AI, Google, website, app) even inside a Hindi line.`;
   const user = `Business: ${b.name}${b.tagline ? ` — ${b.tagline}` : ""}
 Trade: ${cat ? `${cat.en} (${cat.hi})` : b.category || "small business"}${b.city ? ` · City: ${b.city}` : ""}
@@ -172,6 +188,7 @@ function readDays(text: string, c: Ctx, dates: string[]): Map<string, PlanDay> {
     let product_id = UUID.test(String(d.product_id ?? "")) && c.products.some((p) => p.id === d.product_id) ? String(d.product_id) : null;
     if ((kind === "product" || kind === "offer") && !product_id) { if (!c.products.length) kind = "tip"; else product_id = c.products[out.size % c.products.length].id; }
     if (kind !== "product" && kind !== "offer") product_id = null;
+    for (const k of ["title", "sub", "hook", "caption"] as const) if (typeof d[k] === "string") d[k] = rightWeekday(d[k] as string, date);
     const overrides: PlanDay["overrides"] = {};
     if (shortLine(d.title, 34)) overrides.title = shortLine(d.title, 34);
     if (shortLine(d.sub, 40)) overrides.sub = shortLine(d.sub, 40);

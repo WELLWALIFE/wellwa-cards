@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, restAsUser } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { stockPhotoForProduct, usedPhotoIds, tradeOf, pool } from "@/lib/media/product-stock";
+import { isOwnMedia } from "@/lib/card-inputs";
 
 export const maxDuration = 120;
 
@@ -42,7 +43,9 @@ export async function POST(request: Request) {
       if (!name || names.has(name.toLowerCase())) continue;
       if (rows.length >= room) break;
       names.add(name.toLowerCase());
-      rows.push({ user_id: me.id, name, photo_url: null, photos: [], benefits: [], offer: "", category: S(o.category, 30), active: true, brand_id: null, price: money(o.price) });   // every row carries the same keys (a batch insert needs that)
+      // The owner's own photo (Add many → Product photos): it IS the product's photo, no stock picture is looked for.
+      const own = isOwnMedia(o.photo, me.id) ? o.photo : null;
+      rows.push({ user_id: me.id, name, photo_url: own, photos: own ? [{ url: own, view: "front", role: "identity" }] : [], benefits: [], offer: "", category: S(o.category, 30), active: true, brand_id: null, price: money(o.price) });   // every row carries the same keys (a batch insert needs that)
     }
     if (!rows.length) {
       if (room <= 0) return fail(`You already have ${MAX_PRODUCTS} products, the most that can be kept. Please remove some first.`, 400, "full");
@@ -56,7 +59,7 @@ export async function POST(request: Request) {
       const trade = await tradeOf(me.token, me.id);
       const taken = usedPhotoIds(me.id);   // no two products on one stock picture, in this list or in the last ones
       await pool(rows, 5, async (r) => {
-        if (Date.now() - t0 >= START_BY) return;
+        if (r.photo_url || Date.now() - t0 >= START_BY) return;
         const tried = await stockPhotoForProduct(me.id, String(r.name), trade.label || trade.key, { skip: taken, maxMs: END_BY - (Date.now() - t0) });
         if (tried.url) { r.photo_url = tried.url; r.photos = [{ url: tried.url, view: "front", role: "identity" }]; }
       });

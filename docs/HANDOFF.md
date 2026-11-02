@@ -380,3 +380,9 @@ website is live" message as the cron (`lib/site-live-server.ts tellSiteLive`, sh
 **0085**, a trigger lets only the service role change it — the app's publish rewrites `data` and would drop a field there);
 `fetchCloudCard` reads it (`select *`, works before 0085) into `site.paused`, `publicCard` then shows the card; the cron skips paused rows.
 The owner's own app does not show "paused" yet.
+- **Calendar / plan fixes** (same day, seen live): the "Next 3 posts" previews load by themselves (one after another); Save in a day's sheet
+  makes that day's preview again with the new words; the planner may not name a weekday other than the date's own (`rightWeekday` swaps a
+  wrong Monday…Sunday / सोमवार…रविवार / मंडे…संडे) and does not write the business name in the words (a Hindi caption had half-transliterated it).
+- **Add many → Product photos** (instead of importing Instagram, which does not give its photos): up to 12 photos from the phone, each one
+  product; /api/poster/products/import mode `photos` (Gemini names each from the picture, price only if printed), /bulk keeps the owner's own
+  photo (`photo`, own media only) and looks for no stock picture for it. Rendered with mocks; the live AI naming was not run.

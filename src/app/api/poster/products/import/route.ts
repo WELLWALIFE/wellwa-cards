@@ -10,7 +10,7 @@ import { geminiComplete } from "@/lib/gemini";
 export const maxDuration = 60;
 const MAX_BODY = 50_000;               // bytes: a pasted list is at most 6000 characters
 const MAX_PHOTO = 15 * 1024 * 1024;    // bytes of a price-list photo that is read
-type Item = { name: string; price: string; category: string };
+type Item = { name: string; price: string; category: string; photo?: string };
 const S = (v: unknown, n: number) => (typeof v === "string" ? v : typeof v === "number" ? String(v) : "").replace(/\s+/g, " ").trim().slice(0, n);
 const money = (v: unknown) => S(v, 30).replace(/^(?:₹|rs\.?|inr)\s*/i, "").trim();
 const clean = (v: unknown): Item[] => {
@@ -29,7 +29,44 @@ export async function POST(request: Request) {
   if (Number(request.headers.get("content-length") || 0) > MAX_BODY) return NextResponse.json({ error: "That list is too long. Please add a shorter one." }, { status: 413 });
   if (rateLimited(`product-import:${me.id}`, 20, 60 * 60_000)) return NextResponse.json({ error: "Too many tries in an hour. Please wait a little." }, { status: 429 });
   const b = ((await request.json().catch(() => null)) ?? {}) as Record<string, unknown>;
-  const mode = b.mode === "photo" ? "photo" : b.mode === "suggest" ? "suggest" : "text";
+  const mode = b.mode === "photo" ? "photo" : b.mode === "suggest" ? "suggest" : b.mode === "photos" ? "photos" : "text";
+  // Many product photos at once (owner, 2 Nov 2026 — instead of Instagram, which does not let its photos be taken): each photo is ONE
+  // product; the AI names it from what it sees, and the photo becomes that product's photo.
+  if (mode === "photos") {
+    const urls = (Array.isArray(b.image_urls) ? b.image_urls : []).filter((u): u is string => isOwnMedia(u, me.id)).slice(0, 12);
+    if (!urls.length) return NextResponse.json({ error: "Choose your product photos first." }, { status: 400 });
+    try {
+      const shots = await Promise.all(urls.map(async (u) => {
+        const r = await fetch(u, { signal: AbortSignal.timeout(15_000) }).catch(() => null);
+        if (!r?.ok) return null;
+        const raw = Buffer.from(await r.arrayBuffer());
+        if (raw.length > MAX_PHOTO) return null;
+        return sharp(raw, { failOn: "none", limitInputPixels: 80_000_000 }).rotate().resize({ width: 640, height: 640, fit: "inside", withoutEnlargement: true }).jpeg({ quality: 78 }).toBuffer().catch(() => null);
+      }));
+      const parts: Record<string, unknown>[] = [];
+      const idx: number[] = [];
+      shots.forEach((x, i) => { if (x) { parts.push({ text: `Photo ${idx.length + 1}:` }, { inlineData: { mimeType: "image/jpeg", data: x.toString("base64") } }); idx.push(i); } });
+      if (!idx.length) return NextResponse.json({ error: "The photos could not be opened. Please choose them again." }, { status: 400 });
+      const trade = S(b.trade, 60);
+      const prompt = `Each photo above shows ONE product or service of an Indian ${trade || "shop"}. For each photo give what a customer would call it.
+Return ONLY JSON: {"items":[{"n":1,"name":"","price":"","category":""}]} — one entry per photo, "n" = the photo number. name: short and plain (at most 5 words; a brand or label printed on it may be used, never invent one; English unless the label is in another script). price: only if a price is clearly printed in the photo, else "". category: a short group (e.g. "Sweets", "Shirts"), else "".`;
+      const { text } = await geminiComplete({ apiKey: key, tag: "product-import:photos", maxOutputTokens: 1500, temperature: 0, json: true, contents: [{ role: "user", parts: [...parts, { text: prompt }] }] } as Parameters<typeof geminiComplete>[0]);
+      const v = parse(text) as { items?: unknown } | unknown[] | null;
+      const list = (Array.isArray(v) ? v : (v as { items?: unknown } | null)?.items) as unknown[] | undefined;
+      const seen = new Set<string>();
+      const items: Item[] = [];
+      idx.forEach((orig, k) => {
+        const o = ((Array.isArray(list) ? list : []).find((x) => Number((x as Record<string, unknown>)?.n) === k + 1) ?? {}) as Record<string, unknown>;
+        let name = S(o.name, 60) || `Product ${k + 1}`;
+        if (seen.has(name.toLowerCase())) name = `${name} ${k + 1}`.slice(0, 60);
+        seen.add(name.toLowerCase());
+        items.push({ name, price: money(o.price), category: S(o.category, 30), photo: urls[orig] });
+      });
+      return NextResponse.json({ items });
+    } catch {
+      return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 502 });
+    }
+  }
   try {
     let prompt = "", parts: Record<string, unknown>[] = [];
     if (mode === "text") {

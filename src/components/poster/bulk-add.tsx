@@ -2,12 +2,12 @@
 // "Add many at once" on the Products page (owner, 14 Oct 2026): paste a list, photograph a price list, or tick the usual
 // things of the trade — then look the list over and add all of it in one tap.
 import { useEffect, useRef, useState } from "react";
-import { Camera, ClipboardList, LoaderCircle, Sparkles, X } from "lucide-react";
+import { Camera, ClipboardList, Images, LoaderCircle, Sparkles, X } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 
-type Item = { name: string; price: string; category: string; on: boolean };
-type Mode = "text" | "photo" | "suggest";
+type Item = { name: string; price: string; category: string; on: boolean; photo?: string };
+type Mode = "text" | "photo" | "suggest" | "photos";
 
 /** What a failed reply says in the owner's language. The server's own text is English: Hindi is chosen by its `code`, else by the
  *  status (a gateway that gives up sends no JSON at all, so there is no text then). `fallback` is for any other case. */
@@ -33,7 +33,7 @@ function failText(en: boolean, status: number, code: string | undefined, text: s
 /** `onAdded(n, withPicture)`: n products were added, withPicture of them got a picture (undefined: not told). */
 export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; trade: string; city?: string; onClose: () => void; onAdded: (n: number, withPicture?: number) => void }) {
   const T = (e: string, h: string) => (en ? e : h);
-  const [mode, setMode] = useState<Mode>("text");
+  const [mode, setMode] = useState<Mode>("photos");
   const [text, setText] = useState("");
   const [items, setItems] = useState<Item[] | null>(null);
   const [busy, setBusy] = useState("");
@@ -81,13 +81,33 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
       await read({ mode: "photo", image_url: url });
     } catch { setErr(T("The photo could not be used.", "ये photo इस्तेमाल नहीं हो पाई।")); setBusy(""); }
   }
+  /** Product photos (up to 12): each is one product — uploaded, then named by the AI; the photo stays the product's photo. */
+  const many = useRef<HTMLInputElement>(null);
+  const [upN, setUpN] = useState<{ done: number; all: number } | null>(null);
+  async function photos(list: FileList | null) {
+    const files = Array.from(list ?? []).filter((f) => f.type.startsWith("image/")).slice(0, 12);
+    if (!files.length) return;
+    setBusy("read"); setErr(""); setUpN({ done: 0, all: files.length });
+    try {
+      const urls: string[] = [];
+      for (const f of files) {
+        const small = await compressToFile(f, "product.jpg").catch(() => null);
+        const u = small ? await uploadImage(small, "product") : null;
+        if (u) urls.push(u);
+        setUpN((x) => (x ? { ...x, done: x.done + 1 } : x));
+      }
+      setUpN(null);
+      if (!urls.length) { setErr(T("The photos could not be uploaded. Please try again.", "Photos upload नहीं हुईं। दोबारा try करें।")); setBusy(""); return; }
+      await read({ mode: "photos", image_urls: urls, trade });
+    } catch { setUpN(null); setErr(T("The photos could not be used.", "ये photos इस्तेमाल नहीं हो पाईं।")); setBusy(""); }
+  }
   /** `pictures: false` adds the products at once without looking for pictures (the owner's choice after a try that failed). */
   async function add(pictures = true) {
     const keep = (items ?? []).filter((x) => x.on && x.name.trim());
     if (!keep.length) { setErr(T("Tick at least one.", "कम से कम एक चुनें।")); return; }
-    setBusy("save"); setErr(""); setPlainOk(false); setSaveN(keep.length); setSecs(0); setWithPics(pictures);
+    setBusy("save"); setErr(""); setPlainOk(false); setSaveN(keep.length); setSecs(0); setWithPics(pictures && !keep.every((x) => x.photo));   // own photos: nothing to look for
     try {
-      const r = await api<{ added?: number; withPicture?: number; error?: string; code?: string }>("/api/poster/products/bulk", { method: "POST", json: { items: keep.map(({ name, price, category }) => ({ name, price, category })), ...(pictures ? {} : { pictures: false }) } });
+      const r = await api<{ added?: number; withPicture?: number; error?: string; code?: string }>("/api/poster/products/bulk", { method: "POST", json: { items: keep.map(({ name, price, category, photo }) => ({ name, price, category, ...(photo ? { photo } : {}) })), ...(pictures ? {} : { pictures: false }) } });
       if (!r.ok) {
         setErr(failText(en, r.status, r.data.code, r.data.error, ["Could not save. Please try again.", "Save नहीं हुआ। दोबारा try करें।"]));
         // A try that failed may be added without pictures; one already running, limited, too big or over the most products cannot.
@@ -113,6 +133,7 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
       {!items && (
         <>
           <div className="flex gap-1.5">
+            {tab("photos", Images, T("Product photos", "Products की photos"))}
             {tab("text", ClipboardList, T("Type a list", "लिस्ट लिखें"))}
             {tab("photo", Camera, T("Price-list photo", "रेट-लिस्ट की photo"))}
             {tab("suggest", Sparkles, T("Ideas for me", "मेरे लिए सुझाव"))}
@@ -132,6 +153,13 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
               <button type="button" disabled={!!busy} onClick={() => pick.current?.click()} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3 text-sm font-semibold text-white disabled:opacity-50">{busy === "read" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} {busy === "read" ? T("Reading… about 20 seconds", "पढ़ रहे हैं… लगभग 20 सेकंड") : T("Choose or take a photo", "Photo चुनें या खींचें")}</button>
             </div>
           )}
+          {mode === "photos" && (
+            <div className="space-y-2">
+              <p className="text-xs text-muted">{T("Choose up to 12 photos from your phone — one product in each. We name each one; its photo goes on your card, website and posters.", "Phone से 12 तक photos चुनें — हर photo में एक product। हर एक का नाम हम लिख देंगे; उसकी photo आपके card, website और posters पर लगेगी।")}</p>
+              <input ref={many} type="file" accept="image/*" multiple className="hidden" onChange={(e) => { const f = e.target.files; void photos(f); e.target.value = ""; }} />
+              <button type="button" disabled={!!busy} onClick={() => many.current?.click()} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand py-3 text-sm font-semibold text-white disabled:opacity-50">{busy === "read" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />} {busy === "read" ? (upN ? T(`Uploading ${upN.done} / ${upN.all}…`, `Upload हो रही हैं ${upN.done} / ${upN.all}…`) : T("Naming your products… about 20 seconds", "Products के नाम लिख रहे हैं… लगभग 20 सेकंड")) : T("Choose photos", "Photos चुनें")}</button>
+            </div>
+          )}
           {mode === "suggest" && (
             <div className="space-y-2">
               <p className="text-xs text-muted">{T("We list the usual things a shop like yours sells. Tick the ones you have — you add the prices later.", "आपके जैसी दुकान जो आम तौर पर बेचती है, उसकी लिस्ट हम दिखाएँगे। जो आपके पास हैं उन्हें चुनें — दाम बाद में लिखें।")}</p>
@@ -147,6 +175,8 @@ export function BulkAdd({ en, trade, city, onClose, onAdded }: { en: boolean; tr
             {items.map((x, i) => (
               <li key={i} className={`flex items-center gap-2 rounded-xl border bg-surface px-2.5 py-2 ${x.on ? "border-brand/50" : "border-border opacity-60"}`}>
                 <input type="checkbox" checked={x.on} onChange={(e) => upd(i, { on: e.target.checked })} className="h-5 w-5 shrink-0" aria-label={x.name} />
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                {x.photo && <img src={x.photo} alt="" className="h-10 w-10 shrink-0 rounded-lg object-cover" />}
                 <input value={x.name} onChange={(e) => upd(i, { name: e.target.value })} maxLength={60} className="min-w-0 flex-1 bg-transparent text-sm font-medium outline-none" aria-label={T("Name", "नाम")} />
                 <span className="shrink-0 text-sm text-muted">₹</span>
                 <input value={x.price} onChange={(e) => upd(i, { price: e.target.value })} maxLength={30} inputMode="decimal" placeholder={T("price", "दाम")} className="w-20 shrink-0 rounded-lg border border-border bg-surface2 px-2 py-1 text-sm outline-none" aria-label={T("Price", "दाम")} />

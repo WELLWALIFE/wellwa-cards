@@ -3,7 +3,7 @@
 // owner's brand, products, offers and the festivals: each day has the poster's own heading and line, a caption in the owner's
 // language, hashtags and why this post. The owner sees the real poster of any day before it goes out, edits any word, asks
 // for another idea (with a hint in their words) or skips a day. The 4 AM auto-post and the app's own posting follow it.
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X, List, LayoutGrid, Palette, RefreshCw, Eye, Wand2, Copy } from "lucide-react";
 import { STYLE_LIST } from "@/lib/poster-categories";
@@ -107,6 +107,18 @@ export default function CalendarPage() {
     } catch { setShots((s) => ({ ...s, [date]: { err: NET } })); }
   }
 
+  // The next three posts open by themselves (seen live, 2 Nov 2026: three empty boxes until "See them" was found) — one after another, so
+  // the server is never asked for three renders at once; a day already made or already asked is left alone.
+  const autoSeen = useRef("");
+  useEffect(() => {
+    if (!profile || !hasAiPlan || !next3.length) return;
+    const key = `${profile.id}|${next3.map((e) => e.for_date).join(",")}`;
+    if (autoSeen.current === key) return;
+    autoSeen.current = key;
+    void (async () => { for (const e of next3) if (!posterOf[e.for_date]) await seePoster(e.for_date); })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [profile, hasAiPlan, next3.map((e) => e.for_date).join(","), posterOf]);
+
   async function saveSheet(over?: Partial<Sheet>) {
     if (!profile || !sheet) return;
     const s = { ...sheet, ...over };
@@ -120,6 +132,8 @@ export default function CalendarPage() {
       setSheet(s); setSheetMsg({ ok: true, text: hi ? "Save हो गया ✓" : "Saved ✓" });
       setShots((x) => { const n = { ...x }; delete n[s.date]; return n; });
       load(profile, month);
+      // The poster on the left is made again with the new words at once — the owner sees the change, no second tap.
+      if (s.kind !== "skip") void seePoster(s.date);
     } catch { setSheetMsg({ ok: false, text: NET }); }
     finally { setSheetBusy(""); }
   }
