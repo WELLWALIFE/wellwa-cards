@@ -894,7 +894,7 @@ function Onboard() {
   const guessHolds = () => !biz.guessed || biz.category !== biz.guessed || matchCategory(`${biz.name ?? ""} ${biz.about ?? ""}`) === biz.category;
 
   /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
-  function prefill(d: PeekData) {
+  function prefill(d: PeekData, onlyEmpty = false) {
     setBiz((b) => {
       const t = touched.current;
       let n = { ...b };
@@ -903,7 +903,8 @@ function Onboard() {
       if (!t.has("address") && !(b.address ?? "").trim() && d.address) n.address = d.address.slice(0, 200);
       // A website new to this account replaces an older about and trade too (they described an earlier set-up);
       // a site already on record only fills what is empty.
-      const fresh = !siteAtLoad.current.url || hostOf(d.url) !== hostOf(siteAtLoad.current.url);
+      // (a Maps / Instagram / store read only fills what is empty — it never replaces the owner's trade or words; seen live, 2 Nov 2026)
+      const fresh = !onlyEmpty && (!siteAtLoad.current.url || hostOf(d.url) !== hostOf(siteAtLoad.current.url));
       if (!t.has("about") && (fresh || !(b.about ?? "").trim()) && d.about) { n.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" "); n.aboutMade = undefined; }
       if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
       if (!t.has("category") && (fresh || !b.category) && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
@@ -1017,7 +1018,7 @@ function Onboard() {
   }
 
   function onUrlChange(v: string) {
-    setSiteErr("");
+    setSiteErr(""); setSocialRead({ state: "idle", label: "", name: "" });
     setSite((st) => ({ ...st, url: v }));
     const d = v.trim() ? socialDetour(v) : null;
     setPendingSocial(d ? { ...d, url: cleanSiteUrl(v) } : null);
@@ -1041,7 +1042,7 @@ function Onboard() {
     setSocialRead({ state: "reading", label: d.label, name: "" });
     void api<PeekData & { ok: boolean; website?: string }>("/api/business/lookup", { method: "POST", json: { url: d.url } }).then((r) => {
       if (!r.ok || !r.data.ok || !r.data.name) { setSocialRead({ state: "none", label: d.label, name: "" }); return; }
-      prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" });
+      prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" }, true);
       setSocialRead({ state: "found", label: d.label, name: r.data.name });
     }).catch(() => setSocialRead({ state: "none", label: d.label, name: "" }));
   }
@@ -1793,7 +1794,7 @@ function Onboard() {
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
                     {pendingSocial ? (
                       <div id="ob-pending-social" className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
-                        <p className="font-semibold"><CheckCircle2 className="mr-1 inline h-4 w-4 text-good" />{T(`A ${pendingSocial.label} link — good. We read your business details from it and keep it as your ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`}.`, `${pendingSocial.label} का link — बढ़िया। इससे आपके business की details भर देंगे और इसे आपके ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`} की तरह रखेंगे।`)}</p>
+                        <p className="font-semibold"><CheckCircle2 className="mr-1 inline h-4 w-4 text-good" />{T(`${/^[AEIOU]/.test(pendingSocial.label) ? "An" : "A"} ${pendingSocial.label} link — good. We read your business details from it and keep it as your ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`}.`, `${pendingSocial.label} का link — बढ़िया। इससे आपके business की details भर देंगे और इसे आपके ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`} की तरह रखेंगे।`)}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
                           <button type="button" onClick={keepSocial} className="rounded-full grad-brand px-3.5 py-1.5 text-xs font-semibold text-white">{T("Yes, use it", "हाँ, इससे भरें")}</button>
                           <button type="button" onClick={() => { setPendingSocial(null); setSiteErr(""); setSite((st) => ({ ...st, url: "" })); }} className="rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold">{T("Change the link", "link बदलें")}</button>
