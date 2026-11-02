@@ -44,7 +44,7 @@ export async function GET(request: Request) {
   let style = styleParam || eng0.effectiveStyle(profile as unknown as Record<string, unknown>, date, plan.cal?.overrides?.style);
   // Signature is the default of paid profiles: report the look the engine will draw, so the chips and the posters row
   // say "signature" rather than the profile's old style key (a tapped chip is taken as it is).
-  if (!styleParam) { const look = eng0.signatureLookFor(profile as unknown as Record<string, unknown>, style, { premium: quota.plan !== "free" }); if (look) style = look === "classic" ? "signature-classic" : "signature"; }
+  if (!styleParam) { const look = eng0.signatureLookFor(profile as unknown as Record<string, unknown>, style, { premium: quota.plan !== "free" || sample }); if (look) style = look === "classic" ? "signature-classic" : "signature"; }
   const restyle = !!existing.data?.[0] && (existing.data[0].style || "classic") !== style;
   const overrides = { title: plan.cal?.overrides?.title ?? "", custom: plan.cal?.overrides?.custom ?? "", accent: plan.cal?.overrides?.accent ?? "" };
   if (existing.data?.[0] && !force && !restyle && !preview) {
@@ -97,13 +97,25 @@ export async function GET(request: Request) {
     }
     const category = String((profile as unknown as { category?: string }).category ?? (products[0]?.category ?? "")) || "";
     const cardDay = !!link && (!cal?.kind || cal.kind === "auto") && !testimonial && eng.isCardDay(date, theme0);
-    const opts: Record<string, unknown> = { force, watermark: quota.plan === "free", products, premium: quota.plan !== "free", style, custom: dayCustom, stock: { category, kind: stockKind }, link: link?.show ?? "", card: cardDay ? link!.data : null };
+    // A free account's sample shows the REAL design (Signature, the business's name and colours) — marked "SAMPLE" below, never saved.
+    const opts: Record<string, unknown> = { force, watermark: quota.plan === "free" && !sample, products, premium: quota.plan !== "free" || sample, style, custom: dayCustom, stock: { category, kind: stockKind }, link: link?.show ?? "", card: cardDay ? link!.data : null };
     if (testimonial) opts.testimonial = testimonial;
     file = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, opts as Parameters<typeof eng.renderPoster>[2]);
   } catch (e) {
     return NextResponse.json({ error: "The poster could not be made right now. Please try again in a minute.", detail: (e as Error).message.slice(0, 200) }, { status: 500 });
   }
   const theme = eng.themeFor(date);
+  // The sample's mark: a copy of the poster with a soft diagonal "SAMPLE · Shubhora" band (the poster file itself stays clean).
+  if (sample) {
+    try {
+      const sharp = (await import("sharp")).default;
+      const meta = await sharp(file).metadata(); const W = meta.width ?? 1080, H = meta.height ?? 1350;
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><g transform="translate(${W / 2},${H / 2}) rotate(-28)"><rect x="${-W}" y="-46" width="${W * 2}" height="92" fill="rgba(0,0,0,0.38)"/><text x="0" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="rgba(255,255,255,0.92)" letter-spacing="6">SAMPLE · SHUBHORA.COM</text></g></svg>`;
+      const out = file.replace(/\.jpg$/, "-sample.jpg");
+      await sharp(file).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 82 }).toFile(out);
+      file = out;
+    } catch { /* the plain file is shown — still never saved or posted */ }
+  }
   const url = OUT_URL(file);
   const v = await posterVersion(url);
   if (preview) return NextResponse.json({ poster: { id: "", url, title: theme.hi, occasion_slug: theme.slug, shares: 0, style, v }, date, theme, style, quota, preview: true, card_url });
