@@ -988,7 +988,7 @@ function Onboard() {
     peekFor.current = { url, role, state: "reading" };
     setPeek({ state: "reading", url, role, data: null });
     const ctrl = new AbortController();
-    const guard = setTimeout(() => ctrl.abort(), 45_000);
+    const guard = setTimeout(() => ctrl.abort(), 60_000);
     try {
       const r = await api<PeekData & { ok: boolean; reason?: string }>("/api/site/peek", { method: "POST", json: { url, role }, signal: ctrl.signal });
       if (seq !== peekSeq.current) return;
@@ -1025,6 +1025,7 @@ function Onboard() {
 
   /** "Yes, keep it as my Instagram": the link is stored where it belongs (the facts' social links, so every save
    *  carries it and Photos & more shows it), and the website answer becomes a reference with no link — none. */
+  const [socialRead, setSocialRead] = useState<{ state: "idle" | "reading" | "found" | "none"; label: string; name: string }>({ state: "idle", label: "", name: "" });
   function keepSocial() {
     if (!pendingSocial) return;
     const d = pendingSocial;
@@ -1033,6 +1034,15 @@ function Onboard() {
     setPendingSocial(null); setSiteErr("");
     setSite({ kind: "reference", url: "", assertedAt: "" });
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
+    // Read the business behind it (owner, 2 Nov 2026: "Scalio Maps / Instagram se details le leta hai"): name, trade, city, address,
+    // phone, about — filled only where the owner has not typed (prefill), checked by the owner on "Your business".
+    if (d.key === "youtube") return;
+    setSocialRead({ state: "reading", label: d.label, name: "" });
+    void api<PeekData & { ok: boolean; website?: string }>("/api/business/lookup", { method: "POST", json: { url: d.url } }).then((r) => {
+      if (!r.ok || !r.data.ok || !r.data.name) { setSocialRead({ state: "none", label: d.label, name: "" }); return; }
+      prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" });
+      setSocialRead({ state: "found", label: d.label, name: r.data.name });
+    }).catch(() => setSocialRead({ state: "none", label: d.label, name: "" }));
   }
 
   /** "Change" on Photos & more opens the website screen; its Next comes back here instead of walking on to Your business. */
@@ -1776,13 +1786,19 @@ function Onboard() {
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
                     {pendingSocial ? (
                       <div id="ob-pending-social" className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
-                        <p className="font-semibold"><TriangleAlert className="mr-1 inline h-4 w-4 text-amber" />{T(`That is a ${pendingSocial.label} page, not a website.`, `ये ${pendingSocial.label} page है, website नहीं।`)} {pendingSocial.key === "map" ? T("Keep it as your map pin?", "इसे map pin की तरह रखें?") : T(`Keep it as your ${pendingSocial.label} link?`, `इसे ${pendingSocial.label} link की तरह रखें?`)}</p>
+                        <p className="font-semibold"><CheckCircle2 className="mr-1 inline h-4 w-4 text-good" />{T(`A ${pendingSocial.label} link — good. We read your business details from it and keep it as your ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`}.`, `${pendingSocial.label} का link — बढ़िया। इससे आपके business की details भर देंगे और इसे आपके ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`} की तरह रखेंगे।`)}</p>
                         <div className="mt-2 flex flex-wrap gap-2">
-                          <button type="button" onClick={keepSocial} className="rounded-full grad-brand px-3.5 py-1.5 text-xs font-semibold text-white">{T("Yes, keep it", "हाँ, रखें")}</button>
+                          <button type="button" onClick={keepSocial} className="rounded-full grad-brand px-3.5 py-1.5 text-xs font-semibold text-white">{T("Yes, use it", "हाँ, इससे भरें")}</button>
                           <button type="button" onClick={() => { setPendingSocial(null); setSiteErr(""); setSite((st) => ({ ...st, url: "" })); }} className="rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold">{T("Change the link", "link बदलें")}</button>
                         </div>
                       </div>
                     ) : null}
+                    {socialRead.state !== "idle" && !pendingSocial && (
+                      <p className={`flex items-start gap-1.5 text-xs font-semibold ${socialRead.state === "found" ? "text-good" : socialRead.state === "reading" ? "text-muted" : "text-amber"}`}>
+                        {socialRead.state === "reading" ? <LoaderCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 animate-spin" /> : socialRead.state === "found" ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                        <span>{socialRead.state === "reading" ? T(`Reading your ${socialRead.label}…`, `आपका ${socialRead.label} पढ़ रहे हैं…`) : socialRead.state === "found" ? T(`From ${socialRead.label}: ${socialRead.name} — filled on the next screen. Check it there.`, `${socialRead.label} से: ${socialRead.name} — अगले screen पर भर दिया। वहाँ देख लें।`) : T(`Could not read details from ${socialRead.label}. The link is kept; fill the next screen yourself.`, `${socialRead.label} से details नहीं मिलीं। link रख लिया; अगला screen खुद भर दें।`)}</span>
+                      </p>
+                    )}
                     {c.k === "dealer" && (
                       <div>
                         <label className={`flex items-start gap-2.5 rounded-xl border px-3 py-2.5 text-sm ${siteErr === tickMsg ? "border-danger" : "border-border bg-surface2"}`}>

@@ -17,6 +17,7 @@ import { matchCategory } from "@/lib/category-match";
 import { categoryOf, CATEGORIES } from "@/lib/poster-categories";
 import { geminiComplete } from "@/lib/gemini";
 import { cleanSiteUrl, isShubhoraHost, looksLikeSite, socialDetour } from "@/lib/site-role";
+import { lookupBusiness } from "@/lib/business-lookup";
 
 // A JavaScript-built site needs one headless render (20 s) on top of the fetch; the client gives up at 45 s.
 export const maxDuration = 60;
@@ -54,9 +55,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, reason: "unreadable" }, { status: 400 });
   }
 
-  const peek = await within(peekSite(url).catch(() => null), 40_000);
-  if (!peek) return NextResponse.json({ ok: false, reason: "unreadable" }, { headers: { "Cache-Control": "no-store" } });
-  if (peek.empty && !peek.name && !peek.about) return NextResponse.json({ ok: false, reason: "empty" }, { headers: { "Cache-Control": "no-store" } });
+  const peek = await within(peekSite(url).catch(() => null), 28_000);
+  if (!peek || (peek.empty && !peek.name && !peek.about)) {
+    // The page did not open for a bot (stores like Flipkart / Amazon / JustDial / IndiaMART, or a site behind a wall): the business's
+    // public details from the web instead (owner, 2 Nov 2026). Only for the owner's OWN link — a brand's or a liked site gives its trade.
+    const l = await within(lookupBusiness(url).catch(() => null), 26_000);
+    if (l?.ok) {
+      if (role === "own") return NextResponse.json({ ok: true, url, name: l.name, about: l.about, city: l.city, address: l.address, phone: l.phone, products: 0, category: l.category, logo: "", via: l.kind }, { headers: { "Cache-Control": "no-store" } });
+      return NextResponse.json({ ok: true, url, name: role === "dealer" ? l.name : "", products: 0, category: l.category, via: l.kind }, { headers: { "Cache-Control": "no-store" } });
+    }
+    return NextResponse.json({ ok: false, reason: peek ? "empty" : "unreadable" }, { headers: { "Cache-Control": "no-store" } });
+  }
 
   if (role === "reference") {
     // A website the person merely likes (owner's call, 4 Oct 2026): only the trade it suggests, so "What do you do?"
