@@ -5,26 +5,38 @@
 // for another idea (with a hint in their words) or skips a day. The 4 AM auto-post and the app's own posting follow it.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X, List, LayoutGrid, Palette, RefreshCw, Eye, Wand2, Copy, Clapperboard } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X, List, LayoutGrid, Palette, RefreshCw, Eye, Wand2, Copy, Clapperboard, Download, Share2, ImagePlus, TriangleAlert, Link2 } from "lucide-react";
 import Link from "next/link";
 import { STYLE_LIST } from "@/lib/poster-categories";
-import { api, isLoggedIn, currentProfileId, type Profile } from "@/lib/poster-client";
+import { api, isLoggedIn, currentProfileId, uploadImage, downloadPoster, shareFile, type Profile } from "@/lib/poster-client";
+import { compressToFile } from "@/lib/image-utils";
+import { usePlan } from "@/lib/plan";
 import { FOCUS, DEFAULT_FOCUS, KIND_TEXT, TONES, brandReady, type BrandSnapshot, type DayBrief, type DayKind } from "@/lib/brand-plan";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
 
 type Day = { date: string; festival: string | null };
-type Over = { style?: string; voice?: "on" | "off"; music?: string; custom?: string; title?: string; sub?: string };
+type Over = { style?: string; voice?: "on" | "off"; music?: string; custom?: string; title?: string; sub?: string; photo?: string };
 type Entry = { id: string; for_date: string; kind: string; product_id: string | null; note: string; status: string; overrides?: Over; brief?: DayBrief };
 type Prod = { id: string; name: string; offer: string; category?: string };
 type Offer = { id: string; text: string; starts: string; ends: string; scope: "all" | "products" | "category"; product_ids: string[]; categories?: string[]; active: boolean };
-type Data = { days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[]; posters?: { for_date: string; url: string }[]; planReady?: boolean };
-type Sheet = { date: string; kind: string; product_id: string | null; title: string; sub: string; custom: string; caption: string; hashtags: string; style: string; voice: string; music: string; why: string; hint: string };
+/** What went out for a day, per account (or failed, with why) — the API's month activity. */
+type Act = { date: string; provider: string; kind: string; status: "ok" | "error"; error: string; at: string };
+type Data = { days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[]; posters?: { for_date: string; url: string }[]; planReady?: boolean; activity?: Act[]; channels?: { on: string[]; fix: string[] } };
+type Sheet = { date: string; kind: string; product_id: string | null; title: string; sub: string; custom: string; caption: string; hashtags: string; style: string; voice: string; music: string; why: string; hint: string; photo: string };
 type Shot = { url?: string; err?: string; busy?: boolean };
 
 const MUSIC: [string, string, string][] = [["", "Usual", "सामान्य"], ["soft", "Soft", "हल्का"], ["festive", "Festive", "त्योहार वाला"], ["calm", "Calm", "शांत"], ["upbeat", "Lively", "जोशीला"], ["none", "No music", "बिना music"]];
 const EDIT_KINDS: DayKind[] = ["product", "offer", "tip", "trust", "testimonial", "about", "greeting", "auto", "skip"];
 const WEEK_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"], WEEK_HI = ["सोम", "मंगल", "बुध", "गुरु", "शुक्र", "शनि", "रवि"];
+const CHANNEL: Record<string, string> = { facebook: "Facebook", instagram: "Instagram", whatsapp: "WhatsApp Status", google: "Google" };
+/** A failed post's reason in plain words (the raw message stays for support, shown small). */
+function failWhy(err: string, hi: boolean): string {
+  if (/token|session|oauth|expired|permission|190/i.test(err)) return hi ? "Account फिर से जोड़ना होगा" : "The account needs connecting again";
+  if (/plan_expired|402/i.test(err)) return hi ? "Plan ख़त्म हो गया था" : "The plan had ended";
+  if (/not linked|connection closed|socket|timed? ?out/i.test(err)) return hi ? "WhatsApp उस समय जुड़ा नहीं था" : "WhatsApp was not connected at that moment";
+  return hi ? "Post नहीं हो पाया" : "Could not post";
+}
 
 export default function CalendarPage() {
   const router = useRouter(); const { lang } = useT(); const hi = lang !== "en";
@@ -49,6 +61,11 @@ export default function CalendarPage() {
   const [offersOpen, setOffersOpen] = useState(false);
   const [offerMsg, setOfferMsg] = useState("");
   const [copied, setCopied] = useState(false);
+  const [tagsCopied, setTagsCopied] = useState(false);
+  const [photoBusy, setPhotoBusy] = useState(false);
+  const dayPhotoIn = useRef<HTMLInputElement>(null);
+  const { plan: myPlan } = usePlan();
+  const paidPlan = !!myPlan && myPlan !== "free";
   const NET = hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again.";
 
   const load = useCallback(async (p: Profile, m: string) => {
@@ -95,7 +112,7 @@ export default function CalendarPage() {
       date, kind: e?.kind ?? (d?.festival ? "festival" : "auto"), product_id: e?.product_id ?? null,
       title: e?.overrides?.title ?? "", sub: e?.overrides?.sub ?? "", custom: e?.overrides?.custom ?? "",
       caption: e?.brief?.caption ?? "", hashtags: (e?.brief?.hashtags ?? []).join(" "), why: e?.brief?.why ?? "",
-      style: e?.overrides?.style ?? "", voice: e?.overrides?.voice ?? "", music: e?.overrides?.music ?? "", hint: "",
+      style: e?.overrides?.style ?? "", voice: e?.overrides?.voice ?? "", music: e?.overrides?.music ?? "", hint: "", photo: e?.overrides?.photo ?? "",
     });
   }
 
@@ -128,7 +145,7 @@ export default function CalendarPage() {
     try {
       const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: {
         action: "post", profile: profile.id, for_date: s.date, kind: s.kind, product_id: s.product_id,
-        title: s.title, sub: s.sub, custom: s.custom, caption: s.caption, hashtags: s.hashtags, style: s.style, voice: s.voice, music: s.music,
+        title: s.title, sub: s.sub, custom: s.custom, caption: s.caption, hashtags: s.hashtags, style: s.style, voice: s.voice, music: s.music, photo: s.photo,
       } });
       if (!r.ok) { setSheetMsg({ ok: false, text: r.data.error || (hi ? "Save नहीं हुआ। फिर से कोशिश करें।" : "Could not save. Please try again.") }); return; }
       setSheet(s); setSheetMsg({ ok: true, text: hi ? "Save हो गया ✓" : "Saved ✓" });
@@ -147,13 +164,27 @@ export default function CalendarPage() {
       const r = await api<{ entry?: { kind: string; product_id: string | null; overrides: Over; brief: DayBrief }; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "redo", profile: profile.id, for_date: sheet.date, hint: sheet.hint } });
       if (!r.ok || !r.data.entry) { setSheetMsg({ ok: false, text: r.data.error || (hi ? "नया idea नहीं आया। फिर से कोशिश करें।" : "No new idea came. Please try again.") }); return; }
       const e = r.data.entry;
-      setSheet({ ...sheet, kind: e.kind, product_id: e.product_id, title: e.overrides?.title ?? "", sub: e.overrides?.sub ?? "", custom: e.overrides?.custom ?? "", caption: e.brief?.caption ?? "", hashtags: (e.brief?.hashtags ?? []).join(" "), why: e.brief?.why ?? "", hint: "" });
+      setSheet({ ...sheet, kind: e.kind, product_id: e.product_id, title: e.overrides?.title ?? "", sub: e.overrides?.sub ?? "", custom: e.overrides?.custom ?? "", caption: e.brief?.caption ?? "", hashtags: (e.brief?.hashtags ?? []).join(" "), why: e.brief?.why ?? "", hint: "", photo: e.overrides?.photo ?? sheet.photo });
       setSheetMsg({ ok: true, text: hi ? "नया idea ✓ — poster देखें या शब्द बदलें।" : "New idea ✓ — see the poster or change the words." });
       setShots((x) => { const n = { ...x }; delete n[sheet.date]; return n; });
       load(profile, month);
     } catch { setSheetMsg({ ok: false, text: NET }); }
     finally { setSheetBusy(""); }
   }
+
+  /** "Use my photo" for one day: the photo is uploaded at once and goes on that day's poster when the owner taps Save. */
+  async function dayPhoto(file: File | null) {
+    if (!file) return;
+    setPhotoBusy(true); setSheetMsg(null);
+    try {
+      const small = await compressToFile(file, "day.jpg");
+      const url = await uploadImage(small, "wide");
+      if (url) setSheet((x) => (x ? { ...x, photo: url } : x));
+      else setSheetMsg({ ok: false, text: hi ? "Photo upload नहीं हुई। फिर से कोशिश करें।" : "The photo did not upload. Please try again." });
+    } catch { setSheetMsg({ ok: false, text: NET }); }
+    finally { setPhotoBusy(false); }
+  }
+  const posterName = (date: string) => `${(profile?.name || "poster").replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${date}.jpg`;
 
   async function saveOffer() {
     if (!profile) return;
@@ -258,7 +289,13 @@ export default function CalendarPage() {
               {!skip && <span className="block text-[11px] text-muted truncate">{e?.overrides?.sub || e?.brief?.caption?.split("\n")[0] || (e ? kindText(e.kind).label : d.festival ? (hi ? "त्योहार" : "Festival") : "")}</span>}
               {!skip && e && <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-faint">{kindText(e.kind).icon} {kindText(e.kind).label}{e.product_id ? ` · ${data.products.find((p) => p.id === e.product_id)?.name ?? ""}` : ""}</span>}
             </span>
-            {e?.status === "done" ? <span className="inline-flex items-center gap-1 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good"><Check className="h-3 w-3" />{hi ? "गया" : "Posted"}</span> : !skip ? <ChevronRight className="h-4 w-4 shrink-0 text-faint" /> : null}
+            {(() => {
+              const act = (data.activity ?? []).filter((a) => a.date === d.date);
+              const ok = e?.status === "done" || act.some((a) => a.status === "ok");
+              if (ok) return <span className="inline-flex items-center gap-1 rounded-full bg-good/15 px-2 py-0.5 text-[10px] font-semibold text-good"><Check className="h-3 w-3" />{hi ? "गया" : "Posted"}</span>;
+              if (act.some((a) => a.status === "error")) return <span className="inline-flex items-center gap-1 rounded-full bg-danger/10 px-2 py-0.5 text-[10px] font-semibold text-danger"><TriangleAlert className="h-3 w-3" />{hi ? "नहीं गया" : "Not posted"}</span>;
+              return !skip ? <ChevronRight className="h-4 w-4 shrink-0 text-faint" /> : null;
+            })()}
           </button>
         );
       })}
@@ -279,7 +316,8 @@ export default function CalendarPage() {
               <span className={`absolute left-1 top-0.5 text-[11px] font-bold ${url ? "rounded bg-black/55 px-1 text-white" : ""}`}>{Number(d.date.slice(8))}</span>
               {!skip && !url && <span className="absolute inset-x-1 bottom-1 hidden text-[10px] leading-tight line-clamp-3 sm:block">{headline(d, e)}</span>}
               {!skip && !url && <span className="absolute right-1 top-0.5 text-xs">{e ? kindText(e.kind).icon : "🎉"}</span>}
-              {e?.status === "done" && <Check className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-good p-0.5 text-white" />}
+              {(() => { const act = (data.activity ?? []).filter((x) => x.date === d.date); const ok = e?.status === "done" || act.some((x) => x.status === "ok");
+                return ok ? <Check className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-good p-0.5 text-white" /> : act.some((x) => x.status === "error") ? <TriangleAlert className="absolute bottom-1 right-1 h-3.5 w-3.5 rounded-full bg-danger p-0.5 text-white" /> : null; })()}
             </button>
           );
         })}
@@ -331,10 +369,28 @@ export default function CalendarPage() {
                 : shot?.url || posterOf[s.date] ? /* eslint-disable-line @next/next/no-img-element */ <img src={shot?.url || posterOf[s.date]} alt="" className="h-full w-full object-cover" />
                 : <div className="p-3 text-center text-xs text-muted">{shot?.err ? <span className="text-danger font-semibold">{shot.err}</span> : s.kind === "skip" ? (hi ? "इस दिन कोई post नहीं।" : "No post this day.") : (hi ? "इस दिन का असली poster देखें — जैसा जाएगा।" : "See this day's real poster — exactly as it will go.")}</div>}
             </div>
+            {(shot?.url || posterOf[s.date]) && !shot?.busy && (() => { const u = (shot?.url || posterOf[s.date])!; return (
+              <div className="grid grid-cols-2 gap-2">
+                <button type="button" onClick={() => void downloadPoster(u, posterName(s.date))} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {hi ? "Download" : "Download"}</button>
+                <button type="button" onClick={() => void shareFile(u, fullCaption, posterName(s.date), "image/jpeg")} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2 text-xs font-semibold text-white"><Share2 className="h-3.5 w-3.5" /> {hi ? "Share" : "Share"}</button>
+              </div>
+            ); })()}
             {s.kind !== "skip" && canPost && <button type="button" onClick={() => seePoster(s.date)} disabled={shot?.busy} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-60"><Eye className="h-4 w-4" /> {shot?.url ? (hi ? "फिर से बनाएँ" : "Make again") : (hi ? "Poster देखें" : "See the poster")}</button>}
             {/* The same idea as a free Reel (voice, music, the product's photos) — the reel screen opens with this day filled in. */}
             {s.kind !== "skip" && s.kind !== "auto" && <Link href={`/poster/reel?date=${s.date}`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-sm font-semibold"><Clapperboard className="h-4 w-4 text-brand" /> {hi ? "इसकी Reel बनाएँ" : "Make a Reel of this"}</Link>}
             {s.why && <p className="rounded-xl bg-surface2 px-3 py-2 text-[11px] text-muted"><b className="text-ink">{hi ? "यह post क्यों: " : "Why this post: "}</b>{s.why}</p>}
+            {/* Activity: where this day's post went, and what failed and why (the 4 AM post's own record). */}
+            {(() => { const act = (data.activity ?? []).filter((a) => a.date === s.date); if (!act.length) return null; return (
+              <div className="space-y-1 rounded-xl border border-border px-3 py-2 text-[11px]" id="day-activity">
+                <p className="text-xs font-semibold text-ink">{hi ? "क्या हुआ" : "Activity"}</p>
+                {act.map((a, i) => (
+                  <p key={i} className="flex items-start gap-1.5">
+                    {a.status === "ok" ? <Check className="mt-0.5 h-3.5 w-3.5 shrink-0 text-good" /> : <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-danger" />}
+                    <span className="min-w-0"><b>{CHANNEL[a.provider] ?? a.provider}</b>{a.kind === "reel" ? " · Reel" : a.kind === "story" ? " · Story" : ""} · {new Date(a.at).toLocaleTimeString(hi ? "hi-IN" : "en-IN", { hour: "numeric", minute: "2-digit", timeZone: "Asia/Kolkata" })} — {a.status === "ok" ? (hi ? "post हो गया" : "posted") : <>{failWhy(a.error, hi)}{/token|session|oauth|expired|permission|190|not linked|connection closed/i.test(a.error) && <> · <Link href="/poster/connect" className="font-semibold text-brand-ink underline">{hi ? "जोड़ें" : "Connect"}</Link></>}</>}</span>
+                  </p>
+                ))}
+              </div>
+            ); })()}
           </div>
           {/* the words */}
           <div className="space-y-3 text-sm">
@@ -345,12 +401,20 @@ export default function CalendarPage() {
               ? <div className="flex flex-wrap gap-1.5">{data.products.map((p) => <button key={p.id} type="button" onClick={() => setSheet({ ...s, product_id: p.id })} className={`rounded-full border px-2.5 py-1 text-xs ${s.product_id === p.id ? "border-brand bg-brand-soft font-semibold" : "border-border"}`}>📦 {p.name}</button>)}</div>
               : <p className="text-xs text-muted">{hi ? "पहले Products में अपने products जोड़ें।" : "First add your products under Products."}</p>)}
             {s.kind !== "skip" && <>
+              {/* The owner's own photo for this day (a content app offers "change photos and recreate" for credits): free here. */}
+              <div className="flex items-center gap-2.5 rounded-xl border border-border p-2" id="day-photo">
+                {s.photo ? /* eslint-disable-line @next/next/no-img-element */ <img src={s.photo} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><ImagePlus className="h-5 w-5" /></span>}
+                <span className="min-w-0 flex-1"><b className="block text-sm">{hi ? "इस दिन की photo" : "Photo for this day"}</b><span className="block text-[11px] text-muted">{s.photo ? (hi ? "आपकी photo poster पर लगेगी — Save दबाएँ" : "Your photo goes on the poster — tap Save") : (hi ? "चाहें तो अपनी दुकान या product की photo लगाएँ" : "Use your own shop or product photo, if you like")}</span></span>
+                <input ref={dayPhotoIn} type="file" accept="image/*" className="hidden" onChange={(ev) => { const f = ev.target.files?.[0] ?? null; ev.target.value = ""; void dayPhoto(f); }} />
+                <button type="button" onClick={() => dayPhotoIn.current?.click()} disabled={photoBusy || !canPost} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50">{photoBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}{s.photo ? (hi ? "बदलें" : "Change") : (hi ? "लगाएँ" : "Add")}</button>
+                {s.photo && <button type="button" onClick={() => setSheet({ ...s, photo: "" })} aria-label={hi ? "Photo हटाएँ" : "Remove the photo"} className="shrink-0 p-1 text-muted"><X className="h-4 w-4" /></button>}
+              </div>
               <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "Poster की heading" : "Poster heading"}</span><input value={s.title} onChange={(ev) => setSheet({ ...s, title: ev.target.value })} maxLength={40} placeholder={hi ? "खाली = poster अपने-आप लिखेगा" : "Empty = the poster writes its own"} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
               <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "उसके नीचे की लाइन" : "Line under it"}</span><input value={s.sub} onChange={(ev) => setSheet({ ...s, sub: ev.target.value })} maxLength={48} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
               {(s.kind === "offer" || s.kind === "product") && <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "ऑफ़र / दाम की लाइन (आपके शब्द)" : "Offer / price line (your words)"}</span><input value={s.custom} onChange={(ev) => setSheet({ ...s, custom: ev.target.value })} maxLength={60} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>}
               <label className="block"><span className="flex items-center text-xs font-semibold text-muted">{hi ? "Caption" : "Caption"}<span className="flex-1" />{fullCaption && <button type="button" onClick={() => { try { navigator.clipboard.writeText(fullCaption); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* */ } }} className="inline-flex items-center gap-1 font-normal text-brand-ink"><Copy className="h-3 w-3" />{copied ? (hi ? "Copy हुआ" : "Copied") : "Copy"}</button>}</span><textarea value={s.caption} onChange={(ev) => setSheet({ ...s, caption: ev.target.value })} rows={4} maxLength={600} placeholder={hi ? "खाली = post के समय AI लिखेगा" : "Empty = the AI writes it when posting"} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
               <p className="-mt-2 text-[11px] text-faint">{hi ? "आपका नंबर और card का link अपने-आप जुड़ते हैं।" : "Your number and card link are added by themselves."}</p>
-              <label className="block"><span className="text-xs font-semibold text-muted">Hashtags</span><input value={s.hashtags} onChange={(ev) => setSheet({ ...s, hashtags: ev.target.value })} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" placeholder="#jaipur #sweets" /></label>
+              <label className="block"><span className="flex items-center text-xs font-semibold text-muted">Hashtags<span className="flex-1" />{s.hashtags.trim() && <button type="button" onClick={() => { try { navigator.clipboard.writeText(s.hashtags.trim()); setTagsCopied(true); setTimeout(() => setTagsCopied(false), 1500); } catch { /* */ } }} className="inline-flex items-center gap-1 font-normal text-brand-ink"><Copy className="h-3 w-3" />{tagsCopied ? (hi ? "Copy हुआ" : "Copied") : "Copy"}</button>}</span><input value={s.hashtags} onChange={(ev) => setSheet({ ...s, hashtags: ev.target.value })} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" placeholder="#jaipur #sweets" /></label>
               <div className="rounded-xl border border-dashed border-border p-2.5 space-y-2">
                 <p className="text-xs font-semibold">{hi ? "दूसरा idea चाहिए?" : "Want another idea?"}</p>
                 <div className="flex gap-2"><input value={s.hint} onChange={(ev) => setSheet({ ...s, hint: ev.target.value })} maxLength={140} placeholder={hi ? "Optional: जैसे \"नए stock की बात करो\"" : "Optional: e.g. \"talk about the new stock\""} className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs" />
@@ -378,6 +442,22 @@ export default function CalendarPage() {
     <div className="space-y-4">
       {head}
       {brandStrip}
+      {/* Where the posts go by themselves (a content app shows "Choose channels for Auto Pilot"): a paid plan with nothing switched on
+          — or an account that needs connecting again — is told here, not only on the morning nothing went out. */}
+      {paidPlan && data.channels && (data.channels.fix.length > 0 || data.channels.on.length === 0) && (
+        <Link href="/poster/connect" id="cal-channels" className="flex items-center gap-3 rounded-2xl border border-amber/50 bg-amber/10 px-3.5 py-3">
+          <Link2 className="h-5 w-5 shrink-0 text-amber" />
+          <span className="min-w-0 flex-1">
+            <b className="block text-sm">{data.channels.fix.length > 0
+              ? (hi ? `${data.channels.fix.map((p) => CHANNEL[p] ?? p).join(", ")} फिर से जोड़ें` : `Connect ${data.channels.fix.map((p) => CHANNEL[p] ?? p).join(", ")} again`)
+              : (hi ? "Posts अभी अपने-आप नहीं जा रहे" : "Your posts are not going out by themselves yet")}</b>
+            <span className="block text-xs text-muted">{data.channels.fix.length > 0
+              ? (hi ? "जब तक नहीं जुड़ता, वहाँ posts नहीं जाएँगे।" : "Until then, no posts go there.")
+              : (hi ? "Facebook, Instagram या WhatsApp Status जोड़ें — हर सुबह plan का post अपने-आप जाएगा।" : "Connect Facebook, Instagram or WhatsApp Status — each morning the plan's post goes out by itself.")}</span>
+          </span>
+          <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
+        </Link>
+      )}
       {planCard}
       {planMsg && <p className={`rounded-xl px-3 py-2 text-sm font-semibold ${planMsg.ok ? "bg-good/10 text-good" : "border border-danger/40 bg-danger/10 text-danger"}`}>{planMsg.text}</p>}
       {(planned.length > 0 || hasAiPlan) && stats}

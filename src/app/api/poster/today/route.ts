@@ -76,7 +76,7 @@ export async function GET(request: Request) {
     const ov = cal?.overrides ?? {};
     const baseLayout = (profile as unknown as { layout?: Record<string, unknown> }).layout ?? {};
     // a tapped chip of the six original styles means "not Signature today"
-    const dayLayout = { ...baseLayout, ...(ov.title ? { title: ov.title } : {}), ...(ov.sub ? { sub: ov.sub } : {}), ...(ov.accent ? { accent: ov.accent } : {}), ...(styleParam && !styleParam.startsWith("signature") ? { look: "old" } : {}) };
+    const dayLayout = { ...baseLayout, ...(ov.title ? { title: ov.title } : {}), ...(ov.sub ? { sub: ov.sub } : {}), ...(ov.accent ? { accent: ov.accent } : {}), ...(ov.photo ? { photo: ov.photo } : {}), ...(styleParam && !styleParam.startsWith("signature") ? { look: "old" } : {}) };
     const effProfile = { ...profile, layout: dayLayout, mode: testimonial ? "testimonial" : wantProduct ? "product" : "greeting" } as typeof profile;
     let products = effProfile.mode === "product" ? allProducts : [];
     if (cal?.product_id) { const one = products.find((p) => p.id === cal.product_id); if (one) products = [one]; }
@@ -107,7 +107,7 @@ export async function GET(request: Request) {
       const fs = await import("node:fs");
       const clean = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, { ...opts, nameOnly: true } as Parameters<typeof eng.renderPoster>[2]);
       const marked = clean.replace(/\.jpg$/, "-sample.jpg");
-      if (!force && fs.existsSync(marked)) { file = marked; try { if (fs.existsSync(clean)) fs.unlinkSync(clean); } catch { /* left for the next view */ } }   // a clean copy left by an older sample goes too
+      if (!force && fs.existsSync(marked)) { file = marked; await dropClean(clean); }   // a clean copy left by an older sample goes too
       else {
         if (rateLimited(`poster-sample:${me.id}`, 12, 24 * 3600_000)) return NextResponse.json({ error: "plan", quota, message: "Free previews for today are done. The Standard plan shows every day of the plan." }, { status: 402 });
         const drawn = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, opts as Parameters<typeof eng.renderPoster>[2]);
@@ -134,7 +134,6 @@ export async function GET(request: Request) {
 /** The free sample's mark: the poster with a soft diagonal "SAMPLE · SHUBHORA.COM" band, written to `out`; the clean file is then
  *  deleted (a free account never gets the unmarked poster). If marking fails, nothing clean is handed out either. */
 async function markSample(clean: string, out: string): Promise<string> {
-  const fs = await import("node:fs/promises");
   try {
     const sharp = (await import("sharp")).default;
     const meta = await sharp(clean).metadata(); const W = meta.width ?? 1080, H = meta.height ?? 1350;
@@ -144,6 +143,12 @@ async function markSample(clean: string, out: string): Promise<string> {
   } finally {
     // The clean file goes either way. It is this free account's own drawing (its profile id is in the name), for one of the few days a
     // sample is allowed — nobody else's poster passes through here.
-    await fs.unlink(clean).catch(() => undefined);
+    await dropClean(clean);
   }
+}
+
+/** The clean drawing and what Signature writes beside it: the 1:1 cut ("-11.jpg", also served by name) and its spec. */
+async function dropClean(clean: string) {
+  const fs = await import("node:fs/promises");
+  for (const f of [clean, clean.replace(/\.jpg$/, "-11.jpg"), `${clean}.spec.json`]) await fs.unlink(f).catch(() => undefined);
 }

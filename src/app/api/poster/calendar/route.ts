@@ -6,6 +6,7 @@ import { userFromRequest, ownProfile, restAsUser, restAsService, posterEngine, i
 import { rateLimited } from "@/lib/api-security";
 import { brandSnapshot, draftMonth, redraftDay } from "@/lib/content-plan";
 import { DAY_KINDS, cleanBrief, clampStr, cleanTags, type DayBrief } from "@/lib/brand-plan";
+import { isOwnMedia } from "@/lib/card-inputs";
 const UUID = /^[0-9a-f-]{36}$/i;
 type Entry = { id: string; for_date: string; kind: string; product_id: string | null; note: string; status: string; overrides?: Record<string, unknown>; brief?: DayBrief };
 type Offer = { id: string; text: string; starts: string; ends: string; scope: "all" | "products" | "category"; product_ids: string[]; categories: string[]; active: boolean };
@@ -48,8 +49,10 @@ export async function GET(request: Request) {
   const planReady = r.ok; // false until migration 0083 adds `brief`
   if (!r.ok) r = await restAsUser<Entry[]>(me.token, q0);
   const offers = await restAsUser<Offer[]>(me.token, "poster_offers?select=id,text,starts,ends,scope,product_ids,categories,active&order=starts.desc&limit=50");
-  const posters = (await restAsService<{ for_date: string; url: string }[]>(`posters?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${days[days.length - 1].date}&select=for_date,url`)).data ?? [];
-  return NextResponse.json({ days, entries: Array.isArray(r.data) ? r.data : [], products: await products(me.id), offers: Array.isArray(offers.data) ? offers.data : [], posters, planReady });
+  const posterRows = list((await restAsService<{ id: string; for_date: string; url: string }[]>(`posters?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${days[days.length - 1].date}&select=id,for_date,url`)).data);
+  const posters = posterRows.filter((p) => p.url).map(({ for_date, url }) => ({ for_date, url }));
+  return NextResponse.json({ days, entries: Array.isArray(r.data) ? r.data : [], products: await products(me.id), offers: Array.isArray(offers.data) ? offers.data : [], posters, planReady,
+    activity: await monthActivity(me.id, month, days[days.length - 1].date, posterRows), channels: await autoChannels(me.id) });
 }
 
 export async function POST(request: Request) {
@@ -127,13 +130,19 @@ export async function POST(request: Request) {
     const today = istDate();
     const last = days[days.length - 1].for_date;
     const done = ((await restAsUser<{ for_date: string }[]>(me.token, `poster_calendar?profile_id=eq.${profile}&status=eq.done&for_date=gte.${month}-01&for_date=lte.${last}&select=for_date`)).data ?? []).map((x) => x.for_date);
+    // A day's own photo (the owner's "Use my photo") stays through a new plan.
+    const photos = new Map(list((await restAsUser<{ for_date: string; overrides: Record<string, unknown> | null }[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${last}&select=for_date,overrides`)).data)
+      .filter((x) => typeof x.overrides?.photo === "string" && x.overrides.photo).map((x) => [x.for_date, String(x.overrides!.photo)]));
     // the past of this month is left as it is (nothing can be posted there any more)
-    const ins = days.filter((d) => !done.includes(d.for_date) && d.for_date >= today).map((d) => ({ user_id: me.id, profile_id: profile, for_date: d.for_date, kind: d.kind, product_id: d.product_id, note: "", status: "planned", overrides: d.overrides, brief: d.brief }));
+    const ins = days.filter((d) => !done.includes(d.for_date) && d.for_date >= today).map((d) => ({ user_id: me.id, profile_id: profile, for_date: d.for_date, kind: d.kind, product_id: d.product_id, note: "", status: "planned", overrides: { ...d.overrides, ...(photos.get(d.for_date) ? { photo: photos.get(d.for_date) } : {}) }, brief: d.brief }));
     if (!ins.length) return NextResponse.json({ error: "This month is over — plan the next one." }, { status: 400 });
     await restAsUser(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=gte.${ins[0].for_date}&for_date=lte.${last}&status=neq.done`, { method: "DELETE" });
     const r = await restAsUser(me.token, "poster_calendar", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify(ins) });
     if (!r.ok) return NextResponse.json({ error: /brief|kind_check/.test(r.text) ? "Run migration 0083 in Supabase first." : r.text.slice(0, 200) }, { status: 400 });
-    // captions already written for those days were for the old plan
+    // Posters and captions already made for those days were for the old plan: the unposted, unshared ones go (they are drawn again with
+    // the new words — before, the 4 AM post reused the old picture under the new caption); the rest only lose their caption.
+    const keep = done.length ? `&for_date=not.in.(${done.join(",")})` : "";
+    await restAsService(`posters?profile_id=eq.${profile}&for_date=gte.${ins[0].for_date}&for_date=lte.${last}${keep}&shares=eq.0`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
     await restAsService(`posters?profile_id=eq.${profile}&for_date=gte.${ins[0].for_date}&for_date=lte.${last}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
     return NextResponse.json({ ok: true, count: ins.filter((d) => d.kind !== "skip").length, ai });
   }
@@ -147,6 +156,8 @@ export async function POST(request: Request) {
     for (const [k, n] of [["title", 40], ["sub", 48], ["custom", 60]] as const) if (typeof b[k] === "string") { const v = clampStr(b[k], n); if (v) overrides[k] = v; else delete overrides[k]; }
     // the look of this one day (style / voice in the Status video / music): "" = the usual
     for (const k of ["style", "voice", "music"] as const) if (typeof b[k] === "string") { const v = cleanOverrides({ [k]: b[k] })[k]; if (v) overrides[k] = v; else delete overrides[k]; }
+    // The owner's own photo for this day ("" = back to the usual picture); only a photo this account uploaded.
+    if (typeof b.photo === "string") { if (!b.photo) delete overrides.photo; else if (isOwnMedia(b.photo, me.id)) overrides.photo = b.photo; }
     const brief: DayBrief = { ...(cur?.brief ?? {}) };
     if (typeof b.caption === "string") { const c = cleanBrief({ caption: b.caption }).caption; if (c) brief.caption = c; else delete brief.caption; }
     if (b.hashtags !== undefined) { const t = cleanTags(typeof b.hashtags === "string" ? b.hashtags.split(/[\s,]+/) : b.hashtags); if (t.length) brief.hashtags = t; else delete brief.hashtags; }
@@ -170,10 +181,12 @@ export async function POST(request: Request) {
     const others = (await restAsUser<Entry[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${daysOf(month).slice(-1)[0]}&for_date=neq.${date}&select=for_date,brief`)).data ?? [];
     const day = await redraftDay(me.id, brand, date, clampStr(b.hint, 140), others.map((o) => o.brief?.hook ?? "").filter(Boolean));
     if (!day) return NextResponse.json({ error: "No new idea right now. Please try again in a minute." }, { status: 503 });
-    const row = { user_id: me.id, profile_id: profile, for_date: date, kind: day.kind, product_id: day.product_id, note: "", status: "planned", overrides: day.overrides, brief: day.brief };
+    const cur = list((await restAsUser<{ overrides: Record<string, unknown> | null; status: string }[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=eq.${date}&select=overrides,status`)).data)[0];
+    const curPhoto = cur?.overrides?.photo;
+    const row = { user_id: me.id, profile_id: profile, for_date: date, kind: day.kind, product_id: day.product_id, note: "", status: "planned", overrides: { ...day.overrides, ...(typeof curPhoto === "string" && curPhoto ? { photo: curPhoto } : {}) }, brief: day.brief };
     const r = await restAsUser(me.token, "poster_calendar?on_conflict=profile_id,for_date", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
     if (!r.ok) return NextResponse.json({ error: /brief|kind_check/.test(r.text) ? "Run migration 0083 in Supabase first." : r.text.slice(0, 200) }, { status: 400 });
-    await freshDay(profile, date, row.status);
+    await freshDay(profile, date, cur?.status === "done" ? "done" : row.status);
     return NextResponse.json({ ok: true, entry: row });
   }
   if (b.action === "offer") {
@@ -200,3 +213,40 @@ async function freshDay(profile: string, date: string, status: string) {
   if (status !== "done") await restAsService(`${where}&shares=eq.0`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
   await restAsService(where, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
 }
+
+type Act = { date: string; provider: string; kind: string; status: "ok" | "error"; error: string; at: string };
+/** What went out for each day of the month (and what failed, with why): the day sheet's "Activity" and the list's posted / failed mark.
+ *  A post filed under one of this business's posters is its day; a failed post filed before poster ids were kept goes by its IST date. */
+async function monthActivity(userId: string, month: string, last: string, posterRows: { id: string; for_date: string }[]): Promise<Act[]> {
+  const byPoster = new Map(posterRows.map((p) => [p.id, p.for_date]));
+  const from = new Date(`${month}-01T00:00:00+05:30`).toISOString();
+  const to = new Date(new Date(`${last}T00:00:00+05:30`).getTime() + 86400e3).toISOString();
+  // `kind` came with migration 0045: without it the list is read without that column.
+  const q = (cols: string) => restAsService<{ provider: string | null; kind?: string | null; status: string; error: string | null; created_at: string; poster_id: string | null }[]>(
+    `social_posts?user_id=eq.${userId}&created_at=gte.${from}&created_at=lt.${to}&select=${cols}&order=created_at&limit=500`);
+  let res = await q("provider,kind,status,error,created_at,poster_id");
+  if (!res.ok) res = await q("provider,status,error,created_at,poster_id");
+  const rows = list(res.data);
+  const ist = (iso: string) => new Date(Date.parse(iso) + 5.5 * 3600e3).toISOString().slice(0, 10);
+  const out: Act[] = [];
+  for (const r of rows) {
+    const date = r.poster_id ? byPoster.get(r.poster_id) : r.status === "error" ? ist(r.created_at) : undefined;
+    if (!date) continue;
+    out.push({ date, provider: r.provider || "", kind: r.kind || "feed", status: r.status === "ok" ? "ok" : "error", error: (r.error ?? "").slice(0, 160), at: r.created_at });
+  }
+  return out;
+}
+
+/** Where the daily post goes by itself: the connected accounts with auto-post on (and any that need connecting again). */
+async function autoChannels(userId: string): Promise<{ on: string[]; fix: string[] }> {
+  type S = { provider: string; status: string; auto_post: boolean | null; is_active?: boolean | null };
+  const s1 = await restAsService<S[]>(`social_accounts?user_id=eq.${userId}&select=provider,status,auto_post,is_active`);
+  const soc = (s1.ok ? list(s1.data) : list((await restAsService<S[]>(`social_accounts?user_id=eq.${userId}&select=provider,status,auto_post`)).data)).filter((a) => a.is_active !== false);
+  const g = list((await restAsService<{ status: string; auto_post: boolean | null }[]>(`google_accounts?user_id=eq.${userId}&select=status,auto_post`)).data);
+  const on = [...new Set([...soc.filter((a) => a.auto_post && a.status === "ok").map((a) => a.provider), ...(g.some((x) => x.auto_post && x.status === "ok") ? ["google"] : [])])];
+  const fix = [...new Set(soc.filter((a) => a.status === "reconnect").map((a) => a.provider))];
+  return { on, fix };
+}
+
+/** A PostgREST answer as a list: an error answer is an object, never something to loop over. */
+function list<T>(v: T[] | null | undefined): T[] { return Array.isArray(v) ? v : []; }

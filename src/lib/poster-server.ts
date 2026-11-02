@@ -122,7 +122,7 @@ type Engine = {
   OUT_DIR: string; BASE_DIR: string;
   STYLES: Record<string, unknown>;
 };
-export type CalRow = { kind: string; product_id: string | null; overrides?: { style?: string; voice?: "on" | "off"; music?: string; custom?: string; title?: string; sub?: string; accent?: string } };
+export type CalRow = { kind: string; product_id: string | null; overrides?: { style?: string; voice?: "on" | "off"; music?: string; custom?: string; title?: string; sub?: string; accent?: string; photo?: string } };
 /** Today's calendar row + the user's offers → what the engine needs for that day. */
 export async function dayPlan(userId: string, profileId: string, date: string): Promise<{ cal: CalRow | null; offers: Record<string, unknown>[]; productCategory: string; offer: string }> {
   const [cal, offers] = await Promise.all([

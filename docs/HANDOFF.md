@@ -408,3 +408,12 @@ The owner's own app does not show "paused" yet.
   Admin → Websites asks a franchise's own cards directly; `expandMap` survives a "%" in the place name.
 - Known, left: "Live now" rewrites the card's whole `data` (a publish at the same second could be overwritten); deleting and re-publishing a
   card clears its pause (the trigger guards UPDATE only).
+- **Month plan day sheet, better than a content app's post dialog** (it charges credits to "change photos and recreate"): Download +
+  Share under the poster; **Photo for this day** (`overrides.photo`, own media only; Signature draws it as the hero — engine
+  `layout.photo`, name hash includes it; /api/poster/today and the 4 AM post (`social-autopost.mjs dayProf`) pass it; kept through
+  "New idea" and "Plan again"); Copy for hashtags; **Activity** — what went out per account and what failed, in plain words with
+  "Connect" (`/api/poster/calendar` GET `activity` from `social_posts`; failed posts now carry their `poster_id`); list / grid show
+  Posted ✓ or Not posted ⚠. A paid plan with no account posting by itself (or one needing reconnecting) gets a banner to
+  /poster/connect (`channels`). "Plan again" also drops the unposted, unshared poster rows of the replanned days (the 4 AM post
+  reused the old picture under the new caption). Free sample: the Signature 1:1 cut and spec beside the clean file are deleted too.
+- Card & Website with no card: "Make my website & card" (the card is free).

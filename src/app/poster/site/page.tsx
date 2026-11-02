@@ -191,8 +191,9 @@ export default function WebsitePage() {
       )}
       {!s.hasCard ? (
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
-          <p className="text-sm text-muted">{!paid ? T("Make your digital card. It is free.", "अपना digital card बनाएँ। ये free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my card →", "मेरा card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          {/* The same start for everyone (owner, 2 Nov 2026): website + card; a free account's card is made first, its website plan after. */}
+          <p className="text-sm text-muted">{!paid ? T("Make your website and card in 5 minutes. Your card is free.", "5 मिनट में अपनी website और card बनाएँ। Card free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
+          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my website & card →", "मेरी website और card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (
         <>

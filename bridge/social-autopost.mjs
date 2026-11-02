@@ -144,7 +144,7 @@ async function prepareDay(userId, prof, date, paid, { redo = false } = {}) {
   // The day's own heading / small line / accent (the app's "Only today" poster edit) sit over the profile's
   // layout for this render only — the same rule as /api/poster/today, so the 4 AM post matches what was edited.
   const baseLayout = prof.layout && typeof prof.layout === "object" ? prof.layout : {};
-  const dayProf = (ov.title || ov.sub || ov.accent) ? { ...prof, layout: { ...baseLayout, ...(ov.title ? { title: ov.title } : {}), ...(ov.sub ? { sub: ov.sub } : {}), ...(ov.accent ? { accent: ov.accent } : {}) } } : prof;
+  const dayProf = (ov.title || ov.sub || ov.accent || ov.photo) ? { ...prof, layout: { ...baseLayout, ...(ov.title ? { title: ov.title } : {}), ...(ov.sub ? { sub: ov.sub } : {}), ...(ov.accent ? { accent: ov.accent } : {}), ...(ov.photo ? { photo: ov.photo } : {}) } } : prof;
   if (redo && cardDay) return null;
   if (redo) {
     // Only product posters of non-water businesses: those got the water scenes before 25 Sep 2026.
@@ -280,6 +280,7 @@ async function main() {
     // Auto-post ON but the number was never linked (or unlinked since): the bridge would refuse the post, so no
     // poster, no caption, no video is made for it (owner's call, 29 Sep 2026).
     if (a.provider === "whatsapp" && !waLinked(a.user_id)) { console.log(`  skip ${a.name}: WhatsApp not linked`); continue; }
+    let posterId = null;   // known to the catch below: a failed post is filed under its day (the month plan's Activity)
     try {
       let prof = a.auto_post_profile ? (await rest(`poster_profiles?id=eq.${a.auto_post_profile}&select=*`))?.[0] : null;
       if (!prof) prof = (await rest(`poster_profiles?user_id=eq.${a.user_id}&order=is_default.desc,created_at&limit=1&select=*`))?.[0];
@@ -310,6 +311,7 @@ async function main() {
       const day = await prepareDay(a.user_id, prof, date, paid);
       if (!day) continue;
       const { url, poster, caption, cal } = day;
+      posterId = poster?.id ?? null;
       // WhatsApp gets the caption without hashtags and always with "my card" + "make your free card" (owner, 29 Sep 2026)
       const waCaption = statusCaption(caption, { phone: prof.phone || "", link: day.link?.url ?? "", join: day.join, lang: prof.lang });
       let remote;
@@ -347,7 +349,7 @@ async function main() {
     } catch (e) {
       console.log(`  FAIL ${a.provider} ${a.name}: ${e.message}`);
       await notifyOwner(a.user_id, `Today's ${a.provider === "whatsapp" ? "WhatsApp Status" : a.provider === "facebook" ? "Facebook" : "Instagram"} post failed`, String(e.message).slice(0, 160));
-      await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, caption: "", status: "error", error: String(e.message).slice(0, 500) }) });
+      await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind: a.provider === "whatsapp" ? "status" : "feed", poster_id: posterId, caption: "", status: "error", error: String(e.message).slice(0, 500) }) });
       if (e.code === 190) await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ status: "reconnect" }) });
     }
   }

@@ -463,7 +463,7 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   const L0 = profile.layout && typeof profile.layout === "object" ? profile.layout : {};
   // …and the identity the poster draws (name, tagline, name-on-top, colour, logo): changing the brand makes a new poster too — before, a
   // changed colour or "name on top" kept returning the old file of the day (seen live, 2 Nov 2026).
-  const words0 = `${L0.title || ""}|${typeof L0.sub === "string" ? L0.sub : ""}|${custom || ""}|${profile.name || ""}|${profile.tagline || ""}|${L0.showName ? 1 : 0}|${L0.accent || ""}|${profile.logo_url || ""}`;
+  const words0 = `${L0.title || ""}|${typeof L0.sub === "string" ? L0.sub : ""}|${custom || ""}|${profile.name || ""}|${profile.tagline || ""}|${L0.showName ? 1 : 0}|${L0.accent || ""}|${profile.logo_url || ""}|${typeof L0.photo === "string" ? L0.photo : ""}`;
   let wh = 5381; for (let i = 0; i < words0.length; i++) wh = ((wh * 33) ^ words0.charCodeAt(i)) >>> 0;
   const hTag = `-h${wh.toString(36).slice(0, 6)}`;
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
@@ -1182,6 +1182,8 @@ async function renderSignaturePoster(out, dateStr, profile, { look, theme, produ
     try { const art = await shubhoraProductArt(prod, profile, { accent: "#2f5bf5", accent2: "#6a3cf0", lang }); if (art?.file) hero = { file: art.file, mode: "cutout" }; }
     catch (e) { console.log(`[poster] shubhora product art: ${e.message}`); }
   }
+  // The owner's own photo for this one day (month plan → "Use my photo", 2 Nov 2026): it wins over the product and stock pictures.
+  if (!hero && typeof layout.photo === "string" && /^https:\/\//.test(layout.photo)) { const f = await cachedImage(layout.photo, "day").catch(() => null); if (f) hero = { file: f, mode: "photo" }; }
   if (!hero && prod?.photo_url) { const f = await cachedImage(prod.photo_url, "prod"); if (f) hero = { file: f, mode: "product" }; }
   if (!hero) {
     try { const ph = await ensureStockPhoto({ theme, category: stock?.category || profile.category || "", kind: occasion ? "festival" : "product", dateStr }); if (ph?.file) hero = { file: ph.file, mode: "photo" }; }
