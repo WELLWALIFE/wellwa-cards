@@ -82,6 +82,13 @@ export async function POST(request: Request) {
   // Only one default per user.
   if (row.is_default) await restAsUser(me.token, `poster_profiles?user_id=eq.${me.id}`, { method: "PATCH", body: JSON.stringify({ is_default: false }) });
   const id = typeof b.id === "string" && /^[0-9a-f-]{36}$/i.test(b.id) ? b.id : null;
+  // The brand's own choices (tone, who buys, colours — /poster/brand/setup) are kept when a screen saves the profile from an older
+  // copy that does not carry them (the set-up's Save sent its stale layout and wiped them).
+  if (id) {
+    const cur = (await restAsUser<{ layout: Record<string, unknown> | null }[]>(me.token, `poster_profiles?id=eq.${id}&user_id=eq.${me.id}&select=layout`)).data?.[0]?.layout ?? {};
+    const L = row.layout as Record<string, unknown>;
+    for (const k of ["tone", "audience", "palette"]) if (L[k] === undefined && cur[k] !== undefined) L[k] = cur[k];
+  }
   let r = id
     ? await restAsUser<PosterProfile[]>(me.token, `poster_profiles?id=eq.${id}&user_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) })
     : await restAsUser<PosterProfile[]>(me.token, "poster_profiles", { method: "POST", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) });

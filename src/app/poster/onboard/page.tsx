@@ -44,6 +44,7 @@ const SCREEN_FACT_KEYS = [...COMPANY_FACT_KEYS, ...PRODUCT_FACT_KEYS] as const;
 import { catalogCopyFor, exampleNameFor, exampleSiteFor, orgWordFor } from "@/lib/catalog-copy";
 import { TradeQuestions } from "@/components/poster/trade-questions";
 import { partsLabel, partsOf } from "@/lib/trade-parts";
+import { BrandQuick } from "@/components/poster/brand-quick";
 import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeEmail, looksLikeSite, socialDetour, toFactsRole, type SiteKind } from "@/lib/site-role";
 import { ONBOARD_SCREENS, SETUP_HOME, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
@@ -2079,6 +2080,8 @@ function Onboard() {
           {/* Only what the AI cannot guess (owner, 24 Oct 2026: "jitana kam se kaam chal sake utana kam data"): "Who buys from you" goes (the AI
               works it out from the trade), and "Any offer?" is added later from Card & Website → Offer / pop-up. */}
           <FactsFields group="products" only={["q-special"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
+          {/* The posters' look, already chosen from the logo and the trade (owner, 2 Nov 2026 — Scalio asks it; here it costs no question). */}
+          {!editing && profile?.id && <BrandQuick profileId={profile.id} hi={hi} onChange={(x) => setProfile((p) => (p ? { ...p, lang: x.lang || p.lang, layout: { ...(p.layout ?? {}), ...(x.accent ? { accent: x.accent } : {}), palette: x.palette, tone: x.tone } } : p))} />}
           {/* What the old "Where & when" and "About & logo" screens asked beyond the basics, closed until ticked (owner, 24 Oct 2026). */}
           {!editing && ([
             { k: "hours" as const, t: T("Add opening hours / delivery", "खुलने का समय / delivery जोड़ें"), body: <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} /> },
