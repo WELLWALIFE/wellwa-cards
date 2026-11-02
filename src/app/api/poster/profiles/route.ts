@@ -36,6 +36,11 @@ function cleanLayout(v: unknown) {
   if (S(l.audience, 120)) out.audience = S(l.audience, 120);
   const palette = (Array.isArray(l.palette) ? l.palette : []).map(String).filter((c) => HEX.test(c)).slice(0, 3);
   if (palette.length) out.palette = palette;
+  // The month plan's two-line strategy per month ("YYYY-MM" → text), written by the plan (/api/poster/calendar) — the last three kept.
+  if (l.planNotes && typeof l.planNotes === "object") {
+    const n = Object.entries(l.planNotes as Record<string, unknown>).filter(([k, v]) => /^\d{4}-\d{2}$/.test(k) && typeof v === "string" && v.trim()).sort(([a], [b]) => b.localeCompare(a)).slice(0, 3);
+    if (n.length) out.planNotes = Object.fromEntries(n.map(([k, v]) => [k, String(v).trim().slice(0, 320)]));
+  }
   const vc = l.voice as Record<string, unknown> | undefined;
   if (vc && typeof vc === "object") out.voice = { on: vc.on === true, gender: ["female", "female2", "male", "male2"].includes(String(vc.gender)) ? String(vc.gender) : "female", ...(vc.by === "user" ? { by: "user" } : {}) };
   return out;
@@ -87,7 +92,7 @@ export async function POST(request: Request) {
   if (id) {
     const cur = (await restAsUser<{ layout: Record<string, unknown> | null }[]>(me.token, `poster_profiles?id=eq.${id}&user_id=eq.${me.id}&select=layout`)).data?.[0]?.layout ?? {};
     const L = row.layout as Record<string, unknown>;
-    for (const k of ["tone", "audience", "palette"]) if (L[k] === undefined && cur[k] !== undefined) L[k] = cur[k];
+    for (const k of ["tone", "audience", "palette", "planNotes"]) if (L[k] === undefined && cur[k] !== undefined) L[k] = cur[k];
   }
   let r = id
     ? await restAsUser<PosterProfile[]>(me.token, `poster_profiles?id=eq.${id}&user_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify(row) })

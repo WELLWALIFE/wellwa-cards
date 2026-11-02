@@ -52,7 +52,8 @@ export async function GET(request: Request) {
   const posterRows = list((await restAsService<{ id: string; for_date: string; url: string }[]>(`posters?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${days[days.length - 1].date}&select=id,for_date,url`)).data);
   const posters = posterRows.filter((p) => p.url).map(({ for_date, url }) => ({ for_date, url }));
   return NextResponse.json({ days, entries: Array.isArray(r.data) ? r.data : [], products: await products(me.id), offers: Array.isArray(offers.data) ? offers.data : [], posters, planReady,
-    activity: await monthActivity(me.id, month, days[days.length - 1].date, posterRows), channels: await autoChannels(me.id) });
+    activity: await monthActivity(me.id, month, days[days.length - 1].date, posterRows), channels: await autoChannels(me.id),
+    strategy: await monthNote(me.token, profile, month) });
 }
 
 export async function POST(request: Request) {
@@ -126,7 +127,7 @@ export async function POST(request: Request) {
     const brand = await brandSnapshot(me.id, profile);
     if (!brand) return NextResponse.json({ error: "profile not found" }, { status: 404 });
     const focus = (Array.isArray(b.focus) ? b.focus : []).map(String);
-    const { days, ai } = await draftMonth(me.id, brand, month, focus, Number(b.perWeek ?? 5));
+    const { days, ai, strategy } = await draftMonth(me.id, brand, month, focus, Number(b.perWeek ?? 5));
     const today = istDate();
     const last = days[days.length - 1].for_date;
     const done = ((await restAsUser<{ for_date: string }[]>(me.token, `poster_calendar?profile_id=eq.${profile}&status=eq.done&for_date=gte.${month}-01&for_date=lte.${last}&select=for_date`)).data ?? []).map((x) => x.for_date);
@@ -144,7 +145,14 @@ export async function POST(request: Request) {
     const keep = done.length ? `&for_date=not.in.(${done.join(",")})` : "";
     await restAsService(`posters?profile_id=eq.${profile}&for_date=gte.${ins[0].for_date}&for_date=lte.${last}${keep}&shares=eq.0`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
     await restAsService(`posters?profile_id=eq.${profile}&for_date=gte.${ins[0].for_date}&for_date=lte.${last}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
-    return NextResponse.json({ ok: true, count: ins.filter((d) => d.kind !== "skip").length, ai });
+    // The month's two-line strategy goes on the profile (layout.planNotes, last three months) — the plan page shows it on top.
+    if (strategy) {
+      const cur = list((await restAsUser<{ layout: Record<string, unknown> | null }[]>(me.token, `poster_profiles?id=eq.${profile}&select=layout`)).data)[0]?.layout ?? {};
+      const notes = { ...((cur.planNotes && typeof cur.planNotes === "object") ? cur.planNotes as Record<string, string> : {}), [month]: strategy };
+      const keep = Object.fromEntries(Object.entries(notes).sort(([a], [b2]) => b2.localeCompare(a)).slice(0, 3));
+      await restAsUser(me.token, `poster_profiles?id=eq.${profile}&user_id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ layout: { ...cur, planNotes: keep } }) }).catch(() => undefined);
+    }
+    return NextResponse.json({ ok: true, count: ins.filter((d) => d.kind !== "skip").length, ai, strategy });
   }
   if (b.action === "post") {
     // One planned post, edited by the owner: the poster's heading / small line / offer line, the caption, the hashtags.
@@ -250,3 +258,10 @@ async function autoChannels(userId: string): Promise<{ on: string[]; fix: string
 
 /** A PostgREST answer as a list: an error answer is an object, never something to loop over. */
 function list<T>(v: T[] | null | undefined): T[] { return Array.isArray(v) ? v : []; }
+
+/** The month plan's two-line strategy, if the plan wrote one (poster_profiles.layout.planNotes). */
+async function monthNote(token: string, profile: string, month: string): Promise<string> {
+  const l = list((await restAsUser<{ layout: Record<string, unknown> | null }[]>(token, `poster_profiles?id=eq.${profile}&select=layout`)).data)[0]?.layout;
+  const n = l?.planNotes && typeof l.planNotes === "object" ? (l.planNotes as Record<string, unknown>)[month] : "";
+  return typeof n === "string" ? n : "";
+}

@@ -112,6 +112,29 @@ function PhotoshootPageInner() {
     setShotMsg((m) => ({ ...m, [url]: r === "shared" ? { t: hi ? "भेज दी" : "Sent", ok: true } : r === "downloaded" ? { t: hi ? "फ़ोन में save हो गई" : "Saved to your phone", ok: true } : { t: hi ? "Share नहीं हुआ। फिर से Share दबाएँ, या Download दबाएँ।" : "Not shared. Tap Share to try again, or tap Download.", ok: false, neutral: true } }));
     setBusyAction("");
   }
+  /** A photo sized for the marketplaces (a content app sells a "marketplace photo pack"): the shot centred on white, 1:1 (2000×2000 —
+   *  Amazon, Flipkart, Meesho) or 3:4 (1500×2000 — Myntra, Ajio), drawn in the phone and saved — nothing to pay, nothing sent. */
+  async function fitDownload(url: string, shape: "square" | "portrait") {
+    const id = url + shape;
+    setBusyAction(id); clearShotMsg(url);
+    try {
+      const img = new Image(); img.crossOrigin = "anonymous";
+      await new Promise<void>((ok, bad) => { img.onload = () => ok(); img.onerror = () => bad(new Error("load")); img.src = url; });
+      const W = shape === "square" ? 2000 : 1500, H = 2000;
+      const cv = document.createElement("canvas"); cv.width = W; cv.height = H;
+      const g = cv.getContext("2d"); if (!g) throw new Error("canvas");
+      g.fillStyle = "#ffffff"; g.fillRect(0, 0, W, H);
+      const k = Math.min((W * 0.92) / img.naturalWidth, (H * 0.92) / img.naturalHeight);
+      const w = img.naturalWidth * k, h = img.naturalHeight * k;
+      g.imageSmoothingQuality = "high"; g.drawImage(img, (W - w) / 2, (H - h) / 2, w, h);
+      const blob = await new Promise<Blob | null>((ok) => cv.toBlob(ok, "image/jpeg", 0.92));
+      if (!blob) throw new Error("blob");
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = fileName(url).replace(/\.(png|jpe?g)$/i, "") + (shape === "square" ? "-1x1.jpg" : "-3x4.jpg");
+      document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+      setShotMsg((m) => ({ ...m, [url]: { t: hi ? "Marketplace size में save हो गई" : "Saved in the marketplace size", ok: true } }));
+    } catch { setShotMsg((m) => ({ ...m, [url]: { t: hi ? "Save नहीं हुई — फिर कोशिश करें" : "Could not save — try again", ok: false } })); }
+    setBusyAction("");
+  }
   function useInAd() { try { sessionStorage.setItem("akp-ad-seed", JSON.stringify({ product, category, photos: [...refs, ...(shots ?? []).map((x) => x.url)].slice(0, 5) })); sessionStorage.setItem(SNAP_KEY, JSON.stringify({ at: Date.now(), product, category, preset, slots, shots })); } catch { /* ignore */ } router.push("/poster/video"); }
   async function download(url: string) {
     setBusyAction(url + "dl"); clearShotMsg(url);
@@ -183,6 +206,7 @@ function PhotoshootPageInner() {
 
       {shots && shots.length > 0 && <button type="button" onClick={useInAd} className="w-full rounded-xl border-2 border-brand bg-brand-soft px-4 py-3 text-sm font-semibold text-brand-ink">{hi ? "🎬 इन photos से video ad बनाएँ →" : "🎬 Make a video ad with these photos →"}</button>}
       {zoom && <div className="fixed inset-0 z-50 grid place-items-center bg-black/85 p-3" onClick={() => setZoom("")}>{/* eslint-disable-next-line @next/next/no-img-element */}<img src={zoom} alt="" className="max-h-full max-w-full rounded-lg object-contain" /><button type="button" className="absolute right-4 top-4 rounded-full bg-white/20 px-3 py-1 text-white" aria-label={hi ? "बंद करें" : "Close"}>✕</button></div>}
+      {shots && <p className="text-[11px] text-muted">{hi ? "Marketplace के size में: 1:1 — Amazon, Flipkart, Meesho · 3:4 — Myntra, Ajio (सफ़ेद background)" : "Marketplace sizes: 1:1 — Amazon, Flipkart, Meesho · 3:4 — Myntra, Ajio (on white)"}</p>}
       {shots && (
         <div className="grid grid-cols-2 gap-2">
           {shots.map((s) => (
@@ -194,6 +218,9 @@ function PhotoshootPageInner() {
                 <div className="flex gap-1.5">
                   <button type="button" onClick={() => share(s.url)} disabled={busyAction === s.url} className="flex-1 inline-flex items-center justify-center gap-1 rounded-lg bg-[#25D366] px-2 py-1.5 text-[11px] font-semibold text-white disabled:opacity-60">{busyAction === s.url ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Share2 className="h-3.5 w-3.5" />} Share</button>
                   <button type="button" onClick={() => download(s.url)} disabled={busyAction === s.url + "dl"} className="rounded-lg border border-border px-2.5 py-1.5 text-[11px] font-semibold disabled:opacity-60">{busyAction === s.url + "dl" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}</button>
+                </div>
+                <div className="flex gap-1.5">
+                  {(["square", "portrait"] as const).map((sh) => <button key={sh} type="button" onClick={() => void fitDownload(s.url, sh)} disabled={!!busyAction} className="flex-1 rounded-lg border border-border px-2 py-1 text-[11px] font-semibold disabled:opacity-60">{busyAction === s.url + sh ? <LoaderCircle className="mx-auto h-3.5 w-3.5 animate-spin" /> : sh === "square" ? "1:1" : "3:4"}</button>)}
                 </div>
                 {shotMsg[s.url] && <p className={`text-[11px] ${shotMsg[s.url].ok ? "text-good" : shotMsg[s.url].neutral ? "text-muted" : "font-semibold text-danger"}`}>{shotMsg[s.url].t}</p>}
               </div>

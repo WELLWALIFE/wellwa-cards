@@ -429,3 +429,9 @@ The owner's own app does not show "paused" yet.
   partner's Shubhora page and free websites made earlier now show the card. App: Card & Website / build treat every free account as
   card-only (`noSite = !paid`, `freeMake = !subscribed`), Share links has no Website row on free, the Shubhora strip says "Make your own
   digital card — FREE".
+- **Scalio study, round 3** (owner: "depth me jaakar study karo"): its My Business (website, identity, category, voice, photos, colours,
+  video outros, language), Posts Planner (35-day strategy paragraph, 8 content styles, 30% carousels / 70% stills, publish mode),
+  Fashion Studio (model photoshoot + marketplace photo pack for Myntra / Flipkart / Amazon / Ajio / Meesho). Built from it: the month
+  plan writes a **two-line strategy** (draftMonth `strategy`, kept in `layout.planNotes[YYYY-MM]`, last 3; cleanLayout keeps it; shown on
+  the calendar), and **Photoshoot downloads in marketplace sizes** (1:1 2000×2000, 3:4 1500×2000, on white, drawn in the browser).
+  Not built yet: carousel posts (multi-slide, needs IG/FB carousel publishing) and reusable video outros.

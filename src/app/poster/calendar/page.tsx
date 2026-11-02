@@ -22,7 +22,7 @@ type Prod = { id: string; name: string; offer: string; category?: string };
 type Offer = { id: string; text: string; starts: string; ends: string; scope: "all" | "products" | "category"; product_ids: string[]; categories?: string[]; active: boolean };
 /** What went out for a day, per account (or failed, with why) — the API's month activity. */
 type Act = { date: string; provider: string; kind: string; status: "ok" | "error"; error: string; at: string };
-type Data = { days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[]; posters?: { for_date: string; url: string }[]; planReady?: boolean; activity?: Act[]; channels?: { on: string[]; fix: string[] } };
+type Data = { days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[]; posters?: { for_date: string; url: string }[]; planReady?: boolean; activity?: Act[]; channels?: { on: string[]; fix: string[] }; strategy?: string };
 type Sheet = { date: string; kind: string; product_id: string | null; title: string; sub: string; custom: string; caption: string; hashtags: string; style: string; voice: string; music: string; why: string; hint: string; photo: string };
 type Shot = { url?: string; err?: string; busy?: boolean };
 
@@ -461,6 +461,13 @@ export default function CalendarPage() {
       {planCard}
       {planMsg && <p className={`rounded-xl px-3 py-2 text-sm font-semibold ${planMsg.ok ? "bg-good/10 text-good" : "border border-danger/40 bg-danger/10 text-danger"}`}>{planMsg.text}</p>}
       {(planned.length > 0 || hasAiPlan) && stats}
+      {/* The plan in two sentences — what this month's posts aim at (written with the plan). */}
+      {data.strategy && hasAiPlan && (
+        <section className="flex items-start gap-2.5 rounded-2xl border border-brand/30 bg-brand-soft/40 px-3.5 py-3" id="month-strategy">
+          <Sparkles className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+          <p className="text-sm"><b>{hi ? "इस महीने का plan: " : "This month's plan: "}</b>{data.strategy}</p>
+        </section>
+      )}
       {next3.length > 0 && (
         <section className="rounded-2xl border border-border p-3 space-y-2">
           <div className="flex items-center gap-2"><p className="text-sm font-semibold flex-1">{hi ? "अगले 3 posts — जैसे जाएँगे" : "Next 3 posts — exactly as they will go"}</p>

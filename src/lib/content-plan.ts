@@ -209,27 +209,31 @@ function readDays(text: string, c: Ctx, dates: string[]): Map<string, PlanDay> {
 }
 
 /** The whole month: AI first, mix for whatever the AI left out. */
-export async function draftMonth(userId: string, b: BrandSnapshot, month: string, focus: string[], perWeek: number): Promise<{ days: PlanDay[]; ai: boolean }> {
+export async function draftMonth(userId: string, b: BrandSnapshot, month: string, focus: string[], perWeek: number): Promise<{ days: PlanDay[]; ai: boolean; strategy: string }> {
   const c = await loadCtx(userId, b, month, focus, perWeek);
   const base = mixPlan(month, c);
   const key = process.env.GEMINI_API_KEY;
-  if (!key) return { days: base, ai: false };
+  if (!key) return { days: base, ai: false, strategy: "" };
   const dates = base.filter((d) => d.kind !== "skip").map((d) => d.for_date);
   // Two halves of the month at once: half the wait, and no long answer cut off in the middle. The second half is told the
   // first half's dates so the two do not repeat the same idea on the same weekday pattern (they also differ in products).
   const half = Math.ceil(dates.length / 2);
   const parts = [dates.slice(0, half), dates.slice(half)].filter((x) => x.length);
   const ai = new Map<string, PlanDay>();
+  // The month's plan in two sentences (a content app shows "a 35-day strategy for …" on top of its calendar): asked of the first half.
+  let strategy = "";
+  const lang = langName(b.lang);
   await Promise.all(parts.map(async (part, i) => {
-    const { system, user } = planPrompt(month, c, { dates: part, hint: i ? "This is the second half of the month: use different ideas and other products than a first half would (rotate)." : "" });
+    const { system, user } = planPrompt(month, c, { dates: part, hint: i ? "This is the second half of the month: use different ideas and other products than a first half would (rotate)." : `Also add a top-level field "strategy": 2 short sentences in ${lang} for the owner — what this month's posts aim at for this business and why (no dates, no numbers you were not given).` });
     try {
       const r = await geminiComplete({ apiKey: key, json: true, temperature: 0.75, maxOutputTokens: 12000, tag: "month-plan", system, contents: [{ role: "user", parts: [{ text: user }] }] });
       for (const [d, v] of readDays(r.text, c, part)) ai.set(d, v);
+      if (!i) { try { const o = JSON.parse(r.text.replace(/^```(json)?|```$/g, "").trim()) as { strategy?: unknown }; if (typeof o.strategy === "string") strategy = o.strategy.replace(/\s+/g, " ").trim().slice(0, 320); } catch { /* none */ } }
     } catch { /* that half keeps the mix */ }
   }));
   // festival days and anything the AI skipped keep the mix's day (so the month is always complete)
   const days = base.map((d) => ai.get(d.for_date) ?? d);
-  return { days, ai: ai.size >= Math.ceil(dates.length / 2) };
+  return { days, ai: ai.size >= Math.ceil(dates.length / 2), strategy };
 }
 
 /** One day again (the owner's "new idea", optionally with a hint in their words). */
