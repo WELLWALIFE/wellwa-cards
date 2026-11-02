@@ -361,8 +361,10 @@ export async function siteStatus(userId: string, cardId?: string, opts: { full?:
   if (c.coverUrl?.startsWith("http")) images.push({ label: "Cover", url: c.coverUrl });
   for (const p of Array.isArray(prods) ? prods : []) if (p.photo_url) images.push({ label: p.name, url: abs(p.photo_url) });
   for (const pg of c.pages) if (!pg.hidden) for (const b of pg.blocks) if (b.kind === "product") for (const it of b.items) { const u = it.images?.[0] ?? it.imageUrl; if (u?.startsWith("http") && !images.some((x) => x.url === u)) images.push({ label: it.name, url: u }); }
+  // Super Admin → Websites → Pause (cards.site_paused, migration 0085): the owner's screen says so (an error = no column yet = not paused).
+  const paused = c.site ? ((await restAsService<{ site_paused?: boolean }[]>(`cards?id=eq.${row.id}&select=site_paused`)).data?.[0]?.site_paused === true) : false;
   return {
-    hasCard: true as const, cards: all.map((x) => ({ id: x.id, username: x.username, name: x.data.company || x.data.name || x.username })), cardId: row.id, username: row.username, url: `${SITE_URL}/c/${row.username}`, customDomain: own ?? "", knowledge: c.botKnowledge ?? "", site: c.site ?? null, pages: c.pages.map((p) => ({ slug: p.slug, label: p.label, blocks: p.blocks.length })), images: images.slice(0, 12), defaults: { headline: c.company || c.name, sub: (c.about || "").split(/\n+/)[0]?.slice(0, 220) || c.tagline || "", jobTitle: c.jobTitle },
+    hasCard: true as const, cards: all.map((x) => ({ id: x.id, username: x.username, name: x.data.company || x.data.name || x.username })), cardId: row.id, username: row.username, url: `${SITE_URL}/c/${row.username}`, customDomain: own ?? "", knowledge: c.botKnowledge ?? "", site: c.site ? { ...c.site, ...(paused ? { paused: true } : {}) } : null, pages: c.pages.map((p) => ({ slug: p.slug, label: p.label, blocks: p.blocks.length })), images: images.slice(0, 12), defaults: { headline: c.company || c.name, sub: (c.about || "").split(/\n+/)[0]?.slice(0, 220) || c.tagline || "", jobTitle: c.jobTitle },
     // The website editor renders a live preview from the whole card.
     ...(opts.full ? { card: { ...c, id: row.id, username: row.username } } : {}),
   };

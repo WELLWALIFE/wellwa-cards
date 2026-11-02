@@ -14,7 +14,7 @@ import { withView } from "@/lib/site-url";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Copy, Share2, Search, Monitor, Sparkles } from "lucide-react";
+import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Copy, Share2, Search, Monitor, Sparkles, Pause } from "lucide-react";
 import { PremiumCard, PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink, SiteLink } from "@/components/poster/card-sheet";
 import { api, isLoggedIn } from "@/lib/poster-client";
@@ -26,7 +26,7 @@ import { editHref, lastEdit } from "@/lib/edit-nav";
 import { advancedPending, readyText, sitePending } from "@/lib/site-ready";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
-type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
+type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; paused?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
 
 type Panel = "share" | "edit" | null;
 /** Which edit page: the phone card's, the website's, or (?edit=1, an older link) the question which one. */
@@ -206,7 +206,15 @@ export default function WebsitePage() {
           )}
 
           {!editOnly && <>
-          {(making || makingAdv) && (
+          {/* Paused by Shubhora (Super Admin → Websites): said plainly — visitors see the card meanwhile. */}
+          {s.site?.paused && (
+            <section className="flex items-start gap-3 rounded-2xl border border-amber/50 bg-amber/10 p-3.5" id="site-paused">
+              <Pause className="mt-0.5 h-5 w-5 shrink-0 text-amber" />
+              <span className="min-w-0"><b className="block text-sm">{T("Your website is paused", "आपकी website अभी रुकी हुई है")}</b>
+                <span className="block text-xs text-muted">{T("Shubhora has put it on hold for now — visitors see your card. It comes back as soon as it is resumed; for help, write to support.", "Shubhora ने इसे अभी रोका है — visitors को आपका card दिखेगा। दोबारा चालू होते ही website वापस आ जाएगी; मदद के लिए support को लिखें।")}</span></span>
+            </section>
+          )}
+          {!s.site?.paused && (making || makingAdv) && (
             <section className="flex items-start gap-3 rounded-2xl border border-amber/40 bg-amber/10 p-3.5">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber/20 text-xl" aria-hidden="true">🛠️</span>
               <span className="min-w-0 flex-1">
