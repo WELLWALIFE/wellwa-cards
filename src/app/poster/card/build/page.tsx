@@ -51,6 +51,8 @@ import { LookPicker } from "@/components/poster/look-picker";
 import { LookTweaks } from "@/components/poster/look-tweaks";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
 import { FirstPosters } from "@/components/poster/first-posters";
+import { WebsitePlanSheet, PaidReceipt, SiteProgress } from "@/components/poster/website-plan";
+import type { PaidInfo } from "@/components/subscribe-button";
 import { readyIn, readyText, sitePending } from "@/lib/site-ready";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
@@ -169,7 +171,12 @@ export default function BuildCard() {
   const hi = lang !== "en";
   const T = useCallback((en: string, hiText: string) => (hi ? hiText : en), [hi]);
 
-  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview" | "style" | "domain" | "done">("loading");
+  const [state, setState] = useState<"loading" | "error" | "form" | "make" | "building" | "preview" | "style" | "domain" | "done" | "paid">("loading");
+  /** The website's plan sheet (owner, 2 Nov 2026): "Make my website" on a free account makes the card, then asks for the plan. */
+  const [sitePlan, setSitePlan] = useState(false);
+  const wantSite = useRef(false);
+  /** The payment just made from that sheet: the receipt screen ("paid") shows it before the website is made. */
+  const [paidInfo, setPaidInfo] = useState<PaidInfo | null>(null);
   // Step 5 (owner's call, 2 Oct 2026): "Save and continue" opens a page of its own with two tabs — Standard for the
   // free plan, Premium for the paid one — and the build starts from there, never by itself.
   const [, setPlan] = useState<"standard" | "premium">("standard");
@@ -1158,8 +1165,16 @@ export default function BuildCard() {
   // on) -- the preview, the next steps and the finished screen then talk about the card; a website already live is left exactly as it was.
   const freeMake = !access.subscribed && !existing?.site?.enabled;
   const cardOnly = built?.site?.enabled === false && !existing?.site?.enabled;
+  // "Make my website" on a free account: the card is made first, then — on its preview — the plan sheet opens by itself.
+  useEffect(() => {
+    if (state === "preview" && wantSite.current) { wantSite.current = false; if (cardOnly) setSitePlan(true); }
+  }, [state, cardOnly]);
+  const onSitePaid = (p: PaidInfo | null) => { setSitePlan(false); setPaidInfo(p); access.refresh(); setErr(""); setState("paid"); toTop(); };
+  const sitePlanSheet = sitePlan && <WebsitePlanSheet hi={hi} name={setup?.business || ""} onClose={() => setSitePlan(false)} onPaid={onSitePaid} />;
 
   if (state === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  // The receipt after the website's payment, then "Make my website now" makes the website (the account is on the plan now).
+  if (state === "paid") return <PaidReceipt hi={hi} paid={paidInfo} busy={!!busy || access.loading} onGo={() => { setPlan("premium"); setMakeFrom("premium"); void build({ back: "make" }); }} />;
 
   if (state === "error") return (
     <div className="py-20 grid place-items-center gap-3 text-center">
@@ -1362,7 +1377,10 @@ export default function BuildCard() {
             {copied === "fail" && <p className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy — hold the link above to copy it.", "Copy नहीं हुआ — ऊपर का link दबाकर रखें।")}</p>}
           </div>
         </section>
+        {/* The three steps while the website is made (owner, 2 Nov 2026: "payment ke baad 24–48 hr ka page"). */}
+        {wait && !cardOnly && <section className="rounded-3xl border border-border bg-surface p-4 shadow-card"><SiteProgress hi={hi} stage={1} when={readyText(wait, hi)} /></section>}
         {bannerBlock}
+        {sitePlanSheet}
 
         {(() => {
           const boxHead = (n: React.ReactNode, title: string, sub: string, grad: string) => (
@@ -1383,11 +1401,11 @@ export default function BuildCard() {
                 <div className="p-3">
                   {/* The Rs 5,999 segment (owner, 15-16 Oct 2026) / a free account's next step up (17 Oct 2026). */}
                   {cardOnly ? (
-                    <Link href="/poster/plan" className="flex items-center gap-3 rounded-2xl border border-border p-3">
+                    <button type="button" onClick={() => setSitePlan(true)} className="flex w-full items-center gap-3 rounded-2xl border border-border p-3 text-left">
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#8b3dff]/10 text-[#8b3dff]"><Globe className="h-5 w-5" /></span>
-                      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{T("Website with Standard", "Standard में website")}</span><span className="block text-[11px] text-muted">{T("Website + daily poster + WhatsApp AI · ₹2,999/month", "Website + रोज़ poster + WhatsApp AI · ₹2,999/महीना")}</span></span>
+                      <span className="min-w-0 flex-1"><span className="block text-sm font-semibold">{T("Get my website", "मेरी website बनवाएँ")}</span><span className="block text-[11px] text-muted">{T("Website + daily poster + WhatsApp AI · ₹2,999/month", "Website + रोज़ poster + WhatsApp AI · ₹2,999/महीना")}</span></span>
                       <ChevronRight className="h-4 w-4 shrink-0 text-muted" />
-                    </Link>
+                    </button>
                   ) : <AdvancedEntry cardId={existing?.id} fetchState />}
                 </div>
               </section>
@@ -1437,7 +1455,7 @@ export default function BuildCard() {
         <div className="space-y-2 rounded-xl border border-brand/40 bg-brand-soft/40 p-3">
           <p className="text-sm font-semibold">{T("Your free plan publishes your digital card", "आपका free plan आपका digital card publish करता है")}</p>
           <p className="text-xs text-muted">{T("The website on the Website tab is part of Standard (₹2,999 a month) or Premium. Your card stays free.", "Website tab वाली website Standard plan (₹2,999 / महीना) या Premium में मिलती है। आपका card free ही रहेगा।")}</p>
-          <button type="button" onClick={() => setPremiumUnlock(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Get a website with Standard", "Standard लेकर website पाएँ")}</button>
+          <button type="button" onClick={() => setSitePlan(true)} className="inline-flex items-center gap-1.5 rounded-lg grad-brand px-3 py-2 text-sm font-semibold text-white"><Sparkles className="h-4 w-4" /> {T("Choose a plan for the website", "Website के लिए plan चुनें")}</button>
         </div>
       )}
       {/* The AI banner: promised before Final, in the making after it, and then Keep / Another / Back to stock. */}
@@ -1781,6 +1799,7 @@ export default function BuildCard() {
         </div>
       )}
       {premiumDialog}
+      {sitePlanSheet}
       {againUnlock && <UnlockDialog title={T("Write again: one credit per change", "दोबारा लिखवाना: हर बदलाव 1 credit")} reason={T("Add credits — your website stays as it is meanwhile.", "Credit डालें — तब तक आपकी website वैसी ही रहेगी।")} onClose={() => { setAgainUnlock(false); access.refresh(); }} />}
       {unlock && <UnlockDialog reason={T("A studio photo uses 5 credits. Add credits or activate your plan — your own photo is kept meanwhile.", "Studio photo में 5 credit लगते हैं। Credit डालें या अपना plan चालू करें — तब तक आपकी photo वैसी ही रहेगी।")} onClose={() => { setUnlock(false); access.refresh(); }} />}
     </div>
@@ -1840,8 +1859,25 @@ export default function BuildCard() {
             </ul>
           </section>
         )}
+        {/* A free account (owner, 2 Nov 2026): ONE button, "Make my website". The card is made first and shown; then the plan sheet
+            asks for the website's plan (WebsitePlanSheet) — "Not now" keeps the free card. The card alone stays one small link. */}
+        {freeMake && (
+          <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card" id="make-site">
+            <p className="text-base font-bold">{T("Your website + digital card", "आपकी website + digital card")}</p>
+            <ul className="space-y-1">
+              {li(T("Your card is made first — free", "पहले आपका card बनेगा — free"))}
+              {li(T("Then choose a plan for the website", "फिर website के लिए plan चुनें"))}
+              {li(T("Website live within 24–48 hours", "24–48 घंटे में website live"))}
+            </ul>
+            <button type="button" onClick={() => { wantSite.current = true; setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+              <Sparkles className="h-5 w-5" /> {T("Make my website", "मेरी website बनाएँ")}
+            </button>
+            {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
+            <button type="button" onClick={() => { wantSite.current = false; setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="block w-full text-center text-xs font-semibold text-muted underline underline-offset-2 disabled:opacity-60">{T("Only my free card for now", "अभी सिर्फ़ free card")}</button>
+          </section>
+        )}
         {/* Free: one button, no wall (owner's call, 3 Oct 2026). A Premium owner's build is Premium whatever button is tapped: only that one. */}
-        {!access.subscribed && (
+        {!access.subscribed && !freeMake && (
           <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card">
             <div className="flex items-center justify-between"><p className="text-base font-bold">{T("Free", "Free")}</p><span className="rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-bold text-good">₹0</span></div>
             <ul className="space-y-1">
@@ -1854,7 +1890,7 @@ export default function BuildCard() {
             {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
           </section>
         )}
-        <section className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
+        {!freeMake && <section className="space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card">
           <div className="flex items-center justify-between"><p className="text-base font-bold">Standard</p><span className="rounded-full bg-[#12144a] px-2 py-0.5 text-[11px] font-bold text-[#ffd54a]">{access.subscribed ? T("In your plan", "आपके plan में") : T("₹2,999 / month", "₹2,999 / महीना")}</span></div>
           <ul className="space-y-1">
             {li(T("No Shubhora tag · on Google", "Shubhora tag नहीं · Google पर"))}
@@ -1871,7 +1907,7 @@ export default function BuildCard() {
             </button>
           )}
           {err && (access.subscribed || makeFrom !== "free") && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-        </section>
+        </section>}
         </>}
         <p className="text-center text-[11px] text-muted">{T("AI writes only what you told us.", "AI वही लिखता है जो आपने बताया।")}</p>
         {premiumDialog}

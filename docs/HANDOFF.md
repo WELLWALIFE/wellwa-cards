@@ -350,3 +350,13 @@ Owner: "professional admin panel, jugaad nahi; super admin, staff admin, franchi
   `/admin/partner-staff`. Shared UI: `src/components/admin/ui.tsx`.
 - **Owner to do**: run 0078; enable TOTP in Supabase; log in at /admin/login with the owner account; set up 2-step; then Settings → require
   2-step for everyone. Left for later phases: Users page redesign (notes, timeline), billing/invoices, support tickets, reports, feature flags.
+
+## Website plan after the card (2 Nov 2026)
+Owner: "make my website dabane ke baad payment ka option aaye — aapka card ban gaya hai, website ke liye plan select kare; payment ke baad
+confirm aur 24–48 hr ka page". Make screen (card/build, free account with no website = `freeMake`): ONE box "Make my website" (+ small "Only my
+free card for now"). It builds the free card as before; on its preview the plan sheet opens by itself (`components/poster/website-plan.tsx`
+`WebsitePlanSheet`: "Your card is ready" + Standard / Premium + Razorpay via `SubscribeButton` `onPaid`; "Not now" keeps the free card). The same
+sheet opens from the preview's "Choose a plan for the website" and the finished screen's "Get my website". Paid → state `paid` → `PaidReceipt`
+(plan, amount, payment id, date, 3 steps) → "Make my website now" builds the website (subscribed) → design / colours / link → finished screen,
+where `SiteProgress` shows Payment ✓ → being made (readyText) → Live (WhatsApp). The wait itself is lib/site-ready.ts (24 h auto, above).
+Rendered locally (sheet en/hi, receipt); no live Razorpay run.

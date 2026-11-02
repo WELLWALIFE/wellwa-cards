@@ -19,7 +19,9 @@ const loadScript = (src: string) => new Promise<boolean>((resolve) => {
 });
 const post = (url: string, body: unknown) => fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
 
-export function SubscribeButton({ tier, className, children, onDone, premium }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void; premium?: boolean }) {
+/** onPaid: called once a NEW payment is confirmed by the server (not for "already on this plan"), with what the receipt screen shows. */
+export type PaidInfo = { paymentId: string; label: string; amount: number; at: string };
+export function SubscribeButton({ tier, className, children, onDone, onPaid, premium }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void; onPaid?: (p: PaidInfo) => void; premium?: boolean }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
   const router = useRouter();
@@ -50,7 +52,10 @@ export function SubscribeButton({ tier, className, children, onDone, premium }: 
           : { amount: o.amount, currency: "INR", order_id: o.orderId, description: `${plan.label} plan — 1 month` }),
         handler: async (resp: any) => {
           const v = await post(autopay ? "/api/billing/autopay/verify" : "/api/billing/verify", resp);
-          if (v.ok) finished(`You are on ${label}.`);
+          if (v.ok) {
+            onPaid?.({ paymentId: String(resp?.razorpay_payment_id ?? ""), label, amount: premium ? PREMIUM_FIRST_PAISE : plan.amount, at: new Date().toISOString() });
+            finished(`You are on ${label}.`);
+          }
           else { setState("error"); setMsg("We could not confirm your payment. If money was taken from your account, please tell support and share the payment id."); }
         },
         modal: { ondismiss: () => setState("idle") },
