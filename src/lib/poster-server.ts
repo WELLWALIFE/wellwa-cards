@@ -111,6 +111,8 @@ export function istDate(offsetDays = 0): string {
 
 type Engine = {
   renderPoster: (date: string, profile: Record<string, unknown>, opts?: { force?: boolean; watermark?: boolean; products?: Record<string, unknown>[]; premium?: boolean; style?: string; custom?: string; testimonial?: Record<string, unknown> | null; stock?: { category: string; kind: string } | null; link?: string; card?: Record<string, unknown> | null; nameOnly?: boolean }) => Promise<string>;
+  /** A carousel day: cover + slides + ending as 1080×1350 JPGs (bridge/carousel.mjs). nameOnly: the files it would write. */
+  renderCarouselDay: (date: string, profile: Record<string, unknown>, opts: { title?: string; kicker?: string; slides: { h: string; t?: string }[]; link?: string; sample?: boolean; nameOnly?: boolean }) => Promise<string[]>;
   /** Sundays that are not a festival: the poster is the owner's own V-Card. */
   isCardDay: (date: string, theme: { kind: string }) => boolean;
   effectiveStyle: (profile: Record<string, unknown>, date: string, override?: string) => string;

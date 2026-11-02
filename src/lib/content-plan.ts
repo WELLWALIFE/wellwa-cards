@@ -151,7 +151,7 @@ function planPrompt(month: string, c: Ctx, only?: { dates: string[]; hint?: stri
   const focusText = c.focus.map((k) => FOCUS.find((f) => f.key === k)).filter(Boolean).map((f) => `${f!.key} (${f!.en})`).join(", ");
   const allowedKinds = ["product", "offer", "tip", c.reviews ? "testimonial" : "trust", "about", "greeting"].filter((k) => (k === "product" ? c.products.length : k === "offer" ? c.offers.length || c.products.some((p) => p.offer) : true));
   const system = `You are the social-media planner of ONE small Indian business. You write what goes ON each day's poster and the caption under it.
-Return JSON only: {"days": [{"date": "YYYY-MM-DD", "kind": "...", "product_id": "uuid or null", "focus": "...", "title": "...", "sub": "...", "custom": "...", "hook": "...", "caption": "...", "hashtags": ["#a", "#b", "#c", "#d", "#e"], "why": "..."}]}
+Return JSON only: {"days": [{"date": "YYYY-MM-DD", "kind": "...", "product_id": "uuid or null", "focus": "...", "title": "...", "sub": "...", "custom": "...", "hook": "...", "caption": "...", "hashtags": ["#a", "#b", "#c", "#d", "#e"], "why": "...", "format": "single or carousel", "slides": [{"h": "...", "t": "..."}]}]}
 Rules:
 - One entry per date given, in order. A FESTIVAL date: kind "festival", title = a warm wish for that festival, no selling.
 - Other dates: kind from [${allowedKinds.join(", ")}]; focus from [${focusText}]. Vary the kinds across the week; never two identical ideas in a row; each product at most once a week.
@@ -159,6 +159,7 @@ Rules:
 - "tip": one useful thing a customer of this trade should know. "trust"/"testimonial": why people rely on this business (use the USPs). "about": the people, the craft, the shop, the day's work. "greeting": a thought for the day that touches the trade lightly.
 - title: the poster's heading, ≤ 34 characters, ${lang}, no emoji, no business name (the name is printed by the design). sub: ≤ 40 characters, one line under the heading. custom: ONLY on an "offer" day, the offer exactly as written above (≤ 50 characters); on every other day "" — never a price, never "only ₹…".
 - hook: the idea in one short line (${lang}). caption: 2–3 short lines in ${lang}, warm and professional, at most 2 emoji, no phone number, no link, no hashtags (code adds those). hashtags: 5, mixing the trade, the city and the topic. why: one sentence on why this post helps, in ${lang}.
+- Carousels: on 1–2 days a week (only kind tip, trust, testimonial or about — never festival, offer or product) set "format": "carousel" and give "slides": 3–4 steps a customer swipes through (h: ≤ 30 characters, the step's heading; t: ≤ 90 characters, one plain sentence explaining it), all in ${lang}; the title is then the cover's heading ("3 things to check before …", "How we …"). Every other day: "format": "single" and "slides": [].
 - Do not write the business name in title, sub, hook or caption (the poster carries it and the post goes out from the business's own page); say "we" / "हम" / "हमारे यहाँ".
 - Never name a weekday (Monday, Sunday, सोमवार, संडे…) unless it is that date's own weekday as listed below; better not to name days at all.
 - Tone: ${b.tone.length ? b.tone.map((t) => TONES.find((x) => x.key === t)?.en ?? t).join(", ") : "warm, trusted"}. Write every business and product name exactly as given (never transliterate), and keep English product / tech words in Roman letters (WhatsApp, AI, Google, website, app) even inside a Hindi line.`;
@@ -201,7 +202,8 @@ function readDays(text: string, c: Ctx, dates: string[]): Map<string, PlanDay> {
     // "only ₹…" on a plain product day read as an offer that does not exist (seen live, 2 Nov 2026) — so product days get none.
     const realOffer = kind === "offer" && (c.offers.length > 0 || c.products.some((p) => p.id === product_id && p.offer));
     if (realOffer && shortLine(d.custom, 50)) overrides.custom = shortLine(d.custom, 50);
-    const brief = cleanBrief({ focus: d.focus, hook: d.hook, caption: d.caption, hashtags: cleanTags(d.hashtags), why: d.why, at: new Date().toISOString() });
+    const carousel = d.format === "carousel" && kind !== "festival" && kind !== "offer";
+    const brief = cleanBrief({ focus: d.focus, hook: d.hook, caption: d.caption, hashtags: cleanTags(d.hashtags), why: d.why, at: new Date().toISOString(), slides: kind === "festival" || kind === "offer" ? [] : d.slides, ...(carousel ? { format: "carousel" } : {}) });
     if (!brief.focus) brief.focus = FOCUS.find((f) => f.kinds.includes(kind))?.key;
     out.set(date, { for_date: date, kind, product_id, overrides, brief });
   }
@@ -237,13 +239,17 @@ export async function draftMonth(userId: string, b: BrandSnapshot, month: string
 }
 
 /** One day again (the owner's "new idea", optionally with a hint in their words). */
-export async function redraftDay(userId: string, b: BrandSnapshot, date: string, hint: string, avoid: string[]): Promise<PlanDay | null> {
+export async function redraftDay(userId: string, b: BrandSnapshot, date: string, hint: string, avoid: string[], carousel?: { title: string; kind: string }): Promise<PlanDay | null> {
   const month = date.slice(0, 7);
   const c = await loadCtx(userId, b, month, DEFAULT_FOCUS, 7);
   const key = process.env.GEMINI_API_KEY; if (!key) return null;
-  const { system, user } = planPrompt(month, c, { dates: [date], hint: hint ? `The owner asks for this day: "${hint}" — follow it.` : "Give a fresh idea, different from the ones listed.", avoid: avoid.slice(0, 20) });
+  // carousel: the owner turned this day into a carousel — keep the day's idea and write its slides (and a cover heading that fits).
+  const note = carousel
+    ? `The owner wants THIS day as a carousel: "format": "carousel", 3–4 slides, kind "${carousel.kind === "offer" || carousel.kind === "festival" || carousel.kind === "auto" ? "tip" : carousel.kind}", on this idea: "${carousel.title || hint}". The title becomes the cover's heading.${hint && carousel.title ? ` Owner's note: "${hint}".` : ""}`
+    : hint ? `The owner asks for this day: "${hint}" — follow it.` : "Give a fresh idea, different from the ones listed.";
+  const { system, user } = planPrompt(month, c, { dates: [date], hint: note, avoid: carousel ? [] : avoid.slice(0, 20) });
   try {
-    const r = await geminiComplete({ apiKey: key, json: true, temperature: 0.9, maxOutputTokens: 800, tag: "day-plan", system, contents: [{ role: "user", parts: [{ text: user }] }] });
+    const r = await geminiComplete({ apiKey: key, json: true, temperature: 0.9, maxOutputTokens: 1600, tag: "day-plan", system, contents: [{ role: "user", parts: [{ text: user }] }] });
     return readDays(r.text, c, [date]).get(date) ?? null;
   } catch { return null; }
 }

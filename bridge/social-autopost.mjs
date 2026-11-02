@@ -5,7 +5,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { renderPoster, themeFor, istDate, effectiveStyle, offerFor, isWaterProduct, isCardDay, OUT_DIR } from "./poster-engine.mjs";
+import { renderPoster, renderCarouselDay, themeFor, istDate, effectiveStyle, offerFor, isWaterProduct, isCardDay, OUT_DIR } from "./poster-engine.mjs";
 import { writeCaption, statusCaption } from "./poster-caption.mjs";
 import { renderStatusVideo, suggestVoiceScript, musicFor, voiceWanted, voiceLangOf } from "./poster-video.mjs";
 import { ensureStockClip, rosterKind } from "./stock-art.mjs";
@@ -30,6 +30,8 @@ const GRAPH = "https://graph.facebook.com/v21.0";
 const GEMINI_KEY = env.GEMINI_API_KEY;
 const H = { apikey: KEY, Authorization: `Bearer ${KEY}`, "Content-Type": "application/json" };
 
+/** A PostgREST answer as a list (an error answer is an object). */
+const list = (v) => (Array.isArray(v) ? v : []);
 async function rest(q, init) { const r = await fetch(`${SUPA}/rest/v1/${q}`, { ...init, headers: { ...H, ...(init?.headers ?? {}) } }); const t = await r.text(); try { return JSON.parse(t); } catch { return null; } }
 async function graph(p, params) { const r = await fetch(`${GRAPH}/${p}`, { method: "POST", body: new URLSearchParams(params) }); const j = await r.json().catch(() => ({})); if (j.error) { const e = new Error(j.error.message); e.code = j.error.code; throw e; } return j; }
 /** Caption for a post: the shared writer in poster-caption.mjs (the app's own posts use the same one) — the selling
@@ -107,6 +109,35 @@ async function publish(a, url, caption) {
   for (let i = 0; i < 6; i++) { try { return (await graph(`${a.account_id}/media_publish`, { creation_id: c.id, access_token: a.access_token })).id; } catch (e) { if (e.code !== 9007 && e.code !== 4) throw e; await new Promise((r) => setTimeout(r, 3000)); } }
   throw new Error("Instagram still processing");
 }
+/** A carousel (2–10 pictures, one post): Instagram — one child container per picture, a CAROUSEL container with them, publish;
+ *  Facebook — each picture uploaded unpublished, then one feed post with all of them attached. */
+async function publishCarousel(a, urls, caption) {
+  if (a.provider === "facebook") {
+    const ids = [];
+    for (const url of urls) ids.push((await graph(`${a.account_id}/photos`, { url, published: "false", access_token: a.access_token })).id);
+    const params = { message: caption, access_token: a.access_token };
+    ids.forEach((id, i) => { params[`attached_media[${i}]`] = JSON.stringify({ media_fbid: id }); });
+    const r = await graph(`${a.account_id}/feed`, params);
+    return r.id;
+  }
+  const kids = [];
+  for (const url of urls) kids.push((await graph(`${a.account_id}/media`, { image_url: url, is_carousel_item: "true", access_token: a.access_token })).id);
+  const c = await graph(`${a.account_id}/media`, { media_type: "CAROUSEL", children: kids.join(","), caption, access_token: a.access_token });
+  for (let i = 0; i < 10; i++) { try { return (await graph(`${a.account_id}/media_publish`, { creation_id: c.id, access_token: a.access_token })).id; } catch (e) { if (e.code !== 9007 && e.code !== 4) throw e; await new Promise((r) => setTimeout(r, 4000)); } }
+  throw new Error("Instagram still processing the carousel");
+}
+/** A carousel day of the month plan (brief.format "carousel", ≥ 2 slides) → the slides' public URLs; [] otherwise. Same inputs
+ *  as the app's /api/poster/carousel, so the slides the owner saw are the files that go out. Paid plans only. */
+async function carouselSlides(prof, date, cal, link, paid) {
+  const b = cal?.brief;
+  if (!paid || !b || b.format !== "carousel" || !Array.isArray(b.slides) || b.slides.length < 2 || cal.kind === "festival" || cal.kind === "offer") return [];
+  const ov = cal.overrides && typeof cal.overrides === "object" ? cal.overrides : {};
+  const base = prof.layout && typeof prof.layout === "object" ? prof.layout : {};
+  try {
+    const files = await renderCarouselDay(date, { ...prof, layout: { ...base, ...(ov.accent ? { accent: ov.accent } : {}) } }, { title: ov.title || b.hook || "", kicker: ov.sub || "", slides: b.slides, link: link?.show ?? "" });
+    return files.map((f) => `${SITE}/api/poster/img/${path.basename(f)}`);
+  } catch (e) { console.log(`  carousel failed for ${prof.name}: ${e.message} → one poster`); return []; }
+}
 
 /** Everything for one profile on one date: calendar/offers/style → poster file, posters row, caption. null = skip day.
  *  redo: make the product poster again (see --redo-products below); every other profile is skipped (null). */
@@ -177,7 +208,8 @@ async function prepareDay(userId, prof, date, paid, { redo = false } = {}) {
   // dayProd = the product ON the poster (none on a visiting-card day), for the status video's voice
   // cal travels with the day: main() marks the calendar entry done after posting. (It read a `cal` that only existed
   // in here — "cal is not defined" — so every WhatsApp Status that went out was also logged and notified as FAILED.)
-  return { file, url, poster, caption, custom, ov, theme, products, testimonial, dayProd: cardDay ? null : dayProd, link, join, cal: cal ?? null };
+  const slides = redo ? [] : await carouselSlides(prof, date, cal, link, paid);
+  return { file, url, poster, caption, custom, ov, theme, products, testimonial, dayProd: cardDay ? null : dayProd, link, join, cal: cal ?? null, slides };
 }
 
 /** Is this user's WhatsApp number actually linked? Same rule as bridge/manager.mjs isLinked: Baileys writes `me` and
@@ -233,25 +265,40 @@ async function statusVideoFor(prof, day, date) {
 async function runPlan(a, prof, paid, date) {
   const link = await cardLinkFor(a.user_id, prof);
   const ctx = { rest, userId: a.user_id, site: SITE, geminiKey: GEMINI_KEY, log: (m) => console.log(m), link: link?.show ?? "" };
-  const plan = planFor(date);
-  const day = plan.story || plan.feed ? await prepareBusinessDay(ctx, prof, date, paid) : { product: await productOfDay(rest, a.user_id, date), custom: "" };
+  const plan = { ...planFor(date) };
+  // The owner's month plan, when there is one for today (a row the plan wrote, or one the owner edited): its post — the poster or
+  // the carousel the owner saw in the calendar, with its own caption — goes to the feed on the plan's days, and a "no post" day
+  // posts nothing to the feed. Before (review, 2 Nov 2026) Facebook / Instagram ignored the month plan and only rotated products.
+  const calRow = list(await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}&select=kind,overrides,brief`))[0];
+  const fromPlan = !!calRow && (calRow.kind === "skip" || !!calRow.brief?.at || !!calRow.brief?.caption || !!calRow.overrides?.title);
+  let mday = null;
+  if (fromPlan) {
+    plan.feed = calRow.kind !== "skip";
+    if (plan.feed) { try { mday = await prepareDay(a.user_id, { ...prof }, date, paid); } catch (e) { console.log(`  month plan day failed for ${prof.name}: ${e.message} → weekly plan`); } }
+    if (!mday) plan.feed = false;
+  }
+  const day = mday ?? (plan.story || plan.feed ? await prepareBusinessDay(ctx, prof, date, paid) : { product: await productOfDay(rest, a.user_id, date), custom: "" });
+  if (mday && plan.story && paid) { try { const mp4 = await statusVideoFor(prof, mday, date); mday.videoUrl = `${SITE}/api/poster/img/${path.basename(mp4)}`; } catch (e) { console.log(`  story video failed: ${e.message} → image`); } }
   const themeLine = day?.file && day?.product ? `${day.product.name}${day.product.benefits?.[0] ? ` — ${day.product.benefits[0]}` : ""}` : day?.theme?.hi ?? "";
-  const caption = day?.file ? await genCaption({ name: prof.name, tagline: prof.tagline, phone: prof.phone, lang: prof.lang, theme: themeLine, offer: day.custom, product: day.product ?? null, link: link?.url ?? "", join: await joinLinkFor(a.user_id), kind: day.product ? "product" : "" }) : "";
+  const caption = mday ? mday.caption : day?.file ? await genCaption({ name: prof.name, tagline: prof.tagline, phone: prof.phone, lang: prof.lang, theme: themeLine, offer: day.custom, product: day.product ?? null, link: link?.url ?? "", join: await joinLinkFor(a.user_id), kind: day.product ? "product" : "" }) : "";
   const log = async (kind, remote, jobId = null) => {
-    await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind, caption, remote_id: String(remote ?? ""), media_job_id: jobId, status: "ok" }) });
+    await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind, caption, remote_id: String(remote ?? ""), media_job_id: jobId, status: "ok", ...(mday?.poster?.id && kind !== "reel" ? { poster_id: mday.poster.id } : {}) }) });
     console.log(`  ok ${a.provider} ${a.name} ${kind} → ${remote}`);
   };
   const step = async (kind, col, fn) => {
-    if (a[col] === date) return;
-    try { const id = await fn(); if (id !== undefined) { await log(kind, id, fn.jobId ?? null); await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ [col]: date }) }); } }
+    if (a[col] === date) return false;
+    try { const id = await fn(); if (id !== undefined) { await log(kind, id, fn.jobId ?? null); await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ [col]: date }) }); return true; } }
     catch (e) {
       console.log(`  FAIL ${a.provider} ${a.name} ${kind}: ${e.message}`);
-      await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind, caption: "", status: "error", error: String(e.message).slice(0, 500) }) });
+      await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind, caption: "", status: "error", error: String(e.message).slice(0, 500), ...(mday?.poster?.id && kind !== "reel" ? { poster_id: mday.poster.id } : {}) }) });
       if (e.code === 190) { await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ status: "reconnect" }) }); throw e; }
     }
   };
   if (day?.file && plan.story) await step("story", "last_story", () => publishStory(a, { imageUrl: day.url, videoUrl: day.videoUrl }));
-  if (day?.file && plan.feed) await step("feed", "last_feed", () => publish(a, day.url, caption));
+  if (day?.file && plan.feed) {
+    const went = await step("feed", "last_feed", () => (mday?.slides?.length >= 2 ? publishCarousel(a, mday.slides, caption) : publish(a, day.url, caption)));
+    if (went && mday?.cal) await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}`, { method: "PATCH", body: JSON.stringify({ status: "done" }) });
+  }
   if (plan.reel) {
     let vid = await unpostedVideo(rest, a.user_id, date); let jobId = vid?.id ?? null;
     if (!vid) { // nothing of the owner's own this week → build a photo reel from today's product
@@ -341,7 +388,7 @@ async function main() {
         }
         if (!j) throw new Error(why || "status failed");
         remote = `status:${j.audience ?? 0}`;
-      } else remote = await publish(a, url, caption);
+      } else remote = day.slides?.length >= 2 ? await publishCarousel(a, day.slides, caption) : await publish(a, url, caption);
       await rest(`social_posts`, { method: "POST", body: JSON.stringify({ user_id: a.user_id, account_id: a.id, provider: a.provider, kind: a.provider === "whatsapp" ? "status" : "feed", poster_id: poster?.id ?? null, caption, remote_id: remote, status: "ok" }) });
       await rest(`social_accounts?id=eq.${a.id}`, { method: "PATCH", body: JSON.stringify({ last_auto_post: date }) });
       if (cal) await rest(`poster_calendar?profile_id=eq.${prof.id}&for_date=eq.${date}`, { method: "PATCH", body: JSON.stringify({ status: "done" }) });

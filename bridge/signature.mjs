@@ -516,3 +516,6 @@ export async function renderSignature(spec0, { format = "45", subtitle = "", sai
   await (/\.jpe?g$/i.test(out) ? img.jpeg({ quality: 90, mozjpeg: true }) : img.png()).toFile(out);
   return out;
 }
+
+// Shared with the carousel slides (bridge/carousel.mjs): the same text measuring, wrapping and escaping.
+export { measure, wrap, esc as escText, fitSize };

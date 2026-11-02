@@ -57,7 +57,19 @@ export type DayBrief = {
   hashtags?: string[];     // up to 6
   why?: string;            // "Why this post" — one sentence
   at?: string;             // when the brief was written (ISO)
+  format?: "carousel";     // post as several slides (a cover + slides + an ending with the number) instead of one poster
+  slides?: Slide[];        // 2–5 steps of a carousel day
 };
+/** One slide of a carousel day: a heading and a short line under it. */
+export type Slide = { h: string; t?: string };
+export const SLIDE_MAX = 5;
+export const cleanSlides = (v: unknown): Slide[] => (Array.isArray(v) ? v : []).map((x) => {
+  const o = (x && typeof x === "object" ? x : {}) as Record<string, unknown>;
+  const h = clampStr(o.h, 40), t = clampStr(o.t, 110);
+  return t ? { h, t } : { h };
+}).filter((x) => x.h).slice(0, SLIDE_MAX);
+/** Is this day a carousel (set as one, with at least two slides)? */
+export const isCarousel = (b: DayBrief | null | undefined) => b?.format === "carousel" && (b.slides?.length ?? 0) >= 2;
 
 export const clampStr = (v: unknown, n: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, n) : "");
 export const cleanTags = (v: unknown): string[] => [...new Set((Array.isArray(v) ? v : []).map((t) => `#${String(t).replace(/^#+/, "").replace(/[^\p{L}\p{M}\p{N}_]/gu, "")}`).filter((t) => t.length > 2 && t.length <= 32))].slice(0, 6);
@@ -70,6 +82,8 @@ export function cleanBrief(v: unknown): DayBrief {
   const tags = cleanTags(o.hashtags); if (tags.length) out.hashtags = tags;
   if (clampStr(o.why, 160)) out.why = clampStr(o.why, 160);
   if (typeof o.at === "string") out.at = o.at;
+  const slides = cleanSlides(o.slides); if (slides.length) out.slides = slides;
+  if (o.format === "carousel" && slides.length >= 2) out.format = "carousel";
   return out;
 }
 

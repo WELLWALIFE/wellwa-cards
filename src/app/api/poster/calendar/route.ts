@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest, ownProfile, restAsUser, restAsService, posterEngine, istDate } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { brandSnapshot, draftMonth, redraftDay } from "@/lib/content-plan";
-import { DAY_KINDS, cleanBrief, clampStr, cleanTags, type DayBrief } from "@/lib/brand-plan";
+import { DAY_KINDS, cleanBrief, cleanSlides, clampStr, cleanTags, type DayBrief } from "@/lib/brand-plan";
 import { isOwnMedia } from "@/lib/card-inputs";
 const UUID = /^[0-9a-f-]{36}$/i;
 type Entry = { id: string; for_date: string; kind: string; product_id: string | null; note: string; status: string; overrides?: Record<string, unknown>; brief?: DayBrief };
@@ -169,6 +169,9 @@ export async function POST(request: Request) {
     const brief: DayBrief = { ...(cur?.brief ?? {}) };
     if (typeof b.caption === "string") { const c = cleanBrief({ caption: b.caption }).caption; if (c) brief.caption = c; else delete brief.caption; }
     if (b.hashtags !== undefined) { const t = cleanTags(typeof b.hashtags === "string" ? b.hashtags.split(/[\s,]+/) : b.hashtags); if (t.length) brief.hashtags = t; else delete brief.hashtags; }
+    // A carousel day: its slides (kept even when the owner switches back to one poster, so switching again loses nothing).
+    if (b.slides !== undefined) { const sl = cleanSlides(b.slides); if (sl.length) brief.slides = sl; else delete brief.slides; }
+    if (b.format === "carousel" && (brief.slides?.length ?? 0) >= 2) brief.format = "carousel"; else if (b.format !== undefined || (brief.slides?.length ?? 0) < 2) delete brief.format;
     const kind = (DAY_KINDS as readonly string[]).includes(String(b.kind)) ? String(b.kind) : cur?.kind ?? "auto";
     const product_id = b.product_id === null ? null : UUID.test(String(b.product_id ?? "")) ? String(b.product_id) : cur?.product_id ?? null;
     const row = { user_id: me.id, profile_id: profile, for_date: date, kind, product_id: kind === "product" || kind === "offer" ? product_id : null, note: cur?.note ?? "", status: cur?.status === "done" ? "done" : "planned", overrides, brief };
@@ -187,8 +190,16 @@ export async function POST(request: Request) {
     if (!brand) return NextResponse.json({ error: "profile not found" }, { status: 404 });
     const month = date.slice(0, 7);
     const others = (await restAsUser<Entry[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=gte.${month}-01&for_date=lte.${daysOf(month).slice(-1)[0]}&for_date=neq.${date}&select=for_date,brief`)).data ?? [];
-    const day = await redraftDay(me.id, brand, date, clampStr(b.hint, 140), others.map((o) => o.brief?.hook ?? "").filter(Boolean));
+    // { carousel: true }: the owner turned this day into a carousel — same idea, the AI writes its slides.
+    const was = b.carousel === true ? list((await restAsUser<Entry[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=eq.${date}&select=kind,overrides,brief`)).data)[0] : undefined;
+    const asCar = b.carousel === true ? { title: clampStr(b.title, 60) || String(was?.overrides?.title ?? "") || was?.brief?.hook || "", kind: was?.kind ?? "tip" } : undefined;
+    const day = await redraftDay(me.id, brand, date, clampStr(b.hint, 140), others.map((o) => o.brief?.hook ?? "").filter(Boolean), asCar);
     if (!day) return NextResponse.json({ error: "No new idea right now. Please try again in a minute." }, { status: 503 });
+    if (asCar) {
+      if ((day.brief.slides?.length ?? 0) < 2) return NextResponse.json({ error: "Could not write the slides right now. Please add them yourself or try again." }, { status: 503 });
+      day.brief.format = "carousel";
+      if (day.kind === "festival" || day.kind === "offer") { day.kind = "tip"; day.product_id = null; delete day.overrides.custom; }
+    }
     const cur = list((await restAsUser<{ overrides: Record<string, unknown> | null; status: string }[]>(me.token, `poster_calendar?profile_id=eq.${profile}&for_date=eq.${date}&select=overrides,status`)).data)[0];
     const curPhoto = cur?.overrides?.photo;
     const row = { user_id: me.id, profile_id: profile, for_date: date, kind: day.kind, product_id: day.product_id, note: "", status: "planned", overrides: { ...day.overrides, ...(typeof curPhoto === "string" && curPhoto ? { photo: curPhoto } : {}) }, brief: day.brief };

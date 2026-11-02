@@ -5,13 +5,13 @@
 // for another idea (with a hint in their words) or skips a day. The 4 AM auto-post and the app's own posting follow it.
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X, List, LayoutGrid, Palette, RefreshCw, Eye, Wand2, Copy, Clapperboard, Download, Share2, ImagePlus, TriangleAlert, Link2 } from "lucide-react";
+import { LoaderCircle, ChevronLeft, ChevronRight, Sparkles, Check, Tag, Trash2, X, List, LayoutGrid, Palette, RefreshCw, Eye, Wand2, Copy, Clapperboard, Download, Share2, ImagePlus, TriangleAlert, Link2, GalleryHorizontal, Plus } from "lucide-react";
 import Link from "next/link";
 import { STYLE_LIST } from "@/lib/poster-categories";
 import { api, isLoggedIn, currentProfileId, uploadImage, downloadPoster, shareFile, type Profile } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { usePlan } from "@/lib/plan";
-import { FOCUS, DEFAULT_FOCUS, KIND_TEXT, TONES, brandReady, type BrandSnapshot, type DayBrief, type DayKind } from "@/lib/brand-plan";
+import { FOCUS, DEFAULT_FOCUS, KIND_TEXT, TONES, SLIDE_MAX, brandReady, isCarousel, type BrandSnapshot, type DayBrief, type DayKind, type Slide } from "@/lib/brand-plan";
 import { useT } from "@/lib/poster-i18n";
 import { goBack } from "@/lib/nav-back";
 
@@ -23,8 +23,12 @@ type Offer = { id: string; text: string; starts: string; ends: string; scope: "a
 /** What went out for a day, per account (or failed, with why) — the API's month activity. */
 type Act = { date: string; provider: string; kind: string; status: "ok" | "error"; error: string; at: string };
 type Data = { days: Day[]; entries: Entry[]; products: Prod[]; offers: Offer[]; posters?: { for_date: string; url: string }[]; planReady?: boolean; activity?: Act[]; channels?: { on: string[]; fix: string[] }; strategy?: string };
-type Sheet = { date: string; kind: string; product_id: string | null; title: string; sub: string; custom: string; caption: string; hashtags: string; style: string; voice: string; music: string; why: string; hint: string; photo: string };
-type Shot = { url?: string; err?: string; busy?: boolean };
+type Sheet = { date: string; kind: string; product_id: string | null; title: string; sub: string; custom: string; caption: string; hashtags: string; style: string; voice: string; music: string; why: string; hint: string; photo: string; carousel: boolean; slides: Slide[] };
+/** A day's preview: the poster (url), or a carousel's slides (url = its cover). */
+type Shot = { url?: string; slides?: string[]; err?: string; busy?: boolean };
+/** Kinds a carousel fits (a festival wish or an offer stays one poster). */
+const CAR_KINDS = new Set(["tip", "trust", "testimonial", "about", "product", "greeting", "auto"]);
+const sheetCarousel = (s: Pick<Sheet, "carousel" | "slides" | "kind">) => s.carousel && CAR_KINDS.has(s.kind) && s.slides.filter((x) => x.h.trim()).length >= 2;
 
 const MUSIC: [string, string, string][] = [["", "Usual", "सामान्य"], ["soft", "Soft", "हल्का"], ["festive", "Festive", "त्योहार वाला"], ["calm", "Calm", "शांत"], ["upbeat", "Lively", "जोशीला"], ["none", "No music", "बिना music"]];
 const EDIT_KINDS: DayKind[] = ["product", "offer", "tip", "trust", "testimonial", "about", "greeting", "auto", "skip"];
@@ -54,7 +58,7 @@ export default function CalendarPage() {
   const [planOpen, setPlanOpen] = useState(false);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [sheetMsg, setSheetMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [sheetBusy, setSheetBusy] = useState<"" | "save" | "redo">("");
+  const [sheetBusy, setSheetBusy] = useState<"" | "save" | "redo" | "slides">("");
   const [moreOpen, setMoreOpen] = useState(false);
   const [shots, setShots] = useState<Record<string, Shot>>({});
   const [offerForm, setOfferForm] = useState<{ open: boolean; text: string; starts: string; ends: string; scope: "all" | "products" | "category"; product_ids: string[]; categories: string[] }>({ open: false, text: "", starts: "", ends: "", scope: "all", product_ids: [], categories: [] });
@@ -113,12 +117,21 @@ export default function CalendarPage() {
       title: e?.overrides?.title ?? "", sub: e?.overrides?.sub ?? "", custom: e?.overrides?.custom ?? "",
       caption: e?.brief?.caption ?? "", hashtags: (e?.brief?.hashtags ?? []).join(" "), why: e?.brief?.why ?? "",
       style: e?.overrides?.style ?? "", voice: e?.overrides?.voice ?? "", music: e?.overrides?.music ?? "", hint: "", photo: e?.overrides?.photo ?? "",
+      carousel: isCarousel(e?.brief), slides: e?.brief?.slides ?? [],
     });
   }
 
-  async function seePoster(date: string) {
+  async function seePoster(date: string, carousel = isCarousel(byDate[date]?.brief)) {
     if (!profile) return;
     setShots((s) => ({ ...s, [date]: { busy: true } }));
+    if (carousel) {
+      // A carousel day: all its slides (cover + steps + the ending with the number) — the cover stands for the day in the lists.
+      try {
+        const r = await api<{ slides?: string[]; error?: string; message?: string }>(`/api/poster/carousel?profile=${profile.id}&date=${date}`, { fresh: true });
+        setShots((s) => ({ ...s, [date]: r.ok && r.data.slides?.length ? { url: r.data.slides[0], slides: r.data.slides } : { err: r.data.message || r.data.error || (hi ? "Slides नहीं बन पाईं।" : "Could not make the slides.") } }));
+      } catch { setShots((s) => ({ ...s, [date]: { err: NET } })); }
+      return;
+    }
     try {
       const r = await api<{ poster?: { url: string; v?: string }; error?: string; message?: string }>(`/api/poster/today?profile=${profile.id}&date=${date}&preview=1&sample=1`, { fresh: true });
       setShots((s) => ({ ...s, [date]: r.ok && r.data.poster ? { url: `${r.data.poster.url}${r.data.poster.url.includes("?") ? "&" : "?"}t=${Date.now()}` } : { err: r.data.message || r.data.error || (hi ? "Poster नहीं बन पाया।" : "Could not make the poster.") } }));
@@ -146,28 +159,31 @@ export default function CalendarPage() {
       const r = await api<{ ok?: boolean; error?: string }>("/api/poster/calendar", { method: "POST", json: {
         action: "post", profile: profile.id, for_date: s.date, kind: s.kind, product_id: s.product_id,
         title: s.title, sub: s.sub, custom: s.custom, caption: s.caption, hashtags: s.hashtags, style: s.style, voice: s.voice, music: s.music, photo: s.photo,
+        format: sheetCarousel(s) ? "carousel" : "single", slides: s.slides.filter((x) => x.h.trim()),
       } });
       if (!r.ok) { setSheetMsg({ ok: false, text: r.data.error || (hi ? "Save नहीं हुआ। फिर से कोशिश करें।" : "Could not save. Please try again.") }); return; }
       setSheet(s); setSheetMsg({ ok: true, text: hi ? "Save हो गया ✓" : "Saved ✓" });
       setShots((x) => { const n = { ...x }; delete n[s.date]; return n; });
       load(profile, month);
       // The poster on the left is made again with the new words at once — the owner sees the change, no second tap.
-      if (s.kind !== "skip") void seePoster(s.date);
+      if (s.kind !== "skip") void seePoster(s.date, !!sheetCarousel(s));
     } catch { setSheetMsg({ ok: false, text: NET }); }
     finally { setSheetBusy(""); }
   }
 
-  async function redo() {
+  /** carousel: "Write the slides with AI" — the same idea, as a carousel. */
+  async function redo(carousel = false) {
     if (!profile || !sheet) return;
-    setSheetBusy("redo"); setSheetMsg(null);
+    setSheetBusy(carousel ? "slides" : "redo"); setSheetMsg(null);
     try {
-      const r = await api<{ entry?: { kind: string; product_id: string | null; overrides: Over; brief: DayBrief }; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "redo", profile: profile.id, for_date: sheet.date, hint: sheet.hint } });
+      const r = await api<{ entry?: { kind: string; product_id: string | null; overrides: Over; brief: DayBrief }; error?: string }>("/api/poster/calendar", { method: "POST", json: { action: "redo", profile: profile.id, for_date: sheet.date, hint: sheet.hint, ...(carousel ? { carousel: true, title: sheet.title } : {}) } });
       if (!r.ok || !r.data.entry) { setSheetMsg({ ok: false, text: r.data.error || (hi ? "नया idea नहीं आया। फिर से कोशिश करें।" : "No new idea came. Please try again.") }); return; }
       const e = r.data.entry;
-      setSheet({ ...sheet, kind: e.kind, product_id: e.product_id, title: e.overrides?.title ?? "", sub: e.overrides?.sub ?? "", custom: e.overrides?.custom ?? "", caption: e.brief?.caption ?? "", hashtags: (e.brief?.hashtags ?? []).join(" "), why: e.brief?.why ?? "", hint: "", photo: e.overrides?.photo ?? sheet.photo });
-      setSheetMsg({ ok: true, text: hi ? "नया idea ✓ — poster देखें या शब्द बदलें।" : "New idea ✓ — see the poster or change the words." });
+      setSheet({ ...sheet, kind: e.kind, product_id: e.product_id, title: e.overrides?.title ?? "", sub: e.overrides?.sub ?? "", custom: e.overrides?.custom ?? "", caption: e.brief?.caption ?? "", hashtags: (e.brief?.hashtags ?? []).join(" "), why: e.brief?.why ?? "", hint: "", photo: e.overrides?.photo ?? sheet.photo, carousel: isCarousel(e.brief), slides: e.brief?.slides ?? [] });
+      setSheetMsg({ ok: true, text: carousel ? (hi ? "Slides लिख दीं ✓ — नीचे देखें या बदलें।" : "Slides written ✓ — see them below or change them.") : (hi ? "नया idea ✓ — poster देखें या शब्द बदलें।" : "New idea ✓ — see the poster or change the words.") });
       setShots((x) => { const n = { ...x }; delete n[sheet.date]; return n; });
       load(profile, month);
+      if (carousel && isCarousel(e.brief)) void seePoster(sheet.date, true);
     } catch { setSheetMsg({ ok: false, text: NET }); }
     finally { setSheetBusy(""); }
   }
@@ -287,7 +303,7 @@ export default function CalendarPage() {
             <span className="flex-1 min-w-0">
               <span className="block text-sm font-semibold truncate">{skip ? (hi ? "कोई post नहीं" : "No post") : headline(d, e)}</span>
               {!skip && <span className="block text-[11px] text-muted truncate">{e?.overrides?.sub || e?.brief?.caption?.split("\n")[0] || (e ? kindText(e.kind).label : d.festival ? (hi ? "त्योहार" : "Festival") : "")}</span>}
-              {!skip && e && <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-faint">{kindText(e.kind).icon} {kindText(e.kind).label}{e.product_id ? ` · ${data.products.find((p) => p.id === e.product_id)?.name ?? ""}` : ""}</span>}
+              {!skip && e && <span className="mt-0.5 inline-flex items-center gap-1 text-[10px] text-faint">{kindText(e.kind).icon} {kindText(e.kind).label}{isCarousel(e.brief) ? ` · ${hi ? "Carousel" : "Carousel"} (${e.brief!.slides!.length + 2})` : ""}{e.product_id ? ` · ${data.products.find((p) => p.id === e.product_id)?.name ?? ""}` : ""}</span>}
             </span>
             {(() => {
               const act = (data.activity ?? []).filter((a) => a.date === d.date);
@@ -364,18 +380,27 @@ export default function CalendarPage() {
         <div className="grid gap-4 md:grid-cols-[220px_1fr]">
           {/* the real poster of the day */}
           <div className="mx-auto w-full max-w-[220px] space-y-2 md:max-w-none">
-            <div className="aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface2 grid place-items-center">
+            {shot?.slides && !shot.busy ? (
+              <div id="day-slides">
+                {/* the carousel as it will be swiped: every slide, side by side */}
+                <div className="flex snap-x snap-mandatory gap-2 overflow-x-auto pb-1">
+                  {shot.slides.map((u, i) => /* eslint-disable-line @next/next/no-img-element */ <img key={u} src={u} alt={`${i + 1}`} className="aspect-[4/5] w-[88%] shrink-0 snap-center rounded-xl border border-border object-cover" />)}
+                </div>
+                <p className="mt-1 text-center text-[11px] text-muted">{hi ? `${shot.slides.length} slides — बगल में सरकाएँ` : `${shot.slides.length} slides — swipe sideways`}</p>
+              </div>
+            ) : <div className="aspect-[4/5] overflow-hidden rounded-xl border border-border bg-surface2 grid place-items-center">
               {shot?.busy ? <div className="text-center text-xs text-muted"><LoaderCircle className="mx-auto mb-1 h-5 w-5 animate-spin" />{hi ? "Poster बन रहा है…" : "Making the poster…"}</div>
                 : shot?.url || posterOf[s.date] ? /* eslint-disable-line @next/next/no-img-element */ <img src={shot?.url || posterOf[s.date]} alt="" className="h-full w-full object-cover" />
                 : <div className="p-3 text-center text-xs text-muted">{shot?.err ? <span className="text-danger font-semibold">{shot.err}</span> : s.kind === "skip" ? (hi ? "इस दिन कोई post नहीं।" : "No post this day.") : (hi ? "इस दिन का असली poster देखें — जैसा जाएगा।" : "See this day's real poster — exactly as it will go.")}</div>}
-            </div>
-            {(shot?.url || posterOf[s.date]) && !shot?.busy && (() => { const u = (shot?.url || posterOf[s.date])!; return (
+            </div>}
+            {shot?.slides && !shot.busy && <button type="button" onClick={() => void (async () => { for (const [i, u] of shot.slides!.entries()) { await downloadPoster(u, posterName(s.date).replace(/\.jpg$/, `-${i + 1}.jpg`)); await new Promise((r) => setTimeout(r, 400)); } })()} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {hi ? "सारी slides download करें" : "Download all slides"}</button>}
+            {!shot?.slides && (shot?.url || posterOf[s.date]) && !shot?.busy && (() => { const u = (shot?.url || posterOf[s.date])!; return (
               <div className="grid grid-cols-2 gap-2">
                 <button type="button" onClick={() => void downloadPoster(u, posterName(s.date))} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-xs font-semibold"><Download className="h-3.5 w-3.5" /> {hi ? "Download" : "Download"}</button>
                 <button type="button" onClick={() => void shareFile(u, fullCaption, posterName(s.date), "image/jpeg")} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2 text-xs font-semibold text-white"><Share2 className="h-3.5 w-3.5" /> {hi ? "Share" : "Share"}</button>
               </div>
             ); })()}
-            {s.kind !== "skip" && canPost && <button type="button" onClick={() => seePoster(s.date)} disabled={shot?.busy} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-60"><Eye className="h-4 w-4" /> {shot?.url ? (hi ? "फिर से बनाएँ" : "Make again") : (hi ? "Poster देखें" : "See the poster")}</button>}
+            {s.kind !== "skip" && canPost && <button type="button" onClick={() => seePoster(s.date)} disabled={shot?.busy} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-60"><Eye className="h-4 w-4" /> {shot?.url ? (hi ? "फिर से बनाएँ" : "Make again") : isCarousel(se?.brief) ? (hi ? "Slides देखें" : "See the slides") : (hi ? "Poster देखें" : "See the poster")}</button>}
             {/* The same idea as a free Reel (voice, music, the product's photos) — the reel screen opens with this day filled in. */}
             {s.kind !== "skip" && s.kind !== "auto" && <Link href={`/poster/reel?date=${s.date}`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-sm font-semibold"><Clapperboard className="h-4 w-4 text-brand" /> {hi ? "इसकी Reel बनाएँ" : "Make a Reel of this"}</Link>}
             {s.why && <p className="rounded-xl bg-surface2 px-3 py-2 text-[11px] text-muted"><b className="text-ink">{hi ? "यह post क्यों: " : "Why this post: "}</b>{s.why}</p>}
@@ -401,15 +426,40 @@ export default function CalendarPage() {
               ? <div className="flex flex-wrap gap-1.5">{data.products.map((p) => <button key={p.id} type="button" onClick={() => setSheet({ ...s, product_id: p.id })} className={`rounded-full border px-2.5 py-1 text-xs ${s.product_id === p.id ? "border-brand bg-brand-soft font-semibold" : "border-border"}`}>📦 {p.name}</button>)}</div>
               : <p className="text-xs text-muted">{hi ? "पहले Products में अपने products जोड़ें।" : "First add your products under Products."}</p>)}
             {s.kind !== "skip" && <>
-              {/* The owner's own photo for this day (a content app offers "change photos and recreate" for credits): free here. */}
-              <div className="flex items-center gap-2.5 rounded-xl border border-border p-2" id="day-photo">
+              {/* Carousel (a content app plans ~30% of posts this way): a cover, 2–5 slides a customer swipes, an ending with the number. */}
+              {CAR_KINDS.has(s.kind) && <div className="rounded-xl border border-border p-2.5 space-y-2" id="day-carousel">
+                <label className="flex items-center gap-2.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-brand-soft text-brand"><GalleryHorizontal className="h-5 w-5" /></span>
+                  <span className="min-w-0 flex-1"><b className="block text-sm">{hi ? "Carousel post (कई slides)" : "Carousel post (several slides)"}</b><span className="block text-[11px] text-muted">{hi ? "लोग swipe करते हैं, save और share ज़्यादा होते हैं" : "People swipe through — saved and shared the most"}</span></span>
+                  <input type="checkbox" checked={s.carousel} onChange={(ev) => setSheet({ ...s, carousel: ev.target.checked })} className="h-5 w-5 shrink-0 accent-[var(--color-brand)]" />
+                </label>
+                {s.carousel && <>
+                  {s.slides.map((sl, i) => (
+                    <div key={i} className="flex gap-2 rounded-lg bg-surface2 p-2">
+                      <span className="mt-1 grid h-6 w-6 shrink-0 place-items-center rounded-full bg-brand text-[11px] font-bold text-white">{i + 1}</span>
+                      <span className="min-w-0 flex-1 space-y-1">
+                        <input value={sl.h} onChange={(ev) => setSheet({ ...s, slides: s.slides.map((x, k) => (k === i ? { ...x, h: ev.target.value } : x)) })} maxLength={40} placeholder={hi ? "Slide की heading" : "Slide heading"} className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-sm font-semibold" />
+                        <textarea value={sl.t ?? ""} onChange={(ev) => setSheet({ ...s, slides: s.slides.map((x, k) => (k === i ? { ...x, t: ev.target.value } : x)) })} maxLength={110} rows={2} placeholder={hi ? "एक-दो लाइन में समझाएँ" : "Explain it in a line or two"} className="w-full rounded-lg border border-border bg-surface px-2.5 py-1.5 text-xs" />
+                      </span>
+                      <button type="button" onClick={() => setSheet({ ...s, slides: s.slides.filter((_, k) => k !== i) })} aria-label={hi ? "Slide हटाएँ" : "Remove the slide"} className="shrink-0 self-start p-1 text-muted"><Trash2 className="h-4 w-4" /></button>
+                    </div>
+                  ))}
+                  <div className="flex flex-wrap gap-2">
+                    {s.slides.length < SLIDE_MAX && <button type="button" onClick={() => setSheet({ ...s, slides: [...s.slides, { h: "", t: "" }] })} className="inline-flex items-center gap-1 rounded-lg border border-border px-2.5 py-1.5 text-xs font-semibold"><Plus className="h-3.5 w-3.5" /> {hi ? "Slide जोड़ें" : "Add slide"}</button>}
+                    <button type="button" onClick={() => void redo(true)} disabled={!!sheetBusy || !canPost} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50">{sheetBusy === "slides" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />} {s.slides.length ? (hi ? "AI से फिर लिखें" : "Rewrite with AI") : (hi ? "AI से slides लिखें" : "Write slides with AI")}</button>
+                  </div>
+                  {s.slides.filter((x) => x.h.trim()).length < 2 && <p className="text-[11px] text-muted">{hi ? "कम से कम 2 slides चाहिए — तब तक एक poster ही जाएगा।" : "At least 2 slides are needed — until then one poster goes."}</p>}
+                  <p className="text-[11px] text-faint">{hi ? "पहली slide पर ऊपर की heading, आख़िरी पर आपका नाम, नंबर और link — अपने-आप।" : "The first slide carries the heading below, the last your name, number and link — by themselves."}</p>
+                </>}
+              </div>}
+              {!sheetCarousel(s) && <div className="flex items-center gap-2.5 rounded-xl border border-border p-2" id="day-photo">
                 {s.photo ? /* eslint-disable-line @next/next/no-img-element */ <img src={s.photo} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" /> : <span className="grid h-12 w-12 shrink-0 place-items-center rounded-lg bg-surface2 text-muted"><ImagePlus className="h-5 w-5" /></span>}
                 <span className="min-w-0 flex-1"><b className="block text-sm">{hi ? "इस दिन की photo" : "Photo for this day"}</b><span className="block text-[11px] text-muted">{s.photo ? (hi ? "आपकी photo poster पर लगेगी — Save दबाएँ" : "Your photo goes on the poster — tap Save") : (hi ? "चाहें तो अपनी दुकान या product की photo लगाएँ" : "Use your own shop or product photo, if you like")}</span></span>
                 <input ref={dayPhotoIn} type="file" accept="image/*" className="hidden" onChange={(ev) => { const f = ev.target.files?.[0] ?? null; ev.target.value = ""; void dayPhoto(f); }} />
                 <button type="button" onClick={() => dayPhotoIn.current?.click()} disabled={photoBusy || !canPost} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-50">{photoBusy ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : null}{s.photo ? (hi ? "बदलें" : "Change") : (hi ? "लगाएँ" : "Add")}</button>
                 {s.photo && <button type="button" onClick={() => setSheet({ ...s, photo: "" })} aria-label={hi ? "Photo हटाएँ" : "Remove the photo"} className="shrink-0 p-1 text-muted"><X className="h-4 w-4" /></button>}
-              </div>
-              <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "Poster की heading" : "Poster heading"}</span><input value={s.title} onChange={(ev) => setSheet({ ...s, title: ev.target.value })} maxLength={40} placeholder={hi ? "खाली = poster अपने-आप लिखेगा" : "Empty = the poster writes its own"} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
+              </div>}
+              <label className="block"><span className="text-xs font-semibold text-muted">{sheetCarousel(s) ? (hi ? "पहली slide की heading" : "First slide's heading") : (hi ? "Poster की heading" : "Poster heading")}</span><input value={s.title} onChange={(ev) => setSheet({ ...s, title: ev.target.value })} maxLength={40} placeholder={hi ? "खाली = poster अपने-आप लिखेगा" : "Empty = the poster writes its own"} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
               <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "उसके नीचे की लाइन" : "Line under it"}</span><input value={s.sub} onChange={(ev) => setSheet({ ...s, sub: ev.target.value })} maxLength={48} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
               {(s.kind === "offer" || s.kind === "product") && <label className="block"><span className="text-xs font-semibold text-muted">{hi ? "ऑफ़र / दाम की लाइन (आपके शब्द)" : "Offer / price line (your words)"}</span><input value={s.custom} onChange={(ev) => setSheet({ ...s, custom: ev.target.value })} maxLength={60} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>}
               <label className="block"><span className="flex items-center text-xs font-semibold text-muted">{hi ? "Caption" : "Caption"}<span className="flex-1" />{fullCaption && <button type="button" onClick={() => { try { navigator.clipboard.writeText(fullCaption); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* */ } }} className="inline-flex items-center gap-1 font-normal text-brand-ink"><Copy className="h-3 w-3" />{copied ? (hi ? "Copy हुआ" : "Copied") : "Copy"}</button>}</span><textarea value={s.caption} onChange={(ev) => setSheet({ ...s, caption: ev.target.value })} rows={4} maxLength={600} placeholder={hi ? "खाली = post के समय AI लिखेगा" : "Empty = the AI writes it when posting"} className="mt-1 w-full rounded-xl border border-border bg-surface px-3 py-2" /></label>
@@ -418,7 +468,7 @@ export default function CalendarPage() {
               <div className="rounded-xl border border-dashed border-border p-2.5 space-y-2">
                 <p className="text-xs font-semibold">{hi ? "दूसरा idea चाहिए?" : "Want another idea?"}</p>
                 <div className="flex gap-2"><input value={s.hint} onChange={(ev) => setSheet({ ...s, hint: ev.target.value })} maxLength={140} placeholder={hi ? "Optional: जैसे \"नए stock की बात करो\"" : "Optional: e.g. \"talk about the new stock\""} className="flex-1 rounded-lg border border-border bg-surface px-3 py-1.5 text-xs" />
-                  <button type="button" onClick={redo} disabled={!!sheetBusy || !canPost} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand px-3 text-xs font-semibold text-brand-ink disabled:opacity-50">{sheetBusy === "redo" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} {hi ? "नया idea" : "New idea"}</button></div>
+                  <button type="button" onClick={() => void redo()} disabled={!!sheetBusy || !canPost} className="inline-flex shrink-0 items-center gap-1 rounded-lg border border-brand px-3 text-xs font-semibold text-brand-ink disabled:opacity-50">{sheetBusy === "redo" ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />} {hi ? "नया idea" : "New idea"}</button></div>
               </div>
               <button type="button" onClick={() => setMoreOpen(!moreOpen)} className="text-xs font-semibold text-brand-ink">{moreOpen ? "−" : "+"} {hi ? "Style, आवाज़, music" : "Style, voice, music"}</button>
               {moreOpen && <div className="space-y-2">

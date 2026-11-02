@@ -23,6 +23,7 @@ import { isShubhoraProduct, shubhoraProductArt } from "./shubhora-product-art.mj
 import { uspsFor as sigUspsFor, SCRIPT_PAIR as SIG_SCRIPT, CTA as SIG_CTA, TAG as SIG_TAG, LINES as SIG_LINES, BANNER_FALLBACK as SIG_BANNER, groupOf as sigGroupOf, defaultLook as sigDefaultLook, accentOf as sigAccentOf, labelOf as sigLabelOf, paletteOf as sigPaletteOf } from "./signature-presets.mjs";
 export { rosterKind };
 import sharp from "sharp";
+import { renderCarousel } from "./carousel.mjs";
 import { guardedFetch, originOf } from "./url-guard.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -1427,4 +1428,26 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   ensureBaseArt(date, { force: args.includes("--force") })
     .then(({ theme }) => console.log(`[poster] ${date}: ${theme.kind}/${theme.slug}`))
     .catch((e) => { console.error("[poster] failed:", e?.message ?? e); process.exit(1); });
+}
+
+/** A carousel day of the month plan (brief.format "carousel"): a cover with the day's heading, one slide per step, an ending with
+ *  the name, number and link — 1080×1350 JPGs `${OUT_DIR}/${id}-${date}-car-${hash}-${k}.jpg`. The hash covers the words, the
+ *  identity and the colour, so changed slides make new files. sample: a free preview, the band drawn into every slide. */
+export async function renderCarouselDay(dateStr, profile, { title = "", kicker = "", slides = [], link = "", sample = false, nameOnly = false } = {}) {
+  fs.mkdirSync(OUT_DIR, { recursive: true });
+  const layout = profile.layout && typeof profile.layout === "object" ? profile.layout : {};
+  const accent = /^#[0-9a-f]{6}$/i.test(layout.accent || "") ? layout.accent : sigAccentOf(profile.category);
+  const ident = identityFor(profile);
+  const name = String(ident.big || profile.name || "").trim();
+  const line = String(ident.line || (ident.big !== profile.tagline ? profile.tagline : "") || "").trim();
+  const phone = profile.kids_mode ? "" : prettyPhone(profile.phone);
+  const list = (Array.isArray(slides) ? slides : []).map((x) => ({ h: String(x?.h || "").trim().slice(0, 40), t: String(x?.t || "").trim().slice(0, 110) })).filter((x) => x.h).slice(0, 5);
+  if (list.length < 2) throw new Error("a carousel needs at least 2 slides");
+  const head = String(title || "").trim().slice(0, 60) || list[0].h;
+  const words = JSON.stringify([head, kicker, list, name, line, phone, link, accent, profile.lang || "hi", sample ? 1 : 0]);
+  const hash = crypto.createHash("sha1").update(words).digest("hex").slice(0, 10);
+  const base = path.join(OUT_DIR, `${profile.id}-${dateStr}-car-${hash}${sample ? "-smp" : ""}`);
+  const files = Array.from({ length: list.length + 2 }, (_, k) => `${base}-${k + 1}.jpg`);
+  if (nameOnly) return files;
+  return renderCarousel({ title: head, kicker, slides: list, name, line, phone, link, accent, lang: profile.lang || "hi", sample }, base);
 }

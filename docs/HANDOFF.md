@@ -434,4 +434,14 @@ The owner's own app does not show "paused" yet.
   Fashion Studio (model photoshoot + marketplace photo pack for Myntra / Flipkart / Amazon / Ajio / Meesho). Built from it: the month
   plan writes a **two-line strategy** (draftMonth `strategy`, kept in `layout.planNotes[YYYY-MM]`, last 3; cleanLayout keeps it; shown on
   the calendar), and **Photoshoot downloads in marketplace sizes** (1:1 2000×2000, 3:4 1500×2000, on white, drawn in the browser).
-  Not built yet: carousel posts (multi-slide, needs IG/FB carousel publishing) and reusable video outros.
+  Not built yet: reusable video outros.
+- **Carousel posts** (owner: "1 karo", 2 Nov 2026): a day of the month plan can be a carousel — `brief.format = "carousel"` +
+  `brief.slides [{h, t}]` (2–5; `cleanSlides`, `isCarousel` in brand-plan.ts; no migration). The AI plan makes 1–2 a week (tip / trust /
+  review / story days); the day sheet has "Carousel post" (toggle, slide editor, "Write slides with AI" = `redo` with `carousel: true`).
+  Drawn by `bridge/carousel.mjs` (SVG + sharp, poster fonts, the brand colour, ₹0): cover with the heading, one slide per step, an
+  ending with name / number / link; 1080×1350; `renderCarouselDay` in poster-engine names them `<profile>-<date>-car-<hash>-<k>.jpg`.
+  `/api/poster/carousel?profile&date` → slide URLs (free = first three plan days, "SAMPLE" band drawn in, 8 drawings a day).
+  4 AM post: Facebook / Instagram publish the carousel (`publishCarousel`: IG child containers → CAROUSEL → media_publish; FB
+  unpublished photos → /feed attached_media); WhatsApp keeps the single poster. **Also fixed**: Facebook / Instagram with the weekly
+  plan (`runPlan`) now follow the month plan when there is one — its poster / carousel and caption on the plan's days, nothing on a
+  "no post" day, the day marked done, posts filed under the poster (Activity). Not tested live: real IG/FB carousel publishing.
