@@ -445,3 +445,5 @@ The owner's own app does not show "paused" yet.
   unpublished photos → /feed attached_media); WhatsApp keeps the single poster. **Also fixed**: Facebook / Instagram with the weekly
   plan (`runPlan`) now follow the month plan when there is one — its poster / carousel and caption on the plan's days, nothing on a
   "no post" day, the day marked done, posts filed under the poster (Activity). Not tested live: real IG/FB carousel publishing.
+- Set-up trade screen "Your posters' look" (`BrandQuick`) is one line now — colour dot, tone, language, "Change" opens the choices
+  (owner, 3 Nov 2026: "chhota kar do"). Still chosen by itself from the logo / trade, nothing asked.

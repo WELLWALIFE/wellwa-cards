@@ -4,7 +4,7 @@
 // trade), the tone and the language are already chosen from the trade; a tap changes one and is saved at once (/api/poster/brand).
 // The full brand screen (/poster/brand/setup) has the rest.
 import { useEffect, useRef, useState } from "react";
-import { Check, Palette } from "lucide-react";
+import { Check, ChevronDown, Palette } from "lucide-react";
 import { api, LANGS } from "@/lib/poster-client";
 import { PALETTE_PRESETS, TONES, HEX6, type BrandSnapshot } from "@/lib/brand-plan";
 
@@ -14,6 +14,7 @@ type Suggest = { accent: string; tone: string[] };
 export function BrandQuick({ profileId, hi, onChange }: { profileId: string; hi: boolean; onChange?: (b: { accent: string; palette: string[]; tone: string[]; lang: string }) => void }) {
   const [b, setB] = useState<BrandSnapshot | null>(null);
   const [saved, setSaved] = useState(false);
+  const [open, setOpen] = useState(false);   // one line by default (owner, 3 Nov 2026: "chhota kar do"); the choices open on "Change"
   const started = useRef("");
 
   useEffect(() => {
@@ -47,19 +48,28 @@ export function BrandQuick({ profileId, hi, onChange }: { profileId: string; hi:
   // A steady row (a tapped colour must not jump to the front under the finger): the presets, and the logo's own colour first only when it is not one of them.
   const presetHex = PALETTE_PRESETS.map((c) => c.hex);
   const colours = [...(HEX6.test(b.accent) && !presetHex.includes(b.accent) ? [b.accent] : []), ...presetHex];
+  const toneText = b.tone.map((k) => { const t = TONES.find((x) => x.key === k); return t ? (hi ? t.hi : t.en) : k; }).slice(0, 2).join(", ");
+  const langText = LANGS.find((l) => l.key === b.lang)?.label ?? b.lang;
   return (
     <div className="rounded-2xl border border-border bg-surface p-3.5 space-y-3">
-      <p className="flex items-center gap-2 text-sm font-semibold"><Palette className="h-4 w-4 text-brand" /> {hi ? "आपके posters का look" : "Your posters' look"} <span className="text-xs font-normal text-muted">{hi ? "· पहले से चुना है, बदलना हो तो tap करें" : "· already chosen — tap to change"}</span>{saved && <Check className="ml-auto h-4 w-4 text-good" />}</p>
-      <div className="flex flex-wrap gap-1.5">
-        {colours.map((h, i) => <button key={h} type="button" onClick={() => save({ accent: h, palette: [h, ...b.palette.filter((x) => x !== h)].slice(0, 3) })} aria-label={i === 0 && h === b.accent ? (hi ? "मुख्य रंग" : "Main colour") : h} className={`h-8 w-8 rounded-full border-2 ${b.accent === h ? "border-ink" : "border-transparent"}`} style={{ background: h }}>{b.accent === h && <Check className="mx-auto h-4 w-4 text-white" />}</button>)}
-      </div>
-      <div className="flex flex-wrap gap-1.5">
-        {TONES.slice(0, 8).map((t) => { const on = b.tone.includes(t.key); return <button key={t.key} type="button" onClick={() => save({ tone: on ? b.tone.filter((x) => x !== t.key) : [...b.tone, t.key].slice(-3) })} className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border"}`}>{hi ? t.hi : t.en}</button>; })}
-      </div>
-      <div className="flex flex-wrap items-center gap-1.5">
-        <span className="text-xs text-muted">{hi ? "Posts की भाषा:" : "Posts in:"}</span>
-        {LANGS.slice(0, 6).map((l) => <button key={l.key} type="button" onClick={() => save({ lang: l.key })} className={`rounded-full border px-2.5 py-1 text-xs ${b.lang === l.key ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border"}`}>{l.label}</button>)}
-      </div>
+      <button type="button" onClick={() => setOpen(!open)} aria-expanded={open} className="flex w-full items-center gap-2 text-left text-sm">
+        <Palette className="h-4 w-4 shrink-0 text-brand" />
+        <span className="min-w-0 flex-1 truncate"><b>{hi ? "Posters का look:" : "Posters' look:"}</b> <span className="mx-0.5 inline-block h-3 w-3 translate-y-px rounded-full align-middle" style={{ background: HEX6.test(b.accent) ? b.accent : "#6d28d9" }} /> {[toneText, langText].filter(Boolean).join(" · ")}</span>
+        {saved && <Check className="h-4 w-4 shrink-0 text-good" />}
+        <span className="inline-flex shrink-0 items-center gap-0.5 text-xs font-semibold text-brand-ink">{hi ? "बदलें" : "Change"} <ChevronDown className={`h-3.5 w-3.5 transition-transform ${open ? "rotate-180" : ""}`} /></span>
+      </button>
+      {open && <>
+        <div className="flex flex-wrap gap-1.5">
+          {colours.map((h, i) => <button key={h} type="button" onClick={() => save({ accent: h, palette: [h, ...b.palette.filter((x) => x !== h)].slice(0, 3) })} aria-label={i === 0 && h === b.accent ? (hi ? "मुख्य रंग" : "Main colour") : h} className={`h-8 w-8 rounded-full border-2 ${b.accent === h ? "border-ink" : "border-transparent"}`} style={{ background: h }}>{b.accent === h && <Check className="mx-auto h-4 w-4 text-white" />}</button>)}
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {TONES.slice(0, 8).map((t) => { const on = b.tone.includes(t.key); return <button key={t.key} type="button" onClick={() => save({ tone: on ? b.tone.filter((x) => x !== t.key) : [...b.tone, t.key].slice(-3) })} className={`rounded-full border px-2.5 py-1 text-xs ${on ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border"}`}>{hi ? t.hi : t.en}</button>; })}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="text-xs text-muted">{hi ? "Posts की भाषा:" : "Posts in:"}</span>
+          {LANGS.slice(0, 6).map((l) => <button key={l.key} type="button" onClick={() => save({ lang: l.key })} className={`rounded-full border px-2.5 py-1 text-xs ${b.lang === l.key ? "border-brand bg-brand-soft font-semibold text-brand-ink" : "border-border"}`}>{l.label}</button>)}
+        </div>
+      </>}
     </div>
   );
 }
