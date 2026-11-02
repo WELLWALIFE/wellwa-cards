@@ -50,6 +50,7 @@ import { ProfileSteps } from "@/components/poster/profile-steps";
 import { LookPicker } from "@/components/poster/look-picker";
 import { LookTweaks } from "@/components/poster/look-tweaks";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
+import { FirstPosters } from "@/components/poster/first-posters";
 import { readyIn, readyText, sitePending } from "@/lib/site-ready";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-[15px]";
@@ -1374,6 +1375,8 @@ export default function BuildCard() {
             <>
               {/* One box, one button: the guided finish, one step at a time (owner, 24 Oct 2026; lib/site-finish.ts). */}
               <FinishBar hi={hi} />
+              {/* The first posters, shown — not blurred behind a payment (owner, 2 Nov 2026: better than Scalio's set-up ending). */}
+              {!wait && <FirstPosters hi={hi} />}
 
               <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
                 {boxHead(<Sparkles className="h-4 w-4" />, T("Grow further", "आगे बढ़ें"), cardOnly ? T("Get a full website", "पूरी website पाएँ") : T("A premium website for more customers", "ज़्यादा ग्राहकों के लिए Premium website"), "bg-gradient-to-r from-[#8b3dff] to-[#c04ee8]")}

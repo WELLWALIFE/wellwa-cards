@@ -25,7 +25,9 @@ export async function GET(request: Request) {
   if (sample) {
     if (rateLimited(`poster-sample:${me.id}`, 12, 24 * 3600_000)) return NextResponse.json({ error: "plan", quota, message: "Free previews for today are done. The Standard plan shows every day of the plan." }, { status: 402 });
     const first = (await restAsService<{ for_date: string }[]>(`poster_calendar?profile_id=eq.${profile.id}&for_date=gte.${istDate()}&kind=neq.skip&order=for_date&limit=3&select=for_date`)).data ?? [];
-    if (!first.some((r) => r.for_date === date)) return NextResponse.json({ error: "plan", quota, message: "The free plan shows the first three posts of your plan. The Standard plan shows every day." }, { status: 402 });
+    // No plan yet (the first posters right after the set-up): today and the next two days.
+    const allowed = first.length ? first.map((r) => r.for_date) : [istDate(), istDate(1), istDate(2)];
+    if (!allowed.includes(date)) return NextResponse.json({ error: "plan", quota, message: "The free plan shows the first three posts of your plan. The Standard plan shows every day." }, { status: 402 });
   }
   if (quota.plan === "free" && !sample) return NextResponse.json({ error: "plan", quota, message: "Daily posters are part of the Standard plan. Your free plan includes the digital V-Card — upgrade to get a fresh poster and status video every day." }, { status: 402 });
   // The owner's V-Card: its link goes on the poster and with every share; on Sundays the poster IS the card.
