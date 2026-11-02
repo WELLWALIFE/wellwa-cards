@@ -1025,11 +1025,15 @@ function Onboard() {
   }
 
   function pickSite(k: SiteKind) {
-    setSiteErr(""); setPendingSocial(null);
+    setSiteErr("");
     const next: SiteState = { kind: k, url: k === "none" ? "" : site.url, assertedAt: k === "dealer" ? site.assertedAt : "" };
     setSite(next);
+    // A Maps / Instagram link already in the box keeps its "use it" offer when the answer is changed (seen live, 2 Nov 2026: switching
+    // back to "Yes" dropped the offer and the Maps link was then read as a website, which fails).
+    const d = next.url.trim() ? socialDetour(next.url) : null;
+    setPendingSocial(d ? { ...d, url: cleanSiteUrl(next.url) } : null);
     if (k === "none") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
-    else if (next.url) void startPeek(next);
+    else if (next.url && !d) void startPeek(next);
   }
 
   function onUrlChange(v: string) {
@@ -1119,6 +1123,7 @@ function Onboard() {
       await leaveWebsite(); return;
     }
     if (!site.url.trim()) { setSiteErr(T("Write the website link, e.g. sharmasweets.com. No website? Tap “I have no website — use an example”, or carry on without one.", "website का link लिखें, जैसे sharmasweets.com। Website नहीं है? “मेरी website नहीं है — कोई example लें” दबाएँ, या बिना website के आगे बढ़ें।")); return; }
+    { const d = !pendingSocial ? socialDetour(site.url) : null; if (d) { setPendingSocial({ ...d, url: cleanSiteUrl(site.url) }); return; } }
     if (pendingSocial) { setSiteErr(T(`That is a ${pendingSocial.label} page, not a website — keep it as a ${pendingSocial.label} link, or change the link.`, `ये ${pendingSocial.label} page है, website नहीं — social link की तरह रखें, या link बदलें`)); return; }
     if (!url || !looksLikeSite(url)) { setSiteErr(T("That does not look like a website link. For example: sharmasweets.com", "ये website का link नहीं लगता। जैसे sharmasweets.com")); return; }
     if (isShubhoraHost(url)) { setSiteErr(T("That is Shubhora's own site. Put in your business's website.", "ये Shubhora की site है। अपने business की website डालें।")); return; }
