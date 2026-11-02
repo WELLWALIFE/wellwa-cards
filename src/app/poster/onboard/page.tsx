@@ -1462,7 +1462,8 @@ function Onboard() {
         tagline: tradeWord() || profile?.tagline || "",
         phone, city, lang: profile?.lang ?? "hi",
         photo_url: you.photo || null, logo_url: biz.logo || null,
-        category: biz.category || "", style: profileStyle(profile), mode: profile?.mode ?? "greeting", layout: profile?.layout ?? {},
+        category: biz.category || "", style: profileStyle(profile), mode: profile?.mode ?? "greeting",
+        layout: { ...(profile?.layout ?? {}), ...(isBiz && bizName ? { showName: true } : {}) },
       } });
       if (!r.ok || !r.data.profile) { setErr(hi ? "Save नहीं हुआ। दोबारा try करें।" : (r.data.error ?? "Could not save. Please try again.")); return; }
       setProfile(r.data.profile); setCurrentProfileId(r.data.profile.id);
@@ -1559,7 +1560,9 @@ function Onboard() {
       ...(p ? { id: p.id } : {}), is_default: true,
       persona: biz.role === "business" ? (cat?.persona ?? "business") : biz.role === "personal" ? "personal" : biz.role === "agent" ? "business" : "professional",
       name: biz.role === "business" && bizName ? bizName : you.name.trim() || "My business", tagline: tradeWord() || p?.tagline || "", phone: digits.length === 10 ? digits : "", city: (biz.city ?? "").trim(), lang: p?.lang ?? "hi",
-      photo_url: you.photo || null, logo_url: biz.logo || null, category: biz.category || "", style: profileStyle(p), mode: p?.mode ?? "greeting", layout: p?.layout ?? {},
+      photo_url: you.photo || null, logo_url: biz.logo || null, category: biz.category || "", style: profileStyle(p), mode: p?.mode ?? "greeting",
+      // The tagline here is the trade ("Restaurant / dhaba"): the posters must lead with the business's NAME, not the trade (seen live, 2 Nov 2026).
+      layout: { ...(p?.layout ?? {}), ...(biz.role === "business" && bizName ? { showName: true } : {}) },
     };
   }
   /** The create in flight: a second Next while the first still waits shares it, so there is never a second profile. */
