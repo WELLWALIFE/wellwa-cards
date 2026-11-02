@@ -16,7 +16,13 @@ KEY="$HOME/.ssh/neuraledge_vps"
 APP="/opt/neuraledge/app"
 # Keep-alives so a stalled connection fails in ~1 min instead of hanging the
 # deploy for half an hour (the VPS drops SSH under load).
-SSH="ssh -i $KEY -o IdentitiesOnly=yes -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10"
+# One SSH connection for the whole deploy (owner, 2 Nov 2026: "restarting… ssh: connect to host … port 22: Operation timed out"
+# twice in a row). The deploy opens ~20 connections one after another and the VPS starts refusing new ones (sshd limits /
+# a firewall rate rule) — the restart then half-happened and pages showed a ChunkLoadError. Every ssh / rsync below now rides
+# the first connection (ControlMaster), which stays open until the end of the script.
+CTL="/tmp/shubhora-deploy-$$"
+SSH="ssh -i $KEY -o IdentitiesOnly=yes -o ConnectTimeout=60 -o ServerAliveInterval=30 -o ServerAliveCountMax=10 -o ControlMaster=auto -o ControlPath=$CTL -o ControlPersist=600"
+trap 'ssh -o ControlPath="$CTL" -O exit "$SERVER" >/dev/null 2>&1 || true' EXIT
 
 echo "→ building production release locally…"
 # NEXT_PUBLIC_DEPLOY_ID: this release's stamp — a browser tab left open from an older release sees it differ (api/health) and offers the refresh.
