@@ -366,3 +366,7 @@ Rendered locally (sheet en/hi, receipt); no live Razorpay run.
   they were made for. **One colour**: /api/card/build starts the website from the default poster profile's `layout.accent` (the set-up's
   "Your posters' look"; not on a write-again asking a new look), and every publish sends the website's colour back to the posters
   (`syncPosterColour` → /api/poster/brand).
+- **Home** (same day, vs a content app's "Ideas for you" that sells each idea for a credit): `components/poster/next-posts.tsx` — `NextPosts`
+  (the month plan's next 4 posts from /api/poster/calendar, this month + next near its end; none → "Plan your month's posts — free") under
+  FinishBar, and `FreePosterPreview`: a free account's "Today's poster" is the real watermarked sample (today?preview=1&sample=1) + "Get a poster
+  every day — Standard", replacing the "Daily posters are part of Standard" note. Rendered with mocks (390 / 1440, with and without a plan).

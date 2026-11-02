@@ -1,4 +1,5 @@
 "use client";
+import { NextPosts, FreePosterPreview } from "@/components/poster/next-posts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -90,6 +91,7 @@ export default function TodayPage() {
   const [restyling, setRestyling] = useState(false);
   const [day, setDay] = useState<"today" | "tomorrow">("today");
   const [tomorrow] = useState(() => new Date(Date.now() + 5.5 * 3600e3 + 86400e3).toISOString().slice(0, 10));
+  const [todayDate] = useState(() => new Date(Date.now() + 5.5 * 3600e3).toISOString().slice(0, 10));
   // Only the latest request may fill the screen: tapping Today → Tomorrow (or another profile) while the first poster is
   // still being made used to let the slower, older answer land last and show the wrong day's poster.
   const loadSeq = useRef(0);
@@ -244,6 +246,8 @@ export default function TodayPage() {
       <BusinessStrip />
       <TodayWork hi={hi} />
       <FinishBar hi={hi} />
+      {/* The month plan's next posts — free to see and change (better than ideas behind credits). */}
+      <NextPosts profileId={profile?.id} name={profile?.name} hi={hi} />
       {/* Premium, visible from the first day (owner's call, 3 Oct 2026: "subscription ka button kahin nahi tha"). */}
       {quota?.plan === "free" && <PremiumCard compact />}
       <PremiumUpgrade />
@@ -288,13 +292,8 @@ export default function TodayPage() {
             onEdited={async () => { if (!profile) return; const r = await api<{ profiles: Profile[] }>("/api/poster/profiles").catch(() => null); const np = (r?.data?.profiles ?? []).find((x) => x.id === profile.id) ?? profile; setProfile(np); await loadPoster(np, true, style || np.style, day); }} />
         )}
 
-        {today?.error === "plan" && (
-          <div className="rounded-3xl border border-brand/40 bg-brand-soft p-4 shadow-card">
-            <p className="flex items-center gap-1.5 font-semibold text-brand-ink"><Sparkles className="h-4 w-4" /> {hi ? "रोज़ का poster Standard plan में मिलता है" : "Daily posters are part of Standard"}</p>
-            <p className="mt-1 text-sm text-ink">{hi ? "हर सुबह नया poster, Facebook, Instagram और WhatsApp Status पर अपने-आप।" : "A fresh poster every morning, posted to Facebook, Instagram and WhatsApp Status by itself."}</p>
-            <Link href="/poster/plan" className="mt-3 inline-block rounded-xl grad-brand px-4 py-2 text-sm font-semibold text-white">{hi ? "Plans देखें" : "See plans"}</Link>
-          </div>
-        )}
+        {/* A free account sees the day's real poster with the Shubhora mark (owner, 2 Nov 2026), not a note about plans. */}
+        {today?.error === "plan" && profile && <FreePosterPreview profileId={profile.id} date={day === "tomorrow" ? tomorrow : todayDate} hi={hi} />}
         {today?.error === "quota" && (
           <div className="rounded-3xl border border-border bg-brand-soft p-4 shadow-card">
             <p className="flex items-center gap-1.5 font-semibold text-brand-ink"><Sparkles className="h-4 w-4" /> {t.quotaTitle}</p>
