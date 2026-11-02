@@ -447,3 +447,6 @@ The owner's own app does not show "paused" yet.
   "no post" day, the day marked done, posts filed under the poster (Activity). Not tested live: real IG/FB carousel publishing.
 - Set-up trade screen "Your posters' look" (`BrandQuick`) is one line now — colour dot, tone, language, "Change" opens the choices
   (owner, 3 Nov 2026: "chhota kar do"). Still chosen by itself from the logo / trade, nothing asked.
+- Card (owner, 3 Nov 2026, Licure/Alkafresh card): the product slider shows a photo whole over a blurred copy of itself in a square
+  frame (a wide machine photo sat between two white bands in the 4:5 frame); a square avatar tile (logo) has padding, so a wide
+  wordmark no longer touches the tile's edges.

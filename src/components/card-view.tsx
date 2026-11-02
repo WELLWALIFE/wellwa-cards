@@ -609,10 +609,13 @@ function Avatar({ card }: { card: Card }) {
   // object-contain means we never auto-crop; cropping is the user's choice in
   // the editor's crop/zoom tool.
   const round = card.avatarShape === "square" ? "rounded-2xl" : "rounded-full";
+  // A square tile is a logo (or a product shot): a little air around it, so a wide wordmark never touches the tile's edges
+  // (seen live, 3 Nov 2026: "alkafresh" ran edge to edge).
+  const pad = card.avatarShape === "square" ? "p-2" : "";
   if (card.avatarUrl) {
     return (
       <Pic src={card.avatarUrl} alt={card.name} eager w={96}
-        className={`look-avatar h-24 w-24 ${round} object-contain bg-surface ring-4 ring-surface shadow-card`} />
+        className={`look-avatar h-24 w-24 ${round} ${pad} object-contain bg-surface ring-4 ring-surface shadow-card`} />
     );
   }
   return (
@@ -1402,10 +1405,15 @@ function ProductCarousel({ images, theme }: { images: CardImage[]; theme: string
   const img = images[i];
   return (
     <figure className="rounded-2xl overflow-hidden border border-border">
-      <div className="relative">
-        {/* Curated art fills the frame; the owner's own product photo is shown whole on white. */}
+      <div className="relative overflow-hidden">
+        {/* Curated art fills the frame; the owner's own product photo is shown whole, over a soft blurred copy of itself — a wide
+            machine photo in the frame no longer sits between two white bands (seen live, 3 Nov 2026). */}
+        {!isCuratedArt(img.url) && (
+          <Pic src={img.url} alt="" aria-hidden="true" sizes="64px" w={64}
+            className="absolute inset-0 h-full w-full object-cover scale-125 blur-2xl opacity-50" />
+        )}
         <Pic src={img.url} alt={img.caption ?? ""} sizes="(min-width: 640px) 448px, 100vw"
-          className={`w-full aspect-[4/5] ${isCuratedArt(img.url) ? "object-cover bg-surface2/50" : "object-contain bg-white"}`} />
+          className={`relative w-full aspect-square ${isCuratedArt(img.url) ? "object-cover bg-surface2/50" : "object-contain"}`} />
         {images.length > 1 && (
           <>
             <button onClick={() => setI((v) => (v - 1 + images.length) % images.length)} aria-label="Previous product"
