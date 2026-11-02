@@ -44,7 +44,9 @@ export function BrandQuick({ profileId, hi, onChange }: { profileId: string; hi:
   }
 
   if (!b) return null;
-  const colours = [...new Set([b.accent, ...PALETTE_PRESETS.map((c) => c.hex)].filter((h) => HEX6.test(h)))].slice(0, 8);
+  // A steady row (a tapped colour must not jump to the front under the finger): the presets, and the logo's own colour first only when it is not one of them.
+  const presetHex = PALETTE_PRESETS.map((c) => c.hex);
+  const colours = [...(HEX6.test(b.accent) && !presetHex.includes(b.accent) ? [b.accent] : []), ...presetHex];
   return (
     <div className="rounded-2xl border border-border bg-surface p-3.5 space-y-3">
       <p className="flex items-center gap-2 text-sm font-semibold"><Palette className="h-4 w-4 text-brand" /> {hi ? "आपके posters का look" : "Your posters' look"} <span className="text-xs font-normal text-muted">{hi ? "· पहले से चुना है, बदलना हो तो tap करें" : "· already chosen — tap to change"}</span>{saved && <Check className="ml-auto h-4 w-4 text-good" />}</p>
