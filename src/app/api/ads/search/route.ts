@@ -10,7 +10,9 @@ export async function GET(request: Request) {
   const q = (u.searchParams.get("q") ?? "").trim();
   if (q.length < 2) return NextResponse.json({ results: [] });
   const fb = await fbAccount(me.id);
-  if (!fb) return NextResponse.json({ results: [] });
+  // Not connected yet (the ad is made first, Facebook joins at the end): the town is kept by its name and looked up on Facebook
+  // when the ad is created. Interests need Facebook — none until then.
+  if (!fb?.user_token) return NextResponse.json({ results: u.searchParams.get("kind") === "interest" ? [] : [{ key: `name:${q.slice(0, 40)}`, name: q.slice(0, 40), region: "", type: "city" }], pending: true });
   try {
     const results = u.searchParams.get("kind") === "interest" ? await searchInterests(fb, q) : await searchCities(fb, q);
     return NextResponse.json({ results });

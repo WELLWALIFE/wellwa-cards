@@ -36,6 +36,9 @@ const plusDays = (n: number) => new Date(Date.now() + n * 86400_000).toLocaleDat
 const extendedEnd = (end: string | null | undefined, extra: number) => { const now = new Date().getTime(); const cur = end ? Date.parse(end) : NaN; return dayText(new Date(Math.max(Number.isFinite(cur) ? cur : now, now) + extra * 86400_000).toISOString()); };
 const dayText = (iso?: string | null) => (iso ? new Date(iso).toLocaleDateString("en-IN", { day: "numeric", month: "short", timeZone: "Asia/Kolkata" }) : "");
 
+const AD_DRAFT_KEY = "shubhora.adDraft.v1";
+type AdDraft = { at: number; step: number; creative: Creative; productId: string; goal: AdGoal; targeting: AdTargeting; placements: "auto" | "feeds" | "stories"; daily: number; days: number; startDate: string; copy: { primaryText: string; headline: string; description: string }; link: string; offer: string };
+
 export default function AdsPage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
@@ -118,6 +121,16 @@ export default function AdsPage() {
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/ads"); return; }
     loadAccounts(); loadMine();
+    // A half-made ad comes back (the owner left to connect Facebook or to add money, then returned) — unless a video was handed in.
+    if (!new URLSearchParams(window.location.search).get("job")) {
+      try {
+        const d = JSON.parse(localStorage.getItem(AD_DRAFT_KEY) || "null") as AdDraft | null;
+        if (d && Date.now() - d.at < 14 * 86400_000 && d.creative?.url) {
+          setCreative(d.creative); setProductId(d.productId || ""); setGoal(d.goal); setTargeting(d.targeting); setPlacements(d.placements);
+          setDaily(d.daily); setDays(d.days); setStartDate(d.startDate || ""); setCopy(d.copy); setLink(d.link || ""); setOffer(d.offer || ""); setStep(Math.min(4, Math.max(0, d.step)));
+        }
+      } catch { /* no draft */ }
+    }
     const pr = await api<{ profiles?: Profile[] }>("/api/poster/profiles").catch(() => null);
     const list = pr?.data.profiles ?? [];
     const p = list.find((x) => x.is_default) ?? list[0] ?? null;
@@ -138,6 +151,12 @@ export default function AdsPage() {
       if (hit) { setTab("new"); setStep(0); setCreative({ kind: "video", url: hit.output_url!, thumbUrl: p?.logo_url ?? undefined, label: hit.input?.title || hit.input?.product || "Video" }); }
     }).catch(() => {});
   })(); }, [router, loadAccounts, loadMine]);
+  // Keep the ad being made (Ads v2.1): leaving for Facebook / payment and coming back finds it as it was.
+  useEffect(() => {
+    if (done || !creative?.url) return;
+    const d: AdDraft = { at: Date.now(), step, creative, productId, goal, targeting, placements, daily, days, startDate, copy, link, offer };
+    try { localStorage.setItem(AD_DRAFT_KEY, JSON.stringify(d)); } catch { /* private mode */ }
+  }, [done, step, creative, productId, goal, targeting, placements, daily, days, startDate, copy, link, offer]);
 
   // city search (typed)
   useEffect(() => {
@@ -218,6 +237,7 @@ export default function AdsPage() {
       } });
       if (!r.ok) { fail(r.data.error ? friendlyAdError(r.data.error, hi) : (hi ? "Ad नहीं बन पाई। फिर से कोशिश करें।" : "Could not make the ad. Please try again.")); return; }
       setDone({ managerUrl: r.data.managerUrl ?? "", status: r.data.status ?? "PAUSED", id: r.data.row?.id });
+      try { localStorage.removeItem(AD_DRAFT_KEY); } catch { /* */ }
       loadMine();
     } catch { fail(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); }
     finally { creating.current = false; setBusy(""); }
@@ -232,7 +252,7 @@ export default function AdsPage() {
     } catch { setStErr({ id, text: hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again." }); return false; }
     finally { setBusy(""); }
   }
-  function reset() { setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setUpErr(""); setCopyErr(""); setCreateErr(""); setStErr(null); setOffer(""); setStartDate(""); }
+  function reset() { try { localStorage.removeItem(AD_DRAFT_KEY); } catch { /* */ } setStep(0); setCreative(null); setProductId(""); setCopy({ primaryText: "", headline: "", description: "" }); setDone(null); setUpErr(""); setCopyErr(""); setCreateErr(""); setStErr(null); setOffer(""); setStartDate(""); }
   /** "Run again" (Ads v2): the same picture, goal, audience and words come back into the wizard at the money step — new dates, one check, go. */
   function runAgain(c: CampaignRow) {
     reset();
@@ -262,7 +282,7 @@ export default function AdsPage() {
   // a later step -> the step before; the first step, the finished screen and the "connect Facebook" screens -> the screen the owner
   // came from (the Create tab when the page was opened fresh). The finished screen never goes back to the form: that would make a second ad.
   function back() {
-    const wizard = !!acc && acc.connected && acc.permission === "ok" && acc.accounts.length > 0;
+    const wizard = !!acc; // the ad is made before Facebook is joined (Facebook is asked for at the last step)
     if (wizard && tab === "mine") { setTab("new"); return; }
     if (wizard && !done && step > 0) { goStep(step - 1); return; }
     goBack(router, "/poster/create");
@@ -300,9 +320,10 @@ export default function AdsPage() {
   if (!acc) return chkMsg
     ? <div className="space-y-4">{header}<section className="rounded-2xl border border-border p-4 space-y-2 text-center"><p className="text-sm font-semibold text-danger">{chkMsg}</p><button type="button" onClick={loadAccounts} className="inline-flex items-center gap-1 text-sm font-medium text-brand-ink"><RefreshCw className="h-4 w-4" /> {hi ? "फिर से देखें" : "Try again"}</button></section></div>
     : <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
-  if (!acc.connected || acc.permission !== "ok") return (
-    <div className="space-y-4">
-      {header}
+  // Facebook is needed only to RUN the ad (owner, 2 Nov 2026: "Scalio pehle image dikhata hai") — the whole ad is made and seen first;
+  // what is missing on Facebook's side is shown at the last step, where the ad is started, with the draft kept meanwhile.
+  const fbGate = !acc.connected || acc.permission !== "ok" ? (
+    <div id="fb-gate" className="space-y-4">
       <section className="rounded-2xl border border-border p-4 space-y-3">
         <p className="flex items-center gap-2 text-base font-bold"><Megaphone className="h-5 w-5 text-brand" /> {hi ? "पहले Facebook जोड़ें" : "Connect Facebook first"}</p>
         {!acc.connected
@@ -316,10 +337,10 @@ export default function AdsPage() {
       </section>
       <Guide hi="Ads का पैसा Facebook सीधे आपके ad account (card या UPI) से लेता है — Shubhora के credits नहीं लगते। यहाँ आप ad बनाते हैं, रोज़ का खर्च और दिन तय करते हैं, और Start या Pause करते हैं।" en="Facebook takes the ad money straight from your ad account (card or UPI). No Shubhora credits are used. Here you make the ad, choose how much to spend each day and for how many days, and start or pause it." />
     </div>
-  );
-  if (!acc.accounts.length) return (
-    <div className="space-y-4">
-      {header}
+  
+  )
+  : !acc.accounts.length ? (
+    <div id="fb-gate" className="space-y-4">
       <section className="rounded-2xl border border-border p-4 space-y-3">
         <p className="flex items-center gap-2 text-base font-bold"><Wallet className="h-5 w-5 text-brand" /> {hi ? "Ad account नहीं मिला" : "No ad account found"}</p>
         <p className="text-sm text-muted">{hi ? "इस Facebook login पर अभी कोई ad account नहीं है। 3 minute का काम, एक बार:" : "This Facebook login has no ad account yet. A one-time, 3-minute job:"}</p>
@@ -336,7 +357,9 @@ export default function AdsPage() {
         {chkMsg && <p className="text-sm font-semibold text-danger">{chkMsg}</p>}
       </section>
     </div>
-  );
+  
+  ) : null;
+  const fbReady = !fbGate;
 
   /* ---------- my ads ---------- */
   const importBox = (
@@ -477,11 +500,18 @@ export default function AdsPage() {
     <div className={`space-y-4 ${whyNot ? "pb-40" : "pb-28"}`}>
       {header}
       {!paid && <p className="rounded-lg bg-[#12144a] px-3 py-2 text-xs text-white">{hi ? "Ads बनाना Standard plan में आता है — पहली ad free में आज़माएँ। Facebook का ad खर्च आपके अपने ad account से ही कटता है।" : "Making ads comes with the Standard plan. Try your first ad free. The ad money is always taken from your own ad account."}</p>}
+      {fbReady ? (
       <div className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2 text-xs">
         {acc.picture ? /* eslint-disable-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-7 w-7 rounded-full" /> : <span className="grid h-7 w-7 place-items-center rounded-full bg-brand-soft text-brand"><Megaphone className="h-4 w-4" /></span>}
         <span className="min-w-0 flex-1 truncate"><b>{acc.page}</b> · {selectedAcct ? `${selectedAcct.name}${selectedAcct.ok ? "" : (hi ? " (बंद है / payment बाकी)" : " (switched off / payment due)")}` : ""}</span>
         {acc.accounts.length > 1 && <select value={acc.selected} onChange={async (e) => { const v = e.target.value; setAcctErr(""); try { const r = await api("/api/ads/accounts", { method: "POST", json: { ad_account: v } }); if (!r.ok) { setAcctErr(hi ? "यह ad account नहीं बदल पाए। फिर से कोशिश करें।" : "Could not switch the ad account. Please try again."); return; } setAcc({ ...acc, selected: v }); } catch { setAcctErr(hi ? "Internet नहीं चल रहा। फिर से कोशिश करें।" : "No internet. Please try again."); } }} className="max-w-[40%] rounded-lg border border-border bg-surface px-2 py-1 text-xs">{acc.accounts.map((a) => <option key={a.id} value={a.id}>{a.name}</option>)}</select>}
       </div>
+      ) : (
+        <div className="flex items-start gap-2 rounded-xl border border-brand/40 bg-brand-soft/40 px-3 py-2.5 text-xs">
+          <Megaphone className="mt-0.5 h-4 w-4 shrink-0 text-brand" />
+          <span className="flex-1"><b className="text-ink">{hi ? "पहले ad बनाइए और देखिए — Facebook आख़िर में जोड़ें।" : "Make the ad and see it first — connect Facebook at the end."}</b> {hi ? "आपकी ad यहीं save रहती है; चलाने से पहले बस Facebook Page और ad account जोड़ना होगा।" : "Your ad stays saved here; to run it you only connect your Facebook Page and ad account."}</span>
+        </div>
+      )}
       {acctErr && <p className={errBox}>{acctErr}</p>}
       {selectedAcct && (!selectedAcct.ok || selectedAcct.hasFunding === false) && (
         <section className="space-y-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-amber-950">
@@ -634,7 +664,7 @@ export default function AdsPage() {
               {copyErr && <p className={errBox}>{copyErr}</p>}
               {/* the ad as Facebook shows it */}
               <div className="mx-auto max-w-sm overflow-hidden rounded-2xl border border-border bg-white text-[#050505] shadow-card">
-                <div className="flex items-center gap-2 px-3 pt-3">{acc.picture ? /* eslint-disable-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-9 w-9 rounded-full" /> : <span className="h-9 w-9 rounded-full bg-gray-200" />}<div className="leading-tight"><p className="text-sm font-semibold">{acc.page}</p><p className="text-[11px] text-gray-500">Sponsored · 🌐</p></div></div>
+                <div className="flex items-center gap-2 px-3 pt-3">{acc.picture ? /* eslint-disable-line @next/next/no-img-element */ <img src={acc.picture} alt="" className="h-9 w-9 rounded-full" /> : profile?.logo_url ? <img src={profile.logo_url} alt="" className="h-9 w-9 rounded-full border border-gray-200 object-contain" /> : <span className="h-9 w-9 rounded-full bg-gray-200" />}<div className="leading-tight"><p className="text-sm font-semibold">{acc.page || profile?.name}</p><p className="text-[11px] text-gray-500">Sponsored · 🌐</p></div></div>
                 <p className="whitespace-pre-line px-3 py-2 text-sm">{copy.primaryText}</p>
                 {creative?.kind === "video" ? <div className={`grid ${placements === "stories" ? "aspect-[9/16]" : "aspect-square"} place-items-center bg-black text-white`}><Play className="h-12 w-12" /></div> : creative && (
                   <div className={`relative w-full overflow-hidden ${placements === "stories" ? "aspect-[9/16]" : "aspect-square"}`} style={{ backgroundImage: `url(${creative.url})`, backgroundSize: "cover", backgroundPosition: "center" }}>
@@ -654,6 +684,12 @@ export default function AdsPage() {
             </>
           )}
           {createErr && <p ref={createErrRef} className={errBox}>{createErr}</p>}
+          {/* Facebook is asked for HERE, with the finished ad above it (it stays saved while the owner connects). */}
+          {!fbReady && <div className="rounded-2xl border-2 border-brand p-1">
+            <p className="px-3 pt-2 text-sm font-bold">{hi ? "Ad तैयार है ✓ — चलाने के लिए एक आख़िरी काम" : "Your ad is ready ✓ — one last thing to run it"}</p>
+            {fbGate}
+            {creative?.kind !== "video" && creative?.url && <a href={creative.url} download target="_blank" rel="noreferrer" className="m-3 inline-flex items-center gap-1.5 text-xs font-semibold text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /> {hi ? "तब तक ad की photo खोलें / save करें" : "Meanwhile, open / save the ad picture"}</a>}
+          </div>}
         </section>
       )}
 
@@ -688,6 +724,11 @@ export default function AdsPage() {
           <div className="flex gap-2">
             <button type="button" onClick={back} className="inline-flex items-center gap-1 rounded-xl border border-border px-4 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /> {hi ? "पीछे" : "Back"}</button>
             <button type="button" disabled={!canNext} onClick={() => { goStep(step + 1); if (step === 3 && !copy.primaryText) writeWords(); }} className="flex-1 inline-flex items-center justify-center gap-1 rounded-xl grad-brand px-4 py-3 text-sm font-semibold text-white disabled:opacity-40">{hi ? "आगे" : "Next"} <ChevronRight className="h-4 w-4" /></button>
+          </div>
+        ) : !fbReady ? (
+          <div className="flex gap-2">
+            <button type="button" onClick={() => goStep(3)} aria-label={hi ? "पीछे" : "Back"} className="inline-flex items-center gap-1 rounded-xl border border-border px-3 py-3 text-sm font-semibold"><ChevronLeft className="h-4 w-4" /></button>
+            <button type="button" onClick={() => document.getElementById("fb-gate")?.scrollIntoView({ behavior: "smooth", block: "center" })} className="flex-1 inline-flex items-center justify-center gap-1.5 rounded-xl grad-brand px-3 py-3 text-sm font-semibold text-white"><Megaphone className="h-4 w-4" /> {hi ? "Facebook जोड़कर चलाएँ" : "Connect Facebook to run it"}</button>
           </div>
         ) : (
           <div className="flex gap-2">

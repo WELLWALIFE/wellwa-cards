@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
 import { discardCampaign } from "@/lib/social-server";
-import { fbAccount, createAd, saveCampaign, isPermissionError, myCampaigns, type AdGoal } from "@/lib/ads-server";
+import { fbAccount, createAd, saveCampaign, isPermissionError, myCampaigns, searchCities, type AdGoal } from "@/lib/ads-server";
 import { cleanTargeting, AD_BUDGET, waMismatchText, startAtFor } from "@/lib/ads-shared";
 import { standardRunning } from "@/lib/advanced-access";
 import { ownerPlanExpiry } from "@/lib/crm-server";
@@ -33,6 +33,16 @@ export async function POST(request: Request) {
   const primaryText = String(b.primary_text ?? "").trim().slice(0, 1500);
   const headline = String(b.headline ?? "").trim().slice(0, 40);
   if (!primaryText || !headline) return NextResponse.json({ error: "Write the ad text and a headline." }, { status: 400 });
+  // A town picked before Facebook was connected has only its name (the ad was made first, Facebook joined at the end):
+  // it is looked up now, with the owner's own Facebook, and dropped if Facebook does not know it.
+  if (fb && b.targeting && Array.isArray(b.targeting.cities)) {
+    b.targeting.cities = (await Promise.all((b.targeting.cities as Record<string, unknown>[]).map(async (c) => {
+      if (/^[0-9]{1,20}$/.test(String(c?.key ?? ""))) return c;
+      const name = String(c?.name ?? "").trim(); if (name.length < 2) return null;
+      const hit = (await searchCities(fb, name).catch(() => []))[0];
+      return hit ? { ...c, key: hit.key, name: hit.name, type: hit.type === "region" ? "region" : "city" } : null;
+    }))).filter(Boolean);
+  }
   const spec = {
     name: String(b.name ?? headline).trim().slice(0, 60) || headline,
     goal, creative: { kind: b.creative?.kind === "video" ? "video" as const : "image" as const, url, thumbUrl: thumbUrl || undefined },
