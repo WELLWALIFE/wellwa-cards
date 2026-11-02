@@ -1032,7 +1032,8 @@ function Onboard() {
     if (d.key === "map") setBiz((b) => ({ ...b, map: d.url }));
     else { setDetours((list) => [...list.filter((x) => x.key !== d.key), d]); setF({ social: { [d.key]: d.url } }); }
     setPendingSocial(null); setSiteErr("");
-    setSite({ kind: "reference", url: "", assertedAt: "" });
+    // The answer stays where the owner put it ("Yes, my business is online"); the box just empties — the link is kept as what it is.
+    setSite((st) => ({ kind: st.kind === "dealer" ? "dealer" : st.kind || "own", url: "", assertedAt: st.assertedAt }));
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
     // Read the business behind it (owner, 2 Nov 2026: "Scalio Maps / Instagram se details le leta hai"): name, trade, city, address,
     // phone, about — filled only where the owner has not typed (prefill), checked by the owner on "Your business".
@@ -1094,6 +1095,12 @@ function Onboard() {
       if (siteRun.current !== run) return;   // "Carry on without a website" took the owner on while the name was being looked up
       if (found) url = found;
       else { setSiteErr(notFoundMsg(site.url.trim())); return; }
+    }
+    // The business was read from a Maps / Instagram / store link (kept as that link): no website of its own — on to the next screen.
+    if (!site.url.trim() && socialRead.state !== "idle") {
+      const none: SiteState = { kind: "reference", url: "", assertedAt: "" };
+      siteRef.current = none; setSite(none);
+      await leaveWebsite(); return;
     }
     if (!site.url.trim()) { setSiteErr(T("Write the website link, e.g. sharmasweets.com. No website? Tap “I have no website — use an example”, or carry on without one.", "website का link लिखें, जैसे sharmasweets.com। Website नहीं है? “मेरी website नहीं है — कोई example लें” दबाएँ, या बिना website के आगे बढ़ें।")); return; }
     if (pendingSocial) { setSiteErr(T(`That is a ${pendingSocial.label} page, not a website — keep it as a ${pendingSocial.label} link, or change the link.`, `ये ${pendingSocial.label} page है, website नहीं — social link की तरह रखें, या link बदलें`)); return; }
@@ -1762,7 +1769,7 @@ function Onboard() {
           {SITE_CARDS.filter((c) => c.k !== "none").map((c) => {
             const on = site.kind === c.k;
             const bad = siteErr && !site.kind;
-            const short = c.k === "own" ? T("Yes, I have my website", "हाँ, मेरी website है") : c.k === "dealer" ? T("I am a brand's dealer", "मैं किसी brand का dealer हूँ") : T("No — I'll give an example", "नहीं है — example दूँगा");
+            const short = c.k === "own" ? T("Yes — website, Google Maps, Instagram or online store", "हाँ — website, Google Maps, Instagram या online store") : c.k === "dealer" ? T("I am a brand's dealer", "मैं किसी brand का dealer हूँ") : T("No — I'll give an example", "नहीं है — example दूँगा");
             return (
               <div key={c.k} className={`overflow-hidden rounded-2xl border transition-colors ${on ? "border-brand/50 bg-brand-soft/30" : bad ? "border-danger/60" : "border-border"}`}>
                 <button type="button" onClick={() => pickSite(c.k)} disabled={!!busy} aria-pressed={on}
@@ -1777,7 +1784,7 @@ function Onboard() {
                       {c.k === "own" ? T("Your website link or name", "आपकी website का link या नाम") : c.k === "dealer" ? T("Brand's website or name", "Brand की website या नाम") : T("A website like yours (optional)", "आपके जैसी कोई website (ज़रूरी नहीं)")}<Help k="siteLink" />
                       <div className="mt-1 flex items-stretch gap-2">
                         <input value={site.url} onChange={(e) => onUrlChange(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void lookupTyped(true); } }} autoCapitalize="none" autoCorrect="off" spellCheck={false}
-                          placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`)} className={`${box} min-w-0 flex-1 py-2.5 text-ink ${siteErr && siteErr !== tickMsg && site.kind && !pendingSocial ? "border-danger" : ""}`} />
+                          placeholder={c.k === "dealer" ? T("e.g. brandname.com — or just the brand name", "जैसे brandname.com — या सिर्फ़ brand का नाम") : (c.k === "own" ? T("Website, Google Maps, Instagram, JustDial or store link — or the name", "Website, Google Maps, Instagram, JustDial या store का link — या नाम") : T(`e.g. ${egSite} — or the name`, `जैसे ${egSite} — या नाम`))} className={`${box} min-w-0 flex-1 py-2.5 text-ink ${siteErr && siteErr !== tickMsg && site.kind && !pendingSocial ? "border-danger" : ""}`} />
                         <button type="button" onClick={() => void lookupTyped(true)} disabled={!!finding || site.url.trim().length < 2} aria-label={T("Search", "खोजें")} title={T("Search", "खोजें")}
                           className="grid w-11 shrink-0 place-items-center rounded-xl grad-brand text-white disabled:opacity-50">{finding ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}</button>
                       </div>
