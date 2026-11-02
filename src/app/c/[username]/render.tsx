@@ -193,16 +193,16 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   // website khule"): a phone gets the website itself then, not the card. ?view=card still opens the card.
   const story = card.site?.style?.blueprint === "story";
   // An ADVANCED website (Rs 5,999) is built for the phone as much as the desktop (owner, 16 Oct 2026): a phone gets it too.
-  // The free plan is the digital card only (owner, 16 Oct 2026): ?view=site opens the website only when the card has one switched on
-  // (every website made before this stays as it was), when the owner is on a paid plan (their own previews), or on a partner's card.
-  const siteAllowed = (!!card.site?.enabled || !expired || !!brand) && !sitePending(stored.site);
+  // The free plan is the digital card only — for EVERY account, partners' Shubhora pages and websites made before included (owner,
+  // 2 Nov 2026: "free me website nahi banegi, kisi ki bhi"). A paid plan (or a white-label brand) shows the website.
+  const siteAllowed = (!expired || !!brand) && !sitePending(stored.site);
   // On the member's own domain (proxy.ts sets x-own-domain) the plain address is the website on every screen, a phone too;
   // ?view=card (kept for the visit in the "sv" cookie) is the card (owner, 23 Oct 2026).
   const ownDomain = hdrs.get("x-own-domain") === "1";
   // The kept choice only for the pages inside (a card's tabs carry no ?view); the plain home address is always the website.
   const kept = ownDomain && slug ? (await cookies()).get("sv")?.value : undefined;
   const asked = viewParam === "card" || viewParam === "site" ? viewParam : kept === "card" || kept === "site" ? kept : undefined;
-  const view = asked === "card" ? "card" : asked === "site" ? (siteAllowed ? "site" : "card") : card.site?.enabled && (!mobile || story || adv || ownDomain) ? "site" : "card";
+  const view = asked === "card" ? "card" : asked === "site" ? (siteAllowed ? "site" : "card") : siteAllowed && card.site?.enabled && (!mobile || story || adv || ownDomain) ? "site" : "card";
   const freeSite = view === "site" && expired && !brand;
   const tracking = await trackingP;
   const joinHandle = brand ? null : await ownerP;

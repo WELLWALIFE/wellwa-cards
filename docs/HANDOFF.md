@@ -424,3 +424,8 @@ The owner's own app does not show "paused" yet.
   paid → `PaidReceipt` → /poster/card/build?make=1). The build screen's sheet is the same view as a full-screen overlay. The dark price
   box at the bottom of Card & Website is gone (a free account whose website is on gets one "See plans" line). The Shubhora partner card's
   banner (`/art/shubhora/hero.jpg`) gets its words in CardView: "Free Digital Card + Website", Card · Website · AI replies 24×7 (hi/en).
+- **Free = the card only, for EVERY account** (owner, 2 Nov 2026: "free me website nahi banegi, kisi ki bhi"): the public page opens the
+  website only on a paid plan (or a white-label brand) — `render.tsx siteAllowed = (!expired || brand)`, also for the default view; a
+  partner's Shubhora page and free websites made earlier now show the card. App: Card & Website / build treat every free account as
+  card-only (`noSite = !paid`, `freeMake = !subscribed`), Share links has no Website row on free, the Shubhora strip says "Make your own
+  digital card — FREE".

@@ -11,8 +11,8 @@ import { trackClick } from "@/lib/track";
 
 const LOGO = "/art/brand/shubhora-logo.png";
 const LINES = {
-  en: ["This card is made on Shubhora", "Make your own website + card — FREE", "Daily poster · WhatsApp AI replies"],
-  hi: ["ये card Shubhora पर बना है", "अपनी website + card बनाएँ — FREE", "रोज़ का poster · WhatsApp पर AI जवाब"],
+  en: ["This card is made on Shubhora", "Make your own digital card — FREE", "Daily poster · WhatsApp AI replies"],
+  hi: ["ये card Shubhora पर बना है", "अपना digital card बनाएँ — FREE", "रोज़ का poster · WhatsApp पर AI जवाब"],
 };
 const SHEET = {
   en: { title: "This website and visiting card are made on Shubhora", body: "You can make yours too — in 5 minutes, free for 1 year.", points: ["Digital card + website on your own link", "A new poster with your name every morning", "AI answers your customers on WhatsApp, every chat saved as a lead"], more: "Know more", make: "Make mine free — now", close: "Close" },

@@ -3,6 +3,7 @@
 // One tap each — WhatsApp, copy, share, QR. Shown on the Share page, in the share sheet (the round share button at the
 // top of every app page) and on Home.
 import { withView } from "@/lib/site-url";
+import { usePlan } from "@/lib/plan";
 import { useEffect, useState } from "react";
 import QRCode from "qrcode";
 import Link from "next/link";
@@ -90,6 +91,7 @@ function Row({ it, en }: { it: Item; en: boolean }) {
 export function ShareLinks({ compact = false, allHref }: { compact?: boolean; allHref?: string }) {
   const { lang } = useT(); const en = lang === "en";
   const kind = useAccountKind();
+  const { plan, loading: planLoading } = usePlan();
   const [res, setRes] = useState<Res | null | undefined>(undefined);
   const [tab, setTab] = useState<Item["key"]>("card");
   useEffect(() => { if (res === undefined) loadLinks().then(setRes); }, [res]);
@@ -108,7 +110,8 @@ export function ShareLinks({ compact = false, allHref }: { compact?: boolean; al
     url: cardUrl, text: en ? `Hi! Here is my digital visiting card — contact, products and more in one tap: ${cardUrl}` : `नमस्ते! ये मेरा digital visiting card है — contact, products सब एक tap में: ${cardUrl}`,
   });
   // The website (owner's call, 2 Oct 2026): the same link with ?view=site opens the full website on a phone too.
-  if (res?.cardLink) {
+  // Only on a paid plan: free is the card only, for everyone (owner, 2 Nov 2026).
+  if (res?.cardLink && !planLoading && plan !== "free") {
     // The owner's own domain is the website by itself (proxy.ts); the Shubhora link needs ?view=site.
     const siteUrl = /\/c\//.test(res.cardLink) ? withView(res.cardLink, "site") : res.cardLink;
     items.push({

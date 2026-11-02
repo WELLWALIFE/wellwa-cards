@@ -120,7 +120,7 @@ export default function WebsitePage() {
   useEffect(() => {
     if (panel !== "edit" || !s || planLoading) return;
     const siteOn = s.hasCard && !!s.site?.enabled;
-    const noSiteNow = !paid && s.hasCard && !siteOn;
+    const noSiteNow = !paid && s.hasCard;   // free = the card only, whatever the card has stored (owner, 2 Nov 2026)
     const at = noSiteNow || target === "card" ? "card" : target === "site" ? "site" : lastEdit() ?? (siteOn ? "site" : "card");
     router.replace(editHref(at));
   }, [panel, s, target, paid, planLoading, router]);
@@ -171,7 +171,8 @@ export default function WebsitePage() {
   const T = (en: string, h: string) => (hi ? h : en);
   // The free plan is the digital card only (owner, 16 Oct 2026): a free account whose website is not on is offered Standard, not a website.
   // A free account that already has its website on is left exactly as it was.
-  const noSite = !paid && s.hasCard && !s.site?.enabled;
+  // Free = the card only, for every account (owner, 2 Nov 2026: "free me website nahi banegi, kisi ki bhi").
+  const noSite = !paid && s.hasCard;
   /** The waiting time (lib/site-ready.ts): the website is being made — visitors get the card until its moment. */
   const making = s.hasCard ? sitePending(s.site) : null;
   const makingAdv = s.hasCard && !making ? advancedPending(s.site) : null;

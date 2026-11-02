@@ -1184,8 +1184,9 @@ export default function BuildCard() {
   // The free plan is the digital card only (owner, 16 Oct 2026). `freeMake`: the Make screen offers a free account its card, and the website as
   // the Standard plan's. `cardOnly`: the build the server just made came back with the website off (a free account with no website
   // on) -- the preview, the next steps and the finished screen then talk about the card; a website already live is left exactly as it was.
-  const freeMake = !access.subscribed && !existing?.site?.enabled;
-  const cardOnly = built?.site?.enabled === false && !existing?.site?.enabled;
+  // Free = the card only, for every account (owner, 2 Nov 2026: "free me website nahi banegi, kisi ki bhi").
+  const freeMake = !access.loading && !access.subscribed;
+  const cardOnly = freeMake || (built?.site?.enabled === false && !existing?.site?.enabled);
   // "Make my website" on a free account: the card is made first, then — on its preview — the plan sheet opens by itself.
   useEffect(() => {
     if (state === "preview" && wantSite.current) { wantSite.current = false; if (cardOnly) setSitePlan(true); }
