@@ -10,9 +10,13 @@ import "server-only";
 import { categoryOf, CATEGORIES } from "@/lib/poster-categories";
 import { matchCategory } from "@/lib/category-match";
 import { logUsage } from "@/lib/ai-usage";
+import { tradeQuestionsFor } from "@/lib/trade-questions";
+import { MAX_TRADE_ANSWERS } from "@/lib/card-facts";
 
 export type LinkKind = "map" | "instagram" | "facebook" | "youtube" | "justdial" | "indiamart" | "marketplace" | "website";
-export type Lookup = { ok: boolean; kind: LinkKind; source: string; name: string; category: string; city: string; address: string; phone: string; about: string; hours: string; website: string; instagram: string; map: string };
+export type Lookup = { ok: boolean; kind: LinkKind; source: string; name: string; category: string; city: string; address: string; phone: string; about: string; hours: string; website: string; instagram: string; map: string;
+  /** The trade's own questions answered from what the listing says ("Pure veg", "Home delivery") — option names of lib/trade-questions; only what was stated. */
+  answers: Record<string, string[]> };
 
 const MARKET = /(^|\.)(amazon\.in|amazon\.com|flipkart\.com|meesho\.com|myntra\.com|ajio\.com|nykaa\.com|blinkit\.com|swiggy\.com|zomato\.com|etsy\.com|shopsy\.in|jiomart\.com)$/i;
 export function linkKind(url: string): LinkKind {
@@ -45,16 +49,16 @@ async function expandMap(url: string): Promise<{ url: string; name: string; lat:
   return { url: long, name, lat: at?.[1] ?? "", lng: at?.[2] ?? "" };
 }
 
-const EMPTY = (kind: LinkKind, source: string): Lookup => ({ ok: false, kind, source, name: "", category: "", city: "", address: "", phone: "", about: "", hours: "", website: "", instagram: "", map: kind === "map" ? source : "" });
+const EMPTY = (kind: LinkKind, source: string): Lookup => ({ ok: false, kind, source, name: "", category: "", city: "", address: "", phone: "", about: "", hours: "", website: "", instagram: "", map: kind === "map" ? source : "", answers: {} });
 const S = (v: unknown, n: number) => (typeof v === "string" ? v.replace(/\s+/g, " ").trim().slice(0, n) : "");
 const MODEL = "gemini-3.5-flash-lite";
 
-async function ask(prompt: string, tools: Record<string, unknown>[]): Promise<string> {
+async function ask(prompt: string, tools: Record<string, unknown>[], timeout = 25_000): Promise<string> {
   const key = process.env.GEMINI_API_KEY; if (!key) return "";
   const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`, {
     method: "POST", headers: { "x-goog-api-key": key, "Content-Type": "application/json" },
-    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], tools, generationConfig: { temperature: 0, maxOutputTokens: 900 } }),
-    signal: AbortSignal.timeout(25_000),
+    body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: prompt }] }], ...(tools.length ? { tools } : {}), generationConfig: { temperature: 0, maxOutputTokens: 900 } }),
+    signal: AbortSignal.timeout(timeout),
   });
   const d = await r.json().catch(() => ({}));
   if (!r.ok) throw new Error(d?.error?.message || `gemini ${r.status}`);
@@ -74,7 +78,7 @@ export async function lookupBusiness(rawUrl: string, hint = ""): Promise<Lookup>
   const prompt = `Find the PUBLIC details of the Indian business behind this ${LABEL[kind]} link, using Google Search and the page itself:
 ${url}${mapName ? `\nGoogle Maps names the place: "${mapName}"${lat ? ` at ${lat},${lng}` : ""}.` : ""}${hint ? `\nThe owner also wrote: "${hint.slice(0, 120)}"` : ""}
 Answer with ONE JSON object only, no other words:
-{"found": true|false, "name": "the business name exactly as it is written", "category": "one key from: ${keys} — or \\"\\"", "city": "", "address": "street address as listed", "phone": "10-digit Indian number if public", "about": "2 plain sentences on what it does, in English", "hours": "opening hours as listed, short, e.g. Mon–Sun 9 am – 10 pm", "website": "its own website if it has one", "instagram": "its instagram link if found"}
+{"found": true|false, "name": "the business name exactly as it is written", "category": "one key from: ${keys} — or \\"\\"", "city": "", "address": "street address as listed", "phone": "10-digit Indian number if public", "about": "2 plain sentences on what it does, in English", "hours": "opening hours as listed, short, e.g. Mon–Sun 9 am – 10 pm", "website": "its own website if it has one", "instagram": "its instagram link if found", "facts": ["up to 10 short facts the listing states: veg / non-veg, cuisines, delivery, dine-in, services, brands, since year, AC, parking…"]}
 Rules: only facts you actually found for THIS business; a field you did not find is "". Never guess a phone number or an address. If the link shows a product rather than a seller, give the seller / store.`;
   let text = "";
   try { text = await ask(prompt, [{ url_context: {} }, { google_search: {} }]); }
@@ -91,5 +95,38 @@ Rules: only facts you actually found for THIS business; a field you did not find
   const ig = S(o.instagram, 200); if (!out.instagram && /instagram\.com\//i.test(ig)) out.instagram = ig;
   if (kind === "map") out.map = url;
   out.ok = !!(out.name && (o.found !== false || mapName));
+  const facts = Array.isArray(o.facts) ? o.facts.map((x) => S(x, 120)).filter(Boolean).slice(0, 12) : [];
+  if (out.ok && out.category && (facts.length || out.about)) out.answers = await tradeAnswersFrom(out.category, out.name, out.about, facts).catch(() => ({}));
+  return out;
+}
+
+/** The trade's tick questions (set-up "About your trade") answered from the listing's facts — pre-ticked, the owner checks them
+ *  (owner, 2 Nov 2026: Maps says "Pure veg" — why tick it again?). One short text call, no search; only options that the facts STATE;
+ *  a parts question (all ticked by default) and the free-text questions are left alone. */
+async function tradeAnswersFrom(category: string, name: string, about: string, facts: string[]): Promise<Record<string, string[]>> {
+  const qs = tradeQuestionsFor(category).filter((q) => (q.type === "one" || q.type === "many") && !q.closed && q.options?.length);
+  if (!qs.length) return {};
+  const list = qs.map((q) => `- ${q.key} (${q.type === "one" ? "pick at most one" : "pick any"}): ${q.en} Options: ${q.options!.map((o) => o.en).join(" | ")}`).join("\n");
+  const prompt = `A business: "${name}". About: ${about || "-"}
+Facts from its public listing:
+${facts.map((f) => `- ${f}`).join("\n") || "-"}
+
+Questions with fixed options:
+${list}
+
+Answer with ONE JSON object only: {"<key>": ["exact option text", …]}. Pick an option ONLY when the facts or the about clearly say it; leave a question out otherwise. Never guess.`;
+  const text = await ask(prompt, [], 12_000);
+  let o: Record<string, unknown> = {};
+  try { const m = text.match(/\{[\s\S]*\}/); o = m ? JSON.parse(m[0]) : {}; } catch { return {}; }
+  const out: Record<string, string[]> = {};
+  let n = 0;
+  for (const q of qs) {
+    const v = o[q.key]; if (!Array.isArray(v)) continue;
+    const ok = q.options!.map((x) => x.en);
+    const picked = [...new Set(v.map((x) => String(x).trim()).map((x) => ok.find((e) => e.toLowerCase() === x.toLowerCase())).filter((x): x is string => !!x && !/^(other|others)$/i.test(x)))];
+    const keep = (q.type === "one" ? picked.slice(0, 1) : picked).slice(0, MAX_TRADE_ANSWERS - n);
+    if (keep.length) { out[q.key] = keep; n += keep.length; }
+    if (n >= MAX_TRADE_ANSWERS) break;
+  }
   return out;
 }

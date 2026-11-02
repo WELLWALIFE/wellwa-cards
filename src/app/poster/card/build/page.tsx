@@ -1008,6 +1008,22 @@ export default function BuildCard() {
   /** `card`: the card to put live when it is not the one on screen yet (a look just tapped — React state has not
    *  settled, and the stale `shown` used to copy the previous look's tiles and home order over the new one).
    *  `quiet`: a look / adjustment on a live site — the page must not jump to the top. */
+  /** One colour for the business (owner, 2 Nov 2026: the set-up asked it for the posters, the website asked again): the website's colour,
+   *  once live, is the posters' colour too. The build starts from the posters' colour (api/card/build), so this only carries a change. */
+  const posterHex = useRef("");
+  async function syncPosterColour(c: Card) {
+    try {
+      const hex = paletteFor(c).mid.toLowerCase();
+      if (!/^#[0-9a-f]{6}$/.test(hex) || hex === posterHex.current) return;
+      posterHex.current = hex;
+      const r = await api<{ profiles?: { id: string; is_default?: boolean; layout?: { accent?: string } | null }[] }>("/api/poster/profiles");
+      const list = r.data.profiles ?? [];
+      const p = list.find((x) => x.is_default) ?? list[0];
+      if (!p || p.layout?.accent?.toLowerCase() === hex) return;
+      await api("/api/poster/brand", { method: "POST", json: { profile: p.id, accent: hex } });
+    } catch { /* the posters keep their colour; the next publish tries again */ posterHex.current = ""; }
+  }
+
   async function publish(opts?: { card?: Card; quiet?: boolean; confirmed?: boolean }) {
     if (!shown || !card) return;
     const base = opts?.card ? applyChecks(opts.card, checks, off) : shown;
@@ -1092,6 +1108,7 @@ export default function BuildCard() {
       // A newer tap is already waiting: the card on screen is ahead of this one, so it is left alone.
       if (!pendingPublish.current) setCard((c) => (c ? { ...out, username: r.username || c.username } : c));
       setLiveUser(r.username || out.username);
+      void syncPosterColour(out);
       // A quiet publish (a look, in the background) leaves the tabs and the bar as the owner has them: it used to pull
       // the Card tab back to the Website and flip the bar's button under their finger.
       if (!opts?.quiet) { if (uid) dropKey(draftKey(uid)); setTab("site"); doneFromPreview.current = true; setState(improveMode ? "done" : "style"); try { window.scrollTo({ top: 0 }); } catch { /* ignore */ } }
@@ -1186,6 +1203,7 @@ export default function BuildCard() {
   );
 
   if (state === "building") {
+    const freeBuild = freeMake && makeFrom === "free";
     // A website of their own (or their brand's) is read page by page — a JavaScript-built one in a real browser.
     const readingSite = !!(facts.website && facts.websiteRole !== "reference") || (!facts.website && !!setup?.website);
     const ORDER: BuildStage[] = ["details", "website", "pictures", "writing", "checking"];
@@ -1194,7 +1212,7 @@ export default function BuildCard() {
       ["details", T("Reading your details", "आपकी जानकारी पढ़ी जा रही है")],
       ...(readingSite ? [["website", T("Reading your website — logo, photos, products", "आपकी website पढ़ी जा रही है — logo, photos, products")] as [BuildStage, string]] : []),
       ["pictures", T("Choosing photos of your trade", "आपके काम की photos चुनी जा रही हैं")],
-      ["writing", T("Writing your website", "आपकी website लिखी जा रही है")],
+      ["writing", freeBuild ? T("Writing your card", "आपका card लिखा जा रहा है") : T("Writing your website", "आपकी website लिखी जा रही है")],
       ["checking", T("Checking the design", "Design जाँचा जा रहा है")],
     ];
     const clock = `${Math.floor(elapsed / 60)}:${String(elapsed % 60).padStart(2, "0")}`;
@@ -1202,7 +1220,8 @@ export default function BuildCard() {
       <div className="mx-auto max-w-sm space-y-5 py-14">
         <div className="grid place-items-center gap-2 text-center">
           <LoaderCircle className="h-7 w-7 animate-spin text-brand" />
-          <p className="text-lg font-bold">{T("Your website is being made", "आपकी website बन रही है")}</p>
+          {/* A free account's build makes the card (the website's plan is asked after it): it says "card", not "website". */}
+          <p className="text-lg font-bold">{freeBuild ? T("Your card is being made", "आपका card बन रहा है") : T("Your website is being made", "आपकी website बन रही है")}</p>
           <p className="text-xs text-muted">{T("About 1 minute", "लगभग 1 मिनट")} · {clock}</p>
         </div>
         <ul className="space-y-2.5 rounded-2xl border border-border bg-surface p-4 text-sm">
@@ -1219,7 +1238,7 @@ export default function BuildCard() {
         {/* The build is the server's (card-jobs.ts): closing the screen no longer loses it, and a second tap joins it. */}
         {/* Short (owner, 24 Oct 2026: "lambi line… simple likho"). */}
         <p className="text-center text-xs text-muted">✓ {T("You can close this screen.", "Screen बंद कर सकते हैं।")}</p>
-        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2 text-center text-xs">{T("No internet. It is still being made.", "Internet नहीं है। Website बन रही है।")}</p>}
+        {lost && <p className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2 text-center text-xs">{T("No internet. It is still being made.", "Internet नहीं है। बन रहा है, रुका नहीं।")}</p>}
       </div>
     );
   }

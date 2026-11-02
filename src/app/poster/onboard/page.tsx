@@ -89,7 +89,7 @@ const looksLikeMapLink = (v: string) => /^https?:\/\/(?:[\w-]+\.)*(?:google\.[a-
  *  without a role (a pasted link silently treated as "own" would import a stranger's name and products). */
 type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
 /** What /api/site/peek learned from the home page. */
-type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; hours?: string; products: number; category?: string; empty?: boolean };
+type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; hours?: string; answers?: Record<string, string[]>; products: number; category?: string; empty?: boolean };
 type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer" | "reference"; data: PeekData | null };
 const NO_PEEK: PeekState = { state: "idle", url: "", role: "own", data: null };
 /** The one social / maps link that was pasted as a "website" and kept as what it is. */
@@ -898,6 +898,18 @@ function Onboard() {
   function prefill(d: PeekData, onlyEmpty = false) {
     // Opening hours from Google Maps / the listing (owner, 2 Nov 2026: "Timings: Not filled" though Maps shows them) — only into an empty box.
     if (d.hours && !touched.current.has("hours")) setFacts((f) => (f.hours ? f : (factsDirty.current = true, { ...f, hours: d.hours!.slice(0, 120) })));
+    // The trade's questions the listing answers ("Pure veg", "Home delivery") arrive ticked — only for the trade they were made for, and
+    // only into questions still unanswered (owner, 2 Nov 2026). The owner sees them ticked on "About your trade" and can untick.
+    const ans = d.answers && typeof d.answers === "object" ? d.answers : null;
+    const freshSite = !onlyEmpty && (!siteAtLoad.current.url || hostOf(d.url) !== hostOf(siteAtLoad.current.url));
+    const tradeWillBe = !touched.current.has("category") && (freshSite || !biz.category) && d.category && categoryOf(d.category) ? d.category : biz.category;
+    if (ans && d.category && tradeWillBe === d.category && Object.keys(ans).length) {
+      setFacts((f) => {
+        const cur = f.tradeAnswers ?? {};
+        const add = Object.fromEntries(Object.entries(ans).filter(([k, v]) => Array.isArray(v) && v.length && !(cur[k]?.length)));
+        return Object.keys(add).length ? (factsDirty.current = true, { ...f, tradeAnswers: { ...cur, ...add } }) : f;
+      });
+    }
     setBiz((b) => {
       const t = touched.current;
       let n = { ...b };

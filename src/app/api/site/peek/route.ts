@@ -61,7 +61,7 @@ export async function POST(request: Request) {
     // public details from the web instead (owner, 2 Nov 2026). Only for the owner's OWN link — a brand's or a liked site gives its trade.
     const l = await within(lookupBusiness(url).catch(() => null), 26_000);
     if (l?.ok) {
-      if (role === "own") return NextResponse.json({ ok: true, url, name: l.name, about: l.about, city: l.city, address: l.address, phone: l.phone, hours: l.hours, products: 0, category: l.category, logo: "", via: l.kind }, { headers: { "Cache-Control": "no-store" } });
+      if (role === "own") return NextResponse.json({ ok: true, url, name: l.name, about: l.about, city: l.city, address: l.address, phone: l.phone, hours: l.hours, answers: l.answers, products: 0, category: l.category, logo: "", via: l.kind }, { headers: { "Cache-Control": "no-store" } });
       return NextResponse.json({ ok: true, url, name: role === "dealer" ? l.name : "", products: 0, category: l.category, via: l.kind }, { headers: { "Cache-Control": "no-store" } });
     }
     return NextResponse.json({ ok: false, reason: peek ? "empty" : "unreadable" }, { headers: { "Cache-Control": "no-store" } });

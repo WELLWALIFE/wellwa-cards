@@ -483,7 +483,12 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const knowledge = `${factsText({ setup, facts, products: list, info: new Map(), site })}${fresh?.note ? `\n\nThe owner's request for this rewrite: ${fresh.note}` : ""}${fresh?.wordsNote ? `\n\nThe owner's request for the WORDS (follow it): ${fresh.wordsNote}` : ""}`;
   const business = setup.business || setup.person;
   // The business's own colour, from its logo (brand-identity): the website wears it unless the designer says no.
-  const logoHex = await logoColor(setup.logo);
+  // One colour question, not two (owner, 2 Nov 2026): the colour picked for the posters in the set-up ("Your posters' look") is the
+  // website's colour too — unless this is a "write again" that asks for a new look.
+  const wantsNewLook = !!fresh && fresh.wants.includes("look");
+  const posterHex = wantsNewLook ? null : await restAsService<{ layout: { accent?: unknown } | null }[]>(`poster_profiles?user_id=eq.${me.id}&select=layout&order=is_default.desc,created_at.asc&limit=1`)
+    .then((r) => { const a = r.data?.[0]?.layout?.accent; return typeof a === "string" && /^#[0-9a-f]{6}$/i.test(a.trim()) ? a.trim().toLowerCase() : null; }).catch(() => null);
+  const logoHex = posterHex ?? await logoColor(setup.logo);
   if (logoHex) console.log("[card] logo colour", logoHex);
   // The city is printed in the hero chip, the footer line and the search data: "dharuhera" is tidied once here.
   if (setup.city && cityCase(setup.city) !== setup.city) setup = { ...setup, city: cityCase(setup.city) };

@@ -360,3 +360,9 @@ sheet opens from the preview's "Choose a plan for the website" and the finished 
 (plan, amount, payment id, date, 3 steps) → "Make my website now" builds the website (subscribed) → design / colours / link → finished screen,
 where `SiteProgress` shows Payment ✓ → being made (readyText) → Live (WhatsApp). The wait itself is lib/site-ready.ts (24 h auto, above).
 Rendered locally (sheet en/hi, receipt); no live Razorpay run.
+- Same day: the free build's waiting screen says "Your card is being made". **Trade questions pre-ticked**: `lookupBusiness` asks the listing
+  for short `facts` and a second text call (`tradeAnswersFrom`) maps them to the trade's chip options (`answers`, exact option names, only what
+  is stated, cap MAX_TRADE_ANSWERS); /api/site/peek passes them; onboard `prefill` adds them to unanswered questions when the trade is the one
+  they were made for. **One colour**: /api/card/build starts the website from the default poster profile's `layout.accent` (the set-up's
+  "Your posters' look"; not on a write-again asking a new look), and every publish sends the website's colour back to the posters
+  (`syncPosterColour` → /api/poster/brand).
