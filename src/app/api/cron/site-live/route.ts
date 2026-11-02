@@ -1,14 +1,14 @@
 // The website's waiting time (src/lib/site-ready.ts) — hourly from cron (deploy.sh writes /etc/cron.d/shubhora-site-live → scripts/site-live.sh):
 //   curl -H "x-cron-key: $CRON_KEY" http://127.0.0.1:3001/api/cron/site-live
 // A website (or a first Premium design) whose moment has come shows to visitors by itself — the public route reads the time, nothing has to
-// flip. This job only tells the owner (push + WhatsApp, the link) and clears the field, so the message goes once. Nothing manual (owner, 31 Oct 2026).
+// flip. This job only tells the owner (push + WhatsApp, the link) and clears the field, so the message goes once. Nothing manual (owner, 31 Oct 2026);
+// Super Admin → Websites can make one live at once or pause it (2 Nov 2026) — a paused one is skipped here.
 import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { serviceConfigured } from "@/lib/admin-guard";
-import { notify } from "@/lib/notify";
-import { cardHomeShown } from "@/lib/site-url";
+import { tellSiteLive } from "@/lib/site-live-server";
 
-type Site = { readyAt?: string; advancedReadyAt?: string; enabled?: boolean } & Record<string, unknown>;
+type Site = { readyAt?: string; advancedReadyAt?: string; enabled?: boolean; paused?: boolean } & Record<string, unknown>;
 type Row = { id: string; owner_id: string; username: string; data: { site?: Site; customDomain?: string } & Record<string, unknown> };
 
 export async function GET(request: Request) {
@@ -21,6 +21,7 @@ export async function GET(request: Request) {
   let told = 0, cleared = 0, failed = 0;
   for (const c of r.data ?? []) {
     const site = c.data?.site ?? {};
+    if (site.paused === true) continue;   // Super Admin paused it: held until Resume (lib/site-ready.ts sitePaused)
     const dueSite = !!site.readyAt && site.readyAt <= now;
     const dueAdv = !!site.advancedReadyAt && site.advancedReadyAt <= now;
     if (!dueSite && !dueAdv) continue;
@@ -30,15 +31,7 @@ export async function GET(request: Request) {
     if (!w.ok) { failed++; continue; }
     cleared++;
     // The field is cleared first, so a message that fails is not repeated every hour; the website is live either way.
-    const link = `https://${cardHomeShown(c.username, c.data.customDomain)}`;
-    const premium = dueAdv && !dueSite;
-    const res = await notify(c.owner_id, "website_ready", {
-      title: premium ? "Your Premium website is live" : "Your website is live",
-      body: premium ? "आपकी Premium website अब live है — खोलकर देखें और ग्राहकों को भेजें।" : "आपकी website अब live है — खोलकर देखें और ग्राहकों को भेजें।",
-      path: "/poster/site", ref: `live:${c.id}:${dueAdv ? "adv" : "site"}`,
-      whatsappText: `*${premium ? "आपकी Premium website live है" : "आपकी website live है"}* 🎉\n\n${link}\n\nखोलकर देखें, और यही link ग्राहकों को WhatsApp करें। बदलना हो तो app में Card & Website → Edit।`,
-    }).catch(() => ({}));
-    if (Object.values(res).some((x) => x.ok)) told++;
+    if (await tellSiteLive(c, dueAdv && !dueSite)) told++;
   }
   return NextResponse.json({ ok: true, due: (r.data ?? []).length, cleared, told, failed });
 }

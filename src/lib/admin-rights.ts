@@ -61,6 +61,7 @@ export const MENU: { title: string; items: MenuItem[] }[] = [
     { href: "/admin/franchises", label: "Franchises", icon: Store, right: "franchises.view" },
     { href: "/admin/support", label: "Live help", icon: Headset, right: "support.live", franchise: true },
     { href: "/admin/cards", label: "Cards", icon: CreditCard, right: "users.view" },
+    { href: "/admin/websites", label: "Websites", icon: Globe, right: "users.view" },
   ] },
   { title: "Money", items: [
     { href: "/admin/earnings", label: "My earnings", icon: IndianRupee, right: "franchises.view", franchise: true },

@@ -37,7 +37,8 @@ export const fetchCloudCard = cache(async (username: string): Promise<Card | nul
   try {
     const { data } = await sb
       .from("cards")
-      .select("id, data, views, active")
+      // "*": site_paused (migration 0085) is read when it exists, and a database without it still answers.
+      .select("*")
       .eq("username", username)
       .maybeSingle();
     if (!data || data.active === false) return null;
@@ -45,7 +46,9 @@ export const fetchCloudCard = cache(async (username: string): Promise<Card | nul
     if (!card || !card.username) return null;
     // The row id is the card's real identity (the editor loads by it); the id
     // inside the JSON can be a stale pre-publish draft id.
-    return { ...card, id: data.id, views: data.views ?? 0 };
+    // Super Admin paused the website (lib/site-ready.ts sitePaused): publicCard shows the card instead.
+    const paused = (data as { site_paused?: boolean }).site_paused === true && !!card.site;
+    return { ...card, id: data.id, views: data.views ?? 0, ...(paused ? { site: { ...card.site!, paused: true } } : {}) };
   } catch {
     return null;
   }

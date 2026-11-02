@@ -370,3 +370,13 @@ Rendered locally (sheet en/hi, receipt); no live Razorpay run.
   (the month plan's next 4 posts from /api/poster/calendar, this month + next near its end; none → "Plan your month's posts — free") under
   FinishBar, and `FreePosterPreview`: a free account's "Today's poster" is the real watermarked sample (today?preview=1&sample=1) + "Get a poster
   every day — Standard", replacing the "Daily posters are part of Standard" note. Rendered with mocks (390 / 1440, with and without a plan).
+
+## Websites in admin: Live now / Pause (2 Nov 2026)
+Owner: "auto after 24 hr live, sath me admin me Live ka option; pehle live karna ho to Live dabao; pause karni ho to admin se pause".
+Super Admin → People → **Websites** (`app/admin/websites`, right users.view; actions users.edit; franchise scope applied) lists websites
+waiting (site.readyAt / advancedReadyAt ahead), paused, and made live in the last 7 days. API `/api/admin/v2/websites` (GET list; POST
+{id, action: live|pause|resume}, audited `website.*`). **Live now** clears the waiting fields, sets liveToldAt and sends the same "your
+website is live" message as the cron (`lib/site-live-server.ts tellSiteLive`, shared). **Pause** = column `cards.site_paused` (migration
+**0085**, a trigger lets only the service role change it — the app's publish rewrites `data` and would drop a field there);
+`fetchCloudCard` reads it (`select *`, works before 0085) into `site.paused`, `publicCard` then shows the card; the cron skips paused rows.
+The owner's own app does not show "paused" yet.

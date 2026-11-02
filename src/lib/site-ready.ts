@@ -13,7 +13,11 @@ export const CUSTOM_DAYS = 7;
 
 export const readyIn = (hours = READY_HOURS, from = Date.now()) => new Date(from + hours * 3600_000).toISOString();
 
-type SiteLike = { enabled?: boolean; readyAt?: string; advanced?: unknown; advancedOn?: boolean; advancedReadyAt?: string } & Record<string, unknown>;
+type SiteLike = { enabled?: boolean; readyAt?: string; advanced?: unknown; advancedOn?: boolean; advancedReadyAt?: string; paused?: boolean } & Record<string, unknown>;
+
+/** Super Admin → Websites → Pause (owner, 2 Nov 2026: "pause karni ho to admin se pause kar sakte hai"): the website is held for visitors
+ *  (the card shows) until Resume, and the 24-hour clock does not make it live meanwhile. */
+export const sitePaused = (site: unknown): boolean => !!(site && typeof site === "object" && (site as SiteLike).paused === true);
 
 const future = (iso: unknown, now: number): Date | null => {
   if (typeof iso !== "string" || !iso) return null;
@@ -37,7 +41,8 @@ export const advancedPending = (site: unknown, now = Date.now()): Date | null =>
 export function publicCard<T extends Card>(card: T, now = Date.now()): T {
   if (!card.site) return card;
   const s = card.site as SiteLike;
-  const waitSite = !!sitePending(s, now), waitAdv = !!advancedPending(s, now);
+  const paused = s.paused === true;
+  const waitSite = paused || !!sitePending(s, now), waitAdv = paused || !!advancedPending(s, now);
   if (!waitSite && !waitAdv) return card;
   return { ...card, site: { ...card.site, ...(waitSite ? { enabled: false } : {}), ...(waitAdv ? { advancedOn: false } : {}) } };
 }

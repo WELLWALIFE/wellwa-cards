@@ -318,6 +318,8 @@ export interface Card {
     advancedReadyAt?: string;
     /** Set by the cron when it sent the "your website is live" message, so it is sent once. */
     liveToldAt?: string;
+    /** Never stored: the public read sets it from the cards.site_paused column (Super Admin → Websites → Pause; migration 0085). */
+    paused?: boolean;
   };
   /** A notice — news, an offer, a closure — on the website and card (src/lib/notice.ts); `pastNotices` to re-use. */
   notice?: CardNotice;
