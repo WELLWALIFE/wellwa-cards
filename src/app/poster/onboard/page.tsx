@@ -89,7 +89,7 @@ const looksLikeMapLink = (v: string) => /^https?:\/\/(?:[\w-]+\.)*(?:google\.[a-
  *  without a role (a pasted link silently treated as "own" would import a stranger's name and products). */
 type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
 /** What /api/site/peek learned from the home page. */
-type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; products: number; category?: string; empty?: boolean };
+type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; hours?: string; products: number; category?: string; empty?: boolean };
 type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer" | "reference"; data: PeekData | null };
 const NO_PEEK: PeekState = { state: "idle", url: "", role: "own", data: null };
 /** The one social / maps link that was pasted as a "website" and kept as what it is. */
@@ -896,6 +896,8 @@ function Onboard() {
 
   /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
   function prefill(d: PeekData, onlyEmpty = false) {
+    // Opening hours from Google Maps / the listing (owner, 2 Nov 2026: "Timings: Not filled" though Maps shows them) — only into an empty box.
+    if (d.hours && !touched.current.has("hours")) setFacts((f) => (f.hours ? f : (factsDirty.current = true, { ...f, hours: d.hours!.slice(0, 120) })));
     setBiz((b) => {
       const t = touched.current;
       let n = { ...b };
@@ -1739,8 +1741,8 @@ function Onboard() {
         <section className="space-y-3">
           {/* One screen for "Who is this website for?" (partners only) and "Do you have a website?" (owner, 24 Oct 2026: "dono page ko mila
               kar ek"): short lines, compact tick rows, only the ticked row opens. */}
-          <div><h1 className="text-xl font-bold tracking-tight">{associate ? T("Your website", "आपकी Website") : T("Do you have a website?", "क्या आपकी website है?")}<Help k="site" className="translate-y-0" /></h1>
-            <p className="text-xs text-muted">{T("If you have one, we fill your details from it.", "हो तो उसी से आपकी जानकारी भर देंगे।")}</p></div>
+          <div><h1 className="text-xl font-bold tracking-tight">{associate ? T("Your website", "आपकी Website") : T("Where is your business online?", "आपका business online कहाँ है?")}<Help k="site" className="translate-y-0" /></h1>
+            <p className="text-xs text-muted">{T("Paste your website, Google Maps, Instagram or store link — we fill your details from it. Nothing online? Pick the last one.", "अपनी website, Google Maps, Instagram या store का link डालें — उसी से आपकी जानकारी भर देंगे। Online कुछ नहीं? आख़िरी वाला चुनें।")}</p></div>
 
           {associate && (
             <div className="rounded-3xl border border-border bg-surface p-3.5 shadow-card">
@@ -1770,7 +1772,7 @@ function Onboard() {
               Shubhora only: that website is ready-made. */}
           {!(associate && promote === "shubhora") && (
           <div className="space-y-2 rounded-3xl border border-border bg-surface p-3.5 shadow-card">
-          {associate && <p className="text-xs font-semibold text-muted">{T("Do you have a website?", "क्या आपकी website है?")}</p>}
+          {associate && <p className="text-xs font-semibold text-muted">{T("Where is your business online?", "आपका business online कहाँ है?")}</p>}
           {SITE_CARDS.filter((c) => c.k !== "none").map((c) => {
             const on = site.kind === c.k;
             const bad = siteErr && !site.kind;
