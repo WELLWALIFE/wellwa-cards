@@ -461,9 +461,11 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // The day's own words (month plan / "Only today" edit): a short hash of them in the file name, so changed words make a new
   // poster instead of returning yesterday's file of the same day and style.
   const L0 = profile.layout && typeof profile.layout === "object" ? profile.layout : {};
-  const words0 = `${L0.title || ""}|${typeof L0.sub === "string" ? L0.sub : ""}|${custom || ""}`;
+  // …and the identity the poster draws (name, tagline, name-on-top, colour, logo): changing the brand makes a new poster too — before, a
+  // changed colour or "name on top" kept returning the old file of the day (seen live, 2 Nov 2026).
+  const words0 = `${L0.title || ""}|${typeof L0.sub === "string" ? L0.sub : ""}|${custom || ""}|${profile.name || ""}|${profile.tagline || ""}|${L0.showName ? 1 : 0}|${L0.accent || ""}|${profile.logo_url || ""}`;
   let wh = 5381; for (let i = 0; i < words0.length; i++) wh = ((wh * 33) ^ words0.charCodeAt(i)) >>> 0;
-  const hTag = words0 !== "||" ? `-h${wh.toString(36).slice(0, 6)}` : "";
+  const hTag = `-h${wh.toString(36).slice(0, 6)}`;
   // Signature (owner's call, 30 Sep 2026): the default for paid profiles — layout.look "vibrant" | "classic" picks the
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
