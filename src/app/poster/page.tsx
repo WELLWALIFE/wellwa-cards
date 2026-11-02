@@ -3,7 +3,6 @@ import { NextPosts, FreePosterPreview } from "@/components/poster/next-posts";
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { SubscribeButton } from "@/components/subscribe-button";
 import { usePlan } from "@/lib/plan";
 import { LoaderCircle, ChevronDown, Sparkles, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
@@ -60,7 +59,7 @@ function usePlanKind(): Kind {
 }
 
 /** The first screen for someone who has not made anything yet: what they are about to make depends on what they have. */
-function firstRun(kind: Kind, en: boolean) {
+function firstRun(kind: Kind, en: boolean): { title: string; sub: string; bullets: string[]; button: string; note: string } {
   if (kind === "standard" || kind === "premium") {
     const premium = kind === "premium";
     return {
@@ -73,7 +72,17 @@ function firstRun(kind: Kind, en: boolean) {
       note: premium ? (en ? "Your Premium website is one tap away once the first one is made." : "पहली website बनते ही आपकी Premium website बस एक tap दूर है।") : "",
     };
   }
-  return null;
+  // Free, or not signed in yet (owner, 2 Nov 2026: "ye plan wala page starting me nahi — make my website ke baad aaye"): no plans or
+  // prices at the start. The set-up makes the free card first; the website's plan is asked after "Make my website" (WebsitePlanSheet).
+  return {
+    title: en ? "Make your website and digital card\nin 5 minutes." : "अपनी website और digital card\n5 मिनट में बनाएँ।",
+    sub: en ? "Answer a few simple questions. Your digital card is made first — free. Choose a plan for your website after that, if you want one." : "कुछ आसान सवालों के जवाब दें। पहले आपका digital card बनेगा — free। उसके बाद, चाहें तो website के लिए plan चुनें।",
+    bullets: en
+      ? ["Your digital card on one link — free", "Your first posters, made for your business", "Your website: choose its plan once your card is ready"]
+      : ["एक link पर आपका digital card — free", "आपके business के लिए बने पहले posters", "आपकी website: card बनने के बाद उसका plan चुनें"],
+    button: en ? "Make my website & card" : "मेरी website और card बनाएँ",
+    note: "",
+  };
 }
 
 export default function TodayPage() {
@@ -154,61 +163,6 @@ export default function TodayPage() {
 
   if (phase === "welcome" || phase === "noprofile") {
     const fr = firstRun(kind, lang === "en");
-    const en = lang === "en";
-    // Free (or not signed in yet): the paid plans lead, the free card is a small way in at the bottom (owner, 18 Oct 2026).
-    if (!fr) {
-      const go = () => router.push("/poster/onboard");
-      const li = (t: string) => <li key={t} className="flex items-start gap-2"><span className="mt-0.5 text-[#ffd54a]">✔</span><span>{t}</span></li>;
-      const lj = (t: string) => <li key={t} className="flex items-start gap-2"><span className="mt-0.5 text-good">✔</span><span>{t}</span></li>;
-      return (
-        <div className="space-y-4 py-6">
-          <div className="px-1">
-            <h1 className="text-2xl font-extrabold leading-tight tracking-tight">{en ? "Get your business online" : "अपना business online लाएँ"}</h1>
-            <p className="mt-1 text-sm text-muted">{en ? "Choose a plan. You are live in about 5 minutes." : "एक plan चुनिए। करीब 5 मिनट में आप live हैं।"}</p>
-          </div>
-
-          {/* Premium: the one to take */}
-          <div className="relative overflow-hidden rounded-3xl bg-[#12144a] p-5 text-white shadow-float">
-            <span className="absolute right-4 top-4 rounded-full bg-[#ffd54a] px-3 py-1 text-[11px] font-extrabold uppercase tracking-wide text-[#12144a]">{en ? "Most popular" : "सबसे ज़्यादा चुना गया"}</span>
-            <p className="text-sm font-semibold text-white/70">Premium</p>
-            <p className="mt-1 flex items-baseline gap-2"><span className="text-4xl font-extrabold tracking-tight">₹5,999</span><span className="text-sm text-white/80">{en ? "first month only" : "सिर्फ़ पहला महीना"}</span></p>
-            <p className="mt-0.5 text-sm text-white/80">{en ? "then ₹2,999 a month · GST included" : "फिर ₹2,999 / महीना · GST शामिल"}</p>
-            <ul className="mt-4 space-y-2 text-sm">
-              {(en
-                ? ["A bigger multi-page website: a page for every product and service", "Google SEO, so customers find you", "A new poster every day on Facebook, Instagram and WhatsApp", "A WhatsApp AI that answers your customers, and Meta Ads"]
-                : ["बड़ी multi-page website: हर product और service का अपना page", "Google SEO, ताकि ग्राहक आपको ढूँढ लें", "Facebook, Instagram और WhatsApp पर रोज़ नया poster", "WhatsApp AI जो ग्राहकों को जवाब देता है, और Meta Ads"]).map(li)}
-            </ul>
-            <SubscribeButton tier="growth" premium onDone={go} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#ffd54a] px-4 py-3.5 text-base font-bold text-[#12144a] hover:opacity-95">
-              {en ? "Start with Premium" : "Premium से शुरू करें"}
-            </SubscribeButton>
-            <p className="mt-2 text-center text-[11px] text-white/60">{en ? "You can stop it any time from your UPI app." : "आप इसे कभी भी अपने UPI app से बंद कर सकते हैं।"}</p>
-          </div>
-
-          {/* Standard */}
-          <div className="rounded-3xl border-2 border-brand/40 bg-surface p-5">
-            <p className="text-sm font-semibold text-muted">Standard</p>
-            <p className="mt-1 flex items-baseline gap-2"><span className="text-3xl font-extrabold tracking-tight">₹2,999</span><span className="text-sm text-muted">{en ? "/ month · GST included" : "/ महीना · GST शामिल"}</span></p>
-            <ul className="mt-3 space-y-2 text-sm">
-              {(en
-                ? ["Your own website (up to 5 pages) and digital card", "A new poster every day, ready to share", "A WhatsApp AI that answers your customers", "Meta Ads for Facebook and Instagram"]
-                : ["आपकी अपनी website (5 pages तक) और digital card", "रोज़ नया poster, share करने के लिए तैयार", "WhatsApp AI जो ग्राहकों को जवाब देता है", "Facebook और Instagram के लिए Meta Ads"]).map(lj)}
-            </ul>
-            <SubscribeButton tier="growth" onDone={go} className="mt-4 inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand px-4 py-3 text-base font-semibold text-white">
-              {en ? "Start with Standard" : "Standard से शुरू करें"}
-            </SubscribeButton>
-          </div>
-
-          {/* Free: small, at the bottom */}
-          <div className="space-y-1.5 px-1 pt-1 text-center">
-            <p className="text-xs text-muted">{en ? "Only need a card? Free for 1 year: a digital card, no website." : "सिर्फ़ card चाहिए? 1 साल free: digital card, website नहीं।"}</p>
-            <Link href={phase === "welcome" ? "/signup" : "/poster/onboard"} className="text-sm font-semibold text-brand-ink underline">{en ? "Make a free digital card" : "Free digital card बनाएँ"}</Link>
-          </div>
-          {phase === "welcome" && (
-            <p className="text-center text-xs text-muted">{t.haveAccount} <Link href="/login?next=/poster" className="font-medium text-brand-ink">{t.login}</Link></p>
-          )}
-        </div>
-      );
-    }
     return (
       <div className="py-8 space-y-6">
         <div className="rounded-3xl overflow-hidden grad-brand p-6 text-white">

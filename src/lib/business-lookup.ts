@@ -18,10 +18,15 @@ export type Lookup = { ok: boolean; kind: LinkKind; source: string; name: string
   /** The trade's own questions answered from what the listing says ("Pure veg", "Home delivery") — option names of lib/trade-questions; only what was stated. */
   answers: Record<string, string[]> };
 
+// Exact hosts only — a Google Maps link is fetched (redirects followed) on the server, so a look-alike host ("maps.google.evil.com") must
+// never pass, and every redirect hop is checked again (a review, 2 Nov 2026: SSRF).
+const GOOGLE_HOST = /^(www\.|maps\.)?google\.(?:com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/i;
+const SHORT_MAP = /^(maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+const mapHost = (u: URL) => u.protocol === "https:" && (SHORT_MAP.test(u.hostname) || GOOGLE_HOST.test(u.hostname));
 const MARKET = /(^|\.)(amazon\.in|amazon\.com|flipkart\.com|meesho\.com|myntra\.com|ajio\.com|nykaa\.com|blinkit\.com|swiggy\.com|zomato\.com|etsy\.com|shopsy\.in|jiomart\.com)$/i;
 export function linkKind(url: string): LinkKind {
   let h = ""; try { h = new URL(url).hostname.replace(/^www\./, ""); } catch { return "website"; }
-  if (/(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl|g\.page)$/i.test(h) || (/(^|\.)google\.[a-z.]+$/i.test(h) && /\/maps/i.test(url))) return "map";
+  if (SHORT_MAP.test(h) || (GOOGLE_HOST.test(h) && (/^maps\./i.test(h) || /\/maps/i.test(url)))) return "map";
   if (/(^|\.)instagram\.com$/i.test(h)) return "instagram";
   if (/(^|\.)(facebook\.com|fb\.com|fb\.me)$/i.test(h)) return "facebook";
   if (/(^|\.)(youtube\.com|youtu\.be)$/i.test(h)) return "youtube";
@@ -37,15 +42,23 @@ export const linkLabel = (k: LinkKind) => LABEL[k];
 async function expandMap(url: string): Promise<{ url: string; name: string; lat: string; lng: string }> {
   let long = url;
   try {
-    for (let i = 0; i < 4 && /goo\.gl|g\.page/i.test(long); i++) {
-      const r = await fetch(long, { redirect: "manual", signal: AbortSignal.timeout(8_000), headers: { "user-agent": "Mozilla/5.0" } });
-      const loc = r.headers.get("location"); if (!loc) break; long = new URL(loc, long).toString();
+    // Only a short Google link is followed, hop by hop, and only to Google's own hosts over https.
+    for (let i = 0; i < 4; i++) {
+      const u = new URL(long);
+      if (!mapHost(u) || !SHORT_MAP.test(u.hostname)) break;
+      const r = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(8_000), headers: { "user-agent": "Mozilla/5.0" } });
+      const loc = r.headers.get("location"); if (!loc) break;
+      const next = new URL(loc, u);
+      if (!mapHost(next)) break;
+      long = next.toString();
     }
   } catch { /* keep what we have */ }
   const place = long.match(/\/maps\/place\/([^/@?]+)/);
   const at = long.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ?? long.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
   const q = (() => { try { return new URL(long).searchParams.get("q") ?? ""; } catch { return ""; } })();
-  const name = decodeURIComponent((place?.[1] ?? (q && !/^-?\d/.test(q) ? q : "")).replace(/\+/g, " ")).trim().slice(0, 100);
+  // The place part of the path is still encoded; the ?q= value is decoded already (and may hold a "%", e.g. "100% Veg").
+  const raw = place?.[1] ? (() => { try { return decodeURIComponent(place[1].replace(/\+/g, " ")); } catch { return place[1].replace(/\+/g, " "); } })() : (q && !/^-?\d/.test(q) ? q : "");
+  const name = raw.trim().slice(0, 100);
   return { url: long, name, lat: at?.[1] ?? "", lng: at?.[2] ?? "" };
 }
 

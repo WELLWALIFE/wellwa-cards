@@ -112,13 +112,14 @@ export default function CalendarPage() {
   // the server is never asked for three renders at once; a day already made or already asked is left alone.
   const autoSeen = useRef("");
   useEffect(() => {
-    if (!profile || !hasAiPlan || !next3.length) return;
+    // Only the month that holds today (another month's previews stay one tap away — a free account may see only the next three anyway).
+    if (!profile || !hasAiPlan || !next3.length || month !== today.slice(0, 7)) return;
     const key = `${profile.id}|${next3.map((e) => e.for_date).join(",")}`;
     if (autoSeen.current === key) return;
     autoSeen.current = key;
     void (async () => { for (const e of next3) if (!posterOf[e.for_date]) await seePoster(e.for_date); })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [profile, hasAiPlan, next3.map((e) => e.for_date).join(","), posterOf]);
+  }, [profile, hasAiPlan, next3.map((e) => e.for_date).join(","), posterOf, month, today]);
 
   async function saveSheet(over?: Partial<Sheet>) {
     if (!profile || !sheet) return;

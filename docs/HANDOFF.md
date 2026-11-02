@@ -390,3 +390,21 @@ The owner's own app does not show "paused" yet.
   "From your month plan — one tap" (the next 3 planned days' hooks); a tap fills the kind (`REEL_OF` maps plan kinds), the product and the
   words (hook + the caption's first line). `/poster/reel?date=YYYY-MM-DD` opens with that day filled; the month plan's day sheet has
   "Make a Reel of this". Rendered with mocks.
+
+## Start screen + review fixes (2 Nov 2026, evening)
+- **No plan wall at the start** (owner: "ye page starting me dikh raha hai — make my website ke baad aana tha"): `/poster` for a free account with
+  no profile (and for a visitor) shows the free start screen ("Make your website and digital card in 5 minutes" → set-up); the plans come
+  after "Make my website" (WebsitePlanSheet). `firstRun()` always returns a screen now.
+- A senior review of the day's commits found, and these are fixed: the free sample left the CLEAN poster on disk at the sample's address
+  minus "-sample" (now: engine `nameOnly` → look for the marked copy; else draw, mark, delete the clean file; the 12/day limit counts only
+  real drawings, after the allowed-day check); SSRF in the Maps link reader (exact Google hosts, every redirect hop checked; same strict
+  hosts in site-role `socialDetour`); the site-live cron now reads `cards.site_paused` and skips paused rows; the plan sheet's receipt lost
+  its details (onDone after onPaid) and showed "Payment confirmed" for an "already" answer (SubscribeButton `onAlready`; a still-pending
+  mandate says so); a Maps / Instagram read filled the form for a dealer / example answer (now own business only; dealer / example get
+  "paste the website link"; stale replies ignored; YouTube no longer blocks Next); `rightWeekday` only fixes a lone plain weekday in the
+  heading / line / idea (never offers, ranges, "every", captions); calendar auto-previews only in the current month; a day whose words
+  change and has not gone out loses its `posters` row (shares = 0) so the app and the 4 AM post draw it again; reel `?date=` and the
+  website→poster colour use the business chosen in the app; the colour sent back to posters is the owner's hex (no darkening drift);
+  Admin → Websites asks a franchise's own cards directly; `expandMap` survives a "%" in the place name.
+- Known, left: "Live now" rewrites the card's whole `data` (a publish at the same second could be overwritten); deleting and re-publishing a
+  card clears its pause (the trigger guards UPDATE only).

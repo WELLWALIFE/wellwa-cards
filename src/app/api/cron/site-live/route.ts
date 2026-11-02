@@ -8,20 +8,24 @@ import { restAsService } from "@/lib/poster-server";
 import { serviceConfigured } from "@/lib/admin-guard";
 import { tellSiteLive } from "@/lib/site-live-server";
 
-type Site = { readyAt?: string; advancedReadyAt?: string; enabled?: boolean; paused?: boolean } & Record<string, unknown>;
-type Row = { id: string; owner_id: string; username: string; data: { site?: Site; customDomain?: string } & Record<string, unknown> };
+type Site = { readyAt?: string; advancedReadyAt?: string; enabled?: boolean } & Record<string, unknown>;
+type Row = { id: string; owner_id: string; username: string; site_paused?: boolean; data: { site?: Site; customDomain?: string } & Record<string, unknown> };
 
 export async function GET(request: Request) {
   if (!process.env.CRON_KEY || request.headers.get("x-cron-key") !== process.env.CRON_KEY) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
   const now = new Date().toISOString();
   // ISO strings compare as text; a field that is absent never matches.
-  const r = await restAsService<Row[]>(`cards?select=id,owner_id,username,data&or=(data->site->>readyAt.lte.${now},data->site->>advancedReadyAt.lte.${now})&limit=500`);
+  // Paused ones (Super Admin → Websites; the cards.site_paused column, migration 0085) are left alone. Before 0085 the column does not
+  // exist: the list is read without it.
+  const due = `or=(data->site->>readyAt.lte.${now},data->site->>advancedReadyAt.lte.${now})&limit=500`;
+  let r = await restAsService<Row[]>(`cards?select=id,owner_id,username,site_paused,data&site_paused=is.false&${due}`);
+  if (!r.ok) r = await restAsService<Row[]>(`cards?select=id,owner_id,username,data&${due}`);
   if (!r.ok) return NextResponse.json({ error: "could not read cards" }, { status: 502 });
   let told = 0, cleared = 0, failed = 0;
   for (const c of r.data ?? []) {
     const site = c.data?.site ?? {};
-    if (site.paused === true) continue;   // Super Admin paused it: held until Resume (lib/site-ready.ts sitePaused)
+    if (c.site_paused === true) continue;   // Super Admin paused it: held until Resume
     const dueSite = !!site.readyAt && site.readyAt <= now;
     const dueAdv = !!site.advancedReadyAt && site.advancedReadyAt <= now;
     if (!dueSite && !dueAdv) continue;

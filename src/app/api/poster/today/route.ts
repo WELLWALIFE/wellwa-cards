@@ -23,7 +23,7 @@ export async function GET(request: Request) {
   // with the Shubhora mark, never saved as a poster, never posted. Paid plans see every day.
   const sample = q.get("sample") === "1" && q.get("preview") === "1" && quota.plan === "free";
   if (sample) {
-    if (rateLimited(`poster-sample:${me.id}`, 12, 24 * 3600_000)) return NextResponse.json({ error: "plan", quota, message: "Free previews for today are done. The Standard plan shows every day of the plan." }, { status: 402 });
+    // Which days first (a refused day costs nothing); the daily limit counts only real drawings, further below.
     const first = (await restAsService<{ for_date: string }[]>(`poster_calendar?profile_id=eq.${profile.id}&for_date=gte.${istDate()}&kind=neq.skip&order=for_date&limit=3&select=for_date`)).data ?? [];
     // No plan yet (the first posters right after the set-up): today and the next two days.
     const allowed = first.length ? first.map((r) => r.for_date) : [istDate(), istDate(1), istDate(2)];
@@ -100,22 +100,24 @@ export async function GET(request: Request) {
     // A free account's sample shows the REAL design (Signature, the business's name and colours) — marked "SAMPLE" below, never saved.
     const opts: Record<string, unknown> = { force, watermark: quota.plan === "free" && !sample, products, premium: quota.plan !== "free" || sample, style, custom: dayCustom, stock: { category, kind: stockKind }, link: link?.show ?? "", card: cardDay ? link!.data : null };
     if (testimonial) opts.testimonial = testimonial;
-    file = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, opts as Parameters<typeof eng.renderPoster>[2]);
+    if (sample) {
+      // The free sample (reviewed 2 Nov 2026): the clean poster must never stay on disk — its address is the sample's minus "-sample",
+      // and the image route serves any file by name. So: the marked copy is looked for first (no drawing, no count), else the clean
+      // poster is drawn, marked, and deleted.
+      const fs = await import("node:fs");
+      const clean = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, { ...opts, nameOnly: true } as Parameters<typeof eng.renderPoster>[2]);
+      const marked = clean.replace(/\.jpg$/, "-sample.jpg");
+      if (!force && fs.existsSync(marked)) { file = marked; try { if (fs.existsSync(clean)) fs.unlinkSync(clean); } catch { /* left for the next view */ } }   // a clean copy left by an older sample goes too
+      else {
+        if (rateLimited(`poster-sample:${me.id}`, 12, 24 * 3600_000)) return NextResponse.json({ error: "plan", quota, message: "Free previews for today are done. The Standard plan shows every day of the plan." }, { status: 402 });
+        const drawn = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, opts as Parameters<typeof eng.renderPoster>[2]);
+        file = await markSample(drawn, marked);
+      }
+    } else file = await eng.renderPoster(date, effProfile as unknown as Record<string, unknown>, opts as Parameters<typeof eng.renderPoster>[2]);
   } catch (e) {
     return NextResponse.json({ error: "The poster could not be made right now. Please try again in a minute.", detail: (e as Error).message.slice(0, 200) }, { status: 500 });
   }
   const theme = eng.themeFor(date);
-  // The sample's mark: a copy of the poster with a soft diagonal "SAMPLE · Shubhora" band (the poster file itself stays clean).
-  if (sample) {
-    try {
-      const sharp = (await import("sharp")).default;
-      const meta = await sharp(file).metadata(); const W = meta.width ?? 1080, H = meta.height ?? 1350;
-      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><g transform="translate(${W / 2},${H / 2}) rotate(-28)"><rect x="${-W}" y="-46" width="${W * 2}" height="92" fill="rgba(0,0,0,0.38)"/><text x="0" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="rgba(255,255,255,0.92)" letter-spacing="6">SAMPLE · SHUBHORA.COM</text></g></svg>`;
-      const out = file.replace(/\.jpg$/, "-sample.jpg");
-      await sharp(file).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 82 }).toFile(out);
-      file = out;
-    } catch { /* the plain file is shown — still never saved or posted */ }
-  }
   const url = OUT_URL(file);
   const v = await posterVersion(url);
   if (preview) return NextResponse.json({ poster: { id: "", url, title: theme.hi, occasion_slug: theme.slug, shares: 0, style, v }, date, theme, style, quota, preview: true, card_url });
@@ -127,4 +129,21 @@ export async function GET(request: Request) {
   const poster = saved.data?.[0] ?? { id: "", ...row, shares: 0 };
   const join_url = await joinLinkFor(me.id).catch(() => "");
   return NextResponse.json({ poster: { ...poster, v, caption: existing.data?.[0]?.caption ?? null }, date, theme, style, overrides, card_url, join_url, quota: { ...quota, used: existing.data?.[0] ? quota.used : quota.used + 1 } });
+}
+
+/** The free sample's mark: the poster with a soft diagonal "SAMPLE · SHUBHORA.COM" band, written to `out`; the clean file is then
+ *  deleted (a free account never gets the unmarked poster). If marking fails, nothing clean is handed out either. */
+async function markSample(clean: string, out: string): Promise<string> {
+  const fs = await import("node:fs/promises");
+  try {
+    const sharp = (await import("sharp")).default;
+    const meta = await sharp(clean).metadata(); const W = meta.width ?? 1080, H = meta.height ?? 1350;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}"><g transform="translate(${W / 2},${H / 2}) rotate(-28)"><rect x="${-W}" y="-46" width="${W * 2}" height="92" fill="rgba(0,0,0,0.38)"/><text x="0" y="16" text-anchor="middle" font-family="Arial, sans-serif" font-size="46" font-weight="700" fill="rgba(255,255,255,0.92)" letter-spacing="6">SAMPLE · SHUBHORA.COM</text></g></svg>`;
+    await sharp(clean).composite([{ input: Buffer.from(svg) }]).jpeg({ quality: 82 }).toFile(out);
+    return out;
+  } finally {
+    // The clean file goes either way. It is this free account's own drawing (its profile id is in the name), for one of the few days a
+    // sample is allowed — nobody else's poster passes through here.
+    await fs.unlink(clean).catch(() => undefined);
+  }
 }

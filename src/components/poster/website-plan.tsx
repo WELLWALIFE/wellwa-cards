@@ -3,9 +3,10 @@
 // aapka card ban gaya hai, website ke liye apna plan select kare; payment ke baad payment confirm kare aur 24–48 hr ka page dikha de").
 // Order of the finish: the card is made and shown first (it stays free whatever is chosen) → this sheet → Razorpay → the receipt
 // (PaidReceipt) → the website is made → the waiting screen with the three steps (SiteProgress). "Not now" keeps the free card.
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Check, CheckCircle2, Clock, Globe, MessageCircle, ShieldCheck, X } from "lucide-react";
 import { SubscribeButton, type PaidInfo } from "@/components/subscribe-button";
+import { api } from "@/lib/poster-client";
 import { SAAS_PLANS, PREMIUM_FIRST_PAISE, rupees } from "@/lib/billing";
 
 type Pick = "standard" | "premium";
@@ -13,6 +14,16 @@ type Pick = "standard" | "premium";
 export function WebsitePlanSheet({ hi, name, onClose, onPaid }: { hi: boolean; name?: string; onClose: () => void; onPaid: (p: PaidInfo | null) => void }) {
   const T = (en: string, h: string) => (hi ? h : en);
   const [pick, setPick] = useState<Pick>("standard");
+  // A real payment calls onPaid and then onDone: only the first counts (a review, 2 Nov 2026 — the receipt lost its details).
+  const gotPaid = useRef(false);
+  const [note, setNote] = useState("");
+  /** onDone without a new payment = "already on a plan" from the server. The receipt opens only when the plan really runs; a mandate
+   *  still waiting for its first debit says so instead of "Payment confirmed". */
+  async function already() {
+    const r = await api<{ subscribed?: boolean }>("/api/poster/pay/credits", { fresh: true }).catch(() => null);
+    if (r?.ok && r.data.subscribed) onPaid(null);
+    else setNote(T("Your last payment is still being confirmed by the bank. Please check again in a few minutes — you will not be charged twice.", "आपका पिछला payment अभी bank से confirm हो रहा है। कुछ मिनट बाद फिर देखें — दोबारा पैसे नहीं कटेंगे।"));
+  }
   const plans: { key: Pick; title: string; price: string; per: string; tag?: string; items: string[] }[] = [
     { key: "standard", title: "Standard", price: rupees(SAAS_PLANS.growth.amount), per: T("/ month", "/ महीना"), tag: T("Recommended", "सबसे सही"),
       items: [T("Website up to 5 pages, no Shubhora tag", "5 pages तक website, Shubhora tag नहीं"), T("Daily posters on Facebook, Instagram, WhatsApp", "रोज़ posters — Facebook, Instagram, WhatsApp"), T("WhatsApp AI replies 24×7", "WhatsApp AI 24×7 जवाब")] },
@@ -44,10 +55,11 @@ export function WebsitePlanSheet({ hi, name, onClose, onPaid }: { hi: boolean; n
               </button>
             );
           })}
-          <SubscribeButton key={pick} tier="growth" premium={pick === "premium"} onPaid={(p) => onPaid(p)} onDone={() => onPaid(null)}
+          <SubscribeButton key={pick} tier="growth" premium={pick === "premium"} onPaid={(p) => { if (gotPaid.current) return; gotPaid.current = true; onPaid(p); }} onDone={() => undefined} onAlready={() => void already()}
             className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card disabled:opacity-60">
             {T(`Pay ${sel.price} — UPI / card`, `${sel.price} pay करें — UPI / card`)}
           </SubscribeButton>
+          {note && <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs font-medium">{note}</p>}
           <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted"><ShieldCheck className="h-3.5 w-3.5 text-good" /> {T("Secure Razorpay · GST included · monthly autopay", "Razorpay से सुरक्षित · GST शामिल · हर महीने autopay")}</p>
           <button type="button" onClick={onClose} className="block w-full pt-1 text-center text-sm font-semibold text-muted underline underline-offset-2">{T("Not now — keep my free card", "अभी नहीं — free card ही रखें")}</button>
         </div>
@@ -94,8 +106,8 @@ export function PaidReceipt({ hi, paid, onGo, busy }: { hi: boolean; paid: PaidI
       <section className="relative overflow-hidden rounded-3xl bg-good px-5 py-6 text-center text-white shadow-float">
         <div aria-hidden="true" className="pointer-events-none absolute -right-8 -top-10 h-36 w-36 rounded-full bg-white/10" />
         <span className="relative mx-auto grid h-14 w-14 place-items-center rounded-full bg-white text-good"><Check className="h-7 w-7" strokeWidth={3} /></span>
-        <h1 className="relative mt-2 text-2xl font-extrabold">{T("Payment confirmed", "Payment confirm हो गया")}</h1>
-        <p className="relative text-sm text-white/90">{T("Thank you! Your plan is active.", "धन्यवाद! आपका plan चालू है।")}</p>
+        <h1 className="relative mt-2 text-2xl font-extrabold">{paid ? T("Payment confirmed", "Payment confirm हो गया") : T("Your plan is active", "आपका plan चालू है")}</h1>
+        <p className="relative text-sm text-white/90">{paid ? T("Thank you! Your plan is active.", "धन्यवाद! आपका plan चालू है।") : T("Now make your website.", "अब अपनी website बनाएँ।")}</p>
       </section>
       {paid && (
         <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">

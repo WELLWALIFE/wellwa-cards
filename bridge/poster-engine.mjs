@@ -446,7 +446,7 @@ export function offerFor(offers, dateStr, productId, productCategory = "") {
  * Personalised poster (1080×1350 JPEG). profile: {id, persona, name, tagline,
  * phone, photo_url, logo_url, lang, kids_mode}. Returns the output path.
  */
-export async function renderPoster(dateStr, profile0, { force = false, watermark = false, products = [], premium = false, testimonial = null, style: styleOpt = "", custom = "", tag = "", stock = null, link = "", card = null } = {}) {
+export async function renderPoster(dateStr, profile0, { force = false, watermark = false, products = [], premium = false, testimonial = null, style: styleOpt = "", custom = "", tag = "", stock = null, link = "", card = null, nameOnly = false } = {}) {
   fs.mkdirSync(OUT_DIR, { recursive: true });
   const style = effectiveStyle(profile0, dateStr, styleOpt);
   // day-specific extra line (offer / calendar note) rides on the layout without touching the saved profile
@@ -470,6 +470,8 @@ export async function renderPoster(dateStr, profile0, { force = false, watermark
   // look, "old" keeps the six original styles; a calendar day may also ask for it by style name.
   const sigLook = signatureLookFor(profile, style, { premium, watermark, card });
   const out = path.join(OUT_DIR, `${profile.id}-${dateStr}${style !== "classic" ? `-${style}` : ""}${gTag}${sTag}${tag}${vTag}${hTag}${sigLook ? `-sig${sigLook[0]}2` : "-t3"}${watermark ? "-w" : ""}.jpg`);
+  // nameOnly: the file this call WOULD make, nothing drawn (the free sample checks for its marked copy before drawing).
+  if (nameOnly) return out;
   if (fs.existsSync(out) && !force) return out;
   // Signature draws its own page from a real photo + the layout code, so it never needs (or pays for) the day's base art;
   // only when it cannot render does the day fall through to the original styles below.

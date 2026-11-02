@@ -10,7 +10,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Download, Share2, Clapperboard, Trash2, Check, Copy, ChevronDown, Pencil, RotateCw, ImagePlus, Plus, ArrowRight, Play, Pause } from "lucide-react";
-import { api, isLoggedIn, shareFile, downloadPoster, uploadImage, LANGS } from "@/lib/poster-client";
+import { api, isLoggedIn, shareFile, downloadPoster, uploadImage, LANGS, currentProfileId } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { AddCredits } from "@/components/poster/add-credits";
 import { goBack } from "@/lib/nav-back";
@@ -107,7 +107,9 @@ export default function Reel() {
     ]);
     setProducts(pr?.data.products ?? []);
     // The business name, phone and trade come from the profile — nothing to type on a normal day.
-    const p = (pp?.data.profiles ?? []).find((x) => x.is_default) ?? pp?.data.profiles?.[0];
+    // The business chosen in the app (the same one the month plan shows), else the default one.
+    const list = pp?.data.profiles ?? [];
+    const p = list.find((x) => x.id === currentProfileId()) ?? list.find((x) => x.is_default) ?? list[0];
     if (p) { setBusiness(p.name); setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); setLogoUrl(p.logo_url || ""); }
     // The logo and the name are chosen in <BrandPick> (shared with the videos, remembered on this phone).
     quota();

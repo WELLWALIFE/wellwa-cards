@@ -85,12 +85,16 @@ const DAY_WORDS: string[][] = [
   ["सोमवार", "मंगलवार", "बुधवार", "गुरुवार", "शुक्रवार", "शनिवार", "रविवार"],
   ["मंडे", "ट्यूज़डे", "वेडनेसडे", "थर्सडे", "फ्राइडे", "सैटरडे", "संडे"],
 ];
+/** Only a lone, plain mention is corrected ("संडे का नाश्ता" on a Saturday). Anything that reads like a real fact is left as the AI wrote
+ *  it — two days or a range ("Mon to Sat", "सोमवार से शनिवार"), "every …" / "हर …", an offer's own words (a review, 2 Nov 2026). */
 function rightWeekday(text: string, date: string): string {
   if (!text) return text;
-  const want = dow(date);
-  let out = text;
-  for (const list of DAY_WORDS) list.forEach((w, i) => { if (i !== want) out = out.replace(new RegExp(w, "gi"), list[want]); });
-  return out;
+  const hits: { list: string[]; i: number }[] = [];
+  for (const list of DAY_WORDS) list.forEach((w, i) => { const n = (text.match(new RegExp(w, "gi")) ?? []).length; for (let k = 0; k < n; k++) hits.push({ list, i }); });
+  if (hits.length !== 1) return text;
+  if (/\b(every|each|till|until|to)\b|हर\s|से\s|तक|–|-/i.test(text)) return text;
+  const want = dow(date), h = hits[0];
+  return h.i === want ? text : text.replace(new RegExp(h.list[h.i], "gi"), h.list[want]);
 }
 
 async function loadCtx(userId: string, b: BrandSnapshot, month: string, focus: string[], perWeek: number): Promise<Ctx> {
@@ -188,7 +192,8 @@ function readDays(text: string, c: Ctx, dates: string[]): Map<string, PlanDay> {
     let product_id = UUID.test(String(d.product_id ?? "")) && c.products.some((p) => p.id === d.product_id) ? String(d.product_id) : null;
     if ((kind === "product" || kind === "offer") && !product_id) { if (!c.products.length) kind = "tip"; else product_id = c.products[out.size % c.products.length].id; }
     if (kind !== "product" && kind !== "offer") product_id = null;
-    for (const k of ["title", "sub", "hook", "caption"] as const) if (typeof d[k] === "string") d[k] = rightWeekday(d[k] as string, date);
+    // The heading, its line and the idea only — never an offer day, never the caption (it may speak of another day on purpose).
+    if (String(d.kind ?? "") !== "offer") for (const k of ["title", "sub", "hook"] as const) if (typeof d[k] === "string") d[k] = rightWeekday(d[k] as string, date);
     const overrides: PlanDay["overrides"] = {};
     if (shortLine(d.title, 34)) overrides.title = shortLine(d.title, 34);
     if (shortLine(d.sub, 40)) overrides.sub = shortLine(d.sub, 40);

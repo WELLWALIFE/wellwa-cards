@@ -110,7 +110,7 @@ export function istDate(offsetDays = 0): string {
 }
 
 type Engine = {
-  renderPoster: (date: string, profile: Record<string, unknown>, opts?: { force?: boolean; watermark?: boolean; products?: Record<string, unknown>[]; premium?: boolean; style?: string; custom?: string; testimonial?: Record<string, unknown> | null; stock?: { category: string; kind: string } | null; link?: string; card?: Record<string, unknown> | null }) => Promise<string>;
+  renderPoster: (date: string, profile: Record<string, unknown>, opts?: { force?: boolean; watermark?: boolean; products?: Record<string, unknown>[]; premium?: boolean; style?: string; custom?: string; testimonial?: Record<string, unknown> | null; stock?: { category: string; kind: string } | null; link?: string; card?: Record<string, unknown> | null; nameOnly?: boolean }) => Promise<string>;
   /** Sundays that are not a festival: the poster is the owner's own V-Card. */
   isCardDay: (date: string, theme: { kind: string }) => boolean;
   effectiveStyle: (profile: Record<string, unknown>, date: string, override?: string) => string;

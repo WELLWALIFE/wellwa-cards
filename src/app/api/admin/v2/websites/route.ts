@@ -16,14 +16,17 @@ export async function GET(request: Request) {
   const g = await requireAdmin(request, "users.view"); if (!g.ok) return g.res;
   const week = new Date(Date.now() - 7 * 86400e3).toISOString();
   const base = `or=(data->site->>readyAt.not.is.null,data->site->>advancedReadyAt.not.is.null,data->site->>liveToldAt.gte.${week}`;
+  // A franchise login: its own users' cards are asked for directly (filtering a capped list afterwards could miss them).
+  const scope = g.me.franchiseId ? (g.me.franchiseId === "none" ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=eq.${g.me.franchiseId}&select=id&limit=5000`)).data ?? []).map((p) => p.id)) : null;
+  if (scope && !scope.length) return NextResponse.json({ pauseReady: true, websites: [] });
+  const chunks = scope ? Array.from({ length: Math.ceil(scope.length / 150) }, (_, i) => `&owner_id=in.(${scope.slice(i * 150, i * 150 + 150).join(",")})`) : [""];
   // With migration 0085 the paused ones are listed too; without it the column does not exist and the list is read without it.
-  let r = await svc<Row[]>(`cards?select=${COLS},site_paused&${base},site_paused.is.true)&order=created_at.desc&limit=300`);
-  const pauseReady = r.ok;
-  if (!r.ok) r = await svc<Row[]>(`cards?select=${COLS}&${base})&order=created_at.desc&limit=300`);
-  let rows = r.data ?? [];
-  if (g.me.franchiseId) {
-    const ids = g.me.franchiseId === "none" ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=eq.${g.me.franchiseId}&select=id&limit=5000`)).data ?? []).map((p) => p.id);
-    const set = new Set(ids); rows = rows.filter((x) => set.has(x.owner_id));
+  let pauseReady = true;
+  let rows: Row[] = [];
+  for (const own of chunks) {
+    let r = await svc<Row[]>(`cards?select=${COLS},site_paused&${base},site_paused.is.true)${own}&order=created_at.desc&limit=300`);
+    if (!r.ok) { pauseReady = false; r = await svc<Row[]>(`cards?select=${COLS}&${base})${own}&order=created_at.desc&limit=300`); }
+    rows = rows.concat(r.data ?? []);
   }
   const owners = [...new Set(rows.map((x) => x.owner_id))];
   const names = owners.length ? ((await svc<{ id: string; full_name: string | null }[]>(`profiles?id=in.(${owners.join(",")})&select=id,full_name`)).data ?? []) : [];

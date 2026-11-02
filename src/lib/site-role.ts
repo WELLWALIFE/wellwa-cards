@@ -18,7 +18,9 @@ const SOCIAL: { re: RegExp; key: "instagram" | "facebook" | "youtube"; label: st
   { re: /(^|\.)(facebook\.com|fb\.com|fb\.me)$/i, key: "facebook", label: "Facebook" },
   { re: /(^|\.)(youtube\.com|youtu\.be)$/i, key: "youtube", label: "YouTube" },
 ];
-const MAPS = /(^|\.)(maps\.google\.[a-z.]+|maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+// Exact Google hosts only (a review, 2 Nov 2026: "maps.google.evil.com" passed the old [a-z.]+ and the link reader followed it).
+const GOOGLE_HOST = /^(www\.|maps\.)?google\.(?:com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/i;
+const MAPS = /^(maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
 
 /** Does the text look like an email address ("name@gmail.com")? An email is not a website, and must never be looked up as a name. */
 export const looksLikeEmail = (raw: string): boolean => /\S+@\S+/.test(raw ?? "");
@@ -77,7 +79,7 @@ export function socialDetour(url: string): { key: "instagram" | "facebook" | "yo
   const host = hostOf(url);
   if (!host) return null;
   for (const s of SOCIAL) if (s.re.test(host)) return { key: s.key, label: s.label };
-  if (MAPS.test(host) || (/(^|\.)google\.[a-z.]+$/i.test(host) && /\/maps/i.test(url))) return { key: "map", label: "Google Maps" };
+  if (MAPS.test(host) || (GOOGLE_HOST.test(host) && (/^maps\./i.test(host) || /\/maps/i.test(url)))) return { key: "map", label: "Google Maps" };
   return null;
 }
 

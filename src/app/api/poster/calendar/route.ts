@@ -155,7 +155,7 @@ export async function POST(request: Request) {
     const row = { user_id: me.id, profile_id: profile, for_date: date, kind, product_id: kind === "product" || kind === "offer" ? product_id : null, note: cur?.note ?? "", status: cur?.status === "done" ? "done" : "planned", overrides, brief };
     const r = await restAsUser(me.token, "poster_calendar?on_conflict=profile_id,for_date", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
     if (!r.ok) return NextResponse.json({ error: /brief|kind_check/.test(r.text) ? "Run migration 0083 in Supabase first." : r.text.slice(0, 200) }, { status: 400 });
-    await restAsService(`posters?profile_id=eq.${profile}&for_date=eq.${date}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
+    await freshDay(profile, date, row.status);
     return NextResponse.json({ ok: true, entry: row });
   }
   if (b.action === "redo") {
@@ -173,7 +173,7 @@ export async function POST(request: Request) {
     const row = { user_id: me.id, profile_id: profile, for_date: date, kind: day.kind, product_id: day.product_id, note: "", status: "planned", overrides: day.overrides, brief: day.brief };
     const r = await restAsUser(me.token, "poster_calendar?on_conflict=profile_id,for_date", { method: "POST", headers: { Prefer: "resolution=merge-duplicates,return=minimal" }, body: JSON.stringify(row) });
     if (!r.ok) return NextResponse.json({ error: /brief|kind_check/.test(r.text) ? "Run migration 0083 in Supabase first." : r.text.slice(0, 200) }, { status: 400 });
-    await restAsService(`posters?profile_id=eq.${profile}&for_date=eq.${date}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
+    await freshDay(profile, date, row.status);
     return NextResponse.json({ ok: true, entry: row });
   }
   if (b.action === "offer") {
@@ -191,4 +191,12 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
   return NextResponse.json({ error: "bad action" }, { status: 400 });
+}
+
+/** New words for a day that has not gone out yet: its poster row goes (the app and the 4 AM post then draw the day again with the new
+ *  words — before, they reused the old picture; a review, 2 Nov 2026). A day already posted keeps its row; only the caption is cleared. */
+async function freshDay(profile: string, date: string, status: string) {
+  const where = `posters?profile_id=eq.${profile}&for_date=eq.${date}`;
+  if (status !== "done") await restAsService(`${where}&shares=eq.0`, { method: "DELETE", headers: { Prefer: "return=minimal" } });
+  await restAsService(where, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ caption: null }) });
 }

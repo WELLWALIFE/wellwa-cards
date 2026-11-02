@@ -21,7 +21,9 @@ const post = (url: string, body: unknown) => fetch(url, { method: "POST", header
 
 /** onPaid: called once a NEW payment is confirmed by the server (not for "already on this plan"), with what the receipt screen shows. */
 export type PaidInfo = { paymentId: string; label: string; amount: number; at: string };
-export function SubscribeButton({ tier, className, children, onDone, onPaid, premium }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void; onPaid?: (p: PaidInfo) => void; premium?: boolean }) {
+/** onAlready: the server says this account already has a running (or still pending) plan — the caller decides what to show, and the
+ *  button does not claim "You are on …" by itself. */
+export function SubscribeButton({ tier, className, children, onDone, onPaid, onAlready, premium }: { tier: SaasTier; className?: string; children: React.ReactNode; onDone?: () => void; onPaid?: (p: PaidInfo) => void; onAlready?: () => void; premium?: boolean }) {
   const [state, setState] = useState<"idle" | "busy" | "done" | "error">("idle");
   const [msg, setMsg] = useState("");
   const router = useRouter();
@@ -42,6 +44,7 @@ export function SubscribeButton({ tier, className, children, onDone, onPaid, pre
       if (o.error) throw new Error(o.error);
       // Already on Standard (a running mandate) and asking for Premium: the Rs 3,000 difference is paid on the Premium website page, not by a second mandate.
       if (o.already && premium) { router.push("/poster/site/advanced"); return; }
+      if (o.already && onAlready) { setState("idle"); onAlready(); return; }
       if (o.already) { finished(`You are on ${plan.label}.`); return; }
       if (o.demo) { setState("error"); setMsg("Payment is not switched on yet."); return; }
       if (!(await loadScript("https://checkout.razorpay.com/v1/checkout.js")) || !window.Razorpay) { setState("error"); setMsg("Could not load the payment page."); return; }

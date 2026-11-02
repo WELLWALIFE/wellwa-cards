@@ -1036,7 +1036,10 @@ function Onboard() {
     else if (next.url && !d) void startPeek(next);
   }
 
+  /** Only the newest read fills the form (tap "use it" on link A, then on link B: A's late answer must not land). */
+  const socialSeq = useRef(0);
   function onUrlChange(v: string) {
+    socialSeq.current++;
     setSiteErr(""); setSocialRead({ state: "idle", label: "", name: "" });
     setSite((st) => ({ ...st, url: v }));
     const d = v.trim() ? socialDetour(v) : null;
@@ -1048,6 +1051,9 @@ function Onboard() {
   const [socialRead, setSocialRead] = useState<{ state: "idle" | "reading" | "found" | "none"; label: string; name: string }>({ state: "idle", label: "", name: "" });
   function keepSocial() {
     if (!pendingSocial) return;
+    // Only the owner's OWN business is read from such a link — a brand's or a liked page must never fill this business's name and
+    // address (a review, 2 Nov 2026). The box offers "use it" only on the "Yes" answer.
+    if (site.kind && site.kind !== "own") return;
     const d = pendingSocial;
     if (d.key === "map") setBiz((b) => ({ ...b, map: d.url }));
     else { setDetours((list) => [...list.filter((x) => x.key !== d.key), d]); setF({ social: { [d.key]: d.url } }); }
@@ -1057,13 +1063,16 @@ function Onboard() {
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
     // Read the business behind it (owner, 2 Nov 2026: "Scalio Maps / Instagram se details le leta hai"): name, trade, city, address,
     // phone, about — filled only where the owner has not typed (prefill), checked by the owner on "Your business".
-    if (d.key === "youtube") return;
+    // A YouTube channel is kept as a link; nothing is read from it (and Next goes on, like after a read).
+    if (d.key === "youtube") { setSocialRead({ state: "none", label: d.label, name: "" }); return; }
+    const seq = ++socialSeq.current;
     setSocialRead({ state: "reading", label: d.label, name: "" });
     void api<PeekData & { ok: boolean; website?: string }>("/api/business/lookup", { method: "POST", json: { url: d.url } }).then((r) => {
+      if (seq !== socialSeq.current) return;
       if (!r.ok || !r.data.ok || !r.data.name) { setSocialRead({ state: "none", label: d.label, name: "" }); return; }
       prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" }, true);
       setSocialRead({ state: "found", label: d.label, name: r.data.name });
-    }).catch(() => setSocialRead({ state: "none", label: d.label, name: "" }));
+    }).catch(() => { if (seq === socialSeq.current) setSocialRead({ state: "none", label: d.label, name: "" }); });
   }
 
   /** "Change" on Photos & more opens the website screen; its Next comes back here instead of walking on to Your business. */
@@ -1815,7 +1824,13 @@ function Onboard() {
                     </label>
                     {siteErr && siteErr !== tickMsg && !pendingSocial && <FieldErr id="site" msg={siteErr} />}
                     {finding && <p className="flex items-center gap-1.5 text-xs font-semibold text-muted"><LoaderCircle className="h-3.5 w-3.5 animate-spin" /> {T(`Finding the website of "${finding}"…`, `"${finding}" की website ढूँढ रहे हैं…`)}</p>}
-                    {pendingSocial ? (
+                    {pendingSocial && c.k !== "own" ? (
+                      // A brand's or a liked business's Maps / Instagram page: nothing of it may fill THIS business — its website is wanted.
+                      <div id="ob-pending-social" className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
+                        <p className="font-semibold">{T(`That is a ${pendingSocial.label} page, not a website. Paste the ${c.k === "dealer" ? "brand's" : ""} website link here${c.k === "dealer" ? "" : ", or leave it empty"}.`, `ये ${pendingSocial.label} का page है, website नहीं। यहाँ ${c.k === "dealer" ? "brand की " : ""}website का link डालें${c.k === "dealer" ? "" : ", या खाली छोड़ दें"}।`)}</p>
+                        <button type="button" onClick={() => { setPendingSocial(null); setSiteErr(""); setSite((st) => ({ ...st, url: "" })); }} className="mt-2 rounded-full border border-border px-3.5 py-1.5 text-xs font-semibold">{T("Change the link", "link बदलें")}</button>
+                      </div>
+                    ) : pendingSocial ? (
                       <div id="ob-pending-social" className="rounded-xl border border-amber/50 bg-amber/10 px-3 py-2.5 text-sm">
                         <p className="font-semibold"><CheckCircle2 className="mr-1 inline h-4 w-4 text-good" />{T(`${/^[AEIOU]/.test(pendingSocial.label) ? "An" : "A"} ${pendingSocial.label} link — good. We read your business details from it and keep it as your ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`}.`, `${pendingSocial.label} का link — बढ़िया। इससे आपके business की details भर देंगे और इसे आपके ${pendingSocial.key === "map" ? "map pin" : `${pendingSocial.label} link`} की तरह रखेंगे।`)}</p>
                         <div className="mt-2 flex flex-wrap gap-2">

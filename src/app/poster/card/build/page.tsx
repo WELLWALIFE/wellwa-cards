@@ -21,7 +21,7 @@ import { SITE_PALETTES, FONT_PAIRS } from "@/lib/site-style";
 import { MessageCircle, Palette, Camera, Check, CheckCircle2, ChevronDown, ChevronLeft, ChevronRight, CircleDashed, ExternalLink, Globe, LoaderCircle, Monitor, Pencil, Plus, RefreshCw, SlidersHorizontal, Smartphone, Sparkles, X, Eye } from "lucide-react";
 import { FactsFields, Sec, type FactsPatch } from "@/components/poster/facts-fields";
 import { TradeQuestions } from "@/components/poster/trade-questions";
-import { api, isLoggedIn, uploadImage } from "@/lib/poster-client";
+import { api, currentProfileId, isLoggedIn, uploadImage } from "@/lib/poster-client";
 import { compressToFile } from "@/lib/image-utils";
 import { checkUsername, cleanUsername, fetchMyCardsStrict, publishCard, suggestUsername, OFFLINE } from "@/lib/cloud";
 import { SHUBHORA_PAGE_SLUG, hasShubhoraPage, isShubhoraSellerCard, withShubhoraPage } from "@/lib/shubhora-page";
@@ -1013,12 +1013,16 @@ export default function BuildCard() {
   const posterHex = useRef("");
   async function syncPosterColour(c: Card) {
     try {
-      const hex = paletteFor(c).mid.toLowerCase();
+      // "Your colour" is the owner's own hex (the palette's mid is a darker shade of it — sending that back would darken the colour a
+      // little on every publish); a named palette sends its fixed main colour.
+      const pal = c.site?.style?.palette, own = String(c.site?.style?.color ?? "");
+      const hex = (pal === "brand" ? (/^#[0-9a-f]{6}$/i.test(own) ? own : "") : pal ? paletteFor(c).mid : "").toLowerCase();
+      if (!hex) return;   // no colour chosen on the website: the posters keep theirs
       if (!/^#[0-9a-f]{6}$/.test(hex) || hex === posterHex.current) return;
       posterHex.current = hex;
       const r = await api<{ profiles?: { id: string; is_default?: boolean; layout?: { accent?: string } | null }[] }>("/api/poster/profiles");
       const list = r.data.profiles ?? [];
-      const p = list.find((x) => x.is_default) ?? list[0];
+      const p = list.find((x) => x.id === currentProfileId()) ?? list.find((x) => x.is_default) ?? list[0];
       if (!p || p.layout?.accent?.toLowerCase() === hex) return;
       await api("/api/poster/brand", { method: "POST", json: { profile: p.id, accent: hex } });
     } catch { /* the posters keep their colour; the next publish tries again */ posterHex.current = ""; }
