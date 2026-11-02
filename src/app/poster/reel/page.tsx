@@ -24,6 +24,9 @@ type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
 type Job = { id: string; status: string; stage?: string | null; output_url: string | null; error: string | null; created_at: string; cost?: number; progress?: { text?: string } | null; input?: { tier?: string; product?: string; caption?: string; duration_sec?: number; topic?: string; scenes?: Scene[]; cta?: string; lang?: string; length?: number; voiceStyle?: string; music?: string; captions?: string } };
 type MyProduct = { id: string; name: string; brand?: string | null; category?: string; photo_url?: string | null; photos?: { url: string; role?: string }[] };
 type ReelDraft = { at: number; stage: "choose" | "review" | "track"; kind: ReelKind; productId: string; note: string; lang: string; length: number; voiceStyle: string; music: string; subs: boolean; gallery: string[]; plan: Plan | null; editing: boolean; trackId: string };
+type PlanDayIdea = { date: string; kind: string; hook: string; caption: string; product_id: string | null };
+/** A plan day's kind → the reel kind closest to it. */
+const REEL_OF: Record<string, ReelKind> = { product: "benefit", offer: "offer", tip: "tip", testimonial: "review", festival: "festival", trust: "benefit", about: "story", greeting: "story" };
 type Reply = { ok: boolean; status: number; data: Record<string, unknown> };
 // A dropped mobile connection makes fetch() reject; without the catch the button would spin for ever.
 const post = (body: unknown): Promise<Reply> =>
@@ -64,6 +67,10 @@ export default function Reel() {
   const [firm, setFirm] = useState(""); const [logoUrl, setLogoUrl] = useState(""); const [useLogo, setUseLogo] = useState(true);
   const [productId, setProductId] = useState(""); const [products, setProducts] = useState<MyProduct[]>([]);
   const [note, setNote] = useState("");
+  /** The month plan's next posts as ready reel ideas (owner, 2 Nov 2026 — better than a video agent's chat: the ideas are already written
+   *  for this business; one tap fills the kind, the product and the words). `fromDay` = the plan day the reel is being made from. */
+  const [planDays, setPlanDays] = useState<PlanDayIdea[]>([]);
+  const [fromDay, setFromDay] = useState("");
   const [lang, setLang] = useState("hi"); const [moreLangs, setMoreLangs] = useState(false);
   // step 2
   const [plan, setPlan] = useState<Plan | null>(null);
@@ -96,7 +103,7 @@ export default function Reel() {
     const [, pr, pp] = await Promise.all([
       refresh(),
       api<{ products?: MyProduct[] }>("/api/poster/products").catch(() => null),
-      api<{ profiles?: { name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string; logo_url?: string | null }[] }>("/api/poster/profiles").catch(() => null),
+      api<{ profiles?: { id: string; name: string; tagline?: string; phone?: string; is_default?: boolean; category?: string; logo_url?: string | null }[] }>("/api/poster/profiles").catch(() => null),
     ]);
     setProducts(pr?.data.products ?? []);
     // The business name, phone and trade come from the profile — nothing to type on a normal day.
@@ -123,6 +130,19 @@ export default function Reel() {
         if (d.stage === "track" && d.trackId) setTrackId(d.trackId);
       }
     } catch { /* private window */ }
+    // The plan's next posts (this month, and the next one near its end) — as one-tap ideas; ?date= (Make a reel of this, from the
+    // month plan) opens with that day already filled in.
+    if (p?.id) {
+      const ist = (n: number) => new Date(Date.now() + 5.5 * 3600e3 + n * 86400e3).toISOString().slice(0, 10);
+      const want = /^\d{4}-\d{2}-\d{2}$/.test(q.get("date") ?? "") ? q.get("date")! : "";
+      const months = [...new Set([ist(0).slice(0, 7), ist(12).slice(0, 7), ...(want ? [want.slice(0, 7)] : [])])];
+      type E = { for_date: string; kind: string; product_id: string | null; overrides?: { title?: string } | null; brief?: { hook?: string; caption?: string } | null };
+      const all = (await Promise.all(months.map((m) => api<{ entries?: E[] }>(`/api/poster/calendar?profile=${p.id}&month=${m}`).then((r) => (r.ok ? r.data.entries ?? [] : [])).catch(() => [] as E[])))).flat();
+      const ideas: PlanDayIdea[] = all.filter((e) => e.kind !== "skip" && (e.brief?.hook || e.overrides?.title)).map((e) => ({ date: e.for_date, kind: e.kind, hook: (e.brief?.hook || e.overrides?.title || "").trim(), caption: (e.brief?.caption || "").trim(), product_id: e.product_id }));
+      setPlanDays(ideas.filter((x) => x.date >= ist(0)).sort((a, b) => a.date.localeCompare(b.date)).slice(0, 3));
+      const hit = want ? ideas.find((x) => x.date === want) : null;
+      if (hit) applyDay(hit, pr?.data.products ?? []);
+    }
     setDraftReady(true);
     setReady(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps -- runs once on open; openEdit only sets state
@@ -135,6 +155,14 @@ export default function Reel() {
   }, [draftReady, stage, kind, productId, note, lang, length, voiceStyle, music, subs, gallery, plan, editing, trackId]);
   useEffect(() => { if (!jobs.some(busyJob)) return; const t = setInterval(refresh, 5000); return () => clearInterval(t); }, [jobs]);
 
+  function applyDay(d: PlanDayIdea, list: MyProduct[] = products) {
+    setFromDay(d.date);
+    setKind(REEL_OF[d.kind] ?? "tip");
+    setProductId(d.product_id && list.some((x) => x.id === d.product_id) ? d.product_id : "");
+    const first = d.caption.split("\n").map((l) => l.trim()).find(Boolean) ?? "";
+    setNote([d.hook, first && first !== d.hook ? first : ""].filter(Boolean).join(" — ").slice(0, 200));
+    setPlan(null); setStage("choose"); setEditing(false); setErr("");
+  }
   const product = products.find((p) => p.id === productId);
   const making = jobs.some(busyJob);
   const over = left === 0;
@@ -301,9 +329,24 @@ export default function Reel() {
         {stage === "choose" && (
           <div className="space-y-5 rounded-2xl border border-border bg-surface p-4">
             <p className="text-sm text-muted">{hi ? "चुनिए, बाक़ी हम करेंगे — शब्द, video, आवाज़, music। बनाने से पहले शब्द आप देख लेंगे।" : "You choose, we do the rest — words, video, voice, music. You see the words before it is made."}</p>
+            {planDays.length > 0 && (
+              <div className="space-y-1.5" id="reel-from-plan">
+                <p className="text-sm font-semibold">{hi ? "आपके month plan से — एक tap में" : "From your month plan — one tap"}</p>
+                <div className="grid gap-1.5">{planDays.map((d) => {
+                  const on = fromDay === d.date;
+                  const when = new Date(d.date + "T00:00:00").toLocaleDateString(hi ? "hi-IN" : "en-IN", { weekday: "short", day: "numeric", month: "short" });
+                  return <button key={d.date} type="button" onClick={() => applyDay(d)} className={`flex items-center gap-2.5 rounded-xl border-2 px-3 py-2 text-left ${on ? "border-brand bg-brand-soft" : "border-border"}`}>
+                    <span className="w-20 shrink-0 text-[11px] font-semibold text-muted">{when}</span>
+                    <span className="min-w-0 flex-1 truncate text-sm font-semibold">{d.hook}</span>
+                    {on ? <Check className="h-4 w-4 shrink-0 text-brand" /> : <ArrowRight className="h-4 w-4 shrink-0 text-faint" />}
+                  </button>;
+                })}</div>
+                <p className="text-[11px] text-muted">{hi ? "या नीचे से खुद चुनें।" : "Or choose yourself below."}</p>
+              </div>
+            )}
             <div>
               <p className={label}>{num(1)} {hi ? "किस बारे में?" : "What is it about?"}</p>
-              <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">{KINDS.map((x) => <button key={x.k} type="button" onClick={() => setKind(x.k)} className={`relative rounded-xl border-2 p-2.5 text-left transition ${kind === x.k ? "border-brand bg-brand-soft" : "border-border"}`}>{kind === x.k && <Check className="absolute right-2 top-2 h-4 w-4 text-brand" />}<span className="block text-xl">{x.e}</span><span className="mt-1 block text-sm font-semibold leading-tight">{hi ? x.hi : x.en}</span><span className="block text-[11px] text-muted">{hi ? x.dhi : x.den}</span></button>)}</div>
+              <div className="grid grid-cols-2 gap-2 min-[400px]:grid-cols-3">{KINDS.map((x) => <button key={x.k} type="button" onClick={() => { setKind(x.k); setFromDay(""); }} className={`relative rounded-xl border-2 p-2.5 text-left transition ${kind === x.k ? "border-brand bg-brand-soft" : "border-border"}`}>{kind === x.k && <Check className="absolute right-2 top-2 h-4 w-4 text-brand" />}<span className="block text-xl">{x.e}</span><span className="mt-1 block text-sm font-semibold leading-tight">{hi ? x.hi : x.en}</span><span className="block text-[11px] text-muted">{hi ? x.dhi : x.den}</span></button>)}</div>
             </div>
             <div className="space-y-2">
               <p className={label}>{num(2)} {products.length > 0 ? (hi ? "किसके बारे में?" : "Which product?") : (hi ? "कुछ ख़ास?" : "Anything to add?")}</p>

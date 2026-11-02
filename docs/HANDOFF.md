@@ -386,3 +386,7 @@ The owner's own app does not show "paused" yet.
 - **Add many → Product photos** (instead of importing Instagram, which does not give its photos): up to 12 photos from the phone, each one
   product; /api/poster/products/import mode `photos` (Gemini names each from the picture, price only if printed), /bulk keeps the owner's own
   photo (`photo`, own media only) and looks for no stock picture for it. Rendered with mocks; the live AI naming was not run.
+- **Reel from the month plan** (same day, vs a video agent that asks 4 chat questions and charges ~21 credits for 10 s): /poster/reel shows
+  "From your month plan — one tap" (the next 3 planned days' hooks); a tap fills the kind (`REEL_OF` maps plan kinds), the product and the
+  words (hook + the caption's first line). `/poster/reel?date=YYYY-MM-DD` opens with that day filled; the month plan's day sheet has
+  "Make a Reel of this". Rendered with mocks.
