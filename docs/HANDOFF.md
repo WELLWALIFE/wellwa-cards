@@ -417,3 +417,10 @@ The owner's own app does not show "paused" yet.
   /poster/connect (`channels`). "Plan again" also drops the unposted, unshared poster rows of the replanned days (the 4 AM post
   reused the old picture under the new caption). Free sample: the Signature 1:1 cut and spec beside the clean file are deleted too.
 - Card & Website with no card: "Make my website & card" (the card is free).
+- **After the card, professionally** (owner, 2 Nov 2026 late: "ek line — your V-Card is ready, view; fir continue website, Standard aur
+  Premium, dono me kya kya hai, select kare to payment"): Card & Website for a free account with no website = "Your V-Card is ready"
+  (link + Copy, View, WhatsApp, Edit) and one "Continue to your website" → **/poster/site/plans** (`WebsitePlans`: the card line with
+  View, then Standard and Premium side by side with their full lists, each with its own "Choose … — ₹…" Razorpay button, "Not now";
+  paid → `PaidReceipt` → /poster/card/build?make=1). The build screen's sheet is the same view as a full-screen overlay. The dark price
+  box at the bottom of Card & Website is gone (a free account whose website is on gets one "See plans" line). The Shubhora partner card's
+  banner (`/art/shubhora/hero.jpg`) gets its words in CardView: "Free Digital Card + Website", Card · Website · AI replies 24×7 (hi/en).

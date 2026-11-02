@@ -15,7 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { LoaderCircle, ChevronLeft, Globe, Smartphone, Check, RefreshCw, Copy, Share2, Search, Monitor, Sparkles, Pause } from "lucide-react";
-import { PremiumCard, PremiumSheet } from "@/components/poster/premium-lock";
+import { PremiumSheet } from "@/components/poster/premium-lock";
 import { CardLink, SiteLink } from "@/components/poster/card-sheet";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
@@ -225,10 +225,41 @@ export default function WebsitePage() {
             </section>
           )}
           {/* The guided finish on top: progress and the one next step (owner, 24 Oct 2026). */}
-          <FinishBar hi={hi} />
+          {!noSite && <FinishBar hi={hi} />}
           {/* Redesigned 24 Oct 2026 (owner: "3 alag box, achhe se — design bahut important hai"): three clear boxes — Share, Edit, Grow —
               each with a coloured head, one short line, and big icon tiles. */}
-          {(() => {
+          {/* A free account with only its card (owner, 2 Nov 2026: "ek line — your V-Card is ready, view; fir continue website, Standard aur
+              Premium… professional"): the card, ready, with View / Share / Copy, and ONE way on — the website's plans page. No website
+              tiles that open a website it does not have, no price box at the bottom. */}
+          {noSite ? (
+            <div className="space-y-4" id="free-card-ready">
+              <section className="overflow-hidden rounded-3xl border border-border bg-surface shadow-card">
+                <div className="flex items-center gap-3 bg-good/10 px-4 py-3.5">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="h-5 w-5" strokeWidth={3} /></span>
+                  <p className="min-w-0 flex-1 text-base font-bold">{T("Your V-Card is ready", "आपका V-Card तैयार है")}</p>
+                </div>
+                <div className="space-y-3 p-3">
+                  <div className="flex items-center gap-2 rounded-2xl bg-surface2 py-1.5 pl-3 pr-1.5">
+                    <Smartphone className="h-4 w-4 shrink-0 text-brand" />
+                    <code className="min-w-0 flex-1 truncate text-[13px] font-semibold">{withView(link, "card").replace(/^https?:\/\//, "")}</code>
+                    <button type="button" onClick={() => void copy("top")} className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-surface px-3 py-2 text-xs font-bold text-brand-ink shadow-sm">{copied ? <Check className="h-3.5 w-3.5 text-good" /> : <Copy className="h-3.5 w-3.5" />} {copied ? T("Copied", "Copy हुआ") : "Copy"}</button>
+                  </div>
+                  {copyFail === "top" && <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-1.5 text-xs font-semibold text-danger">{T("Could not copy. Press and hold the link to copy it.", "Copy नहीं हुआ। link को दबाकर रखें और copy करें।")}</p>}
+                  <div className="grid grid-cols-3 gap-2 text-sm font-semibold">
+                    <CardLink href={withView(link, "card")} title={T("My card", "मेरा card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5"><Smartphone className="h-4 w-4 text-brand" /> {T("View", "देखें")}</CardLink>
+                    <button type="button" onClick={shareCard} className="inline-flex items-center justify-center gap-1.5 rounded-xl bg-[#25D366] py-2.5 text-white"><Share2 className="h-4 w-4" /> WhatsApp</button>
+                    <Link href={editHref("card")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2.5">{T("Edit", "Edit")}</Link>
+                  </div>
+                </div>
+              </section>
+              <Link href="/poster/site/plans" className="flex items-center gap-3 rounded-3xl bg-[#12144a] p-4 text-white shadow-card">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/15"><Monitor className="h-5 w-5" /></span>
+                <span className="min-w-0 flex-1"><b className="block text-base">{T("Continue to your website", "अब अपनी website बनाएँ")}</b><span className="block text-xs text-white/75">{T("Standard or Premium — see what each gives", "Standard या Premium — देखें किसमें क्या है")}</span></span>
+                <span className="shrink-0 rounded-xl bg-[#ffd54a] px-3 py-2 text-sm font-bold text-[#12144a]">{T("Continue", "आगे")}</span>
+              </Link>
+              <Link href="/poster/share" className="block text-center text-xs font-semibold text-muted underline underline-offset-2">{T("QR code and more ways to share", "QR code और share करने के और तरीके")}</Link>
+            </div>
+          ) : (() => {
             const tile = "flex flex-col items-center justify-center gap-1.5 rounded-2xl px-2 py-3.5 text-center transition active:scale-[.97]";
             const icon = (bg: string, fg: string, I: typeof Globe) => <span className={`grid h-11 w-11 place-items-center rounded-full ${bg}`}><I className={`h-5 w-5 ${fg}`} /></span>;
             const head = (n: number, title: string, sub: string, cls: string) => (
@@ -316,7 +347,15 @@ export default function WebsitePage() {
           </>}
 
           {/* The Edit address opens the editor itself (effect above); the old tile screen is gone (26 Oct 2026). */}
-          {!paid && <PremiumCard compact />}
+          {/* A free account whose website is on (a partner's Shubhora page, or an older free website): the plans as one clean line, not
+              a price box. */}
+          {!paid && !noSite && (
+            <Link href="/poster/site/plans" className="flex items-center gap-3 rounded-2xl border border-border bg-surface p-3.5 shadow-card">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#12144a] text-white"><Sparkles className="h-5 w-5 text-[#ffd54a]" /></span>
+              <span className="min-w-0 flex-1"><b className="block text-sm">{T("Your own business website", "आपकी अपनी business website")}</b><span className="block text-xs text-muted">{T("Standard or Premium — see what each gives", "Standard या Premium — देखें किसमें क्या है")}</span></span>
+              <span className="shrink-0 text-sm font-semibold text-brand-ink">{T("See plans →", "Plans देखें →")}</span>
+            </Link>
+          )}
         </>
       )}
       {planSheet && <PremiumSheet feature={T("A website", "Website")} onClose={() => setPlanSheet(false)} />}

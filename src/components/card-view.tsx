@@ -409,6 +409,19 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
               {isTradeBanner(card.coverUrl) && (
                 <div className="absolute inset-0" style={{ background: `linear-gradient(90deg, ${theme}cc 0%, ${theme}66 32%, ${theme}00 58%)` }} />
               )}
+              {/* The Shubhora partner card's banner is a phone on dark blue with nothing said (owner, 2 Nov 2026: "na impressive, na koi
+                  text"): its empty left side now carries the offer — in the card's language. */}
+              {/\/art\/shubhora\/hero\./.test(card.coverUrl) && (
+                <>
+                  <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,14,64,.92) 0%, rgba(10,14,64,.62) 46%, rgba(10,14,64,0) 72%)" }} />
+                  <div className="absolute left-4 top-4 z-[5] max-w-[62%] text-left text-white sm:left-5 sm:top-5">
+                    <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#9fdcff]">Shubhora</p>
+                    {/* Not the tagline again (it is printed under the name): the offer itself. */}
+                    <p className="mt-1 text-[19px] font-extrabold leading-[1.15] sm:text-[22px]">{lang === "hi" ? <><span className="text-[#ffd54a]">मुफ़्त</span> Digital Card<br />+ Website</> : <><span className="text-[#ffd54a]">Free</span> Digital Card<br />+ Website</>}</p>
+                    <p className="mt-1.5 text-[11px] font-medium text-white/85">{lang === "hi" ? "Card · Website · 24×7 AI जवाब" : "Card · Website · AI replies 24×7"}</p>
+                  </div>
+                </>
+              )}
             </>
           )}
           {logoChip && (

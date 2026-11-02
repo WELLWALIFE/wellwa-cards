@@ -4,68 +4,111 @@
 // Order of the finish: the card is made and shown first (it stays free whatever is chosen) → this sheet → Razorpay → the receipt
 // (PaidReceipt) → the website is made → the waiting screen with the three steps (SiteProgress). "Not now" keeps the free card.
 import { useRef, useState } from "react";
-import { Check, CheckCircle2, Clock, Globe, MessageCircle, ShieldCheck, X } from "lucide-react";
+import { Check, CheckCircle2, Clock, Eye, Globe, MessageCircle, ShieldCheck, X } from "lucide-react";
 import { SubscribeButton, type PaidInfo } from "@/components/subscribe-button";
 import { api } from "@/lib/poster-client";
 import { SAAS_PLANS, PREMIUM_FIRST_PAISE, rupees } from "@/lib/billing";
 
 type Pick = "standard" | "premium";
 
-export function WebsitePlanSheet({ hi, name, onClose, onPaid }: { hi: boolean; name?: string; onClose: () => void; onPaid: (p: PaidInfo | null) => void }) {
+/** What each website plan gives — the full list, said plainly (owner, 2 Nov 2026: "dono me kya kya hai wo batao, fir select kare to
+ *  payment"). Source of truth for the words: the pricing page (src/app/(marketing)/pricing) and lib/billing. */
+function planList(hi: boolean) {
   const T = (en: string, h: string) => (hi ? h : en);
-  const [pick, setPick] = useState<Pick>("standard");
+  const monthly = rupees(SAAS_PLANS.growth.amount);
+  return [
+    {
+      key: "standard" as Pick, title: "Standard", price: monthly, per: T("a month · GST included", "हर महीने · GST शामिल"), tag: "",
+      lead: T("Your website and your daily marketing, done for you.", "आपकी website और रोज़ की marketing — सब आपके लिए।"),
+      items: [
+        T("Your website (up to 5 pages) on your link — no Shubhora tag", "आपकी website (5 pages तक) आपके link पर — Shubhora tag नहीं"),
+        T("Live within 24–48 hours; we WhatsApp you when it is live", "24–48 घंटे में live — live होते ही WhatsApp"),
+        T("A new poster every day on Facebook, Instagram and WhatsApp Status — by itself", "हर दिन नया poster — Facebook, Instagram, WhatsApp Status पर अपने-आप"),
+        T("WhatsApp AI that answers your customers 24×7 (up to 1,000 replies a month)", "WhatsApp AI जो 24×7 ग्राहकों को जवाब दे (महीने में 1,000 तक)"),
+        T("Meta Ads, AI Ad Studio and Reel Maker", "Meta Ads, AI Ad Studio और Reel Maker"),
+        T("Google reviews and Google Business posts", "Google reviews और Google Business posts"),
+        T("12 Indian languages", "12 भारतीय भाषाएँ"),
+      ],
+    },
+    {
+      key: "premium" as Pick, title: "Premium", price: rupees(PREMIUM_FIRST_PAISE), per: T(`first month, then ${monthly} a month`, `पहला महीना, फिर ${monthly} / महीना`), tag: T("Most popular", "सबसे ज़्यादा चुना गया"),
+      lead: T("A bigger website made to bring customers from Google.", "बड़ी website — Google से ग्राहक लाने के लिए।"),
+      items: [
+        T("Everything in Standard", "Standard का सब कुछ"),
+        T("Premium multi-page website: a page for every product and service", "Premium website: हर product और service का अपना page"),
+        T("Google SEO: every page and product on Google", "Google SEO: हर page और product Google पर"),
+        T("A layout made for your business — try 3, keep the one you like", "आपके business के लिए design — 3 देखें, जो पसंद हो रखें"),
+      ],
+    },
+  ];
+}
+
+/** "Your V-Card is ready" → the website's plans (full lists, one to pick) → Razorpay. `overlay`: drawn over the build screen (the card's
+ *  preview stays behind it; "View card" closes it); else a page of its own (/poster/site/plans). "Not now" keeps the free card. */
+export function WebsitePlans({ hi, name, overlay = false, cardHref, onView, onClose, onPaid }: {
+  hi: boolean; name?: string; overlay?: boolean; cardHref?: string; onView?: () => void; onClose: () => void; onPaid: (p: PaidInfo | null) => void;
+}) {
+  const T = (en: string, h: string) => (hi ? h : en);
   // A real payment calls onPaid and then onDone: only the first counts (a review, 2 Nov 2026 — the receipt lost its details).
   const gotPaid = useRef(false);
   const [note, setNote] = useState("");
-  /** onDone without a new payment = "already on a plan" from the server. The receipt opens only when the plan really runs; a mandate
-   *  still waiting for its first debit says so instead of "Payment confirmed". */
+  /** "already on a plan" from the server: the receipt opens only when the plan really runs; a mandate still waiting for its first
+   *  debit says so instead of "Payment confirmed". */
   async function already() {
     const r = await api<{ subscribed?: boolean }>("/api/poster/pay/credits", { fresh: true }).catch(() => null);
     if (r?.ok && r.data.subscribed) onPaid(null);
     else setNote(T("Your last payment is still being confirmed by the bank. Please check again in a few minutes — you will not be charged twice.", "आपका पिछला payment अभी bank से confirm हो रहा है। कुछ मिनट बाद फिर देखें — दोबारा पैसे नहीं कटेंगे।"));
   }
-  const plans: { key: Pick; title: string; price: string; per: string; tag?: string; items: string[] }[] = [
-    { key: "standard", title: "Standard", price: rupees(SAAS_PLANS.growth.amount), per: T("/ month", "/ महीना"), tag: T("Recommended", "सबसे सही"),
-      items: [T("Website up to 5 pages, no Shubhora tag", "5 pages तक website, Shubhora tag नहीं"), T("Daily posters on Facebook, Instagram, WhatsApp", "रोज़ posters — Facebook, Instagram, WhatsApp"), T("WhatsApp AI replies 24×7", "WhatsApp AI 24×7 जवाब")] },
-    { key: "premium", title: "Premium", price: rupees(PREMIUM_FIRST_PAISE), per: T("first month", "पहला महीना"),
-      items: [T("Everything in Standard", "Standard का सब कुछ"), T("A page for every product + Google SEO", "हर product का page + Google SEO"), T(`Then ${rupees(SAAS_PLANS.growth.amount)} / month`, `फिर ${rupees(SAAS_PLANS.growth.amount)} / महीना`)] },
-  ];
-  const sel = plans.find((p) => p.key === pick)!;
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-black/50 sm:place-items-center" role="dialog" aria-modal="true" id="website-plan">
-      <div className="max-h-[92vh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-surface shadow-float sm:rounded-3xl">
-        <div className="relative bg-[#12144a] px-5 pb-5 pt-6 text-center text-white">
-          <button type="button" onClick={onClose} aria-label={T("Close", "बंद करें")} className="absolute right-3 top-3 grid h-8 w-8 place-items-center rounded-full bg-white/10"><X className="h-4 w-4" /></button>
-          <span className="mx-auto grid h-12 w-12 place-items-center rounded-full bg-good text-white"><Check className="h-6 w-6" strokeWidth={3} /></span>
-          <p className="mt-2 text-xl font-extrabold">{T("Your card is ready", "आपका card बन गया है")}</p>
-          <p className="mt-1 text-sm text-white/80">{name ? T(`Now choose a plan for ${name}'s website`, `अब ${name} की website के लिए plan चुनें`) : T("Now choose a plan for your website", "अब अपनी website के लिए plan चुनें")}</p>
-        </div>
-        <div className="space-y-2.5 p-4">
-          {plans.map((p) => {
-            const on = p.key === pick;
-            return (
-              <button key={p.key} type="button" onClick={() => setPick(p.key)} aria-pressed={on} className={`relative block w-full rounded-2xl border-2 p-3.5 text-left transition ${on ? "border-brand bg-brand-soft/40" : "border-border"}`}>
-                {p.tag && <span className="absolute -top-2.5 right-3 rounded-full bg-[#12144a] px-2 py-0.5 text-[10px] font-bold text-[#ffd54a]">{p.tag}</span>}
-                <span className="flex items-center gap-2.5">
-                  <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${on ? "border-brand bg-brand" : "border-border"}`}>{on && <Check className="h-3 w-3 text-white" strokeWidth={3} />}</span>
-                  <span className="flex-1 text-base font-bold">{p.title}</span>
-                  <span className="text-right"><span className="block text-base font-extrabold">{p.price}</span><span className="block text-[10px] text-muted">{p.per}</span></span>
-                </span>
-                <span className="mt-2 block space-y-1 pl-7">{p.items.map((t) => <span key={t} className="flex items-start gap-1.5 text-xs"><Check className="mt-0.5 h-3 w-3 shrink-0 text-good" />{t}</span>)}</span>
-              </button>
-            );
-          })}
-          <SubscribeButton key={pick} tier="growth" premium={pick === "premium"} onPaid={(p) => { if (gotPaid.current) return; gotPaid.current = true; onPaid(p); }} onDone={() => undefined} onAlready={() => void already()}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white shadow-card disabled:opacity-60">
-            {T(`Pay ${sel.price} — UPI / card`, `${sel.price} pay करें — UPI / card`)}
-          </SubscribeButton>
-          {note && <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs font-medium">{note}</p>}
-          <p className="flex items-center justify-center gap-1.5 text-[11px] text-muted"><ShieldCheck className="h-3.5 w-3.5 text-good" /> {T("Secure Razorpay · GST included · monthly autopay", "Razorpay से सुरक्षित · GST शामिल · हर महीने autopay")}</p>
-          <button type="button" onClick={onClose} className="block w-full pt-1 text-center text-sm font-semibold text-muted underline underline-offset-2">{T("Not now — keep my free card", "अभी नहीं — free card ही रखें")}</button>
-        </div>
+  const plans = planList(hi);
+  const body = (
+    <div className="mx-auto w-full max-w-3xl space-y-5 px-4 pb-10 pt-5" id="website-plan">
+      {/* 1 · the card: one line and a way to see it */}
+      <section className="flex items-center gap-3 rounded-2xl border border-good/40 bg-good/10 px-4 py-3">
+        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-good text-white"><Check className="h-5 w-5" strokeWidth={3} /></span>
+        <p className="min-w-0 flex-1 text-base font-bold">{T("Your V-Card is ready", "आपका V-Card तैयार है")}</p>
+        {onView ? <button type="button" onClick={onView} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Eye className="h-4 w-4 text-brand" /> {T("View", "देखें")}</button>
+          : cardHref ? <a href={cardHref} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-border bg-surface px-3 py-2 text-sm font-semibold"><Eye className="h-4 w-4 text-brand" /> {T("View", "देखें")}</a> : null}
+        {overlay && <button type="button" onClick={onClose} aria-label={T("Close", "बंद करें")} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted"><X className="h-5 w-5" /></button>}
+      </section>
+      {/* 2 · the website: what each plan gives, then one to pick */}
+      <div>
+        <h1 className="text-2xl font-extrabold tracking-tight">{T("Continue to your website", "अब अपनी website बनाएँ")}</h1>
+        <p className="mt-1 text-sm text-muted">{name ? T(`Choose a plan for ${name}'s website. Your card stays free either way.`, `${name} की website के लिए plan चुनें। आपका card हर हाल में free रहेगा।`) : T("Choose a plan for your website. Your card stays free either way.", "अपनी website के लिए plan चुनें। आपका card हर हाल में free रहेगा।")}</p>
       </div>
+      <div className="grid gap-3 md:grid-cols-2">
+        {plans.map((p) => {
+          const dark = p.key === "premium";
+          return (
+            <div key={p.key} className={`relative flex h-full flex-col rounded-3xl border-2 p-5 shadow-card ${dark ? "border-transparent bg-[#12144a] text-white" : "border-brand/30 bg-surface"}`}>
+              {p.tag && <span className="absolute right-4 top-4 rounded-full bg-[#ffd54a] px-2.5 py-0.5 text-[10px] font-extrabold uppercase tracking-wide text-[#12144a]">{p.tag}</span>}
+              <span className="text-lg font-extrabold">{p.title}</span>
+              <span className="mt-2 text-3xl font-extrabold tracking-tight">{p.price}</span>
+              <span className={`text-xs ${dark ? "text-white/70" : "text-muted"}`}>{p.per}</span>
+              <span className={`mt-2 text-sm font-medium ${dark ? "text-white/90" : ""}`}>{p.lead}</span>
+              <span className="mb-5 mt-3 block space-y-2">{p.items.map((t) => <span key={t} className="flex items-start gap-2 text-sm"><Check className={`mt-0.5 h-4 w-4 shrink-0 ${dark ? "text-[#ffd54a]" : "text-good"}`} />{t}</span>)}</span>
+              {/* Each plan has its own button: the choice and the payment are one tap (Razorpay opens). */}
+              <div className="mt-auto">
+                <SubscribeButton tier="growth" premium={dark} onPaid={(x) => { if (gotPaid.current) return; gotPaid.current = true; onPaid(x); }} onDone={() => undefined} onAlready={() => void already()}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-base font-bold disabled:opacity-60 ${dark ? "bg-[#ffd54a] text-[#12144a]" : "grad-brand text-white"}`}>
+                  {T(`Choose ${p.title} — ${p.price}`, `${p.title} चुनें — ${p.price}`)}
+                </SubscribeButton>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {note && <p role="status" className="rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs font-medium">{note}</p>}
+      <p className="flex items-center justify-center gap-1.5 text-center text-xs text-muted"><ShieldCheck className="h-4 w-4 shrink-0 text-good" /> {T("Secure payment by Razorpay · UPI or card · monthly autopay you can stop from your UPI app", "Razorpay से सुरक्षित payment · UPI या card · हर महीने autopay, UPI app से कभी भी बंद")}</p>
+      <button type="button" onClick={onClose} className="block w-full text-center text-sm font-semibold text-muted underline underline-offset-2">{T("Not now — keep my free card", "अभी नहीं — free card ही रखें")}</button>
     </div>
   );
+  if (!overlay) return body;
+  return <div className="fixed inset-0 z-50 overflow-y-auto bg-bg" role="dialog" aria-modal="true">{body}</div>;
+}
+
+/** The build screen's use: the same plans, over the preview of the card just made. */
+export function WebsitePlanSheet({ hi, name, onClose, onPaid }: { hi: boolean; name?: string; onClose: () => void; onPaid: (p: PaidInfo | null) => void }) {
+  return <WebsitePlans hi={hi} name={name} overlay onView={onClose} onClose={onClose} onPaid={onPaid} />;
 }
 
 /** The three steps after payment: Payment received → Website being made (24–48 h) → Live (WhatsApp). `stage` = the step in progress. */
