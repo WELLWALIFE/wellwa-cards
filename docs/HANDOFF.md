@@ -450,3 +450,4 @@ The owner's own app does not show "paused" yet.
 - Card (owner, 3 Nov 2026, Licure/Alkafresh card): the product slider shows a photo whole over a blurred copy of itself in a square
   frame (a wide machine photo sat between two white bands in the 4:5 frame); a square avatar tile (logo) has padding, so a wide
   wordmark no longer touches the tile's edges.
+- public/deck/*.png|jpg: mockup images for the Shubhora sales deck in Canva (sample business 'Gupta Sweets'; photos from public/art/tpl/sweets, Pexels). Canva imports them from shubhora.com/deck/… (3 Nov 2026).
