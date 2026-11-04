@@ -315,6 +315,18 @@ export default function Home() {
         </div>
       </section>
 
+      {/* ---------------- Google Health Check (owner, 4 Nov 2026) ---------------- */}
+      <section className="border-y border-border bg-surface">
+        <div className="max-w-6xl mx-auto px-5 py-12 md:py-16 flex flex-wrap items-center justify-between gap-6">
+          <div className="max-w-2xl">
+            <p className="text-sm font-semibold text-brand-ink">Free · 1 minute</p>
+            <h2 className="mt-2 text-2xl md:text-4xl font-semibold tracking-tight text-balance">Where does your shop stand on Google?</h2>
+            <p className="mt-3 text-muted leading-relaxed">Rating, reviews, Maps rank, nearby competitors and your website speed — one score out of 100, and the three things to fix first.</p>
+          </div>
+          <Link href="/google-check" className="inline-flex items-center gap-2 rounded-xl grad-brand px-6 py-3.5 text-base font-semibold text-white shadow-glow">Check my Google score <ArrowRight className="h-5 w-5" /></Link>
+        </div>
+      </section>
+
       {/* ---------------- Pricing teaser ---------------- */}
       <section className="bg-bg">
         <div className="max-w-6xl mx-auto px-5 py-16 md:py-24 grid lg:grid-cols-[.8fr_1.2fr] gap-12 items-center">
