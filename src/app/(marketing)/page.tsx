@@ -15,7 +15,7 @@ import { SERVICES } from "@/lib/services";
 import { ALL_TEMPLATES } from "@/lib/template-catalog";
 import { NOT_PUBLIC_TEMPLATES } from "@/lib/templates";
 import { countBy, toLite } from "@/lib/template-lite";
-import { SAAS_PLANS, PREMIUM_FIRST_PAISE, GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
+import { GST_PCT, rupees, FREE_PLAN_WORTH, FREE_PLAN_TRUST, FREE_PLAN_TERM, PRO_CUSTOM } from "@/lib/billing";
 
 const SOLUTION_ICONS: Record<string, typeof Bot> = {
   "ai-software": Bot,
@@ -60,7 +60,7 @@ const faqs = [
   { q: "Can the AI actually take orders and bookings?", a: "Yes. On your website chat and on WhatsApp it suggests the right item with its price, collects name, number and what exactly, confirms it, and gives the customer buttons to send the order on WhatsApp, pay by UPI or call. You get a hot lead and an alert; a booking goes on your calendar with reminders for both of you." },
   { q: "Does it answer phone calls?", a: "Yes, as part of Custom Solutions. We set up a number for you; forward your missed calls to it and the AI receptionist answers in Hindi, Hinglish or English with your own knowledge, takes bookings and call-backs, and sends you the summary and the caller's number on WhatsApp." },
   { q: "Which languages are supported?", a: "English, Hindi and ten more Indian languages, in their own scripts: posters, captions, AI replies and voice-overs." },
-  { q: "Is the free plan really free?", a: "Yes. The free plan is your digital business card on one link: made by AI in about five minutes, shared on WhatsApp or with a QR code, and people can contact you straight from it. It is free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in Standard. Take Standard (₹2,999 a month) when you want the Standard website, the daily poster on Facebook, Instagram and WhatsApp Status, Meta Ads, the WhatsApp AI assistant, Google reviews and posts, and the AI Ad Studio. Premium adds the multi-page website and Google SEO: ₹5,999 for the first month only, then ₹2,999 a month." },
+  { q: "Is the free plan really free?", a: "Yes. The free plan is your digital business card on one link: made by AI in about five minutes, shared on WhatsApp or with a QR code, and people can contact you straight from it. It is free for the first year, with no card details and no hidden charge. After that the card is ₹1,499 a year, and it is included in every Website plan. Website Standard is ₹2,999 a year for a dynamic website (up to 5 pages). Website Premium is ₹5,999 a year for a dynamic & progressive website that installs on the phone like an app. Both renew at the same price. Add the Growth Plan (₹2,999 a month) for daily posters, Facebook & Instagram auto-post, the WhatsApp AI chatbot, CRM, Google profile & review replies, WhatsApp broadcasts and AI search; its 1st month is free with every website purchase and renewal. All prices include GST." },
   { q: "Can you build custom software for my company?", a: "Yes. Beyond the Business Suite we build AI assistants, CRMs, automation and web or mobile apps around your workflow, scoped and priced before we start." },
 ];
 
@@ -103,7 +103,6 @@ function Toast({ icon: Icon, color, title, sub, className }: { icon: typeof Bot;
 }
 
 export default function Home() {
-  const growth = SAAS_PLANS.growth;
   // One sample website per line of work, the biggest lines first (the whole list is on /templates).
   const tplAll = ALL_TEMPLATES.filter((t) => !t.draft && !t.brand && !NOT_PUBLIC_TEMPLATES.has(t.key) && !/direct selling|distributor/i.test(`${t.category} ${t.name}`)).map(toLite);
   const FIRST = ["salon", "doctor", "gym", "restaurant", "real estate", "clothing", "coaching", "dentist", "grocery", "photograph", "mobile", "jewel", "electric", "cafe", "ca /", "spa"];
@@ -322,7 +321,7 @@ export default function Home() {
           <div>
             <p className="text-sm font-semibold text-brand-ink">Simple pricing</p>
             <h2 className="mt-3 text-3xl md:text-5xl font-semibold tracking-tight text-balance">Costs less than one part&#8209;time hire.</h2>
-            <p className="mt-4 text-lg text-muted leading-relaxed">Start free with your digital card. Take Standard for your website, daily posters and WhatsApp AI, or Premium for the multi-page website and Google SEO.</p>
+            <p className="mt-4 text-lg text-muted leading-relaxed">Start free with your digital card. Pick Website Standard or Premium for a year, then add the Growth Plan for daily posters, WhatsApp AI and CRM.</p>
             <div className="mt-7 flex flex-wrap gap-3">
               <Link href="/signup" className="inline-flex items-center gap-2 rounded-xl grad-brand px-5 py-3 text-sm font-semibold text-white shadow-glow">Start free <ArrowRight className="h-4 w-4" /></Link>
               <Link href="/pricing" className="inline-flex items-center gap-2 rounded-xl border border-border bg-surface px-5 py-3 text-sm font-semibold hover:bg-surface2">Compare plans</Link>
@@ -338,16 +337,16 @@ export default function Home() {
               <p className="mt-0.5 text-[11px] text-faint">{FREE_PLAN_TERM}</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
-              <h3 className="font-semibold text-lg">{growth.label}</h3>
-              <p className="mt-1 text-sm text-muted">Standard website (up to 5 pages)</p>
-              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(growth.amount)}</span><span className="text-sm text-muted"> / month</span></p>
-              <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST</p>
+              <h3 className="font-semibold text-lg">Website Standard</h3>
+              <p className="mt-1 text-sm text-muted">Dynamic website, up to 5 pages</p>
+              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">₹2,999</span><span className="text-sm text-muted"> / year</span></p>
+              <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST · Growth Plan ₹2,999 / month, 1st month free</p>
             </div>
             <div className="rounded-2xl border border-brand ring-1 ring-brand shadow-float bg-surface p-6">
-              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Premium</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>
-              <p className="mt-1 text-sm text-muted">Premium website and Google SEO</p>
-              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">{rupees(PREMIUM_FIRST_PAISE)}</span><span className="text-sm text-muted"> first month only</span></p>
-              <p className="mt-1 text-xs text-faint">Then {rupees(growth.amount)} / month · incl. {GST_PCT}% GST</p>
+              <div className="flex items-center justify-between"><h3 className="font-semibold text-lg">Website Premium</h3><span className="rounded-full bg-brand px-2.5 py-0.5 text-[11px] font-semibold text-white">Most popular</span></div>
+              <p className="mt-1 text-sm text-muted">Dynamic &amp; Progressive website, installs like an app</p>
+              <p className="mt-5"><span className="text-4xl font-semibold tracking-tight tabular-nums">₹5,999</span><span className="text-sm text-muted"> / year</span></p>
+              <p className="mt-1 text-xs text-faint">Incl. {GST_PCT}% GST · Growth Plan ₹2,999 / month, 1st month free</p>
             </div>
             <div className="rounded-2xl border border-border bg-surface p-6">
               <h3 className="font-semibold text-lg">{PRO_CUSTOM.label}</h3>

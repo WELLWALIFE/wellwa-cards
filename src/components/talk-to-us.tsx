@@ -4,10 +4,10 @@ import { MessageCircle, Phone } from "lucide-react";
 import { PRO_CUSTOM } from "@/lib/billing";
 import { SUPPORT_PHONE, waLink } from "@/lib/site-brand";
 
-export function TalkToUs({ className = "", call = true, label = PRO_CUSTOM.cta }: { className?: string; call?: boolean; label?: string }) {
+export function TalkToUs({ className = "", call = true, label = PRO_CUSTOM.cta, text = PRO_CUSTOM.waText }: { className?: string; call?: boolean; label?: string; text?: string }) {
   return (
     <div className="space-y-1.5">
-      <a href={waLink(PRO_CUSTOM.waText)} target="_blank" rel="noopener noreferrer"
+      <a href={waLink(text)} target="_blank" rel="noopener noreferrer"
         className={className || "inline-flex w-full items-center justify-center gap-2 rounded-xl bg-[#25D366] px-4 py-2.5 text-sm font-semibold text-white hover:opacity-90"}>
         <MessageCircle className="h-4 w-4" /> {label}
       </a>
