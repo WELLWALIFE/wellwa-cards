@@ -142,7 +142,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
       {tab === "users" && <UsersTab d={d} canManage={canManage} act={act} />}
 
       {tab === "credits" && (
-        <Card title="Credits given by this franchise" sub="Every AI credit this franchise gave one of its users (from Users → + credits), with who gave it. Credits are Shubhora's cost, not the franchise's." pad={false}>
+        <Card title="Credits given by this franchise" sub="Every AI credit this franchise gave one of its users (from Users → + credits), with who gave it. ₹10 a credit is taken from the franchise balance (see Account)." pad={false}>
           <Table head={["When", "User", "Credits", "Given by"]} minW={520} empty="No credits given yet.">
             {(d.credits ?? []).map((c) => (
               <tr key={c.id} className="hover:bg-surface2/50">
