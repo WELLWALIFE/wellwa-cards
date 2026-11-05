@@ -92,7 +92,7 @@ export default function AdminUsers() {
   // Admin v2: the franchise filter (a franchise login is already limited to its own users by the server).
   const [franchises, setFranchises] = useState<{ id: string; code: string }[]>([]);
   const [fr, setFr] = useState("");
-  const [meFr, setMeFr] = useState<{ code: string } | null>(null);
+  const [meFr, setMeFr] = useState<{ code: string; canActivate?: boolean } | null>(null);
   const [editing, setEditing] = useState<User | null>(null);
   const [viewingCredits, setViewingCredits] = useState<User | null>(null);
   /** "Payment link" for one user (owner, 1 Nov 2026): any agreed amount — plan months, advance, custom. */
@@ -162,12 +162,24 @@ export default function AdminUsers() {
     setLoginInfo({ user: u, ...j });
   }
   async function setPlan(u: User, plan: string) {
+    let months: number | undefined;
+    if (plan !== "free") {
+      const raw = prompt(`${who(u)} ko "${plan}" plan kitne mahine ke liye?${meFr ? "\n(Payment aapne liya hai ya baad mein lenge — record Shubhora ko dikhta hai.)" : ""}`, "12");
+      if (raw === null) return;
+      months = Math.min(meFr ? 12 : 24, Math.max(1, Math.trunc(Number(raw)) || 1));
+    }
+    const before = u.plan;
     setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, plan } : x)));
-    await fetch("/api/admin/users", {
+    const r = await fetch("/api/admin/users", {
       method: "PATCH",
       headers: await adminHeaders(),
-      body: JSON.stringify({ id: u.id, plan }),
+      body: JSON.stringify({ id: u.id, plan, ...(months ? { months } : {}) }),
     });
+    if (!r.ok) {
+      const j = await r.json().catch(() => ({}));
+      setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, plan: before } : x)));
+      alert(j.error || `Could not change the plan (${r.status}).`);
+    }
   }
 
   /** Advanced feature (owner, 30 Oct 2026): switched on only after the customisation is paid. */
@@ -471,12 +483,13 @@ export default function AdminUsers() {
                     <select
                       value={u.plan}
                       onChange={(e) => setPlan(u, e.target.value)}
-                      disabled={!live || !acct}
+                      disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
+                      title={meFr && !meFr.canActivate ? "Only Shubhora activates plans for your users (ask for \"May activate plans\")" : undefined}
                       className={`mono text-[11px] font-semibold uppercase px-1.5 py-1 rounded border-0 outline-none appearance-none ${live ? "cursor-pointer" : ""} ${planStyle[u.plan] ?? planStyle.free}`}
                     >
                       <option value="free">free</option>
                       <option value="pro">pro</option>
-                      <option value="team">team</option>
+                      {!meFr && <option value="team">team</option>}
                     </select>
                     <div className="mt-1 flex items-center gap-1.5">
                       <button onClick={() => giveCredits(u)} disabled={!live || !acct}

@@ -7,6 +7,7 @@
 import { kindOf } from "@/lib/account-kind";
 import { serviceHeaders, serviceConfigured, SUPA_URL } from "@/lib/admin-guard";
 import { requireAdmin, audit, scopeOf, userInScope } from "@/lib/admin-v2";
+import type { Right } from "@/lib/admin-rights";
 import { svc } from "@/lib/service";
 import { partnerCall } from "@/lib/partner-link";
 
@@ -205,8 +206,14 @@ export async function PATCH(request: Request) {
   };
   const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = body;
   // Which right the change needs (Admin v2): the plan / card years → users.plan; block → users.block; the rest → users.edit.
-  const need = plan || cardYears !== undefined ? "users.plan" : typeof suspend === "boolean" ? "users.block" : "users.edit";
-  const g = await requireAdmin(request, need, { sensitive: typeof suspend === "boolean" || !!password || !!email }); if (!g.ok) return g.res;
+  // A franchise with "May activate plans for its users" (Super Admin → Franchise → Profile) may give a plan by hand — for a payment it
+  // took in cash / UPI, or agreed to collect later (owner, 5 Nov 2026). Only pro / free, at most 12 months; every change is audited.
+  const need = plan || cardYears !== undefined ? ["users.plan", "franchises.view"] as const : typeof suspend === "boolean" ? "users.block" : "users.edit";
+  const g = await requireAdmin(request, need as Right | Right[], { sensitive: typeof suspend === "boolean" || !!password || !!email }); if (!g.ok) return g.res;
+  if ((plan || cardYears !== undefined) && !g.me.rights.includes("users.plan")) {
+    if (!g.me.franchise?.canActivate) return Response.json({ error: "Only Shubhora activates plans for your users. Ask for \"May activate plans\" on your franchise, or send a payment link." }, { status: 403 });
+    if (cardYears !== undefined || (plan && !["free", "pro"].includes(plan)) || (months !== undefined && Number(months) > 12)) return Response.json({ error: "A franchise can set Free or Pro, for up to 12 months." }, { status: 403 });
+  }
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
   if (!(await userInScope(g.me, id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
