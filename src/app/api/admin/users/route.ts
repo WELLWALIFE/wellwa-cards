@@ -62,14 +62,14 @@ export async function GET(request: Request) {
       fetch(`${SUPA_URL}/rest/v1/subscriptions?select=*`, { headers: h, cache: "no-store" }).catch(() => null),
       fetch(`${SUPA_URL}/rest/v1/user_credits?select=user_id,balance`, { headers: h, cache: "no-store" }).catch(() => null),
       fetch(`${SUPA_URL}/rest/v1/poster_profiles?select=user_id,name,phone,is_default`, { headers: h, cache: "no-store" }).catch(() => null),
-      fetch(`${SUPA_URL}/rest/v1/profiles?select=id,username,full_name,plan,plan_expires_at,poster_plan,poster_plan_expires_at,franchise_id`, { headers: h, cache: "no-store" }).catch(() => null),
+      fetch(`${SUPA_URL}/rest/v1/profiles?select=id,username,full_name,plan,plan_expires_at,poster_plan,poster_plan_expires_at,franchise_id,package,package_until,package_note`, { headers: h, cache: "no-store" }).catch(() => null),
       scope ? Promise.resolve({ ok: false, status: 0, data: { error: "scoped" } } as Awaited<ReturnType<typeof partnerCall<{ members?: PartnerRow[] }>>>) : partnerCall<{ members?: PartnerRow[] }>("members", {}, 15000),
     ]);
     const franchises = new Map((await svc<{ id: string; code: string }[]>("franchises?select=id,code")).data?.map((f) => [f.id, f.code]) ?? []);
     const partners: PartnerRow[] = pm.ok && Array.isArray(pm.data.members) ? pm.data.members : [];
     const partnerByUser = new Map(partners.filter((p) => p.suiteUserId).map((p) => [p.suiteUserId as string, p]));
     const pprofiles: { user_id: string; name: string; phone: string | null; is_default: boolean }[] = ppRes && ppRes.ok ? await ppRes.json() : [];
-    const profileRowsAll: { id: string; username?: string | null; full_name: string | null; plan: string; plan_expires_at: string | null; poster_plan: string | null; poster_plan_expires_at: string | null; franchise_id?: string | null }[] = prRes && prRes.ok ? await prRes.json() : [];
+    const profileRowsAll: { id: string; username?: string | null; full_name: string | null; plan: string; plan_expires_at: string | null; poster_plan: string | null; poster_plan_expires_at: string | null; franchise_id?: string | null; package?: string | null; package_until?: string | null; package_note?: string | null }[] = prRes && prRes.ok ? await prRes.json() : [];
     const inScope = new Set(profileRowsAll.filter((p) => !scope || (scope !== "none" && p.franchise_id === scope)).map((p) => p.id));
     const profileRows = profileRowsAll;
 
@@ -107,6 +107,7 @@ export async function GET(request: Request) {
         posterProfiles: pp.map((x) => x.name),
         posterPlan: pr?.poster_plan ?? "free",
         planExpires: (pr?.plan_expires_at ?? "").slice(0, 10),
+        package: pr?.package ?? "", packageUntil: (pr?.package_until ?? "").slice(0, 10), packageNote: pr?.package_note ?? "",
         name: (u.user_metadata?.name as string) || (u.user_metadata?.full_name as string) || pr?.full_name || pp.find((x) => x.is_default)?.name || pp[0]?.name || (u.email ?? "").split("@")[0] || (u.phone ? `+${u.phone}` : "user"),
         associate: (u.user_metadata?.associate_id as string) || "",
         accountKind: kindOf(u.app_metadata),
@@ -203,22 +204,27 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     id?: string; email?: string; password?: string; plan?: string; months?: number; suspend?: boolean; cardYears?: number; demo?: boolean; mobile?: string;
+    /** The package (migration 0087): "" | site_standard | site_premium | custom, for packageMonths (12 by default), with a note. */
+    package?: string; packageMonths?: number; packageNote?: string;
   };
   const { id, email, password, plan, months, suspend, cardYears, demo, mobile } = body;
+  const pkg = typeof body.package === "string" ? body.package : undefined;
   // Which right the change needs (Admin v2): the plan / card years → users.plan; block → users.block; the rest → users.edit.
   // A franchise with "May activate plans for its users" (Super Admin → Franchise → Profile) may give a plan by hand — for a payment it
   // took in cash / UPI, or agreed to collect later (owner, 5 Nov 2026). Only pro / free, at most 12 months; every change is audited.
-  const need = plan || cardYears !== undefined ? ["users.plan", "franchises.view"] as const : typeof suspend === "boolean" ? "users.block" : "users.edit";
+  const need = plan || pkg !== undefined || cardYears !== undefined ? ["users.plan", "franchises.view"] as const : typeof suspend === "boolean" ? "users.block" : "users.edit";
   const g = await requireAdmin(request, need as Right | Right[], { sensitive: typeof suspend === "boolean" || !!password || !!email }); if (!g.ok) return g.res;
-  if ((plan || cardYears !== undefined) && !g.me.rights.includes("users.plan")) {
+  if ((plan || pkg !== undefined || cardYears !== undefined) && !g.me.rights.includes("users.plan")) {
     if (!g.me.franchise?.canActivate) return Response.json({ error: "Only Shubhora activates plans for your users. Ask for \"May activate plans\" on your franchise, or send a payment link." }, { status: 403 });
     if (cardYears !== undefined || (plan && !["free", "pro"].includes(plan)) || (months !== undefined && Number(months) > 12)) return Response.json({ error: "A franchise can set Free or Pro, for up to 12 months." }, { status: 403 });
+    if (pkg === "custom") return Response.json({ error: "Custom Solutions is marked by Shubhora only." }, { status: 403 });
   }
+  if (pkg !== undefined && !["", "site_standard", "site_premium", "custom"].includes(pkg)) return Response.json({ error: "unknown package" }, { status: 400 });
   if (!serviceConfigured()) return Response.json({ error: "service key missing" }, { status: 400 });
   if (!id) return Response.json({ error: "id required" }, { status: 400 });
   if (!(await userInScope(g.me, id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
   const { password: _pw, ...logged } = body; void _pw;
-  await audit(g.me, plan ? "user.plan" : cardYears !== undefined ? "user.card_years" : typeof suspend === "boolean" ? (suspend ? "user.block" : "user.unblock") : mobile !== undefined ? "user.mobile" : typeof demo === "boolean" ? "user.demo" : password ? "user.password" : "user.edit", { type: "user", id, after: logged }, request);
+  await audit(g.me, pkg !== undefined ? "user.package" : plan ? "user.plan" : cardYears !== undefined ? "user.card_years" : typeof suspend === "boolean" ? (suspend ? "user.block" : "user.unblock") : mobile !== undefined ? "user.mobile" : typeof demo === "boolean" ? "user.demo" : password ? "user.password" : "user.edit", { type: "user", id, after: logged }, request);
   if (plan && !["free", "pro", "team"].includes(plan)) return Response.json({ error: "unknown plan" }, { status: 400 });
 
   const h = serviceHeaders();
@@ -306,6 +312,26 @@ export async function PATCH(request: Request) {
     // profiles.plan + plan_expires_at is what my_plan() reads, and my_plan() is what every paid screen asks —
     // AI Studio, Studio, WhatsApp, Analytics. Writing only cards.data.plan (below) left all of those locked, so a
     // plan given here did nothing. Both are written now: the profile decides access, the card carries the label.
+    // The package (owner, 5 Nov 2026): website + V-Card for its months (12 by default); the Growth features get one month free when
+    // the account has no running plan — the same as a paid website purchase on the site. Clearing the package leaves the plan alone.
+    if (pkg !== undefined) {
+      const pm = Math.min(24, Math.max(1, Math.round(Number(body.packageMonths) || 12)));
+      const until = new Date(); until.setMonth(until.getMonth() + pm);
+      const note = String(body.packageNote ?? "").trim().slice(0, 500);
+      const pr = await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${id}`, {
+        method: "PATCH", headers: { ...h, Prefer: "return=representation" },
+        body: JSON.stringify(pkg ? { package: pkg, package_until: until.toISOString(), package_note: note } : { package: "", package_until: null, package_note: note }),
+      });
+      if (!pr.ok) return Response.json({ error: /package/.test(await pr.text()) ? "Run migration 0087 in Supabase (profile package)." : "Could not set the package." }, { status: 400 });
+      if (pkg && !plan) {
+        const cur = ((await pr.json()) as { plan?: string; plan_expires_at?: string | null }[])[0];
+        const running = cur?.plan && cur.plan !== "free" && cur.plan_expires_at && new Date(cur.plan_expires_at) > new Date();
+        if (!running) {
+          const free = new Date(); free.setMonth(free.getMonth() + 1);
+          await fetch(`${SUPA_URL}/rest/v1/profiles?id=eq.${id}`, { method: "PATCH", headers: { ...h, Prefer: "return=minimal" }, body: JSON.stringify({ plan: "pro", plan_expires_at: free.toISOString(), plan_source: "admin" }) });
+        }
+      }
+    }
     if (plan) {
       const paidMonths = Math.min(24, Math.max(1, Math.round(Number(months) || 1)));
       const until = new Date(); until.setMonth(until.getMonth() + paidMonths);

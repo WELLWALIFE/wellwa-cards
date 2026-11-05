@@ -23,6 +23,7 @@ const mobileLogin = (email?: string) => /@phone\./i.test(email ?? "");
 const loginOf = (email?: string) => (mobileLogin(email) ? `📱 ${displayLogin(email ?? "")}` : email ?? "");
 const who = (u: { name: string; email: string }) => (u.name ? `${u.name} (${loginOf(u.email)})` : loginOf(u.email));
 
+const PKG_LABEL: Record<string, string> = { site_standard: "Website Standard", site_premium: "Website Premium", custom: "Custom Solutions" };
 const planStyle: Record<string, string> = {
   free: "bg-surface2 text-muted",
   pro: "bg-brand-soft text-brand-ink",
@@ -61,6 +62,8 @@ type User = {
   cards: number;
   usernames?: string[];
   plan: string;
+  /** The package set by admin (migration 0087): "" | site_standard | site_premium | custom, until its date. */
+  package?: string; packageUntil?: string; packageNote?: string;
   subscription?: { plan: string; status: string; renews: string; amount: number | null } | null;
   status: string;
   credits?: number;
@@ -180,6 +183,21 @@ export default function AdminUsers() {
       setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, plan: before } : x)));
       alert(j.error || `Could not change the plan (${r.status}).`);
     }
+  }
+
+  /** The package (owner, 5 Nov 2026): Website Standard / Premium for a year (Growth 1 month free with it), or Custom Solutions. */
+  async function setPackage(u: User, pkg: string) {
+    let months = 12; let note = u.packageNote ?? "";
+    if (pkg) {
+      const m = prompt(`${who(u)} — ${PKG_LABEL[pkg] ?? pkg} kitne mahine ke liye? (website + V-Card live rahenge; Growth features 1 mahina free)`, "12");
+      if (m === null) return; months = Math.min(meFr ? 12 : 24, Math.max(1, Math.trunc(Number(m)) || 12));
+      const n = prompt("Note (optional): payment kaise/kab aayega, kya custom banana hai…", note); if (n === null) return; note = n;
+    } else if (!confirm(`${who(u)} ka package hata dein? (plan jaisa hai waisa rahega)`)) return;
+    const before = { package: u.package, packageUntil: u.packageUntil, packageNote: u.packageNote };
+    setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, package: pkg, packageNote: note } : x)));
+    const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id: u.id, package: pkg, packageMonths: months, packageNote: note }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, ...before } : x))); alert(j.error || `Could not set the package (${r.status}).`); return; }
+    void load();
   }
 
   /** Advanced feature (owner, 30 Oct 2026): switched on only after the customisation is paid. */
@@ -491,6 +509,17 @@ export default function AdminUsers() {
                       <option value="pro">pro</option>
                       {!meFr && <option value="team">team</option>}
                     </select>
+                    <div className="mt-1">
+                      <select value={u.package ?? ""} onChange={(e) => setPackage(u, e.target.value)} disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
+                        title={u.packageNote || (u.packageUntil ? `till ${u.packageUntil}` : "Package: website for a year, or Custom Solutions")}
+                        className={`mono max-w-[150px] truncate rounded border-0 px-1.5 py-1 text-[11px] font-semibold outline-none appearance-none ${u.package ? "bg-violet-100 text-violet-800" : "bg-surface2 text-muted"}`}>
+                        <option value="">— package —</option>
+                        <option value="site_standard">Website Standard</option>
+                        <option value="site_premium">Website Premium</option>
+                        {!meFr && <option value="custom">Custom Solutions</option>}
+                      </select>
+                      {u.packageUntil && <span className="ml-1 text-[10px] text-muted">till {u.packageUntil}</span>}
+                    </div>
                     <div className="mt-1 flex items-center gap-1.5">
                       <button onClick={() => giveCredits(u)} disabled={!live || !acct}
                         className="text-[11px] font-semibold text-amber-600 hover:underline disabled:opacity-40">
