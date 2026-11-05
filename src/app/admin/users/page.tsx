@@ -64,6 +64,7 @@ type User = {
   plan: string;
   /** The package set by admin (migration 0087): "" | site_standard | site_premium | custom, until its date. */
   package?: string; packageUntil?: string; packageNote?: string;
+  planExpires?: string;
   subscription?: { plan: string; status: string; renews: string; amount: number | null } | null;
   status: string;
   credits?: number;
@@ -167,7 +168,7 @@ export default function AdminUsers() {
   async function setPlan(u: User, plan: string) {
     let months: number | undefined;
     if (plan !== "free") {
-      const raw = prompt(`${who(u)} ko "${plan}" plan kitne mahine ke liye?${meFr ? "\n(Payment aapne liya hai ya baad mein lenge — record Shubhora ko dikhta hai.)" : ""}`, "12");
+      const raw = prompt(`${who(u)} ko Growth Plan kitne mahine ke liye?${meFr ? "\n(Payment aapne liya hai ya baad mein lenge — record Shubhora ko dikhta hai.)" : ""}`, "12");
       if (raw === null) return;
       months = Math.min(meFr ? 12 : 24, Math.max(1, Math.trunc(Number(raw)) || 1));
     }
@@ -182,7 +183,17 @@ export default function AdminUsers() {
       const j = await r.json().catch(() => ({}));
       setUsers((us) => us.map((x) => (x.id === u.id ? { ...x, plan: before } : x)));
       alert(j.error || `Could not change the plan (${r.status}).`);
+      return;
     }
+    void load();
+  }
+
+  /** Back to Free: the package and the plan both go (Shubhora only). */
+  async function makeFree(u: User) {
+    if (!confirm(`${who(u)} ko Free par le jaayein? Website package aur Growth dono hat jayenge (data rahega).`)) return;
+    const r = await fetch("/api/admin/users", { method: "PATCH", headers: await adminHeaders(), body: JSON.stringify({ id: u.id, plan: "free", package: "", packageNote: u.packageNote ?? "" }) });
+    if (!r.ok) { const j = await r.json().catch(() => ({})); alert(j.error || `Could not change the plan (${r.status}).`); return; }
+    void load();
   }
 
   /** The package (owner, 5 Nov 2026): Website Standard / Premium for a year (Growth 1 month free with it), or Custom Solutions. */
@@ -460,9 +471,9 @@ export default function AdminUsers() {
                     <p className="text-[11px] text-faint">{mobileLogin(u.email) ? "signed up with mobile" : u.provider ? `via ${u.provider}` : ""}{u.posterProfiles?.length ? ` · profiles: ${u.posterProfiles.join(", ")}` : ""}{u.posterPlan && u.posterPlan !== "free" ? ` · poster ${u.posterPlan}` : ""}</p>
                     {acct ? (
                       <>
-                        <button onClick={() => loginAs(u)} disabled={!live || busyLogin === u.id} className="mt-1 inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold text-brand-ink hover:bg-brand-soft disabled:opacity-40">{busyLogin === u.id ? "…" : "Login as"}</button>
+                        {!meFr && <button onClick={() => loginAs(u)} disabled={!live || busyLogin === u.id} className="mt-1 inline-flex items-center gap-1 rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold text-brand-ink hover:bg-brand-soft disabled:opacity-40">{busyLogin === u.id ? "…" : "Login as"}</button>}
                         <Link href={`/admin/users/${u.id}`} className="ml-1 inline-flex rounded-md border border-border px-2 py-0.5 text-[11px] font-semibold hover:bg-surface2">Profile</Link>
-                    <Link href={`/admin/users/${u.id}?edit=profile`} className="ml-1 inline-flex rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">Edit</Link>
+                    {!meFr && <Link href={`/admin/users/${u.id}?edit=profile`} className="ml-1 inline-flex rounded-md border border-brand/40 bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">Edit</Link>}
                       </>
                     ) : null}
                   </td>
@@ -498,28 +509,25 @@ export default function AdminUsers() {
                     )}
                   </td>}
                   <td className="px-4 py-3">
-                    <select
-                      value={u.plan}
-                      onChange={(e) => setPlan(u, e.target.value)}
-                      disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
-                      title={meFr && !meFr.canActivate ? "Only Shubhora activates plans for your users (ask for \"May activate plans\")" : undefined}
-                      className={`mono text-[11px] font-semibold uppercase px-1.5 py-1 rounded border-0 outline-none appearance-none ${live ? "cursor-pointer" : ""} ${planStyle[u.plan] ?? planStyle.free}`}
-                    >
-                      <option value="free">free</option>
-                      <option value="pro">pro</option>
-                      {!meFr && <option value="team">team</option>}
-                    </select>
-                    <div className="mt-1">
-                      <select value={u.package ?? ""} onChange={(e) => setPackage(u, e.target.value)} disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
-                        title={u.packageNote || (u.packageUntil ? `till ${u.packageUntil}` : "Package: website for a year, or Custom Solutions")}
-                        className={`mono max-w-[150px] truncate rounded border-0 px-1.5 py-1 text-[11px] font-semibold outline-none appearance-none ${u.package ? "bg-violet-100 text-violet-800" : "bg-surface2 text-muted"}`}>
-                        <option value="">— package —</option>
-                        <option value="site_standard">Website Standard</option>
-                        <option value="site_premium">Website Premium</option>
-                        {!meFr && <option value="custom">Custom Solutions</option>}
-                      </select>
-                      {u.packageUntil && <span className="ml-1 text-[10px] text-muted">till {u.packageUntil}</span>}
+                    {/* The plan (owner, 5 Nov 2026): the new names only. Website Standard / Premium = a year (package); Growth = months
+                        (profiles.plan "pro"); Custom = marked with a note. The badges show what runs now and till when. */}
+                    <div className="flex flex-wrap items-center gap-1">
+                      {u.package && u.package !== "custom" && <span className="rounded bg-violet-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-violet-800" title={u.packageNote || ""}>{PKG_LABEL[u.package]}{u.packageUntil ? ` · ${u.packageUntil}` : ""}</span>}
+                      {u.package === "custom" && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-amber-800" title={u.packageNote || ""}>Custom{u.packageUntil ? ` · ${u.packageUntil}` : ""}</span>}
+                      {u.plan && u.plan !== "free" && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${planStyle[u.plan] ?? planStyle.free}`}>Growth{u.planExpires ? ` · ${u.planExpires}` : ""}</span>}
+                      {!u.package && (!u.plan || u.plan === "free") && <span className={`rounded px-1.5 py-0.5 text-[10px] font-bold uppercase ${planStyle.free}`}>Free</span>}
                     </div>
+                    <select value="" onChange={(e) => { const v = e.target.value; e.target.value = ""; if (v === "site_standard" || v === "site_premium" || v === "custom") void setPackage(u, v); else if (v === "growth") void setPlan(u, "pro"); else if (v === "free") void makeFree(u); }}
+                      disabled={!live || !acct || (!!meFr && !meFr.canActivate)}
+                      title={meFr && !meFr.canActivate ? "Only Shubhora activates plans for your users (ask for \"May activate plans\")" : "Give or change the plan"}
+                      className="mono mt-1 max-w-[150px] rounded border border-border bg-surface px-1.5 py-1 text-[11px] font-semibold text-ink outline-none disabled:opacity-40">
+                      <option value="">Set plan…</option>
+                      <option value="site_standard">Website Standard · 1 year</option>
+                      <option value="site_premium">Website Premium · 1 year</option>
+                      <option value="growth">Growth Plan · months</option>
+                      {!meFr && <option value="custom">Custom Solutions</option>}
+                      {!meFr && <option value="free">Make Free (remove all)</option>}
+                    </select>
                     <div className="mt-1 flex items-center gap-1.5">
                       <button onClick={() => giveCredits(u)} disabled={!live || !acct}
                         className="text-[11px] font-semibold text-amber-600 hover:underline disabled:opacity-40">
@@ -534,7 +542,7 @@ export default function AdminUsers() {
                         ₹ link
                       </button>
                     </div>
-                    {acct && ADDONS.map((ad) => {
+                    {acct && !meFr && ADDONS.map((ad) => {
                       const on = (u.addons ?? []).includes(ad.key);
                       return (
                         <button key={ad.key} onClick={() => toggleAddon(u, ad.key, ad.en)} disabled={!live}
@@ -583,7 +591,9 @@ export default function AdminUsers() {
                     </button>
                   </td>
                   <td className="px-4 py-3 text-right whitespace-nowrap">
-                    {acct ? (
+                    {acct && meFr ? (
+                      <Link href={`/admin/users/${u.id}`} className="ed-icon inline-grid" title="Open" aria-label="Open user"><ExternalLink className="h-4 w-4" /></Link>
+                    ) : acct ? (
                       <>
                         <Link href={`/admin/users/${u.id}?edit=profile`}
                           className="ed-icon inline-grid" title="Edit profile (name, username, mobile, business…)" aria-label="Edit profile">
@@ -737,8 +747,8 @@ function EditUser({ user, onClose, onSaved }: { user: User; onClose: () => void;
           <span className="text-xs font-medium text-muted">Plan</span>
           <select className="ed-input mt-1" value={plan} onChange={(e) => setPlan(e.target.value)}>
             <option value="free">Free</option>
-            <option value="pro">Full access (Pro)</option>
-            <option value="team">White label</option>
+            <option value="pro">Growth Plan (all features)</option>
+            <option value="team">White label (old)</option>
           </select>
         </label>
         {err && <p className="text-xs text-red-500">{err}</p>}
