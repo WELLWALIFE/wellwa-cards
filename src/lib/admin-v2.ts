@@ -77,7 +77,11 @@ async function viewAsFranchise(me: Identity, request: Request): Promise<Identity
   const fr = await franchiseById(want);
   if (!fr || fr.status === "ended") return me;
   const role = ROLES.find((r) => r.key === "franchise");
-  return { ...me, role: "franchise", rights: role ? [...role.rights] : [], franchise: { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate }, franchiseId: fr.id, viewAs: { by: me.name || me.email } };
+  // The panel shows the FRANCHISE's name and login everywhere (owner, 5 Nov 2026: "jis account me login ho uska hi sab kuch dikhe");
+  // the real person stays in `viewAs` for the banner and the audit log.
+  const login = list(await svc<{ name: string; email: string }[]>(`admin_users?franchise_id=eq.${fr.id}&active=is.true&select=name,email&order=created_at.asc&limit=1`))[0];
+  const shownEmail = login?.email ? (/^p91(\d{10})@phone\./.test(login.email) ? login.email.slice(3, 13) : login.email) : "";
+  return { ...me, name: fr.name, email: shownEmail, role: "franchise", rights: role ? [...role.rights] : [], franchise: { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate }, franchiseId: fr.id, viewAs: { by: `${me.name || me.email}${me.email && me.name ? ` <${me.email}>` : ""}` } };
 }
 
 async function identifyReal(request: Request): Promise<Identity | null> {
@@ -199,7 +203,7 @@ export async function audit(me: Identity | null, action: string, t: AuditTarget 
     const ip = request ? (request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 60) : "";
     const ua = request ? (request.headers.get("user-agent") ?? "").slice(0, 160) : "";
     await svc("audit_log", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
-      actor_id: me?.id || null, actor_email: me?.email || me?.name || "", actor_role: me ? (me.via === "session" ? me.role : `${me.role} (${me.via})`) : "system",
+      actor_id: me?.id || null, actor_email: me?.viewAs ? `${me.viewAs.by} (as ${me.franchise?.code ?? "franchise"})` : (me?.email || me?.name || ""), actor_role: me ? (me.via === "session" ? me.role : `${me.role} (${me.via})`) : "system",
       action, target_type: t.type ?? "", target_id: String(t.id ?? ""), target_label: String(t.label ?? "").slice(0, 160),
       before: t.before ?? null, after: t.after ?? null, note: String(t.note ?? "").slice(0, 500), ip, ua,
     }) });
