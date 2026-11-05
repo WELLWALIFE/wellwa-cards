@@ -3,9 +3,9 @@
 // The same component serves the admin (/admin/franchises/[id]) and the franchise itself (/admin/earnings, `mine`).
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Link2, MessageCircle, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Eye, Link2, MessageCircle, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { adminApi, ago, fmtDate, useAdminMe } from "@/lib/admin-client";
+import { adminApi, ago, fmtDate, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
 import { Badge, Btn, Card, CopyBtn, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 
 type Fr = { id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended"; bank: Record<string, string>; agreement_at: string | null; target_paise: number; notes: string; created_at: string };
@@ -79,7 +79,9 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
       <PageHeader crumbs={mine ? undefined : [{ href: "/admin/franchises", label: "Franchises" }, { label: f.code }]}
         title={<span className="flex items-center gap-2">{mine ? "My earnings" : f.name} <Badge tone={f.status === "active" ? "good" : f.status === "paused" ? "warn" : "danger"} dot>{f.status}</Badge></span>}
         sub={<>Franchise code <b className="font-mono text-ink">{f.code}</b>{f.company ? ` · ${f.company}` : ""}{f.city ? ` · ${f.city}` : ""} · commission {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal</>}
-        actions={<><CopyBtn size="md" text={d.signupLink} label="Copy sign-up link" /><a href={share} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> Share on WhatsApp</a></>} />
+        actions={<>{me?.rights.includes("franchises.manage") && !me.franchise && d.franchise.status !== "ended" && (
+          <button type="button" onClick={() => { viewAsFranchise(d.franchise.id); window.location.href = "/admin"; }} title="See the panel exactly as this franchise sees it" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-ink hover:bg-surface2"><Eye className="h-4 w-4" /> Open as this franchise</button>
+        )}<CopyBtn size="md" text={d.signupLink} label="Copy sign-up link" /><a href={share} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> Share on WhatsApp</a></>} />
 
       {!mine && canManage && d.logins.length === 0 && (
         <div className="flex flex-wrap items-center gap-3 rounded-xl border border-amber-400/60 bg-amber-50 px-4 py-3 text-sm text-amber-900">

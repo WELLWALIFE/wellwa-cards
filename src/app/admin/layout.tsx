@@ -10,7 +10,7 @@ import { ArrowLeft, Bell, ChevronDown, LogOut, Menu, Search, ShieldAlert, Shield
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PartnerAdminButton } from "@/components/partner-admin-button";
 import { getAdminSupabase } from "@/lib/supabase/admin-browser";
-import { adminApi, useAdminMe } from "@/lib/admin-client";
+import { adminApi, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
 import { MENU, menuFor, roleLabel, type AdminMe } from "@/lib/admin-rights";
 import { Avatar, Spinner, ToastHost } from "@/components/admin/ui";
 
@@ -184,6 +184,12 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       )}
 
       <div className="flex min-w-0 flex-1 flex-col">
+        {me?.viewAs && (
+          <div className="flex items-center justify-between gap-3 bg-violet-700 px-4 py-2 text-sm text-white md:px-6">
+            <span className="min-w-0 truncate"><Store className="mr-1.5 inline h-4 w-4" />You are seeing the panel as <b>{me.franchise?.name}</b> ({me.franchise?.code}) — what this franchise sees. Signed in as {me.viewAs.by}.</span>
+            <button type="button" onClick={() => { viewAsFranchise(null); window.location.href = `/admin/franchises/${me.franchise?.id ?? ""}`; }} className="shrink-0 rounded-lg bg-white/15 px-3 py-1 font-semibold hover:bg-white/25">Back to Super Admin</button>
+          </div>
+        )}
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-surface/85 px-4 backdrop-blur md:px-6">
           {!securityOnly && <button type="button" onClick={() => setOpen(true)} aria-label="Open menu" className="grid h-9 w-9 place-items-center rounded-lg border border-border text-ink md:hidden"><Menu className="h-5 w-5" /></button>}
           <div className="min-w-0 flex-1">

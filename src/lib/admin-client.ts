@@ -6,9 +6,16 @@ import { useCallback, useEffect, useState } from "react";
 import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import type { AdminMe } from "@/lib/admin-rights";
 
+/** sessionStorage: the franchise id a Super Admin is looking at the panel as ("Open as this franchise"). */
+export const VIEW_AS_KEY = "ne-admin-view-as";
+export function viewAsFranchise(id: string | null) {
+  try { if (id) sessionStorage.setItem(VIEW_AS_KEY, id); else sessionStorage.removeItem(VIEW_AS_KEY); } catch { /* private mode */ }
+}
+
 export async function adminHeaders(): Promise<Record<string, string>> {
   const h: Record<string, string> = { "content-type": "application/json" };
   try { const k = sessionStorage.getItem("ne-admin-key") ?? ""; if (k) h["x-admin-key"] = k; } catch { /* private mode */ }
+  try { const v = sessionStorage.getItem(VIEW_AS_KEY) ?? ""; if (v) h["x-admin-view-as"] = v; } catch { /* private mode */ }
   try {
     const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
     if (data.session?.access_token) { h.Authorization = `Bearer ${data.session.access_token}`; h["x-owner-token"] = data.session.access_token; }

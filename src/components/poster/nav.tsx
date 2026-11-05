@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Home, PlusCircle, Users, Handshake, UserCircle, Globe, CreditCard, Settings, Package, CalendarDays, Share2, LogOut, Languages, Link2, ChevronsUpDown, HelpCircle } from "lucide-react";
+import { Home, PlusCircle, Users, Handshake, UserCircle, Globe, CreditCard, Settings, Package, CalendarDays, Share2, LogOut, Languages, Link2, ChevronsUpDown, HelpCircle, Store } from "lucide-react";
 import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { useT, LangToggle } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
@@ -30,6 +30,23 @@ export function PosterNav() {
   const { t, lang } = useT();
   const kind = useAccountKind();
   const hi = lang !== "en";
+  // A franchise login that opened the app instead of its panel (owner, 5 Nov 2026: "franchise ko to uske user dikhne chahiye"):
+  // one line to the panel. Asked once; a plain customer gets a 401 and nothing shows.
+  const [franchiseCode, setFranchiseCode] = useState("");
+  useEffect(() => {
+    let on = true;
+    (async () => {
+      try {
+        const sb = getBrowserSupabase(); const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
+        const tok = data.session?.access_token; if (!tok) return;
+        const r = await fetch("/api/admin/v2/me", { headers: { Authorization: `Bearer ${tok}` }, cache: "no-store" });
+        if (!r.ok) return;
+        const j = (await r.json()) as { me?: { franchise?: { code?: string } | null } };
+        if (on && j.me?.franchise?.code) setFranchiseCode(j.me.franchise.code);
+      } catch { /* not a franchise */ }
+    })();
+    return () => { on = false; };
+  }, []);
   const tabs: Tab[] = [
     { href: "/poster", label: t.tabHome, icon: Home },
     { href: "/poster/create", label: t.tabCard, icon: PlusCircle },
@@ -44,6 +61,7 @@ export function PosterNav() {
     { href: "/poster/calendar", label: hi ? "Posters" : "Posters", icon: CalendarDays },
     { href: "/poster/plan", label: hi ? "मेरा plan" : "My plan", icon: CreditCard },
     { href: "/poster/settings", label: hi ? "Settings" : "Settings", icon: Settings },
+    ...(franchiseCode ? [{ href: "/admin", label: hi ? `Franchise panel · ${franchiseCode}` : `Franchise panel · ${franchiseCode}`, icon: Store }] : []),
   ];
   // The profile steps (You, Company…) stay inside the app, tabs and all (owner's call, 2 Oct 2026); only the very
   // first "start" screen is full-screen.

@@ -63,6 +63,24 @@ const TTL = 20_000;
 function sha(s: string) { return crypto.createHash("sha256").update(s).digest("hex").slice(0, 40); }
 
 export async function identify(request: Request): Promise<Identity | null> {
+  const me = await identifyReal(request);
+  return me ? viewAsFranchise(me, request) : null;
+}
+
+/** "Open as this franchise" (owner, 5 Nov 2026): a Super Admin (anyone with franchises.manage) sends x-admin-view-as: <franchise id>
+ *  and the panel answers as that franchise's login would — its users, earnings, payouts, nothing else. Read-only in spirit: every
+ *  write still carries the real person in the audit (actor = the admin; `viewAs` tells the panel to show the banner). A franchise
+ *  login, or a staff member without the right, is unaffected by the header. */
+async function viewAsFranchise(me: Identity, request: Request): Promise<Identity> {
+  const want = (request.headers.get("x-admin-view-as") ?? "").trim();
+  if (!want || !/^[0-9a-f-]{36}$/i.test(want) || me.franchise || !me.rights.includes("franchises.manage")) return me;
+  const fr = await franchiseById(want);
+  if (!fr || fr.status === "ended") return me;
+  const role = ROLES.find((r) => r.key === "franchise");
+  return { ...me, role: "franchise", rights: role ? [...role.rights] : [], franchise: { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate }, franchiseId: fr.id, viewAs: { by: me.name || me.email } };
+}
+
+async function identifyReal(request: Request): Promise<Identity | null> {
   const auth = request.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : (request.headers.get("x-owner-token") ?? "").trim();
   if (token && SUPA_URL) {

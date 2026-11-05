@@ -98,6 +98,8 @@ export type AdminMe = {
   franchise: { id: string; code: string; name: string; canActivate: boolean } | null;
   mfaEnrolled: boolean; mfaRequired: boolean; aal: "aal1" | "aal2"; mustChangePassword: boolean;
   via: "session" | "key" | "handoff";
+  /** Set while a Super Admin looks at the panel as one franchise ("Open as this franchise"): who is really here. */
+  viewAs?: { by: string } | null;
 };
 export const can = (me: Pick<AdminMe, "rights"> | null | undefined, r: Right | null) => r === null || !!me?.rights.includes(r);
 export function menuFor(me: AdminMe | null) {
