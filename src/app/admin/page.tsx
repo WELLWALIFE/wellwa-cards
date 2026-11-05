@@ -22,6 +22,7 @@ type Franchise = {
   users: { total: number; thisMonth: number; week: number; paid: number }; newest: Newest[];
   payouts: { id: string; amount_paise: number; status: string; utr: string; requested_at: string; paid_at: string | null }[];
   balance: { earned: number; paid: number; balance: number; pending: number; thisMonth: number };
+  subs?: { id: string; code: string; name: string; status: string; users: number }[];
 };
 const gb = (b: number) => `${(b / 1024 ** 3).toFixed(1)} GB`;
 const days = (s: number) => (s >= 86400 ? `${Math.floor(s / 86400)} d ${Math.floor((s % 86400) / 3600)} h` : `${Math.floor(s / 3600)} h ${Math.floor((s % 3600) / 60)} m`);
@@ -45,9 +46,9 @@ export default function AdminDashboard() {
     const f = d.franchise;
     return (
       <div className="space-y-6">
-        <PageHeader title={`${hello}, ${me?.name?.split(" ")[0] ?? ""}`} sub={f ? <>Franchise <b>{f.code}</b> · {f.name} · {f.status === "active" ? <Badge tone="good" dot>Active</Badge> : <Badge tone="warn">{f.status}</Badge>}</> : "Your franchise"} />
+        <PageHeader title={`${hello}, ${me?.name?.split(" ")[0] ?? ""}`} sub={f ? <>{me?.franchise?.parentId ? "Sub-franchise" : "Franchise"} <b>{f.code}</b> · {f.name} · {f.status === "active" ? <Badge tone="good" dot>Active</Badge> : <Badge tone="warn">{f.status}</Badge>} · commission {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal</> : "Your franchise"} />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-          <Stat label="My users" value={d.users.total} hint={`${d.users.thisMonth} new this month · ${d.users.week} this week`} icon={Users} href="/admin/users" />
+          <Stat label={d.subs?.length ? "Users (incl. sub-franchises)" : "My users"} value={d.users.total} hint={`${d.users.thisMonth} new this month · ${d.users.week} this week`} icon={Users} href="/admin/users" />
           <Stat label="On a paid plan" value={d.users.paid} hint={`${d.users.total ? Math.round((d.users.paid / d.users.total) * 100) : 0}% of my users`} icon={TrendingUp} tone="good" />
           <Stat label="Earned this month" value={money(d.balance.thisMonth)} hint={`Total earned ${money(d.balance.earned)}`} icon={IndianRupee} tone="good" href="/admin/earnings" />
           <Stat label="Balance" value={money(d.balance.balance)} hint={d.balance.pending ? `${money(d.balance.pending)} payout in process` : "Ask for a payout under My earnings"} icon={Wallet} tone="brand" href="/admin/earnings" />
@@ -57,13 +58,22 @@ export default function AdminDashboard() {
             <Table head={["User", "Plan", "Joined"]} minW={420} empty="No users yet — share your link from My earnings.">
               {d.newest.map((u) => (
                 <tr key={u.id} className="hover:bg-surface2/50">
-                  <td className={td}><Link href={`/admin/users/${u.id}`} className="font-semibold hover:text-brand-ink">{u.full_name || u.username || "User"}</Link>{u.username && <span className="ml-1 text-xs text-muted">@{u.username}</span>}</td>
+                  <td className={td}><Link href={`/admin/users/${u.id}`} className="font-semibold hover:text-brand-ink">{u.full_name || u.username || "User"}</Link>{u.username && <span className="ml-1 text-xs text-muted">@{u.username}</span>}{u.franchise && <span className="ml-1 rounded bg-violet-100 px-1 text-[10px] font-semibold text-violet-800">via {u.franchise}</span>}</td>
                   <td className={td}><Badge tone={planOf(u) === "free" ? "neutral" : "good"}>{planOf(u)}</Badge></td>
                   <td className={`${td} text-muted`}>{ago(u.created_at)}</td>
                 </tr>
               ))}
             </Table>
           </Card>
+          {!!d.subs?.length && (
+            <Card title="My sub-franchises" pad={false} actions={<Link href="/admin/earnings?tab=subs" className="text-xs font-semibold text-brand-ink">Manage →</Link>}>
+              <Table head={["Code", "Name", "Users", "Status"]} minW={300}>
+                {d.subs.map((x) => (
+                  <tr key={x.id}><td className={`${td} mono text-xs font-semibold`}>{x.code}</td><td className={td}>{x.name}</td><td className={`${td} tabular-nums`}>{x.users}</td><td className={td}><Badge tone={x.status === "active" ? "good" : "warn"}>{x.status}</Badge></td></tr>
+                ))}
+              </Table>
+            </Card>
+          )}
           <Card title="Payouts" pad={false} actions={<Link href="/admin/earnings" className="text-xs font-semibold text-brand-ink">Earnings →</Link>}>
             <Table head={["Amount", "Status", "When"]} minW={300} empty="No payouts yet.">
               {d.payouts.map((p) => (

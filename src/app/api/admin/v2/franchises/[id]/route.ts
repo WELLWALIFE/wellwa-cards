@@ -5,9 +5,12 @@
 //        { op: "payout_request", amount, note? }                           (the franchise itself, or "franchises.payouts")
 //        { op: "payout_decide", payout_id, status: approved|rejected|paid, utr?, note? }   ("franchises.payouts")
 //        { op: "adjustment", amount (+/−), note }                            ("franchises.payouts")
+//   A franchise login also sees and manages its own SUB-FRANCHISES here (migration 0088): GET their page; PATCH name / contact / area /
+//   percents (≤ its own) / may-activate (only if it may) / status (ended → their users move up to the parent); POST { op: "reset_login",
+//   admin_id, password } → sets the password the parent typed on the sub's login (no generated passwords — owner, 1 Nov 2026). GET of a top-level franchise lists its sub-franchises (subs).
 //   DELETE → the franchise, its ledger and payouts are removed for good; its users stay (franchise_id → null); its logins are switched off
 //            ("franchises.manage", sensitive; owner, 1 Nov 2026 "delete ka option, confirmation ke saath")
-import { requireAdmin, audit, getSettings, userInScope } from "@/lib/admin-v2";
+import { requireAdmin, audit, getSettings, userInScope, createOrResetAuthUser, type Identity } from "@/lib/admin-v2";
 import { svc, svcCount } from "@/lib/service";
 import { franchiseBalance, franchisePatch, FR_COLS, type FranchiseRow } from "@/lib/franchise-server";
 import { SITE_URL } from "@/lib/site-url";
@@ -19,13 +22,15 @@ const paise = (v: unknown) => { const n = Math.round(Number(String(v ?? "").repl
 async function load(id: string): Promise<FranchiseRow | null> {
   return isUuid(id) ? list(await svc<FranchiseRow[]>(`franchises?id=eq.${id}&select=${FR_COLS}&limit=1`))[0] ?? null : null;
 }
+/** A franchise login looking at one of its own sub-franchises (not itself). */
+const isMySub = (me: Identity, fr: { id: string; parent_id?: string | null } | null) => !!me.franchise && !!fr && fr.id !== me.franchise.id && fr.parent_id === me.franchise.id;
 
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await requireAdmin(request, "franchises.view"); if (!g.ok) return g.res;
   const { me } = g;
   const { id } = await ctx.params;
-  if (me.franchise && me.franchise.id !== id) return Response.json({ error: "Not your franchise." }, { status: 403 });
   const fr = await load(id); if (!fr) return Response.json({ error: "Franchise not found." }, { status: 404 });
+  if (me.franchise && me.franchise.id !== id && !isMySub(me, fr)) return Response.json({ error: "Not your franchise." }, { status: 403 });
   const money = me.rights.includes("billing.view") || me.rights.includes("franchises.payouts") || !!me.franchise;
   const [balance, users, ledger, payouts, logins, s, credits] = await Promise.all([
     franchiseBalance(fr.id),
@@ -38,12 +43,43 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     svc<{ id: string; user_id: string; delta: number; ref: string | null; created_at: string }[]>(`credit_ledger?reason=eq.franchise-grant&ref=like.*fr:${fr.id}*&select=id,user_id,delta,ref,created_at&order=created_at.desc&limit=300`),
   ]);
   const names = new Map(list(users).map((u) => [u.id, u.full_name || u.username || "User"]));
+  // A top-level franchise: its sub-franchises with their numbers; a sub-franchise: who its parent is.
+  let subs: Record<string, unknown>[] = [];
+  let parent: { id: string; code: string; name: string } | null = null;
+  if (!fr.parent_id) {
+    const rows = list(await svc<FranchiseRow[]>(`franchises?parent_id=eq.${fr.id}&select=${FR_COLS}&order=created_at`));
+    if (rows.length) {
+      const ids = rows.map((r) => r.id).join(",");
+      const [u, led, lo] = await Promise.all([
+        svc<{ franchise_id: string }[]>(`profiles?franchise_id=in.(${ids})&select=franchise_id&limit=20000`),
+        svc<{ franchise_id: string; kind: string; amount_paise: number }[]>(`franchise_ledger?franchise_id=in.(${ids})&select=franchise_id,kind,amount_paise&limit=50000`),
+        svc<{ id: string; franchise_id: string; email: string; name: string; active: boolean; last_login_at: string | null }[]>(`admin_users?franchise_id=in.(${ids})&select=id,franchise_id,email,name,active,last_login_at`),
+      ]);
+      const over = list(await svc<{ amount_paise: number; note: string }[]>(`franchise_ledger?franchise_id=eq.${fr.id}&kind=eq.earning&note=like.Override*&select=amount_paise,note&limit=20000`));
+      subs = rows.map((r) => {
+        const l = list(led).filter((x) => x.franchise_id === r.id);
+        return {
+          id: r.id, code: r.code, name: r.name, phone: r.phone, area: r.area, city: r.city, status: r.status, can_activate: r.can_activate,
+          commission_first_pct: r.commission_first_pct, commission_renewal_pct: r.commission_renewal_pct, created_at: r.created_at,
+          users: list(u).filter((x) => x.franchise_id === r.id).length,
+          earned: l.filter((x) => x.kind === "earning").reduce((a, x) => a + Number(x.amount_paise), 0),
+          balance: l.reduce((a, x) => a + Number(x.amount_paise), 0),
+          override: over.filter((x) => x.note.startsWith(`Override from ${r.code} `)).reduce((a, x) => a + Number(x.amount_paise), 0),
+          logins: list(lo).filter((x) => x.franchise_id === r.id).map((x) => ({ id: x.id, email: /^p91(\d{10})@phone\./.test(x.email) ? x.email.slice(3, 13) : x.email, name: x.name, active: x.active, last_login_at: x.last_login_at })),
+        };
+      });
+    }
+  } else {
+    const pr = await load(fr.parent_id);
+    parent = pr ? { id: pr.id, code: pr.code, name: pr.name } : null;
+  }
   const byIds = [...new Set(list(credits).map((c) => (c.ref ?? "").match(/^by:([^;]+)/)?.[1] ?? "").filter(Boolean))];
   const byNames = new Map(byIds.length ? list(await svc<{ id: string; name: string; email: string }[]>(`admin_users?id=in.(${byIds.join(",")})&select=id,name,email`)).map((a) => [a.id, a.name || a.email]) : []);
   return Response.json({
-    franchise: me.franchise ? { ...fr, bank: fr.bank, kyc: undefined } : fr, balance, users: list(users),
+    franchise: me.franchise ? { ...fr, bank: isMySub(me, fr) ? {} : fr.bank, kyc: undefined } : fr, balance, users: list(users),
     ledger: list(ledger).map((l) => ({ ...l, user: l.user_id ? names.get(String(l.user_id)) ?? "" : "" })), payouts: list(payouts), logins: list(logins),
     settings: { payoutMin: s.payout_min_paise }, signupLink: `${SITE_URL}/start?f=${fr.code}`,
+    subs, parent,
     credits: list(credits).map((c) => ({ id: c.id, user: names.get(c.user_id) ?? "User", delta: c.delta, by: byNames.get((c.ref ?? "").match(/^by:([^;]+)/)?.[1] ?? "") ?? "", at: c.created_at })),
   });
 }
@@ -53,12 +89,22 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const { id } = await ctx.params;
   // A franchise login may change its own bank details and contact (and nothing else); everything else needs "franchises.manage".
   const ownOnly = Object.keys(b).every((k) => ["bank", "email", "phone", "pincode", "pan", "gstin"].includes(k));
-  const g = await requireAdmin(request, ownOnly ? "franchises.view" : "franchises.manage", { sensitive: true }); if (!g.ok) return g.res;
+  // What a parent may change on its sub-franchise (owner, 6 Nov 2026) — not its bank, KYC or parent.
+  const subFields = ["name", "company", "phone", "email", "area", "city", "state", "pincode", "commission_first_pct", "commission_renewal_pct", "can_activate", "status", "notes", "target_paise"];
+  const g = await requireAdmin(request, ["franchises.manage", "franchises.view"], { sensitive: true }); if (!g.ok) return g.res;
   const { me } = g;
-  if (me.franchise ? me.franchise.id !== id || !ownOnly : !me.rights.includes("franchises.manage")) return Response.json({ error: "You do not have the right to change this." }, { status: 403 });
   const was = await load(id); if (!was) return Response.json({ error: "Franchise not found." }, { status: 404 });
+  const asParent = isMySub(me, was);
+  if (me.franchise ? (me.franchise.id === id ? !ownOnly : !asParent || !Object.keys(b).every((k) => subFields.includes(k))) : !me.rights.includes("franchises.manage")) return Response.json({ error: "You do not have the right to change this." }, { status: 403 });
   const s = await getSettings();
   const p = franchisePatch(b, { first: s.commission_first_pct, renewal: s.commission_renewal_pct });
+  // A sub-franchise never earns more than its parent, and may activate plans only if the parent may.
+  const parentRow = was.parent_id ? await load(was.parent_id) : null;
+  if (parentRow) {
+    if ("commission_first_pct" in p && Number(p.commission_first_pct) > Number(parentRow.commission_first_pct)) return Response.json({ error: `First-payment commission can be at most ${parentRow.commission_first_pct}% (${parentRow.code}'s).` }, { status: 400 });
+    if ("commission_renewal_pct" in p && Number(p.commission_renewal_pct) > Number(parentRow.commission_renewal_pct)) return Response.json({ error: `Renewal commission can be at most ${parentRow.commission_renewal_pct}% (${parentRow.code}'s).` }, { status: 400 });
+    if (p.can_activate === true && !parentRow.can_activate) return Response.json({ error: `${parentRow.code} itself may not activate plans, so its sub-franchise cannot either.` }, { status: 400 });
+  }
   if ("name" in p && !p.name) return Response.json({ error: "The name cannot be empty." }, { status: 400 });
   if (!Object.keys(p).length) return Response.json({ franchise: was });
   const r = await svc<FranchiseRow[]>(`franchises?id=eq.${was.id}&select=${FR_COLS}`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ ...p, updated_at: new Date().toISOString() }) });
@@ -66,6 +112,14 @@ export async function PATCH(request: Request, ctx: { params: Promise<{ id: strin
   const before: Record<string, unknown> = {}, after: Record<string, unknown> = {};
   for (const k of Object.keys(p)) { before[k] = (was as Record<string, unknown>)[k]; after[k] = (fr as Record<string, unknown>)[k]; }
   await audit(me, "franchise.update", { type: "franchise", id: fr.id, label: `${fr.code} · ${fr.name}`, before, after }, request);
+  // A sub-franchise ended: its users move up to the parent (so nobody is left without a franchise), and its logins are switched off.
+  if (p.status === "ended" && was.status !== "ended" && fr.parent_id) {
+    const moved = list(await svc<{ id: string }[]>(`profiles?franchise_id=eq.${fr.id}&select=id`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ franchise_id: fr.parent_id }) })).length;
+    await svc(`admin_users?franchise_id=eq.${fr.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ active: false, updated_at: new Date().toISOString() }) });
+    await audit(me, "franchise.end_sub", { type: "franchise", id: fr.id, label: `${fr.code} · ${fr.name}`, note: `${moved} users moved to the parent; logins switched off` }, request);
+  }
+  // A franchise paused / ended also stops its sub-franchises' "may activate" (they can never do more than the parent).
+  if (p.can_activate === false && !fr.parent_id) await svc(`franchises?parent_id=eq.${fr.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ can_activate: false }) });
   return Response.json({ franchise: fr });
 }
 
@@ -73,9 +127,10 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
   const g = await requireAdmin(request, ["franchises.manage", "franchises.payouts", "franchises.view"], { sensitive: true }); if (!g.ok) return g.res;
   const { me } = g;
   const { id } = await ctx.params;
-  if (me.franchise && me.franchise.id !== id) return Response.json({ error: "Not your franchise." }, { status: 403 });
   const fr = await load(id); if (!fr) return Response.json({ error: "Franchise not found." }, { status: 404 });
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+  const asParent = isMySub(me, fr);
+  if (me.franchise && me.franchise.id !== id && !(asParent && b.op === "reset_login")) return Response.json({ error: "Not your franchise." }, { status: 403 });
   const label = `${fr.code} · ${fr.name}`;
   const deny = (what: string) => Response.json({ error: `You do not have the right to ${what}.` }, { status: 403 });
 
@@ -134,6 +189,20 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ franchise_id: fr.id, kind: "adjustment", amount_paise: amount, note, created_by: me.id || null }) });
       await audit(me, "franchise.adjustment", { type: "franchise", id: fr.id, label, after: { amount_paise: amount, note } }, request);
       return Response.json({ ok: true });
+    }
+    case "reset_login": {
+      // A new password (typed by the parent, agreed on the phone) for one login of this franchise — by its parent or by whoever manages franchises.
+      if (!(asParent || me.rights.includes("franchises.manage"))) return deny("reset this login");
+      if (!isUuid(b.admin_id)) return Response.json({ error: "Which login?" }, { status: 400 });
+      const newPw = typeof b.password === "string" ? b.password : "";
+      if (newPw.length < 8) return Response.json({ error: "Choose a new password of at least 8 characters." }, { status: 400 });
+      const row = list(await svc<{ id: string; email: string; name: string; phone: string }[]>(`admin_users?id=eq.${b.admin_id}&franchise_id=eq.${fr.id}&select=id,email,name,phone&limit=1`))[0];
+      if (!row) return Response.json({ error: "Login not found on this franchise." }, { status: 404 });
+      const r = await createOrResetAuthUser(row.email, row.name, row.phone, newPw);
+      if ("error" in r) return Response.json({ error: r.error }, { status: 502 });
+      await svc(`admin_users?id=eq.${row.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ must_change_password: true, active: true, updated_at: new Date().toISOString() }) });
+      await audit(me, "staff.reset_password", { type: "staff", id: row.id, label: `${row.name} <${row.email}>`, note: label }, request);
+      return Response.json({ ok: true, login: /^p91(\d{10})@phone\./.test(row.email) ? row.email.slice(3, 13) : row.email });
     }
     case "stats": {
       return Response.json({ users: await svcCount(`profiles?franchise_id=eq.${fr.id}&select=id`) });

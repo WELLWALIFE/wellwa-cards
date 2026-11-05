@@ -8,7 +8,7 @@ import { adminApi, fmtDate, useAdminMe } from "@/lib/admin-client";
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 import { FranchiseApplications } from "@/components/admin/franchise-applications";
 
-type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[] };
+type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[]; parent_id?: string | null };
 type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; franchise: { id: string; code: string; name: string; bank: Record<string, string> } | null };
 type Settings = { first: number; renewal: number; canActivate: boolean; payoutMin: number };
 type Tab = "list" | "payouts" | "applications";
@@ -27,7 +27,7 @@ function FranchisesInner() {
   const [utr, setUtr] = useState<Record<string, string>>({});
   const [confirm, dialog] = useConfirm();
   const canManage = !!me?.rights.includes("franchises.manage"), canPay = !!me?.rights.includes("franchises.payouts");
-  const blank = { code: "", name: "", company: "", phone: "", email: "", city: "", state: "", area: "", commission_first_pct: "", commission_renewal_pct: "", can_activate: false };
+  const blank = { code: "", name: "", company: "", phone: "", email: "", city: "", state: "", area: "", commission_first_pct: "", commission_renewal_pct: "", can_activate: false, parent_id: "" };
   const [form, setForm] = useState<typeof blank>(blank);
   const [busy, setBusy] = useState(false);
 
@@ -42,7 +42,7 @@ function FranchisesInner() {
 
   async function create() {
     setBusy(true);
-    const r = await adminApi<{ franchise: { id: string } }>("/api/admin/v2/franchises", { json: { ...form, commission_first_pct: form.commission_first_pct === "" ? undefined : form.commission_first_pct, commission_renewal_pct: form.commission_renewal_pct === "" ? undefined : form.commission_renewal_pct } });
+    const r = await adminApi<{ franchise: { id: string } }>("/api/admin/v2/franchises", { json: { ...form, parent_id: form.parent_id || undefined, commission_first_pct: form.commission_first_pct === "" ? undefined : form.commission_first_pct, commission_renewal_pct: form.commission_renewal_pct === "" ? undefined : form.commission_renewal_pct } });
     setBusy(false);
     if (!r.ok) { toast(r.data.error || "Could not create.", "err"); return; }
     toast("Franchise created. Now create its login under Logins."); setAdding(false); setForm(blank); await load();
@@ -77,7 +77,7 @@ function FranchisesInner() {
           <Table head={["Code", "Franchise", "City", "Users", "Paid", "Earned", "Balance", "Commission", "Login", "Status"]} minW={960}>
             {list.map((r) => (
               <tr key={r.id} className="hover:bg-surface2/50">
-                <td className={td}><Link href={`/admin/franchises/${r.id}`} className="font-mono text-sm font-bold text-brand-ink hover:underline">{r.code}</Link></td>
+                <td className={td}><Link href={`/admin/franchises/${r.id}`} className="font-mono text-sm font-bold text-brand-ink hover:underline">{r.code}</Link>{r.parent_id && <span className="block text-[11px] text-muted">under {(rows ?? []).find((x) => x.id === r.parent_id)?.code ?? "—"}</span>}{!r.parent_id && (rows ?? []).some((x) => x.parent_id === r.id) && <span className="block text-[11px] text-muted">{(rows ?? []).filter((x) => x.parent_id === r.id).length} sub</span>}</td>
                 <td className={td}><Link href={`/admin/franchises/${r.id}`} className="font-semibold hover:text-brand-ink">{r.name}</Link>{r.company && <span className="block text-xs text-muted">{r.company}</span>}</td>
                 <td className={`${td} text-xs text-muted`}>{[r.city, r.state].filter(Boolean).join(", ") || "—"}</td>
                 <td className={`${td} tabular-nums`}>{r.users}</td>
@@ -139,6 +139,7 @@ function FranchisesInner() {
           <Field label="Area / territory"><input className={inputCls} value={form.area} onChange={(e) => setForm({ ...form, area: e.target.value })} placeholder="Jaipur city" /></Field>
           <Field label={`Commission, first payment (%) · default ${settings?.first ?? 20}`}><input type="number" min={0} max={100} step={0.5} className={inputCls} value={form.commission_first_pct} onChange={(e) => setForm({ ...form, commission_first_pct: e.target.value })} placeholder={String(settings?.first ?? 20)} /></Field>
           <Field label={`Commission, renewals (%) · default ${settings?.renewal ?? 10}`}><input type="number" min={0} max={100} step={0.5} className={inputCls} value={form.commission_renewal_pct} onChange={(e) => setForm({ ...form, commission_renewal_pct: e.target.value })} placeholder={String(settings?.renewal ?? 10)} /></Field>
+          <Field label="Under (parent franchise)" hint="Optional. A sub-franchise earns up to its parent's %; the parent keeps the difference." className="sm:col-span-2"><select className={inputCls} value={form.parent_id} onChange={(e) => setForm({ ...form, parent_id: e.target.value })}><option value="">— None: a main franchise —</option>{(rows ?? []).filter((r) => !r.parent_id && r.status === "active").map((r) => <option key={r.id} value={r.id}>{r.code} · {r.name} ({r.commission_first_pct}% / {r.commission_renewal_pct}%)</option>)}</select></Field>
           <div className="sm:col-span-2"><Toggle on={form.can_activate} onChange={(v) => setForm({ ...form, can_activate: v })} label="May activate plans for its users" hint="For payments the franchise takes by hand. Can be changed later." /></div>
         </div>
       </Modal>

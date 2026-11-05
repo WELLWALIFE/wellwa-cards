@@ -186,8 +186,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div className="flex min-w-0 flex-1 flex-col">
         {me?.viewAs && (
           <div className="flex items-center justify-between gap-3 bg-violet-700 px-4 py-2 text-sm text-white md:px-6">
-            <span className="min-w-0 truncate"><Store className="mr-1.5 inline h-4 w-4" />Franchise view: <b>{me.franchise?.name}</b> ({me.franchise?.code}). Everything here is theirs; you are still the Super Admin.</span>
-            <button type="button" onClick={() => { viewAsFranchise(null); window.location.href = `/admin/franchises/${me.franchise?.id ?? ""}`; }} className="shrink-0 rounded-lg bg-white/15 px-3 py-1 font-semibold hover:bg-white/25">Back to Super Admin</button>
+            <span className="min-w-0 truncate"><Store className="mr-1.5 inline h-4 w-4" />{me.viewAs.parent ? "Sub-franchise view" : "Franchise view"}: <b>{me.franchise?.name}</b> ({me.franchise?.code}). Everything here is theirs; you are still {me.viewAs.parent ? me.viewAs.by : "the Super Admin"}.</span>
+            <button type="button" onClick={() => { viewAsFranchise(null); window.location.href = me.viewAs?.parent ? "/admin/earnings?tab=subs" : `/admin/franchises/${me.franchise?.id ?? ""}`; }} className="shrink-0 rounded-lg bg-white/15 px-3 py-1 font-semibold hover:bg-white/25">{me.viewAs.parent ? "Back to my panel" : "Back to Super Admin"}</button>
           </div>
         )}
         <header className="sticky top-0 z-30 flex h-16 shrink-0 items-center gap-2 border-b border-border bg-surface/85 px-4 backdrop-blur md:px-6">

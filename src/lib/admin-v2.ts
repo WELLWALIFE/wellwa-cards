@@ -14,10 +14,12 @@ import { isOwnerEmail } from "@/lib/owner-emails";
 import { verifyAdminToken } from "@/lib/admin-token";
 import { ALL_RIGHTS, RIGHTS, ROLES, type AdminMe, type Right, type Role } from "@/lib/admin-rights";
 
-export type Identity = AdminMe & { franchiseId: string | null };
+/** franchiseId: the login's own franchise ("none" = a franchise login with no live franchise). franchiseIds: every franchise whose users it
+ *  may see — its own and its sub-franchises' (migration 0088); null = everyone. */
+export type Identity = AdminMe & { franchiseId: string | null; franchiseIds: string[] | null };
 export type AdminRow = { id: string; email: string; name: string; phone: string; role: Role; rights: Right[]; franchise_id: string | null; active: boolean; must_change_password: boolean; last_login_at: string | null; created_at: string };
 export const ADMIN_COLS = "id,email,name,phone,role,rights,franchise_id,active,must_change_password,last_login_at,last_ip,created_at,updated_at";
-type Fr = { id: string; code: string; name: string; can_activate: boolean; status: string };
+type Fr = { id: string; code: string; name: string; can_activate: boolean; status: string; parent_id: string | null };
 
 const anonKey = () => process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -45,7 +47,7 @@ export async function adminRow(userId: string): Promise<AdminRow | null> {
 }
 export async function franchiseById(id: string | null): Promise<Fr | null> {
   if (!id) return null;
-  return list(await svc<Fr[]>(`franchises?id=eq.${id}&select=id,code,name,can_activate,status&limit=1`))[0] ?? null;
+  return list(await svc<Fr[]>(`franchises?id=eq.${id}&select=id,code,name,can_activate,status,parent_id&limit=1`))[0] ?? null;
 }
 /** The owner's e-mail opens the panel as Super Admin even before Admin v2 was set up: the row is made on first use. */
 async function seedOwner(u: AuthUser): Promise<AdminRow | null> {
@@ -56,6 +58,12 @@ async function seedOwner(u: AuthUser): Promise<AdminRow | null> {
 }
 export const rightsOf = (row: Pick<AdminRow, "role" | "rights">): Right[] =>
   row.role === "super_admin" ? ALL_RIGHTS : (row.rights ?? []).filter((r): r is Right => (ALL_RIGHTS as string[]).includes(r));
+
+/** The franchise part of an identity: the franchise, and the ids whose users it sees (its own + its sub-franchises'). */
+async function franchiseScope(fr: Fr): Promise<{ franchise: NonNullable<AdminMe["franchise"]>; franchiseIds: string[] }> {
+  const subs = fr.parent_id ? [] : list(await svc<{ id: string }[]>(`franchises?parent_id=eq.${fr.id}&status=neq.ended&select=id&limit=500`)).map((r) => r.id);
+  return { franchise: { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate, parentId: fr.parent_id ?? null, subs: subs.length }, franchiseIds: [fr.id, ...subs] };
+}
 
 /* ---------------- identify ---------------- */
 const cache = new Map<string, { at: number; v: Identity | null }>();
@@ -73,15 +81,19 @@ export async function identify(request: Request): Promise<Identity | null> {
  *  login, or a staff member without the right, is unaffected by the header. */
 async function viewAsFranchise(me: Identity, request: Request): Promise<Identity> {
   const want = (request.headers.get("x-admin-view-as") ?? "").trim();
-  if (!want || !/^[0-9a-f-]{36}$/i.test(want) || me.franchise || !me.rights.includes("franchises.manage")) return me;
+  if (!want || !/^[0-9a-f-]{36}$/i.test(want)) return me;
+  // Super Admin (franchises.manage) may open any franchise; a franchise login only its own sub-franchises (owner, 6 Nov 2026).
+  if (me.franchise ? want === me.franchise.id : !me.rights.includes("franchises.manage")) return me;
   const fr = await franchiseById(want);
   if (!fr || fr.status === "ended") return me;
+  if (me.franchise && fr.parent_id !== me.franchise.id) return me;
   const role = ROLES.find((r) => r.key === "franchise");
   // The panel shows the FRANCHISE's name and login everywhere (owner, 5 Nov 2026: "jis account me login ho uska hi sab kuch dikhe");
   // the real person stays in `viewAs` for the banner and the audit log.
   const login = list(await svc<{ name: string; email: string }[]>(`admin_users?franchise_id=eq.${fr.id}&active=is.true&select=name,email&order=created_at.asc&limit=1`))[0];
   const shownEmail = login?.email ? (/^p91(\d{10})@phone\./.test(login.email) ? login.email.slice(3, 13) : login.email) : "";
-  return { ...me, name: fr.name, email: shownEmail, role: "franchise", rights: role ? [...role.rights] : [], franchise: { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate }, franchiseId: fr.id, viewAs: { by: `${me.name || me.email}${me.email && me.name ? ` <${me.email}>` : ""}` } };
+  const sc = await franchiseScope(fr);
+  return { ...me, name: fr.name, email: shownEmail, role: "franchise", rights: role ? [...role.rights] : [], franchise: sc.franchise, franchiseId: fr.id, franchiseIds: sc.franchiseIds, viewAs: { by: me.viewAs?.by ?? `${me.name || me.email}${me.franchise ? ` (${me.franchise.code})` : me.email && me.name ? ` <${me.email}>` : ""}`, parent: !!me.franchise } };
 }
 
 async function identifyReal(request: Request): Promise<Identity | null> {
@@ -99,10 +111,12 @@ async function identifyReal(request: Request): Promise<Identity | null> {
         if (row && row.active) {
           const fr = await franchiseById(row.franchise_id);
           const enrolled = (u.factors ?? []).some((f) => f.status === "verified");
+          const live = fr && fr.status !== "ended" ? await franchiseScope(fr) : null;
           me = {
             id: row.id, email: row.email || u.email || "", name: row.name || (u.email ?? "").split("@")[0], role: row.role, rights: rightsOf(row),
-            franchise: fr && fr.status !== "ended" ? { id: fr.id, code: fr.code, name: fr.name, canActivate: fr.can_activate } : null,
-            franchiseId: fr && fr.status !== "ended" ? fr.id : row.role === "franchise" ? "none" : null,
+            franchise: live ? live.franchise : null,
+            franchiseId: live ? live.franchise.id : row.role === "franchise" ? "none" : null,
+            franchiseIds: live ? live.franchiseIds : row.role === "franchise" ? [] : null,
             mfaEnrolled: enrolled, mfaRequired: false, aal: jwtAal(token), mustChangePassword: row.must_change_password, via: "session",
           };
           // A franchise login whose franchise was ended sees nothing of anyone.
@@ -121,13 +135,13 @@ async function identifyReal(request: Request): Promise<Identity | null> {
     const t = verifyAdminToken(k, "session");
     if (!t) return null;
     return t.scope === "all"
-      ? { id: "", email: t.sub, name: t.sub, role: "super_admin", rights: ALL_RIGHTS, franchise: null, franchiseId: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "handoff" }
-      : { id: "", email: "", name: t.sub || "Staff", role: "support", rights: ["support.live"], franchise: null, franchiseId: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "handoff" };
+      ? { id: "", email: t.sub, name: t.sub, role: "super_admin", rights: ALL_RIGHTS, franchise: null, franchiseId: null, franchiseIds: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "handoff" }
+      : { id: "", email: "", name: t.sub || "Staff", role: "support", rights: ["support.live"], franchise: null, franchiseId: null, franchiseIds: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "handoff" };
   }
   const want = process.env.SUPER_ADMIN_PASSWORD ?? "";
   const a = Buffer.from(k), b = Buffer.from(want);
   if (want.length >= 12 && a.length === b.length && crypto.timingSafeEqual(a, b)) {
-    return { id: "", email: "", name: "Emergency password", role: "super_admin", rights: ALL_RIGHTS, franchise: null, franchiseId: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "key" };
+    return { id: "", email: "", name: "Emergency password", role: "super_admin", rights: ALL_RIGHTS, franchise: null, franchiseId: null, franchiseIds: null, mfaEnrolled: true, mfaRequired: false, aal: "aal2", mustChangePassword: false, via: "key" };
   }
   return null;
 }
@@ -188,12 +202,16 @@ export async function requireAdmin(request: Request, right?: Right | Right[], o:
 
 /* ---------------- scope ---------------- */
 /** A franchise login sees only its own users. null = everyone. "none" = a franchise login with no franchise → nobody. */
-export const scopeOf = (me: Identity): string | null => me.franchiseId;
+/** null = everyone; otherwise the franchise ids whose users this login sees (its own + its sub-franchises'; [] = nobody). */
+export const scopeOf = (me: Identity): string[] | null => me.franchiseIds;
+/** A PostgREST filter for the users in scope: "" (everyone) or "&franchise_id=in.(…)" (or one that matches nothing). */
+export const scopeFilter = (me: Identity, col = "franchise_id"): string =>
+  !me.franchiseIds ? "" : me.franchiseIds.length ? `&${col}=in.(${me.franchiseIds.join(",")})` : `&${col}=eq.00000000-0000-0000-0000-000000000000`;
 export async function userInScope(me: Identity, userId: string): Promise<boolean> {
-  if (!me.franchiseId) return true;
-  if (me.franchiseId === "none") return false;
+  if (!me.franchiseIds) return true;
+  if (!me.franchiseIds.length) return false;
   const row = list(await svc<{ franchise_id: string | null }[]>(`profiles?id=eq.${userId}&select=franchise_id&limit=1`))[0];
-  return row?.franchise_id === me.franchiseId;
+  return !!row?.franchise_id && me.franchiseIds.includes(row.franchise_id);
 }
 
 /* ---------------- audit ---------------- */

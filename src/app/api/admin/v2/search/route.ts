@@ -1,6 +1,6 @@
 // The panel's search box (Cmd+K): users by name / mobile / e-mail / username / business, franchises by code / name.
 //   GET ?q= → { hits: [{ type, id, title, sub, href }] }   (a franchise login finds only its own users)
-import { requireAdmin, scopeOf } from "@/lib/admin-v2";
+import { requireAdmin, scopeOf, scopeFilter } from "@/lib/admin-v2";
 import { svc } from "@/lib/service";
 
 const enc = encodeURIComponent;
@@ -17,11 +17,11 @@ export async function GET(request: Request) {
   const hits: Hit[] = [];
   const seen = new Set<string>();
   const push = (h: Hit) => { if (!seen.has(h.id)) { seen.add(h.id); hits.push(h); } };
-  if (me.rights.includes("users.view") && scope !== "none") {
-    const inScope = (ids: string[]) => scope ? svc<{ id: string }[]>(`profiles?id=in.(${ids.join(",")})&franchise_id=eq.${scope}&select=id`).then((r) => new Set(list(r).map((x) => x.id))) : Promise.resolve(null);
+  if (me.rights.includes("users.view") && (!scope || scope.length > 0)) {
+    const inScope = (ids: string[]) => scope ? svc<{ id: string }[]>(`profiles?id=in.(${ids.join(",")})${scopeFilter(me)}&select=id`).then((r) => new Set(list(r).map((x) => x.id))) : Promise.resolve(null);
     const like = `*${enc(q)}*`;
     const [pr, pp, cd] = await Promise.all([
-      svc<{ id: string; full_name: string | null; username: string | null; business: string | null }[]>(`profiles?or=(full_name.ilike.${like},username.ilike.${like},business.ilike.${like})${scope ? `&franchise_id=eq.${scope}` : ""}&select=id,full_name,username,business&limit=8`),
+      svc<{ id: string; full_name: string | null; username: string | null; business: string | null }[]>(`profiles?or=(full_name.ilike.${like},username.ilike.${like},business.ilike.${like})${scopeFilter(me)}&select=id,full_name,username,business&limit=8`),
       digits.length >= 4
         ? svc<{ user_id: string; name: string; phone: string }[]>(`poster_profiles?phone.ilike.*${digits}*&select=user_id,name,phone&limit=8`)
         : svc<{ user_id: string; name: string; phone: string }[]>(`poster_profiles?name.ilike.${like}&select=user_id,name,phone&limit=6`),
@@ -32,8 +32,9 @@ export async function GET(request: Request) {
     const ok = extra.length ? await inScope([...new Set(extra.map((x) => x.id))]) : null;
     for (const x of extra) if (!ok || ok.has(x.id)) push({ type: "user", id: x.id, title: x.title, sub: x.sub, href: `/admin/users/${x.id}` });
   }
-  if (me.rights.includes("franchises.view") && !me.franchise) {
-    const fr = list(await svc<{ id: string; code: string; name: string; city: string }[]>(`franchises?or=(code.ilike.*${enc(q.toUpperCase())}*,name.ilike.*${enc(q)}*,city.ilike.*${enc(q)}*)&select=id,code,name,city&limit=5`));
+  if (me.rights.includes("franchises.view") && (!me.franchise || (me.franchise.subs ?? 0) > 0)) {
+    const mine = me.franchise ? `&parent_id=eq.${me.franchise.id}` : "";
+    const fr = list(await svc<{ id: string; code: string; name: string; city: string }[]>(`franchises?or=(code.ilike.*${enc(q.toUpperCase())}*,name.ilike.*${enc(q)}*,city.ilike.*${enc(q)}*)${mine}&select=id,code,name,city&limit=5`));
     for (const f of fr) push({ type: "franchise", id: f.id, title: `${f.code} · ${f.name}`, sub: f.city, href: `/admin/franchises/${f.id}` });
   }
   return Response.json({ hits: hits.slice(0, 12) });

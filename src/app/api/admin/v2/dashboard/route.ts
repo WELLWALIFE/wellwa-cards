@@ -32,17 +32,26 @@ export async function GET(request: Request) {
 
   if (me.franchise) {
     const fid = me.franchise.id;
-    const [fr, total, m, w, paid, newest, payouts, balance] = await Promise.all([
+    // Its own users and its sub-franchises' (migration 0088); "paid" = a running subscription or a plan given by hand.
+    const ids = me.franchiseIds?.length ? me.franchiseIds : [fid];
+    const inF = `franchise_id=in.(${ids.join(",")})`;
+    const nowIso = iso(new Date());
+    const [fr, total, m, w, paid, newest, payouts, balance, subs] = await Promise.all([
       svc<FranchiseRow[]>(`franchises?id=eq.${fid}&select=${FR_COLS}&limit=1`),
-      svcCount(`profiles?franchise_id=eq.${fid}&select=id`),
-      svcCount(`profiles?franchise_id=eq.${fid}&created_at=gte.${iso(monthStart())}&select=id`),
-      svcCount(`profiles?franchise_id=eq.${fid}&created_at=gte.${iso(daysAgo(7))}&select=id`),
-      svcCount(`profiles?franchise_id=eq.${fid}&saas_tier=neq.none&saas_expires_at=gte.${iso(new Date())}&select=id`),
-      svc<Newest[]>(`profiles?franchise_id=eq.${fid}&select=${NEWEST}&order=created_at.desc&limit=8`),
+      svcCount(`profiles?${inF}&select=id`),
+      svcCount(`profiles?${inF}&created_at=gte.${iso(monthStart())}&select=id`),
+      svcCount(`profiles?${inF}&created_at=gte.${iso(daysAgo(7))}&select=id`),
+      svcCount(`profiles?${inF}&or=(and(saas_tier.neq.none,saas_expires_at.gte.${nowIso}),plan_expires_at.gte.${nowIso})&select=id`),
+      svc<Newest[]>(`profiles?${inF}&select=${NEWEST}&order=created_at.desc&limit=8`),
       svc<Record<string, unknown>[]>(`payouts?franchise_id=eq.${fid}&select=id,amount_paise,status,utr,requested_at,paid_at&order=requested_at.desc&limit=5`),
       franchiseBalance(fid),
+      ids.length > 1 ? svc<{ id: string; code: string; name: string; status: string }[]>(`franchises?parent_id=eq.${fid}&select=id,code,name,status&order=created_at`) : Promise.resolve({ data: [] as { id: string; code: string; name: string; status: string }[] }),
     ]);
-    return Response.json({ kind: "franchise", franchise: list(fr)[0] ?? null, users: { total, thisMonth: m, week: w, paid }, newest: list(newest), payouts: list(payouts), balance });
+    const subRows = list(subs);
+    const codes = new Map([[fid, me.franchise.code], ...subRows.map((x) => [x.id, x.code] as [string, string])]);
+    const subUsers = subRows.length ? list(await svc<{ franchise_id: string }[]>(`profiles?franchise_id=in.(${subRows.map((x) => x.id).join(",")})&select=franchise_id&limit=20000`)) : [];
+    const sub = subRows.map((x) => ({ ...x, users: subUsers.filter((u) => u.franchise_id === x.id).length }));
+    return Response.json({ kind: "franchise", franchise: list(fr)[0] ?? null, users: { total, thisMonth: m, week: w, paid }, newest: list(newest).map((n) => ({ ...n, franchise: n.franchise_id && n.franchise_id !== fid ? codes.get(n.franchise_id) ?? "" : "" })), payouts: list(payouts), balance, subs: sub });
   }
 
   const now = new Date();

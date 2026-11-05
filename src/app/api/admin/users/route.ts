@@ -70,7 +70,7 @@ export async function GET(request: Request) {
     const partnerByUser = new Map(partners.filter((p) => p.suiteUserId).map((p) => [p.suiteUserId as string, p]));
     const pprofiles: { user_id: string; name: string; phone: string | null; is_default: boolean }[] = ppRes && ppRes.ok ? await ppRes.json() : [];
     const profileRowsAll: { id: string; username?: string | null; full_name: string | null; plan: string; plan_expires_at: string | null; poster_plan: string | null; poster_plan_expires_at: string | null; franchise_id?: string | null; package?: string | null; package_until?: string | null; package_note?: string | null }[] = prRes && prRes.ok ? await prRes.json() : [];
-    const inScope = new Set(profileRowsAll.filter((p) => !scope || (scope !== "none" && p.franchise_id === scope)).map((p) => p.id));
+    const inScope = new Set(profileRowsAll.filter((p) => !scope || (!!p.franchise_id && scope.includes(p.franchise_id))).map((p) => p.id));
     const profileRows = profileRowsAll;
 
     const cards: { id: string; username: string; owner_id: string; active: boolean; data?: { plan?: string } }[] =

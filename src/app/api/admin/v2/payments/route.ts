@@ -20,7 +20,7 @@ export async function GET(request: Request) {
   if (/^[0-9a-f-]{36}$/i.test(user)) parts.push(`owner_id=eq.${user}`);
   let rows = (await svc<PaymentRequest[]>(`payment_requests?${parts.join("&")}`)).data ?? [];
   if (g.me.franchiseId) {
-    const ids = g.me.franchiseId === "none" ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=eq.${g.me.franchiseId}&select=id&limit=5000`)).data ?? []).map((p) => p.id);
+    const ids = !g.me.franchiseIds?.length ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=in.(${g.me.franchiseIds.join(",")})&select=id&limit=5000`)).data ?? []).map((p) => p.id);
     const set = new Set(ids); rows = rows.filter((r) => set.has(r.owner_id));
   }
   const owners = [...new Set(rows.map((r) => r.owner_id))];

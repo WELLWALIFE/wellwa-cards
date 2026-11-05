@@ -95,11 +95,12 @@ export const MENU: { title: string; items: MenuItem[] }[] = [
 /** What the panel knows about the person who is logged in (from /api/admin/v2/me). */
 export type AdminMe = {
   id: string; email: string; name: string; role: Role; rights: Right[];
-  franchise: { id: string; code: string; name: string; canActivate: boolean } | null;
+  /** parentId: set for a sub-franchise (migration 0088); subs: how many sub-franchises a top-level franchise has. */
+  franchise: { id: string; code: string; name: string; canActivate: boolean; parentId?: string | null; subs?: number } | null;
   mfaEnrolled: boolean; mfaRequired: boolean; aal: "aal1" | "aal2"; mustChangePassword: boolean;
   via: "session" | "key" | "handoff";
   /** Set while a Super Admin looks at the panel as one franchise ("Open as this franchise"): who is really here. */
-  viewAs?: { by: string } | null;
+  viewAs?: { by: string; parent?: boolean } | null;
 };
 export const can = (me: Pick<AdminMe, "rights"> | null | undefined, r: Right | null) => r === null || !!me?.rights.includes(r);
 export function menuFor(me: AdminMe | null) {

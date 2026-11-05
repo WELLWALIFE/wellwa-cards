@@ -17,7 +17,7 @@ export async function GET(request: Request) {
   const week = new Date(Date.now() - 7 * 86400e3).toISOString();
   const base = `or=(data->site->>readyAt.not.is.null,data->site->>advancedReadyAt.not.is.null,data->site->>liveToldAt.gte.${week}`;
   // A franchise login: its own users' cards are asked for directly (filtering a capped list afterwards could miss them).
-  const scope = g.me.franchiseId ? (g.me.franchiseId === "none" ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=eq.${g.me.franchiseId}&select=id&limit=5000`)).data ?? []).map((p) => p.id)) : null;
+  const scope = g.me.franchiseId ? (!g.me.franchiseIds?.length ? [] : ((await svc<{ id: string }[]>(`profiles?franchise_id=in.(${g.me.franchiseIds.join(",")})&select=id&limit=5000`)).data ?? []).map((p) => p.id)) : null;
   if (scope && !scope.length) return NextResponse.json({ pauseReady: true, websites: [] });
   const chunks = scope ? Array.from({ length: Math.ceil(scope.length / 150) }, (_, i) => `&owner_id=in.(${scope.slice(i * 150, i * 150 + 150).join(",")})`) : [""];
   // With migration 0085 the paused ones are listed too; without it the column does not exist and the list is read without it.

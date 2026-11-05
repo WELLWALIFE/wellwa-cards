@@ -1,21 +1,23 @@
 "use client";
 // One franchise, in full (Admin v2): overview and profile, its users, its account (ledger), payouts and logins.
 // The same component serves the admin (/admin/franchises/[id]) and the franchise itself (/admin/earnings, `mine`).
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Eye, Link2, MessageCircle, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { ArrowDownLeft, ArrowUpRight, Banknote, Eye, KeyRound, Link2, MessageCircle, Network, Pencil, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { adminApi, ago, fmtDate, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
 import { Badge, Btn, Card, CopyBtn, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 
-type Fr = { id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended"; bank: Record<string, string>; agreement_at: string | null; target_paise: number; notes: string; created_at: string };
+type Fr = { id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended"; bank: Record<string, string>; agreement_at: string | null; target_paise: number; notes: string; created_at: string; parent_id?: string | null };
 type User = { id: string; full_name: string | null; username: string | null; plan: string; saas_tier: string | null; saas_expires_at: string | null; created_at: string; franchise_joined_at: string | null };
 type Ledger = { id: number; user: string; kind: string; amount_paise: number; base_paise: number | null; pct: number | null; payment_ref: string; note: string; at: string };
 type Payout = { id: string; amount_paise: number; status: string; utr: string; note: string; requested_at: string; decided_at: string | null; paid_at: string | null };
 type Login = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
 type CreditGift = { id: string; user: string; delta: number; by: string; at: string };
-type Detail = { franchise: Fr; balance: { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number }; users: User[]; ledger: Ledger[]; payouts: Payout[]; logins: Login[]; settings: { payoutMin: number }; signupLink: string; credits?: CreditGift[] };
-type Tab = "overview" | "users" | "account" | "payouts" | "logins" | "credits";
+type SubLogin = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
+type Sub = { id: string; code: string; name: string; phone: string; area: string; city: string; status: Fr["status"]; can_activate: boolean; commission_first_pct: number; commission_renewal_pct: number; created_at: string; users: number; earned: number; balance: number; override: number; logins: SubLogin[] };
+type Detail = { subs?: Sub[]; parent?: { id: string; code: string; name: string } | null; franchise: Fr; balance: { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number }; users: User[]; ledger: Ledger[]; payouts: Payout[]; logins: Login[]; settings: { payoutMin: number }; signupLink: string; credits?: CreditGift[] };
+type Tab = "overview" | "users" | "account" | "payouts" | "logins" | "credits" | "subs";
 const planOf = (u: User) => (u.saas_tier && u.saas_tier !== "none" && u.saas_expires_at && new Date(u.saas_expires_at) > new Date() ? u.saas_tier : u.plan && u.plan !== "free" ? u.plan : "free");
 
 export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boolean }) {
@@ -23,7 +25,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState("");
   // ?tab=logins opens the Logins tab straight away (the list's "no login · create" link).
-  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins", "credits"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
+  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins", "credits", "subs"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
   const [form, setForm] = useState<Partial<Fr> | null>(null);
   const [busy, setBusy] = useState("");
   const [confirm, dialog] = useConfirm();
@@ -79,7 +81,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
     <div className="space-y-5">
       <PageHeader crumbs={mine ? undefined : [{ href: "/admin/franchises", label: "Franchises" }, { label: f.code }]}
         title={<span className="flex items-center gap-2">{mine ? "My earnings" : f.name} <Badge tone={f.status === "active" ? "good" : f.status === "paused" ? "warn" : "danger"} dot>{f.status}</Badge></span>}
-        sub={<>Franchise code <b className="font-mono text-ink">{f.code}</b>{f.company ? ` · ${f.company}` : ""}{f.city ? ` · ${f.city}` : ""} · commission {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal</>}
+        sub={<>{d.parent ? <>Sub-franchise of {mine || !canManage ? <b className="text-ink">{d.parent.code}</b> : <Link href={`/admin/franchises/${d.parent.id}`} className="font-semibold text-brand-ink">{d.parent.code}</Link>} · </> : null}Franchise code <b className="font-mono text-ink">{f.code}</b>{f.company ? ` · ${f.company}` : ""}{f.city ? ` · ${f.city}` : ""} · commission {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal</>}
         actions={<>{me?.rights.includes("franchises.manage") && !me.franchise && d.franchise.status !== "ended" && (
           <button type="button" onClick={() => { viewAsFranchise(d.franchise.id); window.location.href = "/admin"; }} title="See the panel exactly as this franchise sees it" className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-border bg-surface px-3.5 text-sm font-semibold text-ink hover:bg-surface2"><Eye className="h-4 w-4" /> Open as this franchise</button>
         )}<CopyBtn size="md" text={d.signupLink} label="Copy sign-up link" /><a href={share} target="_blank" rel="noreferrer" className="inline-flex h-9 items-center gap-1.5 rounded-lg bg-[#25D366] px-3.5 text-sm font-semibold text-white"><MessageCircle className="h-4 w-4" /> Share on WhatsApp</a></>} />
@@ -97,7 +99,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         <Stat label="Balance" value={money(d.balance.balance)} hint={`available ${money(Math.max(0, d.balance.balance - d.balance.pending))}`} icon={Banknote} tone="brand" />
       </div>
 
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }])]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(!f.parent_id ? [{ key: "subs" as Tab, label: "Sub-franchises", count: (d.subs ?? []).length }] : []), ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }])]} />
 
       {tab === "overview" && (
         <Card title={mine ? "Your details" : "Profile"} sub={mine ? "Your bank details are used for payouts. Everything else is set by Shubhora." : "What the franchise is, where, and on what terms."}
@@ -175,6 +177,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         </Card>
       )}
 
+      {tab === "subs" && !f.parent_id && <SubsTab d={d} mine={mine} canCreate={(mine && f.status === "active") || canManage} reload={load} confirm={confirm} />}
       {tab === "payouts" && <PayoutsTab d={d} mine={mine} canPay={canPay} act={act} confirm={confirm} />}
 
       {tab === "logins" && !mine && (
@@ -315,5 +318,148 @@ function CreateLogin({ franchise, onDone }: { franchise: Fr; onDone: () => void 
         )}
       </Modal>
     </>
+  );
+}
+
+const showLogin = (e: string) => (/^p91(\d{10})@phone\./.test(e) ? `+91 ${e.slice(3, 13)}` : /^\d{10}$/.test(e) ? `+91 ${e}` : e);
+const pctOk = (v: string, max: number) => v.trim() !== "" && Number(v) >= 0 && Number(v) <= max;
+
+/** Sub-franchises of a top-level franchise (one level only). The parent makes them with their login, sets their share (never above its
+ *  own — it keeps the difference as its override), resets their password, and can open their panel. Shubhora pays both directly. */
+function SubsTab({ d, mine, canCreate, reload, confirm }: { d: Detail; mine: boolean; canCreate: boolean; reload: () => Promise<void>; confirm: (o: { title: string; body?: ReactNode; ok?: string; danger?: boolean }) => Promise<boolean> }) {
+  const f = d.franchise; const subs = d.subs ?? [];
+  const [edit, setEdit] = useState<Sub | null>(null);
+  const [reset, setReset] = useState<{ sub: Sub; login: SubLogin } | null>(null);
+  const overrideAll = subs.reduce((a, s) => a + s.override, 0);
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Stat label="Sub-franchises" value={subs.length} hint={`${subs.filter((s) => s.status === "active").length} active`} icon={Network} />
+        <Stat label="Their users" value={subs.reduce((a, s) => a + s.users, 0)} hint="counted in your users too" icon={Users} />
+        <Stat label="Your override" value={money(overrideAll)} hint="your % minus theirs, on their users' payments" icon={ArrowDownLeft} tone="good" />
+        <Stat label="They earned" value={money(subs.reduce((a, s) => a + s.earned, 0))} hint="paid to them by Shubhora" icon={Banknote} tone="neutral" />
+      </div>
+      <Card title="Sub-franchises" sub={<>Your share: {f.commission_first_pct}% first / {f.commission_renewal_pct}% renewal. A sub-franchise gets what you set (up to this); you get the rest as override. Shubhora pays both directly.</>}
+        actions={canCreate ? <NewSub parent={f} onDone={reload} /> : undefined} pad={false}>
+        <Table head={["Sub-franchise", "Share", "Users", "Earned / balance", "Your override", "Login", "Status", ""]} minW={900} empty={<Empty title="No sub-franchise yet" sub={canCreate ? "Add one with “New sub-franchise”. They get their own login and see only their own users." : "None under this franchise."} />}>
+          {subs.map((s) => (
+            <tr key={s.id}>
+              <td className={td}>{mine ? <b>{s.name}</b> : <Link href={`/admin/franchises/${s.id}`} className="font-semibold text-brand-ink">{s.name}</Link>}<div className="font-mono text-[11px] text-muted">{s.code}{s.city ? ` · ${s.city}` : ""}{s.area ? ` · ${s.area}` : ""}</div></td>
+              <td className={`${td} text-xs tabular-nums`}>{s.commission_first_pct}% / {s.commission_renewal_pct}%{s.can_activate && <div className="text-[11px] text-muted">may activate</div>}</td>
+              <td className={`${td} tabular-nums`}>{s.users}</td>
+              <td className={`${td} text-xs tabular-nums`}>{money(s.earned)}<div className="text-muted">bal. {money(s.balance)}</div></td>
+              <td className={`${td} font-semibold tabular-nums text-emerald-700`}>{money(s.override)}</td>
+              <td className={`${td} text-xs`}>{s.logins.length ? s.logins.map((l) => <div key={l.id} className="flex items-center gap-1.5"><span>{showLogin(l.email)}</span>{!l.active && <Badge tone="danger">off</Badge>}<span className="text-muted">· {l.last_login_at ? ago(l.last_login_at) : "never logged in"}</span>{s.status !== "ended" && <button type="button" title="Set a new password" onClick={() => setReset({ sub: s, login: l })} className="text-brand-ink"><KeyRound className="h-3.5 w-3.5" /></button>}</div>) : <span className="text-muted">no login</span>}</td>
+              <td className={td}><Badge tone={s.status === "active" ? "good" : s.status === "paused" ? "warn" : "danger"} dot>{s.status}</Badge></td>
+              <td className={`${td} whitespace-nowrap text-right`}>
+                {s.status !== "ended" && <Btn size="sm" icon={Pencil} onClick={() => setEdit(s)}>Edit</Btn>}{" "}
+                {s.status !== "ended" && <Btn size="sm" icon={Eye} onClick={() => { viewAsFranchise(s.id); window.location.href = "/admin"; }}>Open</Btn>}
+              </td>
+            </tr>
+          ))}
+        </Table>
+      </Card>
+      {edit && <EditSub sub={edit} parent={f} onClose={() => setEdit(null)} onDone={async () => { setEdit(null); await reload(); }} confirm={confirm} />}
+      {reset && <ResetSubLogin sub={reset.sub} login={reset.login} onClose={() => setReset(null)} onDone={async () => { setReset(null); await reload(); }} />}
+    </div>
+  );
+}
+
+function NewSub({ parent, onDone }: { parent: Fr; onDone: () => Promise<void> }) {
+  const blank = { code: "", name: "", phone: "", area: "", city: parent.city || "", state: parent.state || "", first: String(parent.commission_first_pct), renewal: String(parent.commission_renewal_pct), can_activate: false, pw: "", pw2: "" };
+  const [open, setOpen] = useState(false); const [v, setV] = useState(blank); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
+  const [made, setMade] = useState<{ code: string; login: string; existing: boolean; error: string } | null>(null);
+  const set = (k: keyof typeof blank, x: string | boolean) => setV((o) => ({ ...o, [k]: x }));
+  const mobile = v.phone.replace(/\D/g, "").slice(-10);
+  const bad = !/^[A-Z0-9]{3,16}$/.test(v.code) ? "Code: 3–16 letters / digits." : !v.name.trim() ? "Write the owner's name." : mobile.length !== 10 ? "Write a 10-digit mobile." : !pctOk(v.first, parent.commission_first_pct) ? `First-payment share: 0–${parent.commission_first_pct}%.` : !pctOk(v.renewal, parent.commission_renewal_pct) ? `Renewal share: 0–${parent.commission_renewal_pct}%.` : v.pw.length < 8 ? "Login password: at least 8 characters." : v.pw !== v.pw2 ? "The two passwords do not match." : "";
+  async function save() {
+    setBusy(true);
+    const r = await adminApi<{ franchise?: Fr; login?: string; existingAccount?: boolean; loginError?: string }>("/api/admin/v2/franchises", { json: { parent_id: parent.id, code: v.code, name: v.name, phone: mobile, area: v.area, city: v.city, state: v.state, commission_first_pct: Number(v.first), commission_renewal_pct: Number(v.renewal), can_activate: parent.can_activate && v.can_activate, password: v.pw, status: "active" } });
+    setBusy(false);
+    if (!r.ok || !r.data.franchise) { toast(r.data.error || "Could not create.", "err"); return; }
+    setMade({ code: r.data.franchise.code, login: r.data.login || "", existing: !!r.data.existingAccount, error: r.data.loginError || "" }); setV(blank);
+  }
+  const close = () => { setOpen(false); if (made) { setMade(null); void onDone(); } };
+  return (
+    <>
+      <Btn size="sm" variant="primary" icon={Plus} onClick={() => setOpen(true)}>New sub-franchise</Btn>
+      <Modal open={open} onClose={close} title={made ? `Sub-franchise ${made.code} made` : `New sub-franchise under ${parent.code}`} sub={made ? undefined : "Their panel login is their mobile + the password you set here (agreed with them on the phone)."} width="max-w-xl"
+        footer={made ? <Btn variant="primary" onClick={close}>Done</Btn> : <><Btn onClick={close}>Cancel</Btn><Btn variant="primary" loading={busy} disabled={!!bad} onClick={() => void save()}>Create</Btn></>}>
+        {made ? (
+          <div className="space-y-3 text-sm">
+            {made.login ? <div className="rounded-xl bg-bg p-3"><p className="text-xs text-muted">Login</p><p className="font-semibold">+91 {made.login}</p></div> : <p className="font-semibold text-danger">Login not made: {made.error || "unknown"}. Super Admin can make it under Logins.</p>}
+            {made.login && <p className="text-muted">{made.existing ? "This mobile already had a Shubhora account — they log in with their own password." : "Login made with the password you set."} Tell them in your own words; nothing is sent by itself.</p>}
+            {made.login && <CopyBtn size="md" text={`Shubhora Franchise panel\nLogin: ${location.origin}/admin/login\nUser: ${made.login}\nPassword: ${made.existing ? "your Shubhora password" : "(as agreed on the phone)"}\nAt the first login set up 2-step verification.`} label="Copy message" />}
+          </div>
+        ) : (
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Code" hint="Their sign-up link uses it, e.g. JAIPUR01A."><input className={`${inputCls} font-mono uppercase`} value={v.code} onChange={(e) => set("code", e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16))} /></Field>
+            <Field label="Owner's name"><input className={inputCls} value={v.name} onChange={(e) => set("name", e.target.value)} /></Field>
+            <Field label="Mobile (also the login)"><input inputMode="numeric" className={inputCls} value={v.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+            <Field label="Area"><input className={inputCls} value={v.area} onChange={(e) => set("area", e.target.value)} /></Field>
+            <Field label="City"><input className={inputCls} value={v.city} onChange={(e) => set("city", e.target.value)} /></Field>
+            <Field label="State"><input className={inputCls} value={v.state} onChange={(e) => set("state", e.target.value)} /></Field>
+            <Field label="Their share — first payment %" hint={`Up to ${parent.commission_first_pct}%. You keep ${Math.max(0, parent.commission_first_pct - Number(v.first || 0))}%.`}><input inputMode="decimal" className={inputCls} value={v.first} onChange={(e) => set("first", e.target.value)} /></Field>
+            <Field label="Their share — renewal %" hint={`Up to ${parent.commission_renewal_pct}%. You keep ${Math.max(0, parent.commission_renewal_pct - Number(v.renewal || 0))}%.`}><input inputMode="decimal" className={inputCls} value={v.renewal} onChange={(e) => set("renewal", e.target.value)} /></Field>
+            <Field label="Login password" hint="At least 8 characters."><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={v.pw} onChange={(e) => set("pw", e.target.value)} /></Field>
+            <Field label="Again"><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={v.pw2} onChange={(e) => set("pw2", e.target.value)} /></Field>
+            <label className="flex items-center gap-2 text-xs text-muted sm:col-span-2"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords</label>
+            {parent.can_activate && <div className="sm:col-span-2"><Toggle on={v.can_activate} onChange={(x) => set("can_activate", x)} label="May activate plans for its users" hint="For cash / UPI they take by hand. Off: only Shubhora activates." /></div>}
+            {bad && (v.code || v.name || v.phone || v.pw) && <p className="text-xs font-semibold text-danger sm:col-span-2">{bad}</p>}
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function EditSub({ sub, parent, onClose, onDone, confirm }: { sub: Sub; parent: Fr; onClose: () => void; onDone: () => Promise<void>; confirm: (o: { title: string; body?: ReactNode; ok?: string; danger?: boolean }) => Promise<boolean> }) {
+  const [v, setV] = useState({ name: sub.name, phone: sub.phone, area: sub.area, city: sub.city, first: String(sub.commission_first_pct), renewal: String(sub.commission_renewal_pct), can_activate: sub.can_activate, status: sub.status });
+  const [busy, setBusy] = useState(false);
+  const bad = !v.name.trim() ? "Write the name." : !pctOk(v.first, parent.commission_first_pct) ? `First-payment share: 0–${parent.commission_first_pct}%.` : !pctOk(v.renewal, parent.commission_renewal_pct) ? `Renewal share: 0–${parent.commission_renewal_pct}%.` : "";
+  async function save() {
+    if (v.status === "ended" && !(await confirm({ title: `End sub-franchise ${sub.code}?`, danger: true, ok: "End it", body: <p className="text-sm">Its {sub.users} user{sub.users === 1 ? "" : "s"} move to you ({parent.code}), and its login is switched off. Money it already earned stays in its account.</p> }))) return;
+    setBusy(true);
+    const r = await adminApi(`/api/admin/v2/franchises/${sub.id}`, { method: "PATCH", json: { name: v.name, phone: v.phone, area: v.area, city: v.city, commission_first_pct: Number(v.first), commission_renewal_pct: Number(v.renewal), can_activate: parent.can_activate && v.can_activate, status: v.status } });
+    setBusy(false);
+    if (!r.ok) { toast(r.data.error || "Could not save.", "err"); return; }
+    toast("Saved."); await onDone();
+  }
+  const set = (k: keyof typeof v, x: string | boolean) => setV((o) => ({ ...o, [k]: x }));
+  return (
+    <Modal open onClose={onClose} title={`Edit ${sub.code}`} sub="Bank details are theirs to fill in from their own panel." width="max-w-xl"
+      footer={<><Btn onClick={onClose}>Cancel</Btn><Btn variant="primary" icon={Save} loading={busy} disabled={!!bad} onClick={() => void save()}>Save</Btn></>}>
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Owner's name"><input className={inputCls} value={v.name} onChange={(e) => set("name", e.target.value)} /></Field>
+        <Field label="Mobile"><input inputMode="numeric" className={inputCls} value={v.phone} onChange={(e) => set("phone", e.target.value)} /></Field>
+        <Field label="Area"><input className={inputCls} value={v.area} onChange={(e) => set("area", e.target.value)} /></Field>
+        <Field label="City"><input className={inputCls} value={v.city} onChange={(e) => set("city", e.target.value)} /></Field>
+        <Field label="Their share — first payment %" hint={`Up to ${parent.commission_first_pct}%.`}><input inputMode="decimal" className={inputCls} value={v.first} onChange={(e) => set("first", e.target.value)} /></Field>
+        <Field label="Their share — renewal %" hint={`Up to ${parent.commission_renewal_pct}%.`}><input inputMode="decimal" className={inputCls} value={v.renewal} onChange={(e) => set("renewal", e.target.value)} /></Field>
+        <Field label="Status"><select className={inputCls} value={v.status} onChange={(e) => set("status", e.target.value)}><option value="active">Active</option><option value="paused">Paused (no new earnings)</option><option value="ended">Ended (users move to you)</option></select></Field>
+        {parent.can_activate && <div className="sm:col-span-2"><Toggle on={v.can_activate} onChange={(x) => set("can_activate", x)} label="May activate plans for its users" /></div>}
+        {bad && <p className="text-xs font-semibold text-danger sm:col-span-2">{bad}</p>}
+      </div>
+    </Modal>
+  );
+}
+
+function ResetSubLogin({ sub, login, onClose, onDone }: { sub: Sub; login: SubLogin; onClose: () => void; onDone: () => Promise<void> }) {
+  const [pw, setPw] = useState(""); const [pw2, setPw2] = useState(""); const [show, setShow] = useState(false); const [busy, setBusy] = useState(false); const [done, setDone] = useState(false);
+  const bad = pw.length < 8 ? "At least 8 characters." : pw !== pw2 ? "The two passwords do not match." : "";
+  return (
+    <Modal open onClose={done ? () => void onDone() : onClose} title={`New password · ${sub.code}`} sub={`For ${login.name} (${showLogin(login.email)}). Agree it with them on the phone; they change it at the next login.`} width="max-w-md"
+      footer={done ? <Btn variant="primary" onClick={() => void onDone()}>Done</Btn> : <><Btn onClick={onClose}>Cancel</Btn><Btn variant="primary" loading={busy} disabled={!!bad} onClick={async () => { setBusy(true); const r = await adminApi(`/api/admin/v2/franchises/${sub.id}`, { json: { op: "reset_login", admin_id: login.id, password: pw } }); setBusy(false); if (!r.ok) { toast(r.data.error || "Could not set it.", "err"); return; } setPw(""); setPw2(""); setDone(true); }}>Set password</Btn></>}>
+      {done ? <p className="text-sm text-muted">Done — the password you typed is now set, and the login is on. Nothing is sent by itself; tell them yourself.</p> : (
+        <div className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <Field label="New password" hint="At least 8 characters."><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={pw} onChange={(e) => setPw(e.target.value)} /></Field>
+            <Field label="Again"><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={pw2} onChange={(e) => setPw2(e.target.value)} /></Field>
+          </div>
+          <label className="flex items-center gap-2 text-xs text-muted"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords</label>
+          {pw && bad && <p className="text-xs font-semibold text-danger">{bad}</p>}
+        </div>
+      )}
+    </Modal>
   );
 }

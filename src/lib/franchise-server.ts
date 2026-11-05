@@ -10,9 +10,11 @@ const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : 
 export type FranchiseRow = {
   id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string;
   commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended";
+  /** The franchise this one is a sub-franchise of (migration 0088); null for a top-level franchise. */
+  parent_id?: string | null;
   bank: Record<string, string>; kyc: Record<string, unknown>; agreement_at: string | null; target_paise: number; notes: string; owner_user_id: string | null; created_at: string; updated_at: string;
 };
-export const FR_COLS = "id,code,name,company,phone,email,gstin,pan,area,city,state,pincode,commission_first_pct,commission_renewal_pct,can_activate,status,bank,kyc,agreement_at,target_paise,notes,owner_user_id,created_at,updated_at";
+export const FR_COLS = "id,code,name,company,phone,email,gstin,pan,area,city,state,pincode,commission_first_pct,commission_renewal_pct,can_activate,status,bank,kyc,agreement_at,target_paise,notes,owner_user_id,parent_id,created_at,updated_at";
 export const cleanCode = (v: unknown) => String(v ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 16);
 
 export async function franchiseByCode(code: string): Promise<FranchiseRow | null> {
@@ -35,25 +37,46 @@ export async function franchiseOf(userId: string): Promise<string | null> {
   return prof?.franchise_id ?? null;
 }
 
-/** Called after every verified payment: the user's franchise earns its percent (first payment % or renewal %). Once per payment ref. */
+/** Called after every verified payment: the user's franchise earns its percent (first payment % or renewal %). Once per payment ref.
+ *  A sub-franchise's user (migration 0088): the sub earns its own percent and its parent earns the difference (parent % − sub %) as an
+ *  override — both written once per payment (the unique index is per franchise). */
 export async function franchiseEarning(userId: string, p: { paise: number; ref: string; what?: string }): Promise<void> {
   try {
     if (!p.paise || !p.ref) return;
     const prof = list(await svc<{ franchise_id: string | null }[]>(`profiles?id=eq.${userId}&select=franchise_id&limit=1`))[0];
     if (!prof?.franchise_id) return;
     const fr = list(await svc<FranchiseRow[]>(`franchises?id=eq.${prof.franchise_id}&select=${FR_COLS}&limit=1`))[0];
-    if (!fr || fr.status !== "active") return;
+    if (!fr) return;
     const earlier = await svcCount(`franchise_ledger?franchise_id=eq.${fr.id}&user_id=eq.${userId}&kind=eq.earning&select=id`);
-    const pct = Number(earlier === 0 ? fr.commission_first_pct : fr.commission_renewal_pct);
+    const first = earlier === 0;
     // Owner, 1 Nov 2026: the percent is always on the amount WITHOUT GST — the tax part of a payment is the government's, not revenue.
     const net = Math.round(p.paise / (1 + GST_PCT / 100));
-    const amount = Math.round((net * pct) / 100);
-    if (amount <= 0) return;
-    await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
-      franchise_id: fr.id, user_id: userId, kind: "earning", amount_paise: amount, base_paise: net, pct, payment_ref: p.ref,
-      note: `${earlier === 0 ? "First payment" : "Renewal"}${p.what ? ` · ${p.what}` : ""} · ${pct}% of ₹${Math.round(net / 100).toLocaleString("en-IN")} (₹${Math.round(p.paise / 100).toLocaleString("en-IN")} less ${GST_PCT}% GST)`,
-    }) });   // a second copy of the same payment hits the unique index and is simply refused
+    const rupees = (x: number) => `₹${Math.round(x / 100).toLocaleString("en-IN")}`;
+    const pct = Number(first ? fr.commission_first_pct : fr.commission_renewal_pct);
+    const write = (franchiseId: string, percent: number, note: string) => {
+      const amount = Math.round((net * percent) / 100);
+      if (amount <= 0) return Promise.resolve();
+      return svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
+        franchise_id: franchiseId, user_id: userId, kind: "earning", amount_paise: amount, base_paise: net, pct: percent, payment_ref: p.ref, note,
+      }) }).then(() => undefined);   // a second copy of the same payment hits the unique index and is simply refused
+    };
+    const what = `${first ? "First payment" : "Renewal"}${p.what ? ` · ${p.what}` : ""}`;
+    const base = `${rupees(net)} (${rupees(p.paise)} less ${GST_PCT}% GST)`;
+    if (fr.status === "active") await write(fr.id, pct, `${what} · ${pct}% of ${base}`);
+    if (fr.parent_id) {
+      const parent = list(await svc<FranchiseRow[]>(`franchises?id=eq.${fr.parent_id}&select=${FR_COLS}&limit=1`))[0];
+      if (parent && parent.status === "active") {
+        const ppct = Number(first ? parent.commission_first_pct : parent.commission_renewal_pct);
+        const diff = Math.round((ppct - (fr.status === "active" ? pct : 0)) * 100) / 100;
+        if (diff > 0) await write(parent.id, diff, `Override from ${fr.code} · ${what} · ${diff}% (${ppct}% − ${fr.status === "active" ? pct : 0}%) of ${base}`);
+      }
+    }
   } catch { /* never fails a payment */ }
+}
+
+/** The sub-franchises of a franchise (one level), not ended. */
+export async function subFranchiseIds(frId: string): Promise<string[]> {
+  return list(await svc<{ id: string }[]>(`franchises?parent_id=eq.${frId}&status=neq.ended&select=id&limit=500`)).map((r) => r.id);
 }
 
 export type Balance = { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number };
