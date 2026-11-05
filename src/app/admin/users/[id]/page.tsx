@@ -5,9 +5,9 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import { ArrowLeft, ExternalLink, KeyRound, LoaderCircle, RefreshCw } from "lucide-react";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { EditProfile } from "@/components/admin/edit-profile";
 import { displayLogin } from "@/lib/phone";
+import { adminHeaders } from "@/lib/admin-client";
 
 type Row = Record<string, unknown>;
 type Data = {
@@ -16,12 +16,6 @@ type Data = {
   google: Row | null; cloud: Row | null; social: Row[]; agents: Row[]; jobs: Row[]; whatsapp: Row | null;
 };
 
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try { const sb = getAdminSupabase(); const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } }; if (data.session?.access_token) h["x-owner-token"] = data.session.access_token; } catch { /* ignore */ }
-  return h;
-}
 const dt = (v: unknown) => (v ? new Date(String(v)).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—");
 const d = (v: unknown) => (v ? new Date(String(v)).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—");
 const s = (v: unknown) => (v === null || v === undefined || v === "" ? "—" : String(v));

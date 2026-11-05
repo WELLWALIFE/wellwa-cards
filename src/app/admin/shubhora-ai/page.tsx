@@ -7,7 +7,7 @@
 import { useEffect, useRef, useState } from "react";
 import { BellRing, Check, FileText, FlaskConical, Loader2, MessageCircle, Power, RotateCcw, Send, Sparkles } from "lucide-react";
 import { getAdminSupabase } from "@/lib/supabase/admin-browser";
-import { savePlatformSettings } from "@/lib/admin-client";
+import { savePlatformSettings, adminHeaders } from "@/lib/admin-client";
 import { SHUBHORA_FAQ, SHUBHORA_KNOWLEDGE, SHUBHORA_PERSONA } from "../../../../bridge/shubhora-kb.mjs";
 
 type Fields = { persona: string; knowledge: string; faq: string };
@@ -156,16 +156,6 @@ function TestBot() {
   );
 }
 
-/** Super Admin API calls carry the admin password (this tab) or the owner's login. */
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 /** The new partner assistant's switch (platform_settings.ai_v2). WhatsApp picks a change up within 5 minutes, the
  *  card chat at once. */

@@ -4,7 +4,7 @@
 // notification type and channel. Every switch saves immediately.
 import { useCallback, useEffect, useState } from "react";
 import { Bell, CheckCircle2, LoaderCircle, Megaphone, MessageCircle, Send, TriangleAlert } from "lucide-react";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { adminHeaders } from "@/lib/admin-client";
 
 type Settings = { enabled: boolean; push: boolean; whatsapp: boolean; types: Record<string, { push: boolean; whatsapp: boolean }> };
 type Info = {
@@ -12,15 +12,6 @@ type Info = {
   whatsappSender: "company" | "own"; stats: { browsers: number; pushOk: number; waOk: number; failed: number };
 };
 
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const { data } = (await getAdminSupabase()?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 function Switch({ on, onChange, disabled, label }: { on: boolean; onChange: (v: boolean) => void; disabled?: boolean; label: string }) {
   return (

@@ -13,10 +13,10 @@ import {
   Pencil, X, LoaderCircle, RefreshCw, CreditCard, ExternalLink, Coins, History, Crown, AlertTriangle,
 } from "lucide-react";
 import Link from "next/link";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
 import { PaymentRequestModal } from "@/components/admin/payment-request";
 import { displayLogin } from "@/lib/phone";
 import { ADDONS } from "@/lib/addons";
+import { adminHeaders } from "@/lib/admin-client";
 
 /** Mobile sign-ups log in with an internal address (p91…@phone.…) — show their mobile number instead, never that address. */
 const mobileLogin = (email?: string) => /@phone\./i.test(email ?? "");
@@ -66,18 +66,6 @@ type User = {
   credits?: number;
 };
 
-/** Auth for the admin APIs: the unlock password and/or the owner's session
- *  token (the panel can be opened either way). */
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const sb = getAdminSupabase();
-    const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 type View = "all" | "accounts" | "ids" | "partner" | "green" | "red" | "paid" | "check" | "review" | "consumers";
 const VIEWS: { id: View; label: string }[] = [

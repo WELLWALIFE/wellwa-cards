@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Loader2, RefreshCw, Sparkles, AlertTriangle } from "lucide-react";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { adminHeaders } from "@/lib/admin-client";
 
 type Day = {
   date: string;
@@ -11,16 +11,6 @@ type Day = {
   generatedAt: string | null;
 };
 
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const sb = getAdminSupabase();
-    const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 export default function BannersAdmin() {
   const [days, setDays] = useState<Day[]>([]);

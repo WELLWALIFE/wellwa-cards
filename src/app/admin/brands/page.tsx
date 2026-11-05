@@ -9,7 +9,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   Building2, Plus, Trash2, X, LoaderCircle, Check, Copy, AlertCircle, Globe, KeyRound,
 } from "lucide-react";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { adminHeaders } from "@/lib/admin-client";
 
 type Brand = {
   id: string; slug: string; name: string; base_domain: string;
@@ -21,16 +21,6 @@ type Brand = {
   bot_persona?: string | null; bot_knowledge?: string | null; bot_faq?: string | null;
 };
 
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const sb = getAdminSupabase();
-    const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 const EMPTY: Partial<Brand> = {
   name: "", base_domain: "", theme_color: "#0e9e90", hide_platform_branding: true,

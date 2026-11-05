@@ -10,20 +10,10 @@ import {
   LayoutTemplate, Plus, Pencil, Trash2, X, Search, Eye, LoaderCircle, Check, Copy,
 } from "lucide-react";
 import type { CardTemplateDef } from "@/lib/templates";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { adminHeaders } from "@/lib/admin-client";
 
 type Row = CardTemplateDef & { sort?: number; active?: boolean; custom?: boolean };
 
-async function adminHeaders(): Promise<Record<string, string>> {
-  const h: Record<string, string> = { "content-type": "application/json" };
-  try { h["x-admin-key"] = sessionStorage.getItem("ne-admin-key") ?? ""; } catch { /* ignore */ }
-  try {
-    const sb = getAdminSupabase();
-    const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
-    if (data.session?.access_token) h["x-owner-token"] = data.session.access_token;
-  } catch { /* ignore */ }
-  return h;
-}
 
 export default function AdminTemplates() {
   const [rows, setRows] = useState<Row[] | null>(null);
