@@ -27,19 +27,24 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   if (me.franchise && me.franchise.id !== id) return Response.json({ error: "Not your franchise." }, { status: 403 });
   const fr = await load(id); if (!fr) return Response.json({ error: "Franchise not found." }, { status: 404 });
   const money = me.rights.includes("billing.view") || me.rights.includes("franchises.payouts") || !!me.franchise;
-  const [balance, users, ledger, payouts, logins, s] = await Promise.all([
+  const [balance, users, ledger, payouts, logins, s, credits] = await Promise.all([
     franchiseBalance(fr.id),
     svc<{ id: string; full_name: string | null; username: string | null; plan: string; saas_tier: string | null; saas_expires_at: string | null; created_at: string; franchise_joined_at: string | null }[]>(`profiles?franchise_id=eq.${fr.id}&select=id,full_name,username,plan,saas_tier,saas_expires_at,created_at,franchise_joined_at&order=created_at.desc&limit=500`),
     money ? svc<Record<string, unknown>[]>(`franchise_ledger?franchise_id=eq.${fr.id}&select=id,user_id,kind,amount_paise,base_paise,pct,payment_ref,note,payout_id,at&order=at.desc&limit=300`) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     svc<Record<string, unknown>[]>(`payouts?franchise_id=eq.${fr.id}&select=id,amount_paise,status,utr,note,requested_at,decided_at,paid_at&order=requested_at.desc&limit=100`),
     svc<{ id: string; email: string; name: string; active: boolean; last_login_at: string | null }[]>(`admin_users?franchise_id=eq.${fr.id}&select=id,email,name,active,last_login_at`),
     getSettings(),
+    // Credits this franchise gave its users (api/admin/credits writes ref "by:<admin id>;fr:<franchise id>").
+    svc<{ id: string; user_id: string; delta: number; ref: string | null; created_at: string }[]>(`credit_ledger?reason=eq.franchise-grant&ref=like.*fr:${fr.id}*&select=id,user_id,delta,ref,created_at&order=created_at.desc&limit=300`),
   ]);
   const names = new Map(list(users).map((u) => [u.id, u.full_name || u.username || "User"]));
+  const byIds = [...new Set(list(credits).map((c) => (c.ref ?? "").match(/^by:([^;]+)/)?.[1] ?? "").filter(Boolean))];
+  const byNames = new Map(byIds.length ? list(await svc<{ id: string; name: string; email: string }[]>(`admin_users?id=in.(${byIds.join(",")})&select=id,name,email`)).map((a) => [a.id, a.name || a.email]) : []);
   return Response.json({
     franchise: me.franchise ? { ...fr, bank: fr.bank, kyc: undefined } : fr, balance, users: list(users),
     ledger: list(ledger).map((l) => ({ ...l, user: l.user_id ? names.get(String(l.user_id)) ?? "" : "" })), payouts: list(payouts), logins: list(logins),
     settings: { payoutMin: s.payout_min_paise }, signupLink: `${SITE_URL}/start?f=${fr.code}`,
+    credits: list(credits).map((c) => ({ id: c.id, user: names.get(c.user_id) ?? "User", delta: c.delta, by: byNames.get((c.ref ?? "").match(/^by:([^;]+)/)?.[1] ?? "") ?? "", at: c.created_at })),
   });
 }
 

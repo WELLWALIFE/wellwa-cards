@@ -137,7 +137,7 @@ export default function AdminUsers() {
   }
 
   async function giveCredits(u: User) {
-    const raw = prompt(`"${who(u)}" ko kitne credits dene hain?\n(negative likhkar wapas bhi le sakte hain)`, "500");
+    const raw = prompt(meFr ? `"${who(u)}" ko kitne credits dene hain? (1 se 200 tak; record Shubhora ko dikhta hai)` : `"${who(u)}" ko kitne credits dene hain?\n(negative likhkar wapas bhi le sakte hain)`, meFr ? "50" : "500");
     if (!raw) return;
     const amount = Math.trunc(Number(raw));
     if (!amount) return;

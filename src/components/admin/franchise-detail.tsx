@@ -13,8 +13,9 @@ type User = { id: string; full_name: string | null; username: string | null; pla
 type Ledger = { id: number; user: string; kind: string; amount_paise: number; base_paise: number | null; pct: number | null; payment_ref: string; note: string; at: string };
 type Payout = { id: string; amount_paise: number; status: string; utr: string; note: string; requested_at: string; decided_at: string | null; paid_at: string | null };
 type Login = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
-type Detail = { franchise: Fr; balance: { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number }; users: User[]; ledger: Ledger[]; payouts: Payout[]; logins: Login[]; settings: { payoutMin: number }; signupLink: string };
-type Tab = "overview" | "users" | "account" | "payouts" | "logins";
+type CreditGift = { id: string; user: string; delta: number; by: string; at: string };
+type Detail = { franchise: Fr; balance: { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number }; users: User[]; ledger: Ledger[]; payouts: Payout[]; logins: Login[]; settings: { payoutMin: number }; signupLink: string; credits?: CreditGift[] };
+type Tab = "overview" | "users" | "account" | "payouts" | "logins" | "credits";
 const planOf = (u: User) => (u.saas_tier && u.saas_tier !== "none" && u.saas_expires_at && new Date(u.saas_expires_at) > new Date() ? u.saas_tier : u.plan && u.plan !== "free" ? u.plan : "free");
 
 export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boolean }) {
@@ -22,7 +23,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState("");
   // ?tab=logins opens the Logins tab straight away (the list's "no login · create" link).
-  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
+  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins", "credits"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
   const [form, setForm] = useState<Partial<Fr> | null>(null);
   const [busy, setBusy] = useState("");
   const [confirm, dialog] = useConfirm();
@@ -96,7 +97,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         <Stat label="Balance" value={money(d.balance.balance)} hint={`available ${money(Math.max(0, d.balance.balance - d.balance.pending))}`} icon={Banknote} tone="brand" />
       </div>
 
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }])]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }])]} />
 
       {tab === "overview" && (
         <Card title={mine ? "Your details" : "Profile"} sub={mine ? "Your bank details are used for payouts. Everything else is set by Shubhora." : "What the franchise is, where, and on what terms."}
@@ -139,6 +140,22 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
       )}
 
       {tab === "users" && <UsersTab d={d} canManage={canManage} act={act} />}
+
+      {tab === "credits" && (
+        <Card title="Credits given by this franchise" sub="Every AI credit this franchise gave one of its users (from Users → + credits), with who gave it. Credits are Shubhora's cost, not the franchise's." pad={false}>
+          <Table head={["When", "User", "Credits", "Given by"]} minW={520} empty="No credits given yet.">
+            {(d.credits ?? []).map((c) => (
+              <tr key={c.id} className="hover:bg-surface2/50">
+                <td className={`${td} whitespace-nowrap text-xs text-muted`}>{fmtDate(c.at, true)}</td>
+                <td className={`${td} text-sm`}>{c.user}</td>
+                <td className={`${td} text-right font-semibold tabular-nums text-emerald-700`}>+{c.delta}</td>
+                <td className={`${td} text-xs text-muted`}>{c.by || "—"}</td>
+              </tr>
+            ))}
+          </Table>
+          {(d.credits ?? []).length > 0 && <p className="px-4 py-3 text-xs text-muted">Total: <b>{(d.credits ?? []).reduce((n, c) => n + c.delta, 0)}</b> credits · {(d.credits ?? []).length} time{(d.credits ?? []).length === 1 ? "" : "s"}</p>}
+        </Card>
+      )}
 
       {tab === "account" && (
         <Card title="Account" sub="Every rupee earned (per payment of your users), paid out, or adjusted." pad={false}

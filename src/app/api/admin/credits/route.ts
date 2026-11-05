@@ -22,8 +22,13 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const g = await requireAdmin(request, "users.plan", { sensitive: true }); if (!g.ok) return g.res;
+  // A franchise may give its own users credits too (owner, 5 Nov 2026): up to 200 a time, never a claw-back, and every grant is
+  // written with the franchise and the person who gave it, so Super Admin sees "who gave whom how many" on the franchise page.
+  const g = await requireAdmin(request, ["users.plan", "franchises.view"], { sensitive: true }); if (!g.ok) return g.res;
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
+  const me = g.me;
+  const franchise = me.franchise;
+  if (!franchise && !me.rights.includes("users.plan")) return NextResponse.json({ error: "You do not have the right to give credits." }, { status: 403 });
 
   const b = await request.json().catch(() => ({}));
   const userId = String(b.userId ?? "");
@@ -31,11 +36,12 @@ export async function POST(request: Request) {
   if (!userId || !amount || Math.abs(amount) > 100000) {
     return NextResponse.json({ error: "userId and a non-zero amount are required." }, { status: 400 });
   }
-  if (!(await userInScope(g.me, userId))) return NextResponse.json({ error: "That user is outside your scope." }, { status: 403 });
-  await audit(g.me, "user.credits", { type: "user", id: userId, after: { amount } }, request);
+  if (franchise && (amount < 1 || amount > 200)) return NextResponse.json({ error: "A franchise can give 1 to 200 credits at a time." }, { status: 400 });
+  if (!(await userInScope(me, userId))) return NextResponse.json({ error: "That user is outside your scope." }, { status: 403 });
+  await audit(me, "user.credits", { type: "user", id: userId, after: { amount, franchise: franchise?.code ?? null } }, request);
   const r = await fetch(`${SUPA_URL}/rest/v1/rpc/grant_credits`, {
     method: "POST", headers: serviceHeaders(),
-    body: JSON.stringify({ p_user: userId, p_amount: amount, p_reason: "admin-grant", p_ref: null }),
+    body: JSON.stringify({ p_user: userId, p_amount: amount, p_reason: franchise ? "franchise-grant" : "admin-grant", p_ref: `by:${me.id || me.email}${franchise ? `;fr:${franchise.id}` : ""}` }),
   });
   if (!r.ok) return NextResponse.json({ error: await r.text() }, { status: 400 });
   return NextResponse.json({ ok: true, balance: await r.json() });
