@@ -53,6 +53,7 @@ export default function AdminDashboard() {
           <Stat label="Earned this month" value={money(d.balance.thisMonth)} hint={`Total earned ${money(d.balance.earned)}`} icon={IndianRupee} tone="good" href="/admin/earnings" />
           <Stat label="Balance" value={money(d.balance.balance)} hint={d.balance.pending ? `${money(d.balance.pending)} payout in process` : "Ask for a payout under My earnings"} icon={Wallet} tone="brand" href="/admin/earnings" />
         </div>
+        {f && <FranchiseGuide code={f.code} sub={!!me?.franchise?.parentId} few={d.users.total < 10} />}
         <div className="grid gap-5 lg:grid-cols-3">
           <Card title="Newest users" className="lg:col-span-2" pad={false} actions={<Link href="/admin/users" className="text-xs font-semibold text-brand-ink">All users →</Link>}>
             <Table head={["User", "Plan", "Joined"]} minW={420} empty="No users yet — share your link from My earnings.">
@@ -152,5 +153,25 @@ function Meter({ label, pct, right }: { label: string; pct: number; right: strin
       <div className="flex items-center justify-between text-xs"><span className="text-muted">{label}</span><span className="tabular-nums text-ink">{right} <span className="text-muted">({pct}%)</span></span></div>
       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-surface2"><div className={`h-full rounded-full ${tone}`} style={{ width: `${Math.min(100, pct)}%` }} /></div>
     </div>
+  );
+}
+
+/** The franchise's how-to (owner, 6 Nov 2026): four steps from link to payout. Open while it has few users, folded later. */
+function FranchiseGuide({ code, sub, few }: { code: string; sub: boolean; few: boolean }) {
+  const link = typeof window !== "undefined" ? `${window.location.origin}/start?f=${code}` : `/start?f=${code}`;
+  const steps: [string, React.ReactNode][] = [
+    ["Share your link", <>Send <span className="font-mono text-ink">{link}</span> on WhatsApp, or tell people your code <b>{code}</b>. Everyone who signs up with it is your user.</>],
+    ["Help them start", <>Open the user under <Link href="/admin/users" className="font-semibold text-brand-ink">Users</Link> to see their card, website and plan. Credits you give come out of your balance.</>],
+    ["Earn on every payment", <>When your user pays, your % of the amount without GST is added to <Link href="/admin/earnings" className="font-semibold text-brand-ink">My earnings</Link> — first payment and every renewal.</>],
+    ["Ask for a payout", <>Fill your bank details and KYC under My earnings → Profile, then ask for a payout from the Payouts tab. Shubhora pays to your bank.</>],
+    ...(!sub ? [["Grow a team (optional)", <>Make sub-franchises under My earnings → Sub-franchises. You keep the difference between your % and theirs.</>] as [string, React.ReactNode]] : []),
+  ];
+  return (
+    <details open={few} className="rounded-2xl border border-border bg-surface p-4 shadow-sm">
+      <summary className="cursor-pointer text-sm font-semibold">How it works — {steps.length} steps</summary>
+      <ol className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {steps.map(([t, b], i) => <li key={t} className="rounded-xl bg-bg p-3 text-sm"><p className="font-semibold"><span className="mr-1.5 inline-grid h-5 w-5 place-items-center rounded-full bg-brand text-[11px] text-white">{i + 1}</span>{t}</p><p className="mt-1 text-xs text-muted">{b}</p></li>)}
+      </ol>
+    </details>
   );
 }

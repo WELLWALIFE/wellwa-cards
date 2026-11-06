@@ -379,7 +379,7 @@ function SubsTab({ d, mine, canCreate, reload, confirm }: { d: Detail; mine: boo
 }
 
 function NewSub({ parent, onDone }: { parent: Fr; onDone: () => Promise<void> }) {
-  const blank = { code: "", name: "", phone: "", area: "", city: parent.city || "", state: parent.state || "", first: String(parent.commission_first_pct), renewal: String(parent.commission_renewal_pct), can_activate: false, pw: "", pw2: "" };
+  const blank = { code: "", name: "", phone: "", area: "", city: parent.city || "", state: parent.state || "", first: String(Math.max(0, parent.commission_first_pct - 10)), renewal: String(Math.max(0, parent.commission_renewal_pct - 10)), can_activate: false, pw: "", pw2: "" };
   const [open, setOpen] = useState(false); const [v, setV] = useState(blank); const [busy, setBusy] = useState(false); const [show, setShow] = useState(false);
   const [made, setMade] = useState<{ code: string; login: string; existing: boolean; error: string } | null>(null);
   const set = (k: keyof typeof blank, x: string | boolean) => setV((o) => ({ ...o, [k]: x }));
@@ -418,6 +418,7 @@ function NewSub({ parent, onDone }: { parent: Fr; onDone: () => Promise<void> })
             <Field label="Again"><input type={show ? "text" : "password"} autoComplete="new-password" className={inputCls} value={v.pw2} onChange={(e) => set("pw2", e.target.value)} /></Field>
             <label className="flex items-center gap-2 text-xs text-muted sm:col-span-2"><input type="checkbox" checked={show} onChange={(e) => setShow(e.target.checked)} /> Show passwords</label>
             {parent.can_activate && <div className="sm:col-span-2"><Toggle on={v.can_activate} onChange={(x) => set("can_activate", x)} label="May activate plans for its users" hint="For cash / UPI they take by hand. Off: only Shubhora activates." /></div>}
+            {!bad && (Number(v.first) >= parent.commission_first_pct || Number(v.renewal) >= parent.commission_renewal_pct) && <p className="text-xs font-semibold text-amber-700 sm:col-span-2">At this share you keep 0% on {Number(v.first) >= parent.commission_first_pct ? "first payments" : "renewals"} of their users.</p>}
             {bad && (v.code || v.name || v.phone || v.pw) && <p className="text-xs font-semibold text-danger sm:col-span-2">{bad}</p>}
           </div>
         )}

@@ -18,9 +18,9 @@ export async function GET(request: Request) {
     const [open, done, frs] = await Promise.all([
       svc<Record<string, unknown>[]>("payouts?status=in.(requested,approved)&select=id,franchise_id,amount_paise,status,note,requested_at&order=requested_at"),
       svc<Record<string, unknown>[]>("payouts?status=in.(paid,rejected)&select=*&order=decided_at.desc&limit=50"),
-      svc<{ id: string; code: string; name: string; bank: Record<string, string> }[]>("franchises?select=id,code,name,bank"),
+      svc<{ id: string; code: string; name: string; bank: Record<string, string>; kyc: { status?: string } | null }[]>("franchises?select=id,code,name,bank,kyc"),
     ]);
-    const fm = new Map(list(frs).map((f) => [f.id, f]));
+    const fm = new Map(list(frs).map((f) => [f.id, { id: f.id, code: f.code, name: f.name, bank: f.bank, kyc: f.kyc?.status ?? "none" }]));
     const dress = (p: Record<string, unknown>) => ({ ...p, franchise: fm.get(String(p.franchise_id)) ?? null });
     return Response.json({ open: list(open).map(dress), done: list(done).map(dress) });
   }
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
   const own = me.franchise ? `&id=in.(${(me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]).join(",")})` : "";
   const [frs, counts, paid, ledger, pend, logins, s] = await Promise.all([
     svc<FranchiseRow[]>(`franchises?select=${FR_COLS}${own}&order=created_at.desc`),
-    svc<{ franchise_id: string }[]>(`profiles?franchise_id=not.is.null${me.franchise ? `&franchise_id=in.(${(me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]).join(",")})` : ""}&select=franchise_id&limit=50000`),
+    svc<{ franchise_id: string; franchise_joined_at: string | null }[]>(`profiles?franchise_id=not.is.null${me.franchise ? `&franchise_id=in.(${(me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]).join(",")})` : ""}&select=franchise_id,franchise_joined_at&limit=50000`),
     svc<{ franchise_id: string }[]>(`profiles?franchise_id=not.is.null&saas_tier=neq.none&saas_expires_at=gte.${new Date().toISOString()}&select=franchise_id&limit=50000`),
     svc<{ franchise_id: string; kind: string; amount_paise: number }[]>(`franchise_ledger?select=franchise_id,kind,amount_paise&limit=50000`),
     svc<{ franchise_id: string; amount_paise: number }[]>(`payouts?status=in.(requested,approved)&select=franchise_id,amount_paise`),
@@ -45,7 +45,11 @@ export async function GET(request: Request) {
     const rows = lg.get(f.id) ?? [];
     const earned = rows.filter((r) => r.kind === "earning").reduce((a, r) => a + Number(r.amount_paise), 0);
     const balance = rows.reduce((a, r) => a + Number(r.amount_paise), 0);
-    return { ...f, users: (c.get(f.id) ?? []).length, paid: (pd.get(f.id) ?? []).length, earned, balance, pendingPayouts: (pn.get(f.id) ?? []).reduce((a, r) => a + Number(r.amount_paise), 0), logins: (lo.get(f.id) ?? []).map((l) => ({ email: l.email, active: l.active })) };
+    // Last time a user joined through it (or when it was made): "quiet" after 30 days without a new user (owner, 6 Nov 2026).
+    const lastJoin = (c.get(f.id) ?? []).reduce((m, u) => (u.franchise_joined_at && u.franchise_joined_at > m ? u.franchise_joined_at : m), "");
+    const since = lastJoin || String(f.created_at ?? "");
+    const quietDays = since ? Math.floor((Date.now() - new Date(since).getTime()) / 86_400_000) : 0;
+    return { ...f, bank: me.franchise ? undefined : f.bank, kyc: (f.kyc as { status?: string } | null)?.status ?? "none", lastJoin: lastJoin || null, quietDays, users: (c.get(f.id) ?? []).length, paid: (pd.get(f.id) ?? []).length, earned, balance, pendingPayouts: (pn.get(f.id) ?? []).reduce((a, r) => a + Number(r.amount_paise), 0), logins: (lo.get(f.id) ?? []).map((l) => ({ email: l.email, active: l.active })) };
   });
   return Response.json({ franchises: out, settings: { first: s.commission_first_pct, renewal: s.commission_renewal_pct, canActivate: s.franchise_can_activate, payoutMin: s.payout_min_paise } });
 }

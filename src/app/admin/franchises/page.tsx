@@ -9,8 +9,8 @@ import { Badge, Btn, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, S
 import { FranchiseApplications } from "@/components/admin/franchise-applications";
 import { FranchiseBoard } from "@/components/admin/franchise-board";
 
-type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[]; parent_id?: string | null };
-type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; tds_paise?: number; franchise: { id: string; code: string; name: string; bank: Record<string, string> } | null };
+type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[]; parent_id?: string | null; kyc?: string; lastJoin?: string | null; quietDays?: number };
+type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; tds_paise?: number; franchise: { id: string; code: string; name: string; bank: Record<string, string>; kyc?: string } | null };
 type Settings = { first: number; renewal: number; canActivate: boolean; payoutMin: number };
 type Tab = "list" | "board" | "payouts" | "applications";
 
@@ -87,7 +87,7 @@ function FranchisesInner() {
                 <td className={`${td} tabular-nums font-semibold`}>{money(r.balance)}{r.pendingPayouts > 0 && <span className="block text-[10px] font-normal text-amber-700">{money(r.pendingPayouts)} requested</span>}</td>
                 <td className={`${td} text-xs text-muted`}>{r.commission_first_pct}% / {r.commission_renewal_pct}%</td>
                 <td className={td}>{r.logins.length ? <Badge tone={r.logins.some((l) => l.active) ? "good" : "danger"}>{r.logins.length} login{r.logins.length === 1 ? "" : "s"}</Badge> : <Link href={`/admin/franchises/${r.id}?tab=logins`} className="inline-flex items-center gap-1 rounded-md border border-amber-400 bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-900 hover:bg-amber-100">no login · create →</Link>}</td>
-                <td className={td}><Badge tone={r.status === "active" ? "good" : r.status === "paused" ? "warn" : "danger"} dot>{r.status}</Badge></td>
+                <td className={td}><Badge tone={r.status === "active" ? "good" : r.status === "paused" ? "warn" : "danger"} dot>{r.status}</Badge>{r.status === "active" && (r.quietDays ?? 0) >= 30 && <span className="mt-0.5 block text-[10px] font-semibold text-amber-700" title={r.lastJoin ? `Last new user ${fmtDate(r.lastJoin)}` : "No user yet"}>quiet {r.quietDays} d</span>}{r.kyc === "verified" ? <span className="mt-0.5 block text-[10px] text-emerald-700">KYC ✓</span> : r.kyc === "submitted" ? <span className="mt-0.5 block text-[10px] font-semibold text-amber-700">KYC to check</span> : null}</td>
               </tr>
             ))}
           </Table>
@@ -104,7 +104,7 @@ function FranchisesInner() {
                 <tr key={p.id} className="hover:bg-surface2/50">
                   <td className={td}><Link href={`/admin/franchises/${p.franchise_id}`} className="font-semibold text-brand-ink hover:underline">{p.franchise?.code}</Link><span className="block text-xs text-muted">{p.franchise?.name}</span></td>
                   <td className={`${td} font-semibold tabular-nums`}>{money(p.amount_paise)}</td>
-                  <td className={`${td} text-xs text-muted`}>{p.franchise?.bank?.upi ? <span>UPI <b className="text-ink">{p.franchise.bank.upi}</b></span> : p.franchise?.bank?.account ? <span>{p.franchise.bank.bank} · {p.franchise.bank.account} · {p.franchise.bank.ifsc}<br />{p.franchise.bank.holder}</span> : <Badge tone="danger">no bank details</Badge>}</td>
+                  <td className={`${td} text-xs text-muted`}>{p.franchise?.kyc === "verified" ? <Badge tone="good">KYC verified</Badge> : <Badge tone="warn">KYC {p.franchise?.kyc === "submitted" ? "to check" : p.franchise?.kyc === "rejected" ? "sent back" : "not sent"}</Badge>}<br />{p.franchise?.bank?.upi ? <span>UPI <b className="text-ink">{p.franchise.bank.upi}</b></span> : p.franchise?.bank?.account ? <span>{p.franchise.bank.bank} · {p.franchise.bank.account} · {p.franchise.bank.ifsc}<br />{p.franchise.bank.holder}</span> : <Badge tone="danger">no bank details</Badge>}</td>
                   <td className={`${td} text-xs text-muted`}>{fmtDate(p.requested_at)}{p.note && <span className="block">{p.note}</span>}</td>
                   <td className={td}><Badge tone={p.status === "approved" ? "brand" : "warn"}>{p.status}</Badge></td>
                   <td className={`${td} text-right`}>
