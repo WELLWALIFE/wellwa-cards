@@ -11,6 +11,32 @@ async function rows(path: string, h: Record<string, string>): Promise<Row[]> {
   try { const r = await fetch(`${SUPA_URL}/rest/v1/${path}`, { headers: h, cache: "no-store" }); return r.ok ? await r.json() : []; } catch { return []; }
 }
 
+type Ev = { at: string; kind: "account" | "franchise" | "card" | "payment" | "credits" | "admin" | "earning"; text: string; by?: string };
+const rs = (p: unknown) => `₹${Math.round(Number(p) / 100).toLocaleString("en-IN")}`;
+const short = (e: string) => (/^p91(\d{10})@phone\./.test(e) ? e.slice(3, 13) : e);
+/** One user's story, newest first (owner, 6 Nov 2026 "pura track record"): sign-up, franchise, cards, payments, credits, every admin /
+ *  franchise action on the user and (for those who see money) the franchise commission each payment earned. */
+async function userTimeline(id: string, u: Row, p: Row, got: { cards: Row[]; payments: Row[]; subs: Row[]; ledger: Row[] }, h: Record<string, string>, me: { franchise?: unknown; rights: string[] }): Promise<Ev[]> {
+  const money = !!me.franchise || me.rights.includes("billing.view") || me.rights.includes("franchises.payouts");
+  const [audit, earn, fr] = await Promise.all([
+    rows(`audit_log?target_type=eq.user&target_id=eq.${id}&select=at,actor_email,actor_role,action,target_label,note,after&order=at.desc&limit=60`, h),
+    money ? rows(`franchise_ledger?user_id=eq.${id}&select=at,kind,amount_paise,pct,note,franchise_id&order=at.desc&limit=60`, h) : Promise.resolve([] as Row[]),
+    p.franchise_id ? rows(`franchises?id=eq.${p.franchise_id}&select=code,name`, h) : Promise.resolve([] as Row[]),
+  ]);
+  const ev: Ev[] = [];
+  if (u.created_at) ev.push({ at: String(u.created_at), kind: "account", text: "Signed up" });
+  if (u.last_sign_in_at) ev.push({ at: String(u.last_sign_in_at), kind: "account", text: "Last sign-in to the app" });
+  if (p.franchise_joined_at && fr[0]) ev.push({ at: String(p.franchise_joined_at), kind: "franchise", text: `Joined franchise ${fr[0].code} · ${fr[0].name}` });
+  for (const c of got.cards) if (c.created_at) ev.push({ at: String(c.created_at), kind: "card", text: `Card /${c.username} made` });
+  for (const x of got.payments) ev.push({ at: String(x.created_at), kind: "payment", text: `Paid ${rs(x.amount_paise)} · ${x.plan ?? ""}` });
+  for (const x of got.subs) ev.push({ at: String(x.created_at), kind: "payment", text: `Subscription ${x.plan ?? ""} · ${x.status ?? ""}${x.amount ? ` · ${rs(x.amount)}` : ""}` });
+  for (const x of got.ledger) ev.push({ at: String(x.created_at), kind: "credits", text: `${Number(x.delta) >= 0 ? "+" : ""}${x.delta} credits · ${x.reason ?? ""}` });
+  const staffEmail = (a: Row) => (/franchise/.test(String(a.actor_role)) || !me.franchise ? short(String(a.actor_email ?? "")) : "Shubhora");
+  for (const a of audit) ev.push({ at: String(a.at), kind: "admin", text: `${String(a.action).replace(/^user\./, "").replace(/[._]/g, " ")}${a.target_label ? ` · ${a.target_label}` : ""}${a.note ? ` · ${a.note}` : ""}`, by: staffEmail(a) });
+  for (const e of earn) ev.push({ at: String(e.at), kind: "earning", text: `Franchise ${e.kind} ${rs(e.amount_paise)}${e.pct ? ` (${e.pct}%)` : ""}${e.note ? ` · ${e.note}` : ""}` });
+  return ev.filter((e) => e.at && e.at !== "undefined").sort((a, b) => b.at.localeCompare(a.at)).slice(0, 150);
+}
+
 export async function GET(request: Request, ctx: { params: Promise<{ id: string }> }) {
   const g = await requireAdmin(request, "users.view"); if (!g.ok) return g.res;
   if (!(await userInScope(g.me, (await ctx.params).id))) return Response.json({ error: "That user is outside your scope." }, { status: 403 });
@@ -47,6 +73,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     ? await fetch(`${BRIDGE}/status`, { headers: { "X-Shubhora-User": id, "X-Shubhora-Plan-Expires": String(prof.plan_expires_at || "2999-12-31T00:00:00Z") }, signal: AbortSignal.timeout(2500) }).then((r) => (r.ok ? r.json() : null)).catch(() => null)
     : null;
   const leadCounts = await rows(`leads?owner_id=eq.${id}&select=card_id`, h);
+  const timeline = await userTimeline(id, u, prof, { cards, payments, subs, ledger }, h, g.me);
   const p = profile[0] ?? {};
   const providers = (u.app_metadata?.providers ?? [u.app_metadata?.provider]).filter(Boolean) as string[];
   return Response.json({
@@ -62,6 +89,6 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     leads, posterProfiles: pprofiles.map((pp) => ({ ...pp, posters: (posters.find((x) => x.id === pp.id)?.posters as { count: number }[] | undefined)?.[0]?.count ?? 0 })),
     payments, subscriptions: subs, credits: (credits[0]?.balance as number) ?? 0, ledger, devices,
     google: google[0] ?? null, cloud: cloud[0] ?? null, social, agents, jobs,
-    whatsapp: whatsapp ?? waSess,
+    whatsapp: whatsapp ?? waSess, timeline,
   });
 }

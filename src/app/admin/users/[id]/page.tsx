@@ -14,7 +14,9 @@ type Data = {
   auth: { id: string; email: string; phone: string; providers: string[]; created_at?: string; last_sign_in_at?: string | null; email_confirmed_at?: string | null; phone_confirmed_at?: string | null; banned_until?: string | null; is_demo?: boolean; contact_email?: string; name: string; avatar: string; identities: { provider: string; email?: string; phone?: string; last_sign_in_at?: string }[] };
   profile: Row; cards: Row[]; leads: Row[]; posterProfiles: Row[]; payments: Row[]; subscriptions: Row[]; credits: number; ledger: Row[]; devices: Row[];
   google: Row | null; cloud: Row | null; social: Row[]; agents: Row[]; jobs: Row[]; whatsapp: Row | null;
+  timeline?: { at: string; kind: string; text: string; by?: string }[];
 };
+const KIND_TONE: Record<string, string> = { account: "bg-sky-500", franchise: "bg-violet-500", card: "bg-brand", payment: "bg-emerald-500", credits: "bg-amber-500", admin: "bg-slate-500", earning: "bg-emerald-700" };
 
 const dt = (v: unknown) => (v ? new Date(String(v)).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" }) : "—");
 const d = (v: unknown) => (v ? new Date(String(v)).toLocaleDateString("en-IN", { dateStyle: "medium" }) : "—");
@@ -197,6 +199,20 @@ export default function AdminUserProfile() {
           <Table cols={["Date", "Δ", "Reason", "Ref"]} rows={ledger.map((l) => [dt(l.created_at), <span key="d" className={Number(l.delta) >= 0 ? "text-good" : "text-danger"}>{Number(l.delta) >= 0 ? "+" : ""}{s(l.delta)}</span>, s(l.reason), <span key="r" className="mono">{s(l.ref)}</span>])} />
         </Card>
       </div>
+
+      {(data.timeline ?? []).length > 0 && (
+        <Card title={`Timeline (${data.timeline!.length})`}>
+          <ol className="max-h-96 space-y-2 overflow-y-auto pr-1">
+            {data.timeline!.map((e, i) => (
+              <li key={i} className="flex gap-3 text-xs">
+                <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${KIND_TONE[e.kind] ?? "bg-slate-400"}`} />
+                <span className="w-36 shrink-0 text-muted">{dt(e.at)}</span>
+                <span className="min-w-0"><b className="font-semibold">{e.text.charAt(0).toUpperCase() + e.text.slice(1)}</b>{e.by && <span className="text-muted"> · by {e.by}</span>}</span>
+              </li>
+            ))}
+          </ol>
+        </Card>
+      )}
 
       <Card title={`Cards (${cards.length})`}>
         <Table cols={["Username", "Name", "Company", "Plan", "Views", "Leads", "Status", "Created", ""]} rows={cards.map((c) => [<span key="u" className="mono">/{s(c.username)}</span>, s(c.name), s(c.company), s(c.plan ?? "free"), s(c.views), String(c.leads), <Pill key="p" ok={c.active !== false}>{c.active === false ? "blocked" : "live"}</Pill>, d(c.created_at), <a key="a" href={`/${c.username}`} target="_blank" rel="noreferrer" className="text-brand-ink"><ExternalLink className="h-3.5 w-3.5" /></a>])} />
