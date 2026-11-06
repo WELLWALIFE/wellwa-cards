@@ -145,8 +145,12 @@ async function tellOwner(job: CardJob) {
 }
 
 async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<Done> {
+  // Where the time goes (owner, 6 Nov 2026: "website banane me bahut time"): one "[card] timing" line per build, in seconds since start.
+  const T0 = Date.now(); const timing: Record<string, number> = {};
+  const mark = (k: string) => { timing[k] = Math.round((Date.now() - T0) / 100) / 10; };
   /* ---- inputs ---- */
   const inputs0 = await loadCardInputs(me);
+  mark("inputs");
   // "Both" (owner's call, 2 Oct 2026): Shubhora is presented only by the small icon / strip and its own hidden page.
   // Shubhora's plans, saved as products by an earlier "Sell Shubhora" choice, never go on a business's own card
   // (a Shubhora partner's own card — the business IS Shubhora — keeps them).
@@ -242,6 +246,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const typedNames = new Set(rows.map((r) => r.name.toLowerCase()));
   if (website) step("website");
   const got = await importP;
+  mark("site-import");
   if (got) {
     const { stored } = got;
     const have = new Set([...inputs.ownRows.map((r) => (r.name ?? "").trim().toLowerCase()), ...typedNames, ...facts.hidden]);
@@ -409,6 +414,9 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // in the build itself — their trade, their city, their colour — so the three looks are shown with it and the
   // website goes live with it. Gallery pictures, and every "Write again" picture (charged a credit each), still
   // wait for Final (/api/card/banner), and a free build gets the trade's stock photographs instead.
+  // The trade research needs only the trade, the city and the name — all final by now — so it runs beside the Premium
+  // banner (up to 80 s) instead of after it (it used to add up to 28 s on top).
+  const researchP = within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined, [...(setup.business || setup.person || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 28_000).catch(() => null);
   let aiPhotos = 0;
   let aiBannerUrl = "";
   const makeBanner = paidPlan && !fresh && !facts.bannerUrl && wantsBanner;
@@ -426,6 +434,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     logImages("card-banner", IMG_MODEL, made.length);
     if (made[0]) { aiPhotos = 1; aiBannerUrl = made[0]; facts = { ...facts, bannerUrl: made[0] }; }
     console.log("[card] premium banner", made[0] ? "made" : "skipped");
+    mark("banner");
   }
   void wantsPhotos;
 
@@ -512,7 +521,8 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const designT0 = Date.now();
   const liked = reference ? { url: reference.url, colors: reference.look?.accent ? [reference.look.accent, reference.look.bg] : reference.style?.colors, fonts: reference.look?.headFont ? [reference.look.headFont, reference.look.bodyFont ?? ""] : reference.style?.fonts, dark: reference.look ? luminanceDark(reference.look.bg) : reference.style?.dark, heroImage: reference.look?.heroImage ?? reference.style?.heroImage, sections: reference.look?.sections } : null;
   const designP = within(designSite({ setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, ...(fresh ? { avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note } : {}) }), 30_000);
-  const research = await within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined, [...(business || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 28_000).catch(() => null);
+  const research = await researchP;
+  mark("research");
   const brief: CardBrief = {
     business,
     person: setup.person && setup.person !== business ? setup.person : undefined,
@@ -540,8 +550,9 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // down, the trade's default look stands.
   step("writing");
   let copy: CardCopy;
-  try { copy = await writeCard(brief, reference); } catch { await refundWriteAgain?.().catch(() => undefined); return answer({ error: "The AI did not respond. Please try again." }, 502); }
+  try { copy = await writeCard(brief, reference); mark("writing"); } catch { await refundWriteAgain?.().catch(() => undefined); return answer({ error: "The AI did not respond. Please try again." }, 502); }
   const design0 = await designP;
+  mark("design");
   // A rejected look never comes back: the plan is made to differ from it, whatever the designer said (or did not).
   const design = fresh ? differentFrom(design0, { setup, facts, products: list, reviews: inputs.reviewStats?.count ?? inputs.reviews.length, defaults: tradeStyle(setup.category, facts.lang, setup.business || setup.person || ""), liked, logoColor: logoHex, stockBanner: true, avoid: fresh.style, round: fresh.round, wants: fresh.wants, request: fresh.note }) : design0;
   console.log("[card] design", JSON.stringify({ used: !!design, ms: Date.now() - designT0, ...(design ? { style: design.style, order: design.order ?? null, why: design.why } : {}) }));
@@ -636,6 +647,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     built = again.card;
     tx = { card: built, filled: [...tx.filled, ...again.filled, ...Object.keys(answers).map((k) => `written: ${k}`)], thin: again.thin };
   }
+  mark("text");
   if (tx.filled.length) console.log("[card] text", JSON.stringify(tx.filled));
   if (tx.thin.length) console.log("[card] text still thin", JSON.stringify(tx.thin.map((t) => t.id)));
   // Where the banner's subject is (photo-focus.ts): the hero keeps it in view on every screen and puts the words
@@ -696,5 +708,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     ...(design ? { design: { style: design.style, ...(design.order ? { order: design.order } : {}), why: design.why } } : {}),
     looks,
   };
+  mark("done");
+  console.log("[card] timing", JSON.stringify(timing), me.id);
   return answer(out);
 }
