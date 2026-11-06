@@ -22,6 +22,25 @@ const paise = (v: unknown) => { const n = Math.round(Number(String(v ?? "").repl
 async function load(id: string): Promise<FranchiseRow | null> {
   return isUuid(id) ? list(await svc<FranchiseRow[]>(`franchises?id=eq.${id}&select=${FR_COLS}&limit=1`))[0] ?? null : null;
 }
+/** Track record of a franchise: its login history (ok + failed tries) and every action by its logins or on it (audit log).
+ *  IP / device only for Shubhora staff. */
+async function activity(me: Identity, fr: FranchiseRow) {
+  const staff = !me.franchise;
+  const ids = list(await svc<{ id: string; name: string; email: string }[]>(`admin_users?franchise_id=eq.${fr.id}&select=id,name,email`));
+  const who = new Map(ids.map((a) => [a.id, a.name || a.email]));
+  const or = ids.length ? `or=(actor_id.in.(${ids.map((a) => a.id).join(",")}),target_id.eq.${fr.id})` : `target_id=eq.${fr.id}`;
+  const [ev, au] = await Promise.all([
+    svc<{ id: number; at: string; admin_id: string | null; login: string; ok: boolean; reason: string; ip: string; ua: string }[]>(`admin_login_events?franchise_id=eq.${fr.id}&select=id,at,admin_id,login,ok,reason,ip,ua&order=at.desc&limit=150`),
+    svc<{ id: number; at: string; actor_id: string | null; actor_email: string; action: string; target_type: string; target_label: string; note: string; ip: string }[]>(`audit_log?${or}&action=neq.admin.login&select=id,at,actor_id,actor_email,action,target_type,target_label,note,ip&order=at.desc&limit=200`),
+  ]);
+  const short = (e: string) => (/^p91(\d{10})@phone\./.test(e) ? e.slice(3, 13) : e);
+  const device = (ua: string) => `${/android/i.test(ua) ? "Android" : /iphone|ipad/i.test(ua) ? "iPhone" : /mac os/i.test(ua) ? "Mac" : /windows/i.test(ua) ? "Windows" : ua ? "Other" : ""}${/edg\//i.test(ua) ? " · Edge" : /chrome\//i.test(ua) ? " · Chrome" : /safari\//i.test(ua) ? " · Safari" : /firefox\//i.test(ua) ? " · Firefox" : ""}`;
+  return Response.json({
+    logins: list(ev).map((e) => ({ id: e.id, at: e.at, who: (e.admin_id && who.get(e.admin_id)) || short(e.login), ok: e.ok, reason: e.reason, device: device(e.ua), ip: staff ? e.ip : "" })),
+    actions: list(au).map((a) => ({ id: a.id, at: a.at, by: a.actor_id && who.has(a.actor_id) ? who.get(a.actor_id)! : staff ? short(a.actor_email) || "Shubhora" : "Shubhora", mine: !!(a.actor_id && who.has(a.actor_id)), action: a.action, target: a.target_label, note: a.note, ip: staff ? a.ip : "" })),
+    missing: !Array.isArray(ev.data) ? "Run migration 0088 in Supabase for the login history." : "",
+  });
+}
 /** A franchise login looking at one of its own sub-franchises (not itself). */
 const isMySub = (me: Identity, fr: { id: string; parent_id?: string | null } | null) => !!me.franchise && !!fr && fr.id !== me.franchise.id && fr.parent_id === me.franchise.id;
 
@@ -31,11 +50,12 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const { id } = await ctx.params;
   const fr = await load(id); if (!fr) return Response.json({ error: "Franchise not found." }, { status: 404 });
   if (me.franchise && me.franchise.id !== id && !isMySub(me, fr)) return Response.json({ error: "Not your franchise." }, { status: 403 });
+  if (new URL(request.url).searchParams.get("activity") === "1") return activity(me, fr);
   const money = me.rights.includes("billing.view") || me.rights.includes("franchises.payouts") || !!me.franchise;
   const [balance, users, ledger, payouts, logins, s, credits] = await Promise.all([
     franchiseBalance(fr.id),
     svc<{ id: string; full_name: string | null; username: string | null; plan: string; saas_tier: string | null; saas_expires_at: string | null; created_at: string; franchise_joined_at: string | null }[]>(`profiles?franchise_id=eq.${fr.id}&select=id,full_name,username,plan,saas_tier,saas_expires_at,created_at,franchise_joined_at&order=created_at.desc&limit=500`),
-    money ? svc<Record<string, unknown>[]>(`franchise_ledger?franchise_id=eq.${fr.id}&select=id,user_id,kind,amount_paise,base_paise,pct,payment_ref,note,payout_id,at&order=at.desc&limit=300`) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
+    money ? svc<Record<string, unknown>[]>(`franchise_ledger?franchise_id=eq.${fr.id}&select=id,user_id,kind,amount_paise,base_paise,pct,payment_ref,note,payout_id,at&order=at.desc&limit=3000`) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
     svc<Record<string, unknown>[]>(`payouts?franchise_id=eq.${fr.id}&select=id,amount_paise,status,utr,note,requested_at,decided_at,paid_at&order=requested_at.desc&limit=100`),
     svc<{ id: string; email: string; name: string; active: boolean; last_login_at: string | null }[]>(`admin_users?franchise_id=eq.${fr.id}&select=id,email,name,active,last_login_at`),
     getSettings(),

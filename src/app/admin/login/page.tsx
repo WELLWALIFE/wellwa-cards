@@ -49,6 +49,10 @@ function LoginForm() {
     setChecking(false);
   })(); }, [next, router]);
 
+  /** A failed try goes into the login history (only for a real admin / franchise login; the server checks). */
+  function reportFail(reason: "password" | "mfa" | "rate") {
+    return fetch("/api/admin/v2/login-event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ login, reason }) }).catch(() => null);
+  }
   async function afterLogin() {
     const sb = getAdminSupabase()!;
     const { data } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -67,7 +71,7 @@ function LoginForm() {
     const sb = getAdminSupabase(); if (!sb) { setErr("Login is not available right now."); return; }
     setBusy(true);
     const { error } = await sb.auth.signInWithPassword({ email, password: pw });
-    if (error) { setBusy(false); setErr(/invalid/i.test(error.message) ? "Wrong e-mail / mobile or password." : /rate|too many/i.test(error.message) ? "Too many tries. Wait a few minutes." : error.message); return; }
+    if (error) { setBusy(false); void reportFail(/rate|too many/i.test(error.message) ? "rate" : "password"); setErr(/invalid/i.test(error.message) ? "Wrong e-mail / mobile or password." : /rate|too many/i.test(error.message) ? "Too many tries. Wait a few minutes." : error.message); return; }
     await afterLogin();
   }
   async function verify(e: React.FormEvent) {
@@ -77,7 +81,7 @@ function LoginForm() {
     if (c.length !== 6) { setErr("The code has 6 digits."); return; }
     setBusy(true);
     const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code: c });
-    if (error) { setBusy(false); setErr("That code did not match. Codes change every 30 seconds — try the current one."); return; }
+    if (error) { setBusy(false); void reportFail("mfa"); setErr("That code did not match. Codes change every 30 seconds — try the current one."); return; }
     router.replace(next.includes("?") ? `${next}&login=1` : `${next}?login=1`);
   }
 

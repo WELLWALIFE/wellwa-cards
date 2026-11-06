@@ -3,7 +3,7 @@
 // The same component serves the admin (/admin/franchises/[id]) and the franchise itself (/admin/earnings, `mine`).
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowDownLeft, ArrowUpRight, Banknote, Eye, KeyRound, Link2, MessageCircle, Network, Pencil, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { Activity, ArrowDownLeft, ArrowUpRight, Banknote, Download, Eye, KeyRound, Link2, MessageCircle, Network, Pencil, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { adminApi, ago, fmtDate, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
 import { Badge, Btn, Card, CopyBtn, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
@@ -17,7 +17,7 @@ type CreditGift = { id: string; user: string; delta: number; by: string; at: str
 type SubLogin = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
 type Sub = { id: string; code: string; name: string; phone: string; area: string; city: string; status: Fr["status"]; can_activate: boolean; commission_first_pct: number; commission_renewal_pct: number; created_at: string; users: number; earned: number; balance: number; override: number; logins: SubLogin[] };
 type Detail = { subs?: Sub[]; parent?: { id: string; code: string; name: string } | null; franchise: Fr; balance: { earned: number; paid: number; adjusted: number; balance: number; pending: number; thisMonth: number }; users: User[]; ledger: Ledger[]; payouts: Payout[]; logins: Login[]; settings: { payoutMin: number }; signupLink: string; credits?: CreditGift[] };
-type Tab = "overview" | "users" | "account" | "payouts" | "logins" | "credits" | "subs";
+type Tab = "overview" | "users" | "account" | "payouts" | "logins" | "credits" | "subs" | "activity";
 const planOf = (u: User) => (u.saas_tier && u.saas_tier !== "none" && u.saas_expires_at && new Date(u.saas_expires_at) > new Date() ? u.saas_tier : u.plan && u.plan !== "free" ? u.plan : "free");
 
 export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boolean }) {
@@ -25,7 +25,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
   const [d, setD] = useState<Detail | null>(null);
   const [err, setErr] = useState("");
   // ?tab=logins opens the Logins tab straight away (the list's "no login · create" link).
-  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins", "credits", "subs"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
+  const [tab, setTab] = useState<Tab>(() => { try { const t = new URLSearchParams(window.location.search).get("tab"); return (["overview", "users", "account", "payouts", "logins", "credits", "subs", "activity"] as Tab[]).includes(t as Tab) ? (t as Tab) : "overview"; } catch { return "overview"; } });
   const [form, setForm] = useState<Partial<Fr> | null>(null);
   const [busy, setBusy] = useState("");
   const [confirm, dialog] = useConfirm();
@@ -99,7 +99,8 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         <Stat label="Balance" value={money(d.balance.balance)} hint={`available ${money(Math.max(0, d.balance.balance - d.balance.pending))}`} icon={Banknote} tone="brand" />
       </div>
 
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(!f.parent_id ? [{ key: "subs" as Tab, label: "Sub-franchises", count: (d.subs ?? []).length }] : []), ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }])]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(!f.parent_id ? [{ key: "subs" as Tab, label: "Sub-franchises", count: (d.subs ?? []).length }] : []), ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }]), { key: "activity", label: "Activity" }]} />
+      {tab === "activity" && <ActivityTab id={id} staff={!me?.franchise} />}
 
       {tab === "overview" && (
         <Card title={mine ? "Your details" : "Profile"} sub={mine ? "Your bank details are used for payouts. Everything else is set by Shubhora." : "What the franchise is, where, and on what terms."}
@@ -161,7 +162,7 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
 
       {tab === "account" && (
         <Card title="Account" sub="Every rupee earned (per payment of your users), paid out, or adjusted." pad={false}
-          actions={canPay ? <AdjustBtn act={act} /> : undefined}>
+          actions={<><Statement d={d} />{canPay && <AdjustBtn act={act} />}</>}>
           <Table head={["When", "What", "User", "Base", "%", "Amount"]} minW={620} empty="No earnings yet — they appear here when a user of this franchise pays.">
             {d.ledger.map((l) => (
               <tr key={l.id} className="hover:bg-surface2/50">
@@ -461,5 +462,83 @@ function ResetSubLogin({ sub, login, onClose, onDone }: { sub: Sub; login: SubLo
         </div>
       )}
     </Modal>
+  );
+}
+
+/** Monthly statement as a CSV file (Excel opens it): every ledger line of the month, with opening and closing balance. */
+function Statement({ d }: { d: Detail }) {
+  const months = [...new Set(d.ledger.map((l) => l.at.slice(0, 7)))].sort().reverse();
+  const [m, setM] = useState(months[0] ?? "");
+  if (!months.length) return null;
+  function download() {
+    const f = d.franchise;
+    const rows = d.ledger.filter((l) => l.at.slice(0, 7) === m).sort((a, b) => a.at.localeCompare(b.at));
+    const after = d.ledger.filter((l) => l.at.slice(0, 7) > m).reduce((a, l) => a + l.amount_paise, 0);
+    const closing = d.balance.balance - after, opening = closing - rows.reduce((a, l) => a + l.amount_paise, 0);
+    const rs = (p: number) => (p / 100).toFixed(2);
+    const q = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const sum = (k: string) => rows.filter((l) => l.kind === k).reduce((a, l) => a + l.amount_paise, 0);
+    const lines = [
+      [`Shubhora franchise statement`], [`Franchise`, `${f.code} · ${f.name}`], [`Month`, m], [`Opening balance (Rs)`, rs(opening)],
+      [`Earned`, rs(sum("earning"))], [`Paid out`, rs(sum("payout"))], [`Adjustments`, rs(sum("adjustment") + sum("reversal"))], [`Closing balance (Rs)`, rs(closing)], [],
+      [`Date`, `Type`, `User`, `Base without GST (Rs)`, `%`, `Amount (Rs)`, `Note`, `Payment ref`],
+      ...rows.map((l) => [l.at.slice(0, 10), l.kind, l.user, l.base_paise ? rs(l.base_paise) : "", l.pct ?? "", rs(l.amount_paise), l.note, l.payment_ref]),
+    ];
+    const blob = new Blob(["﻿" + lines.map((r) => r.map(q).join(",")).join("\n")], { type: "text/csv;charset=utf-8" });
+    const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = `statement-${f.code}-${m}.csv`; a.click(); URL.revokeObjectURL(a.href);
+  }
+  return (
+    <span className="inline-flex items-center gap-1.5">
+      <select value={m} onChange={(e) => setM(e.target.value)} className={`${inputCls} h-8 w-32 text-xs`}>{months.map((x) => <option key={x} value={x}>{new Date(`${x}-01T00:00:00`).toLocaleDateString("en-IN", { month: "short", year: "numeric" })}</option>)}</select>
+      <Btn size="sm" icon={Download} onClick={download}>Statement</Btn>
+    </span>
+  );
+}
+
+type Act = { logins: { id: number; at: string; who: string; ok: boolean; reason: string; device: string; ip: string }[]; actions: { id: number; at: string; by: string; mine: boolean; action: string; target: string; note: string; ip: string }[]; missing: string };
+const ACTION: Record<string, string> = {
+  "user.plan": "Set a plan", "user.package": "Set a package", "user.credits": "Gave credits", "user.kind": "Changed user type", "user.addon_on": "Turned an add-on on", "user.addon_off": "Turned an add-on off",
+  "user.delete": "Deleted a user", "user.login_as": "Opened a user's app", "website.live": "Put a website live", "payment.request": "Sent a payment link", "payment.cancel": "Cancelled a payment link",
+  "franchise.create": "Franchise made", "franchise.create_sub": "Made a sub-franchise", "franchise.update": "Profile changed", "franchise.end_sub": "Ended a sub-franchise", "franchise.delete": "Franchise deleted",
+  "franchise.assign_user": "User added", "franchise.remove_user": "User removed", "franchise.adjustment": "Balance adjusted", "franchise_application.approved": "Application approved",
+  "payout.request": "Asked for a payout", "payout.approved": "Payout approved", "payout.paid": "Payout paid", "payout.rejected": "Payout rejected",
+  "staff.create": "Login made", "staff.update": "Login changed", "staff.remove": "Login removed", "staff.reset_password": "Password set", "staff.reset_mfa": "2-step reset", "admin.password_changed": "Changed own password",
+};
+const actionLabel = (a: string) => ACTION[a] ?? a.replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
+
+/** Track record: who logged in when (and failed tries), and what was done by or to this franchise. */
+function ActivityTab({ id, staff }: { id: string; staff: boolean }) {
+  const [a, setA] = useState<Act | null>(null); const [err, setErr] = useState("");
+  useEffect(() => { void (async () => { const r = await adminApi<Act>(`/api/admin/v2/franchises/${id}?activity=1`); if (!r.ok) setErr(r.data.error || "Could not load."); else setA(r.data); })(); }, [id]);
+  if (err) return <ErrorBox>{err}</ErrorBox>;
+  if (!a) return <Spinner />;
+  const failed = a.logins.filter((l) => !l.ok).length;
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <Card title="Login history" sub={a.missing || `Last ${a.logins.length} logins${failed ? ` · ${failed} failed tr${failed === 1 ? "y" : "ies"}` : ""}.`} pad={false}>
+        <Table head={["When", "Who", "Result", "Device", ...(staff ? ["IP"] : [])]} minW={480} empty="No login recorded yet (recording started on 6 Nov 2026).">
+          {a.logins.map((l) => (
+            <tr key={l.id}>
+              <td className={`${td} whitespace-nowrap text-xs`}>{fmtDate(l.at, true)}<div className="text-muted">{ago(l.at)}</div></td>
+              <td className={`${td} text-xs font-semibold`}>{l.who}</td>
+              <td className={td}>{l.ok ? <Badge tone="good" dot>Logged in</Badge> : <Badge tone="danger">{l.reason || "failed"}</Badge>}{l.ok && l.reason && <div className="text-[11px] text-muted">{l.reason}</div>}</td>
+              <td className={`${td} text-xs text-muted`}>{l.device || "—"}</td>
+              {staff && <td className={`${td} font-mono text-[11px] text-muted`}>{l.ip || "—"}</td>}
+            </tr>
+          ))}
+        </Table>
+      </Card>
+      <Card title={<span className="flex items-center gap-1.5"><Activity className="h-4 w-4" /> Actions</span>} sub="What its logins did, and what Shubhora did on this franchise." pad={false}>
+        <Table head={["When", "By", "What"]} minW={480} empty="Nothing yet.">
+          {a.actions.map((x) => (
+            <tr key={x.id}>
+              <td className={`${td} whitespace-nowrap text-xs`}>{fmtDate(x.at, true)}</td>
+              <td className={`${td} text-xs`}>{x.mine ? <b>{x.by}</b> : <span className="text-muted">{x.by}</span>}</td>
+              <td className={`${td} text-xs`}><b>{actionLabel(x.action)}</b>{x.target && <span className="text-muted"> · {x.target}</span>}{x.note && <div className="text-[11px] text-muted">{x.note}</div>}</td>
+            </tr>
+          ))}
+        </Table>
+      </Card>
+    </div>
   );
 }

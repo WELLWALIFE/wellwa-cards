@@ -16,6 +16,11 @@ export async function GET(request: Request) {
     const ip = (request.headers.get("x-forwarded-for") ?? "").split(",")[0].trim().slice(0, 60);
     await svc(`admin_users?id=eq.${me.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ last_login_at: new Date().toISOString(), last_ip: ip }) });
     await audit(me, "admin.login", { type: "staff", id: me.id, label: me.email, note: need ? `pending: ${need}` : "" }, request);
+    // Login history (migration 0088) — the real person only, never a "view as".
+    if (!me.viewAs) await svc("admin_login_events", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
+      admin_id: me.id, login: me.email, franchise_id: me.franchise?.id ?? null, ok: true, reason: need === "mfa_required" ? "2-step pending" : need === "password_change_required" ? "must change password" : "",
+      ip, ua: (request.headers.get("user-agent") ?? "").slice(0, 160),
+    }) }).catch(() => null);
   }
   const alerts = { payouts: 0, pending: 0, applications: 0 };
   if (!need) {
