@@ -27,6 +27,7 @@ export const NOTIFICATION_TYPES = {
   website_ready: { label: "Website made",          hint: "The website the owner asked for is ready (or could not be made) and they had left the screen.", push: true, whatsapp: true },
   ad_update:     { label: "Ads: live, rejected, ended", hint: "Your Facebook / Instagram ad went live, was not approved (with the reason), ends tomorrow or finished — and the 8 pm line on what today's ads cost and brought.", push: true, whatsapp: true },
   job_step:      { label: "Orders: new work for staff", hint: "Orders · Silai: a job reaches a step — the person of that step (tailor, cutting master…) is told in the app.", push: true, whatsapp: false },
+  franchise_update: { label: "Franchise: users & money", hint: "To a franchise's logins: a new user joined by its link, a commission was earned, a payout was paid. A parent also hears of its sub-franchises' new users.", push: true, whatsapp: true },
   announcement:  { label: "News from Shubhora",    hint: "Messages the admin sends to everyone.",               push: true,  whatsapp: false },
   system_alert:  { label: "Platform alarms (owners)", hint: "The render worker or the AI picture service needs a human: balance out, a video failed.", push: true, whatsapp: true },
 } as const;

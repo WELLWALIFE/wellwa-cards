@@ -4,6 +4,7 @@ import { GST_PCT } from "@/lib/billing";
 // and every payment that user makes earns the franchise its commission — written here, once per payment, into franchise_ledger.
 // Money never moves from the app: the ledger is the account, a payout is paid by hand and marked paid with its UTR.
 import { svc, svcCount } from "@/lib/service";
+import { notify } from "@/lib/notify";
 import { cleanPhone } from "@/lib/jobs";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -28,7 +29,22 @@ export async function attachFranchise(userId: string, code: string): Promise<{ o
   if (!fr) return { ok: false, reason: "unknown code" };
   if (fr.status !== "active") return { ok: false, reason: "franchise not active" };
   const r = await svc<{ id: string }[]>(`profiles?id=eq.${userId}&franchise_id=is.null&select=id`, { method: "PATCH", headers: { Prefer: "return=representation" }, body: JSON.stringify({ franchise_id: fr.id, franchise_joined_at: new Date().toISOString() }) });
-  return list(r).length ? { ok: true, franchise: fr } : { ok: false, reason: "already has a franchise" };
+  if (!list(r).length) return { ok: false, reason: "already has a franchise" };
+  void (async () => {
+    const who = list(await svc<{ full_name: string | null; username: string | null }[]>(`profiles?id=eq.${userId}&select=full_name,username&limit=1`))[0];
+    const name = who?.full_name || (who?.username ? `@${who.username}` : "A new user");
+    await notifyFranchise(fr.id, { title: `New user: ${name}`, body: `${name} signed up with your link (${fr.code}).`, ref: `join:${userId}` });
+    if (fr.parent_id) await notifyFranchise(fr.parent_id, { title: `New user via ${fr.code}`, body: `${name} signed up with your sub-franchise ${fr.code} · ${fr.name}.`, ref: `join:${userId}` });
+  })().catch(() => undefined);
+  return { ok: true, franchise: fr };
+}
+
+/** Tells every active login of a franchise (push + WhatsApp, as the Super Admin's notification switches allow). Never throws. */
+export async function notifyFranchise(frId: string, n: { title: string; body: string; ref: string }): Promise<void> {
+  try {
+    const logins = list(await svc<{ id: string }[]>(`admin_users?franchise_id=eq.${frId}&active=is.true&select=id&limit=20`));
+    await Promise.all(logins.map((l) => notify(l.id, "franchise_update", { ...n, path: "/admin/earnings" })));
+  } catch { /* a message that fails never fails the action */ }
 }
 
 /** Is this account under a franchise? (Owner, 1 Nov 2026: franchise users never see the partner programme — they are consumers.) */
@@ -58,7 +74,9 @@ export async function franchiseEarning(userId: string, p: { paise: number; ref: 
       if (amount <= 0) return Promise.resolve();
       return svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({
         franchise_id: franchiseId, user_id: userId, kind: "earning", amount_paise: amount, base_paise: net, pct: percent, payment_ref: p.ref, note,
-      }) }).then(() => undefined);   // a second copy of the same payment hits the unique index and is simply refused
+      }) }).then((r) => {   // a second copy of the same payment hits the unique index and is simply refused (and not told twice)
+        if (r.ok) void notifyFranchise(franchiseId, { title: `Earned ${rupees(amount)}`, body: `${note.startsWith("Override") ? "Override: " : ""}${what} — ${percent}% of ${rupees(net)}.`, ref: `earn:${p.ref}` });
+      });
     };
     const what = `${first ? "First payment" : "Renewal"}${p.what ? ` · ${p.what}` : ""}`;
     const base = `${rupees(net)} (${rupees(p.paise)} less ${GST_PCT}% GST)`;

@@ -12,7 +12,7 @@
 //            ("franchises.manage", sensitive; owner, 1 Nov 2026 "delete ka option, confirmation ke saath")
 import { requireAdmin, audit, getSettings, userInScope, createOrResetAuthUser, type Identity } from "@/lib/admin-v2";
 import { svc, svcCount } from "@/lib/service";
-import { franchiseBalance, franchisePatch, FR_COLS, type FranchiseRow } from "@/lib/franchise-server";
+import { franchiseBalance, franchisePatch, notifyFranchise, FR_COLS, type FranchiseRow } from "@/lib/franchise-server";
 import { SITE_URL } from "@/lib/site-url";
 
 const list = <T,>(r: { data: T[] | null }) => (Array.isArray(r.data) ? r.data : []);
@@ -196,6 +196,7 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       if (status === "paid") {
         // The ledger line that takes the money out of the balance (once per payout — the unique index on payment_ref guards a double click).
         await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ franchise_id: fr.id, kind: "payout", amount_paise: -Number(po.amount_paise), payment_ref: `payout:${po.id}`, note: `Paid · UTR ${utr}`, payout_id: po.id, created_by: me.id || null }) });
+        void notifyFranchise(fr.id, { title: `Payout paid: ₹${Math.round(Number(po.amount_paise) / 100).toLocaleString("en-IN")}`, body: `Sent to your bank account · UTR ${utr}.`, ref: `payout:${po.id}` });
       }
       await audit(me, `payout.${status}`, { type: "payout", id: po.id, label, before: { status: po.status }, after: { status, utr, amount_paise: po.amount_paise } }, request);
       return Response.json({ ok: true });
