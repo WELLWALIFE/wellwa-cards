@@ -7,16 +7,17 @@ import { Plus, Store, Wallet } from "lucide-react";
 import { adminApi, fmtDate, useAdminMe } from "@/lib/admin-client";
 import { Badge, Btn, Card, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 import { FranchiseApplications } from "@/components/admin/franchise-applications";
+import { FranchiseBoard } from "@/components/admin/franchise-board";
 
 type Row = { id: string; code: string; name: string; company: string; phone: string; city: string; state: string; status: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; users: number; paid: number; earned: number; balance: number; pendingPayouts: number; logins: { email: string; active: boolean }[]; parent_id?: string | null };
-type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; franchise: { id: string; code: string; name: string; bank: Record<string, string> } | null };
+type Payout = { id: string; franchise_id: string; amount_paise: number; status: string; utr?: string; note: string; requested_at: string; decided_at?: string; paid_at?: string; tds_paise?: number; franchise: { id: string; code: string; name: string; bank: Record<string, string> } | null };
 type Settings = { first: number; renewal: number; canActivate: boolean; payoutMin: number };
-type Tab = "list" | "payouts" | "applications";
+type Tab = "list" | "board" | "payouts" | "applications";
 
 function FranchisesInner() {
   const params = useSearchParams();
   const { me } = useAdminMe();
-  const [tab, setTab] = useState<Tab>(params.get("tab") === "payouts" ? "payouts" : params.get("tab") === "applications" ? "applications" : "list");
+  const [tab, setTab] = useState<Tab>(params.get("tab") === "payouts" ? "payouts" : params.get("tab") === "applications" ? "applications" : params.get("tab") === "board" ? "board" : "list");
   const [newApps, setNewApps] = useState(0);
   const [rows, setRows] = useState<Row[] | null>(null);
   const [settings, setSettings] = useState<Settings | null>(null);
@@ -24,7 +25,7 @@ function FranchisesInner() {
   const [err, setErr] = useState("");
   const [adding, setAdding] = useState(false);
   const [q, setQ] = useState("");
-  const [utr, setUtr] = useState<Record<string, string>>({});
+  const [utr, setUtr] = useState<Record<string, string>>({}); const [tds, setTds] = useState<Record<string, string>>({});
   const [confirm, dialog] = useConfirm();
   const canManage = !!me?.rights.includes("franchises.manage"), canPay = !!me?.rights.includes("franchises.payouts");
   const blank = { code: "", name: "", company: "", phone: "", email: "", city: "", state: "", area: "", commission_first_pct: "", commission_renewal_pct: "", can_activate: false, parent_id: "" };
@@ -51,7 +52,7 @@ function FranchisesInner() {
   async function decide(p: Payout, status: string) {
     const ok = status === "rejected" ? await confirm({ title: "Reject this payout?", danger: true, ok: "Reject" }) : status === "paid" ? await confirm({ title: `Mark ${money(p.amount_paise)} to ${p.franchise?.code} as paid?`, body: "Only after the bank transfer is done.", ok: "Mark paid" }) : true;
     if (!ok) return;
-    const r = await adminApi(`/api/admin/v2/franchises/${p.franchise_id}`, { json: { op: "payout_decide", payout_id: p.id, status, utr: utr[p.id] ?? "", note: status === "rejected" ? "Rejected by admin" : "" } });
+    const r = await adminApi(`/api/admin/v2/franchises/${p.franchise_id}`, { json: { op: "payout_decide", payout_id: p.id, status, utr: utr[p.id] ?? "", tds: status === "paid" ? tds[p.id] ?? "" : "", note: status === "rejected" ? "Rejected by admin" : "" } });
     if (!r.ok) { toast(r.data.error || "Could not save.", "err"); return; }
     toast(status === "paid" ? "Marked paid." : status === "approved" ? "Approved — transfer it, then mark paid." : "Rejected."); await load();
   }
@@ -70,7 +71,7 @@ function FranchisesInner() {
         <Stat label="Earned in all" value={money(totals.earned)} icon={Wallet} tone="good" />
         <Stat label="Owed (balances)" value={money(totals.balance)} hint={payouts ? `${payouts.open.length} payout${payouts.open.length === 1 ? "" : "s"} waiting` : ""} icon={Wallet} tone={payouts?.open.length ? "warn" : "neutral"} />
       </div>
-      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "list", label: "All franchises", count: rows?.length }, ...(canPay ? [{ key: "payouts" as Tab, label: "Payouts to pay", count: payouts?.open.length }] : []), ...(me?.franchise ? [] : [{ key: "applications" as Tab, label: "Applications", count: newApps }])]} />
+      <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "list", label: "All franchises", count: rows?.length }, { key: "board", label: "Leaderboard" }, ...(canPay ? [{ key: "payouts" as Tab, label: "Payouts to pay", count: payouts?.open.length }] : []), ...(me?.franchise ? [] : [{ key: "applications" as Tab, label: "Applications", count: newApps }])]} />
 
       {tab === "list" && (rows === null ? <Spinner /> : rows.length === 0 ? <Empty icon={Store} title="No franchise yet" sub="Create the first one: a code, the owner's details and the commission. Then create its login and share its sign-up link." action={canManage ? <Btn variant="primary" icon={Plus} onClick={() => setAdding(true)}>New franchise</Btn> : undefined} /> : (
         <Card pad={false} actions={<input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Filter…" className={`${inputCls} h-8 w-44 text-xs`} />} title={`${list.length} franchise${list.length === 1 ? "" : "s"}`}>
@@ -93,6 +94,8 @@ function FranchisesInner() {
         </Card>
       ))}
 
+      {tab === "board" && <FranchiseBoard />}
+
       {tab === "payouts" && (
         <div className="space-y-4">
           <Card title="Waiting" sub="Approve, transfer the money by bank / UPI, then mark paid with the UTR. The balance updates at “paid”." pad={false}>
@@ -106,6 +109,7 @@ function FranchisesInner() {
                   <td className={td}><Badge tone={p.status === "approved" ? "brand" : "warn"}>{p.status}</Badge></td>
                   <td className={`${td} text-right`}>
                     <div className="flex flex-wrap items-center justify-end gap-1.5">
+                      <input className={`${inputCls} h-8 w-24 text-xs`} inputMode="decimal" placeholder="TDS ₹ (if any)" title="TDS deducted from this payout — the bank gets the rest. Ask your CA for the rate." value={tds[p.id] ?? ""} onChange={(e) => setTds({ ...tds, [p.id]: e.target.value })} />
                       <input className={`${inputCls} h-8 w-36 text-xs`} placeholder="UTR after transfer" value={utr[p.id] ?? ""} onChange={(e) => setUtr({ ...utr, [p.id]: e.target.value })} />
                       <Btn size="sm" variant="primary" disabled={!(utr[p.id] ?? "").trim()} onClick={() => void decide(p, "paid")}>Paid</Btn>
                       {p.status === "requested" && <Btn size="sm" onClick={() => void decide(p, "approved")}>Approve</Btn>}
@@ -117,8 +121,8 @@ function FranchisesInner() {
             </Table>
           </Card>
           <Card title="Recently decided" pad={false}>
-            <Table head={["Franchise", "Amount", "Status", "UTR", "When"]} minW={560} empty="Nothing yet.">
-              {(payouts?.done ?? []).map((p) => <tr key={p.id}><td className={`${td} font-semibold`}>{p.franchise?.code}</td><td className={`${td} tabular-nums`}>{money(p.amount_paise)}</td><td className={td}><Badge tone={p.status === "paid" ? "good" : "danger"}>{p.status}</Badge></td><td className={`${td} font-mono text-xs`}>{p.utr || "—"}</td><td className={`${td} text-xs text-muted`}>{fmtDate(p.paid_at || p.decided_at)}</td></tr>)}
+            <Table head={["Franchise", "Amount", "TDS", "Status", "UTR", "When"]} minW={620} empty="Nothing yet.">
+              {(payouts?.done ?? []).map((p) => <tr key={p.id}><td className={`${td} font-semibold`}>{p.franchise?.code}</td><td className={`${td} tabular-nums`}>{money(p.amount_paise)}</td><td className={`${td} text-xs tabular-nums text-muted`}>{p.tds_paise ? money(p.tds_paise) : "—"}</td><td className={td}><Badge tone={p.status === "paid" ? "good" : "danger"}>{p.status}</Badge></td><td className={`${td} font-mono text-xs`}>{p.utr || "—"}</td><td className={`${td} text-xs text-muted`}>{fmtDate(p.paid_at || p.decided_at)}</td></tr>)}
             </Table>
           </Card>
         </div>

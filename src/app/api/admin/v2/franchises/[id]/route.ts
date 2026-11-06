@@ -41,6 +41,11 @@ async function activity(me: Identity, fr: FranchiseRow) {
     missing: !Array.isArray(ev.data) ? "Run migration 0088 in Supabase for the login history." : "",
   });
 }
+/** KYC for the panel: status and file names / dates — never the storage paths (files open through …/kyc?doc=). */
+function kycView(k: unknown) {
+  const o = (k && typeof k === "object" ? k : {}) as { docs?: Record<string, { name?: string; at?: string }>; status?: string; note?: string; decided_at?: string; decided_by?: string };
+  return { status: o.status ?? "none", note: o.note ?? "", decided_at: o.decided_at ?? null, decided_by: o.decided_by ?? "", docs: Object.fromEntries(Object.entries(o.docs ?? {}).map(([d, v]) => [d, { name: v?.name ?? "", at: v?.at ?? "" }])) };
+}
 /** A franchise login looking at one of its own sub-franchises (not itself). */
 const isMySub = (me: Identity, fr: { id: string; parent_id?: string | null } | null) => !!me.franchise && !!fr && fr.id !== me.franchise.id && fr.parent_id === me.franchise.id;
 
@@ -56,7 +61,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
     franchiseBalance(fr.id),
     svc<{ id: string; full_name: string | null; username: string | null; plan: string; saas_tier: string | null; saas_expires_at: string | null; created_at: string; franchise_joined_at: string | null }[]>(`profiles?franchise_id=eq.${fr.id}&select=id,full_name,username,plan,saas_tier,saas_expires_at,created_at,franchise_joined_at&order=created_at.desc&limit=500`),
     money ? svc<Record<string, unknown>[]>(`franchise_ledger?franchise_id=eq.${fr.id}&select=id,user_id,kind,amount_paise,base_paise,pct,payment_ref,note,payout_id,at&order=at.desc&limit=3000`) : Promise.resolve({ data: [] as Record<string, unknown>[] }),
-    svc<Record<string, unknown>[]>(`payouts?franchise_id=eq.${fr.id}&select=id,amount_paise,status,utr,note,requested_at,decided_at,paid_at&order=requested_at.desc&limit=100`),
+    svc<Record<string, unknown>[]>(`payouts?franchise_id=eq.${fr.id}&select=*&order=requested_at.desc&limit=100`),
     svc<{ id: string; email: string; name: string; active: boolean; last_login_at: string | null }[]>(`admin_users?franchise_id=eq.${fr.id}&select=id,email,name,active,last_login_at`),
     getSettings(),
     // Credits this franchise gave its users (api/admin/credits writes ref "by:<admin id>;fr:<franchise id>").
@@ -96,7 +101,7 @@ export async function GET(request: Request, ctx: { params: Promise<{ id: string 
   const byIds = [...new Set(list(credits).map((c) => (c.ref ?? "").match(/^by:([^;]+)/)?.[1] ?? "").filter(Boolean))];
   const byNames = new Map(byIds.length ? list(await svc<{ id: string; name: string; email: string }[]>(`admin_users?id=in.(${byIds.join(",")})&select=id,name,email`)).map((a) => [a.id, a.name || a.email]) : []);
   return Response.json({
-    franchise: me.franchise ? { ...fr, bank: isMySub(me, fr) ? {} : fr.bank, kyc: undefined } : fr, balance, users: list(users),
+    franchise: { ...fr, bank: isMySub(me, fr) ? {} : fr.bank, kyc: isMySub(me, fr) ? undefined : kycView(fr.kyc) }, balance, users: list(users),
     ledger: list(ledger).map((l) => ({ ...l, user: l.user_id ? names.get(String(l.user_id)) ?? "" : "" })), payouts: list(payouts), logins: list(logins),
     settings: { payoutMin: s.payout_min_paise }, signupLink: `${SITE_URL}/start?f=${fr.code}`,
     subs, parent,
@@ -191,12 +196,15 @@ export async function POST(request: Request, ctx: { params: Promise<{ id: string
       if (!(allowed[po.status] ?? []).includes(status)) return Response.json({ error: `A ${po.status} payout cannot become ${status}.` }, { status: 400 });
       const utr = String(b.utr ?? "").trim().slice(0, 40);
       if (status === "paid" && !utr) return Response.json({ error: "Write the UTR / transaction reference of the bank transfer." }, { status: 400 });
+      // TDS deducted from this payout (₹, optional): the bank gets amount − TDS; the balance goes down by the full amount.
+      const tds = status === "paid" ? Math.max(0, paise(b.tds)) : 0;
+      if (tds > Number(po.amount_paise)) return Response.json({ error: "TDS cannot be more than the payout." }, { status: 400 });
       const now = new Date().toISOString();
-      await svc(`payouts?id=eq.${po.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status, utr, note: String(b.note ?? "").slice(0, 300), decided_by: me.id || null, decided_at: now, ...(status === "paid" ? { paid_at: now } : {}) }) });
+      await svc(`payouts?id=eq.${po.id}`, { method: "PATCH", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ status, utr, note: String(b.note ?? "").slice(0, 300), decided_by: me.id || null, decided_at: now, ...(status === "paid" ? { paid_at: now, ...(tds ? { tds_paise: tds } : {}) } : {}) }) });
       if (status === "paid") {
         // The ledger line that takes the money out of the balance (once per payout — the unique index on payment_ref guards a double click).
-        await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ franchise_id: fr.id, kind: "payout", amount_paise: -Number(po.amount_paise), payment_ref: `payout:${po.id}`, note: `Paid · UTR ${utr}`, payout_id: po.id, created_by: me.id || null }) });
-        void notifyFranchise(fr.id, { title: `Payout paid: ₹${Math.round(Number(po.amount_paise) / 100).toLocaleString("en-IN")}`, body: `Sent to your bank account · UTR ${utr}.`, ref: `payout:${po.id}` });
+        await svc("franchise_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ franchise_id: fr.id, kind: "payout", amount_paise: -Number(po.amount_paise), payment_ref: `payout:${po.id}`, note: `Paid · UTR ${utr}${tds ? ` · TDS ₹${(tds / 100).toFixed(2)} · to bank ₹${((Number(po.amount_paise) - tds) / 100).toFixed(2)}` : ""}`, payout_id: po.id, created_by: me.id || null }) });
+        void notifyFranchise(fr.id, { title: `Payout paid: ₹${Math.round(Number(po.amount_paise) / 100).toLocaleString("en-IN")}`, body: tds ? `₹${Math.round((Number(po.amount_paise) - tds) / 100).toLocaleString("en-IN")} sent to your bank (TDS ₹${Math.round(tds / 100).toLocaleString("en-IN")} deducted) · UTR ${utr}.` : `Sent to your bank account · UTR ${utr}.`, ref: `payout:${po.id}` });
       }
       await audit(me, `payout.${status}`, { type: "payout", id: po.id, label, before: { status: po.status }, after: { status, utr, amount_paise: po.amount_paise } }, request);
       return Response.json({ ok: true });

@@ -17,13 +17,17 @@ export async function GET(request: Request) {
     if (!me.rights.includes("franchises.payouts")) return Response.json({ error: "You do not have the right to see payouts." }, { status: 403 });
     const [open, done, frs] = await Promise.all([
       svc<Record<string, unknown>[]>("payouts?status=in.(requested,approved)&select=id,franchise_id,amount_paise,status,note,requested_at&order=requested_at"),
-      svc<Record<string, unknown>[]>("payouts?status=in.(paid,rejected)&select=id,franchise_id,amount_paise,status,utr,note,requested_at,decided_at,paid_at&order=decided_at.desc&limit=50"),
+      svc<Record<string, unknown>[]>("payouts?status=in.(paid,rejected)&select=*&order=decided_at.desc&limit=50"),
       svc<{ id: string; code: string; name: string; bank: Record<string, string> }[]>("franchises?select=id,code,name,bank"),
     ]);
     const fm = new Map(list(frs).map((f) => [f.id, f]));
     const dress = (p: Record<string, unknown>) => ({ ...p, franchise: fm.get(String(p.franchise_id)) ?? null });
     return Response.json({ open: list(open).map(dress), done: list(done).map(dress) });
   }
+  // ?board=YYYY-MM → the month's leaderboard: new users, payments, sales (amount without GST), target, earnings — Super Admin sees all,
+  // a franchise login sees itself and its sub-franchises.
+  const board = new URL(request.url).searchParams.get("board");
+  if (board && /^\d{4}-\d{2}$/.test(board)) return Response.json(await leaderboard(me, board));
   const own = me.franchise ? `&id=in.(${(me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]).join(",")})` : "";
   const [frs, counts, paid, ledger, pend, logins, s] = await Promise.all([
     svc<FranchiseRow[]>(`franchises?select=${FR_COLS}${own}&order=created_at.desc`),
@@ -44,6 +48,31 @@ export async function GET(request: Request) {
     return { ...f, users: (c.get(f.id) ?? []).length, paid: (pd.get(f.id) ?? []).length, earned, balance, pendingPayouts: (pn.get(f.id) ?? []).reduce((a, r) => a + Number(r.amount_paise), 0), logins: (lo.get(f.id) ?? []).map((l) => ({ email: l.email, active: l.active })) };
   });
   return Response.json({ franchises: out, settings: { first: s.commission_first_pct, renewal: s.commission_renewal_pct, canActivate: s.franchise_can_activate, payoutMin: s.payout_min_paise } });
+}
+
+async function leaderboard(me: { franchise?: { id: string } | null; franchiseIds?: string[] | null }, month: string) {
+  const from = new Date(`${month}-01T00:00:00+05:30`), to = new Date(from); to.setMonth(to.getMonth() + 1);
+  const ids = me.franchise ? (me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]) : null;
+  const scope = ids ? `&franchise_id=in.(${ids.join(",")})` : "";
+  const range = (col: string) => `${col}=gte.${from.toISOString()}&${col}=lt.${to.toISOString()}`;
+  const [frs, joined, led] = await Promise.all([
+    svc<FranchiseRow[]>(`franchises?select=id,code,name,city,status,parent_id,target_paise,commission_first_pct,commission_renewal_pct${ids ? `&id=in.(${ids.join(",")})` : ""}&status=neq.ended&order=code`),
+    svc<{ franchise_id: string }[]>(`profiles?franchise_id=not.is.null${scope}&${range("franchise_joined_at")}&select=franchise_id&limit=50000`),
+    svc<{ franchise_id: string; user_id: string | null; amount_paise: number; base_paise: number | null; note: string; payment_ref: string }[]>(`franchise_ledger?kind=eq.earning${scope}&${range("at")}&select=franchise_id,user_id,amount_paise,base_paise,note,payment_ref&limit=50000`),
+  ]);
+  const rows = list(frs).map((f) => {
+    const mine = list(led).filter((l) => l.franchise_id === f.id);
+    const own = mine.filter((l) => !String(l.note).startsWith("Override"));
+    const sales = own.reduce((a, l) => a + Number(l.base_paise ?? 0), 0);
+    return {
+      id: f.id, code: f.code, name: f.name, city: f.city, status: f.status, parent_id: f.parent_id ?? null, target_paise: Number(f.target_paise) || 0,
+      newUsers: list(joined).filter((j) => j.franchise_id === f.id).length,
+      payments: new Set(own.map((l) => l.payment_ref)).size, sales,
+      earned: own.reduce((a, l) => a + Number(l.amount_paise), 0),
+      override: mine.filter((l) => String(l.note).startsWith("Override")).reduce((a, l) => a + Number(l.amount_paise), 0),
+    };
+  });
+  return { month, rows };
 }
 
 export async function POST(request: Request) {

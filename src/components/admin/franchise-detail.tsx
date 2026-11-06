@@ -3,15 +3,17 @@
 // The same component serves the admin (/admin/franchises/[id]) and the franchise itself (/admin/earnings, `mine`).
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
-import { Activity, ArrowDownLeft, ArrowUpRight, Banknote, Download, Eye, KeyRound, Link2, MessageCircle, Network, Pencil, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
+import { Activity, FileCheck2, Upload, ArrowDownLeft, ArrowUpRight, Banknote, Download, Eye, KeyRound, Link2, MessageCircle, Network, Pencil, Plus, Save, Search, Trash2, UserPlus, Users } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { adminApi, ago, fmtDate, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
+import { adminApi, adminHeaders, ago, fmtDate, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
+import { FranchiseBoard, Progress } from "@/components/admin/franchise-board";
 import { Badge, Btn, Card, CopyBtn, Empty, ErrorBox, Field, Modal, PageHeader, Spinner, Stat, Table, Tabs, Toggle, inputCls, money, td, toast, useConfirm } from "@/components/admin/ui";
 
-type Fr = { id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended"; bank: Record<string, string>; agreement_at: string | null; target_paise: number; notes: string; created_at: string; parent_id?: string | null };
+type Fr = { id: string; code: string; name: string; company: string; phone: string; email: string; gstin: string; pan: string; area: string; city: string; state: string; pincode: string; commission_first_pct: number; commission_renewal_pct: number; can_activate: boolean; status: "active" | "paused" | "ended"; bank: Record<string, string>; agreement_at: string | null; target_paise: number; notes: string; created_at: string; parent_id?: string | null; kyc?: KycView };
+type KycView = { status: "none" | "submitted" | "verified" | "rejected"; note: string; decided_at: string | null; decided_by: string; docs: Record<string, { name: string; at: string }> };
 type User = { id: string; full_name: string | null; username: string | null; plan: string; saas_tier: string | null; saas_expires_at: string | null; created_at: string; franchise_joined_at: string | null };
 type Ledger = { id: number; user: string; kind: string; amount_paise: number; base_paise: number | null; pct: number | null; payment_ref: string; note: string; at: string };
-type Payout = { id: string; amount_paise: number; status: string; utr: string; note: string; requested_at: string; decided_at: string | null; paid_at: string | null };
+type Payout = { id: string; tds_paise?: number; amount_paise: number; status: string; utr: string; note: string; requested_at: string; decided_at: string | null; paid_at: string | null };
 type Login = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
 type CreditGift = { id: string; user: string; delta: number; by: string; at: string };
 type SubLogin = { id: string; email: string; name: string; active: boolean; last_login_at: string | null };
@@ -98,6 +100,12 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
         <Stat label="Paid out" value={money(d.balance.paid)} hint={d.balance.pending ? `${money(d.balance.pending)} in process` : "nothing in process"} icon={ArrowUpRight} tone="neutral" />
         <Stat label="Balance" value={money(d.balance.balance)} hint={`available ${money(Math.max(0, d.balance.balance - d.balance.pending))}`} icon={Banknote} tone="brand" />
       </div>
+      {f.target_paise > 0 && (() => {
+        const ist = (iso: string) => new Date(new Date(iso).getTime() + 5.5 * 3600_000).toISOString().slice(0, 7);
+        const m = ist(new Date().toISOString());
+        const sales = d.ledger.filter((l) => l.kind === "earning" && !l.note.startsWith("Override") && ist(l.at) === m).reduce((a, l) => a + (l.base_paise ?? 0), 0);
+        return <div className="flex flex-wrap items-center gap-4 rounded-xl border border-border bg-surface px-4 py-3 text-sm"><span className="font-semibold">This month&apos;s target</span><span className="text-muted">sales {money(sales)} (own users, without GST)</span><div className="flex-1"><Progress value={sales} target={f.target_paise} /></div></div>;
+      })()}
 
       <Tabs<Tab> value={tab} onChange={setTab} tabs={[{ key: "overview", label: mine ? "Profile & bank" : "Profile" }, { key: "users", label: "Users", count: d.users.length }, { key: "account", label: "Account", count: d.ledger.length }, { key: "payouts", label: "Payouts", count: d.payouts.filter((p) => p.status === "requested" || p.status === "approved").length }, { key: "credits", label: "Credits given", count: (d.credits ?? []).length }, ...(!f.parent_id ? [{ key: "subs" as Tab, label: "Sub-franchises", count: (d.subs ?? []).length }] : []), ...(mine ? [] : [{ key: "logins" as Tab, label: "Logins", count: d.logins.length }]), { key: "activity", label: "Activity" }]} />
       {tab === "activity" && <ActivityTab id={id} staff={!me?.franchise} />}
@@ -141,6 +149,8 @@ export function FranchiseDetail({ id, mine = false }: { id: string; mine?: boole
           <div className="mt-5 flex flex-wrap items-center gap-2 rounded-xl bg-bg p-3 text-xs text-muted"><Link2 className="h-4 w-4 text-brand" /> Sign-up link: <span className="font-mono text-ink">{d.signupLink}</span><CopyBtn text={d.signupLink} /> <span>Users who sign up through it (or enter the code) belong to this franchise.</span></div>
         </Card>
       )}
+
+      {tab === "overview" && f.kyc && <KycCard id={id} kyc={f.kyc} mine={mine} canVerify={canManage} reload={load} />}
 
       {tab === "users" && <UsersTab d={d} canManage={canManage} act={act} />}
 
@@ -247,7 +257,7 @@ function AdjustBtn({ act }: { act: (j: Record<string, unknown>, ok: string) => P
 
 function PayoutsTab({ d, mine, canPay, act, confirm }: { d: Detail; mine: boolean; canPay: boolean; act: (j: Record<string, unknown>, ok: string) => Promise<boolean>; confirm: (o: { title: string; body?: string; ok?: string; danger?: boolean }) => Promise<boolean> }) {
   const [amount, setAmount] = useState(""); const [busy, setBusy] = useState("");
-  const [utr, setUtr] = useState<Record<string, string>>({});
+  const [utr, setUtr] = useState<Record<string, string>>({}); const [tds, setTds] = useState<Record<string, string>>({});
   const available = Math.max(0, d.balance.balance - d.balance.pending);
   const canAsk = mine || canPay;
   return (
@@ -268,12 +278,13 @@ function PayoutsTab({ d, mine, canPay, act, confirm }: { d: Detail; mine: boolea
               <td className={`${td} text-xs text-muted`}>{fmtDate(p.requested_at, true)}</td>
               <td className={`${td} font-semibold tabular-nums`}>{money(p.amount_paise)}</td>
               <td className={td}><Badge tone={p.status === "paid" ? "good" : p.status === "rejected" ? "danger" : p.status === "approved" ? "brand" : "warn"}>{p.status}</Badge>{p.paid_at && <span className="ml-2 text-[11px] text-muted">{fmtDate(p.paid_at)}</span>}</td>
-              <td className={`${td} text-xs text-muted`}>{p.utr && <span className="font-mono text-ink">{p.utr}</span>}{p.note && <span className="block">{p.note}</span>}</td>
+              <td className={`${td} text-xs text-muted`}>{p.utr && <span className="font-mono text-ink">{p.utr}</span>}{!!p.tds_paise && <span className="block">TDS {money(p.tds_paise)} · to bank {money(p.amount_paise - p.tds_paise)}</span>}{p.note && <span className="block">{p.note}</span>}</td>
               <td className={`${td} text-right`}>
                 {canPay && (p.status === "requested" || p.status === "approved") && (
                   <div className="flex flex-wrap items-center justify-end gap-1.5">
+                    <input className={`${inputCls} h-8 w-24 text-xs`} inputMode="decimal" placeholder="TDS ₹ (if any)" title="TDS deducted from this payout — the bank gets the rest. Ask your CA for the rate." value={tds[p.id] ?? ""} onChange={(e) => setTds({ ...tds, [p.id]: e.target.value })} />
                     <input className={`${inputCls} h-8 w-36 text-xs`} placeholder="UTR after transfer" value={utr[p.id] ?? ""} onChange={(e) => setUtr({ ...utr, [p.id]: e.target.value })} />
-                    <Btn size="sm" variant="primary" disabled={!(utr[p.id] ?? "").trim()} onClick={async () => { if (await confirm({ title: `Mark ${money(p.amount_paise)} as paid?`, body: "Only after the bank transfer is done. This takes the amount out of the franchise's balance.", ok: "Mark paid" })) void act({ op: "payout_decide", payout_id: p.id, status: "paid", utr: utr[p.id] }, "Marked paid."); }}>Paid</Btn>
+                    <Btn size="sm" variant="primary" disabled={!(utr[p.id] ?? "").trim()} onClick={async () => { if (await confirm({ title: `Mark ${money(p.amount_paise)} as paid?`, body: "Only after the bank transfer is done. This takes the amount out of the franchise's balance.", ok: "Mark paid" })) void act({ op: "payout_decide", payout_id: p.id, status: "paid", utr: utr[p.id], tds: tds[p.id] ?? "" }, "Marked paid."); }}>Paid</Btn>
                     {p.status === "requested" && <Btn size="sm" onClick={() => void act({ op: "payout_decide", payout_id: p.id, status: "approved" }, "Approved — transfer it, then mark paid.")}>Approve</Btn>}
                     <Btn size="sm" variant="danger" onClick={async () => { if (await confirm({ title: "Reject this payout?", danger: true, ok: "Reject" })) void act({ op: "payout_decide", payout_id: p.id, status: "rejected", note: "Rejected by admin" }, "Rejected."); }}>Reject</Btn>
                   </div>
@@ -360,6 +371,7 @@ function SubsTab({ d, mine, canCreate, reload, confirm }: { d: Detail; mine: boo
           ))}
         </Table>
       </Card>
+      {mine && subs.length > 0 && <FranchiseBoard link={false} title="Ranking — you and your sub-franchises" />}
       {edit && <EditSub sub={edit} parent={f} onClose={() => setEdit(null)} onDone={async () => { setEdit(null); await reload(); }} confirm={confirm} />}
       {reset && <ResetSubLogin sub={reset.sub} login={reset.login} onClose={() => setReset(null)} onDone={async () => { setReset(null); await reload(); }} />}
     </div>
@@ -502,6 +514,7 @@ const ACTION: Record<string, string> = {
   "franchise.create": "Franchise made", "franchise.create_sub": "Made a sub-franchise", "franchise.update": "Profile changed", "franchise.end_sub": "Ended a sub-franchise", "franchise.delete": "Franchise deleted",
   "franchise.assign_user": "User added", "franchise.remove_user": "User removed", "franchise.adjustment": "Balance adjusted", "franchise_application.approved": "Application approved",
   "payout.request": "Asked for a payout", "payout.approved": "Payout approved", "payout.paid": "Payout paid", "payout.rejected": "Payout rejected",
+  "franchise.kyc_upload": "Uploaded a KYC document", "franchise.kyc_verified": "KYC verified", "franchise.kyc_rejected": "KYC sent back",
   "staff.create": "Login made", "staff.update": "Login changed", "staff.remove": "Login removed", "staff.reset_password": "Password set", "staff.reset_mfa": "2-step reset", "admin.password_changed": "Changed own password",
 };
 const actionLabel = (a: string) => ACTION[a] ?? a.replace(/[._]/g, " ").replace(/^\w/, (c) => c.toUpperCase());
@@ -540,5 +553,69 @@ function ActivityTab({ id, staff }: { id: string; staff: boolean }) {
         </Table>
       </Card>
     </div>
+  );
+}
+
+const KYC_DOCS: [string, string, boolean][] = [["pan", "PAN card", true], ["bank", "Cancelled cheque / passbook", true], ["aadhaar_front", "Aadhaar front", false], ["aadhaar_back", "Aadhaar back", false], ["gst", "GST certificate (if any)", false]];
+/** KYC documents: the franchise uploads them; Shubhora opens them (5-minute links) and verifies or sends back with a note. */
+function KycCard({ id, kyc, mine, canVerify, reload }: { id: string; kyc: KycView; mine: boolean; canVerify: boolean; reload: () => Promise<void> }) {
+  const [busy, setBusy] = useState(""); const [note, setNote] = useState("");
+  const tone = kyc.status === "verified" ? "good" : kyc.status === "rejected" ? "danger" : kyc.status === "submitted" ? "warn" : "neutral";
+  const label = { none: "Not sent", submitted: "Waiting for check", verified: "Verified", rejected: "Needs a fix" }[kyc.status];
+  async function upload(kind: string, file: File) {
+    setBusy(kind);
+    const fd = new FormData(); fd.append("file", file); fd.append("kind", kind);
+    const h = await adminHeaders(); delete h["content-type"];
+    const r = await fetch(`/api/admin/v2/franchises/${id}/kyc`, { method: "POST", headers: h, body: fd }).catch(() => null);
+    const j = ((await r?.json().catch(() => ({}))) ?? {}) as { error?: string };
+    setBusy("");
+    if (!r?.ok) { toast(j.error || "Could not upload.", "err"); return; }
+    toast("Uploaded."); await reload();
+  }
+  async function open(kind: string) {
+    const r = await adminApi<{ url: string }>(`/api/admin/v2/franchises/${id}/kyc?doc=${kind}`);
+    if (!r.ok) { toast(r.data.error || "Could not open.", "err"); return; }
+    window.open(r.data.url, "_blank", "noopener");
+  }
+  async function decide(status: "verified" | "rejected") {
+    setBusy(status);
+    const r = await adminApi(`/api/admin/v2/franchises/${id}/kyc`, { method: "PATCH", json: { status, note } });
+    setBusy("");
+    if (!r.ok) { toast(r.data.error || "Could not save.", "err"); return; }
+    toast(status === "verified" ? "KYC verified." : "Sent back to the franchise."); setNote(""); await reload();
+  }
+  return (
+    <Card title={<span className="flex items-center gap-2"><FileCheck2 className="h-4 w-4" /> KYC documents <Badge tone={tone} dot>{label}</Badge></span>}
+      sub={mine ? "Needed for payouts and TDS. Photo (JPG / PNG) or PDF, up to 3 MB each. Only you and Shubhora can open them." : "Files open for 5 minutes through a private link."}>
+      {kyc.status === "rejected" && kyc.note && <p className="mb-3 rounded-lg bg-danger/5 px-3 py-2 text-sm text-danger">To fix: {kyc.note}</p>}
+      {kyc.status === "verified" && <p className="mb-3 text-xs text-muted">Verified {kyc.decided_at ? fmtDate(kyc.decided_at) : ""}{kyc.decided_by && !mine ? ` by ${kyc.decided_by}` : ""}.</p>}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        {KYC_DOCS.map(([k, l, must]) => {
+          const doc = kyc.docs[k];
+          return (
+            <div key={k} className="rounded-xl border border-border p-3">
+              <p className="text-sm font-semibold">{l}{must && <span className="text-danger"> *</span>}</p>
+              <p className="mt-0.5 truncate text-xs text-muted">{doc ? `${doc.name} · ${fmtDate(doc.at)}` : "Not uploaded"}</p>
+              <div className="mt-2 flex gap-1.5">
+                {doc && <Btn size="sm" icon={Eye} onClick={() => void open(k)}>Open</Btn>}
+                {(mine || canVerify) && (
+                  <label className={`inline-flex h-8 cursor-pointer items-center gap-1 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold hover:bg-surface2 ${busy === k ? "opacity-60" : ""}`}>
+                    <Upload className="h-3.5 w-3.5" /> {busy === k ? "Uploading…" : doc ? "Replace" : "Upload"}
+                    <input type="file" accept="image/jpeg,image/png,image/webp,application/pdf" className="hidden" disabled={!!busy} onChange={(e) => { const fl = e.target.files?.[0]; e.target.value = ""; if (fl) void upload(k, fl); }} />
+                  </label>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {canVerify && !mine && kyc.status !== "none" && (
+        <div className="mt-4 flex flex-wrap items-end gap-2 border-t border-border pt-3">
+          <Field label="Note (needed to send back)" className="min-w-[240px] flex-1"><input className={inputCls} value={note} onChange={(e) => setNote(e.target.value)} placeholder="e.g. PAN photo is not clear" /></Field>
+          <Btn variant="primary" loading={busy === "verified"} onClick={() => void decide("verified")}>Verify</Btn>
+          <Btn variant="danger" loading={busy === "rejected"} disabled={!note.trim()} onClick={() => void decide("rejected")}>Send back</Btn>
+        </div>
+      )}
+    </Card>
   );
 }
