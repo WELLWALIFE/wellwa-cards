@@ -6,10 +6,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { ArrowLeft, Bell, ChevronDown, LogOut, Menu, Search, ShieldAlert, ShieldCheck, Store, X, Command, Headset, UserRound } from "lucide-react";
+import { ArrowLeft, ArrowLeftRight, Bell, ChevronDown, LogOut, UserPlus, Menu, Search, ShieldAlert, ShieldCheck, Store, X, Command, Headset, UserRound } from "lucide-react";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { PartnerAdminButton } from "@/components/partner-admin-button";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { getAdminSupabase, otherSlot, setAdminSlot, type AdminSlot } from "@/lib/supabase/admin-browser";
 import { adminApi, useAdminMe, viewAsFranchise } from "@/lib/admin-client";
 import { MENU, menuFor, roleLabel, type AdminMe } from "@/lib/admin-rights";
 import { Avatar, Spinner, ToastHost } from "@/components/admin/ui";
@@ -131,9 +131,19 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     window.addEventListener("keydown", key); window.addEventListener("mousedown", click);
     return () => { window.removeEventListener("keydown", key); window.removeEventListener("mousedown", click); };
   }, []);
+  // The other panel login in this browser (Shubhora staff ↔ a franchise), if any: one click switches this tab to it.
+  const [other, setOther] = useState<AdminSlot | null>(null);
+  useEffect(() => { setOther(otherSlot()); }, [menu]);
+  const switchTo = useCallback((slot: AdminSlot) => {
+    viewAsFranchise(null); setAdminSlot(slot); window.location.href = "/admin";
+  }, []);
+  // Log out of THIS panel login only — the app, and the other panel login, stay signed in.
   const logout = useCallback(async () => {
     try { sessionStorage.removeItem("ne-admin-key"); sessionStorage.removeItem("ne-admin-scope"); sessionStorage.removeItem("ne-admin-who"); } catch { /* ignore */ }
     try { await getAdminSupabase()?.auth.signOut({ scope: "local" }); } catch { /* ignore */ }
+    viewAsFranchise(null);
+    const o = otherSlot();
+    if (o) { setAdminSlot(o); window.location.href = "/admin"; return; }
     router.replace("/admin/login");
   }, [router]);
 
@@ -222,6 +232,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
                 </div>
                 <Link href="/admin/security" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-surface2"><ShieldCheck className="h-4 w-4 text-muted" /> Security & 2-step {me && !me.mfaEnrolled && me.via === "session" && <span className="ml-auto h-2 w-2 rounded-full bg-amber-500" />}</Link>
                 {me?.rights.includes("support.live") && <Link href="/admin/support" className="flex items-center gap-2 px-4 py-2.5 text-sm hover:bg-surface2"><Headset className="h-4 w-4 text-muted" /> Live help</Link>}
+                {other && <button type="button" onClick={() => switchTo(other)} className="flex w-full items-center gap-2 border-t border-border px-4 py-2.5 text-left text-sm font-semibold text-brand-ink hover:bg-surface2"><ArrowLeftRight className="h-4 w-4" /> Switch to {other === "franchise" ? "franchise panel" : "Shubhora admin"}</button>}
+                <a href="/admin/login?add=1" target="_blank" rel="noopener" className="flex items-center gap-2 border-t border-border px-4 py-2.5 text-sm hover:bg-surface2" title="Opens a new tab; this login stays as it is"><UserPlus className="h-4 w-4 text-muted" /> Log in another account</a>
                 <button type="button" onClick={() => void logout()} className="flex w-full items-center gap-2 border-t border-border px-4 py-2.5 text-left text-sm text-red-600 hover:bg-surface2"><LogOut className="h-4 w-4" /> Log out</button>
               </div>
             )}

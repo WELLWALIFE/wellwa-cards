@@ -1,14 +1,14 @@
 "use client";
 // The admin panel's own login (Admin v2): e-mail or mobile + password — the same Shubhora account — then the authenticator
 // code when 2-step is set up. Whether this account is an admin, and what it may do, the shell asks the server next.
-import { Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Eye, EyeOff, KeyRound, LoaderCircle, Lock, ShieldCheck } from "lucide-react";
-import { getAdminSupabase } from "@/lib/supabase/admin-browser";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { getAdminSupabase, setAdminSlot, type AdminSlot } from "@/lib/supabase/admin-browser";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { inputCls } from "@/components/admin/ui";
-import { GoogleButton } from "@/components/google-button";
 
 const loginAddress = (login: string) => {
   const s = login.trim().toLowerCase();
@@ -36,9 +36,12 @@ function LoginForm() {
 
   // Already logged in to the PANEL (its own session, lib/supabase/admin-browser.ts) → straight in. The app's login in this browser
   // (the demo account, a customer) is a different session: it is only named here and stays signed in (owner, 2 Nov 2026).
+  // ?add=1 ("Log in another account" in the panel menu): no auto-redirect — the other login stays in its own slot.
+  const adding = params.get("add") === "1";
   useEffect(() => { (async () => {
     const app = (await getBrowserSupabase()?.auth.getSession().catch(() => null))?.data.session;
     if (app) setOther(app.user.email ?? app.user.user_metadata?.display_name ?? "an app account");
+    if (adding) { setChecking(false); return; }
     const sb = getAdminSupabase();
     const { data } = (await sb?.auth.getSession()) ?? { data: { session: null } };
     if (!data.session) { setChecking(false); return; }
@@ -47,28 +50,50 @@ function LoginForm() {
     // the panel's session is not an admin (or expired): forget it here only, the app is untouched
     await sb?.auth.signOut({ scope: "local" }).catch(() => undefined);
     setChecking(false);
-  })(); }, [next, router]);
+  })(); }, [next, router, adding]);
 
   /** A failed try goes into the login history (only for a real admin / franchise login; the server checks). */
   function reportFail(reason: "password" | "mfa" | "rate") {
     return fetch("/api/admin/v2/login-event", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ login, reason }) }).catch(() => null);
   }
+  /** The login happens on a private, in-memory client first; only when it is complete (password, then 2-step) does the session go
+   *  into its slot — a franchise login into the franchise slot, everyone else into the staff slot — so it never replaces the other. */
+  const tmp = useRef<SupabaseClient | null>(null);
+  function loginClient(): SupabaseClient | null {
+    if (tmp.current) return tmp.current;
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL, key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    tmp.current = url && key ? createClient(url, key, { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false, storageKey: "sb-shubhora-login-tmp" } }) : null;
+    return tmp.current;
+  }
+  async function finish() {
+    const sb = loginClient()!;
+    const s = (await sb.auth.getSession()).data.session;
+    if (!s) { setBusy(false); setErr("Login did not complete. Please try again."); return; }
+    const r = await fetch("/api/admin/v2/me", { headers: { authorization: `Bearer ${s.access_token}` }, cache: "no-store" }).catch(() => null);
+    const j = (await r?.json().catch(() => null)) as { me?: { franchise?: unknown } } | null;
+    const slot: AdminSlot = j?.me?.franchise ? "franchise" : "staff";
+    const { error } = await getAdminSupabase(slot)!.auth.setSession({ access_token: s.access_token, refresh_token: s.refresh_token });
+    if (error) { setBusy(false); setErr("Login did not complete. Please try again."); return; }
+    setAdminSlot(slot);
+    try { sessionStorage.removeItem("ne-admin-view-as"); } catch { /* private mode */ }
+    window.location.replace(next.includes("?") ? `${next}&login=1` : `${next}?login=1`);
+  }
   async function afterLogin() {
-    const sb = getAdminSupabase()!;
+    const sb = loginClient()!;
     const { data } = await sb.auth.mfa.getAuthenticatorAssuranceLevel();
     if (data && data.nextLevel === "aal2" && data.currentLevel !== "aal2") {
       const f = await sb.auth.mfa.listFactors();
       const totp = f.data?.totp?.find((x) => x.status === "verified") ?? f.data?.totp?.[0];
       if (totp) { setFactorId(totp.id); setStep("mfa"); setBusy(false); return; }
     }
-    router.replace(next.includes("?") ? `${next}&login=1` : `${next}?login=1`);
+    await finish();
   }
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setErr("");
     const email = loginAddress(login);
     if (!email) { setErr("Write your e-mail or 10-digit mobile."); return; }
     if (!pw) { setErr("Write your password."); return; }
-    const sb = getAdminSupabase(); if (!sb) { setErr("Login is not available right now."); return; }
+    const sb = loginClient(); if (!sb) { setErr("Login is not available right now."); return; }
     setBusy(true);
     const { error } = await sb.auth.signInWithPassword({ email, password: pw });
     if (error) { setBusy(false); void reportFail(/rate|too many/i.test(error.message) ? "rate" : "password"); setErr(/invalid/i.test(error.message) ? "Wrong e-mail / mobile or password." : /rate|too many/i.test(error.message) ? "Too many tries. Wait a few minutes." : error.message); return; }
@@ -76,13 +101,13 @@ function LoginForm() {
   }
   async function verify(e: React.FormEvent) {
     e.preventDefault(); setErr("");
-    const sb = getAdminSupabase()!;
+    const sb = loginClient()!;
     const c = code.replace(/\D/g, "");
     if (c.length !== 6) { setErr("The code has 6 digits."); return; }
     setBusy(true);
     const { error } = await sb.auth.mfa.challengeAndVerify({ factorId, code: c });
     if (error) { setBusy(false); void reportFail("mfa"); setErr("That code did not match. Codes change every 30 seconds — try the current one."); return; }
-    router.replace(next.includes("?") ? `${next}&login=1` : `${next}?login=1`);
+    await finish();
   }
 
   if (checking) return <LoaderCircle className="h-6 w-6 animate-spin text-muted" />;
@@ -117,7 +142,6 @@ function LoginForm() {
         <button type="submit" disabled={busy} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-lg grad-brand text-sm font-semibold text-white disabled:opacity-60">
           {busy ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <KeyRound className="h-4 w-4" />}{step === "login" ? "Log in" : "Verify"}
         </button>
-        {step === "login" && <GoogleButton label="Continue with Google" next={next} />}
         {step === "login"
           ? <p className="text-center text-xs text-muted"><Link href="/forgot" className="font-semibold text-brand-ink">Forgot password?</Link></p>
           : <p className="text-center text-xs text-muted">Lost the app? Ask the Super Admin to reset your 2-step under Staff & roles.</p>}
