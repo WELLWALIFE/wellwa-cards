@@ -32,7 +32,8 @@ export async function GET(request: Request) {
   const [frs, counts, paid, ledger, pend, logins, s] = await Promise.all([
     svc<FranchiseRow[]>(`franchises?select=${FR_COLS}${own}&order=created_at.desc`),
     svc<{ franchise_id: string; franchise_joined_at: string | null }[]>(`profiles?franchise_id=not.is.null${me.franchise ? `&franchise_id=in.(${(me.franchiseIds?.length ? me.franchiseIds : [me.franchise.id]).join(",")})` : ""}&select=franchise_id,franchise_joined_at&limit=50000`),
-    svc<{ franchise_id: string }[]>(`profiles?franchise_id=not.is.null&saas_tier=neq.none&saas_expires_at=gte.${new Date().toISOString()}&select=franchise_id&limit=50000`),
+    // "Paid" = a running growth plan OR a plan with an end date ahead (website / package set by an admin) — same as the dashboard.
+    svc<{ franchise_id: string }[]>(`profiles?franchise_id=not.is.null&or=(and(saas_tier.neq.none,saas_expires_at.gte.${new Date().toISOString()}),plan_expires_at.gte.${new Date().toISOString()})&select=franchise_id&limit=50000`),
     svc<{ franchise_id: string; kind: string; amount_paise: number }[]>(`franchise_ledger?select=franchise_id,kind,amount_paise&limit=50000`),
     svc<{ franchise_id: string; amount_paise: number }[]>(`payouts?status=in.(requested,approved)&select=franchise_id,amount_paise`),
     svc<{ franchise_id: string; email: string; active: boolean }[]>(`admin_users?franchise_id=not.is.null&select=franchise_id,email,active`),
