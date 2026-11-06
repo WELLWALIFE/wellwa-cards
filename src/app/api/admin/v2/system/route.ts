@@ -3,6 +3,7 @@
 import os from "node:os";
 import fs from "node:fs/promises";
 import { execFile } from "node:child_process";
+import { watchServer } from "@/lib/server-watch";
 import { promisify } from "node:util";
 import { requireAdmin } from "@/lib/admin-v2";
 import { svc, svcCount } from "@/lib/service";
@@ -33,7 +34,9 @@ export async function GET(request: Request) {
     svcCount("wa_broadcasts?status=eq.queued&select=id").catch(() => 0),
   ]);
   const errors24h = list(await svc<{ id: string }[]>(`audit_log?action=like.error.*&at=gte.${new Date(Date.now() - 86400_000).toISOString()}&select=id&limit=200`)).length;
+  const watch = await watchServer().catch(() => null);
   return Response.json({
+    watch,
     server: { host: os.hostname(), load: os.loadavg().map((x) => Math.round(x * 100) / 100), cpus: os.cpus().length, mem: { total, used: total - free }, disk, uptime: Math.round(os.uptime()), appUptime: Math.round(process.uptime()), node: process.version, platform: `${os.type()} ${os.release()}` },
     processes, workers: { bridge, mediaQueue, broadcastsDue, waCloudAccounts: waCloud },
     db: { ok: dbOk, ms: dbMs }, errors24h, at: new Date().toISOString(),

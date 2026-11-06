@@ -6,6 +6,7 @@ import { adminApi, fmtDate } from "@/lib/admin-client";
 import { Badge, Btn, Card, ErrorBox, PageHeader, Spinner, Stat, Table, td } from "@/components/admin/ui";
 
 type Sys = {
+  watch?: { suspects: { pid: number; name: string; exe: string; why: string }[]; overloaded: boolean } | null;
   server: { host: string; load: number[]; cpus: number; mem: { total: number; used: number }; disk: { total: number; free: number } | null; uptime: number; appUptime: number; node: string; platform: string };
   processes: { name: string; status: string; memory: number; cpu: number; restarts: number; uptime: number | null }[];
   workers: { bridge: string; mediaQueue: number; broadcastsDue: number; waCloudAccounts: number };
@@ -30,6 +31,13 @@ export default function SystemPage() {
   return (
     <div className="space-y-5">
       <PageHeader title="System health" sub={`${d.server.host} · ${d.server.platform} · Node ${d.server.node} · checked ${fmtDate(d.at, true)}`} actions={<Btn icon={RefreshCw} loading={busy} onClick={() => void load()}>Refresh</Btn>} />
+      {!!d.watch?.suspects.length && (
+        <div className="rounded-xl border border-red-300 bg-red-50 px-4 py-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950/40 dark:text-red-200">
+          <p className="font-semibold">Suspicious programs on the server ({d.watch.suspects.length}) — this is how the 6 Nov 2026 hack looked. Tell your developer at once.</p>
+          <ul className="mt-1 space-y-0.5 font-mono text-xs">{d.watch.suspects.map((x) => <li key={x.pid}>pid {x.pid} · “{x.name}” → {x.exe} — {x.why}</li>)}</ul>
+        </div>
+      )}
+      {d.watch && !d.watch.suspects.length && <p className="text-xs text-emerald-700">Server watch: no disguised or hidden programs found.</p>}
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
         <Stat label="RAM" value={`${memPct}%`} hint={`${gb(d.server.mem.used)} of ${gb(d.server.mem.total)}`} icon={Server} tone={tone(memPct)} />
         <Stat label="Disk" value={d.server.disk ? `${diskPct}%` : "—"} hint={d.server.disk ? `${gb(d.server.disk.free)} free` : ""} icon={Server} tone={tone(diskPct)} />

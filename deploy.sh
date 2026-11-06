@@ -111,6 +111,8 @@ $SSH "$SERVER" "test -f /etc/cron.d/shubhora-indexnow || printf '%s\n' 'PATH=/us
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-crm-daily || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/crm-daily.sh morning >> /var/log/shubhora-crm-daily.log 2>&1' '30 14 * * * root bash $APP/scripts/crm-daily.sh evening >> /var/log/shubhora-crm-daily.log 2>&1' > /etc/cron.d/shubhora-crm-daily && chmod 644 /etc/cron.d/shubhora-crm-daily"
 # Festival wishes to every owner's customers, 9:00 IST daily (sends only on a festival day). One cron file, written once.
 $SSH "$SERVER" "test -f /etc/cron.d/shubhora-festival-wishes || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '30 3 * * * root bash $APP/scripts/festival-wishes.sh >> /var/log/shubhora-festival-wishes.log 2>&1' > /etc/cron.d/shubhora-festival-wishes"
+# Server watch every 10 minutes (owner, 6 Nov 2026, after the hack): alarms on a disguised program or a long overload. Written once.
+$SSH "$SERVER" "test -f /etc/cron.d/shubhora-server-watch || printf '%s\n' 'PATH=/usr/local/bin:/usr/bin:/bin' '*/10 * * * * root bash $APP/scripts/server-watch.sh >> /var/log/shubhora-server-watch.log 2>&1' > /etc/cron.d/shubhora-server-watch && chmod 644 /etc/cron.d/shubhora-server-watch"
 echo "→ health check…"
 curl --fail --silent --show-error -o /dev/null -w "   homepage %{http_code}\n" \
   --resolve $SITE_HOST:443:148.72.247.91 $SITE_URL/ --max-time 30
