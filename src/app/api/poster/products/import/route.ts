@@ -63,7 +63,8 @@ Return ONLY JSON: {"items":[{"n":1,"name":"","price":"","category":""}]} — one
         items.push({ name, price: money(o.price), category: S(o.category, 30), photo: urls[orig] });
       });
       return NextResponse.json({ items });
-    } catch {
+    } catch (e) {
+      console.log("[product-import] failed", mode, e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300));
       return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 502 });
     }
   }
@@ -96,7 +97,9 @@ Return ONLY JSON: {"items":[{"n":1,"name":"","price":"","category":""}]} — one
     if (mode === "suggest") items.forEach((x) => { x.price = ""; });
     if (!items.length) return NextResponse.json({ error: mode === "photo" ? "No items could be read from that photo. Try a clearer, straight photo." : mode === "suggest" ? "No suggestions right now. Please add them yourself." : "No items found in that text." }, { status: 422 });
     return NextResponse.json({ items });
-  } catch {
+  } catch (e) {
+    // Said in the server log, so a failing read can be told apart (seen live, 11 Nov 2026: "Type a list" and "Ideas for me" both failed).
+    console.log("[product-import] failed", mode, e instanceof Error ? e.message.slice(0, 300) : String(e).slice(0, 300));
     return NextResponse.json({ error: "Something went wrong. Please try again." }, { status: 502 });
   }
 }
