@@ -135,13 +135,15 @@ export default function TodayPage() {
       if (!r.ok) { setPhase("offline"); return; }
       const list = r.data.profiles ?? [];
       setProfiles(list);
-      if (!list.length) { setPhase("noprofile"); return; }
+      // Signed in, nothing made yet: the Congratulations screen (owner, 11 Nov 2026: "site nahi bani tab tak congratulation wala page hi
+      // aana chahiye") — the "Make your website in 5 minutes" screen below is only for a visitor who is not signed in.
+      if (!list.length) { router.replace("/poster/welcome"); return; }
       const want = currentProfileId();
       const p = list.find((x) => x.id === want) ?? list.find((x) => x.is_default) ?? list[0];
       setProfile(p); setCurrentProfileId(p.id); setPhase("ready");
       loadPoster(p);
     } catch { setPhase("offline"); }
-  }, [loadPoster]);
+  }, [loadPoster, router]);
   const booted = useRef(false);
   useEffect(() => {
     // Once per visit: loadPoster changes with the Today/Tomorrow tab, and running this again asked for the same poster twice.
