@@ -136,6 +136,18 @@ Rules: only facts you actually found for THIS business; a field you did not find
   const cat = S(o.category, 30).toLowerCase();
   out.category = categoryOf(cat) ? cat : matchCategory(`${out.name} ${S(o.about, 400)}`) ?? "";
   out.city = S(o.city, 60); out.address = S(o.address, 200) || mapAddr;
+  // Words typed into a search box are often all small letters ("wellwa life"): a name reads with capitals.
+  if (out.name && out.name === out.name.toLowerCase() && /[a-z]/.test(out.name)) out.name = out.name.replace(/\b[a-z]/g, (c) => c.toUpperCase());
+  // The city, from the address when nothing else gave it: "…, Sector 24, Gurugram, Haryana 122010" → the part before the state / PIN.
+  if (!out.city && out.address) {
+    const parts = out.address.replace(/,?\s*India\s*$/i, "").split(",").map((x) => x.trim().replace(/\b\d{6}\b/, "").trim()).filter(Boolean);
+    const STATE = /^(andhra pradesh|arunachal pradesh|assam|bihar|chhattisgarh|goa|gujarat|haryana|himachal pradesh|jharkhand|karnataka|kerala|madhya pradesh|maharashtra|manipur|meghalaya|mizoram|nagaland|odisha|orissa|punjab|rajasthan|sikkim|tamil nadu|telangana|tripura|uttar pradesh|uttarakhand|west bengal|delhi ncr|jammu and kashmir|jammu & kashmir|ladakh|chandigarh|puducherry|up|mp|hp|uk)$/i;
+    const last = parts[parts.length - 1] ?? "";
+    // Only an address that ends the way a full one does (a PIN code or a state) says where its city is.
+    const full = /\b\d{6}\b/.test(out.address) || STATE.test(last);
+    const city = full && parts.length >= 2 ? (STATE.test(last) ? parts[parts.length - 2] ?? "" : last) : "";
+    if (city && city.length <= 40 && !/\d/.test(city)) out.city = city;
+  }
   const ph = String(o.phone ?? "").replace(/\D/g, "").slice(-10); out.phone = /^[6-9]\d{9}$/.test(ph) ? ph : "";
   out.about = S(o.about, 400); out.hours = S(o.hours, 120);
   const site = S(o.website, 200); out.website = /^https?:\/\//.test(site) && linkKind(site) === "website" ? site : "";
