@@ -54,7 +54,7 @@ export function SetupResume({ variant }: { variant: "float" | "banner" }) {
   // The website editor has its own Save bar in the same place (30 Sep 2026).
   // The Business screens (/poster/business and every page under it): the bar sat over their buttons and lists (14 Oct 2026).
   // The advanced-website page (20 Oct 2026): it sat over "Open it full size" and the design buttons.
-  const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|plan|products|website\/edit|explainer\/edit|ads|site\/advanced)(\/|$)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
+  const onSetupScreens = /^\/poster\/(welcome|setup|onboard|start|d\/editor|card\/build|card\/edit|plan|products|website\/edit|explainer\/edit|ads|site\/advanced)(\/|$)/.test(path) || /^\/poster\/business(\/|$)/.test(path) || path === "/dashboard" || /^\/cards\/[^/]+$/.test(path);
   // The Home screen of a brand-new account has its own one big button ("Make my website"): a second "Continue" bar made two buttons for one job.
   if (path === "/poster" && freeDone === 0) return null;
   // "Website पूरी करें" has its own one-step guide: a second "Finish setup" box there named another step and covered the list (24 Oct 2026).

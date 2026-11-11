@@ -49,7 +49,7 @@ import { SITE_CARDS, cleanSiteUrl, hostOf, isShubhoraHost, looksLikeEmail, looks
 import { ONBOARD_SCREENS, SETUP_HOME, SETUP_SCREENS, type ScreenKey } from "@/lib/setup-steps";
 import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { tradeQuestionsFor } from "@/lib/trade-questions";
-import { isEmbedded } from "@/components/poster/embed-mode";
+import { isEmbedded, toParent } from "@/components/poster/embed-mode";
 import { Help, type HelpKey } from "@/components/poster/field-help";
 
 const box = "rounded-xl border border-border bg-surface px-3.5 py-3 text-base font-normal";
@@ -1166,6 +1166,23 @@ function Onboard() {
     if (opener && canGoBackInApp()) { setStep(opener); router.back(); return; }
     go(to, opener ? "replace" : "push");
   }
+  // Inside Card / Website edit the Save bar under the preview saves this screen too (owner, 11 Nov 2026: this screen's own Save sits at
+  // the very end of a long form). It lights up when something here has changed, and a failed save is said there as well.
+  const embedBase = useRef("");
+  useEffect(() => {
+    if (!editing || !isEmbedded() || loading) return;
+    const sig = JSON.stringify([biz, facts, you, site]);
+    if (!embedBase.current) embedBase.current = sig;
+    toParent({ type: "embed-dirty", dirty: sig !== embedBase.current });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [biz, facts, you, site, loading, editing]);
+  useEffect(() => {
+    if (!editing || !isEmbedded()) return;
+    const on = (e: MessageEvent) => { if (e.origin === window.location.origin && e.source === window.parent && (e.data as { type?: string })?.type === "embed-save") setSaveGo((n) => n + 1); };
+    window.addEventListener("message", on);
+    return () => window.removeEventListener("message", on);
+  }, [editing]);
+  useEffect(() => { if (editing && isEmbedded() && err) toParent({ type: "embed-error", text: err }); }, [err, editing]);
   useEffect(() => {
     if (saveGo) void save();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1594,7 +1611,10 @@ function Onboard() {
       let siteChanged = false;
       try { siteChanged = await saveSiteFacts(); } catch { /* the V-Card form asks again */ }
       // Step 1's designation / WhatsApp and step 2's company details (timings, photos, payments, social…).
-      try { await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, factKeys()) : {}) } } }); } catch { /* the build form shows them again */ }
+      // A focused edit (Card & Website → Edit) says so when this did not go through — it used to return "saved" with the timings and
+      // the rest not written (seen live, 11 Nov 2026: after the computer woke up). The set-up walk goes on; its next screens write them again.
+      const wrote = await api("/api/card/facts", { method: "PATCH", json: { facts: { ...youFacts(), ...(factsDirty.current ? pickFacts(facts, factKeys()) : {}) } } }).catch(() => null);
+      if (back && (!wrote || !wrote.ok)) { setErr(T("Could not save. Check your internet and press Save again.", "Save नहीं हुआ। Internet देखकर दोबारा Save दबाएँ।")); return; }
       // Keep the published V-Card in step with the setup (name, business, photo, logo, number).
       // A changed website on a live card is rebuilt below (and that publish asks first): then only the identity is
       // synced now, never the new site's about / address ahead of the owner's answer.

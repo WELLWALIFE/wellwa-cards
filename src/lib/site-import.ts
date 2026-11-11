@@ -155,14 +155,21 @@ function logoCandidates(html: string, base: string, ld: Obj[]): string[] {
   const out: string[] = [];
   const push = (u: string | null) => { if (u && !out.includes(u)) out.push(u); };
   for (const o of ld) push(imageList(o.logo, base)[0] ?? null);
+  // The site's own name ("amul" of www.amul.com): a logo picture that carries it comes before the other "logo" pictures on the page —
+  // partners', certificates', group companies' (seen live, 11 Nov 2026: amul.com gave a group company's logo).
+  const own = (() => { try { const h = new URL(base).hostname.replace(/^www\./i, "").split(".")[0].toLowerCase(); return h.length >= 3 ? h : ""; } catch { return ""; } })();
+  const named: string[] = [], others: string[] = [];
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {
     const tag = m[0];
-    if (/logo/i.test(`${attr(tag, "class")} ${attr(tag, "alt")} ${attr(tag, "id")} ${attr(tag, "src")}`)) {
+    const words = `${attr(tag, "class")} ${attr(tag, "alt")} ${attr(tag, "id")} ${attr(tag, "src")}`;
+    if (/logo/i.test(words)) {
       const src = biggestFromSrcset(attr(tag, "srcset") || attr(tag, "data-srcset")) || attr(tag, "src") || attr(tag, "data-src") || attr(tag, "data-lazy-src");
-      const u = absolute(src, base); if (u && !/\.svg(\?|$)/i.test(u)) push(u);
+      const u = absolute(src, base);
+      if (u && !/\.svg(\?|$)/i.test(u)) (own && `${attr(tag, "alt")} ${attr(tag, "src")}`.toLowerCase().includes(own) ? named : others).push(u);
     }
-    if (out.length >= 5) break;
+    if (named.length + others.length >= 8) break;
   }
+  for (const u of [...named, ...others]) { if (out.length >= 5) break; push(u); }
   const touch = html.match(/<link[^>]+rel=["']apple-touch-icon[^"']*["'][^>]*>/i)?.[0];
   push(touch ? absolute(attr(touch, "href"), base) : null);
   return out;
@@ -591,7 +598,6 @@ export type StoredSite = { logo: string | null; cover: string | null; gallery: s
  *  none of their own (the build decides that). The brand's address and phone never reach the dealer's card. */
 export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" | "dealer" = "own"): Promise<StoredSite> {
   let n = 0;
-  void role;
   const [logo, coverCands, galleryCands, productPics] = await Promise.all([
     s.logos?.length || s.logo ? copyLogo(userId, s.logos?.length ? s.logos : [s.logo!], n++) : Promise.resolve(null),
     pool(s.covers.slice(0, 4), 3, (u) => copyImage(userId, u, "wide", n++, 700)),
@@ -599,8 +605,10 @@ export async function storeSiteMedia(userId: string, s: SiteImport, role: "own" 
     pool(s.products, 3, async (p) => (await Promise.all(p.images.slice(0, 2).map((u) => copyImage(userId, u, "product", n++, 300)))).filter((x): x is NonNullable<typeof x> => !!x).map((x) => x.url)),
   ]);
   // The cover must be a wide picture; a tall one joins the gallery instead.
-  const wide = [...coverCands, ...galleryCands].filter((x): x is NonNullable<typeof x> => !!x);
-  const cover = wide.find((x) => x.w / x.h >= 1.3) ?? null;
+  // A dealer's brand site: its home-page slides are the brand's campaigns (seen live, 11 Nov 2026: an Amul dealer got a film
+  // poster as the banner and a "National Milk Day" slide in About) — they are never the dealer's cover, and never join the gallery.
+  const wide = [...(role === "dealer" ? [] : coverCands), ...galleryCands].filter((x): x is NonNullable<typeof x> => !!x);
+  const cover = role === "dealer" ? null : wide.find((x) => x.w / x.h >= 1.3) ?? null;
   const gallery = wide.filter((x) => x !== cover).map((x) => x.url).slice(0, 5);
   return {
     logo: logo?.url ?? null,
