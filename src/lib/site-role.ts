@@ -20,7 +20,11 @@ const SOCIAL: { re: RegExp; key: "instagram" | "facebook" | "youtube"; label: st
 ];
 // Exact Google hosts only (a review, 2 Nov 2026: "maps.google.evil.com" passed the old [a-z.]+ and the link reader followed it).
 const GOOGLE_HOST = /^(www\.|maps\.)?google\.(?:com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/i;
-const MAPS = /^(maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+// share.google: Google's own "Share" link of a business (opens its listing in Google Search) — seen live, 11 Nov 2026: it was read as a
+// website named "Google Search".
+const MAPS = /^(maps\.app\.goo\.gl|goo\.gl|g\.page|share\.google)$/i;
+/** A Google Search address that shows one business (its listing): …/search?q=<name>. */
+const GOOGLE_LISTING = /\/search\?(?:.*&)?q=[^&]/i;
 
 /** Does the text look like an email address ("name@gmail.com")? An email is not a website, and must never be looked up as a name. */
 export const looksLikeEmail = (raw: string): boolean => /\S+@\S+/.test(raw ?? "");
@@ -57,7 +61,9 @@ export function cleanSiteUrl(raw: string): string {
     u.hash = "";
     let out = u.toString();
     if (u.pathname === "/" && !u.search) out = out.replace(/\/$/, "");
-    return out.slice(0, 300);
+    // A Google link copied from a search result is very long, and the part that says where it leads (daddr=…) comes last: cutting it at
+    // 300 lost the address (seen live, 11 Nov 2026). Every other link stays short.
+    return out.slice(0, GOOGLE_HOST.test(u.hostname) ? 1500 : 300);
   } catch {
     return "";
   }
@@ -79,7 +85,7 @@ export function socialDetour(url: string): { key: "instagram" | "facebook" | "yo
   const host = hostOf(url);
   if (!host) return null;
   for (const s of SOCIAL) if (s.re.test(host)) return { key: s.key, label: s.label };
-  if (MAPS.test(host) || (GOOGLE_HOST.test(host) && (/^maps\./i.test(host) || /\/maps/i.test(url)))) return { key: "map", label: "Google Maps" };
+  if (MAPS.test(host) || (GOOGLE_HOST.test(host) && (/^maps\./i.test(host) || /\/maps/i.test(url) || GOOGLE_LISTING.test(url)))) return { key: "map", label: "Google Maps" };
   return null;
 }
 

@@ -21,12 +21,13 @@ export type Lookup = { ok: boolean; kind: LinkKind; source: string; name: string
 // Exact hosts only — a Google Maps link is fetched (redirects followed) on the server, so a look-alike host ("maps.google.evil.com") must
 // never pass, and every redirect hop is checked again (a review, 2 Nov 2026: SSRF).
 const GOOGLE_HOST = /^(www\.|maps\.)?google\.(?:com|co\.[a-z]{2}|com\.[a-z]{2}|[a-z]{2})$/i;
-const SHORT_MAP = /^(maps\.app\.goo\.gl|goo\.gl|g\.page)$/i;
+const SHORT_MAP = /^(maps\.app\.goo\.gl|goo\.gl|g\.page|share\.google)$/i;   // share.google: Google's "Share" link of a business listing
+const GOOGLE_LISTING = /\/search\?(?:.*&)?q=[^&]/i;   // …/search?q=<the business> — where a share.google link lands
 const mapHost = (u: URL) => u.protocol === "https:" && (SHORT_MAP.test(u.hostname) || GOOGLE_HOST.test(u.hostname));
 const MARKET = /(^|\.)(amazon\.in|amazon\.com|flipkart\.com|meesho\.com|myntra\.com|ajio\.com|nykaa\.com|blinkit\.com|swiggy\.com|zomato\.com|etsy\.com|shopsy\.in|jiomart\.com)$/i;
 export function linkKind(url: string): LinkKind {
   let h = ""; try { h = new URL(url).hostname.replace(/^www\./, ""); } catch { return "website"; }
-  if (SHORT_MAP.test(h) || (GOOGLE_HOST.test(h) && (/^maps\./i.test(h) || /\/maps/i.test(url)))) return "map";
+  if (SHORT_MAP.test(h) || (GOOGLE_HOST.test(h) && (/^maps\./i.test(h) || /\/maps/i.test(url) || GOOGLE_LISTING.test(url)))) return "map";
   if (/(^|\.)instagram\.com$/i.test(h)) return "instagram";
   if (/(^|\.)(facebook\.com|fb\.com|fb\.me)$/i.test(h)) return "facebook";
   if (/(^|\.)(youtube\.com|youtu\.be)$/i.test(h)) return "youtube";
