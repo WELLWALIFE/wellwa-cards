@@ -9,6 +9,15 @@ export type DirCard = { username: string; name: string; company: string; tagline
 export type CityEntry = { slug: string; name: string; count: number; categories: { slug: string; name: string; hi: string; count: number }[] };
 
 export const slugOf = (s: string) => String(s ?? "").toLowerCase().normalize("NFKD").replace(/[̀-ͯ]/g, "").replace(/[^a-z0-9ऀ-ॿ]+/g, "-").replace(/^-|-$/g, "").slice(0, 60);
+const NOT_A_PLACE = new Set(["online", "india", "bharat", "na", "n-a", "none", "nil", "all", "all-india", "pan-india", "anywhere", "everywhere", "worldwide", "test"]);
+/** True when the text reads like a town or city: has letters, no phone number, email or link, and is not a word such as "online". */
+export const isPlace = (city: string) => {
+  const c = String(city ?? "").trim();
+  if (c.length < 2 || c.length > 60) return false;
+  if (/\d{7,}/.test(c) || /[@/]|www\.|\.(com|in|net|org)\b/i.test(c)) return false;
+  if ((c.match(/[\p{L}]/gu) ?? []).length < 2) return false;
+  return !NOT_A_PLACE.has(slugOf(c));
+};
 const titleCase = (s: string) => s.replace(/\b\p{L}/gu, (c) => c.toUpperCase());
 
 type Row = { username: string; name: string | null; company: string | null; tagline: string | null; avatar_url: string | null; cover_url: string | null; theme_color: string | null; seo: { city?: string; category?: string; categoryKey?: string } | null; language: string | null };
@@ -23,7 +32,9 @@ export const directoryCards = cache(async (): Promise<DirCard[]> => {
     for (const r of (data ?? []) as Row[]) {
       const city = String(r.seo?.city ?? "").trim();
       // A city written only in a script the slug does not keep (Tamil, Bengali…) or only in punctuation has no address: /in/ would be its link.
-      if (!city || !r.username || !slugOf(city)) continue;
+      // Not a place (owner, 11 Nov 2026): a phone number, an email, a link or "online" typed in the city box must not become
+      // a public /in/ page or a sitemap line.
+      if (!city || !r.username || !slugOf(city) || !isPlace(city)) continue;
       const key = String(r.seo?.categoryKey ?? "");
       const cat = key ? categoryOf(key) : null;
       const category = String(r.seo?.category ?? cat?.en ?? "Business").trim();
