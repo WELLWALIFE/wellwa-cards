@@ -126,10 +126,16 @@ Answer with ONE JSON object only, no other words:
 {"found": true|false, "name": "the business name exactly as it is written", "category": "one key from: ${keys} — or \\"\\"", "city": "", "address": "street address as listed", "phone": "10-digit Indian number if public", "about": "2 plain sentences on what it does, in English", "hours": "opening hours as listed, short, e.g. Mon–Sun 9 am – 10 pm", "website": "its own website if it has one", "instagram": "its instagram link if found", "facts": ["up to 10 short facts the listing states: veg / non-veg, cuisines, delivery, dine-in, services, brands, since year, AC, parking…"]}
 Rules: only facts you actually found for THIS business; a field you did not find is "". Never guess a phone number or an address. If the link shows a product rather than a seller, give the seller / store.`;
   let text = "";
+  // Why a read came back empty is written to the server log (seen live, 11 Nov 2026: only the name in the link was filled, for every link).
+  const why = (e: unknown) => (e instanceof Error ? e.message : String(e)).slice(0, 200);
   try { text = await ask(prompt, [{ url_context: {} }, { google_search: {} }]); }
-  catch { try { text = await ask(prompt, [{ google_search: {} }]); } catch { text = ""; } }
+  catch (e1) {
+    console.log("[business-lookup] first try failed", kind, why(e1));
+    try { text = await ask(prompt, [{ google_search: {} }]); } catch (e2) { console.log("[business-lookup] second try failed", kind, why(e2)); text = ""; }
+  }
   let o: Record<string, unknown> = {};
   try { const m = text.match(/\{[\s\S]*\}/); o = m ? JSON.parse(m[0]) : {}; } catch { o = {}; }
+  if (!S(o.name, 100) && !S(o.address, 200)) console.log("[business-lookup] nothing read", kind, JSON.stringify(text.slice(0, 300)));
   out.name = S(o.name, 100) || mapName;
   // A piece of the link itself (a short link's code) is never the business's name.
   if (out.name && !/\s/.test(out.name) && out.name.length >= 8 && rawUrl.includes(out.name)) out.name = "";
