@@ -88,6 +88,8 @@ const looksLikeMapLink = (v: string) => /^https?:\/\/(?:[\w-]+\.)*(?:google\.[a-
 /** The website step's answer. kind "" = nothing chosen yet; the step insists on one, so a link never exists
  *  without a role (a pasted link silently treated as "own" would import a stranger's name and products). */
 type SiteState = { kind: SiteKind | ""; url: string; assertedAt: string };
+/** What a read put into the form (see `fromRead`). */
+type ReadFill = { src?: string; name?: string; city?: string; address?: string; about?: string; logo?: string; category?: string; hours?: string; answers?: string[] };
 /** What /api/site/peek learned from the home page. */
 type PeekData = { url: string; name: string; logo?: string; about?: string; city?: string; address?: string; phone?: string; hours?: string; answers?: Record<string, string[]>; products: number; category?: string; empty?: boolean };
 type PeekState = { state: "idle" | "reading" | "found" | "unreadable" | "empty"; url: string; role: "own" | "dealer" | "reference"; data: PeekData | null };
@@ -266,6 +268,10 @@ function Onboard() {
   const peekFor = useRef({ url: "", role: "", state: "" });
   /** Fields the person typed into: a late peek result never writes over them. */
   const touched = useRef(new Set<string>());
+  /** What the last read (a website, a Maps / Instagram link) put into the form, and where it came from. When the owner puts in another
+   *  website, or takes it away, these go with it — unless the owner has changed them since (owner, 11 Nov 2026: a name searched while
+   *  typing was the wrong business, and its name and logo stayed after the right one was put in). */
+  const fromRead = useRef<ReadFill>({});
   /** The trade the business name suggested (not the owner's own pick, and not the website's). */
   /** A social / maps link pasted as the website, waiting for "keep it as that?" */
   const [pendingSocial, setPendingSocial] = useState<Detour | null>(null);
@@ -448,7 +454,7 @@ function Onboard() {
       try {
         const key = `onboard-draft:${data.user?.id ?? ""}`;
         const raw = localStorage.getItem(key);
-        const d = raw ? JSON.parse(raw) as { v?: number; at?: number; base?: number; step?: string; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; promote?: "both" | "own" | "shubhora"; touched?: string[] } : null;
+        const d = raw ? JSON.parse(raw) as { v?: number; at?: number; base?: number; step?: string; site?: SiteState; biz?: typeof biz; you?: typeof you; facts?: CardFacts; detours?: Detour[]; promote?: "both" | "own" | "shubhora"; touched?: string[]; read?: ReadFill } : null;
         // Only a draft typed over THIS server version comes back; one from before a reset or another phone's save is thrown away.
         const serverAt = Date.parse(String(data.user?.updated_at ?? "")) || 0;
         serverBase.current = Math.max(serverBase.current, serverAt);   // never back to an older version than the first look at the account has seen
@@ -464,6 +470,7 @@ function Onboard() {
           if (Array.isArray(d.detours)) setDetours(d.detours);
           if (d.promote) setPromote(d.promote);
           for (const k of d.touched ?? []) touched.current.add(k);
+          if (d.read && typeof d.read === "object") fromRead.current = d.read;
           if (!wanted && d.step && d.step !== "you") setStep(asStep(d.step) ?? "trade");
         }
       } catch { /* a bad draft is just ignored */ }
@@ -501,7 +508,7 @@ function Onboard() {
       const key = `onboard-draft:${uid}`;
       const cur = JSON.parse(localStorage.getItem(key) || "null") as { base?: number } | null;
       if (cur?.base && cur.base > serverBase.current) return;   // a newer tab owns the draft
-      localStorage.setItem(key, JSON.stringify({ v: 2, at: Date.now(), base: serverBase.current, step, site, biz, you, facts, detours, promote, touched: [...touched.current] }));
+      localStorage.setItem(key, JSON.stringify({ v: 2, at: Date.now(), base: serverBase.current, step, site, biz, you, facts, detours, promote, touched: [...touched.current], read: fromRead.current }));
     } catch { /* storage full or off: nothing lost but the convenience */ }
   }, [uid, step, site, biz, you, facts, detours, promote, editing]);
   useEffect(() => {
@@ -894,10 +901,51 @@ function Onboard() {
   /** False while the trade is only a guess from the name that the name, as it now reads, no longer supports. */
   const guessHolds = () => !biz.guessed || biz.category !== biz.guessed || matchCategory(`${biz.name ?? ""} ${biz.about ?? ""}`) === biz.category;
 
+  /** Names a read by the role it was read in and the site it came from. */
+  const readKey = (role: string, url: string) => `${role}|${hostOf(url)}`;
+  /** Takes back out of the form what the last read put there — only what still reads exactly as that read left it and the owner has
+   *  not typed into. The name, city, address, about, logo, trade, timings and the trade's ticked answers. */
+  function dropRead() {
+    const was = fromRead.current;
+    fromRead.current = {};
+    const t = touched.current;
+    if (was.name || was.city || was.address || was.about || was.logo || was.category) {
+      setBiz((b) => {
+        let n = { ...b };
+        if (was.name && !t.has("name") && (b.name ?? "") === was.name) n.name = "";
+        if (was.city && !t.has("city") && (b.city ?? "") === was.city) n.city = "";
+        if (was.address && !t.has("address") && (b.address ?? "") === was.address) n.address = "";
+        if (was.about && !t.has("about") && (b.about ?? "") === was.about) { n.about = ""; n.aboutMade = undefined; }
+        if (was.logo && !t.has("logo") && b.logo === was.logo) n.logo = "";
+        if (was.category && !t.has("category") && b.category === was.category) n = withCategory(n, "");
+        return n;
+      });
+    }
+    if (was.hours || was.answers?.length) {
+      setFacts((f) => {
+        let n = f;
+        if (was.hours && !t.has("hours") && f.hours === was.hours) n = { ...n, hours: "" };
+        if (was.answers?.length && !t.has("category") && n.tradeAnswers) {
+          const keep = Object.fromEntries(Object.entries(n.tradeAnswers).filter(([k]) => !was.answers!.includes(k)));
+          n = { ...n, tradeAnswers: keep };
+        }
+        if (n !== f) factsDirty.current = true;
+        return n;
+      });
+    }
+  }
+  /** A read from `src` is starting: what an earlier read from somewhere else filled goes first. */
+  function readFrom(src: string) {
+    if (fromRead.current.src && fromRead.current.src !== src) dropRead();
+    fromRead.current = { ...fromRead.current, src };
+  }
+
   /** The website's own account of itself goes into the fields that are still empty — never over anything typed. */
-  function prefill(d: PeekData, onlyEmpty = false) {
+  function prefill(d: PeekData, onlyEmpty = false, src = readKey("own", d.url)) {
+    readFrom(src);
+    const mine = () => fromRead.current.src === src;   // a newer read has not taken over since
     // Opening hours from Google Maps / the listing (owner, 2 Nov 2026: "Timings: Not filled" though Maps shows them) — only into an empty box.
-    if (d.hours && !touched.current.has("hours")) setFacts((f) => (f.hours ? f : (factsDirty.current = true, { ...f, hours: d.hours!.slice(0, 120) })));
+    if (d.hours && !touched.current.has("hours")) setFacts((f) => { if (f.hours) return f; const hours = d.hours!.slice(0, 120); if (mine()) fromRead.current.hours = hours; factsDirty.current = true; return { ...f, hours }; });
     // The trade's questions the listing answers ("Pure veg", "Home delivery") arrive ticked — only for the trade they were made for, and
     // only into questions still unanswered (owner, 2 Nov 2026). The owner sees them ticked on "About your trade" and can untick.
     const ans = d.answers && typeof d.answers === "object" ? d.answers : null;
@@ -907,22 +955,27 @@ function Onboard() {
       setFacts((f) => {
         const cur = f.tradeAnswers ?? {};
         const add = Object.fromEntries(Object.entries(ans).filter(([k, v]) => Array.isArray(v) && v.length && !(cur[k]?.length)));
-        return Object.keys(add).length ? (factsDirty.current = true, { ...f, tradeAnswers: { ...cur, ...add } }) : f;
+        if (!Object.keys(add).length) return f;
+        if (mine()) fromRead.current.answers = [...new Set([...(fromRead.current.answers ?? []), ...Object.keys(add)])];
+        factsDirty.current = true;
+        return { ...f, tradeAnswers: { ...cur, ...add } };
       });
     }
     setBiz((b) => {
       const t = touched.current;
       let n = { ...b };
-      if (!t.has("name") && !(b.name ?? "").trim() && d.name) n.name = d.name.slice(0, 80);
-      if (!t.has("city") && !(b.city ?? "").trim() && d.city) n.city = d.city.slice(0, 60);
-      if (!t.has("address") && !(b.address ?? "").trim() && d.address) n.address = d.address.slice(0, 200);
+      const got: ReadFill = {};
+      if (!t.has("name") && !(b.name ?? "").trim() && d.name) n.name = got.name = d.name.slice(0, 80);
+      if (!t.has("city") && !(b.city ?? "").trim() && d.city) n.city = got.city = d.city.slice(0, 60);
+      if (!t.has("address") && !(b.address ?? "").trim() && d.address) n.address = got.address = d.address.slice(0, 200);
       // A website new to this account replaces an older about and trade too (they described an earlier set-up);
       // a site already on record only fills what is empty.
       // (a Maps / Instagram / store read only fills what is empty — it never replaces the owner's trade or words; seen live, 2 Nov 2026)
       const fresh = !onlyEmpty && (!siteAtLoad.current.url || hostOf(d.url) !== hostOf(siteAtLoad.current.url));
-      if (!t.has("about") && (fresh || !(b.about ?? "").trim()) && d.about) { n.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" "); n.aboutMade = undefined; }
-      if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
-      if (!t.has("category") && (fresh || !b.category) && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
+      if (!t.has("about") && (fresh || !(b.about ?? "").trim()) && d.about) { n.about = got.about = d.about.trim().split(/\s+/).slice(0, ABOUT_MAX_WORDS).join(" "); n.aboutMade = undefined; }
+      if (!t.has("logo") && !b.logo && d.logo) n.logo = got.logo = d.logo;
+      if (!t.has("category") && (fresh || !b.category) && d.category && categoryOf(d.category)) { n = withCategory(n, d.category); got.category = d.category; }
+      if (mine()) Object.assign(fromRead.current, got);
       return n;
     });
   }
@@ -930,11 +983,15 @@ function Onboard() {
   /** A brand's site fills what the dealer's form can take from it: the trade (a Maruti dealer is an auto showroom)
    *  and, until the dealer uploads their own, the brand's logo (owner's call, 2 Oct 2026). Never the name / city. */
   function prefillDealer(d: PeekData) {
+    const src = readKey("dealer", d.url);
+    readFrom(src);
     setBiz((b) => {
       const t = touched.current;
       let n = { ...b };
-      if (!t.has("category") && !b.category && d.category && categoryOf(d.category)) n = withCategory(n, d.category);
-      if (!t.has("logo") && !b.logo && d.logo) n.logo = d.logo;
+      const got: ReadFill = {};
+      if (!t.has("category") && !b.category && d.category && categoryOf(d.category)) { n = withCategory(n, d.category); got.category = d.category; }
+      if (!t.has("logo") && !b.logo && d.logo) n.logo = got.logo = d.logo;
+      if (fromRead.current.src === src) Object.assign(fromRead.current, got);
       return n;
     });
   }
@@ -942,6 +999,9 @@ function Onboard() {
   /** A website the person likes says what trade they are in (owner's call, 4 Oct 2026: "reference website se bhi
    *  category auto select") — only the trade, and only until they pick one themselves. */
   function prefillReference(d: PeekData) {
+    const src = readKey("reference", d.url);
+    readFrom(src);
+    if (!touched.current.has("category") && d.category && categoryOf(d.category)) fromRead.current.category = d.category;
     setBiz((b) => (!touched.current.has("category") && d.category && categoryOf(d.category) && d.category !== b.category ? withCategory(b, d.category) : b));
   }
 
@@ -1001,6 +1061,7 @@ function Onboard() {
     if (same && peekFor.current.state !== "unreadable") return;
     const seq = ++peekSeq.current;
     const role = st.kind;
+    readFrom(readKey(role, url));   // another website: what the earlier one filled goes now, not when this read comes back
     peekFor.current = { url, role, state: "reading" };
     setPeek({ state: "reading", url, role, data: null });
     const ctrl = new AbortController();
@@ -1032,7 +1093,7 @@ function Onboard() {
     // back to "Yes" dropped the offer and the Maps link was then read as a website, which fails).
     const d = next.url.trim() ? socialDetour(next.url) : null;
     setPendingSocial(d ? { ...d, url: cleanSiteUrl(next.url) } : null);
-    if (k === "none") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
+    if (k === "none") { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); dropRead(); }
     else if (next.url && !d) void startPeek(next);
   }
 
@@ -1044,6 +1105,12 @@ function Onboard() {
     setSite((st) => ({ ...st, url: v }));
     const d = v.trim() ? socialDetour(v) : null;
     setPendingSocial(d ? { ...d, url: cleanSiteUrl(v) } : null);
+    // The box no longer says the website that was read: its name, logo and the rest leave the form at once, and a read still on its
+    // way is let go (owner, 11 Nov 2026: "dusara name dalte hi hat jaana chahiye").
+    const host = v.trim() ? hostOf(v) : "";
+    if (peekFor.current.url && hostOf(peekFor.current.url) !== host) { peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); }
+    const src = fromRead.current.src ?? "";
+    if (src && !src.startsWith("link|") && src.slice(src.indexOf("|") + 1) !== host) dropRead();
   }
 
   /** "Yes, keep it as my Instagram": the link is stored where it belongs (the facts' social links, so every save
@@ -1061,6 +1128,8 @@ function Onboard() {
     // The answer stays where the owner put it ("Yes, my business is online"); the box just empties — the link is kept as what it is.
     setSite((st) => ({ kind: st.kind === "dealer" ? "dealer" : st.kind || "own", url: "", assertedAt: st.assertedAt }));
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
+    const src = `link|${d.url}`;
+    readFrom(src);   // what a website read before this link filled goes first
     // Read the business behind it (owner, 2 Nov 2026: "Scalio Maps / Instagram se details le leta hai"): name, trade, city, address,
     // phone, about — filled only where the owner has not typed (prefill), checked by the owner on "Your business".
     // A YouTube channel is kept as a link; nothing is read from it (and Next goes on, like after a read).
@@ -1070,7 +1139,7 @@ function Onboard() {
     void api<PeekData & { ok: boolean; website?: string }>("/api/business/lookup", { method: "POST", json: { url: d.url } }).then((r) => {
       if (seq !== socialSeq.current) return;
       if (!r.ok || !r.data.ok || !r.data.name) { setSocialRead({ state: "none", label: d.label, name: "" }); return; }
-      prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" }, true);
+      prefill({ ...r.data, url: r.data.website || d.url, products: 0, logo: "" }, true, src);
       setSocialRead({ state: "found", label: d.label, name: r.data.name });
     }).catch(() => { if (seq === socialSeq.current) setSocialRead({ state: "none", label: d.label, name: "" }); });
   }
@@ -1148,6 +1217,7 @@ function Onboard() {
     setFinding("");
     setSiteErr(""); setPendingSocial(null);
     peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK);
+    dropRead();
     const none: SiteState = { kind: "reference", url: "", assertedAt: "" };
     siteRef.current = none;   // the save inside leaveWebsite reads this render's site: it must already be the empty one
     setSite(none);
@@ -1870,7 +1940,7 @@ function Onboard() {
                       </p>
                     )}
                     {siteAtLoad.current.url && (
-                      <button type="button" onClick={() => { setSite({ kind: "reference", url: "", assertedAt: "" }); peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); setSiteErr(""); }} className="text-xs font-semibold text-muted underline">{T("Remove this website", "ये website हटाएँ")}</button>
+                      <button type="button" onClick={() => { setSite({ kind: "reference", url: "", assertedAt: "" }); peekSeq.current++; peekFor.current = { url: "", role: "", state: "" }; setPeek(NO_PEEK); dropRead(); setSiteErr(""); }} className="text-xs font-semibold text-muted underline">{T("Remove this website", "ये website हटाएँ")}</button>
                     )}
                   </div>
                 )}
@@ -2019,7 +2089,7 @@ function Onboard() {
             {site.kind === "own" && peek.state === "found" && !!peek.data?.name && (biz.name ?? "").trim().toLowerCase() !== peek.data.name.trim().toLowerCase() && (
               <span className="mt-1 flex flex-wrap items-center gap-2 text-[11px] font-normal text-muted">
                 <span>{T("On your website", "आपकी website पर")}: <b className="text-ink">{peek.data.name}</b></span>
-                <button type="button" onClick={() => { touched.current.delete("name"); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
+                <button type="button" onClick={() => { touched.current.delete("name"); fromRead.current.name = peek.data!.name.slice(0, 80); setBiz({ ...biz, name: peek.data!.name.slice(0, 80) }); }} className="font-semibold text-brand-ink underline">{T("Use this", "इसे लें")}</button>
               </span>
             )}</label>
             <span className="mt-1 block text-[11px] text-muted">{biz.logo ? T("Tap the logo to change it", "logo बदलने के लिए उस पर दबाएँ") : site.kind === "dealer" ? T("Logo: none? the brand's is used", "Logo: नहीं है? brand का लगेगा") : T("Logo: tap the box (optional)", "Logo: box पर दबाएँ (ज़रूरी नहीं)")}</span>
