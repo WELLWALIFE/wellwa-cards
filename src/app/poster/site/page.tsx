@@ -24,6 +24,8 @@ import { canGoBackInApp, goBack } from "@/lib/nav-back";
 import { ADVANCED_HREF, fetchAdvancedState, type AdvState } from "@/components/poster/advanced-entry";
 import { editHref, lastEdit } from "@/lib/edit-nav";
 import { advancedPending, readyText, sitePending } from "@/lib/site-ready";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { isScreenKey, screenHref } from "@/lib/setup-steps";
 
 type Hero = { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string };
 type Status = { hasCard: false } | { hasCard: true; cards: { id: string; username: string; name: string }[]; cardId: string; username: string; url: string; customDomain: string; knowledge?: string; site: { enabled: boolean; paused?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string; hero?: Hero; generatedAt?: string; templateKey?: string; style?: { palette?: string; font?: string }; reference?: { url: string } } | null; pages: { slug: string; label: string; blocks: number }[]; images: { label: string; url: string }[]; defaults: { headline: string; sub: string; jobTitle: string } };
@@ -41,6 +43,22 @@ export default function WebsitePage() {
   // ?made=shubhora: the partner's Shubhora card and website were just published by the set-up (onboard → promoteShubhora).
   const [justMade, setJustMade] = useState(false);
   useEffect(() => { try { if (new URLSearchParams(window.location.search).get("made") === "shubhora") { setJustMade(true); window.history.replaceState(null, "", "/poster/site"); } } catch { /* ignore */ } }, []);
+  /** Where "Make my website" goes while there is no card: the set-up screen the owner left on (owner, 11 Nov 2026: it used to start
+   *  the build and skip the screens still unanswered). */
+  const [setupHref, setSetupHref] = useState("/poster/card/build");
+  useEffect(() => {
+    void (async () => {
+      try {
+        const md = (await getBrowserSupabase()?.auth.getUser())?.data.user?.user_metadata ?? {};
+        if (isScreenKey(md.setup_pos)) setSetupHref(screenHref(md.setup_pos));
+        // Left the website's last screens (Colours, Link) in the middle: back to them. The plain address only — Edit, Share and the
+        // set-up's own arrival are left alone.
+        const q = new URLSearchParams(window.location.search);
+        if (md.finish_pos && !q.has("edit") && !q.has("share") && !q.has("made") && !q.has("saved") && !q.has("published")) router.replace("/poster/card/build?make=1");
+      } catch { /* the page opens as it is */ }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const [err, setErr] = useState("");
   /** A copy that the phone refused: shown under the Copy button that was tapped (the link row at the top, or the Share panel). */
   const [copyFail, setCopyFail] = useState<"top" | "share" | null>(null);
@@ -194,7 +212,7 @@ export default function WebsitePage() {
         <section className="rounded-xl border border-border p-4 text-center space-y-3">
           {/* The same start for everyone (owner, 2 Nov 2026): website + card; a free account's card is made first, its website plan after. */}
           <p className="text-sm text-muted">{!paid ? T("Make your website and card in 5 minutes. Your card is free.", "5 मिनट में अपनी website और card बनाएँ। Card free है।") : T("Make your website first. Your card is made from it.", "पहले अपनी website बनाएँ। card उसी से बन जाता है।")}</p>
-          <Link href="/poster/card/build" className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my website & card →", "मेरी website और card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
+          <Link href={setupHref} className="inline-block rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{!paid ? T("Make my website & card →", "मेरी website और card बनाएँ →") : T("Make my website →", "मेरी website बनाएँ →")}</Link>
         </section>
       ) : (
         <>

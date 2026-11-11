@@ -200,6 +200,10 @@ export default function BuildCard() {
   /** The website the server had when this screen opened, and whether the set-up just changed it. */
   const serverSite = useRef("");
   const siteNew = useRef(false);
+  /** The screen after "Yes, select this design" the owner is on (Colours → Link), kept on the account so that leaving in the middle
+   *  opens the same screen again (owner, 11 Nov 2026: "jahan bhi chhode, next time wahi page khule"). A day later the finished
+   *  screen opens instead. Cleared when the finished screen is reached. */
+  const finishAt = useRef<{ at: "style" | "domain"; t: number } | null>(null);
   const [checks, setChecks] = useState<WebCheck[]>([]);
   const [missing, setMissing] = useState<Missing[]>([]);
   const [off, setOff] = useState<string[]>([]);
@@ -566,9 +570,17 @@ export default function BuildCard() {
       if (makeNow && !again && !siteNew.current && isLiveSite(live)) {
         const { id: _i, username: _u, plan: _p, active: _a, views: _v, createdAt: _c, ...tpl } = live; void _i; void _u; void _p; void _a; void _v; void _c;
         setCard(live); setBuilt(tpl as TemplateCard); setLiveSig(cardSig(live)); setLiveUser(live.username);
+        // Left on Colours or Link less than a day ago: that screen again. Later (or never left there): the finished screen.
+        const fp = who?.data.user?.user_metadata?.finish_pos as { at?: unknown; t?: unknown } | null | undefined;
+        const left = fp && (fp.at === "style" || fp.at === "domain") && typeof fp.t === "number" ? { at: fp.at, t: fp.t } as { at: "style" | "domain"; t: number } : null;
+        finishAt.current = left;
+        if (left && Date.now() - left.t < DAY && (left.at === "domain" || live.site)) { doneFromPreview.current = true; setTab("site"); setState(left.at); return; }
         setTab("site"); setState("done");
         return;
       }
+      // A mark left by an earlier visit that this visit cannot honour (the website is gone, or is being made again) is taken off, so
+      // Card & Website does not keep sending the owner here.
+      if (who?.data.user?.user_metadata?.finish_pos && !isLiveSite(live)) void getBrowserSupabase()?.auth.updateUser({ data: { finish_pos: null } }).catch(() => undefined);
       if (makeNow) { setState("make"); return; }
       // The owner's rule: reaching the V-Card with nothing real yet makes the card at once. The form
       // below stays as the "Make it better" path; the draft it saves stops any second build.
@@ -650,6 +662,17 @@ export default function BuildCard() {
 
   // A card with no blueprint of its own (built before the looks, or by a build the designer skipped) is shown wearing the
   // first look, which is the one the picker marks (owner, 6 Oct 2026: the "Bento" tick showed a plain cover).
+  useEffect(() => {
+    if (improveMode) return;
+    if ((state === "style" || state === "domain") && existing) {
+      if (finishAt.current?.at === state) return;
+      finishAt.current = { at: state, t: finishAt.current?.t ?? Date.now() };
+      void getBrowserSupabase()?.auth.updateUser({ data: { finish_pos: finishAt.current } }).catch(() => undefined);
+    } else if (state === "done" && finishAt.current) {
+      finishAt.current = null;
+      void getBrowserSupabase()?.auth.updateUser({ data: { finish_pos: null } }).catch(() => undefined);
+    }
+  }, [state, improveMode, existing]);
   const shown = useMemo(() => (card ? applyChecks(!card.site?.style?.blueprint && looks[0] ? applyLook(card, looks[0]) : card, checks, off) : null), [card, checks, off, looks]);
   /** The look on screen is read off the card itself (a draft restore, ?improve=1 or a banner refresh used to leave a
    *  separate "picked" state pointing at the wrong one). */
