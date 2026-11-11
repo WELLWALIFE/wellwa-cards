@@ -320,6 +320,8 @@ export interface Card {
     liveToldAt?: string;
     /** Never stored: the public read sets it from the cards.site_paused column (Super Admin → Websites → Pause; migration 0085). */
     paused?: boolean;
+    /** Kept out of search engines whatever the plan: a demo account's websites (set by the builder) are shown to people, never listed. */
+    noindex?: boolean;
   };
   /** A notice — news, an offer, a closure — on the website and card (src/lib/notice.ts); `pastNotices` to re-use. */
   notice?: CardNotice;

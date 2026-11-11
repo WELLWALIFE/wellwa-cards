@@ -21,6 +21,7 @@ import type { Card, CardBlock, CardPage } from "@/lib/types";
 import { isShubhoraCard } from "../../../../bridge/shubhora-kb.mjs";
 import { recentUpdates } from "@/lib/site-server";
 import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
+import { searchListed } from "@/lib/seo-urls";
 import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
 import { publicCard, sitePending } from "@/lib/site-ready";
 import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
@@ -120,9 +121,9 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
       images: [{ url: ogImage, width: 1200, height: 630, alt: card.company || card.name }],
     },
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
-    // Free plan: live, shareable, but not on Google (owner's call, 3 Oct 2026: Google is Premium).
-    // Google is for the Premium website only (owner, 19 Oct 2026); a free card, a Standard website and a lapsed one stay out of search.
-    robots: { index: card.active !== false && !!activeAdvanced(card.site, card.username) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    // On Google: the Standard and the Premium website, once live (owner, 12 Nov 2026; lib/seo-urls.ts searchListed). A free card, a lapsed plan,
+    // a website still in its first-day wait, a paused one and a demo account's stay out of search.
+    robots: { index: card.active !== false && searchListed({ username: card.username, pages: card.pages, site: card.site }) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
     // The Premium website is installable as the business's own app (owner, 31 Oct 2026): its manifest and Apple's home-screen icon.

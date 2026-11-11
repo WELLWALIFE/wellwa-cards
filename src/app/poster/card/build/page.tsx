@@ -1110,6 +1110,8 @@ export default function BuildCard() {
       // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): a website made for the FIRST time goes live by itself 24 hours from
       // now and is promised within 24–48; the card is live at once. A card that already had its website on (improve, rebuild) is not held.
       if (out.site?.enabled && !existing?.site?.enabled && !out.site.readyAt && !demo) out = { ...out, site: { ...out.site, readyAt: readyIn() } };
+      // A demo account's website is shown to people, never put on Google (lib/seo-urls.ts searchListed).
+      if (demo && out.site && !out.site.noindex) out = { ...out, site: { ...out.site, noindex: true } };
       const r = await publishCard(out);
       if (!r.ok) { setErr(r.error); return; }
       void getBrowserSupabase()?.auth.updateUser({ data: { setup_pos: null } }).catch(() => undefined);

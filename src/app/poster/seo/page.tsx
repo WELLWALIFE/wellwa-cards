@@ -1,5 +1,6 @@
 "use client";
-// The Premium owner's Google SEO checklist (owner, 19 Oct 2026): what the app does by itself, and the few things the owner does. Premium only.
+// The owner's Google SEO checklist (owner, 19 Oct 2026): what the app does by itself, and the few things the owner does. Standard and Premium
+// websites, once live (owner, 12 Nov 2026).
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -26,9 +27,9 @@ export default function SeoChecklistPage() {
     <div className="py-6 space-y-4">
       <div className="flex items-center gap-2">{back}<h1 className="text-xl font-bold">Google SEO</h1></div>
       <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
-        <p className="text-base font-semibold">{T("Google search is part of the Premium website.", "Google search Premium website का हिस्सा है।")}</p>
-        <p className="text-sm text-muted">{T("Every page and every product of your Premium website goes on Google, with a sitemap and search-ready details. Your Standard website and your card stay online and shareable, but are not listed on Google.", "आपकी Premium website का हर page और हर product Google पर आता है, sitemap और search के लिए ज़रूरी details के साथ। Standard website और card online रहते हैं और share हो सकते हैं, पर Google पर नहीं आते।")}</p>
-        <Link href="/poster/site/advanced" className="inline-flex items-center justify-center rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("See Premium", "Premium देखें")}</Link>
+        <p className="text-base font-semibold">{T("Your website goes on Google once it is live.", "Website live होते ही Google पर जाती है।")}</p>
+        <p className="text-sm text-muted">{T("With the Standard or Premium plan, your website is put on Google by itself once it is live (after the first day's setup): every page and product, with a sitemap and search-ready details. A free card stays online and shareable, but is not listed on Google.", "Standard या Premium plan पर website live होते ही (पहले दिन की तैयारी के बाद) अपने-आप Google पर जाती है: हर page और product, sitemap और search के लिए ज़रूरी details के साथ। Free card online और share होता रहता है, पर Google पर नहीं आता।")}</p>
+        <Link href="/poster/site" className="inline-flex items-center justify-center rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("See my website", "मेरी website देखें")}</Link>
       </div>
     </div>
   );

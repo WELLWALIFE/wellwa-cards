@@ -4,10 +4,13 @@ import { getPublicSupabase, fetchCardExpired } from "@/lib/supabase/public";
 import { sampleCards } from "@/lib/sample-data";
 import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
-import { cardUrls, isPremiumRow, type Row } from "@/lib/seo-urls";
+import { cardUrls, searchListed, type Row } from "@/lib/seo-urls";
 import { cities } from "@/lib/directory";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
+const COLS = "username, pages:data->pages, site:data->site, about:data->about, language:data->language";
+/** Super Admin's Pause lives in its own column; the site object carries it the way the public read does. */
+const withPaused = (r: Row & { site_paused?: boolean }): Row => (r.site_paused === true && r.site ? { ...r, site: { ...r.site, paused: true } } : r);
 
 // Always generated fresh — a prerendered sitemap would keep advertising cards
 // that have since been deleted, and miss ones just published.
@@ -28,8 +31,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
         username = (Array.isArray(b) ? b[0] : b)?.username ?? null;
       }
       if (!username) return [];
-      const { data } = await sb.from("cards").select("username, pages:data->pages, site:data->site, about:data->about, language:data->language").eq("username", username).eq("active", true).maybeSingle();
-      return data && isPremiumRow(data as Row) ? cardUrls(`https://${host}`, data as Row) : [];
+      const { data } = await sb.from("cards").select(`${COLS}, site_paused`).eq("username", username).eq("active", true).maybeSingle();
+      const row = data ? withPaused(data as Row & { site_paused?: boolean }) : null;
+      return row && searchListed(row) && !(await fetchCardExpired(username)) ? cardUrls(`https://${host}`, row) : [];
     } catch { return []; }
   }
 
@@ -47,12 +51,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   if (sb) {
     try {
       const [{ data }, { data: own }] = await Promise.all([
-        sb.from("cards").select("username, pages:data->pages, site:data->site, about:data->about, language:data->language").eq("active", true).limit(5000),
+        sb.from("cards").select(`${COLS}, site_paused`).eq("active", true).limit(5000),
         sb.from("card_domains").select("username").eq("verified", true),
       ]);
       // A card on its own domain is listed in that domain's sitemap, not here (its canonical address is there).
       const elsewhere = new Set(((own ?? []) as { username: string }[]).map((r) => r.username));
-      rows = ((data ?? []) as Row[]).filter((r) => r.username && !elsewhere.has(r.username) && isPremiumRow(r));   // Google is for the Premium website only
+      // Standard and Premium websites, once live (lib/seo-urls.ts searchListed); owner, 12 Nov 2026.
+      rows = ((data ?? []) as (Row & { site_paused?: boolean })[]).map(withPaused).filter((r) => r.username && !elsewhere.has(r.username) && searchListed(r));
       // Google is for subscribed websites only (owner, 14 Oct 2026): a free or lapsed card is noindex, so it is not listed either.
       const keep: Row[] = [];
       for (let i = 0; i < rows.length; i += 40) {

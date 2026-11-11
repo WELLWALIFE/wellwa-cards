@@ -23,6 +23,7 @@ function planList(hi: boolean) {
       items: [
         T("Your website (up to 5 pages) on your link — no Shubhora tag", "आपकी website (5 pages तक) आपके link पर — Shubhora tag नहीं"),
         T("Live within 24–48 hours; we WhatsApp you when it is live", "24–48 घंटे में live — live होते ही WhatsApp"),
+        T("On Google search: your website is listed by itself once it is live", "Google search पर: live होते ही website अपने-आप Google पर"),
         T("A new poster every day on Facebook, Instagram and WhatsApp Status — by itself", "हर दिन नया poster — Facebook, Instagram, WhatsApp Status पर अपने-आप"),
         T("WhatsApp AI that answers your customers 24×7 (up to 1,000 replies a month)", "WhatsApp AI जो 24×7 ग्राहकों को जवाब दे (महीने में 1,000 तक)"),
         T("Meta Ads, AI Ad Studio and Reel Maker", "Meta Ads, AI Ad Studio और Reel Maker"),
