@@ -573,8 +573,8 @@ export default function ProductsPage() {
           added here reaches the website through Write again — said here, with the button, instead of silently not. */}
       {!setupMode && hasLive && list.length > 0 && !draft && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl border border-amber/40 bg-amber/10 px-3 py-2 text-xs">
-          <span className="min-w-0 flex-1">{C("Changes here go on your card, website and posters at once.", "यहाँ के बदलाव card, website और poster पर तुरंत आ जाते हैं।")}</span>
-          <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Update website", "Website update करें")}</Link>
+          <span className="min-w-0 flex-1">{C("Changes here show on your card, website and posters at once. Want the website's words written again around your products? That is optional.", "यहाँ के बदलाव card, website और poster पर तुरंत आ जाते हैं। Website के शब्द products के हिसाब से दोबारा लिखवाने हों तो — ये ज़रूरी नहीं।")}</span>
+          <Link href="/poster/card/build?improve=1&ask=1" className="shrink-0 rounded-lg grad-brand px-2.5 py-1.5 font-semibold text-white">{C("Write website again", "Website दोबारा लिखवाएँ")}</Link>
         </div>
       )}
       {setupMode && !draft && (

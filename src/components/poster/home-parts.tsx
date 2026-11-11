@@ -8,6 +8,7 @@ import { CalendarDays, Clapperboard, Copy, CreditCard, Flame, ImagePlus, Link2, 
 import { api } from "@/lib/poster-client";
 import { fetchCardDomain, fetchMyCards } from "@/lib/cloud";
 import { SITE_HOST } from "@/lib/site-url";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
 
 type Counts = { due: number; unread: number; fresh: number; hot: number; calledToday: number; target: number };
 
@@ -37,7 +38,16 @@ export function HomeHeader({ name, hi }: { name: string; hi: boolean }) {
       if (d?.verified && d.domain) setLink(d.domain.replace(/^https?:\/\//, "").replace(/\/$/, ""));
     }).catch(() => undefined);
   }, []);
-  const first = (name || "").trim().split(/\s+/)[0] || "";
+  // The person is greeted by their own name; the profile's name is the business's ("Test Dairy Agency" read "Good evening, Test" —
+  // seen live, 11 Nov 2026) and is only the fallback.
+  const [person, setPerson] = useState("");
+  useEffect(() => {
+    getBrowserSupabase()?.auth.getUser().then(({ data }) => {
+      const m = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string };
+      setPerson((m.display_name || m.full_name || "").trim());
+    }).catch(() => undefined);
+  }, []);
+  const first = (person || name || "").trim().split(/\s+/)[0] || "";
   const date = new Date().toLocaleDateString(hi ? "hi-IN" : "en-IN", { weekday: "long", day: "numeric", month: "long", timeZone: "Asia/Kolkata" });
   const share = `https://wa.me/?text=${encodeURIComponent(`${T("Have a look at us:", "हमें यहाँ देखें:")} https://${link}`)}`;
   return (

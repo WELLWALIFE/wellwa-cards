@@ -42,7 +42,7 @@ const CATEGORY_WORDS = {
   mlm: "business team success handshake", network: "business team growth", default: "small business shop owner india",
   medical: "pharmacy chemist shop medicines shelves", doctor: "doctor clinic consultation", dentist: "dentist dental clinic", coaching: "coaching class students teacher", college: "college campus students",
   garments: "clothing store ethnic wear racks", tailor: "tailor sewing machine fabric", optical: "optician eyewear shop", footwear: "shoe store footwear", gift: "gift shop stationery", textile: "saree fabric shop",
-  electrician: "electrician wiring tools", catering: "indian catering buffet food", tiffin: "home cooked indian meal tiffin", dairy: "milk dairy products", printing: "printing press flex banner",
+  electrician: "electrician wiring tools", catering: "indian catering buffet food", tiffin: "home cooked indian meal tiffin", dairy: "fresh milk bottles glass dairy farm", printing: "printing press flex banner",
   lawyer: "lawyer office law books", ca: "accountant office documents", astro: "astrology horoscope", computer: "computer training class", wholesale: "warehouse goods trading", manufacturer: "factory production floor",
   transport: "truck logistics road", courier: "parcel delivery courier", builder: "building construction site", cleaning: "cleaning service home", event: "wedding event decoration", hotel: "hotel room reception",
   physio: "physiotherapy clinic", ayurveda: "ayurvedic herbs treatment", vet: "veterinary clinic pet", lab: "pathology lab test tubes", wellness: "wellness nutrition supplements", ngo: "community volunteers helping",

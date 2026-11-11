@@ -63,7 +63,11 @@ export async function GET(request: Request) {
     // product / benefit / greeting / offer (see rosterKind) — real stock photos for the trade, not the same art every day.
     const theme0 = eng.themeFor(date);
     const allProducts = (await restAsService<Record<string, unknown>[]>(`poster_products?user_id=eq.${me.id}&brand_id=is.null&active=eq.true&order=sort,created_at&select=*`)).data ?? [];
-    const roster = cal?.kind && cal.kind !== "auto" ? String(cal.kind) : profile.mode === "product" ? (theme0.kind === "occasion" ? "festival" : "product") : eng.rosterKind(theme0, date, { hasProducts: allProducts.length > 0 });
+    // A product with no photo makes a poster with an empty box in the middle (seen live, 11 Nov 2026): the day's product is taken from
+    // the ones that have a photo. A product the owner picked for the day in the calendar is used as it is.
+    const pictured = allProducts.filter((p) => typeof p.photo_url === "string" && p.photo_url);
+    const usable = cal?.product_id ? allProducts : pictured;
+    const roster = cal?.kind && cal.kind !== "auto" ? String(cal.kind) : profile.mode === "product" ? (theme0.kind === "occasion" ? "festival" : "product") : eng.rosterKind(theme0, date, { hasProducts: usable.length > 0 });
     const wantProduct = roster === "product" || roster === "benefit" || roster === "offer";
     const stockKind = ["testimonial", "trust", "about"].includes(roster) ? "greeting" : roster;
     // testimonial day: pick one of the user's approved reviews by day index; none → normal poster
@@ -78,7 +82,7 @@ export async function GET(request: Request) {
     // a tapped chip of the six original styles means "not Signature today"
     const dayLayout = { ...baseLayout, ...(ov.title ? { title: ov.title } : {}), ...(ov.sub ? { sub: ov.sub } : {}), ...(ov.accent ? { accent: ov.accent } : {}), ...(ov.photo ? { photo: ov.photo } : {}), ...(styleParam && !styleParam.startsWith("signature") ? { look: "old" } : {}) };
     const effProfile = { ...profile, layout: dayLayout, mode: testimonial ? "testimonial" : wantProduct ? "product" : "greeting" } as typeof profile;
-    let products = effProfile.mode === "product" ? allProducts : [];
+    let products = effProfile.mode === "product" ? usable : [];
     if (cal?.product_id) { const one = products.find((p) => p.id === cal.product_id); if (one) products = [one]; }
     if (effProfile.mode === "product" && !products.length) {
       // Team mode: members inherit the company's products
