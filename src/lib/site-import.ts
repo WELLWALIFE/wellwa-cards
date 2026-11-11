@@ -418,7 +418,13 @@ function addressOf(org: Obj) {
 /** The site's own name: structured data first, then og:site_name, then the brand part of the <title> — the short
  *  segment of "Buy Sofas Online | Urban Ladder" (usually the last), never a marketing sentence. */
 function siteName(html: string, org: Obj): string {
-  const known = txt(org.name, 80) || meta(html, "og:site_name") || meta(html, "application-name") || meta(html, "apple-mobile-web-app-title");
+  const orgName = txt(org.name, 80);
+  const short = meta(html, "og:site_name") || meta(html, "application-name") || meta(html, "apple-mobile-web-app-title");
+  // The registered company name ("Gujarat Cooperative Milk Marketing Federation Ltd.") is not what people call the business ("Amul"):
+  // when the site also states a shorter name of its own, that one is used (seen live, 11 Nov 2026).
+  const legal = /\b(ltd|limited|pvt|private|inc|llp|llc|corp|corporation|federation|company)\.?$/i.test(orgName) || orgName.split(/\s+/).length > 4;
+  if (orgName && legal && short && short.length >= 2 && short.length < orgName.length) return short;
+  const known = orgName || short;
   if (known) return known;
   // The logo's alt text is very often the brand's name: <img alt="Urban Ladder" class="logo">.
   for (const m of html.matchAll(/<img\b[^>]*>/gi)) {

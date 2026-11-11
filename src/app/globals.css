@@ -422,7 +422,8 @@ html[data-embed] .min-h-screen{min-height:0!important}
   .app-shell:has(.app-side) .app-col[data-narrow] .app-page, .app-shell:has(.app-side) .app-col[data-narrow] .app-bar { max-width: 760px; }
   /* The website previews (Website edit, Premium page) fill the height beside their controls. */
   .app-shell:has(.app-side) .pv-box, .app-shell:has(.app-side) .adv-pv { --pv-h: calc(100vh - 120px); }
-  .app-shell:has(.app-side) .build-pv { --build-pv: 58vh; max-width: 520px; }
+  /* Never so tall that the colours under it sit behind the Done bar on a short laptop screen (seen live, 11 Nov 2026). */
+  .app-shell:has(.app-side) .build-pv { --build-pv: min(58vh, calc(100vh - 400px)); max-width: 520px; }
   /* The account button at the top right is the sidebar's job on a computer. */
   .app-shell:has(.app-side) [data-topmenu] { display: none; }
 }
