@@ -39,7 +39,29 @@ const LABEL: Record<LinkKind, string> = { map: "Google Maps", instagram: "Instag
 export const linkLabel = (k: LinkKind) => LABEL[k];
 
 /** A Google Maps link → the long address (short links redirect) → the place's name and position, when the address carries them. */
-async function expandMap(url: string): Promise<{ url: string; name: string; lat: string; lng: string }> {
+/** What was typed into Google before the Maps link was copied: a link opened from a Google search result carries the search words in
+ *  its gs_lp value (a small packed message; the words are its field 4). "wellwa life" → the place's name when the link names none. */
+function searchedWords(u: URL): string {
+  try {
+    const raw = u.searchParams.get("gs_lp") ?? "";
+    if (!raw) return "";
+    const b = Buffer.from(raw.replace(/-/g, "+").replace(/_/g, "/"), "base64");
+    let i = 0;
+    while (i < b.length - 1) {
+      const tag = b[i++], wire = tag & 7;
+      if (wire === 2) {
+        const len = b[i++];
+        if (len > 127 || i + len > b.length) return "";
+        if (tag >> 3 === 4) return b.subarray(i, i + len).toString("utf8").replace(/\s+/g, " ").trim().slice(0, 100);
+        i += len;
+      } else if (wire === 0) { while (i < b.length && b[i++] & 0x80) { /* skip the number */ } }
+      else return "";
+    }
+  } catch { /* not that kind of link */ }
+  return "";
+}
+
+async function expandMap(url: string): Promise<{ url: string; name: string; lat: string; lng: string; addr: string }> {
   let long = url;
   try {
     // Only a short Google link is followed, hop by hop, and only to Google's own hosts over https.
@@ -55,11 +77,16 @@ async function expandMap(url: string): Promise<{ url: string; name: string; lat:
   } catch { /* keep what we have */ }
   const place = long.match(/\/maps\/place\/([^/@?]+)/);
   const at = long.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ?? long.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
-  const q = (() => { try { return new URL(long).searchParams.get("q") ?? ""; } catch { return ""; } })();
+  const parsed = (() => { try { return new URL(long); } catch { return null; } })();
+  const q = parsed?.searchParams.get("q") ?? "";
+  // A "Directions" link (copied from a Google search result) names no place: it carries the address it leads to, and often the words
+  // that were searched (seen live, 11 Nov 2026: the owner's own link read as "could not read details").
+  const addr = (parsed?.searchParams.get("daddr") ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
+  const searched = parsed ? searchedWords(parsed) : "";
   // The place part of the path is still encoded; the ?q= value is decoded already (and may hold a "%", e.g. "100% Veg").
-  const raw = place?.[1] ? (() => { try { return decodeURIComponent(place[1].replace(/\+/g, " ")); } catch { return place[1].replace(/\+/g, " "); } })() : (q && !/^-?\d/.test(q) ? q : "");
+  const raw = place?.[1] ? (() => { try { return decodeURIComponent(place[1].replace(/\+/g, " ")); } catch { return place[1].replace(/\+/g, " "); } })() : (q && !/^-?\d/.test(q) ? q : searched);
   const name = raw.trim().slice(0, 100);
-  return { url: long, name, lat: at?.[1] ?? "", lng: at?.[2] ?? "" };
+  return { url: long, name, lat: at?.[1] ?? "", lng: at?.[2] ?? "", addr };
 }
 
 const EMPTY = (kind: LinkKind, source: string): Lookup => ({ ok: false, kind, source, name: "", category: "", city: "", address: "", phone: "", about: "", hours: "", website: "", instagram: "", map: kind === "map" ? source : "", answers: {} });
@@ -82,14 +109,14 @@ async function ask(prompt: string, tools: Record<string, unknown>[], timeout = 2
 /** The details of the business behind a link. `hint` = what the owner typed besides the link (a name, a town). */
 export async function lookupBusiness(rawUrl: string, hint = ""): Promise<Lookup> {
   const kind = linkKind(rawUrl);
-  let url = rawUrl; let mapName = "", lat = "", lng = "";
-  if (kind === "map") { const m = await expandMap(rawUrl); url = m.url; mapName = m.name; lat = m.lat; lng = m.lng; }
+  let url = rawUrl; let mapName = "", lat = "", lng = "", mapAddr = "";
+  if (kind === "map") { const m = await expandMap(rawUrl); url = m.url; mapName = m.name; lat = m.lat; lng = m.lng; mapAddr = m.addr; }
   const out = EMPTY(kind, rawUrl);
   if (kind === "instagram") out.instagram = rawUrl;
   if (!process.env.GEMINI_API_KEY) { if (mapName) { out.name = mapName; out.ok = true; } return out; }
   const keys = CATEGORIES.filter((c) => c.key !== "other" && c.key !== "personal").map((c) => c.key).join(", ");
   const prompt = `Find the PUBLIC details of the Indian business behind this ${LABEL[kind]} link, using Google Search and the page itself:
-${url}${mapName ? `\nGoogle Maps names the place: "${mapName}"${lat ? ` at ${lat},${lng}` : ""}.` : ""}${hint ? `\nThe owner also wrote: "${hint.slice(0, 120)}"` : ""}
+${url}${mapName ? `\nGoogle Maps names the place: "${mapName}"${lat ? ` at ${lat},${lng}` : ""}.` : ""}${mapAddr ? `\nThe link leads to this address: "${mapAddr}".` : ""}${hint ? `\nThe owner also wrote: "${hint.slice(0, 120)}"` : ""}
 Answer with ONE JSON object only, no other words:
 {"found": true|false, "name": "the business name exactly as it is written", "category": "one key from: ${keys} — or \\"\\"", "city": "", "address": "street address as listed", "phone": "10-digit Indian number if public", "about": "2 plain sentences on what it does, in English", "hours": "opening hours as listed, short, e.g. Mon–Sun 9 am – 10 pm", "website": "its own website if it has one", "instagram": "its instagram link if found", "facts": ["up to 10 short facts the listing states: veg / non-veg, cuisines, delivery, dine-in, services, brands, since year, AC, parking…"]}
 Rules: only facts you actually found for THIS business; a field you did not find is "". Never guess a phone number or an address. If the link shows a product rather than a seller, give the seller / store.`;
@@ -101,7 +128,7 @@ Rules: only facts you actually found for THIS business; a field you did not find
   out.name = S(o.name, 100) || mapName;
   const cat = S(o.category, 30).toLowerCase();
   out.category = categoryOf(cat) ? cat : matchCategory(`${out.name} ${S(o.about, 400)}`) ?? "";
-  out.city = S(o.city, 60); out.address = S(o.address, 200);
+  out.city = S(o.city, 60); out.address = S(o.address, 200) || mapAddr;
   const ph = String(o.phone ?? "").replace(/\D/g, "").slice(-10); out.phone = /^[6-9]\d{9}$/.test(ph) ? ph : "";
   out.about = S(o.about, 400); out.hours = S(o.hours, 120);
   const site = S(o.website, 200); out.website = /^https?:\/\//.test(site) && linkKind(site) === "website" ? site : "";
