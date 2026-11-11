@@ -66,9 +66,11 @@ async function expandMap(url: string): Promise<{ url: string; name: string; lat:
   let long = url;
   try {
     // Only a short Google link is followed, hop by hop, and only to Google's own hosts over https.
-    for (let i = 0; i < 4; i++) {
+    // share.google/<code> goes to google.com/share.google?q=<code> and only then to the listing (seen live, 11 Nov 2026: the walk
+    // stopped one hop early and the code itself was taken as the business's name).
+    for (let i = 0; i < 5; i++) {
       const u = new URL(long);
-      if (!mapHost(u) || !SHORT_MAP.test(u.hostname)) break;
+      if (!mapHost(u) || !(SHORT_MAP.test(u.hostname) || u.pathname === "/share.google")) break;
       const r = await fetch(u, { redirect: "manual", signal: AbortSignal.timeout(8_000), headers: { "user-agent": "Mozilla/5.0" } });
       const loc = r.headers.get("location"); if (!loc) break;
       const next = new URL(loc, u);
@@ -79,7 +81,9 @@ async function expandMap(url: string): Promise<{ url: string; name: string; lat:
   const place = long.match(/\/maps\/place\/([^/@?]+)/);
   const at = long.match(/@(-?\d+\.\d+),(-?\d+\.\d+)/) ?? long.match(/!3d(-?\d+\.\d+)!4d(-?\d+\.\d+)/);
   const parsed = (() => { try { return new URL(long); } catch { return null; } })();
-  const q = parsed?.searchParams.get("q") ?? "";
+  // A link still on its way (a short link that could not be followed to the end) names nothing: its ?q= is a code, not a place.
+  const unfinished = !parsed || SHORT_MAP.test(parsed.hostname) || parsed.pathname === "/share.google";
+  const q = unfinished ? "" : parsed?.searchParams.get("q") ?? "";
   // A "Directions" link (copied from a Google search result) names no place: it carries the address it leads to, and often the words
   // that were searched (seen live, 11 Nov 2026: the owner's own link read as "could not read details").
   const addr = (parsed?.searchParams.get("daddr") ?? "").replace(/\s+/g, " ").trim().slice(0, 200);
@@ -127,6 +131,8 @@ Rules: only facts you actually found for THIS business; a field you did not find
   let o: Record<string, unknown> = {};
   try { const m = text.match(/\{[\s\S]*\}/); o = m ? JSON.parse(m[0]) : {}; } catch { o = {}; }
   out.name = S(o.name, 100) || mapName;
+  // A piece of the link itself (a short link's code) is never the business's name.
+  if (out.name && !/\s/.test(out.name) && out.name.length >= 8 && rawUrl.includes(out.name)) out.name = "";
   const cat = S(o.category, 30).toLowerCase();
   out.category = categoryOf(cat) ? cat : matchCategory(`${out.name} ${S(o.about, 400)}`) ?? "";
   out.city = S(o.city, 60); out.address = S(o.address, 200) || mapAddr;
