@@ -546,7 +546,8 @@ export type WriteAgainWant = "look" | "layout" | "banner" | "photos" | "words" |
 export const WRITE_AGAIN_PRICE: Record<Exclude<WriteAgainWant, "pictures">, number> = { look: 1, layout: 1, banner: 1, photos: 1, words: 1 };
 /** The most AI photos one Write again may make for the gallery, and the most the gallery holds. */
 export const MAX_WRITE_AGAIN_PHOTOS = 6;
-export const MAX_GALLERY_PHOTOS = 12;
+// 60 since 12 Nov 2026 (was 12): the gallery is albums now, each with as many photos as the owner likes ("Opening ceremony" alone can be twenty).
+export const MAX_GALLERY_PHOTOS = 60;
 /** Credits for a Write again: one per thing asked — and one per photo asked for (owner's call, 4 Oct 2026: "every
  *  image 1 credit, every time") — at least one (a note alone is a request too). */
 export function writeAgainCredits(wants: WriteAgainWant[], note?: string, photoCount = 1): number {

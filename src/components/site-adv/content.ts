@@ -130,7 +130,7 @@ export function sectionHasContent(key: string, c: SiteContent, hasContact: boole
     case "trust": return c.facts.length >= 2;
     case "about": return !!c.about;
     case "services": return !!c.offerings;
-    case "gallery": return c.gallery.length >= 3;
+    case "gallery": return c.gallery.length >= 1;   // one or two photos get the small gallery (index.tsx), three or more the design's own
     case "proof": return c.reviews.items.length >= 1;
     case "process": return c.steps.length >= 2;
     case "faq": return c.faq.length >= 2;

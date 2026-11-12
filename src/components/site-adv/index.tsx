@@ -14,6 +14,8 @@ import { firstSentence } from "@/lib/first-sentence";
 import { HeroSlides } from "@/components/site-adv/hero-slides";
 import { Megaphone, X } from "lucide-react";
 import type { Card } from "@/lib/types";
+import { galleryVideos } from "@/lib/youtube";
+import { GallerySmall, framesOf } from "@/components/site-adv/proof";
 import { ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, type CardBrand } from "@/components/card-view";
 import { CardChat } from "@/components/card-chat";
 import { JoinNudge } from "@/components/join-nudge";
@@ -183,7 +185,9 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
   const slides = (card.site?.hero?.slides ?? []).filter((sl) => sl && sl.headline).slice(0, 3);
   const slot = (k: SectionKey, index: number) => k === "hero" && slides.length >= 2
     ? createElement(HeroSlides, { c, spec, x, index, slides, Hero: variantComponent(k, variantOf(spec, k)) as ComponentType<VariantProps> })
-    : createElement(variantComponent(k, variantOf(spec, k)), { c, spec, x, index });
+    : k === "gallery" && framesOf(c, x).length < 3
+      ? createElement(GallerySmall, { c, spec, x, index })
+      : createElement(variantComponent(k, variantOf(spec, k)), { c, spec, x, index });
 
   // Section links of other files (`#adv-about` in a footer) become the real address of the page, so they open in a new tab and
   // crawl; their click already goes through `jump`.
@@ -266,7 +270,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
 
         {/* The sticky action bar on phones: on the home page in only once the hero has scrolled away; an item's page leads with the item. */}
         <MobileBar x={x} shown={!isHome || pastHero} lead={item ? { title: t(item.item.name), price: itemPrice || undefined, waText: x.hi ? `नमस्ते ${c.name}, मुझे "${t(item.item.name)}"${itemPrice ? ` (${itemPrice})` : ""} के बारे में जानकारी चाहिए।` : `Hi ${c.name}, I saw your website — I'd like to know more about "${item.item.name}"${itemPrice ? ` (${itemPrice})` : ""}.` } : undefined} />
-        {zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
+        {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
         {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={isHome ? "home" : slug} />}
         {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={isHome ? "home" : slug} hi={hi} />}
         {!free && <CardChat username={card.username} name={card.name} theme={theme} />}

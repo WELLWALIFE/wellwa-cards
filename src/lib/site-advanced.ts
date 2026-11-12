@@ -435,8 +435,8 @@ export function livePages(card: Pick<Card, "pages" | "site">): CardPage[] {
 /** Ids of pages made for the advanced site at request time (never stored on the card): `adv-` + a name. */
 export const ADV_PAGE_PREFIX = "adv-";
 
-const imagesOf = (b: CardBlock): { url: string; label: string; group?: string }[] =>
-  b.kind === "gallery" ? b.images.filter((i) => i.url).map((i) => ({ url: i.url!, label: i.label ?? "", group: i.group }))
+const imagesOf = (b: CardBlock): { url: string; label: string; group?: string; video?: string }[] =>
+  b.kind === "gallery" ? b.images.filter((i) => i.url).map((i) => ({ url: i.url!, label: i.label ?? "", group: i.group, video: i.video }))
   : b.kind === "image" || b.kind === "carousel" ? b.images.filter((i) => i.url).map((i) => ({ url: i.url, label: i.caption ?? "" }))
   : [];
 
@@ -451,18 +451,24 @@ export function withAdvancedPages(card: Card): Card {
   const extra: CardPage[] = [];
   const visible = card.pages.filter((p) => !p.hidden);
   const blocks = visible.flatMap((p) => p.blocks);
-  const taken = new Set(card.pages.map((p) => p.slug));
+  // A page the card already has keeps its address — unless it is an empty shell (a "gallery" page with no picture in it, jaidevrajwal.com
+  // 12 Nov 2026): that one is not drawn anyway, and it must not stop the real page from being made.
+  const taken = new Set(card.pages.filter((p) => p.hidden || hidden.has(p.slug) || p.blocks.some((b) => !isEmptyBlock(b))).map((p) => p.slug));
   const aboutBlock = blocks.find((b): b is Extract<CardBlock, { kind: "about" }> => b.kind === "about" && !isEmptyBlock(b) && !!(b.body ?? "").trim());
   const aboutText = (aboutBlock?.body ?? card.about ?? "").trim();
   if (!roles.includes("about") && !hidden.has("about") && !taken.has("about") && aboutText) {
     extra.push({ id: `${ADV_PAGE_PREFIX}about`, slug: "about", label: hi ? "हमारे बारे में" : "About", blocks: [{ id: `${ADV_PAGE_PREFIX}about-b`, kind: "about", title: aboutBlock?.title || (hi ? "हमारी कहानी" : "Our story"), body: aboutText, ...(aboutBlock?.imageUrl ? { imageUrl: aboutBlock.imageUrl } : {}) }] });
   }
   if (!roles.includes("gallery") && !hidden.has("gallery") && !taken.has("gallery")) {
+    // The owner's own gallery (albums, photos, YouTube videos) is the Gallery page, from the very first photo. A card with no gallery of
+    // its own gets one from its other pictures when there are three or more.
     const seen = new Set<string>();
-    const imgs = blocks.flatMap(imagesOf).filter((i) => !seen.has(i.url) && !!seen.add(i.url));
-    if (imgs.length >= 3) extra.push({ id: `${ADV_PAGE_PREFIX}gallery`, slug: "gallery", label: hi ? "फ़ोटो" : "Gallery", blocks: [{ id: `${ADV_PAGE_PREFIX}gallery-b`, kind: "gallery", title: hi ? "फ़ोटो गैलरी" : "Gallery", images: imgs.map((i) => ({ url: i.url, color: card.themeColor || "#999999", label: i.label, ...(i.group ? { group: i.group } : {}) })) }] });
+    const uniq = (list: ReturnType<typeof imagesOf>) => list.filter((i) => !seen.has(i.url) && !!seen.add(i.url));
+    const own = uniq(blocks.filter((b) => b.kind === "gallery").flatMap(imagesOf));
+    const imgs = own.length ? own : uniq(blocks.flatMap(imagesOf));
+    if (own.length >= 1 || imgs.length >= 3) extra.push({ id: `${ADV_PAGE_PREFIX}gallery`, slug: "gallery", label: hi ? "फ़ोटो" : "Gallery", blocks: [{ id: `${ADV_PAGE_PREFIX}gallery-b`, kind: "gallery", title: hi ? "फ़ोटो गैलरी" : "Gallery", images: imgs.map((i) => ({ url: i.url, color: card.themeColor || "#999999", label: i.label, ...(i.group ? { group: i.group } : {}), ...(i.video ? { video: i.video } : {}) })) }] });
   }
-  return extra.length ? { ...card, pages: [...card.pages, ...extra] } : card;
+  return extra.length ? { ...card, pages: [...card.pages.filter((p) => !extra.some((e) => e.slug === p.slug)), ...extra] } : card;
 }
 
 /** Every product AND service of the site with the address it answers at. Products keep the address the basic site gave them

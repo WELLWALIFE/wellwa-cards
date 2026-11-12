@@ -1302,8 +1302,8 @@ const vcardReseller: CardTemplateDef = {
             { name: "Every business needs it", desc: "India has 7.8 crore registered small businesses (Udyam, February 2026). Every one of them needs customers to find it and reach it." },
             { name: "Easy to deliver", desc: "The product is a link. A customer's card is set up on their own phone in about 10 minutes — no stock, no courier, no installation." },
             { name: "Easy to show", desc: "Your own card is the demo. Hand over your phone, let them tap around, and make theirs free on the spot." },
-            { name: "Free to start", desc: "Registration is free — nobody has to buy anything to join. Your ID turns Green when your own Standard plan is active." },
-            { name: "Renewals count again", desc: "When a customer renews Standard, that month's BV enters your renewal binary again — one sale keeps counting for as long as the customer stays subscribed and your own plan is active." },
+            { name: "Free to start", desc: "Registration is free — nobody has to buy anything to join. Your ID turns Green when your own plan is active." },
+            { name: "Renewals count again", desc: "When a customer renews their plan, its BV enters your renewal binary again — one sale keeps counting for as long as the customer stays subscribed and your own plan is active." },
             { name: "Paid every week", desc: "Pairs are matched every night. After Sunday's closing, a wallet of ₹500 or more goes to your KYC-approved bank account on Wednesday." },
             { name: "Everything on your phone", desc: "Your team, wallet, income reports, KYC and withdrawals are in the app's Business section." },
             { name: "Everything in writing", desc: "The plan, the partner agreement and the disclosures are published — read them before you decide." },
@@ -1313,7 +1313,7 @@ const vcardReseller: CardTemplateDef = {
           ] },
           { id: uid("vb", 5), kind: "highlights", title: "The plan at a glance", items: [
             "🆓 Registration free — Red ID",
-            "🟢 Own Standard plan active — Green ID",
+            "🟢 Own plan active — Green ID",
             "🎁 Green ID: 25 AI credits per direct sale",
             "⚖️ 1 pair = ₹500 (2,500 + 2,500 BV)",
             "🔁 Two binaries: new sales and renewals",
@@ -1326,7 +1326,7 @@ const vcardReseller: CardTemplateDef = {
           { id: uid("vb", 6), kind: "pdf", title: "The Shubhora presentation (PDF)", fileLabel: "Shubhora-Presentation-Sep-2026.pdf", fileUrl: "/api/stock/demo/shubhora-presentation-2026-09.pdf", posterUrl: "/api/stock/demo/shubhora-presentation-cover.jpg", hint: "20 pages · the product, plans and prices, and the complete partner plan — BV, pairs, capping, ranks and payout rules · tap to download" },
           { id: uid("vb", 7), kind: "faq", title: "Questions people ask", items: [
             { q: "How much will I earn?", a: "Every pair pays ₹500. There are two binaries — new sales and renewals — each up to 10 pairs a day (₹5,000): up to ₹10,000 a day and ₹3,00,000 a month, paid every week to your bank. The more real businesses your team brings and keeps, the more you earn." },
-            { q: "Is registration really free?", a: "Yes. Nobody has to buy anything to join. Turn your own Standard plan on (Green ID) and every pair is paid." },
+            { q: "Is registration really free?", a: "Yes. Nobody has to buy anything to join. Turn your own plan on (Green ID) and every pair is paid." },
             { q: "Do I have to buy stock?", a: "No. The product is software — there is nothing to buy in advance, nothing to deliver and nothing left over." },
             { q: "What exactly am I selling?", a: "The card you are looking at: the free digital V-Card, the website plans (Website Standard ₹2,999 a year, Website Premium ₹5,999 a year) and the Growth Plan (₹2,999 a month) with the daily posters, the WhatsApp AI and the CRM." },
             { q: "When and how am I paid?", a: "Matching runs every night. After Sunday's midnight closing, a wallet of ₹500 or more is paid out automatically and reaches your approved bank account on Wednesday. PAN and bank details (KYC) must be approved first." },

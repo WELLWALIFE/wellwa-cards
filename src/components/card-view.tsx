@@ -23,6 +23,7 @@ import { NoticeBar, NoticePopup } from "@/components/notice-view";
 import { FormBlock } from "@/components/form-block";
 import { trackView, trackClick } from "@/lib/track";
 import { localLine, pageHref } from "@/lib/seo";
+import { youtubeEmbed, youtubeId } from "@/lib/youtube";
 
 const quickTypes = ["phone", "whatsapp", "email", "website", "location", "upi"] as const;
 
@@ -627,31 +628,106 @@ function Avatar({ card }: { card: Card }) {
 
 /* ============ Block renderer ============ */
 /** A gallery whose photos have headings ("Opening ceremony", "Seminar"): heading chips and a search box over a grid of photos. */
-function AlbumGallery({ block, t }: { block: Extract<CardBlock, { kind: "gallery" }>; t: (s: string) => string }) {
+/** The round "play" mark over a gallery video's still picture. */
+export function PlayMark({ small = false }: { small?: boolean }) {
+  return <span className="pointer-events-none absolute inset-0 grid place-items-center" aria-hidden="true"><span className={`grid place-items-center rounded-full bg-black/65 text-white ${small ? "h-7 w-7 text-[11px]" : "h-11 w-11 text-base"}`}>▶</span></span>;
+}
+
+/** The card's gallery (owner, 12 Nov 2026): albums — a heading with as many photos as the owner put in it — and YouTube videos.
+ *  A tap opens the photo big; left / right (or a swipe) goes through the album one by one; a video plays in the same viewer. */
+function CardGallery({ block, t }: { block: Extract<CardBlock, { kind: "gallery" }>; t: (s: string) => string }) {
   const [alb, setAlb] = useState("");
   const [q, setQ] = useState("");
+  const [zoom, setZoom] = useState<{ list: string[]; i: number; alt: string } | null>(null);
   const all = block.images.filter((g) => g.url);
+  const videos: Record<string, string> = {};
+  for (const g of all) { const id = g.video ? youtubeId(g.video) : ""; if (id) videos[g.url!] = id; }
   const heads = [...new Set(all.map((g) => (g.group ?? "").trim()).filter(Boolean))];
   const ql = q.trim().toLowerCase();
-  const shown = all.filter((g) => (!alb || g.group === alb) && (!ql || `${g.group ?? ""} ${g.label}`.toLowerCase().includes(ql)));
+  const shown = heads.length ? all.filter((g) => (!alb || g.group === alb) && (!ql || `${g.group ?? ""} ${g.label}`.toLowerCase().includes(ql))) : all;
+  const open = (i: number) => setZoom({ list: shown.map((g) => g.url!), i, alt: shown[i].label || shown[i].group || block.title });
+  const viewer = zoom && <ImageLightbox images={zoom.list} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={t(zoom.alt)} videos={videos} />;
   const chip = (on: boolean) => `rounded-full px-3 py-1 text-xs font-semibold ${on ? "bg-brand text-white" : "bg-surface2 text-muted"}`;
+  const tileBtn = "relative block w-full overflow-hidden cursor-zoom-in focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand";
+  const label = (g: (typeof all)[number], i: number) => (g.video ? `${t("Play video")}: ` : "") + (g.label || g.group || `${t("Photo")} ${i + 1}`);
+
+  if (heads.length) {
+    return (
+      <section>
+        <BlockTitle>{t(block.title)}</BlockTitle>
+        {heads.length > 4 && <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Search a heading")} aria-label={t("Search a heading")} className="mb-2 w-full rounded-full border border-border bg-surface px-4 py-2 text-sm" />}
+        <div className="mb-3 flex flex-wrap gap-1.5">
+          {["", ...heads].map((g) => <button key={g || "all"} type="button" onClick={() => setAlb(g)} aria-pressed={alb === g} className={chip(alb === g)}>{g ? t(g) : t("All")} <span className="opacity-70">{g ? all.filter((x) => x.group === g).length : all.length}</span></button>)}
+        </div>
+        {shown.length === 0 ? <p className="text-sm text-muted">{t("No photo under that heading.")}</p> : (
+          <div className="grid grid-cols-3 gap-2">
+            {shown.map((img, i) => (
+              <div key={img.url}>
+                <button type="button" onClick={() => open(i)} aria-label={label(img, i)} className={`${tileBtn} aspect-square rounded-xl shadow-card`}>
+                  <Pic src={img.url!} alt={img.label || img.group || ""} sizes="(min-width: 640px) 150px, 33vw" className="absolute inset-0 h-full w-full object-cover" />
+                  {img.video && <PlayMark small />}
+                </button>
+                {!alb && img.group && <p className="mt-1 truncate text-[11px] text-muted">{t(img.group)}</p>}
+              </div>
+            ))}
+          </div>
+        )}
+        {viewer}
+      </section>
+    );
+  }
+  const gl = all.length === block.images.length ? galleryLayout(all.length) : "masonry";
+  if (gl === "single") {
+    return (
+      <section>
+        <BlockTitle>{t(block.title)}</BlockTitle>
+        <figure className="look-sec overflow-hidden rounded-2xl border border-border shadow-card" style={{ background: "var(--p-soft)" }}>
+          <button type="button" onClick={() => open(0)} aria-label={label(all[0], 0)} className={tileBtn}>
+            <Pic src={all[0].url!} alt={all[0].label} sizes="(min-width: 640px) 448px, 100vw" className="mx-auto w-auto max-w-full h-auto max-h-80 object-contain" />
+            {all[0].video && <PlayMark />}
+          </button>
+          {all[0].label && <figcaption className="px-3 py-2 text-xs text-muted">{t(all[0].label)}</figcaption>}
+        </figure>
+        {viewer}
+      </section>
+    );
+  }
+  if (gl === "pair" || gl === "mosaic") {
+    return (
+      <section>
+        <BlockTitle>{t(block.title)}</BlockTitle>
+        <div className={`grid gap-2 ${gl === "pair" ? "grid-cols-2" : "grid-cols-3"}`}>
+          {all.map((img, i) => (
+            <button key={img.url} type="button" onClick={() => open(i)} aria-label={label(img, i)}
+              className={`${tileBtn} look-sec rounded-xl shadow-card ${gl === "pair" ? "aspect-[4/5]" : i === 0 ? "col-span-3 aspect-[16/9]" : "aspect-square"}`}>
+              <Pic src={img.url!} alt={img.label} sizes="(min-width: 640px) 448px, 100vw" className="absolute inset-0 h-full w-full object-cover" />
+              {img.video && <PlayMark small={gl === "mosaic" && i > 0} />}
+            </button>
+          ))}
+        </div>
+        {viewer}
+      </section>
+    );
+  }
   return (
     <section>
       <BlockTitle>{t(block.title)}</BlockTitle>
-      <input type="search" value={q} onChange={(e) => setQ(e.target.value)} placeholder={t("Search a heading")} aria-label={t("Search a heading")} className="mb-2 w-full rounded-full border border-border bg-surface px-4 py-2 text-sm" />
-      <div className="mb-3 flex flex-wrap gap-1.5">
-        {["", ...heads].map((g) => <button key={g || "all"} type="button" onClick={() => setAlb(g)} aria-pressed={alb === g} className={chip(alb === g)}>{g ? t(g) : t("All")}</button>)}
-      </div>
-      {shown.length === 0 ? <p className="text-sm text-muted">{t("No photo under that heading.")}</p> : (
-        <div className="grid grid-cols-3 gap-2">
-          {shown.map((img, i) => (
-            <div key={i}>
-              <Pic src={img.url!} alt={img.label || img.group || ""} sizes="(min-width: 640px) 150px, 33vw" className="aspect-square w-full rounded-xl object-cover shadow-card" />
-              {img.group && <p className="mt-1 truncate text-[11px] text-muted">{t(img.group)}</p>}
+      <div className="grid grid-cols-3 gap-2">
+        {block.images.map((img, i) =>
+          img.url ? (
+            <button key={i} type="button" onClick={() => open(all.indexOf(img))} aria-label={label(img, i)} className={`${tileBtn} aspect-square rounded-xl bg-surface2/50 shadow-card`}>
+              <Pic src={img.url} alt={img.label} sizes="(min-width: 640px) 150px, 33vw" className="absolute inset-0 h-full w-full object-cover" />
+              {img.video && <PlayMark small />}
+            </button>
+          ) : (
+            <div key={i} className="aspect-square rounded-xl grid place-items-center text-white text-xs font-medium shadow-card"
+              style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}bb)` }}>
+              {t(img.label)}
             </div>
-          ))}
-        </div>
-      )}
+          ),
+        )}
+      </div>
+      {viewer}
     </section>
   );
 }
@@ -850,53 +926,8 @@ export function Block({ block, card, theme }: { block: CardBlock; card: Card; th
         </section>
       );
 
-    case "gallery": {
-      // Photos grouped under headings (owner, 14 Oct 2026): the visitor picks a heading or searches for one.
-      if (block.images.some((g) => g.url && (g.group ?? "").trim())) return <AlbumGallery block={block} t={t} />;
-      const imgs = block.images.filter((g) => g.url);
-      const gl = imgs.length === block.images.length ? galleryLayout(imgs.length) : "masonry";
-      if (gl === "single") {
-        return (
-          <section>
-            <BlockTitle>{t(block.title)}</BlockTitle>
-            <figure className="look-sec overflow-hidden rounded-2xl border border-border shadow-card" style={{ background: "var(--p-soft)" }}>
-              <Pic src={imgs[0].url!} alt={imgs[0].label} sizes="(min-width: 640px) 448px, 100vw" className="mx-auto w-auto max-w-full h-auto max-h-80 object-contain" />
-              {imgs[0].label && <figcaption className="px-3 py-2 text-xs text-muted">{t(imgs[0].label)}</figcaption>}
-            </figure>
-          </section>
-        );
-      }
-      if (gl === "pair" || gl === "mosaic") {
-        return (
-          <section>
-            <BlockTitle>{t(block.title)}</BlockTitle>
-            <div className={`grid gap-2 ${gl === "pair" ? "grid-cols-2" : "grid-cols-3"}`}>
-              {imgs.map((img, i) => (
-                <Pic key={i} src={img.url!} alt={img.label} sizes="(min-width: 640px) 448px, 100vw"
-                  className={`look-sec w-full rounded-xl object-cover shadow-card ${gl === "pair" ? "aspect-[4/5]" : i === 0 ? "col-span-3 aspect-[16/9]" : "aspect-square"}`} />
-              ))}
-            </div>
-          </section>
-        );
-      }
-      return (
-        <section>
-          <BlockTitle>{t(block.title)}</BlockTitle>
-          <div className="grid grid-cols-3 gap-2">
-            {block.images.map((img, i) =>
-              img.url ? (
-                <Pic key={i} src={img.url} alt={img.label} sizes="(min-width: 640px) 150px, 33vw" className="aspect-square w-full rounded-xl object-contain bg-surface2/50 shadow-card" />
-              ) : (
-                <div key={i} className="aspect-square rounded-xl grid place-items-center text-white text-xs font-medium shadow-card"
-                  style={{ background: `linear-gradient(135deg, ${img.color}, ${img.color}bb)` }}>
-                  {t(img.label)}
-                </div>
-              ),
-            )}
-          </div>
-        </section>
-      );
-    }
+    case "gallery":
+      return <CardGallery block={block} t={t} />;
 
     case "showcase":
       return (
@@ -1439,9 +1470,11 @@ function ProductCarousel({ images, theme }: { images: CardImage[]; theme: string
 
 /* ---- full-screen image viewer (tap product photo → opens here) ---- */
 export function ImageLightbox({
-  images, index, onIndex, onClose, alt,
+  images, index, onIndex, onClose, alt, videos,
 }: {
   images: string[]; index: number; onIndex: (i: number) => void; onClose: () => void; alt: string;
+  /** Picture address → YouTube id (lib/youtube.ts galleryVideos): that picture is a video's still, and the viewer plays the video in its place. */
+  videos?: Record<string, string>;
 }) {
   const closeRef = useRef<HTMLButtonElement>(null);
   const drag = useRef<{ x: number; y: number } | null>(null);
@@ -1496,6 +1529,12 @@ export function ImageLightbox({
           if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(e.clientY - d.y) * 1.5) go(dx < 0 ? 1 : -1);
         }}
       >
+        {videos?.[images[index]] ? (
+          // A gallery video: YouTube's own player, started by the tap that opened it. `key` so the next video replaces this one.
+          <div className="aspect-video w-full max-w-4xl overflow-hidden rounded-xl bg-black md:mx-20" style={{ maxHeight: "78vh" }} onClick={(e) => e.stopPropagation()}>
+            <iframe key={videos[images[index]]} src={youtubeEmbed(videos[images[index]])} title={alt || "Video"} className="h-full w-full" allow="autoplay; encrypted-media; picture-in-picture; fullscreen" allowFullScreen />
+          </div>
+        ) : (
         <Pic
           src={images[index]}
           alt={alt}
@@ -1503,10 +1542,11 @@ export function ImageLightbox({
           className="max-h-[78vh] max-w-full object-contain rounded-xl select-none"
           onClick={(e) => e.stopPropagation()}
         />
+        )}
         {many && (
           <>
-            <button type="button" aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); go(-1); }} className={`${arrow} left-0 md:left-4 max-md:hidden`}><ChevronLeft className="h-6 w-6" /></button>
-            <button type="button" aria-label="Next photo" onClick={(e) => { e.stopPropagation(); go(1); }} className={`${arrow} right-0 md:right-4 max-md:hidden`}><ChevronRight className="h-6 w-6" /></button>
+            <button type="button" aria-label="Previous photo" onClick={(e) => { e.stopPropagation(); go(-1); }} className={`${arrow} left-0 md:left-4 ${videos?.[images[index]] ? "max-md:top-auto max-md:bottom-0 max-md:translate-y-0" : "max-md:hidden"}`}><ChevronLeft className="h-6 w-6" /></button>
+            <button type="button" aria-label="Next photo" onClick={(e) => { e.stopPropagation(); go(1); }} className={`${arrow} right-0 md:right-4 ${videos?.[images[index]] ? "max-md:top-auto max-md:bottom-0 max-md:translate-y-0" : "max-md:hidden"}`}><ChevronRight className="h-6 w-6" /></button>
           </>
         )}
       </div>
@@ -1521,7 +1561,7 @@ export function ImageLightbox({
               aria-label={`Photo ${i + 1}`}
               aria-current={i === index ? "true" : undefined}
             >
-              <Pic src={g} alt="" w={56} className="h-full w-full object-contain p-0.5" />
+              <span className="relative block h-full w-full"><Pic src={g} alt="" w={56} className="h-full w-full object-contain p-0.5" />{videos?.[g] && <span className="absolute inset-0 grid place-items-center text-white"><span className="grid h-5 w-5 place-items-center rounded-full bg-black/70 text-[9px]">▶</span></span>}</span>
             </button>
           ))}
         </div>
@@ -1566,6 +1606,7 @@ function ProductCard({
   const [zoom, setZoom] = useState(false);
   const tr = useT();
   const main = gallery[Math.min(shot, gallery.length - 1)];
+  const planArt = /\/art\/shubhora\/plan-/.test(main ?? "");
 
   return (
     <article className="rounded-2xl border border-border bg-surface overflow-hidden shadow-card">
@@ -1578,9 +1619,11 @@ function ProductCard({
             className="block w-full bg-surface2/60 cursor-zoom-in"
             aria-label={`${p.name} — view full image`}
           >
-            <Pic src={main} alt={p.name} sizes="(min-width: 640px) 448px, 100vw" className="w-full h-56 object-contain p-3" />
+            {/* A drawn plan card (art/shubhora/plan-*: square, its own words and badge) fills the width whole — not a small picture
+                in a grey box with the card's badge printed over its own (phone card, 12 Nov 2026). */}
+            <Pic src={main} alt={p.name} sizes="(min-width: 640px) 448px, 100vw" className={planArt ? "block w-full aspect-square object-cover" : "w-full h-56 object-contain p-3"} />
           </button>
-          {p.badge && (
+          {p.badge && !planArt && (
             <span className="absolute top-3 left-3 rounded-full px-2.5 py-1 text-[11px] font-semibold text-white shadow-sm"
               style={{ background: theme }}>{p.badge}</span>
           )}

@@ -26,6 +26,7 @@ import { useId, useRef, useState, type CSSProperties, type KeyboardEvent, type R
 import { CountUp } from "@/components/site-smart";
 import { Icon, iconFor, type IconName } from "@/components/site-icons";
 import { Btn, Eyebrow, H2, Head, Photo, Sec, Stars, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { PlayMark } from "@/components/card-view";
 
 /* ================= shared helpers ================= */
 
@@ -42,13 +43,13 @@ function visibleBlocks(x: AdvCtx) {
 
 /* ---------- photos ---------- */
 
-export type Frame = { url: string; label: string; group: string };
+export type Frame = { url: string; label: string; group: string; video?: boolean };
 /** The photos the section shows: the gallery blocks in page order (with their album heading), then whatever else the page
  *  owns that is a picture (carousel / image blocks), one frame per address. content.ts caps its list at nine; the gallery
  *  variants take up to `max`, so a business that uploaded twenty photos is not cut to nine. */
 export function framesOf(c: SiteContent, x: AdvCtx, max = 18): Frame[] {
   const own: Frame[] = [];
-  for (const b of visibleBlocks(x)) if (b.kind === "gallery") for (const i of b.images) if (i.url) own.push({ url: i.url, label: (i.label ?? "").trim(), group: (i.group ?? "").trim() });
+  for (const b of visibleBlocks(x)) if (b.kind === "gallery") for (const i of b.images) if (i.url) own.push({ url: i.url, label: (i.label ?? "").trim(), group: (i.group ?? "").trim(), ...(i.video ? { video: true } : {}) });
   const seen = new Set<string>();
   const out: Frame[] = [];
   for (const f of [...own, ...c.gallery.map((g) => ({ url: g.url, label: g.label, group: "" }))]) {
@@ -71,6 +72,7 @@ export function FrameBtn({ f, i, urls, x, name, cls = "", style, sizes, label, c
       aria-label={label ?? (cap || x.ui(`Open photo ${i + 1} of ${urls.length}`, `फ़ोटो ${i + 1} / ${urls.length} खोलें`))}
     >
       <Photo src={f.url} alt="" sizes={sizes} />
+      {f.video && <PlayMark />}
       {cap && <span className="gx-cap">{cap}</span>}
       {children}
     </button>
@@ -134,6 +136,23 @@ export function Rail({ items, min, speed = 38, reverse = false }: { items: React
 /* ================= GALLERY ================= */
 
 export const MASONRY_AR = ["4/5", "1/1", "3/4", "5/4", "4/5", "3/2", "1/1", "3/4"];
+
+/* ---------- one or two photos ---------- */
+/** Every gallery design needs three photos or more; with one or two the owner's photos still show (12 Nov 2026: a photo added from the
+ *  app "did not come" on the Premium website until there were three). */
+export function GallerySmall({ c, x, index }: VariantProps) {
+  const fr = framesOf(c, x);
+  if (!fr.length) return null;
+  const urls = fr.map((f) => f.url);
+  return (
+    <Sec k="gallery" tone={index % 2 ? "alt" : "paper"} wide>
+      <Head eyebrow={x.ui("Gallery", "फ़ोटो")} title={x.ui("Photos", "फ़ोटो")} />
+      <div className="gx-small" data-n={fr.length}>
+        {fr.map((f, i) => <FrameBtn key={f.url} f={f} i={i} urls={urls} x={x} name={c.name} style={{ aspectRatio: "4/3" }} sizes="(min-width:768px) 50vw, 100vw" />)}
+      </div>
+    </Sec>
+  );
+}
 
 /* ---------- masonry ---------- */
 export function GalleryMasonry({ c, x, index }: VariantProps) {
@@ -645,6 +664,7 @@ const PROOF_BASE_CSS = `
 
 /* ---- gallery: masonry ---- */
 .gx-masonry{column-count:2;column-gap:var(--s3)}
+.gx-small{display:grid;gap:var(--s4);grid-template-columns:repeat(2,minmax(0,1fr));max-width:960px;margin-inline:auto}.gx-small[data-n="1"]{grid-template-columns:minmax(0,1fr);max-width:640px}
 .gx-masonry .gx-tile{margin:0 0 var(--s3);break-inside:avoid}
 @media (min-width:768px){.gx-masonry{column-count:3;column-gap:var(--s4)}.gx-masonry .gx-tile{margin-bottom:var(--s4)}}
 @media (min-width:1200px){.gx-masonry[data-big]{column-count:4}}

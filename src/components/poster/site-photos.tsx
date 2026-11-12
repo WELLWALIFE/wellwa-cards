@@ -4,11 +4,11 @@
 // "+ Add" for more (owner, 14 Oct 2026). An owner's own picture is fitted to the size of its place before it is sent, and
 // compressed, so the page stays light. Every tap changes the live website at once (/api/card/photos).
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, LoaderCircle, Plus, Search, Sparkles, Tag, Trash2 } from "lucide-react";
+import { Camera, FolderPlus, Images, LoaderCircle, Play, Plus, Sparkles, Tag, Trash2, Video } from "lucide-react";
 import { api, uploadImage } from "@/lib/poster-client";
 import { UnlockDialog } from "@/lib/ai-access";
 
-type Slot = { id: string; kind: "banner" | "about" | "gallery"; url: string; label: string; group?: string; size: string; ours: boolean; stock: boolean };
+type Slot = { id: string; kind: "banner" | "about" | "gallery"; url: string; label: string; group?: string; size: string; ours: boolean; stock: boolean; video?: string };
 type Got = { slots?: Slot[]; max?: number; error?: string; needCredits?: number; ideas?: string[] };
 
 /** The slot's width ÷ height, and the width the picture is cut to. */
@@ -50,8 +50,12 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
   const [newGroup, setNewGroup] = useState("");
   const [headFor, setHeadFor] = useState("");
   const [headVal, setHeadVal] = useState("");
-  const [fGroup, setFGroup] = useState("");
-  const [q, setQ] = useState("");   // not enough credits: the Razorpay popup
+  // Albums (owner, 12 Nov 2026: "header me jitni chahe utni photo add kar paaye"): the album a YouTube link is being typed for
+  // (null = none open), the link, and how far a many-photo upload has got.
+  const [ytFor, setYtFor] = useState<string | null>(null);
+  const [ytVal, setYtVal] = useState("");
+  const [prog, setProg] = useState("");
+  const addGroup = useRef("");               // the album the chosen files go into
   const pick = useRef<HTMLInputElement>(null);
   const target = useRef<string>("");       // the slot a chosen file is for ("" = a new gallery photo)
   const lock = useRef(false);               // one change at a time: a second tap in the same moment would be charged and then undo the first
@@ -88,23 +92,38 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
       setBusy("");
     }
   }
-  async function chosen(file: File | null) {
+  async function chosen(files: File[]) {
     const slot = target.current;
-    if (!file) return;
+    if (!files.length) return;
     const kind: Slot["kind"] = slot === "banner" || slot === "cardbanner" || slot === "sitebanner" || slot.startsWith("slide:") ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     const key = slot ? `${slot}:replace` : "add";
     const at = slot || "add";
     if (lock.current) return;
     setErr("");
-    let fitted: File;
-    try { fitted = await fitTo(file, kind); } catch { setErr(T("That file is not a photo.", "ये file photo नहीं है।"), at); return; }
-    setBusy(key); setErr("");
-    let url: string | null = null;
-    try { url = await uploadImage(fitted, "wide"); } catch { url = null; }
-    if (!url) { setBusy(""); setErr(T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।"), at); return; }
-    await run(key, slot ? { action: "replace", slot, url } : { action: "add", url, group: newGroup });
+    // A place takes one photo; an album takes as many as were picked, one after another (each is on the website as soon as it is up).
+    const list = slot ? files.slice(0, 1) : files.slice(0, Math.max(1, max - (slots ?? []).filter((x) => x.kind === "gallery").length));
+    let failed = 0;
+    for (let n = 0; n < list.length; n++) {
+      if (list.length > 1) setProg(`${n + 1} / ${list.length}`);
+      let fitted: File;
+      try { fitted = await fitTo(list[n], kind); } catch { failed++; continue; }
+      setBusy(key);
+      let url: string | null = null;
+      try { url = await uploadImage(fitted, "wide"); } catch { url = null; }
+      if (!url) { failed++; setBusy(""); continue; }
+      await run(key, slot ? { action: "replace", slot, url } : { action: "add", url, group: addGroup.current });
+    }
+    setProg(""); setBusy("");
+    if (failed) setErr(list.length > 1 ? T(`${failed} of ${list.length} photos could not be added. Please try those again.`, `${list.length} में से ${failed} photos नहीं जुड़ीं। उन्हें दोबारा try करें।`) : T("The photo could not be uploaded. Please try again.", "Photo upload नहीं हुई। दोबारा try करें।"), at);
+    else if (files.length > list.length) setErr(T(`The gallery holds ${max}. The first ${list.length} were added.`, `Gallery में ${max} आती हैं। पहली ${list.length} जुड़ गईं।`), at);
   }
-  const choose = (slot: string) => { target.current = slot; pick.current?.click(); };
+  const choose = (slot: string, group = "") => { target.current = slot; addGroup.current = group; if (pick.current) { pick.current.multiple = !slot; pick.current.click(); } };
+  async function addVideo(group: string) {
+    const link = ytVal.trim();
+    if (!link) return;
+    await run("add", { action: "video", url: link, group });
+    setYtVal(""); setYtFor(null);
+  }
 
   if (!slots) return <div className="flex items-center gap-2 rounded-2xl border border-border p-4 text-sm text-muted"><LoaderCircle className="h-4 w-4 animate-spin" /> {T("Loading your photos…", "आपकी photos खुल रही हैं…")}</div>;
 
@@ -115,8 +134,9 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
   const about = slots.filter((s) => s.kind === "about");
   const gallery = slots.filter((s) => s.kind === "gallery");
   const groups = [...new Set(gallery.map((x) => (x.group ?? "").trim()).filter(Boolean))];
-  const ql = q.trim().toLowerCase();
-  const shownGallery = gallery.filter((x) => (!fGroup || x.group === fGroup) && (!ql || `${x.group ?? ""} ${x.label}`.toLowerCase().includes(ql)));
+  const shownGallery = gallery;
+  const loose = gallery.filter((x) => !(x.group ?? "").trim());
+  const full = gallery.length >= max;
   const tag = (s: Slot) => s.ours ? T("Made by AI", "AI से बनी") : s.stock ? T("Sample picture", "नमूना picture") : T("Your photo", "आपकी photo");
   const btn = "inline-flex items-center justify-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 py-2 text-xs font-semibold disabled:opacity-50";
 
@@ -134,7 +154,8 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
           {/* eslint-disable-next-line @next/next/no-img-element */}
           {s.url ? <img src={s.url} alt={s.label} loading="lazy" className="absolute inset-0 h-full w-full object-cover" />
             : <span className="absolute inset-0 grid place-items-center text-xs font-semibold text-muted">{T("No banner yet — add one below", "अभी banner नहीं है — नीचे से लगाएँ")}</span>}
-          {s.url && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">{tag(s)}</span>}
+          {s.url && <span className="absolute left-2 top-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-semibold text-white">{s.video ? "YouTube" : tag(s)}</span>}
+          {s.video && <span className="absolute inset-0 grid place-items-center"><span className="grid h-10 w-10 place-items-center rounded-full bg-black/65 text-white"><Play className="h-5 w-5 fill-current" /></span></span>}
           {working && <span className="absolute inset-0 grid place-items-center bg-black/45 text-xs font-semibold text-white"><span className="flex items-center gap-2"><LoaderCircle className="h-4 w-4 animate-spin" /> {busy.endsWith(":ai") ? T("Making… about 30 seconds", "बन रही है… लगभग 30 सेकंड") : T("Please wait…", "रुकिए…")}</span></span>}
         </div>
         <div className="space-y-2 p-2.5">
@@ -151,13 +172,13 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
             <button type="button" disabled={!!busy} onClick={() => { setHeadFor(s.id); setHeadVal(s.group ?? ""); }} className="inline-flex max-w-full items-center gap-1 rounded-full border border-border px-2.5 py-1 text-[11px] font-semibold text-brand-ink disabled:opacity-50"><Tag className="h-3 w-3 shrink-0" /> <span className="truncate">{s.group ? s.group : T("Add a heading", "Heading जोड़ें")}</span></button>
           ))}
           <p className="text-sm font-semibold">{s.id === "cardbanner" ? T("Card banner (only on your phone card)", "Card का banner (सिर्फ़ phone card पर)") : s.id === "sitebanner" ? T("Website banner (only on your website)", "Website का banner (सिर्फ़ website पर)") : s.id.startsWith("slide:") ? `${T("Banner", "Banner")} ${Number(s.id.slice(6)) + 1}` : s.kind === "banner" ? T("Top banner", "ऊपर का banner") : s.kind === "about" ? T("About picture", "परिचय की picture") : s.label}</p>
-          <p className="text-[11px] text-muted">{T("Any photo works — we fit it.", "कोई भी photo चलेगी, हम fit कर देंगे।")}</p>
-          <div className="grid grid-cols-3 gap-1.5">
-            <button type="button" className={btn} disabled={!!busy} onClick={() => choose(s.id)}><Camera className="h-3.5 w-3.5" /> {T("Replace", "बदलें")}</button>
-            <button type="button" className={btn} disabled={!!busy} onClick={() => void run(`${s.id}:ai`, { action: "ai", slot: s.id })}><Sparkles className="h-3.5 w-3.5 text-brand" /> {T("Make by AI", "AI से बनाएँ")}</button>
+          {!s.video && <p className="text-[11px] text-muted">{T("Any photo works — we fit it.", "कोई भी photo चलेगी, हम fit कर देंगे।")}</p>}
+          <div className={`grid gap-1.5 ${s.video ? "grid-cols-1" : "grid-cols-3"}`}>
+            {!s.video && <button type="button" className={btn} disabled={!!busy} onClick={() => choose(s.id)}><Camera className="h-3.5 w-3.5" /> {T("Replace", "बदलें")}</button>}
+            {!s.video && <button type="button" className={btn} disabled={!!busy} onClick={() => void run(`${s.id}:ai`, { action: "ai", slot: s.id })}><Sparkles className="h-3.5 w-3.5 text-brand" /> {T("Make by AI", "AI से बनाएँ")}</button>}
             {s.kind === "banner" && !(s.id.startsWith("slide:") && banners.length > 1)
               ? <span />
-              : <button type="button" className={`${btn} text-danger`} disabled={!!busy} onClick={() => { if (window.confirm(T("Take this photo off the website?", "इस photo को website से हटाएँ?"))) void run(`${s.id}:remove`, { action: "remove", slot: s.id }); }}><Trash2 className="h-3.5 w-3.5" /> {T("Remove", "हटाएँ")}</button>}
+              : <button type="button" className={`${btn} text-danger`} disabled={!!busy} onClick={() => { if (window.confirm(s.video ? T("Take this video off the website?", "इस video को website से हटाएँ?") : T("Take this photo off the website?", "इस photo को website से हटाएँ?"))) void run(`${s.id}:remove`, { action: "remove", slot: s.id }); }}><Trash2 className="h-3.5 w-3.5" /> {T("Remove", "हटाएँ")}</button>}
           </div>
           {errHere(s.id)}
         </div>
@@ -168,7 +189,7 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
   return (
     <div className="space-y-4">
       {pay && <UnlockDialog onClose={() => setPay(false)} />}
-      <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0] ?? null; e.target.value = ""; void chosen(f); }} />
+      <input ref={pick} type="file" accept="image/*" className="hidden" onChange={(e) => { const f = [...(e.target.files ?? [])]; e.target.value = ""; void chosen(f); }} />
       {scope && <p className="rounded-xl bg-brand-soft/50 px-3 py-2 text-xs font-semibold text-ink">{scope === "card"
         ? T("Banner: card only. Other photos: card + website.", "Banner: सिर्फ़ card का। बाकी photos: card + website दोनों।")
         : T("Banner: website only. Other photos: card + website.", "Banner: सिर्फ़ website का। बाकी photos: card + website दोनों।")}</p>}
@@ -195,37 +216,51 @@ export function SitePhotos({ hi, cardId, scope, onChanged }: { hi: boolean; card
         </section>
       )}
       {about.length > 0 && <section className="space-y-2"><h3 className="text-sm font-bold">{T("About", "परिचय")}</h3><div className="grid grid-cols-2 gap-2.5">{about.map((s) => tile(s))}</div></section>}
-      <section className="space-y-2">
+      <section className="space-y-3">
         <h3 className="text-sm font-bold">{T("Gallery", "Gallery")} <span className="font-normal text-muted">({gallery.length}/{max})</span></h3>
-        <p className="text-xs text-muted">{T("Group photos under a heading, e.g. “Seminar”.", "Photos को heading में रखें, जैसे “Seminar”।")}</p>
-        {(groups.length > 0 || gallery.length > 6) && (
-          <div className="space-y-2">
-            <label className="flex items-center gap-2 rounded-xl border border-border bg-surface px-3 py-2"><Search className="h-4 w-4 shrink-0 text-muted" /><input value={q} onChange={(e) => setQ(e.target.value)} placeholder={T("Search a heading", "Heading खोजें")} className="min-w-0 flex-1 bg-transparent text-sm outline-none" /></label>
-            {groups.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {["", ...groups].map((g) => <button key={g || "all"} type="button" onClick={() => setFGroup(g)} className={`rounded-full px-3 py-1 text-xs font-semibold ${fGroup === g ? "bg-brand text-white" : "bg-surface2 text-muted"}`}>{g || T("All", "सब")}{g ? ` · ${gallery.filter((x) => x.group === g).length}` : ""}</button>)}
-              </div>
-            )}
+        <p className="text-xs text-muted">{T("Make an album (a heading like “Opening ceremony”) and put as many photos in it as you like. Visitors tap a photo to see it big and swipe left or right. A video is added by its YouTube link.", "Album बनाइए (heading, जैसे “उद्घाटन समारोह”) और उसमें जितनी चाहें photos डालिए। देखने वाला photo दबाकर बड़ी देखता है और left / right घुमाता है। Video उसके YouTube link से जुड़ता है।")}</p>
+        {prog && <p className="flex items-center gap-2 rounded-xl bg-brand-soft/60 px-3 py-2 text-xs font-semibold text-brand-ink"><LoaderCircle className="h-4 w-4 animate-spin" /> {T(`Adding photo ${prog}…`, `Photo ${prog} जुड़ रही है…`)}</p>}
+        {/* One box per album: its photos and videos, and its own two Add buttons. Photos with no heading sit in "Other photos". */}
+        {[...groups, ...(loose.length || !groups.length ? [""] : [])].map((g) => {
+          const items = g ? gallery.filter((x) => (x.group ?? "").trim() === g) : loose;
+          return (
+            <div key={g || "loose"} className="space-y-2.5 rounded-2xl border border-border bg-surface2/60 p-2.5">
+              <p className="flex items-center gap-1.5 text-sm font-bold"><Images className="h-4 w-4 shrink-0 text-brand" /> <span className="min-w-0 truncate">{g || (groups.length ? T("Other photos", "बाकी photos") : T("Photos", "Photos"))}</span> <span className="shrink-0 font-normal text-muted">· {items.length}</span></p>
+              {items.length > 0 && <div className="grid grid-cols-2 gap-2.5">{items.map((s2) => tile(s2))}</div>}
+              {items.length === 0 && <p className="text-xs text-muted">{T("No photos here yet. Add your first one.", "अभी यहाँ कोई photo नहीं है। पहली जोड़िए।")}</p>}
+              {!full && (
+                <div className="grid grid-cols-3 gap-1.5">
+                  <button type="button" disabled={!!busy} onClick={() => choose("", g)} className={`${btn} border-dashed py-2.5`}>{busy === "add" && addGroup.current === g && !ytFor ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />} {T("Add photos", "Photos जोड़ें")}</button>
+                  <button type="button" disabled={!!busy} onClick={() => { setYtFor(ytFor === g ? null : g); setYtVal(""); setErr(""); }} className={`${btn} border-dashed py-2.5`}><Video className="h-3.5 w-3.5 text-danger" /> {T("YouTube video", "YouTube video")}</button>
+                  <button type="button" disabled={!!busy} onClick={() => { addGroup.current = g; void run("add-ai", { action: "ai", group: g }); }} className={`${btn} border-dashed py-2.5 text-brand-ink`}>{busy === "add-ai" && addGroup.current === g ? <LoaderCircle className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />} {T("One by AI", "AI से एक")}</button>
+                </div>
+              )}
+              {ytFor === g && !full && (
+                <div className="space-y-1.5 rounded-xl bg-surface p-2">
+                  <input value={ytVal} onChange={(e) => setYtVal(e.target.value.slice(0, 200))} onKeyDown={(e) => { if (e.key === "Enter") void addVideo(g); }} placeholder="https://youtu.be/…" inputMode="url" autoFocus className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
+                  <p className="text-[11px] text-muted">{T("Paste the video’s YouTube link. Only YouTube links work here, so your website stays light and fast.", "Video का YouTube link paste करें। यहाँ सिर्फ़ YouTube link चलता है, ताकि website हल्की और तेज़ रहे।")}</p>
+                  <div className="flex gap-1.5">
+                    <button type="button" disabled={!!busy || !ytVal.trim()} onClick={() => void addVideo(g)} className="flex-1 rounded-lg grad-brand py-2 text-xs font-semibold text-white disabled:opacity-50">{busy === "add" ? T("Adding…", "जुड़ रहा है…") : T("Add this video", "ये video जोड़ें")}</button>
+                    <button type="button" onClick={() => setYtFor(null)} className="rounded-lg border border-border px-3 py-2 text-xs">{T("Cancel", "रहने दें")}</button>
+                  </div>
+                </div>
+              )}
+              {err && err.at === "add" && addGroup.current === g && errHere("add")}
+            </div>
+          );
+        })}
+        {/* A new album: its name, then the photos for it. */}
+        {!full && (
+          <div className="space-y-2 rounded-2xl border-2 border-dashed border-brand/40 p-2.5">
+            <p className="flex items-center gap-1.5 text-sm font-bold"><FolderPlus className="h-4 w-4 text-brand" /> {T("New album", "नया album")}</p>
+            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value.slice(0, 40))} placeholder={T("Album name, e.g. Opening ceremony", "Album का नाम, जैसे उद्घाटन समारोह")} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
+            <div className="flex flex-wrap gap-1.5">{ideas.filter((g) => !groups.includes(g)).slice(0, 8).map((g) => <button key={g} type="button" onClick={() => setNewGroup(g)} className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${newGroup === g ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{g}</button>)}</div>
+            <button type="button" disabled={!!busy || !newGroup.trim()} onClick={() => { const g = newGroup.replace(/\s+/g, " ").trim(); choose("", g); setNewGroup(""); }} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl grad-brand py-3 text-sm font-semibold text-white disabled:opacity-50"><Plus className="h-4 w-4" /> {T("Make this album and choose its photos", "ये album बनाएँ और photos चुनें")}</button>
+            <p className="text-[11px] text-muted">{T("You can pick many photos at once.", "एक साथ कई photos चुन सकते हैं।")}</p>
           </div>
         )}
-        {shownGallery.length > 0 && <div className="grid grid-cols-2 gap-2.5">{shownGallery.map((s2) => tile(s2))}</div>}
-        {gallery.length > 0 && shownGallery.length === 0 && <p className="text-xs text-muted">{T("No photo under that heading.", "इस heading के नीचे कोई photo नहीं है।")}</p>}
-        {gallery.length < max && (
-          <div className="space-y-1.5 rounded-xl bg-surface2 p-2.5">
-            <p className="text-xs font-semibold">{T("Heading for the photo you add next (optional)", "अगली जोड़ी जाने वाली photo की heading (optional)")}</p>
-            <input value={newGroup} onChange={(e) => setNewGroup(e.target.value.slice(0, 40))} placeholder={T("e.g. Opening ceremony", "जैसे उद्घाटन समारोह")} className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm" />
-            <div className="flex flex-wrap gap-1.5">{[...new Set([...groups, ...ideas])].slice(0, 12).map((g) => <button key={g} type="button" onClick={() => setNewGroup(g)} className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${newGroup === g ? "border-brand bg-brand-soft text-brand-ink" : "border-border bg-surface"}`}>{g}</button>)}</div>
-          </div>
-        )}
-        {gallery.length < max && (
-          <div className="grid grid-cols-2 gap-2">
-            <button type="button" disabled={!!busy} onClick={() => choose("")} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-3 text-sm font-semibold disabled:opacity-50">{busy === "add" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} {T("Add a photo", "photo जोड़ें")}</button>
-            <button type="button" disabled={!!busy} onClick={() => void run("add-ai", { action: "ai", group: newGroup })} className="inline-flex items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-brand/50 py-3 text-sm font-semibold text-brand-ink disabled:opacity-50">{busy === "add-ai" ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />} {T("Add one by AI", "AI से एक जोड़ें")}</button>
-          </div>
-        )}
-        {gallery.length < max && errHere("add")}
-        {gallery.length >= max && <p className="text-xs text-muted">{T(`The gallery is full (${max} photos). Remove one to add another.`, `Gallery भर गई है (${max} photos)। नई जोड़ने के लिए कोई एक हटाएँ।`)}</p>}
-        {gallery.length === 0 && !busy && <p className="text-xs text-muted">{T("No gallery photos yet. Add your first one.", "अभी gallery में कोई photo नहीं है। पहली जोड़िए।")}</p>}
+        {err && err.at === "add" && ![...groups, ...(loose.length || !groups.length ? [""] : [])].includes(addGroup.current) && errHere("add")}
+        {full && <p className="text-xs text-muted">{T(`The gallery is full (${max}). Remove one to add another.`, `Gallery भर गई है (${max})। नई जोड़ने के लिए कोई एक हटाएँ।`)}</p>}
       </section>
     </div>
   );

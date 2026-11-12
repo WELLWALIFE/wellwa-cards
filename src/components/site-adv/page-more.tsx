@@ -8,7 +8,7 @@ import type { CardBlock, CardPage } from "@/lib/types";
 import type { AdvancedSpec, SectionKey } from "@/lib/site-advanced";
 import type { SiteUpdate } from "@/components/site-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
-import { AppointmentBlock } from "@/components/card-view";
+import { AppointmentBlock, PlayMark } from "@/components/card-view";
 import { Icon } from "@/components/site-icons";
 import { Pic } from "@/components/pic";
 import { Btn, Head, Photo, Sec, Stars, type SiteContent } from "@/components/site-adv/shared";
@@ -122,14 +122,16 @@ export function AboutPage({ c, spec, x, chrome, slot, has, entry }: Props & { en
 
 /* ================= gallery ================= */
 
-type Shot = { url: string; label: string; album: string };
+type Shot = { url: string; label: string; album: string; video?: boolean };
 export function shotsOf(blocks: CardBlock[]): Shot[] {
   const seen = new Set<string>();
   const gblocks = blocks.filter((b) => b.kind === "gallery");
+  const own = gblocks.some((b) => b.kind === "gallery" && b.images.some((im) => im.url));
   const out: Shot[] = [];
   for (const b of blocks) {
-    if (b.kind === "gallery") for (const im of b.images) if (im.url && !seen.has(im.url)) { seen.add(im.url); out.push({ url: im.url, label: (im.label ?? "").trim(), album: (im.group ?? "").trim() || (gblocks.length > 1 ? b.title.trim() : "") }); }
-    if (b.kind === "image" || b.kind === "carousel") for (const im of b.images) if (im.url && !seen.has(im.url)) { seen.add(im.url); out.push({ url: im.url, label: (im.caption ?? "").trim(), album: "" }); }
+    if (b.kind === "gallery") for (const im of b.images) if (im.url && !seen.has(im.url)) { seen.add(im.url); out.push({ url: im.url, label: (im.label ?? "").trim(), album: (im.group ?? "").trim() || (gblocks.length > 1 ? b.title.trim() : ""), ...(im.video ? { video: true } : {}) }); }
+    // The owner's own gallery (its albums and videos) is the Gallery page; the card's other pictures join only when there is no gallery.
+    if (!own && (b.kind === "image" || b.kind === "carousel")) for (const im of b.images) if (im.url && !seen.has(im.url)) { seen.add(im.url); out.push({ url: im.url, label: (im.caption ?? "").trim(), album: "" }); }
   }
   return out;
 }
@@ -148,7 +150,7 @@ export function GalleryPage({ c, spec, x, chrome, slot, has, entry }: Props & { 
         lede={x.hi ? `${shots.length} फ़ोटो` : `${shots.length} photographs`} trail={[{ label: x.t(entry.label) }]} />
       <section className="gl" aria-label={x.t(entry.label)}>
         <div className="adv-wrap adv-wide">
-          {albums.length >= 2 && (
+          {albums.length >= 1 && shots.length > 1 && (
             <div className="cg-chips gl-albums" role="group" aria-label={x.ui("Albums", "एल्बम")}>
               <button type="button" aria-pressed={!pick} onClick={() => setPick("")}>{x.ui("All", "सभी")} <small>{shots.length}</small></button>
               {albums.map(([k, n]) => <button key={k} type="button" aria-pressed={pick === k} onClick={() => setPick(pick === k ? "" : k)}>{x.t(k)} <small>{n}</small></button>)}
@@ -159,6 +161,7 @@ export function GalleryPage({ c, spec, x, chrome, slot, has, entry }: Props & { 
               <li key={s.url} style={{ ["--d" as string]: `${Math.min(k, 10) * 40}ms` }}>
                 <button type="button" onClick={() => x.zoom(list.map((q) => q.url), k, s.label)} aria-label={s.label || `${x.ui("Photo", "फ़ोटो")} ${k + 1}`}>
                   <Pic src={s.url} alt={s.label} className="adv-photo" sizes="(min-width:900px) 25vw, 50vw" />
+                  {s.video && <PlayMark />}
                   {s.label && <span className="gl-cap">{x.t(s.label)}</span>}
                 </button>
               </li>

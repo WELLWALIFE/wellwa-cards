@@ -68,8 +68,8 @@ AGAINST A PAPER CARD: a paper card cannot be updated, cannot show prices or phot
 SHUBHORA PARTNER BUSINESS: an own business from the phone, in one's own city. Shubhora partners help the businesses around them get Shubhora — every shop, clinic, coaching centre and agent needs to be online today. There is no stock to buy, nothing to deliver or store — the product is a link. Registration is free: every Shubhora account gets a partner ID (like SH100068). Each partner has a left and a right joining link (…/join/their-name?leg=L or ?leg=R) and the card's own link; people who join through them are placed in the partner's team — the first direct on the left, the next on the right, then always on the weaker side. The partner panel (in the app: Business, or shubhora.com/partners) shows team, wallet, income reports, KYC and withdrawals.
 
 PLAN FACTS (official — say them plainly and with confidence, exactly as written):
-- Red and Green ID: registration is free and the ID starts Red; it turns Green as soon as the partner's own Standard (or Premium) plan is active — from then on every pair is paid. Pairs made while Red are not paid, so turning Green early pays.
-- Every paid Standard or Premium subscription creates 2,500 BV.
+- Red and Green ID: registration is free and the ID starts Red; it turns Green as soon as the partner's own plan is active — from then on every pair is paid. Pairs made while Red are not paid, so turning Green early pays.
+- Every paid subscription creates 2,500 BV.
 - Double binary: the new-sale binary (first-time subscriptions in the team) and the renewal binary (BV again every time those customers renew — it needs the partner's own plan to be active). A customer who keeps renewing keeps making pairs, month after month.
 - 1 pair = 2,500 BV on the left matched with 2,500 BV on the right (1 : 1, from the very first pair) = ₹500. Every pair that forms is paid ₹500, by the plan's rules.
 - Daily capping: up to 10 pairs a day in each binary = ₹5,000 a day per binary → up to ₹10,000 a day for both → up to ₹3,00,000 in a 30-day month.
@@ -153,7 +153,7 @@ Q: ऐप कहाँ से डाउनलोड करूँ?
 A: Play Store की ज़रूरत नहीं। shubhora.com पर "Install app" दबाइए (iPhone: Safari → Share → Add to Home Screen)।
 
 Q: बिज़नेस प्लान क्या है? / Joining kaise hoti hai?
-A: Shubhora पार्टनर बनकर आप अपने शहर के बिज़नेस को ये सॉफ्टवेयर दिलाते हैं — अपने फोन से, अपना बिज़नेस। कोई स्टॉक नहीं, रजिस्ट्रेशन फ्री; अपना Standard प्लान चालू करते ही ID ग्रीन और कमाई शुरू। हर पेयर पर ₹500, और दो बाइनरी से रोज़ ₹10,000 तक। पूरा प्लान PDF और वीडियो में है — फ्री रजिस्ट्रेशन जुड़ने के लिंक से।
+A: Shubhora पार्टनर बनकर आप अपने शहर के बिज़नेस को ये सॉफ्टवेयर दिलाते हैं — अपने फोन से, अपना बिज़नेस। कोई स्टॉक नहीं, रजिस्ट्रेशन फ्री; अपना प्लान चालू करते ही ID ग्रीन और कमाई शुरू। हर पेयर पर ₹500, और दो बाइनरी से रोज़ ₹10,000 तक। पूरा प्लान PDF और वीडियो में है — फ्री रजिस्ट्रेशन जुड़ने के लिंक से।
 
 Q: कितना कमा सकते हैं? / Kitni income hogi?
 A: हर पेयर पर ₹500। दो बाइनरी हैं — नई सेल और रिन्यूअल — और हर बाइनरी में रोज़ 10 पेयर तक (₹5,000)। यानी रोज़ ₹10,000 तक और महीने में ₹3,00,000 तक कमाई। रिन्यूअल बाइनरी की खूबी: आपके कस्टमर जब-जब रिन्यू करते हैं, फिर से पेयर बनते हैं। पैसा हर हफ्ते सीधे बैंक में।
@@ -165,7 +165,7 @@ Q: ये MLM है क्या? / Chain system hai?
 A: ये डायरेक्ट सेलिंग है, असली प्रोडक्ट के साथ — वो सॉफ्टवेयर जो हर बिज़नेस को चाहिए। रजिस्ट्रेशन फ्री, कोई स्टॉक नहीं, और कमाई असली सब्सक्रिप्शन और रिन्यूअल से — सिर्फ लोग जोड़ने का कोई पैसा नहीं। इसीलिए ये टिकाऊ बिज़नेस है।
 
 Q: ID लाल / हरी (Red / Green) क्या है?
-A: रजिस्ट्रेशन फ्री है और शुरुआत में ID लाल (Red) रहती है। अपना Standard प्लान चालू करते ही ID हरी (Green) — और उसी दिन से हर पेयर का पैसा आपके वॉलेट में। लाल ID में बने पेयर का पैसा नहीं मिलता, इसलिए ग्रीन जल्दी कर लीजिए।
+A: रजिस्ट्रेशन फ्री है और शुरुआत में ID लाल (Red) रहती है। अपना प्लान चालू करते ही ID हरी (Green) — और उसी दिन से हर पेयर का पैसा आपके वॉलेट में। लाल ID में बने पेयर का पैसा नहीं मिलता, इसलिए ग्रीन जल्दी कर लीजिए।
 
 Q: लेफ्ट लिंक / राइट लिंक क्या है?
 A: जुड़ने के दो लिंक होते हैं — लेफ्ट और राइट (…/join/आपका-नाम?leg=L या ?leg=R)। पहला डायरेक्ट लेफ्ट में, अगला राइट में, फिर हमेशा कमज़ोर साइड में लगता है। ऐप में Share पर दोनों लिंक मिलते हैं।

@@ -5,7 +5,8 @@
 // GET  (bearer) { cardId? }                          → { cardId, username, slots, max }
 // POST (bearer) { action: "replace", slot, url }     → the owner's own picture (already uploaded) put in that place
 //      (bearer) { action: "remove",  slot }          → a gallery or About picture taken off (the banner is replaced, never removed)
-//      (bearer) { action: "add", url }                → one more gallery picture
+//      (bearer) { action: "add", url, group? }        → one more gallery picture, under an album heading when given
+//      (bearer) { action: "video", url, group? }      → a YouTube video in the gallery (the link only — nothing is uploaded)
 //      (bearer) { action: "ai", slot | kind:"gallery" } → one picture made for that place, one credit; `slot` omitted = a new gallery picture
 // `slot` is the id GET gave: "banner", "about:<block>", "gallery:<block>:<index>".
 // `scope` (GET ?scope=, POST { scope }): the card and the website each have their OWN banner (owner, 23 Oct 2026: "banner card me alag alag
@@ -28,6 +29,7 @@ import { SITE_PALETTES } from "@/lib/site-style";
 import { categoryOf } from "@/lib/poster-categories";
 import type { Card, CardBlock } from "@/lib/types";
 import { activeAdvanced } from "@/lib/site-advanced";
+import { youtubeId, youtubeThumb, youtubeWatch } from "@/lib/youtube";
 
 export const maxDuration = 120;
 
@@ -42,7 +44,7 @@ const MAX_SLIDES = 3;
 const slideMode = (card: Card, scope: Scope) => scope !== "card" && !!card.site && (card.site.enabled !== false || !!activeAdvanced(card.site));
 const slideNo = (slot: string) => (/^slide:[0-2]$/.test(slot) ? Number(slot.slice(6)) : -1);
 const scopeOf = (v: unknown): Scope => (v === "card" || v === "site" ? v : "");
-type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: string; size: string; ours: boolean; stock: boolean };
+type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: string; size: string; ours: boolean; stock: boolean; video?: string };
 
 // One change at a time per owner: two taps (or two tabs) would both read the same card and the second save would undo the first.
 const inFlight = new Set<string>();
@@ -70,7 +72,7 @@ function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
   else if (banner || scope) out.push({ id, kind: "banner", url: banner, label: id === "cardbanner" ? "Card banner" : "Top banner", group: "", size: SIZE.banner, ours: madeByUs(banner), stock: isStock(banner) });
   for (const b of visibleBlocks(card)) {
     if (b.kind === "about" && b.imageUrl) out.push({ id: `about:${b.id}`, kind: "about", url: b.imageUrl, label: "About picture", group: "", size: SIZE.about, ours: madeByUs(b.imageUrl), stock: isStock(b.imageUrl) });
-    if (b.kind === "gallery") b.images.forEach((g, i) => { if (g.url) out.push({ id: `gallery:${b.id}:${i}`, kind: "gallery", url: g.url, label: g.label || `Gallery photo ${out.filter((x) => x.kind === "gallery").length + 1}`, group: g.group ?? "", size: SIZE.gallery, ours: madeByUs(g.url), stock: isStock(g.url) }); });
+    if (b.kind === "gallery") b.images.forEach((g, i) => { if (g.url) out.push({ id: `gallery:${b.id}:${i}`, kind: "gallery", url: g.url, label: g.label || `Gallery photo ${out.filter((x) => x.kind === "gallery").length + 1}`, group: g.group ?? "", size: SIZE.gallery, ours: madeByUs(g.url), stock: isStock(g.url), ...(g.video ? { video: g.video } : {}) }); });
   }
   return out;
 }
@@ -137,7 +139,7 @@ function removeSlot(card: Card, slot: string): Card | null {
   }
   return null;   // the banner is never taken off
 }
-function addToGallery(card: Card, url: string, group = ""): Card | null {
+function addToGallery(card: Card, url: string, group = "", video = ""): Card | null {
   let g = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).find((b) => b.kind === "gallery");
   if (!g || g.kind !== "gallery") {
     // No gallery yet (owner, 24 Oct 2026: "gallery nahi hai ka warning sahi hai, par add gallery ka option bhi"): the first photo
@@ -151,7 +153,7 @@ function addToGallery(card: Card, url: string, group = ""): Card | null {
     g = block;
   }
   const colors = ["#e2e8f0", "#fde68a", "#bbf7d0", "#bfdbfe", "#fbcfe8", "#ddd6fe"];
-  return mapBlock(card, g.id, (b) => (b.kind === "gallery" ? { ...b, images: [...b.images, { url, color: colors[b.images.length % colors.length], label: "", ...(group ? { group } : {}) }] } : b));
+  return mapBlock(card, g.id, (b) => (b.kind === "gallery" ? { ...b, images: [...b.images, { url, color: colors[b.images.length % colors.length], label: "", ...(group ? { group } : {}), ...(video ? { video } : {}) }] } : b));
 }
 const urlOf = (card: Card, slot: string) => (isBanner(slot) ? bannerOf(card, slot) : slotsOf(card).find((s) => s.id === slot)?.url ?? "");
 
@@ -169,7 +171,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
-  if (rateLimited(`card-photos:${me.id}`, 60, 60 * 60_000)) return NextResponse.json({ error: "Too many changes in an hour. Please wait a little." }, { status: 429 });
+  if (rateLimited(`card-photos:${me.id}`, 400, 60 * 60_000)) return NextResponse.json({ error: "Too many changes in an hour. Please wait a little." }, { status: 429 });
   const b = (await request.json().catch(() => ({}))) as { action?: string; slot?: string; url?: string; cardId?: string; expect?: string; group?: string; scope?: string };
   if (b.action === "ai" && rateLimited(`card-photos-ai:${me.id}`, 15, 60 * 60_000)) return NextResponse.json({ error: "That is enough pictures for this hour. Please try again a little later." }, { status: 429 });
   const row = await myCard(me.id, typeof b.cardId === "string" ? b.cardId : undefined);
@@ -202,6 +204,7 @@ export async function POST(request: Request) {
 
   if (action === "replace") {
     if (!url || !slot) return NextResponse.json({ error: "Nothing to put there." }, { status: 400 });
+    if (slotsOf(card).find((x) => x.id === slot)?.video) return NextResponse.json({ error: "This is a video. Remove it and add a photo instead." }, { status: 400 });
     newUrl = url;
     next = setSlot(card, slot, url, isBanner(slot) ? await bannerFocus(url).catch(() => null) : null, scope);
   } else if (action === "group") {
@@ -216,10 +219,19 @@ export async function POST(request: Request) {
     newUrl = url;
     next = addToGallery(card, url, group);
     if (!next) return NextResponse.json({ error: "This website has no gallery yet." }, { status: 400 });
+  } else if (action === "video") {
+    // A YouTube link only: its still picture is the tile, the link is what plays. Nothing is uploaded, nothing goes into the facts.
+    const id = youtubeId(url);
+    if (!id) return NextResponse.json({ error: "Paste a YouTube link, like https://youtu.be/…" }, { status: 400 });
+    if (galleryCount >= MAX_GALLERY_PHOTOS) return NextResponse.json({ error: `The gallery holds ${MAX_GALLERY_PHOTOS} photos and videos.` }, { status: 400 });
+    if (slotsOf(card).some((x) => x.video && youtubeId(x.video) === id)) return NextResponse.json({ error: "That video is already in the gallery." }, { status: 400 });
+    next = addToGallery(card, youtubeThumb(id), group, youtubeWatch(id));
+    if (!next) return NextResponse.json({ error: "This website has no gallery yet." }, { status: 400 });
   } else if (action === "ai") {
     const kind: Kind = isBanner(slot) ? "banner" : slot.startsWith("about:") ? "about" : "gallery";
     if (!slot && galleryCount >= MAX_GALLERY_PHOTOS) return NextResponse.json({ error: `The gallery holds ${MAX_GALLERY_PHOTOS} photos.` }, { status: 400 });
     if (slot && !isBanner(slot) && !urlOf(card, slot)) return NextResponse.json({ error: "That picture is not on the website." }, { status: 400 });
+    if (slot && slotsOf(card).find((x) => x.id === slot)?.video) return NextResponse.json({ error: "A video cannot be made by AI. Remove it and add a photo." }, { status: 400 });
     // One credit a picture (owner's call, 4 Oct 2026), taken before anything runs and given back when nothing comes out.
     const ref = `photo-${me.id.slice(0, 8)}-${randomUUID()}`;
     const spend = await restAsService("rpc/spend_credits", { method: "POST", body: JSON.stringify({ p_user: me.id, p_amount: 1, p_reason: "site-photo-ai", p_ref: ref }) });
@@ -245,7 +257,7 @@ export async function POST(request: Request) {
 
   // The facts keep what the website shows, so the next build starts from it.
   // The card's own banner is not a website fact (a rebuild keeps an owner's own card cover by itself, lib/card-facts.ts).
-  if (inputs.profileId && action !== "group" && slot !== "cardbanner" && !(slideNo(slot) > 0)) {
+  if (inputs.profileId && action !== "group" && action !== "video" && slot !== "cardbanner" && !(slideNo(slot) > 0)) {
     const f = inputs.facts;
     const old = slot ? urlOf(card, slot) : "";
     const facts = slot === "banner" || slot === "sitebanner" || slot === "slide:0"

@@ -38,6 +38,9 @@ export interface GalleryImage {
   label: string;
   /** The album heading this photo is grouped under ("Opening ceremony", "Seminar"…). */
   group?: string;
+  /** A YouTube video in the gallery: its watch address. `url` is then the video's still picture; tapping it plays the video
+   *  (src/lib/youtube.ts). Videos are never uploaded — a YouTube link only. */
+  video?: string;
 }
 
 export interface CardImage {

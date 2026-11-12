@@ -13,7 +13,8 @@ import { createContext, useContext, useEffect, useLayoutEffect, useMemo, useRef,
 import { firstSentence } from "@/lib/first-sentence";
 import { X, Download, Check, FileText, Copy, Play, UserPlus, CalendarClock, Megaphone, Newspaper, LoaderCircle } from "lucide-react";
 import type { Card, CardBlock, CardLink, CardPage, ProductItem, SiteLayouts, TestimonialItem } from "@/lib/types";
-import { ContactForm, AppointmentBlock, ImageLightbox, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
+import { galleryVideos } from "@/lib/youtube";
+import { ContactForm, AppointmentBlock, ImageLightbox, PlayMark, TranslateCtx, WelcomePopup, useCardLang, useT, embed, parsePrice, splitGlyph, glyphText, safeMapUrl, pageMeta, type CardBrand } from "@/components/card-view";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
@@ -1596,7 +1597,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
   const t = useT();
   const hi = card.language === "hi";
   const [zoom, setZoom] = useState<Zoom>(null);
-  const lightbox = zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
+  const lightbox = zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
   const hasWa = links.some((l) => l.type === "whatsapp");
   const bp = useContext(BlueprintCtx);
   const uiHi = useContext(UiHiCtx);
@@ -1633,6 +1634,7 @@ function Pulled({ section: s, index, card, theme, ink, waHref, go, links, hrefFo
             {imgs.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative overflow-hidden rounded-2xl border border-border cursor-zoom-in ${i === 0 ? "col-span-2 row-span-2 aspect-square md:aspect-auto" : "aspect-square md:aspect-auto"} ${FOCUS}`}>
                 <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 3} sizes={i === 0 ? "(min-width: 768px) 50vw, 100vw" : "(min-width: 768px) 25vw, 50vw"} />
+                {g.video && <PlayMark />}
                 {g.label && <span className="absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent">{t(g.label)}</span>}
               </button>
             ))}
@@ -1721,7 +1723,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
   const bp = useContext(BlueprintCtx);
   const uiHi = useContext(UiHiCtx);
   const ledeT = (k: CardBlock["kind"]) => { const l = ledeFor(k, uiHi, recipeFor(card.seo?.categoryKey ?? "").cta); return l ? t(l) : undefined; };
-  const lightbox = zoom && <ImageLightbox images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
+  const lightbox = zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />;
   const eyebrow = "title" in block ? eyebrowFor(block.kind, block.title ?? "", hi, block.kind === "product" ? catalogWord(card, hi) : undefined) : undefined;
 
   switch (block.kind) {
@@ -1812,7 +1814,8 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       const shown = showAll ? imgs : imgs.slice(0, 12);
       const gl = preferredLayouts(card.site?.style?.layouts, { gallery: imgs.length }).gallery ?? galleryLayout(imgs.length);
       const open = (i: number) => setZoom({ images: imgs.map((x) => x.url!), i, alt: imgs[i].label });
-      const cap = (g: { label: string }, always = false) => g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>;
+      // A YouTube video in the gallery wears a play mark over its still; the viewer plays it (lib/youtube.ts).
+      const cap = (g: { label: string; video?: string }, always = false) => <>{g.video && <PlayMark />}{g.label && <span className={`absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent ${always ? "" : "opacity-0 group-hover:opacity-100 transition-opacity"}`}>{t(g.label)}</span>}</>;
       const sceneVisible = bp === "bento" ? 4 : bp === "story" ? imgs.length - (imgs.length % 3) : bp === "shop" ? imgs.length - (imgs.length % 4) : bp === "collage" ? imgs.length - (imgs.length % 5) : bp === "wordmark" ? (imgs.length >= 6 ? Math.min(12, Math.floor(imgs.length / 3) * 3) : 3) : imgs.length;
       const allBtn = sceneVisible > 0 && sceneVisible < imgs.length ? <div className="mt-6 flex justify-center"><button type="button" onClick={() => open(sceneVisible)} className={`${GHOST} ${FOCUS}`}>{hi ? `सभी ${imgs.length} photos देखें` : t(`See all ${imgs.length} photos`)}</button></div> : null;
       if (bp === "cinematic" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<SceneStrip imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
@@ -1822,7 +1825,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
       if (bp === "wordmark" && imgs.length >= 3) return <Section wide index={index} theme={theme} eyebrow={eyebrow} title={t(block.title)} lead={ledeT("gallery")}>{bar}<StaggerGallery imgs={shown} onOpen={open} t={t} />{allBtn}{lightbox}</Section>;
       // One photo: shown whole, as wide as the page. Two: side by side. Three to five: a mosaic, the first one big.
       if (gl !== "masonry") {
-        const tile = (g: { url?: string; label: string }, i: number, cls: string, sizes: string) => (
+        const tile = (g: { url?: string; label: string; video?: string }, i: number, cls: string, sizes: string) => (
           <button key={i} type="button" onClick={() => open(i)} className={`group relative block overflow-hidden rounded-2xl cursor-zoom-in ${cls} ${FOCUS}`}>
             <Img src={g.url!} alt={g.label} className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager sizes={sizes} />
             {cap(g, true)}
@@ -1857,6 +1860,7 @@ function SiteBlock({ block, index, card, theme, ink, waHref, go, links, hrefFor,
             {shown.map((g, i) => (
               <button key={i} type="button" onClick={() => setZoom({ images: imgs.map((x) => x.url!), i, alt: g.label })} className={`group relative block w-full break-inside-avoid cursor-zoom-in rounded-2xl overflow-hidden ${FOCUS}`}>
                 <Img src={g.url!} alt={g.label} className="w-full h-auto transition-transform duration-500 group-hover:scale-105 motion-reduce:transform-none" eager={i < 8} sizes="(min-width: 1024px) 25vw, (min-width: 768px) 33vw, 50vw" />
+                {g.video && <PlayMark />}
                 {g.label && <span className="absolute inset-x-0 bottom-0 px-3 py-2 text-left text-xs text-white bg-gradient-to-t from-black/60 to-transparent opacity-0 group-hover:opacity-100 transition-opacity">{t(g.label)}</span>}
               </button>
             ))}

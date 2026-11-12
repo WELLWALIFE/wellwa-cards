@@ -117,9 +117,20 @@ async function allCards() {
 const PRODUCTS = args.includes("--products");
 const P_STD = { name: "Shubhora Website Standard — Dynamic website", price: "2,999 / year", offer: "Growth Plan: 1st month free", benefits: ["Dynamic website, up to 5 pages", "SEO + AI-search ready", "Product catalogue + WhatsApp order", "AI Ad Studio and Reel Maker (credits)", "Growth Plan: 1st month free", "₹2,999 a year, GST included"], art: "/api/stock/vcard/plan-website-standard.jpg" };
 const P_PRE = { name: "Shubhora Website Premium — Dynamic & Progressive website", price: "5,999 / year", offer: "Installs on the phone like an app", benefits: ["Dynamic & Progressive website", "Installs on phone like an app", "SEO + AI-search ready", "Product catalogue + WhatsApp order", "AI Ad Studio and Reel Maker (credits)", "Growth Plan: 1st month free"], art: "/api/stock/vcard/plan-website-premium.jpg" };
+const P_GROWTH = { name: "Shubhora Growth Plan — Posters, WhatsApp AI and CRM", price: "2,999 / month", offer: "1st month free with every website plan", benefits: ["Daily posters", "Facebook & Instagram auto-post", "WhatsApp AI chatbot 24×7", "CRM & lead follow-ups", "Google profile & review replies", "WhatsApp broadcasts", "AI search: ChatGPT & Gemini", "Monthly report"], art: "/api/stock/vcard/plan-growth-monthly.jpg" };
 async function refreshProducts(ownerId) {
   const q = `poster_products?select=id,user_id,name,price,offer,benefits,photo_url,photos&name=ilike.*shubhora*${ownerId ? `&user_id=eq.${ownerId}` : ""}&limit=2000`;
-  const list = (await rest(q)).filter((r) => /standard|premium/i.test(r.name) && !/^Shubhora Website (Standard|Premium) — /.test(r.name) && /month/i.test(String(r.price ?? "")));
+  const every = await rest(q);
+  // A partner who sells the Shubhora website plans and has no Growth Plan product yet gets one (the fifth package; new partners get it at set-up).
+  const sellers = [...new Set(every.filter((r) => /shubhora/i.test(r.name) && /standard|premium/i.test(r.name)).map((r) => r.user_id))];
+  const needGrowth = sellers.filter((u) => !every.some((r) => r.user_id === u && /growth plan/i.test(r.name)));
+  for (const u of needGrowth) console.log(`   + product "${P_GROWTH.name}" for user ${u.slice(0, 8)}`);
+  console.log(`${needGrowth.length} Growth Plan product(s) to add.`);
+  if (APPLY) for (const u of needGrowth) {
+    await rest("poster_products", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ user_id: u, name: P_GROWTH.name, price: P_GROWTH.price, offer: P_GROWTH.offer, benefits: P_GROWTH.benefits, category: "Shubhora", brand: "Shubhora", brand_id: null, active: true, photo_url: P_GROWTH.art, photos: [{ url: P_GROWTH.art, view: "front", role: "identity" }] }) })
+      .then(() => console.log(`   added for ${u.slice(0, 8)}`), (e) => console.log(`   could not add for ${u.slice(0, 8)}: ${e.message}`));
+  }
+  const list = every.filter((r) => /standard|premium/i.test(r.name) && !/^Shubhora Website (Standard|Premium) — /.test(r.name) && /month/i.test(String(r.price ?? "")));
   const todo = list.map((r) => {
     const t = /premium/i.test(r.name) ? P_PRE : P_STD;
     const stock = (u) => typeof u === "string" && /\/api\/stock\/vcard\/plan-/.test(u);
