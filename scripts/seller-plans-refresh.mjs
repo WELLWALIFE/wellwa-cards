@@ -60,7 +60,9 @@ if (!USER && !ALL) { console.error("Say which card: --user <username>, or --all"
 const CHANGED = new Set(TPL.changedIds);
 // The old plan words: a template block still carrying them is brought up to date even when the template's block did not change now.
 const STALE = /\(Standard\)|Add Standard|Standard adds|Growth adds|first month only|₹2,999 \/ month.{0,400}Standard website|shubhora-one-link-v2|shubhora-plan-(?:free|growth|custom)|\/art\/shubhora\/plan-(?:standard|premium)\.jpg|\/api\/stock\/vcard\/plan-/i;
-const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+// Key order does not count: the database hands a block back with its keys in its own order.
+const canon = (v) => Array.isArray(v) ? v.map(canon) : v && typeof v === "object" ? Object.fromEntries(Object.keys(v).sort().map((k) => [k, canon(v[k])])) : v;
+const same = (a, b) => JSON.stringify(canon(a)) === JSON.stringify(canon(b));
 const OLD_ONE_LINK = /\/api\/stock\/demo\/shubhora-one-link(?:-v\d+)?\.jpg(?:\?.*)?$/i;
 
 function refresh(data) {
