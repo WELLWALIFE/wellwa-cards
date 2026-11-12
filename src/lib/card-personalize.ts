@@ -281,7 +281,8 @@ export async function syncProductsToCard(rows: ProductSync[]) {
   // items are the company's — words and prices stay as written — but the PHOTOS the partner put on the Shubhora products follow.
   // Plans and products are matched by plan name (Free / Standard / Premium / Custom), the two are never named alike.
   if (c.kb === "shubhora" || isShubhoraSellerCard(c)) {
-    const plan = (n: string) => (/premium/i.test(n) ? "premium" : /standard|growth/i.test(n) ? "standard" : /custom/i.test(n) ? "custom" : /free/i.test(n) ? "free" : "");
+    // The packages since 4 Nov 2026: Website Standard, Website Premium, the Growth Plan (monthly), Free, Custom Solutions.
+    const plan = (n: string) => (/premium/i.test(n) ? "premium" : /standard/i.test(n) ? "standard" : /growth/i.test(n) ? "growth" : /custom/i.test(n) ? "custom" : /free/i.test(n) ? "free" : "");
     const shots = new Map<string, string[]>();
     for (const r of rows) {
       if (r.active === false || !/shubhora/i.test(`${r.name} ${r.category ?? ""}`)) continue;

@@ -53,7 +53,7 @@ if (!USER && !ALL) { console.error("Say which card: --user <username>, or --all"
 // The old pictures: Shubhora's own stock, wherever it is served from (a relative path or https://shubhora.com/…).
 const OLD_PLAN = /\/api\/stock\/(?:demo\/shubhora-plan-(?:free|growth|standard|premium|custom)(?:-v\d+)?|vcard\/plan-(?:free|growth|standard|premium|custom))\.(?:jpe?g|png|webp)(?:\?.*)?$/i;
 const OLD_BANNER = /\/art\/brand\/shubhora-banner\.png(?:\?.*)?$/i;
-const NEW = { free: "/art/shubhora/plan-free.jpg", standard: "/art/shubhora/plan-standard.jpg", premium: "/art/shubhora/plan-premium.jpg", custom: "/art/shubhora/plan-custom.jpg" };
+const NEW = { free: "/art/shubhora/plan-free.jpg", standard: "/art/shubhora/plan-website-standard.jpg", premium: "/art/shubhora/plan-website-premium.jpg", custom: "/art/shubhora/plan-custom.jpg" };
 const HERO = "/art/shubhora/hero.jpg";
 const hostOf = (u) => (u.match(/^https?:\/\/[^/]+/) ?? [""])[0];   // keep the address form the card used
 const planOf = (name) => (/premium/i.test(name) ? "premium" : /standard|growth/i.test(name) ? "standard" : /custom/i.test(name) ? "custom" : /free/i.test(name) ? "free" : "");

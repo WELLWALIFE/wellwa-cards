@@ -1,7 +1,8 @@
 // Draws the Shubhora partner website's own pictures (public/art/shubhora/*.jpg) so every partner's site is complete without
 // uploading anything (owner, 31 Oct 2026: "jab bhi koi Shubhora ki website banaye to automatically complete bane"):
 //   hero.jpg          1600×900  a clean brand gradient with a phone showing a card — no words, so the headline sits on it
-//   plan-free.jpg, plan-standard.jpg, plan-premium.jpg, plan-custom.jpg   1000×1000 one card each, edge to edge, the price large
+//   plan-free.jpg, plan-website-standard.jpg, plan-website-premium.jpg, plan-growth.jpg, plan-custom.jpg   1000×1000 one card each, the price large
+//   one-link.jpg      1200×1500 "five tools, one link": what is free, what a website plan adds, what the Growth Plan adds
 // Run: node scripts/shubhora-art.mjs   (Playwright + Chromium; writes the files, then commit them).
 import { chromium } from "playwright"; // on the Mac / server: npm i -D playwright, or run with NODE_PATH pointing at a Playwright install
 import fs from "node:fs";
@@ -46,7 +47,7 @@ const hero = `<!doctype html><html><body style="margin:0;width:1600px;height:900
 
 // A plan card fills its picture edge to edge (the product frame is square and letterboxes anything else — the first try, a card
 // floating on grey, showed up tiny), so 1000×1000 with the card AS the picture.
-const plan = ({ kicker, name, price, per, chips, grad, badge }) => `<!doctype html><html><body style="margin:0;width:1000px;height:1000px;overflow:hidden;${font}">
+const plan = ({ kicker, name, price, per, chips, grad, badge, foot }) => `<!doctype html><html><body style="margin:0;width:1000px;height:1000px;overflow:hidden;${font}">
   <div style="width:1000px;height:1000px;background:${grad};color:#fff;position:relative;overflow:hidden">
     <div style="position:absolute;right:-160px;top:-160px;width:520px;height:520px;border-radius:50%;background:rgba(255,255,255,.12)"></div>
     <div style="position:absolute;left:-120px;bottom:-220px;width:520px;height:520px;border-radius:50%;background:rgba(255,255,255,.08)"></div>
@@ -55,15 +56,46 @@ const plan = ({ kicker, name, price, per, chips, grad, badge }) => `<!doctype ht
     <div style="position:absolute;left:72px;top:160px;right:72px;font-size:66px;font-weight:800;letter-spacing:-.02em;line-height:1.08">${name}</div>
     <div style="position:absolute;left:72px;top:380px;right:72px"><div style="font-size:150px;font-weight:900;letter-spacing:-.04em;line-height:1">${price}</div><div style="margin-top:14px;font-size:34px;font-weight:600;opacity:.92">${per}</div></div>
     <div style="position:absolute;left:72px;top:640px;right:72px;display:flex;flex-wrap:wrap;gap:14px">${chips.map((c) => `<div style="padding:14px 24px;border-radius:999px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.35);font-size:28px;font-weight:600">${c}</div>`).join("")}</div>
-    <div style="position:absolute;left:72px;right:72px;bottom:56px;font-size:24px;line-height:1.35;opacity:.92">GST included · No lock-in: your card and website stay live even if you pause</div>
+    <div style="position:absolute;left:72px;right:72px;bottom:56px;font-size:24px;line-height:1.35;opacity:.92">${foot ?? "GST included · No lock-in: your card and website stay live even if you pause"}</div>
   </div></body></html>`;
 
+// The packages as sold since 4 Nov 2026 (the pricing page, src/app/(marketing)/pricing/page.tsx): a website is bought by the YEAR
+// (Standard ₹2,999, Premium ₹5,999 — dynamic and progressive, installs like an app) and the Growth Plan by the MONTH (₹2,999, needs a
+// website plan, 1st month free with every website purchase). New file names, so no phone keeps showing an old picture from its cache.
 const PLANS = {
-  "plan-free": { kicker: "FREE PLAN", name: "Digital V-Card", price: "FREE", per: "for 1 year · worth ₹1,499", chips: ["V-Card", "All pages", "Leads saved", "QR + share"], grad: "linear-gradient(135deg,#047857,#10b981)", badge: "No card details" },
-  "plan-standard": { kicker: "STANDARD PLAN", name: "Website + AI + Posters", price: "₹2,999", per: "a month", chips: ["Website (5 pages)", "AI assistant 24×7", "Daily poster", "Auto-posting", "Meta Ads"], grad: "linear-gradient(135deg,#1d4ed8,#4f46e5)", badge: "Recommended" },
-  "plan-premium": { kicker: "PREMIUM PLAN", name: "Premium website + SEO", price: "₹5,999", per: "first month only · then ₹2,999", chips: ["Everything in Standard", "Premium website", "Page per product", "Google SEO", "3 layouts to pick"], grad: "linear-gradient(135deg,#6d28d9,#c026d3)", badge: "Most popular" },
-  "plan-custom": { kicker: "CUSTOM SOLUTIONS", name: "Built for you", price: "Price", per: "on request", chips: ["Any software", "Automation", "Dedicated manager", "Your team's logins"], grad: "linear-gradient(135deg,#111827,#334155)", badge: "" },
+  "plan-free": { kicker: "FREE PLAN", name: "Digital V-Card", price: "FREE", per: "for 1 year · worth ₹1,499", chips: ["V-Card", "All pages", "Leads saved", "QR + share"], grad: "linear-gradient(135deg,#047857,#10b981)", badge: "No card details", foot: "No card details asked · No hidden charge" },
+  "plan-website-standard": { kicker: "WEBSITE STANDARD", name: "Dynamic website", price: "₹2,999", per: "a year", chips: ["Up to 5 pages", "SEO + AI-search ready", "Catalogue + WhatsApp order", "Ad Studio + Reels", "Growth: 1st month free"], grad: "linear-gradient(135deg,#1d4ed8,#4f46e5)", badge: "Recommended", foot: "GST included · Renews every year at the same price" },
+  "plan-website-premium": { kicker: "WEBSITE PREMIUM", name: "Dynamic & Progressive website", price: "₹5,999", per: "a year", chips: ["Installs like an app", "SEO + AI-search ready", "Catalogue + WhatsApp order", "Ad Studio + Reels", "Growth: 1st month free"], grad: "linear-gradient(135deg,#7c3aed,#c026d3)", badge: "Most popular", foot: "GST included · Renews every year at the same price" },
+  "plan-growth": { kicker: "GROWTH PLAN", name: "Posters + AI + CRM", price: "₹2,999", per: "a month", chips: ["Daily posters", "FB & Insta auto-post", "WhatsApp AI 24×7", "CRM & follow-ups", "Google profile", "Broadcasts"], grad: "linear-gradient(135deg,#171447,#3730a3)", badge: "1st month free", foot: "GST included · Needs a website plan · No lock-in: stop any month" },
+  "plan-custom": { kicker: "CUSTOM SOLUTIONS", name: "Built for you", price: "Price", per: "on request", chips: ["Any software", "Automation", "Dedicated manager", "Your team's logins"], grad: "linear-gradient(135deg,#111827,#334155)", badge: "", foot: "Tell us what you need · We send a clear quote" },
 };
+
+// "Five tools, one link" (1200×1500): what is free, what a website plan adds and what the Growth Plan adds. Replaces
+// /api/stock/demo/shubhora-one-link-v2.jpg, whose tags still said the website comes with "Growth".
+const TAG = { FREE: "#16a34a", WEBSITE: "#2563eb", GROWTH: "#7c3aed" };
+const row = (color, title, sub, tag) => `<div style="display:flex;align-items:center;gap:26px;padding:26px 30px;border-radius:28px;background:#fff;box-shadow:0 10px 30px rgba(15,23,42,.08)">
+  <div style="width:76px;height:76px;border-radius:50%;background:${color};flex:none"></div>
+  <div style="flex:1;min-width:0"><div style="font-size:40px;font-weight:800;color:#0f172a;letter-spacing:-.01em">${title}</div><div style="margin-top:4px;font-size:27px;color:#475569">${sub}</div></div>
+  <div style="flex:none;padding:10px 20px;border-radius:999px;background:${TAG[tag]}1f;color:${TAG[tag]};font-weight:800;font-size:24px;letter-spacing:.08em">${tag}</div></div>`;
+const oneLink = `<!doctype html><html><body style="margin:0;width:1200px;height:1500px;overflow:hidden;${font}">
+<div style="width:1200px;height:1500px;background:linear-gradient(180deg,#eef2ff,#e0e7ff);position:relative;display:flex;flex-direction:column">
+  <div style="padding:70px 70px 0">
+    <div style="font-size:74px;font-weight:900;color:#171447;letter-spacing:-.03em;line-height:1.05">Your whole business<br>on one link.</div>
+    <div style="margin-top:34px;padding:24px 40px;border-radius:999px;background:#171447;color:#fff;font-size:38px;font-weight:700;text-align:center">shubhora.com/c/your-name</div>
+  </div>
+  <div style="padding:40px 70px 0;display:flex;flex-direction:column;gap:20px">
+    ${row("#2563eb", "Digital V-Card", "Call, WhatsApp, save contact, UPI, map", "FREE")}
+    ${row("#ec4899", "Leads saved", "Every enquiry from your card, in one list", "FREE")}
+    ${row("#f59e0b", "Website", "Full website on the same link, on Google", "WEBSITE")}
+    ${row("#4f46e5", "AI assistant, 24×7", "Answers on your card and on WhatsApp", "GROWTH")}
+    ${row("#db2777", "Daily poster + auto-post", "Made every morning, posted for you", "GROWTH")}
+  </div>
+  <div style="margin-top:auto;padding:44px 70px;background:#171447;color:#fff">
+    <div style="font-size:42px;font-weight:800">Start free — worth ₹1,499, free for 1 year.</div>
+    <div style="margin-top:10px;font-size:28px;line-height:1.35;opacity:.9">A website plan adds the website (from ₹2,999 a year). The Growth Plan adds the AI assistant, posters and CRM (₹2,999 a month).</div>
+  </div>
+</div></body></html>`;
+
 
 const browser = await chromium.launch();
 const shot = async (html, w, h, file) => {
@@ -75,4 +107,5 @@ const shot = async (html, w, h, file) => {
 };
 await shot(hero, 1600, 900, "hero.jpg");
 for (const [k, v] of Object.entries(PLANS)) await shot(plan(v), 1000, 1000, `${k}.jpg`);
+await shot(oneLink, 1200, 1500, "one-link.jpg");
 await browser.close();
