@@ -95,7 +95,9 @@ export function seoTitle(card: Card, page?: CardPage | null): string {
     const person = f.person && !base.toLowerCase().includes(f.person.toLowerCase()) ? ` | ${f.person}` : "";
     return cut(base.length + person.length <= 70 ? base + person : base, 70);
   }
-  return cut(`${clean(page.label)} – ${own || f.business}${f.city ? `, ${f.city}` : ""}`, 70);
+  // An inner page names the business, not the home page's own title: "Services – Sahyog Sweets, Gurugram", never
+  // "Services – Sahyog Sweets | Fresh Sweets & Bakery in Gurugram, Gurugram…" (the city twice and cut off).
+  return cut(`${clean(page.label)} – ${f.business}${f.city ? `, ${f.city}` : ""}`, 70);
 }
 
 function pageText(page: CardPage): string {
@@ -125,7 +127,15 @@ export function seoDescription(card: Card, page?: CardPage | null): string {
   const by = f.person && f.person.toLowerCase() !== f.business.toLowerCase() ? ` by ${f.person}` : "";
   const shown = clean(card.jobTitle) || f.category;   // the same words as under the name on the card (see seoTitle)
   const lead = `${f.business}${shown && shown.toLowerCase() !== f.business.toLowerCase() ? `, ${shown}` : ""}${where}${home ? by : ""}.`;
-  return cut(`${lead} ${body ? `${cut(body, 90)}` : ""}${areas}${reach}`.replace(/\.\./g, ".").replace(/\s+/g, " ").trim(), 160);
+  // Whole parts only, the phone kept: the page's own words get the room the others leave, and end on a whole word —
+  // never "… Bulk &… Call or WhatsApp…" with the number cut off.
+  const tidy = (t: string) => t.replace(/\.\./g, ".").replace(/\s+/g, " ").trim();
+  // The areas give way first when the page's own words would get under 40 characters.
+  const keepAreas = !!areas && 160 - tidy(`${lead}${areas}${reach}`).length - 2 >= 40;
+  const tail = `${keepAreas ? areas : ""}${reach}`;
+  const room = 160 - tidy(`${lead}${tail}`).length - 2;
+  const words = body && room >= 20 ? (body.length <= room ? body : `${body.slice(0, room - 1).replace(/[\s,.;:–—&-]+\S*$/, "")}…`) : "";
+  return cut(tidy(`${lead} ${words ? `${/[.!?…]$/.test(words) ? words : `${words}.`}` : ""}${tail}`), 160);
 }
 
 /* ---- opening hours → schema.org ---- */
