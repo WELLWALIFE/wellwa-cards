@@ -124,6 +124,21 @@ export function isShubhoraSellerCard(card: { company?: string; name?: string; jo
   return /shubhora/i.test(String(card.company ?? "")) || /^shubhora$/i.test(String(card.name ?? "").trim()) || /shubhora partner/i.test(`${card.jobTitle ?? ""} ${card.tagline ?? ""}`);
 }
 
+/** Whether a Shubhora seller card draws its stored Premium design.
+ *
+ *  31 Oct 2026: a set-up switched from a tailor's card to the Shubhora card kept the tailor's Premium layout, so a seller card stopped
+ *  drawing any Premium spec. The set-up now starts the seller card's website fresh, so a leftover can no longer come along — but the
+ *  blanket rule also hid a Premium design a partner made FOR their Shubhora card (jaidevrajwal.com, 12 Nov 2026: the editor showed the
+ *  Premium look, the live site the basic one, and every design change seemed to do nothing).
+ *  A spec the designer wrote for this card speaks of what the card sells — Shubhora, the V-Card, digital tools — in its notes or its
+ *  archetype; a tailor's or a sweet shop's does not, and stays hidden as before. Used by the public page and the editor's preview, so
+ *  the two always agree. */
+export function sellerDrawsPremium(site: unknown): boolean {
+  const adv = site && typeof site === "object" ? (site as { advanced?: { notes?: unknown; archetype?: unknown } }).advanced : null;
+  if (!adv || typeof adv !== "object") return false;
+  return /shubhora|v-?card|visiting card|digital (card|tools?|solutions?)|\btech\b|software|saas|\bai\b/i.test(`${String(adv.notes ?? "")} ${String(adv.archetype ?? "")}`);
+}
+
 /** Shubhora's own material that reached a "both" card's OWN pages (built before 2 Oct 2026, when the build still took
  *  the Shubhora plans as the owner's products and shubhora.com as their website): the plan products, the Shubhora
  *  demo videos / PDFs and the "Register free" call. Taken off the visible pages at render time; the hidden Shubhora

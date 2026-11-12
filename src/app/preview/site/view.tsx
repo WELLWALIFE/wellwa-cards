@@ -8,7 +8,7 @@ import { CardView, type EditTarget } from "@/components/card-view";
 import { PlanProvider, usePlan } from "@/lib/plan";
 import { SITE_URL } from "@/lib/site-url";
 import type { Card } from "@/lib/types";
-import { isShubhoraSellerCard, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { isShubhoraSellerCard, sellerDrawsPremium, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 import { activeAdvanced, advancedItemStubs, withAdvancedPages } from "@/lib/site-advanced";
 
 const KEY = "vcard-preview";
@@ -100,7 +100,9 @@ function PreviewInner() {
   // in place (the public route does the same, src/app/c/[username]/render.tsx). A basic card is passed through as it is.
   const shown = useMemo(() => {
     if (!card) return card;
-    const base = isShubhoraSellerCard(card) ? card : withoutShubhoraLeaks(card);
+    const seller = isShubhoraSellerCard(card);
+    // The same rule as the public page (src/app/c/[username]/render.tsx): what the preview shows is what goes live.
+    const base = seller ? (card.site?.advanced && !sellerDrawsPremium(card.site) ? { ...card, site: { ...card.site, advancedOn: false } } : card) : withoutShubhoraLeaks(card);
     if (!activeAdvanced(base.site, base.username)) return base;
     const withPages = withAdvancedPages(base);
     return { ...withPages, pages: [...withPages.pages, ...advancedItemStubs(withPages)] };

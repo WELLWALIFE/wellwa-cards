@@ -24,7 +24,7 @@ import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 import { searchListed } from "@/lib/seo-urls";
 import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
 import { publicCard, sitePending } from "@/lib/site-ready";
-import { hasShubhoraPage, isShubhoraSellerCard, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
+import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
 const BLOCK_LISTS: Partial<Record<CardBlock["kind"], string>> = {
@@ -50,9 +50,10 @@ async function loadCard(username: string) {
     links: Array.isArray(raw.links) ? raw.links : [],
     ...Object.fromEntries((["name", "company", "jobTitle", "tagline", "about"] as const).map((k) => [k, typeof raw[k] === "string" ? raw[k] : ""])),
   }) : null;
-  // A Shubhora seller card is the curated template, never a Premium layout (a spec left over from the business the card was before
-  // would draw the Shubhora posters as a tailor's gallery — seen 31 Oct 2026). The spec stays stored; it is simply not drawn here.
-  const shown = card && card.site?.advanced && isShubhoraSellerCard(card) ? { ...card, site: { ...card.site, advancedOn: false } } : card;
+  // A Shubhora seller card does not draw a Premium spec left over from the business the card was before (31 Oct 2026: the Shubhora
+  // posters drawn as a tailor's gallery) — but it does draw one made for the Shubhora card itself (sellerDrawsPremium, 12 Nov 2026).
+  // A spec not drawn stays stored.
+  const shown = card && card.site?.advanced && isShubhoraSellerCard(card) && !sellerDrawsPremium(card.site) ? { ...card, site: { ...card.site, advancedOn: false } } : card;
   // The ADVANCED website is a whole website: it adds the About and Gallery pages the card has the material for but no page of
   // (src/lib/site-advanced.ts), so each has its own address, title and description like any other page.
   return shown && activeAdvanced(shown.site, shown.username) ? withAdvancedPages(shown) : shown;
