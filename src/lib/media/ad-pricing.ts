@@ -19,6 +19,11 @@ export function proCredits(lengthSec: number): number {
   return lengthSec <= 10 ? 50 : lengthSec <= 20 ? 80 : 110;
 }
 
+/** Reel (stock clips + voice + music) — owner's rule, 12 Nov 2026: no free videos, 1 credit a second:
+ *  10 s → 10, 15 s → 15, 20 s → 20, 30 s → 30 credits. An AI picture in a scene is 1 credit more, as before. */
+export const REEL_LENGTHS = [10, 15, 20, 30] as const;
+export const reelCredits = (lengthSec: number): number => (REEL_LENGTHS as readonly number[]).includes(lengthSec) ? lengthSec : 15;
+
 /** Credit packs sold in-app (paise). Subscribers pay ₹10 a credit (less on big packs). */
 export const CREDIT_PACKS = [{ credits: 50, paise: 50000 }, { credits: 100, paise: 95000 }, { credits: 300, paise: 270000 }] as const;
 /** Pay-as-you-go (no subscription): same credit cost per action, but about ₹15 a credit, with a small starter pack. */

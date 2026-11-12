@@ -18,6 +18,7 @@ import { useT } from "@/lib/poster-i18n";
 import { REEL_KINDS as KINDS, type ReelKind } from "@/lib/reel-kinds";
 import { ReelMaking } from "@/components/poster/reel-making";
 import { BrandPick, type BrandChoice } from "@/components/poster/brand-pick";
+import { reelCredits } from "@/lib/media/ad-pricing";
 
 type Scene = { text: string; caption_text: string; search: string; image: string; search_alt?: string; text_en?: string; ai_prompt?: string; source?: "auto" | "stock" | "ai" | "image" };
 type Plan = { title: string; scenes: Scene[]; cta: string; caption: string };
@@ -86,7 +87,6 @@ export default function Reel() {
   const [busy, setBusy] = useState<"" | "plan" | "create" | "img">("");
   const [err, setErr] = useState(""); const [needCredits, setNeedCredits] = useState<number | null>(null); const [credits, setCredits] = useState<number | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [left, setLeft] = useState<number | null>(null); const [daily, setDaily] = useState(3);
   const [acting, setActing] = useState(""); const [rowMsg, setRowMsg] = useState<Record<string, { t: string; ok: boolean }>>({});
   const [copied, setCopied] = useState("");
   const topRef = useRef<HTMLDivElement | null>(null);
@@ -94,7 +94,6 @@ export default function Reel() {
   const onBrand = useCallback((c: BrandChoice) => { setBrandName(c.name); setLogoUrl(c.logo); setUseLogo(!!c.logo); }, []);
 
   async function refresh() { const r = await fetch("/api/media/jobs?kind=ad", { cache: "no-store" }).then((x) => x.json()).catch(() => ({})); setJobs(((r.jobs ?? []) as Job[]).filter((j) => j.input?.tier === "stock")); if (typeof r.credits === "number") setCredits(r.credits); }
-  async function quota() { const q = await post({ action: "quota" }); if (q.ok && typeof q.data.left_today === "number") { setLeft(q.data.left_today); setDaily(Number(q.data.daily) || 3); } }
   const toTop = () => setTimeout(() => topRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
 
   useEffect(() => { (async () => {
@@ -112,7 +111,6 @@ export default function Reel() {
     const p = list.find((x) => x.id === currentProfileId()) ?? list.find((x) => x.is_default) ?? list[0];
     if (p) { setBusiness(p.name); setFirm(p.name); setPhone(p.phone || ""); setCategory(p.category || ""); setLogoUrl(p.logo_url || ""); }
     // The logo and the name are chosen in <BrandPick> (shared with the videos, remembered on this phone).
-    quota();
     // Change & make again: a made reel's words, straight at step 2.
     const editId = q.get("edit");
     if (editId) {
@@ -167,7 +165,6 @@ export default function Reel() {
   }
   const product = products.find((p) => p.id === productId);
   const making = jobs.some(busyJob);
-  const over = left === 0;
   const form = (len = length) => ({ type: kind, logoUrl: useLogo ? logoUrl : "", business: product?.name || brandName || business, category: product?.category || category, topic: kind === "offer" ? "" : note, offer: kind === "offer" ? note : "", phone, brandName, lang, length: len, voiceStyle, music, captions: subs ? "words" : "off", product_id: productId });
 
   /** Step 1 → 2: the AI writes the words; nothing is made yet. */
@@ -176,7 +173,7 @@ export default function Reel() {
     setErr(""); setNeedCredits(null); setBusy("plan");
     try {
       const r = await post({ action: "plan", ...form(len) });
-      if (r.data.code === "daily_limit") { setLeft(0); return; }
+      if (r.status === 402) { const need = Math.max(1, Number(r.data.cost) || reelCredits(len)); setErr(hi ? `Credits कम हैं — इस reel के ${need} credits लगेंगे।` : `Not enough credits — this reel needs ${need}.`); setNeedCredits(need); return; }
       if (!r.ok) { setErr(r.status === 0 ? (hi ? "Internet नहीं है — फिर try करें।" : "No internet — please try again.") : (hi ? "शब्द नहीं लिखे जा सके। फिर try करें।" : "Could not write the words. Please try again.")); return; }
       setPlan(r.data.plan as Plan); setEditing(false);
       if (stage !== "review") {
@@ -193,15 +190,14 @@ export default function Reel() {
     setErr(""); setNeedCredits(null); setBusy("create");
     try {
       const r = await post({ action: "create", ...form(), title: plan.title, scenes: plan.scenes, cta: plan.cta, caption: plan.caption });
-      if (r.data.code === "daily_limit") { setLeft(0); return; }
       if (!r.ok) {
         setErr(r.status === 429 ? (hi ? "एक video पहले से बन रही है — उसके पूरा होने तक रुकिए।" : "A video is already being made — please wait for it to finish.")
-          : r.status === 402 ? (hi ? "AI pictures के लिए credits कम हैं — credits जोड़ें, या scene को Clip पर करें।" : "Not enough credits for the AI pictures — add credits, or switch the scene to a clip.")
+          : r.status === 402 ? (hi ? `Credits कम हैं — इस reel के ${Number(r.data.cost) || cost} credits लगेंगे। Credits जोड़ें${nAi ? ", या AI वाले scene को Clip पर करें" : ""}।` : `Not enough credits — this reel needs ${Number(r.data.cost) || cost}. Add credits${nAi ? ", or switch the AI scenes to clips" : ""}.`)
           : r.status === 0 ? (hi ? "Internet नहीं है — फिर try करें।" : "No internet — please try again.") : (hi ? "शुरू नहीं हो पाई। फिर try करें।" : "Could not start. Please try again."));
         if (r.status === 402) setNeedCredits(Math.max(1, Number(r.data.cost) || 1));
         return;
       }
-      if (typeof r.data.left_today === "number") setLeft(r.data.left_today);
+      if (typeof r.data.credits === "number") setCredits(r.data.credits);
       setTrackId(String(r.data.jobId ?? "")); setStage("track"); await refresh(); toTop();
     } finally { setBusy(""); }
   }
@@ -260,16 +256,12 @@ export default function Reel() {
   const when = (d: string) => new Date(d).toLocaleString("en-IN", { day: "2-digit", month: "short", hour: "numeric", minute: "2-digit" });
   const nAi = plan ? plan.scenes.filter((x) => !x.image && x.source === "ai").length : 0;
   const nAuto = plan ? plan.scenes.filter((x) => !x.image && (x.source ?? "auto") === "auto").length : 0;
+  const cost = reelCredits(length) + nAi; // the reel's own price (1 credit a second) + 1 per AI picture
   const tracked = jobs.find((j) => j.id === trackId);
   const flow = stage === "choose" ? 0 : stage === "review" ? 1 : tracked?.status === "done" ? 3 : 2;
   const FLOW = hi ? ["चुनो", "देखो", "बन रही", "तैयार"] : ["Choose", "Check", "Making", "Ready"];
 
   const errBox = err ? <p className="rounded-lg border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-semibold text-danger">{err}</p> : null;
-  const overBox = over ? <div className="rounded-xl border border-amber/40 bg-amber-soft p-3 text-sm">
-    <p className="font-semibold">{hi ? `आज की ${daily} free reels बन गईं` : `You have made today's ${daily} free reels`}</p>
-    <p className="mt-0.5 text-xs text-muted">{hi ? "कल सुबह फिर मिलेंगी। अभी चाहिए तो Product video बनाएँ (credits से)।" : "More tomorrow morning. Need one now? Make a Product video (uses credits)."}</p>
-    <Link href="/poster/video" className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-ink">{hi ? "Product video बनाएँ →" : "Make a Product video →"}</Link>
-  </div> : null;
 
   /** A made / making reel — step 3-4 (big) and the "मेरी reels" list. A plain function, not a component, so the
    *  playing video is not re-mounted on every poll. */
@@ -312,7 +304,7 @@ export default function Reel() {
       <div className="flex items-center gap-2">
         <button type="button" onClick={() => (tab === "make" && stage === "review" ? setStage("choose") : goBack(router, "/poster/videos"))} aria-label={hi ? "पीछे" : "Back"} className="text-muted"><ChevronLeft className="h-5 w-5" /></button>
         <h1 className="flex flex-1 items-center gap-1.5 text-lg font-bold"><Clapperboard className="h-5 w-5 text-brand" /> Reel</h1>
-        {left !== null && <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${over ? "bg-amber-soft text-amber" : "bg-good/10 text-good"}`}>{over ? (hi ? "आज की free reels खत्म" : "No free reels left today") : hi ? `आज ${left}/${daily} free` : `${left}/${daily} free today`}</span>}
+        {credits !== null && <span className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-ink">{credits} credits</span>}
       </div>
 
       {/* Two tabs: make one / the ones made. */}
@@ -364,10 +356,10 @@ export default function Reel() {
               <p className={label}>{num(4)} {hi ? "Reel पर आपकी पहचान" : "Your name on the reel"}</p>
               <BrandPick hi={hi} firm={firm} brands={[...(product?.brand ? [product.brand] : []), ...products.map((x) => (x.brand ?? "").trim()).filter(Boolean)]} phone={phone} onChange={onBrand} />
             </div>
-            {errBox}{overBox}
+            {errBox}{needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
             {/* A reel already on its way: one tap opens its live screen (step 3), not a list. */}
             {(() => { const b = jobs.find(busyJob); if (!b) return null; const st = STEPS.find((x) => x.k === b.stage); return <button type="button" onClick={() => { setTrackId(b.id); setStage("track"); toTop(); }} className="flex w-full items-center gap-2 rounded-xl bg-brand-soft px-3 py-2.5 text-left text-sm font-semibold text-brand-ink"><LoaderCircle className="h-4 w-4 shrink-0 animate-spin" /><span className="flex-1">{hi ? `एक reel बन रही है${st && b.status === "running" ? ` · ${st.hi}` : ""}` : `A reel is being made${st && b.status === "running" ? ` · ${st.en}` : ""}`}</span><span>{hi ? "देखें →" : "See →"}</span></button>; })()}
-            <button type="button" onClick={() => writeWords()} disabled={busy !== "" || over} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "plan" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {hi ? "शब्द लिख रहे हैं…" : "Writing the words…"}</> : over ? (hi ? "कल फिर बनाएँ" : "Come back tomorrow") : <>{hi ? "आगे — शब्द देखो" : "Next — see the words"} <ArrowRight className="h-5 w-5" /></>}</button>
+            <button type="button" onClick={() => writeWords()} disabled={busy !== ""} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "plan" ? <><LoaderCircle className="h-5 w-5 animate-spin" /> {hi ? "शब्द लिख रहे हैं…" : "Writing the words…"}</> : <>{hi ? "आगे — शब्द देखो" : "Next — see the words"} <ArrowRight className="h-5 w-5" /></>}</button>
           </div>
         )}
 
@@ -398,7 +390,7 @@ export default function Reel() {
             <div className="rounded-2xl border border-border bg-surface">
               <button type="button" onClick={() => setMore((x) => !x)} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-semibold"><span>{hi ? "और बदलें" : "More options"} <span className="font-normal text-muted">— {hi ? "लंबाई, आवाज़, music, photos" : "length, voice, music, photos"}</span></span><ChevronDown className={`h-4 w-4 shrink-0 transition ${more ? "rotate-180" : ""}`} /></button>
               {more && <div className="space-y-4 border-t border-border p-4">
-                <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "लंबाई" : "Length"} <span className="font-normal">{hi ? "(बदलने पर शब्द फिर लिखे जाएँगे)" : "(rewrites the words)"}</span></p><div className="flex gap-1.5">{[10, 15, 20, 30].map((n) => <button key={n} type="button" onClick={() => relength(n)} className={small(length === n)}>{n} {hi ? "सेकंड" : "s"}</button>)}</div></div>
+                <div><p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "लंबाई" : "Length"} <span className="font-normal">{hi ? "(बदलने पर शब्द फिर लिखे जाएँगे)" : "(rewrites the words)"}</span></p><div className="flex gap-1.5">{[10, 15, 20, 30].map((n) => <button key={n} type="button" onClick={() => relength(n)} className={small(length === n)}>{n} {hi ? "सेकंड" : "s"} · {reelCredits(n)}</button>)}</div></div>
                 <div>
                   <p className="mb-1.5 text-xs font-semibold text-muted">{hi ? "आवाज़ — tap करके सुनें" : "Voice — tap to hear"}</p>
                   <div className="flex flex-wrap gap-1.5">{(allVoices ? VOICES : VOICES.slice(0, 4).concat(VOICES.slice(4).filter(([v]) => v === voiceStyle))).map(([v, h, e]) => <button key={v} type="button" onClick={() => { setVoiceStyle(v); hear(`v-${v}`, `/voices/${v}.mp3`); }} className={`${small(voiceStyle === v)} inline-flex items-center gap-1.5`}>{playing === `v-${v}` ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}{hi ? h : e}</button>)}{!allVoices && <button type="button" onClick={() => setAllVoices(true)} className="shrink-0 rounded-full border border-dashed border-border px-3 py-1.5 text-xs text-muted">{hi ? "और आवाज़ें…" : "more…"}</button>}</div>
@@ -432,15 +424,15 @@ export default function Reel() {
                       {!s.image && s.source === "stock" && <input className={`${inp} py-2 text-xs`} value={s.search} placeholder={hi ? "Clip ढूँढने के शब्द (English)" : "Words to find a clip"} onChange={(e) => setScene(i, { search: e.target.value })} />}
                     </div>
                   ))}
-                  <p className="text-[11px] text-muted">{hi ? "⚡ अपने-आप: free clip मिले तो free, न मिले तो AI picture (1 credit)। बचे credits वापस।" : "⚡ Auto: a free clip when one fits, else an AI picture (1 credit). Unused credits come back."}</p>
+                  <p className="text-[11px] text-muted">{hi ? "⚡ अपने-आप: clip मिले तो clip, न मिले तो AI picture (+1 credit)। न लगे तो credit वापस।" : "⚡ Auto: a clip when one fits, else an AI picture (+1 credit). Unused credits come back."}</p>
                 </div>
               </div>}
             </div>
 
-            {errBox}{overBox}
+            {errBox}
             {needCredits !== null && <AddCredits need={needCredits} have={credits ?? 0} onDone={() => { setNeedCredits(null); setErr(""); refresh(); }} />}
-            <button type="button" onClick={make} disabled={busy !== "" || over || making} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक reel पहले से बन रही है" : "A reel is already being made") : `${hi ? "Reel बनाओ" : "Make my reel"} · ${nAi ? `${nAi}${nAuto ? `–${nAi + nAuto}` : ""} credits` : nAuto ? "free*" : "free"}`}</button>
-            {!!nAuto && !nAi && <p className="-mt-2 text-center text-[11px] text-muted">{hi ? "* clip न मिले तो AI picture, 1 credit — बचे वापस" : "* an AI picture (1 credit) only if no clip fits"}</p>}
+            <button type="button" onClick={make} disabled={busy !== "" || making} className="grad-brand inline-flex w-full items-center justify-center gap-2 rounded-xl px-4 py-4 text-lg font-bold text-white shadow-sm disabled:opacity-50">{busy === "create" ? <LoaderCircle className="h-5 w-5 animate-spin" /> : <Clapperboard className="h-5 w-5" />} {busy === "create" ? (hi ? "शुरू कर रहे हैं…" : "Starting…") : making ? (hi ? "एक reel पहले से बन रही है" : "A reel is already being made") : `${hi ? "Reel बनाओ" : "Make my reel"} · ${cost}${nAuto ? `–${cost + nAuto}` : ""} credits`}</button>
+            <p className="-mt-2 text-center text-[11px] text-muted">{hi ? `${length} सेकंड की reel = ${reelCredits(length)} credits${nAi ? ` + ${nAi} AI picture` : ""}${nAuto ? " · clip न मिले तो AI picture 1 credit, न लगे तो वापस" : ""}` : `A ${length}-second reel = ${reelCredits(length)} credits${nAi ? ` + ${nAi} AI picture${nAi > 1 ? "s" : ""}` : ""}${nAuto ? " · an AI picture (1 credit) only if no clip fits, else returned" : ""}`}</p>
           </div>
         )}
 

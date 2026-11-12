@@ -1,18 +1,19 @@
-// Reel Maker — separate from ads. Stock royalty-free clips + the owner's own images + API voice. No AI video, no credits.
-//   POST { action:"plan", ... }   → script with a stock-search phrase per scene (free)
-//   POST { action:"create", ... } → queues the reel (free, daily limit)
+// Reel Maker — separate from ads. Stock royalty-free clips + the owner's own images + API voice. No AI video.
+//   POST { action:"plan", ... }   → script with a stock-search phrase per scene (writing the words is free)
+//   POST { action:"create", ... } → queues the reel — paid in credits: 1 a second (reelCredits) + 1 per AI picture.
+// Owner, 12 Nov 2026: "video koi bhi free nahi banegi, sabhi credit ke sath banegi" — the free daily reels are gone.
 import { NextResponse } from "next/server";
 import { requireUser, sameOrigin, rateLimited, clientKey, workerAlive, WORKER_DOWN } from "@/lib/api-security";
 import { getAdminSupabase } from "@/lib/supabase/admin";
 import { LANG_RULE } from "@/lib/media/ad-planner";
 import { VOICE_KEYS } from "@/lib/media/voices";
 import type { ProductFacts } from "@/lib/media/product-facts";
+import { reelCredits } from "@/lib/media/ad-pricing";
 
 export const maxDuration = 60;
 const S = (v: unknown, n: number) => String(v ?? "").replace(/\s+/g, " ").trim().slice(0, n);
 const TYPES: Record<string, string> = { tip: "a useful tip or fact the audience will want to save and share (education first, product last)", benefit: "one clear benefit of the product or service in everyday life", offer: "the owner's offer, stated plainly with urgency (only the offer text given — never invent one)", review: "a happy-customer story told in third person (no invented names or numbers)", festival: "a warm festival greeting that gently connects to the business", story: "a short relatable everyday story that ends with the business as the answer" };
-const DAILY_FREE = 50; // TESTING (owner, 27 Oct 2026): put back to 3 before launch
-const AI_SCENE_CREDITS = 1; // one generated picture ≈ ₹6 → 1 credit; stock clips and own images stay free
+const AI_SCENE_CREDITS = 1; // one generated picture ≈ ₹6 → 1 credit on top of the reel's own price
 
 export async function POST(request: Request) {
   if (!sameOrigin(request)) return NextResponse.json({ error: "forbidden" }, { status: 403 });
@@ -24,19 +25,15 @@ export async function POST(request: Request) {
   let facts: ProductFacts | null = null;
   if (typeof b.product_id === "string" && /^[0-9a-f-]{36}$/i.test(b.product_id)) { const { data } = await admin.from("poster_products").select("facts").eq("id", b.product_id).eq("user_id", uid).single(); if ((data?.facts as ProductFacts)?.v === 1) facts = data!.facts as ProductFacts; }
 
-  // Today's free reels, counted from midnight in India (IST), not UTC — the owner's "today".
-  const madeToday = async () => {
-    const ist = new Date(Date.now() + 330 * 60_000); ist.setUTCHours(0, 0, 0, 0); const from = new Date(ist.getTime() - 330 * 60_000);
-    const { count } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", uid).eq("kind", "ad").eq("input->>tier", "stock").gte("created_at", from.toISOString());
-    return count ?? 0;
-  };
-  const LIMIT = { error: `You have made ${DAILY_FREE} reels today. Come back tomorrow.`, code: "daily_limit", left_today: 0 };
-  // The screen shows "2 of 3 left today" before the owner taps, and greys the button at 0.
-  if (b.action === "quota") return NextResponse.json({ left_today: Math.max(0, DAILY_FREE - (await madeToday())), daily: DAILY_FREE });
+  const base = reelCredits(length);
+  const balance = async () => { const { data } = await session.supabase.rpc("my_credits"); return Number(data) || 0; };
+  const SHORT = (need: number) => ({ error: `Not enough credits — this reel needs ${need}. Add credits to make it.`, code: "credits", cost: need });
+  // The screen shows the price and the balance before the owner taps.
+  if (b.action === "quota") return NextResponse.json({ credits: await balance(), cost: base });
 
   if (b.action === "plan") {
-    // Checked before the AI writes anything: no words written for a reel that cannot be made.
-    if ((await madeToday()) >= DAILY_FREE) return NextResponse.json(LIMIT, { status: 429 });
+    // Checked before the AI writes anything: no words written for a reel the owner cannot pay for.
+    if ((await balance()) < base) return NextResponse.json(SHORT(base), { status: 402 });
     if (rateLimited(clientKey(request, `reel-plan:${uid}`), 30, 10 * 60_000)) return NextResponse.json({ error: "Please wait a moment and try again." }, { status: 429 });
     const type = TYPES[String(b.type)] ? String(b.type) : "tip";
     const prompt = `You write short vertical Reels for an Indian small business. Write ONE ${length}-second reel. Return ONLY JSON.
@@ -62,29 +59,31 @@ JSON: {"title":"<max 6 words>","scenes":[{"text":"","text_en":"","caption_text":
     if (!scenes.length) return NextResponse.json({ error: "Write the script first." }, { status: 400 });
     const { count: active } = await admin.from("media_jobs").select("id", { count: "exact", head: true }).eq("owner_id", uid).in("status", ["queued", "running"]);
     if ((active ?? 0) > 0) return NextResponse.json({ error: "A video is already being made — please wait for it to finish." }, { status: 429 });
-    const today = await madeToday();
-    if (today >= DAILY_FREE) return NextResponse.json(LIMIT, { status: 429 });
     const input = { tier: "stock", product: S(b.title, 60) || S(b.business, 60) || "Reel", topic: S(b.topic, 300), scenes, cta: S(b.cta, 200), caption: S(b.caption, 600), lang, length, voice: b.voice !== false, voiceStyle: VOICE_KEYS.includes(b.voiceStyle) ? b.voiceStyle : "warm", music: /^[a-z0-9-]{0,40}$/i.test(String(b.music ?? "")) ? String(b.music ?? "") : "", captions: b.captions === "off" ? "off" : "words", template: "clean", brandName: S(b.brandName, 40), phone: S(b.phone, 20), website: S(b.website, 60), logoUrl: okUrl(b.logoUrl) ? b.logoUrl : "", formats: ["reel"], glossary: facts?.pronunciations?.[lang] ?? null };
     // "auto" scenes may become AI scenes (when no fitting stock clip exists): reserve their credits if the balance allows; unused ones are returned.
     const fixedAi = scenes.filter((x: { source: string }) => x.source === "ai").length; const autoN = scenes.filter((x: { source: string }) => x.source === "auto").length;
-    const { data: bal } = await session.supabase.rpc("my_credits"); const balance = Number(bal) || 0;
-    const reserve = balance >= (fixedAi + autoN) * AI_SCENE_CREDITS ? autoN : 0;
+    const have = await balance();
+    const need = base + fixedAi * AI_SCENE_CREDITS;
+    if (have < need) return NextResponse.json(SHORT(need), { status: 402 });
+    const reserve = have >= need + autoN * AI_SCENE_CREDITS ? autoN : 0;
     (input as Record<string, unknown>).reserved_ai = reserve;
-    // Charge only when the render can actually happen. This also spares a free reel (cost 0) from
-    // being queued to a worker that is not there — the owner is told to come back in a minute
-    // instead of watching a video that never starts, and today's free count is not used up.
+    // The reel's own price travels with the job: the worker returns only unused AI-picture credits, never this part.
+    (input as Record<string, unknown>).base_credits = base;
+    // Charge only when the render can actually happen — the owner is told to come back in a minute
+    // instead of paying for a video that never starts.
     if (!(await workerAlive(admin))) return NextResponse.json({ error: WORKER_DOWN }, { status: 503 });
-    const cost = (fixedAi + reserve) * AI_SCENE_CREDITS; const id = crypto.randomUUID();
-    if (cost > 0) { const { error: spendErr } = await admin.rpc("spend_credits", { p_user: uid, p_amount: cost, p_reason: "reel-ai-scenes", p_ref: id }); if (spendErr) return NextResponse.json({ error: spendErr.message.includes("INSUFFICIENT_CREDITS") ? `Not enough credits for the AI scenes (${cost} needed). Switch them to stock clips or add credits.` : "Could not charge credits.", cost }, { status: 402 }); }
+    const cost = base + (fixedAi + reserve) * AI_SCENE_CREDITS; const id = crypto.randomUUID();
+    const { error: spendErr } = await admin.rpc("spend_credits", { p_user: uid, p_amount: cost, p_reason: "reel", p_ref: id });
+    if (spendErr) return NextResponse.json(spendErr.message.includes("INSUFFICIENT_CREDITS") ? SHORT(cost) : { error: "Could not charge credits.", cost }, { status: 402 });
     const { data: job, error } = await admin.from("media_jobs").insert({ id, owner_id: uid, kind: "ad", status: "queued", input, cost }).select("id").single();
     // The engine's words go to the log, never to the phone — a shopkeeper must not read
     // 'duplicate key value violates unique constraint "media_jobs_pkey"'.
     if (error || !job) {
-      if (cost > 0) await admin.rpc("grant_credits", { p_user: uid, p_amount: cost, p_reason: "ad-refund", p_ref: id });
+      await admin.rpc("grant_credits", { p_user: uid, p_amount: cost, p_reason: "ad-refund", p_ref: id });
       console.error("[reel-maker] queue insert failed", id, error);
-      return NextResponse.json({ error: cost > 0 ? "The reel could not be started. Your credits have been returned." : "The reel could not be started. Please try again." }, { status: 500 });
+      return NextResponse.json({ error: "The reel could not be started. Your credits have been returned." }, { status: 500 });
     }
-    return NextResponse.json({ ok: true, jobId: job.id, charged: cost, left_today: Math.max(0, DAILY_FREE - today - 1) });
+    return NextResponse.json({ ok: true, jobId: job.id, charged: cost, credits: Math.max(0, have - cost) });
   }
   return NextResponse.json({ error: "Unknown action." }, { status: 400 });
 }

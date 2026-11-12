@@ -401,7 +401,7 @@ export default function CalendarPage() {
               </div>
             ); })()}
             {s.kind !== "skip" && canPost && <button type="button" onClick={() => seePoster(s.date)} disabled={shot?.busy} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-brand py-2 text-sm font-semibold text-brand-ink disabled:opacity-60"><Eye className="h-4 w-4" /> {shot?.url ? (hi ? "फिर से बनाएँ" : "Make again") : isCarousel(se?.brief) ? (hi ? "Slides देखें" : "See the slides") : (hi ? "Poster देखें" : "See the poster")}</button>}
-            {/* The same idea as a free Reel (voice, music, the product's photos) — the reel screen opens with this day filled in. */}
+            {/* The same idea as a Reel (voice, music, the product's photos) — the reel screen opens with this day filled in. */}
             {s.kind !== "skip" && s.kind !== "auto" && <Link href={`/poster/reel?date=${s.date}`} className="w-full inline-flex items-center justify-center gap-1.5 rounded-xl border border-border py-2 text-sm font-semibold"><Clapperboard className="h-4 w-4 text-brand" /> {hi ? "इसकी Reel बनाएँ" : "Make a Reel of this"}</Link>}
             {s.why && <p className="rounded-xl bg-surface2 px-3 py-2 text-[11px] text-muted"><b className="text-ink">{hi ? "यह post क्यों: " : "Why this post: "}</b>{s.why}</p>}
             {/* Activity: where this day's post went, and what failed and why (the 4 AM post's own record). */}

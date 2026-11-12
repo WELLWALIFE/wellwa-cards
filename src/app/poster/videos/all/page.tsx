@@ -21,10 +21,10 @@ export default function VideoHub() {
   const min = adCredits(AD_LENGTHS[0]), max = adCredits(AD_LENGTHS[AD_LENGTHS.length - 1]);
 
   const kinds: Kind[] = [
-    { href: "/poster/reel", I: Camera, t: "Reel / Status", tag: "FREE",
+    { href: "/poster/reel", I: Camera, t: "Reel / Status", tag: "",
       s: hi ? "Ek tap: shabd, clips, awaaz, captions, music — sab ready" : "One tap: words, clips, voice, captions and music — all done for you",
       get: hi ? "10–30 sec ki reel, 9:16" : "A 10–30 sec reel, 9:16", len: "10 · 15 · 20 · 30 sec",
-      cost: hi ? "Free (stock clips) · AI scene 1 credit/scene" : "Free with stock clips · AI scene 1 credit each", time: "~2 min",
+      cost: hi ? "1 credit/sec (10 sec = 10) · AI scene +1 credit" : "1 credit a second (10 s = 10) · AI scene +1 credit each", time: "~2 min",
       best: hi ? "Roz ki Reels aur Stories" : "Daily Reels and Stories" },
     { href: "/poster/video", I: Clapperboard, t: "Product video", tag: "AI",
       s: hi ? "AI script likhta hai, aapke product ki photo ke saath ad" : "AI writes the script; an ad around your product photo",

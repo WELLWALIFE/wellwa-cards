@@ -231,8 +231,10 @@ export async function processStockReel(job, H) {
     // (network, PostgREST) tells us nothing, so we assume the reel is still ours and pay.
     if (done.ok && done.rows === 0) { log("no longer running (cancelled?) — result not saved, no credits returned"); return; }
     if (!done.ok) H.log(`[reel] ${job.id} done-PATCH failed — returning the unused credits anyway`);
-    const unused = Math.max(0, (Number(job.cost) || 0) - aiUsed); // the plan's own reels have cost 0, so nothing to return
-    if (unused > 0) { await H.sb(`/rest/v1/rpc/grant_credits`, { method: "POST", body: JSON.stringify({ p_user: job.owner_id, p_amount: unused, p_reason: "reel-ai-unused", p_ref: job.id }) }).catch(() => {}); await H.sb(`/rest/v1/media_jobs?id=eq.${job.id}&status=eq.done`, { method: "PATCH", body: JSON.stringify({ cost: aiUsed }) }).catch(() => {}); }
+    // The reel's own price (base_credits, 1 a second) is kept; only the AI-picture credits it did not use come back.
+    const base = Math.max(0, Number(inp.base_credits) || 0);
+    const unused = Math.max(0, (Number(job.cost) || 0) - base - aiUsed); // the plan's own reels have cost 0, so nothing to return
+    if (unused > 0) { await H.sb(`/rest/v1/rpc/grant_credits`, { method: "POST", body: JSON.stringify({ p_user: job.owner_id, p_amount: unused, p_reason: "reel-ai-unused", p_ref: job.id }) }).catch(() => {}); await H.sb(`/rest/v1/media_jobs?id=eq.${job.id}&status=eq.done`, { method: "PATCH", body: JSON.stringify({ cost: base + aiUsed }) }).catch(() => {}); }
     log(`done · ${total.toFixed(1)}s · AI scenes ${aiUsed}${unused ? `, ${unused} credit(s) returned` : ""}`);
   } catch (e) {
     const msg = (e instanceof Error ? e.message : String(e)).slice(0, 300); H.log(`[reel] ${job.id} FAILED: ${msg}`);

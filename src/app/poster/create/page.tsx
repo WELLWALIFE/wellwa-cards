@@ -34,8 +34,8 @@ function CreateHubInner() {
       { href: "/poster/social", I: Share2, t: hi ? "अपने-आप post" : "Post by itself", s: hi ? "Facebook, Instagram, Status — रोज़ सुबह 4 बजे अपने-आप" : "Facebook, Instagram, Status — every morning at 4 AM, by itself", paid: true },
     ] },
     // The Video door opens the hub (/poster/videos): every kind with its length, credits and time, then the same 4 steps.
-    { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel (free), Product video या असली Pro video — शब्द, आवाज़, music सब तैयार" : "A Reel (free), a Product video or a real Pro video — words, voice and music all done", href: "/poster/videos", items: [
-      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "एक tap में reel — शब्द, clips, आवाज़, music सब तैयार — free" : "One tap — words, clips, voice and music all done — free", tag: "FREE" },
+    { key: "video", I: Clapperboard, t: "Video", s: hi ? "Reel, Product video या असली Pro video — शब्द, आवाज़, music सब तैयार" : "A Reel, a Product video or a real Pro video — words, voice and music all done", href: "/poster/videos", items: [
+      { href: "/poster/reel", I: Camera, t: "Reel / Status", s: hi ? "एक tap में reel — शब्द, clips, आवाज़, music सब तैयार · 10 credits से" : "One tap — words, clips, voice and music all done · from 10 credits" },
       { href: "/poster/video", I: Clapperboard, t: "Product video", s: hi ? "आपके product की photo, AI वाले कमरे में · 20 credits" : "Your product photo in an AI-made room · 20 credits", tag: "AI" },
       { href: "/poster/video/real", I: Clapperboard, t: "Pro video", s: hi ? "असली video — AI हर scene film करता है, आपके product के साथ · 50 credits से" : "A real video — AI films every scene with your product · from 50 credits", tag: "PRO" },
       { href: "/poster/text-video", I: Wand2, t: hi ? "अपने शब्दों से" : "From your own words", s: hi ? "10 सेकंड से 10 मिनट तक · 20 credits से" : "10 seconds to 10 minutes · from 20 credits" },

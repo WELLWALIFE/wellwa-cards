@@ -1,6 +1,6 @@
 "use client";
 // Video — the simple door (owner, 20 Oct 2026: "video wala part bahut mushkil hai; bilkul simple, jo koi bhi bana sake").
-// Two big buttons, nothing to compare: a free Reel in one tap, or a Product video in one tap. The old hub with every
+// Two big buttons, nothing to compare: a Reel in one tap (1 credit a second since 12 Nov 2026), or a Product video in one tap. The old hub with every
 // kind, its lengths, credits and times lives on at /poster/videos/all behind one small link.
 import { useEffect, useState } from "react";
 import Link from "next/link";
@@ -30,7 +30,7 @@ export default function VideoDoor() {
         <div className="flex items-center gap-3">
           <span className="grid h-14 w-14 shrink-0 place-items-center rounded-full bg-white text-brand"><Camera className="h-7 w-7" /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-[17px] font-bold">{hi ? "Reel बनाओ" : "Make a Reel"} <span className="ml-1 rounded-full bg-good/15 px-2 py-0.5 text-[11px] font-semibold text-good">FREE</span></p>
+            <p className="text-[17px] font-bold">{hi ? "Reel बनाओ" : "Make a Reel"} <span className="ml-1 rounded-full bg-brand-soft px-2 py-0.5 text-[11px] font-semibold text-brand-ink">{hi ? "15 credits" : "15 credits"}</span></p>
             <p className="text-sm text-muted">{hi ? "आपके business के बारे में 15 सेकंड की reel, 2 मिनट में · WhatsApp Status, Instagram, Facebook" : "A 15-second reel about your business in about 2 minutes · WhatsApp Status, Instagram, Facebook"}</p>
           </div>
           <ChevronRight className="h-6 w-6 shrink-0 text-brand" />
