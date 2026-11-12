@@ -414,11 +414,10 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
               {/\/art\/shubhora\/hero\./.test(card.coverUrl) && (
                 <>
                   <div className="absolute inset-0" style={{ background: "linear-gradient(90deg, rgba(10,14,64,.92) 0%, rgba(10,14,64,.62) 46%, rgba(10,14,64,0) 72%)" }} />
-                  <div className="absolute left-4 top-4 z-[5] max-w-[62%] text-left text-white sm:left-5 sm:top-5">
-                    <p className="text-[10px] font-bold uppercase tracking-[.18em] text-[#9fdcff]">Shubhora</p>
-                    {/* Not the tagline again (it is printed under the name): the offer itself. */}
-                    <p className="mt-1 text-[19px] font-extrabold leading-[1.15] sm:text-[22px]">{lang === "hi" ? <><span className="text-[#ffd54a]">मुफ़्त</span> Digital Card<br />+ Website</> : <><span className="text-[#ffd54a]">Free</span> Digital Card<br />+ Website</>}</p>
-                    <p className="mt-1.5 text-[11px] font-medium text-white/85">{lang === "hi" ? "Card · Website · 24×7 AI जवाब" : "Card · Website · AI replies 24×7"}</p>
+                  {/* The offer sits at the very top, beside the logo when the card has one and above where the photo overlaps the banner
+                      (jaidevrajwal.com, 12 Nov 2026: the logo and the photo covered the words). Two short lines, nothing under them. */}
+                  <div className={`absolute top-3 z-[5] text-left text-white ${logoChip ? "left-[84px] max-w-[52%]" : "left-4 max-w-[62%] sm:left-5"}`}>
+                    <p className="text-[17px] font-extrabold leading-[1.15] sm:text-[20px]">{lang === "hi" ? <><span className="text-[#ffd54a]">मुफ़्त</span> Digital Card<br />+ Website</> : <><span className="text-[#ffd54a]">Free</span> Digital Card<br />+ Website</>}</p>
                   </div>
                 </>
               )}
@@ -426,7 +425,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
           )}
           {logoChip && (
             <span className="absolute top-3 left-3 z-10 rounded-xl bg-white p-1.5 shadow-card">
-              <Pic src={logoChip} alt={card.company ? `${card.company} logo` : "Logo"} className="block h-10 w-auto max-w-[120px] object-contain" eager w={120} />
+              <Pic src={logoChip} alt={card.company ? `${card.company} logo` : "Logo"} className={`block h-10 w-auto object-contain ${/\/art\/shubhora\/hero\./.test(card.coverUrl ?? "") ? "max-w-[52px]" : "max-w-[120px]"}`} eager w={120} />
             </span>
           )}
           <CardDayNight />

@@ -96,10 +96,13 @@ function Cover({ it, x, className = "", eager = false, sizes, badge = true }: {
   it: Offering; x: AdvCtx; className?: string; eager?: boolean; sizes: string; badge?: boolean;
 }) {
   if (!it.images[0]) return null;
+  // A drawn plan card (public/art/shubhora/plan-*.jpg, 1000×1000 with its own words) is shown whole: square, never cropped,
+  // and with no badge laid over its title (jaidevrajwal.com, 12 Nov 2026: "Premium website + SEO" sat under "Most popular").
+  const art = /\/art\/shubhora\/plan-/.test(it.images[0]);
   return (
-    <button type="button" className={`cz-cover ${className}`} onClick={() => x.zoom(it.images, 0, x.t(it.name))} aria-label={`${x.ui("View photo", "फ़ोटो देखें")}: ${x.t(it.name)}`}>
+    <button type="button" className={`cz-cover ${className}`} data-art={art ? "" : undefined} onClick={() => x.zoom(it.images, 0, x.t(it.name))} aria-label={`${x.ui("View photo", "फ़ोटो देखें")}: ${x.t(it.name)}`}>
       <Photo src={it.images[0]} alt="" sizes={sizes} eager={eager} />
-      {badge && it.badge && <span className="cz-badge">{x.t(it.badge)}</span>}
+      {badge && it.badge && !art && <span className="cz-badge">{x.t(it.badge)}</span>}
     </button>
   );
 }
@@ -787,6 +790,8 @@ export const CATALOG_CSS = `
 .cz-cover:hover .adv-photo{transform:scale(1.045)}
 .cz-badge{display:inline-flex;align-items:center;align-self:flex-start;padding:.3em .8em;border-radius:var(--r-pill);background:var(--accent);color:var(--on-accent);font-size:12px;font-weight:600;line-height:1.25;letter-spacing:.02em;white-space:nowrap}
 .cz-cover .cz-badge{position:absolute;top:var(--s3);left:var(--s3)}
+.cz-cover[data-art]{aspect-ratio:1/1!important;height:auto!important;min-height:0!important}
+.cz-cover[data-art] .adv-photo{object-fit:contain}
 .cz-name{font-family:var(--font-display);font-weight:var(--display-w);font-size:clamp(1.2rem,2.2vw,1.55rem);line-height:1.15;letter-spacing:var(--display-tr);margin:0;text-wrap:balance}
 .site:lang(hi) .cz-name{line-height:1.38;letter-spacing:0;font-weight:var(--display-w-hi)}
 .cz-desc{margin:0;font-size:.9375rem;line-height:1.6;color:var(--muted);text-wrap:pretty}
