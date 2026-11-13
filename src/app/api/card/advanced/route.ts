@@ -192,7 +192,8 @@ export async function POST(request: Request) {
     }
     return { status: 200, body: { ok: true, mode, saved, cardId: row.id, username: row.username, ...result } };
   }, async (j: CardJob) => {
-    if (Date.now() - j.seenAt < 20_000) return;
+    // A paid order's design (lib/site-order.ts) is made during the 24-hour wait: the owner is told once, when the website is live.
+    if (b.quiet === true || Date.now() - j.seenAt < 20_000) return;
     if (j.state === "done") await notify(me.id, "website_ready", { title: "Your advanced website design is ready", body: "आपकी एडवांस वेबसाइट का नया डिज़ाइन तैयार है — खोलकर देखें।", path: "/poster/site/advanced", ref: j.id, whatsappText: `*आपकी एडवांस वेबसाइट का नया डिज़ाइन तैयार है* ✨\n\n${SITE_URL}/poster/site/advanced` });
   });
   if (!joined) after(() => done.then(() => undefined));

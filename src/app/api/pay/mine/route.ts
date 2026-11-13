@@ -8,6 +8,8 @@ import { rateLimited } from "@/lib/api-security";
 import { SAAS_PLANS } from "@/lib/billing";
 import { advanceBalance, advanceLines, createRequest, requestsOf, spendAdvance, isOpen } from "@/lib/payments-server";
 import { requestEffect, requestTitle } from "@/lib/payments";
+import { SITE_PKG, isSitePkg, pkgNote } from "@/lib/site-order";
+import { openPackageRequest, orderState } from "@/lib/site-order-server";
 
 export async function GET(request: Request) {
   const me = await userFromRequest(request);
@@ -23,7 +25,18 @@ export async function POST(request: Request) {
   const me = await userFromRequest(request);
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   if (rateLimited(`pay-mine:${me.id}`, 10, 60_000)) return NextResponse.json({ error: "Too many tries. Please wait a minute." }, { status: 429 });
-  const b = (await request.json().catch(() => ({}))) as { op?: string; amount_paise?: number; note?: string; months?: number };
+  const b = (await request.json().catch(() => ({}))) as { op?: string; amount_paise?: number; note?: string; months?: number; pkg?: string };
+  // A website package (lib/site-order.ts): one request per plan, used again however many times the plans page is opened.
+  if (b.op === "package") {
+    if (!isSitePkg(b.pkg)) return NextResponse.json({ error: "Choose Website Standard or Website Premium." }, { status: 400 });
+    const st = await orderState(me.id);
+    if (st.pkg === "site_premium" || st.pkg === "custom" || st.pkg === b.pkg) return NextResponse.json({ already: true, stage: st.stage });
+    const have = await openPackageRequest(me.id, b.pkg);
+    if (have) return NextResponse.json({ ok: true, code: have.code, amount_paise: have.amount_paise });
+    const made = await createRequest({ ownerId: me.id, createdBy: me.id, createdRole: "self", kind: "custom", amountPaise: SITE_PKG[b.pkg].amount, title: SITE_PKG[b.pkg].title, note: pkgNote(b.pkg) });
+    if (!made.ok) return NextResponse.json({ error: made.error }, { status: 400 });
+    return NextResponse.json({ ok: true, code: made.request.code, amount_paise: made.request.amount_paise });
+  }
   if (b.op === "advance") {
     const made = await createRequest({ ownerId: me.id, createdBy: me.id, createdRole: "self", kind: "advance", amountPaise: Number(b.amount_paise), note: b.note, expiresInDays: 7 });
     if (!made.ok) return NextResponse.json({ error: made.error }, { status: 400 });

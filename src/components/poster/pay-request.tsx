@@ -7,13 +7,21 @@ import { api } from "@/lib/poster-client";
 import { loadCheckout } from "@/lib/checkout";
 import { payPrefill } from "@/lib/pay-prefill";
 
-export function PayRequestButton({ code, amountPaise, label, hi, onPaid, className = "" }: { code: string; amountPaise: number; label?: string; hi: boolean; onPaid?: (applied: string) => void; className?: string }) {
+export function PayRequestButton({ code: fixedCode, getCode, amountPaise, label, hi, onPaid, className = "", buttonClass }: {
+  code: string; amountPaise: number; label?: string; hi: boolean; onPaid?: (applied: string) => void; className?: string;
+  /** The request is made (or found) only when the button is tapped — a page that is only looked at leaves nothing behind. Returns the
+   *  code, or null when there is nothing to pay (it has said so itself). */
+  getCode?: () => Promise<string | null>;
+  buttonClass?: string;
+}) {
   const [state, setState] = useState<"idle" | "busy" | "verifying" | "done" | "error">("idle");
   const [err, setErr] = useState("");
   const T = (en: string, h: string) => (hi ? h : en);
   async function pay() {
     setState("busy"); setErr("");
     try {
+      const code = getCode ? await getCode() : fixedCode;
+      if (!code) { setState("idle"); return; }
       const o = await api<{ orderId?: string; amount?: number; keyId?: string; title?: string; error?: string }>(`/api/pay/${encodeURIComponent(code)}`, { method: "POST", json: { op: "order" } });
       if (!o.ok || !o.data.orderId || !o.data.keyId) throw new Error(o.data.error || T("Payments are not available right now.", "Payment अभी उपलब्ध नहीं है।"));
       const Razorpay = await loadCheckout();
@@ -35,7 +43,7 @@ export function PayRequestButton({ code, amountPaise, label, hi, onPaid, classNa
   if (state === "done") return <p className={`inline-flex items-center gap-1.5 text-sm font-semibold text-good ${className}`}><Check className="h-4 w-4" /> {T("Paid", "Paid")}</p>;
   return (
     <div className={className}>
-      <button type="button" onClick={pay} disabled={state === "busy" || state === "verifying"} className="inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-base font-semibold text-white disabled:opacity-60">
+      <button type="button" onClick={pay} disabled={state === "busy" || state === "verifying"} className={buttonClass ?? "inline-flex w-full items-center justify-center gap-2 rounded-xl grad-brand px-4 py-3 text-base font-semibold text-white disabled:opacity-60"}>
         {(state === "busy" || state === "verifying") && <LoaderCircle className="h-4 w-4 animate-spin" />}
         {state === "verifying" ? T("Confirming…", "Confirm हो रहा है…") : label ?? T(`Pay ₹${Math.round(amountPaise / 100).toLocaleString("en-IN")}`, `₹${Math.round(amountPaise / 100).toLocaleString("en-IN")} दें`)}
       </button>

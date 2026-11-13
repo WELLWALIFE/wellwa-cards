@@ -1,37 +1,40 @@
 "use client";
-// /poster/site/plans — "Your V-Card is ready" → "Continue to your website": Standard and Premium with everything each gives, one to pick,
-// Razorpay, then the receipt and "Make my website now" (owner, 2 Nov 2026: "ek line — your V-Card is ready, view; fir continue website,
-// Standard aur Premium, dono me kya kya hai, select kare to payment — professional"). Card & Website sends free accounts here.
+// /poster/site/plans — the website's plans and the payment (owner, 13 Nov 2026 — lib/site-order.ts). "Make my website" comes here before
+// anything is made; an owner who leaves without paying comes back HERE (never to "Make my website" again); a paid order goes on to the
+// thank-you page, where the website is made by itself.
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { LoaderCircle } from "lucide-react";
-import { WebsitePlans, PaidReceipt } from "@/components/poster/website-plan";
-import type { PaidInfo } from "@/components/subscribe-button";
+import { WebsitePlans } from "@/components/poster/website-plan";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
-import { withView } from "@/lib/site-url";
+import { SITE_INTENT_KEY, type OrderState } from "@/lib/site-order";
 
 export default function WebsitePlansPage() {
   const router = useRouter();
   const { lang } = useT(); const hi = lang !== "en";
-  const { plan, loading, refresh } = usePlan();
-  const [card, setCard] = useState<{ url: string; name: string } | null>(null);
+  const { plan, loading } = usePlan();
   const [ready, setReady] = useState(false);
-  const [paid, setPaid] = useState<PaidInfo | null | undefined>(undefined);
+  const [name, setName] = useState("");
+  const [paidOrder, setPaidOrder] = useState(false);
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/site/plans"); return; }
-    const r = await api<{ hasCard?: boolean; url?: string; customDomain?: string; cards?: { name: string }[] }>("/api/site/status").catch(() => null);
-    if (r?.ok && r.data.hasCard) setCard({ url: r.data.customDomain ? `https://${r.data.customDomain}` : r.data.url ?? "", name: r.data.cards?.[0]?.name ?? "" });
-    else { router.replace("/poster/onboard"); return; }   // no card yet: the set-up makes it first
+    const [o, s] = await Promise.all([
+      api<OrderState>("/api/site/order").catch(() => null),
+      api<{ cards?: { name: string }[] }>("/api/site/status").catch(() => null),
+    ]);
+    // Paid already (here, on another phone, or set by Shubhora): the order's own page.
+    if (o?.ok && o.data.pkg) { setPaidOrder(true); router.replace(o.data.stage === "live" ? "/poster/site" : "/poster/site/order"); return; }
+    if (s?.ok) setName(s.data.cards?.[0]?.name ?? "");
     setReady(true);
   })(); }, [router]);
-  // Already on a plan (and not just paid here): the website is made straight away.
-  useEffect(() => { if (!loading && plan !== "free" && paid === undefined && ready) router.replace("/poster/card/build?make=1"); }, [loading, plan, paid, ready, router]);
+  // An older monthly plan (Standard / Premium by autopay) already includes the website: it is made on the Make screen as before.
+  useEffect(() => { if (!loading && plan !== "free" && ready && !paidOrder) router.replace("/poster/card/build?make=1"); }, [loading, plan, ready, paidOrder, router]);
   if (!ready || loading) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
-  if (paid !== undefined) return <PaidReceipt hi={hi} paid={paid} onGo={() => router.push("/poster/card/build?make=1")} />;
   return (
-    <WebsitePlans hi={hi} name={card?.name} cardHref={card ? withView(card.url, "card") : undefined}
-      onClose={() => router.push("/poster/site")} onPaid={(p) => { void refresh(); setPaid(p); try { window.scrollTo({ top: 0 }); } catch { /* */ } }} />
+    <WebsitePlans hi={hi} name={name || undefined}
+      onClose={() => { try { localStorage.removeItem(SITE_INTENT_KEY); } catch { /* */ } router.push("/poster"); }}
+      onPaid={() => { try { localStorage.removeItem(SITE_INTENT_KEY); } catch { /* */ } router.replace("/poster/site/order"); }} />
   );
 }

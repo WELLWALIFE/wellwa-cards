@@ -16,6 +16,7 @@
 import { researchTrade, researchText } from "@/lib/trade-research";
 import { NextResponse, after } from "next/server";
 import { claim, currentJob, jobView, startJob, touch, type BuildStage, type CardJob } from "@/lib/card-jobs";
+import { finishOrder } from "@/lib/site-order-server";
 import { notify } from "@/lib/notify";
 import { bannerKeys } from "@/lib/banners-server";
 import { rateLimited } from "@/lib/api-security";
@@ -119,7 +120,12 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "You have made your V-Card 6 times in the last hour. Please try again in an hour." }, { status: 429 });
     }
   }
-  const { job, done, joined } = await startJob(me.id, { fresh: !!b.fresh }, (step) => runBuild(me, b, step), tellOwner);
+  // A paid order (lib/site-order.ts): when the build ends the website is saved and held by the server itself — the owner is not asked
+  // to look, choose or publish — and a Premium order's design is started with this same session.
+  const order = b.order === true;
+  const origin = `http://127.0.0.1:${process.env.PORT || 3001}`;
+  const premiumNext = () => fetch(`${origin}/api/card/advanced`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${me.token}` }, body: JSON.stringify({ mode: "apply", quiet: true }) }).then(() => undefined);
+  const { job, done, joined } = await startJob(me.id, { fresh: !!b.fresh }, (step) => runBuild(me, b, step), order ? (j) => finishOrder(j, premiumNext) : tellOwner);
   if (joined) console.log("[card] build joined", job.id, me.id);
   if (b.async === true) {
     // The build outlives this answer; a graceful restart waits for it.

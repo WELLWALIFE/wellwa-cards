@@ -12,6 +12,8 @@ import { grantAdvanced } from "@/lib/advanced-access";
 import { franchiseEarning } from "@/lib/franchise-server";
 import { reportPaidToPartner } from "@/lib/partner-link";
 import { notify } from "@/lib/notify";
+import { SITE_PKG, pkgOfNote } from "@/lib/site-order";
+import { applyPackage } from "@/lib/site-order-server";
 import { newPayCode, PAY_MAX_PAISE, PAY_MIN_PAISE, requestTitle, rupeesOf, type PaymentRequest, type PayKind, type PayTier } from "@/lib/payments";
 
 const COLS = "id,code,owner_id,created_by,created_role,kind,tier,months,amount_paise,title,note,status,order_id,payment_id,paid_at,expires_at,created_at";
@@ -85,11 +87,17 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   }
   const hi = false;
   const what = requestTitle(req, hi);
+  // Only the account's own request at the list price is a package: a hand-made "custom" request never opens one by its note.
+  const pkg0 = req.kind === "custom" && req.created_role === "self" ? pkgOfNote(req.note) : null;
+  const pkg = pkg0 && p.amount === SITE_PKG[pkg0].amount ? pkg0 : null;
   if (req.kind === "plan" && req.tier) {
     const rpc = await restAsService<{ ok?: boolean; replayed?: boolean }>("rpc/apply_flex_plan", { method: "POST", body: JSON.stringify({ p_user: req.owner_id, p_tier: "growth", p_months: req.months, p_ref: p.paymentId, p_order_ref: p.orderId, p_amount: p.amount, p_credits: SAAS_PLANS.growth.credits }) });
     if (!rpc.ok) return { ok: false, error: `Paid, but the plan could not be applied (${rpc.status}). Shubhora will set it by hand.` };
     if (req.tier === "premium") await grantAdvanced(req.owner_id, p.paymentId).catch(() => false);
     await reportPaidToPartner(req.owner_id, { totalPaise: p.amount, tier: "growth", ref: p.paymentId }).catch(() => undefined);
+  } else if (pkg) {
+    // A website package (lib/site-order.ts): the year, a month of the Growth features, Premium's website. The build starts from the app.
+    if (!(await applyPackage(req.owner_id, pkg, p.paymentId))) return { ok: false, error: "Paid, but the package could not be set. Shubhora will set it by hand." };
   } else if (req.kind === "advance") {
     const led = await restAsService("advance_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: req.owner_id, delta_paise: p.amount, reason: what, ref: p.paymentId }) });
     if (!led.ok && led.status !== 409) return { ok: false, error: `Paid, but the advance could not be recorded (${led.status}). Shubhora will set it by hand.` };
@@ -97,8 +105,8 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   // The user's franchise earns on every payment that reaches Shubhora (src/lib/franchise-server.ts), once per payment id.
   await franchiseEarning(req.owner_id, { paise: p.amount, ref: p.paymentId, what: `${req.kind}:${what}` });
   await notify(req.owner_id, "payment", {
-    title: "Payment received", body: `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: "/poster/plan", ref: p.paymentId,
-    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
+    title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be ready within 24–48 hours.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
+    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! हमारी team आपकी website पर काम कर रही है — 24–48 घंटे में तैयार होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
   }).catch(() => undefined);
   return { ok: true, replayed: false, applied: req.kind };
 }

@@ -52,6 +52,7 @@ import { LookTweaks } from "@/components/poster/look-tweaks";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
 import { FirstPosters } from "@/components/poster/first-posters";
 import { WebsitePlanSheet, PaidReceipt, SiteProgress } from "@/components/poster/website-plan";
+import { SITE_INTENT_KEY, type OrderState } from "@/lib/site-order";
 import type { PaidInfo } from "@/components/subscribe-button";
 import { readyIn, readyText, sitePending } from "@/lib/site-ready";
 
@@ -1216,7 +1217,24 @@ export default function BuildCard() {
   useEffect(() => {
     if (state === "preview" && wantSite.current) { wantSite.current = false; if (cardOnly) setSitePlan(true); }
   }, [state, cardOnly]);
-  const onSitePaid = (p: PaidInfo | null) => { setSitePlan(false); setPaidInfo(p); access.refresh(); setErr(""); setState("paid"); toTop(); };
+  // Paid from the sheet (an account that already has a free card): the order's own page — the website is made there by the server.
+  const onSitePaid = (p: PaidInfo | null) => { setSitePlan(false); setPaidInfo(p); access.refresh(); setErr(""); router.replace("/poster/site/order"); };
+  // The website order (lib/site-order.ts, owner 13 Nov 2026). A paid order that is not made yet is made by the server from its own page,
+  // never from this screen; a plan chosen but not paid — or "Make my website" tapped earlier on this phone — opens the plans again,
+  // not the Make screen.
+  useEffect(() => {
+    let off = false;
+    void api<OrderState>("/api/site/order").then((r) => {
+      if (off || !r.ok) return;
+      const st = r.data.stage;
+      if (st === "queued" || st === "building") { router.replace("/poster/site/order"); return; }
+      let intent = false; try { intent = localStorage.getItem(SITE_INTENT_KEY) === "1"; } catch { /* */ }
+      if ((st === "pay" || (st === "none" && intent)) && !r.data.hasCard) router.replace("/poster/site/plans");
+    }).catch(() => undefined);
+    return () => { off = true; };
+  }, [router]);
+  /** "Make my website" on an account with no plan: the plans first — nothing is made before the payment. */
+  const toPlans = () => { try { localStorage.setItem(SITE_INTENT_KEY, "1"); } catch { /* */ } router.push("/poster/site/plans"); };
   const sitePlanSheet = sitePlan && <WebsitePlanSheet hi={hi} name={setup?.business || ""} onClose={() => setSitePlan(false)} onPaid={onSitePaid} />;
 
   if (state === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -1914,15 +1932,15 @@ export default function BuildCard() {
           <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card" id="make-site">
             <p className="text-base font-bold">{T("Your website + digital card", "आपकी website + digital card")}</p>
             <ul className="space-y-1">
-              {li(T("Your card is made first — free", "पहले आपका card बनेगा — free"))}
-              {li(T("Then choose a plan for the website", "फिर website के लिए plan चुनें"))}
-              {li(T("Website live within 24–48 hours", "24–48 घंटे में website live"))}
+              {li(T("Choose your plan and pay once for the year", "Plan चुनें और साल का एक बार payment करें"))}
+              {li(T("Our team makes your website and digital card", "हमारी team आपकी website और digital card बनाती है"))}
+              {li(T("Delivered within 24–48 hours", "24–48 घंटे में तैयार"))}
             </ul>
-            <button type="button" onClick={() => { wantSite.current = true; setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={toPlans} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               <Sparkles className="h-5 w-5" /> {T("Make my website", "मेरी website बनाएँ")}
             </button>
             {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
-            <button type="button" onClick={() => { wantSite.current = false; setPlan("standard"); setMakeFrom("free"); void build(); }} disabled={!!busy} className="block w-full text-center text-xs font-semibold text-muted underline underline-offset-2 disabled:opacity-60">{T("Only my free card for now", "अभी सिर्फ़ free card")}</button>
+            {/* No free card (owner, 13 Nov 2026): the card comes with the website plan. */}
           </section>
         )}
         {/* Free: one button, no wall (owner's call, 3 Oct 2026). A Premium owner's build is Premium whatever button is tapped: only that one. */}
