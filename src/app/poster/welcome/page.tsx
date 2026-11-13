@@ -29,11 +29,12 @@ export default function WelcomePage() {
       <div className="space-y-2">
         <h1 className="text-2xl font-bold">{hi ? `बधाई हो${name ? `, ${name}` : ""}!` : `Congratulations${name ? `, ${name}` : ""}!`}</h1>
         <p className="text-base font-semibold">{hi ? "आपका registration हो गया है।" : "Your registration is done."}</p>
-        <p className="text-sm text-muted">{paid ? (hi ? "अब 5 मिनट में अपनी website और digital business card बनाएँ।" : "Now make your website and digital business card in 5 minutes.") : (hi ? "अब 5 मिनट में अपना FREE digital business card बनाएँ।" : "Now make your FREE digital business card in 5 minutes.")}</p>
+        <p className="text-sm text-muted">{paid ? (hi ? "कुछ details भरिए — 5 मिनट में आपकी website और digital business card तैयार।" : "Fill in a few details and your website and digital business card are ready in 5 minutes.") : (hi ? "कुछ details भरिए — 5 मिनट में आपका FREE digital business card तैयार।" : "Fill in a few details and your FREE digital business card is ready in 5 minutes.")}</p>
       </div>
       <div className="space-y-2">
         <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
-          {paid ? (hi ? "Website और card अभी बनाएँ" : "Make my website & card now") : (hi ? "Card अभी बनाएँ" : "Make my card now")} <ArrowRight className="h-5 w-5" />
+          {/* Owner, 13 Nov 2026: the button says what happens next — a few details are asked — not "Make my card now". */}
+          {hi ? "कुछ details भरें" : "Fill in a few details"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}
