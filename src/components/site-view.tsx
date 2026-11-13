@@ -168,11 +168,14 @@ function useReveal(root: React.RefObject<HTMLDivElement | null>, deps: unknown[]
 export type SiteUpdate = { date: string; url: string; title: string; caption?: string | null };
 const UPDATES = "updates";
 
-export function SiteView({ card, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [], initialLang }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null; updates?: SiteUpdate[];
+export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, initialPage, linkBase, joinHandle, nudge = false, shubhora = null, updates = [], unlisted = [], initialLang }: { card: Card; qr: string; brand?: CardBrand | null; shareUrl?: string; free?: boolean; initialPage?: string; linkBase?: string; joinHandle?: string | null; nudge?: boolean; /** The Shubhora strip at the foot (free sites, and paid "Both" sites). */ shubhora?: { joinHref: string; moreHref: string; free?: boolean } | null; updates?: SiteUpdate[];
   /** Pages that are reachable at their own address but are not in the menu — a product's own page. */
   unlisted?: string[];
   /** The visitor language the page opens in (the preview's `?lang=`); unset = the visitor's saved choice. */
   initialLang?: string }) {
+  // The website's own banner (site.bannerUrl) stands in for the card's cover everywhere on the website — the hero, the Premium design,
+  // the sliding banners — so the two can differ (owner, 13 Nov 2026). No own banner: the card's cover, as before.
+  const card = useMemo<Card>(() => (cardIn.site?.bannerUrl ? { ...cardIn, coverUrl: cardIn.site.bannerUrl } : cardIn), [cardIn]);
   // The website wears its own design: palette (or the card's colour), fonts (or the card look's), corners.
   const look = lookOf(card.template);
   const mood = tradeMood(card.seo?.categoryKey);

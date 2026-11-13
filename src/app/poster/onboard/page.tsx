@@ -2009,7 +2009,7 @@ function Onboard() {
               </label>
               <label className="block min-w-0 flex-1 text-xs font-semibold text-muted">{T("Your name", "आपका नाम")} <span className="text-danger">*</span><Help k="name" />
                 <input id="ob-in-yname" value={you.name} onChange={(e) => { if (!associate) { clearFE("yname"); setYou({ ...you, name: e.target.value }); } }} readOnly={!!associate} placeholder={T("e.g. Rajesh Sharma", "जैसे Rajesh Sharma")} className={`${cField} ${associate ? "bg-surface2 text-muted" : ""} ${fe("yname") ? "border-danger" : ""}`} />
-                <span className="mt-1 block text-[11px] font-normal">{associate ? T("As on your KYC", "KYC के अनुसार") : you.photo ? T("Tap the photo to change it", "photo बदलने के लिए उस पर दबाएँ") : T("Photo: tap the circle (optional)", "Photo: गोले पर दबाएँ (ज़रूरी नहीं)")}</span>
+                <span className="mt-1 block text-[11px] font-normal">{associate ? T("As on your KYC", "KYC के अनुसार") : you.photo ? T("Tap the photo to change it · size 600 × 600 px, square", "photo बदलने के लिए उस पर दबाएँ · size 600 × 600 px, चौकोर") : T("Photo: tap the circle (optional) · size 600 × 600 px, square", "Photo: गोले पर दबाएँ (ज़रूरी नहीं) · size 600 × 600 px, चौकोर")}</span>
               </label>
             </div>
             {(fe("yname") || photoErr?.kind === "photo") && <div className="px-4"><FieldErr id="yname" msg={fe("yname")} /><FieldErr id="photo" msg={photoErr?.kind === "photo" ? photoErr.msg : ""} /></div>}
@@ -2096,6 +2096,8 @@ function Onboard() {
               </span>
               <span className="absolute -bottom-1 -right-1 grid h-6 w-6 place-items-center rounded-full grad-brand text-white shadow-card"><Camera className="h-3 w-3" /></span>
               <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) void choose(f, "logo"); }} />
+              {/* The logo's size, so one can be made to fit (owner, 13 Nov 2026). */}
+              <span className="mt-1 block text-center text-[10px] font-medium leading-tight text-muted">Logo<br />600 × 600 px</span>
             </label>
             <div className="min-w-0 flex-1">
           {/* 1 — the name first (owner's call, 4 Oct 2026): "Sharma Sweets" already says the trade, so the trade box below fills itself */}
@@ -2207,8 +2209,8 @@ function Onboard() {
           {/* Only what the AI cannot guess (owner, 24 Oct 2026: "jitana kam se kaam chal sake utana kam data"): "Who buys from you" goes (the AI
               works it out from the trade), and "Any offer?" is added later from Card & Website → Offer / pop-up. */}
           <FactsFields group="products" only={["q-special"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />
-          {/* The posters' look, already chosen from the logo and the trade (owner, 2 Nov 2026 — Scalio asks it; here it costs no question). */}
-          {!editing && profile?.id && <BrandQuick profileId={profile.id} hi={hi} onChange={(x) => setProfile((p) => (p ? { ...p, lang: x.lang || p.lang, layout: { ...(p.layout ?? {}), ...(x.accent ? { accent: x.accent } : {}), palette: x.palette, tone: x.tone } } : p))} />}
+          {/* The posters' look is chosen from the logo and the trade without a box on the form (owner, 13 Nov 2026: "poster look form se hatao"); it is changed on the brand screen. */}
+          {!editing && profile?.id && <BrandQuick hidden profileId={profile.id} hi={hi} onChange={(x) => setProfile((p) => (p ? { ...p, lang: x.lang || p.lang, layout: { ...(p.layout ?? {}), ...(x.accent ? { accent: x.accent } : {}), palette: x.palette, tone: x.tone } } : p))} />}
           {/* What the old "Where & when" and "About & logo" screens asked beyond the basics, closed until ticked (owner, 24 Oct 2026). */}
           {!editing && ([
             { k: "hours" as const, t: T("Add opening hours / delivery", "खुलने का समय / delivery जोड़ें"), body: <FactsFields group="company" only={["q-hours", "q-delivery"]} category={biz.category} facts={facts} setF={setF} hi={hi} professional={biz.role === "professional"} role={biz.role} hasAbout={!!(biz.about ?? "").trim()} /> },

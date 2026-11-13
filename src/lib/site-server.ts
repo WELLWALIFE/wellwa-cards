@@ -340,7 +340,7 @@ export async function newSitePhoto(userId: string, slot: "hero" | "about", cardI
   const url = png ? await storeImage(userId, `site-${slot}`, png) : null;
   if (!url) return null;
   const data: Card = slot === "hero"
-    ? { ...c, site: { ...(c.site ?? { enabled: true }), hero: { headline: c.site?.hero?.headline ?? (c.company || c.name), sub: c.site?.hero?.sub ?? "", ...(c.site?.hero ?? {}), imageUrl: url } } }
+    ? { ...c, site: { ...(c.site ?? { enabled: true }), bannerUrl: url, hero: { headline: c.site?.hero?.headline ?? (c.company || c.name), sub: c.site?.hero?.sub ?? "", ...(c.site?.hero ?? {}), imageUrl: url } } }
     : { ...c, pages: c.pages.map((pg) => ({ ...pg, blocks: pg.blocks.map((b) => (b.kind === "about" ? { ...b, imageUrl: url } : b)) })) };
   const r = await restAsService(`cards?id=eq.${row.id}&owner_id=eq.${userId}`, { method: "PATCH", body: JSON.stringify({ data }) });
   return r.ok ? url : null;
@@ -408,6 +408,10 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     ...(patch.hideProfile !== undefined ? { hideProfile: patch.hideProfile } : {}),
     ...(patch.logoUrl !== undefined ? { logoUrl: patch.logoUrl } : {}),
     ...(hero ? { hero } : {}),
+    // "Top of page" picture chosen for the website: it is the website's own banner ("" = back to the card's cover).
+    // Only when the picture was really CHANGED (the editor's Save sends the old one back every time, and that must not flip the banner).
+    ...(patch.hero && typeof patch.hero.imageUrl === "string" && patch.hero.imageUrl !== (prev.hero?.imageUrl ?? "") && (patch.hero.imageUrl || /^https:\/\//.test(prev.hero?.imageUrl ?? ""))
+      ? { bannerUrl: patch.hero.imageUrl || undefined } : {}),
     ...(style ? { style } : {}),
     ...(patch.home ? { home: patch.home } : {}),
     ...(reference ? { reference } : {}),

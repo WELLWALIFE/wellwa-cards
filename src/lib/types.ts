@@ -299,6 +299,10 @@ export interface Card {
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline
     logoUrl?: string;       // website header/footer logo (the card avatar is usually a portrait)
+    /** The website's OWN top banner (owner, 13 Nov 2026: "website ka alag aur V-Card ka alag banner"). Unset = the website shows the
+     *  card's cover (`coverUrl`), as every website did before. Set when the banner is changed for the website only; the card's cover is
+     *  then left alone, and changing the card's cover leaves the website alone. */
+    bannerUrl?: string;
     generatedAt?: string;
     templateKey?: string;   // website template chosen (free)
     /** The website's own design (src/lib/site-style.ts): palette, fonts, hero layout, corners. Unset = derived from

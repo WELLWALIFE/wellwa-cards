@@ -622,7 +622,7 @@ export default function ProductsPage() {
                 <button type="button" onClick={() => void findMatch("stock")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Search className="h-3.5 w-3.5" /> {en ? "Find a picture · 1 credit" : "Picture खोजें · 1 credit"}</button>
                 <button type="button" onClick={() => void findMatch("ai")} disabled={busy} className="inline-flex items-center gap-1 rounded-lg border border-brand px-2.5 py-1.5 text-xs font-semibold text-brand-ink disabled:opacity-60"><Sparkles className="h-3.5 w-3.5" /> {en ? "Make by AI · 1 credit" : "AI से बनाएँ · 1 credit"}</button>
               </div>
-              <p className="text-[11px] text-muted">{en ? "Any photo works. Keep the product in the middle." : "कोई भी photo चलेगी। Product बीच में रखें।"}</p>
+              <p className="text-[11px] text-muted"><b className="font-semibold text-ink">{en ? "Size: 1000 × 1000 px (square)." : "Size: 1000 × 1000 px (चौकोर)।"}</b> {en ? "Any photo works. Keep the product in the middle." : "कोई भी photo चलेगी। Product बीच में रखें।"}</p>
               {photoErr && <p className="rounded-lg border border-danger/40 bg-danger/10 px-2.5 py-1.5 text-xs font-semibold text-danger">{photoErr}</p>}
               {draft.photo_url && (
                 <div className="space-y-1">

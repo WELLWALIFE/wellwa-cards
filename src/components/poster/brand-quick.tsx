@@ -11,7 +11,7 @@ import { PALETTE_PRESETS, TONES, HEX6, type BrandSnapshot } from "@/lib/brand-pl
 type Suggest = { accent: string; tone: string[] };
 
 /** onChange: the screen around it keeps its own copy of the profile and saves it later — it must carry these choices, not the old ones. */
-export function BrandQuick({ profileId, hi, onChange }: { profileId: string; hi: boolean; onChange?: (b: { accent: string; palette: string[]; tone: string[]; lang: string }) => void }) {
+export function BrandQuick({ profileId, hi, onChange, hidden = false }: { profileId: string; hi: boolean; /** Not drawn (owner, 13 Nov 2026: "poster look form se hatao"), but the first posters still get the colour and tone suggested from the logo and the trade. */ hidden?: boolean; onChange?: (b: { accent: string; palette: string[]; tone: string[]; lang: string }) => void }) {
   const [b, setB] = useState<BrandSnapshot | null>(null);
   const [saved, setSaved] = useState(false);
   const [open, setOpen] = useState(false);   // one line by default (owner, 3 Nov 2026: "chhota kar do"); the choices open on "Change"
@@ -44,7 +44,7 @@ export function BrandQuick({ profileId, hi, onChange }: { profileId: string; hi:
     } catch { /* the next tap tries again */ }
   }
 
-  if (!b) return null;
+  if (!b || hidden) return null;
   // A steady row (a tapped colour must not jump to the front under the finger): the presets, and the logo's own colour first only when it is not one of them.
   const presetHex = PALETTE_PRESETS.map((c) => c.hex);
   const colours = [...(HEX6.test(b.accent) && !presetHex.includes(b.accent) ? [b.accent] : []), ...presetHex];

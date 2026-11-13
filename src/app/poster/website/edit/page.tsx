@@ -222,7 +222,8 @@ export default function WebsiteEditPage() {
   const style: SiteStyle = site.style ?? {};
   const set = (patch: Partial<Card["site"] & object>) => { if (!card) return; Object.keys(patch).forEach((k) => touched.current.add(k)); setNote((n) => (n?.k === "save" ? null : n)); setCard({ ...card, site: { ...(card.site ?? { enabled: true }), ...patch } }); setDirty(true); };
   const setStyle = (patch: Partial<SiteStyle>) => { focus({ top: true }); set({ style: { ...style, ...patch } }); };
-  const setHero = (patch: Partial<Hero>) => { focus({ top: true }); set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch } }); };
+  // A picture chosen for the top of the website is the website's own banner (site.bannerUrl): the preview shows it at once, the card's cover stays.
+  const setHero = (patch: Partial<Hero>) => { focus({ top: true }); set({ hero: { headline: "", sub: "", ...(site.hero ?? {}), ...patch }, ...(typeof patch.imageUrl === "string" ? { bannerUrl: patch.imageUrl || undefined } : {}) }); };
   const setHome = (patch: Partial<NonNullable<Card["site"]>["home"] & object>) => set({ home: { ...(site.home ?? {}), ...patch } });
 
   const visiblePages = useMemo(() => card ? card.pages.filter((p) => !(card.site?.hidden ?? []).includes(p.slug) && (p.slug === "home" || p.blocks.some((b) => !isEmptyBlock(b)))) : [], [card]);

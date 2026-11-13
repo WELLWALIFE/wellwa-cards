@@ -50,15 +50,24 @@ type PhotoSlot = { id: string; kind: Kind; url: string; label: string; group: st
 const inFlight = new Set<string>();
 const madeByUs = (u: string) => /\/ref-\d+(-\d+)?\.(png|jpe?g|webp)(\?|$)/i.test(u);
 const isStock = (u: string) => /^\/(api\/stock|art)\//.test(u) || /\/api\/stock\//.test(u);
-const SIZE: Record<Kind, string> = { banner: "1600 × 900 px · wide", about: "1200 × 900 px", gallery: "1200 × 900 px" };
+// The size each place is cut to (components/poster/site-photos.tsx fitTo): written under every photo, so the owner can make a picture of exactly that size.
+const SIZE: Record<Kind, string> = { banner: "1600 × 900 px (wide, 16:9)", about: "1200 × 900 px (4:3)", gallery: "1200 × 900 px (4:3)" };
 const visibleBlocks = (card: Card) => card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
 
 /** The banner picture of one banner slot. */
+/** What the WEBSITE really shows on top (src/components/site-view.tsx): with two or three sliding banners each banner's own picture;
+ *  with one, the website's own banner (site.bannerUrl) and, when it has none, the card's cover. `hero.imageUrl` alone is never drawn. */
+function siteTop(card: Card): string {
+  const h = card.site?.hero;
+  const many = (h?.slides ?? []).filter((x) => x && x.headline).length >= 2;
+  return (many ? h?.slides?.[0]?.imageUrl || h?.imageUrl : "") || card.site?.bannerUrl || card.coverUrl || "";
+}
 function bannerOf(card: Card, slot: string): string {
   if (slot === "cardbanner") return card.coverUrl || "";
   const n = slideNo(slot);
-  if (n >= 0) return card.site?.hero?.slides?.[n]?.imageUrl || (n === 0 ? card.site?.hero?.imageUrl || card.coverUrl || "" : "");
-  return card.site?.hero?.imageUrl || card.coverUrl || "";
+  if (n === 0) return siteTop(card);
+  if (n > 0) return card.site?.hero?.slides?.[n]?.imageUrl || "";
+  return siteTop(card);
 }
 function slotsOf(card: Card, scope: Scope = ""): PhotoSlot[] {
   const out: PhotoSlot[] = [];
@@ -92,18 +101,22 @@ function setSlot(card: Card, slot: string, url: string, focus: { focus?: string;
     slides[n] = { ...slides[n], imageUrl: url };
     // The first banner on a card whose cover was the same picture (one shared banner until now) keeps the card in step, as before.
     const shared = n === 0 && scope === "" && (!card.coverUrl || card.coverUrl === (hero.imageUrl || card.coverUrl));
-    return { ...card, ...(shared ? { coverUrl: url } : {}), site: { ...card.site, hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
+    // The first banner changed for the website: it becomes the website's own banner, the card's cover stays.
+    return { ...card, ...(shared ? { coverUrl: url } : {}), site: { ...card.site, ...(n === 0 && !shared ? { bannerUrl: url } : {}), hero: { ...hero, slides, ...(n === 0 ? { imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } : {}) } } };
   }
   if (slot === "cardbanner") {
     // The card's own banner. A website that was still showing the card's picture keeps that picture (it is pinned to the website first).
     const pin = card.site && !card.site.hero?.imageUrl && card.coverUrl ? { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: card.coverUrl } } : card.site;
-    return { ...card, coverUrl: url, site: pin };
+    // …and as the website's own banner (site.bannerUrl is what the website draws), so the website does not change with the card.
+    const keep = pin && !pin.bannerUrl && card.coverUrl ? { ...pin, bannerUrl: card.coverUrl } : pin;
+    return { ...card, coverUrl: url, site: keep };
   }
   if (slot === "sitebanner" && card.site) {
-    return { ...card, site: { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } };
+    return { ...card, site: { ...card.site, bannerUrl: url, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } };
   }
   if (slot === "banner" || slot === "sitebanner") {
-    const site = card.site ? { ...card.site, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } : card.site;
+    // One shared banner: the card and the website show the same picture again.
+    const site = card.site ? { ...card.site, bannerUrl: undefined, hero: { ...(card.site.hero ?? { headline: card.company || card.name, sub: "" }), imageUrl: url, ...(focus?.focus ? { focus: focus.focus } : {}), ...(focus?.textSide ? { textSide: focus.textSide } : {}) } } : card.site;
     return { ...card, coverUrl: url, site };
   }
   const [kind, blockId, idx] = slot.split(":");
