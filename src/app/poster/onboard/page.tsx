@@ -1534,6 +1534,9 @@ function Onboard() {
     // What you do decides the card, the website and the posters, so it is never left empty.
     if (here("trade") && !(biz.category ?? "").trim()) { fail("trade", "category", T("Choose what you do.", "अपना काम चुनें।")); return; }
     if (here("trade") && biz.category === "other" && !(biz.trade ?? "").trim()) { fail("trade", "trade", T("Write your trade in a few words, e.g. drone repair.", "अपना काम दो-तीन शब्दों में लिखें, जैसे drone repair।")); return; }
+    // The sub-category of a trade that has several: one or more, chosen by the owner (never guessed as "all of them").
+    const subs = partsOf(biz.category);
+    if (here("trade") && subs.length > 1 && !(facts.tradeAnswers?.parts ?? []).some((v) => subs.some((s) => s.en === v))) { fail("trade", "parts", T("Choose your sub-category — tick one or more.", "अपनी sub-category चुनें — एक या ज़्यादा दबाएँ।")); return; }
     if (here("trade") && isBiz && !bizName) { fail("trade", "bname", T(`Write your ${org.en} name.`, `अपने ${place} का नाम लिखें।`)); return; }
     if ((editing ? step === "where" || step === "trade" : true) && biz.role !== "personal" && !city) { fail(editing ? step : "trade", "city", T("Write your city — needed even for Pan India / online.", "अपना शहर लिखें — Pan India / online में भी चाहिए।")); return; }
     // The card, the website and every customer reply are written from this (owner's call, 4 Oct 2026: mandatory).
@@ -1728,7 +1731,7 @@ function Onboard() {
   const at = ONBOARD_SCREENS.indexOf(step);
   const screenInfo = SETUP_SCREENS.find((x) => x.key === step)!;
   /** A trade with no questions of its own (a personal card) has nothing on the Details screen: it is skipped. */
-  const noDetails = () => !!biz.category && tradeQuestionsFor(biz.category).length === 0;
+  const noDetails = () => !!biz.category && tradeQuestionsFor(biz.category).filter((q) => !q.closed).length === 0;
   /** Back: the screen the owner was just on — the walk keeps one history entry per screen, so after "Next" that is the screen before it, and
    *  after "Change" on the Make screen it is the Make screen. Only with no earlier screen in the app (a link opened fresh, a reload) does it go
    *  to the walk's own previous screen, and from the first one to the page the set-up opens from. */
@@ -2129,6 +2132,14 @@ function Onboard() {
             {/* "Other" from the list: the trade in the owner's own words, kept as typed — it names the website, the
                 card and the AI's brief (owner, 5 Oct 2026: typed text vanished; a card said "Other"). */}
             <FieldErr id="category" msg={fe("category")} />
+            {/* Right after the main trade: its sub-categories, one or more, and never left empty (owner, 13 Nov 2026 — a lehenga shop that is
+                also a boutique came out as a plain tailor because nothing had been chosen). A trade of one kind has nothing to choose. */}
+            {!!biz.category && partsOf(biz.category).length > 1 && (
+              <div id="ob-in-parts" tabIndex={-1} className="mt-3 font-normal outline-none">
+                <TradeQuestions only="parts" category={biz.category} facts={facts} setF={(p) => { clearFE("parts"); setF(p); }} hi={hi} title={false} />
+                <FieldErr id="parts" msg={fe("parts")} />
+              </div>
+            )}
             {biz.category === "other" && (
               <label className="mt-2 block text-sm font-semibold">{T("Your trade, in your words", "आपका काम, अपने शब्दों में")} <span className="text-danger">*</span>
                 <input id="ob-in-trade" value={biz.trade ?? ""} onChange={(e) => { touch("category"); clearFE("trade"); setBiz((b) => ({ ...b, trade: e.target.value.slice(0, 40) })); }} placeholder={T("e.g. drone repair, tiffin service, event anchor", "जैसे drone repair, tiffin service, event anchor")} className={`${cField} ${fe("trade") ? "border-danger" : ""}`} />
@@ -2205,7 +2216,7 @@ function Onboard() {
           {noDetails()
             ? head(T("Why do customers choose you?", "ग्राहक आपको क्यों चुनते हैं?"), T("Tap what is true. This goes on your website.", "जो सही है वो दबाएँ। यही आपकी website पर दिखेगा।"))
             : head(T(`About your ${tradeName() || org.en}`, `आपके ${tradeName() || place} के बारे में`), T("Tap what is true. Skip the rest.", "जो सही है वो दबाएँ। बाकी छोड़ दें।"))}
-          {!!biz.category && !noDetails() && <TradeQuestions category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
+          {!!biz.category && !noDetails() && <TradeQuestions only="rest" category={biz.category} facts={facts} setF={setF} hi={hi} tradeLabel={tradeName() || undefined} title={false} />}
           {/* Only what the AI cannot guess (owner, 24 Oct 2026: "jitana kam se kaam chal sake utana kam data"): "Who buys from you" goes (the AI
               works it out from the trade), and "Any offer?" is added later from Card & Website → Offer / pop-up. */}
           <FactsFields group="products" only={["q-special"]} category={biz.category} facts={facts} setF={setF} hi={hi} hasAbout />

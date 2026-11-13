@@ -24,7 +24,10 @@ const writeCls = (open: boolean) => `rounded-full border-2 border-dashed px-3.5 
 const typedCls = "inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-brand bg-brand-soft px-3.5 py-2 text-sm font-medium text-brand-ink";
 const FLASH_MS = 1800;
 
-export function TradeQuestions({ category, facts, setF, hi, title = true, tradeLabel }: {
+export function TradeQuestions({ category, facts, setF, hi, title = true, tradeLabel, only }: {
+  /** "parts": just the sub-category question, which must be answered (nothing is ticked for the owner — owner, 13 Nov 2026: "main ke baad
+   *  sub mandatory"); "rest": every other question. Not given: all of them, the sub-category ticked in full until one is unticked. */
+  only?: "parts" | "rest";
   category: string; facts: CardFacts; setF: (p: FactsPatch) => void; hi: boolean;
   /** The "About your <trade>" heading on top. */
   title?: boolean;
@@ -32,7 +35,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
    *  "other" business is never asked "About your other". */
   tradeLabel?: string;
 }) {
-  const qs = tradeQuestionsFor(category, facts.tradeAnswers);
+  const qs = tradeQuestionsFor(category, facts.tradeAnswers).filter((q) => (only === "parts" ? !!q.closed : only === "rest" ? !q.closed : true));
   const c = categoryOf(category);
   // Which questions have their "Write your own" line open (also open whenever a typed answer is saved).
   const [otherOpen, setOtherOpen] = useState<Record<string, boolean>>({});
@@ -62,13 +65,14 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
         // The parts of a combined trade ("Pest control / cleaning"): all ticked until the owner unticks one; at least one stays ticked.
         if (q.closed) {
           const names = (q.options ?? []).map((o) => o.en);
-          const on = cur.length ? names.filter((n) => cur.includes(n)) : names;
+          const must = only === "parts";
+          const on = cur.length || must ? names.filter((n) => cur.includes(n)) : names;
           const flip = (v: string) => {
-            if (on.includes(v) && on.length === 1) return note(q.key, T("Keep at least one ticked", "कम से कम एक चुना रहने दें"));
+            if (!must && on.includes(v) && on.length === 1) return note(q.key, T("Keep at least one ticked", "कम से कम एक चुना रहने दें"));
             set(q.key, on.includes(v) ? on.filter((x) => x !== v) : names.filter((n) => on.includes(n) || n === v));
           };
           return (
-            <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)} hint={T("Tick only what you do. Do both? Keep both ticked.", "जो करते हैं बस वही दबाएँ। दोनों करते हैं तो दोनों रहने दें।")}>
+            <Sec key={q.key} id={`q-trade-${q.key}`} title={must ? T("Choose your sub-category *", "अपनी sub-category चुनें *") : T(q.en, q.hi)} hint={must ? T("Tick what you do — one or more. Your website is written for exactly this.", "जो काम करते हैं वो दबाएँ — एक या ज़्यादा। Website ठीक इसी के लिए लिखी जाएगी।") : T("Tick only what you do. Do both? Keep both ticked.", "जो करते हैं बस वही दबाएँ। दोनों करते हैं तो दोनों रहने दें।")}>
               <div className="flex flex-wrap gap-2">
                 {(q.options ?? []).map((o) => (
                   <button key={o.en} type="button" aria-pressed={on.includes(o.en)} onClick={() => flip(o.en)} className={chipCls(on.includes(o.en))}>{on.includes(o.en) ? "✓ " : ""}{hi ? o.hi : o.en}</button>

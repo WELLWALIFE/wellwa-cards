@@ -160,7 +160,7 @@ const BY_KEY: Record<string, TradeQuestion[]> = {
     many("extra", "Also", "साथ में", "Private label|प्राइवेट लेबल, Custom fragrance|ख़ास ख़ुशबू, Samples on request|सैंपल मिलेगा, GST bill|GST बिल, Home / shop delivery|होम / दुकान डिलीवरी, Pan India dispatch|पूरे भारत में डिस्पैच"),
   ],
   wholesale: [text("trades", "You trade in", "किसका व्यापार", "e.g. Grocery, Garments, Hardware", "जैसे किराना, कपड़े, हार्डवेयर", "📦"), many("sell", "Sell to", "किसे बेचते हैं", "Retailers|रिटेलर, Businesses|व्यवसाय, Also retail|रिटेल भी, All India|पूरा भारत")],
-  textile: [many("sell", "You sell", "क्या बेचते हैं", "Sarees|साड़ी, Suits / dress material|सूट / ड्रेस मटीरियल, Lehengas|लहंगा, Fabric by metre|मीटर कपड़ा, Bedsheets / curtains|चादर / पर्दे, Wholesale|होलसेल, Readymade|रेडीमेड", "🧵")],
+  textile: [many("sell", "You sell", "क्या बेचते हैं", "Sarees|साड़ी, Suits / dress material|सूट / ड्रेस मटीरियल, Lehengas|लहंगा, Fabric by metre|मीटर कपड़ा, Bedsheets / curtains|चादर / पर्दे, Wholesale|होलसेल, Readymade|रेडीमेड, Blouse stitching|ब्लाउज़ सिलाई, Fall-pico|फ़ॉल-पीको, Designer work|डिज़ाइनर काम", "🧵")],
   // community
   political: [text("post", "Post / role", "पद", "e.g. Mandal President, Karyakarta", "जैसे मंडल अध्यक्ष, कार्यकर्ता", "🏛️"), text("party", "Party / organisation", "पार्टी / संगठन", "e.g. BJP, Congress", "जैसे भाजपा, कांग्रेस")],
   mla: [text("post", "Post", "पद", "e.g. MLA, Sarpanch, Ward councillor", "जैसे विधायक, सरपंच, पार्षद", "🏛️"), text("area", "Constituency / ward", "क्षेत्र / वार्ड", "e.g. Bharatpur, Ward 12", "जैसे भरतपुर, वार्ड 12")],
