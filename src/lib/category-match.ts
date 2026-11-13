@@ -17,7 +17,7 @@ export const ALIASES: Record<string, string[]> = {
   electrician: ["plumber", "ac repair", "bijli", "mistri", "electricals", "electrical", "electric works"],
   mobile: ["phone", "electronics", "repair", "smartphone", "gadgets"],
   jewellery: ["sunar", "gold", "jewelry", "jewellers", "jewelers", "zevar", "diamond"],
-  tailor: ["darzi", "silai", "stitching", "boutique", "tailors", "tailoring"],
+  tailor: ["darzi", "silai", "stitching", "boutique", "tailors", "tailoring", "lehenga", "lehnga", "lehanga", "lahanga", "langa", "bridal wear", "sherwani"],
   realestate: ["property", "plot", "flat", "dealer", "apartments"],
   auto: ["garage", "mechanic", "car", "bike", "motors", "automobiles", "auto works"],
   dentist: ["dant", "teeth", "dental"],

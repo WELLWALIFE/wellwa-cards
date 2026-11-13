@@ -205,7 +205,8 @@ function fromSeeds(categoryKey: string, partKeys: string[], base: TradeData | nu
   const keep = <T,>(xs: T[], text: (x: T) => string, min: number) => { const k = xs.filter((x) => !bad(text(x))); return k.length >= Math.min(min, xs.length) ? k : null; };
   return {
     explain: uniqBy(seeds.flatMap((s) => s.explain), (s) => s, 4),
-    services: uniqBy(seeds.flatMap((s) => s.services), (s) => s.en, 8),
+    // Two or more parts: taken in turn, so each part is seen — joined end to end, the first part's seven filled the list and the second got one line.
+    services: uniqBy(Array.from({ length: Math.max(...seeds.map((s) => s.services.length)) }, (_, i) => seeds.map((s) => s.services[i]).filter((x): x is TradeLine => !!x)).flat(), (s) => s.en, 8),
     whyUs: keep(base.whyUs, (w) => w.en, 4) ?? base.whyUs,
     // Steps name the work ("painting, bathroom, wiring…"): when they talk about other parts the neutral three stand in.
     steps: keep(base.steps, (s) => `${s.en} ${s.desc}`, 3) ?? NEUTRAL_STEPS,

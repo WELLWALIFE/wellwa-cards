@@ -22,6 +22,8 @@ export const PARTS_A: Record<string, TradePart[]> = {
   tailor: [
     { key: "tailor", en: "Tailoring", hi: "सिलाई", label: "Tailor", labelHi: "टेलर" },
     { key: "boutique", en: "Boutique & designer wear", hi: "बुटीक और डिज़ाइनर वियर", label: "Boutique", labelHi: "बुटीक" },
+    // A shop that SELLS (or rents out) ready lehengas and wedding wear — not stitching (owner, 13 Nov 2026: a lehenga shop that is also a boutique).
+    { key: "bridal", en: "Lehenga & bridal wear shop", hi: "लहंगा और ब्राइडल वियर की दुकान", label: "Lehenga & bridal wear", labelHi: "लहंगा और ब्राइडल वियर" },
   ],
   mehndi: [
     { key: "mehndi", en: "Mehndi", hi: "मेहंदी", label: "Mehndi artist", labelHi: "मेहंदी आर्टिस्ट" },
@@ -49,6 +51,7 @@ export const TICKS_A: Record<string, Record<string, string[]>> = {
   tailor: {
     tailor: ["Ladies' suits", "Blouses", "Gents' shirts & pants", "Bridal / lehenga", "Alterations", "Uniforms"],
     boutique: ["Ladies' suits", "Blouses", "Bridal / lehenga", "Designer wear"],
+    bridal: ["Ready lehengas", "Bridal wear on rent", "Sarees & gowns", "Sherwani / groom wear", "Designer wear"],
   },
   mehndi: {
     mehndi: ["Bridal mehndi", "Party mehndi"],
@@ -241,7 +244,7 @@ export const SEEDS_A: Record<string, { explain: string[]; services: TradeLine[];
       { en: "Kids' clothes", hi: "बच्चों के कपड़े", desc: "Comfortable stitching for children's festival and daily wear.", descHi: "बच्चों के त्योहार और रोज़ के कपड़ों की आरामदेह सिलाई।" },
       { en: "Fall, piping & finishing", hi: "फ़ॉल, पाइपिंग और फ़िनिशिंग", desc: "Saree fall, lace, piping and other finishing work.", descHi: "साड़ी की फ़ॉल, लेस, पाइपिंग और दूसरा फ़िनिशिंग का काम।" },
     ],
-    avoid: ["boutique", "designer", "ready-made", "readymade", "collection", "showroom", "couture", "lookbook", "fashion show", "custom design"],
+    avoid: ["boutique", "designer", "ready-made", "readymade", "collection", "showroom", "couture", "lookbook", "fashion show", "custom design", "on rent", "rental", "sherwani"],
   },
   "tailor:boutique": {
     explain: [
@@ -259,7 +262,25 @@ export const SEEDS_A: Record<string, { explain: string[]; services: TradeLine[];
       { en: "Ready designer pieces", hi: "तैयार डिज़ाइनर कपड़े", desc: "A small collection to see and try in the shop.", descHi: "दुकान में देखने और पहनकर देखने के लिए छोटा कलेक्शन।" },
       { en: "Festive & occasion wear", hi: "त्योहार और मौक़े के कपड़े", desc: "Outfits for weddings, festivals and family functions.", descHi: "शादी, त्योहार और घर के फ़ंक्शन के कपड़े।" },
     ],
-    avoid: ["alteration", "uniform", "school", "gents", "shirt", "trouser", "pants", "men's wear", "repair clothes"],
+    avoid: ["alteration", "uniform", "school", "gents", "shirt", "trouser", "pants", "men's wear", "repair clothes", "on rent", "rental", "sherwani"],
+  },
+  "tailor:bridal": {
+    explain: [
+      "lehenga and bridal wear shop — ready bridal lehengas, party lehengas, sarees, gowns and wedding outfits to see, try and buy",
+      "a collection for the bride and for the family: wedding, engagement, sangeet, mehndi and reception",
+      "trial at the shop, fitting done on the piece you choose; rent only if the owner offers it",
+      "visit the shop or ask for pictures of the collection on WhatsApp",
+    ],
+    services: [
+      { en: "Ready bridal lehengas", hi: "तैयार ब्राइडल लहंगे", desc: "Wedding lehengas in heavy and light work, ready to try at the shop.", descHi: "भारी और हल्के काम के शादी के लहंगे, दुकान पर पहनकर देखें।" },
+      { en: "Party & festive lehengas", hi: "पार्टी और त्योहार के लहंगे", desc: "Lehengas for sangeet, engagement, mehndi and family functions.", descHi: "संगीत, सगाई, मेहंदी और घर के फ़ंक्शन के लहंगे।" },
+      { en: "Sarees & gowns", hi: "साड़ी और गाउन", desc: "Designer sarees, gowns and Indo-western outfits for the occasion.", descHi: "मौक़े के लिए डिज़ाइनर साड़ी, गाउन और इंडो-वेस्टर्न कपड़े।" },
+      { en: "Wedding wear for the family", hi: "परिवार के लिए शादी के कपड़े", desc: "Outfits for the bride's sisters, mother and the close family.", descHi: "दुल्हन की बहनों, माँ और क़रीबी परिवार के कपड़े।" },
+      { en: "Trial & fitting", hi: "ट्रायल और फ़िटिंग", desc: "Try the piece at the shop; the fitting is set on the one you choose.", descHi: "दुकान पर पहनकर देखें; चुने हुए कपड़े की फ़िटिंग ठीक की जाती है।" },
+      { en: "Dupattas & matching pieces", hi: "दुपट्टे और मैचिंग", desc: "Dupattas, blouses and matching pieces to complete the look.", descHi: "लुक पूरा करने के लिए दुपट्टे, ब्लाउज़ और मैचिंग।" },
+      { en: "Collection on WhatsApp", hi: "WhatsApp पर कलेक्शन", desc: "Ask for pictures of the pieces in your colour and budget.", descHi: "अपने रंग और बजट के कपड़ों की फ़ोटो मँगाएँ।" },
+    ],
+    avoid: ["stitch", "bring the cloth", "bring fabric", "bring your own", "uniform", "school", "shirt", "trouser", "pants", "from your photo", "from a photo", "repair clothes"],
   },
 
   // ---------------------------------------------------------------- mehndi

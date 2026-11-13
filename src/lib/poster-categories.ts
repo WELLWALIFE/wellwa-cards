@@ -55,7 +55,7 @@ export const CATEGORIES: Category[] = [
   c("it", "IT / सॉफ़्टवेयर / डिजिटल मार्केटिंग", "IT / software / digital", "Services", "business", "clean", "#4f46e5", "कंपनी का नाम"),
   c("security", "सिक्योरिटी / हाउसकीपिंग", "Security / housekeeping", "Services", "business", "clean", "#1f2937", "एजेंसी का नाम"),
   c("cleaning", "पेस्ट कंट्रोल / क्लीनिंग", "Pest control / cleaning", "Services", "business", "clean", "#16a34a", "सर्विस का नाम"),
-  c("tailor", "टेलर / बुटीक", "Tailor / boutique", "Services", "home", "festive", "#db2777", "बुटीक का नाम"),
+  c("tailor", "टेलर / बुटीक / लहंगा", "Tailor / boutique / lehenga", "Services", "home", "festive", "#db2777", "बुटीक का नाम"),
   c("mehndi", "मेहंदी / मेकअप आर्टिस्ट", "Mehndi / makeup artist", "Services", "home", "festive", "#b91c1c", "आर्टिस्ट का नाम"),
   c("astro", "ज्योतिष / वास्तु / पंडित", "Astrology / vastu / pandit", "Services", "professional", "traditional", "#ff9933", "पं. / आचार्य"),
   c("courier", "कूरियर / मनी ट्रांसफ़र / CSC", "Courier / CSC / e-mitra", "Services", "business", "clean", "#0369a1", "सेंटर का नाम"),
