@@ -52,7 +52,8 @@ import { LookTweaks } from "@/components/poster/look-tweaks";
 import { AdvancedEntry, ADVANCED_HREF } from "@/components/poster/advanced-entry";
 import { FirstPosters } from "@/components/poster/first-posters";
 import { WebsitePlanSheet, PaidReceipt, SiteProgress } from "@/components/poster/website-plan";
-import { SITE_INTENT_KEY, type OrderState } from "@/lib/site-order";
+import { rupees } from "@/lib/billing";
+import { SITE_PKG, type OrderState, type SitePkg } from "@/lib/site-order";
 import type { PaidInfo } from "@/components/subscribe-button";
 import { readyIn, readyText, sitePending } from "@/lib/site-ready";
 
@@ -1227,14 +1228,22 @@ export default function BuildCard() {
     void api<OrderState>("/api/site/order").then((r) => {
       if (off || !r.ok) return;
       const st = r.data.stage;
-      if (st === "queued" || st === "building") { router.replace("/poster/site/order"); return; }
-      let intent = false; try { intent = localStorage.getItem(SITE_INTENT_KEY) === "1"; } catch { /* */ }
-      if ((st === "pay" || (st === "none" && intent)) && !r.data.hasCard) router.replace("/poster/site/plans");
+      // ?change=1: "Change my choice" on the order page — the three buttons again.
+      const change = (() => { try { return new URLSearchParams(window.location.search).get("change") === "1"; } catch { return false; } })();
+      if (st === "queued" || st === "building" || (st === "pay" && !r.data.hasCard && !change)) router.replace("/poster/site/order");
     }).catch(() => undefined);
     return () => { off = true; };
   }, [router]);
-  /** "Make my website" on an account with no plan: the plans first — nothing is made before the payment. */
-  const toPlans = () => { try { localStorage.setItem(SITE_INTENT_KEY, "1"); } catch { /* */ } router.push("/poster/site/plans"); };
+  /** One of the three "Make my … website" buttons on an account with no plan: the order is placed (nothing is made before the payment)
+   *  and its page opens — thank you, and Pay. */
+  const [ordering, setOrdering] = useState(false);
+  const [orderErr, setOrderErr] = useState("");
+  async function placeOrder(pkg: SitePkg, custom: boolean) {
+    setOrdering(true); setOrderErr("");
+    const r = await api<{ ok?: boolean; already?: boolean; error?: string }>("/api/pay/mine", { method: "POST", json: { op: "package", pkg, custom } }).catch(() => null);
+    if (r?.ok && (r.data.ok || r.data.already)) { router.push("/poster/site/order"); return; }
+    setOrdering(false); setOrderErr(r?.data?.error || T("Could not place the order now. Please try again.", "Order अभी नहीं हो पाया। दोबारा try करें।"));
+  }
   const sitePlanSheet = sitePlan && <WebsitePlanSheet hi={hi} name={setup?.business || ""} onClose={() => setSitePlan(false)} onPaid={onSitePaid} />;
 
   if (state === "loading") return <div className="py-24 grid place-items-center"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
@@ -1932,14 +1941,23 @@ export default function BuildCard() {
           <section className="space-y-3 rounded-3xl border-2 border-brand/40 bg-brand-soft/30 p-4 shadow-card" id="make-site">
             <p className="text-base font-bold">{T("Your website + digital card", "आपकी website + digital card")}</p>
             <ul className="space-y-1">
-              {li(T("Choose your plan and pay once for the year", "Plan चुनें और साल का एक बार payment करें"))}
+              {li(T("Choose which website you want", "चुनें कौन सी website चाहिए"))}
               {li(T("Our team makes your website and digital card", "हमारी team आपकी website और digital card बनाती है"))}
-              {li(T("Delivered within 24–48 hours", "24–48 घंटे में तैयार"))}
+              {li(T("Delivered within 24 hours", "24 घंटे में तैयार"))}
             </ul>
-            <button type="button" onClick={toPlans} disabled={!!busy} className="w-full inline-flex items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
-              <Sparkles className="h-5 w-5" /> {T("Make my website", "मेरी website बनाएँ")}
-            </button>
-            {err && makeFrom === "free" && <p ref={errRef} role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
+            {/* Which website? (owner, 14 Nov 2026) — the price on each button; a tap places the order and opens its page (thank you + Pay). */}
+            {([
+              ["site_standard", false, T("Make my Standard website", "मेरी Standard website बनाएँ"), `${rupees(SITE_PKG.site_standard.amount)} ${T("/ year", "/ साल")}`, T("Dynamic website, up to 5 pages", "Dynamic website, 5 pages तक"), "grad-brand text-white"],
+              ["site_premium", false, T("Make my Premium website", "मेरी Premium website बनाएँ"), `${rupees(SITE_PKG.site_premium.amount)} ${T("/ year", "/ साल")}`, T("Dynamic and progressive, a page for every product", "Dynamic और progressive, हर product का अपना page"), "bg-[#12144a] text-white"],
+              ["site_premium", true, T("Premium + Customise", "Premium + Customise"), `${rupees(SITE_PKG.site_premium.amount)} + ${T("customising", "customise")}`, T("Premium now; customising charged as per the work", "अभी Premium; customise का charge काम के हिसाब से"), "border-2 border-[#12144a] bg-surface text-ink"],
+            ] as const).map(([pkg, custom, title, price, sub, cls]) => (
+              <button key={title} type="button" onClick={() => void placeOrder(pkg, custom)} disabled={!!busy || ordering} className={`flex w-full items-center gap-3 rounded-2xl px-4 py-3.5 text-left disabled:opacity-60 ${cls}`}>
+                <Sparkles className="h-5 w-5 shrink-0" />
+                <span className="min-w-0 flex-1"><span className="block text-base font-bold leading-tight">{title}</span><span className="block text-xs opacity-80">{sub}</span></span>
+                <span className="shrink-0 text-right text-sm font-extrabold">{price}</span>
+              </button>
+            ))}
+            {orderErr && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{orderErr}</p>}
             {/* No free card (owner, 13 Nov 2026): the card comes with the website plan. */}
           </section>
         )}

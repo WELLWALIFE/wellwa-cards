@@ -25,6 +25,7 @@ export default function WebsitePlansPage() {
       api<{ cards?: { name: string }[] }>("/api/site/status").catch(() => null),
     ]);
     // Paid already (here, on another phone, or set by Shubhora): the order's own page.
+    if (o?.ok && o.data.stage === "pay") { setPaidOrder(true); router.replace("/poster/site/order"); return; }
     if (o?.ok && o.data.pkg) { setPaidOrder(true); router.replace(o.data.stage === "live" ? "/poster/site" : "/poster/site/order"); return; }
     if (s?.ok) setName(s.data.cards?.[0]?.name ?? "");
     setReady(true);

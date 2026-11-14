@@ -12,7 +12,7 @@ import { grantAdvanced } from "@/lib/advanced-access";
 import { franchiseEarning } from "@/lib/franchise-server";
 import { reportPaidToPartner } from "@/lib/partner-link";
 import { notify } from "@/lib/notify";
-import { SITE_PKG, pkgOfNote } from "@/lib/site-order";
+import { SITE_PKG, isCustomNote, pkgOfNote } from "@/lib/site-order";
 import { applyPackage } from "@/lib/site-order-server";
 import { newPayCode, PAY_MAX_PAISE, PAY_MIN_PAISE, requestTitle, rupeesOf, type PaymentRequest, type PayKind, type PayTier } from "@/lib/payments";
 
@@ -97,7 +97,7 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
     await reportPaidToPartner(req.owner_id, { totalPaise: p.amount, tier: "growth", ref: p.paymentId }).catch(() => undefined);
   } else if (pkg) {
     // A website package (lib/site-order.ts): the year, a month of the Growth features, Premium's website. The build starts from the app.
-    if (!(await applyPackage(req.owner_id, pkg, p.paymentId))) return { ok: false, error: "Paid, but the package could not be set. Shubhora will set it by hand." };
+    if (!(await applyPackage(req.owner_id, pkg, p.paymentId, isCustomNote(req.note)))) return { ok: false, error: "Paid, but the package could not be set. Shubhora will set it by hand." };
   } else if (req.kind === "advance") {
     const led = await restAsService("advance_ledger", { method: "POST", headers: { Prefer: "return=minimal" }, body: JSON.stringify({ owner_id: req.owner_id, delta_paise: p.amount, reason: what, ref: p.paymentId }) });
     if (!led.ok && led.status !== 409) return { ok: false, error: `Paid, but the advance could not be recorded (${led.status}). Shubhora will set it by hand.` };
@@ -105,8 +105,8 @@ export async function settleRequest(req: PaymentRequest, p: { paymentId: string;
   // The user's franchise earns on every payment that reaches Shubhora (src/lib/franchise-server.ts), once per payment id.
   await franchiseEarning(req.owner_id, { paise: p.amount, ref: p.paymentId, what: `${req.kind}:${what}` });
   await notify(req.owner_id, "payment", {
-    title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be ready within 24–48 hours.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
-    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! हमारी team आपकी website पर काम कर रही है — 24–48 घंटे में तैयार होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
+    title: "Payment received", body: pkg ? `Thank you. ${rupeesOf(p.amount)} — ${what}. Your website will be delivered within 24 hours of your order.` : `Thank you. ${rupeesOf(p.amount)} — ${what}.`, path: pkg ? "/poster/site/order" : "/poster/plan", ref: p.paymentId,
+    whatsappText: `*Payment received — ${rupeesOf(p.amount)}* ✅\n${what}\n\n${pkg ? "धन्यवाद! आपकी website order के 24 घंटे के अंदर deliver होगी। Live होते ही WhatsApp पर बताएँगे।" : req.kind === "plan" ? "आपका plan चालू हो गया है।" : req.kind === "advance" ? "रकम आपके account में advance की तरह जमा है — plan लेते समय इसी से कटेगी।" : "Shubhora team को खबर मिल गई है।"}`,
   }).catch(() => undefined);
   return { ok: true, replayed: false, applied: req.kind };
 }

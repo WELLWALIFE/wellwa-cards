@@ -23,7 +23,7 @@ function planList(hi: boolean) {
       lead: T("A dynamic website for your business, made for you.", "आपके business की dynamic website — हम बनाकर देते हैं।"),
       items: [
         T("Your website (up to 5 pages) and digital card on your own link", "आपकी website (5 pages तक) और digital card, आपके अपने link पर"),
-        T("Made by our team and delivered within 24–48 hours", "हमारी team बनाकर 24–48 घंटे में देती है"),
+        T("Made by our team and delivered within 24 hours", "हमारी team बनाकर 24 घंटे में देती है"),
         T("We WhatsApp you the moment it is live", "Live होते ही WhatsApp पर खबर"),
         T("On Google search by itself once it is live", "Live होते ही अपने-आप Google search पर"),
         T("Change photos, words and products yourself, any time", "फ़ोटो, शब्द और products जब चाहें खुद बदलें"),
@@ -68,7 +68,7 @@ export function WebsitePlans({ hi, name, overlay = false, cardHref, onView, onCl
       <div className="flex items-start gap-3">
         <div className="min-w-0 flex-1">
           <h1 className="text-2xl font-extrabold tracking-tight">{T("Choose your website plan", "अपनी website का plan चुनें")}</h1>
-          <p className="mt-1 text-sm text-muted">{name ? T(`For ${name}'s website. Pay once for the year; our team makes it and delivers it within 24–48 hours.`, `${name} की website के लिए। साल का एक बार payment; हमारी team बनाकर 24–48 घंटे में देती है।`) : T("Pay once for the year; our team makes your website and delivers it within 24–48 hours.", "साल का एक बार payment; हमारी team आपकी website बनाकर 24–48 घंटे में देती है।")}</p>
+          <p className="mt-1 text-sm text-muted">{name ? T(`For ${name}'s website. Pay once for the year; our team makes it and delivers it within 24 hours.`, `${name} की website के लिए। साल का एक बार payment; हमारी team बनाकर 24 घंटे में देती है।`) : T("Pay once for the year; our team makes your website and delivers it within 24 hours.", "साल का एक बार payment; हमारी team आपकी website बनाकर 24 घंटे में देती है।")}</p>
         </div>
         {overlay && <button type="button" onClick={onClose} aria-label={T("Close", "बंद करें")} className="grid h-9 w-9 shrink-0 place-items-center rounded-full text-muted"><X className="h-5 w-5" /></button>}
       </div>
@@ -113,7 +113,7 @@ export function SiteProgress({ hi, stage, when }: { hi: boolean; stage: 1 | 2; w
   const T = (en: string, h: string) => (hi ? h : en);
   const steps = [
     { icon: CheckCircle2, t: T("Payment received", "Payment मिल गया"), s: "" },
-    { icon: Clock, t: T("Your website is being made", "आपकी website बन रही है"), s: when || T("Within 24–48 hours", "24–48 घंटे में") },
+    { icon: Clock, t: T("Your website is being made", "आपकी website बन रही है"), s: when || T("Within 24 hours", "24 घंटे में") },
     { icon: Globe, t: T("Website live", "Website live"), s: T("We will WhatsApp you", "WhatsApp पर बताएँगे") },
   ];
   return (

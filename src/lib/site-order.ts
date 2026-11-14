@@ -16,14 +16,21 @@ export const isSitePkg = (v: unknown): v is SitePkg => v === "site_standard" || 
 
 /** A package payment is a "custom" payment request (lib/payments.ts) that carries this mark in its note. */
 export const pkgNote = (p: SitePkg) => `[pkg:${p}]`;
+/** "Premium + Customise" (owner, 14 Nov 2026): the Premium payment first, the customising charged afterwards as per the work. */
+export const CUSTOM_MARK = "customise";
+export const isCustomNote = (note: string | null | undefined) => !!pkgOfNoteRaw(note) && (note ?? "").includes(CUSTOM_MARK);
+const pkgOfNoteRaw = (note: string | null | undefined) => /^\[pkg:(site_standard|site_premium)\]/.exec((note ?? "").trim());
+/** Hours from the ORDER (the button tapped on the Make screen) to the delivery. Paid inside them: delivered when they end. Paid after
+ *  them: made and live at once. */
+export const ORDER_HOURS = 24;
 export const pkgOfNote = (note: string | null | undefined): SitePkg | null => {
   const m = /^\[pkg:(site_standard|site_premium)\]/.exec((note ?? "").trim());
   return m ? (m[1] as SitePkg) : null;
 };
 
 /** Where the order stands, for the screens:
- *   none     no package and nothing chosen           → the plans
- *   pay      a plan was chosen but not paid          → the plans (never "Make my website" again)
+ *   none     no package and nothing ordered          → the Make screen's three buttons
+ *   pay      a website was ordered but not paid      → the order page: thank you + Pay (never "Make my website" again)
  *   queued   paid, the build has not started         → the thank-you page (it starts the build)
  *   building paid, the build is running              → the thank-you page
  *   waiting  made; goes live by itself at `readyAt`  → the thank-you page / the app
@@ -32,8 +39,13 @@ export type OrderStage = "none" | "pay" | "queued" | "building" | "waiting" | "l
 export type OrderState = {
   stage: OrderStage;
   pkg: SitePkg | "custom" | "";
-  /** The plan chosen but not yet paid. */
+  /** The website ordered but not yet paid, and its payment request. */
   wanted: SitePkg | null;
+  pay: { code: string; amount: number } | null;
+  /** Premium + Customise was the one ordered. */
+  custom: boolean;
+  /** When the order was placed (the 24 hours run from here). */
+  orderedAt: string | null;
   until: string | null;
   readyAt: string | null;
   hasCard: boolean;

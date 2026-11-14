@@ -7,7 +7,7 @@ import { usePlan } from "@/lib/plan";
 import { LoaderCircle, ChevronDown, Sparkles, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
-import { SITE_INTENT_KEY, type OrderState } from "@/lib/site-order";
+import type { OrderState } from "@/lib/site-order";
 import { api, isLoggedIn, currentProfileId, setCurrentProfileId, captureRef, PERSONAS, type Profile, type Poster, type Quota } from "@/lib/poster-client";
 import { PosterCard } from "@/components/poster/poster-card";
 import { PremiumCard } from "@/components/poster/premium-lock";
@@ -140,15 +140,16 @@ export default function TodayPage() {
       // aana chahiye") — the "Make your website in 5 minutes" screen below is only for a visitor who is not signed in.
       if (!list.length) { router.replace("/poster/welcome"); return; }
       // The website order (lib/site-order.ts, owner 13 Nov 2026). Paid and being made: the thank-you page opens first, once per visit.
-      // A plan chosen but not paid, or "Make my website" tapped earlier on this phone: the plans open again — the payment is the next step.
+      // A website ordered but not paid: its order page opens — the payment is the next step.
       try {
         const o = await api<OrderState>("/api/site/order");
         if (o.ok) {
           const st = o.data.stage;
-          let seen = false, intent = false;
-          try { seen = sessionStorage.getItem("shubhora.order-seen") === "1"; intent = localStorage.getItem(SITE_INTENT_KEY) === "1"; } catch { /* */ }
+          let seen = false;
+          try { seen = sessionStorage.getItem("shubhora.order-seen") === "1"; } catch { /* */ }
+          // Ordered and not paid: the order page (thank you + Pay) every time, until it is paid.
+          if (st === "pay" && !o.data.hasCard) { router.replace("/poster/site/order"); return; }
           if ((st === "queued" || st === "building" || st === "waiting") && !seen) { router.replace("/poster/site/order"); return; }
-          if ((st === "pay" || (st === "none" && intent)) && !o.data.hasCard && !seen) { try { sessionStorage.setItem("shubhora.order-seen", "1"); } catch { /* */ } router.replace("/poster/site/plans"); return; }
         }
       } catch { /* the home screen opens as usual */ }
       const want = currentProfileId();
