@@ -2033,7 +2033,7 @@ function Onboard() {
               <div className={`rounded-2xl border transition-colors ${p2Open ? "border-brand/50 bg-brand-soft/30" : "border-border"}`}>
                 <label className="flex cursor-pointer items-center gap-2.5 px-3 py-2.5 text-sm font-semibold">
                   <input type="checkbox" checked={p2Open} onChange={(e) => { clearFE("yphone2"); setShowP2(e.target.checked); if (!e.target.checked) setYou({ ...you, phone2: "" }); }} className="h-[18px] w-[18px] accent-[var(--color-brand)]" />
-                  <span className="flex-1">{T("Add one more number", "एक और number जोड़ें")}</span>
+                  <span className="flex-1">{T("Add one more number", "एक और number जोड़ें")}<Help k="phone2" /></span>
                 </label>
                 {p2Open && <div className="px-3 pb-3"><input id="ob-in-yphone2" autoFocus={showP2 && !you.phone2} value={you.phone2} onChange={(e) => { clearFE("yphone2"); setYou({ ...you, phone2: e.target.value }); }} inputMode="tel" placeholder={T("Second number (10 digits)", "दूसरा number (10 अंक)")} className={`${cField} mt-0 ${fe("yphone2") ? "border-danger" : ""}`} /><FieldErr id="yphone2" msg={fe("yphone2")} /></div>}
               </div>
@@ -2141,7 +2141,7 @@ function Onboard() {
               </div>
             )}
             {biz.category === "other" && (
-              <label className="mt-2 block text-sm font-semibold">{T("Your trade, in your words", "आपका काम, अपने शब्दों में")} <span className="text-danger">*</span>
+              <label className="mt-2 block text-sm font-semibold">{T("Your trade, in your words", "आपका काम, अपने शब्दों में")} <span className="text-danger">*</span><Help k="trade" />
                 <input id="ob-in-trade" value={biz.trade ?? ""} onChange={(e) => { touch("category"); clearFE("trade"); setBiz((b) => ({ ...b, trade: e.target.value.slice(0, 40) })); }} placeholder={T("e.g. drone repair, tiffin service, event anchor", "जैसे drone repair, tiffin service, event anchor")} className={`${cField} ${fe("trade") ? "border-danger" : ""}`} />
                 <FieldErr id="trade" msg={fe("trade")} />
                 <span className="mt-1 block text-[11px] font-normal text-muted">{T("The website and card are written for exactly this.", "Website और card ठीक इसी के लिए लिखे जाएँगे।")}</span>

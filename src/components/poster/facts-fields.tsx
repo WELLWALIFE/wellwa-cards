@@ -169,7 +169,7 @@ export function FactsFields({ group, facts, setF, hi, professional, role, hasAbo
         <input value={facts.offer} onChange={(e) => setF({ offer: e.target.value })} placeholder={T(`e.g. ${copy.offerEg}`, `जैसे ${copy.offerEgHi}`)} className={field} />
       </Sec>
       {!hasAbout && (
-        <Sec id="q-work" title={T(copy.work, copy.workHi)} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
+        <Sec id="q-work" help="work" title={T(copy.work, copy.workHi)} hint={T("In your own words — 2 or 3 lines is enough.", "अपने शब्दों में — 2-3 लाइन काफ़ी हैं।")}>
           <textarea value={facts.work} onChange={(e) => setF({ work: e.target.value })} rows={3} placeholder={T(copy.workEg, copy.workEgHi)} className={field} />
         </Sec>
       )}

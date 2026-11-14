@@ -72,7 +72,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
             set(q.key, on.includes(v) ? on.filter((x) => x !== v) : names.filter((n) => on.includes(n) || n === v));
           };
           return (
-            <Sec key={q.key} id={`q-trade-${q.key}`} title={must ? T("Choose your sub-category *", "अपनी sub-category चुनें *") : T(q.en, q.hi)} hint={must ? T("Tick what you do — one or more. Your website is written for exactly this.", "जो काम करते हैं वो दबाएँ — एक या ज़्यादा। Website ठीक इसी के लिए लिखी जाएगी।") : T("Tick only what you do. Do both? Keep both ticked.", "जो करते हैं बस वही दबाएँ। दोनों करते हैं तो दोनों रहने दें।")}>
+            <Sec key={q.key} id={`q-trade-${q.key}`} help="subTrade" title={must ? T("Choose your sub-category *", "अपनी sub-category चुनें *") : T(q.en, q.hi)} hint={must ? T("Tick what you do — one or more. Your website is written for exactly this.", "जो काम करते हैं वो दबाएँ — एक या ज़्यादा। Website ठीक इसी के लिए लिखी जाएगी।") : T("Tick only what you do. Do both? Keep both ticked.", "जो करते हैं बस वही दबाएँ। दोनों करते हैं तो दोनों रहने दें।")}>
               <div className="flex flex-wrap gap-2">
                 {(q.options ?? []).map((o) => (
                   <button key={o.en} type="button" aria-pressed={on.includes(o.en)} onClick={() => flip(o.en)} className={chipCls(on.includes(o.en))}>{on.includes(o.en) ? "✓ " : ""}{hi ? o.hi : o.en}</button>
@@ -83,7 +83,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
           );
         }
         if (q.type === "text") return (
-          <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)}>
+          <Sec key={q.key} id={`q-trade-${q.key}`} help="tradeQ" title={T(q.en, q.hi)}>
             <input value={cur[0] ?? ""} onChange={(e) => set(q.key, e.target.value ? [e.target.value.slice(0, 80)] : [])} placeholder={T(q.eg ?? "", q.egHi ?? q.eg ?? "")} className={field} />
           </Sec>
         );
@@ -156,7 +156,7 @@ export function TradeQuestions({ category, facts, setF, hi, title = true, tradeL
         const msg = flash[q.key];
         const setRef = (el: HTMLInputElement | null) => { inputs.current[q.key] = el; };
         return (
-          <Sec key={q.key} id={`q-trade-${q.key}`} title={T(q.en, q.hi)} hint={q.type === "many" && q.key !== "offerings" ? T("Tick all that apply.", "जितने हों, सब दबाएँ।") : undefined}>
+          <Sec key={q.key} id={`q-trade-${q.key}`} help="tradeQ" title={T(q.en, q.hi)} hint={q.type === "many" && q.key !== "offerings" ? T("Tick all that apply.", "जितने हों, सब दबाएँ।") : undefined}>
             <div className="flex flex-wrap gap-2">
               {options.map((o) => (
                 <button key={o.en} type="button" onClick={() => toggle(o.en)} disabled={full && !picked.includes(o.en)} title={full && !picked.includes(o.en) ? T(`List is full — ${MAX_TRADE_ANSWERS} at most`, `सूची भर गई — ज़्यादा से ज़्यादा ${MAX_TRADE_ANSWERS}`) : undefined}
