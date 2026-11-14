@@ -305,10 +305,11 @@ export const PARTS_CSS = `
 .mh-aside{margin-top:var(--s6);display:flex;flex-wrap:wrap;gap:var(--s3)}
 .mh[data-kind=ink]{background:var(--hero-ink);color:var(--hero-text);--ink:var(--hero-text);--muted:var(--hero-muted);--line:var(--hero-line);--paper:var(--hero-ink)}
 .mh[data-kind=ink] .kicker{color:var(--hero-text);opacity:.8}
-.mh-bg{position:absolute;inset:0 0 0 38%;opacity:.5;-webkit-mask-image:linear-gradient(90deg,transparent,#000 70%);mask-image:linear-gradient(90deg,transparent,#000 70%)}
-.mh-bg .adv-photo{filter:saturate(.85) contrast(1.05)}
+.mh-bg{position:absolute;inset:0 0 0 30%;opacity:.92;-webkit-mask-image:linear-gradient(90deg,transparent,#000 45%);mask-image:linear-gradient(90deg,transparent,#000 45%)}
+.mh-bg .adv-photo{filter:none}
+.mh[data-kind=ink] .mh-title,.mh[data-kind=ink] .mh-lede{text-shadow:0 2px 18px rgba(0,0,0,.28)}
 .mh-glow{position:absolute;inset:0;background:radial-gradient(60% 80% at 85% 10%,color-mix(in srgb,var(--accent) 38%,transparent),transparent 70%);pointer-events:none}
-@media (max-width:700px){.mh-bg{inset:0;opacity:.28;-webkit-mask-image:linear-gradient(0deg,transparent,#000 80%);mask-image:linear-gradient(0deg,transparent,#000 80%)}}
+@media (max-width:700px){.mh-bg{inset:0;opacity:.45;-webkit-mask-image:linear-gradient(0deg,transparent,#000 80%);mask-image:linear-gradient(0deg,transparent,#000 80%)}}
 .mh[data-kind=type] .mh-title{font-size:clamp(3.1rem,12.5vw,10.5rem)}
 .mh-ribbon{overflow:hidden;margin-top:clamp(2rem,5vw,3.5rem);border-block:1px solid var(--line);padding-block:.4em;white-space:nowrap;user-select:none}
 .mh-ribbon>div{display:inline-flex;animation:mh-run 55s linear infinite;will-change:transform}

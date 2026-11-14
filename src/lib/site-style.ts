@@ -138,7 +138,7 @@ export function oklchVars(h: number, tone: Tone, opts: OklchOpts = {}): string {
     `--hero-line:rgba(255,255,255,.12)`,
     // WhatsApp's green on the WhatsApp control only; `--wa-dark` for that control on a dark hero of a light page.
     `--wa:${dark ? "#25d366" : "#1faa5c"}`, `--wa-dark:#25d366`,
-    tok("scrim-bot", 0.15, 0.02, h, opts.bright ? 0.9 : 0.82), tok("scrim-mid", 0.15, 0.02, h, 0.45), `--scrim-top:transparent`,
+    tok("scrim-bot", 0.15, 0.02, h, opts.bright ? 0.78 : 0.62), tok("scrim-mid", 0.15, 0.02, h, 0.26), `--scrim-top:transparent`,
     // 16 Oct 2026 (design-system pass): a third paper step for insets and zebra rows, a pressed accent, two more elevations,
     // the two glows of the dark band's mesh, and one focus ring colour — so a section never invents its own.
     tok("paper-3", ...paper3),
