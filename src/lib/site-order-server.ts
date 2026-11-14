@@ -75,7 +75,7 @@ export async function orderState(uid: string): Promise<OrderState> {
     : pending || paused ? "waiting" : "live";
   const p = reqs.paid;
   return {
-    premiumPending: paid && pkg === "site_premium" && !!site?.enabled && !(site as { advanced?: unknown }).advanced && !(!!row && isShubhoraSellerCard(row.data)),
+    premiumPending: paid && (pkg === "site_premium" || pkg === "custom") && !!site?.enabled && !(site as { advanced?: unknown }).advanced && !(!!row && isShubhoraSellerCard(row.data)),
     chooseDesign: !!site?.enabled && (site as { ordered?: boolean }).ordered === true && !(site as { designChosenAt?: string }).designChosenAt,
     stage, pkg: paid ? pkg : "", wanted, pay: !paid && reqs.open && wanted ? { code: reqs.open.code, amount: reqs.open.amount_paise } : null,
     custom: !!ord && isCustomNote(ord.note), orderedAt: ord?.created_at ?? null, until: paid ? prof?.package_until ?? null : null, readyAt: pending && !paused ? pending.toISOString() : null, paused, hasCard: !!row,
@@ -148,7 +148,7 @@ export async function finishOrder(job: CardJob, advanced: () => Promise<void>): 
     console.log("[site-order] website saved", uid, username, prof?.package, hold ? `held till ${hold}` : "live now");
     // Live at once (paid after the 24 hours): the owner is told now — the hourly job only tells about websites that were held.
     if (!hold && !wasOn && !demo) await tellSiteLive({ id: existing?.id ?? out.id, owner_id: uid, username, data: out as { customDomain?: string } }, false).catch(() => false);
-    if (prof?.package === "site_premium") {
+    if (prof?.package === "site_premium" || prof?.package === "custom") {
       // A package set by hand (Super Admin) has no payment behind the Premium website yet: opened here, once.
       if (!(await readAdvancedMeta(uid))?.paid) await grantAdvanced(uid, "package").catch(() => false);
       await advanced().catch((e) => console.log("[site-order] premium design not started", uid, e instanceof Error ? e.message : e));

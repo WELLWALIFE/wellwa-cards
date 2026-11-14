@@ -11,7 +11,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Check, Copy, LoaderCircle, MessageCircle, Pencil, Share2 } from "lucide-react";
+import { Check, Copy, ExternalLink, LoaderCircle, MessageCircle, Pencil, Share2 } from "lucide-react";
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { fetchMyCardsStrict, publishCard } from "@/lib/cloud";
 import { useT } from "@/lib/poster-i18n";
@@ -89,6 +89,13 @@ export default function ChooseDesignPage() {
     try { localStorage.setItem(PREVIEW_KEY, JSON.stringify({ ...chosen.card, username: "__preview" })); } catch { /* full or private */ }
     try { frame.current?.contentWindow?.postMessage(`preview:${PREVIEW_KEY}`, window.location.origin); } catch { /* ignore */ }
   }, [chosen]);
+
+  /** One design, full size, in its own tab: the real website renderer reads that design from this phone's storage. */
+  function openFull(o: Option, i: number) {
+    const key = `${PREVIEW_KEY}-${i + 1}`;
+    try { localStorage.setItem(key, JSON.stringify({ ...o.card, username: "__preview" })); } catch { /* full or private */ }
+    window.open(`/preview/site?k=${key}`, "_blank", "noopener");
+  }
 
   async function useDesign() {
     if (!card || !chosen || (chosen.on && confirmed)) return;
@@ -176,25 +183,32 @@ export default function ChooseDesignPage() {
         {options.length ? (
           <>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-              {options.map((o) => {
+              {options.map((o, i) => {
                 const sel = chosen?.id === o.id;
                 return (
-                  <button key={o.id} type="button" aria-pressed={sel} onClick={() => { setPick(o.id); setMsg(""); setErr(""); }}
-                    className={`relative rounded-2xl border-2 px-2 py-3 text-center ${sel ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                    {o.on && <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-good text-white ring-2 ring-surface"><Check className="h-3 w-3" strokeWidth={3} /></span>}
-                    <span className="block text-sm font-bold">{o.name}</span>
-                    <span className="block truncate text-[10px] capitalize text-muted">{o.sub}</span>
-                  </button>
+                  <div key={o.id} className={`relative overflow-visible rounded-2xl border-2 text-center ${sel ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
+                    {o.on && <span className="absolute -right-1.5 -top-1.5 z-10 grid h-5 w-5 place-items-center rounded-full bg-good text-white ring-2 ring-surface"><Check className="h-3 w-3" strokeWidth={3} /></span>}
+                    <button type="button" aria-pressed={sel} onClick={() => { setPick(o.id); setMsg(""); setErr(""); }} className="block w-full px-2 pb-1.5 pt-3">
+                      <span className="block text-sm font-bold">{o.name}</span>
+                      <span className="block truncate text-[10px] capitalize text-muted">{o.sub}</span>
+                    </button>
+                    {/* The whole website in this design, full size, in a new tab (owner, 14 Nov 2026). */}
+                    <button type="button" onClick={() => openFull(o, i)} aria-label={T(`Open ${o.name} in a new tab`, `${o.name} नए tab में खोलें`)} title={T("Open in a new tab", "नए tab में खोलें")}
+                      className="inline-flex w-full items-center justify-center gap-1 border-t border-border/70 py-1.5 text-[11px] font-semibold text-brand-ink">
+                      <ExternalLink className="h-3.5 w-3.5" /> {T("Open", "खोलें")}
+                    </button>
+                  </div>
                 );
               })}
             </div>
-            <div className="overflow-hidden rounded-2xl border border-border bg-surface2">
-              <iframe ref={frame} title={T("Website preview", "Website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} className="h-[30rem] w-full" />
-            </div>
+            {/* Right under the tiles: tapping a design only shows it; this button puts it on the website (owner, 14 Nov 2026: "click kar raha hu, select nahi ho raha" — the button was below the preview, out of sight). */}
             <button type="button" onClick={() => void useDesign()} disabled={busy || !chosen || (chosen.on && confirmed)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
               {chosen?.on ? (confirmed ? T("This design is on your website", "यही design आपकी website पर है") : T(`Keep ${chosen.name} — final`, `${chosen.name} ही रखें — final`)) : T(`Use ${chosen?.name ?? "this design"}`, `${chosen?.name ?? "यह design"} लगाएँ`)}
             </button>
+            <div className="overflow-hidden rounded-2xl border border-border bg-surface2">
+              <iframe ref={frame} title={T("Website preview", "Website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} className="h-[30rem] w-full" />
+            </div>
             <button type="button" onClick={() => void sendLinks()} disabled={linking} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#25d366] bg-surface py-3 text-sm font-semibold text-[#128c4a] disabled:opacity-60">
               {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {T("Send all 6 designs on WhatsApp", "सभी 6 design WhatsApp पर भेजें")}
             </button>
