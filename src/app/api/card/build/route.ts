@@ -680,6 +680,16 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
     if (slides.length >= 2) built = { ...built, site: { ...built.site, hero: { ...hero, slides } } } as typeof built;
     console.log("[card] order slides", slides.length);
   }
+  // The reviews' place on a paid order's website (owner, 14 Nov 2026: the delivered design should look complete). No customer is
+  // invented: three placeholders that say what will stand there, seen only by the owner in the design preview — visitors never get
+  // them (site-ready.ts publicCard) — and replaced by the first real reviews.
+  if (orderBuild && !built.pages.some((pg) => pg.blocks.some((bl) => bl.kind === "testimonials"))) {
+    const hi = facts.lang === "hi";
+    const item = (n: number) => ({ sample: true as const, rating: 5, name: hi ? `आपके ग्राहक का नाम ${n}` : `Your customer's name ${n}`, text: hi ? "यहाँ आपके ग्राहक की राय दिखेगी। अपने ख़ुश ग्राहकों से दो लाइन लिखवाएँ और app से जोड़ें।" : "Your customer's review will show here. Ask your happy customers for a line or two and add them from the app." });
+    const block = { id: `rv-${Date.now().toString(36)}`, kind: "testimonials" as const, title: hi ? "ग्राहक क्या कहते हैं" : "What customers say", items: [item(1), item(2), item(3)] };
+    const home = built.pages.findIndex((pg) => !pg.hidden);
+    if (home >= 0) built = { ...built, pages: built.pages.map((pg, i) => (i === home ? { ...pg, blocks: [...pg.blocks, block] } : pg)) } as typeof built;
+  }
   // The sample products take their photographs and their mark (see "sample products" above).
   if (sampleRows.length) {
     const found = (await within(samplePhotosP, 60_000)) ?? [];

@@ -37,8 +37,20 @@ export const advancedPending = (site: unknown, now = Date.now()): Date | null =>
   return s && s.advanced && s.advancedOn !== false ? future(s.advancedReadyAt, now) : null;
 };
 
+/** Review placeholders (TestimonialItem.sample) are for the owner's eyes only: visitors never see them, and a section left with none goes. */
+export function withoutSampleReviews<T extends Card>(card: T): T {
+  if (!card.pages?.some((p) => p.blocks.some((b) => b.kind === "testimonials" && b.items.some((i) => i.sample)))) return card;
+  const pages = card.pages.map((p) => ({ ...p, blocks: p.blocks.flatMap((b): typeof p.blocks => {
+    if (b.kind !== "testimonials") return [b];
+    const items = b.items.filter((i) => !i.sample);
+    return items.length ? [{ ...b, items }] : [];
+  }) }));
+  return { ...card, pages };
+}
+
 /** The card as VISITORS see it: during the website's wait the card shows everywhere; during the Premium wait the basic website shows. */
-export function publicCard<T extends Card>(card: T, now = Date.now()): T {
+export function publicCard<T extends Card>(card0: T, now = Date.now()): T {
+  const card = withoutSampleReviews(card0);
   if (!card.site) return card;
   const s = card.site as SiteLike;
   const paused = s.paused === true;

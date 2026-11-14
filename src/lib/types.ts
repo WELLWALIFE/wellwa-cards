@@ -57,6 +57,9 @@ export interface TestimonialItem {
   name: string;
   text: string;
   rating: number; // 1..5
+  /** A placeholder that holds the reviews' place on a new website until real ones come: it says so in its own words, carries no
+   *  invented customer, and is shown only to the owner (design preview, test links) — never to visitors (site-ready.ts publicCard). */
+  sample?: boolean;
 }
 
 export interface FaqItem {
