@@ -48,6 +48,8 @@ export type OrderState = {
   orderedAt: string | null;
   until: string | null;
   readyAt: string | null;
+  /** Super Admin → Websites → Pause: the website is held (visitors see the card) and the 24-hour clock does not make it live. */
+  paused: boolean;
   hasCard: boolean;
   /** Website Premium is paid and the website is made, but its Premium design is not there (the design step failed or was cut off): it
    *  is started again from the order / choose screens, so a Premium order never stays a Standard website. */

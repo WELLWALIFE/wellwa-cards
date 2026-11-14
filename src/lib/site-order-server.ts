@@ -65,18 +65,20 @@ export async function orderState(uid: string): Promise<OrderState> {
   // A Shubhora seller card (a partner's card that sells Shubhora) is never rebuilt by an order: it counts as made.
   const siteOn = !!site?.enabled || (!!row && isShubhoraSellerCard(row.data));
   const pending = siteOn ? sitePending(site) : null;
+  // Paused by Super Admin (cards.site_paused, migration 0085; a database without the column answers "not paused").
+  const paused = !!row && siteOn && (await restAsService<{ site_paused?: boolean }[]>(`cards?id=eq.${row.id}&select=site_paused`).catch(() => null))?.data?.[0]?.site_paused === true;
   const wanted = reqs.open ? pkgOfNote(reqs.open.note) : null;
   // The order whose clock counts: the one waiting for its payment, else the one that was paid.
   const ord = !paid ? reqs.open : reqs.paid;
   const stage: OrderState["stage"] = !paid ? (siteOn ? "live" : wanted ? "pay" : "none")
     : !siteOn ? (job?.state === "running" ? "building" : "queued")
-    : pending ? "waiting" : "live";
+    : pending || paused ? "waiting" : "live";
   const p = reqs.paid;
   return {
     premiumPending: paid && pkg === "site_premium" && !!site?.enabled && !(site as { advanced?: unknown }).advanced && !(!!row && isShubhoraSellerCard(row.data)),
     chooseDesign: !!site?.enabled && (site as { ordered?: boolean }).ordered === true && !(site as { designChosenAt?: string }).designChosenAt,
     stage, pkg: paid ? pkg : "", wanted, pay: !paid && reqs.open && wanted ? { code: reqs.open.code, amount: reqs.open.amount_paise } : null,
-    custom: !!ord && isCustomNote(ord.note), orderedAt: ord?.created_at ?? null, until: paid ? prof?.package_until ?? null : null, readyAt: pending ? pending.toISOString() : null, hasCard: !!row,
+    custom: !!ord && isCustomNote(ord.note), orderedAt: ord?.created_at ?? null, until: paid ? prof?.package_until ?? null : null, readyAt: pending && !paused ? pending.toISOString() : null, paused, hasCard: !!row,
     receipt: paid && p && p.payment_id && p.paid_at ? { amount: p.amount_paise, paymentId: p.payment_id, paidAt: p.paid_at, label: SITE_PKG[pkgOfNote(p.note)!].label } : null,
   };
 }

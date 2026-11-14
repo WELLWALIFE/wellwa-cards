@@ -102,7 +102,7 @@ export default function SiteOrderPage() {
       {!live && (
         <section className="rounded-3xl border border-border bg-surface p-4 shadow-card">
           <p className="mb-3 text-sm font-bold">{T("What happens now", "अब आगे क्या होगा")}</p>
-          <SiteProgress hi={hi} stage={1} when={when || undefined} />
+          <SiteProgress hi={hi} stage={1} when={o.paused ? T("Our team is giving it the final touches", "हमारी team इसे final touch दे रही है") : when || undefined} />
           <p className="mt-3 flex items-start gap-1.5 text-xs text-muted"><MessageCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" /> {T("You do not have to do anything. We will WhatsApp you the moment your website is live.", "आपको कुछ नहीं करना है। Website live होते ही WhatsApp पर बता देंगे।")}</p>
         </section>
       )}
