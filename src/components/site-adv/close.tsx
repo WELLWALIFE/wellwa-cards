@@ -1404,7 +1404,7 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-soc a{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--hero-line);border-radius:var(--r-ctl);color:var(--hero-text);transition:background .2s,color .2s,border-color .2s}
 .ft-soc a:hover{background:var(--hero-text);color:var(--hero-ink);border-color:var(--hero-text)}
 .ft-xs{min-height:34px;padding:0 var(--s3);font-size:12.5px;gap:.35rem}
-.ft-legal-wrap{margin-top:clamp(2.5rem,6vw,4rem);border-top:1px solid var(--hero-line)}
+.ft-legal-wrap{margin-top:clamp(1.5rem,3vw,2.25rem);border-top:1px solid var(--hero-line)}
 .ft-staff{display:inline-flex;align-items:center;gap:.4em;padding:.35em .8em;border:1px solid var(--hero-line);border-radius:var(--r-pill);color:var(--hero-text);font-weight:600;text-decoration:none}
 .ft-staff:hover{border-color:color-mix(in srgb,var(--hero-text) 40%,transparent)}
 .ft-legal{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2) var(--s5);padding-block:var(--s5) 5rem;font-size:12px;color:var(--hero-muted)}
@@ -1490,7 +1490,14 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .site:lang(hi) .ft-t-head{letter-spacing:0;text-transform:none;font-size:13px}
 .ft-t-gst{grid-column:1/-1;margin:0}
 .ft-t-pages{grid-column:1/-1}
-@media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 1;grid-row:span 2}.ft-t-visit{grid-column:span 2}}
+/* Compact (owner, 14 Nov 2026: "footer ki height bahut zyada"): tiles as tall as what they hold, the pages in two columns. */
+.ft-lg{align-items:start}
+.ft-lg .ft-tile{padding:var(--s4) var(--s5);gap:var(--s2)}
+.ft-lg .ft-t-contact{justify-content:flex-start;min-height:0}
+.ft-lg .ft-t-pages ul{grid-template-columns:1fr 1fr;column-gap:var(--s5)}
+.ft-lg .ft-t-pages li a{border-bottom:0;padding:.4rem 0}
+.ft:has(.ft-lg){padding-top:clamp(2rem,4vw,3rem)}
+@media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s3);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 2}.ft-t-visit{grid-column:span 2}}
 
 /* ---- open now pill (every variant that shows timings) ---- */
 .op-pill{display:inline-flex;align-items:center;gap:.55em;align-self:flex-start;padding:.42em .95em .42em .8em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap}
