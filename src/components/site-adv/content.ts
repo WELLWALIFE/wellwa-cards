@@ -54,7 +54,9 @@ export function buildContent(card: Card, lang: string): SiteContent {
   /* ---- the offerings: products first (they have photos and prices), else the services ---- */
   const prodBlocks = all("product");
   const slugOf = new Map(cardProducts(card).map((p) => [p.item, p.slug]));
-  const products = prodBlocks.flatMap((b) => b.items).filter((p) => (p.name ?? "").trim());
+  // The home page and the products page carry the same items: each once (seen live 14 Nov 2026 — every product shown twice).
+  const once = <T extends { name?: string }>(xs: T[]) => xs.filter((v, i, a) => a.findIndex((w) => (w.name ?? "").trim().toLowerCase() === (v.name ?? "").trim().toLowerCase()) === i);
+  const products = once(prodBlocks.flatMap((b) => b.items).filter((p) => (p.name ?? "").trim()));
   const toOffering = (p: (typeof products)[number]): Offering => ({
     name: p.name.trim(), desc: (p.desc ?? "").trim() || undefined, price: (p.price ?? "").trim() || undefined, mrp: (p.mrp ?? "").trim() || undefined,
     badge: (p.badge ?? "").trim() || undefined,
@@ -64,7 +66,7 @@ export function buildContent(card: Card, lang: string): SiteContent {
   // A services block whose first item starts "1. " is the owner's steps ("how it works"), not an offering.
   const isSteps = (b: Extract<CardBlock, { kind: "services" }>) => /^\s*1[.)]\s/.test(b.items[0]?.name ?? "");
   const serviceBlocks = all("services");
-  const services = serviceBlocks.filter((b) => !isSteps(b)).flatMap((b) => b.items).filter((s) => (s.name ?? "").trim());
+  const services = once(serviceBlocks.filter((b) => !isSteps(b)).flatMap((b) => b.items).filter((s) => (s.name ?? "").trim()));
   const steps = serviceBlocks.filter(isSteps).flatMap((b) => b.items).filter((s) => (s.name ?? "").trim()).slice(0, 6).map((s) => ({ name: unstep(s.name), desc: (s.desc ?? "").trim() }));
   const offerings: SiteContent["offerings"] = products.length
     ? { kind: "products", title: prodBlocks[0]?.title?.trim() || (hi ? "हमारे प्रोडक्ट" : "Our products"), items: products.slice(0, 9).map(toOffering), total: products.length }

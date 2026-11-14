@@ -632,7 +632,7 @@ export function composeCard(input: ComposeInput): { card: TemplateCard; checks: 
     const rows = copy.hours.length ? copy.hours : facts.hours.split("\n").map((x) => x.trim()).filter(Boolean).slice(0, 7).map((day) => ({ day, time: "" }));
     contact.push({ id: uid(), kind: "hours", title: t.hours, rows });
   }
-  const where = [setup.address, setup.city].filter(Boolean).join(", ");
+  const where = [setup.address, setup.city && !(setup.address ?? "").toLowerCase().includes(setup.city.trim().toLowerCase()) ? setup.city : ""].filter(Boolean).join(", ");
   if (where || mapUrl) contact.push({ id: uid(), kind: "location", title: t.location, address: where, ...(mapUrl ? { mapUrl } : {}) });
   if (copy.more) contact.push({ id: uid(), kind: "about", title: t.more, body: copy.more });
   contact.push({ id: uid(), kind: "contact", title: t.contact, note: copy.contactNote });

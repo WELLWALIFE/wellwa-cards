@@ -31,6 +31,8 @@ import { isOwnMedia, loadCardInputs, loadProducts, ownMediaFacts, patchBusinessM
 import { matchCategory } from "@/lib/category-match";
 import { categoryOf } from "@/lib/poster-categories";
 import { recipeFor, tradeDataFor } from "@/lib/site-recipes";
+import { partsOf } from "@/lib/trade-parts";
+import { partData } from "@/lib/trade-data/parts";
 import { designSite, differentFrom, fallbackLooks } from "@/lib/site-designer";
 import { logoColor } from "@/lib/media/logo-color";
 import { tradeStyle } from "@/lib/site-recipes";
@@ -544,7 +546,12 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // owner adds a product. Never on "Write again" (the card on screen keeps what it has).
   const NOT_AN_ITEM = /whatsapp|exchange|trial|fitting|alteration|deliver|courier|catalog|order|booking|bulk|wholesale|home visit|parking|payment|emi\b|repair|service|support|warranty|gift wrap|custom|consult|advice|corporate|dine|takeaway|help /i;
   const sampleSeeds = !list.length && !brandProducts && !fresh && recipe.catalog === "products"
-    ? (own.seeds?.length ? own.seeds : tdata?.services ?? []).filter((s) => !NOT_AN_ITEM.test(s.en)).slice(0, 6) : [];
+    ? (own.seeds?.length ? own.seeds : [
+        ...(tdata?.services ?? []),
+        // Every kind of work in the trade (its sub-categories), when the owner's own ticks give fewer than six: a saree and lehenga shop
+        // showed three samples (live check, 14 Nov 2026).
+        ...(partsOf(setup.category).length > 1 ? partData(setup.category, partsOf(setup.category).map((x) => x.key), tdata)?.services ?? [] : []),
+      ]).filter((s, i, a) => !NOT_AN_ITEM.test(s.en) && a.findIndex((t) => t.en.toLowerCase() === s.en.toLowerCase()) === i).slice(0, 6) : [];
   const sampleRows: SavedProduct[] = sampleSeeds.length >= 3
     ? sampleSeeds.map((s) => ({ id: "", name: facts.lang === "hi" ? s.hi || s.en : s.en, brand: "", price: "", mrp: "", photo: "", images: [], offer: "", benefits: [] })) : [];
   const sampleNames = new Set(sampleRows.map((r) => r.name.toLowerCase()));

@@ -278,7 +278,9 @@ export function trustFacts(card: Card, lang?: string): TrustFact[] {
     const yrs = yearNow() - year;
     out.push({ value: h ? `${year} से` : `Since ${year}`, label: yrs >= 2 ? (h ? `${yrs} साल का भरोसा` : `${yrs} years of trust`) : (h ? "भरोसेमंद" : "trusted business") });
   }
-  const products = blocks.flatMap((b) => (b.kind === "product" ? b.items : [])).filter((p) => (p.name ?? "").trim());
+  // Each item once (the home and products pages repeat them), and never the build's samples: "6+ products" must be true.
+  const products = blocks.flatMap((b) => (b.kind === "product" ? b.items : [])).filter((p) => (p.name ?? "").trim() && !p.sample)
+    .filter((p, i, a) => a.findIndex((q) => q.name.trim().toLowerCase() === p.name.trim().toLowerCase()) === i);
   const catKey = card.seo?.categoryKey ?? "";
   // "plans" is a gym's or an insurer's word; a pharma rep's or a network marketer's list is products. A hotel lists rooms, a school classes.
   const itemWord = ITEM_KEY[catKey] ?? (recipeFor(catKey).catalog === "plans" && !/^(gym|travel|insurance)$/.test(catKey) ? undefined : ITEM_WORD[recipeFor(catKey).catalog]);
