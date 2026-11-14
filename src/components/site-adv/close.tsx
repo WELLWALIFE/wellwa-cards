@@ -868,6 +868,10 @@ function Legal({ c, x }: { c: SiteContent; x: AdvCtx }) {
       <div className="adv-wrap adv-wide ft-legal">
         <span>© {new Date().getFullYear()} {x.t(c.name)}. {x.hi ? "सर्वाधिकार सुरक्षित।" : "All rights reserved."}</span>
         <button type="button" className="ft-top" onClick={() => x.jump("top")}><Icon name="arrow-right" size={14} className="ft-up" /> {x.ui("Back to top", "ऊपर जाएँ")}</button>
+        {/* The shop's staff sign in here for the job cards (Orders · Silai switched on; render.tsx sets the flag for the request). */}
+        {(x.card.site as { staffLogin?: boolean } | undefined)?.staffLogin && (
+          <a className="ft-staff" href="/login?next=%2Fposter%2Forders" rel="nofollow"><Icon name="shield" size={13} /> {x.ui("Staff login · job cards", "Staff login · job card")}</a>
+        )}
         <span className="mono">{x.brand ? (x.brand.hideBranding ? "" : `Powered by ${x.brand.name}`) : "Powered by Shubhora"}</span>
       </div>
     </div>
@@ -1401,6 +1405,8 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-soc a:hover{background:var(--hero-text);color:var(--hero-ink);border-color:var(--hero-text)}
 .ft-xs{min-height:34px;padding:0 var(--s3);font-size:12.5px;gap:.35rem}
 .ft-legal-wrap{margin-top:clamp(2.5rem,6vw,4rem);border-top:1px solid var(--hero-line)}
+.ft-staff{display:inline-flex;align-items:center;gap:.4em;padding:.35em .8em;border:1px solid var(--hero-line);border-radius:var(--r-pill);color:var(--hero-text);font-weight:600;text-decoration:none}
+.ft-staff:hover{border-color:color-mix(in srgb,var(--hero-text) 40%,transparent)}
 .ft-legal{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:var(--s2) var(--s5);padding-block:var(--s5) 5rem;font-size:12px;color:var(--hero-muted)}
 .ft-top{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem 0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;transition:color .15s}
 .ft-top:hover{color:var(--hero-text)}

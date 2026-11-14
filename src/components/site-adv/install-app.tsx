@@ -96,7 +96,9 @@ export function InstallSiteApp({ name, hi, accent, onTrack }: { name: string; hi
 }
 
 export const INSTALL_APP_CSS = `
-.adv-app{padding:14px 20px;background:var(--app-accent);color:#fff}
+.adv-app{padding:14px 20px 88px;background:var(--app-accent);color:#fff}
+/* The floating "Ask" button sits at the bottom corner: the band leaves room under it (phone) and beside it (computer), so Install app is never covered. */
+@media(min-width:768px){.adv-app{padding:14px 20px}.adv-app-in{padding-right:13rem}}
 .adv-app-in{max-width:1180px;margin:0 auto;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .adv-app-ic{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;background:rgba(255,255,255,.18);flex:none}
 .adv-app-txt{flex:1;min-width:200px;display:flex;flex-direction:column;gap:2px;line-height:1.3}

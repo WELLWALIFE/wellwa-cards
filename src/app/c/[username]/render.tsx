@@ -24,6 +24,8 @@ import { findProduct, isProductSlug, productPageOf } from "@/lib/product-page";
 import { searchListed } from "@/lib/seo-urls";
 import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages } from "@/lib/site-advanced";
 import { publicCard, sitePending } from "@/lib/site-ready";
+import { restAsService } from "@/lib/poster-server";
+import { addonOn } from "@/lib/addons-server";
 import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
@@ -138,12 +140,21 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
 }
 
 export async function CardPageView({ username, slug, viewParam }: { username: string; slug?: string | null; viewParam?: string }) {
-  const stored = await loadCard(username);
-  if (!stored) {
+  const stored0 = await loadCard(username);
+  if (!stored0) {
     const alt = await findCardByLooseLink(username);
     if (alt) redirect(`/c/${alt}${slug ? `/${slug}` : ""}`);
     notFound();
   }
+  // A shop with Orders · Silai switched on (owner, 14 Nov 2026): its website's footer carries "Staff login" for the job cards. Read for this
+  // request only (never stored on the card); a failed lookup simply leaves the link out.
+  const ordersOn = await (async () => {
+    try {
+      const row = (await restAsService<{ owner_id: string }[]>(`cards?username=eq.${encodeURIComponent(username)}&select=owner_id&limit=1`)).data?.[0];
+      return row?.owner_id ? await addonOn(row.owner_id, "orders") : false;
+    } catch { return false; }
+  })();
+  const stored: Card = ordersOn && stored0.site ? { ...stored0, site: { ...stored0.site, ...({ staffLogin: true } as object) } } : stored0;
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });
