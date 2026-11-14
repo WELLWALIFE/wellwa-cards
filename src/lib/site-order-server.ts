@@ -82,7 +82,14 @@ export async function orderState(uid: string): Promise<OrderState> {
 /* ---------------- the build has ended ---------------- */
 
 const slug = (s: string) => s.toLowerCase().normalize("NFKD").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 30);
-const linkFree = async (u: string) => (await restAsService<boolean>("rpc/username_available", { method: "POST", body: JSON.stringify({ p_username: u, p_card_id: null }) })).data === true;
+// Asked of the table itself: the username_available() function is granted to the app's users only, not to the service role — through it
+// every name came back "taken" and a paid website got a random card-xxxxxx link (live check, 14 Nov 2026). The same kept words as that function.
+const KEPT = new Set(["admin", "api", "app", "auth", "billing", "c", "card", "cards", "dashboard", "editor", "help", "home", "leads", "login", "logout", "me", "neural", "neuraledge", "new", "preview", "pricing", "privacy", "settings", "signup", "sitemap", "static", "support", "templates", "terms", "tools", "user", "users", "www"]);
+const linkFree = async (u: string) => {
+  if (KEPT.has(u)) return false;
+  const r = await restAsService<{ id: string }[]>(`cards?username=ilike.${encodeURIComponent(u.replace(/[%_*\\]/g, (c) => `\\${c}`))}&select=id&limit=1`);
+  return r.ok && Array.isArray(r.data) && r.data.length === 0;
+};
 /** The card's link: the person's name, else the business, else the account's username (the same order as the app), else a random one. */
 async function pickLink(names: string[], account: string): Promise<string> {
   for (const n of names) {

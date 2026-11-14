@@ -134,7 +134,7 @@ export default function ChooseDesignPage() {
                 return (
                   <button key={o.id} type="button" aria-pressed={sel} onClick={() => { setPick(o.id); setMsg(""); setErr(""); }}
                     className={`relative rounded-2xl border-2 px-2 py-3 text-center ${sel ? "border-brand bg-brand-soft" : "border-border bg-surface"}`}>
-                    {o.on && <span className="absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full bg-good text-white"><Check className="h-3 w-3" strokeWidth={3} /></span>}
+                    {o.on && <span className="absolute -right-1.5 -top-1.5 grid h-5 w-5 place-items-center rounded-full bg-good text-white ring-2 ring-surface"><Check className="h-3 w-3" strokeWidth={3} /></span>}
                     <span className="block text-sm font-bold">{o.name}</span>
                     <span className="block truncate text-[10px] capitalize text-muted">{o.sub}</span>
                   </button>
