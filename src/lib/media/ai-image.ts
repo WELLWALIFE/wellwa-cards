@@ -86,6 +86,29 @@ export async function storeImage(userId: string, name: string, png: Buffer): Pro
   return r?.ok ? `${SUPA_URL}/storage/v1/object/public/media/${path}` : null;
 }
 
+/** The website's sliding top banners (owner, 14 Nov 2026: "banner me 3 image lagao taaki movement dikhe, AI se perfect bana ke"):
+ *  `count` wide (16:9) photographs of the trade, each a different scene — the place, the goods, people being served — and each with
+ *  clear space on one side for the banner's words. Stored like the build's other pictures (ref-N); fewer come back if a picture fails. */
+export async function bannerSet(userId: string, opts: { trade: string; city?: string; dark?: boolean; color?: string; brand?: string; count?: number }): Promise<string[]> {
+  const brand = (opts.brand || "").trim().slice(0, 40);
+  const trade = `${brand ? `${brand} ` : ""}${opts.trade || "small business"}`.slice(0, 80);
+  const where = opts.city ? ` in ${opts.city.slice(0, 40)}, India` : " in India";
+  const mood = `${MODERN_LOOK} ${opts.dark ? "Slightly deeper, richer tones with soft evening window light — still clean and contemporary, never gloomy." : "Bright and airy, clean uncluttered background, soft natural shadows."}`;
+  const accent = opts.color ? ` Subtle colour accents close to ${opts.color}.` : "";
+  const brandLine = brand ? ` The products shown are unmistakably ${brand}'s — their real shapes and styling — but with no logo, badge, lettering or text visible anywhere.` : "";
+  const space = "Composed as a wide website banner with clear, calm empty space on one side so a headline can sit there. No text, lettering, signboards, logos or watermarks anywhere in the picture.";
+  const scenes = [
+    `Photorealistic wide banner photograph of a ${trade}${where}: the place itself, welcoming and well arranged.${brandLine} ${mood}${accent} ${space}`,
+    `Photorealistic wide banner photograph of the finest goods or finished work of a ${trade}${where}, beautifully displayed, the hero of the picture.${brandLine} ${mood}${accent} ${space}`,
+    `Photorealistic wide banner photograph of a happy customer being helped at a ${trade}${where}, candid and natural.${brandLine} ${mood}${accent} ${space}`,
+  ].slice(0, Math.max(1, Math.min(3, opts.count ?? 3)));
+  const made = await Promise.all(scenes.map(async (prompt, n) => {
+    const png = await aiImage(prompt, "16:9").catch(() => null);
+    return png ? storeImage(userId, `ref-${n + 1}`, png) : null;
+  }));
+  return made.filter((u): u is string => !!u);
+}
+
 /** Pictures for a card built from a REFERENCE website.
  *
  *  A reference site is somebody else's: its photographs are theirs and are never copied onto a customer's

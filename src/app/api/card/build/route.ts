@@ -36,7 +36,8 @@ import { logoColor } from "@/lib/media/logo-color";
 import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { bannerFocus } from "@/lib/media/photo-focus";
-import { IMG_MODEL, referenceImages } from "@/lib/media/ai-image";
+import { IMG_MODEL, bannerSet, referenceImages } from "@/lib/media/ai-image";
+import { writeSlides } from "@/lib/site-slides";
 import { pool, stockPhotoForProduct, usedPhotoIds } from "@/lib/media/product-stock";
 import { logImages } from "@/lib/ai-usage";
 import { screenshotCard } from "@/lib/render-page";
@@ -426,7 +427,29 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const researchP = within(researchTrade(setup.categoryLabel || setup.category, setup.city || undefined, [...(setup.business || setup.person || "")].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 28_000).catch(() => null);
   let aiPhotos = 0;
   let aiBannerUrl = "";
-  const makeBanner = paidPlan && !fresh && !facts.bannerUrl && wantsBanner;
+  // A paid order (lib/site-order.ts; owner, 14 Nov 2026): the top of the website is THREE banners that slide, so the page moves — the
+  // owner's own banner first when there is one, the rest painted by AI (the place, the goods, a customer being helped).
+  const orderBuild = b.order === true && !fresh;
+  let slideBanners: string[] = [];
+  if (orderBuild) {
+    step("pictures");
+    const have = facts.bannerUrl ? [facts.bannerUrl] : [];
+    const ref = role === "reference" && facts.website ? await referenceP : null;
+    const made = await within(
+      bannerSet(me.id, {
+        trade: setup.categoryLabel || setup.category || "", brand, city: setup.city || "",
+        dark: ref?.style?.dark ?? false, color: ref?.style?.colors?.[0] ?? ref?.look?.accent ?? categoryOf(setup.category)?.accent,
+        count: 3 - have.length,
+      }).catch(() => [] as string[]),
+      110_000,
+    ) ?? [];
+    logImages("card-banner", IMG_MODEL, made.length);
+    slideBanners = [...have, ...made].slice(0, 3);
+    if (!facts.bannerUrl && made[0]) { aiPhotos = made.length; aiBannerUrl = made[0]; facts = { ...facts, bannerUrl: made[0] }; }
+    console.log("[card] order banners", slideBanners.length, "of 3");
+    mark("banner");
+  }
+  const makeBanner = paidPlan && !fresh && !facts.bannerUrl && wantsBanner && !orderBuild;
   if (makeBanner) {
     step("pictures");
     const ref = role === "reference" && facts.website ? await referenceP : null;
@@ -647,6 +670,16 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       console.log("[card] hero → photo (cover on top)", heroNow || "unset");
     }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
+  // The three sliding banners of a paid order: each picture with its own big line (written from the finished card; plain lines of
+  // the card's own when the writer is not there). Never over banners the owner already made.
+  if (slideBanners.length >= 2 && built.site && (built.site.hero?.slides ?? []).length < 2) {
+    const hero = built.site.hero ?? { headline: setup.business || setup.person || "", sub: "" };
+    const lines = (await within(writeSlides(built as unknown as Card, false).catch(() => null), 25_000))
+      ?? [{ headline: hero.headline, sub: hero.sub }, { headline: built.tagline || hero.headline, sub: "" }, { headline: `${setup.business || setup.person}${setup.city ? ` · ${setup.city}` : ""}`, sub: "" }].filter((x) => x.headline);
+    const slides = slideBanners.map((imageUrl, i) => ({ ...(lines[i % lines.length] ?? { headline: hero.headline }), imageUrl })).filter((x) => x.headline).slice(0, 3);
+    if (slides.length >= 2) built = { ...built, site: { ...built.site, hero: { ...hero, slides } } } as typeof built;
+    console.log("[card] order slides", slides.length);
+  }
   // The sample products take their photographs and their mark (see "sample products" above).
   if (sampleRows.length) {
     const found = (await within(samplePhotosP, 60_000)) ?? [];
