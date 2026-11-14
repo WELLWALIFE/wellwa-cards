@@ -160,6 +160,8 @@ export async function POST(request: Request) {
       const at = sitePending(fresh.site)?.toISOString() ?? readyIn();
       next = { ...next, site: { ...next.site, advancedReadyAt: at } };
     }
+    // The owner has picked a design: the app stops opening on the choose screen (lib/site-order.ts).
+    if (next.site) next = { ...next, site: { ...next.site, ...({ designChosenAt: new Date().toISOString() } as object) } };
     const r = await save(row.id, me.id, next);
     if (!r.ok) return NextResponse.json({ error: "Could not save your advanced website. Please try again." }, { status: 500 });
     if (job) await claim(key, job.id);

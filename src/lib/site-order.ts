@@ -49,6 +49,9 @@ export type OrderState = {
   until: string | null;
   readyAt: string | null;
   hasCard: boolean;
+  /** The website is delivered and its owner has not picked (or confirmed) one of the six designs yet: the app opens on the choose screen
+   *  until they do (owner, 14 Nov 2026: "app band karke khola to wahi page kyon nahi khula?"). Only for websites made by an order. */
+  chooseDesign: boolean;
   /** The last payment for the package, for the receipt. */
   receipt: { amount: number; paymentId: string; paidAt: string; label: string } | null;
 };

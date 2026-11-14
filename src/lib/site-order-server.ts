@@ -73,6 +73,7 @@ export async function orderState(uid: string): Promise<OrderState> {
     : pending ? "waiting" : "live";
   const p = reqs.paid;
   return {
+    chooseDesign: !!site?.enabled && (site as { ordered?: boolean }).ordered === true && !(site as { designChosenAt?: string }).designChosenAt,
     stage, pkg: paid ? pkg : "", wanted, pay: !paid && reqs.open && wanted ? { code: reqs.open.code, amount: reqs.open.amount_paise } : null,
     custom: !!ord && isCustomNote(ord.note), orderedAt: ord?.created_at ?? null, until: paid ? prof?.package_until ?? null : null, readyAt: pending ? pending.toISOString() : null, hasCard: !!row,
     receipt: paid && p && p.payment_id && p.paid_at ? { amount: p.amount_paise, paymentId: p.payment_id, paidAt: p.paid_at, label: SITE_PKG[pkgOfNote(p.note)!].label } : null,
@@ -129,7 +130,8 @@ export async function finishOrder(job: CardJob, advanced: () => Promise<void>): 
     const ordered = (await packageRequests(uid).catch(() => ({ open: null, paid: null }))).paid?.created_at;
     const due = ordered ? Date.parse(ordered) + ORDER_HOURS * 3600_000 : NaN;
     const hold = Number.isFinite(due) ? (due > Date.now() + 5 * 60_000 ? new Date(due).toISOString() : "") : readyIn();
-    if (out.site) out = { ...out, site: { ...out.site, enabled: true, ...(!wasOn && !demo && hold ? { readyAt: hold } : {}), ...(demo ? { noindex: true } : {}) } };
+    // `ordered`: made by an order — the app then opens on "select any one from 6" until a design is chosen (site.designChosenAt).
+    if (out.site) out = { ...out, site: { ...out.site, enabled: true, ...({ ordered: true } as object), ...(!wasOn && !demo && hold ? { readyAt: hold } : {}), ...(demo ? { noindex: true } : {}) } };
     out = { ...out, themeColor: safeColor(out.themeColor), avatarColor: safeColor(out.avatarColor, safeColor(out.themeColor)) };
     const row = {
       owner_id: uid, username, name: out.name, job_title: out.jobTitle, company: out.company, tagline: out.tagline, about: out.about,

@@ -147,6 +147,9 @@ export default function TodayPage() {
           const st = o.data.stage;
           let seen = false;
           try { seen = sessionStorage.getItem("shubhora.order-seen") === "1"; } catch { /* */ }
+          // Delivered, and no design picked yet: "select any one from 6" opens until one is — once per visit after "go to the app".
+          let chose = false; try { chose = sessionStorage.getItem("shubhora.choose-seen") === "1"; } catch { /* */ }
+          if (o.data.chooseDesign && !chose) { router.replace("/poster/site/choose"); return; }
           // Ordered and not paid: the order page (thank you + Pay) every time, until it is paid.
           if (st === "pay" && !o.data.hasCard) { router.replace("/poster/site/order"); return; }
           if ((st === "queued" || st === "building" || st === "waiting") && !seen) { router.replace("/poster/site/order"); return; }

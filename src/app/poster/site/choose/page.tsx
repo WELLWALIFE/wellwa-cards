@@ -70,6 +70,8 @@ export default function ChooseDesignPage() {
     }));
   }, [card, designs, hi]); // eslint-disable-line react-hooks/exhaustive-deps
   const chosen = options.find((o) => o.id === pick) ?? options.find((o) => o.on) ?? options[0];
+  /** A design has been picked or confirmed by the owner (until then the app keeps opening on this screen). */
+  const confirmed = !!(card?.site as { designChosenAt?: string } | undefined)?.designChosenAt;
 
   // The preview frame shows the design that is tapped (the real website renderer reads it from this phone's storage).
   useEffect(() => {
@@ -79,11 +81,13 @@ export default function ChooseDesignPage() {
   }, [chosen]);
 
   async function useDesign() {
-    if (!card || !chosen || chosen.on) return;
+    if (!card || !chosen || (chosen.on && confirmed)) return;
     setBusy(true); setErr(""); setMsg("");
     try {
       if (chosen.look) {
-        const next = applyLook(card, chosen.look);
+        // The design already on the website is only confirmed (nothing redrawn); another one is put on. Either way the choice is recorded.
+        const worn = chosen.on ? card : applyLook(card, chosen.look);
+        const next = { ...worn, site: { ...worn.site!, designChosenAt: new Date().toISOString() } as Card["site"] } as Card;
         const r = await publishCard(next);
         if (!r.ok) { setErr(r.error); return; }
         setCard(next);
@@ -93,7 +97,7 @@ export default function ChooseDesignPage() {
         const fresh = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === card.id);
         if (fresh) setCard(fresh);
       }
-      setPick(""); setMsg(T("Done. Your website now has this design.", "हो गया। आपकी website पर अब यही design है।"));
+      setPick(""); setMsg(T("Done. This design is final on your website. You can still change it here any time.", "हो गया। यही design आपकी website पर final है। यहाँ से कभी भी बदल सकते हैं।"));
     } finally { setBusy(false); }
   }
 
@@ -151,7 +155,7 @@ export default function ChooseDesignPage() {
       </div>
 
       <section className={box}>
-        {head(1, T("Select any one from 6", "6 में से कोई एक चुनें"), T("Tap a design to see it below. Your website is already live with the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website अभी ✓ वाले design के साथ live है।"))}
+        {head(1, T("Select any one from 6", "6 में से कोई एक चुनें"), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
         {options.length ? (
           <>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -170,9 +174,9 @@ export default function ChooseDesignPage() {
             <div className="overflow-hidden rounded-2xl border border-border bg-surface2">
               <iframe ref={frame} title={T("Website preview", "Website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} className="h-[30rem] w-full" />
             </div>
-            <button type="button" onClick={() => void useDesign()} disabled={busy || !chosen || chosen.on} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
+            <button type="button" onClick={() => void useDesign()} disabled={busy || !chosen || (chosen.on && confirmed)} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-3.5 text-base font-semibold text-white disabled:opacity-60">
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
-              {chosen?.on ? T("This design is on your website", "यही design आपकी website पर है") : T(`Use ${chosen?.name ?? "this design"}`, `${chosen?.name ?? "यह design"} लगाएँ`)}
+              {chosen?.on ? (confirmed ? T("This design is on your website", "यही design आपकी website पर है") : T(`Keep ${chosen.name} — final`, `${chosen.name} ही रखें — final`)) : T(`Use ${chosen?.name ?? "this design"}`, `${chosen?.name ?? "यह design"} लगाएँ`)}
             </button>
             <button type="button" onClick={() => void sendLinks()} disabled={linking} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#25d366] bg-surface py-3 text-sm font-semibold text-[#128c4a] disabled:opacity-60">
               {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {T("Send all 6 designs on WhatsApp", "सभी 6 design WhatsApp पर भेजें")}
@@ -200,7 +204,7 @@ export default function ChooseDesignPage() {
           <button type="button" onClick={() => { void navigator.clipboard?.writeText(link).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1800); }).catch(() => undefined); }} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3 text-sm font-semibold"><Copy className="h-4 w-4" /> {copied ? T("Copied", "Copy हो गया") : T("Copy link", "Link copy करें")}</button>
           <a href={`https://wa.me/?text=${waText}`} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[#25d366] py-3 text-sm font-semibold text-white"><Share2 className="h-4 w-4" /> WhatsApp</a>
         </div>
-        <Link href="/poster" className="block text-center text-sm font-semibold text-muted underline underline-offset-2">{T("Done — go to the app", "हो गया — app खोलें")}</Link>
+        <Link href="/poster" onClick={() => { try { sessionStorage.setItem("shubhora.choose-seen", "1"); } catch { /* */ } }} className="block text-center text-sm font-semibold text-muted underline underline-offset-2">{T("Done — go to the app", "हो गया — app खोलें")}</Link>
       </section>
 
       <section className={box}>
