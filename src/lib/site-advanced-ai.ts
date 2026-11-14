@@ -631,6 +631,35 @@ export async function designAdvanced(card: Card, ctx: { userId: string; cardId: 
   };
 }
 
+/** More Premium designs for a card that already has one, WITHOUT the AI (owner, 14 Nov 2026: "standard me 6 view hai to premium me bhi
+ *  6" — the same six-to-choose-from as a Standard website, and no AI run per design). Each is a composition of the trade from the design
+ *  library, redrawn from its own seed and pushed away from the designs already there; the words stay the ones the AI wrote once. */
+export function libraryDesigns(card: Card, have: AdvancedSpec[], n: number): AdvancedSpec[] {
+  const basic = basicOf(card);
+  const s = signalsOf(basic);
+  const base = `${s.business.toLowerCase()}|${card.seo?.categoryKey ?? ""}|${card.username ?? ""}`;
+  const out: AdvancedSpec[] = [];
+  // Six must look like six: a composition + top already among them is passed over, and a composition is used twice at most. Only when
+  // the trade's library runs out (the second pass) is a repeat taken, still in its own colour and type.
+  const draw = (r: number): AdvancedSpec | null => {
+    const seed = `${base}|lib${r}`;
+    if (have.some((h) => h.seed === seed) || out.some((h) => h.seed === seed)) return null;
+    try {
+      const against = [...have, ...out];
+      const salted = { ...basic, username: `${card.username ?? ""}#lib${r}` } as Card;
+      const guarded = guardSpec({ ...specFromSeed(salted), seed }, s, seed);
+      const unique = diversify(guarded, seed, against, 6, allowedByFit(fitOfSignals(s)));
+      const spec = validateSpec({ ...distinctLook(unique, seed, against), seed }, seed);
+      if (spec.palette) spec.palette.tone = "light";
+      return spec;
+    } catch (e) { console.log("[advanced] library design skipped:", e instanceof Error ? e.message : e); return null; }
+  };
+  const fresh = (x: AdvancedSpec) => { const all = [...have, ...out]; return !all.some((h) => h.archetype === x.archetype && h.hero === x.hero) && all.filter((h) => h.archetype === x.archetype).length < 2; };
+  for (let r = 1; out.length < n && r <= 40; r++) { const x = draw(r); if (x && fresh(x)) out.push(x); }
+  for (let r = 41; out.length < n && r <= 60; r++) { const x = draw(r); if (x) out.push(x); }
+  return out;
+}
+
 /* ================= saving, switching, reverting (pure: the route writes the card) ================= */
 
 /** A result that came back from storage (a preview the owner now accepts): the spec repaired, the copy cut down to ids that still exist. */

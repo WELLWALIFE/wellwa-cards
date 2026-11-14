@@ -22,7 +22,8 @@ import { rateLimited } from "@/lib/api-security";
 import { restAsService, userFromRequest } from "@/lib/poster-server";
 import { myCard } from "@/lib/site-server";
 import { advancedTriesLeft, isAdvancedAllowed, spendAdvancedTry } from "@/lib/advanced-access";
-import { advancedState, applyAdvanced, cleanResult, designAdvanced, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
+import { advancedState, applyAdvanced, cleanResult, designAdvanced, libraryDesigns, revertAdvanced, setAdvancedOn } from "@/lib/site-advanced-ai";
+import { parseAdvanced } from "@/lib/site-advanced";
 import { SITE_URL } from "@/lib/site-url";
 import { advDesigns, rememberAdvDesign } from "@/lib/adv-designs";
 import { DESIGN_CREDITS } from "@/lib/adv-price";
@@ -35,6 +36,22 @@ import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
 // an earlier one can be put live, and a closed screen or a restart never loses a design that was paid for.
 const seenItems = (uid: string, cardId: string) => advDesigns(uid, cardId);
 const seenSpecs = async (uid: string, cardId: string): Promise<AdvancedSpec[]> => (await seenItems(uid, cardId)).map((r) => r.spec as AdvancedSpec).filter(Boolean);
+
+/** Six designs to choose from (owner, 14 Nov 2026), the same number as a Standard website's looks: the ones already made, filled up from
+ *  the design library with no AI run. They carry the words of the design on the card (written once), so choosing one changes the layout only. */
+const CHOICES = 6;
+async function fillDesigns(uid: string, row: { id: string; username: string; data: Card }, from?: Obj): Promise<void> {
+  const kept = (await seenItems(uid, row.id)).filter((r) => r.cardId === row.id && r.spec);
+  if (kept.length >= CHOICES) return;
+  const site = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; source?: Obj; round?: number } }) | undefined;
+  const onCard = parseAdvanced(site?.advanced);
+  const have = [...kept.map((r) => parseAdvanced(r.spec)).filter((x): x is AdvancedSpec => !!x), ...(onCard ? [onCard] : [])];
+  if (!have.length) return;
+  const base = from ?? kept[kept.length - 1] ?? { copy: site?.advancedCopy ?? {}, critique: site?.advancedMeta?.critique, round: site?.advancedMeta?.round ?? 0 };
+  for (const spec of libraryDesigns(row.data, have, CHOICES - kept.length)) {
+    await rememberAdvDesign(uid, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, copy: base.copy ?? {}, critique: base.critique, round: base.round ?? 0, spec, source: { review: "signals", spec: "library", copy: "none" } } as unknown as Obj);
+  }
+}
 
 // Review + design + words are three AI calls, two of them side by side; the job outlives the request.
 export const maxDuration = 200;
@@ -111,6 +128,12 @@ export async function POST(request: Request) {
 
   const access = await isAdvancedAllowed(me.id);
   if (!access.allowed) return closed(access.reason);
+
+  // { more: true }: the six to choose from, filled up from the library (no AI, no try spent). Answers the designs.
+  if (b.more === true) {
+    await fillDesigns(me.id, row).catch((e) => console.log("[advanced] more designs failed:", e instanceof Error ? e.message : e));
+    return NextResponse.json({ ok: true, current: advancedState(data), designs: (await seenItems(me.id, row.id)).filter((r) => r.cardId === row.id && r.spec) });
+  }
 
   if (typeof b.accept === "string" || typeof b.acceptSeed === "string") {
     const job = await currentJob(key);
@@ -189,6 +212,8 @@ export async function POST(request: Request) {
       const r = await save(row.id, me.id, next);
       if (!r.ok) return { status: 500, body: { error: "The advanced design was made but could not be saved. Please try again." } };
       saved = true;
+      // A paid order's design (lib/site-order.ts): the other five to choose from are made now, so they are there when the website is delivered.
+      if (b.quiet === true) await fillDesigns(me.id, { id: row.id, username: row.username, data: next }, result as unknown as Obj).catch(() => undefined);
     }
     return { status: 200, body: { ok: true, mode, saved, cardId: row.id, username: row.username, ...result } };
   }, async (j: CardJob) => {

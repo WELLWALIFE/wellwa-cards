@@ -107,7 +107,7 @@ export default function SiteOrderPage() {
         </section>
       )}
       {live
-        ? <Link href="/poster/site" className="inline-flex w-full items-center justify-center rounded-2xl grad-brand py-3.5 text-base font-semibold text-white">{T("Open my website", "मेरी website खोलें")}</Link>
+        ? <Link href="/poster/site/choose" className="inline-flex w-full items-center justify-center rounded-2xl grad-brand py-3.5 text-base font-semibold text-white">{T("Next: select any one from 6 designs", "आगे: 6 में से कोई एक design चुनें")}</Link>
         : <Link href="/poster" className="inline-flex w-full items-center justify-center rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold">{T("Go to the app", "App खोलें")}</Link>}
     </div>
   );

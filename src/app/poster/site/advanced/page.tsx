@@ -22,6 +22,7 @@ import { AdvancedSwitch, type AdvState } from "@/components/poster/advanced-entr
 import { DESIGN_CREDITS } from "@/lib/adv-price";
 import { UnlockDialog } from "@/lib/ai-access";
 import { ADV_HERO_NAMES, HEADING_FONTS, HERO_IDS, SHAPES, SHAPE_NAMES, type AdvancedSpec } from "@/lib/site-advanced";
+import { wearAdvanced } from "@/lib/adv-preview";
 import type { Card, CardBlock } from "@/lib/types";
 
 // advanced-access.ts carries ADVANCED_PRICE_RUPEES but is server-only, so this client page cannot import it: the price shown is the
@@ -98,35 +99,7 @@ function readPending(): PendingPay | null {
   try { const j = JSON.parse(localStorage.getItem(PAY_KEY) ?? "null") as Partial<PendingPay> | null; return j && j.orderId && j.paymentId && j.signature ? { orderId: j.orderId, paymentId: j.paymentId, signature: j.signature } : null; } catch { return null; }
 }
 
-/** The live card wearing the previewed design and words: what the server will save on "Use this" (the same words rules as the engine's
- *  applyCopy, which is server-only), so the frame shows exactly that. */
-function withAdvanced(card: Card, res: Result): Card {
-  // The design's sliding top banners (owner, 23 Oct 2026), unless the owner already made their own.
-  const own = (card.site?.hero?.slides ?? []).length >= 2;
-  const site0 = card.site ?? { enabled: true };
-  const slides = !own && Array.isArray((res as { slides?: unknown }).slides) ? (res as { slides: NonNullable<NonNullable<NonNullable<Card["site"]>["hero"]>["slides"]> }).slides : null;
-  const base = { ...site0, ...(slides ? { hero: { headline: card.company || card.name, sub: "", ...(site0.hero ?? {}), slides } } : {}), advanced: res.spec, advancedOn: true } as NonNullable<Card["site"]>;
-  let next: Card = { ...card, site: base };
-  const c = res.copy;
-  if (c?.hero && (c.hero.headline !== undefined || c.hero.sub !== undefined)) {
-    const cur = base.hero ?? { headline: card.company || card.name, sub: "" };
-    next = { ...next, site: { ...base, hero: { ...cur, ...(c.hero.headline !== undefined ? { headline: c.hero.headline } : {}), ...(c.hero.sub !== undefined ? { sub: c.hero.sub } : {}) } } };
-  }
-  if (c?.about || c?.titles) {
-    next = {
-      ...next,
-      pages: next.pages.map((p) => ({
-        ...p,
-        blocks: p.blocks.map((b) => {
-          if (c.about && b.id === c.about.id && b.kind === "about") return { ...b, ...(c.about.title !== undefined ? { title: c.about.title } : {}), ...(c.about.body !== undefined ? { body: c.about.body } : {}) };
-          const t = c.titles?.[b.id];
-          return t !== undefined ? ({ ...b, title: t } as CardBlock) : b;
-        }),
-      })),
-    };
-  }
-  return next;
-}
+const withAdvanced = (card: Card, res: Result): Card => wearAdvanced(card, res);
 
 const AREA: Record<string, [string, string]> = {
   hero: ["Top of the page", "पेज का ऊपरी हिस्सा"], copy: ["Words", "शब्द"], photos: ["Photos", "Photos"],
