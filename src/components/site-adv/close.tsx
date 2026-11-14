@@ -983,13 +983,15 @@ export function FooterLinkGrid({ c, x, spec }: VariantProps) {
           {m.blurb && <p className="ft-blurb">{x.t(m.blurb)}</p>}
           <FtSocial m={m} x={x} />
         </div>
+        {/* The pages as one compact list (owner, 14 Nov 2026: each page was a big empty box of its own and the footer filled a screen). */}
         {quick.length > 1 && (
-          <nav className="ft-t-nav" aria-label={x.ui("Quick links", "क्विक लिंक")}>
-            {quick.map((q) => (
-              <a key={q.key} className="ft-tile ft-link" href={q.href} onClick={quickClick(q, x)}>
-                <span>{q.label}</span><Icon name="arrow-up-right" size={20} />
-              </a>
-            ))}
+          <nav className="ft-tile ft-t-pages" aria-label={x.ui("Quick links", "क्विक लिंक")}>
+            <small className="ft-t-head">{x.ui("Pages", "पेज")}</small>
+            <ul>
+              {quick.map((q) => (
+                <li key={q.key}><a href={q.href} onClick={quickClick(q, x)}><span>{q.label}</span><Icon name="arrow-up-right" size={15} /></a></li>
+              ))}
+            </ul>
           </nav>
         )}
         {m.contact.map((i) => {
@@ -1403,7 +1405,7 @@ a.vz-mapcard:hover .btn-link{text-decoration:underline}
 .ft-top{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem 0;border:0;background:none;color:inherit;font:inherit;cursor:pointer;transition:color .15s}
 .ft-top:hover{color:var(--hero-text)}
 .ft-up{transform:rotate(-90deg)}
-@media (min-width:768px){.ft-legal{padding-bottom:var(--s5)}}
+@media (min-width:768px){.ft-legal{padding-bottom:var(--s5);padding-right:15rem}}
 
 /* ---- footer on a phone: closer and tidier (owner, 25 Oct 2026: "footer ke link bade khule khule, mobile me unmanaged") ----
    Links sit closer (still a 34px tap row), headings nearer their lists, and the short "Explore" list shares a row with the next
@@ -1473,9 +1475,16 @@ a.ft-link:hover>svg{transform:translate(3px,-3px)}
 .ft-val{display:flex;align-items:center;gap:var(--s2);font-size:1rem;font-weight:500;overflow-wrap:anywhere}
 .ft-val svg{flex:none}
 .ft-t-brand,.ft-t-visit{grid-column:1/-1}
-.ft-t-nav{display:contents}
+.ft-t-pages ul{list-style:none;margin:0;padding:0;display:grid;gap:0}
+.ft-t-pages li a{display:flex;align-items:center;justify-content:space-between;gap:var(--s3);padding:.55rem 0;border-bottom:1px solid var(--hero-line);font-size:15px;font-weight:500;color:var(--hero-text);transition:padding .2s,color .2s}
+.ft-t-pages li:last-child a{border-bottom:0}
+.ft-t-pages li a:hover{padding-left:.3rem;color:color-mix(in srgb,var(--accent) 45%,var(--hero-text))}
+.ft-t-pages li a svg{flex:none;opacity:.6}
+.ft-t-head{font:600 11px/1 var(--font-text);letter-spacing:.1em;text-transform:uppercase;color:var(--hero-muted)}
+.site:lang(hi) .ft-t-head{letter-spacing:0;text-transform:none;font-size:13px}
 .ft-t-gst{grid-column:1/-1;margin:0}
-@media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4)}.ft-t-brand{grid-column:span 2;grid-row:span 2}.ft-t-visit{grid-column:span 2}}
+.ft-t-pages{grid-column:1/-1}
+@media (min-width:768px){.ft-lg{grid-template-columns:repeat(4,minmax(0,1fr));gap:var(--s4);grid-auto-flow:row dense}.ft-t-brand{grid-column:span 2}.ft-t-pages{grid-column:span 1;grid-row:span 2}.ft-t-visit{grid-column:span 2}}
 
 /* ---- open now pill (every variant that shows timings) ---- */
 .op-pill{display:inline-flex;align-items:center;gap:.55em;align-self:flex-start;padding:.42em .95em .42em .8em;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--paper);color:var(--ink);font-size:13px;font-weight:600;line-height:1.2;white-space:nowrap}
