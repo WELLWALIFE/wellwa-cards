@@ -4,8 +4,9 @@
 // shortcuts as one tidy grid. Short words, big tap targets, one look with the rest of the app (rounded cards, soft shadow, gradient head).
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { CalendarDays, Clapperboard, Copy, CreditCard, Flame, ImagePlus, Link2, MessageCircle, PhoneCall, Share2, Sparkles, UserPlus, Users, Check, ChevronRight, BellRing } from "lucide-react";
+import { CalendarDays, Clapperboard, Copy, CreditCard, Flame, ImagePlus, Link2, MessageCircle, PhoneCall, Share2, Sparkles, UserPlus, Users, Check, ChevronRight, BellRing, Scissors } from "lucide-react";
 import { api } from "@/lib/poster-client";
+import { useOrdersOn } from "@/components/poster/advanced-features";
 import { fetchCardDomain, fetchMyCards } from "@/lib/cloud";
 import { SITE_HOST } from "@/lib/site-url";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
@@ -115,7 +116,9 @@ export function TodayWork({ hi }: { hi: boolean }) {
 /** Every everyday door in one grid of eight. */
 export function QuickGrid({ hi }: { hi: boolean }) {
   const T = (en: string, h: string) => (hi ? h : en);
+  const ordersOn = useOrdersOn();
   const items = [
+    ...(ordersOn ? [{ href: "/poster/orders", t: T("Orders · Silai", "Orders · सिलाई"), I: Scissors, cls: "from-[#be185d] to-[#f43f5e]" }] : []),
     { href: "/poster/site", t: T("Card & Website", "Card & Website"), I: CreditCard, cls: "from-[#2f5bf5] to-[#5b7cff]" },
     { href: "/poster/crm", t: T("Customers", "ग्राहक"), I: Users, cls: "from-[#16a34a] to-[#22c55e]" },
     { href: "/poster/calendar", t: T("Calendar", "Calendar"), I: CalendarDays, cls: "from-[#f59e0b] to-[#fbbf24]" },

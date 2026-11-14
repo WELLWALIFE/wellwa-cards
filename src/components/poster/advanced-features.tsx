@@ -81,3 +81,14 @@ export function AdvancedFeatures({ hi, className = "" }: { hi: boolean; classNam
     </section>
   );
 }
+
+/** Orders · Silai is switched on for this account (or the person works in a shop that has it): the menus show it. Asked once per page view. */
+export function useOrdersOn(): boolean {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void api<AddonsAnswer>("/api/poster/addons").then((r) => { if (live && r.ok) setOn(r.data.teamOrders || r.data.list.some((a) => a.key === "orders" && a.on)); }).catch(() => undefined);
+    return () => { live = false; };
+  }, []);
+  return on;
+}

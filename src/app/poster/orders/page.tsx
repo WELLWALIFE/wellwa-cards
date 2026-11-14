@@ -8,6 +8,7 @@ import { CalendarDays, Check, ChevronRight, LoaderCircle, MessageCircle, Pencil,
 import { api, isLoggedIn } from "@/lib/poster-client";
 import { useT } from "@/lib/poster-i18n";
 import { balanceOf, can, cleanPhone, daysFor, fieldsFor, flowFor, fmtDay, isDueToday, isLate, isoPlus, nextStep, receiptMessage, rupees, stepLabel, toPaise, workFor, type JobRow, type JobSetup, type Karigar, type Measurement } from "@/lib/jobs";
+import { StartList } from "@/components/orders/start-list";
 import { Fold, JobPhotos, MeasureEditor, MeasurementView, PickChips, StatusBadge, WorkspaceSwitch, blankDraft, draftFilled, draftFrom, useJobSetup, useWorkspace, type MeasureDraft, type Me, type Member } from "@/components/orders/orders-common";
 
 type ListAnswer = { jobs: JobRow[]; role: "owner" | "manager" | "agent"; me: Me; karigars: Karigar[]; team: Member[]; counts: Record<string, number>; setup: JobSetup; error?: string };
@@ -100,6 +101,11 @@ export default function OrdersPage() {
         </div>
       )}
 
+      {/* The owner's one-time setup, step by step (owner, 14 Nov 2026). Only for whoever can set the shop up. */}
+      {data && can(me, "setup") && !creating && (
+        <StartList hi={hi} setup={setup} staffCount={data.team.length} karigarCount={data.karigars.length} orderCount={allCount}
+          onNewOrder={() => { setCreating(true); setBooked(null); }} />
+      )}
       {creating && data && <NewOrder hi={hi} q={ws.q} data={data} onClose={() => setCreating(false)} onSaved={(jobs, shop, told) => { setCreating(false); setBooked({ jobs, shop, told }); void load(); setTimeout(() => void load(true), 1500); window.scrollTo({ top: 0, behavior: "smooth" }); }} />}
       {booked && <Booked hi={hi} {...booked} onClose={() => setBooked(null)} />}
 

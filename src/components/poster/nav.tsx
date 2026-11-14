@@ -5,7 +5,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { Home, PlusCircle, Users, Handshake, UserCircle, Globe, CreditCard, Settings, Package, CalendarDays, Share2, LogOut, Languages, Link2, ChevronsUpDown, HelpCircle, Store } from "lucide-react";
+import { Home, PlusCircle, Users, Handshake, UserCircle, Globe, CreditCard, Settings, Package, CalendarDays, Share2, LogOut, Languages, Link2, ChevronsUpDown, HelpCircle, Store, Scissors } from "lucide-react";
 import { useAccountKind, showsPartnerUi } from "@/lib/use-account-kind";
 import { useT, LangToggle } from "@/lib/poster-i18n";
 import { usePlan } from "@/lib/plan";
@@ -14,6 +14,7 @@ import { initials } from "@/lib/initials";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { endPartnerSession } from "@/lib/logout";
 import { ShareSheet } from "@/components/poster/share-links";
+import { useOrdersOn } from "@/components/poster/advanced-features";
 
 type Tab = { href: string; label: string; icon: typeof Home };
 
@@ -47,6 +48,7 @@ export function PosterNav() {
     })();
     return () => { on = false; };
   }, []);
+  const ordersOn = useOrdersOn();
   const tabs: Tab[] = [
     { href: "/poster", label: t.tabHome, icon: Home },
     { href: "/poster/create", label: t.tabCard, icon: PlusCircle },
@@ -56,6 +58,7 @@ export function PosterNav() {
   ].filter((x) => x.href !== "/poster/business" || showsPartnerUi(kind));   // a consumer has no Business tab
   // The screens opened most, one click away on a computer.
   const quick: Tab[] = [
+    ...(ordersOn ? [{ href: "/poster/orders", label: hi ? "Orders · सिलाई" : "Orders · Silai", icon: Scissors }] : []),
     { href: "/poster/site", label: hi ? "Card & Website" : "Card & Website", icon: Globe },
     { href: "/poster/products", label: hi ? "Products" : "Products", icon: Package },
     { href: "/poster/calendar", label: hi ? "Posters" : "Posters", icon: CalendarDays },
