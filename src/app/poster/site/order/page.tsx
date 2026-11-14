@@ -31,7 +31,7 @@ export default function SiteOrderPage() {
       let r = await api<OrderState>("/api/site/order").catch(() => null);
       if (stop) return;
       // Paid and not made yet: the server is asked to make it — once from this page; a failed build is tried again on a later visit.
-      if (r?.ok && r.data.stage === "queued" && !started.current) {
+      if (r?.ok && (r.data.stage === "queued" || r.data.premiumPending) && !started.current) {
         started.current = true;
         r = await api<OrderState>("/api/site/order", { method: "POST", json: { op: "start" } }).catch(() => r);
         if (stop) return;
@@ -41,7 +41,7 @@ export default function SiteOrderPage() {
         if (st.stage === "none") { router.replace("/poster/card/build?make=1"); return; }
         setO(st);
         try { sessionStorage.setItem("shubhora.order-seen", "1"); } catch { /* */ }
-        if (st.stage === "queued" || st.stage === "building") timer = setTimeout(load, 15_000);
+        if (st.stage === "queued" || st.stage === "building" || st.premiumPending) timer = setTimeout(load, 15_000);
       } else timer = setTimeout(load, 15_000);
     };
     void load();

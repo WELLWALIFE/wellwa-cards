@@ -8,15 +8,19 @@ import { PartyPopper, ArrowRight, Clock } from "lucide-react";
 import { getBrowserSupabase } from "@/lib/supabase/browser";
 import { useT } from "@/lib/poster-i18n";
 import { PROFILE_STEPS } from "@/components/poster/profile-steps";
+import { isScreenKey, screenHref } from "@/lib/setup-steps";
 
 export default function WelcomePage() {
   const { lang } = useT();
   const hi = lang === "hi";
   const [name, setName] = useState("");
+  const [resume, setResume] = useState("");
   useEffect(() => {
     getBrowserSupabase()?.auth.getUser().then(({ data }) => {
-      const m = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string };
+      const m = (data.user?.user_metadata ?? {}) as { display_name?: string; full_name?: string; setup_pos?: unknown };
       setName((m.display_name || m.full_name || "").trim().split(" ")[0]);
+      // Some of the set-up is already done: the button opens the screen it was left on, not the first one.
+      if (isScreenKey(m.setup_pos)) setResume(screenHref(m.setup_pos));
     }).catch(() => undefined);
   }, []);
   return (
@@ -29,9 +33,9 @@ export default function WelcomePage() {
           {hi ? "कुछ details भरिए। Plan चुनने के बाद हमारी team आपकी website और digital business card 24 घंटे में बनाकर देगी।" : "Fill in a few details. After you choose a plan, our team makes your website and digital business card and delivers them within 24 hours."}</p>
       </div>
       <div className="space-y-2">
-        <Link href={PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
+        <Link href={resume || PROFILE_STEPS[0].href} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl grad-brand py-4 text-base font-semibold text-white">
           {/* Owner, 13 Nov 2026: the button says what happens next — a few details are asked — not "Make my card now". */}
-          {hi ? "कुछ details भरें" : "Fill in a few details"} <ArrowRight className="h-5 w-5" />
+          {resume ? (hi ? "जहाँ छोड़ा था वहीं से आगे बढ़ें" : "Continue where you left off") : hi ? "कुछ details भरें" : "Fill in a few details"} <ArrowRight className="h-5 w-5" />
         </Link>
         <Link href="/poster/onboard?skip=1" className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-border bg-surface py-3.5 text-sm font-semibold text-muted">
           <Clock className="h-4 w-4" /> {hi ? "बाद में" : "Later"}

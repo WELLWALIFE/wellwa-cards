@@ -7,6 +7,8 @@ import { usePlan } from "@/lib/plan";
 import { LoaderCircle, ChevronDown, Sparkles, WifiOff, RotateCw } from "lucide-react";
 import { BusinessStrip } from "@/components/poster/business-strip";
 import { ShareLinks } from "@/components/poster/share-links";
+import { getBrowserSupabase } from "@/lib/supabase/browser";
+import { isScreenKey, screenHref } from "@/lib/setup-steps";
 import type { OrderState } from "@/lib/site-order";
 import { api, isLoggedIn, currentProfileId, setCurrentProfileId, captureRef, PERSONAS, type Profile, type Poster, type Quota } from "@/lib/poster-client";
 import { PosterCard } from "@/components/poster/poster-card";
@@ -153,6 +155,14 @@ export default function TodayPage() {
           // Ordered and not paid: the order page (thank you + Pay) every time, until it is paid.
           if (st === "pay" && !o.data.hasCard) { router.replace("/poster/site/order"); return; }
           if ((st === "queued" || st === "building" || st === "waiting") && !seen) { router.replace("/poster/site/order"); return; }
+          // Nothing ordered and no card yet: the set-up was left half way — it opens on the screen it was left on (the account remembers
+          // it as setup_pos), once per visit, so "Later" or Back still reaches the home screen (owner, 14 Nov 2026: "beech me ruk jaye
+          // to agli baar wahin se shuru ho").
+          if (st === "none" && !o.data.hasCard) {
+            let resumed = false; try { resumed = sessionStorage.getItem("shubhora.resume-seen") === "1"; } catch { /* */ }
+            const md = ((await getBrowserSupabase()?.auth.getUser().catch(() => null))?.data.user?.user_metadata ?? {}) as { setup_pos?: unknown };
+            if (!resumed && isScreenKey(md.setup_pos)) { try { sessionStorage.setItem("shubhora.resume-seen", "1"); } catch { /* */ } router.replace(screenHref(md.setup_pos)); return; }
+          }
         }
       } catch { /* the home screen opens as usual */ }
       const want = currentProfileId();

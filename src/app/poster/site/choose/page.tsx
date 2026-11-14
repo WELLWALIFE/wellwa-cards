@@ -19,6 +19,7 @@ import { cardHomeShown } from "@/lib/site-url";
 import { applyLook, threeLooks, type Look } from "@/lib/site-looks";
 import { wearAdvanced, type AdvPreview } from "@/lib/adv-preview";
 import type { Card } from "@/lib/types";
+import type { OrderState } from "@/lib/site-order";
 
 const PREVIEW_KEY = "site-choose";
 type Design = AdvPreview & { spec?: { seed?: string; archetype?: string } };
@@ -39,19 +40,28 @@ export default function ChooseDesignPage() {
   const [sent, setSent] = useState<"" | "busy" | "free" | "quote">("");
   const [askErr, setAskErr] = useState("");
   const frame = useRef<HTMLIFrameElement | null>(null);
+  const [pending, setPending] = useState(false);   // the Premium design is still being made
+  const [tick, setTick] = useState(0);
 
   useEffect(() => { (async () => {
     if (!(await isLoggedIn())) { router.replace("/login?next=/poster/site/choose"); return; }
     const cards = await fetchMyCardsStrict().catch(() => []);
     const c = cards[0];
     if (!c?.site?.enabled) { router.replace("/poster/site/order"); return; }
+    // A Premium order whose design is not on the website yet: it is started (again) and this page waits for it — a Premium customer is
+    // never shown the Standard looks to choose from.
+    if (!c.site.advanced) {
+      const o = await api<OrderState>("/api/site/order", { method: "POST", json: { op: "start" } }).catch(() => null);
+      if (o?.ok && o.data.premiumPending) { setPending(true); setTimeout(() => setTick((n) => n + 1), 15_000); return; }
+    }
+    setPending(false);
     setCard(c);
     if (c.site.advanced) {
       // Premium: the designs kept for this card, filled up to six from the library.
       const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
       setDesigns(r?.ok && r.data.designs?.length ? r.data.designs.slice(0, 6) : []);
     }
-  })(); }, [router]);
+  })(); }, [router, tick]);
 
   const options = useMemo<Option[]>(() => {
     if (!card?.site) return [];
@@ -134,6 +144,13 @@ export default function ChooseDesignPage() {
     setSent(""); setAskErr(r?.data?.error || T("Could not send it now. Please try again.", "अभी नहीं भेज पाए। दोबारा try करें।"));
   }
 
+  if (pending) return (
+    <div className="mx-auto max-w-md space-y-3 px-4 py-24 text-center">
+      <LoaderCircle className="mx-auto h-7 w-7 animate-spin text-brand" />
+      <p className="text-base font-bold">{T("Your Premium designs are being prepared", "आपके Premium design तैयार हो रहे हैं")}</p>
+      <p className="text-sm text-muted">{T("This takes two or three minutes. The page opens by itself; you can also come back later.", "इसमें दो-तीन मिनट लगते हैं। Page अपने-आप खुल जाएगा; बाद में भी आ सकते हैं।")}</p>
+    </div>
+  );
   if (!card || (card.site?.advanced && !designs)) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const link = `https://${cardHomeShown(card.username, card.customDomain)}`;
   const box = "space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card";

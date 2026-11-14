@@ -49,6 +49,9 @@ export type OrderState = {
   until: string | null;
   readyAt: string | null;
   hasCard: boolean;
+  /** Website Premium is paid and the website is made, but its Premium design is not there (the design step failed or was cut off): it
+   *  is started again from the order / choose screens, so a Premium order never stays a Standard website. */
+  premiumPending: boolean;
   /** The website is delivered and its owner has not picked (or confirmed) one of the six designs yet: the app opens on the choose screen
    *  until they do (owner, 14 Nov 2026: "app band karke khola to wahi page kyon nahi khula?"). Only for websites made by an order. */
   chooseDesign: boolean;

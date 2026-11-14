@@ -8,6 +8,7 @@ import { restAsService, userFromRequest } from "@/lib/poster-server";
 import { myCard } from "@/lib/site-server";
 import { franchiseOf, notifyFranchise } from "@/lib/franchise-server";
 import { notify } from "@/lib/notify";
+import { grantAdvanced, readAdvancedMeta } from "@/lib/advanced-access";
 import { rateLimited } from "@/lib/api-security";
 import { currentJob } from "@/lib/card-jobs";
 import { orderState } from "@/lib/site-order-server";
@@ -44,12 +45,19 @@ export async function POST(request: Request) {
   }
   if (b.op !== "start") return NextResponse.json({ error: "unknown op" }, { status: 400 });
   const st = await orderState(me.id);
+  const origin = `http://127.0.0.1:${process.env.PORT || 3001}`;
+  // The website is made but a Premium order's design is missing: that step is started again (a running one is joined by the route).
+  if (st.premiumPending && !rateLimited(`site-order-adv:${me.id}`, 3, 60 * 60_000)) {
+    if (!(await readAdvancedMeta(me.id))?.paid) await grantAdvanced(me.id, "package").catch(() => false);
+    const a = await fetch(`${origin}/api/card/advanced`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${me.token}` }, body: JSON.stringify({ mode: "apply", quiet: true }) }).catch(() => null);
+    if (!a || !a.ok) console.log("[site-order] premium design not started", me.id, a?.status);
+    return NextResponse.json({ ok: true, ...st });
+  }
   if (st.stage !== "queued") return NextResponse.json({ ok: true, ...st });
   // A build that just failed is not hammered: the next try waits ten minutes (and three starts an hour at most).
   const last = await currentJob(me.id).catch(() => null);
   if (last?.state === "failed" && last.endedAt && Date.now() - last.endedAt < 10 * 60_000) return NextResponse.json({ ok: true, ...st });
   if (rateLimited(`site-order:${me.id}`, 3, 60 * 60_000)) return NextResponse.json({ ok: true, ...st });
-  const origin = `http://127.0.0.1:${process.env.PORT || 3001}`;
   const r = await fetch(`${origin}/api/card/build`, { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${me.token}` }, body: JSON.stringify({ async: true, order: true, facts: {} }) }).catch(() => null);
   if (!r || !r.ok) console.log("[site-order] build not started", me.id, r?.status);
   return NextResponse.json({ ok: true, ...(await orderState(me.id)) });

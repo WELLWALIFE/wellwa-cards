@@ -73,6 +73,7 @@ export async function orderState(uid: string): Promise<OrderState> {
     : pending ? "waiting" : "live";
   const p = reqs.paid;
   return {
+    premiumPending: paid && pkg === "site_premium" && !!site?.enabled && !(site as { advanced?: unknown }).advanced && !(!!row && isShubhoraSellerCard(row.data)),
     chooseDesign: !!site?.enabled && (site as { ordered?: boolean }).ordered === true && !(site as { designChosenAt?: string }).designChosenAt,
     stage, pkg: paid ? pkg : "", wanted, pay: !paid && reqs.open && wanted ? { code: reqs.open.code, amount: reqs.open.amount_paise } : null,
     custom: !!ord && isCustomNote(ord.note), orderedAt: ord?.created_at ?? null, until: paid ? prof?.package_until ?? null : null, readyAt: pending ? pending.toISOString() : null, hasCard: !!row,
