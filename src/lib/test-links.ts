@@ -7,20 +7,23 @@ import path from "node:path";
 import { randomBytes } from "node:crypto";
 import type { Card } from "@/lib/types";
 import type { Look } from "@/lib/site-looks";
+import type { AdvPreview } from "@/lib/adv-preview";
 
 const DIR = path.join(process.cwd(), ".test-links");
 const KEEP_MS = 14 * 24 * 60 * 60_000;
 const TOKEN = /^[a-f0-9]{16}$/;
 
-export type TestLinks = { uid: string; at: number; card: Card; looks: Look[] };
+/** A Premium design as a test link (owner, 14 Nov 2026: "ye design kisi ko WhatsApp karna ho to?"): its spec and words; the page puts them on the card. */
+export type TestDesign = { key: string; name: string; adv: AdvPreview };
+export type TestLinks = { uid: string; at: number; card: Card; looks: Look[]; designs?: TestDesign[] };
 
 /** The six looks and the card, as a token. Old files are removed on the way. */
-export async function saveTestLinks(uid: string, card: Card, looks: Look[]): Promise<string> {
+export async function saveTestLinks(uid: string, card: Card, looks: Look[], designs: TestDesign[] = []): Promise<string> {
   await fs.mkdir(DIR, { recursive: true });
   const token = randomBytes(8).toString("hex");
   // the owner's private assistant instructions never leave the server
   const safe: Card = { ...card, botPersona: undefined, botKnowledge: undefined };
-  await fs.writeFile(path.join(DIR, `${token}.json`), JSON.stringify({ uid, at: Date.now(), card: safe, looks } satisfies TestLinks));
+  await fs.writeFile(path.join(DIR, `${token}.json`), JSON.stringify({ uid, at: Date.now(), card: safe, looks, ...(designs.length ? { designs } : {}) } satisfies TestLinks));
   void prune();
   return token;
 }

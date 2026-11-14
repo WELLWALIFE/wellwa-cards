@@ -97,6 +97,32 @@ export default function ChooseDesignPage() {
     } finally { setBusy(false); }
   }
 
+  /** The six designs as six links on WhatsApp — to the customer, a partner, anyone: each opens that design on any phone (14 days). */
+  const [linking, setLinking] = useState(false);
+  const [linkErr, setLinkErr] = useState("");
+  async function sendLinks() {
+    if (!card || !options.length || linking) return;
+    setLinking(true); setLinkErr("");
+    // WhatsApp opens in a window made NOW (a tap), filled in when the links are ready: a window opened after the wait is taken for a pop-up.
+    const win = window.open("", "_blank");
+    try {
+      const json = designs
+        ? { card, designs: designs.map((d, i) => ({ name: `Design ${i + 1}`, adv: { spec: d.spec, copy: d.copy, slides: d.slides } })) }
+        : { card, looks: options.map((o) => o.look) };
+      const r = await api<{ token?: string; keys?: string[]; error?: string }>("/api/card/test-links", { method: "POST", json });
+      if (!r.ok || !r.data.token) throw new Error(r.data?.error || "x");
+      const keys = designs ? r.data.keys ?? [] : options.map((o) => o.look!.key);
+      const lines = keys.map((k, i) => `Design ${i + 1}: ${window.location.origin}/t/${r.data.token}/${k}`);
+      const who = (card.company || card.name || "").trim();
+      const text = `${who ? `${who} — ` : ""}${T("website designs", "website के designs")}\n${T("Open each link to see that design, and tell me the number you like:", "हर link खोलकर design देखें, और जो पसंद हो उसका number बताएँ:")}\n\n${lines.join("\n")}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      if (win) win.location.href = url; else window.location.href = url;
+    } catch {
+      win?.close();
+      setLinkErr(T("Could not make the links now. Please try again.", "Links अभी नहीं बन पाए। दोबारा try करें।"));
+    } finally { setLinking(false); }
+  }
+
   async function ask() {
     setSent("busy"); setAskErr("");
     const r = await api<{ ok?: boolean; free?: boolean; error?: string }>("/api/site/order", { method: "POST", json: { op: "change", note } }).catch(() => null);
@@ -148,6 +174,11 @@ export default function ChooseDesignPage() {
               {busy && <LoaderCircle className="h-4 w-4 animate-spin" />}
               {chosen?.on ? T("This design is on your website", "यही design आपकी website पर है") : T(`Use ${chosen?.name ?? "this design"}`, `${chosen?.name ?? "यह design"} लगाएँ`)}
             </button>
+            <button type="button" onClick={() => void sendLinks()} disabled={linking} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#25d366] bg-surface py-3 text-sm font-semibold text-[#128c4a] disabled:opacity-60">
+              {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {T("Send all 6 designs on WhatsApp", "सभी 6 design WhatsApp पर भेजें")}
+            </button>
+            <p className="text-center text-[11px] text-muted">{T("Six links, one for each design. Anyone can open them, for 14 days.", "छह links, हर design का एक। कोई भी खोल सकता है, 14 दिन तक।")}</p>
+            {linkErr && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{linkErr}</p>}
             {msg && <p role="status" className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-medium">{msg}</p>}
             {err && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}
           </>
