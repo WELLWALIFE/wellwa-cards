@@ -111,7 +111,7 @@ export function heroModel(card: Card, lang: Lang): HeroModel {
   const sub = aiSub(hero?.sub, labels) ?? (seller ? (hi ? "Digital card, website, रोज़ के posters और WhatsApp AI assistant — सब एक Shubhora link में।" : "Digital card, website, daily posters and a WhatsApp AI assistant — all in one Shubhora link.") : benefitSub(mood.benefit[copy], city, hi));
 
   /* ---- trust ---- */
-  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim());
+  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim() && !x.sample);
   const rating = reviews.length >= 3 ? { v: Math.round((reviews.reduce((s, x) => s + (Number(x.rating) || 0), 0) / reviews.length) * 10) / 10, n: reviews.length } : undefined;
   const since = sinceYear([
     ...blocks.flatMap((b) => (b.kind === "highlights" ? b.items : [])),

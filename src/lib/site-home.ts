@@ -267,7 +267,7 @@ export function trustFacts(card: Card, lang?: string): TrustFact[] {
   const h = lang ? lang === "hi" : hi(card);
   const blocks = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks);
   const out: TrustFact[] = [];
-  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim());
+  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim() && !x.sample);
   if (reviews.length >= 3) {
     const avg = reviews.reduce((s, x) => s + (Number(x.rating) || 0), 0) / reviews.length;
     const who = REVIEWER.find(([re]) => re.test(card.seo?.categoryKey ?? ""));

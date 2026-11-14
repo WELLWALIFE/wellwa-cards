@@ -409,7 +409,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
   // Cut at a sentence or a word, never mid-word (the about text was sliced at 180 characters: "…takes responsib").
   const footBlurb = tidyBlurb((card.tagline ?? "").trim() || (card.about ?? "").trim(), 170);
   const footDir = mapLink ? linkHref(mapLink.type, mapLink.value) : footAddress ? `https://maps.google.com/?q=${encodeURIComponent(footAddress)}` : "";
-  const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim()).length;
+  const reviewCount = card.pages.filter((p) => !p.hidden).flatMap((p) => p.blocks).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim() && !x.sample).length;
   const fontHref = design.fonts.href;
   // The blueprints' small line above the name: the hero model's kicker ("Jeweller · Rewari"), never the slug.
   const eyebrowRole = hm.kicker;

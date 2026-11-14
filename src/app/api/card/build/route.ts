@@ -685,7 +685,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   // them (site-ready.ts publicCard) — and replaced by the first real reviews.
   if (orderBuild && !built.pages.some((pg) => pg.blocks.some((bl) => bl.kind === "testimonials"))) {
     const hi = facts.lang === "hi";
-    const item = (n: number) => ({ sample: true as const, rating: 5, name: hi ? `आपके ग्राहक का नाम ${n}` : `Your customer's name ${n}`, text: hi ? "यहाँ आपके ग्राहक की राय दिखेगी। अपने ख़ुश ग्राहकों से दो लाइन लिखवाएँ और app से जोड़ें।" : "Your customer's review will show here. Ask your happy customers for a line or two and add them from the app." });
+    const item = (n: number) => ({ sample: true as const, rating: 0, name: hi ? `आपके ग्राहक का नाम ${n}` : `Your customer's name ${n}`, text: hi ? "यहाँ आपके ग्राहक की राय दिखेगी। अपने ख़ुश ग्राहकों से दो लाइन लिखवाएँ और app से जोड़ें।" : "Your customer's review will show here. Ask your happy customers for a line or two and add them from the app." });
     const block = { id: `rv-${Date.now().toString(36)}`, kind: "testimonials" as const, title: hi ? "ग्राहक क्या कहते हैं" : "What customers say", items: [item(1), item(2), item(3)] };
     const home = built.pages.findIndex((pg) => !pg.hidden);
     if (home >= 0) built = { ...built, pages: built.pages.map((pg, i) => (i === home ? { ...pg, blocks: [...pg.blocks, block] } : pg)) } as typeof built;

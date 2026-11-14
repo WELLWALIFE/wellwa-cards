@@ -86,8 +86,10 @@ export function buildContent(card: Card, lang: string): SiteContent {
   ].filter((g, i, a) => g.url && a.findIndex((x) => x.url === g.url) === i).slice(0, 9);
 
   const revItems = all("testimonials").flatMap((b) => b.items).filter((x) => (x.text ?? "").trim());
-  const avg = revItems.length ? revItems.reduce((s, x) => s + (Number(x.rating) || 0), 0) / revItems.length : 0;
-  const reviews = { items: [...revItems].sort((a, b) => (b.rating - a.rating) || (b.text.length - a.text.length)).slice(0, 3), avg, total: revItems.length };
+  // Placeholders (TestimonialItem.sample: the owner's preview only) are drawn in the reviews' place but are never a rating or a count.
+  const realRev = revItems.filter((x) => !x.sample);
+  const avg = realRev.length ? realRev.reduce((s, x) => s + (Number(x.rating) || 0), 0) / realRev.length : 0;
+  const reviews = { items: [...(realRev.length ? realRev : revItems)].sort((a, b) => (b.rating - a.rating) || (b.text.length - a.text.length)).slice(0, 3), avg, total: realRev.length };
 
   const faq = all("faq").flatMap((b) => b.items).filter((x) => (x.q ?? "").trim() && (x.a ?? "").trim()).slice(0, 8);
 

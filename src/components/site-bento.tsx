@@ -210,7 +210,7 @@ export function BentoHero(i: BentoInput) {
 export function bentoFacts(card: Card): { rating?: { avg: number; count: number }; map?: { address: string; url: string }; offer?: Extract<CardBlock, { kind: "offer" }>; product?: ProductItem; booking: { slug: string } | null; clip?: { url: string; poster?: string } } {
   const pages = card.pages.filter((p) => !p.hidden);
   const blocks = pages.flatMap((p) => p.blocks);
-  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim());
+  const reviews = blocks.flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((x) => (x.text ?? "").trim() && !x.sample);
   const rating = reviews.length ? { avg: reviews.reduce((s, x) => s + (Number(x.rating) || 0), 0) / reviews.length, count: reviews.length } : undefined;
   const loc = blocks.find((b): b is Extract<CardBlock, { kind: "location" }> => b.kind === "location" && (!!(b.address ?? "").trim() || !!b.mapUrl));
   const mapUrl = loc ? safeMapUrl(loc.mapUrl) : "";

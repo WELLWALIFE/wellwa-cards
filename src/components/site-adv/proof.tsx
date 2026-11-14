@@ -89,12 +89,13 @@ export function reviewsOf(c: SiteContent, x: AdvCtx): Reviews {
   let raw = visibleBlocks(x).flatMap((b) => (b.kind === "testimonials" ? b.items : [])).filter((r) => (r.text ?? "").trim());
   if (!raw.length) raw = c.reviews.items;
   const all: Rev[] = raw
-    .map((r) => ({ name: (r.name ?? "").trim(), text: r.text.trim(), rating: Math.min(5, Math.max(0, Math.round(Number(r.rating) || 0))) }))
+    // A placeholder (the owner's preview only) is drawn in the reviews' place with no stars, and is never a rating or a count.
+    .map((r) => ({ name: (r.name ?? "").trim(), text: r.text.trim(), rating: r.sample ? 0 : Math.min(5, Math.max(0, Math.round(Number(r.rating) || 0))) }))
     .sort((a, b) => (b.rating - a.rating) || (b.text.length - a.text.length));
   const rated = all.filter((r) => r.rating >= 1);
   const dist = [0, 0, 0, 0, 0];
   for (const r of rated) dist[r.rating - 1]++;
-  return { all, rated: rated.length, avg: rated.length ? rated.reduce((s, r) => s + r.rating, 0) / rated.length : 0, total: all.length, dist };
+  return { all, rated: rated.length, avg: rated.length ? rated.reduce((s, r) => s + r.rating, 0) / rated.length : 0, total: raw.some((r) => !r.sample) ? raw.filter((r) => !r.sample).length : all.length, dist };
 }
 export const countLabel = (x: AdvCtx, n: number) => (x.hi ? `${n} रिव्यू` : `${n} review${n === 1 ? "" : "s"}`);
 
