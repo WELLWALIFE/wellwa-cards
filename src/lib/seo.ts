@@ -197,7 +197,8 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
   const logo = web(card.site?.logoUrl) || web(card.avatarUrl);
   const map = card.links.find((l) => l.type === "location" && /^https?:\/\//.test(l.value))?.value;
   const catalogue = [
-    ...find(card, "product").flatMap((b) => b.items).slice(0, 30).map((p) => ({
+    // Sample items (put in by the build until the owner adds products) are not told to Google as things this shop sells.
+    ...find(card, "product").flatMap((b) => b.items).filter((p) => !p.sample).slice(0, 30).map((p) => ({
       "@type": "Offer", itemOffered: { "@type": "Product", name: p.name, ...(p.desc ? { description: cut(clean(p.desc), 200) } : {}), ...(web(p.images?.[0] || p.imageUrl) ? { image: web(p.images?.[0] || p.imageUrl) } : {}) },
       ...(price(p.price) ? { price: price(p.price), priceCurrency: "INR" } : {}),
     })),
@@ -245,7 +246,7 @@ export function seoJsonLd(card: Card, opts: { url: string; homeUrl: string; page
   if (faqs.length) graph.push({ "@type": "FAQPage", mainEntity: faqs.slice(0, 20).map((i) => ({ "@type": "Question", name: i.q, acceptedAnswer: { "@type": "Answer", text: i.a } })) });
   // One product at its own address is a Product, not just a page of the business: name, picture, price and
   // who sells it, so it can win a result of its own.
-  const prod = opts.product;
+  const prod = opts.product?.sample ? undefined : opts.product;
   if (prod) {
     const pic = [prod.imageUrl, ...(prod.images ?? [])].filter((u): u is string => !!u && /^https?:\/\//.test(u)).slice(0, 4);
     const amount = price(prod.price);

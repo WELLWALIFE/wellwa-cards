@@ -318,7 +318,8 @@ export async function syncProductsToCard(rows: ProductSync[]) {
       if (!pg.hidden && pg.slug !== SHUBHORA_PAGE_SLUG && (!firstBlock || pg.slug === "products")) firstBlock = firstBlock && pg.slug !== "products" ? firstBlock : b;
       b.items = b.items.flatMap((it) => {
         const r = byName.get(key(it.name));
-        if (!r) return [it];                       // not from the Products page (the AI's own or a service) — untouched
+        // A sample item (the build's stand-in while the owner had no products) goes now that there is a product of their own.
+        if (!r) return it.sample ? [] : [it];      // not from the Products page (the AI's own or a service) — untouched
         if (r.active === false) return [];          // switched off / deleted → off the website
         seen.add(key(it.name));
         const imgs = imagesOf(r);

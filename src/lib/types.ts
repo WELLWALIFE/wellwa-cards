@@ -87,6 +87,10 @@ export interface ProductItem {
   specs: SpecRow[];    // technical specification rows
   ctaLabel?: string;   // button text, e.g. "Book demo", "Order on WhatsApp"
   category?: string;   // the kind of thing it is ("Barfi", "Sofas") — the website's category tabs, from six products up
+  /** A sample item put in by the build because the owner has no products yet (owner, 14 Nov 2026: "dummy lagao, user ko final website
+   *  dikhni chahiye"): the trade's usual item with a stock photo of it and no price. It goes the moment the owner adds a product of their
+   *  own (card-personalize.ts syncProductsToCard), and is never listed as a product for Google (lib/seo.ts). */
+  sample?: boolean;
 }
 
 export type CardBlock =

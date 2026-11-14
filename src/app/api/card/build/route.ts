@@ -37,6 +37,7 @@ import { tradeStyle } from "@/lib/site-recipes";
 import { auditCard } from "@/lib/card-audit";
 import { bannerFocus } from "@/lib/media/photo-focus";
 import { IMG_MODEL, referenceImages } from "@/lib/media/ai-image";
+import { pool, stockPhotoForProduct, usedPhotoIds } from "@/lib/media/product-stock";
 import { logImages } from "@/lib/ai-usage";
 import { screenshotCard } from "@/lib/render-page";
 import { reviewDesign } from "@/lib/design-review";
@@ -513,6 +514,25 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
   const gRow = await googleRow(me.id).catch(() => null);
   const gRating = gRow?.rating && gRow.review_count ? { avg: Number(gRow.rating), count: Number(gRow.review_count) } : null;
   const own = ownOfferings(setup.category, facts.tradeAnswers, tdata);
+  /* ---- sample products (owner, 14 Nov 2026) ---- */
+  // A shop with no products of its own yet still gets a full catalogue: the trade's usual items (what the owner ticked, else the
+  // trade's own list), each with a stock photograph found by its name, no price. Only for trades whose website has a catalogue
+  // (shops); a service business already shows its services, and an eatery's menu is its own. They are marked `sample` after the layout and go when the
+  // owner adds a product. Never on "Write again" (the card on screen keeps what it has).
+  const NOT_AN_ITEM = /whatsapp|exchange|trial|fitting|alteration|deliver|courier|catalog|order|booking|bulk|wholesale|home visit|parking|payment|emi\b|repair|service|support|warranty|gift wrap|custom|consult|advice|corporate|dine|takeaway|help /i;
+  const sampleSeeds = !list.length && !brandProducts && !fresh && recipe.catalog === "products"
+    ? (own.seeds?.length ? own.seeds : tdata?.services ?? []).filter((s) => !NOT_AN_ITEM.test(s.en)).slice(0, 6) : [];
+  const sampleRows: SavedProduct[] = sampleSeeds.length >= 3
+    ? sampleSeeds.map((s) => ({ id: "", name: facts.lang === "hi" ? s.hi || s.en : s.en, brand: "", price: "", mrp: "", photo: "", images: [], offer: "", benefits: [] })) : [];
+  const sampleNames = new Set(sampleRows.map((r) => r.name.toLowerCase()));
+  // The photographs are looked for now, beside the writing and the design (each up to 45 s, three at a time); a name that finds none
+  // takes one of the trade's own photos later.
+  const samplePhotosP: Promise<(string | null)[]> = sampleRows.length ? (async () => {
+    const urls: (string | null)[] = sampleRows.map(() => null);
+    const skip = usedPhotoIds(me.id);
+    await pool(sampleSeeds.slice(0, sampleRows.length), 3, async (s, i) => { urls[i] = (await stockPhotoForProduct(me.id, s.en, setup.categoryLabel || setup.category || "", { skip, maxMs: 45_000 })).url; });
+    return urls;
+  })().catch(() => sampleRows.map(() => null)) : Promise.resolve([]);
   const guide = tdata ? {
     catalog: recipe.catalog,
     explain: tdata.explain,
@@ -565,7 +585,7 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
 
   /* ---- the layout (code) ---- */
   const { card, checks, missing: composed } = composeCard({
-    setup, facts, products: list, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
+    setup, facts, products: list.length || brandProducts ? list : sampleRows, brandProducts, reviews: inputs.reviews, reviewStats: inputs.reviewStats,
     copy, info, siteUrl: site?.url ?? null, details: knowledge, bannerKeys: bannerKeys(),
     reference: reference ? { url: reference.url, style: reference.style, look: reference.look } : null,
     design,
@@ -627,6 +647,20 @@ async function runBuild(me: Me, b: Obj, step: (s: BuildStage) => void): Promise<
       console.log("[card] hero → photo (cover on top)", heroNow || "unset");
     }
   } catch (e) { console.log("[card] stock media skipped:", e instanceof Error ? e.message : e); }
+  // The sample products take their photographs and their mark (see "sample products" above).
+  if (sampleRows.length) {
+    const found = (await within(samplePhotosP, 60_000)) ?? [];
+    const spare = stockUrls.length ? stockUrls : [];
+    const order = sampleRows.map((r) => r.name.toLowerCase());
+    let n = 0;
+    built = { ...built, pages: built.pages.map((pg) => ({ ...pg, blocks: pg.blocks.map((bl) => bl.kind !== "product" ? bl : { ...bl, items: bl.items.map((it) => {
+      if (!sampleNames.has(it.name.toLowerCase())) return it;
+      const i = order.indexOf(it.name.toLowerCase());
+      const photo = found[i] ?? (spare.length ? spare[(n++) % spare.length] : "");
+      return { ...it, sample: true, badge: "Sample", price: "", mrp: "", ...(photo ? { imageUrl: photo, images: [photo] } : {}) };
+    }) }) })) } as typeof built;
+    console.log("[card] sample products", sampleRows.length, "photos", found.filter(Boolean).length);
+  }
   // The last look (card-audit.ts): the same stock photo in three places, a city-only map, a thin section, a
   // generic line — fixed in code; and what had to stand in for the owner's own material is reported.
   const audited = auditCard(built, { stockPhotos: stockUrls, city: setup.city, trade: tdata, lang: facts.lang });
