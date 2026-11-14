@@ -167,6 +167,26 @@ export default function AdvancedSitePage() {
   const [result, setResult] = useState<Result | null>(null);
   /** Every design of this round, in the order they were made (owner, 20 Oct 2026: after seeing 2 and 3, design 1 must still be there to pick). */
   const [designs, setDesigns] = useState<{ job: string; res: Result }[]>([]);
+  const [linking, setLinking] = useState(false);
+  const [linkErr, setLinkErr] = useState("");
+  /** Every design on this screen as a link (lib/test-links.ts: 14 days, anyone can open), in one WhatsApp message. */
+  async function sendLinks() {
+    if (!card || !designs.length || linking) return;
+    setLinking(true); setLinkErr("");
+    const win = window.open("", "_blank");   // made on the tap; filled in when the links are ready
+    try {
+      const r = await api<{ token?: string; keys?: string[]; error?: string }>("/api/card/test-links", { method: "POST", json: { card, designs: designs.slice(0, 6).map((d, i) => ({ name: `Design ${i + 1}`, adv: { spec: d.res.spec, copy: d.res.copy, slides: (d.res as { slides?: unknown }).slides } })) } });
+      if (!r.ok || !r.data.token) throw new Error("x");
+      const lines = (r.data.keys ?? []).map((k, i) => `Design ${i + 1}: ${window.location.origin}/t/${r.data.token}/${k}`);
+      const who = (card.company || card.name || "").trim();
+      const text = `${who ? `${who} — ` : ""}${T("website designs", "website के designs")}\n${T("Open each link to see that design, and tell me the number you like:", "हर link खोलकर design देखें, और जो पसंद हो उसका number बताएँ:")}\n\n${lines.join("\n")}`;
+      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+      if (win) win.location.href = url; else window.location.href = url;
+    } catch {
+      win?.close();
+      setLinkErr(T("Could not make the links now. Please try again.", "Links अभी नहीं बन पाए। दोबारा try करें।"));
+    } finally { setLinking(false); }
+  }
   const [openFound, setOpenFound] = useState(false);
   const [openChanges, setOpenChanges] = useState(false);
   // The owner's own touches on the design on screen (owner, 31 Oct 2026: "font aur upar ka hissa premium mein bhi"): the letters, the top,
@@ -536,6 +556,15 @@ export default function AdvancedSitePage() {
             );
           })}
         </div>
+        {/* The designs as links on WhatsApp, to finalise one with the customer (owner, 14 Nov 2026): each link opens that design on any phone. */}
+        {designs.length > 0 && (
+          <>
+            <button type="button" onClick={() => void sendLinks()} disabled={linking} className="inline-flex w-full items-center justify-center gap-2 rounded-xl border border-[#25d366] bg-surface py-2.5 text-sm font-semibold text-[#128c4a] disabled:opacity-60">
+              {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <ExternalLink className="h-4 w-4" />} {T(designs.length > 1 ? `Send these ${designs.length} designs on WhatsApp` : "Send this design on WhatsApp", designs.length > 1 ? `ये ${designs.length} design WhatsApp पर भेजें` : "यह design WhatsApp पर भेजें")}
+            </button>
+            {linkErr && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-xs font-medium text-danger">{linkErr}</p>}
+          </>
+        )}
         {/* All three slots hold kept designs but a new payment gave more tries: a new one can still be made. */}
         {designs.length >= TRY_LIMIT && remaining > 0 && (
           <button type="button" onClick={() => start("again")} disabled={!!startBusy} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl border-2 border-dashed border-border py-2.5 text-xs font-semibold text-muted disabled:opacity-50">
