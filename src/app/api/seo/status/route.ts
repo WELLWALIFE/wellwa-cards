@@ -6,6 +6,7 @@ import { isPremiumRow, searchListed, type Row } from "@/lib/seo-urls";
 import { cardProducts } from "@/lib/product-page";
 import { advancedItems, withAdvancedPages } from "@/lib/site-advanced";
 import { SITE_URL } from "@/lib/site-url";
+import { packageOf, premiumTier } from "@/lib/site-tier";
 import type { Card } from "@/lib/types";
 
 type Data = { pages?: Row["pages"]; site?: Row["site"]; about?: string; language?: string; seo?: { city?: string; category?: string; areas?: string[]; googleVerify?: string } };
@@ -16,7 +17,10 @@ export async function GET(request: Request) {
   if (!me) return NextResponse.json({ error: "Please log in." }, { status: 401 });
   const r = await restAsService<{ username: string; site_paused?: boolean; data: Data }[]>(`cards?owner_id=eq.${me.id}&select=username,site_paused,data&order=created_at.asc&limit=10`);
   const rows = (r.data ?? []).map((c) => ({ c, row: { username: c.username, pages: c.data?.pages ?? null, site: c.data?.site ? { ...c.data.site, ...(c.site_paused === true ? { paused: true } : {}) } : null, about: c.data?.about ?? null, language: c.data?.language ?? null } as Row }));
-  const mine = rows.find((x) => isPremiumRow(x.row) && searchListed(x.row)) ?? rows.find((x) => searchListed(x.row));
+  // Search is Premium only (owner, 15 Nov 2026): the package from the profile, lib/site-tier.ts.
+  const pkg = await packageOf(me.id);
+  const listed = (x: (typeof rows)[number]) => searchListed(x.row, premiumTier(x.row.site, x.row.username, pkg));
+  const mine = rows.find((x) => isPremiumRow(x.row) && listed(x)) ?? rows.find(listed);
   if (!mine) return NextResponse.json({ premium: false });
   const st = await restAsService<{ expired?: boolean }[] | { expired?: boolean }>("rpc/card_owner_state", { method: "POST", body: JSON.stringify({ p_username: mine.c.username }) }).catch(() => null);
   const own = Array.isArray(st?.data) ? st?.data[0] : st?.data;

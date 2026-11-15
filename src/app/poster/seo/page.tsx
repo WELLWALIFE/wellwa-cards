@@ -1,6 +1,6 @@
 "use client";
-// The owner's Google SEO checklist (owner, 19 Oct 2026): what the app does by itself, and the few things the owner does. Standard and Premium
-// websites, once live (owner, 12 Nov 2026).
+// The owner's Google SEO checklist (owner, 19 Oct 2026): what the app does by itself, and the few things the owner does. Premium websites
+// only, once live (owner, 15 Nov 2026: "standard me SEO nahi").
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,9 +27,12 @@ export default function SeoChecklistPage() {
     <div className="py-6 space-y-4">
       <div className="flex items-center gap-2">{back}<h1 className="text-xl font-bold">Google SEO</h1></div>
       <div className="rounded-2xl border border-border bg-surface p-5 space-y-3">
-        <p className="text-base font-semibold">{T("Your website goes on Google once it is live.", "Website live होते ही Google पर जाती है।")}</p>
-        <p className="text-sm text-muted">{T("With the Standard or Premium plan, your website is put on Google by itself once it is live (after the first day's setup): every page and product, with a sitemap and search-ready details. A free card stays online and shareable, but is not listed on Google.", "Standard या Premium plan पर website live होते ही (पहले दिन की तैयारी के बाद) अपने-आप Google पर जाती है: हर page और product, sitemap और search के लिए ज़रूरी details के साथ। Free card online और share होता रहता है, पर Google पर नहीं आता।")}</p>
-        <Link href="/poster/site" className="inline-flex items-center justify-center rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("See my website", "मेरी website देखें")}</Link>
+        <p className="text-base font-semibold">{T("Google and AI search come with Premium.", "Google और AI search Premium के साथ आते हैं।")}</p>
+        <p className="text-sm text-muted">{T("With the Premium plan your website is put on Google by itself once it is live: every page and product, with a sitemap and search-ready details, so Google, ChatGPT and Gemini searches can find it. Premium also lets your customers install your website as an app. A Standard website has every design too, and is shared by its link, but is not listed on Google.", "Premium plan पर website live होते ही अपने-आप Google पर जाती है: हर page और product, sitemap और search के लिए ज़रूरी details के साथ, ताकि Google, ChatGPT और Gemini की search में मिल सके। Premium में ग्राहक आपकी website को app की तरह install भी कर सकते हैं। Standard website में भी सारे designs हैं और link से share होती है, पर Google पर नहीं आती।")}</p>
+        <div className="flex flex-wrap gap-2">
+          <Link href="/poster/site/order" className="inline-flex items-center justify-center rounded-xl grad-brand px-4 py-2.5 text-sm font-semibold text-white">{T("Get Premium", "Premium लें")}</Link>
+          <Link href="/poster/site" className="inline-flex items-center justify-center rounded-xl border border-border px-4 py-2.5 text-sm font-semibold">{T("See my website", "मेरी website देखें")}</Link>
+        </div>
       </div>
     </div>
   );

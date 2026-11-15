@@ -26,6 +26,7 @@ import { activeAdvanced, advancedItemStubs, findAdvancedItem, withAdvancedPages 
 import { publicCard, sitePending } from "@/lib/site-ready";
 import { restAsService } from "@/lib/poster-server";
 import { addonOn } from "@/lib/addons-server";
+import { packageOf, premiumTier } from "@/lib/site-tier";
 import { hasShubhoraPage, isShubhoraSellerCard, sellerDrawsPremium, shubhoraPage, withoutShubhoraLeaks } from "@/lib/shubhora-page";
 
 // The list each block kind is drawn from: an old or half-saved block without it would throw on `.map` in the renderers.
@@ -68,6 +69,15 @@ const pageOf = (card: Card, slug?: string | null): CardPage | null =>
   (slug ? card.pages.find((p) => p.slug === slug) : null) ?? null;
 
 /** Where this card lives: the canonical origin+path of its home, and the base for page links on this host. */
+/** The owner's id (service read; a failed lookup is null). */
+async function ownerIdOf(username: string): Promise<string | null> {
+  try { return (await restAsService<{ owner_id: string }[]>(`cards?username=eq.${encodeURIComponent(username)}&select=owner_id&limit=1`)).data?.[0]?.owner_id ?? null; } catch { return null; }
+}
+/** Premium features for this website (on Google and the AI search engines, installable as an app): the owner's package, lib/site-tier.ts. */
+async function premiumOf(username: string, site: unknown): Promise<boolean> {
+  return premiumTier(site, username, await packageOf(await ownerIdOf(username)).catch(() => null));
+}
+
 async function addresses(card: Card) {
   const host = ((await headers()).get("host") ?? "").toLowerCase().split(":")[0];
   const onPlatform = !host || PLATFORM_HOSTS.has(host) || host.startsWith("localhost") || host === "127.0.0.1";
@@ -96,6 +106,7 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
   const page = product ? productPageOf(card, product) : pageOf(card, slug);
   const { brand, home } = await addresses(card);
   const updates = slug === "updates" && !page;
+  const premium = await premiumOf(card.username, card.site);
   const business = (card.lead === "business" && card.company ? card.company : card.name).trim();
   // "Kaju Katli — ₹325 | Haldiram's, Dharuhera": the thing, the price, who sells it and where. The city is
   // dropped before the price, and the price before the name, when there is no room for all of it.
@@ -126,11 +137,12 @@ export async function cardMetadata(username: string, slug?: string | null): Prom
     twitter: { card: "summary_large_image", title, description, images: [ogImage] },
     // On Google: the Standard and the Premium website, once live (owner, 12 Nov 2026; lib/seo-urls.ts searchListed). A free card, a lapsed plan,
     // a website still in its first-day wait, a paused one and a demo account's stay out of search.
-    robots: { index: card.active !== false && searchListed({ username: card.username, pages: card.pages, site: card.site }) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
+    robots: { index: card.active !== false && searchListed({ username: card.username, pages: card.pages, site: card.site }, premium) && (!slug || !!page || updates) && !(await fetchCardExpired(card.username)), follow: true, "max-image-preview": "large", "max-snippet": -1 },
     // The business's own logo (or photo) as the tab icon of its card and website.
     ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icons: { icon: card.site?.logoUrl || card.avatarUrl! } } : {}),
     // The Premium website is installable as the business's own app (owner, 31 Oct 2026): its manifest and Apple's home-screen icon.
-    ...(activeAdvanced(card.site, card.username) ? {
+    // Now for every Premium website, whichever design it wears (owner, 15 Nov 2026: "premium progressive rahegi, app download ka option").
+    ...(premium ? {
       manifest: `/c/${card.username}/manifest.webmanifest`,
       appleWebApp: { capable: true, title: (card.company || card.name || "").slice(0, 30), statusBarStyle: "default" as const },
       icons: { ...((card.site?.logoUrl || card.avatarUrl || "").startsWith("https://") ? { icon: card.site?.logoUrl || card.avatarUrl! } : {}), apple: `/c/${card.username}/app-icon?s=180` },
@@ -148,13 +160,14 @@ export async function CardPageView({ username, slug, viewParam }: { username: st
   }
   // A shop with Orders · Silai switched on (owner, 14 Nov 2026): its website's footer carries "Staff login" for the job cards. Read for this
   // request only (never stored on the card); a failed lookup simply leaves the link out.
+  const ownerId = await ownerIdOf(username);
   const ordersOn = await (async () => {
-    try {
-      const row = (await restAsService<{ owner_id: string }[]>(`cards?username=eq.${encodeURIComponent(username)}&select=owner_id&limit=1`)).data?.[0];
-      return row?.owner_id ? await addonOn(row.owner_id, "orders") : false;
-    } catch { return false; }
+    try { return ownerId ? await addonOn(ownerId, "orders") : false; } catch { return false; }
   })();
-  const stored: Card = ordersOn && stored0.site ? { ...stored0, site: { ...stored0.site, ...({ staffLogin: true } as object) } } : stored0;
+  // A Premium website (lib/site-tier.ts) carries its Premium features (Get our app, the AI chat) whichever design it wears; for this request only, like staffLogin.
+  const appOn = premiumTier(stored0.site, username, await packageOf(ownerId).catch(() => null));
+  // Always written here (true or false), so a value saved on the card itself is never what decides.
+  const stored: Card = stored0.site ? { ...stored0, site: { ...stored0.site, staffLogin: ordersOn, premiumOn: appOn } as Card["site"] } : stored0;
   // The Shubhora strip's "Know more" opens the owner's Shubhora page: a "Both" card carries it already; every other
   // card gets it here, for this request only, hidden from the tab row (owner's call, 2 Oct 2026).
   const shPage = hasShubhoraPage(stored) ? null : shubhoraPage({ visible: false });

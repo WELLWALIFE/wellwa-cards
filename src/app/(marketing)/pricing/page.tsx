@@ -12,10 +12,9 @@ export const metadata: Metadata = pageMeta("/pricing", {
   description: "Website Standard ₹2,999 a year, Website Premium ₹5,999 a year, Growth Plan ₹2,999 a month. Your digital V-Card comes with every Website plan.",
 });
 
-// The plan lists are the owner's own words (16 Oct 2026): nothing added.
+// The plan lists are the owner's own words (16 Oct 2026). 15 Nov 2026: every design for both; Google, AI search and the app are Premium.
 const STANDARD_ITEMS = [
-  "Dynamic website, up to 5 pages",
-  "SEO + AI-search ready",
+  "Dynamic website, every design to choose from",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",
   "Growth Plan: 1st month free",
@@ -42,7 +41,8 @@ const CUSTOM_ITEMS = [
 const PREMIUM_LIST = [
   "Dynamic & Progressive website",
   "Installs on phone like an app",
-  "SEO + AI-search ready",
+  "Google SEO + AI search (ChatGPT & Gemini)",
+  "AI chat on your website",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",
   "Growth Plan: 1st month free",

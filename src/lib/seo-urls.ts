@@ -1,5 +1,5 @@
-// The addresses of a card's website pages, for the sitemap and for IndexNow (lib/indexnow.ts). Google (and every search engine) lists the Standard
-// AND the Premium website (owner, 12 Nov 2026: "SEO standard aur premium dono ke liye on kar do") — once the website is really live: see searchListed.
+// The addresses of a card's website pages, for the sitemap and for IndexNow (lib/indexnow.ts). Google (and every search engine) lists a Premium
+// website only (owner, 15 Nov 2026: "standard me SEO nahi") — once it is really live: see searchListed.
 import type { MetadataRoute } from "next";
 import { advancedItems, activeAdvanced, livePages, withAdvancedPages } from "@/lib/site-advanced";
 import { cardProducts } from "@/lib/product-page";
@@ -42,7 +42,10 @@ export const isPremiumRow = (r: Row): boolean => !!activeAdvanced(r.site, r.user
  *  - a Premium website that is switched on, or a Standard website that is switched on and past its first-day wait (lib/site-ready.ts);
  *  - not paused by Super Admin, not a demo account's (site.noindex), and with something on it.
  *  The plan itself (a paid Standard / Premium, not free or lapsed) is checked by the caller (card_owner_state), as it needs the database. */
-export function searchListed(r: Row, now = Date.now()): boolean {
+export function searchListed(r: Row, premium: boolean, now = Date.now()): boolean {
+  // Search (Google, and through it the AI search engines) is a Premium feature (owner, 15 Nov 2026: "standard me SEO nahi, ab kevel
+  // premium me"): `premium` comes from the owner's package, lib/site-tier.ts premiumTier.
+  if (!premium) return false;
   const s = r.site;
   if (!s || s.noindex === true || sitePaused(s)) return false;
   if (isPremiumRow(r)) return true;

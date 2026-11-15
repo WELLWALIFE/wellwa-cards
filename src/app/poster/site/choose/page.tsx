@@ -6,8 +6,9 @@
 //   2. Check your details      what the website says about the business, and the way to change it
 //   3. Share your website      the link, Copy, WhatsApp
 //   Not happy? Tell us         a line or two to the team (the first change is free)
-// Standard: the six looks of the website (lib/site-looks.ts), put live by a normal publish. Premium: the design made for the order plus
-// five from the design library (api/card/advanced { more }), put live by { acceptSeed } — no AI run for a choice.
+// Every design for everyone (owner, 15 Nov 2026: "koi Standard nahi, koi Premium nahi — sab ek kar do"): the six Premium designs (the one
+// made for a Premium order, filled up from the design library: api/card/advanced { more }, put live by { acceptSeed }, no AI run) and the six
+// looks of the basic website (lib/site-looks.ts, put live by a normal publish). The package only decides the Premium features (lib/site-tier.ts).
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -30,7 +31,7 @@ export default function ChooseDesignPage() {
   const { lang } = useT(); const hi = lang !== "en";
   const T = (en: string, h: string) => (hi ? h : en);
   const [card, setCard] = useState<Card | null>(null);
-  const [designs, setDesigns] = useState<Design[] | null>(null);   // Premium: the six; null = a Standard website
+  const [designs, setDesigns] = useState<Design[] | null>(null);   // the Premium designs; null = still loading
   const [pick, setPick] = useState("");
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState("");
@@ -56,29 +57,29 @@ export default function ChooseDesignPage() {
     }
     setPending(false);
     setCard(c);
-    if (c.site.advanced) {
-      // Premium: the designs kept for this card, filled up to six from the library.
-      const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
-      setDesigns(r?.ok && r.data.designs?.length ? r.data.designs.slice(0, 6) : []);
-    }
+    // The Premium designs kept for this card, filled up to six from the library (any paid website; none when the server says no).
+    const r = await api<{ designs?: Design[] }>("/api/card/advanced", { method: "POST", json: { cardId: c.id, more: true } }).catch(() => null);
+    setDesigns(r?.ok && r.data.designs?.length ? r.data.designs.slice(0, 6) : []);
   })(); }, [router, tick]);
 
+  const advOn = !!card?.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false;
   const options = useMemo<Option[]>(() => {
     if (!card?.site) return [];
-    if (designs) {
-      const live = (card.site.advanced as { seed?: string } | undefined)?.seed;
-      return designs.map((d, i) => ({
-        id: `p${i}`, seed: d.spec?.seed, name: T(`Design ${i + 1}`, `Design ${i + 1}`), sub: String(d.spec?.archetype ?? "").replace(/-/g, " "),
-        card: wearAdvanced(card, d), on: (card.site as { advancedOn?: boolean } | undefined)?.advancedOn !== false && !!live && d.spec?.seed === live,
-      }));
-    }
-    const cur = card.site.style?.blueprint;
-    return threeLooks(card, card.site.style).slice(0, 6).map((l, i) => ({
-      id: `s${l.key}`, look: l, name: T(`Design ${i + 1}`, `Design ${i + 1}`), sub: hi ? l.hi : l.name,
-      // The look the website wears now keeps its own colours and choices; the others are drawn from it.
-      card: l.key === cur ? card : applyLook(card, l), on: l.key === cur,
+    const live = (card.site.advanced as { seed?: string } | undefined)?.seed;
+    const prem: Option[] = (designs ?? []).map((d, i) => ({
+      id: `p${i}`, seed: d.spec?.seed, name: `Design ${i + 1}`, sub: String(d.spec?.archetype ?? "").replace(/-/g, " "),
+      card: wearAdvanced(card, d), on: advOn && !!live && d.spec?.seed === live,
     }));
-  }, [card, designs, hi]); // eslint-disable-line react-hooks/exhaustive-deps
+    // A look is the basic website: a Premium design on the card is put aside for its preview.
+    const plain: Card = advOn ? { ...card, site: { ...card.site, advancedOn: false } as Card["site"] } : card;
+    const cur = card.site.style?.blueprint;
+    const looks: Option[] = threeLooks(plain, plain.site?.style).slice(0, 6).map((l, i) => ({
+      id: `s${l.key}`, look: l, name: `Design ${prem.length + i + 1}`, sub: hi ? l.hi : l.name,
+      // The look the website wears now keeps its own colours and choices; the others are drawn from it.
+      card: l.key === cur ? plain : applyLook(plain, l), on: !advOn && l.key === cur,
+    }));
+    return [...prem, ...looks];
+  }, [card, designs, hi, advOn]);
   const chosen = options.find((o) => o.id === pick) ?? options.find((o) => o.on) ?? options[0];
   /** A design has been picked or confirmed by the owner (until then the app keeps opening on this screen). */
   const confirmed = !!(card?.site as { designChosenAt?: string } | undefined)?.designChosenAt;
@@ -102,8 +103,15 @@ export default function ChooseDesignPage() {
     setBusy(true); setErr(""); setMsg("");
     try {
       if (chosen.look) {
+        // A Premium design on the website is switched off first (it stays stored, and can be chosen again here).
+        let base = card;
+        if (advOn) {
+          const t = await api<{ ok?: boolean; error?: string }>("/api/card/advanced", { method: "POST", json: { cardId: card.id, toggle: false } });
+          if (!t.ok || !t.data.ok) { setErr(t.data?.error || T("Could not change the design now. Please try again.", "Design अभी नहीं बदल पाया। दोबारा try करें।")); return; }
+          base = (await fetchMyCardsStrict().catch(() => [])).find((x) => x.id === card.id) ?? { ...card, site: { ...card.site!, advancedOn: false } as Card["site"] };
+        }
         // The design already on the website is only confirmed (nothing redrawn); another one is put on. Either way the choice is recorded.
-        const worn = chosen.on ? card : applyLook(card, chosen.look);
+        const worn = chosen.on ? base : applyLook(base, chosen.look);
         const next = { ...worn, site: { ...worn.site!, designChosenAt: new Date().toISOString() } as Card["site"] } as Card;
         const r = await publishCard(next);
         if (!r.ok) { setErr(r.error); return; }
@@ -127,12 +135,15 @@ export default function ChooseDesignPage() {
     // WhatsApp opens in a window made NOW (a tap), filled in when the links are ready: a window opened after the wait is taken for a pop-up.
     const win = window.open("", "_blank");
     try {
-      const json = designs
-        ? { card, designs: designs.map((d, i) => ({ name: `Design ${i + 1}`, adv: { spec: d.spec, copy: d.copy, slides: d.slides } })) }
-        : { card, looks: options.map((o) => o.look) };
+      // Every design on the screen, in its order: the Premium designs, then the looks (app/t/[token]/[look] numbers them the same way).
+      const json = {
+        card,
+        designs: (designs ?? []).map((d, i) => ({ name: `Design ${i + 1}`, adv: { spec: d.spec, copy: d.copy, slides: d.slides } })),
+        looks: options.filter((o) => o.look).map((o) => o.look),
+      };
       const r = await api<{ token?: string; keys?: string[]; error?: string }>("/api/card/test-links", { method: "POST", json });
       if (!r.ok || !r.data.token) throw new Error(r.data?.error || "x");
-      const keys = designs ? r.data.keys ?? [] : options.map((o) => o.look!.key);
+      const keys = r.data.keys ?? [];
       const lines = keys.map((k, i) => `Design ${i + 1}: ${window.location.origin}/t/${r.data.token}/${k}`);
       const who = (card.company || card.name || "").trim();
       const text = `${who ? `${who} — ` : ""}${T("website designs", "website के designs")}\n${T("Open each link to see that design, and tell me the number you like:", "हर link खोलकर design देखें, और जो पसंद हो उसका number बताएँ:")}\n\n${lines.join("\n")}`;
@@ -158,7 +169,7 @@ export default function ChooseDesignPage() {
       <p className="text-sm text-muted">{T("This takes two or three minutes. The page opens by itself; you can also come back later.", "इसमें दो-तीन मिनट लगते हैं। Page अपने-आप खुल जाएगा; बाद में भी आ सकते हैं।")}</p>
     </div>
   );
-  if (!card || (card.site?.advanced && !designs)) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
+  if (!card || !designs) return <div className="grid place-items-center py-24"><LoaderCircle className="h-6 w-6 animate-spin text-muted" /></div>;
   const link = `https://${cardHomeShown(card.username, card.customDomain)}`;
   const box = "space-y-3 rounded-3xl border border-border bg-surface p-4 shadow-card";
   const head = (n: number, t: string, s: string) => (
@@ -179,7 +190,7 @@ export default function ChooseDesignPage() {
       </div>
 
       <section className={box}>
-        {head(1, T("Select any one from 6", "6 में से कोई एक चुनें"), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
+        {head(1, T(`Select any one from ${options.length}`, `${options.length} में से कोई एक चुनें`), confirmed ? T("Tap a design to see it below. Your website has the ticked one.", "Design दबाएँ, नीचे दिखेगा। आपकी website पर ✓ वाला design है।") : T("Tap a design to see it below, then make one final. Until then this page opens every time.", "Design दबाएँ, नीचे दिखेगा, फिर एक को final करें। तब तक हर बार यही page खुलेगा।"))}
         {options.length ? (
           <>
             <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
@@ -210,9 +221,9 @@ export default function ChooseDesignPage() {
               <iframe ref={frame} title={T("Website preview", "Website का preview")} src={`/preview/site?k=${PREVIEW_KEY}&shot=1`} className="h-[30rem] w-full" />
             </div>
             <button type="button" onClick={() => void sendLinks()} disabled={linking} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-[#25d366] bg-surface py-3 text-sm font-semibold text-[#128c4a] disabled:opacity-60">
-              {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {T("Send all 6 designs on WhatsApp", "सभी 6 design WhatsApp पर भेजें")}
+              {linking ? <LoaderCircle className="h-4 w-4 animate-spin" /> : <Share2 className="h-4 w-4" />} {T(`Send all ${options.length} designs on WhatsApp`, `सभी ${options.length} design WhatsApp पर भेजें`)}
             </button>
-            <p className="text-center text-[11px] text-muted">{T("Six links, one for each design. Anyone can open them, for 14 days.", "छह links, हर design का एक। कोई भी खोल सकता है, 14 दिन तक।")}</p>
+            <p className="text-center text-[11px] text-muted">{T("One link for each design. Anyone can open them, for 14 days.", "हर design का एक link। कोई भी खोल सकता है, 14 दिन तक।")}</p>
             {linkErr && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{linkErr}</p>}
             {msg && <p role="status" className="rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-medium">{msg}</p>}
             {err && <p role="alert" className="rounded-xl border border-danger/40 bg-danger/10 px-3 py-2 text-sm font-medium text-danger">{err}</p>}

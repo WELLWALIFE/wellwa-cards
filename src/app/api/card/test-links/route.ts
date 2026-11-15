@@ -1,4 +1,4 @@
-// POST (bearer) { card, looks } → { token } — the six designs of the owner's website as test links (lib/test-links.ts).
+// POST (bearer) { card, looks?, designs? } → { token, keys } — the six designs of the owner's website as test links (lib/test-links.ts).
 import { NextResponse } from "next/server";
 import { userFromRequest } from "@/lib/poster-server";
 import { rateLimited } from "@/lib/api-security";
@@ -20,13 +20,11 @@ export async function POST(request: Request) {
   const designs: TestDesign[] = (Array.isArray(b?.designs) ? b!.designs! : []).slice(0, 6)
     .filter((d) => d && d.adv && typeof d.adv.spec === "object" && d.adv.spec)
     .map((d, i) => ({ key: `d${i + 1}`, name: String(d.name ?? `Design ${i + 1}`).slice(0, 40), adv: { spec: d.adv!.spec, ...(d.adv!.copy && typeof d.adv!.copy === "object" ? { copy: d.adv!.copy as TestDesign["adv"]["copy"] } : {}), ...(Array.isArray(d.adv!.slides) ? { slides: d.adv!.slides } : {}) } }));
-  if (card && Array.isArray(card.pages) && Array.isArray(card.links) && designs.length) {
-    return NextResponse.json({ token: await saveTestLinks(me.id, card, [], designs), keys: designs.map((d) => d.key) });
-  }
-  if (!card || !Array.isArray(card.pages) || !Array.isArray(card.links) || !Array.isArray(looks) || looks.length < 1 || looks.length > 6) return NextResponse.json({ error: "Nothing to send yet." }, { status: 400 });
+  if (!card || !Array.isArray(card.pages) || !Array.isArray(card.links) || !Array.isArray(looks) || looks.length > 6) return NextResponse.json({ error: "Nothing to send yet." }, { status: 400 });
   const keys = new Set<string>(BLUEPRINT_KEYS);
   const clean = looks.filter((l) => l && keys.has(l.key) && l.style && typeof l.style === "object");
-  if (!clean.length) return NextResponse.json({ error: "Nothing to send yet." }, { status: 400 });
-  const token = await saveTestLinks(me.id, card, clean);
-  return NextResponse.json({ token });
+  // The choose screen sends both (owner, 15 Nov 2026: every design for everyone): the Premium designs first, then the Standard looks.
+  if (!clean.length && !designs.length) return NextResponse.json({ error: "Nothing to send yet." }, { status: 400 });
+  const token = await saveTestLinks(me.id, card, clean, designs);
+  return NextResponse.json({ token, keys: [...designs.map((d) => d.key), ...clean.map((l) => l.key)] });
 }

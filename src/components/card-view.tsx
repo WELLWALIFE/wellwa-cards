@@ -17,6 +17,7 @@ import type { Card, CardBlock, CardImage, CardPage, CardTemplate } from "@/lib/t
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic, picUrl } from "@/components/pic";
 import { CardChat } from "@/components/card-chat";
+import { premiumOn } from "@/lib/site-premium";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { NoticeBar, NoticePopup } from "@/components/notice-view";
@@ -545,7 +546,7 @@ export function CardView({ card, qr, brand, expired = false, shareUrl, initialPa
 
       {/* Floating AI chat assistant */}
       {/* The "Ask …" AI chat only with a Premium website switched on (owner, 24 Oct 2026: "kevel premium me hi rahega"). */}
-      {!expired && !!card.site?.advanced && (card.site as { advancedOn?: boolean }).advancedOn !== false && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
+      {!expired && premiumOn(card) && <CardChat username={card.username} name={card.name} theme={theme} page={active} />}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={lang} page={active} />}
       {/* The Shubhora strip — not on the owner's own Shubhora page (that page IS the "know more"). */}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={lang} />}

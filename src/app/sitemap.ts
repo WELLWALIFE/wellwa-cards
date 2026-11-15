@@ -6,9 +6,10 @@ import { SERVICES } from "@/lib/services";
 import { PLATFORM_HOSTS } from "@/lib/site-url";
 import { cardUrls, searchListed, type Row } from "@/lib/seo-urls";
 import { cities } from "@/lib/directory";
+import { packagesOf, premiumTier } from "@/lib/site-tier";
 
 const SITE = (process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000").replace(/\/$/, "");
-const COLS = "username, pages:data->pages, site:data->site, about:data->about, language:data->language";
+const COLS = "username, owner_id, pages:data->pages, site:data->site, about:data->about, language:data->language";
 /** Super Admin's Pause lives in its own column; the site object carries it the way the public read does. */
 const withPaused = (r: Row & { site_paused?: boolean }): Row => (r.site_paused === true && r.site ? { ...r, site: { ...r.site, paused: true } } : r);
 
@@ -33,7 +34,9 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (!username) return [];
       const { data } = await sb.from("cards").select(`${COLS}, site_paused`).eq("username", username).eq("active", true).maybeSingle();
       const row = data ? withPaused(data as Row & { site_paused?: boolean }) : null;
-      return row && searchListed(row) && !(await fetchCardExpired(username)) ? cardUrls(`https://${host}`, row) : [];
+      const own = (data as { owner_id?: string } | null)?.owner_id;
+      const premium = !!row && premiumTier(row.site, row.username, own ? (await packagesOf([own])).get(own) : null);
+      return row && searchListed(row, premium) && !(await fetchCardExpired(username)) ? cardUrls(`https://${host}`, row) : [];
     } catch { return []; }
   }
 
@@ -56,8 +59,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       ]);
       // A card on its own domain is listed in that domain's sitemap, not here (its canonical address is there).
       const elsewhere = new Set(((own ?? []) as { username: string }[]).map((r) => r.username));
-      // Standard and Premium websites, once live (lib/seo-urls.ts searchListed); owner, 12 Nov 2026.
-      rows = ((data ?? []) as (Row & { site_paused?: boolean })[]).map(withPaused).filter((r) => r.username && !elsewhere.has(r.username) && searchListed(r));
+      // Premium websites only (owner, 15 Nov 2026), the package read from the owner's profile (lib/site-tier.ts).
+      const all = (data ?? []) as (Row & { site_paused?: boolean; owner_id?: string })[];
+      const pk = await packagesOf(all.map((r) => r.owner_id ?? "")).catch(() => new Map());
+      rows = all.filter((r) => premiumTier(r.site, r.username, pk.get(r.owner_id ?? ""))).map(withPaused).filter((r) => r.username && !elsewhere.has(r.username) && searchListed(r, true));
       // Google is for subscribed websites only (owner, 14 Oct 2026): a free or lapsed card is noindex, so it is not listed either.
       const keep: Row[] = [];
       for (let i = 0; i < rows.length; i += 40) {

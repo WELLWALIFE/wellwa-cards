@@ -7,6 +7,7 @@ import { NextResponse } from "next/server";
 import { restAsService } from "@/lib/poster-server";
 import { serviceConfigured } from "@/lib/admin-guard";
 import { advancedWithinYear, readAdvancedMeta, standardRunning } from "@/lib/advanced-access";
+import { packageRunning } from "@/lib/site-tier";
 
 type Row = { id: string; owner_id: string; data: { site?: { advanced?: unknown; advancedOn?: boolean } & Record<string, unknown> } & Record<string, unknown> };
 
@@ -22,7 +23,8 @@ export async function GET(request: Request) {
     if (!verdict.has(c.owner_id)) {
       const meta = await readAdvancedMeta(c.owner_id);
       // A failed lookup never switches anything off; an account that never paid for Premium (reviewed during the free window) is left as it is.
-      verdict.set(c.owner_id, meta === undefined || meta === null || meta.paid !== true ? true : advancedWithinYear(meta) || (await standardRunning(c.owner_id)));
+      verdict.set(c.owner_id, meta === undefined || meta === null || meta.paid !== true ? true : advancedWithinYear(meta) || (await standardRunning(c.owner_id)) || (await packageRunning(c.owner_id)));
+      // (A running website package of either kind keeps the design: every design is open to every package, owner 15 Nov 2026.)
     }
     if (verdict.get(c.owner_id)) { kept++; continue; }
     const next = { ...c.data, site: { ...c.data.site, advancedOn: false } };

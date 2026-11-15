@@ -18,6 +18,7 @@ import { galleryVideos } from "@/lib/youtube";
 import { GallerySmall, framesOf } from "@/components/site-adv/proof";
 import { ImageLightbox, LanguagePicker, TranslateCtx, WelcomePopup, useCardLang, type CardBrand } from "@/components/card-view";
 import { CardChat } from "@/components/card-chat";
+import { premiumOn } from "@/lib/site-premium";
 import { JoinNudge } from "@/components/join-nudge";
 import { ShubhoraBar } from "@/components/shubhora-bar";
 import { INSTALL_APP_CSS, InstallSiteApp } from "@/components/site-adv/install-app";
@@ -266,14 +267,14 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
         {slot("footer", drawn.length)}
         {/* The Premium website as the business's own app (owner, 31 Oct 2026): under the footer on the live site (not in previews), the
             browser's install box or the home-screen steps. The manifest comes with the page (app/c/[username]/render.tsx). */}
-        {linkBase !== undefined && !free && <InstallSiteApp name={t(c.name)} hi={hi} accent="var(--accent)" onTrack={(k) => track(k)} />}
+        {linkBase !== undefined && !free && premiumOn(card) && <InstallSiteApp name={t(c.name)} hi={hi} accent="var(--accent)" onTrack={(k) => track(k)} />}
 
         {/* The sticky action bar on phones: on the home page in only once the hero has scrolled away; an item's page leads with the item. */}
         <MobileBar x={x} shown={!isHome || pastHero} lead={item && !isShowcase(x) ? { title: t(item.item.name), price: itemPrice || undefined, waText: x.hi ? `नमस्ते ${c.name}, मुझे "${t(item.item.name)}"${itemPrice ? ` (${itemPrice})` : ""} के बारे में जानकारी चाहिए।` : `Hi ${c.name}, I saw your website — I'd like to know more about "${item.item.name}"${itemPrice ? ` (${itemPrice})` : ""}.` } : undefined} />
         {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
         {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={isHome ? "home" : slug} />}
         {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={isHome ? "home" : slug} hi={hi} />}
-        {!free && <CardChat username={card.username} name={card.name} theme={theme} />}
+        {!free && premiumOn(card) && <CardChat username={card.username} name={card.name} theme={theme} />}
         {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={isHome ? "home" : slug} />}
         {shubhora && !brand && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
       </div>

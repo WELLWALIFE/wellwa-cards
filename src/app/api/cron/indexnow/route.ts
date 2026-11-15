@@ -11,6 +11,7 @@ import { serviceConfigured } from "@/lib/admin-guard";
 import { cardUrls, searchListed, type Row } from "@/lib/seo-urls";
 import { submitIndexNow } from "@/lib/indexnow";
 import { SITE_URL } from "@/lib/site-url";
+import { packagesOf, premiumTier } from "@/lib/site-tier";
 
 const STATE = path.join(process.cwd(), ".indexnow-state.json");
 type CardRow = Row & { data?: unknown };
@@ -19,13 +20,14 @@ export async function GET(request: Request) {
   if (!process.env.CRON_KEY || request.headers.get("x-cron-key") !== process.env.CRON_KEY) return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   if (!serviceConfigured()) return NextResponse.json({ error: "service key missing" }, { status: 503 });
   // Every card whose website is on (Standard) or that has a Premium design; searchListed below decides (owner, 12 Nov 2026: Standard too).
-  const r = await restAsService<{ username: string; site_paused?: boolean; data: { pages?: Row["pages"]; site?: Row["site"]; about?: string; language?: string } }[]>("cards?select=username,site_paused,data&active=eq.true&or=(data->site->>enabled.eq.true,data->site->advanced.not.is.null)&limit=2000");
+  const r = await restAsService<{ username: string; owner_id?: string; site_paused?: boolean; data: { pages?: Row["pages"]; site?: Row["site"]; about?: string; language?: string } }[]>("cards?select=username,owner_id,site_paused,data&active=eq.true&or=(data->site->>enabled.eq.true,data->site->advanced.not.is.null)&limit=2000");
   /** A paid plan (not free, not lapsed) — asked only for the cards whose pages changed. */
   const paid = async (username: string) => {
     const s = await restAsService<{ expired?: boolean }[] | { expired?: boolean }>("rpc/card_owner_state", { method: "POST", body: JSON.stringify({ p_username: username }) }).catch(() => null);
     const row = Array.isArray(s?.data) ? s?.data[0] : s?.data;
     return !!row && row.expired !== true;
   };
+  const pk = await packagesOf((r.data ?? []).map((c) => c.owner_id ?? "")).catch(() => new Map());
   const d = await restAsService<{ username: string; domain: string }[]>("card_domains?select=username,domain&verified=eq.true&limit=2000");
   const domainOf = new Map((d.data ?? []).map((x) => [x.username, x.domain]));
   let state: Record<string, string> = {};
@@ -36,7 +38,7 @@ export async function GET(request: Request) {
   for (const c of r.data ?? []) {
     const site = c.data?.site ? { ...c.data.site, ...(c.site_paused === true ? { paused: true } : {}) } : null;
     const row: CardRow = { username: c.username, pages: c.data?.pages ?? null, site, about: c.data?.about ?? null, language: c.data?.language ?? null };
-    if (!searchListed(row)) continue;
+    if (!searchListed(row, premiumTier(row.site, row.username, pk.get(c.owner_id ?? "")))) continue;
     premium++;
     const dom = domainOf.get(c.username);
     const host = dom || new URL(SITE_URL).host;

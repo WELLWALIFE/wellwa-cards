@@ -47,6 +47,9 @@ import { catalogLabel, ctaLabel as recipeCta, recipeFor } from "@/lib/site-recip
 import { SiteHeader, HEAD_CSS } from "@/components/site-head";
 import { BackToTop, ClosingFacts, FaqAsk, HoursList, PROOF_CSS, ReviewBy, SOCIAL_TYPES, VisitPanel, tidyBlurb } from "@/components/site-proof";
 import { AdvancedSite } from "@/components/site-adv";
+import { INSTALL_APP_CSS, InstallSiteApp } from "@/components/site-adv/install-app";
+import { CardChat } from "@/components/card-chat";
+import { premiumOn } from "@/lib/site-premium";
 import { activeAdvanced } from "@/lib/site-advanced";
 
 /** The designer's section layouts (card.site.style.layouts), read by the section components below. */
@@ -681,6 +684,12 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
           </div>
         </div>
       </footer>
+      {/* A Premium website in a Standard look keeps its Premium features (owner, 15 Nov 2026: the package decides them, not the design):
+          "Get our app" under the footer on the live site, and the "Ask …" AI chat. */}
+      {linkBase !== undefined && !free && premiumOn(card) && (
+        <><style dangerouslySetInnerHTML={{ __html: INSTALL_APP_CSS }} /><InstallSiteApp name={t(hm.name)} hi={hiNow} accent={theme} onTrack={(k) => trackClick(card.username, k)} /></>
+      )}
+      {!free && premiumOn(card) && <CardChat username={card.username} name={card.name} theme={theme} />}
       {/* The sticky action bar on phones (§4.9): in only once the hero has scrolled away; the floating bubble is gone. */}
       {/* WhatsApp first and widest, Call second, the map third (16 Oct 2026: one filled action, not three equals). The green is darkened so the white label
           passes contrast (#1faa5c under white was 3.1:1). */}
@@ -696,7 +705,7 @@ export function SiteView({ card: cardIn, qr, brand, shareUrl, free = false, init
       </BottomSheet>
       {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={active} />}
       {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={active} hi={hiNow} />}
-      {/* The "Ask …" AI chat is a Premium website feature only (owner, 24 Oct 2026): the Standard website has none. */}
+      {/* The "Ask …" AI chat: Premium websites only (above), whichever design they wear. */}
       {nudge && joinHandle && !brand && <JoinNudge username={card.username} href={`/signup?by=${encodeURIComponent(joinHandle)}`} lang={L.lang} page={active} />}
       {shubhora && !brand && active !== "shubhora" && <ShubhoraBar username={card.username} joinHref={shubhora.joinHref} moreHref={shubhora.moreHref} free={shubhora.free !== false} lang={L.lang} aboveBar={!!(phone || wa || mapLink)} />}
     </div>

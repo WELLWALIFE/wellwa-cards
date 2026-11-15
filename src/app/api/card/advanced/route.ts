@@ -30,6 +30,7 @@ import { DESIGN_CREDITS } from "@/lib/adv-price";
 import type { Card, HeroSlide } from "@/lib/types";
 import type { AdvancedSpec } from "@/lib/site-advanced";
 import { isDemoAccount, readyIn, sitePending } from "@/lib/site-ready-server";
+import { packageRunning } from "@/lib/site-tier";
 
 
 // The designs an owner has already made for a card: kept on disk (lib/adv-designs.ts), so "Try another layout" is measured against them,
@@ -46,7 +47,7 @@ async function fillDesigns(uid: string, row: { id: string; username: string; dat
   const site = row.data.site as (Card["site"] & { advancedCopy?: unknown; advancedMeta?: { critique?: unknown; source?: Obj; round?: number } }) | undefined;
   const onCard = parseAdvanced(site?.advanced);
   const have = [...kept.map((r) => parseAdvanced(r.spec)).filter((x): x is AdvancedSpec => !!x), ...(onCard ? [onCard] : [])];
-  if (!have.length) return;
+  // A website that never had a Premium design (a Standard order) gets six from the library too (owner, 15 Nov 2026: every design for everyone).
   const base = from ?? kept[kept.length - 1] ?? { copy: site?.advancedCopy ?? {}, critique: site?.advancedMeta?.critique, round: site?.advancedMeta?.round ?? 0 };
   for (const spec of libraryDesigns(row.data, have, CHOICES - kept.length)) {
     await rememberAdvDesign(uid, row.id, { ok: true, mode: "preview", cardId: row.id, username: row.username, copy: base.copy ?? {}, critique: base.critique, round: base.round ?? 0, spec, source: { review: "signals", spec: "library", copy: "none" } } as unknown as Obj);
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
   if (typeof b.toggle === "boolean") {
     if (b.toggle) {
       const access = await isAdvancedAllowed(me.id);
-      if (!access.allowed) return closed(access.reason);
+      if (!access.allowed && !(await packageRunning(me.id))) return closed(access.reason);
     }
     if (!data.site?.advanced) return NextResponse.json({ error: "There is no advanced website yet. Make it first." }, { status: 400 });
     const next = setAdvancedOn(data, b.toggle);
@@ -127,7 +128,10 @@ export async function POST(request: Request) {
   }
 
   const access = await isAdvancedAllowed(me.id);
-  if (!access.allowed) return closed(access.reason);
+  // Every design for every paid website (owner, 15 Nov 2026: "koi Standard nahi, koi Premium nahi"): with a running package (Standard or
+  // Premium) the six library designs can be seen and put live. A new AI-made design (below) stays with the Premium payment.
+  const designsOnly = !access.allowed && (b.more === true || typeof b.accept === "string" || typeof b.acceptSeed === "string") && (await packageRunning(me.id));
+  if (!access.allowed && !designsOnly) return closed(access.reason);
 
   // { more: true }: the six to choose from, filled up from the library (no AI, no try spent). Answers the designs.
   if (b.more === true) {
@@ -157,8 +161,9 @@ export async function POST(request: Request) {
     // The waiting time (lib/site-ready.ts, owner 31 Oct 2026): the FIRST Premium design goes live by itself in 24 hours (with the basic
     // website when that one is still in its own wait); a later design of an account that already has one shows at once.
     if (!fresh.site?.advanced && next.site && !(await isDemoAccount(me.id))) {
-      const at = sitePending(fresh.site)?.toISOString() ?? readyIn();
-      next = { ...next, site: { ...next.site, advancedReadyAt: at } };
+      // A website already live to visitors (a Standard order choosing a Premium design, owner 15 Nov 2026) is never held back by a design choice.
+      const at = sitePending(fresh.site)?.toISOString() ?? (designsOnly || fresh.site?.enabled === true ? null : readyIn());
+      if (at) next = { ...next, site: { ...next.site, advancedReadyAt: at } };
     }
     // The owner has picked a design: the app stops opening on the choose screen (lib/site-order.ts).
     if (next.site) next = { ...next, site: { ...next.site, ...({ designChosenAt: new Date().toISOString() } as object) } };
