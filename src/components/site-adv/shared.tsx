@@ -134,7 +134,7 @@ export const ADV_BASE_CSS = `
 .adv-head{max-width:46rem;margin-bottom:clamp(2rem,5vw,3.5rem)}
 .adv-body{font-size:var(--t-body);line-height:var(--body-lh);color:var(--muted)}
 .adv-body p{margin:0 0 1em}
-.adv-photo{display:block;width:100%;height:100%;object-fit:cover}
+.adv-photo{display:block;width:100%;height:100%;object-fit:cover;object-position:var(--focus,50% 22%)}
 .adv-tile{display:grid;place-items:center;background:var(--accent-soft);color:var(--accent);font-family:var(--font-display);font-size:clamp(2rem,6vw,4rem);width:100%;height:100%}
 .adv-card{background:var(--paper);border:1px solid var(--line);border-radius:var(--r-card);overflow:hidden}
 .adv-sec[data-tone=alt] .adv-card{background:var(--paper)}

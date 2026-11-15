@@ -1539,7 +1539,7 @@ export function ImageLightbox({
           src={images[index]}
           alt={alt}
           eager sizes="100vw"
-          className="max-h-[78vh] max-w-full object-contain rounded-xl select-none"
+          className="h-[78vh] w-full object-contain select-none md:w-[calc(100%-9rem)]"
           onClick={(e) => e.stopPropagation()}
         />
         )}
