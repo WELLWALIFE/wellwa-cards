@@ -7,7 +7,7 @@ import type { AdvItem } from "@/lib/site-advanced";
 import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { linkHref } from "@/components/link-icon";
 import { Icon } from "@/components/site-icons";
-import { Photo, Sec, type SiteContent } from "@/components/site-adv/shared";
+import { Photo, Sec, type SiteContent, itemCtx } from "@/components/site-adv/shared";
 import type { AdvCtxPlus, AdvPageEntry, Chrome } from "@/components/site-adv/nav";
 import { Crumbs } from "@/components/site-adv/nav";
 import { Cover, ItemCard, Masthead, SearchBox, ShareBtn, ZoomPhoto, askText, enquireLabel, layoutFor, photosOf, priceOf } from "@/components/site-adv/page-parts";
@@ -125,7 +125,8 @@ export function CataloguePage({ c, spec, x, chrome, entry, items }: PageProps & 
 
 /* ================= one item ================= */
 
-export function ItemPage({ c, x, item, items, entry }: Pick<PageProps, "c" | "x"> & { item: AdvItem; items: AdvItem[]; entry?: AdvPageEntry }) {
+export function ItemPage({ c, x: x0, item, items, entry }: Pick<PageProps, "c" | "x"> & { item: AdvItem; items: AdvItem[]; entry?: AdvPageEntry }) {
+  const x = itemCtx(x0);
   const it = item.item;
   const photos = photosOf(it);
   const pr = priceOf(it);

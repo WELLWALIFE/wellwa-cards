@@ -30,7 +30,7 @@ import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { advancedPalette, advancedVars, validateSpec, variantOf, type AdvancedSpec, type SectionKey } from "@/lib/site-advanced";
 import type { SiteUpdate } from "@/components/site-view";
 import { buildContent, sectionHasContent } from "@/components/site-adv/content";
-import { ADV_BASE_CSS, type VariantProps } from "@/components/site-adv/shared";
+import { ADV_BASE_CSS, type VariantProps, isShowcase } from "@/components/site-adv/shared";
 import { VARIANT_CSS, variantComponent } from "@/components/site-adv/registry";
 import { AdvHeader, MobileBar, NAV_CSS, buildPages, chromeOf, useScrolled, type AdvCtxPlus } from "@/components/site-adv/nav";
 import { AdvPageBody, PAGES_CSS, catalogueOf, itemsOf, routeOf } from "@/components/site-adv/pages";
@@ -269,7 +269,7 @@ export function AdvancedSite({ card, spec: rawSpec, qr, brand, shareUrl, free = 
         {linkBase !== undefined && !free && <InstallSiteApp name={t(c.name)} hi={hi} accent="var(--accent)" onTrack={(k) => track(k)} />}
 
         {/* The sticky action bar on phones: on the home page in only once the hero has scrolled away; an item's page leads with the item. */}
-        <MobileBar x={x} shown={!isHome || pastHero} lead={item ? { title: t(item.item.name), price: itemPrice || undefined, waText: x.hi ? `नमस्ते ${c.name}, मुझे "${t(item.item.name)}"${itemPrice ? ` (${itemPrice})` : ""} के बारे में जानकारी चाहिए।` : `Hi ${c.name}, I saw your website — I'd like to know more about "${item.item.name}"${itemPrice ? ` (${itemPrice})` : ""}.` } : undefined} />
+        <MobileBar x={x} shown={!isHome || pastHero} lead={item && !isShowcase(x) ? { title: t(item.item.name), price: itemPrice || undefined, waText: x.hi ? `नमस्ते ${c.name}, मुझे "${t(item.item.name)}"${itemPrice ? ` (${itemPrice})` : ""} के बारे में जानकारी चाहिए।` : `Hi ${c.name}, I saw your website — I'd like to know more about "${item.item.name}"${itemPrice ? ` (${itemPrice})` : ""}.` } : undefined} />
         {zoom && <ImageLightbox videos={galleryVideos(card)} images={zoom.images} index={zoom.i} onIndex={(i) => setZoom({ ...zoom, i })} onClose={() => setZoom(null)} alt={zoom.alt} />}
         {card.popup?.enabled && linkBase !== undefined && <WelcomePopup card={card} theme={theme} active={isHome ? "home" : slug} />}
         {linkBase !== undefined && <NoticePopup card={card} theme={theme} active={isHome ? "home" : slug} hi={hi} />}

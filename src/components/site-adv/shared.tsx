@@ -159,3 +159,10 @@ export const ADV_BASE_CSS = `
 @media (prefers-reduced-motion:reduce){.site[data-adv] *,.site[data-adv] *::before,.site[data-adv] *::after{animation:none!important;transition:none!important}.site[data-adv].js [data-reveal]{opacity:1!important;transform:none!important}}
 @media print{.site[data-adv] [data-reveal]{opacity:1!important;transform:none!important}}
 ${THEME_CSS}`;
+
+/** An information website, not a shop (owner, 14 Nov 2026 — Mamta's Wedding Zone: "site e-commerce nahi hai, informative hai; har product se
+ *  WhatsApp ka link nahi chahiye"): products are shown, with no order / enquiry button of their own. The website's own WhatsApp, call
+ *  and contact stay. Set in Website edit → Products & prices (site.showcase). */
+export const isShowcase = (x: { card: Card }): boolean => (x.card.site as { showcase?: boolean } | undefined)?.showcase === true;
+/** The context for an item's own page on an information website: no WhatsApp or call buttons there. */
+export const itemCtx = <T extends { card: Card; wa?: unknown; phone?: unknown }>(x: T): T => (isShowcase(x) ? { ...x, wa: undefined, phone: undefined } : x);

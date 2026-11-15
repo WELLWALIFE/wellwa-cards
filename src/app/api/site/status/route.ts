@@ -26,6 +26,7 @@ export async function PATCH(request: Request) {
   const patch: SitePatch = {};
   if (typeof b.enabled === "boolean") patch.enabled = b.enabled;
   if (typeof b.hideProfile === "boolean") patch.hideProfile = b.hideProfile;
+  if (typeof b.showcase === "boolean") patch.showcase = b.showcase;
   if (typeof b.logoUrl === "string") patch.logoUrl = /^https:\/\/.{0,400}$/.test(b.logoUrl) ? b.logoUrl : "";
   if (Array.isArray(b.hidden)) patch.hidden = b.hidden.filter((x: unknown): x is string => typeof x === "string").slice(0, 20);
   if (b.hero && typeof b.hero === "object") {

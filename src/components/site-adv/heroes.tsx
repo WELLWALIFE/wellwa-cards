@@ -21,7 +21,7 @@
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from "react";
 import { CountUp, CtaPair, HeroPhoto, TrustRow } from "@/components/site-smart";
 import { Icon } from "@/components/site-icons";
-import { Photo, type AdvCtx, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { Photo, type AdvCtx, type SiteContent, type VariantProps, isShowcase } from "@/components/site-adv/shared";
 import {
   ArtField, LiveOpen, MOTION_CSS, MaskPhoto, Parallax, PointerStage, ScrollCue, SplitHeadline, Stamp, Ticker, usePinProgress,
 } from "@/components/site-adv/motion";
@@ -704,7 +704,7 @@ export function HeroSpotlight({ c, x, spec }: VariantProps) {
                 </p>
                 <div className="aho-act">
                   {cur.slug && <a href={x.hrefFor(cur.slug)} className="btn-primary aho-btn" onClick={(e) => { x.track("spot-view"); open(cur.slug)(e); }}>{x.ui("View", "देखें")} <Icon name="arrow-right" size={16} /></a>}
-                  {x.wa && <a href={ask} target="_blank" rel="noreferrer" className={`${cur.slug ? "btn-link" : "btn-primary"} aho-btn`} onClick={() => x.track("spot-enquire")}><Icon name="whatsapp" size={16} /> {x.ui("Enquire", "पूछें")}</a>}
+                  {x.wa && !isShowcase(x) && <a href={ask} target="_blank" rel="noreferrer" className={`${cur.slug ? "btn-link" : "btn-primary"} aho-btn`} onClick={() => x.track("spot-enquire")}><Icon name="whatsapp" size={16} /> {x.ui("Enquire", "पूछें")}</a>}
                 </div>
               </div>
               {items.length > 1 && (

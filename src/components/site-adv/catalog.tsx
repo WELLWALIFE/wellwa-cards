@@ -14,7 +14,7 @@ import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, Search, Share2 } from "lucide-react";
 import { Icon } from "@/components/site-icons";
 import { linkHref } from "@/components/link-icon";
-import { Head, Photo, Sec, splitUnit, type AdvCtx, type Offering, type SiteContent, type VariantProps } from "@/components/site-adv/shared";
+import { Head, Photo, Sec, splitUnit, type AdvCtx, type Offering, type SiteContent, type VariantProps, isShowcase } from "@/components/site-adv/shared";
 
 type Off = NonNullable<SiteContent["offerings"]>;
 
@@ -65,7 +65,7 @@ function Ask({ it, c, x, kind = "ghost", icon = false, label, className = "" }: 
   it: Offering; c: SiteContent; x: AdvCtx; kind?: "primary" | "ghost" | "link"; icon?: boolean; label?: string; className?: string;
 }) {
   const wa = !!x.wa;
-  if (!wa && !x.phone) return null;
+  if ((!wa && !x.phone) || isShowcase(x)) return null;
   const href = wa
     ? x.waHref(x.hi ? `नमस्ते ${c.name}, मुझे "${it.name}" के बारे में जानना है` : `Hi ${c.name}, I'd like to know about "${it.name}"`)
     : linkHref(x.phone!.type, x.phone!.value);

@@ -296,6 +296,7 @@ export default function WebsiteEditPage() {
         home: { order: site.home?.order ?? [], hidden: site.home?.hidden ?? [], ...(site.home?.stats ? { stats: site.home.stats } : {}) },
         hero: { headline: site.hero?.headline ?? "", sub: site.hero?.sub ?? "", ctaLabel: site.hero?.ctaLabel ?? "", ...(site.hero?.imageUrl !== undefined ? { imageUrl: site.hero.imageUrl } : {}), ...(site.hero?.slides ? { slides: site.hero.slides.filter((x) => x.headline.trim()) } : {}) },
         hideProfile: !!site.hideProfile,
+        showcase: (site as { showcase?: boolean }).showcase === true,
         logoUrl: site.logoUrl ?? "",
         hidden: site.hidden ?? [],
         bar: site.bar?.text?.trim() ? { text: site.bar.text.trim(), link: site.bar.link ?? "", until: site.bar.until ?? "" } : null,
@@ -514,6 +515,18 @@ export default function WebsiteEditPage() {
       </div>}
       {savedTab && savedTab === tab && <p role="status" className="flex items-center gap-2 rounded-xl border border-good/40 bg-good/10 px-3 py-2 text-sm font-semibold text-good"><Check className="h-4 w-4" /> {hi ? "Save हो गया — website पर live है" : "Saved — it is live on your website"}</p>}
 
+      {/* Shop or information website (owner, 14 Nov 2026): a showroom that does not sell online keeps its products on show without an
+          order / WhatsApp button on each one. Saved with Save, like the rest of this screen. */}
+      {tab === "products" && card && (
+        <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-border bg-surface p-3.5">
+          <input type="checkbox" className="mt-0.5 h-[18px] w-[18px] accent-[var(--color-brand)]" checked={(card.site as { showcase?: boolean } | undefined)?.showcase === true}
+            onChange={(e) => set({ showcase: e.target.checked } as Partial<Card["site"] & object>)} />
+          <span className="min-w-0">
+            <span className="block text-sm font-semibold">{hi ? "सिर्फ़ जानकारी वाली website (online बिक्री नहीं)" : "Information website (no online selling)"}</span>
+            <span className="block text-xs text-muted">{hi ? "Products दिखेंगे, पर हर product पर WhatsApp / Order का button नहीं। Website का अपना WhatsApp और Call बना रहेगा। बदलाव के बाद Save दबाएँ।" : "Products are shown, but with no WhatsApp / Order button on each one. The website's own WhatsApp and Call stay. Tap Save after changing it."}</span>
+          </span>
+        </label>
+      )}
       {/* A screen of its own (Products, Timings & address …), shown right here: it saves by itself, the window above shows its change. */}
       {embedSrc && (
         <EmbedPane src={embedSrc} title={TABS.find((t) => t.key === tab)?.label ?? ""} saveTick={saveTick} onSync={setSync}

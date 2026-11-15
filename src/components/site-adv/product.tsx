@@ -16,7 +16,7 @@ import { catalogLabel, recipeFor } from "@/lib/site-recipes";
 import { Pic } from "@/components/pic";
 import { Icon, iconFor, type IconName } from "@/components/site-icons";
 import { linkHref } from "@/components/link-icon";
-import { Photo, Sec, Stars, splitUnit, type SiteContent } from "@/components/site-adv/shared";
+import { Photo, Sec, Stars, splitUnit, type SiteContent, itemCtx } from "@/components/site-adv/shared";
 import { Crumbs, type AdvCtxPlus, type AdvPageEntry } from "@/components/site-adv/nav";
 import { Cover, ItemCard, ShareBtn, askText, enquireLabel, photosOf, priceOf } from "@/components/site-adv/page-parts";
 
@@ -381,7 +381,8 @@ function Tabs({ tabs, x }: { tabs: { id: string; label: string }[]; x: AdvCtxPlu
 
 /* ================= the page ================= */
 
-export function ProductPage({ c, x, item, items, entry }: Props) {
+export function ProductPage({ c, x: x0, item, items, entry }: Props) {
+  const x = itemCtx(x0);
   const it = item.item;
   const photos = photosOf(it);
   const pr = priceOf(it);

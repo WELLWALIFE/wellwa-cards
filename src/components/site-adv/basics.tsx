@@ -7,7 +7,7 @@ import { CountUp, Wordmark } from "@/components/site-smart";
 import { Icon } from "@/components/site-icons";
 import { LinkIcon, linkHref } from "@/components/link-icon";
 import { Pic } from "@/components/pic";
-import { Btn, H2, Head, Photo, Sec, Stars, type VariantProps } from "@/components/site-adv/shared";
+import { Btn, H2, Head, Photo, Sec, Stars, type VariantProps, isShowcase } from "@/components/site-adv/shared";
 import { LiveOpen } from "@/components/site-adv/motion";
 import { Seen } from "@/components/site-adv/abouts";
 import { Mono } from "@/components/site-adv/proof";
@@ -49,7 +49,7 @@ export function ServicesGrid({ c, x, index }: VariantProps) {
                 <div className="asv-foot">
                   {it.price && <p className="asv-price">{it.price}{it.mrp && <s>{it.mrp}</s>}</p>}
                   <div className="adv-btn-row">
-                    {x.wa && <a href={ask} target="_blank" rel="noreferrer" className="btn-link" onClick={() => x.track("product-ask")}><Icon name="whatsapp" /> {x.ui("Ask", "पूछें")}</a>}
+                    {x.wa && !isShowcase(x) && <a href={ask} target="_blank" rel="noreferrer" className="btn-link" onClick={() => x.track("product-ask")}><Icon name="whatsapp" /> {x.ui("Ask", "पूछें")}</a>}
                     {it.slug && x.goto && <a href={x.hrefFor(it.slug)} className="btn-link" onClick={(e) => { e.preventDefault(); x.goto!(it.slug!); }}>{x.ui("Details", "डिटेल")} <Icon name="arrow-right" /></a>}
                   </div>
                 </div>

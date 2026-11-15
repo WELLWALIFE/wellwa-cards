@@ -372,6 +372,8 @@ export async function siteStatus(userId: string, cardId?: string, opts: { full?:
 
 export type SitePatch = {
   enabled?: boolean; hidden?: string[]; hideProfile?: boolean; logoUrl?: string;
+  /** An information website: products shown with no order / WhatsApp button of their own (site-adv/shared.tsx isShowcase). */
+  showcase?: boolean;
   hero?: { headline?: string; sub?: string; ctaLabel?: string; imageUrl?: string; tiles?: string[]; video?: boolean; slides?: { headline: string; sub?: string; imageUrl?: string }[] };
   /** Design choices from the website editor (already cleaned, see cleanStyle). Replaces the stored style. */
   style?: SiteStyle;
@@ -406,6 +408,7 @@ export async function patchSite(userId: string, patch: SitePatch, cardId?: strin
     enabled: patch.enabled ?? prev.enabled ?? false,
     ...(patch.hidden ? { hidden: patch.hidden } : {}),
     ...(patch.hideProfile !== undefined ? { hideProfile: patch.hideProfile } : {}),
+    ...(patch.showcase !== undefined ? { showcase: patch.showcase } : {}),
     ...(patch.logoUrl !== undefined ? { logoUrl: patch.logoUrl } : {}),
     ...(hero ? { hero } : {}),
     // "Top of page" picture chosen for the website: it is the website's own banner ("" = back to the card's cover).

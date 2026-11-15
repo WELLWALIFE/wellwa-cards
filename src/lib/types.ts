@@ -305,6 +305,7 @@ export interface Card {
     };
     hidden?: string[];      // page slugs left out of the website nav
     hideProfile?: boolean;  // no photo+name chip under the hero headline
+    showcase?: boolean;  // information website: products shown with no order / WhatsApp button of their own
     logoUrl?: string;       // website header/footer logo (the card avatar is usually a portrait)
     /** The website's OWN top banner (owner, 13 Nov 2026: "website ka alag aur V-Card ka alag banner"). Unset = the website shows the
      *  card's cover (`coverUrl`), as every website did before. Set when the banner is changed for the website only; the card's cover is
