@@ -13,9 +13,11 @@ export const metadata: Metadata = pageMeta("/pricing", {
 });
 
 // The plan lists are the owner's own words (16 Oct 2026). 15 Nov 2026: every design for both; Google, AI search and the app are Premium.
+// 16 Nov 2026 (owner): Standard = website + basic SEO + Google profile setup; Premium adds full SEO, FB/Instagram page setup and AI chat.
 const STANDARD_ITEMS = [
   "Dynamic website, every design to choose from",
-  "On Google (basic listing)",
+  "Basic SEO: home & main pages on Google",
+  "Google Business Profile setup",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",
   "Growth Plan: 1st month free",
@@ -25,7 +27,7 @@ const GROWTH_ITEMS = [
   "Facebook & Instagram auto-post",
   "WhatsApp AI chatbot 24×7",
   "CRM & lead follow-ups",
-  "Google profile & review replies",
+  "Google posts & review replies",
   "WhatsApp broadcasts",
   "AI search: ChatGPT & Gemini",
   "Monthly report",
@@ -44,6 +46,7 @@ const PREMIUM_LIST = [
   "Installs on phone like an app",
   "Full Google SEO + GEO (ChatGPT & Gemini)",
   "AI chat on your website",
+  "Facebook & Instagram page setup",
   "Product catalogue + WhatsApp order",
   "AI Ad Studio and Reel Maker (credits)",
   "Growth Plan: 1st month free",

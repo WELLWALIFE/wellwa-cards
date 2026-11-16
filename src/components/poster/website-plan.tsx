@@ -24,7 +24,8 @@ function planList(hi: boolean) {
       items: [
         T("Your website and digital card on your own link", "आपकी website और digital card, आपके अपने link पर"),
         T("Every design to choose from: 12 designs, Premium ones too", "हर design में से चुनें: 12 designs, Premium वाले भी"),
-        T("On Google: home and main pages (basic listing)", "Google पर: home और main pages (basic listing)"),
+        T("Basic SEO: home and main pages on Google", "Basic SEO: home और main pages Google पर"),
+        T("Google Business Profile setup by our team", "Google Business Profile का setup हमारी team करती है"),
         T("Made by our team and delivered within 24 hours", "हमारी team बनाकर 24 घंटे में देती है"),
         T("We WhatsApp you the moment it is live", "Live होते ही WhatsApp पर खबर"),
         T("Change photos, words and products yourself, any time", "फ़ोटो, शब्द और products जब चाहें खुद बदलें"),
@@ -40,6 +41,7 @@ function planList(hi: boolean) {
         T("Full Google SEO: every page, product and service on Google", "पूरा Google SEO: हर page, product और service Google पर"),
         T("AI search: open to ChatGPT and Gemini search", "AI search: ChatGPT और Gemini की search के लिए खुली"),
         T("AI chat on your website answers your customers", "Website पर AI chat ग्राहकों को जवाब देता है"),
+        T("Facebook & Instagram page setup by our team", "Facebook और Instagram page का setup हमारी team करती है"),
         T("A layout designed for your business", "आपके business के लिए बना design"),
       ],
     },
